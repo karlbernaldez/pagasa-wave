@@ -1,0 +1,132 @@
+import Project from '../models/Project.js';
+import mongoose from 'mongoose';
+
+// ─────────────────────────────────────────────
+// 📌 Create a new project --- checked on 07/02/2025 no sensitive information sent on backend
+export const createProject = async (req, res) => {
+  try {
+    const { name, description, chartType, forecastDate } = req.body;
+    console.log('Creating project with data:', req.body);
+    const owner = req.user?.id;
+
+    if (!name || !chartType || !owner) {
+      return res.status(400).json({ message: 'Project name required.' });
+    }
+
+    // Check for duplicate project name for the same user
+    const existing = await Project.findOne({ name, owner });
+    if (existing) {
+      return res.status(409).json({ message: 'A project with this name already exists.' });
+    }
+
+    const project = new Project({ name, description, chartType, forecastDate, owner });
+    await project.save();
+
+    res.status(201).json(project);
+  } catch (error) {
+    console.error('Error creating project:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ─────────────────────────────────────────────
+// 📌 Get all projects for the logged-in user
+export const getUserProjects = async (req, res) => {
+  try {
+    const owner = req.user?.id;
+    const projects = await Project.find({ owner }).sort({ createdAt: -1 });
+    res.status(200).json(projects);
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ─────────────────────────────────────────────
+// 📌 Get a single project by ID
+export const getProjectById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid project ID' });
+    }
+
+    // Populate the owner field and exclude sensitive data like password and refreshToken
+    const project = await Project.findById(id)
+      .populate('owner', 'firstName lastName email position') // specify only the fields you need
+      .exec();
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    console.log('Fetched project:', project);
+    res.status(200).json(project);
+  } catch (error) {
+    console.error('Error fetching project:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const updateProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, chartType, forecastDate } = req.body;
+    const owner = req.user?.id;
+
+    // Check if the project exists
+    const project = await Project.findOne({ _id: id, owner });
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found or unauthorized' });
+    }
+
+    // Validate input
+    if (!name || !chartType || !forecastDate) {
+      return res.status(400).json({ message: 'All fields (name, chartType, forecastDate) are required' });
+    }
+
+    // Check if the new name is already taken by another project of the same owner
+    const existing = await Project.findOne({ name, owner });
+    if (existing && existing._id.toString() !== id) {
+      return res.status(409).json({ message: 'A project with this name already exists.' });
+    }
+
+    // Update the project with new data
+    project.name = name;
+    project.description = description;
+    project.chartType = chartType;
+    project.forecastDate = forecastDate;
+
+    await project.save(); // Save the updated project
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.error('Error updating project:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ─────────────────────────────────────────────
+// 📌 Delete a project
+export const deleteProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const owner = req.user?.id;
+
+    // Check if the project exists and belongs to the current user
+    const project = await Project.findOne({ _id: id, owner });
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found or unauthorized' });
+    }
+
+    // Delete the project
+    await project.deleteOne();
+
+    res.status(200).json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
