@@ -1,0 +1,12 @@
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+  overflow: auto; /* Allow page to scroll */
+  overflow-x: hidden;
+}
+
+.swal2-container {
+  z-index: 9999 !important;
+}
