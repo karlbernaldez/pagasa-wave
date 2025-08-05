@@ -235,7 +235,7 @@ const overlayVariants = {
 const AccessDeniedModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const handleGoToEditor = () => {
-    navigate('/dashboard');
+    navigate('/edit');
   };
   const handleProceedWithSignOut = () => {
     onClose();
