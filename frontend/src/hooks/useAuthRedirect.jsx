@@ -12,11 +12,11 @@ const useAuthRedirect = (redirectPath = '/edit') => {
           credentials: 'include',
         });
         const data = await response.json();
-
-        if (data.user.role === 'admin') {
-          redirectPath = '/dashboard';
-        }
+        
         if (response.ok) {
+          if (data.user.role === 'admin') {
+            redirectPath = '/dashboard';
+          }
           // User is authenticated
           navigate(redirectPath);
         }

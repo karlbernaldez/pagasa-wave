@@ -47,7 +47,6 @@ export const handleCreateProject = async ({
   }
 
   try {
-    const token = localStorage.getItem("authToken");
     const payload = {
       name: projectName,
       chartType,
@@ -55,7 +54,7 @@ export const handleCreateProject = async ({
       forecastDate,
     };
 
-    const created = await createProject(payload, token);
+    const created = await createProject(payload);
 
     localStorage.setItem("projectId", created._id);
     localStorage.setItem("projectName", projectName);
