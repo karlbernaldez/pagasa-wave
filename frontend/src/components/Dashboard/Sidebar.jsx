@@ -289,7 +289,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       <SidebarContainer isOpen={isMobileOpen}>
         <SidebarHeader>
           <HeaderContent>
-            <Cloud size={36} color="#60a5fa" />
+             <img src="/pagasa-logo.png" alt="PAGASA LOGO" style={{ width: 36, height: 36 }} />
             <SidebarTitle>DOST PAGASA</SidebarTitle>
           </HeaderContent>
           <CloseButton onClick={() => setIsMobileOpen(false)}>
@@ -314,7 +314,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         </NavContainer>
 
         <Footer>
-          <p>© 2025 WeatherAdmin v2.1</p>
+          <p>© 2025 VOTEWAVE v2.1</p>
         </Footer>
       </SidebarContainer>
     </>
