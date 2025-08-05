@@ -4,10 +4,6 @@ import { createProject } from '../../../api/projectAPI';
 import { logoutUser } from '../../../api/auth';
 
 export const logout = () => {
-  // Clear all data in localStorage
-  localStorage.clear();
-
-  // Call the logoutUser function to handle the logout process
   logoutUser();
 };
 

@@ -10,18 +10,26 @@ export const createFeature = async (req, res) => {
       sourceId,
     } = req.body;
 
+    const owner = req.user.id; // Get owner ID from verified token
+    const project = properties.project;
+
     // Validate geometry
     if (!geometry || !geometry.type || !geometry.coordinates) {
       return res.status(400).json({ error: 'Invalid geometry object.' });
     }
 
-    // Validate nested owner and project
-    const { owner, project } = properties;
+    // Validate required fields
     if (!sourceId || !owner || !project) {
-      return res.status(400).json({ error: 'Missing required fields: sourceId, properties.owner, or properties.project.' });
+      return res.status(400).json({ error: 'Missing required fields: sourceId or properties.project.' });
     }
 
-    // Upsert by sourceId + nested owner + nested project
+    // Compose full properties with injected owner
+    const fullProperties = {
+      ...properties,
+      owner, // inject verified user ID
+    };
+
+    // Upsert the feature
     const result = await Feature.updateOne(
       {
         sourceId,
@@ -32,7 +40,7 @@ export const createFeature = async (req, res) => {
         $setOnInsert: {
           type: 'Feature',
           geometry,
-          properties,
+          properties: fullProperties,
           name,
           sourceId,
         },
@@ -63,14 +71,14 @@ export const getAllFeatures = async (req, res) => {
 export const getFeaturesByUserAndProject = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { projectId } = req.query;
+    const { projectId } = req.params; // Accessing projectId from the route parameter
 
     console.log('[DEBUG] Authenticated User ID:', userId);
-    console.log('[DEBUG] Query projectId:', projectId);
+    console.log('[DEBUG] Route projectId:', projectId);
 
     if (!projectId) {
-      console.warn('[WARN] Missing projectId in query.');
-      return res.status(400).json({ error: 'Missing projectId in query.' });
+      console.warn('[WARN] Missing projectId in route.');
+      return res.status(400).json({ error: 'Missing projectId in route.' });
     }
 
     // 🔍 Query inside properties.owner and properties.project

@@ -1,8 +1,7 @@
 import Project from '../models/Project.js';
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 
-// ─────────────────────────────────────────────
-// 📌 Create a new project --- checked on 07/02/2025 no sensitive information sent on backend
 export const createProject = async (req, res) => {
   try {
     const { name, description, chartType, forecastDate } = req.body;
@@ -29,21 +28,33 @@ export const createProject = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// 📌 Get all projects for the logged-in user
 export const getUserProjects = async (req, res) => {
   try {
-    const owner = req.user?.id;
-    const projects = await Project.find({ owner }).sort({ createdAt: -1 });
+    const token = req.cookies.accessToken;
+
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    // Decode and verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const ownerId = decoded.id;
+
+    // Query the projects owned by the user
+    const projects = await Project.find({ owner: ownerId }).sort({ createdAt: -1 });
+
     res.status(200).json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);
+
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(403).json({ message: 'Invalid or expired token' });
+    }
+
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// ─────────────────────────────────────────────
-// 📌 Get a single project by ID
 export const getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -107,8 +118,6 @@ export const updateProject = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// 📌 Delete a project
 export const deleteProject = async (req, res) => {
   try {
     const { id } = req.params;

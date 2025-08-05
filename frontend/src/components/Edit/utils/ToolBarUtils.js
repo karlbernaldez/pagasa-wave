@@ -50,23 +50,20 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef }) 
       });
       return prevLayers;
     }
-
-    const token = localStorage.getItem('authToken');
-
+    
     saveFeature({
       geometry: feature.geometry,
       properties: {
         labelValue: baseName,
         closedMode,
         isFront: false,
-        owner: owner?.id,
         project: projectId,
         title,
         type: selectedType,
       },
       name: baseName,
       sourceId,
-    }, token)
+    })
       .then(() => {
         Swal.fire({
           icon: 'success',

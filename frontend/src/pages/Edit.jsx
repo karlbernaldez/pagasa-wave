@@ -112,7 +112,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
           return;  // Stop the execution if no project is selected
         }
 
-        const savedFeatures = await fetchFeatures(token);
+        const savedFeatures = await fetchFeatures(projectId);
 
         // ⚠️ Extra safety check: filter features by projectId from localStorage
         const filteredFeatures = savedFeatures.filter(

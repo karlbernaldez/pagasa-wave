@@ -4,17 +4,12 @@ import { generateAccessToken } from '../utils/jwtUtils.js'; // Helper to generat
 
 // Middleware to protect routes
 const protect = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  const token = req.cookies.accessToken;
   const refreshToken = req.cookies.refreshToken;
 
-  console.log('Cookies:', req.cookies);  // Log all cookies
-  console.log('refreshToken:', refreshToken);  // Check if refreshToken is in cookies
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     return res.status(401).json({ message: 'No token provided' });
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     // Try to verify the access token

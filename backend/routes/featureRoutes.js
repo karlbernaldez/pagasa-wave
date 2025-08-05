@@ -2,6 +2,7 @@
 import express from 'express';
 import { createFeature, getAllFeatures, getFeaturesByUserAndProject, getFeatureBySourceId, deleteFeature, updateFeatureName } from '../controllers/featureController.js';
 import protect from '../middleware/authMiddleware.js'
+import { authenticateToken } from '../middleware/authenticateToken.js';
 
 const router = express.Router();
 
@@ -9,12 +10,12 @@ const router = express.Router();
 router.use(protect);
 
 // Routes
-router.post('/', createFeature);
+router.post('/', authenticateToken, createFeature);
 router.get('/', getAllFeatures);
-router.get('/my-projects', getFeaturesByUserAndProject);
+router.get('/my-projects/:projectId', authenticateToken, getFeaturesByUserAndProject);
 router.get('/:sourceId', getFeatureBySourceId);
-router.delete('/:sourceId', deleteFeature);
-router.patch('/:sourceId', updateFeatureName);
+router.delete('/:sourceId', authenticateToken, deleteFeature);
+router.patch('/:sourceId', authenticateToken, updateFeatureName);
 
 
 

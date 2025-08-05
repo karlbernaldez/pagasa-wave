@@ -46,13 +46,14 @@ const refreshAccessToken = async () => {
 };
 
 // Function to delete a feature
-export const deleteFeature = async (sourceId, token) => {
+export const deleteFeature = async (sourceId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/${sourceId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -68,14 +69,14 @@ export const deleteFeature = async (sourceId, token) => {
 };
 
 // Function to save feature
-export const saveFeature = async (feature, token) => {
+export const saveFeature = async (feature) => {
   try {
     const response = await fetch(API_BASE_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
+      credentials: 'include',
       body: JSON.stringify(feature),
     });
 
@@ -89,54 +90,30 @@ export const saveFeature = async (feature, token) => {
 };
 
 // Function to fetch features with token validation and refresh logic
-export const fetchFeatures = async (token) => {
-  // Check if the token is valid
-  if (!isTokenValid(token)) {
-    console.log('[ERROR] Invalid or expired token. Attempting to refresh token.');
-
-    // Attempt to refresh the token
-    const refreshedToken = await refreshAccessToken();
-    localStorage.removeItem('authToken');
-
-    console.log('[INFO] Refreshed token:', refreshedToken);
-    if (refreshedToken) {
-      // Save the new token to localStorage
-      localStorage.setItem('authToken', refreshedToken);
-
-      // Retry fetching features with the new token
-      return fetchFeatures(refreshedToken);
-    } else {
-      // If refreshing the token fails, redirect to login
-      alert('Session expired. Please log in again.');
-      localStorage.removeItem('projectId');
-      localStorage.removeItem('projectName');
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
-      return;
-    }
+export const fetchFeatures = async (projectId) => {
+  if (!projectId) {
+    throw new Error('Missing projectId when fetching features');
   }
 
-  const projectId = localStorage.getItem('projectId');
-  if (!projectId) throw new Error('Missing projectId.');
-
-  const queryParams = new URLSearchParams({ projectId });
-
   try {
-    const response = await fetch(`${API_BASE_URL}/my-projects?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      credentials: 'include', // Ensure cookies are sent with the request
+    const response = await fetch(`${API_BASE_URL}/my-projects/${projectId}`, {
+      method: 'GET',
+      credentials: 'include', // send cookies (e.g., accessToken)
     });
 
     if (!response.ok) {
-      // Log the error response for debugging
+      if (response.status === 401 || response.status === 403) {
+        alert('Session expired. Please log in again.');
+        window.location.href = '/login';
+        return;
+      }
+
       const errorData = await response.json();
       console.error('[ERROR] Failed to fetch features:', response.status, errorData);
       throw new Error('Failed to fetch features');
     }
 
-    return response.json();
+    return await response.json();
   } catch (error) {
     console.error('[ERROR] Error in fetchFeatures:', error);
     throw error;
@@ -145,20 +122,14 @@ export const fetchFeatures = async (token) => {
 
 export async function updateFeatureNameAPI(layerId, newName) {
   try {
-    const token = localStorage.getItem('authToken');
-
-    if (!token) {
-      alert('No token found. Please log in again.');
-      return;
-    }
-
     const response = await axios.patch(
       `${API_BASE_URL}/${encodeURIComponent(layerId)}`,
       { newName },
       {
         headers: {
-          'Authorization': `Bearer ${token}`, // Ensure the token is passed correctly
+          'Content-Type': 'application/json',
         },
+        withCredentials: true, // ✅ send cookies
       }
     );
 

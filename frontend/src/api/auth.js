@@ -21,6 +21,7 @@ export const loginUser = async (credentials) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
+      credentials: 'include', // Ensure cookies are included in the request
     });
 
     if (!response.ok) {
@@ -28,9 +29,9 @@ export const loginUser = async (credentials) => {
       throw new Error(error.message || 'Login failed. Please check your credentials.');
     }
 
-    return response.json(); // Contains token or user data
+    return await response.json(); // Contains token or user data
   } catch (error) {
-    console.error(error); // Log the error for debugging
+    console.error('Login Error:', error); // Log for debugging
     throw new Error(error.message || 'Something went wrong during login.');
   }
 };
@@ -93,30 +94,22 @@ export const fetchWithAuth = async (url, options = {}) => {
 
 export const logoutUser = async () => {
   try {
-    // Clear access token from localStorage
-    localStorage.removeItem('authToken');
-
-    // Send request to invalidate refresh token
     const response = await fetch(`${AUTH_API_BASE_URL}/logout`, {
       method: 'POST',
-      credentials: 'include', // Ensure cookies are included in the request
+      credentials: 'include',
     });
 
+    // Clear local storage (optional, depending on what you're storing)
+    localStorage.clear();
+
     if (!response.ok) {
-      throw new Error('Failed to logout on server');
+      const errData = await response.json().catch(() => null);
+      throw new Error(errData?.message || 'Failed to logout on server');
     }
 
-    // Clear refresh token from cookies on the client-side
-    document.cookie = 'refreshToken=; Max-Age=0; path=/;'; // Expire the refresh token cookie immediately
-
-    // Optionally, log out on client side
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
-
-    // Redirect to login page
-    window.location.href = '/login';  // Or navigate using react-router, if needed
+    window.location.href = '/login';
   } catch (error) {
-    console.error("Error during logout:", error);
-    // Handle the error (e.g., show a toast or alert)
+    console.error('Error during logout:', error.message || error);
+    alert('Logout failed. Please try again.');
   }
 };

@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { fetchUserDetails } from '../api/userAPI';
 import OnlyUserModal from '../components/modals/OnlyUserModal';
 
 const ModalBackdrop = styled.div`
@@ -41,7 +39,7 @@ const LoadingSpinner = styled.div`
   width: 40px;
   height: 40px;
   animation: spin 1s linear infinite;
-  
+
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -55,127 +53,42 @@ const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null })
   const [showAdminModal, setShowAdminModal] = useState(false);
   const navigate = useNavigate();
 
-  // Check if user is admin
-  const checkUserRole = async () => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user'));
-      const token = localStorage.getItem('authToken');
-
-      if (!user || !token) {
-        return false;
-      }
-
-      const userData = await fetchUserDetails(user.id, token);
-      
-      if (userData.role === 'admin') {
-        setIsAdminUser(true);
-        setShowAdminModal(true);
-        console.error('Access denied: Using Admin account please switch to a regular user account.');
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Error checking user role:', error);
-      return false;
-    }
-  };
-
-  // Check authentication status
   const checkAuthentication = async () => {
     try {
-      const accessToken = localStorage.getItem('authToken');
-      const refreshToken = document.cookie.match('(^|;)\\s*refreshToken\\s*=\\s*([^;]+)')?.pop();
+      const response = await fetch('/api/auth/check', {
+        method: 'GET',
+        credentials: 'include', // Send cookies
+      });
 
-      if (!accessToken) {
-        setIsAuthenticated(false);
-        return;
-      }
-
-      // Check if access token is expired
-      const isAccessTokenExpired = isTokenExpired(accessToken);
-      
-      if (isAccessTokenExpired && refreshToken) {
-        try {
-          const newAccessToken = await refreshAccessToken(refreshToken);
-          if (newAccessToken) {
-            localStorage.setItem('authToken', newAccessToken);
-            setIsAuthenticated(true);
-          } else {
-            setIsAuthenticated(false);
-          }
-        } catch (err) {
-          console.error('Error refreshing token:', err);
-          setIsAuthenticated(false);
-        }
-      } else if (!isAccessTokenExpired) {
+      if (response.ok) {
+        const data = await response.json();
         setIsAuthenticated(true);
+
+        if (data.user.role === 'admin') {
+          setIsAdminUser(true);
+          setShowAdminModal(true);
+          console.warn('Access denied: Admins cannot access this route.');
+        }
       } else {
         setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error('Error checking authentication:', error);
+      console.error('Auth check error:', error);
       setIsAuthenticated(false);
-    }
-  };
-
-  const isTokenExpired = (token) => {
-    try {
-      const decoded = jwtDecode(token);
-      return decoded.exp * 1000 < Date.now();
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      return true;
-    }
-  };
-
-  const refreshAccessToken = async (refreshToken) => {
-    try {
-      const response = await fetch('/refresh-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to refresh access token.');
-      }
-
-      const data = await response.json();
-      return data.accessToken;
-    } catch (err) {
-      console.error('Error refreshing access token:', err);
-      return null;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      setIsLoading(true);
-      
-      // First check authentication
-      await checkAuthentication();
-      
-      // Then check user role if authenticated
-      if (localStorage.getItem('authToken')) {
-        await checkUserRole();
-      }
-      
-      setIsLoading(false);
-    };
-
-    initializeAuth();
+    checkAuthentication();
   }, []);
 
-  // Handle modal close
   const handleModalClose = () => {
     setShowAdminModal(false);
-    // Optionally redirect to home or login page
     navigate('/login');
   };
 
-  // Show loading spinner while checking authentication
   if (isLoading) {
     return (
       <ModalBackdrop>
@@ -187,22 +100,14 @@ const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null })
     );
   }
 
-  // Show admin modal if user is admin
-  if (showAdminModal && isAdminUser) {
+  if (requireAuth && !isAuthenticated) {
+    return typeof onDeny === 'function' ? onDeny() : navigate('/login');
+  }
+
+  if (isAdminUser) {
     return <OnlyUserModal isOpen={true} onClose={handleModalClose} />;
   }
 
-  // If authentication is required and user is not authenticated
-  if (requireAuth && !isAuthenticated) {
-    if (typeof onDeny === 'function') {
-      return onDeny();
-    } else {
-      navigate('/login');
-      return null;
-    }
-  }
-
-  // Render the protected component
   return <Element />;
 };
 

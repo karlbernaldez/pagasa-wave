@@ -2,6 +2,7 @@ import { fetchUserDetails } from '../api/userAPI';
 import { jwtDecode } from 'jwt-decode';
 import { loginUser } from '../api/auth';
 import { useNavigate } from 'react-router-dom';
+import useAuthRedirect from '../hooks/useAuthRedirect';
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, Cloud, Sun, CloudRain, Zap, Wind, AlertCircle, Check } from 'lucide-react';
 import { Container, WeatherElement, FloatingParticle, GradientOverlay, FormWrapper, Header, LogoContainer, Title, Subtitle, FormContainer, Form, InputGroup, InputWrapper, IconWrapper, StyledInput, RightIconWrapper, ErrorMessage, Button, FooterText, FooterLink, BackButton, ForgotPassword } from '../styles/login';
@@ -14,13 +15,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [touched, setTouched] = useState({ email: false, password: false });
 
-  useEffect(() => {
-    const authToken = localStorage.getItem('authToken');
-
-    if (authToken) {
-      window.location.href = '/edit';
-    }
-  }, []);
+  useAuthRedirect();
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -34,11 +29,8 @@ const Login = () => {
           window.userLocation = coords;
         },
         (err) => {
-          console.warn('[Geolocation Error]', err.message);
         }
       );
-    } else {
-      console.warn('Geolocation is not supported by this browser.');
     }
   }, []);
 
@@ -82,15 +74,8 @@ const Login = () => {
 
     try {
       const res = await loginUser({ email, password });
-      const token = res.accessToken;
-
-      if (!token) throw new Error('No token received from the server.');
-
-      const decoded = jwtDecode(token);
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('user', JSON.stringify(decoded));
-      const userData = await fetchUserDetails(decoded.id, token);
-      console.log('Login successful:', userData);
+      if (!res) throw new Error('No response received from the server.');
+      const userData = await fetchUserDetails(res.user.id);
 
       if (userData.role === 'admin') {
         navigate('/dashboard');
