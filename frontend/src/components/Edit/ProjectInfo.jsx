@@ -339,13 +339,7 @@ const ProjectInfo = () => {
 
   const handleSave = async () => {
     try {
-      const token = localStorage.getItem('authToken');
       const projectId = localStorage.getItem('projectId');
-
-      if (!token || !projectId) {
-        console.error('Missing token or project ID');
-        return;
-      }
 
       const projectData = {
         name: editedName,
@@ -353,7 +347,7 @@ const ProjectInfo = () => {
         forecastDate: editedDate,
       };
 
-      const updatedProject = await updateProjectById(projectId, projectData, token);
+      const updatedProject = await updateProjectById(projectId, projectData);
 
       setProjectName(updatedProject.name);
       setChartType(updatedProject.chartType);
@@ -397,11 +391,9 @@ const ProjectInfo = () => {
   const handleConfirmDelete = async () => {
     if (deleteInput === projectName) {
       try {
-        const token = localStorage.getItem('authToken');
         const projectId = localStorage.getItem('projectId');
 
-        // Delete the project using the API
-        await deleteProjectById(projectId, token);
+        await deleteProjectById(projectId);
 
         // Show success toast
         Swal.fire({
