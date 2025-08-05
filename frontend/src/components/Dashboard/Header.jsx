@@ -327,7 +327,7 @@ const NotificationDot = styled.div`
   border-radius: 50%;
   margin-top: 8px;
   background-color: ${props => {
-    switch(props.type) {
+    switch (props.type) {
       case 'user': return '#10b981';
       case 'system': return '#f59e0b';
       default: return '#3b82f6';
@@ -508,16 +508,26 @@ const HeaderComponent = ({ activeTab, onMobileMenuToggle }) => {
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        const user = JSON.parse(localStorage.getItem("user")); // Assuming you store userId in localStorage
-        
-        if (token && user) {
-          const userData = await fetchUserDetails(user.id, token);
-          setCurrentUser(userData);
+        // First, check if the user is authenticated
+        const checkResponse = await fetch('/api/auth/check', {
+          method: 'GET',
+          credentials: 'include',  // Ensure the cookie is sent with the request
+        });
+
+        if (checkResponse.ok) {
+          const checkData = await checkResponse.json();  // Get the authenticated user info
+          const userId = checkData.user.id;  // Get the user ID from the response
+
+          // Now fetch the user details using the userId
+          const userDetailsResponse = await fetchUserDetails(userId); // Fetch user details by ID
+          setCurrentUser(userDetailsResponse);  // Store the user details
+        } else {
+          console.error('Failed to authenticate user');
+          // Handle unauthenticated user (e.g., redirect to login)
         }
       } catch (error) {
         console.error('Error loading user data:', error);
-        // You might want to redirect to login or show an error
+        // Handle error appropriately (e.g., redirect to login or show error message)
       } finally {
         setLoading(false);
       }
@@ -576,7 +586,7 @@ const HeaderComponent = ({ activeTab, onMobileMenuToggle }) => {
                 <Menu size={24} />
               </MobileMenuButton>
             )}
-            
+
             {/* Page Title */}
             <TitleSection>
               <PageTitle>{getPageTitle()}</PageTitle>
@@ -670,7 +680,7 @@ const HeaderComponent = ({ activeTab, onMobileMenuToggle }) => {
                         <p>{userEmail}</p>
                       </UserDropdownInfo>
                     </UserDropdownHeader>
-                    
+
                     <UserDropdownMenu>
                       <UserDropdownItem>
                         <User />
@@ -681,7 +691,7 @@ const HeaderComponent = ({ activeTab, onMobileMenuToggle }) => {
                         <span>Preferences</span>
                       </UserDropdownItem>
                     </UserDropdownMenu>
-                    
+
                     <UserDropdownDivider>
                       <LogoutItem onClick={handleLogout}>
                         <LogOut />

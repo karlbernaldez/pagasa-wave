@@ -1,5 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
+import { logoutUser } from '../../api/auth';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdLockOutline, MdClose } from 'react-icons/md';
 
@@ -231,15 +233,13 @@ const overlayVariants = {
 };
 
 const AccessDeniedModal = ({ isOpen, onClose }) => {
-  const handleContactSupport = () => {
-    // Handle contact support logic here
-    console.log('Contact support clicked');
+  const navigate = useNavigate();
+  const handleGoToEditor = () => {
+    navigate('/dashboard');
   };
   const handleProceedWithSignOut = () => {
     onClose();
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
-    window.location.href = "/login";
+    logoutUser();
   };
 
   return (
@@ -270,7 +270,7 @@ const AccessDeniedModal = ({ isOpen, onClose }) => {
               <Title>Access Restricted</Title>
               <Subtitle>Admin Credentials Required</Subtitle>
               <Description>
-                This page requires administrator privileges to access. Please log in with your admin account or contact support if you need assistance.
+                This page requires administrator privileges to access. Please log in with your admin account or go to your dashboard to continue.
               </Description>
 
               <ButtonGroup>
@@ -278,15 +278,16 @@ const AccessDeniedModal = ({ isOpen, onClose }) => {
                   <MdLockOutline size={16} />
                   Login as Admin
                 </ActionButton>
-                <SecondaryButton onClick={handleContactSupport}>
-                  Contact Support
+                <SecondaryButton onClick={handleGoToEditor}>
+                  Go to Dashboard
                 </SecondaryButton>
               </ButtonGroup>
             </ModalContainer>
           </Overlay>
         </motion.div>
-      )}
-    </AnimatePresence>
+      )
+      }
+    </AnimatePresence >
   );
 };
 

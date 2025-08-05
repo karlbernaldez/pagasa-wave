@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, X, LogOut, AlertTriangle } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { logoutUser } from '../../api/auth';
+import { useNavigate } from 'react-router-dom';
 
 const Overlay = styled(motion.div)`
   position: fixed;
@@ -217,6 +218,7 @@ const SecondaryButton = styled.button`
 const EditAccessModal = ({ isOpen, onClose }) => {
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = () => {
     setShowSignOutModal(true);
@@ -232,8 +234,8 @@ const EditAccessModal = ({ isOpen, onClose }) => {
     logoutUser();
   };
 
-  const handleStaySignedIn = () => {
-    setShowSignOutModal(false);
+  const handleGoToDashboard = () => {
+    navigate('/dashboard');
   };
 
   const handleProceedWithRegister = () => {
@@ -348,7 +350,7 @@ const EditAccessModal = ({ isOpen, onClose }) => {
             <Title>Switch Account Required</Title>
             <Subtitle variant="warning">Current Session Will End</Subtitle>
             <Description>
-              To access editing features, you'll need to sign out of your current session and sign in with a standard user account. Your current session will be terminated.
+              To access editing features, you'll need to sign out of your current session and sign in with a standard user account. Your current session will be terminated. Alternatively, you can go to the dashboard to continue without signing out.
             </Description>
 
             <ButtonGroup>
@@ -356,8 +358,8 @@ const EditAccessModal = ({ isOpen, onClose }) => {
                 <LogOut size={16} />
                 Sign Out & Continue
               </PrimaryButton>
-              <SecondaryButton onClick={handleStaySignedIn}>
-                Stay Signed In
+              <SecondaryButton onClick={handleGoToDashboard}>
+                Go to Dashboard
               </SecondaryButton>
             </ButtonGroup>
           </ModalContainer>
