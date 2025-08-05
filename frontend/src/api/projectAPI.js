@@ -1,13 +1,11 @@
 const PROJECT_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/projects`;
 
 // 📌 Create a new project
-export const createProject = async (projectData, token) => {
+export const createProject = async (projectData) => {
   const response = await fetch(`${PROJECT_API_BASE_URL}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(projectData),
   });
 
@@ -20,28 +18,35 @@ export const createProject = async (projectData, token) => {
 };
 
 // 📌 Get all projects for the current user
-export const fetchUserProjects = async (token) => {
-  const response = await fetch(`${PROJECT_API_BASE_URL}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const fetchUserProjects = async () => {
+  try {
+    const response = await fetch(`${PROJECT_API_BASE_URL}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch projects');
+    console.log(response)
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to fetch projects');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Fetch user projects failed:', error);
+    throw error;
   }
-
-  return response.json();
 };
 
-export const fetchLatestUserProject = async (token) => {
+export const fetchLatestUserProject = async () => {
   const response = await fetch(`${PROJECT_API_BASE_URL}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -60,12 +65,11 @@ export const fetchLatestUserProject = async (token) => {
 };
 
 // 📌 Get a single project by ID
-export const fetchProjectById = async (id, token) => {
+export const fetchProjectById = async (id) => {
   const response = await fetch(`${PROJECT_API_BASE_URL}/${id}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -76,13 +80,11 @@ export const fetchProjectById = async (id, token) => {
   return response.json();
 };
 
-export const updateProjectById = async (id, projectData, token) => {
+export const updateProjectById = async (id, projectData) => {
   const response = await fetch(`${PROJECT_API_BASE_URL}/${id}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(projectData),
   });
 
@@ -95,13 +97,12 @@ export const updateProjectById = async (id, projectData, token) => {
 };
 
 // 📌 Delete a project
-export const deleteProjectById = async (id, token) => {
+export const deleteProjectById = async (id) => {
   try {
     const response = await fetch(`${PROJECT_API_BASE_URL}/${id}`, {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
     });
 
     // Check if the response status is OK

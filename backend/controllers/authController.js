@@ -103,29 +103,30 @@ export const loginUser = async (req, res) => {
       role: user.role, // Assuming `role` is a field in the User model
     };
 
-    // Generate access and refresh tokens
+    // Generate tokens
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    console.log('Refresh Token:', refreshToken);
+    // Set HttpOnly cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,               // Prevents JavaScript from accessing the cookie
+      secure: process.env.NODE_ENV === 'production', // Only true in production (if using HTTPS)
+      sameSite: 'Strict',           // Prevents the cookie from being sent with cross-origin requests
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',                    // The cookie is available across the entire site
+    });
 
-    // Save the refresh token to the user model
-    user.refreshToken = refreshToken;
-    await user.save();
-
-    // Set refresh token in HttpOnly cookie
-    res.setHeader('Set-Cookie', cookie.serialize('refreshToken', refreshToken, {
+    // Similarly for accessToken:
+    res.cookie('accessToken', accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',  // Set to true in production
-      maxAge: 60 * 60 * 24 * 7,  // 7 days
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
       path: '/',
-      sameSite: 'None',  // Required for cross-origin requests
-    }));
+    });
 
     // Send response with the access token, refresh token, and user details
     res.status(200).json({
-      accessToken,
-      refreshToken,
       user: {
         id: user._id,
         username: user.username,
@@ -144,7 +145,7 @@ export const loginUser = async (req, res) => {
 };
 
 export const refreshAccessToken = async (req, res) => {
-  const refreshToken = req.cookies.refreshToken; // Get refresh token from cookies
+  const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken) {
     return res.status(401).json({ message: 'No refresh token found.' });
@@ -170,10 +171,23 @@ export const refreshAccessToken = async (req, res) => {
 
 export const logoutUser = async (req, res) => {
   try {
-    res.status(200).json({ message: 'Logged out successfully.' });
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // true in production, false in dev/local
+      sameSite: 'Strict',
+      path: '/', // must match the cookie's original path
+    });
+
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      path: '/',
+    });
+
+    res.status(200).json({ message: 'Logged out successfully' });
   } catch (err) {
     console.error('Logout error:', err);
     res.status(500).json({ message: 'Failed to log out.' });
   }
 };
-

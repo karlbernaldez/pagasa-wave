@@ -320,13 +320,8 @@ const UserManagement = () => {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('authToken');
       
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const userData = await fetchAllUsers(token);
+      const userData = await fetchAllUsers();
       setUsers(userData);
     } catch (err) {
       setError(err.message);

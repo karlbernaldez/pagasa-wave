@@ -262,7 +262,6 @@ export const handlePointerUp = async (
       let counter = 1;
       let uniqueName = baseName;
       const existingNames = prevLayers.map((l) => l.name);
-      const owner = JSON.parse(localStorage.getItem("user"));
       const projectId = localStorage.getItem("projectId");
 
       while (existingNames.includes(uniqueName)) {
@@ -271,20 +270,18 @@ export const handlePointerUp = async (
 
       if (geojson.features.length > 0) {
         const feature = geojson.features[0];
-        const token = localStorage.getItem('authToken');
 
         saveFeature({
           geometry: feature.geometry,
           properties: {
-            labelValue: labelValue,
-            closedMode: closedMode,
+            labelValue,
+            closedMode,
             isFront: false,
-            owner: owner?.id,
             project: projectId,
           },
           name: uniqueName,
           sourceId: sourceId,
-        }, token).catch((err) => {
+        }).catch((err) => {
           console.error('Error saving feature:', err);
         });
       }

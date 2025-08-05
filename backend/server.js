@@ -12,7 +12,7 @@ connectDB();
 
 // Define CORS options for credentials and specific origin
 const corsOptions = {
-  origin: ['http://10.8.0.2:3000', 'http://34.30.147.189', 'http://localhost:3000'], // Allow multiple origins
+  origin: ['http://10.8.0.2:3000', 'http://34.132.59.27:8080', 'http://localhost:3000'], // Allow multiple origins
   credentials: true, // Allow cookies
 };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Bell, Search, Settings, LogOut, User, ChevronDown, Menu } from 'lucide-react';
 import { fetchUserDetails } from '../../api/userAPI'; // Adjust path as needed
+import { logoutUser } from '../../api/auth'; // Adjust path as needed
 
 const Header = styled.header`
   background: rgba(255, 255, 255, 0.8);
@@ -554,13 +555,7 @@ const HeaderComponent = ({ activeTab, onMobileMenuToggle }) => {
   };
 
   const handleLogout = () => {
-    // Clear user data from localStorage
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    localStorage.removeItem('refreshToken');
-    
-    // Redirect to login page
-    window.location.href = '/login'; // or use your router's navigation
+    logoutUser();
   };
 
   // Show loading state or default values while user data is loading

@@ -190,17 +190,15 @@ export const handlePointerUp = async (
 
       if (geojson.features.length > 0) {
         const feature = geojson.features[0];
-        const token = localStorage.getItem('authToken');
         saveFeature({
           geometry: feature.geometry,
           properties: {
             isFront: true,
-            owner: owner?.id,
             project: projectId,
           },
           name: uniqueName,
           sourceId,
-        }, token).catch((err) => {
+        }).catch((err) => {
           console.error('Error saving feature:', err);
         });
       }

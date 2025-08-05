@@ -4,9 +4,8 @@ const USER_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/users`;
 export const fetchAllUsers = async (token) => {
   const response = await fetch(`${USER_API_BASE_URL}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -18,12 +17,11 @@ export const fetchAllUsers = async (token) => {
 };
 
 // 📌 Get user details by ID
-export const fetchUserDetails = async (userId, token) => {
+export const fetchUserDetails = async (userId) => {
   const response = await fetch(`${USER_API_BASE_URL}/${userId}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
   });
 
   if (!response.ok) {

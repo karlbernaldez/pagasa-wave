@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 
@@ -9,7 +8,7 @@ const ModalBackdrop = styled.div`
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -39,7 +38,7 @@ const LoadingSpinner = styled.div`
   width: 40px;
   height: 40px;
   animation: spin 1s linear infinite;
-  
+
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -52,65 +51,27 @@ const ProtectedAdminRoute = ({ element: Element, requireAuth = true, onDeny = nu
   const [userRole, setUserRole] = useState(null);
   const navigate = useNavigate();
 
-  // Check authentication and the user's role
+  // Check authentication by making an API request to the backend
   const checkAuthentication = async () => {
-    const accessToken = localStorage.getItem('authToken');
-    const refreshToken = document.cookie.match('(^|;)\\s*refreshToken\\s*=\\s*([^;]+)')?.pop(); // Extract refresh token from cookies
+    try {
+      const response = await fetch('/api/auth/check', {
+        method: 'GET',
+        credentials: 'include', // Include cookies with the request
+      });
 
-    if (!accessToken) {
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      return;
-    }
-
-    // If the access token is present, check if it's expired
-    const isAccessTokenExpired = isTokenExpired(accessToken);
-    if (isAccessTokenExpired && refreshToken) {
-      try {
-        // Try to refresh the token using the refresh token
-        const newAccessToken = await refreshAccessToken(refreshToken);
-        if (newAccessToken) {
-          localStorage.setItem('authToken', newAccessToken);
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-        }
-      } catch (err) {
+      if (response.ok) {
+        const data = await response.json();
+        setIsAuthenticated(true);
+        setUserRole(data.user.role);
+      } else {
         setIsAuthenticated(false);
       }
-    } else {
-      setIsAuthenticated(true);
-      const decoded = jwtDecode(accessToken);
-      setUserRole(decoded.role); // Set user role from decoded token
+    } catch (error) {
+      console.error('Error during authentication check:', error);
+      setIsAuthenticated(false);
     }
 
     setIsLoading(false);
-  };
-
-  const isTokenExpired = (token) => {
-    const decoded = jwtDecode(token);
-    return decoded.exp * 1000 < Date.now(); // Check if token is expired
-  };
-
-  const refreshAccessToken = async (refreshToken) => {
-    try {
-      const response = await fetch('/refresh-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-        credentials: 'include', // Make sure cookies are sent
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to refresh access token.');
-      }
-
-      const data = await response.json();
-      return data.accessToken; // Return new access token
-    } catch (err) {
-      console.error('Error refreshing access token:', err);
-      return null;
-    }
   };
 
   useEffect(() => {

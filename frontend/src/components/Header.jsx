@@ -13,6 +13,7 @@ import React, { useState, useEffect, use } from "react";
 import { useLocation } from "react-router-dom";
 import { FaSun, FaMoon, FaUser } from "react-icons/fa";
 import { fetchUserDetails } from "../api/userAPI";
+import { logoutUser } from "../api/auth";
 import { StyledHeaderNavbar, Container, LogoSection, LogoIcon, LogoText, DesktopNav, DropdownOverlay, NavLinks, StyledNavLink, RightSection, DesktopControls, ThemeToggleButton, IconContainer, UserSection, UserButton, UserAvatar, UserInfo, UserName, UserRole, ChevronIcon, UserDropdown, UserDropdownHeader, UserDropdownAvatar, UserDropdownInfo, UserDropdownMenu, UserDropdownItem, UserDropdownDivider, LogoutItem, MobileControls, HamburgerButton, HamburgerLine, MobileMenu, MobileNavLink } from "./styles/header";
 
 const ThemeToggle = ({ isDarkMode, setIsDarkMode }) => {
@@ -213,9 +214,7 @@ const HeaderNavbar = ({ isLoading, isDarkMode, setIsDarkMode }) => {
 
                       <UserDropdownDivider>
                         <LogoutItem onClick={() => {
-                          localStorage.removeItem("authToken");
-                          localStorage.removeItem("user");
-                          window.location.href = "/login";
+                          logoutUser();
                         }}>
                           <span className="icon" style={{ fontSize: '16px' }}>🚪</span>
                           <span>Sign Out</span>

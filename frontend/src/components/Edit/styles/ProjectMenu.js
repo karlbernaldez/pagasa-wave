@@ -4,7 +4,7 @@ import styled from 'styled-components';
 
 export const Wrapper = styled.div`
   position: fixed;
-  top: 1.15rem;
+  top: 1.25rem;
   left: 1.5rem;
   z-index: ${({ theme }) => theme.zIndex.stickyHeader};
   font-family: ${({ theme }) => theme.fonts.regular};

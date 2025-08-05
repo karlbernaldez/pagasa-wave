@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, X, LogOut, AlertTriangle } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { logoutUser } from '../../api/auth';
 
 const Overlay = styled(motion.div)`
   position: fixed;
@@ -228,9 +229,7 @@ const EditAccessModal = ({ isOpen, onClose }) => {
   const handleProceedWithSignOut = () => {
     setShowSignOutModal(false);
     onClose();
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
-    window.location.href = "/login";
+    logoutUser();
   };
 
   const handleStaySignedIn = () => {
@@ -240,9 +239,7 @@ const EditAccessModal = ({ isOpen, onClose }) => {
   const handleProceedWithRegister = () => {
     setShowCreateAccountModal(false);
     onClose();
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
-    window.location.href = "/register";
+    logoutUser();
   };
 
   const handleCancelRegister = () => {

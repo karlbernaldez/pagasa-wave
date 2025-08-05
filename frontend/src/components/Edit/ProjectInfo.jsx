@@ -307,10 +307,9 @@ const ProjectInfo = () => {
   useEffect(() => {
     const fetchData = async () => {
       const projectId = localStorage.getItem('projectId');
-      const token = localStorage.getItem('authToken');
 
       try {
-        const project = await fetchProjectById(projectId, token);
+        const project = await fetchProjectById(projectId);
         if (project) {
           setProjectName(project.name);
           setChartType(project.chartType);

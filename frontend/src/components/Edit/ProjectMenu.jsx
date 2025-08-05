@@ -75,8 +75,7 @@ const ProjectMenu = ({ onNew, onSave, onView, onExport, mapRef, features, isDark
               <SubMenuItem onClick={() => setShowModal(true)}>New Project</SubMenuItem>
               <SubMenuItem onClick={async () => {
                 try {
-                  const token = localStorage.getItem("authToken");
-                  const userProjects = await fetchUserProjects(token);
+                  const userProjects = await fetchUserProjects();
                   setProjects(userProjects);
                   setShowProjectList(true);
                 } catch (err) {
