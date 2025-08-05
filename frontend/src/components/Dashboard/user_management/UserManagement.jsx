@@ -304,8 +304,6 @@ const getFullName = (firstName, lastName, username) => {
 };
 
 const getApprovalStatus = (user) => {
-  // Check if user has an isApproved field, otherwise default to 'pending'
-  console.log('User approval status:', user.isApproved);
   if (user.isApproved === true) return 'approved';
   if (user.isApproved === false) return 'pending';
   return 'pending';
@@ -342,7 +340,6 @@ const UserManagement = () => {
   const handleApprove = async (userId) => {
     try {
       // TODO: Implement approve user API call
-      console.log('Approve user:', userId);
       
       // Optimistically update the UI
       setUsers(prevUsers => 
