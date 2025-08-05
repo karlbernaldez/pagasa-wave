@@ -9,9 +9,13 @@ const useAuthRedirect = (redirectPath = '/edit') => {
       try {
         const response = await fetch('/api/auth/check', {
           method: 'GET',
-          credentials: 'include', // ensures cookie is sent
+          credentials: 'include',
         });
+        const data = await response.json();
 
+        if (data.user.role === 'admin') {
+          redirectPath = '/dashboard';
+        }
         if (response.ok) {
           // User is authenticated
           navigate(redirectPath);
