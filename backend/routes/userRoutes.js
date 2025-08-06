@@ -1,6 +1,6 @@
 import express from 'express';
 import { getAllUsers, getUserDetails, updateUserDetails, deleteUser } from '../controllers/userController.js';
-import { isAdmin, isOwnerOrAdmin, isOwnerOnly } from '../middleware/adminMiddleware.js'; // Import the isAdmin middleware
+import { isAdmin, isOwnerOrAdmin, isOwnerOnly } from '../middleware/adminMiddleware.js';
 import { authenticateToken } from '../middleware/authenticateToken.js';
 
 const router = express.Router();
