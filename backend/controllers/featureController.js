@@ -96,9 +96,6 @@ export const getFeaturesByUserAndProject = async (req, res) => {
   }
 };
 
-/**
- * Get a single feature by sourceId
- */
 export const getFeatureBySourceId = async (req, res) => {
   try {
     const { sourceId } = req.params;
@@ -115,9 +112,6 @@ export const getFeatureBySourceId = async (req, res) => {
   }
 };
 
-/**
- * Delete a feature by sourceId
- */
 export const deleteFeature = async (req, res) => {
   try {
     const { sourceId } = req.params;
