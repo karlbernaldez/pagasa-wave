@@ -1,7 +1,7 @@
 import User from '../models/User.js';
 import moment from 'moment';
 
-// Get all users (for admin dashboard)
+// Get all users (for admin dashboard) 
 export const getAllUsers = async (req, res) => {
     try {
         // Only select the fields you want
@@ -55,6 +55,11 @@ export const updateUserDetails = async (req, res) => {
     } catch (err) {
         res.status(500).json({ message: 'Error updating user details', error: err.message });
     }
+};
+
+// Approve user
+export const approveUser = async (req, res) => {
+    const { userId } = req.params;
 };
 
 // Delete user
