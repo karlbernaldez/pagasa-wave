@@ -5,15 +5,13 @@ import { authenticateToken } from '../middleware/authenticateToken.js';
 
 const router = express.Router();
 
-router.get('/', isAdmin, getAllUsers); // Only accessible by admins
+router.get('/', isAdmin, getAllUsers); // Only accessible by admins -- CHECKED PASSED
 
-// Route to get user details
-router.get('/:userId', isOwnerOrAdmin, authenticateToken, getUserDetails);
+router.get('/:userId',  authenticateToken, isOwnerOrAdmin, getUserDetails); // Route to get user details -- CHECKED PASSED
 
-// Route to update user details
-router.put('/:userId', updateUserDetails);
+router.put('/:userId', authenticateToken, isOwnerOrAdmin, updateUserDetails); // Route to update user details -- CHECKED PASSED
 
 // Route to delete user
-router.delete('/:userId', isAdmin, deleteUser); // Optional: protect delete user as well
+router.delete('/:userId', authenticateToken, isAdmin, deleteUser); // Optional: protect delete user as well -- CHECKED PASSED
 
 export default router;
