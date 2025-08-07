@@ -9,6 +9,7 @@ router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/logout', logoutUser);
 router.get('/check', authenticateToken, (req, res) => {
+  console.log('✅ /check route hit with user:', req.user);
   res.status(200).json({ message: 'Authenticated', user: req.user });
 });
 

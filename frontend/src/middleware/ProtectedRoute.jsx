@@ -46,7 +46,7 @@ const LoadingSpinner = styled.div`
   }
 `;
 
-const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null }) => {
+const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null, setIsLoggedIn }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +63,7 @@ const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null })
       if (response.ok) {
         const data = await response.json();
         setIsAuthenticated(true);
+        setIsLoggedIn(true);
 
         if (data.user.role === 'admin') {
           setIsAdminUser(true);
@@ -71,6 +72,7 @@ const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null })
         }
       } else {
         setIsAuthenticated(false);
+        setIsLoggedIn(false);
       }
     } catch (error) {
       console.error('Auth check error:', error);
