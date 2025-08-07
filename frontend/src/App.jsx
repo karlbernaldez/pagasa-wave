@@ -347,6 +347,7 @@ const Layout = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
 
+
   // Memoized route checks for better performance
   const routeChecks = useMemo(() => ({
     isLoginPage: location.pathname === '/login',
@@ -362,6 +363,7 @@ const Layout = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [accessDeniedVisible, setAccessDeniedVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     try {
       const stored = localStorage.getItem('isDarkMode');
@@ -442,6 +444,7 @@ const Layout = () => {
             <HeaderNavbar
               isDarkMode={isDarkMode}
               setIsDarkMode={setIsDarkMode}
+              isLoggedIn={isLoggedIn}
               toggleTheme={toggleTheme}
             />
           </Suspense>
@@ -464,7 +467,7 @@ const Layout = () => {
                 path="/"
                 element={<Home isDarkMode={isDarkMode} />}
               />
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<Login isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
               <Route path="/register" element={<Register />} />
               <Route
                 path="/edit"
@@ -481,6 +484,7 @@ const Layout = () => {
                           isDarkMode={isDarkMode}
                           setIsDarkMode={setIsDarkMode}
                           logger={logger}
+                          isLoggedIn={isLoggedIn}
                         />
                       )}
                       onDeny={() => (
@@ -490,6 +494,7 @@ const Layout = () => {
                         />
                       )}
                       requireAuth={true}
+                      setIsLoggedIn={setIsLoggedIn}
                     />
                   )
                 }

@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, Cloud, Sun, CloudRain, Zap, Wind, AlertCircle, Check } from 'lucide-react';
 import { Container, WeatherElement, FloatingParticle, GradientOverlay, FormWrapper, Header, LogoContainer, Title, Subtitle, FormContainer, Form, InputGroup, InputWrapper, IconWrapper, StyledInput, RightIconWrapper, ErrorMessage, Button, FooterText, FooterLink, BackButton, ForgotPassword } from '../styles/login';
 
-const Login = () => {
+const Login = ({ isLoggedIn, setIsLoggedIn }) => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -82,6 +82,8 @@ const Login = () => {
       } else {
         navigate('/edit');
       }
+      
+      setIsLoggedIn(true); 
 
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
