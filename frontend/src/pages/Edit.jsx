@@ -19,7 +19,7 @@ import Swal from 'sweetalert2';
 
 const Container = styled.div`
   position: relative;
-  height: 92.6vh;
+  height: 100vh;
   width: 100%;
   display: flex;
   overflow: hidden;

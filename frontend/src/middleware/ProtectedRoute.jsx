@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import OnlyUserModal from '../components/modals/OnlyUserModal';
 
@@ -101,7 +101,7 @@ const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null })
   }
 
   if (requireAuth && !isAuthenticated) {
-    return typeof onDeny === 'function' ? onDeny() : navigate('/login');
+    return typeof onDeny === 'function' ? onDeny() : <Navigate to="/login" replace />;
   }
 
   if (isAdminUser) {
