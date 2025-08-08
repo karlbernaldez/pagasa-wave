@@ -14,6 +14,7 @@ import {
   NavLinks,
   ButtonGroup
 } from './styles/header';
+import { logoutUser } from '../api/auth';
 
 const NavLink = styled.button`
   padding: 8px 16px;
@@ -379,6 +380,7 @@ const Header = ({ isDarkMode, setIsDarkMode, isLoggedIn, user, onSignOut }) => {
     if (onSignOut) {
       onSignOut();
     }
+    logoutUser();
     setIsUserDropdownOpen(false);
     setIsMobileMenuOpen(false);
   };
