@@ -15,7 +15,7 @@ export const HeaderContainer = styled.header`
 `;
 
 export const Nav = styled.nav`
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 1.5rem;
   display: flex;
