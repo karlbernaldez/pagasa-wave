@@ -100,7 +100,7 @@ export const loginUser = async (req, res) => {
       id: user._id,
       email: user.email,
       username: user.username,
-      role: user.role, // Assuming `role` is a field in the User model
+      role: user.role,
     };
 
     // Generate tokens
@@ -121,7 +121,7 @@ export const loginUser = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'Strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: 16 * 60 * 1000, // 15 minutes
       path: '/',
     });
 
@@ -147,22 +147,40 @@ export const loginUser = async (req, res) => {
 export const refreshAccessToken = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
 
+  // If no refresh token is found in the cookies, return an error
   if (!refreshToken) {
     return res.status(401).json({ message: 'No refresh token found.' });
   }
 
   try {
+    // Verify the refresh token
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 
+    // Find the user using the decoded token data
     const user = await User.findById(decoded.id);
-    if (!user || user.refreshToken !== refreshToken) {
-      return res.status(403).json({ message: 'Invalid or expired refresh token.' });
+    if (!user) {
+      return res.status(403).json({ message: 'User not found.' });
     }
 
     // Generate a new access token
-    const newAccessToken = generateAccessToken({ id: user._id, email: user.email });
+    const newAccessToken = generateAccessToken({
+      id: user._id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+    });
 
-    res.status(200).json({ accessToken: newAccessToken });
+    res.cookie('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 16 * 60 * 1000, // 15 minutes
+      path: '/',
+    });
+
+    // Send the new access token in the response body (optional)
+    return res.status(200).json({ accessToken: newAccessToken });
+
   } catch (err) {
     console.error('Error refreshing access token:', err);
     return res.status(403).json({ message: 'Failed to refresh token.' });

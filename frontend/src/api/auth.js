@@ -36,18 +36,21 @@ export const loginUser = async (credentials) => {
   }
 };
 
-const refreshAccessToken = async () => {
+export const refreshAccessToken = async () => {
   try {
-    const response = await fetch('/refresh-token', {
+    const response = await fetch(`${AUTH_API_BASE_URL}/refresh-token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      credentials: 'include', // Ensure cookies are sent with the request
+      credentials: 'include',
     });
 
     if (!response.ok) {
-      throw new Error('Failed to refresh access token.');
+      console.error(`Failed to refresh access token. Status: ${response.status}`);
+      const errorData = await response.json();
+      console.error('Error details:', errorData);
+      throw new Error(`Failed to refresh access token. ${errorData.message || response.statusText}`);
     }
 
     const data = await response.json();

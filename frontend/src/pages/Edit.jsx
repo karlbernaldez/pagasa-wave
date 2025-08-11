@@ -16,6 +16,7 @@ import { savePointFeature } from "../components/Edit/utils/ToolBarUtils";
 import { setupMap } from "../utils/mapSetup";
 import { fetchFeatures } from "../api/featureServices";
 import Swal from 'sweetalert2';
+import useAuthRedirect from '../hooks/useAuthRedirect';
 
 const Container = styled.div`
   position: relative;
@@ -66,6 +67,8 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
 
   const token = localStorage.getItem('authToken');
   const projectId = localStorage.getItem('projectId');
+
+  useAuthRedirect();
 
   // ─── Refs ─────────────────────────────────────────────
   useEffect(() => {
