@@ -68,8 +68,6 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const token = localStorage.getItem('authToken');
   const projectId = localStorage.getItem('projectId');
 
-  useAuthRedirect();
-
   // ─── Refs ─────────────────────────────────────────────
   useEffect(() => {
     setLayersRef.current = setLayers;
