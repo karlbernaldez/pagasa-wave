@@ -21,7 +21,6 @@ const protect = async (req, res, next) => {
     // If token is expired, attempt to refresh it using the refresh token
     if (err.name === 'TokenExpiredError' && refreshToken) {
       try {
-        console.log('Attempting to refresh token...');
         // Verify the refresh token
         const decodedRefreshToken = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 

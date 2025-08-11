@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 export const generateAccessToken = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: '60m',
+    expiresIn: '15m',
     algorithm: 'HS512',
   });
 

@@ -56,7 +56,6 @@ export const isOwnerOrAdmin = async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    console.log(decoded.id, userId);
     // Check if the user is admin OR if the user is requesting their own data
     if (user.role === 'admin' || decoded.id === userId) {
       req.user = user;

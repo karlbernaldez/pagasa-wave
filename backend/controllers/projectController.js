@@ -5,7 +5,6 @@ import jwt from 'jsonwebtoken';
 export const createProject = async (req, res) => {
   try {
     const { name, description, chartType, forecastDate } = req.body;
-    console.log('Creating project with data:', req.body);
     const owner = req.user?.id;
 
     if (!name || !chartType || !owner) {
@@ -72,7 +71,6 @@ export const getProjectById = async (req, res) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    console.log('Fetched project:', project);
     res.status(200).json(project);
   } catch (error) {
     console.error('Error fetching project:', error);

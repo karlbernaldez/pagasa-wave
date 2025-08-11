@@ -524,30 +524,30 @@ const ForecastChartsPage = ({ isDarkMode }) => {
   const imagePaths = {
     'wave-wind': {
       light: [
-        '/charts/wave-wind/analysis_light.png',
-        '/charts/wave-wind/24h_light.png',
-        '/charts/wave-wind/36h_light.png',
-        '/charts/wave-wind/48h_light.png'
+        '/charts/wave-wind/light/map_snapshot_light.png',
+        '/charts/wave-wind/light/map_snapshot_light.png',
+        '/charts/wave-wind/light/map_snapshot_light.png',
+        '/charts/wave-wind/light/map_snapshot_light.png',
       ],
       dark: [
-        '/charts/map_snapshot_dark.png',
-        '/charts/wave-wind/24h_dark.png',
-        '/charts/wave-wind/36h_dark.png',
-        '/charts/wave-wind/48h_dark.png'
+        '/charts/wave-wind/dark/map_snapshot_dark.png',
+        '/charts/wave-wind/dark/map_snapshot_dark.png',
+        '/charts/wave-wind/dark/map_snapshot_dark.png',
+        '/charts/wave-wind/dark/map_snapshot_dark.png',
       ]
     },
     'wave-only': {
       light: [
-        '/charts/wave-only/analysis_light.png',
-        '/charts/wave-only/24h_light.png',
-        '/charts/wave-only/36h_light.png',
-        '/charts/wave-only/48h_light.png'
+        '/charts/wave/light/map_snapshot_light.png',
+        '/charts/wave/light/map_snapshot_light.png',
+        '/charts/wave/light/map_snapshot_light.png',
+        '/charts/wave/light/map_snapshot_light.png',
       ],
       dark: [
-        '/charts/wave-only/analysis_dark.png',
-        '/charts/wave-only/24h_dark.png',
-        '/charts/wave-only/36h_dark.png',
-        '/charts/wave-only/48h_dark.png'
+        '/charts/wave/dark/map_snapshot_dark.png',
+        '/charts/wave/dark/map_snapshot_dark.png',
+        '/charts/wave/dark/map_snapshot_dark.png',
+        '/charts/wave/dark/map_snapshot_dark.png',
       ]
     },
     'visually-impaired': {

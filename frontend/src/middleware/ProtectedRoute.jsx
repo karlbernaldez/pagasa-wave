@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import OnlyUserModal from '../components/modals/OnlyUserModal';
+import { refreshAccessToken } from '../api/auth';
 
 const ModalBackdrop = styled.div`
   position: fixed;
@@ -70,6 +71,12 @@ const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null, s
           setShowAdminModal(true);
           console.warn('Access denied: Admins cannot access this route.');
         }
+
+      } else if (response.status === 403) {
+        const response = await refreshAccessToken();
+        setIsAuthenticated(true);
+        setIsLoggedIn(true);
+        
       } else {
         setIsAuthenticated(false);
         setIsLoggedIn(false);
