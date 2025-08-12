@@ -364,7 +364,7 @@ const MiscLayer = ({ mapRef }) => {
           isActive={showSHIPPINGZONE}
           onClick={() => toggleLayer('SHIPPING_ZONE')}
         >
-          {showTCAD ? 'Hide SHIPPING ZONE' : 'SHIPPING ZONE'}
+          {showSHIPPINGZONE ? 'Hide SHIPPING ZONE' : 'SHIPPING ZONE'}
         </LayerToggleButton>
 
         <LayerToggleButton
