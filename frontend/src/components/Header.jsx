@@ -1,7 +1,8 @@
-import { logoutUser } from '../api/auth';
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Sun, Moon, User, LogOut, Settings } from 'lucide-react';
+import { fetchUserDetails } from '../api/userAPI';
+import { logoutUser } from '../api/auth';
 
 // Layout & Navigation
 import { HeaderContainer, Nav, Logo, LogoIcon, ThemeToggle, SignInButton } from './styles/header';
@@ -17,47 +18,47 @@ import { DropdownItem, DropdownDivider } from './styles/header';
 import { MobileUserSection, MobileUserInfo, MobileUserAvatar, MobileUserDetails } from './styles/header';
 import { MobileUserName, MobileUserRole } from './styles/header';
 
-const Header = ({ isDarkMode, setIsDarkMode, isLoggedIn, user, onSignOut }) => {
+const Header = ({ isDarkMode, setIsDarkMode }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true); // New loading state
   const navigate = useNavigate();
   const location = useLocation();
   const dropdownRef = useRef(null);
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+  const toggleUserDropdown = () => setIsUserDropdownOpen(!isUserDropdownOpen);
 
-  const toggleUserDropdown = () => {
-    setIsUserDropdownOpen(!isUserDropdownOpen);
-  };
-
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsUserDropdownOpen(false);
+    const loadUserData = async () => {
+      try {
+        const checkResponse = await fetch('/api/auth/check', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (checkResponse.ok) {
+          const checkData = await checkResponse.json();
+          const userId = checkData.user.id;
+
+          const userDetailsResponse = await fetchUserDetails(userId);
+          setCurrentUser(userDetailsResponse);
+          setIsLoggedIn(true);
+        } else {
+          console.error('Failed to authenticate user');
+          setIsLoggedIn(false); // Authentication failed
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        setIsLoggedIn(false); // Error, logout user
+      } finally {
+        setLoading(false); // Set loading to false after data is fetched
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Close dropdown on escape key
-  useEffect(() => {
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setIsUserDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
+    loadUserData();
   }, []);
 
   const navItems = [
@@ -71,7 +72,6 @@ const Header = ({ isDarkMode, setIsDarkMode, isLoggedIn, user, onSignOut }) => {
 
   const isActiveRoute = (href) => {
     if (href.startsWith('#')) {
-      // For hash links, check if we're on the home page and the hash matches
       return location.pathname === '/' && location.hash === href;
     }
     return location.pathname === href;
@@ -90,21 +90,10 @@ const Header = ({ isDarkMode, setIsDarkMode, isLoggedIn, user, onSignOut }) => {
   };
 
   const handleSignOut = () => {
-    if (onSignOut) {
-      onSignOut();
-    }
     logoutUser();
+    setIsLoggedIn(false); // Set to false after logout
     setIsUserDropdownOpen(false);
     setIsMobileMenuOpen(false);
-  };
-
-  const handleDropdownAction = (action) => {
-    setIsUserDropdownOpen(false);
-    if (action === 'profile') {
-      navigate('/profile');
-    } else if (action === 'settings') {
-      navigate('/settings');
-    }
   };
 
   return (
@@ -129,21 +118,21 @@ const Header = ({ isDarkMode, setIsDarkMode, isLoggedIn, user, onSignOut }) => {
             </NavLink>
           ))}
 
-          {isMobileMenuOpen && !isLoggedIn && (
+          {isMobileMenuOpen && !isLoggedIn && !loading && (
             <MobileSignInButton onClick={() => navigate('/login')}>
               <User size={16} />
               Sign In
             </MobileSignInButton>
           )}
 
-          {isMobileMenuOpen && isLoggedIn && (
+          {isMobileMenuOpen && isLoggedIn && !loading && (
             <MobileUserSection isDarkMode={isDarkMode}>
               <MobileUserInfo>
                 <MobileUserAvatar isDarkMode={isDarkMode}>
-                  {user?.avatar ? (
+                  {currentUser?.avatar ? (
                     <img
-                      src={user.avatar}
-                      alt={user.name}
+                      src={currentUser.avatar}
+                      alt={currentUser.username}
                     />
                   ) : (
                     <User size={20} color={isDarkMode ? '#9ca3af' : '#6b7280'} />
@@ -151,27 +140,23 @@ const Header = ({ isDarkMode, setIsDarkMode, isLoggedIn, user, onSignOut }) => {
                 </MobileUserAvatar>
                 <MobileUserDetails>
                   <MobileUserName isDarkMode={isDarkMode}>
-                    {user?.name || 'User'}
+                    {currentUser?.username || 'Loading...'}
                   </MobileUserName>
                   <MobileUserRole isDarkMode={isDarkMode}>
-                    {user?.role || 'Member'}
+                    {currentUser?.position || 'Please Wait...'}
                   </MobileUserRole>
                 </MobileUserDetails>
               </MobileUserInfo>
 
-              <MobileSignInButton onClick={() => handleDropdownAction('profile')}>
-                <User size={16} />
-                View Profile
-              </MobileSignInButton>
-              <MobileSignInButton onClick={() => handleDropdownAction('settings')}>
-                <Settings size={16} />
-                Settings
-              </MobileSignInButton>
-              <MobileSignInButton onClick={handleSignOut}>
+              <MobileSignInButton onClick={() => handleSignOut()}>
                 <LogOut size={16} />
                 Sign Out
               </MobileSignInButton>
             </MobileUserSection>
+          )}
+
+          {loading && (
+            <div>Loading...</div> // You can replace this with a spinner or a loading component
           )}
         </NavLinks>
 
@@ -180,7 +165,7 @@ const Header = ({ isDarkMode, setIsDarkMode, isLoggedIn, user, onSignOut }) => {
             {isDarkMode ? <Sun /> : <Moon />}
           </ThemeToggle>
 
-          {!isLoggedIn ? (
+          {!isLoggedIn && !loading ? (
             <SignInButton onClick={() => navigate('/login')}>
               <User size={16} />
               Sign In
@@ -191,71 +176,52 @@ const Header = ({ isDarkMode, setIsDarkMode, isLoggedIn, user, onSignOut }) => {
                 onClick={toggleUserDropdown}
                 isOpen={isUserDropdownOpen}
                 isDarkMode={isDarkMode}
-                aria-expanded={isUserDropdownOpen}
-                aria-haspopup="true"
               >
                 <UserAvatar isDarkMode={isDarkMode}>
-                  {user?.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                    />
+                  {currentUser?.avatar ? (
+                    <img src={currentUser.avatar} alt={currentUser.username} />
                   ) : (
                     <User size={16} color={isDarkMode ? '#9ca3af' : '#6b7280'} />
                   )}
                 </UserAvatar>
                 <UserInfo>
                   <UserName isDarkMode={isDarkMode}>
-                    {user?.name || 'User'}
+                    {currentUser?.username || 'Loading...'}
                   </UserName>
                   <UserRole isDarkMode={isDarkMode}>
-                    {user?.role || 'Member'}
+                    {currentUser?.position || 'Please Wait...'}
                   </UserRole>
                 </UserInfo>
-                <ChevronIcon
-                  size={16}
-                  color={isDarkMode ? '#9ca3af' : '#6b7280'}
-                  isOpen={isUserDropdownOpen}
-                />
+                <ChevronIcon size={16} color={isDarkMode ? '#9ca3af' : '#6b7280'} />
               </UserDropdownTrigger>
 
               {isUserDropdownOpen && (
                 <DropdownMenu isDarkMode={isDarkMode}>
                   <DropdownHeader isDarkMode={isDarkMode}>
                     <DropdownUserName isDarkMode={isDarkMode}>
-                      {user?.name || 'User'}
+                      {currentUser?.username || 'User'}
                     </DropdownUserName>
                     <DropdownUserEmail isDarkMode={isDarkMode}>
-                      {user?.email || 'user@example.com'}
+                      {currentUser?.email || 'user@example.com'}
                     </DropdownUserEmail>
                     <DropdownUserRole isDarkMode={isDarkMode}>
-                      {user?.role || 'Member'}
+                      {currentUser?.position || 'Member'}
                     </DropdownUserRole>
                   </DropdownHeader>
 
-                  <DropdownItem
-                    onClick={() => handleDropdownAction('profile')}
-                    isDarkMode={isDarkMode}
-                  >
+                  <DropdownItem onClick={() => navigate('/profile')} isDarkMode={isDarkMode}>
                     <User size={16} />
                     View Profile
                   </DropdownItem>
 
-                  <DropdownItem
-                    onClick={() => handleDropdownAction('settings')}
-                    isDarkMode={isDarkMode}
-                  >
+                  <DropdownItem onClick={() => navigate('/settings')} isDarkMode={isDarkMode}>
                     <Settings size={16} />
                     Settings
                   </DropdownItem>
 
                   <DropdownDivider isDarkMode={isDarkMode} />
 
-                  <DropdownItem
-                    onClick={handleSignOut}
-                    isDarkMode={isDarkMode}
-                    isSignOut={true}
-                  >
+                  <DropdownItem onClick={handleSignOut} isDarkMode={isDarkMode} isSignOut={true}>
                     <LogOut size={16} />
                     Sign Out
                   </DropdownItem>
