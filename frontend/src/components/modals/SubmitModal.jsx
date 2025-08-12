@@ -8,7 +8,7 @@ const ModalOverlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: ${({ theme }) => theme.colors.loadingBackground || "rgba(0, 0, 0, 0.4)"};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -23,6 +23,7 @@ const ModalContainer = styled.div`
   max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
+  background: ${({ theme }) => theme.colors.lightBackground};
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: modalSlideIn 0.3s ease-out;
 
@@ -50,7 +51,7 @@ const ModalHeader = styled.div`
 const ModalTitle = styled.h2`
   font-size: 24px;
   font-weight: 700;
-  color: #111827;
+  color: ${({ theme }) => theme.colors.textPrimary};
   margin: 0;
   display: flex;
   align-items: center;
@@ -87,7 +88,7 @@ const Section = styled.div`
 const SectionTitle = styled.h3`
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: ${({ theme }) => theme.colors.textPrimary};
   margin: 0 0 16px 0;
   display: flex;
   align-items: center;
@@ -121,7 +122,7 @@ const FieldInput = styled.input`
   border: 2px solid #e5e7eb;
   border-radius: 8px;
   font-size: 14px;
-  background: #f9fafb;
+  background: ${({ theme }) => theme.colors.lightBackground};
   color: #6b7280;
   cursor: not-allowed;
   
@@ -136,14 +137,34 @@ const DropZone = styled.div`
   border-radius: 12px;
   padding: 48px 24px;
   text-align: center;
-  background: ${props => props.$isDragActive ? '#eff6ff' : props.$hasFile ? '#f0fdf4' : '#fafafa'};
+  background: ${({ isDarkMode, $isDragActive, $hasFile }) =>
+    $isDragActive
+      ? isDarkMode
+        ? '#1e293b' // Dark mode active drag
+        : '#eff6ff' // Light mode active drag
+      : $hasFile
+        ? isDarkMode
+          ? '#374151' // Dark mode file selected
+          : '#f0fdf4' // Light mode file selected
+        : isDarkMode
+          ? '#2c3e50' // Dark mode default
+          : '#fafafa' // Light mode default
+  };
   transition: all 0.3s ease;
   cursor: pointer;
   position: relative;
 
   &:hover {
-    border-color: ${props => props.$hasFile ? '#10b981' : '#3b82f6'};
-    background: ${props => props.$hasFile ? '#f0fdf4' : '#eff6ff'};
+    border-color: ${({ $hasFile }) => ($hasFile ? '#10b981' : '#3b82f6')};
+    background: ${({ isDarkMode, $hasFile }) =>
+    $hasFile
+      ? isDarkMode
+        ? '#3c556e'  // Dark mode file selected hover
+        : '#f0f7fdff'  // Light mode file selected hover (can be customized)
+      : isDarkMode
+        ? '#3e4a59'  // Dark mode hover
+        : '#f0f7fdff'  // Light mode hover (remains same)
+  };
   }
 `;
 
@@ -163,7 +184,13 @@ const DropZoneText = styled.div`
   h4 {
     font-size: 18px;
     font-weight: 600;
-    color: ${props => props.$hasFile ? '#059669' : '#374151'};
+    color: ${({ theme, $hasFile, isDarkMode }) =>
+    $hasFile
+      ? isDarkMode
+        ? '#059669' // Dark mode file selected
+        : '#10b981' // Light mode file selected
+      : theme.colors.textPrimary // Default text color from the theme
+  };
     margin: 0 0 8px 0;
   }
   
@@ -327,14 +354,15 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const SubmitProjectModal = ({ 
-  visible, 
-  onClose, 
+const SubmitProjectModal = ({
+  visible,
+  onClose,
   onSubmit,
-  projectTitle = '',
-  projectType = '',
+  projectTitle = 'Sample Title',
+  projectType = 'Wave Analysis',
   forecastDate = '',
-  isSubmitting = false 
+  isSubmitting = false,
+  isDarkMode
 }) => {
   const [isDragActive, setIsDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -364,7 +392,7 @@ const SubmitProjectModal = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
-    
+
     const files = e.dataTransfer.files;
     handleFileSelection(files[0]);
   };
@@ -376,7 +404,7 @@ const SubmitProjectModal = ({
 
   const handleFileSelection = (file) => {
     setError('');
-    
+
     if (!file) return;
 
     // Validate file type (only ZIP files)
@@ -445,43 +473,43 @@ const SubmitProjectModal = ({
               <FileText size={20} />
               Project Information
             </SectionTitle>
-            
+
             <FieldGrid>
               <FieldGroup>
                 <FieldLabel>
                   <Type size={16} />
                   Title
                 </FieldLabel>
-                <FieldInput 
-                  type="text" 
-                  value={projectTitle} 
-                  readOnly 
+                <FieldInput
+                  type="text"
+                  value={projectTitle}
+                  readOnly
                   disabled
                 />
               </FieldGroup>
-              
+
               <FieldGroup>
                 <FieldLabel>
                   <FileText size={16} />
                   Type
                 </FieldLabel>
-                <FieldInput 
-                  type="text" 
-                  value={projectType} 
-                  readOnly 
+                <FieldInput
+                  type="text"
+                  value={projectType}
+                  readOnly
                   disabled
                 />
               </FieldGroup>
-              
+
               <FieldGroup>
                 <FieldLabel>
                   <Calendar size={16} />
                   Forecast Date
                 </FieldLabel>
-                <FieldInput 
-                  type="text" 
-                  value={forecastDate} 
-                  readOnly 
+                <FieldInput
+                  type="text"
+                  value={forecastDate}
+                  readOnly
                   disabled
                 />
               </FieldGroup>
@@ -494,7 +522,7 @@ const SubmitProjectModal = ({
               <Upload size={20} />
               Upload Project File
             </SectionTitle>
-            
+
             <DropZone
               $isDragActive={isDragActive}
               $hasFile={!!selectedFile}
@@ -503,11 +531,12 @@ const SubmitProjectModal = ({
               onDragOver={handleDragOver}
               onDrop={handleDrop}
               onClick={handleBrowseClick}
+              isDarkMode={isDarkMode}
             >
               <DropZoneIcon $hasFile={!!selectedFile}>
                 {selectedFile ? <File /> : <Upload />}
               </DropZoneIcon>
-              
+
               <DropZoneText $hasFile={!!selectedFile}>
                 {selectedFile ? (
                   <>
@@ -521,7 +550,7 @@ const SubmitProjectModal = ({
                   </>
                 )}
               </DropZoneText>
-              
+
               {!selectedFile && (
                 <BrowseButton type="button">
                   Choose File
@@ -564,8 +593,8 @@ const SubmitProjectModal = ({
             <Button onClick={handleCancel} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button 
-              $variant="primary" 
+            <Button
+              $variant="primary"
               onClick={handleSubmit}
               disabled={!selectedFile || isSubmitting}
             >
