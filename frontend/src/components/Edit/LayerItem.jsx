@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { FaTrash, FaLock, FaLockOpen, FaEye, FaEyeSlash } from "react-icons/fa";
 import styled from "styled-components";
 import { removeFeature } from "./utils/layerUtils";
+import Swal from 'sweetalert2';
 
 const ListItem = styled.li`
   display: flex;
@@ -122,6 +123,17 @@ const LayerItem = ({
     } else {
       removeLayer(layer.id);
       removeFeature(draw, layer.id, layer.sourceID, mapRef);
+      Swal.fire({
+        icon: 'success',
+        title: 'Layer Deleted',
+        text: 'The layer has been deleted successfully.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        showConfirmButton: false,
+        background: '#d4edda',
+        color: '#155724'
+      });
     }
   };
 
