@@ -254,11 +254,9 @@ const ProjectModal = ({ visible, onClose, onSubmit, projectName, setProjectName,
           <Label htmlFor="forecastDate">Forecast Date</Label>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
-              value={forecastDate ? dayjs(forecastDate) : null}
-              onChange={(newValue) => {
-                const formatted = newValue ? newValue.format('YYYY-MM-DD') : '';
-                setForecastDate(formatted);
-              }}
+              value={dayjs()}
+              onChange={() => { }}
+              disabled
               slotProps={{
                 textField: {
                   fullWidth: true,
