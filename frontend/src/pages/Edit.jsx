@@ -15,8 +15,8 @@ import { typhoonMarker as saveMarkerFn } from "../utils/mapUtils";
 import { savePointFeature } from "../components/Edit/utils/ToolBarUtils";
 import { setupMap } from "../utils/mapSetup";
 import { fetchFeatures } from "../api/featureServices";
+import { fetchLatestUserProject } from "../api/projectAPI";
 import Swal from 'sweetalert2';
-import useAuthRedirect from '../hooks/useAuthRedirect';
 
 const Container = styled.div`
   position: relative;
@@ -54,6 +54,9 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const [savedFeatures, setSavedFeatures] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [latestProject, setLatestProject] = useState(null);
+  const [isLoadingProject, setIsLoadingProject] = useState(true);
+
   const [capturedImages, setCapturedImages] = useState({
     light: null,
     dark: null
@@ -64,9 +67,29 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const cleanupRef = useRef(null);
   const setLayersRef = useRef();
   const markerTitleRef = useRef('');
+  let projectId = '';
 
-  const token = localStorage.getItem('authToken');
-  const projectId = localStorage.getItem('projectId');
+  useEffect(() => {
+    const fetchProject = async () => {
+      try {
+        const projectData = await fetchLatestUserProject(); // Assuming it's async
+        console.log(projectData)
+        setLatestProject(projectData);
+        localStorage.setItem('projectId', projectData._id);
+        projectId = projectData._id;
+      } catch (error) {
+        console.error('Failed to fetch the latest project:', error);
+      } finally {
+        setIsLoadingProject(false);
+      }
+    };
+
+    fetchProject();
+  }, []);
+
+  if (!projectId) {
+    projectId = localStorage.getItem('projectId');
+  }
 
   // ─── Refs ─────────────────────────────────────────────
   useEffect(() => {
@@ -150,6 +173,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
           setLoading: setIsLoading,
           selectedToolRef,
           setCapturedImages,
+          isDarkMode,
         });
       } catch (error) {
         console.error('[MAP LOAD ERROR]', error);
@@ -291,8 +315,6 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         onInputChange={handleTitleChange}
       />
 
-      <LegendBox isDarkMode={isDarkMode} />
-
       <ProjectMenu
         mapRef={mapRef}
         features={{ type: "FeatureCollection", features: savedFeatures }}
@@ -302,10 +324,15 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         isLoading={isLoading}
       />
 
-      <ProjectInfo />
-      <MiscLayer
-        mapRef={mapRef}
-      />
+      {!isLoadingProject && latestProject && (
+        <>
+          <ProjectInfo />
+          <MiscLayer
+            mapRef={mapRef}
+          />
+          <LegendBox isDarkMode={isDarkMode} />
+        </>
+      )}
 
       {isLoading && <MapLoading />}
     </Container>
