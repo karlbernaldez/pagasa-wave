@@ -72,8 +72,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const projectData = await fetchLatestUserProject(); // Assuming it's async
-        console.log(projectData)
+        const projectData = await fetchLatestUserProject();
         setLatestProject(projectData);
         localStorage.setItem('projectId', projectData._id);
         projectId = projectData._id;

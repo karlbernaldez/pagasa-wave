@@ -169,6 +169,7 @@ const ProjectMenu = ({ onNew, onSave, onView, onExport, mapRef, features, isDark
           projectType={localStorage.getItem('chartType') || 'Wave Analysis'}
           forecastDate={forecastDate || 'Not set'}
           isSubmitting={isSubmitting}
+          isDarkMode={isDarkMode}
         />
       )}
     </Wrapper>

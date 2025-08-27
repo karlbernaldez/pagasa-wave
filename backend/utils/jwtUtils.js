@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 export const generateAccessToken = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: '15m',
+    expiresIn: '60m',
     algorithm: 'HS512',
   });
 
@@ -11,4 +11,3 @@ export const generateRefreshToken = (payload) =>
     expiresIn: '7d',
     algorithm: 'HS512',
   });
-
