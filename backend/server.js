@@ -4,6 +4,7 @@ import featureRoutes from './routes/featureRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
+import chartRoutes from './routes/chartRoutes.js'
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
@@ -12,8 +13,8 @@ connectDB();
 
 const allowedOrigins = [
   'http://10.8.0.2:3000',
-  'http://34.132.59.27:8080',
-  'http://34.132.59.27:3001',
+  'http://35.222.38.75:8080',
+  'http://35.222.38.75:3001',
   'http://localhost:3001'
 ];
 
@@ -39,6 +40,7 @@ app.use('/api/features', featureRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/charts', chartRoutes)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
