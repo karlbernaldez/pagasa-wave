@@ -80,7 +80,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn }) => {
       if (userData.role === 'admin') {
         navigate('/dashboard');
       } else {
-        navigate('/edit');
+        navigate('/wavelab');
       }
       
       setIsLoggedIn(true); 

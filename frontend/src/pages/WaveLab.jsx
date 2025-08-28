@@ -67,7 +67,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const cleanupRef = useRef(null);
   const setLayersRef = useRef();
   const markerTitleRef = useRef('');
-  let projectId = '';
+  let projectId = localStorage.getItem('projectId');
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -83,12 +83,12 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
       }
     };
 
-    fetchProject();
+    if (!projectId) {
+      fetchProject();
+    } else {
+      setIsLoadingProject(false);
+    }
   }, []);
-
-  if (!projectId) {
-    projectId = localStorage.getItem('projectId');
-  }
 
   // ─── Refs ─────────────────────────────────────────────
   useEffect(() => {
@@ -121,20 +121,6 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
 
     const setupFeaturesAndLayers = async () => {
       try {
-        if (!projectId) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'No Project Selected',
-            text: 'Please select a project first.',
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000,  // The toast will auto-close after 3 seconds
-          });
-          setIsLoading(false);
-          return;  // Stop the execution if no project is selected
-        }
-
         const savedFeatures = await fetchFeatures(projectId);
 
         // ⚠️ Extra safety check: filter features by projectId from localStorage
@@ -323,7 +309,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         isLoading={isLoading}
       />
 
-      {!isLoadingProject && latestProject && (
+      {!isLoadingProject && projectId && (
         <>
           <ProjectInfo />
           <MiscLayer

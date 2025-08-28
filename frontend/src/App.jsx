@@ -23,7 +23,7 @@ const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
-const Edit = lazy(() => import('./pages/Edit'));
+const WaveLab = lazy(() => import('./pages/WaveLab'));
 const Charts = lazy(() => import('./pages/Charts'));
 const AboutUs = lazy(() => import('./pages/AboutUs'));
 
@@ -111,14 +111,14 @@ const Layout = () => {
               <Route path="/login" element={<Login isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
               <Route path="/register" element={<Register />} />
               <Route
-                path="/edit"
+                path="/wavelab"
                 element={
                   isMobile ? (
                     <MobileAccessModal isOpen={modalVisible} onClose={handleModalClose} />
                   ) : (
                     <ProtectedRoute
                       element={() => (
-                        <Edit isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} logger={logger} isLoggedIn={isLoggedIn} />
+                        <WaveLab isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} logger={logger} isLoggedIn={isLoggedIn} />
                       )}
                       onDeny={() => <AccessDeniedModal isOpen={true} onClose={handleAccessDeniedClose} />}
                       requireAuth={true}

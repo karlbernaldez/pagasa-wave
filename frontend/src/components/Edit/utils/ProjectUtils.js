@@ -33,19 +33,6 @@ export const handleCreateProject = async ({
     return;
   }
 
-  if (!forecastDate) {
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'error',
-      title: 'Forecast Date is required!',
-      showConfirmButton: false,
-      timer: 3000,
-      timerProgressBar: true,
-    });
-    return;
-  }
-
   try {
     const payload = {
       name: projectName,

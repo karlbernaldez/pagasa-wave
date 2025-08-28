@@ -1,9 +1,31 @@
 import Slider from '@mui/material/Slider';
 import { styled } from '@mui/material/styles';
 import { Stage, Layer, Line } from 'react-konva';
+import styled2 from 'styled-components';
 import { useRef, useState, useEffect } from 'react';
 import { saveFeature } from '../../../api/featureServices';
-import { convertToGeoJSON, downloadGeoJSON, handlePointerDown, handlePointerMove, handlePointerUp, chaikinSmoothing } from './canvasUtils';
+import { convertToGeoJSON, downloadGeoJSON, handlePointerDown, handlePointerMove, handlePointerUp } from './canvasUtils';
+
+const Container = styled2.div`
+  position: fixed;
+  z-index: 100;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  max-width: 90vw;
+  width: 300px;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  color: ${({ theme }) => theme.colors.textPrimary}; /* ✅ apply theme color */
+`;
+
+const Label = styled2.label`
+  display: block;
+  margin-bottom: 0.1rem;
+  color: ${({ theme }) => theme.colors.textPrimary}; /* ✅ use theme color */
+`;
 
 // Custom ValueLabel that appears below the thumb, centered, without background color
 const ValueLabelComponent = styled(({ children, value, open }) => (
@@ -49,24 +71,8 @@ const DrawingCanvas = ({ mapRef, drawCounter, setDrawCounter, setLayersRef, clos
     <div>
 
       {/* Slider for label value - fixed at bottom center */}
-      <div
-        style={{
-          position: 'fixed',
-          zIndex: 100,
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          padding: '0.5rem 1rem',
-          borderRadius: '8px',
-          maxWidth: '90vw',
-          width: '300px',
-          textAlign: 'center',
-          marginBottom: '2.5rem',
-        }}
-      >
-        <label style={{ display: 'block', marginBottom: '.1rem' }}>
-          Wave Height: {labelValue}
-        </label>
+      <Container>
+        <Label>Wave Height: {labelValue}</Label>
         <Slider
           value={labelValue}
           onChange={(event, val) => setLabelValue(val)}
@@ -78,7 +84,7 @@ const DrawingCanvas = ({ mapRef, drawCounter, setDrawCounter, setLayersRef, clos
           valueLabelDisplay="on"
           ValueLabelComponent={ValueLabelComponent}
         />
-      </div>
+      </Container>
 
       {/* Drawing stage */}
       <Stage
@@ -113,7 +119,7 @@ const DrawingCanvas = ({ mapRef, drawCounter, setDrawCounter, setLayersRef, clos
           {lines.map((line, i) => (
             <Line
               key={i}
-              points={chaikinSmoothing(line.points)}
+              points={line.points}
               stroke="red"
               strokeWidth={2}
               tension={1.5}

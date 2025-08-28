@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const useAuthRedirect = (redirectPath = '/edit') => {
+const useAuthRedirect = (redirectPath = '/wavelab') => {
   const navigate = useNavigate();
 
   useEffect(() => {

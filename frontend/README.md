@@ -70,7 +70,7 @@ This web application provides an interactive weather forecasting platform using 
  ┃ ┣ 📂 hooks
  ┃ ┃ ┣ 📜 useIsMobile.jsx
  ┃ ┣ 📂 pages
- ┃ ┃ ┣ 📜 Edit.jsx
+ ┃ ┃ ┣ 📜 WaveLab.jsx
  ┃ ┃ ┣ 📜 Home.jsx
  ┃ ┃ ┣ 📜 Marine.jsx
  ┃ ┣ 📂 styles
