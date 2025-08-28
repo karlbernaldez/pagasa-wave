@@ -135,8 +135,6 @@ export const typhoonMarker = (selectedPoint, mapRef, setShowTitleModal, type) =>
   const sourceId = `${markerType}_${title}`;
   const layerId = `${markerType}_${title}`;
 
-  console.log(sourceId, layerId)
-
   // ✅ Add source only if not exists
   if (!map.getSource(sourceId)) {
     try {

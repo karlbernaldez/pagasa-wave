@@ -28,7 +28,6 @@ export const fetchUserProjects = async () => {
       credentials: 'include',
     });
 
-    console.log(response)
 
     if (!response.ok) {
       const error = await response.json();

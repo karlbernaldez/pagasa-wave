@@ -170,10 +170,6 @@ const ProjectModal = ({ visible, onClose, onSubmit, projectName, setProjectName,
       missingFields.push('Project Name');
     }
 
-    if (!forecastDate) {
-      missingFields.push('Forecast Date');
-    }
-
     if (missingFields.length > 0) {
       Swal.fire({
         toast: true,
@@ -254,11 +250,9 @@ const ProjectModal = ({ visible, onClose, onSubmit, projectName, setProjectName,
           <Label htmlFor="forecastDate">Forecast Date</Label>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
-              value={forecastDate ? dayjs(forecastDate) : null}
-              onChange={(newValue) => {
-                const formatted = newValue ? newValue.format('YYYY-MM-DD') : '';
-                setForecastDate(formatted);
-              }}
+              value={dayjs()}
+              onChange={(newDate) => setForecastDate(newDate)}
+              disabled
               slotProps={{
                 textField: {
                   fullWidth: true,

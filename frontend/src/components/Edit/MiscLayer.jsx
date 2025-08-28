@@ -89,17 +89,17 @@ const ButtonGroup = styled.div`
 
 // Enhanced Button with better styling
 const Button = styled.button`
-  background: ${({ theme, active }) => 
-    active 
-      ? theme.colors.primary || '#01a0da' 
+  background: ${({ theme, active }) =>
+    active
+      ? theme.colors.primary || '#01a0da'
       : theme.colors.lightBackground};
-  color: ${({ theme, active }) => 
-    active 
-      ? '#ffffff' 
+  color: ${({ theme, active }) =>
+    active
+      ? '#ffffff'
       : theme.colors.textPrimary};
-  border: 1px solid ${({ theme, active }) => 
-    active 
-      ? theme.colors.primary || '#01a0da' 
+  border: 1px solid ${({ theme, active }) =>
+    active
+      ? theme.colors.primary || '#01a0da'
       : theme.colors.border || '#e5e7eb'};
   padding: 0.5rem 0.75rem;
   border-radius: ${({ theme }) => theme.borderRadius.small || '0.5rem'};
@@ -226,133 +226,157 @@ const LayerToggleButton = ({ layer, isActive, onClick, children }) => (
 );
 
 const MiscLayer = ({ mapRef }) => {
-    const [showPAR, setShowPAR] = useState(false);
-    const [showTCID, setShowTCID] = useState(false);
-    const [showTCAD, setShowTCAD] = useState(false);
-    const [showWindLayer, setShowWindLayer] = useState(false);
+  const [showPAR, setShowPAR] = useState(false);
+  const [showTCID, setShowTCID] = useState(false);
+  const [showTCAD, setShowTCAD] = useState(false);
+  const [showSHIPPINGZONE, setShowSHIPPINGZONE] = useState(false);
+  const [showWindLayer, setShowWindLayer] = useState(false);
 
-    useEffect(() => {
-        // Load layer visibility states from localStorage
-        const layersState = {
-            PAR: localStorage.getItem('PAR') === 'true',
-            TCID: localStorage.getItem('TCID') === 'true',
-            TCAD: localStorage.getItem('TCAD') === 'true',
-            WindLayer: localStorage.getItem('wind_layer') === 'true',
-        };
-
-        // Set initial state based on localStorage
-        setShowPAR(layersState.PAR);
-        setShowTCID(layersState.TCID);
-        setShowTCAD(layersState.TCAD);
-        setShowWindLayer(layersState.WindLayer);
-
-        // Ensure the map is loaded before setting visibility
-        if (mapRef.current) {
-            mapRef.current.on('load', () => {
-                // Set visibility based on saved states from localStorage
-                mapRef.current.setLayoutProperty('PAR', 'visibility', layersState.PAR ? 'visible' : 'none');
-                mapRef.current.setLayoutProperty('TCID', 'visibility', layersState.TCID ? 'visible' : 'none');
-                mapRef.current.setLayoutProperty('TCAD', 'visibility', layersState.TCAD ? 'visible' : 'none');
-                mapRef.current.setLayoutProperty('wind-layer', 'visibility', layersState.WindLayer ? 'visible' : 'none');
-            });
-        }
-    }, [mapRef]);
-
-    const toggleLayer = (layer) => {
-        const projectId = localStorage.getItem('projectId');
-        if (!projectId) {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'warning',
-                title: 'Please select or create a project first.',
-                showConfirmButton: false,
-                timer: 2000,
-                timerProgressBar: true,
-                background: '#fff',
-                customClass: {
-                    popup: 'swal-toast-popup',
-                    title: 'swal-toast-title'
-                }
-            });
-            return;
-        }
-
-        switch (layer) {
-            case 'PAR':
-                setShowPAR(prev => {
-                    const newState = !prev;
-                    localStorage.setItem('PAR', newState.toString());
-                    mapRef.current?.setLayoutProperty('PAR', 'visibility', newState ? 'visible' : 'none');
-                    return newState;
-                });
-                break;
-            case 'TCID':
-                setShowTCID(prev => {
-                    const newState = !prev;
-                    localStorage.setItem('TCID', newState.toString());
-                    mapRef.current?.setLayoutProperty('TCID', 'visibility', newState ? 'visible' : 'none');
-                    return newState;
-                });
-                break;
-            case 'TCAD':
-                setShowTCAD(prev => {
-                    const newState = !prev;
-                    localStorage.setItem('TCAD', newState.toString());
-                    mapRef.current?.setLayoutProperty('TCAD', 'visibility', newState ? 'visible' : 'none');
-                    return newState;
-                });
-                break;
-            case 'Wind Layer':
-                setShowWindLayer(prev => {
-                    const newState = !prev;
-                    localStorage.setItem('wind_layer', newState.toString());
-                    mapRef.current?.setLayoutProperty('wind-layer', 'visibility', newState ? 'visible' : 'none');
-                    return newState;
-                });
-                break;
-            default:
-                break;
-        }
+  useEffect(() => {
+    // Load layer visibility states from localStorage
+    const layersState = {
+      PAR: localStorage.getItem('PAR') === 'true',
+      TCID: localStorage.getItem('TCID') === 'true',
+      TCAD: localStorage.getItem('TCAD') === 'true',
+      ShippingZonestate: localStorage.getItem('SHIPPING_ZONE') === 'true',
+      WindLayer: localStorage.getItem('wind_layer') === 'true',
     };
 
-    return (
-        <ControlPanelContainer>
-            <ButtonGroup>
-                <LayerToggleButton 
-                    layer="PAR" 
-                    isActive={showPAR}
-                    onClick={() => toggleLayer('PAR')}
-                >
-                    {showPAR ? 'Hide PAR' : 'Show PAR'}
-                </LayerToggleButton>
-                
-                <LayerToggleButton 
-                    layer="TCID" 
-                    isActive={showTCID}
-                    onClick={() => toggleLayer('TCID')}
-                >
-                    {showTCID ? 'Hide TCID' : 'Show TCID'}
-                </LayerToggleButton>
-                
-                <LayerToggleButton 
-                    layer="TCAD" 
-                    isActive={showTCAD}
-                    onClick={() => toggleLayer('TCAD')}
-                >
-                    {showTCAD ? 'Hide TCAD' : 'Show TCAD'}
-                </LayerToggleButton>
-                
-                <LayerToggleButton 
-                    layer="Wind Layer" 
-                    isActive={showWindLayer}
-                    onClick={() => toggleLayer('Wind Layer')}
-                >
-                    {showWindLayer ? 'Hide Wind' : 'Show Wind'}
-                </LayerToggleButton>
-            </ButtonGroup>
-        </ControlPanelContainer>
-    );
+    // Set initial state based on localStorage
+    setShowPAR(layersState.PAR);
+    setShowTCID(layersState.TCID);
+    setShowTCAD(layersState.TCAD);
+    setShowSHIPPINGZONE(layersState.ShippingZonestate);
+    setShowWindLayer(layersState.WindLayer);
+
+    // Ensure the map is loaded before setting visibility
+    if (mapRef.current) {
+      mapRef.current.on('load', () => {
+        // Set visibility based on saved states from localStorage
+        mapRef.current.setLayoutProperty('PAR', 'visibility', layersState.PAR ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('TCID', 'visibility', layersState.TCID ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('TCAD', 'visibility', layersState.TCAD ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('wind-layer', 'visibility', layersState.WindLayer ? 'visible' : 'none');
+      });
+    }
+  }, [mapRef]);
+
+  const toggleLayer = (layer) => {
+    const projectId = localStorage.getItem('projectId');
+    if (!projectId) {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'warning',
+        title: 'Please select or create a project first.',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true,
+        background: '#fff',
+        customClass: {
+          popup: 'swal-toast-popup',
+          title: 'swal-toast-title'
+        }
+      });
+      return;
+    }
+
+    switch (layer) {
+      case 'PAR':
+        setShowPAR(prev => {
+          const newState = !prev;
+          localStorage.setItem('PAR', newState.toString());
+          mapRef.current?.setLayoutProperty('PAR', 'visibility', newState ? 'visible' : 'none');
+          return newState;
+        });
+        break;
+      case 'TCID':
+        setShowTCID(prev => {
+          const newState = !prev;
+          localStorage.setItem('TCID', newState.toString());
+          mapRef.current?.setLayoutProperty('TCID', 'visibility', newState ? 'visible' : 'none');
+          return newState;
+        });
+        break;
+      case 'TCAD':
+        setShowTCAD(prev => {
+          const newState = !prev;
+          localStorage.setItem('TCAD', newState.toString());
+          mapRef.current?.setLayoutProperty('TCAD', 'visibility', newState ? 'visible' : 'none');
+          return newState;
+        });
+        break;
+      case 'SHIPPING_ZONE':
+        setShowSHIPPINGZONE(prev => {
+          const newState = !prev;
+          localStorage.setItem('SHIPPING_ZONE', newState.toString());
+          mapRef.current?.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', newState ? 'visible' : 'none');
+          // mapRef.current?.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', newState ? 'visible' : 'none');
+          return newState;
+        });
+        break;
+      case 'Wind Layer':
+        setShowWindLayer(prev => {
+          const newState = !prev;
+          localStorage.setItem('wind_layer', newState.toString());
+          mapRef.current?.setLayoutProperty('wind-layer', 'visibility', newState ? 'visible' : 'none');
+          return newState;
+        });
+        break;
+      default:
+        break;
+    }
+  };
+
+  return (
+    <ControlPanelContainer>
+      <ButtonGroup>
+        <LayerToggleButton
+          layer="PAR"
+          isActive={showPAR}
+          onClick={() => toggleLayer('PAR')}
+        >
+          {showPAR ? 'Hide PAR' : 'PAR'}
+        </LayerToggleButton>
+
+        <LayerToggleButton
+          layer="TCID"
+          isActive={showTCID}
+          onClick={() => toggleLayer('TCID')}
+        >
+          {showTCID ? 'Hide TCID' : 'TCID'}
+        </LayerToggleButton>
+
+        <LayerToggleButton
+          layer="TCAD"
+          isActive={showTCAD}
+          onClick={() => toggleLayer('TCAD')}
+        >
+          {showTCAD ? 'Hide TCAD' : 'TCAD'}
+        </LayerToggleButton>
+
+        <LayerToggleButton
+          layer="SHIPPING_ZONE"
+          isActive={showSHIPPINGZONE}
+          onClick={() => toggleLayer('SHIPPING_ZONE')}
+        >
+          {showSHIPPINGZONE ? 'Hide SHIPPING ZONE' : 'SHIPPING ZONE'}
+        </LayerToggleButton>
+
+        <LayerToggleButton
+          layer="Wind Layer"
+          isActive={showWindLayer}
+          onClick={() => toggleLayer('Wind Layer')}
+        >
+          {showWindLayer ? 'Hide Wind' : 'Wind'}
+        </LayerToggleButton>
+      </ButtonGroup>
+    </ControlPanelContainer>
+  );
 };
 
 export default MiscLayer;

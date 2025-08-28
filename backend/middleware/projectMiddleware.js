@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import Project from '../models/Project.js';
 
 const isOwnerOrAdmin = async (req, res, next) => {
-  console.log('User in isOwnerOrAdmin:', req.user);
   try {
     const projectId = req.params.id;
 
@@ -18,9 +17,6 @@ const isOwnerOrAdmin = async (req, res, next) => {
 
     const userId = req.user.id;
     const isAdmin = req.user.role === 'admin';
-
-    console.log('User ID:', userId);
-    console.log('Project Owner:', project.owner.toString());
 
     if (project.owner.toString() !== userId && !isAdmin) {
       return res.status(403).json({ message: 'Access denied. Not the owner or admin.' });

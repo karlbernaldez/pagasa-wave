@@ -1,235 +1,156 @@
-//  ╔═══════════════════════════════════════════════════════════════════════╗
-//  ║                        🌪 Component B Project 1                       ║
-//  ╠═══════════════════════════════════════════════════════════════════════╣
-//  ║  📁 Project       : DOST-MECO-TECO-VOTE III Component-B               ║
-//  ║  📝 Description   :  Weather forecasting platform                     ║
-//  ║  👨‍💻 Author        : Karl Santiago Bernaldez                           ║
-//  ║  📅 Created       : 2025-03-24                                        ║
-//  ║  🕓 Last Updated  : 2025-05-29                                        ║
-//  ║  🧭 Version       : v1.0.0                                            ║
-//  ╚═══════════════════════════════════════════════════════════════════════╝
-
-import React, { useState, useEffect } from 'react';
-// eslint-disable-next-line
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import ProtectedRoute from './middleware/ProtectedRoute';
-import ProtectedAdminRoute from './middleware/ProtectedAdminRoute';
-import Home from './pages/Home';
-import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Edit from './pages/Edit';
-import Charts from './pages/Charts';
-import AboutUs from './pages/AboutUs';
-import HeaderNavbar from "./components/Header";
-import Footer from "./components/Footer";
-import styled from 'styled-components';
-import useIsMobile from './hooks/useIsMobile';
-import MobileAccessModal from './components/modals/MobileAccessModal';
-import AccessDeniedModal from './components/modals/AccessDeniedModal';
-import OnlyAdminModal from './components/modals/OnlyAdminModal';
+import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
+import { GlobalStyle, AppContainer, MainContent, FooterWrapper } from './components/styles/global';
+import { SectionDivider } from './styles/app';
+import LoadingScreen from './components/LoadingScreen';
+import useIsMobile from './hooks/useIsMobile';
 import { darkTheme, theme } from './styles/theme';
+import { useTheme } from './hooks/useTheme';
 import createLogger from '@adovelopers/logado';
+import useRouteChecks from './hooks/useRouteChecks';
+import getLayoutConfig from './utils/getLayoutConfig';
 
+// Components (Lazy Loaded)
+const HeaderNavbar = lazy(() => import('./components/Header'));
+const Footer = lazy(() => import('./components/Footer'));
+const ProtectedRoute = lazy(() => import('./middleware/ProtectedRoute'));
+const ProtectedAdminRoute = lazy(() => import('./middleware/ProtectedAdminRoute'));
+const ErrorBoundary = lazy(() => import('./components/ErrorBoundary'));
+
+// Pages (Lazy Loaded)
+const Home = lazy(() => import('./pages/Home'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const WaveLab = lazy(() => import('./pages/WaveLab'));
+const Charts = lazy(() => import('./pages/Charts'));
+const AboutUs = lazy(() => import('./pages/AboutUs'));
+
+// Modals (Lazy Loaded)
+const MobileAccessModal = lazy(() => import('./components/modals/MobileAccessModal'));
+const AccessDeniedModal = lazy(() => import('./components/modals/AccessDeniedModal'));
+const OnlyAdminModal = lazy(() => import('./components/modals/OnlyAdminModal'));
+
+// Initialize logger
 const logger = createLogger();
-logger.info('Server started');
+logger.info('VOTE: Wave Watch 3 Platform initialized');
 
-// Styled components for Layout
-const AppContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  overflow-y: ${({ $noscroll }) => ($noscroll ? "hidden" : "auto")};
-  overflow-x: hidden;
-  pointer-events: ${({ $isloading }) => ($isloading ? "none" : "auto")};
-
-  background-color: ${({ theme, $isDarkMode }) =>
-    $isDarkMode ? theme.colors.darkBackground : theme.colors.lightBackground};
-
-  @media (max-width: 768px) {
-    background: ${({ theme }) => theme.gradients.background};
-  }
-`;
-
-const StickyHeader = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: ${({ theme }) => theme.spacing.headerHeight};
-  z-index: ${({ theme }) => theme.zIndex.stickyHeader};
-  background: ${({ theme }) => theme.gradients.stickyHeader};
-  backdrop-filter: blur(${({ theme }) => theme.blur.regular});
-  -webkit-backdrop-filter: blur(${({ theme }) => theme.blur.regular});
-  box-shadow: ${({ theme }) => theme.colors.boxShadow};
-`;
-
-const MainContent = styled.main`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding-top: ${({ theme }) => theme.spacing.headerHeight};
-  pointer-events: ${({ isloading }) => (isloading ? 'none' : 'auto')};
-`;
-
-const FooterWrapper = styled.div`
-  flex-shrink: 0;
-  margin-top: auto;
-  pointer-events: ${({ isloading }) => (isloading ? 'none' : 'auto')};
-`;
-
-const FreeSpace = styled.div`
-  background-color: ${({ theme }) => theme.colors.highlight};
-  height: ${({ theme }) => theme.spacing.freeSpaceHeight};
-  width: 100%;
-  margin-top: ${({ theme }) => theme.spacing.freeSpaceMarginTop};
-`;
-
-const LoadingScreen = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  background-color: ${({ theme }) => theme.colors.loadingBackground};
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: ${({ theme }) => theme.zIndex.loadingScreen};
-  color: ${({ theme }) => theme.colors.loadingText};
-  font-size: 24px;
-  font-weight: bold;
-`;
-
-const LoadingSpinner = styled.div`
-  border: 4px solid ${({ theme }) => theme.colors.loadingSpinnerBorder};
-  border-top: 4px solid ${({ theme }) => theme.colors.loadingSpinnerBorderTop};
-  border-radius: 50%;
-  width: 60px;
-  height: 60px;
-  animation: ${({ theme }) => theme.animations.spin};
-`;
-
+// Enhanced Layout Component
 const Layout = () => {
-  // eslint-disable-next-line
-  const location = useLocation();
   const isMobile = useIsMobile();
-
-  const isLoginPage = location.pathname === '/login';
-  const isRegisterPage = location.pathname === '/register';
-  const isDashboardPage = location.pathname === '/dashboard';
-  const isLoginOrRegister = isLoginPage || isRegisterPage;
-  const isEditPage = location.pathname === '/edit';
-
-  const [modalVisible, setModalVisible] = useState(false); // eslint-disable-next-line
+  const { isLoginPage, isRegisterPage, isDashboardPage, isEditPage } = useRouteChecks(); // Use custom hook
+  const isAuthPage = isLoginPage || isRegisterPage;
+  
+  // State management
+  const [modalVisible, setModalVisible] = useState(false);
   const [accessDeniedVisible, setAccessDeniedVisible] = useState(false);
-  const [isloading, setIsLoading] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const stored = localStorage.getItem('isDarkMode');
-    return stored ? JSON.parse(stored) : false; // default to light mode
-  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useTheme();
 
-  useEffect(() => {
-    localStorage.setItem('isDarkMode', JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
+  // Persist theme preference
+  useTheme(isDarkMode);
 
+  // Mobile edit page modal handling
   useEffect(() => {
     if (isMobile && isEditPage) {
       setModalVisible(true);
     }
   }, [isMobile, isEditPage]);
 
+  // Enhanced loading state management
   useEffect(() => {
     setIsLoading(true);
-    const timeout = isEditPage || isLoginPage || isRegisterPage ? 1000 : 500;
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, timeout);
-    return () => clearTimeout(timer); // eslint-disable-next-line
-  }, [location]);
+    const timeout = isEditPage || isAuthPage ? 1200 : 600;
+    const timer = setTimeout(() => setIsLoading(false), timeout);
+    return () => clearTimeout(timer);
+  }, [isEditPage, isAuthPage]);
 
-  const handleModalClose = () => {
+  // Callback functions
+  const handleModalClose = useCallback(() => {
     setModalVisible(false);
-    handleRedirect('/');
-  };
+    window.location.href = '/';
+  }, []);
 
-  const handleAccessDeniedClose = () => {
+  const handleAccessDeniedClose = useCallback(() => {
     setAccessDeniedVisible(false);
-    handleRedirect('/login');
-  };
+    window.location.href = '/login';
+  }, []);
 
-  const handleRedirect = (path = '/') => {
-    window.location.href = path;
-  };
+  const toggleTheme = useCallback(() => setIsDarkMode(prev => !prev), []);
 
-  const showHeader = !(isLoginOrRegister || isDashboardPage);
-  const showFooter = !(isEditPage || isLoginOrRegister || isDashboardPage);
-  const showFreeSpace = !(isEditPage || isLoginOrRegister || isDashboardPage);
-  const addTopPadding = !isLoginOrRegister && !isDashboardPage;
+  // Get layout configuration
+  const layoutConfig = useMemo(() => getLayoutConfig({ isAuthPage, isDashboardPage, isEditPage }), [isAuthPage, isDashboardPage, isEditPage]);
+
+  const { showHeader, showFooter, showDivider, addTopPadding } = layoutConfig;
 
   return (
     <ThemeProvider theme={isDarkMode ? darkTheme : theme}>
-      <AppContainer $noscroll={isEditPage} $isloading={isloading} $isDarkMode={isDarkMode}>
+      <GlobalStyle />
+      <AppContainer $noscroll={isEditPage} $isloading={isLoading} $isDarkMode={isDarkMode}>
+        {/* Header */}
         {showHeader && (
-          <StickyHeader $isloading={isloading}>
-            <HeaderNavbar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
-          </StickyHeader>
+          <Suspense fallback={<div style={{ height: '60px' }} />}>
+            <HeaderNavbar
+              isDarkMode={isDarkMode}
+              setIsDarkMode={setIsDarkMode}
+              isLoggedIn={isLoggedIn}
+              setIsLoggedIn={setIsLoggedIn}
+              toggleTheme={toggleTheme}
+            />
+          </Suspense>
         )}
 
-        <MainContent $isloading={isloading} style={{ paddingTop: addTopPadding ? undefined : 0 }}>
-          {isloading && (
-            <LoadingScreen>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <LoadingSpinner />
-                <div>Loading...</div>
-              </div>
-            </LoadingScreen>
-          )}
-
-          <Routes>
-            <Route path="/" element={<Home isDarkMode={isDarkMode} />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route
-              path="/edit"
-              element={
-                isMobile ? (
-                  <MobileAccessModal isOpen={modalVisible} onClose={handleModalClose} />
-                ) : (
-                  <ProtectedRoute
-                    element={() => <Edit isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} logger={logger} />}
-                    onDeny={() => (
-                      <AccessDeniedModal isOpen={true} onClose={handleAccessDeniedClose} />
-                    )}
+        {/* Main Content */}
+        <MainContent $isloading={isLoading} style={{ paddingTop: addTopPadding ? undefined : 0 }}>
+          {isLoading && <LoadingScreen isDarkMode={isDarkMode} message={isEditPage ? "Loading Editor..." : "Loading..."} />}
+          <Suspense fallback={<LoadingScreen isDarkMode={isDarkMode} />}>
+            <Routes>
+              <Route path="/" element={<Home isDarkMode={isDarkMode} />} />
+              <Route path="/login" element={<Login isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
+              <Route path="/register" element={<Register />} />
+              <Route
+                path="/wavelab"
+                element={
+                  isMobile ? (
+                    <MobileAccessModal isOpen={modalVisible} onClose={handleModalClose} />
+                  ) : (
+                    <ProtectedRoute
+                      element={() => (
+                        <WaveLab isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} logger={logger} isLoggedIn={isLoggedIn} />
+                      )}
+                      onDeny={() => <AccessDeniedModal isOpen={true} onClose={handleAccessDeniedClose} />}
+                      requireAuth={true}
+                      setIsLoggedIn={setIsLoggedIn}
+                    />
+                  )
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedAdminRoute
+                    element={Dashboard}
                     requireAuth={true}
+                    onDeny={() => <OnlyAdminModal isOpen={true} onClose={handleAccessDeniedClose} />}
                   />
-                )
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedAdminRoute
-                  element={Dashboard}
-                  requireAuth={true}
-                  onDeny={() => {
-                    return <OnlyAdminModal isOpen={true} onClose={handleAccessDeniedClose} />;
-                  }}
-                />
-              }
-            />
+                }
+              />
+              <Route path="/charts" element={<Charts isDarkMode={isDarkMode} />} />
+              <Route path="/about-us" element={<AboutUs isDarkMode={isDarkMode} />} />
+            </Routes>
+          </Suspense>
 
-            <Route path="/charts" element={<Charts />} />
-            <Route path="/about-us" element={<AboutUs />} />
-          </Routes>
-
-          {showFreeSpace && <FreeSpace />}
+          {showDivider && <SectionDivider $isDarkMode={isDarkMode} />}
         </MainContent>
 
+        {/* Footer */}
         {showFooter && (
-          <FooterWrapper $isloading={isloading}>
-            <Footer />
+          <FooterWrapper $isloading={isLoading}>
+            <Suspense fallback={<div style={{ height: '100px' }} />}>
+              <Footer isDarkMode={isDarkMode} />
+            </Suspense>
           </FooterWrapper>
         )}
       </AppContainer>
@@ -237,10 +158,13 @@ const Layout = () => {
   );
 };
 
+// Main App Component with Error Boundary
 const App = () => (
-  <Router>
-    <Layout />
-  </Router>
+  <ErrorBoundary>
+    <Router>
+      <Layout />
+    </Router>
+  </ErrorBoundary>
 );
 
 export default App;

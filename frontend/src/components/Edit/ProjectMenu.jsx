@@ -5,6 +5,7 @@ import withReactContent from 'sweetalert2-react-content';
 import { fetchUserProjects } from '../../api/projectAPI';
 import ProjectListModal from '../modals/ProjectListModal';
 import React, { useState, useRef, useEffect } from 'react';
+import dayjs from 'dayjs';
 import { Wrapper, MenuButton, Dropdown, MenuItem, SubDropdown, SubMenuItem, LoadingModal } from './styles/ProjectMenu';
 import { logout, handleCreateProject as createProjectHandler, downloadCachedSnapshotZip } from './utils/ProjectUtils';
 
@@ -23,7 +24,7 @@ const ProjectMenu = ({ onNew, onSave, onView, onExport, mapRef, features, isDark
   const [chartType, setChartType] = useState('Wave Analysis');
   const [isExporting, setIsExporting] = useState(false);
   const menuRef = useRef(null);
-  const [forecastDate, setForecastDate] = useState('');
+  const [forecastDate, setForecastDate] = useState(dayjs());
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -169,6 +170,7 @@ const ProjectMenu = ({ onNew, onSave, onView, onExport, mapRef, features, isDark
           projectType={localStorage.getItem('chartType') || 'Wave Analysis'}
           forecastDate={forecastDate || 'Not set'}
           isSubmitting={isSubmitting}
+          isDarkMode={isDarkMode}
         />
       )}
     </Wrapper>

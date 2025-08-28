@@ -1,7 +1,7 @@
 import phGeoJson from '../data/ph.json';
 import { loadImage, initTyphoonLayer, initDrawControl, typhoonMarker as saveMarkerFn } from './mapUtils';
 
-export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages }) {
+export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages, isDarkMode }) {
   if (!map) return console.warn('No map instance provided');
   if (typeof setLoading === 'function') {
     setLoading(true)
@@ -154,8 +154,8 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
     source: geoJsonSourceId,
     slot: 'bottom',
     paint: {
-      "fill-color": "#2e3d4d",
-      "fill-opacity": 0.7,
+      "fill-color": isDarkMode ? "#1f3a85" : "rgba(0,0,0,0)",
+      "fill-opacity": isDarkMode ? 0.65 : 0,
     },
   });
 
@@ -166,7 +166,7 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
     source: geoJsonSourceId,
     slot: 'middle',
     paint: {
-      "line-color": "#fff",
+      "line-color": isDarkMode ? "#ffffff" : "rgba(0, 0, 0, 1)",
       "line-width": .7,
     },
   });
@@ -439,6 +439,7 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   const PARstate = localStorage.getItem('PAR');
   const TCIDstate = localStorage.getItem('TCID');
   const TCADstate = localStorage.getItem('TCAD');
+  const ShippingZonestate = localStorage.getItem('SHIPPING_ZONE');
   const windLayerState = localStorage.getItem('wind_layer');
 
   if (PARstate === 'true') {
@@ -457,6 +458,16 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
     map.setLayoutProperty('TCAD', 'visibility', 'visible');
   } else {
     map.setLayoutProperty('TCAD', 'visibility', 'none');
+  }
+
+  if (ShippingZonestate === 'true') {
+    map.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', 'visible');
+    map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', 'visible');
+    // map.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', 'visible');
+  } else {
+    map.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', 'none');
+    map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', 'none');
+    // map.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', 'none');
   }
 
   if (windLayerState === 'true') {

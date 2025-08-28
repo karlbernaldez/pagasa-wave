@@ -3,10 +3,8 @@ import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 
 export const isOwnerOrAdmin = async (req, res, next) => {
-    console.log('User in isOwnerOrAdmin:', req.user);
     try {
-        const projectId = req.params.projectId; // Change to `projectId`
-        console.log('Project ID:', projectId);
+        const projectId = req.params.projectId;
 
         if (!mongoose.Types.ObjectId.isValid(projectId)) {
             return res.status(400).json({ message: 'Invalid project ID' });
@@ -20,9 +18,6 @@ export const isOwnerOrAdmin = async (req, res, next) => {
 
         const userId = req.user.id;
         const isAdmin = req.user.role === 'admin';
-
-        console.log('User ID:', userId);
-        console.log('Project Owner:', project.owner.toString());
 
         if (project.owner.toString() !== userId && !isAdmin) {
             return res.status(403).json({ message: 'Access denied. Not the owner or admin.' });
@@ -38,10 +33,8 @@ export const isOwnerOrAdmin = async (req, res, next) => {
 };
 
 export const isFeatureOwnerOrAdmin = async (req, res, next) => {
-  console.log('User in isFeatureOwnerOrAdmin:', req.user);
   try {
     const { sourceId } = req.params; // Access sourceId from route parameters
-    console.log('Source ID:', sourceId);
 
     // Find feature by sourceId
     const feature = await Feature.findOne({ sourceId });
@@ -52,9 +45,6 @@ export const isFeatureOwnerOrAdmin = async (req, res, next) => {
 
     const userId = req.user.id;
     const isAdmin = req.user.role === 'admin';
-
-    console.log('User ID:', userId);
-    console.log('Feature Owner:', feature.properties.owner);
 
     // Check if feature.properties.owner exists before comparing
     if (!feature.properties.owner) {

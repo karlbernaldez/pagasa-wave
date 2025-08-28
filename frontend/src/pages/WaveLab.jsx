@@ -15,11 +15,12 @@ import { typhoonMarker as saveMarkerFn } from "../utils/mapUtils";
 import { savePointFeature } from "../components/Edit/utils/ToolBarUtils";
 import { setupMap } from "../utils/mapSetup";
 import { fetchFeatures } from "../api/featureServices";
+import { fetchLatestUserProject } from "../api/projectAPI";
 import Swal from 'sweetalert2';
 
 const Container = styled.div`
   position: relative;
-  height: 92.6vh;
+  height: 100vh;
   width: 100%;
   display: flex;
   overflow: hidden;
@@ -53,6 +54,9 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const [savedFeatures, setSavedFeatures] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [latestProject, setLatestProject] = useState(null);
+  const [isLoadingProject, setIsLoadingProject] = useState(true);
+
   const [capturedImages, setCapturedImages] = useState({
     light: null,
     dark: null
@@ -63,9 +67,28 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const cleanupRef = useRef(null);
   const setLayersRef = useRef();
   const markerTitleRef = useRef('');
+  let projectId = localStorage.getItem('projectId');
 
-  const token = localStorage.getItem('authToken');
-  const projectId = localStorage.getItem('projectId');
+  useEffect(() => {
+    const fetchProject = async () => {
+      try {
+        const projectData = await fetchLatestUserProject();
+        setLatestProject(projectData);
+        localStorage.setItem('projectId', projectData._id);
+        projectId = projectData._id;
+      } catch (error) {
+        console.error('Failed to fetch the latest project:', error);
+      } finally {
+        setIsLoadingProject(false);
+      }
+    };
+
+    if (!projectId) {
+      fetchProject();
+    } else {
+      setIsLoadingProject(false);
+    }
+  }, []);
 
   // ─── Refs ─────────────────────────────────────────────
   useEffect(() => {
@@ -98,20 +121,6 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
 
     const setupFeaturesAndLayers = async () => {
       try {
-        if (!projectId) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'No Project Selected',
-            text: 'Please select a project first.',
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000,  // The toast will auto-close after 3 seconds
-          });
-          setIsLoading(false);
-          return;  // Stop the execution if no project is selected
-        }
-
         const savedFeatures = await fetchFeatures(projectId);
 
         // ⚠️ Extra safety check: filter features by projectId from localStorage
@@ -149,6 +158,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
           setLoading: setIsLoading,
           selectedToolRef,
           setCapturedImages,
+          isDarkMode,
         });
       } catch (error) {
         console.error('[MAP LOAD ERROR]', error);
@@ -290,8 +300,6 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         onInputChange={handleTitleChange}
       />
 
-      <LegendBox isDarkMode={isDarkMode} />
-
       <ProjectMenu
         mapRef={mapRef}
         features={{ type: "FeatureCollection", features: savedFeatures }}
@@ -301,10 +309,15 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         isLoading={isLoading}
       />
 
-      <ProjectInfo />
-      <MiscLayer
-        mapRef={mapRef}
-      />
+      {!isLoadingProject && projectId && (
+        <>
+          <ProjectInfo />
+          <MiscLayer
+            mapRef={mapRef}
+          />
+          <LegendBox isDarkMode={isDarkMode} />
+        </>
+      )}
 
       {isLoading && <MapLoading />}
     </Container>

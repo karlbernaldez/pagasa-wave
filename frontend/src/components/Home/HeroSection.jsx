@@ -1,347 +1,563 @@
 import React from 'react';
 import styled from 'styled-components';
-import LightModeImage from '../../assets/meteorologist.png';  // Image for light mode
-import DarkModeImage from '../../assets/meteorologist_dark.png';    // Image for dark mode
+import { ArrowRight, Play, Cloud, Thermometer, Wind } from 'lucide-react';
 
-const HeroSectionContainer = styled.div`
-  width: 100%;
-  height: 58rem;
+// Hero Section Styled Components
+const HeroContainer = styled.section`
   position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-
-  @media (max-width: 480px) {
-    width: clamp(80%, 90vw, 90%);
-    height: clamp(10rem, 25vh, 12rem) !important;
-    margin: clamp(1rem, 4vw, 1.5rem) auto 0;
-    border-radius: ${({ theme }) => theme.borderRadius.xlarge};
-    overflow: hidden;
-  }
-
+  background: ${props => props.isDarkMode
+    ? 'linear-gradient(135deg, #111827 0%, #1e3a8a 20%, #111827 100%)'
+    : 'linear-gradient(135deg, #dbeafe 0%, #ffffff 50%, #e0f2fe 100%)'};
+  padding-top: 4rem; /* Account for fixed header */
 `;
 
-const BackgroundWrapper = styled.div`
-  position: relative;
-  height: 100%;
-  width: 100%;
-`;
-
-const BackgroundImage = styled.div`
-  background-image: url(${({ theme }) => theme.backgroundImage});
-  background-size: 115%;  /* Zoom effect */
-  background-position: left center;
-  height: 100%;
+const BackgroundElements = styled.div`
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  filter: ${({ theme }) => theme.name === 'dark' ? 'brightness(0.6)' : 'brightness(1)'};
-
-  @media (max-width: 768px) {
-    background-size: cover;
-    background-position: center;
-  }
-
-  @media (max-width: 480px) {
-    background-size: cover;
-  }
-`;
-
-const Gradient = styled.div`
-  background: ${({ theme }) => theme.gradients.background};
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
+  inset: 0;
+  overflow: hidden;
   pointer-events: none;
-
-  @media (max-width: 768px) {
-    background: ${({ theme }) => theme.gradients.backgroundMobile};
-  }
 `;
 
-const ContentContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1.5rem;
+const FloatingElement = styled.div`
   position: absolute;
-  top: clamp(150px, 28vh, 300px); /* dynamic vertical position */
-  left: clamp(10px, 3vw, 20px);
-  right: clamp(10px, 3vw, 20px);
-  width: auto;
-  text-align: left;
-
-  @media (max-width: 480px) {
-    top: clamp(100px, 25vh, 150px);
-    left: clamp(5px, 4vw, 10px);
-    right: clamp(5px, 4vw, 10px);
-  }
-`;
-
-const Heading = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.625rem;
-  width: clamp(300px, 50vw, 750px);
-  margin-left: 6rem;
-  max-width: 45rem;
-
-  @media (max-width: 768px) {
-    margin: 0 auto;
-    width: 90%;
-    align-items: center;
-    text-align: center;
-  }
-
-  @media (max-width: 480px) {
-    margin-top: -8rem;
-    margin-left: 1rem;
-    margin-right: auto;
-    width: 13rem;
-    align-items: center;
-    text-align: center;
-  }
-`;
-
-const Title = styled.p`
-  color: ${({ theme }) => theme.colors.textPrimary};
-  font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: clamp(3.5rem, 4vw, ${({ theme }) => theme.fontSizes.heading});
-  font-weight: ${({ theme }) => theme.fontWeights.bold};
-  margin-top: 0;
-  line-height: 1.2;
-  position: relative;
-  text-align: left;
-
+  border-radius: 50%;
+  opacity: 0.6;
   
-  @media (max-width: 1024px) {
-    font-size: clamp(2.5rem, 6vw, 3rem);
+  &.dot-1 {
+    top: 5rem;
+    left: 2.5rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: ${props => props.isDarkMode ? '#60a5fa' : '#0ea5e9'};
+    animation: pulse 2s infinite;
   }
+  
+  &.dot-2 {
+    top: 10rem;
+    right: 5rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    background: ${props => props.isDarkMode ? '#93c5fd' : '#2563eb'};
+    animation: bounce 3s infinite;
+  }
+  
+  &.dot-3 {
+    bottom: 10rem;
+    left: 5rem;
+    width: 1rem;
+    height: 1rem;
+    background: ${props => props.isDarkMode ? '#3b82f6' : '#0ea5e9'};
+    animation: ping 4s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.1); }
+  }
+  
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes ping {
+    0% { transform: scale(1); opacity: 0.6; }
+    75%, 100% { transform: scale(2); opacity: 0; }
+  }
+`;
 
+const GradientOrb = styled.div`
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  animation: float 6s ease-in-out infinite;
+  
+  &.orb-1 {
+    top: -10rem;
+    right: -10rem;
+    width: 20rem;
+    height: 20rem;
+    background: ${props => props.isDarkMode 
+      ? 'linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(37, 99, 235, 0.15))'
+      : 'linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(37, 99, 235, 0.08))'};
+    animation-delay: 0s;
+  }
+  
+  &.orb-2 {
+    bottom: -10rem;
+    left: -10rem;
+    width: 24rem;
+    height: 24rem;
+    background: ${props => props.isDarkMode 
+      ? 'linear-gradient(45deg, rgba(59, 130, 246, 0.15), rgba(14, 165, 233, 0.15))'
+      : 'linear-gradient(45deg, rgba(59, 130, 246, 0.08), rgba(14, 165, 233, 0.08))'};
+    animation-delay: 2s;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(180deg); }
+  }
+`;
+
+const HeroContent = styled.div`
+  position: relative;
+  z-index: 10;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  
   @media (max-width: 768px) {
-    text-align: center;
-    line-height: 1.5;
-    font-size: clamp(2.5rem, 6vw, 3rem);
+    padding: 0 1rem;
   }
+`;
 
-  @media (max-width: 480px) {
-    font-size: clamp(1.1rem, 4vw, 2rem);
+const HeroGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  align-items: center;
+  
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+  }
+`;
+
+const TextContent = styled.div`
+  text-align: center;
+  
+  @media (min-width: 1024px) {
     text-align: left;
   }
+`;
+
+const Badge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: ${props => props.isDarkMode
+    ? 'rgba(14, 165, 233, 0.1)'
+    : 'rgba(14, 165, 233, 0.08)'};
+  border: 1px solid ${props => props.isDarkMode
+    ? 'rgba(14, 165, 233, 0.2)'
+    : 'rgba(14, 165, 233, 0.3)'};
+  border-radius: 2rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: ${props => props.isDarkMode ? '#60a5fa' : '#0ea5e9'};
+  margin-bottom: 2rem;
+`;
+
+const StatusDot = styled.div`
+  width: 0.5rem;
+  height: 0.5rem;
+  background: #10b981;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+`;
+
+const MainHeadline = styled.div`
+  margin-bottom: 2rem;
+`;
+
+const HeadlineText = styled.h1`
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: ${props => props.isDarkMode ? '#ffffff' : '#111827'};
+  margin-bottom: 1rem;
+  
+  @media (min-width: 640px) {
+    font-size: 3rem;
+  }
+  
+  @media (min-width: 1024px) {
+    font-size: 3.75rem;
+  }
+`;
+
+const GradientText = styled.span`
+  display: block;
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const Subtitle = styled.p`
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: clamp(0.9rem, 2.5vw, 1.25rem); /* Clamped font-size */
-  font-weight: 400;
-  line-height: 1.4;
-  margin: clamp(-2rem, -4vw, -3rem) 0 clamp(1rem, 2vw, 1.5rem) 0; /* Clamped margin */
-  width: 95%;
-  text-align: left;
-
-  @media (max-width: 1024px) {
-    font-size: clamp(.7rem, 1.6vw, 2rem);
-  }
-
-
-  @media (max-width: 768px) {
-    font-size: clamp(1rem, 3vw, 1.2rem); /* Clamped font-size for tablet */
-    text-align: center;
-    margin: clamp(-1.5rem, -3vw, -2rem) 0 clamp(0.5rem, 1vw, 1rem) 0; /* Clamped margin for tablet */
-  }
-
-  @media (max-width: 480px) {
-    font-size: clamp(0.7rem, 1vw, 1rem); /* Clamped font-size for mobile */
-    text-align: left;
-    width: 85%;
-    margin-left: clamp(-2rem, -3vw, -2.2rem); /* Clamped margin for mobile */
-    margin-top: clamp(-1.5rem, -3vw, -1rem); /* Clamped margin-top */
-  }
-`;
-
-const ButtonsContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: flex-start;
-  gap: clamp(0.5rem, 2vw, 1.25rem); /* Clamped gap */
-  position: relative;
-  width: auto;
-
-  @media (max-width: 768px) {
-    gap: clamp(0.4rem, 1.5vw, 1rem); /* Clamped gap for tablets */
-  }
-
-  @media (max-width: 480px) {
-    flex-direction: column;
-    margin-top: clamp(-.8rem, -1vw, -1.2rem); /* Clamped margin-top for mobile */
-    margin-left: clamp(-8rem, -15vw, -7.8rem); /* Clamped margin-left for mobile */
-  }
-`;
-
-const Button = styled.button`
-  background-color: ${({ $primary, theme }) => ($primary ? theme.colors.highlight : 'transparent')};
-  color: ${({ $primary, theme }) => ($primary ? theme.colors.white : theme.colors.highlight)};
-  font-family: ${({ theme }) => theme.fonts.medium};
-  font-size: 1rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 5px;
-  border: ${({ $primary, theme }) => ($primary ? 'none' : `2px solid ${theme.colors.highlight}`)};
-  cursor: pointer;
-  transition: background-color 0.3s ease, border 0.3s ease;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-
-  &:hover {
-    background-color: ${({ $primary }) => ($primary ? '#0088cc' : '#e0f7f7')};
-    border-color: #0088cc;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 1.2rem;
-    padding: 1.5rem 2.5rem;
-    width: 100%;
-    height: 40px;
-    margin: 5px 0;
-    border-radius: 24px;
-  }
-
-  @media (max-width: 480px) {
-    font-size: 0.625rem;
-    padding: 0.25rem 0.875rem;
-    width: fit-content;
-    height: 30px;
-    margin: 5px 0;
-    justify-content: flex-start;
-    text-align: left;
-  }
-`;
-
-const LiveMapButton = styled(Button)`
-  @media (max-width: 768px) {
-    display: none;
-  }
-`;
-
-const GlassyCircle = styled.div`
-  position: absolute;
-  top: 6.5rem;
-  left: 90rem;
-  transform: translateX(-50%);
-  width: 45rem;
-  height: 45rem;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.colors.background};
-  display: flex;
-  justify-content: center; /* Center the image horizontally */
-  align-items: center; /* Center the image vertically */
-  overflow  : hidden;
-
-  @media (max-width: 1170px) {
-    width: 25rem;
-    height: 25rem;
-    left: 55rem;
-    top: 12rem;
-    overflow: hidden;
-  }
-
-  @media (max-width: 1024px) {
-    width: 20rem;
-    height: 20rem;
-    left: 52rem;
-    top: 12rem;
-  }
-
-  @media (max-width: 768px) {
-    display: none; /* Hide on smaller screens */
-  }
-
-  @media (max-width: 480px) {
-    display: flex; /* Ensure it appears */
-    width: clamp(8.5rem, 20vw, 16rem);
-    height: clamp(8.5rem, 20vw, 16rem);
-    top: clamp(4.8rem, 10vh, 6.5rem);
-    left: 20rem;
-    transform: translate(-50%, -50%); /* Adjust the transform for better positioning */
-  }
-
-  @media (max-width: 440px) {
-    display: flex; /* Ensure it appears */
-    width: clamp(8.5rem, 20vw, 16rem);
-    height: clamp(8.5rem, 20vw, 16rem);
-    top: clamp(4.8rem, 10vh, 6.5rem);
-    left: 18.5rem;
-    transform: translate(-50%, -50%); /* Adjust the transform for better positioning */
-  }
-
-  @media (max-width: 400px) {
-    display: flex; /* Ensure it appears */
-    width: clamp(7rem, 20vw, 16rem);
-    height: clamp(7rem, 20vw, 16rem);
-    top: clamp(5rem, 10vh, 6.5rem);
-    left: clamp(17.3rem, 10vw, 32rem);
-    transform: translate(-50%, -50%); /* Adjust the transform for better positioning */
-  }
-`;
-
-const Meteorologist = styled.img`
-  width: 100%;
-  max-width: 45rem;
-  height: auto;
-  z-index: 2;
-  margin-left: 10px;
-
-  @media (max-width: 1366px) {
-    width: 30rem;
-    height: 30rem;
-  }
-
-  @media (max-width: 1024px) {
-    width: 19.8rem;
-    height: 19.8rem;
-  }
-
-  @media (max-width: 480px) {
-    width: 8rem;
-    height: 8rem;
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: ${props => props.isDarkMode ? '#d1d5db' : '#4b5563'};
+  max-width: 32rem;
+  margin: 0 auto;
+  
+  @media (min-width: 1024px) {
+    margin: 0;
   }
   
-  @media (max-width: 400px) {
-    width: 6.8rem;
-    height: 6.8rem;
+  @media (min-width: 640px) {
+    font-size: 1.25rem;
   }
 `;
 
-const HeroSection = ({ isDarkMode }) => {
-  // Use dark or light image based on the theme
-  const meteorologistImage = isDarkMode ? DarkModeImage : LightModeImage;
+const CTAButtons = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 2rem 0;
+  
+  @media (min-width: 640px) {
+    flex-direction: row;
+    justify-content: center;
+  }
+  
+  @media (min-width: 1024px) {
+    justify-content: flex-start;
+  }
+`;
 
+const PrimaryButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  border: none;
+  border-radius: 0.75rem;
+  padding: 1rem 2rem;
+  color: white;
+  font-weight: 600;
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+  
+  &:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.6);
+    background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%);
+  }
+  
+  svg {
+    transition: transform 0.2s ease;
+  }
+  
+  &:hover svg {
+    transform: translateX(4px);
+  }
+`;
+
+const SecondaryButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: transparent;
+  border: 2px solid ${props => props.isDarkMode ? '#4b5563' : '#d1d5db'};
+  border-radius: 0.75rem;
+  padding: 1rem 2rem;
+  color: ${props => props.isDarkMode ? '#d1d5db' : '#374151'};
+  font-weight: 600;
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.02);
+    border-color: ${props => props.isDarkMode ? '#6b7280' : '#9ca3af'};
+    background: ${props => props.isDarkMode ? 'rgba(55, 65, 81, 0.5)' : 'rgba(249, 250, 251, 0.8)'};
+  }
+`;
+
+const Stats = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid ${props => props.isDarkMode ? 'rgba(75, 85, 99, 0.3)' : 'rgba(229, 231, 235, 0.5)'};
+  margin-top: 2rem;
+`;
+
+const StatItem = styled.div`
+  text-align: center;
+  
+  @media (min-width: 1024px) {
+    text-align: left;
+  }
+`;
+
+const StatNumber = styled.div`
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: ${props => props.isDarkMode ? '#ffffff' : '#111827'};
+  
+  @media (min-width: 640px) {
+    font-size: 2.25rem;
+  }
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.875rem;
+  color: ${props => props.isDarkMode ? '#9ca3af' : '#6b7280'};
+  margin-top: 0.25rem;
+`;
+
+const WeatherCardContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  
+  @media (min-width: 1024px) {
+    justify-content: flex-end;
+  }
+`;
+
+const WeatherCard = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 24rem;
+  padding: 2rem;
+  background: ${props => props.isDarkMode
+    ? 'rgba(31, 41, 55, 0.8)'
+    : 'rgba(255, 255, 255, 0.9)'};
+  backdrop-filter: blur(20px);
+  border: 1px solid ${props => props.isDarkMode
+    ? 'rgba(75, 85, 99, 0.3)'
+    : 'rgba(255, 255, 255, 0.2)'};
+  border-radius: 1.5rem;
+  box-shadow: ${props => props.isDarkMode
+    ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+    : '0 25px 50px -12px rgba(0, 0, 0, 0.1)'};
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.02) translateY(-4px);
+    box-shadow: ${props => props.isDarkMode
+      ? '0 35px 60px -12px rgba(0, 0, 0, 0.6)'
+      : '0 35px 60px -12px rgba(0, 0, 0, 0.15)'};
+  }
+`;
+
+const WeatherHeader = styled.div`
+  text-align: center;
+  margin-bottom: 1.5rem;
+`;
+
+const LocationText = styled.h3`
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: ${props => props.isDarkMode ? '#d1d5db' : '#4b5563'};
+  margin-bottom: 0.25rem;
+`;
+
+const DateText = styled.p`
+  font-size: 0.875rem;
+  color: ${props => props.isDarkMode ? '#9ca3af' : '#6b7280'};
+`;
+
+const TemperatureSection = styled.div`
+  position: relative;
+  text-align: center;
+  margin: 2rem 0;
+`;
+
+const Temperature = styled.div`
+  font-size: 4rem;
+  font-weight: 800;
+  color: ${props => props.isDarkMode ? '#ffffff' : '#111827'};
+  line-height: 1;
+`;
+
+const WeatherIcon = styled.div`
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  
+  svg {
+    width: 3rem;
+    height: 3rem;
+    color: #0ea5e9;
+    animation: bounce 3s infinite;
+  }
+`;
+
+const WeatherCondition = styled.div`
+  font-size: 1.125rem;
+  color: ${props => props.isDarkMode ? '#d1d5db' : '#4b5563'};
+  margin-top: 1rem;
+`;
+
+const WeatherDetails = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid ${props => props.isDarkMode ? '#374151' : '#e5e7eb'};
+`;
+
+const WeatherDetailItem = styled.div`
+  text-align: center;
+  
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0 auto 0.5rem;
+    color: ${props => {
+      if (props.type === 'temperature') return props.isDarkMode ? '#ef4444' : '#dc2626';
+      if (props.type === 'wind') return props.isDarkMode ? '#3b82f6' : '#2563eb';
+      return props.isDarkMode ? '#6b7280' : '#4b5563';
+    }};
+  }
+`;
+
+const DetailLabel = styled.div`
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: ${props => props.isDarkMode ? '#ffffff' : '#111827'};
+  margin-bottom: 0.125rem;
+`;
+
+const DetailValue = styled.div`
+  font-size: 0.75rem;
+  color: ${props => props.isDarkMode ? '#9ca3af' : '#6b7280'};
+`;
+
+const DecorativeDot = styled.div`
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  border-radius: 50%;
+  opacity: 0.6;
+  animation: pulse 3s infinite;
+  
+  &.top-left {
+    top: -0.5rem;
+    left: -0.5rem;
+  }
+  
+  &.bottom-right {
+    bottom: -0.5rem;
+    right: -0.5rem;
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+`;
+
+// Hero Section Component
+const HeroSection = ({ isDarkMode }) => {
   return (
-    <HeroSectionContainer>
-      <BackgroundWrapper>
-        <Gradient />
-      </BackgroundWrapper>
-      <ContentContainer>
-        <Heading>
-          <Title>Visualize Weather. Forecast with Precision.</Title>
-          <Subtitle>
-            Interactive tools for meteorologists, researchers, and enthusiasts.
-          </Subtitle>
-          <ButtonsContainer>
-            <Button $primary>Get Forecast</Button>
-            <LiveMapButton>Live Map</LiveMapButton>
-          </ButtonsContainer>
-        </Heading>
-      </ContentContainer>
-      <GlassyCircle>
-        <Meteorologist src={meteorologistImage} alt="Meteorologist" />
-      </GlassyCircle>
-    </HeroSectionContainer>
+    <HeroContainer isDarkMode={isDarkMode}>
+      <BackgroundElements>
+        <FloatingElement className="dot-1" isDarkMode={isDarkMode} />
+        <FloatingElement className="dot-2" isDarkMode={isDarkMode} />
+        <FloatingElement className="dot-3" isDarkMode={isDarkMode} />
+        <GradientOrb className="orb-1" isDarkMode={isDarkMode} />
+        <GradientOrb className="orb-2" isDarkMode={isDarkMode} />
+      </BackgroundElements>
+
+      <HeroContent>
+        <HeroGrid>
+          <TextContent>
+            <Badge isDarkMode={isDarkMode}>
+              <StatusDot />
+              Live Weather Updates
+            </Badge>
+
+            <MainHeadline>
+              <HeadlineText isDarkMode={isDarkMode}>
+                Your Trusted
+                <GradientText>Weather Partner</GradientText>
+              </HeadlineText>
+              <Subtitle isDarkMode={isDarkMode}>
+                Get accurate weather forecasts, real-time updates, and meteorological services 
+                to help you plan your day with confidence.
+              </Subtitle>
+            </MainHeadline>
+
+            <CTAButtons>
+              <PrimaryButton>
+                Check Weather
+                <ArrowRight size={20} />
+              </PrimaryButton>
+              
+              <SecondaryButton isDarkMode={isDarkMode}>
+                <Play size={20} />
+                Watch Demo
+              </SecondaryButton>
+            </CTAButtons>
+
+            <Stats isDarkMode={isDarkMode}>
+              <StatItem>
+                <StatNumber isDarkMode={isDarkMode}>99.9%</StatNumber>
+                <StatLabel isDarkMode={isDarkMode}>Accuracy</StatLabel>
+              </StatItem>
+              <StatItem>
+                <StatNumber isDarkMode={isDarkMode}>24/7</StatNumber>
+                <StatLabel isDarkMode={isDarkMode}>Monitoring</StatLabel>
+              </StatItem>
+              <StatItem>
+                <StatNumber isDarkMode={isDarkMode}>50M+</StatNumber>
+                <StatLabel isDarkMode={isDarkMode}>Users</StatLabel>
+              </StatItem>
+            </Stats>
+          </TextContent>
+
+          <WeatherCardContainer>
+            <WeatherCard isDarkMode={isDarkMode}>
+              <WeatherHeader>
+                <LocationText isDarkMode={isDarkMode}>Manila, Philippines</LocationText>
+                <DateText isDarkMode={isDarkMode}>
+                  Today, {new Date().toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </DateText>
+              </WeatherHeader>
+
+              <TemperatureSection>
+                <Temperature isDarkMode={isDarkMode}>32°</Temperature>
+                <WeatherIcon>
+                  <Cloud />
+                </WeatherIcon>
+              </TemperatureSection>
+
+              <WeatherCondition isDarkMode={isDarkMode}>
+                Partly Cloudy
+              </WeatherCondition>
+
+              <WeatherDetails isDarkMode={isDarkMode}>
+                <WeatherDetailItem type="temperature" isDarkMode={isDarkMode}>
+                  <Thermometer />
+                  <DetailLabel isDarkMode={isDarkMode}>Feels like</DetailLabel>
+                  <DetailValue isDarkMode={isDarkMode}>35°</DetailValue>
+                </WeatherDetailItem>
+                <WeatherDetailItem type="wind" isDarkMode={isDarkMode}>
+                  <Wind />
+                  <DetailLabel isDarkMode={isDarkMode}>Wind</DetailLabel>
+                  <DetailValue isDarkMode={isDarkMode}>15 km/h</DetailValue>
+                </WeatherDetailItem>
+                <WeatherDetailItem type="humidity" isDarkMode={isDarkMode}>
+                  <Cloud />
+                  <DetailLabel isDarkMode={isDarkMode}>Humidity</DetailLabel>
+                  <DetailValue isDarkMode={isDarkMode}>68%</DetailValue>
+                </WeatherDetailItem>
+              </WeatherDetails>
+
+              <DecorativeDot className="top-left" />
+              <DecorativeDot className="bottom-right" />
+            </WeatherCard>
+          </WeatherCardContainer>
+        </HeroGrid>
+      </HeroContent>
+    </HeroContainer>
   );
 };
 

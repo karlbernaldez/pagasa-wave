@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { refreshAccessToken } from '../api/auth';
 
 const ModalBackdrop = styled.div`
   position: fixed;
@@ -63,6 +64,17 @@ const ProtectedAdminRoute = ({ element: Element, requireAuth = true, onDeny = nu
         const data = await response.json();
         setIsAuthenticated(true);
         setUserRole(data.user.role);
+
+      } else if (response.status === 403) {
+        await refreshAccessToken();
+        const response = await fetch('/api/auth/check', {
+          method: 'GET',
+          credentials: 'include', // Send cookies
+        });
+        const data = await response.json();
+        setIsAuthenticated(true);
+        setUserRole(data.user.role);
+
       } else {
         setIsAuthenticated(false);
       }
