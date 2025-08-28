@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import OnlyUserModal from '../components/modals/OnlyUserModal';
+import { refreshAccessToken } from '../api/auth';
 
 const ModalBackdrop = styled.div`
   position: fixed;
@@ -46,7 +47,7 @@ const LoadingSpinner = styled.div`
   }
 `;
 
-const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null }) => {
+const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null, setIsLoggedIn }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,14 +64,22 @@ const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null })
       if (response.ok) {
         const data = await response.json();
         setIsAuthenticated(true);
+        setIsLoggedIn(true);
 
         if (data.user.role === 'admin') {
           setIsAdminUser(true);
           setShowAdminModal(true);
           console.warn('Access denied: Admins cannot access this route.');
         }
+
+      } else if (response.status === 403) {
+        const response = await refreshAccessToken();
+        setIsAuthenticated(true);
+        setIsLoggedIn(true);
+        
       } else {
         setIsAuthenticated(false);
+        setIsLoggedIn(false);
       }
     } catch (error) {
       console.error('Auth check error:', error);
@@ -101,7 +110,7 @@ const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null })
   }
 
   if (requireAuth && !isAuthenticated) {
-    return typeof onDeny === 'function' ? onDeny() : navigate('/login');
+    return typeof onDeny === 'function' ? onDeny() : <Navigate to="/login" replace />;
   }
 
   if (isAdminUser) {

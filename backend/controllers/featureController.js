@@ -73,9 +73,6 @@ export const getFeaturesByUserAndProject = async (req, res) => {
     const userId = req.user.id;
     const { projectId } = req.params; // Accessing projectId from the route parameter
 
-    console.log('[DEBUG] Authenticated User ID:', userId);
-    console.log('[DEBUG] Route projectId:', projectId);
-
     if (!projectId) {
       console.warn('[WARN] Missing projectId in route.');
       return res.status(400).json({ error: 'Missing projectId in route.' });
@@ -86,8 +83,6 @@ export const getFeaturesByUserAndProject = async (req, res) => {
       'properties.owner': userId,
       'properties.project': projectId,
     }).sort({ createdAt: -1 });
-
-    console.log(`[DEBUG] Found ${features.length} features for owner ${userId} and project ${projectId}`);
 
     res.json(features);
   } catch (err) {
@@ -115,7 +110,6 @@ export const getFeatureBySourceId = async (req, res) => {
 export const deleteFeature = async (req, res) => {
   try {
     const { sourceId } = req.params;
-    console.log('Deleting feature with sourceId:', sourceId);
 
     const result = await Feature.deleteOne({ sourceId });
 
@@ -134,9 +128,6 @@ export const updateFeatureName = async (req, res) => {
   try {
     const { sourceId } = req.params; // Incoming sourceId for the feature
     const { newName } = req.body; // New name to update
-
-    // Log to check the incoming data
-    console.log('Attempting to update feature:', { sourceId, newName });
 
     // Validate the new name
     if (!newName || typeof newName !== 'string') {
@@ -168,8 +159,6 @@ export const updateFeatureName = async (req, res) => {
         { new: true }
       );
     }
-
-    console.log('Updated feature:', feature);
 
     // Return the updated feature
     res.json({ message: 'Feature name updated successfully.', feature });

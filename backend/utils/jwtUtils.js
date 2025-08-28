@@ -11,4 +11,3 @@ export const generateRefreshToken = (payload) =>
     expiresIn: '7d',
     algorithm: 'HS512',
   });
-

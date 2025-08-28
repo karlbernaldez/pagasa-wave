@@ -235,7 +235,7 @@ const overlayVariants = {
 const AccessDeniedModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const handleGoToEditor = () => {
-    navigate('/edit');
+    navigate('/wavelab');
   };
   const handleProceedWithSignOut = () => {
     onClose();
