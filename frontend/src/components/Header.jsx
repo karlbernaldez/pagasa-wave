@@ -64,7 +64,7 @@ const Header = ({ isDarkMode, setIsDarkMode }) => {
   const navItems = [
     { name: 'Home', href: '/' },
     { name: 'Charts', href: '/charts' },
-    { name: 'WaveLab', href: '/edit' },
+    { name: 'WaveLab', href: '/wavelab' },
     { name: 'Services', href: '#services' },
     { name: 'About', href: '#about' },
     { name: 'Contact', href: '#contact' }

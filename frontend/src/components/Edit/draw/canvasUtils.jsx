@@ -1,27 +1,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
 
-export const chaikinSmoothing = (points, iterations = 2) => {
-  for (let k = 0; k < iterations; k++) {
-    let newPoints = [];
-    for (let i = 0; i < points.length - 2; i += 2) {
-      const x0 = points[i];
-      const y0 = points[i + 1];
-      const x1 = points[i + 2];
-      const y1 = points[i + 3];
-
-      const Qx = 0.75 * x0 + 0.25 * x1;
-      const Qy = 0.75 * y0 + 0.25 * y1;
-      const Rx = 0.25 * x0 + 0.75 * x1;
-      const Ry = 0.25 * y0 + 0.75 * y1;
-
-      newPoints.push(Qx, Qy, Rx, Ry);
-    }
-    points = newPoints;
-  }
-  return points;
-};
-
 export const convertToGeoJSON = (lines, mapRef) => {
   if (!mapRef.current) {
     console.error('Map reference is not available!');
@@ -31,12 +10,9 @@ export const convertToGeoJSON = (lines, mapRef) => {
   const geojsonFeatures = lines.map((line) => {
     const coords = [];
 
-    // ✅ Apply smoothing to each line's points
-    const smoothedPoints = chaikinSmoothing(line.points, 4); // you can tweak the iteration count
-
-    for (let i = 0; i < smoothedPoints.length; i += 2) {
-      const x = smoothedPoints[i];
-      const y = smoothedPoints[i + 1];
+    for (let i = 0; i < line.points.length; i += 2) {
+      const x = line.points[i];
+      const y = line.points[i + 1];
       const lngLat = mapRef.current.unproject([x, y]);
       coords.push([lngLat.lng, lngLat.lat]);
     }
@@ -132,7 +108,6 @@ export const handlePointerUp = async (
   if (map.getSource(sourceId)) map.removeSource(sourceId);
   if (map.getLayer(layerId)) map.removeLayer(layerId);
 
-  // Determine if the line should be dashed
   const wave_height = parseFloat(labelValue);
   const isDashed = wave_height < 2; // Dash if not closedMode
 
@@ -262,6 +237,7 @@ export const handlePointerUp = async (
       let counter = 1;
       let uniqueName = baseName;
       const existingNames = prevLayers.map((l) => l.name);
+      const owner = JSON.parse(localStorage.getItem("user"));
       const projectId = localStorage.getItem("projectId");
 
       while (existingNames.includes(uniqueName)) {
@@ -270,18 +246,20 @@ export const handlePointerUp = async (
 
       if (geojson.features.length > 0) {
         const feature = geojson.features[0];
+        const token = localStorage.getItem('authToken');
 
         saveFeature({
           geometry: feature.geometry,
           properties: {
-            labelValue,
-            closedMode,
+            labelValue: labelValue,
+            closedMode: closedMode,
             isFront: false,
+            owner: owner?.id,
             project: projectId,
           },
           name: uniqueName,
           sourceId: sourceId,
-        }).catch((err) => {
+        }, token).catch((err) => {
           console.error('Error saving feature:', err);
         });
       }
@@ -301,4 +279,3 @@ export const handlePointerUp = async (
 
   setLines([]);
 };
-
