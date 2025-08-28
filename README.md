@@ -51,7 +51,7 @@ This project is licensed under the **[MIT license](https://github.com/karlbernal
 ## 📸 Screenshots
 
 ### WaveLab Dashboard
-![WaveLab Dashboard](./frontend/src/assets/With Wind Overlay Sample.png)
+![WaveLab Dashboard](https://github.com/karlbernaldez/pagasa-wave/blob/c24fbdb2f3c144d2e670a70d8d63e67a05c259fe/frontend/src/assets/With%20Wind%20Overlay%20Sample.png)
 
 ---
 
