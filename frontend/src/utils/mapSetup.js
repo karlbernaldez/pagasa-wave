@@ -23,7 +23,7 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
       'raster-particle-speed-factor': 0.2,
       'raster-particle-fade-opacity-factor': 0.9,
       'raster-particle-reset-rate-factor': 0.4,
-      'raster-particle-count': 20000,
+      'raster-particle-count': 24000,
       'raster-particle-max-speed': 80,
       'raster-particle-color': [
         'interpolate',
