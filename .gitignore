@@ -1,4 +1,7 @@
 docker-compose.yml
 backend/Dockerfile
 frontend/Dockerfile
-scripts/
+scripts/era5_ph_wind_wave.geojson
+scripts/__pycache__
+scripts/era5_ph_wind_wave.grib
+scripts/era5_ph_wind_wave.grib.5b7b6.idx
