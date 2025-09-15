@@ -14,12 +14,13 @@ connectDB();
 const allowedOrigins = [
   'http://10.8.0.2:3000',
   'http://34.122.153.132:8080',
-  'http://34.122.153.132:3030',
+  'http://34.172.63.27:3030',
+  'http://34.172.63.27:3001',
   'http://localhost:3001'
 ];
 
 const corsOptions = {
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, postman)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {

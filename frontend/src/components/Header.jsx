@@ -31,10 +31,14 @@ const Header = ({ isDarkMode, setIsDarkMode }) => {
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const toggleUserDropdown = () => setIsUserDropdownOpen(!isUserDropdownOpen);
 
+  const AUTH_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/auth`;
+
+  const checkRoute = `${AUTH_API_BASE_URL}/check`;
+
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const checkResponse = await fetch('/api/auth/check', {
+        const checkResponse = await fetch(checkRoute, {
           method: 'GET',
           credentials: 'include',
         });

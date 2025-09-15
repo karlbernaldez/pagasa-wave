@@ -4,14 +4,14 @@ import styled from 'styled-components';
 
 export const Wrapper = styled.div`
   position: fixed;
-  top: 5rem;
-  left: 1.2rem;
+  top: 6.3rem;
+  left: 1.8rem;
   z-index: ${({ theme }) => theme.zIndex.stickyHeader};
   font-family: ${({ theme }) => theme.fonts.regular};
 `;
 
 export const MenuButton = styled.button`
-  background: ${({ theme }) => theme.colors.lightBackground};
+  background: ${({ theme }) => theme?.colors?.bgPrimary};
   color: ${({ theme }) => theme.colors.textPrimary};
   border: 1px solid ${({ theme }) => theme.colors.border || '#ccc'};
   padding: 0.45rem 0.9rem;

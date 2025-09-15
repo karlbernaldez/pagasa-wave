@@ -74,7 +74,8 @@ export const handlePointerUp = async (
   saveFeature,
   closedMode,
   lineCount,
-  labelValue = 5 // ✅ new default label value
+  labelValue = 5, // ✅ new default label value
+  isDarkMode
 ) => {
   const map = mapRef.current;
   if (!map) return;
@@ -124,7 +125,7 @@ export const handlePointerUp = async (
       layout: {},
       slot: "top",
       paint: {
-        'line-color': '#0080ff',
+        'line-color': isDarkMode ? '#2481e8' : '#000000',
         'line-opacity': 0.5,
         'line-width': 3,
         'line-dasharray': isDashed ? [.5, .5] : [], // Dashed line if not closedMode
@@ -212,8 +213,7 @@ export const handlePointerUp = async (
             'text-offset': [0, 0.5],
           },
           paint: {
-            'text-color': '#FF0000',
-            'text-halo-color': '#FFFFFF',
+            'text-color': '#000000',
             'text-halo-width': 2,
           },
         },
