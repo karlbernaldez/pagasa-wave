@@ -5,8 +5,8 @@ import { theme, darkTheme } from "../../styles/theme";
 // Styled Components
 const Box = styled.div`
   position: fixed;
-  bottom: 0.75rem;
-  left: 0.75rem;
+  bottom: 1rem;
+  right: 0.75rem;
   width: clamp(18rem, 25vw, 24rem);
   max-height: clamp(12rem, 20vh, 18rem);
   padding: 1rem 1.25rem;

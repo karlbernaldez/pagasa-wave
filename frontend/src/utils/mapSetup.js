@@ -1,5 +1,6 @@
 import phGeoJson from '../data/ph.json';
-import { loadImage, initTyphoonLayer, initDrawControl, typhoonMarker as saveMarkerFn } from './mapUtils';
+import { loadImage, loadCustomImages, initTyphoonLayer, initDrawControl, typhoonMarker as saveMarkerFn } from './mapUtils';
+import era5_c1 from '../data/era5_ph_wind_wave.geojson';
 
 export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages, isDarkMode }) {
   if (!map) return console.warn('No map instance provided');
@@ -7,10 +8,77 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
     setLoading(true)
   };
 
+  loadImage(map, 'typhoon', '/hurricane.png');
+  loadImage(map, 'low_pressure', '/LPA.png');
+  loadImage(map, 'high_pressure', '/HPA.png');
+  loadImage(map, 'less_1', '/L1.png');
+  loadImage(map, '0kts', '/barbs/0kts.svg');
+  loadImage(map, '5kts', '/barbs/5kts.svg');
+  loadImage(map, '10kts', '/barbs/10kts.svg');
+  loadImage(map, '15kts', '/barbs/15kts.svg');
+  loadImage(map, '20kts', '/barbs/20kts.svg');
+  loadImage(map, '25kts', '/barbs/25kts.svg');
+  loadImage(map, '30kts', '/barbs/30kts.svg');
+
+
+  map.on('load', () => {
+    loadCustomImages(map);
+    initTyphoonLayer(map);
+  });
+
   map.addSource('wind_data_source', {
     type: 'raster-array',
     url: 'mapbox://karlbernaldizzy.07022025',
     tileSize: 4096
+  });
+
+  map.addSource('era5_c1', {
+    type: 'geojson',
+    data: era5_c1,
+  });
+
+  map.addLayer({
+    id: 'wind_barbs',
+    type: 'symbol',
+    source: 'era5_c1',
+    layout: {
+      // show wavePeriod only if it's not 9999
+      'text-field': [
+        'case',
+        ['==', ['get', 'wavePeriod'], 9999],
+        '', // show nothing if wavePeriod is 9999
+        ["to-string", ["round", ["get", "wavePeriod"]]] // else show rounded value
+      ],
+      'text-size': 16,
+
+      // rotate text same as icon
+      'text-rotate': [
+        '*',
+        10,
+        ["round", ["/", ["get", "windDirection"], 10]]
+      ],
+
+      // pick icon name dynamically by windSpeed bins
+      'icon-image': [
+        'step', ["get", "windSpeed"],
+        ["image", "0kts", { "params": { "color-1": "#192750" } }], // <= 2
+        3.57632, "5kts",
+        6.25856, "10kts",
+        8.9408, "15kts",
+        11.176, "20kts",
+        13.85824, "25kts",
+        16.54048, "30kts"
+      ],
+
+      'icon-size': 3,
+
+      // rotate icon by wind direction
+      'icon-rotate': [
+        '*',
+        10,
+        ["round", ["/", ["get", "windDirection"], 10]]
+      ]
+    }
   });
 
   map.addLayer({
@@ -91,97 +159,7 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
     }
   });
 
-  //   map.addLayer({
-  //   id: 'wind-layer_colorblind',
-  //   type: 'raster-particle',
-  //   source: 'wind_data_source',
-  //   'source-layer': '10m_wind',
-  //   slot: 'bottom',
-  //   paint: {
-  //     'raster-particle-speed-factor': 0.2,
-  //     'raster-particle-fade-opacity-factor': 0.9,
-  //     'raster-particle-reset-rate-factor': 0.4,
-  //     'raster-particle-count': 20000,
-  //     'raster-particle-max-speed': 80,
-  //     'raster-particle-color': [
-  //       'interpolate',
-  //       ['linear'],
-  //       ['raster-particle-speed'],
-  //       .8, 'rgba(158,1,66,256)',   // Deep Red
-  //       2.5, 'rgba(213,62,79,256)', // Red
-  //       4.12, 'rgba(244,109,67,256)', // Orange
-  //       4.63, 'rgba(253,174,97,256)', // Light Orange
-  //       6.17, 'rgba(254,224,139,256)', // Yellow
-  //       7.72, 'rgba(217,239,139,256)', // Light Green
-  //       9.26, 'rgba(166,217,106,256)', // Green
-  //       10.29, 'rgba(102,189,99,256)', // Strong Green
-  //       11.83, 'rgba(26,152,80,256)',  // Dark Green
-  //       13.37, 'rgba(0,104,55,256)',   // Darker Green
-  //       14.92, 'rgba(0,69,41,256)',    // Very Dark Green
-  //       16.46, 'rgba(37,52,148,256)',  // Dark Blue
-  //       18.0, 'rgba(8,29,88,256)',     // Deep Blue
-  //       20.06, 'rgba(49,54,149,256)',  // Purple
-  //       21.6, 'rgba(0,0,0,256)',       // Black
-  //       23.66, 'rgba(255,255,255,256)', // White
-  //       25.21, 'rgba(166,206,227,256)', // Light Blue
-  //       27.78, 'rgba(31,120,180,256)', // Moderate Blue
-  //       29.32, 'rgba(51,160,44,256)',  // Bright Green
-  //       31.89, 'rgba(255,255,191,256)', // Very Light Yellow
-  //       33.44, 'rgba(227,26,28,256)',  // Bright Red
-  //       42.18, 'rgba(255,127,0,256)',  // Bright Orange
-  //       43.72, 'rgba(255,255,51,256)', // Yellow
-  //       48.87, 'rgba(127,127,127,256)', // Neutral Gray
-  //       50.41, 'rgba(186,186,186,256)', // Light Gray
-  //       57.61, 'rgba(204,204,204,256)', // Gray
-  //       59.16, 'rgba(150,150,150,256)', // Darker Gray
-  //       68.93, 'rgba(0,128,0,256)',    // Dark Green
-  //       69.44, 'rgba(0,0,255,256)'     // Blue
-  //     ]
-  //   }
-  // });
-
-  const geoJsonSourceId = 'my-geojson-source';
-  const geoJsonLayerId = 'my-geojson-layer';
-
-  map.addSource(geoJsonSourceId, {
-    type: 'geojson',
-    data: phGeoJson, // from your import
-  });
-
-  map.addLayer({
-    id: `${geoJsonLayerId}_fill`,
-    type: "fill",
-    source: geoJsonSourceId,
-    slot: 'bottom',
-    paint: {
-      "fill-color": isDarkMode ? "#1f3a85" : "rgba(0,0,0,0)",
-      "fill-opacity": isDarkMode ? 0.65 : 0,
-    },
-  });
-
-
-  map.addLayer({
-    id: `${geoJsonLayerId}_line`,
-    type: "line",
-    source: geoJsonSourceId,
-    slot: 'middle',
-    paint: {
-      "line-color": isDarkMode ? "#ffffff" : "rgba(0, 0, 0, 1)",
-      "line-width": .7,
-    },
-  });
-
-
   mapRef.current = map;
-
-  loadImage(map, 'typhoon', '/hurricane.png');
-  loadImage(map, 'low_pressure', '/LPA.png');
-  loadImage(map, 'high_pressure', '/HPA.png');
-  loadImage(map, 'less_1', '/L1.png');
-
-  map.on('load', () => {
-    initTyphoonLayer(map);
-  });
 
   const draw = initDrawControl(map);
   setDrawInstance(draw);
@@ -275,7 +253,7 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
         source: sourceId,
         slot: 'top',
         paint: {
-          'line-color': '#0080ff',
+          'line-color': '#000000',
           'line-opacity': 0.5,
           'line-width': 3,
           'line-dasharray': isDashed ? [.5, .5] : [], // Dashed line if not closedMode
@@ -333,8 +311,7 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
               'text-offset': [0, 0.5],
             },
             paint: {
-              'text-color': '#FF0000',
-              'text-halo-color': '#FFFFFF',
+              'text-color': '#000000',
               'text-halo-width': 2,
             },
           });
@@ -391,48 +368,6 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
         [0, 3, 3, 1], [0, 3.5, 3, 0.5],
       ];
 
-      // map.once('idle', () => {
-      //   let step = 0;
-
-      //   function animateDashArray(timestamp) {
-      //     const layer = safeGetLayer(dashLayerId);
-      //     if (!layer) {
-      //       // Log a warning if the layer is not available
-      //       console.warn(`Layer '${dashLayerId}' is not available. Skipping animation.`);
-      //       return; // Return early if the layer is not found
-      //     }
-
-      //     const newStep = Math.floor((timestamp / 150) % dashArraySequence.length);
-      //     if (newStep !== step) {
-      //       try {
-      //         map.setPaintProperty(dashLayerId, 'line-dasharray', dashArraySequence[newStep]);
-      //         step = newStep;
-      //       } catch (err) {
-      //         console.warn(`Error updating dasharray for ${dashLayerId}:`, err);
-      //         return;
-      //       }
-      //     }
-
-      //     // Continue the animation
-      //     animationFrameIds[index] = requestAnimationFrame(animateDashArray);
-      //   }
-
-      //   function tryStartAnimation(retries = 10) {
-      //     const layer = safeGetLayer(dashLayerId);
-      //     if (layer) {
-      //       // If the layer exists, start the animation
-      //       animationFrameIds[index] = requestAnimationFrame(animateDashArray);
-      //     } else if (retries > 0) {
-      //       // Retry after a delay if the layer is not ready
-      //       setTimeout(() => tryStartAnimation(retries - 1), 300);
-      //     } else {
-      //       console.warn(`Skipping animation: '${dashLayerId}' not ready after retries.`);
-      //     }
-      //   }
-
-
-      //   setTimeout(() => tryStartAnimation(), 300);
-      // });
     });
   }
 
@@ -467,7 +402,6 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   } else {
     map.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', 'none');
     map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', 'none');
-    // map.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', 'none');
   }
 
   if (windLayerState === 'true') {

@@ -256,8 +256,8 @@ const MiscLayer = ({ mapRef }) => {
         mapRef.current.setLayoutProperty('PAR', 'visibility', layersState.PAR ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('TCID', 'visibility', layersState.TCID ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('TCAD', 'visibility', layersState.TCAD ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('ERA5_c1', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('ERA5_c2', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('wind-layer', 'visibility', layersState.WindLayer ? 'visible' : 'none');
       });
@@ -313,8 +313,8 @@ const MiscLayer = ({ mapRef }) => {
         setShowSHIPPINGZONE(prev => {
           const newState = !prev;
           localStorage.setItem('SHIPPING_ZONE', newState.toString());
-          mapRef.current?.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current?.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('ERA5_c1', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('ERA5_c2', 'visibility', newState ? 'visible' : 'none');
           // mapRef.current?.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', newState ? 'visible' : 'none');
           return newState;
         });

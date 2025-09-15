@@ -155,7 +155,6 @@ export function addGeoJsonLayer(map, file, layers, setLayers) {
 
 
 
-        console.log("GeoJSON source + layers added:", sourceId);
     };
 
     reader.readAsText(file);
@@ -264,8 +263,6 @@ export async function removeFeature(draw, layerID, featureID, layer) {
             const cleanedFeatureID = typeof featureID === 'string' && featureID.endsWith('_dash')
                 ? featureID.slice(0, -5)
                 : featureID;
-            console.log(`Deleting feature with ID: ${cleanedFeatureID}`);
-            console.log(`Layer ID: ${layerID}`);
             await deleteFeature(cleanedFeatureID, token);
         } else {
             await deleteFeature(layerID, token);
@@ -391,14 +388,12 @@ export const setActiveLayerOnMap = ({
     setActiveMapboxLayerId,
 }) => {
     const layer = layers.find((l) => l.id === id);
-    console.log('Selected layer: ', layer)
     if (!layer || !mapRef?.current) {
         console.warn(`Layer with ID ${id} not found or map not ready.`);
         return;
     }
 
     let activeLayer = mapRef.current.getLayer(layer.id) || mapRef.current.getLayer(layer.name);
-    console.log(activeLayer)
     if (!activeLayer) {
         console.warn(`Layer ${layer.id} or ${layer.name} not found on map.`);
         return;
