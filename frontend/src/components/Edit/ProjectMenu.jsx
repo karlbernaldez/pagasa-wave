@@ -60,9 +60,18 @@ const ProjectMenu = ({ blink, onNew, onSave, onView, onExport, mapRef, features,
   const handleDeleteProject = async (projectId) => {
     try {
       await deleteProjectById(projectId); // Replace with your actual API call
-      // After successful deletion, refresh the project list
+
+      // Remove project info from localStorage
+      localStorage.removeItem('projectId');
+      localStorage.removeItem('projectName'); // if you stored it
+      // Remove any other project-related keys if needed
+
+      // Refresh the project list
       const userProjects = await fetchUserProjects();
       setProjects(userProjects);
+
+      window.location.reload();
+
     } catch (error) {
       console.error("Failed to delete project:", error);
     }
