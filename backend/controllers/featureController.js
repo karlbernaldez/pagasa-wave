@@ -1,5 +1,6 @@
 // backend/controllers/featureController.js
 import Feature from '../models/Feature.js';
+import Project from '../models/Project.js';
 
 export const createFeature = async (req, res) => {
   try {
@@ -10,8 +11,8 @@ export const createFeature = async (req, res) => {
       sourceId,
     } = req.body;
 
-    const owner = req.user.id; // Get owner ID from verified token
-    const project = properties.project;
+    const owner = req.user.id;
+    const projectId = properties.project;
 
     // Validate geometry
     if (!geometry || !geometry.type || !geometry.coordinates) {
@@ -19,22 +20,28 @@ export const createFeature = async (req, res) => {
     }
 
     // Validate required fields
-    if (!sourceId || !owner || !project) {
+    if (!sourceId || !owner || !projectId) {
       return res.status(400).json({ error: 'Missing required fields: sourceId or properties.project.' });
     }
 
-    // Compose full properties with injected owner
+    // ✅ Check project existence
+    const projectExists = await Project.findById(projectId);
+    if (!projectExists) {
+      return res.status(404).json({ error: 'Project not found.' });
+    }
+
+    // Compose properties with owner
     const fullProperties = {
       ...properties,
-      owner, // inject verified user ID
+      owner,
     };
 
-    // Upsert the feature
+    // Upsert feature
     const result = await Feature.updateOne(
       {
         sourceId,
         'properties.owner': owner,
-        'properties.project': project,
+        'properties.project': projectId,
       },
       {
         $setOnInsert: {

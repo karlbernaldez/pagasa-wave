@@ -5,13 +5,14 @@ import { theme, darkTheme } from "../../styles/theme";
 // Styled Components
 const Box = styled.div`
   position: fixed;
-  bottom: 1rem;
-  right: 0.75rem;
+  bottom: 1.8rem;
+  left: 0.5rem;
   width: clamp(18rem, 25vw, 24rem);
   max-height: clamp(12rem, 20vh, 18rem);
   padding: 1rem 1.25rem;
-  background: ${({ theme }) => theme.colors.lightBackground};
-  backdrop-filter: blur(10px);
+  background: ${({ theme }) => theme?.colors?.bgPrimary};
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid ${({ theme }) => theme.colors.border || '#e5e7eb'};
   border-radius: 0.75rem;
   box-shadow: 
@@ -43,19 +44,15 @@ const Box = styled.div`
   @media (max-width: 1200px) {
     width: clamp(16rem, 28vw, 22rem);
     padding: 0.875rem 1rem;
-    bottom: 0.5rem;
-    left: 0.5rem;
-  }
-
-  @media (max-width: 768px) {
-    width: clamp(14rem, 32vw, 20rem);
-    padding: 0.75rem 0.875rem;
-    max-height: clamp(10rem, 18vh, 15rem);
+    bottom: 1.5rem;
+    right: 0.5rem;
   }
 
   /* Dark theme enhancements */
   ${({ theme }) => theme.colors.background === darkTheme.colors.background && `
-    background: ${theme.colors.lightBackground}CC;
+    background: ${({ theme }) => theme?.colors?.bgPrimary};
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
     border-color: ${theme.colors.border || '#374151'};
     box-shadow: 
       0 4px 12px rgba(0, 0, 0, 0.25),
@@ -249,22 +246,22 @@ const LegendBox = () => {
             />
           }
         />
-        <LegendItem 
-          label="LPA" 
-          symbol={<Letter color="#dc2626">L</Letter>} 
+        <LegendItem
+          label="LPA"
+          symbol={<Letter color="#dc2626">L</Letter>}
         />
-        <LegendItem 
-          label="HPA" 
-          symbol={<Letter color="#2563eb">H</Letter>} 
+        <LegendItem
+          label="HPA"
+          symbol={<Letter color="#2563eb">H</Letter>}
         />
-        <LegendItem 
+        <LegendItem
           label="Surface Fronts"
           symbol={<FrontGradient />}
         />
       </List>
       <Footer>
-        <span>Checked: <strong>RBB</strong></span>
-        <span>By: <strong>MACD</strong></span>
+        <span>Checked: <strong>JAE</strong></span>
+        <span>By: <strong>KSBB</strong></span>
       </Footer>
     </Box>
   );

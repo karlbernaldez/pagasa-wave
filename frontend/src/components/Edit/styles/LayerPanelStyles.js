@@ -2,15 +2,20 @@
 
 // Enhanced panel style with responsive design
 export const panelStyle = (theme, isCollapsed) => ({
+  position: "fixed", // Changed from relative/static to fixed
+  top: "78px", // Distance from top
+  right: "5px", // Distance from right edge
+
   backdropFilter: "blur(12px)",
   borderRadius: theme.borderRadius.xlarge || "1rem",
   border: `1px solid ${theme.colors.textPrimary}`,
   color: theme.colors.textPrimary,
   padding: isCollapsed ? theme.spacing.small : theme.spacing.medium,
-  zIndex: theme.zIndex.stickyHeader,
   width: "320px",
   maxWidth: "380px",
-  maxHeight: isCollapsed ? "5rem" : "clamp(400px, 55vh, 600px)",
+  maxHeight: isCollapsed
+    ? "7rem"
+    : "min(90vh, 1400px)",
   overflowY: isCollapsed ? "hidden" : "auto",
 
   // Hide scrollbar but keep scrolling
@@ -29,7 +34,7 @@ export const panelStyle = (theme, isCollapsed) => ({
     : "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)",
 
   "&:hover": {
-    transform: "translateY(-4px) scale(1.02)",
+    transform: "translateY(-4px) scale(1.005)",
     boxShadow: theme.isDark
       ? "0 32px 64px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)"
       : "0 32px 64px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08)",
@@ -39,7 +44,7 @@ export const panelStyle = (theme, isCollapsed) => ({
   },
 
   "&:active": {
-    transform: "translateY(-2px) scale(1.01)",
+    transform: "translateY(-2px) scale(1.005)",
   },
 
   // Responsive

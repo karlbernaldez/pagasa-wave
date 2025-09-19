@@ -71,20 +71,24 @@ export const deleteFeature = async (sourceId) => {
 // Function to save feature
 export const saveFeature = async (feature) => {
   try {
-    const response = await fetch(API_BASE_URL, {
+    const response = await fetch(`${API_BASE_URL}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      credentials: 'include',
+      credentials: 'include', // keeps cookies/session
       body: JSON.stringify(feature),
     });
 
-    if (!response.ok) throw new Error('Failed to save feature');
+    const data = await response.json();
 
-    return response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to save feature');
+    }
+
+    return data; // return API response (success or duplicate info)
   } catch (error) {
-    console.error('[ERROR] Failed to save feature:', error);
+    console.error('[ERROR] Failed to save feature:', error.message);
     throw error;
   }
 };

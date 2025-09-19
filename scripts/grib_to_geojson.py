@@ -41,7 +41,7 @@ wind_dir = (np.arctan2(u10, v10) * 180/np.pi) % 360  # degrees clockwise from no
 features = []
 
 # Subsampling step
-step = 20
+step = 15
 
 # Define your domain (example: Philippines bounding box)
 lon_min, lat_min = 110, 0
