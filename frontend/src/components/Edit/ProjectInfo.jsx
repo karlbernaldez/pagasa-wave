@@ -614,31 +614,54 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
     const fetchData = async () => {
       const projectId = localStorage.getItem('projectId');
 
-      if (!projectId) return;
+      if (!projectId) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'No Project Selected',
+          text: 'Please create or select a valid project before continuing.',
+        });
+        setIsLoading(false);
+        return;
+      }
 
       try {
         const project = await fetchProjectById(projectId);
-        if (project) {
-          setProjectName(project.name);
-          setChartType(project.chartType);
-          setDescription(project.description || '');
-          const date = new Date(project.forecastDate);
-          const formatted = date.toLocaleDateString(undefined, {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
+
+        if (!project) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Project Not Found',
+            text: 'The selected project could not be loaded.',
           });
-          setForecastDate(formatted);
+          setIsLoading(false);
+          return;
         }
+
+        setProjectName(project.name);
+        setChartType(project.chartType);
+        setDescription(project.description || '');
+        const date = new Date(project.forecastDate);
+        const formatted = date.toLocaleDateString(undefined, {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+        setForecastDate(formatted);
       } catch (error) {
-        setIsLoading(false);
         console.error('Error fetching project:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to fetch project data.',
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [projectId]);
+  }, []);
 
   // Menu handlers
   const handleSubmit = async (file) => {
