@@ -404,7 +404,7 @@ const Overlay = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 2000;
+  z-index: 200;
   backdrop-filter: blur(8px);
   animation: ${fadeInScale} 0.3s ease-out;
 `;
@@ -571,7 +571,7 @@ const Button = styled.button`
   }
 `;
 
-const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, features, isDarkMode, setIsDarkMode, isLoading }) => {
+const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, features, isDarkMode, setIsDarkMode, setIsLoading, isLoading }) => {
   // Menu state
   const [mainOpen, setMainOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
@@ -596,10 +596,6 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
   const [deleteInput, setDeleteInput] = useState('');
 
   const theme = useTheme();
-
-  useEffect(() => {
-    console.log("projectOpen state:", projectOpen);
-  }, [projectOpen]);
 
   // Click outside handler
   useEffect(() => {
@@ -636,6 +632,7 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
           setForecastDate(formatted);
         }
       } catch (error) {
+        setIsLoading(false);
         console.error('Error fetching project:', error);
       }
     };
@@ -755,14 +752,6 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
             <FaFolder />
             No Project Selected
           </InfoTitle>
-          {/* <MenuActions>
-            <MenuButton onClick={() => {
-              setMainOpen(!mainOpen);
-              setProjectOpen(false);
-            }}>
-              <FaBars />
-            </MenuButton>
-          </MenuActions> */}
         </InfoHeader>
 
         {mainOpen && (

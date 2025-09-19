@@ -10,7 +10,7 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 
 const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMiscCollapsed, setIsMiscCollapsed] = useState(true);
+  const [isMiscCollapsed, setIsMiscCollapsed] = useState(false);
   const [mapNotReady, setMapNotReady] = useState(false);
   const [activeLayerId, setActiveLayerId] = useState(null);
   const [activeMapboxLayerId, setActiveMapboxLayerId] = useState(null);
@@ -49,6 +49,9 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
         mapRef.current.setLayoutProperty('PAR', 'visibility', layersState.PAR ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('TCID', 'visibility', layersState.TCID ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('TCAD', 'visibility', layersState.TCAD ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('graticules', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('graticules_blur', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('country-boundaries', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('ERA5_c1', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('ERA5_c2', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
@@ -138,6 +141,9 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           localStorage.setItem('SHIPPING_ZONE', newState.toString());
           mapRef.current?.setLayoutProperty('ERA5_c1', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('ERA5_c2', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('graticules', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('graticules_blur', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('country-boundaries', 'visibility', newState ? 'visible' : 'none');
           return newState;
         });
         break;
@@ -312,46 +318,53 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
               >
                 Custom Layers ({layers.length})
               </div>
-              <ul style={{ ...listStyle(currentTheme), margin: 0, padding: 0 }}>
-                {layers.map((layer, index) => (
-                  <LayerItem
-                    key={layer.id || `layer-${index}`}
-                    layer={layer}
-                    toggleLayerVisibility={() =>
-                      toggleLayerVisibility(mapRef.current, layer, setLayers)
-                    }
-                    toggleLayerLock={() => toggleLayerLock(layer, setLayers)}
-                    removeLayer={() =>
-                      removeLayer(mapRef.current, layer, setLayers, draw)
-                    }
-                    updateLayerName={(id, newName, setLayers) => {
-                      updateLayerName(layer.id, newName, setLayers);
-                    }}
-                    isActiveLayer={activeLayerId === layer.id}
-                    setActiveLayer={setActiveLayer}
-                    index={index}
-                    isDarkMode={isDarkMode}
-                    draggable={true}
-                    onDragStart={(e) => handleDragStart(e, index, setDragging, setDraggedLayerIndex)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) =>
-                      handleDrop(
-                        e,
-                        index,
-                        draggedLayerIndex,
-                        layers,
-                        setLayers,
-                        setDragging
-                      )
-                    }
-                    draw={draw}
-                    mapRef={mapRef.current}
-                    setDragging={setDragging}
-                    setDraggedLayerIndex={setDraggedLayerIndex}
-                    setLayers={setLayers}
-                  />
-                ))}
-              </ul>
+              <div
+                style={{
+                  maxHeight: "min(35vh, 350px)", // adjust as needed
+                  overflowY: "auto",
+                }}
+              >
+                <ul style={{ ...listStyle(currentTheme), margin: 0, padding: 0 }}>
+                  {layers.map((layer, index) => (
+                    <LayerItem
+                      key={layer.id || `layer-${index}`}
+                      layer={layer}
+                      toggleLayerVisibility={() =>
+                        toggleLayerVisibility(mapRef.current, layer, setLayers)
+                      }
+                      toggleLayerLock={() => toggleLayerLock(layer, setLayers)}
+                      removeLayer={() =>
+                        removeLayer(mapRef.current, layer, setLayers, draw)
+                      }
+                      updateLayerName={(id, newName, setLayers) => {
+                        updateLayerName(layer.id, newName, setLayers);
+                      }}
+                      isActiveLayer={activeLayerId === layer.id}
+                      setActiveLayer={setActiveLayer}
+                      index={index}
+                      isDarkMode={isDarkMode}
+                      draggable={true}
+                      onDragStart={(e) => handleDragStart(e, index, setDragging, setDraggedLayerIndex)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) =>
+                        handleDrop(
+                          e,
+                          index,
+                          draggedLayerIndex,
+                          layers,
+                          setLayers,
+                          setDragging
+                        )
+                      }
+                      draw={draw}
+                      mapRef={mapRef.current}
+                      setDragging={setDragging}
+                      setDraggedLayerIndex={setDraggedLayerIndex}
+                      setLayers={setLayers}
+                    />
+                  ))}
+                </ul>
+              </div>
 
               {/* System Layers Section */}
               <div style={{ marginTop: '16px' }}>
@@ -437,11 +450,12 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
             </div>
           </>
         )}
-      </div>
+      </div >
 
       {mapNotReady && (
         <Modal isOpen={mapNotReady} onClose={() => setMapNotReady(false)} />
-      )}
+      )
+      }
     </>
   );
 };

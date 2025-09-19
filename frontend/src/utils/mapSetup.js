@@ -3,6 +3,9 @@ import { loadImage, loadCustomImages, initTyphoonLayer, initDrawControl, typhoon
 import era5_c1 from '../data/era5_ph_wind_wave.geojson';
 
 export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages, isDarkMode }) {
+  const lineColor = isDarkMode ? '#19b8b7' : '#000000';
+  const textColor = isDarkMode ? '#ffffff' : '#000000';
+
   if (!map) return console.warn('No map instance provided');
   if (typeof setLoading === 'function') {
     setLoading(true)
@@ -28,58 +31,65 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
 
   map.addSource('wind_data_source', {
     type: 'raster-array',
-    url: 'mapbox://karlbernaldizzy.07022025',
+    url: 'mapbox://karlbernaldizzy.12SEP2025v2',
     tileSize: 4096
   });
 
-  map.addSource('era5_c1', {
-    type: 'geojson',
-    data: era5_c1,
-  });
+  // map.addSource('era5_c1', {
+  //   type: 'geojson',
+  //   data: era5_c1,
+  // });
 
-  map.addLayer({
-    id: 'wind_barbs',
-    type: 'symbol',
-    source: 'era5_c1',
-    layout: {
-      // show wavePeriod only if it's not 9999
-      'text-field': [
-        'case',
-        ['==', ['get', 'wavePeriod'], 9999],
-        '', // show nothing if wavePeriod is 9999
-        ["to-string", ["round", ["get", "wavePeriod"]]] // else show rounded value
-      ],
-      'text-size': 16,
+  // map.addLayer({
+  //   id: 'wind_barbs',
+  //   type: 'symbol',
+  //   source: 'era5_c1',
+  //   slot: 'bottom',
+  //   layout: {
+  //     // show wavePeriod only if it's not 9999
+  //     'text-field': [
+  //       'case',
+  //       ['==', ['get', 'wavePeriod'], 9999],
+  //       '', // show nothing if wavePeriod is 9999
+  //       ["to-string", ["round", ["get", "wavePeriod"]]] // else show rounded value
+  //     ],
+  //     'text-size': 16,
 
-      // rotate text same as icon
-      'text-rotate': [
-        '*',
-        10,
-        ["round", ["/", ["get", "windDirection"], 10]]
-      ],
+  //     // rotate text same as icon
+  //     'text-rotate': [
+  //       '*',
+  //       10,
+  //       ["round", ["/", ["get", "windDirection"], 10]]
+  //     ],
 
-      // pick icon name dynamically by windSpeed bins
-      'icon-image': [
-        'step', ["get", "windSpeed"],
-        ["image", "0kts", { "params": { "color-1": "#192750" } }], // <= 2
-        3.57632, "5kts",
-        6.25856, "10kts",
-        8.9408, "15kts",
-        11.176, "20kts",
-        13.85824, "25kts",
-        16.54048, "30kts"
-      ],
+  //     // pick icon name dynamically by windSpeed bins
+  //     'icon-image': [
+  //       'step', ["get", "windSpeed"],
+  //       ["image", "0kts", { "params": { "color-1": "#192750" } }], // <= 2
+  //       3.57632, "5kts",
+  //       6.25856, "10kts",
+  //       8.9408, "15kts",
+  //       11.176, "20kts",
+  //       13.85824, "25kts",
+  //       16.54048, "30kts"
+  //     ],
 
-      'icon-size': 3,
+  //     'icon-size': 3,
 
-      // rotate icon by wind direction
-      'icon-rotate': [
-        '*',
-        10,
-        ["round", ["/", ["get", "windDirection"], 10]]
-      ]
-    }
-  });
+  //     // rotate icon by wind direction
+  //     'icon-rotate': [
+  //       '*',
+  //       10,
+  //       ["round", ["/", ["get", "windDirection"], 10]]
+  //     ]
+  //   },
+  //   paint: {
+  //     // text color adapts to dark mode
+  //     'text-color': isDarkMode ? '#19b8b7' : '#000000',
+  //     'text-halo-color': isDarkMode ? '#0d0d0d' : '#ffffff',
+  //     'text-halo-width': 1.5
+  //   }
+  // });
 
   map.addLayer({
     id: 'wind-layer',
@@ -253,10 +263,10 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
         source: sourceId,
         slot: 'top',
         paint: {
-          'line-color': '#000000',
+          'line-color': lineColor,
           'line-opacity': 0.5,
           'line-width': 3,
-          'line-dasharray': isDashed ? [.5, .5] : [], // Dashed line if not closedMode
+          'line-dasharray': isDashed ? [0.5, 0.5] : [],
         },
         filter: ['==', '$type', 'LineString'],
       });
@@ -311,8 +321,9 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
               'text-offset': [0, 0.5],
             },
             paint: {
-              'text-color': '#000000',
+              'text-color': textColor,
               'text-halo-width': 2,
+              'text-halo-color': isDarkMode ? '#19b8b7' : '#ffffff', // subtle halo for readability
             },
           });
         });
@@ -396,12 +407,18 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   }
 
   if (ShippingZonestate === 'true') {
-    map.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', 'visible');
-    map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', 'visible');
+    map.setLayoutProperty('graticules', 'visibility', 'visible');
+    map.setLayoutProperty('graticules_blur', 'visibility', 'visible');
+    map.setLayoutProperty('country-boundaries', 'visibility', 'visible');
+    // map.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', 'visible');
+    // map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', 'visible');
     // map.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', 'visible');
   } else {
-    map.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', 'none');
-    map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', 'none');
+    // map.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', 'none');
+    // map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', 'none');
+    map.setLayoutProperty('graticules', 'visibility', 'none');
+    map.setLayoutProperty('graticules_blur', 'visibility', 'none');
+    map.setLayoutProperty('country-boundaries', 'visibility', 'none');
   }
 
   if (windLayerState === 'true') {

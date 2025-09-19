@@ -52,7 +52,7 @@ const SidePanelWrapper = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  z-index: 200;
+  z-index: 100;
   animation: ${slideInLeft} 0.6s ease-out;
 
   @media (max-width: 768px) {
@@ -62,6 +62,18 @@ const SidePanelWrapper = styled.div`
     flex-direction: column;
     align-items: stretch;
   }
+`;
+
+const blinkAnimation = keyframes`
+  0%, 100% { border-color: transparent; }
+  50% { border-color: #f59e0b; } /* amber/orange */
+`;
+
+const BlinkingButtonWrapper = styled.div`
+  border: 2px solid transparent;
+  border-radius: 8px;
+  display: inline-block;
+  animation: ${({ blink }) => blink ? css`${blinkAnimation} 0.5s ease-in-out infinite` : 'none'};
 `;
 
 const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
@@ -99,6 +111,14 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const setLayersRef = useRef();
   const markerTitleRef = useRef('');
   let projectId = localStorage.getItem('projectId');
+
+  useEffect(() => {
+    if (!projectId) {
+      setBlink(blink); // start blinking
+      const timer = setTimeout(() => setBlink(false), 3000); // stop after 3s
+      return () => clearTimeout(timer);
+    }
+  }, [projectId]);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -333,12 +353,11 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         onInputChange={handleTitleChange}
       />
 
-      {!isLoadingProject && projectId && (
+      {!isLoadingProject && (
         <>
           <SidePanelWrapper>
             <ProjectMenu
-              blink={blink}
-              setBlink={setBlink}
+              blink={blink}  // ✅ blink prop
               projectId={projectId}
               mapRef={mapRef}
               features={{ type: "FeatureCollection", features: savedFeatures }}
@@ -353,15 +372,18 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
               mapRef={mapRef}
               isDarkMode={isDarkMode}
               draw={drawInstance}
-            />
-            <LayerPanel
-              layers={layers}
-              setLayers={setLayers}
-              mapRef={mapRef}
-              isDarkMode={isDarkMode}
-              draw={drawInstance}
+              setIsLoading={setIsLoading}
+              isLoading={isLoading}
             />
           </SidePanelWrapper>
+
+          <LayerPanel
+            layers={layers}
+            setLayers={setLayers}
+            mapRef={mapRef}
+            isDarkMode={isDarkMode}
+            draw={drawInstance}
+          />
 
           {/* <MiscLayer mapRef={mapRef} /> */}
 

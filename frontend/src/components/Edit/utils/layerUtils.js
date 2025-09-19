@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';  // Import SweetAlert2
 export function addWindLayer(map) {
     map.addSource('wind_data_source', {
         type: 'raster-array',
-        url: 'mapbox://karlbernaldizzy.noaa_grib',
+        url: 'mapbox://karlbernaldizzy.12SEP2025v2',
         tileSize: 4320
     });
 

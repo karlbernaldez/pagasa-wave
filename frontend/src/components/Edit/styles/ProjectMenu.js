@@ -1,6 +1,6 @@
 // src/components/menu/ProjectMenu.styles.js
 
-import styled from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 
 export const Wrapper = styled.div`
   position: fixed;
@@ -8,6 +8,11 @@ export const Wrapper = styled.div`
   left: 1.8rem;
   z-index: ${({ theme }) => theme.zIndex.stickyHeader};
   font-family: ${({ theme }) => theme.fonts.regular};
+`;
+
+const blinkBorder = keyframes`
+  0%, 100% { border-color: transparent; }
+  50% { border-color: #f59e0b; }  // amber/orange
 `;
 
 export const MenuButton = styled.button`
@@ -25,6 +30,13 @@ export const MenuButton = styled.button`
     background: ${({ theme }) => theme.colors.background};
     transform: scale(1.03);
   }
+
+  /* Only apply blink when blink prop is true */
+  ${({ blink }) =>
+    blink &&
+    css`
+      animation: ${blinkBorder} 0.5s ease-in-out 6; /* 6 times = 3 seconds total */
+    `}
 `;
 
 export const Dropdown = styled.div`
