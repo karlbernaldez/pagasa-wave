@@ -8,12 +8,14 @@ export const ToolbarContainer = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
-  background: ${({ theme }) => theme.colors.lightBackground};
+  background: ${({ theme }) => theme?.colors?.bgPrimary};
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid #d1d5db;
   border-radius: 30px;
   padding: 0.3rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* small shadow added */
-  z-index: 999;
+  z-index: 100;
   gap: 0.75rem;
 `;
 
@@ -24,8 +26,9 @@ export const ToolButton = styled.button`
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: ${({ active, theme }) =>
-    active ? theme.colors.activeButtonBackground : theme.colors.lightBackground};
+  background: ${({ theme }) => theme?.colors?.bgPrimary};
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: ${({ active, theme }) =>
     active ? theme.colors.activeButtonColor : theme.colors.buttonColor};
   border: none;
@@ -46,7 +49,9 @@ export const ToolButton = styled.button`
 export const CollapseToggle = styled.button`
   width: 40px;
   height: 40px;
-  background: ${({ theme }) => theme.colors.lightBackground};
+  background: ${({ theme }) => theme?.colors?.bgPrimary};
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 50%;
   display: flex;
   align-items: center;

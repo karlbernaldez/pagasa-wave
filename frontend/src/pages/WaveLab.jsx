@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import styled from "@emotion/styled";
+import styled, { useTheme, css, keyframes } from 'styled-components';
 import MiscLayer from "../components/Edit/MiscLayer";
 import MapComponent from "../components/Edit/MapComponent";
 import LayerPanel from "../components/Edit/LayerPanel";
@@ -34,6 +34,48 @@ const MapWrapper = styled.div`
   position: relative;
 `;
 
+const slideInLeft = keyframes`
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+`;
+
+const SidePanelWrapper = styled.div`
+  position: fixed;
+  top: 5rem;
+  left: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  z-index: 100;
+  animation: ${slideInLeft} 0.6s ease-out;
+
+  @media (max-width: 768px) {
+    top: 1rem;
+    right: 1rem;
+    left: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const blinkAnimation = keyframes`
+  0%, 100% { border-color: transparent; }
+  50% { border-color: #f59e0b; } /* amber/orange */
+`;
+
+const BlinkingButtonWrapper = styled.div`
+  border: 2px solid transparent;
+  border-radius: 8px;
+  display: inline-block;
+  animation: ${({ blink }) => blink ? css`${blinkAnimation} 0.5s ease-in-out infinite` : 'none'};
+`;
+
 const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   // eslint-disable-next-line
   const [collapsed, setCollapsed] = useState(false);
@@ -53,6 +95,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const [type, setType] = useState(null);
   const [savedFeatures, setSavedFeatures] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [blink, setBlink] = useState(false);
 
   const [latestProject, setLatestProject] = useState(null);
   const [isLoadingProject, setIsLoadingProject] = useState(true);
@@ -70,6 +113,14 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   let projectId = localStorage.getItem('projectId');
 
   useEffect(() => {
+    if (!projectId) {
+      setBlink(blink); // start blinking
+      const timer = setTimeout(() => setBlink(false), 3000); // stop after 3s
+      return () => clearTimeout(timer);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
     const fetchProject = async () => {
       try {
         const projectData = await fetchLatestUserProject();
@@ -77,7 +128,17 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         localStorage.setItem('projectId', projectData._id);
         projectId = projectData._id;
       } catch (error) {
+        setIsLoadingProject(false);
+        setIsLoading(false);
         console.error('Failed to fetch the latest project:', error);
+
+        Swal.fire({
+          icon: "info",
+          title: "No Projects Found",
+          text: "Please create a new project to get started.",
+        }).then(() => {
+          setBlink(true);
+        });
       } finally {
         setIsLoadingProject(false);
       }
@@ -121,45 +182,47 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
 
     const setupFeaturesAndLayers = async () => {
       try {
-        const savedFeatures = await fetchFeatures(projectId);
+        if (projectId) {
+          const savedFeatures = await fetchFeatures(projectId);
 
-        // ⚠️ Extra safety check: filter features by projectId from localStorage
-        const filteredFeatures = savedFeatures.filter(
-          f => f?.properties?.project === projectId
-        );
+          // ⚠️ Extra safety check: filter features by projectId from localStorage
+          const filteredFeatures = savedFeatures.filter(
+            f => f?.properties?.project === projectId
+          );
 
-        setSavedFeatures(filteredFeatures);
+          setSavedFeatures(filteredFeatures);
 
-        const initialLayers = filteredFeatures.map(f => {
-          return {
-            id: f.sourceId,
-            name: f.name || "Untitled Feature",
-            visible: true,
-            locked: false,
-            type: f.properties.type || 'Wave Height',
-          };
-        });
+          const initialLayers = filteredFeatures.map(f => {
+            return {
+              id: f.sourceId,
+              name: f.name || "Untitled Feature",
+              visible: true,
+              locked: false,
+              type: f.properties.type || 'Wave Height',
+            };
+          });
 
-        setLayers(initialLayers);
+          setLayers(initialLayers);
 
-        cleanupRef.current = setupMap({
-          map,
-          mapRef,
-          setDrawInstance,
-          setMapLoaded,
-          setSelectedPoint,
-          setShowTitleModal,
-          setLineCount,
-          initialFeatures: {
-            type: "FeatureCollection",
-            features: filteredFeatures,
-          },
-          logger,
-          setLoading: setIsLoading,
-          selectedToolRef,
-          setCapturedImages,
-          isDarkMode,
-        });
+          cleanupRef.current = setupMap({
+            map,
+            mapRef,
+            setDrawInstance,
+            setMapLoaded,
+            setSelectedPoint,
+            setShowTitleModal,
+            setLineCount,
+            initialFeatures: {
+              type: "FeatureCollection",
+              features: filteredFeatures,
+            },
+            logger,
+            setLoading: setIsLoading,
+            selectedToolRef,
+            setCapturedImages,
+            isDarkMode,
+          });
+        }
       } catch (error) {
         console.error('[MAP LOAD ERROR]', error);
 
@@ -282,16 +345,6 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         />
       )}
 
-      {projectId && (
-        <LayerPanel
-          layers={layers}
-          setLayers={setLayers}
-          mapRef={mapRef}
-          isDarkMode={isDarkMode}
-          draw={drawInstance}
-        />
-      )}
-
       <MarkerTitleModal
         isOpen={showTitleModal}
         onClose={() => setShowTitleModal(false)}
@@ -300,23 +353,43 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         onInputChange={handleTitleChange}
       />
 
-      <ProjectMenu
-        mapRef={mapRef}
-        features={{ type: "FeatureCollection", features: savedFeatures }}
-        isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
-        setMapLoaded={setMapLoaded}
-        isLoading={isLoading}
-      />
-
-      {!isLoadingProject && projectId && (
+      {!isLoadingProject && (
         <>
-          <ProjectInfo />
-          <MiscLayer
+          <SidePanelWrapper>
+            <ProjectMenu
+              blink={blink}  // ✅ blink prop
+              projectId={projectId}
+              mapRef={mapRef}
+              features={{ type: "FeatureCollection", features: savedFeatures }}
+              isDarkMode={isDarkMode}
+              setIsDarkMode={setIsDarkMode}
+              setMapLoaded={setMapLoaded}
+              isLoading={isLoading}
+            />
+            <ProjectInfo
+              layers={layers}
+              setLayers={setLayers}
+              mapRef={mapRef}
+              isDarkMode={isDarkMode}
+              draw={drawInstance}
+              setIsLoading={setIsLoading}
+              isLoading={isLoading}
+            />
+          </SidePanelWrapper>
+
+          <LayerPanel
+            layers={layers}
+            setLayers={setLayers}
             mapRef={mapRef}
+            isDarkMode={isDarkMode}
+            draw={drawInstance}
           />
+
+          {/* <MiscLayer mapRef={mapRef} /> */}
+
           <LegendBox isDarkMode={isDarkMode} />
         </>
+
       )}
 
       {isLoading && <MapLoading />}
