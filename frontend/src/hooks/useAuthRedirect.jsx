@@ -1,18 +1,20 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const AUTH_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/auth`;
+
 const useAuthRedirect = (redirectPath = '/wavelab') => {
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/check', {
+        const response = await fetch(`${AUTH_API_BASE_URL}/check`, {
           method: 'GET',
           credentials: 'include',
         });
         const data = await response.json();
-        
+
         if (response.ok) {
           if (data.user.role === 'admin') {
             redirectPath = '/dashboard';
