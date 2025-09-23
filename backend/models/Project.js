@@ -5,7 +5,6 @@ const ProjectSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
   },
   description: {
     type: String,
@@ -30,5 +29,8 @@ const ProjectSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+// Compound unique index: ensures no duplicate name for the same owner
+ProjectSchema.index({ name: 1, owner: 1 }, { unique: true });
 
 export default mongoose.models.Project || mongoose.model('Project', ProjectSchema);
