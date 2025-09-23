@@ -13,13 +13,14 @@ connectDB();
 
 const allowedOrigins = [
   'http://10.8.0.2:3000',
-  'http://35.222.38.75:8080',
-  'http://35.222.38.75:3001',
+  'http://34.122.153.132:8080',
+  'http://34.172.63.27:3030',
+  'http://34.172.63.27:3001',
   'http://localhost:3001'
 ];
 
 const corsOptions = {
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, postman)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
@@ -31,8 +32,9 @@ const corsOptions = {
   credentials: true,
 };
 
-app.use(cors(corsOptions)); // Use CORS with custom options first
-app.use(express.json());
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
 // Define routes

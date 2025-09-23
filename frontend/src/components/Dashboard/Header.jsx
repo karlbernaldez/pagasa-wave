@@ -504,12 +504,16 @@ const HeaderComponent = ({ activeTab, onMobileMenuToggle }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const AUTH_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/auth`;
+
+  const checkRoute = `${AUTH_API_BASE_URL}/check`;
+
   // Get user data from localStorage or context
   useEffect(() => {
     const loadUserData = async () => {
       try {
         // First, check if the user is authenticated
-        const checkResponse = await fetch('/api/auth/check', {
+        const checkResponse = await fetch(checkRoute, {
           method: 'GET',
           credentials: 'include',  // Ensure the cookie is sent with the request
         });
