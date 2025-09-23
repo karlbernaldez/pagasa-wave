@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { refreshAccessToken } from '../api/auth';
 
+const AUTH_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/auth`;
+
+const checkRoute = `${AUTH_API_BASE_URL}/check`;
+
 const ModalBackdrop = styled.div`
   position: fixed;
   top: 0;
@@ -55,7 +59,7 @@ const ProtectedAdminRoute = ({ element: Element, requireAuth = true, onDeny = nu
   // Check authentication by making an API request to the backend
   const checkAuthentication = async () => {
     try {
-      const response = await fetch('/api/auth/check', {
+      const response = await fetch(checkRoute, {
         method: 'GET',
         credentials: 'include', // Include cookies with the request
       });
@@ -67,7 +71,7 @@ const ProtectedAdminRoute = ({ element: Element, requireAuth = true, onDeny = nu
 
       } else if (response.status === 403) {
         await refreshAccessToken();
-        const response = await fetch('/api/auth/check', {
+        const response = await fetch(checkRoute, {
           method: 'GET',
           credentials: 'include', // Send cookies
         });

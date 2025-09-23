@@ -2,7 +2,7 @@ import Swal from 'sweetalert2';
 import ProjectModal from '../modals/ProjectModal'
 import SubmitModal from '../modals/SubmitModal';
 import withReactContent from 'sweetalert2-react-content';
-import { fetchUserProjects } from '../../api/projectAPI';
+import { fetchUserProjects, deleteProjectById } from '../../api/projectAPI';
 import ProjectListModal from '../modals/ProjectListModal';
 import React, { useState, useRef, useEffect } from 'react';
 import dayjs from 'dayjs';
@@ -11,7 +11,7 @@ import { logout, handleCreateProject as createProjectHandler, downloadCachedSnap
 
 const MySwal = withReactContent(Swal);
 
-const ProjectMenu = ({ onNew, onSave, onView, onExport, mapRef, features, isDarkMode, setIsDarkMode, setMapLoaded, isLoading }) => {
+const ProjectMenu = ({ blink, onNew, onSave, onView, onExport, mapRef, features, isDarkMode, setIsDarkMode, setMapLoaded, isLoading }) => {
   const [mainOpen, setMainOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -57,12 +57,36 @@ const ProjectMenu = ({ onNew, onSave, onView, onExport, mapRef, features, isDark
     }
   };
 
+  const handleDeleteProject = async (projectId) => {
+    try {
+      await deleteProjectById(projectId); // Replace with your actual API call
+
+      // Remove project info from localStorage
+      localStorage.removeItem('projectId');
+      localStorage.removeItem('projectName'); // if you stored it
+      // Remove any other project-related keys if needed
+
+      // Refresh the project list
+      const userProjects = await fetchUserProjects();
+      setProjects(userProjects);
+
+      window.location.reload();
+
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+    }
+  };
+
+
   return (
     <Wrapper ref={menuRef}>
-      <MenuButton onClick={() => {
-        setMainOpen(!mainOpen);
-        setProjectOpen(false);
-      }}>
+      <MenuButton
+        onClick={() => {
+          setMainOpen(!mainOpen);
+          setProjectOpen(false);
+        }}
+        blink={blink && !localStorage.getItem('projectId')} // blink only if no project ID
+      >
         ☰
       </MenuButton>
 
@@ -140,6 +164,7 @@ const ProjectMenu = ({ onNew, onSave, onView, onExport, mapRef, features, isDark
           visible={showProjectList}
           projects={projects}
           onClose={() => setShowProjectList(false)}
+          onDelete={handleDeleteProject}
           onSelect={(proj) => {
             console.log("Selected project:", proj);
             localStorage.setItem("projectId", proj._id);
