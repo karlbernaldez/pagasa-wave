@@ -251,7 +251,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     { name: 'PAR', state: showPAR, key: 'PAR', description: 'Protected Areas and Reserves' },
     { name: 'TCID', state: showTCID, key: 'TCID', description: 'Territorial Coverage ID' },
     { name: 'TCAD', state: showTCAD, key: 'TCAD', description: 'Territorial Coverage AD' },
-    { name: 'Shipping Zone', state: showSHIPPINGZONE, key: 'SHIPPING_ZONE', description: 'Marine Shipping Routes' },
+    { name: 'Graticules, Wave & Wind', state: showSHIPPINGZONE, key: 'SHIPPING_ZONE', description: 'Graticules and Wave and Wind Elements' },
     { name: 'Wind Layer', state: showWindLayer, key: 'Wind Layer', description: 'Wind Speed & Direction' },
   ];
 

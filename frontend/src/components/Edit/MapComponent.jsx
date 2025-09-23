@@ -34,11 +34,12 @@ const MapComponent = ({ onMapLoad, isDarkMode }) => {
         center: [120.0, 15.5],
         minZoom: 3.5,
         zoom: 4,
+        maxZoom: 12,
         preserveDrawingBuffer: true,
-        // maxBounds: [
-        //   [98.0, -4.0],
-        //   [150.0, 30.8]
-        // ],
+        maxBounds: [
+          [95, -5], // Southwest corner
+          [170, 40]  // Northeast corner
+        ],
       });
 
       map.fitBounds(
