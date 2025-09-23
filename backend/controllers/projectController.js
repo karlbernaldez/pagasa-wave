@@ -4,26 +4,47 @@ import jwt from 'jsonwebtoken';
 
 export const createProject = async (req, res) => {
   try {
+    // --- Extract data ---
     const { name, description, chartType, forecastDate } = req.body;
     const owner = req.user?.id;
 
-    if (!name || !chartType || !owner) {
-      return res.status(400).json({ message: 'Project name required.' });
+    // --- Validate required fields ---
+    if (!owner) {
+      return res.status(401).json({ message: 'Unauthorized: owner missing' });
+    }
+    if (!name || !chartType) {
+      return res.status(400).json({ message: 'Project name and chartType are required.' });
     }
 
-    // Check for duplicate project name for the same user
+    // --- Check duplicate project name per owner ---
     const existing = await Project.findOne({ name, owner });
     if (existing) {
-      return res.status(409).json({ message: 'A project with this name already exists.' });
+      return res.status(409).json({ message: 'A project with this name already exists for this user.' });
     }
 
-    const project = new Project({ name, description, chartType, forecastDate, owner });
+    // --- Create new project ---
+    const project = new Project({
+      name,
+      description: description || '',
+      chartType,
+      forecastDate: forecastDate || null,
+      owner,
+    });
+
     await project.save();
 
+    // --- Return success ---
     res.status(201).json(project);
+
   } catch (error) {
     console.error('Error creating project:', error);
-    res.status(500).json({ message: 'Server error' });
+
+    // --- Return validation errors if available ---
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
