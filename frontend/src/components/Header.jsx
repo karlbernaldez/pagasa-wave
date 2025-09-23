@@ -159,9 +159,6 @@ const Header = ({ isDarkMode, setIsDarkMode }) => {
             </MobileUserSection>
           )}
 
-          {loading && (
-            <div>Loading...</div> // You can replace this with a spinner or a loading component
-          )}
         </NavLinks>
 
         <ButtonGroup>

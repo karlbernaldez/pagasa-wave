@@ -390,8 +390,10 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
 
   if (PARstate === 'true') {
     map.setLayoutProperty('PAR', 'visibility', 'visible');
+    map.setLayoutProperty('PAR_dash', 'visibility', 'visible');
   } else {
     map.setLayoutProperty('PAR', 'visibility', 'none');
+    map.setLayoutProperty('PAR_dash', 'visibility', 'none');
   }
 
   if (TCIDstate === 'true') {
@@ -408,8 +410,9 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
 
   if (ShippingZonestate === 'true') {
     map.setLayoutProperty('graticules', 'visibility', 'visible');
-    map.setLayoutProperty('graticules_blur', 'visibility', 'visible');
     map.setLayoutProperty('country-boundaries', 'visibility', 'visible');
+    map.setLayoutProperty('ERA5_c1', 'visibility', 'visible');
+    map.setLayoutProperty('ERA5_c2', 'visibility', 'visible');
     // map.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', 'visible');
     // map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', 'visible');
     // map.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', 'visible');
@@ -417,8 +420,9 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
     // map.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', 'none');
     // map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', 'none');
     map.setLayoutProperty('graticules', 'visibility', 'none');
-    map.setLayoutProperty('graticules_blur', 'visibility', 'none');
     map.setLayoutProperty('country-boundaries', 'visibility', 'none');
+    map.setLayoutProperty('ERA5_c1', 'visibility', 'none');
+    map.setLayoutProperty('ERA5_c2', 'visibility', 'none');
   }
 
   if (windLayerState === 'true') {
