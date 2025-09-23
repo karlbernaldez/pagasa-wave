@@ -2,10 +2,10 @@ import requests
 import time
 
 # === CONFIG ===
-ACCESS_TOKEN = "sk.eyJ1Ijoia2FybGJlcm5hbGRpenp5IiwiYSI6ImNtZjR4NHl5bjBhY2wya29rNmFudmtrOGUifQ.8PUYjnXRpde6LzOXh9Nc6g"
-USERNAME = "karlbernaldizzy"
-TILESET_NAME = "votewave.era5_wind_wave"
-FILE_PATH = "era5_ph_wind_wave.geojson"  # Local file path
+ACCESS_TOKEN = ""
+USERNAME = ""
+TILESET_NAME = ""
+FILE_PATH = ""
 
 # 1️⃣ Upload the file directly
 upload_url = f"https://api.mapbox.com/uploads/v1/{USERNAME}?access_token={ACCESS_TOKEN}"
