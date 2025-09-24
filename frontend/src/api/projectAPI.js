@@ -1,4 +1,4 @@
-const PROJECT_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/projects`;
+const PROJECT_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/projects`;
 
 // 📌 Create a new project
 export const createProject = async (projectData) => {

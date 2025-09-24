@@ -480,13 +480,13 @@ export const handlePointerUp = async (
         });
       }
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Feature Saved',
-        text: 'Your feature was saved successfully!',
-        timer: 800,
-        showConfirmButton: false,
-      });
+      // Swal.fire({
+      //   icon: 'success',
+      //   title: 'Feature Saved',
+      //   text: 'Your feature was saved successfully!',
+      //   timer: 800,
+      //   showConfirmButton: false,
+      // });
 
     } catch (err) {
       console.error('Error saving feature:', err);

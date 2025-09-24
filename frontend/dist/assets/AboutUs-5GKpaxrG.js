@@ -1,0 +1,1 @@
+import{j as s}from"./index-CbM3mBlV.js";const n=()=>s.jsxs("div",{children:[s.jsx("h1",{children:"About Us"}),s.jsx("p",{children:"We are a company focused on creating amazing things."})]});export{n as default};

@@ -41,7 +41,7 @@ const Layout = () => {
   const isMobile = useIsMobile();
   const { isLoginPage, isRegisterPage, isDashboardPage, isEditPage } = useRouteChecks(); // Use custom hook
   const isAuthPage = isLoginPage || isRegisterPage;
-  
+
   // State management
   const [modalVisible, setModalVisible] = useState(false);
   const [accessDeniedVisible, setAccessDeniedVisible] = useState(false);
