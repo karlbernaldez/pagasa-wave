@@ -16,7 +16,10 @@ const allowedOrigins = [
   'http://34.122.153.132:8080',
   'http://34.172.63.27:3030',
   'http://34.172.63.27:3001',
-  'http://localhost:3001'
+  'http://localhost:3001',
+  'http://localhost:3000',
+  'http://192.168.5.1:3000',
+  'http://10.8.0.1:5173'
 ];
 
 const corsOptions = {

@@ -10,3 +10,7 @@ html, body, #root {
 .swal2-container {
   z-index: 9999 !important;
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

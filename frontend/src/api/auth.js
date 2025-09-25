@@ -1,4 +1,4 @@
-const AUTH_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/auth`;
+const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 
 export const registerUser = async (userData) => {
   const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
