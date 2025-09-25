@@ -2,7 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 
-mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 const MapComponent = ({ onMapLoad, isDarkMode }) => {
   const mapContainerRef = useRef(null);
@@ -32,8 +32,8 @@ const MapComponent = ({ onMapLoad, isDarkMode }) => {
           ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk' //--Dark
           : 'mapbox://styles/karlbernaldizzy/cmf6i7nne000501s2hbmw8phn',
         center: [120.0, 15.5],
-        minZoom: 3.5,
-        zoom: 4,
+        minZoom: 4,
+        zoom: 4.2,
         maxZoom: 12,
         preserveDrawingBuffer: true,
         maxBounds: [

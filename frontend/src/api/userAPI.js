@@ -1,4 +1,4 @@
-const USER_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/users`;
+const USER_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/users`;
 
 // 📌 Get all users (Admin)
 export const fetchAllUsers = async (token) => {

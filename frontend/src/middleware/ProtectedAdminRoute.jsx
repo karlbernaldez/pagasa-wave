@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { refreshAccessToken } from '../api/auth';
 
-const AUTH_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/auth`;
+const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 
 const checkRoute = `${AUTH_API_BASE_URL}/check`;
 

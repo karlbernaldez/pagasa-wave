@@ -41,7 +41,7 @@ const MapboxAutocomplete = ({ value, onChange, onSelect }) => {
       try {
         const res = await axios.get('https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(value) + '.json', {
           params: {
-            access_token: process.env.REACT_APP_MAPBOX_ACCESS_TOKEN,
+            access_token: import.meta.env.VITE_MAPBOX_ACCESS_TOKEN,
             autocomplete: true,
             country: 'PH',
             limit: 5

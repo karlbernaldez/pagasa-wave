@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import styled, { useTheme, css, keyframes } from 'styled-components';
-import MiscLayer from "../components/Edit/MiscLayer";
 import MapComponent from "../components/Edit/MapComponent";
 import LayerPanel from "../components/Edit/LayerPanel";
 import DrawToolBar from "../components/Edit/Toolbar";
@@ -96,14 +95,9 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const [savedFeatures, setSavedFeatures] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [blink, setBlink] = useState(false);
-
   const [latestProject, setLatestProject] = useState(null);
   const [isLoadingProject, setIsLoadingProject] = useState(true);
-
-  const [capturedImages, setCapturedImages] = useState({
-    light: null,
-    dark: null
-  });
+  const [capturedImages, setCapturedImages] = useState({ light: null, dark: null });
 
   const selectedToolRef = useRef(null);
   const mapRef = useRef(null);

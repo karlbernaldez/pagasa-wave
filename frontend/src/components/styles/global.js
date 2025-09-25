@@ -7,6 +7,22 @@ export const GlobalStyle = createGlobalStyle`
     padding: 0;
   }
 
+  html, body, #root {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    /* Hide scrollbar */
+    -ms-overflow-style: none;  /* IE & Edge */
+    scrollbar-width: none;     /* Firefox */
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  #root::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
   html {
     scroll-behavior: smooth;
     font-size: 16px;
@@ -16,7 +32,6 @@ export const GlobalStyle = createGlobalStyle`
     font-family: 'Segoe UI', 'Roboto', 'Open Sans', sans-serif;
     background-color: ${({ theme }) => theme.colors.background};
     color: ${({ theme }) => theme.colors.text};
-    overflow-x: hidden;
   }
 
   img {
@@ -39,8 +54,21 @@ export const AppContainer = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: ${({ theme, $isDarkMode }) => $isDarkMode ? theme.colors.darkBackground : theme.colors.lightBackground};
+  background: ${({ theme, $isDarkMode }) =>
+    $isDarkMode ? theme.colors.darkBackground : theme.colors.lightBackground};
   transition: all 0.3s;
+
+  /* Scroll handling */
+  overflow-y: ${({ $noscroll }) => ($noscroll ? 'hidden' : 'auto')};
+  overflow-x: hidden;
+
+  /* Hide scrollbar but keep scroll functionality when enabled */
+  -ms-overflow-style: none;  /* IE & Edge */
+  scrollbar-width: none;     /* Firefox */
+
+  &::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
 `;
 
 export const MainContent = styled.main`
