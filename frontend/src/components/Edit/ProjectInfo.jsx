@@ -595,7 +595,6 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
 
-  const theme = useTheme();
 
   // Click outside handler
   useEffect(() => {
@@ -916,66 +915,8 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
 
   return (
     <>
-      {/* <Dropdown $visible={mainOpen}>
-        <MenuItem onClick={() => setProjectOpen(!projectOpen)} aria-expanded={projectOpen} >
-          <FaFolder />
-          Project
-        </MenuItem>
-        {projectOpen && (
-          <SubDropdown>
-            <SubMenuItem onClick={() => setShowModal(true)}>
-              <FaPlus />
-              New Project
-            </SubMenuItem>
-            <SubMenuItem onClick={async () => {
-              try {
-                const userProjects = await fetchUserProjects();
-                setProjects(userProjects);
-                setShowProjectList(true);
-              } catch (err) {
-                Swal.fire({
-                  toast: true,
-                  position: 'top-end',
-                  icon: 'error',
-                  title: 'Failed to load projects',
-                  showConfirmButton: false,
-                  timer: 2500,
-                });
-              }
-            }}>
-              <FaFolder />
-              Open Project
-            </SubMenuItem>
-            <SubMenuItem onClick={async () => {
-              downloadCachedSnapshotZip(setIsDarkMode, features);
-            }}>
-              <FaFileExport />
-              Export Project
-            </SubMenuItem>
-          </SubDropdown>
-        )}
-        <MenuItem onClick={onView}>
-          <FaEye />
-          View
-        </MenuItem>
-        <MenuItem onClick={() => setShowSubmitModal(true)}>
-          <FaPaperPlane />
-          Submit
-        </MenuItem>
-        <MenuItem onClick={logout} $danger>
-          <FaSignOutAlt />
-          Logout
-        </MenuItem>
-      </Dropdown> */}
-
       <InfoContainer ref={menuRef}>
         <InfoHeader>
-          {/* <MenuButton onClick={() => {
-            setMainOpen(!mainOpen);
-            setProjectOpen(false);
-          }}>
-            <FaBars />
-          </MenuButton> */}
           <InfoTitle>
             <FaFolder />
             Project Details

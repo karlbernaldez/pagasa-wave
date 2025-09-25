@@ -1,508 +1,292 @@
-import React from 'react';
-import styled from 'styled-components';
-import { 
-  Cloud, 
-  Zap, 
-  Shield, 
-  Smartphone, 
-  Globe, 
-  Bell,
-  BarChart3,
-  MapPin,
-  Calendar,
-  Thermometer,
-  Wind,
-  Eye
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Cloud, Zap, Shield, Smartphone, Globe, Bell, BarChart3, MapPin, Calendar, Thermometer, Wind, Eye, ArrowUpRight, Sun, Moon } from 'lucide-react';
 
-// Features Section Styled Components
-const FeaturesContainer = styled.section`
-  position: relative;
-  padding: 6rem 0;
-  background: ${props => props.isDark
-    ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)'
-    : 'linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%)'};
-  overflow: hidden;
-`;
 
-const BackgroundPattern = styled.div`
-  position: absolute;
-  inset: 0;
-  opacity: 0.05;
-  background-image: radial-gradient(circle at 1px 1px, ${props => props.isDark ? '#60a5fa' : '#0ea5e9'} 1px, transparent 0);
-  background-size: 40px 40px;
-  animation: drift 20s ease-in-out infinite;
-  
-  @keyframes drift {
-    0%, 100% { transform: translateX(0) translateY(0); }
-    50% { transform: translateX(20px) translateY(-20px); }
-  }
-`;
-
-const FloatingElements = styled.div`
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-`;
-
-const FloatingIcon = styled.div`
-  position: absolute;
-  color: ${props => props.isDark ? '#3b82f6' : '#0ea5e9'};
-  opacity: 0.1;
-  animation: float 8s ease-in-out infinite;
-  
-  &.icon-1 {
-    top: 10%;
-    left: 5%;
-    animation-delay: 0s;
-  }
-  
-  &.icon-2 {
-    top: 20%;
-    right: 8%;
-    animation-delay: 2s;
-  }
-  
-  &.icon-3 {
-    bottom: 30%;
-    left: 10%;
-    animation-delay: 4s;
-  }
-  
-  &.icon-4 {
-    bottom: 15%;
-    right: 15%;
-    animation-delay: 6s;
-  }
-  
-  svg {
-    width: 3rem;
-    height: 3rem;
-  }
-  
-  @keyframes float {
-    0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.1; }
-    50% { transform: translateY(-30px) rotate(180deg); opacity: 0.2; }
-  }
-`;
-
-const Container = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-  position: relative;
-  z-index: 10;
-  
-  @media (max-width: 768px) {
-    padding: 0 1rem;
-  }
-`;
-
-const SectionHeader = styled.div`
-  text-align: center;
-  margin-bottom: 4rem;
-`;
-
-const Badge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: ${props => props.isDark
-    ? 'rgba(14, 165, 233, 0.1)'
-    : 'rgba(14, 165, 233, 0.1)'};
-  border: 1px solid ${props => props.isDark
-    ? 'rgba(14, 165, 233, 0.2)'
-    : 'rgba(14, 165, 233, 0.2)'};
-  border-radius: 2rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: ${props => props.isDark ? '#60a5fa' : '#0ea5e9'};
-  margin-bottom: 1.5rem;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 2.5rem;
-  font-weight: 800;
-  line-height: 1.2;
-  color: ${props => props.isDark ? '#ffffff' : '#111827'};
-  margin-bottom: 1rem;
-  
-  @media (min-width: 640px) {
-    font-size: 3rem;
-  }
-  
-  @media (min-width: 1024px) {
-    font-size: 3.5rem;
-  }
-`;
-
-const GradientText = styled.span`
-  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-`;
-
-const SectionSubtitle = styled.p`
-  font-size: 1.125rem;
-  line-height: 1.7;
-  color: ${props => props.isDark ? '#d1d5db' : '#4b5563'};
-  max-width: 40rem;
-  margin: 0 auto;
-  
-  @media (min-width: 640px) {
-    font-size: 1.25rem;
-  }
-`;
-
-const FeaturesGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-  
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2.5rem;
-  }
-  
-  @media (min-width: 1024px) {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 3rem;
-  }
-`;
-
-const FeatureCard = styled.div`
-  position: relative;
-  background: ${props => props.isDark
-    ? 'rgba(31, 41, 55, 0.8)'
-    : 'rgba(255, 255, 255, 0.9)'};
-  backdrop-filter: blur(20px);
-  border: 1px solid ${props => props.isDark
-    ? 'rgba(75, 85, 99, 0.3)'
-    : 'rgba(255, 255, 255, 0.2)'};
-  border-radius: 1.25rem;
-  padding: 2rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, 
-      transparent, 
-      ${props => props.isDark ? 'rgba(59, 130, 246, 0.05)' : 'rgba(14, 165, 233, 0.05)'}, 
-      transparent
-    );
-    transition: left 0.6s ease;
-  }
-  
-  &:hover::before {
-    left: 100%;
-  }
-  
-  &:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: ${props => props.isDark
-      ? '0 25px 60px -12px rgba(59, 130, 246, 0.25)'
-      : '0 25px 60px -12px rgba(14, 165, 233, 0.15)'};
-    border-color: ${props => props.isDark
-      ? 'rgba(59, 130, 246, 0.3)'
-      : 'rgba(14, 165, 233, 0.3)'};
-  }
-`;
-
-const FeatureIcon = styled.div`
-  width: 4rem;
-  height: 4rem;
-  background: ${props => {
-    const colors = {
-      primary: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
-      secondary: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-      accent: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-      purple: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-      pink: 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
-      indigo: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
-    };
-    return colors[props.variant] || colors.primary;
-  }};
-  border-radius: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  svg {
-    width: 1.75rem;
-    height: 1.75rem;
-    color: white;
-  }
-  
-  ${FeatureCard}:hover & {
-    transform: scale(1.1) rotateY(10deg);
-    box-shadow: 0 12px 35px rgba(14, 165, 233, 0.3);
-  }
-`;
-
-const FeatureTitle = styled.h3`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: ${props => props.isDark ? '#ffffff' : '#111827'};
-  margin-bottom: 0.75rem;
-  transition: color 0.3s ease;
-`;
-
-const FeatureDescription = styled.p`
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: ${props => props.isDark ? '#d1d5db' : '#4b5563'};
-  transition: color 0.3s ease;
-`;
-
-const FeatureList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 1rem 0 0 0;
-`;
-
-const FeatureListItem = styled.li`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: ${props => props.isDark ? '#d1d5db' : '#4b5563'};
-  margin-bottom: 0.5rem;
-  
-  &::before {
-    content: '';
-    width: 0.375rem;
-    height: 0.375rem;
-    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-`;
-
-const StatsSection = styled.div`
-  margin-top: 5rem;
-  padding: 3rem 0;
-  border-top: 1px solid ${props => props.isDark ? 'rgba(75, 85, 99, 0.3)' : 'rgba(229, 231, 235, 0.5)'};
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
-  
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(4, 1fr);
-  }
-`;
-
-const StatItem = styled.div`
-  text-align: center;
-  padding: 1.5rem;
-  background: ${props => props.isDark
-    ? 'rgba(31, 41, 55, 0.5)'
-    : 'rgba(255, 255, 255, 0.7)'};
-  backdrop-filter: blur(10px);
-  border-radius: 1rem;
-  border: 1px solid ${props => props.isDark
-    ? 'rgba(75, 85, 99, 0.2)'
-    : 'rgba(255, 255, 255, 0.3)'};
-  transition: all 0.3s ease;
-  
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: ${props => props.isDark
-      ? '0 15px 35px rgba(0, 0, 0, 0.2)'
-      : '0 15px 35px rgba(0, 0, 0, 0.1)'};
-  }
-`;
-
-const StatNumber = styled.div`
-  font-size: 2rem;
-  font-weight: 800;
-  color: ${props => props.isDark ? '#ffffff' : '#111827'};
-  margin-bottom: 0.5rem;
-  
-  @media (min-width: 640px) {
-    font-size: 2.5rem;
-  }
-`;
-
-const StatLabel = styled.div`
-  font-size: 0.875rem;
-  color: ${props => props.isDark ? '#9ca3af' : '#6b7280'};
-  font-weight: 500;
-`;
-
-// Features Section Component
 const FeaturesSection = ({ isDark }) => {
+
   const features = [
     {
       icon: <Zap />,
       title: "Real-Time Updates",
-      description: "Get instant weather updates with our advanced monitoring systems.",
-      variant: "primary",
+      description: "Get instant weather updates with our advanced monitoring systems that track changes every minute.",
+      variant: "from-blue-500 to-cyan-500",
+      glowColor: "blue",
       items: [
-        "Live weather data",
+        "Live weather data streams",
         "Minute-by-minute updates",
-        "Push notifications",
-        "Alert system"
+        "Smart push notifications",
+        "Intelligent alert system"
       ]
     },
     {
       icon: <BarChart3 />,
       title: "Advanced Analytics",
-      description: "Comprehensive weather analysis with detailed charts and forecasts.",
-      variant: "secondary",
+      description: "Comprehensive weather analysis with AI-powered forecasting and detailed meteorological insights.",
+      variant: "from-emerald-500 to-teal-500",
+      glowColor: "emerald",
       items: [
-        "7-day forecasts",
-        "Historical data",
-        "Trend analysis",
-        "Weather patterns"
+        "15-day extended forecasts",
+        "Historical weather patterns",
+        "Climate trend analysis",
+        "Predictive weather modeling"
       ]
     },
     {
       icon: <MapPin />,
-      title: "Location-Based",
-      description: "Accurate weather information for your exact location worldwide.",
-      variant: "accent",
+      title: "Hyper-Local Precision",
+      description: "Pinpoint accuracy for your exact location with neighborhood-level weather precision.",
+      variant: "from-amber-500 to-orange-500",
+      glowColor: "amber",
       items: [
-        "GPS integration",
-        "Multiple locations",
-        "Local forecasts",
-        "Regional alerts"
+        "GPS-powered location tracking",
+        "Multiple saved locations",
+        "Micro-climate analysis",
+        "Hyperlocal weather alerts"
       ]
     },
     {
       icon: <Shield />,
-      title: "Severe Weather Alerts",
-      description: "Stay protected with timely warnings for dangerous weather conditions.",
-      variant: "purple",
+      title: "Severe Weather Protection",
+      description: "Advanced warning systems that keep you safe with early detection of dangerous conditions.",
+      variant: "from-purple-500 to-violet-500",
+      glowColor: "purple",
       items: [
-        "Storm warnings",
-        "Emergency alerts",
-        "Safety tips",
-        "Evacuation notices"
+        "Early storm detection",
+        "Emergency alert system",
+        "Safety recommendations",
+        "Evacuation route guidance"
       ]
     },
     {
       icon: <Smartphone />,
-      title: "Mobile Ready",
-      description: "Access weather information anywhere with our responsive mobile app.",
-      variant: "pink",
+      title: "Cross-Platform Experience",
+      description: "Seamlessly access weather data across all your devices with our responsive design.",
+      variant: "from-pink-500 to-rose-500",
+      glowColor: "pink",
       items: [
-        "Cross-platform",
-        "Offline access",
-        "Widget support",
-        "Dark mode"
+        "Native mobile apps",
+        "Progressive web app",
+        "Smart watch integration",
+        "Voice assistant support"
       ]
     },
     {
       icon: <Globe />,
-      title: "Global Coverage",
-      description: "Weather data from thousands of stations across the Philippines and beyond.",
-      variant: "indigo",
+      title: "Global Weather Network",
+      description: "Comprehensive coverage powered by thousands of weather stations and satellite data worldwide.",
+      variant: "from-indigo-500 to-blue-600",
+      glowColor: "indigo",
       items: [
-        "National coverage",
-        "International data",
-        "Satellite imagery",
-        "Radar maps"
+        "Worldwide coverage",
+        "Satellite integration",
+        "Doppler radar network",
+        "Ocean buoy data"
       ]
     }
   ];
 
   const stats = [
-    { number: "99.9%", label: "Accuracy Rate" },
-    { number: "24/7", label: "Monitoring" },
-    { number: "50M+", label: "Active Users" },
-    { number: "1000+", label: "Weather Stations" }
+    { number: "99.9%", label: "Forecast Accuracy", sublabel: "Verified daily" },
+    { number: "24/7", label: "Live Monitoring", sublabel: "Never offline" },
+    { number: "50M+", label: "Global Users", sublabel: "Trust our data" },
+    { number: "10K+", label: "Data Sources", sublabel: "Worldwide network" }
   ];
 
+  const glowClasses = {
+    blue: "group-hover:shadow-blue-500/25",
+    emerald: "group-hover:shadow-emerald-500/25",
+    amber: "group-hover:shadow-amber-500/25",
+    purple: "group-hover:shadow-purple-500/25",
+    pink: "group-hover:shadow-pink-500/25",
+    indigo: "group-hover:shadow-indigo-500/25"
+  };
+
   return (
-    <FeaturesContainer isDark={isDark}>
-      <BackgroundPattern isDark={isDark} />
-      
-      <FloatingElements>
-        <FloatingIcon className="icon-1" isDark={isDark}>
-          <Cloud />
-        </FloatingIcon>
-        <FloatingIcon className="icon-2" isDark={isDark}>
-          <Thermometer />
-        </FloatingIcon>
-        <FloatingIcon className="icon-3" isDark={isDark}>
-          <Wind />
-        </FloatingIcon>
-        <FloatingIcon className="icon-4" isDark={isDark}>
-          <Eye />
-        </FloatingIcon>
-      </FloatingElements>
+    <section className={`relative min-h-screen py-20 lg:py-28 overflow-hidden transition-all duration-700 ${isDark
+        ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+        : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'
+      }`}>
 
-      <Container>
-        <SectionHeader>
-          <Badge isDark={isDark}>
-            <Zap size={16} />
-            Advanced Features
-          </Badge>
-          
-          <SectionTitle isDark={isDark}>
-            Comprehensive <GradientText>Weather Services</GradientText>
-          </SectionTitle>
-          
-          <SectionSubtitle isDark={isDark}>
-            Experience the most advanced weather forecasting technology with real-time data, 
-            accurate predictions, and comprehensive coverage across the Philippines.
-          </SectionSubtitle>
-        </SectionHeader>
+      {/* Animated Background Pattern */}
+      <div className="absolute inset-0 opacity-30">
+        <div className={`absolute inset-0 transition-all duration-700 ${isDark
+            ? 'bg-[radial-gradient(circle_at_1px_1px,_theme(colors.blue.400)_1px,_transparent_0)]'
+            : 'bg-[radial-gradient(circle_at_1px_1px,_theme(colors.blue.500)_1px,_transparent_0)]'
+          } bg-[length:50px_50px]`}
+          style={{
+            animation: 'drift 25s ease-in-out infinite'
+          }} />
+      </div>
 
-        <FeaturesGrid>
+      {/* Floating Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className={`absolute top-20 left-10 transition-colors duration-700 ${isDark ? 'text-blue-400/20' : 'text-blue-500/20'
+          }`}
+          style={{
+            animation: 'float1 6s ease-in-out infinite'
+          }}>
+          <Cloud size={60} />
+        </div>
+        <div className={`absolute top-32 right-16 transition-colors duration-700 ${isDark ? 'text-cyan-400/20' : 'text-cyan-500/20'
+          }`}
+          style={{
+            animation: 'float2 8s ease-in-out infinite'
+          }}>
+          <Thermometer size={50} />
+        </div>
+        <div className={`absolute bottom-40 left-20 transition-colors duration-700 ${isDark ? 'text-purple-400/20' : 'text-purple-500/20'
+          }`}
+          style={{
+            animation: 'float3 7s ease-in-out infinite'
+          }}>
+          <Wind size={55} />
+        </div>
+        <div className={`absolute bottom-20 right-10 transition-colors duration-700 ${isDark ? 'text-pink-400/20' : 'text-pink-500/20'
+          }`}
+          style={{
+            animation: 'float4 9s ease-in-out infinite'
+          }}>
+          <Eye size={45} />
+        </div>
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* Header Section */}
+        <div className="text-center mb-16 lg:mb-20">
+          <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm transition-all duration-500 hover:scale-105 ${isDark
+              ? 'bg-blue-500/10 text-blue-400 border border-blue-400/20 hover:bg-blue-500/20 hover:shadow-lg hover:shadow-blue-400/25'
+              : 'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 hover:shadow-lg hover:shadow-blue-500/25'
+            }`}>
+            <Zap size={18} className="animate-pulse" />
+            Advanced Weather Intelligence
+          </div>
+
+          <h2 className={`text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-tight mb-8 transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
+            }`}>
+            Next-Generation{' '}
+            <span className={`bg-gradient-to-r bg-clip-text text-transparent transition-all duration-700 ${isDark
+                ? 'from-blue-400 via-cyan-400 to-purple-400'
+                : 'from-blue-500 via-cyan-500 to-purple-500'
+              }`}>
+              Weather Platform
+            </span>
+          </h2>
+
+          <p className={`text-lg sm:text-xl lg:text-2xl leading-relaxed max-w-4xl mx-auto transition-colors duration-700 ${isDark ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+            Experience revolutionary weather forecasting powered by AI, real-time satellite data,
+            and the world's most advanced meteorological network. Built for accuracy, designed for everyone.
+          </p>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8 mb-20">
           {features.map((feature, index) => (
-            <FeatureCard key={index} isDark={isDark}>
-              <FeatureIcon variant={feature.variant}>
-                {feature.icon}
-              </FeatureIcon>
-              
-              <FeatureTitle isDark={isDark}>
-                {feature.title}
-              </FeatureTitle>
-              
-              <FeatureDescription isDark={isDark}>
-                {feature.description}
-              </FeatureDescription>
-              
-              <FeatureList>
-                {feature.items.map((item, itemIndex) => (
-                  <FeatureListItem key={itemIndex} isDark={isDark}>
-                    {item}
-                  </FeatureListItem>
-                ))}
-              </FeatureList>
-            </FeatureCard>
-          ))}
-        </FeaturesGrid>
+            <div
+              key={index}
+              className={`group relative p-8 lg:p-10 rounded-3xl transition-all duration-500 hover:scale-105 cursor-pointer backdrop-blur-sm border overflow-hidden ${isDark
+                  ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800/70 hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-900/20'
+                  : 'bg-white/70 border-white/50 hover:bg-white/90 hover:border-slate-200 hover:shadow-2xl hover:shadow-slate-900/10'
+                }`}
+              style={{
+                animationDelay: `${index * 150}ms`
+              }}
+            >
 
-        <StatsSection isDark={isDark}>
-          <StatsGrid>
+              {/* Animated Background Gradient */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${feature.variant} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
+
+              {/* Shine Effect */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+              </div>
+
+              {/* Icon */}
+              <div className={`relative w-16 h-16 lg:w-20 lg:h-20 rounded-2xl bg-gradient-to-br ${feature.variant} p-4 lg:p-5 mb-6 lg:mb-8 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg ${glowClasses[feature.glowColor]} group-hover:shadow-2xl`}>
+                <div className="w-full h-full text-white flex items-center justify-center">
+                  {React.cloneElement(feature.icon, { size: window.innerWidth < 1024 ? 28 : 32 })}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="relative">
+                <h3 className={`text-xl lg:text-2xl font-bold mb-4 transition-colors duration-300 ${isDark ? 'text-white group-hover:text-blue-300' : 'text-slate-900 group-hover:text-blue-600'
+                  }`}>
+                  {feature.title}
+                </h3>
+
+                <p className={`text-base lg:text-lg leading-relaxed mb-6 ${isDark ? 'text-slate-300' : 'text-slate-600'
+                  }`}>
+                  {feature.description}
+                </p>
+
+                {/* Feature List */}
+                <ul className="space-y-3">
+                  {feature.items.map((item, itemIndex) => (
+                    <li
+                      key={itemIndex}
+                      className={`flex items-center gap-3 text-sm lg:text-base transition-all duration-300 ${isDark ? 'text-slate-400 group-hover:text-slate-300' : 'text-slate-500 group-hover:text-slate-600'
+                        }`}
+                      style={{ animationDelay: `${(itemIndex + 1) * 100}ms` }}
+                    >
+                      <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${feature.variant} flex-shrink-0 transition-all duration-300 group-hover:scale-125`} />
+                      <span className="transition-all duration-300 group-hover:translate-x-1">
+                        {item}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Hover Arrow */}
+              <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                <ArrowUpRight className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Statistics Section */}
+        <div className={`relative p-8 lg:p-12 rounded-3xl backdrop-blur-sm border ${isDark
+            ? 'bg-slate-800/30 border-slate-700/30'
+            : 'bg-white/50 border-white/30'
+          }`}>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
             {stats.map((stat, index) => (
-              <StatItem key={index} isDark={isDark}>
-                <StatNumber isDark={isDark}>{stat.number}</StatNumber>
-                <StatLabel isDark={isDark}>{stat.label}</StatLabel>
-              </StatItem>
+              <div
+                key={index}
+                className={`text-center group transition-all duration-500 hover:scale-110 p-6 rounded-2xl ${isDark
+                    ? 'hover:bg-slate-700/30'
+                    : 'hover:bg-white/70'
+                  }`}
+                style={{ animationDelay: `${index * 200}ms` }}
+              >
+                <div className={`text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black mb-3 bg-gradient-to-br from-blue-500 to-purple-600 bg-clip-text text-transparent transition-all duration-300 group-hover:scale-110`}>
+                  {stat.number}
+                </div>
+                <div className={`text-lg lg:text-xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white group-hover:text-blue-300' : 'text-slate-900 group-hover:text-blue-600'
+                  }`}>
+                  {stat.label}
+                </div>
+                <div className={`text-sm lg:text-base ${isDark ? 'text-slate-400' : 'text-slate-500'
+                  }`}>
+                  {stat.sublabel}
+                </div>
+              </div>
             ))}
-          </StatsGrid>
-        </StatsSection>
-      </Container>
-    </FeaturesContainer>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes drift {
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          33% { transform: translate(30px, -30px) rotate(1deg); }
+          66% { transform: translate(-20px, 20px) rotate(-1deg); }
+        }
+      `}</style>
+    </section>
   );
 };
 

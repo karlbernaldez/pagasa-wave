@@ -1,189 +1,195 @@
-import React, { useState } from 'react';
-import { X, ZoomIn } from 'lucide-react';
-import { BarChart3, LineChart as LineChartIcon, TrendingUp, Activity, Cloud, Thermometer, Wind, Droplets, Eye, Gauge, Sun, CloudRain } from 'lucide-react';
-import { PageContainer, Container, PageHeader, PageTitle, GradientText, PageSubtitle, } from '../styles/charts';
-import { ChartSelector, SelectorWrapper, ChartOption, ChartsGrid, ChartCard, ChartHeader, ChartIcon, ChartTitleSection, ChartTitle, ChartSubtitle, ChartImageContainer, ChartPlaceholder, PlaceholderIcon, PlaceholderText, PlaceholderSubtext, ChartLabels, LabelItem, LabelDot, LabelText, LabelValue, LegendSection, LegendTitle, LegendGrid, LegendCategory, CategoryTitle, LegendItems, LegendItem, LegendColorBox, LegendItemText } from '../styles/charts';
+import React, { useState, useEffect } from 'react';
+import { X, ZoomIn, BarChart3, TrendingUp, Activity, Thermometer, Wind, CloudRain, Eye, Gauge, Sun, Moon, ChevronRight, Download, Share2, Maximize2, ChevronDown } from 'lucide-react';
 
-// Main Component
-const ForecastChartsPage = ({ isDarkMode }) => {
-  const [activeChartType, setActiveChartType] = useState('wave-wind');
+const ForecastChartsPage = ({ isDarkMode, activeChartType }) => {
   const [previewImage, setPreviewImage] = useState(null);
+  const [currentDisplayType, setCurrentDisplayType] = useState(activeChartType);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const isDark = isDarkMode;
+
+  // 🔹 Log whenever active chart type changes
+  useEffect(() => {
+    console.log("Active Chart Type:", activeChartType);
+  }, [activeChartType]);
+
+  // 🔹 Handle chart type transitions
+  useEffect(() => {
+    if (activeChartType !== currentDisplayType) {
+      setIsTransitioning(true);
+      // Start fade out
+      setTimeout(() => {
+        setCurrentDisplayType(activeChartType);
+        // Start fade in
+        setTimeout(() => {
+          setIsTransitioning(false);
+        }, 150);
+      }, 150);
+    }
+  }, [activeChartType, currentDisplayType]);
 
   const chartTypes = [
-    { id: 'wave-wind', name: 'Wave and Wind', icon: Wind },
-    { id: 'wave-only', name: 'Wave Only', icon: Activity },
-    { id: 'visually-impaired', name: 'For Visually Impaired', icon: Eye }
+    { id: 'wave-wind', name: 'Wave & Wind', icon: Wind, description: 'Combined wave and wind analysis' },
+    { id: 'wave-only', name: 'Wave Only', icon: Activity, description: 'Pure wave height analysis' },
+    { id: 'visually-impaired', name: 'Accessible', icon: Eye, description: 'High contrast charts for accessibility' }
   ];
 
-  // Static meta info
   const chartMeta = {
     1: {
-      title: 'Wave Analysis',
-      subtitle: 'Current Wave Conditions & Patterns',
+      title: 'Current Analysis',
+      subtitle: 'Real-time conditions',
       icon: Activity,
-      color: '#06b6d4',
-      colorSecondary: '#0891b2'
+      gradient: 'from-cyan-500 to-blue-600',
+      glowColor: 'cyan-500'
     },
     2: {
-      title: '24-h Prognostic Wave Chart',
-      subtitle: '24-Hour Wave Height & Direction Forecast',
+      title: '24h Forecast',
+      subtitle: 'Next day predictions',
       icon: TrendingUp,
-      color: '#10b981',
-      colorSecondary: '#059669'
+      gradient: 'from-emerald-500 to-teal-600',
+      glowColor: 'emerald-500'
     },
     3: {
-      title: '36-h Prognostic Wave Chart',
-      subtitle: '36-Hour Extended Wave Forecast',
+      title: '36h Extended',
+      subtitle: 'Extended range model',
       icon: Wind,
-      color: '#f59e0b',
-      colorSecondary: '#d97706'
+      gradient: 'from-amber-500 to-orange-600',
+      glowColor: 'amber-500'
     },
     4: {
-      title: '48-h Prognostic Wave Chart',
-      subtitle: '48-Hour Long-Range Wave Forecast',
+      title: '48h Long-Range',
+      subtitle: 'Long-term analysis',
       icon: Gauge,
-      color: '#8b5cf6',
-      colorSecondary: '#7c3aed'
+      gradient: 'from-purple-500 to-violet-600',
+      glowColor: 'purple-500'
     }
   };
 
-  // Dynamic chart labels data
   const chartData = [
     {
       id: 1,
       labels: [
-        { name: 'Wave Height', value: '2.1m', color: '#06b6d4' },
-        { name: 'Period', value: '8.5s', color: '#3b82f6' },
-        { name: 'Direction', value: 'SW', color: '#10b981' },
-        { name: 'Energy', value: 'High', color: '#f59e0b' }
+        { name: 'Height', value: '2.1m', color: 'bg-cyan-500' },
+        { name: 'Period', value: '8.5s', color: 'bg-blue-500' },
+        { name: 'Direction', value: 'SW', color: 'bg-emerald-500' },
+        { name: 'Energy', value: 'High', color: 'bg-amber-500' }
       ]
     },
     {
       id: 2,
       labels: [
-        { name: 'Max Height', value: '2.8m', color: '#10b981' },
-        { name: 'Min Height', value: '1.5m', color: '#3b82f6' },
-        { name: 'Avg Period', value: '7.2s', color: '#06b6d4' },
-        { name: 'Dominant Dir', value: 'WSW', color: '#f59e0b' }
+        { name: 'Max', value: '2.8m', color: 'bg-emerald-500' },
+        { name: 'Min', value: '1.5m', color: 'bg-blue-500' },
+        { name: 'Period', value: '7.2s', color: 'bg-cyan-500' },
+        { name: 'Dir', value: 'WSW', color: 'bg-amber-500' }
       ]
     },
     {
       id: 3,
       labels: [
-        { name: 'Max Height', value: '3.2m', color: '#f59e0b' },
-        { name: 'Min Height', value: '1.8m', color: '#3b82f6' },
-        { name: 'Avg Period', value: '9.1s', color: '#06b6d4' },
-        { name: 'Dominant Dir', value: 'W', color: '#10b981' }
+        { name: 'Max', value: '3.2m', color: 'bg-amber-500' },
+        { name: 'Min', value: '1.8m', color: 'bg-blue-500' },
+        { name: 'Period', value: '9.1s', color: 'bg-cyan-500' },
+        { name: 'Dir', value: 'W', color: 'bg-emerald-500' }
       ]
     },
     {
       id: 4,
       labels: [
-        { name: 'Max Height', value: '3.5m', color: '#8b5cf6' },
-        { name: 'Min Height', value: '2.0m', color: '#3b82f6' },
-        { name: 'Avg Period', value: '10.3s', color: '#06b6d4' },
-        { name: 'Dominant Dir', value: 'WNW', color: '#ef4444' }
+        { name: 'Max', value: '3.5m', color: 'bg-purple-500' },
+        { name: 'Min', value: '2.0m', color: 'bg-blue-500' },
+        { name: 'Period', value: '10.3s', color: 'bg-cyan-500' },
+        { name: 'Dir', value: 'WNW', color: 'bg-red-500' }
       ]
     }
   ];
 
-  // Legend data (unchanged)
   const legendData = [
     {
-      title: 'Temperature Scale',
-      icon: Thermometer,
-      color: '#ef4444',
+      title: 'Wave Height',
+      icon: Activity,
+      color: 'text-cyan-400',
       items: [
-        { color: '#dc2626', text: 'Above 35°C - Very Hot' },
-        { color: '#ef4444', text: '30-35°C - Hot' },
-        { color: '#f59e0b', text: '25-30°C - Warm' },
-        { color: '#10b981', text: '20-25°C - Comfortable' },
-        { color: '#3b82f6', text: 'Below 20°C - Cool' }
+        { color: 'bg-red-500', text: '>4m Very High' },
+        { color: 'bg-orange-500', text: '3-4m High' },
+        { color: 'bg-amber-500', text: '2-3m Moderate' },
+        { color: 'bg-emerald-500', text: '1-2m Low' },
+        { color: 'bg-blue-500', text: '<1m Calm' }
       ]
     },
     {
       title: 'Wind Speed',
       icon: Wind,
-      color: '#3b82f6',
+      color: 'text-blue-400',
       items: [
-        { color: '#dc2626', text: 'Above 50 km/h - Strong Winds' },
-        { color: '#f59e0b', text: '25-50 km/h - Moderate Winds' },
-        { color: '#10b981', text: '10-25 km/h - Light Winds' },
-        { color: '#3b82f6', text: 'Below 10 km/h - Calm' }
+        { color: 'bg-red-500', text: '>50km/h Strong' },
+        { color: 'bg-amber-500', text: '25-50km/h Moderate' },
+        { color: 'bg-emerald-500', text: '10-25km/h Light' },
+        { color: 'bg-blue-500', text: '<10km/h Calm' }
       ]
     },
     {
-      title: 'Precipitation',
-      icon: CloudRain,
-      color: '#06b6d4',
+      title: 'Wave Period',
+      icon: TrendingUp,
+      color: 'text-emerald-400',
       items: [
-        { color: '#dc2626', text: 'Above 25mm - Heavy Rain' },
-        { color: '#f59e0b', text: '10-25mm - Moderate Rain' },
-        { color: '#10b981', text: '2-10mm - Light Rain' },
-        { color: '#06b6d4', text: 'Below 2mm - Drizzle' }
+        { color: 'bg-purple-500', text: '>15s Long Swell' },
+        { color: 'bg-blue-500', text: '10-15s Medium' },
+        { color: 'bg-cyan-500', text: '5-10s Wind Waves' },
+        { color: 'bg-gray-500', text: '<5s Choppy' }
       ]
     },
     {
-      title: 'Weather Conditions',
-      icon: Sun,
-      color: '#f59e0b',
+      title: 'Direction',
+      icon: Gauge,
+      color: 'text-purple-400',
       items: [
-        { color: '#f59e0b', text: 'Clear Skies' },
-        { color: '#10b981', text: 'Partly Cloudy' },
-        { color: '#6b7280', text: 'Overcast' },
-        { color: '#3b82f6', text: 'Rainy' }
+        { color: 'bg-red-500', text: 'N North' },
+        { color: 'bg-orange-500', text: 'E East' },
+        { color: 'bg-blue-500', text: 'S South' },
+        { color: 'bg-emerald-500', text: 'W West' }
       ]
     }
   ];
 
-  // Image sets for each chart type and mode
-  const imagePaths = {
-    'wave-wind': {
-      light: [
-        '/charts/wave-wind/light/map_snapshot_light.png',
-        '/charts/wave-wind/light/map_snapshot_light.png',
-        '/charts/wave-wind/light/map_snapshot_light.png',
-        '/charts/wave-wind/light/map_snapshot_light.png',
-      ],
-      dark: [
-        '/charts/wave-wind/dark/map_snapshot_dark.png',
-        '/charts/wave-wind/dark/map_snapshot_dark.png',
-        '/charts/wave-wind/dark/map_snapshot_dark.png',
-        '/charts/wave-wind/dark/map_snapshot_dark.png',
-      ]
-    },
-    'wave-only': {
-      light: [
-        '/charts/wave/light/map_snapshot_light.png',
-        '/charts/wave/light/map_snapshot_light.png',
-        '/charts/wave/light/map_snapshot_light.png',
-        '/charts/wave/light/map_snapshot_light.png',
-      ],
-      dark: [
-        '/charts/wave/dark/map_snapshot_dark.png',
-        '/charts/wave/dark/map_snapshot_dark.png',
-        '/charts/wave/dark/map_snapshot_dark.png',
-        '/charts/wave/dark/map_snapshot_dark.png',
-      ]
-    },
-    'visually-impaired': {
-      light: [
-        '/charts/visually-impaired/analysis_light.png',
-        '/charts/visually-impaired/24h_light.png',
-        '/charts/visually-impaired/36h_light.png',
-        '/charts/visually-impaired/48h_light.png'
-      ],
-      dark: [
-        '/charts/visually-impaired/analysis_dark.png',
-        '/charts/visually-impaired/24h_dark.png',
-        '/charts/visually-impaired/36h_dark.png',
-        '/charts/visually-impaired/48h_dark.png'
-      ]
+  // Generate different images based on chart type
+  const getImagesForChartType = (type) => {
+    // Sample stock/chart-like images from Unsplash (royalty-free)
+    const waveWindImages = [
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800",
+      "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800",
+      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=800"
+    ];
+
+    const waveOnlyImages = [
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800",
+      "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=800",
+      "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800"
+    ];
+
+    const accessibleImages = [
+      "https://dummyimage.com/600x400/000/fff&text=High+Contrast+Chart+1",
+      "https://dummyimage.com/600x400/111/eee&text=High+Contrast+Chart+2",
+      "https://dummyimage.com/600x400/222/fff&text=High+Contrast+Chart+3",
+      "https://dummyimage.com/600x400/333/fff&text=High+Contrast+Chart+4"
+    ];
+
+    switch (type) {
+      case "wave-wind":
+        return waveWindImages;
+      case "wave-only":
+        return waveOnlyImages;
+      case "visually-impaired":
+        return accessibleImages;
+      default:
+        return waveWindImages;
     }
   };
 
-  // Select correct images array based on active type and dark mode
-  const selectedImages = imagePaths[activeChartType][isDarkMode ? 'dark' : 'light'];
+  const selectedImages = getImagesForChartType(currentDisplayType);
+  const currentChartType = chartTypes.find(type => type.id === currentDisplayType) || chartTypes[0];
 
   const handleImageClick = (image, title) => {
     setPreviewImage({ src: image, title });
@@ -195,231 +201,231 @@ const ForecastChartsPage = ({ isDarkMode }) => {
 
   return (
     <>
-      <PageContainer isDarkMode={isDarkMode}>
-        <Container>
-          <PageHeader>
-            <PageTitle isDarkMode={isDarkMode}>
-              Wave Analysis <GradientText>Forecast Charts</GradientText>
-            </PageTitle>
-            <PageSubtitle isDarkMode={isDarkMode}>
-              Comprehensive wave analysis and prognostic charts for marine weather forecasting
-            </PageSubtitle>
-          </PageHeader>
+      <div className={`min-h-screen transition-all duration-700 ${isDark
+        ? 'bg-gradient-to-br from-slate-950 via-blue-950/50 to-slate-950'
+        : 'bg-gradient-to-br from-blue-50 via-white to-cyan-50'
+        }`}>
 
-          <ChartSelector>
-            <SelectorWrapper isDarkMode={isDarkMode}>
-              {chartTypes.map((type) => (
-                <ChartOption
-                  key={type.id}
-                  active={activeChartType === type.id}
-                  isDarkMode={isDarkMode}
-                  onClick={() => setActiveChartType(type.id)}
-                >
-                  <type.icon />
-                  {type.name}
-                </ChartOption>
-              ))}
-            </SelectorWrapper>
-          </ChartSelector>
+        {/* Main Content */}
+        <div className="pt-4 pb-16 mt-24">
+          <div className="max-w-7.3xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          <ChartsGrid>
-            {chartData.map((chart, index) => {
-              const meta = chartMeta[chart.id];
-              const image = selectedImages[index];
+            {/* Responsive Layout */}
+            <div className="flex flex-col xl:flex-row gap-6">
 
-              return (
-                <ChartCard key={chart.id} isDarkMode={isDarkMode}>
-                  <ChartHeader isDarkMode={isDarkMode}>
-                    <ChartIcon color={meta.color} colorSecondary={meta.colorSecondary}>
-                      <meta.icon />
-                    </ChartIcon>
-                    <ChartTitleSection>
-                      <ChartTitle isDarkMode={isDarkMode}>{meta.title}</ChartTitle>
-                      <ChartSubtitle isDarkMode={isDarkMode}>{meta.subtitle}</ChartSubtitle>
-                    </ChartTitleSection>
-                  </ChartHeader>
+              {/* Charts Grid */}
+              <div className="flex-1">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                  {chartData.map((chart, index) => {
+                    const meta = chartMeta[chart.id];
+                    const image = selectedImages[index];
 
-                  <ChartImageContainer
-                    isDarkMode={isDarkMode}
-                    onClick={() => handleImageClick(image, meta.title)}
-                  >
-                    {image ? (
-                      <img
-                        src={image}
-                        alt={meta.title}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          borderRadius: '1rem'
-                        }}
-                      />
-                    ) : (
-                      <ChartPlaceholder isDarkMode={isDarkMode}>
-                        <PlaceholderIcon isDarkMode={isDarkMode}>
-                          <meta.icon />
-                        </PlaceholderIcon>
-                        <PlaceholderText>
-                          {activeChartType === 'wave-wind'
-                            ? 'Wave and Wind Chart'
-                            : activeChartType === 'wave-only'
-                              ? 'Wave Only Chart'
-                              : 'Visually Impaired Accessible Chart'}
-                        </PlaceholderText>
-                        <PlaceholderSubtext>
-                          {activeChartType === 'wave-wind'
-                            ? 'Combined wave height and wind vector visualization'
-                            : activeChartType === 'wave-only'
-                              ? 'Wave height and direction only'
-                              : 'High contrast chart with enhanced accessibility features'}
-                        </PlaceholderSubtext>
-                      </ChartPlaceholder>
-                    )}
+                    return (
+                      <div
+                        key={chart.id}
+                        className={`group relative rounded-2xl backdrop-blur-xl border transition-all duration-500 hover:scale-[1.02] overflow-hidden ${isDark
+                          ? "bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60"
+                          : "bg-white/60 border-white/50 hover:bg-white/80"
+                          } min-h-[420px]`}
+                      >
 
-                    {/* Add this hover hint */}
-                    <div style={{
-                      position: 'absolute',
-                      top: '0.75rem',
-                      right: '0.75rem',
-                      background: 'rgba(0, 0, 0, 0.5)',
-                      borderRadius: '0.5rem',
-                      padding: '0.5rem',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      fontSize: '0.75rem',
-                      opacity: 0,
-                      transition: 'opacity 0.2s'
-                    }}
-                      onMouseEnter={(e) => {
-                        const hint = e.currentTarget.querySelector('div:last-child');
-                        if (hint) hint.style.opacity = '1';
-                      }}
-                      onMouseLeave={(e) => {
-                        const hint = e.currentTarget.querySelector('div:last-child');
-                        if (hint) hint.style.opacity = '0';
-                      }}>
-                      <ZoomIn size={12} />
-                      Click to enlarge
-                    </div>
-                  </ChartImageContainer>
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 pb-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${meta.gradient} p-2 shadow-md transition-transform duration-300 group-hover:scale-110`}>
+                              <meta.icon className="w-full h-full text-white" />
+                            </div>
+                            <div>
+                              <h3 className={`text-lg font-bold leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                {meta.title}
+                              </h3>
+                              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                {meta.subtitle}
+                              </p>
+                            </div>
+                          </div>
 
-                  <ChartLabels>
-                    {chart.labels.map((label, index) => (
-                      <LabelItem key={index} isDarkMode={isDarkMode}>
-                        <LabelDot color={label.color} />
-                        <LabelText isDarkMode={isDarkMode}>{label.name}</LabelText>
-                        <LabelValue isDarkMode={isDarkMode}>{label.value}</LabelValue>
-                      </LabelItem>
-                    ))}
-                  </ChartLabels>
-                </ChartCard>
-              );
-            })}
-          </ChartsGrid>
+                          <button
+                            onClick={() => handleImageClick(image, meta.title)}
+                            className={`p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 ${isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'
+                              }`}
+                          >
+                            <Maximize2 size={16} />
+                          </button>
+                        </div>
 
-          <LegendSection isDarkMode={isDarkMode}>
-            <LegendTitle isDarkMode={isDarkMode}>Chart Legend & Reference Guide</LegendTitle>
-            <LegendGrid>
-              {legendData.map((category, index) => (
-                <LegendCategory key={index} isDarkMode={isDarkMode}>
-                  <CategoryTitle isDarkMode={isDarkMode} color={category.color}>
-                    <category.icon />
-                    {category.title}
-                  </CategoryTitle>
-                  <LegendItems>
-                    {category.items.map((item, itemIndex) => (
-                      <LegendItem key={itemIndex}>
-                        <LegendColorBox color={item.color} />
-                        <LegendItemText isDarkMode={isDarkMode}>{item.text}</LegendItemText>
-                      </LegendItem>
-                    ))}
-                  </LegendItems>
-                </LegendCategory>
-              ))}
-            </LegendGrid>
-          </LegendSection>
-        </Container>
-      </PageContainer>
+                        {/* Chart Image */}
+                        <div
+                          className={`relative mx-4 mb-4 h-40 sm:h-44 lg:h-48 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 ${isDark
+                            ? 'bg-gradient-to-br from-slate-900/50 to-slate-800/50'
+                            : 'bg-gradient-to-br from-slate-50 to-slate-100'
+                            }`}
+                          onClick={() => handleImageClick(image, meta.title)}
+                        >
+                          {image ? (
+                            <img
+                              src={image}
+                              alt={`${meta.title} - ${currentChartType.name}`}
+                              className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                              style={{
+                                filter: isTransitioning ? 'blur(2px) brightness(0.7)' : 'blur(0px) brightness(1)',
+                                transition: 'all 0.3s ease'
+                              }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center h-full">
+                              <div className={`transition-all duration-500 ${isTransitioning ? 'scale-75 opacity-50' : 'scale-100 opacity-100'}`}>
+                                <currentChartType.icon className={`w-10 h-10 mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                                <span className={`text-sm font-medium text-center px-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                  {currentChartType.description}
+                                </span>
+                                <div className="mt-3 text-xs text-center opacity-75">
+                                  Chart Type: {currentChartType.name}
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
-      { previewImage && (
-          <div
-            onClick={closePreview}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-              padding: '2rem'
-            }}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                position: 'relative',
-                maxWidth: '90vw',
-                maxHeight: '90vh',
-                background: '#ffffff',
-                borderRadius: '1rem',
-                overflow: 'hidden',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-              }}
-            >
-              <button
-                onClick={closePreview}
-                style={{
-                  position: 'absolute',
-                  top: '1rem',
-                  right: '1rem',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  padding: '0.5rem',
-                  color: 'white',
-                  cursor: 'pointer',
-                  zIndex: 1001,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <X size={20} />
-              </button>
-              <div>
-                <div style={{
-                  padding: '1rem',
-                  background: '#f8fafc',
-                  borderBottom: '1px solid #e2e8f0'
-                }}>
-                  <h3 style={{
-                    margin: 0,
-                    fontSize: '1.25rem',
-                    fontWeight: '600',
-                    color: '#1e293b'
-                  }}>
-                    {previewImage.title}
-                  </h3>
+                          {/* Hover Overlay */}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <div className="flex items-center gap-2 text-white bg-black/50 px-3 py-2 rounded-full text-sm">
+                              <ZoomIn size={14} />
+                              Click to enlarge
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Data Labels */}
+                        <div className="px-4 pb-4">
+                          <div className="grid grid-cols-2 gap-2">
+                            {chart.labels.map((label, labelIndex) => (
+                              <div
+                                key={labelIndex}
+                                className={`flex items-center gap-2 p-2.5 rounded-lg transition-all duration-200 ${isDark ? 'bg-slate-900/30 hover:bg-slate-900/50' : 'bg-slate-50 hover:bg-slate-100'
+                                  }`}
+                              >
+                                <div className={`w-3 h-3 rounded-full ${label.color} shadow-sm`} />
+                                <span className={`text-xs font-medium flex-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                  {label.name}
+                                </span>
+                                <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                  {label.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <img
-                  src={previewImage.src}
-                  alt={previewImage.title}
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    display: 'block'
-                  }}
-                />
+              </div>
+
+              {/* Legend Sidebar */}
+              <div className={`xl:w-80 rounded-2xl backdrop-blur-xl border ${isDark
+                ? 'bg-slate-800/40 border-slate-700/50'
+                : 'bg-white/60 border-white/50'
+                }`}>
+
+                <div className="p-4 border-b border-white/10">
+                  <h3 className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Reference Guide
+                  </h3>
+                  <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Chart symbols & color meanings
+                  </p>
+                </div>
+
+                <div className="p-4 space-y-4 max-h-96 xl:max-h-none overflow-y-auto">
+                  {legendData.map((category, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 rounded-xl transition-all duration-300 hover:scale-[1.02] ${isDark ? 'bg-slate-900/30 hover:bg-slate-900/50' : 'bg-slate-50 hover:bg-slate-100'
+                        }`}
+                    >
+                      <div className="flex items-center gap-3 mb-3 pb-2 border-b border-white/10">
+                        <category.icon className={`w-5 h-5 ${category.color}`} />
+                        <h4 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          {category.title}
+                        </h4>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {category.items.map((item, itemIndex) => (
+                          <div key={itemIndex} className="flex items-center gap-3 group">
+                            <div className={`w-3 h-3 rounded ${item.color} shadow-sm transition-transform duration-200 group-hover:scale-110`} />
+                            <span className={`text-xs transition-colors duration-200 ${isDark ? 'text-slate-300 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900'
+                              }`}>
+                              {item.text}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Click outside handler removed since dropdown is handled by header */}
+      </div>
+
+      {/* CSS for animations */}
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+      `}</style>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+          onClick={closePreview}
+        >
+          <div
+            className="relative max-w-6xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 bg-slate-50 border-b">
+              <h3 className="text-xl font-bold text-slate-900">
+                {previewImage.title}
+              </h3>
+              <button
+                onClick={closePreview}
+                className="p-2 hover:bg-slate-200 rounded-lg transition-colors duration-200"
+              >
+                <X size={24} className="text-slate-600" />
+              </button>
+            </div>
+            <div className="relative">
+              <img
+                src={previewImage.src}
+                alt={previewImage.title}
+                className="w-full h-auto max-h-[80vh] object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
