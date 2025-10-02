@@ -1,6 +1,5 @@
 // components/utils/layerUtils.js
 import { deleteFeature, updateFeatureNameAPI } from '../../../api/featureServices';
-import { fill } from '../draw/styles';
 import Swal from 'sweetalert2';  // Import SweetAlert2
 
 export function addWindLayer(map) {

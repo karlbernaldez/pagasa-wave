@@ -4,7 +4,8 @@ import featureRoutes from './routes/featureRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
-import chartRoutes from './routes/chartRoutes.js'
+import chartRoutes from './routes/chartRoutes.js';
+import satelliteRoutes from './routes/satelliteRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
@@ -19,7 +20,7 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:3000',
   'http://192.168.5.1:3000',
-  'http://10.8.0.1:5173'
+  'http://34.172.63.27:5173',
 ];
 
 const corsOptions = {
@@ -45,7 +46,8 @@ app.use('/api/features', featureRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/charts', chartRoutes)
+app.use('/api/charts', chartRoutes);
+app.use('/api/satellite', satelliteRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
