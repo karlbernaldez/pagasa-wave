@@ -172,6 +172,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
 
   // ─── Map Load Setup ──────────────────────────────────
   const handleMapLoad = useCallback(async (map) => {
+
     mapRef.current = map;
 
     const setupFeaturesAndLayers = async () => {

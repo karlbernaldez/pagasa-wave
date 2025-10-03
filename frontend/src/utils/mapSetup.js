@@ -3,57 +3,60 @@ import { loadImage, loadCustomImages, initTyphoonLayer, initDrawControl, typhoon
 export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages, isDarkMode }) {
   const lineColor = isDarkMode ? '#19b8b7' : '#000000';
   const textColor = isDarkMode ? '#ffffff' : '#000000';
-
-  const SAT_FRAMES = 24; // Number of images
-  const FRAME_DELAY = 10; // ms between frames
-  const COORDINATES = [
-    [110.0, 25.0], // top-left
-    [150.0, 25.0], // top-right
-    [150.0, 15.0], // bottom-right
-    [110.0, 15.0], // bottom-left
-  ];
-
-  // === Himawari Animation Function ===
-  // async function animateHimawari(map) {
-  //   console.log('Starting Himawari animation...');
-  //   const images = [];
-  //   for (let i = 1; i <= SAT_FRAMES; i++) {
-  //     try {
-  //       const url = await fetchSatelliteImageById(i);
-  //       images.push(url);
-  //     } catch (err) {
-  //       console.error(`Failed to fetch Himawari image ${i}:`, err);
-  //     }
-  //   }
-
-  //   if (images.length === 0) return;
-
-  //   // Add first image as Mapbox ImageSource
-  //   map.addSource('himawari', {
-  //     type: 'image',
-  //     url: images[0],
-  //     coordinates: COORDINATES,
-  //   });
-
-  //   map.addLayer({
-  //     id: 'himawari-layer',
-  //     type: 'raster',
-  //     source: 'himawari',
-  //     paint: { 'raster-opacity': 0.7 },
-  //   });
-
-  //   // Animate by swapping images
-  //   let frame = 0;
-  //   setInterval(() => {
-  //     frame = (frame + 1) % images.length;
-  //     map.getSource('himawari').updateImage({ url: images[frame] });
-  //   }, FRAME_DELAY);
-  // }
+  let isVideoLoading = true;
 
   if (!map) return console.warn('No map instance provided');
   if (typeof setLoading === 'function') {
     setLoading(true)
   };
+
+  const bounds = [
+    [104, -1.15],   // SW
+    [146.99, 29.6],  // NE
+  ];
+
+  // remove previous video source/layer if exists
+  if (map.getLayer("himawari-video-layer")) map.removeLayer("himawari-video-layer");
+  if (map.getSource("himawari-video")) map.removeSource("himawari-video");
+
+  map.addSource('himawari-video', {
+    type: 'video',
+    urls: ['http://34.172.63.27:5000/api/public/himawari.mp4'],
+    coordinates: [
+      [104, 29.6],     // top-left
+      [146.99, 29.6],  // top-right
+      [146.99, -1.15], // bottom-right
+      [104, -1.15]     // bottom-left
+    ]
+  });
+
+  map.addLayer({
+    id: 'himawari-video-layer',
+    type: 'raster',
+    source: 'himawari-video',
+    slot: 'bottom',
+    paint: { 'raster-opacity': 0.85 }
+  });
+
+  // play the video
+  const source = map.getSource("himawari-video");
+
+  if (source) {
+    // Mapbox emits 'data' when a source is loaded
+    map.on('data', (e) => {
+      if (e.sourceId === 'himawari-video' && e.isSourceLoaded) {
+        const video = source.getVideo();
+        if (video) {
+          console.log("Himawari video loaded, starting playback...");
+          video.loop = true;
+          video.muted = true;  // needed for autoplay in some browsers
+          video.play().catch(err => console.warn("Video play failed:", err));
+          isVideoLoading = false;
+          console.log("Video LOADING STATE:", isVideoLoading);
+        }
+      }
+    });
+  }
 
   loadImage(map, 'typhoon', '/hurricane.png');
   loadImage(map, 'low_pressure', '/LPA.png');
@@ -70,7 +73,7 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
 
   loadCustomImages(map);
   initTyphoonLayer(map);
-  animateHimawari(map);
+  // animateHimawari(map);
 
   if (map.getSource('12SEP2025v2')) {
     map.removeLayer('wind-layer');  // remove layer first
@@ -420,13 +423,6 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
         },
       });
 
-      const dashArraySequence = [
-        [0, 4, 3], [0.5, 4, 2.5], [1, 4, 2], [1.5, 4, 1.5], [2, 4, 1],
-        [2.5, 4, 0.5], [3, 4, 0], [0, 0.5, 3, 3.5], [0, 1, 3, 3],
-        [0, 1.5, 3, 2.5], [0, 2, 3, 2], [0, 2.5, 3, 1.5],
-        [0, 3, 3, 1], [0, 3.5, 3, 0.5],
-      ];
-
     });
   }
 
@@ -498,7 +494,8 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   });
 
   // ✅ When fully idle (all sources & layers processed)
-  map.once('idle', () => {
+  map.once('render', () => {
+    console.log("Map is fully loaded and idle.");
     if (typeof setLoading === 'function') setLoading(false); // ✅ Hide modal
     setMapLoaded(true);
 
