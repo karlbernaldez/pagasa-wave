@@ -25,6 +25,8 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "framer-motion": "^12.7.4",
+    "gif.js": "^0.2.0",
+    "gif.js.optimized": "^1.0.1",
     "jszip": "^3.10.1",
     "jwt-decode": "^4.0.0",
     "konva": "^9.3.20",
