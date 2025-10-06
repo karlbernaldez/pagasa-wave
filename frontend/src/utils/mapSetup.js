@@ -19,14 +19,16 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   if (map.getLayer("himawari-video-layer")) map.removeLayer("himawari-video-layer");
   if (map.getSource("himawari-video")) map.removeSource("himawari-video");
 
+  const videoUrl = `${import.meta.env.VITE_API_URL}/api/public/himawari.mp4`;
+
   map.addSource('himawari-video', {
     type: 'video',
-    urls: ['http://34.172.63.27:5000/api/public/himawari.mp4'],
+    urls: [videoUrl],
     coordinates: [
-      [104, 29.55],     // top-left
-      [146.99, 29.55],  // top-right
-      [146.99, -1.5], // bottom-right
-      [104, -1.5]     // bottom-left
+      [104, 29.55],    // top-left
+      [146.99, 29.55], // top-right
+      [146.99, -1.5],  // bottom-right
+      [104, -1.5]      // bottom-left
     ]
   });
 
