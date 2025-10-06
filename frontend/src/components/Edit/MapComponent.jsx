@@ -33,19 +33,19 @@ const MapComponent = ({ onMapLoad, isDarkMode }) => {
           : 'mapbox://styles/karlbernaldizzy/cmf6i7nne000501s2hbmw8phn',
         center: [120.0, 15.5],
         minZoom: 4,
-        zoom: 4.2,
+        zoom: 5.5,
         maxZoom: 12,
         preserveDrawingBuffer: true,
         maxBounds: [
-          [95, -5], // Southwest corner
+          [80, -10], // Southwest corner
           [170, 40]  // Northeast corner
         ],
       });
 
       map.fitBounds(
         [
-          [99.79339501828959, 3.757304989541903],
-          [153.8595159535438, 27.162621752400347],
+          [93, 0],
+          [153.8595159535438, 25],
         ],
         {
           padding: { top: 200, bottom: 100, left: 100, right: 200 },
