@@ -1,10 +1,10 @@
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import drawStyles from '../components/Edit/draw/styles';
+
 import DrawLineString from '../components/Edit/draw/linestring';
 import DrawRectangle from '../components/Edit/draw/rectangle';
 import DrawCircle from '../components/Edit/draw/circle';
 import SimpleSelect from '../components/Edit/draw/simple_select';
-import drawStyles from '../components/Edit/draw/styles';
-
 
 export function loadImage(map, name, path) {
   if (!map.hasImage(name)) {

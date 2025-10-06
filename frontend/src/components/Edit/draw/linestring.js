@@ -1,18 +1,18 @@
-// this mode extends the build-in linestring tool, displaying the current length
-// of the line as the user draws using a point feature and a symbol layer
-const MapboxDraw = require('@mapbox/mapbox-gl-draw').default;
-
-const { getDisplayMeasurements } = require('./util.js');
+// linestring.js
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import { getDisplayMeasurements } from './util.js';
 
 const ExtendedLineStringMode = {
   ...MapboxDraw.modes.draw_line_string,
 
-  toDisplayFeatures: function (state, geojson, display) {
+  toDisplayFeatures(state, geojson, display) {
     const isActiveLine = geojson.properties.id === state.line.id;
     geojson.properties.active = isActiveLine ? 'true' : 'false';
     if (!isActiveLine) return display(geojson);
+
     // Only render the line if it has at least one real coordinate
     if (geojson.geometry.coordinates.length < 2) return;
+
     geojson.properties.meta = 'feature';
     display({
       type: 'Feature',
@@ -41,7 +41,7 @@ const ExtendedLineStringMode = {
 
     const displayMeasurements = getDisplayMeasurements(geojson);
 
-    // create custom feature for the current pointer position
+    // Create custom feature for the current pointer position
     const currentVertex = {
       type: 'Feature',
       properties: {
@@ -60,4 +60,4 @@ const ExtendedLineStringMode = {
   }
 };
 
-module.exports = ExtendedLineStringMode;
+export default ExtendedLineStringMode;

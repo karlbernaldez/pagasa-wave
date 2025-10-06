@@ -1,15 +1,62 @@
-import phGeoJson from '../data/ph.json';
 import { loadImage, loadCustomImages, initTyphoonLayer, initDrawControl, typhoonMarker as saveMarkerFn } from './mapUtils';
-import era5_c1 from '../data/era5_ph_wind_wave.geojson';
 
 export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages, isDarkMode }) {
   const lineColor = isDarkMode ? '#19b8b7' : '#000000';
   const textColor = isDarkMode ? '#ffffff' : '#000000';
+  let isVideoLoading = true;
 
   if (!map) return console.warn('No map instance provided');
   if (typeof setLoading === 'function') {
     setLoading(true)
   };
+
+  const bounds = [
+    [104, -1.15],   // SW
+    [146.99, 29.6],  // NE
+  ];
+
+  // remove previous video source/layer if exists
+  if (map.getLayer("himawari-video-layer")) map.removeLayer("himawari-video-layer");
+  if (map.getSource("himawari-video")) map.removeSource("himawari-video");
+
+  map.addSource('himawari-video', {
+    type: 'video',
+    urls: ['http://34.172.63.27:5000/api/public/himawari.mp4'],
+    coordinates: [
+      [104, 29.55],     // top-left
+      [146.99, 29.55],  // top-right
+      [146.99, -1.5], // bottom-right
+      [104, -1.5]     // bottom-left
+    ]
+  });
+
+  map.addLayer({
+    id: 'himawari-video-layer',
+    type: 'raster',
+    source: 'himawari-video',
+    slot: 'bottom',
+    paint: { 'raster-opacity': 0.95 }
+  });
+
+  // play the video
+  const source = map.getSource("himawari-video");
+
+  if (source) {
+    // Mapbox emits 'data' when a source is loaded
+    map.on('data', (e) => {
+      if (e.sourceId === 'himawari-video' && e.isSourceLoaded) {
+        const video = source.getVideo();
+        if (video) {
+          console.log("Himawari video loaded, starting playback...");
+          video.loop = true;
+          video.muted = true;  // needed for autoplay in some browsers
+          video.play().catch(err => console.warn("Video play failed:", err));
+          isVideoLoading = false;
+          console.log("Video LOADING STATE:", isVideoLoading);
+        }
+      }
+    });
+  }
 
   loadImage(map, 'typhoon', '/hurricane.png');
   loadImage(map, 'low_pressure', '/LPA.png');
@@ -24,14 +71,18 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   loadImage(map, '30kts', '/barbs/30kts.svg');
 
 
-  map.on('load', () => {
-    loadCustomImages(map);
-    initTyphoonLayer(map);
-  });
+  loadCustomImages(map);
+  initTyphoonLayer(map);
+  // animateHimawari(map);
 
-  map.addSource('wind_data_source', {
+  if (map.getSource('12SEP2025v2')) {
+    map.removeLayer('wind-layer');  // remove layer first
+    map.removeSource('12SEP2025v2');
+  }
+
+  map.addSource('12SEP2025v2', {
     type: 'raster-array',
-    url: 'mapbox://karlbernaldizzy.12SEP2025v2',
+    url: 'mapbox://karlbernaldizzy.09182025?fresh=' + Date.now(),
     tileSize: 4096
   });
 
@@ -94,20 +145,20 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   map.addLayer({
     id: 'wind-layer',
     type: 'raster-particle',
-    source: 'wind_data_source',
+    source: '12SEP2025v2',
     'source-layer': '10m_wind',
     slot: 'bottom',
     paint: {
-      'raster-particle-speed-factor': 0.2,
-      'raster-particle-fade-opacity-factor': 0.9,
+      'raster-particle-speed-factor': 0.6,
+      'raster-particle-fade-opacity-factor': 0.60,
       'raster-particle-reset-rate-factor': 0.4,
-      'raster-particle-count': 24000,
-      'raster-particle-max-speed': 80,
+      'raster-particle-count': 48000,
+      'raster-particle-max-speed': 100,
       'raster-particle-color': [
         'interpolate',
         ['linear'],
         ['raster-particle-speed'],
-        .8,
+        1.5,
         'rgba(134,163,171,256)',
         2.5,
         'rgba(126,152,188,256)',
@@ -372,13 +423,6 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
         },
       });
 
-      const dashArraySequence = [
-        [0, 4, 3], [0.5, 4, 2.5], [1, 4, 2], [1.5, 4, 1.5], [2, 4, 1],
-        [2.5, 4, 0.5], [3, 4, 0], [0, 0.5, 3, 3.5], [0, 1, 3, 3],
-        [0, 1.5, 3, 2.5], [0, 2, 3, 2], [0, 2.5, 3, 1.5],
-        [0, 3, 3, 1], [0, 3.5, 3, 0.5],
-      ];
-
     });
   }
 
@@ -450,7 +494,8 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   });
 
   // ✅ When fully idle (all sources & layers processed)
-  map.once('idle', () => {
+  map.once('render', () => {
+    console.log("Map is fully loaded and idle.");
     if (typeof setLoading === 'function') setLoading(false); // ✅ Hide modal
     setMapLoaded(true);
 
