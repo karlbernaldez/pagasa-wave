@@ -172,6 +172,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
 
   // ─── Map Load Setup ──────────────────────────────────
   const handleMapLoad = useCallback(async (map) => {
+
     mapRef.current = map;
 
     const setupFeaturesAndLayers = async () => {
@@ -259,7 +260,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
       inactivityTimer = setTimeout(() => {
         // Trigger page reload after 1 minute of inactivity
         window.location.reload();
-      }, 90000); // 1 minute = 60000 ms
+      }, 360000); // 1 minute = 60000 ms
     };
 
     // Add event listeners for user activity
