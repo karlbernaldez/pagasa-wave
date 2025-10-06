@@ -15,16 +15,9 @@ import { startScheduler } from './services/satelliteServices.js';
 const app = express();
 connectDB();
 
-const allowedOrigins = [
-  'http://10.8.0.2:3000',
-  'http://34.122.153.132:8080',
-  'http://34.172.63.27:3030',
-  'http://34.172.63.27:3001',
-  'http://localhost:3001',
-  'http://localhost:3000',
-  'http://192.168.5.1:3000',
-  'http://34.172.63.27:5173',
-];
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(',')
+  : [];
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
