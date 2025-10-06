@@ -23,10 +23,10 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
     type: 'video',
     urls: ['http://34.172.63.27:5000/api/public/himawari.mp4'],
     coordinates: [
-      [104, 29.6],     // top-left
-      [146.99, 29.6],  // top-right
-      [146.99, -1.15], // bottom-right
-      [104, -1.15]     // bottom-left
+      [104, 29.55],     // top-left
+      [146.99, 29.55],  // top-right
+      [146.99, -1.5], // bottom-right
+      [104, -1.5]     // bottom-left
     ]
   });
 
@@ -35,7 +35,7 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
     type: 'raster',
     source: 'himawari-video',
     slot: 'bottom',
-    paint: { 'raster-opacity': 0.85 }
+    paint: { 'raster-opacity': 0.95 }
   });
 
   // play the video
