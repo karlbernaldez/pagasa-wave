@@ -41,13 +41,14 @@ const Layout = () => {
   const isMobile = useIsMobile();
   const { isLoginPage, isRegisterPage, isDashboardPage, isEditPage } = useRouteChecks(); // Use custom hook
   const isAuthPage = isLoginPage || isRegisterPage;
-  
+
   // State management
   const [modalVisible, setModalVisible] = useState(false);
   const [accessDeniedVisible, setAccessDeniedVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isDarkMode, setIsDarkMode] = useTheme();
+  const [activeChartType, setActiveChartType] = useState('wave-wind');
 
   // Persist theme preference
   useTheme(isDarkMode);
@@ -98,6 +99,8 @@ const Layout = () => {
               isLoggedIn={isLoggedIn}
               setIsLoggedIn={setIsLoggedIn}
               toggleTheme={toggleTheme}
+              activeChartType={activeChartType}
+              setActiveChartType={setActiveChartType}
             />
           </Suspense>
         )}
@@ -137,7 +140,7 @@ const Layout = () => {
                   />
                 }
               />
-              <Route path="/charts" element={<Charts isDarkMode={isDarkMode} />} />
+              <Route path="/charts" element={<Charts isDarkMode={isDarkMode} activeChartType={activeChartType} />} />
               <Route path="/about-us" element={<AboutUs isDarkMode={isDarkMode} />} />
             </Routes>
           </Suspense>

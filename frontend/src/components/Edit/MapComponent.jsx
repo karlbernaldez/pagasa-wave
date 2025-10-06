@@ -2,7 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 
-mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 const MapComponent = ({ onMapLoad, isDarkMode }) => {
   const mapContainerRef = useRef(null);
@@ -32,20 +32,20 @@ const MapComponent = ({ onMapLoad, isDarkMode }) => {
           ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk' //--Dark
           : 'mapbox://styles/karlbernaldizzy/cmf6i7nne000501s2hbmw8phn',
         center: [120.0, 15.5],
-        minZoom: 3.5,
-        zoom: 4,
+        minZoom: 4,
+        zoom: 5.5,
         maxZoom: 12,
         preserveDrawingBuffer: true,
         maxBounds: [
-          [95, -5], // Southwest corner
+          [80, -10], // Southwest corner
           [170, 40]  // Northeast corner
         ],
       });
 
       map.fitBounds(
         [
-          [99.79339501828959, 3.757304989541903],
-          [153.8595159535438, 27.162621752400347],
+          [93, 0],
+          [153.8595159535438, 25],
         ],
         {
           padding: { top: 200, bottom: 100, left: 100, right: 200 },

@@ -25,6 +25,8 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "framer-motion": "^12.7.4",
+    "gif.js": "^0.2.0",
+    "gif.js.optimized": "^1.0.1",
     "jszip": "^3.10.1",
     "jwt-decode": "^4.0.0",
     "konva": "^9.3.20",
@@ -37,12 +39,11 @@
     "react-animations": "^1.0.0",
     "react-datepicker": "^8.4.0",
     "react-dom": "^19.1.0",
-    "react-google-login": "^5.2.2",
     "react-icons": "^5.5.0",
     "react-konva": "^19.0.3",
     "react-responsive": "^10.0.1",
     "react-router-dom": "^7.5.0",
-    "react-scripts": "5.0.1",
+    "react-scripts": "^5.0.1",
     "recharts": "^3.1.0",
     "shp-write": "^0.3.2",
     "styled-components": "^6.1.19",
@@ -53,10 +54,9 @@
     "webgl-wind": "github:mapbox/webgl-wind"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "eslintConfig": {
     "extends": [
@@ -75,5 +75,14 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.13",
+    "@vitejs/plugin-react": "^5.0.3",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.3.3",
+    "vite": "^7.1.7"
+  },
+  "packageManager": "pnpm@10.17.1+sha512.17c560fca4867ae9473a3899ad84a88334914f379be46d455cbf92e5cf4b39d34985d452d2583baf19967fa76cb5c17bc9e245529d0b98745721aa7200ecaf7a"
 }

@@ -35,6 +35,7 @@ export const Logo = styled.div`
   gap: 0.75rem;
   font-size: 1.5rem;
   font-weight: 800;
+  line-height: 1.5; /* Adjusted for better vertical rhythm */
   background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -46,6 +47,7 @@ export const Logo = styled.div`
     transform: scale(1.05);
   }
 `;
+
 
 export const LogoIcon = styled.div`
   width: 2.25rem;
@@ -369,7 +371,7 @@ export const UserDropdownTrigger = styled.button`
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.2s ease;
-  background-color: ${props => props.isOpen ? 
+  background-color: ${props => props.isOpen ?
     (props.isDarkMode ? '#374151' : '#f3f4f6') : 'transparent'};
   
   &:hover {
@@ -494,14 +496,14 @@ export const DropdownItem = styled.button`
   align-items: center;
   gap: 12px;
   font-size: 14px;
-  color: ${props => props.isSignOut ? '#ef4444' : 
+  color: ${props => props.isSignOut ? '#ef4444' :
     (props.isDarkMode ? '#f9fafb' : '#111827')};
   transition: background-color 0.15s ease;
   text-align: left;
   
   &:hover {
     background-color: ${props => props.isSignOut ? '#fef2f2' :
-      (props.isDarkMode ? '#374151' : '#f3f4f6')};
+    (props.isDarkMode ? '#374151' : '#f3f4f6')};
   }
   
   &:focus {

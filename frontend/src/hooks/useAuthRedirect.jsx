@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const AUTH_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/auth`;
+const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 
 const useAuthRedirect = (redirectPath = '/wavelab') => {
   const navigate = useNavigate();

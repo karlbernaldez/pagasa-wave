@@ -54,7 +54,7 @@ const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null, s
   const [showAdminModal, setShowAdminModal] = useState(false);
   const navigate = useNavigate();
 
-  const AUTH_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/auth`;
+  const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 
   const checkRoute = `${AUTH_API_BASE_URL}/check`;
 

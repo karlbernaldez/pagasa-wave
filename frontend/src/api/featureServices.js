@@ -1,7 +1,7 @@
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 
-const API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/features`; // Adjust if using a different port
+const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/features`; // Adjust if using a different port
 
 const isTokenValid = (token) => {
   if (!token) return false;
