@@ -34,7 +34,7 @@ const MapComponent = ({ onMapLoad, isDarkMode }) => {
         center: [120.0, 15.5],
         minZoom: 4,
         zoom: 5.5,
-        maxZoom: 12,
+        maxZoom: 8,
         preserveDrawingBuffer: true,
         maxBounds: [
           [80, -10], // Southwest corner
@@ -49,6 +49,7 @@ const MapComponent = ({ onMapLoad, isDarkMode }) => {
         ],
         {
           padding: { top: 200, bottom: 100, left: 100, right: 200 },
+          maxZoom: 8, // <-- Add this line
         }
       );
 
