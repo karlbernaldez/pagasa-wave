@@ -33,10 +33,13 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   });
 
   map.addLayer({
-    id: 'himawari-video-layer',
+    id: 'Satellite',
     type: 'raster',
     source: 'himawari-video',
     slot: 'bottom',
+    layout: {
+    'visibility': 'none' // layer is hidden initially
+  },
     paint: { 'raster-opacity': 0.95 }
   });
 
