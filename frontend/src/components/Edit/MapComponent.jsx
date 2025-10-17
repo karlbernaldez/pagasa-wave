@@ -1,84 +1,84 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
+import { registerMapInstance } from '../../utils/mapUtils';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
-const MapComponent = ({ onMapLoad, isDarkMode }) => {
+const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
 
+  // Initialize map
   useEffect(() => {
-    if (!mapContainerRef.current) {
-      console.error('Map container reference is not available.');
-      return;
+    if (!mapContainerRef.current) return;
+
+    // Remove any previous map DOM content
+    while (mapContainerRef.current.firstChild) {
+      mapContainerRef.current.removeChild(mapContainerRef.current.firstChild);
     }
 
-    if (!mapboxgl.accessToken) {
-      console.error('Mapbox access token is not defined.');
-      return;
-    }
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      projection: 'mercator',
+      style: isDarkMode
+        ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk'
+        : 'mapbox://styles/karlbernaldizzy/cmf6i7nne000501s2hbmw8phn',
+      center: [120.0, 15.5],
+      minZoom: 4,
+      zoom: 5.5,
+      maxZoom: 8,
+      preserveDrawingBuffer: true,
+      maxBounds: [
+        [80, -10],
+        [170, 40],
+      ],
+    });
 
-    if (!mapRef.current) {
-      // Clear container div to make sure it's empty
-      while (mapContainerRef.current.firstChild) {
-        mapContainerRef.current.removeChild(mapContainerRef.current.firstChild);
-      }
-
-      const map = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        projection: 'mercator',
-        style: isDarkMode
-          ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk' //--Dark
-          : 'mapbox://styles/karlbernaldizzy/cmf6i7nne000501s2hbmw8phn',
-        center: [120.0, 15.5],
-        minZoom: 4,
-        zoom: 5.5,
+    map.fitBounds(
+      [
+        [93, 0],
+        [153.8595159535438, 25],
+      ],
+      {
+        padding: { top: 200, bottom: 100, left: 100, right: 200 },
         maxZoom: 8,
-        preserveDrawingBuffer: true,
-        maxBounds: [
-          [80, -10], // Southwest corner
-          [170, 40]  // Northeast corner
-        ],
-      });
-
-      map.fitBounds(
-        [
-          [93, 0],
-          [153.8595159535438, 25],
-        ],
-        {
-          padding: { top: 200, bottom: 100, left: 100, right: 200 },
-          maxZoom: 8, // <-- Add this line
-        }
-      );
-
-      map.on('load', () => {
-        mapRef.current = map;
-        if (onMapLoad) {
-          onMapLoad(map);
-        }
-      });
-    }
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
       }
-    };
-  }, []);
+    );
 
-  // Update the map style when isDarkMode changes
+    // When map is loaded
+    map.on('load', () => {
+      mapRef.current = map;
+      registerMapInstance(map); // ✅ Register latest instance
+      if (setMapInstance) setMapInstance(map);
+      if (onMapLoad) onMapLoad(map);
+    });
+
+    // Cleanup
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      if (setMapInstance) setMapInstance(null);
+    };
+  }, []); // runs only once
+
+  // Update style when theme changes
   useEffect(() => {
-    if (mapRef.current) {
-      mapRef.current.setStyle(
-        isDarkMode
-          ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk'
-          : 'mapbox://styles/karlbernaldizzy/cmf6i7nne000501s2hbmw8phn'
-      );
-    }
-  }, [isDarkMode]); // Re-run whenever isDarkMode changes
+    if (!mapRef.current) return;
+
+    const newStyle = isDarkMode
+      ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk'
+      : 'mapbox://styles/karlbernaldizzy/cmf6i7nne000501s2hbmw8phn';
+
+    const onStyleLoad = () => {
+      registerMapInstance(mapRef.current); // ✅ refresh global map ref after style change
+      if (setMapInstance) setMapInstance(mapRef.current);
+      mapRef.current.off('style.load', onStyleLoad);
+    };
+
+    mapRef.current.on('style.load', onStyleLoad);
+    mapRef.current.setStyle(newStyle);
+  }, [isDarkMode, setMapInstance]);
 
   return (
     <div

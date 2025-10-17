@@ -4,6 +4,7 @@ import SubmitModal from '../modals/SubmitModal';
 import withReactContent from 'sweetalert2-react-content';
 import { fetchUserProjects, deleteProjectById } from '../../api/projectAPI';
 import ProjectListModal from '../modals/ProjectListModal';
+import ExportConfirmModal from '../modals/ExportModal';
 import React, { useState, useRef, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { Wrapper, MenuButton, Dropdown, MenuItem, SubDropdown, SubMenuItem, LoadingModal } from './styles/ProjectMenu';
@@ -11,11 +12,12 @@ import { logout, handleCreateProject as createProjectHandler, downloadCachedSnap
 
 const MySwal = withReactContent(Swal);
 
-const ProjectMenu = ({ blink, onNew, onSave, onView, onExport, mapRef, features, isDarkMode, setIsDarkMode, setMapLoaded, isLoading }) => {
+const ProjectMenu = ({ blink, onNew, onSave, onView, onExport, map, features, isDarkMode, setIsDarkMode, setMapLoaded, isLoading, setCapturedImages }) => {
   const [mainOpen, setMainOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showExportConfirm, setShowExportConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [projects, setProjects] = useState([]);
@@ -77,6 +79,33 @@ const ProjectMenu = ({ blink, onNew, onSave, onView, onExport, mapRef, features,
     }
   };
 
+  const handleExportProject = async () => {
+    if (!map) return;
+
+    try {
+      setIsExporting(true);
+
+      await downloadCachedSnapshotZip(
+        setIsDarkMode,
+        features,
+        map,
+        setCapturedImages
+      );
+
+    } catch (err) {
+      console.error("Export failed:", err);
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "error",
+        title: "Export failed",
+        showConfirmButton: false,
+        timer: 2500,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <Wrapper ref={menuRef}>
@@ -116,11 +145,10 @@ const ProjectMenu = ({ blink, onNew, onSave, onView, onExport, mapRef, features,
               }}>
                 Open Project
               </SubMenuItem>
-              <SubMenuItem onClick={async () => {
-                downloadCachedSnapshotZip(setIsDarkMode, features);
-              }}>
+              <SubMenuItem onClick={() => setShowExportConfirm(true)}>
                 Export Project
               </SubMenuItem>
+
             </SubDropdown>
           )}
           <MenuItem onClick={onView}>View</MenuItem>
@@ -198,6 +226,38 @@ const ProjectMenu = ({ blink, onNew, onSave, onView, onExport, mapRef, features,
           isDarkMode={isDarkMode}
         />
       )}
+
+      {showExportConfirm && (
+        <ExportConfirmModal
+          visible={showExportConfirm}
+          onCancel={() => setShowExportConfirm(false)}
+          onConfirm={async () => {
+            setShowExportConfirm(false);
+            setIsExporting(true);
+            try {
+              await downloadCachedSnapshotZip(
+                setIsDarkMode,
+                features,
+                map,
+                setCapturedImages
+              );
+            } catch (err) {
+              console.error("Export failed:", err);
+              Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "error",
+                title: "Export failed",
+                showConfirmButton: false,
+                timer: 5000,
+              });
+            } finally {
+              setIsExporting(false);
+            }
+          }}
+        />
+      )}
+
     </Wrapper>
   );
 };

@@ -1,12 +1,234 @@
 import JSZip from 'jszip';
 import Swal from 'sweetalert2';
-import { createProject } from '../../../api/projectAPI';
-import { logoutUser } from '../../../api/auth';
+import { captureMapSnapshot, getLatestMapInstance } from '../../../utils/mapUtils';
 
-export const logout = () => {
-  logoutUser();
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const waitForMapReady = (map, timeout = 15000) =>
+  new Promise((resolve) => {
+    if (!map) return resolve();
+    let resolved = false;
+
+    const cleanup = () => {
+      map.off('data', onData);
+      map.off('idle', onIdle);
+      clearTimeout(timer);
+    };
+
+    const onData = (e) => {
+      if (e.sourceId === 'himawari-video' && e.isSourceLoaded && !resolved) {
+        resolved = true;
+        cleanup();
+        resolve();
+      }
+    };
+
+    const onIdle = () => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        resolve();
+      }
+    };
+
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        console.warn(`⏱️ Map not ready after ${timeout / 1000}s, continuing anyway.`);
+        resolved = true;
+        cleanup();
+        resolve();
+      }
+    }, timeout);
+
+    if (!map.isStyleLoaded()) {
+      map.once('render', onIdle);
+    } else {
+      const video = map.getSource('himawari-video')?.getVideo();
+      if (video) {
+        resolved = true;
+        cleanup();
+        resolve();
+      } else {
+        map.on('data', onData);
+        map.once('render', onIdle);
+      }
+    }
+  });
+
+function waitForIdle(map, delayMs = 600) {
+  return new Promise((resolve) => {
+    if (!map) return resolve();
+    map.once('idle', () => setTimeout(resolve, delayMs));
+  });
+}
+
+// --- Layer visibility helpers ---
+const mapLayers = [
+  'PAR', 'PAR_dash', 'TCID', 'TCAD',
+  'graticules', 'country-boundaries', 'ERA5_c1', 'ERA5_c2',
+  'wind-layer', 'Satellite'
+];
+
+const disableLayers = (map) => {
+  if (!map) return;
+  mapLayers.forEach((layer) => {
+    if (map.getLayer(layer)) map.setLayoutProperty(layer, 'visibility', 'none');
+  });
 };
 
+const restoreLayers = (map) => {
+  if (!map) return;
+
+  const layersState = {
+    PAR: localStorage.getItem('PAR') === 'true',
+    Satellite: localStorage.getItem('Satellite') === 'true',
+    TCID: localStorage.getItem('TCID') === 'true',
+    TCAD: localStorage.getItem('TCAD') === 'true',
+    ShippingZone: localStorage.getItem('SHIPPING_ZONE') === 'true',
+    WindLayer: localStorage.getItem('wind_layer') === 'true',
+  };
+
+  mapLayers.forEach((layer) => {
+    if (!map.getLayer(layer)) return;
+    let visible = 'none';
+    switch (layer) {
+      case 'PAR':
+      case 'PAR_dash':
+        visible = layersState.PAR ? 'visible' : 'none';
+        break;
+      case 'TCID':
+        visible = layersState.TCID ? 'visible' : 'none';
+        break;
+      case 'TCAD':
+        visible = layersState.TCAD ? 'visible' : 'none';
+        break;
+      case 'graticules':
+      case 'country-boundaries':
+      case 'ERA5_c1':
+      case 'ERA5_c2':
+        visible = layersState.ShippingZone ? 'visible' : 'none';
+        break;
+      case 'wind-layer':
+        visible = layersState.WindLayer ? 'visible' : 'none';
+        break;
+      case 'Satellite':
+        visible = layersState.Satellite ? 'visible' : 'none';
+        break;
+    }
+    map.setLayoutProperty(layer, 'visibility', visible);
+  });
+};
+
+// --- Snapshot helper ---
+async function captureSnapshot(map, setCapturedImages) {
+  if (!map) return;
+  await waitForMapReady(map);
+
+  captureMapSnapshot(map, setCapturedImages, {
+    watermarkText: 'DOST-PAGASA',
+    watermarkStyle: 'diagonal-repeat',
+    labelData: {
+      projectName: 'WA10132025',
+      chartType: 'Wave Analysis',
+      annotator: 'Karl Bernaldez',
+      date: 'October 10, 2025',
+    },
+    labelFont: '14px Arial',
+    labelColor: 'white',
+    labelBgColor: 'rgba(0, 0, 0, 0.7)',
+    labelPadding: 12,
+  });
+}
+
+// --- Second snapshot after theme toggle ---
+async function captureSecondSnapshot(map, setCapturedImages, setIsDarkMode, isDarkMode) {
+  console.log('🌗 Capturing second snapshot with toggled theme...');
+  if (!map || typeof setIsDarkMode !== 'function') return;
+
+  setIsDarkMode(!isDarkMode);
+  const latestMap = getLatestMapInstance();
+  if (!latestMap) return console.error('⚠️ Could not retrieve latest map instance');
+
+  // Wait for new style to load before snapshot
+  // await new Promise((resolve) => {
+  //   const onStyleLoad = async () => {
+  //     latestMap.off('style.load', onStyleLoad);
+  //     restoreLayers(latestMap);
+  //     await delay(1000); // allow tiles to render
+  //     resolve();
+  //   };
+  //   latestMap.on('style.load', onStyleLoad);
+  // });
+
+  await waitForMapReady(latestMap);
+
+  await captureSnapshot(latestMap, setCapturedImages);
+}
+
+// --- Main export function ---
+export async function downloadCachedSnapshotZip(setIsDarkMode, features, map, setCapturedImages) {
+  if (!map) return console.error('❌ No valid map reference found');
+
+  Swal.fire({
+    title: 'Preparing Export...',
+    html: 'Please wait while generating snapshots and ZIP.',
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    didOpen: () => Swal.showLoading(),
+  });
+
+  disableLayers(map);
+
+  await map.fitBounds(
+    [
+      [93, 0],
+      [153.8595159535438, 25],
+    ],
+    { padding: { top: 200, bottom: 100, left: 100, right: 200 }, maxZoom: 8 }
+  );
+
+  await captureSnapshot(map, setCapturedImages);
+  await captureSecondSnapshot(map, setCapturedImages, setIsDarkMode, localStorage.getItem('isDarkMode') === 'true');
+
+  // --- ZIP Creation ---
+  const projectName = localStorage.getItem('projectName') || 'map_snapshots';
+  const zip = new JSZip();
+  const snapshots = { map_snapshot_light: 'map_snapshot_light.png', map_snapshot_dark: 'map_snapshot_dark.png' };
+
+  for (const [key, fileName] of Object.entries(snapshots)) {
+    const data = localStorage.getItem(key);
+    if (data) zip.file(fileName, data.split(',')[1], { base64: true });
+  }
+
+  if (features?.type === 'FeatureCollection') zip.file('features.geojson', JSON.stringify(features, null, 2));
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${projectName.replace(/\s+/g, '_')}.zip`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  Swal.close();
+  Swal.fire({
+    icon: 'success',
+    title: 'Downloaded',
+    text: 'Snapshots and GeoJSON exported as ZIP.',
+    toast: true,
+    position: 'top-end',
+    timer: 3000,
+    showConfirmButton: false,
+    willOpen: (popup) => { popup.style.zIndex = '9999'; },
+  });
+
+  restoreLayers(map);
+}
+
+// --- Logout ---
+export const logout = () => logoutUser();
+
+// --- Project Creation ---
 export const handleCreateProject = async ({
   projectName,
   chartType,
@@ -34,23 +256,14 @@ export const handleCreateProject = async ({
   }
 
   try {
-    const payload = {
-      name: projectName,
-      chartType,
-      description,
-      forecastDate,
-    };
-
+    const payload = { name: projectName, chartType, description, forecastDate };
     const created = await createProject(payload);
 
-    localStorage.setItem("projectId", created._id);
-    localStorage.setItem("projectName", projectName);
-    localStorage.setItem("chartType", chartType);
-    localStorage.setItem("forecastDate", forecastDate);
+    ['projectId', 'projectName', 'chartType', 'forecastDate'].forEach((key) =>
+      localStorage.setItem(key, key === 'projectId' ? created._id : eval(key))
+    );
 
-    if (onNew) {
-      onNew({ name: projectName, chartType, description, forecastDate });
-    }
+    if (onNew) onNew({ name: projectName, chartType, description, forecastDate });
 
     Swal.fire({
       toast: true,
@@ -61,6 +274,7 @@ export const handleCreateProject = async ({
       timer: 2000,
     });
 
+    // Reset UI state
     setShowModal(false);
     setMainOpen(false);
     setProjectOpen(false);
@@ -80,107 +294,3 @@ export const handleCreateProject = async ({
     });
   }
 };
-
-export async function downloadCachedSnapshotZip(setIsDarkMode, features) {
-  const isDarkMode = localStorage.getItem("isDarkMode") === "true";
-  const projectName = localStorage.getItem("projectName") || "map_snapshots";
-
-  const waitForSnapshot = async (key, timeoutMs = 6000, interval = 200) => {
-    const maxTries = Math.floor(timeoutMs / interval);
-    for (let i = 0; i < maxTries; i++) {
-      const snapshot = localStorage.getItem(key);
-      if (snapshot) return true;
-      await new Promise(res => setTimeout(res, interval));
-    }
-    return false;
-  };
-
-  // Step 0: Clear old snapshots
-  localStorage.removeItem("map_snapshot_light");
-  localStorage.removeItem("map_snapshot_dark");
-
-  // Step 1: Show downloading modal
-  Swal.fire({
-    title: 'Downloading...',
-    html: 'Please wait while we prepare the ZIP file.',
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    didOpen: () => Swal.showLoading(),
-  });
-
-  // Step 2: Toggle to opposite theme
-  if (typeof setIsDarkMode === 'function') {
-    setIsDarkMode(!isDarkMode);
-  }
-
-  // Step 3: Wait for opposite snapshot
-  const oppositeKey = isDarkMode ? "map_snapshot_light" : "map_snapshot_dark";
-  await waitForSnapshot(oppositeKey);
-
-  // Step 4: Toggle back to original theme
-  if (typeof setIsDarkMode === 'function') {
-    setIsDarkMode(isDarkMode);
-  }
-
-  // Step 5: Wait for original snapshot
-  const currentKey = isDarkMode ? "map_snapshot_dark" : "map_snapshot_light";
-  await waitForSnapshot(currentKey);
-
-  // Step 6: Get both snapshots
-  const lightSnapshot = localStorage.getItem("map_snapshot_light");
-  const darkSnapshot = localStorage.getItem("map_snapshot_dark");
-
-  // Step 7: Prepare ZIP
-  const zip = new JSZip();
-
-  // Handle snapshots (base64)
-  if (lightSnapshot) {
-    zip.file("map_snapshot_light.png", lightSnapshot.split(',')[1], { base64: true });
-  }
-  if (darkSnapshot) {
-    zip.file("map_snapshot_dark.png", darkSnapshot.split(',')[1], { base64: true });
-  }
-
-  // Handle GeoJSON - Fixed: Pass string directly instead of Blob
-  if (features && features.type === "FeatureCollection" && Array.isArray(features.features)) {
-    const geojsonString = JSON.stringify(features, null, 2);
-    zip.file("features.geojson", geojsonString);
-  } else {
-    console.error('Invalid or malformed GeoJSON:', features);
-    Swal.fire({
-      icon: 'error',
-      title: 'Invalid GeoJSON Format',
-      text: 'The provided GeoJSON is not valid. It will not be included in the download.',
-      toast: true,
-      position: 'top-end',
-      timer: 3000,
-      showConfirmButton: false,
-    });
-  }
-
-  // Step 8: Generate the ZIP file
-  const blob = await zip.generateAsync({ type: "blob" });
-
-  // Step 9: Trigger download
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `${projectName.replace(/\s+/g, "_")}.zip`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  // Step 10: Close loading modal and show success
-  Swal.close();
-  Swal.fire({
-    icon: 'success',
-    title: 'Downloaded',
-    text: 'Snapshots and GeoJSON exported as ZIP.',
-    toast: true,
-    position: 'top-end',
-    timer: 3000,
-    showConfirmButton: false,
-    willOpen: (popup) => {
-      popup.style.zIndex = '9999'; // ensure it's on top
-    }
-  });
-}
