@@ -356,7 +356,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
               isLoading={isLoading}
               setCapturedImages={setCapturedImages}
             />
-            <ProjectInfo
+            {/* <ProjectInfo
               layers={layers}
               setLayers={setLayers}
               mapRef={mapRef}
@@ -364,7 +364,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
               draw={drawInstance}
               setIsLoading={setIsLoading}
               isLoading={isLoading}
-            />
+            /> */}
           </SidePanelWrapper>
 
           <LayerPanel
