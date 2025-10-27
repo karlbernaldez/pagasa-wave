@@ -65,7 +65,7 @@ function waitForIdle(map, delayMs = 600) {
 // --- Layer visibility helpers ---
 const mapLayers = [
   'PAR', 'PAR_dash', 'TCID', 'TCAD',
-  'graticules', 'country-boundaries', 'ERA5_c1', 'ERA5_c2',
+  'graticules', 'ERA5_c1', 'ERA5_c2',
   'wind-layer', 'Satellite'
 ];
 
@@ -103,9 +103,8 @@ const restoreLayers = (map) => {
         visible = layersState.TCAD ? 'visible' : 'none';
         break;
       case 'graticules':
-      case 'country-boundaries':
-      case 'ERA5_c1':
-      case 'ERA5_c2':
+      // case 'ERA5_c1':
+      // case 'ERA5_c2':
         visible = layersState.ShippingZone ? 'visible' : 'none';
         break;
       case 'wind-layer':

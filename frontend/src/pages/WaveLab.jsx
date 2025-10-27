@@ -252,9 +252,8 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
     const resetTimer = () => {
       clearTimeout(inactivityTimer);
       inactivityTimer = setTimeout(() => {
-        // Trigger page reload after 1 minute of inactivity
         window.location.reload();
-      }, 360000); // 1 minute = 60000 ms
+      }, 640000);
     };
 
     // Add event listeners for user activity

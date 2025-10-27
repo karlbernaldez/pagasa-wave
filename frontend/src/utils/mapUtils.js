@@ -5,6 +5,127 @@ import DrawRectangle from '../components/Edit/draw/rectangle';
 import DrawCircle from '../components/Edit/draw/circle';
 import SimpleSelect from '../components/Edit/draw/simple_select';
 
+function applyWatermark(ctx, width, height, { text, style, font, color, opacity }) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.font = font;
+  ctx.fillStyle = color;
+
+  switch (style) {
+    case "diagonal-repeat":
+      applyDiagonalRepeat(ctx, width, height, text);
+      break;
+    case "pattern-grid":
+      applyPatternGrid(ctx, width, height, text);
+      break;
+    case "corner":
+      applyCorner(ctx, width, height, text);
+      break;
+    case "center":
+      applyCenter(ctx, width, height, text);
+      break;
+    case "bottom-right":
+      applyBottomRight(ctx, width, height, text);
+      break;
+    default:
+      applyBottomRight(ctx, width, height, text);
+  }
+
+  ctx.restore();
+}
+
+function applyDiagonalRepeat(ctx, width, height, text) {
+  const spacing = 300; // Space between text repetitions
+  const lineSpacing = 250; // Space between diagonal lines
+  const angle = -Math.PI / 4; // 45 degrees
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // Calculate the diagonal length to cover entire canvas
+  const diagonalLength = Math.sqrt(width * width + height * height) + 200;
+
+  // Create multiple diagonal lines
+  for (let line = -diagonalLength; line < diagonalLength; line += lineSpacing) {
+    for (let i = -diagonalLength; i < diagonalLength; i += spacing) {
+      ctx.save();
+      ctx.translate(width / 2, height / 2);
+      ctx.rotate(angle);
+      ctx.translate(i, line);
+      ctx.fillText(text, 0, 0);
+      ctx.restore();
+    }
+  }
+}
+
+function applyPatternGrid(ctx, width, height, text) {
+  const spacingX = 200;
+  const spacingY = 150;
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  for (let y = 0; y < height; y += spacingY) {
+    for (let x = 0; x < width; x += spacingX) {
+      ctx.fillText(text, x, y);
+    }
+  }
+}
+
+function applyCorner(ctx, width, height, text) {
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(text, width - 20, height - 20);
+}
+
+function applyCenter(ctx, width, height, text) {
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, width / 2, height / 2);
+}
+
+function applyBottomRight(ctx, width, height, text) {
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(text, width - 10, height - 10);
+}
+
+function drawLabelBox(ctx, labelData, { font, color, bgColor, padding }) {
+  const lines = [
+    `PROJECT NAME: ${labelData.projectName || ""}`,
+    `CHART TYPE: ${labelData.chartType || ""}`,
+    `Annotator: ${labelData.annotator || ""}`,
+    `Date: ${labelData.date || ""}`,
+  ];
+
+  ctx.font = font;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  // Calculate box dimensions
+  const lineHeight = 20;
+  const boxWidth = Math.max(...lines.map(line => ctx.measureText(line).width)) + padding * 2;
+  const boxHeight = lines.length * lineHeight + padding * 2;
+
+  const x = 10;
+  const y = 10;
+
+  // Draw background box
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(x, y, boxWidth, boxHeight);
+
+  // Draw border
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, boxWidth, boxHeight);
+
+  // Draw text
+  ctx.fillStyle = color;
+  lines.forEach((line, index) => {
+    ctx.fillText(line, x + padding, y + padding + index * lineHeight);
+  });
+}
+
 /**
  * Get the latest valid Mapbox map instance.
  * Works even after re-render, theme toggle, or ref mismatch.
@@ -343,9 +464,43 @@ export function addWindLayer(map) {
 
   map.addSource("12SEP2025v2", {
     type: "raster-array",
-    url: `mapbox://karlbernaldizzy.09182025?fresh=${Date.now()}`,
+    url: `mapbox://karlbernaldizzy.20250922?fresh=${Date.now()}`,
     tileSize: 4096,
   });
+
+  map.addSource('glass-layer', {
+    type: 'vector',
+    url: 'mapbox://karlbernaldizzy.192shi9k'
+  });
+
+  // map.addLayer({
+  //   id: "wind-layer",
+  //   type: "raster-particle",
+  //   source: "12SEP2025v2",
+  //   "source-layer": "10m_wind",
+  //   slot: "bottom",
+  //   paint: {
+  //     "raster-particle-speed-factor": 0.6,
+  //     "raster-particle-fade-opacity-factor": 0.6,
+  //     "raster-particle-reset-rate-factor": 0.4,
+  //     "raster-particle-count": 48000,
+  //     "raster-particle-max-speed": 100,
+  //     "raster-particle-color": [
+  //       "interpolate",
+  //       ["linear"],
+  //       ["raster-particle-speed"],
+  //       1.5, "rgba(134,163,171,256)",
+  //       6.17, "rgba(15,147,167,256)",
+  //       11.83, "rgba(194,134,62,256)",
+  //       18.0, "rgba(210,0,50,256)",
+  //       25.21, "rgba(117,74,147,256)",
+  //       42.18, "rgba(194,251,119,256)",
+  //       50.41, "rgba(256,256,256,256)",
+  //       59.16, "rgba(0,256,256,256)",
+  //       69.44, "rgba(256,37,256,256)",
+  //     ],
+  //   },
+  // });
 
   map.addLayer({
     id: "wind-layer",
@@ -354,27 +509,73 @@ export function addWindLayer(map) {
     "source-layer": "10m_wind",
     slot: "bottom",
     paint: {
-      "raster-particle-speed-factor": 0.6,
-      "raster-particle-fade-opacity-factor": 0.6,
-      "raster-particle-reset-rate-factor": 0.4,
-      "raster-particle-count": 48000,
-      "raster-particle-max-speed": 100,
+      "raster-particle-speed-factor": 0.4,        // slower movement = clearer particles
+      "raster-particle-fade-opacity-factor": 0.8, // more visible traces
+      "raster-particle-reset-rate-factor": 0.3,   // less frequent resets (longer trails)
+      "raster-particle-count": 36000,             // fewer particles = larger appearance
+      "raster-particle-max-speed": 120,            // slower, smoother trails
       "raster-particle-color": [
         "interpolate",
         ["linear"],
         ["raster-particle-speed"],
-        1.5, "rgba(134,163,171,256)",
-        6.17, "rgba(15,147,167,256)",
-        11.83, "rgba(194,134,62,256)",
-        18.0, "rgba(210,0,50,256)",
-        25.21, "rgba(117,74,147,256)",
-        42.18, "rgba(194,251,119,256)",
-        50.41, "rgba(256,256,256,256)",
-        59.16, "rgba(0,256,256,256)",
-        69.44, "rgba(256,37,256,256)",
+        0, "rgba(255,255,255,0.7)",
+        100, "rgba(255,255,255,1)"
       ],
     },
   });
+
+  map.addLayer({
+    id: 'glass-fill',
+    type: 'fill',
+    source: 'glass-layer',
+    'source-layer': 'ph-bum99e',
+    slot: "top",
+    paint: {
+      // Transparent white base
+      'fill-color': 'rgba(255, 255, 255, 0.15)',
+      'fill-opacity': 0.4,
+
+      // Soft white outline for edges
+      'fill-outline-color': 'rgba(255, 255, 255, 0.35)'
+    }
+  });
+
+  map.addLayer(
+    {
+      id: 'glass-stroke',
+      type: 'line',
+      source: 'glass-layer',
+      'source-layer': 'ph-bum99e',
+      slot: "top",
+      paint: {
+        // Soft cyan-white stroke (glow effect)
+        'line-color': 'rgba(0, 0, 0, 0.8)',
+        'line-width': 1.5,
+        'line-opacity': 0.9,
+        'line-blur': 1.5
+      }
+    },
+  );
+
+  // Optional: Add a subtle gradient depth
+  map.addLayer({
+    id: 'glass-depth',
+    type: 'fill',
+    source: 'glass-layer',
+    'source-layer': 'ph-bum99e',
+    slot: "top",
+    paint: {
+      'fill-color': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        5, 'rgba(255,255,255,0.05)',
+        10, 'rgba(255,255,255,0.25)'
+      ],
+      'fill-opacity': 0.3
+    }
+  });
+
 }
 
 /**
@@ -465,125 +666,4 @@ export function captureMapSnapshot(map, setCapturedImages, options = {}) {
     console.error("❌ Error capturing map snapshot:", e);
     return null;
   }
-}
-
-function applyWatermark(ctx, width, height, { text, style, font, color, opacity }) {
-  ctx.save();
-  ctx.globalAlpha = opacity;
-  ctx.font = font;
-  ctx.fillStyle = color;
-
-  switch (style) {
-    case "diagonal-repeat":
-      applyDiagonalRepeat(ctx, width, height, text);
-      break;
-    case "pattern-grid":
-      applyPatternGrid(ctx, width, height, text);
-      break;
-    case "corner":
-      applyCorner(ctx, width, height, text);
-      break;
-    case "center":
-      applyCenter(ctx, width, height, text);
-      break;
-    case "bottom-right":
-      applyBottomRight(ctx, width, height, text);
-      break;
-    default:
-      applyBottomRight(ctx, width, height, text);
-  }
-
-  ctx.restore();
-}
-
-function applyDiagonalRepeat(ctx, width, height, text) {
-  const spacing = 300; // Space between text repetitions
-  const lineSpacing = 250; // Space between diagonal lines
-  const angle = -Math.PI / 4; // 45 degrees
-
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  // Calculate the diagonal length to cover entire canvas
-  const diagonalLength = Math.sqrt(width * width + height * height) + 200;
-
-  // Create multiple diagonal lines
-  for (let line = -diagonalLength; line < diagonalLength; line += lineSpacing) {
-    for (let i = -diagonalLength; i < diagonalLength; i += spacing) {
-      ctx.save();
-      ctx.translate(width / 2, height / 2);
-      ctx.rotate(angle);
-      ctx.translate(i, line);
-      ctx.fillText(text, 0, 0);
-      ctx.restore();
-    }
-  }
-}
-
-function applyPatternGrid(ctx, width, height, text) {
-  const spacingX = 200;
-  const spacingY = 150;
-
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  for (let y = 0; y < height; y += spacingY) {
-    for (let x = 0; x < width; x += spacingX) {
-      ctx.fillText(text, x, y);
-    }
-  }
-}
-
-function applyCorner(ctx, width, height, text) {
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(text, width - 20, height - 20);
-}
-
-function applyCenter(ctx, width, height, text) {
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, width / 2, height / 2);
-}
-
-function applyBottomRight(ctx, width, height, text) {
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(text, width - 10, height - 10);
-}
-
-function drawLabelBox(ctx, labelData, { font, color, bgColor, padding }) {
-  const lines = [
-    `PROJECT NAME: ${labelData.projectName || ""}`,
-    `CHART TYPE: ${labelData.chartType || ""}`,
-    `Annotator: ${labelData.annotator || ""}`,
-    `Date: ${labelData.date || ""}`,
-  ];
-
-  ctx.font = font;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-
-  // Calculate box dimensions
-  const lineHeight = 20;
-  const boxWidth = Math.max(...lines.map(line => ctx.measureText(line).width)) + padding * 2;
-  const boxHeight = lines.length * lineHeight + padding * 2;
-
-  const x = 10;
-  const y = 10;
-
-  // Draw background box
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(x, y, boxWidth, boxHeight);
-
-  // Draw border
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, boxWidth, boxHeight);
-
-  // Draw text
-  ctx.fillStyle = color;
-  lines.forEach((line, index) => {
-    ctx.fillText(line, x + padding, y + padding + index * lineHeight);
-  });
 }
