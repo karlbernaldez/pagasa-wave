@@ -10,3 +10,10 @@ scripts/upload_wind_raster.txt
 frontend/dist/
 
 backend/frames/
+
+.venv/
+
+scripts/venv/
+scripts/wind_tiles/
+scripts/20251023180000-0h-oper-fc.grib2
+scripts/20250922.grib
