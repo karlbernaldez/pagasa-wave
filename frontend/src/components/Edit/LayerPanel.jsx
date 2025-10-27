@@ -21,6 +21,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
   // MiscLayer states
   const [showPAR, setShowPAR] = useState(false);
+  const [showSatellite, setShowSatellite] = useState(false);
   const [showTCID, setShowTCID] = useState(false);
   const [showTCAD, setShowTCAD] = useState(false);
   const [showSHIPPINGZONE, setShowSHIPPINGZONE] = useState(false);
@@ -32,6 +33,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   useEffect(() => {
     const layersState = {
       PAR: localStorage.getItem('PAR') === 'true',
+      Satellite: localStorage.getItem('Satellite') === 'true',
       TCID: localStorage.getItem('TCID') === 'true',
       TCAD: localStorage.getItem('TCAD') === 'true',
       ShippingZonestate: localStorage.getItem('SHIPPING_ZONE') === 'true',
@@ -39,6 +41,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     };
 
     setShowPAR(layersState.PAR);
+    setShowSatellite(layersState.Satellite);
     setShowTCID(layersState.TCID);
     setShowTCAD(layersState.TCAD);
     setShowSHIPPINGZONE(layersState.ShippingZonestate);
@@ -47,11 +50,12 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     if (mapRef.current) {
       mapRef.current.on('load', () => {
         mapRef.current.setLayoutProperty('PAR', 'visibility', layersState.PAR ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('Satellite', 'visibility', layersState.Satellite ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('TCID', 'visibility', layersState.TCID ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('TCAD', 'visibility', layersState.TCAD ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('graticules', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('graticules_blur', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('country-boundaries', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        // mapRef.current.setLayoutProperty('country-boundaries', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('ERA5_c1', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('ERA5_c2', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
@@ -119,6 +123,14 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           return newState;
         });
         break;
+      case 'Satellite':
+        setShowSatellite(prev => {
+          const newState = !prev;
+          localStorage.setItem('Satellite', newState.toString());
+          mapRef.current?.setLayoutProperty('Satellite', 'visibility', newState ? 'visible' : 'none');
+          return newState;
+        });
+        break;
       case 'TCID':
         setShowTCID(prev => {
           const newState = !prev;
@@ -143,7 +155,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           mapRef.current?.setLayoutProperty('ERA5_c2', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('graticules', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('graticules_blur', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current?.setLayoutProperty('country-boundaries', 'visibility', newState ? 'visible' : 'none');
+          // mapRef.current?.setLayoutProperty('country-boundaries', 'visibility', newState ? 'visible' : 'none');
           return newState;
         });
         break;
@@ -249,6 +261,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
   const miscLayers = [
     { name: 'PAR', state: showPAR, key: 'PAR', description: 'Protected Areas and Reserves' },
+    { name: 'Satellite', state: showSatellite, key: 'Satellite', description: 'Satellite Imagery Layer' },
     { name: 'TCID', state: showTCID, key: 'TCID', description: 'Territorial Coverage ID' },
     { name: 'TCAD', state: showTCAD, key: 'TCAD', description: 'Territorial Coverage AD' },
     { name: 'Graticules, Wave & Wind', state: showSHIPPINGZONE, key: 'SHIPPING_ZONE', description: 'Graticules and Wave and Wind Elements' },
