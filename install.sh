@@ -6,97 +6,190 @@ APP_NAME="votewave"
 APP_DIR="/var/www/$APP_NAME"
 GIT_REPO="https://github.com/karlbernaldez/pagasa-wave.git"
 BRANCH="main"
-DOMAIN=""  # leave blank to auto-use server IP (no SSL)
-EMAIL="admin@example.com"  # for Let's Encrypt notifications
-
+DOMAIN=${DOMAIN:-""}  # leave blank to auto-use server IP (no SSL)
+EMAIL=${EMAIL:-"admin@example.com"}  # for Let's Encrypt notifications
 BACKEND_PORT=5000
-FRONTEND_BUILD_DIR="$APP_DIR/frontend/build"
+FRONTEND_BUILD_DIR="$APP_DIR/frontend/dist"
 
-echo "==============================="
+echo "=============================================="
 echo "🚀 Installing $APP_NAME (frontend + backend)"
-echo "==============================="
+echo "=============================================="
 
 # --- Update & install dependencies ---
+echo "📦 Installing system dependencies..."
 sudo apt update -y
-sudo apt install -y git curl nginx
+sudo apt install -y git curl nginx imagemagick ffmpeg
 
 # --- Node.js setup ---
 if ! command -v node >/dev/null 2>&1; then
-  echo "📦 Installing Node.js..."
-  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-  sudo apt install -y nodejs
+    echo "📦 Installing Node.js..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt install -y nodejs
 fi
 
 # --- Install PM2 globally ---
+echo "⚡ Installing PM2 globally..."
 sudo npm install -g pm2
 
-# --- Clone or pull latest repo ---
-if [ -d "$APP_DIR/.git" ]; then
-  echo "📂 Updating existing repo..."
-  cd "$APP_DIR"
-  sudo git pull origin "$BRANCH"
+# --- Determine domain or IP early ---
+if [ -z "$DOMAIN" ]; then
+    echo "🌐 No domain provided — detecting external IP..."
+    DOMAIN=$(curl -s https://ifconfig.me)
+    echo "🌐 Using external IP: $DOMAIN (HTTP only)"
+    USE_SSL=false
 else
-  echo "📂 Cloning repository..."
-  sudo git clone -b "$BRANCH" "$GIT_REPO" "$APP_DIR"
+    echo "🌍 Using domain: $DOMAIN (will enable SSL)"
+    USE_SSL=true
 fi
 
-# --- FRONTEND SETUP ---
+# --- Clone or update repo safely ---
+if [ -d "$APP_DIR/.git" ]; then
+    echo "📂 Updating existing repo..."
+    cd "$APP_DIR"
+    git fetch origin "$BRANCH"
+    git reset --hard origin/"$BRANCH"  # force reset local changes
+else
+    echo "📂 Cloning repository..."
+    sudo git clone -b "$BRANCH" "$GIT_REPO" "$APP_DIR"
+fi
+
+# --- Ensure write permissions for backend ---
+sudo mkdir -p "$APP_DIR/backend"
+sudo chown -R $USER:$USER "$APP_DIR"
+
+# --- BACKEND ENVIRONMENT FILE SETUP ---
+ENV_FILE="$APP_DIR/backend/.env"
+echo "🧩 Creating .env file for backend..."
+if [ ! -f "$ENV_FILE" ]; then
+    read -p "Enter MongoDB URI: " MONGO_URI
+    read -p "Enter JWT Secret: " JWT_SECRET
+    read -p "Enter JWT Refresh Secret: " JWT_REFRESH_SECRET
+    read -p "Enter TOKEN (optional): " TOKEN
+    read -p "Enter XSRF_TOKEN (optional): " XSRF_TOKEN
+    read -p "Enter PANAHON_SESSION (optional): " PANAHON_SESSION
+    read -p "Enter ADMIN_KEY: " ADMIN_KEY
+
+    # Define multiple allowed origins (including ports 5173 and 5174)
+    CORS_ALLOWED_ORIGINS="http://$DOMAIN,http://$DOMAIN:5173,http://$DOMAIN:5174,http://localhost:3000,http://localhost:3001"
+
+    sudo tee "$ENV_FILE" > /dev/null <<EOF
+MONGO_URI=$MONGO_URI
+JWT_SECRET=$JWT_SECRET
+JWT_REFRESH_SECRET=$JWT_REFRESH_SECRET
+CORS_ALLOWED_ORIGINS=$CORS_ALLOWED_ORIGINS
+NODE_ENV=development
+
+TOKEN=$TOKEN
+XSRF_TOKEN=$XSRF_TOKEN
+PANAHON_SESSION=$PANAHON_SESSION
+
+FRAME_COUNT=24
+CRON="*/30 * * * *"
+GIF_DELAY=8
+SAVE_DIR=./frames
+PUBLIC_DIR=./public
+TMP_DIR=./tmp
+
+ADMIN_KEY=$ADMIN_KEY
+EOF
+
+    sudo chmod 600 "$ENV_FILE"
+    echo "✅ Backend .env created at $ENV_FILE"
+else
+    echo "ℹ️ Backend .env already exists — skipping creation."
+fi
+
+# --- FRONTEND ENVIRONMENT FILE SETUP ---
+FRONTEND_ENV_FILE="$APP_DIR/frontend/.env"
+echo "🧩 Creating .env file for frontend..."
+
+if [ ! -f "$FRONTEND_ENV_FILE" ]; then
+    REACT_APP_MAPBOX_ACCESS_TOKEN=${REACT_APP_MAPBOX_ACCESS_TOKEN:-""}
+    REACT_APP_GOOGLE_MAPS_API_KEY=${REACT_APP_GOOGLE_MAPS_API_KEY:-""}
+    CORS_ALLOWED_ORIGIN_FRONTEND=${CORS_ALLOWED_ORIGIN_FRONTEND:-"http://$DOMAIN"}
+    JWT_SECRET_FRONTEND=${JWT_SECRET_FRONTEND:-""}
+    JWT_REFRESH_SECRET_FRONTEND=${JWT_REFRESH_SECRET_FRONTEND:-""}
+    REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-"http://$DOMAIN:5000"}
+    VITE_MAPBOX_ACCESS_TOKEN=${VITE_MAPBOX_ACCESS_TOKEN:-""}
+    VITE_API_URL=${VITE_API_URL:-"http://$DOMAIN:5000"}
+
+    # Prompt user for empty values
+    [ -z "$REACT_APP_MAPBOX_ACCESS_TOKEN" ] && read -p "Enter REACT_APP_MAPBOX_ACCESS_TOKEN: " REACT_APP_MAPBOX_ACCESS_TOKEN
+    [ -z "$REACT_APP_GOOGLE_MAPS_API_KEY" ] && read -p "Enter REACT_APP_GOOGLE_MAPS_API_KEY: " REACT_APP_GOOGLE_MAPS_API_KEY
+    [ -z "$JWT_SECRET_FRONTEND" ] && read -p "Enter JWT_SECRET for frontend: " JWT_SECRET_FRONTEND
+    [ -z "$JWT_REFRESH_SECRET_FRONTEND" ] && read -p "Enter JWT_REFRESH_SECRET for frontend: " JWT_REFRESH_SECRET_FRONTEND
+    [ -z "$REACT_APP_API_BASE_URL" ] && read -p "Enter REACT_APP_API_BASE_URL: " REACT_APP_API_BASE_URL
+    [ -z "$VITE_MAPBOX_ACCESS_TOKEN" ] && read -p "Enter VITE_MAPBOX_ACCESS_TOKEN: " VITE_MAPBOX_ACCESS_TOKEN
+    [ -z "$VITE_API_URL" ] && read -p "Enter VITE_API_URL: " VITE_API_URL
+
+    # Write to .env
+    cat > "$FRONTEND_ENV_FILE" <<EOF
+    REACT_APP_MAPBOX_ACCESS_TOKEN=$REACT_APP_MAPBOX_ACCESS_TOKEN
+    REACT_APP_GOOGLE_MAPS_API_KEY=$REACT_APP_GOOGLE_MAPS_API_KEY
+    CORS_ALLOWED_ORIGIN=$CORS_ALLOWED_ORIGIN_FRONTEND
+    JWT_SECRET=$JWT_SECRET_FRONTEND
+    JWT_REFRESH_SECRET=$JWT_REFRESH_SECRET_FRONTEND
+    REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
+    VITE_MAPBOX_ACCESS_TOKEN=$VITE_MAPBOX_ACCESS_TOKEN
+    VITE_API_URL=$VITE_API_URL
+    EOF
+
+    sudo chown "$USER":"$USER" "$FRONTEND_ENV_FILE"
+    sudo chmod 600 "$FRONTEND_ENV_FILE"
+    echo "✅ Frontend .env created at $FRONTEND_ENV_FILE"
+else
+    echo "ℹ️ Frontend .env already exists — skipping creation."
+fi
+
+# --- FRONTEND BUILD ---
 echo "🧱 Building frontend..."
 cd "$APP_DIR/frontend"
-
 echo "📦 Installing frontend dependencies..."
-if ! sudo npm install; then
-  echo "⚠️ npm install failed — retrying with legacy peer deps..."
-  sudo npm install --legacy-peer-deps
+if ! npm install; then
+    echo "⚠️ npm install failed — retrying with legacy peer deps..."
+    npm install --legacy-peer-deps
 fi
-
-sudo npm run build
+npm run build
 
 # --- BACKEND SETUP ---
 echo "⚙️ Setting up backend..."
 cd "$APP_DIR/backend"
-
 echo "📦 Installing backend dependencies..."
-if ! sudo npm install; then
-  echo "⚠️ npm install failed — retrying with legacy peer deps..."
-  sudo npm install --legacy-peer-deps
+if ! npm install; then
+    echo "⚠️ npm install failed — retrying with legacy peer deps..."
+    npm install --legacy-peer-deps
+fi
+if grep -q "\"build\"" package.json; then
+    echo "🏗️ Building backend..."
+    npm run build
 fi
 
-# Optional: If backend also has a build step (TypeScript, etc.)
-if grep -q "\"build\"" package.json; then
-  echo "🏗️ Building backend..."
-  sudo npm run build
-fi
+# --- Ensure proper permissions ---
+echo "🔐 Fixing backend write permissions..."
+sudo chown -R $USER:$USER "$APP_DIR/backend"
+mkdir -p "$APP_DIR/backend/frames"
+sudo chmod -R 755 "$APP_DIR/backend"
 
 # --- PM2 setup for backend ---
-echo "🔧 Setting up PM2..."
+echo "🔧 Starting backend with PM2..."
 pm2 delete "$APP_NAME-backend" || true
 pm2 start npm --name "$APP_NAME-backend" -- run start
 pm2 save
-pm2 startup systemd -u "$USER" --hp "$HOME"
-
-# --- Determine domain or IP ---
-if [ -z "$DOMAIN" ]; then
-  DOMAIN=$(hostname -I | awk '{print $1}')
-  echo "🌐 No domain provided — using server IP: $DOMAIN (HTTP only)"
-  USE_SSL=false
-else
-  echo "🌍 Using domain: $DOMAIN (will enable SSL)"
-  USE_SSL=true
-fi
+pm2 restart "$APP_NAME-backend"
 
 # --- Nginx configuration ---
 echo "🌐 Setting up Nginx..."
 NGINX_CONF="/etc/nginx/sites-available/$APP_NAME"
 
-sudo bash -c "cat > $NGINX_CONF" <<EOF
+sudo tee "$NGINX_CONF" > /dev/null <<EOF
 server {
     listen 80;
     server_name $DOMAIN;
 
     root $FRONTEND_BUILD_DIR;
-    index index.html index.htm;
+    index index.html;
 
+    # Proxy API requests to backend
     location /api {
         proxy_pass http://localhost:$BACKEND_PORT;
         proxy_http_version 1.1;
@@ -106,8 +199,16 @@ server {
         proxy_cache_bypass \$http_upgrade;
     }
 
+    # Serve frontend files
     location / {
         try_files \$uri /index.html;
+    }
+
+    # Serve static public files (himawari.mp4, etc.)
+    location /api/public/ {
+        root $APP_DIR/backend;
+        autoindex off;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 }
 EOF
@@ -118,25 +219,21 @@ sudo systemctl restart nginx
 
 # --- SSL Setup (Certbot) ---
 if [ "$USE_SSL" = true ]; then
-  echo "🔒 Installing Certbot for SSL..."
-  sudo apt install -y certbot python3-certbot-nginx
-
-  echo "🔐 Requesting SSL certificate for $DOMAIN..."
-  sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect
-
-  echo "🔁 Setting up auto-renewal..."
-  sudo systemctl enable certbot.timer
-  sudo systemctl start certbot.timer
+    echo "🔒 Installing Certbot for SSL..."
+    sudo apt install -y certbot python3-certbot-nginx
+    sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect
+    sudo systemctl enable certbot.timer
+    sudo systemctl start certbot.timer
 fi
 
 # --- Done ---
 echo "===================================="
 echo "✅ $APP_NAME successfully deployed!"
 if [ "$USE_SSL" = true ]; then
-  echo "🌐 Frontend: https://$DOMAIN"
-  echo "🛠️ Backend: https://$DOMAIN/api"
+    echo "🌐 Frontend: https://$DOMAIN"
+    echo "🛠️ Backend: https://$DOMAIN/api"
 else
-  echo "🌐 Frontend: http://$DOMAIN"
-  echo "🛠️ Backend: http://$DOMAIN/api"
+    echo "🌐 Frontend: http://$DOMAIN"
+    echo "🛠️ Backend: http://$DOMAIN/api"
 fi
 echo "===================================="

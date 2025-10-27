@@ -85,7 +85,7 @@ const restoreLayers = (map) => {
     TCID: localStorage.getItem('TCID') === 'true',
     TCAD: localStorage.getItem('TCAD') === 'true',
     ShippingZone: localStorage.getItem('SHIPPING_ZONE') === 'true',
-    WindLayer: localStorage.getItem('wind_layer') === 'true',
+    WindLayer: localStorage.getItem('wind-layer') === 'true',
   };
 
   mapLayers.forEach((layer) => {

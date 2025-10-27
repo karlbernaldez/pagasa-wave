@@ -3,7 +3,7 @@ import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import dayjs from "dayjs";
 import { fetchProjectById, fetchUserProjects, deleteProjectById } from "../../api/projectAPI";
-import { ChevronDown, Plus, FolderOpen, Settings, Download, LogOut, HelpCircle, Edit3, Eye, Map, Menu, Upload,Layers, Database, Wrench, Info, Undo2, Redo2, ZoomIn, ZoomOut, Grid, FileText, BookOpen } from "lucide-react";
+import { ChevronDown, Plus, FolderOpen, Settings, Download, LogOut, HelpCircle, Edit3, Eye, Map, Menu, Upload, Layers, Database, Wrench, Info, Undo2, Redo2, ZoomIn, ZoomOut, Grid, FileText, BookOpen } from "lucide-react";
 import ProjectModal from "../modals/ProjectModal";
 import SubmitModal from "../modals/SubmitModal";
 import ProjectListModal from "../modals/ProjectListModal";
@@ -159,19 +159,18 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
       <div
         ref={menuRef}
         className={`
-          fixed top-18 left-1 z-[9999] w-80 rounded-2xl relative overflow-hidden
-          border border-white/10
-          bg-[rgba(255, 255, 255, 0.01)] dark:bg-[rgba(20,20,20,0.25)]
-          backdrop-blur-2xl backdrop-saturate-150
-          shadow-[0_8px_32px_rgba(0,0,0,0.1)]
-          before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br
-          before:from-white/20 before:to-transparent dark:before:from-white/5 dark:before:to-transparent
-          before:pointer-events-none
-          transition-all duration-500
-          hover:shadow-[0_10px_36px_rgba(0,0,0,0.15)]
-          hover:scale-[1.005]
-          ${isDarkMode ? "text-gray-100" : "text-gray-800"}
-        `}
+        fixed top-18 left-1 z-[9999] w-80 rounded-2xl relative overflow-hidden
+        border border-white/10
+        ${isDarkMode
+                ? "bg-[rgba(20,20,20,0.25)]"
+                : "bg-[rgba(255,255,255,0.2)]"}
+        backdrop-blur-2xl backdrop-saturate-150
+        shadow-[0_8px_32px_rgba(0,0,0,0.1)]
+        transition-all duration-500
+        hover:shadow-[0_10px_36px_rgba(0,0,0,0.15)]
+        hover:scale-[1.005]
+        ${isDarkMode ? "text-gray-100" : "text-gray-800"}
+      `}
       >
 
         {/* Header */}
