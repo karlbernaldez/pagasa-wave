@@ -456,7 +456,10 @@ export function addHimawariLayer(map) {
   });
 }
 
-export function addWindLayer(map) {
+export async function addWindLayer(map) {
+  const response = await fetch('/geojson/20250922v2.geojson');
+  const windData = await response.json();
+
   if (map.getSource("12SEP2025v2")) {
     map.removeLayer("wind-layer");
     map.removeSource("12SEP2025v2");
@@ -471,6 +474,11 @@ export function addWindLayer(map) {
   map.addSource('glass-layer', {
     type: 'vector',
     url: 'mapbox://karlbernaldizzy.192shi9k'
+  });
+
+  map.addSource('wind-points', {
+    type: 'geojson',
+    data: windData
   });
 
   // map.addLayer({
@@ -522,6 +530,169 @@ export function addWindLayer(map) {
         100, "rgba(255,255,255,1)"
       ],
     },
+    layout: {
+      'visibility': 'none'   // 👈 start hidden
+    }
+  });
+
+  map.addLayer({
+    id: 'wind-arrows',
+    type: 'symbol',
+    source: 'wind-points',
+    slot: "middle",
+
+    // 🧠 Filter out weak winds
+    filter: [">=", ["get", "windSpeed"], 2],
+
+    layout: {
+      // Choose icon image based on wind speed
+      'visibility': 'none',
+      'icon-image': [
+        'step', ['get', 'windSpeed'],
+        ['image', '0KTS', { 'params': { 'color-1': 'rgb(240,240,240)' } }],
+        2, ['image', '5 kts'],
+        3.57632, ['image', '10kts (1)'],
+        6.25856, ['image', '15 kts'],
+        8.9408, ['image', '20 kts'],
+        11.176, ['image', '25 kts'],
+        13.85824, ['image', '30 kts']
+      ],
+
+      // Slight size scaling by speed
+      'icon-size': [
+        'interpolate', ['linear'], ['get', 'windSpeed'],
+        0, 1.8,
+        16.5, 3.0
+      ],
+
+      // Rotate based on windDirection (+180 so arrow points TO the flow)
+      'icon-rotate': [
+        '+',
+        ['to-number', ['get', 'windDirection'], 0],
+        360
+      ],
+      'icon-rotation-alignment': 'map',
+      'icon-allow-overlap': true,
+    },
+    paint: { 'icon-opacity': 0.95 }
+  });
+
+  map.addLayer({
+    id: 'wind-labels',
+    type: 'symbol',
+    slot: "middle",
+    source: 'wind-points',
+    filter: [">=", ["get", "windSpeed"], 2],
+    layout: {
+      'visibility': 'none',
+      'text-field': [
+        'concat',
+        [
+          'round',
+          ['*', ['to-number', ['get', 'windSpeed'], 0], 1.94384]
+        ],
+        ' kts'
+      ],
+      'text-size': [
+        'interpolate', ['linear'], ['zoom'],
+        3, 8,
+        6, 10,
+        9, 12
+      ],
+      // **Bold fonts for wind speed**
+      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+      'text-offset': [0, 0.9],
+      'text-anchor': 'top',
+      'text-allow-overlap': true
+    },
+    paint: {
+      // Cool cyan-blue palette for wind
+      'text-color': [
+        'interpolate',
+        ['linear'],
+        ['get', 'windSpeed'],
+        0, '#60a5fa',    // blue-400
+        15, '#38bdf8',   // cyan-400
+        30, '#06b6d4'    // cyan-500
+      ],
+      'text-halo-color': 'rgba(0, 0, 0, 0.8)',
+      'text-halo-width': 2.5,
+      'text-halo-blur': 1.2,
+      'text-opacity': 1
+    }
+  });
+
+  map.addLayer({
+    id: 'wave-arrows',
+    type: 'symbol',
+    source: 'wind-points',
+    slot: "middle",
+    // same filter: show only where windSpeed >= 2
+    filter: [">=", ["get", "windSpeed"], 2],
+    layout: {
+      'visibility': 'none',
+      'icon-image': 'Arrow (1)',      // name in your sprite
+      'icon-size': 1.8,               // scale to taste
+      'icon-rotate': [
+        '+',
+        ['to-number', ['get', 'waveDirection'], 0],
+        0
+      ],
+      'icon-rotation-alignment': 'map',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+    paint: {
+      'icon-opacity': 0.9
+    }
+  });
+
+  map.addLayer({
+    id: 'wave-period-labels',
+    type: 'symbol',
+    source: 'wind-points',
+    slot: "middle",
+    filter: [
+      "all",
+      [">=", ["get", "windSpeed"], 2],
+      ["<", ["get", "wavePeriod"], 30],
+      [">", ["get", "wavePeriod"], 0],
+      ["!=", ["get", "wavePeriod"], 9999]
+    ],
+    layout: {
+      'visibility': 'none',
+      'text-field': [
+        'concat',
+        ['to-string', ['round', ['get', 'wavePeriod']]],
+        ' s'
+      ],
+      'text-size': [
+        'interpolate', ['linear'], ['zoom'],
+        3, 10,
+        6, 14,
+        9, 18
+      ],
+      // **Italic / light font style for wave period**
+      'text-font': ['Open Sans Italic', 'Arial Unicode MS Regular'],
+      'text-offset': [0, -0.7],
+      'text-anchor': 'bottom',
+      'text-allow-overlap': true
+    },
+    paint: {
+      // Warm golden tone for wave labels
+      'text-color': [
+        'interpolate',
+        ['linear'],
+        ['get', 'wavePeriod'],
+        0, '#fde68a',   // amber-200
+        10, '#fbbf24',  // amber-400
+        20, '#f59e0b'   // amber-500
+      ],
+      'text-halo-color': 'rgba(0,0,0,0.85)',
+      'text-halo-width': 2.8,
+      'text-halo-blur': 0.8,
+      'text-opacity': 1
+    }
   });
 
   map.addLayer({
@@ -537,6 +708,9 @@ export function addWindLayer(map) {
 
       // Soft white outline for edges
       'fill-outline-color': 'rgba(255, 255, 255, 0.35)'
+    },
+    layout: {
+      'visibility': 'none'   // 👈 start hidden
     }
   });
 
@@ -553,11 +727,13 @@ export function addWindLayer(map) {
         'line-width': 1.5,
         'line-opacity': 0.9,
         'line-blur': 1.5
+      },
+      layout: {
+        'visibility': 'none'   // 👈 start hidden
       }
     },
   );
 
-  // Optional: Add a subtle gradient depth
   map.addLayer({
     id: 'glass-depth',
     type: 'fill',
@@ -573,6 +749,9 @@ export function addWindLayer(map) {
         10, 'rgba(255,255,255,0.25)'
       ],
       'fill-opacity': 0.3
+    },
+    layout: {
+      'visibility': 'none'   // 👈 start hidden
     }
   });
 

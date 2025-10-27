@@ -4,7 +4,7 @@ from scipy.interpolate import griddata
 import json
 
 # === 1. Open GRIB file ===
-grbs = pygrib.open("era5_ph_wind_wave.grib")
+grbs = pygrib.open("20250922v2.grib")
 
 # Containers
 wind_data = {}

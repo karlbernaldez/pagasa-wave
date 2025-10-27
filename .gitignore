@@ -17,3 +17,5 @@ scripts/venv/
 scripts/wind_tiles/
 scripts/20251023180000-0h-oper-fc.grib2
 scripts/20250922.grib
+scripts/20250922v2.grib
+scripts/20250922v2.geojson
