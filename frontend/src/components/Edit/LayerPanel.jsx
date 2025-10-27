@@ -55,7 +55,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
         mapRef.current.setLayoutProperty('TCAD', 'visibility', layersState.TCAD ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('graticules', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('graticules_blur', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('country-boundaries', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        // mapRef.current.setLayoutProperty('country-boundaries', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('ERA5_c1', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('ERA5_c2', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
@@ -155,7 +155,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           mapRef.current?.setLayoutProperty('ERA5_c2', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('graticules', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('graticules_blur', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current?.setLayoutProperty('country-boundaries', 'visibility', newState ? 'visible' : 'none');
+          // mapRef.current?.setLayoutProperty('country-boundaries', 'visibility', newState ? 'visible' : 'none');
           return newState;
         });
         break;

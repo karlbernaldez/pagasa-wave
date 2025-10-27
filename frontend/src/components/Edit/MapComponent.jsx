@@ -23,7 +23,7 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
       projection: 'mercator',
       style: isDarkMode
         ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk'
-        : 'mapbox://styles/karlbernaldizzy/cmf6i7nne000501s2hbmw8phn',
+        : 'mapbox://styles/karlbernaldizzy/cmh34ma90004301s632gpb1xg',
       center: [120.0, 15.5],
       minZoom: 4,
       zoom: 5.5,
@@ -68,7 +68,7 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
 
     const newStyle = isDarkMode
       ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk'
-      : 'mapbox://styles/karlbernaldizzy/cmf6i7nne000501s2hbmw8phn';
+      : 'mapbox://styles/karlbernaldizzy/cmh34ma90004301s632gpb1xg';
 
     const onStyleLoad = () => {
       registerMapInstance(mapRef.current); // ✅ refresh global map ref after style change
