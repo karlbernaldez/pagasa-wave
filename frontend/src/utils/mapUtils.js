@@ -467,7 +467,7 @@ export async function addWindLayer(map) {
 
   map.addSource("12SEP2025v2", {
     type: "raster-array",
-    url: `mapbox://karlbernaldizzy.20250922?fresh=${Date.now()}`,
+    url: `mapbox://karlbernaldizzy.ecmwf?fresh=${Date.now()}`,
     tileSize: 4096,
   });
 
@@ -561,8 +561,8 @@ export async function addWindLayer(map) {
       // Slight size scaling by speed
       'icon-size': [
         'interpolate', ['linear'], ['get', 'windSpeed'],
-        0, 1.8,
-        16.5, 3.0
+        0, 3.0,
+        16.5, 4.2
       ],
 
       // Rotate based on windDirection (+180 so arrow points TO the flow)

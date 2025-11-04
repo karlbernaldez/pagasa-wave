@@ -5,13 +5,15 @@ import matplotlib.pyplot as plt
 
 # Open only the 10 m wind data
 ds = xr.open_dataset(
-    "20250922000000-0h-oper-fc.grib2",
+    "20251029180000-0h-oper-fc.grib2",
     engine="cfgrib",
     backend_kwargs={
         "filter_by_keys": {"typeOfLevel": "heightAboveGround", "level": 10}
     }
 )
 
+
+print(ds)
 print(ds.data_vars)  # should list 'u10' and 'v10'
 
 # Extract the 10 m components
