@@ -457,13 +457,14 @@ export function addHimawariLayer(map) {
 }
 
 export async function addWindLayer(map) {
-  const response = await fetch('/geojson/20250922v2.geojson');
-  const windData = await response.json();
+  const geojson = await fetch('/geojson/20251106180000-144h-oper-fc.geojson');
+  const windData = await geojson.json();
 
-  if (map.getSource("12SEP2025v2")) {
-    map.removeLayer("wind-layer");
-    map.removeSource("12SEP2025v2");
-  }
+  map.addSource('wind-speed', {
+    type: 'raster-array',
+    url: 'mapbox://karlbernaldizzy.windmagnitude',
+    tileSize: 512
+  });
 
   map.addSource("12SEP2025v2", {
     type: "raster-array",
@@ -511,6 +512,38 @@ export async function addWindLayer(map) {
   // });
 
   map.addLayer({
+    id: 'wind-speed-layer',
+    type: 'raster',
+    source: 'wind-speed',
+    'source-layer': 'wind_speed',
+    paint: {
+      'raster-opacity': 1,
+      'raster-resampling': 'linear',
+      'raster-color-range': [0, 30],  // adjust if needed
+      'raster-color': [
+        'interpolate',
+        ['linear'],
+        ['raster-value'],
+
+        0.01, '#032de6',   // deep ultramarine
+        1.8, '#0047ff',   // windy blue
+        3.6, '#00c6ff',   // bright cyan
+        5.4, '#00ffc8',   // aqua
+        7.2, '#23ce26',   // vivid green
+        10.8, '#b5ff00',   // lime
+        14.4, '#ffe600',   // yellow
+        20.4, '#ffb400',   // yellow-orange
+        24, '#ff6e00',   // orange
+        27.6, '#ff003c',   // red
+        30, '#db0070',   // magenta-red
+      ],
+    },
+    layout: {
+      'visibility': 'none'   // 👈 start hidden
+    }
+  }, 'country-boundaries');
+
+  map.addLayer({
     id: "wind-layer",
     type: "raster-particle",
     source: "12SEP2025v2",
@@ -520,8 +553,8 @@ export async function addWindLayer(map) {
       "raster-particle-speed-factor": 0.4,        // slower movement = clearer particles
       "raster-particle-fade-opacity-factor": 0.8, // more visible traces
       "raster-particle-reset-rate-factor": 0.3,   // less frequent resets (longer trails)
-      "raster-particle-count": 36000,             // fewer particles = larger appearance
-      "raster-particle-max-speed": 120,            // slower, smoother trails
+      "raster-particle-count": 64000,             // fewer particles = larger appearance
+      "raster-particle-max-speed": 160,            // slower, smoother trails
       "raster-particle-color": [
         "interpolate",
         ["linear"],
@@ -713,26 +746,6 @@ export async function addWindLayer(map) {
       'visibility': 'none'   // 👈 start hidden
     }
   });
-
-  map.addLayer(
-    {
-      id: 'glass-stroke',
-      type: 'line',
-      source: 'glass-layer',
-      'source-layer': 'ph-bum99e',
-      slot: "top",
-      paint: {
-        // Soft cyan-white stroke (glow effect)
-        'line-color': 'rgba(0, 0, 0, 0.8)',
-        'line-width': 1.5,
-        'line-opacity': 0.9,
-        'line-blur': 1.5
-      },
-      layout: {
-        'visibility': 'none'   // 👈 start hidden
-      }
-    },
-  );
 
   map.addLayer({
     id: 'glass-depth',

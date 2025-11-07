@@ -8,6 +8,7 @@ scripts/era5_ph_wind_wave.grib.5b7b6.idx
 scripts/grib_files/
 scripts/upload_wind_raster.txt
 frontend/dist/
+frontend/public/geojson/
 
 backend/frames/
 
@@ -19,3 +20,7 @@ scripts/20251023180000-0h-oper-fc.grib2
 scripts/20250922.grib
 scripts/20250922v2.grib
 scripts/20250922v2.geojson
+scripts/ecmwf_data/
+scripts/ECMWF/
+scripts/s3Credentials.json
+scripts/WindLayer.sh

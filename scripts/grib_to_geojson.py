@@ -1,82 +1,111 @@
+#!/usr/bin/env python3
 import pygrib
 import numpy as np
 from scipy.interpolate import griddata
+from pathlib import Path
 import json
+import re
 
-# === 1. Open GRIB file ===
-grbs = pygrib.open("20250922v2.grib")
+# === CONFIG ===
+GRIB_DIR = Path("./ecmwf_data/AIFS-SINGLE")
+OUTPUT_DIR = Path("./ecmwf_data/GEOJSON")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Containers
-wind_data = {}
-wave_data = {}
-
-# === 2. Extract variables ===
-for grb in grbs:
-    if grb.shortName in ['10u', '10v']:  # pygrib uses shortName '10u' and '10v' for 10m winds
-        wind_data[grb.shortName] = grb.values
-        lats, lons = grb.latlons()  # grid coordinates for wind
-    elif grb.shortName in ['mwd', 'mwp', 'swh']:
-        wave_data[grb.shortName] = grb.values
-        wave_lats, wave_lons = grb.latlons()  # usually coarser grid
-
-# Confirm required wind variables are present
-if '10u' not in wind_data or '10v' not in wind_data:
-    raise ValueError("Wind variables not found in GRIB file. Check variable names.")
-
-# === 3. Interpolate wave data onto wind grid ===
-wave_interp = {}
-for key, data in wave_data.items():
-    points = np.array([wave_lons.flatten(), wave_lats.flatten()]).T
-    values = data.flatten()
-    wave_interp[key] = griddata(points, values, (lons, lats), method='linear')
-
-# === 4. Compute wind speed and direction ===
-u10 = wind_data['10u']
-v10 = wind_data['10v']
-
-wind_speed = np.sqrt(u10**2 + v10**2)
-wind_dir = (np.arctan2(u10, v10) * 180/np.pi) % 360  # degrees clockwise from north
-
-# === 5. Create GeoJSON features (subsampled + domain filter) ===
-features = []
-
-# Subsampling step
-step = 15
-
-# Define your domain (example: Philippines bounding box)
+# Domain (Philippines example)
 lon_min, lat_min = 110, 0
 lon_max, lat_max = 155, 27
 
-for i in range(0, lats.shape[0], step):
-    for j in range(0, lats.shape[1], step):
-        lat = lats[i, j]
-        lon = lons[i, j]
-        
-        # Only include points inside the domain
-        if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
+step = 15  # subsampling step (higher = fewer vectors)
+
+
+def process_grib(grib_file: Path):
+    print(f"\n🌪 Processing GRIB → GeoJSON: {grib_file.name}")
+
+    grbs = pygrib.open(str(grib_file))
+
+    wind_data = {}
+    wave_data = {}
+
+    # === Extract variables from GRIB ===
+    for grb in grbs:
+        if grb.shortName in ['10u', '10v']:
+            wind_data[grb.shortName] = grb.values
+            lats, lons = grb.latlons()
+
+        elif grb.shortName in ['mwd', 'mwp', 'swh']:  # wave variables
+            wave_data[grb.shortName] = grb.values
+            wave_lats, wave_lons = grb.latlons()
+
+    if '10u' not in wind_data or '10v' not in wind_data:
+        print("⚠️  Skipped (wind data missing)")
+        return
+
+    # === Interpolate wave to wind grid (if wave exists) ===
+    wave_interp = {}
+    if wave_data:
+        print("🌊 Interpolating wave to wind grid...")
+        for key, data in wave_data.items():
+            points = np.array([wave_lons.flatten(), wave_lats.flatten()]).T
+            values = data.flatten()
+            wave_interp[key] = griddata(
+                points, values, (lons, lats), method='linear'
+            )
+
+    # === Compute wind speed and direction ===
+    u10 = wind_data['10u']
+    v10 = wind_data['10v']
+
+    wind_speed = np.sqrt(u10 ** 2 + v10 ** 2)
+    wind_dir = (np.arctan2(u10, v10) * 180 / np.pi) % 360
+
+    # === Create GeoJSON features ===
+    features = []
+    for i in range(0, lats.shape[0], step):
+        for j in range(0, lats.shape[1], step):
+            lat = float(lats[i, j])
+            lon = float(lons[i, j])
+
+            # apply bounding box filter
+            if not (lat_min <= lat <= lat_max and lon_min <= lon <= lon_max):
+                continue
+
             feature = {
                 "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [float(lon), float(lat)]
-                },
+                "geometry": {"type": "Point", "coordinates": [lon, lat]},
                 "properties": {
                     "windSpeed": float(wind_speed[i, j]),
                     "windDirection": float(wind_dir[i, j]),
                     "waveDirection": float(wave_interp['mwd'][i, j]) if 'mwd' in wave_interp else None,
                     "wavePeriod": float(wave_interp['mwp'][i, j]) if 'mwp' in wave_interp else None,
-                    "waveHeight": float(wave_interp['swh'][i, j]) if 'swh' in wave_interp else None
+                    "waveHeight": float(wave_interp['swh'][i, j]) if 'swh' in wave_interp else None,
                 }
             }
             features.append(feature)
 
-geojson = {
-    "type": "FeatureCollection",
-    "features": features
-}
+    # === Output filename based on GRIB timestamp ===
+    stamp = re.sub(r"\.grib2$", "", grib_file.name)
+    output_file = OUTPUT_DIR / f"{stamp}.geojson"
 
-# === 6. Save to file ===
-with open("era5_ph_wind_wave.geojson", "w") as f:
-    json.dump(geojson, f)
+    with open(output_file, "w") as f:
+        json.dump({"type": "FeatureCollection", "features": features}, f)
 
-print("✅ Conversion complete. Saved as era5_ph_wind_wave.json")
+    print(f"✅ Saved: {output_file}")
+    print(f"📍 Points: {len(features)}")
+
+
+def main():
+    grib_files = sorted(GRIB_DIR.glob("*.grib2"))
+    if not grib_files:
+        print("\n❌ No GRIB files found in AIFS-SINGLE/")
+        return
+
+    print(f"\n🔍 Found {len(grib_files)} GRIB files to convert")
+
+    for grib in grib_files:
+        process_grib(grib)
+
+    print("\n✅ GeoJSON generation complete.")
+
+
+if __name__ == "__main__":
+    main()

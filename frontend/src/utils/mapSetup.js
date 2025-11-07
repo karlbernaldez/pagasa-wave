@@ -227,8 +227,8 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
     { key: 'Satellite', ids: ['Satellite'] },
     { key: 'TCID', ids: ['TCID'] },
     { key: 'TCAD', ids: ['TCAD'] },
-    { key: 'SHIPPING_ZONE', ids: ['graticules', 'ERA5_c1', 'ERA5_c2'] },
-    { key: 'wind_layer', ids: ['wind-layer', 'wind_magnitude', 'wind-arrows', 'wind-labels', 'wave-arrows', 'wave-period-labels', 'glass-fill', 'glass-stroke', 'glass-depth'] },
+    { key: 'SHIPPING_ZONE', ids: ['graticules'] },
+    { key: 'wind-layer', ids: ['wind-layer', 'wind-speed-layer', 'wind-arrows', 'wind-labels', 'wave-arrows', 'wave-period-labels', 'glass-fill', 'glass-stroke', 'glass-depth'] },
   ]);
 
   // === Map loaded and draw.create handler ===
