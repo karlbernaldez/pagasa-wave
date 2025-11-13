@@ -161,6 +161,13 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           localStorage.setItem('SHIPPING_ZONE', newState.toString());
           mapRef.current?.setLayoutProperty('graticules', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('graticules_blur', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', newState ? 'visible' : 'none');
+
+          mapRef.current.setLayoutProperty('wind-arrows', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current.setLayoutProperty('wind-labels', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current.setLayoutProperty('wave-arrows', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current.setLayoutProperty('wave-period-labels', 'visibility', newState ? 'visible' : 'none');
           return newState;
         });
         break;
@@ -170,10 +177,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           localStorage.setItem('wind-layer', newState.toString());
           mapRef.current?.setLayoutProperty('wind-speed-layer', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('wind-layer', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('wind-arrows', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('wind-labels', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('wave-arrows', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('wave-period-labels', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('wind-solarstorm-layer', 'visibility', newState ? 'visible' : 'none');
           mapRef.current.setLayoutProperty('glass-fill', 'visibility', newState ? 'visible' : 'none');
           mapRef.current.setLayoutProperty('glass-depth', 'visibility', newState ? 'visible' : 'none');
           return newState;

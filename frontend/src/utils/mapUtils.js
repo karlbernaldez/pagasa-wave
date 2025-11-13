@@ -462,7 +462,13 @@ export async function addWindLayer(map) {
 
   map.addSource('wind-speed', {
     type: 'raster-array',
-    url: 'mapbox://karlbernaldizzy.windmagnitude',
+    url: `mapbox://karlbernaldizzy.windmagnitude?fresh=${Date.now()}`,
+    tileSize: 512
+  });
+
+  map.addSource("wind-solarstorm", {
+    type: "raster",
+    url: `mapbox://karlbernaldizzy.windtif?fresh=${Date.now()}`,
     tileSize: 512
   });
 
@@ -511,37 +517,58 @@ export async function addWindLayer(map) {
   //   },
   // });
 
-  map.addLayer({
-    id: 'wind-speed-layer',
-    type: 'raster',
-    source: 'wind-speed',
-    'source-layer': 'wind_speed',
-    paint: {
-      'raster-opacity': 1,
-      'raster-resampling': 'linear',
-      'raster-color-range': [0, 30],  // adjust if needed
-      'raster-color': [
-        'interpolate',
-        ['linear'],
-        ['raster-value'],
+  // map.addLayer(
+  //   {
+  //     id: "wind-speed-layer",
+  //     type: "raster",
+  //     source: "wind-speed",
+  //     "source-layer": "wind_speed",
 
-        0.01, '#032de6',   // deep ultramarine
-        1.8, '#0047ff',   // windy blue
-        3.6, '#00c6ff',   // bright cyan
-        5.4, '#00ffc8',   // aqua
-        7.2, '#23ce26',   // vivid green
-        10.8, '#b5ff00',   // lime
-        14.4, '#ffe600',   // yellow
-        20.4, '#ffb400',   // yellow-orange
-        24, '#ff6e00',   // orange
-        27.6, '#ff003c',   // red
-        30, '#db0070',   // magenta-red
-      ],
+  //     paint: {
+  //       "raster-opacity": 0.92, // subtle transparency
+  //       "raster-resampling": "linear",
+
+  //       // 🚀 SOLARSTORM colormap matching Python
+  //       "raster-color": [
+  //         "interpolate",
+  //         ["linear"],
+  //         ["raster-value"],
+
+  //         // value, color (m/s)
+  //         0.01, "#2a00b5",   // strong violet
+  //         1.8, "#0047ff",   // electric blue
+  //         3.6, "#00c6ff",   // cyan
+  //         5.4, "#00ffc8",   // aqua/mint
+  //         7.2, "#23ce26",   // neon green
+  //         10.8, "#ffe600",   // yellow
+  //         14.4, "#ff8c00",   // orange
+  //         20.4, "#ff004c",   // red
+  //         24.0, "#ff00b8",   // magenta
+  //         27.6, "#ffffff",   // white heat core
+  //         30.0, "#aaaaaa",   // desaturated gray
+  //       ],
+  //     },
+
+  //     layout: {
+  //       "visibility": "none",
+  //     },
+  //   },
+  //   "country-boundaries"
+  // );
+
+  map.addLayer(
+    {
+      id: "wind-solarstorm-layer",
+      type: "raster",
+      source: "wind-solarstorm",
+      paint: {
+        "raster-opacity": 0.85,          // transparency
+        "raster-fade-duration": 300      // smooth transitions between tiles
+      },
     },
-    layout: {
-      'visibility': 'none'   // 👈 start hidden
-    }
-  }, 'country-boundaries');
+    "country-boundaries" // optional: insert below labels
+  );
+
 
   map.addLayer({
     id: "wind-layer",
@@ -575,7 +602,7 @@ export async function addWindLayer(map) {
     slot: "middle",
 
     // 🧠 Filter out weak winds
-    filter: [">=", ["get", "windSpeed"], 2],
+    filter: [">=", ["get", "windSpeed"], 3.08],
 
     layout: {
       // Choose icon image based on wind speed
@@ -607,15 +634,16 @@ export async function addWindLayer(map) {
       'icon-rotation-alignment': 'map',
       'icon-allow-overlap': true,
     },
-    paint: { 'icon-opacity': 0.95 }
+    paint: { 'icon-opacity': 0.75 }
   });
 
   map.addLayer({
     id: 'wind-labels',
     type: 'symbol',
     slot: "middle",
+    // 🧠 Filter out weak winds
+    filter: [">=", ["get", "windSpeed"], 3.08],
     source: 'wind-points',
-    filter: [">=", ["get", "windSpeed"], 2],
     layout: {
       'visibility': 'none',
       'text-field': [
@@ -628,9 +656,9 @@ export async function addWindLayer(map) {
       ],
       'text-size': [
         'interpolate', ['linear'], ['zoom'],
-        3, 8,
-        6, 10,
-        9, 12
+        3, 10,
+        6, 12,
+        9, 14
       ],
       // **Bold fonts for wind speed**
       'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
@@ -661,7 +689,7 @@ export async function addWindLayer(map) {
     source: 'wind-points',
     slot: "middle",
     // same filter: show only where windSpeed >= 2
-    filter: [">=", ["get", "windSpeed"], 2],
+    filter: [">=", ["get", "windSpeed"], 3.08],
     layout: {
       'visibility': 'none',
       'icon-image': 'Arrow (1)',      // name in your sprite
@@ -676,7 +704,7 @@ export async function addWindLayer(map) {
       'icon-ignore-placement': true,
     },
     paint: {
-      'icon-opacity': 0.9
+      'icon-opacity': 0.7
     }
   });
 
@@ -724,7 +752,7 @@ export async function addWindLayer(map) {
       'text-halo-color': 'rgba(0,0,0,0.85)',
       'text-halo-width': 2.8,
       'text-halo-blur': 0.8,
-      'text-opacity': 1
+      'text-opacity': .7
     }
   });
 
