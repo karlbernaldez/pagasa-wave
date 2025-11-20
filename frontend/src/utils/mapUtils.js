@@ -126,6 +126,30 @@ function drawLabelBox(ctx, labelData, { font, color, bgColor, padding }) {
   });
 }
 
+const popup = new mapboxgl.Popup({
+  closeButton: false,
+  closeOnClick: false,
+  offset: [0, -10],
+});
+
+const style = document.createElement('style');
+style.textContent = `
+  .mapboxgl-popup-content {
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  .mapboxgl-popup-tip {
+    display: none !important;
+  }
+  .mapboxgl-popup-anchor-bottom .mapboxgl-popup-content {
+    margin-bottom: 0 !important;
+  }
+`;
+document.head.appendChild(style);
+
+
+
 /**
  * Get the latest valid Mapbox map instance.
  * Works even after re-render, theme toggle, or ref mismatch.
@@ -351,10 +375,10 @@ export const typhoonMarker = (selectedPoint, mapRef, setShowTitleModal, type) =>
     'icon-image': ['get', 'icon'],
     'icon-size': [
       'case',
-      ['==', ['get', 'markerType'], 'low_pressure'], 0.028,
+      ['==', ['get', 'markerType'], 'low_pressure'], 0.015,
       ['==', ['get', 'markerType'], 'high_pressure'], 0.028,
       ['==', ['get', 'markerType'], 'less_1'], 0.28,
-      0.07
+      0.03
     ],
     'icon-allow-overlap': true,
   };
@@ -370,6 +394,13 @@ export const typhoonMarker = (selectedPoint, mapRef, setShowTitleModal, type) =>
     ];
     layout['text-anchor'] = 'top';
     layout['text-allow-overlap'] = true;
+
+    layout['text-size'] = [
+      'case',
+      ['==', ['get', 'markerType'], 'low_pressure'], 12,
+      ['==', ['get', 'markerType'], 'high_pressure'], 12,
+      10   // default size for typhoon or others
+    ];
   }
 
   // 🎨 Paint
@@ -457,30 +488,24 @@ export function addHimawariLayer(map) {
 }
 
 export async function addWindLayer(map) {
-  const geojson = await fetch('/geojson/20251106180000-144h-oper-fc.geojson');
+  const geojson = await fetch('/geojson/20251119000000-0h-oper-fc.geojson');
   const windData = await geojson.json();
-
-  map.addSource('wind-speed', {
-    type: 'raster-array',
-    url: `mapbox://karlbernaldizzy.windmagnitude?fresh=${Date.now()}`,
-    tileSize: 512
-  });
 
   map.addSource("wind-solarstorm", {
     type: "raster",
-    url: `mapbox://karlbernaldizzy.windtif?fresh=${Date.now()}`,
-    tileSize: 512
+    url: `mapbox://votewave.windtif?fresh=${Date.now()}`,
+    tileSize: 4096
   });
 
-  map.addSource("12SEP2025v2", {
+  map.addSource("wind-particles", {
     type: "raster-array",
-    url: `mapbox://karlbernaldizzy.ecmwf?fresh=${Date.now()}`,
+    url: `mapbox://votewave.ecmwf?fresh=${Date.now()}`,
     tileSize: 4096,
   });
 
   map.addSource('glass-layer', {
     type: 'vector',
-    url: 'mapbox://karlbernaldizzy.192shi9k'
+    url: 'mapbox://votewave.a1s6vck4'
   });
 
   map.addSource('wind-points', {
@@ -488,98 +513,66 @@ export async function addWindLayer(map) {
     data: windData
   });
 
-  // map.addLayer({
-  //   id: "wind-layer",
-  //   type: "raster-particle",
-  //   source: "12SEP2025v2",
-  //   "source-layer": "10m_wind",
-  //   slot: "bottom",
-  //   paint: {
-  //     "raster-particle-speed-factor": 0.6,
-  //     "raster-particle-fade-opacity-factor": 0.6,
-  //     "raster-particle-reset-rate-factor": 0.4,
-  //     "raster-particle-count": 48000,
-  //     "raster-particle-max-speed": 100,
-  //     "raster-particle-color": [
-  //       "interpolate",
-  //       ["linear"],
-  //       ["raster-particle-speed"],
-  //       1.5, "rgba(134,163,171,256)",
-  //       6.17, "rgba(15,147,167,256)",
-  //       11.83, "rgba(194,134,62,256)",
-  //       18.0, "rgba(210,0,50,256)",
-  //       25.21, "rgba(117,74,147,256)",
-  //       42.18, "rgba(194,251,119,256)",
-  //       50.41, "rgba(256,256,256,256)",
-  //       59.16, "rgba(0,256,256,256)",
-  //       69.44, "rgba(256,37,256,256)",
-  //     ],
-  //   },
-  // });
-
-  // map.addLayer(
-  //   {
-  //     id: "wind-speed-layer",
-  //     type: "raster",
-  //     source: "wind-speed",
-  //     "source-layer": "wind_speed",
-
-  //     paint: {
-  //       "raster-opacity": 0.92, // subtle transparency
-  //       "raster-resampling": "linear",
-
-  //       // 🚀 SOLARSTORM colormap matching Python
-  //       "raster-color": [
-  //         "interpolate",
-  //         ["linear"],
-  //         ["raster-value"],
-
-  //         // value, color (m/s)
-  //         0.01, "#2a00b5",   // strong violet
-  //         1.8, "#0047ff",   // electric blue
-  //         3.6, "#00c6ff",   // cyan
-  //         5.4, "#00ffc8",   // aqua/mint
-  //         7.2, "#23ce26",   // neon green
-  //         10.8, "#ffe600",   // yellow
-  //         14.4, "#ff8c00",   // orange
-  //         20.4, "#ff004c",   // red
-  //         24.0, "#ff00b8",   // magenta
-  //         27.6, "#ffffff",   // white heat core
-  //         30.0, "#aaaaaa",   // desaturated gray
-  //       ],
-  //     },
-
-  //     layout: {
-  //       "visibility": "none",
-  //     },
-  //   },
-  //   "country-boundaries"
-  // );
-
+  // WIND COLORMAP LAYER
   map.addLayer(
     {
       id: "wind-solarstorm-layer",
       type: "raster",
       source: "wind-solarstorm",
       paint: {
-        "raster-opacity": 0.85,          // transparency
-        "raster-fade-duration": 300      // smooth transitions between tiles
+        "raster-opacity": 0.8,          // transparency
+        "raster-fade-duration": 100      // smooth transitions between tiles
       },
     },
     "country-boundaries" // optional: insert below labels
   );
 
+  // //WIND MATTE OVERLAY
+  // map.addLayer(
+  //   {
+  //     id: "matte-overlay",
+  //     type: "fill",
+  //     source: {
+  //       type: "geojson",
+  //       data: {
+  //         "type": "FeatureCollection",
+  //         "features": [
+  //           {
+  //             "type": "Feature",
+  //             "geometry": {
+  //               "type": "Polygon",
+  //               "coordinates": [[
+  //                 [-180, -90],
+  //                 [180, -90],
+  //                 [180, 90],
+  //                 [-180, 90],
+  //                 [-180, -90]
+  //               ]]
+  //             }
+  //           }
+  //         ]
+  //       }
+  //     },
+  //     paint: {
+  //       "fill-color": "#5f5f5f",
+  //       "fill-opacity": 0.18
+  //     }
+  //   },
+  //   "wind-solarstorm-layer"
+  //   // Insert ABOVE the wind raster but below labels (or adjust as needed)
+  // );
 
+  //wIND PARTICLE LAYER
   map.addLayer({
     id: "wind-layer",
     type: "raster-particle",
-    source: "12SEP2025v2",
+    source: "wind-particles",
     "source-layer": "10m_wind",
     slot: "bottom",
     paint: {
       "raster-particle-speed-factor": 0.4,        // slower movement = clearer particles
-      "raster-particle-fade-opacity-factor": 0.8, // more visible traces
-      "raster-particle-reset-rate-factor": 0.3,   // less frequent resets (longer trails)
+      "raster-particle-fade-opacity-factor": .85, // more visible traces
+      "raster-particle-reset-rate-factor": 0.4,   // less frequent resets (longer trails)
       "raster-particle-count": 64000,             // fewer particles = larger appearance
       "raster-particle-max-speed": 160,            // slower, smoother trails
       "raster-particle-color": [
@@ -595,6 +588,7 @@ export async function addWindLayer(map) {
     }
   });
 
+  // WIND ARROWS & LABELS
   map.addLayer({
     id: 'wind-arrows',
     type: 'symbol',
@@ -621,8 +615,8 @@ export async function addWindLayer(map) {
       // Slight size scaling by speed
       'icon-size': [
         'interpolate', ['linear'], ['get', 'windSpeed'],
-        0, 3.0,
-        16.5, 4.2
+        0, 2.25,
+        16.5, 3.15
       ],
 
       // Rotate based on windDirection (+180 so arrow points TO the flow)
@@ -637,125 +631,204 @@ export async function addWindLayer(map) {
     paint: { 'icon-opacity': 0.75 }
   });
 
-  map.addLayer({
-    id: 'wind-labels',
-    type: 'symbol',
-    slot: "middle",
-    // 🧠 Filter out weak winds
-    filter: [">=", ["get", "windSpeed"], 3.08],
-    source: 'wind-points',
-    layout: {
-      'visibility': 'none',
-      'text-field': [
-        'concat',
-        [
-          'round',
-          ['*', ['to-number', ['get', 'windSpeed'], 0], 1.94384]
-        ],
-        ' kts'
-      ],
-      'text-size': [
-        'interpolate', ['linear'], ['zoom'],
-        3, 10,
-        6, 12,
-        9, 14
-      ],
-      // **Bold fonts for wind speed**
-      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-      'text-offset': [0, 0.9],
-      'text-anchor': 'top',
-      'text-allow-overlap': true
-    },
-    paint: {
-      // Cool cyan-blue palette for wind
-      'text-color': [
-        'interpolate',
-        ['linear'],
-        ['get', 'windSpeed'],
-        0, '#60a5fa',    // blue-400
-        15, '#38bdf8',   // cyan-400
-        30, '#06b6d4'    // cyan-500
-      ],
-      'text-halo-color': 'rgba(0, 0, 0, 0.8)',
-      'text-halo-width': 2.5,
-      'text-halo-blur': 1.2,
-      'text-opacity': 1
-    }
+  // map.addLayer({
+  //   id: 'wave-arrows',
+  //   type: 'symbol',
+  //   source: 'wind-points',
+  //   slot: "middle",
+  //   // same filter: show only where windSpeed >= 2
+  //   filter: [">=", ["get", "windSpeed"], 3.08],
+  //   layout: {
+  //     'visibility': 'none',
+  //     'icon-image': 'Arrow (1)',      // name in your sprite
+  //     'icon-size': 1.2,               // scale to taste
+  //     'icon-rotate': [
+  //       '+',
+  //       ['to-number', ['get', 'waveDirection'], 0],
+  //       0
+  //     ],
+  //     'icon-rotation-alignment': 'map',
+  //     'icon-allow-overlap': true,
+  //     'icon-ignore-placement': true,
+  //   },
+  //   paint: {
+  //     'icon-opacity': 0.7
+  //   }
+  // });
+
+  map.on('mousemove', 'wind-arrows', (e) => {
+    if (!e.features.length) return;
+    const f = e.features[0];
+    const speed_ms = f.properties.windSpeed;
+    const speed_kts = (speed_ms * 1.94384).toFixed(1);
+    const dir = f.properties.windDirection.toFixed(2);
+    const waveDir = f.properties.waveDirection ? f.properties.waveDirection.toFixed(2) : 'N/A';
+    const wavePeriod = f.properties.wavePeriod ? f.properties.wavePeriod.toFixed(2) : 'N/A';
+
+    const html = `
+    <div style="position: relative; padding-bottom: 40px;">
+      <!-- Main Popup Card -->
+      <div style="
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+        font-size: 13px;
+        min-width: 240px;
+        max-width: 280px;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+      ">
+        <!-- Wind Section -->
+        <div style="
+          background: rgba(255, 255, 255, 0.45);
+          padding: 16px;
+          backdrop-filter: blur(10px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        ">
+          <div style="
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+          ">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
+            </svg>
+            <span style="
+              font-weight: 700;
+              font-size: 14px;
+              color: #0f172a;
+              letter-spacing: -0.01em;
+            ">Wind Data</span>
+          </div>
+          
+          <div style="display: grid; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 12px; align-items: baseline;">
+              <span style="color: #475569; font-size: 12px; font-weight: 500;">Speed</span>
+              <div style="text-align: right;">
+                <span style="
+                  font-weight: 600;
+                  color: #0f172a;
+                  font-size: 16px;
+                ">${speed_kts} kts</span>
+                <span style="
+                  color: #64748b;
+                  font-size: 11px;
+                  margin-left: 6px;
+                ">(${speed_ms.toFixed(2)} m/s)</span>
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 12px; align-items: baseline;">
+              <span style="color: #475569; font-size: 12px; font-weight: 500;">Direction</span>
+              <span style="
+                font-weight: 600;
+                color: #0f172a;
+                font-size: 16px;
+                text-align: right;
+              ">${dir}°</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Wave Section -->
+        <div style="
+          background: rgba(255, 255, 255, 0.35);
+          padding: 16px;
+          backdrop-filter: blur(10px);
+        ">
+          <div style="
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+          ">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#764ba2" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12c.6-.6 1.4-1 2-1 1.5 0 2 1 3.5 1S10 11 11.5 11s2 1 3.5 1 2-1 3.5-1 2 1 3.5 1c.6 0 1.4-.4 2-1"/>
+              <path d="M2 17c.6-.6 1.4-1 2-1 1.5 0 2 1 3.5 1s2-1 3.5-1 2 1 3.5 1 2-1 3.5-1 2 1 3.5 1c.6 0 1.4-.4 2-1"/>
+            </svg>
+            <span style="
+              font-weight: 700;
+              font-size: 14px;
+              color: #0f172a;
+              letter-spacing: -0.01em;
+            ">Wave Data</span>
+          </div>
+          
+          <div style="display: grid; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 12px; align-items: baseline;">
+              <span style="color: #475569; font-size: 12px; font-weight: 500;">Direction</span>
+              <span style="
+                font-weight: 600;
+                color: #0f172a;
+                font-size: 16px;
+                text-align: right;
+              ">${waveDir}${waveDir !== 'N/A' ? '°' : ''}</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 12px; align-items: baseline;">
+              <span style="color: #475569; font-size: 12px; font-weight: 500;">Period</span>
+              <span style="
+                font-weight: 600;
+                color: #0f172a;
+                font-size: 16px;
+                text-align: right;
+              ">${wavePeriod}${wavePeriod !== 'N/A' ? ' s' : ''}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Connector Line and Point -->
+      <div style="
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+      ">
+        <!-- Vertical Line -->
+        <div style="
+          width: 2px;
+          height: 64px;
+          background: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.3));
+          box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        "></div>
+        
+        <!-- Point/Dot -->
+        <div style="
+          width: 8px;
+          height: 8px;
+          background: rgba(255, 255, 255, 0.9);
+          border: 2px solid rgba(102, 126, 234, 0.8);
+          border-radius: 50%;
+          box-shadow: 
+            0 0 12px rgba(102, 126, 234, 0.6),
+            0 0 4px rgba(255, 255, 255, 0.8);
+        "></div>
+      </div>
+    </div>
+  `;
+
+    popup
+      .setLngLat(e.lngLat)
+      .setHTML(html)
+      .setOffset([0, -5]) // Offset to account for the connector line
+      .addTo(map);
   });
 
-  map.addLayer({
-    id: 'wave-arrows',
-    type: 'symbol',
-    source: 'wind-points',
-    slot: "middle",
-    // same filter: show only where windSpeed >= 2
-    filter: [">=", ["get", "windSpeed"], 3.08],
-    layout: {
-      'visibility': 'none',
-      'icon-image': 'Arrow (1)',      // name in your sprite
-      'icon-size': 1.8,               // scale to taste
-      'icon-rotate': [
-        '+',
-        ['to-number', ['get', 'waveDirection'], 0],
-        0
-      ],
-      'icon-rotation-alignment': 'map',
-      'icon-allow-overlap': true,
-      'icon-ignore-placement': true,
-    },
-    paint: {
-      'icon-opacity': 0.7
-    }
+  // When mouse leaves the feature, hide the popup
+  map.on('mouseleave', 'wind-arrows', () => {
+    popup.remove();
   });
 
-  map.addLayer({
-    id: 'wave-period-labels',
-    type: 'symbol',
-    source: 'wind-points',
-    slot: "middle",
-    filter: [
-      "all",
-      [">=", ["get", "windSpeed"], 2],
-      ["<", ["get", "wavePeriod"], 30],
-      [">", ["get", "wavePeriod"], 0],
-      ["!=", ["get", "wavePeriod"], 9999]
-    ],
-    layout: {
-      'visibility': 'none',
-      'text-field': [
-        'concat',
-        ['to-string', ['round', ['get', 'wavePeriod']]],
-        ' s'
-      ],
-      'text-size': [
-        'interpolate', ['linear'], ['zoom'],
-        3, 10,
-        6, 14,
-        9, 18
-      ],
-      // **Italic / light font style for wave period**
-      'text-font': ['Open Sans Italic', 'Arial Unicode MS Regular'],
-      'text-offset': [0, -0.7],
-      'text-anchor': 'bottom',
-      'text-allow-overlap': true
-    },
-    paint: {
-      // Warm golden tone for wave labels
-      'text-color': [
-        'interpolate',
-        ['linear'],
-        ['get', 'wavePeriod'],
-        0, '#fde68a',   // amber-200
-        10, '#fbbf24',  // amber-400
-        20, '#f59e0b'   // amber-500
-      ],
-      'text-halo-color': 'rgba(0,0,0,0.85)',
-      'text-halo-width': 2.8,
-      'text-halo-blur': 0.8,
-      'text-opacity': .7
-    }
-  });
-
+  //GLASSMORPH OVERLAY
   map.addLayer({
     id: 'glass-fill',
     type: 'fill',

@@ -4,6 +4,7 @@ import { generateAccessToken } from '../utils/jwtUtils.js'; // Helper to generat
 
 // Middleware to protect routes
 const protect = async (req, res, next) => {
+  console.log('🔒 Protecting route:', req.method, req.originalUrl);
   const token = req.cookies.accessToken;
   const refreshToken = req.cookies.refreshToken;
 

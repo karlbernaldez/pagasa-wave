@@ -22,8 +22,8 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
       container: mapContainerRef.current,
       projection: 'mercator',
       style: isDarkMode
-        ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk'
-        : 'mapbox://styles/karlbernaldizzy/cmhojz9zh002s01sva3zr6o7q',
+        ? 'mapbox://styles/votewave/cmi3xgfli006p01st7bob9drl'
+        : 'mapbox://styles/votewave/cmi6o2f9p000b01rcex3f0vcq',
       center: [120.0, 15.5],
       minZoom: 4,
       zoom: 5.5,
@@ -41,7 +41,7 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
         [153.8595159535438, 25],
       ],
       {
-        padding: { top: 200, bottom: 100, left: 100, right: 200 },
+        padding: { top: 100, bottom: 100, left: 200, right: 200 },
         maxZoom: 8,
       }
     );
@@ -67,8 +67,8 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
     if (!mapRef.current) return;
 
     const newStyle = isDarkMode
-      ? 'mapbox://styles/karlbernaldizzy/cmfnei5d300a601rf9hsea7qk'
-      : 'mapbox://styles/karlbernaldizzy/cmhojz9zh002s01sva3zr6o7q';
+      ? 'mapbox://styles/votewave/cmi3xgfli006p01st7bob9drl'
+      : 'mapbox://styles/votewave/cmi6o2f9p000b01rcex3f0vcq';
 
     const onStyleLoad = () => {
       registerMapInstance(mapRef.current); // ✅ refresh global map ref after style change

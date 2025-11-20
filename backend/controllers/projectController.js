@@ -1,8 +1,10 @@
 import Project from '../models/Project.js';
+import Feature from '../models/Feature.js';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 
 export const createProject = async (req, res) => {
+  console.log('📌 Create Project Request');
   try {
     // --- Extract data ---
     const { name, description, chartType, forecastDate } = req.body;
@@ -49,6 +51,7 @@ export const createProject = async (req, res) => {
 };
 
 export const getUserProjects = async (req, res) => {
+  console.log('📌 Get User Projects Request');
   try {
     const token = req.cookies.accessToken;
 
@@ -142,19 +145,39 @@ export const deleteProject = async (req, res) => {
     const { id } = req.params;
     const owner = req.user?.id;
 
+    console.log('🗑️ Delete Request Received');
+    console.log('➡️ Project ID:', id);
+    console.log('➡️ Owner/User ID:', owner);
+
     // Check if the project exists and belongs to the current user
     const project = await Project.findOne({ _id: id, owner });
 
     if (!project) {
+      console.warn('⚠️ Project not found or unauthorized delete attempt');
       return res.status(404).json({ message: 'Project not found or unauthorized' });
     }
 
-    // Delete the project
-    await project.deleteOne();
+    console.log('✔️ Project found:', project.name);
 
-    res.status(200).json({ message: 'Project deleted successfully' });
+    // DELETE all related features
+    const deleteResult = await Feature.deleteMany({
+      'properties.project': id,
+      'properties.owner': owner,
+    });
+
+    console.log(`🧹 Features deleted: ${deleteResult.deletedCount}`);
+
+    // Delete the project itself
+    await project.deleteOne();
+    console.log('🗑️ Project successfully deleted');
+
+    res.status(200).json({
+      message: 'Project and related features deleted successfully',
+      deletedFeatures: deleteResult.deletedCount,
+    });
+
   } catch (error) {
-    console.error('Error deleting project:', error);
+    console.error('❌ Error deleting project:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
