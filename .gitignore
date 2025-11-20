@@ -15,12 +15,14 @@ backend/frames/
 .venv/
 
 scripts/venv/
+scripts/aws/
 scripts/wind_tiles/
 scripts/20251023180000-0h-oper-fc.grib2
 scripts/20250922.grib
 scripts/20250922v2.grib
 scripts/20250922v2.geojson
 scripts/ecmwf_data/
-scripts/ECMWF/
+scripts/ECMWF/ecmwf_data/
+scripts/ECMWF/ecmwf_data/ECMWF.grib2
 scripts/s3Credentials.json
 scripts/.env
