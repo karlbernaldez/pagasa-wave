@@ -239,7 +239,7 @@ const MiscLayer = ({ mapRef }) => {
       TCID: localStorage.getItem('TCID') === 'true',
       TCAD: localStorage.getItem('TCAD') === 'true',
       ShippingZonestate: localStorage.getItem('SHIPPING_ZONE') === 'true',
-      WindLayer: localStorage.getItem('wind_layer') === 'true',
+      WindLayer: localStorage.getItem('wind-layer') === 'true',
     };
 
     // Set initial state based on localStorage
@@ -263,6 +263,7 @@ const MiscLayer = ({ mapRef }) => {
         mapRef.current.setLayoutProperty('ERA5_c2', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('wind-layer', 'visibility', layersState.WindLayer ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('wind_magnitude', 'visibility', layersState.WindLayer ? 'visible' : 'none');
       });
     }
   }, [mapRef]);
@@ -328,8 +329,9 @@ const MiscLayer = ({ mapRef }) => {
       case 'Wind Layer':
         setShowWindLayer(prev => {
           const newState = !prev;
-          localStorage.setItem('wind_layer', newState.toString());
+          localStorage.setItem('wind-layer', newState.toString());
           mapRef.current?.setLayoutProperty('wind-layer', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('wind_magnitude', 'visibility', newState ? 'visible' : 'none');
           return newState;
         });
         break;

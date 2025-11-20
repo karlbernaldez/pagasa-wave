@@ -1,0 +1,24 @@
+{
+    "version": 1,
+    "type": "rasterarray",
+    "sources": [
+        {
+            "uri": "mapbox://tileset-source/karlbernaldizzy/wind_magnitude"
+        }
+    ],
+    "minzoom": 0,
+    "maxzoom": 5,
+    "layers": {
+        "wind_speed": {
+            "tilesize": 1024,
+            "offset": 0,
+            "scale": 0.01,
+            "resampling": "bilinear",
+            "buffer": 1,
+            "units": "m/s",
+            "source_rules": {
+                "filter": ["all", ["in", ["bandindex"], ["literal", [1]]]]
+            }
+        }
+    }
+}

@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import Swal from 'sweetalert2';
 import { captureMapSnapshot, getLatestMapInstance } from '../../../utils/mapUtils';
+import { createProject, deleteProjectById } from '../../../api/projectAPI';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -85,7 +86,7 @@ const restoreLayers = (map) => {
     TCID: localStorage.getItem('TCID') === 'true',
     TCAD: localStorage.getItem('TCAD') === 'true',
     ShippingZone: localStorage.getItem('SHIPPING_ZONE') === 'true',
-    WindLayer: localStorage.getItem('wind_layer') === 'true',
+    WindLayer: localStorage.getItem('wind-layer') === 'true',
   };
 
   mapLayers.forEach((layer) => {
@@ -103,8 +104,8 @@ const restoreLayers = (map) => {
         visible = layersState.TCAD ? 'visible' : 'none';
         break;
       case 'graticules':
-      // case 'ERA5_c1':
-      // case 'ERA5_c2':
+        // case 'ERA5_c1':
+        // case 'ERA5_c2':
         visible = layersState.ShippingZone ? 'visible' : 'none';
         break;
       case 'wind-layer':
@@ -235,11 +236,6 @@ export const handleCreateProject = async ({
   forecastDate,
   onNew,
   setShowModal,
-  setMainOpen,
-  setProjectOpen,
-  setProjectName,
-  setChartType,
-  setDescription,
 }) => {
   if (!projectName.trim()) {
     Swal.fire({
@@ -256,7 +252,9 @@ export const handleCreateProject = async ({
 
   try {
     const payload = { name: projectName, chartType, description, forecastDate };
+    console.log('🚀 Creating project with payload:', payload);
     const created = await createProject(payload);
+    console.log('✅ Project created:', created);
 
     ['projectId', 'projectName', 'chartType', 'forecastDate'].forEach((key) =>
       localStorage.setItem(key, key === 'projectId' ? created._id : eval(key))
@@ -275,11 +273,6 @@ export const handleCreateProject = async ({
 
     // Reset UI state
     setShowModal(false);
-    setMainOpen(false);
-    setProjectOpen(false);
-    setProjectName('');
-    setChartType('');
-    setDescription('');
 
     setTimeout(() => window.location.reload(), 1500);
   } catch (err) {
@@ -288,6 +281,81 @@ export const handleCreateProject = async ({
       position: 'top-end',
       icon: 'error',
       title: err.message,
+      showConfirmButton: false,
+      timer: 3000,
+    });
+  }
+};
+
+export const handleDeleteProject = async ({
+  projectId,
+  onDelete,
+  navigateAfterDelete = true,
+}) => {
+  if (!projectId) {
+    return Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: 'No project selected!',
+      showConfirmButton: false,
+      timer: 3000,
+    });
+  }
+
+  // Confirm dialog
+  const confirm = await Swal.fire({
+    title: 'Delete this project?',
+    text: 'This action cannot be undone.',
+    icon: 'warning',
+    showCancelButton: true,
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: 'swal-confirm-btn',
+      cancelButton: 'swal-cancel-btn',
+    },
+    confirmButtonText: 'Yes, delete it',
+    cancelButtonText: 'Cancel',
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  try {
+    // Call the API
+    const result = await deleteProjectById(projectId);
+    console.log('🗑️ Project deleted:', result);
+
+    // Remove from localStorage
+    ['projectId', 'projectName', 'chartType', 'forecastDate'].forEach((key) =>
+      localStorage.removeItem(key)
+    );
+
+    // Fire success toast
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Project deleted successfully',
+      showConfirmButton: false,
+      timer: 2000,
+    });
+
+    // Trigger UI refresh if parent wants it
+    if (typeof onDelete === 'function') onDelete(projectId);
+
+    // Navigate or reload
+    if (navigateAfterDelete) {
+      setTimeout(() => window.location.reload(), 1200);
+    }
+
+  } catch (error) {
+    console.error('❌ Delete failed:', error);
+
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: error.message || 'Failed to delete project',
       showConfirmButton: false,
       timer: 3000,
     });
