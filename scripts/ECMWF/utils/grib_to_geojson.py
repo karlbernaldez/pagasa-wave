@@ -7,8 +7,8 @@ import json
 import re
 
 # === CONFIG ===
-GRIB_DIR = Path("./ecmwf_data/AIFS-SINGLE")
-OUTPUT_DIR = Path("./ecmwf_data/GEOJSON")
+GRIB_DIR = Path("./ECMWF/ecmwf_data/AIFS-SINGLE")
+OUTPUT_DIR = Path("./ECMWF/ecmwf_data/GEOJSON")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Domain (Philippines example)
@@ -18,7 +18,7 @@ lon_max, lat_max = 170, 40
 # LAT_MIN, LAT_MAX = -10, 40
 # LON_MIN, LON_MAX = 80, 170
 
-step = 17  # subsampling step (higher = fewer vectors)
+step = 7  # subsampling step (higher = fewer vectors)
 
 
 def process_grib(grib_file: Path):

@@ -19,13 +19,12 @@ import {
 const MySwal = withReactContent(Swal);
 
 const ProjectInfo = ({
-  blink, setBlink, projectId, onNew, onSave, onView, features,
+  blink, setBlink, projectId, setShowModal, onSave, onView, features,
   isDarkMode, setIsDarkMode, setIsLoading, isLoading
 }) => {
   // Menu state
   const [mainOpen, setMainOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [projects, setProjects] = useState([]);
@@ -67,6 +66,11 @@ const ProjectInfo = ({
           icon: 'warning',
           title: 'No Project Selected',
           text: 'Please create or select a valid project before continuing.',
+          confirmButtonText: 'OK',
+          buttonsStyling: false,
+          customClass: {
+            confirmButton: 'swal-main-btn',
+          },
         });
         setIsLoading(false);
         return;
@@ -288,7 +292,7 @@ const ProjectInfo = ({
 
         <div className="flex gap-2 mt-6">
           <button
-            onClick={onNew}
+            onClick={() => setShowModal(true)}
             className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${isDarkMode
               ? 'bg-blue-600 hover:bg-blue-700 text-white'
               : 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -318,8 +322,8 @@ const ProjectInfo = ({
           fixed -top-2 left-1 w-80 max-w-96 max-h-96 rounded-2xl p-6 relative overflow-y-auto scrollbar-hide
           border border-white/10
           ${isDarkMode
-                  ? "bg-[rgba(20,20,20,0.25)]"
-                  : "bg-[rgba(255,255,255,0.2)]"}
+            ? "bg-[rgba(20,20,20,0.25)]"
+            : "bg-[rgba(255,255,255,0.2)]"}
           backdrop-blur-2xl backdrop-saturate-150
           shadow-[0_6px_30px_rgba(0,0,0,0.1)]
           transition-all duration-500
