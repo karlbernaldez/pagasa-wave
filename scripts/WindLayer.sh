@@ -196,8 +196,8 @@ curl -s -X POST \
   "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME?access_token=$MAPBOX_TOKEN" \
   | jq .
 
-retry "tilesets upload-raster-source --replace \"$MAPBOX_USERNAME\" ECMWF ECMWF/ecmwf_data/ECMWF.grib2"
-retry "tilesets publish \"$MAPBOX_USERNAME.ecmwf\""
+# retry "tilesets upload-raster-source --replace \"$MAPBOX_USERNAME\" ECMWF ECMWF/ecmwf_data/ECMWF.grib2"
+# retry "tilesets publish \"$MAPBOX_USERNAME.ecmwf\""
 
 
 ##############################################
