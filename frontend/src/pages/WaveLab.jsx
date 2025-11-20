@@ -124,7 +124,13 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
           icon: "info",
           title: "No Projects Found",
           text: "Please create a new project to get started.",
+          confirmButtonText: "Create Project",
+          buttonsStyling: false,
+          customClass: {
+            confirmButton: "swal-main-btn",
+          },
         }).then(() => {
+          setIsLoading(false);
           setBlink(true);
         });
       } finally {

@@ -9,7 +9,7 @@ import SubmitModal from "../modals/SubmitModal";
 import ProjectListModal from "../modals/ProjectListModal";
 import ExportConfirmModal from "../modals/ExportModal";
 import ProjectInfoModal from "./ProjectInfo";
-import { logout, handleCreateProject as createProjectHandler, downloadCachedSnapshotZip } from "./utils/ProjectUtils";
+import { logout, handleCreateProject as createProjectHandler, handleDeleteProject, downloadCachedSnapshotZip } from "./utils/ProjectUtils";
 
 const MySwal = withReactContent(Swal);
 
@@ -162,8 +162,8 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
         fixed top-18 left-1 z-[9999] w-80 rounded-2xl relative overflow-hidden
         border border-white/10
         ${isDarkMode
-                ? "bg-[rgba(20,20,20,0.25)]"
-                : "bg-[rgba(255,255,255,0.2)]"}
+            ? "bg-[rgba(20,20,20,0.25)]"
+            : "bg-[rgba(255,255,255,0.2)]"}
         backdrop-blur-2xl backdrop-saturate-150
         shadow-[0_8px_32px_rgba(0,0,0,0.1)]
         transition-all duration-500
@@ -298,6 +298,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
           chartType={chartType}
           forecastDate={forecastDate}
           description={description}
+          setShowModal={setShowModal}
           onClose={() => setShowProjectInfo(false)}
           onEdit={() => console.log("Edit project clicked")}
         />
@@ -340,6 +341,26 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
             setChartType(proj.chartType);
             setShowProjectList(false);
             if (onSave) onSave(proj);
+          }}
+          onDelete={async (id) => {
+            await handleDeleteProject({
+              projectId: id,
+              onDelete: (deletedId) => {
+                // Remove from list in UI
+                setProjects((prev) => prev.filter((p) => p._id !== deletedId));
+
+                // If the deleted project is currently selected, clear it
+                const currentId = localStorage.getItem("projectId");
+                if (currentId === deletedId) {
+                  ["projectId", "projectName", "chartType", "forecastDate"].forEach((key) =>
+                    localStorage.removeItem(key)
+                  );
+                  setProjectName("");
+                  setChartType("");
+                }
+              },
+              navigateAfterDelete: false, // don't reload, we already update state
+            });
           }}
         />
       )}

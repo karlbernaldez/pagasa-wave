@@ -3,7 +3,7 @@
   "type": "rasterarray",
   "minzoom": 0,
   "maxzoom": 3,
-  "sources": [{"uri": "mapbox://tileset-source/karlbernaldizzy/ECMWF"}],
+  "sources": [{"uri": "mapbox://tileset-source/votewave/ECMWF"}],
   "layers": {
     "10m_wind": {
       "tilesize": 512,
@@ -11,14 +11,8 @@
       "buffer": 1,
       "source_rules": {
         "filter": [
-          [
-            "all",
-            ["==", ["get", "GRIB_COMMENT"], "u-component of wind [m/s]"]
-          ],
-          [
-            "all",
-            ["==", ["get", "GRIB_COMMENT"], "v-component of wind [m/s]"]
-          ]
+          ["all", ["==", ["get", "GRIB_COMMENT"], "u-component of wind [m/s]"]],
+          ["all", ["==", ["get", "GRIB_COMMENT"], "v-component of wind [m/s]"]]
         ],
         "name": ["to-number", ["get", "GRIB_VALID_TIME"]],
         "order": "asc",

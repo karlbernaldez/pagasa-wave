@@ -175,7 +175,6 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
         setShowWindLayer(prev => {
           const newState = !prev;
           localStorage.setItem('wind-layer', newState.toString());
-          mapRef.current?.setLayoutProperty('wind-speed-layer', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('wind-layer', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('wind-solarstorm-layer', 'visibility', newState ? 'visible' : 'none');
           mapRef.current.setLayoutProperty('glass-fill', 'visibility', newState ? 'visible' : 'none');

@@ -417,6 +417,7 @@ const ProjectListModal = ({ visible, onClose, projects, onSelect, onDelete }) =>
   const confirmDelete = async () => {
     if (projectToDelete) {
       try {
+        console.log('🚀 Deleting project:', projectToDelete);
         await onDelete(projectToDelete._id);
         setProjectToDelete(null);
         // You might want to refresh the project list here or handle it in the parent component
