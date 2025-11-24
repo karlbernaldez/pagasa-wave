@@ -141,12 +141,12 @@ const LegendBox = ({ isDarkMode = false }) => {
           `}
         >
           <div className="flex justify-between items-center text-[11px] font-medium text-gray-700/80 dark:text-gray-300/80">
-            <span>
-              Checked: <strong className="text-cyan-600 dark:text-cyan-400 font-semibold">JAE</strong>
-            </span>
-            <span>
+            {/* <span>
+              : <strong className="text-cyan-600 dark:text-cyan-400 font-semibold">JAE</strong>
+            </span> */}
+            {/* <span>
               By: <strong className="text-cyan-600 dark:text-cyan-400 font-semibold">KSBB</strong>
-            </span>
+            </span> */}
           </div>
         </div>
       </div>

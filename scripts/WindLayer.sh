@@ -65,6 +65,11 @@ log "✅ Finished download.py"
 ##############################################
 ## STEP 2: AIFS Cycles (Wind Magnitude)
 ##############################################
+
+# Clean GRIB_DIR before starting
+log "🧹 Cleaning GRIB_DIR before downloading..."
+rm -f "$GRIB_DIR"/*.grib2 2>/dev/null || true
+
 TODAY=$(date -u +"%Y%m%d")
 YEST=$(date -u -d "yesterday" +"%Y%m%d")
 
@@ -196,8 +201,8 @@ curl -s -X POST \
   "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME?access_token=$MAPBOX_TOKEN" \
   | jq .
 
-# retry "tilesets upload-raster-source --replace \"$MAPBOX_USERNAME\" ECMWF ECMWF/ecmwf_data/ECMWF.grib2"
-# retry "tilesets publish \"$MAPBOX_USERNAME.ecmwf\""
+retry "tilesets upload-raster-source --replace \"$MAPBOX_USERNAME\" ECMWF ECMWF/ecmwf_data/ECMWF.grib2"
+retry "tilesets publish \"$MAPBOX_USERNAME.ecmwf\""
 
 
 ##############################################

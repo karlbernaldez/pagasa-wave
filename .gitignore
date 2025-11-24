@@ -1,5 +1,8 @@
 docker-compose.yml
 backend/Dockerfile
+backend/public/himawari.mp4
+backend/public/himawari.gif
+
 frontend/Dockerfile
 scripts/era5_ph_wind_wave.geojson
 scripts/__pycache__
@@ -25,4 +28,9 @@ scripts/ecmwf_data/
 scripts/ECMWF/ecmwf_data/
 scripts/ECMWF/ecmwf_data/ECMWF.grib2
 scripts/s3Credentials.json
+
+scripts/wind_colored.png
+scripts/wind_preview.png
+scripts/wind_speed.tif
+
 scripts/.env
