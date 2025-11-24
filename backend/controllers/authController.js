@@ -121,7 +121,7 @@ export const loginUser = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'Strict',
-      maxAge: 16 * 60 * 1000, // 15 minutes
+      maxAge: 60 * 60 * 1000,
       path: '/',
     });
 

@@ -156,24 +156,24 @@ const ForecastChartsPage = ({ isDarkMode, activeChartType }) => {
   const getImagesForChartType = (type) => {
     // Sample stock/chart-like images from Unsplash (royalty-free)
     const waveWindImages = [
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800",
-      "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800",
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800",
-      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=800"
+      "/charts/wave-wind/WaveXWind.png",
+      "/charts/wave-wind/WaveXWind.png",
+      "/charts/wave-wind/WaveXWind.png",
+      "/charts/wave-wind/WaveXWind.png"
     ];
 
     const waveOnlyImages = [
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800",
-      "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=800",
-      "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800",
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800"
+      "/charts/wave/Wave.png",
+      "/charts/wave/Wave.png",
+      "/charts/wave/Wave.png",
+      "/charts/wave/Wave.png"
     ];
 
     const accessibleImages = [
-      "https://dummyimage.com/600x400/000/fff&text=High+Contrast+Chart+1",
-      "https://dummyimage.com/600x400/111/eee&text=High+Contrast+Chart+2",
-      "https://dummyimage.com/600x400/222/fff&text=High+Contrast+Chart+3",
-      "https://dummyimage.com/600x400/333/fff&text=High+Contrast+Chart+4"
+      "/charts/wind-barbs/barbs.png",
+      "/charts/wind-barbs/barbs.png",
+      "/charts/wind-barbs/barbs.png",
+      "/charts/wind-barbs/barbs.png"
     ];
 
     switch (type) {
