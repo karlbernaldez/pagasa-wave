@@ -191,7 +191,7 @@ function applyLayerVisibility(map, layers) {
 }
 
 export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages, isDarkMode }) {
-  const lineColor = isDarkMode ? '#19b8b7' : '#000000';
+  const lineColor = isDarkMode ? '#ffffff' : '#000000';
   const textColor = isDarkMode ? '#ffffff' : '#000000';
   const draw = initDrawControl(map);
   const featuresArray = Array.isArray(initialFeatures)
@@ -209,7 +209,7 @@ export function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelect
   addHimawariLayer(map);
   loadCustomImages(map);
   initTyphoonLayer(map);
-  addWindLayer(map);
+  addWindLayer(map, isDarkMode);
 
   ['typhoon', 'low_pressure', 'high_pressure', 'less_1'].forEach((id) => loadImage(map, id, `/${id.replace('_', '')}.png`));
   ['0kts', '5kts', '10kts', '15kts', '20kts', '25kts', '30kts'].forEach((id) => loadImage(map, id, `/barbs/${id}.svg`));
