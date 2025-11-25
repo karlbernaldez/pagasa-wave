@@ -493,7 +493,7 @@ export async function addWindLayer(map, isDarkMode) {
 
   // Choose tileset based on mode
   const tileset = isDarkMode
-    ? "mapbox://votewave.3ylt90q8"   // 🌙 Darkstorm
+    ? "mapbox://votewave.darktif"   // 🌙 Darkstorm
     : "mapbox://votewave.windtif";   // 🌈 Solarstorm
 
   // Source ID based on theme
