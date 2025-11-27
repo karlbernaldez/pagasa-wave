@@ -592,8 +592,8 @@ export async function addWindLayer(map, isDarkMode) {
         "interpolate",
         ["linear"],
         ["raster-particle-speed"],
-        0, "rgba(255,255,255,0.7)",
-        100, "rgba(255,255,255,1)"
+        0, "rgba(255,255,255,0.2)",
+        100, "rgba(255,255,255,0.4)"
       ],
     },
     layout: {
@@ -643,7 +643,7 @@ export async function addWindLayer(map, isDarkMode) {
       'icon-rotation-alignment': 'map',
       'icon-allow-overlap': true,
     },
-    paint: { 'icon-opacity': 0.75 }
+    paint: { 'icon-opacity': 0.5 }
   },
     "country-boundaries"
   );
