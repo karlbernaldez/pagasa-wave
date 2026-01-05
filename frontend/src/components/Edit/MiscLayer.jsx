@@ -239,7 +239,7 @@ const MiscLayer = ({ mapRef }) => {
       TCID: localStorage.getItem('TCID') === 'true',
       TCAD: localStorage.getItem('TCAD') === 'true',
       ShippingZonestate: localStorage.getItem('SHIPPING_ZONE') === 'true',
-      WindLayer: localStorage.getItem('wind_layer') === 'true',
+      WindLayer: localStorage.getItem('wind-layer') === 'true',
     };
 
     // Set initial state based on localStorage
@@ -258,11 +258,12 @@ const MiscLayer = ({ mapRef }) => {
         mapRef.current.setLayoutProperty('TCID', 'visibility', layersState.TCID ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('TCAD', 'visibility', layersState.TCAD ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('graticules', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('country-boundaries', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
+        // mapRef.current.setLayoutProperty('country-boundaries', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('ERA5_c1', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('ERA5_c2', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('wind-layer', 'visibility', layersState.WindLayer ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('wind_magnitude', 'visibility', layersState.WindLayer ? 'visible' : 'none');
       });
     }
   }, [mapRef]);
@@ -318,7 +319,7 @@ const MiscLayer = ({ mapRef }) => {
           const newState = !prev;
           localStorage.setItem('SHIPPING_ZONE', newState.toString());
           mapRef.current?.setLayoutProperty('graticules', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current?.setLayoutProperty('country-boundaries', 'visibility', newState ? 'visible' : 'none');
+          // mapRef.current?.setLayoutProperty('country-boundaries', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('ERA5_c1', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('ERA5_c2', 'visibility', newState ? 'visible' : 'none');
           // mapRef.current?.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', newState ? 'visible' : 'none');
@@ -328,8 +329,9 @@ const MiscLayer = ({ mapRef }) => {
       case 'Wind Layer':
         setShowWindLayer(prev => {
           const newState = !prev;
-          localStorage.setItem('wind_layer', newState.toString());
+          localStorage.setItem('wind-layer', newState.toString());
           mapRef.current?.setLayoutProperty('wind-layer', 'visibility', newState ? 'visible' : 'none');
+          mapRef.current?.setLayoutProperty('wind_magnitude', 'visibility', newState ? 'visible' : 'none');
           return newState;
         });
         break;

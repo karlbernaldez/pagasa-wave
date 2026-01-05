@@ -51,7 +51,7 @@ This project is licensed under the **[MIT license](https://github.com/karlbernal
 ## 📸 Screenshots
 
 ### WaveLab Dashboard
-![WaveLab Dashboard](https://github.com/karlbernaldez/pagasa-wave/blob/c24fbdb2f3c144d2e670a70d8d63e67a05c259fe/frontend/src/assets/With%20Wind%20Overlay%20Sample.png)
+<img width="1918" height="993" alt="image" src="https://github.com/user-attachments/assets/12627edf-975c-471d-8d83-9cd384691fb1" />
 
 ---
 
@@ -68,4 +68,5 @@ This project is licensed under the **[MIT license](https://github.com/karlbernal
 
 - [**Karl Santiago Bernaldez**](https://github.com/karlbernaldez) – Lead Developer   
 - **DOST-MECO-TECO-VOTE III Project Team**  
+
 

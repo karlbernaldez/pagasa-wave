@@ -1,581 +1,30 @@
 import React, { useEffect, useState, useRef } from 'react';
-import styled, { useTheme, css, keyframes } from 'styled-components';
-import { fetchProjectById, fetchUserProjects, updateProjectById, deleteProjectById } from '../../api/projectAPI';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import { FaChevronDown, FaEdit, FaTrash, FaCalendarAlt, FaChartBar, FaFolder, FaBars, FaPlus, FaFileExport, FaSignOutAlt, FaPaperPlane, FaEye } from 'react-icons/fa';
-import ProjectModal from '../modals/ProjectModal';
-import SubmitModal from '../modals/SubmitModal';
-import ProjectListModal from '../modals/ProjectListModal';
-import { logout, handleCreateProject as createProjectHandler, downloadCachedSnapshotZip } from './utils/ProjectUtils';
+import {
+  FaChevronDown, FaEdit, FaTrash, FaCalendarAlt, FaChartBar, FaFolder,
+  FaBars, FaPlus, FaFileExport, FaSignOutAlt, FaPaperPlane, FaEye
+} from 'react-icons/fa';
+import {
+  fetchProjectById,
+  updateProjectById,
+  fetchUserProjects,
+  deleteProjectById,
+} from "../../api/projectAPI";
 
 const MySwal = withReactContent(Swal);
 
-// Enhanced animations
-const slideInLeft = keyframes`
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-`;
-
-const fadeInScale = keyframes`
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-`;
-
-const pulseGlow = keyframes`
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
-  }
-`;
-
-const blinkBorder = keyframes`
-  0%, 100% { 
-    border-color: transparent;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-  }
-  50% { 
-    border-color: rgba(255, 99, 132, 0.6);
-    box-shadow: 
-      0 8px 32px 0 rgba(31, 38, 135, 0.37),
-      0 0 20px rgba(255, 99, 132, 0.4),
-      inset 0 0 20px rgba(255, 99, 132, 0.1);
-  }
-`;
-
-// Main info container with integrated menu
-const InfoContainer = styled.div`
-  background: ${({ theme }) => theme?.colors?.bgPrimary};
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  
-  padding: ${({ theme }) => theme.spacing.medium || "1.5rem"};
-  border-radius: ${({ theme }) => theme.borderRadius.xlarge || "16px"};
-  border: 1px solid ${({ theme }) => theme.colors.textPrimary};
-  font-family: ${({ theme }) => theme.fonts.regular || "'Inter', sans-serif"};
-  color: ${({ theme }) => theme.colors.textPrimary};
-
-  width: 320px;
-  max-width: 380px;
-  max-height: clamp(400px, 55vh, 600px);
-  overflow-y: auto;
-
-  /* Hide scrollbar but keep scrolling */
-  scrollbar-width: none; /* Firefox */
-  ms-overflow-style: none; /* IE/Edge */
-  &::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
-  }
-
-  box-shadow: ${({ theme }) =>
-    theme.isDark
-      ? "0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)"
-      : "0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)"};
-  
-  transform: scale(1);
-  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-
-  &:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: ${({ theme }) =>
-    theme.isDark
-      ? "0 32px 64px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1)"
-      : "0 32px 64px -12px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08)"};
-    border-color: ${({ theme }) =>
-    theme.isDark ? "rgba(59,130,246,0.3)" : "rgba(59,130,246,0.2)"};
-  }
-
-  &:active {
-    transform: translateY(-2px) scale(1.01);
-  }
-
-  /* Blink animation when no project is selected */
-  ${(props) =>
-    props.$shouldBlink &&
-    css`
-      animation: ${blinkBorder} 0.8s ease-in-out 3;
-    `}
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    width: calc(100vw - 2rem);
-    max-width: calc(100vw - 2rem);
-    max-height: clamp(320px, 55vh, 500px);
-    right: 1rem;
-    bottom: ${({ theme }) => theme.spacing.medium || "1rem"};
-    padding: 1.25rem;
-  }
-`;
-
-const InfoHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-  padding: 0 1.5rem 1rem;   /* keep inner spacing */
-  margin-left: -1.5rem;     /* cancel container padding */
-  margin-right: -1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-`;
-
-const InfoTitle = styled.h3`
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme?.colors?.textPrimary || '#1f2937'};
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: 3.5rem; 
-
-
-`;
-
-const MenuActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  position: relative;
-`;
-
-const MenuButton = styled.button`
-  background: linear-gradient(135deg, 
-    rgba(255, 255, 255, 0.2) 0%, 
-    rgba(255, 255, 255, 0.1) 100%
-  );
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  
-  color: ${({ theme }) => theme?.colors?.textPrimary || '#2d3748'};
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 0.5rem;
-  font-size: 0.9rem;
-  border-radius: 8px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  
-  box-shadow: 
-    0 4px 16px 0 rgba(31, 38, 135, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  &:hover {
-    background: linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.3) 0%, 
-      rgba(255, 255, 255, 0.2) 100%
-    );
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: translateY(-1px) scale(1.05);
-    box-shadow: 
-      0 8px 24px 0 rgba(31, 38, 135, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  }
-
-  &:active {
-    transform: translateY(0) scale(0.98);
-  }
-`;
-
-const EditButton = styled(MenuButton)`
-  color: ${({ theme }) =>
-    theme?.isDark
-      ? '#60a5fa'
-      : '#3b82f6'
-  };
-`;
-
-const Dropdown = styled.div`
-  display: ${({ $visible }) => ($visible ? 'block' : 'none')};
-  position: absolute;
-  top: 3rem;
-  left: 0;
-  margin-top: 0.75rem;
-  min-width: 220px;
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 14px;
-  padding: 6px;
-  
-  box-shadow: 
-    0 20px 80px 0 rgba(31, 38, 135, 0.45),
-    0 10px 40px 0 rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  
-  animation: ${fadeInScale} 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  z-index: 1001;
-`;
-
-const MenuItem = styled.button`
-  width: 100%;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 0.875rem 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  position: relative;
-  
-  color: ${({ $danger }) =>
-    $danger
-      ? '#ef4444'
-      : 'inherit'};
-  
-  border-radius: 12px;
-  margin: 2px 0;
-  
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-
-  &:hover {
-    background: linear-gradient(135deg,
-      rgba(255, 255, 255, 0.2) 0%,
-      rgba(255, 255, 255, 0.1) 100%
-    );
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateX(4px);
-    
-    box-shadow: 
-      0 4px 16px 0 rgba(31, 38, 135, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4);
-
-    ${({ $danger }) =>
-    $danger &&
-    css`
-        background: linear-gradient(135deg,
-          rgba(239, 68, 68, 0.15) 0%,
-          rgba(239, 68, 68, 0.05) 100%
-        );
-        border-color: rgba(239, 68, 68, 0.3);
-        box-shadow: 
-          0 4px 16px 0 rgba(239, 68, 68, 0.2),
-          inset 0 1px 0 rgba(255, 255, 255, 0.4);
-      `}
-  }
-
-  &:active {
-    transform: translateX(2px) scale(0.98);
-  }
-`;
-
-const SubDropdown = styled.div`
-  position: absolute;
-  top: 0;
-  left: calc(100% - 12px);
-  min-width: 200px;
-  
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 14px;
-  padding: 6px;
-  
-  box-shadow: 
-    0 20px 80px 0 rgba(31, 38, 135, 0.45),
-    0 10px 40px 0 rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  
-  animation: ${fadeInScale} 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-`;
-
-const SubMenuItem = styled(MenuItem)`
-  padding: 0.75rem 1rem;
-  font-size: 0.9rem;
-  margin: 1px 0;
-  
-  &:hover {
-    transform: translateX(-6px);
-    background: linear-gradient(135deg,
-      rgba(139, 92, 246, 0.15) 0%,
-      rgba(139, 92, 246, 0.05) 100%
-    );
-    border-color: rgba(139, 92, 246, 0.3);
-    box-shadow: 
-      0 4px 16px 0 rgba(139, 92, 246, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  }
-`;
-
-const InfoItem = styled.div`
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-  transition: all 0.3s ease;
-  
-  &:last-child {
-    margin-bottom: 0;
-  }
-  
-  &:hover {
-    transform: translateX(4px);
-  }
-`;
-
-const InfoIcon = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 8px;
-  background: ${({ iconType, theme }) => {
-    const colors = {
-      project: 'rgba(34, 197, 94, 0.1)',
-      chart: 'rgba(168, 85, 247, 0.1)',
-      date: 'rgba(59, 130, 246, 0.1)'
-    };
-    return colors[iconType] || colors.project;
-  }};
-  color: ${({ iconType, theme }) => {
-    const colors = {
-      project: '#22c55e',
-      chart: '#8b5cf6',
-      date: '#3b82f6'
-    };
-    return colors[iconType] || colors.project;
-  }};
-  margin-right: 0.75rem;
-  flex-shrink: 0;
-`;
-
-const InfoContent = styled.div`
-  flex: 1;
-  min-width: 0;
-`;
-
-const InfoLabel = styled.div`
-  font-size: 0.75rem;
-  font-weight: 500;
-    color: ${({ theme }) => theme.colors.textPrimary};
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.25rem;
-`;
-
-const InfoValue = styled.div`
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: ${({ theme }) => theme?.colors?.textPrimary || '#1f2937'};
-  word-break: break-word;
-  line-height: 1.4;
-`;
-
-// Modal styles (keeping existing ones from ProjectInfo)
-const Overlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 200;
-  backdrop-filter: blur(8px);
-  animation: ${fadeInScale} 0.3s ease-out;
-`;
-
-const ModalContainer = styled.div`
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(255, 255, 255, 0.85) 100%
-  );
-  backdrop-filter: blur(20px);
-  padding: 2rem;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 500px;
-  margin: 1rem;
-  box-shadow: 
-    0 25px 50px -12px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #1f2937;
-  transform: scale(0.95);
-  animation: ${fadeInScale} 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-
-  h2, h3 {
-    margin: 0 0 1.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    margin: 0.5rem;
-  }
-`;
-
-const LoadingModal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999;
-  
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  
-  color: #1f2937;
-  font-size: 1.8rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  user-select: none;
-  
-  animation: ${pulseGlow} 2s ease-in-out infinite;
-  
-  text-shadow: 
-    0 2px 10px rgba(0, 0, 0, 0.3),
-    0 0 20px rgba(255, 255, 255, 0.5);
-`;
-
-// Form components (simplified versions)
-const Field = styled.div`
-  margin-bottom: 1.5rem;
-  
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    font-size: 0.875rem;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 1rem;
-  font-size: 0.95rem;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(248, 250, 252, 0.8);
-  color: #1f2937;
-  box-sizing: border-box;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.9);
-  }
-`;
-
-const ButtonRow = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-  }
-`;
-
-const Button = styled.button`
-  padding: 1rem 1.5rem;
-  font-size: 0.9rem;
-  border: none;
-  border-radius: 12px;
-  font-weight: 500;
-  cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  flex: 1;
-  min-height: 48px;
-  position: relative;
-  overflow: hidden;
-  
-  ${({ disabled, danger }) => {
-    if (disabled) {
-      return css`
-        background: rgba(148, 163, 184, 0.3);
-        color: #94a3b8;
-      `;
-    }
-    if (danger) {
-      return css`
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        color: white;
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        
-        &:hover {
-          background: linear-gradient(135deg, #dc2626, #b91c1c);
-          box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
-        }
-      `;
-    }
-    return css`
-      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-      color: white;
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      
-      &:hover {
-        background: linear-gradient(135deg, #1d4ed8, #1e40af);
-        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
-      }
-    `;
-  }}
-
-  &:hover {
-    transform: ${({ disabled }) => (disabled ? 'none' : 'translateY(-2px)')};
-  }
-`;
-
-const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, features, isDarkMode, setIsDarkMode, setIsLoading, isLoading }) => {
+const ProjectInfo = ({
+  blink, setBlink, projectId, setShowModal, onSave, onView, features,
+  isDarkMode, setIsDarkMode, setIsLoading, isLoading
+}) => {
   // Menu state
   const [mainOpen, setMainOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [projects, setProjects] = useState([]);
@@ -594,7 +43,6 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
   const [editedDate, setEditedDate] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
-
 
   // Click outside handler
   useEffect(() => {
@@ -618,13 +66,18 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
           icon: 'warning',
           title: 'No Project Selected',
           text: 'Please create or select a valid project before continuing.',
+          confirmButtonText: 'OK',
+          buttonsStyling: false,
+          customClass: {
+            confirmButton: 'swal-main-btn',
+          },
         });
         setIsLoading(false);
         return;
       }
 
       try {
-        const project = await fetchProjectById(projectId);
+        const project = await fetchProjectById(projectId)
 
         if (!project) {
           Swal.fire({
@@ -732,9 +185,6 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
   const handleDelete = async () => {
     if (deleteInput === projectName) {
       try {
-        const projectId = localStorage.getItem('projectId');
-        await deleteProjectById(projectId);
-
         localStorage.removeItem('projectId');
         localStorage.removeItem('projectName');
         localStorage.removeItem('chartType');
@@ -766,222 +216,204 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
     }
   };
 
+  const bgPrimary = isDarkMode ? 'bg-slate-900' : 'bg-white';
+  const textPrimary = isDarkMode ? 'text-gray-100' : 'text-gray-900';
+  const bgSecondary = isDarkMode ? 'bg-slate-800' : 'bg-gray-50';
+  const borderColor = isDarkMode ? 'border-slate-700' : 'border-gray-200';
+  const hoverBg = isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100';
+  const accentText = isDarkMode ? 'text-blue-400' : 'text-blue-600';
+
+  const InfoItem = ({ icon, label, value, iconType = 'project' }) => {
+    const iconBgColor = {
+      project: isDarkMode ? 'bg-green-900/20' : 'bg-green-100',
+      chart: isDarkMode ? 'bg-purple-900/20' : 'bg-purple-100',
+      date: isDarkMode ? 'bg-blue-900/20' : 'bg-blue-100',
+    };
+
+    const iconColor = {
+      project: isDarkMode ? 'text-green-400' : 'text-green-600',
+      chart: isDarkMode ? 'text-purple-400' : 'text-purple-600',
+      date: isDarkMode ? 'text-blue-400' : 'text-blue-600',
+    };
+
+    return (
+      <div className="flex items-start gap-3 mb-6 transition-transform hover:translate-x-1">
+        <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${iconBgColor[iconType]}`}>
+          <span className={iconColor[iconType]}>{icon}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} mb-1`}>
+            {label}
+          </div>
+          <div className={`text-sm font-medium ${textPrimary} break-words leading-relaxed`}>
+            {value}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (!projectName) {
     return (
-      <InfoContainer ref={menuRef} $shouldBlink={blink && !projectId} >
-        <InfoHeader>
-          <InfoTitle>
-            <FaFolder />
-            No Project Selected
-          </InfoTitle>
-        </InfoHeader>
+      <div
+        ref={menuRef}
+        className={`
+          fixed top-0 left-1 w-80 max-w-96 max-h-96 rounded-2xl p-6 relative overflow-hidden
+          border border-white/10
+          ${isDarkMode
+            ? "bg-[rgba(15,15,15,0.3)]"
+            : "bg-[rgba(255,255,255,0.25)]"}
+          backdrop-blur-2xl backdrop-saturate-150
+          shadow-[0_8px_32px_rgba(0,0,0,0.1)]
+          transition-all duration-500
+          hover:scale-[1.005] hover:shadow-[0_10px_36px_rgba(0,0,0,0.15)]
+          ${blink && !projectId ? "animate-pulse" : ""}
+        `}
+      >
+        <div className={`flex items-center justify-between pb-4 px-3 mb-5 border-b ${borderColor}`}>
+          <h3 className={`text-lg font-semibold flex items-center gap-2 ${textPrimary}`}>
+            <FaFolder /> No Project Selected
+          </h3>
+        </div>
 
-        {mainOpen && (
-          <Dropdown>
-            <MenuItem onClick={() => setProjectOpen(!projectOpen)} aria-expanded={projectOpen}>
-              <FaFolder />
-              Project
-            </MenuItem>
-            {projectOpen && (
-              <SubDropdown>
-                <SubMenuItem onClick={() => setShowModal(true)}>
-                  <FaPlus />
-                  New Project
-                </SubMenuItem>
-                <SubMenuItem onClick={async () => {
-                  try {
-                    const userProjects = await fetchUserProjects();
-                    setProjects(userProjects);
-                    setShowProjectList(true);
-                  } catch (err) {
-                    Swal.fire({
-                      toast: true,
-                      position: 'top-end',
-                      icon: 'error',
-                      title: 'Failed to load projects',
-                      showConfirmButton: false,
-                      timer: 2500,
-                    });
-                  }
-                }}>
-                  <FaFolder />
-                  Open Project
-                </SubMenuItem>
-                <SubMenuItem onClick={async () => {
-                  downloadCachedSnapshotZip(setIsDarkMode, features);
-                }}>
-                  <FaFileExport />
-                  Export Project
-                </SubMenuItem>
-              </SubDropdown>
-            )}
-            <MenuItem onClick={onView}>
-              <FaEye />
-              View
-            </MenuItem>
-            <MenuItem onClick={() => setShowSubmitModal(true)}>
-              <FaPaperPlane />
-              Submit
-            </MenuItem>
-            <MenuItem onClick={logout} $danger>
-              <FaSignOutAlt />
-              Logout
-            </MenuItem>
-          </Dropdown>
-        )}
+        <div className={`flex items-start gap-3 mb-6`}>
+          <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-yellow-900/20' : 'bg-yellow-100'}`}>
+            <FaFolder className={isDarkMode ? 'text-yellow-400' : 'text-yellow-600'} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} mb-1`}>
+              Status
+            </div>
+            <div className={`text-sm font-medium ${textPrimary} break-words`}>
+              Please create or select a project to get started
+            </div>
+          </div>
+        </div>
 
-        <InfoItem>
-          <InfoIcon iconType="project">
-            <FaFolder />
-          </InfoIcon>
-          <InfoContent>
-            <InfoLabel>Status</InfoLabel>
-            <InfoValue>Please create or select a project to get started</InfoValue>
-          </InfoContent>
-        </InfoItem>
-
-        {/* All modals */}
-        {showModal && (
-          <ProjectModal
-            visible={showModal}
-            onClose={() => setShowModal(false)}
-            onSubmit={() =>
-              createProjectHandler({
-                projectName,
-                chartType,
-                description,
-                forecastDate,
-                onNew,
-                setShowModal,
-                setMainOpen,
-                setProjectOpen,
-                setProjectName,
-                setChartType,
-                setDescription
-              })
-            }
-            projectName={projectName}
-            setProjectName={setProjectName}
-            chartType={chartType}
-            setChartType={setChartType}
-            description={description}
-            setDescription={setDescription}
-            forecastDate={forecastDate}
-            setForecastDate={setForecastDate}
-          />
-        )}
-
-        {showProjectList && (
-          <ProjectListModal
-            visible={showProjectList}
-            projects={projects}
-            onClose={() => setShowProjectList(false)}
-            onSelect={(proj) => {
-              console.log("Selected project:", proj);
-              localStorage.setItem("projectId", proj._id);
-              localStorage.setItem("projectName", proj.name);
-              localStorage.setItem("chartType", proj.chartType || '12');
-
-              if (onSave) onSave(proj);
-
-              setMainOpen(false);
-              setProjectOpen(false);
-              setShowProjectList(false);
-            }}
-          />
-        )}
-
-        {isExporting && (
-          <LoadingModal>
-            Exporting map, please wait...
-          </LoadingModal>
-        )}
-
-        {showSubmitModal && (
-          <SubmitModal
-            visible={showSubmitModal}
-            onClose={() => setShowSubmitModal(false)}
-            onSubmit={handleSubmit}
-            projectTitle={localStorage.getItem('projectName') || 'Untitled Project'}
-            projectType={localStorage.getItem('chartType') || 'Wave Analysis'}
-            forecastDate={forecastDate || 'Not set'}
-            isSubmitting={isSubmitting}
-            isDarkMode={isDarkMode}
-          />
-        )}
-      </InfoContainer>
+        <div className="flex gap-2 mt-6">
+          <button
+            onClick={() => setShowModal(true)}
+            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${isDarkMode
+              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+              : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+          >
+            <FaPlus /> New Project
+          </button>
+          <button
+            onClick={onView}
+            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${isDarkMode
+              ? 'bg-slate-700 hover:bg-slate-600 text-gray-100'
+              : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+              }`}
+          >
+            <FaEye /> View
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
     <>
-      <InfoContainer ref={menuRef}>
-        <InfoHeader>
-          <InfoTitle>
-            <FaFolder />
-            Project Details
-          </InfoTitle>
-          <MenuActions>
-            <EditButton onClick={openEditModal}>
-              <FaEdit />
-            </EditButton>
-          </MenuActions>
-        </InfoHeader>
+      <div
+        ref={menuRef}
+        className={`
+          fixed -top-2 left-1 w-80 max-w-96 max-h-96 rounded-2xl p-6 relative overflow-y-auto scrollbar-hide
+          border border-white/10
+          ${isDarkMode
+            ? "bg-[rgba(20,20,20,0.25)]"
+            : "bg-[rgba(255,255,255,0.2)]"}
+          backdrop-blur-2xl backdrop-saturate-150
+          shadow-[0_6px_30px_rgba(0,0,0,0.1)]
+          transition-all duration-500
+          hover:scale-[1.005] hover:shadow-[0_8px_36px_rgba(0,0,0,0.15)]
+        `}
+      >
+        <div className={`flex items-center justify-between pb-4 px-3 mb-5 border-b ${borderColor}`}>
+          <h3 className={`text-lg font-semibold flex items-center gap-2 ${textPrimary}`}>
+            <FaFolder /> Project Details
+          </h3>
+          <button
+            onClick={openEditModal}
+            className={`p-2 rounded-lg transition-all ${isDarkMode
+              ? 'text-blue-400 hover:bg-slate-700'
+              : 'text-blue-600 hover:bg-gray-100'
+              }`}
+          >
+            <FaEdit size={18} />
+          </button>
+        </div>
 
-        <InfoItem>
-          <InfoIcon iconType="project">
-            <FaFolder />
-          </InfoIcon>
-          <InfoContent>
-            <InfoLabel>Project Name</InfoLabel>
-            <InfoValue>{projectName}</InfoValue>
-          </InfoContent>
-        </InfoItem>
+        <InfoItem
+          icon={<FaFolder />}
+          label="Project Name"
+          value={projectName}
+          iconType="project"
+        />
 
-        <InfoItem>
-          <InfoIcon iconType="chart">
-            <FaChartBar />
-          </InfoIcon>
-          <InfoContent>
-            <InfoLabel>Chart Type</InfoLabel>
-            <InfoValue>{chartType || 'Not specified'}</InfoValue>
-          </InfoContent>
-        </InfoItem>
+        <InfoItem
+          icon={<FaChartBar />}
+          label="Chart Type"
+          value={chartType || 'Not specified'}
+          iconType="chart"
+        />
 
-        <InfoItem>
-          <InfoIcon iconType="date">
-            <FaCalendarAlt />
-          </InfoIcon>
-          <InfoContent>
-            <InfoLabel>Forecast Date</InfoLabel>
-            <InfoValue>{forecastDate || 'Not set'}</InfoValue>
-          </InfoContent>
-        </InfoItem>
-      </InfoContainer>
+        <InfoItem
+          icon={<FaCalendarAlt />}
+          label="Forecast Date"
+          value={forecastDate || 'Not set'}
+          iconType="date"
+        />
+      </div>
 
       {/* Edit Project Modal */}
       {editModalOpen && (
-        <Overlay onClick={() => setEditModalOpen(false)}>
-          <ModalContainer onClick={(e) => e.stopPropagation()}>
-            <h2>Edit Project Details</h2>
-            <Field>
-              <label>Project Name</label>
-              <Input
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`${bgPrimary} rounded-2xl p-8 w-full max-w-lg shadow-2xl border ${borderColor}`}
+          >
+            <h2 className={`text-2xl font-bold mb-6 bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent`}>
+              Edit Project Details
+            </h2>
+
+            <div className="mb-6">
+              <label className={`block mb-2 font-semibold text-sm uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                Project Name
+              </label>
+              <input
+                type="text"
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
                 placeholder="Enter project name"
+                className={`w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode
+                  ? 'bg-slate-800 border-slate-700 text-gray-100 focus:border-blue-400'
+                  : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                  }`}
               />
-            </Field>
-            <Field>
-              <label>Chart Type</label>
-              <Input
+            </div>
+
+            <div className="mb-6">
+              <label className={`block mb-2 font-semibold text-sm uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                Chart Type
+              </label>
+              <input
+                type="text"
                 value={editedChart}
                 onChange={(e) => setEditedChart(e.target.value)}
                 placeholder="Enter chart type"
+                className={`w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode
+                  ? 'bg-slate-800 border-slate-700 text-gray-100 focus:border-blue-400'
+                  : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                  }`}
               />
-            </Field>
-            <Field>
-              <label>Forecast Date</label>
+            </div>
+
+            <div className="mb-6">
+              <label className={`block mb-2 font-semibold text-sm uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                Forecast Date
+              </label>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   value={dayjs(new Date(editedDate))}
@@ -1003,22 +435,20 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
                       InputProps: {
                         disableUnderline: true,
                         sx: {
-                          backgroundColor: 'rgba(248, 250, 252, 0.8)',
-                          borderRadius: '12px',
+                          backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc',
+                          borderRadius: '8px',
                           fontSize: '0.95rem',
-                          color: '#1f2937',
-                          height: '56px',
+                          color: isDarkMode ? '#f1f5f9' : '#1f2937',
+                          height: '48px',
                           paddingLeft: '1rem',
-                          border: '1px solid rgba(0, 0, 0, 0.1)',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          border: isDarkMode ? '1px solid #475569' : '1px solid #d1d5db',
+                          transition: 'all 0.3s ease',
                           '&:hover': {
-                            borderColor: 'rgba(0, 0, 0, 0.15)',
+                            borderColor: isDarkMode ? '#64748b' : '#e5e7eb',
                           },
                           '&.Mui-focused': {
                             borderColor: '#3b82f6',
                             boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-                            transform: 'translateY(-2px)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
                           },
                         },
                       },
@@ -1026,114 +456,80 @@ const ProjectInfo = ({ blink, setBlink, projectId, onNew, onSave, onView, featur
                   }}
                 />
               </LocalizationProvider>
-            </Field>
-            <ButtonRow>
-              <Button onClick={() => setEditModalOpen(false)}>Cancel</Button>
-              <Button onClick={handleSaveEdit}>Save Changes</Button>
-            </ButtonRow>
-          </ModalContainer>
-        </Overlay>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${isDarkMode
+                  ? 'bg-slate-700 hover:bg-slate-600 text-gray-100'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+                  }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700`}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <Overlay onClick={() => setShowDeleteConfirm(false)}>
-          <ModalContainer onClick={(e) => e.stopPropagation()}>
-            <h3>⚠️ Confirm Deletion</h3>
-            <p>
-              This action cannot be undone. To confirm deletion of this project,
-              please type <strong>"{projectName}"</strong> in the field below.
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`${bgPrimary} rounded-2xl p-8 w-full max-w-lg shadow-2xl border ${borderColor}`}
+          >
+            <h3 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${textPrimary}`}>
+              ⚠️ Confirm Deletion
+            </h3>
+            <p className={`mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              This action cannot be undone. To confirm deletion of this project, please type{' '}
+              <strong>"{projectName}"</strong> in the field below.
             </p>
-            <Field>
-              <Input
+
+            <div className="mb-6">
+              <input
+                type="text"
                 placeholder={`Type "${projectName}" to confirm`}
                 value={deleteInput}
                 onChange={(e) => setDeleteInput(e.target.value)}
+                className={`w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2 focus:ring-red-500 ${isDarkMode
+                  ? 'bg-slate-800 border-slate-700 text-gray-100 focus:border-red-400'
+                  : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-red-500'
+                  }`}
               />
-            </Field>
-            <ButtonRow>
-              <Button onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
-              <Button
-                danger
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${isDarkMode
+                  ? 'bg-slate-700 hover:bg-slate-600 text-gray-100'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+                  }`}
+              >
+                Cancel
+              </button>
+              <button
                 disabled={deleteInput !== projectName}
                 onClick={handleDelete}
+                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all text-white flex items-center justify-center gap-2 ${deleteInput === projectName
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-gray-400 cursor-not-allowed'
+                  }`}
               >
-                <FaTrash style={{ marginRight: '0.5rem' }} />
-                Confirm Delete
-              </Button>
-            </ButtonRow>
-          </ModalContainer>
-        </Overlay>
-      )}
-
-      {/* All Project Menu Modals */}
-      {showModal && (
-        <ProjectModal
-          visible={showModal}
-          onClose={() => setShowModal(false)}
-          onSubmit={() =>
-            createProjectHandler({
-              projectName,
-              chartType,
-              description,
-              forecastDate,
-              onNew,
-              setShowModal,
-              setMainOpen,
-              setProjectOpen,
-              setProjectName,
-              setChartType,
-              setDescription
-            })
-          }
-          projectName={projectName}
-          setProjectName={setProjectName}
-          chartType={chartType}
-          setChartType={setChartType}
-          description={description}
-          setDescription={setDescription}
-          forecastDate={forecastDate}
-          setForecastDate={setForecastDate}
-        />
-      )}
-
-      {showProjectList && (
-        <ProjectListModal
-          visible={showProjectList}
-          projects={projects}
-          onClose={() => setShowProjectList(false)}
-          onSelect={(proj) => {
-            console.log("Selected project:", proj);
-            localStorage.setItem("projectId", proj._id);
-            localStorage.setItem("projectName", proj.name);
-            localStorage.setItem("chartType", proj.chartType || '12');
-
-            if (onSave) onSave(proj);
-
-            setMainOpen(false);
-            setProjectOpen(false);
-            setShowProjectList(false);
-          }}
-        />
-      )}
-
-      {isExporting && (
-        <LoadingModal>
-          Exporting map, please wait...
-        </LoadingModal>
-      )}
-
-      {showSubmitModal && (
-        <SubmitModal
-          visible={showSubmitModal}
-          onClose={() => setShowSubmitModal(false)}
-          onSubmit={handleSubmit}
-          projectTitle={localStorage.getItem('projectName') || 'Untitled Project'}
-          projectType={localStorage.getItem('chartType') || 'Wave Analysis'}
-          forecastDate={forecastDate || 'Not set'}
-          isSubmitting={isSubmitting}
-          isDarkMode={isDarkMode}
-        />
+                <FaTrash /> Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

@@ -13,6 +13,7 @@ import MapLoading from "../components/modals/MapLoading";
 import { typhoonMarker as saveMarkerFn } from "../utils/mapUtils";
 import { savePointFeature } from "../components/Edit/utils/ToolBarUtils";
 import { setupMap } from "../utils/mapSetup";
+import { captureMapSnapshot } from "../utils/mapUtils";
 import { fetchFeatures } from "../api/featureServices";
 import { fetchLatestUserProject } from "../api/projectAPI";
 import Swal from 'sweetalert2';
@@ -68,15 +69,9 @@ const blinkAnimation = keyframes`
   50% { border-color: #f59e0b; } /* amber/orange */
 `;
 
-const BlinkingButtonWrapper = styled.div`
-  border: 2px solid transparent;
-  border-radius: 8px;
-  display: inline-block;
-  animation: ${({ blink }) => blink ? css`${blinkAnimation} 0.5s ease-in-out infinite` : 'none'};
-`;
-
 const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   // eslint-disable-next-line
+  const [mapInstance, setMapInstance] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
   const [layers, setLayers] = useState([]);
   const [drawInstance, setDrawInstance] = useState(null);
@@ -123,14 +118,19 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
         projectId = projectData._id;
       } catch (error) {
         setIsLoadingProject(false);
-        setIsLoading(false);
         console.error('Failed to fetch the latest project:', error);
 
         Swal.fire({
           icon: "info",
           title: "No Projects Found",
           text: "Please create a new project to get started.",
+          confirmButtonText: "Create Project",
+          buttonsStyling: false,
+          customClass: {
+            confirmButton: "swal-main-btn",
+          },
         }).then(() => {
+          setIsLoading(false);
           setBlink(true);
         });
       } finally {
@@ -258,9 +258,8 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
     const resetTimer = () => {
       clearTimeout(inactivityTimer);
       inactivityTimer = setTimeout(() => {
-        // Trigger page reload after 1 minute of inactivity
         window.location.reload();
-      }, 360000); // 1 minute = 60000 ms
+      }, 640000);
     };
 
     // Add event listeners for user activity
@@ -292,7 +291,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   return (
     <Container>
       <MapWrapper collapsed={collapsed}>
-        <MapComponent onMapLoad={handleMapLoad} isDarkMode={isDarkMode} />
+        <MapComponent onMapLoad={handleMapLoad} isDarkMode={isDarkMode} setMapInstance={setMapInstance} />
       </MapWrapper>
 
       {showToolbar && projectId && (
@@ -354,14 +353,15 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
             <ProjectMenu
               blink={blink}  // ✅ blink prop
               projectId={projectId}
-              mapRef={mapRef}
+              map={mapInstance}
               features={{ type: "FeatureCollection", features: savedFeatures }}
               isDarkMode={isDarkMode}
               setIsDarkMode={setIsDarkMode}
               setMapLoaded={setMapLoaded}
               isLoading={isLoading}
+              setCapturedImages={setCapturedImages}
             />
-            <ProjectInfo
+            {/* <ProjectInfo
               layers={layers}
               setLayers={setLayers}
               mapRef={mapRef}
@@ -369,7 +369,7 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
               draw={drawInstance}
               setIsLoading={setIsLoading}
               isLoading={isLoading}
-            />
+            /> */}
           </SidePanelWrapper>
 
           <LayerPanel

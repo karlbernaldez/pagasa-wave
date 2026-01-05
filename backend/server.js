@@ -19,6 +19,8 @@ const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
   ? process.env.CORS_ALLOWED_ORIGINS.split(',')
   : [];
 
+console.log("Allowed CORS origins:", allowedOrigins);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -39,6 +41,15 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
+app.get('/status', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    message: 'Votewave API is running',
+  });
+});
+
 // ✅ API routes
 app.use('/api/features', featureRoutes);
 app.use('/api/auth', authRoutes);
@@ -56,3 +67,4 @@ startScheduler();
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+console.log(`📂 Serving static files from: ${path.join(__dirname, 'public')}`);
