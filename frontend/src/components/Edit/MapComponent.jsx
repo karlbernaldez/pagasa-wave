@@ -22,7 +22,7 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
       container: mapContainerRef.current,
       projection: 'mercator',
       style: isDarkMode
-        ? 'mapbox://styles/votewave/cmi3xgfli006p01st7bob9drl'
+        ? 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n'
         : 'mapbox://styles/votewave/cmi6o2f9p000b01rcex3f0vcq',
       center: [120.0, 15.5],
       minZoom: 4,
@@ -67,7 +67,7 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
     if (!mapRef.current) return;
 
     const newStyle = isDarkMode
-      ? 'mapbox://styles/votewave/cmi3xgfli006p01st7bob9drl'
+      ? 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n'
       : 'mapbox://styles/votewave/cmi6o2f9p000b01rcex3f0vcq';
 
     const onStyleLoad = () => {

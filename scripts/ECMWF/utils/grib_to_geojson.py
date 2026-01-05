@@ -18,7 +18,7 @@ lon_max, lat_max = 170, 40
 # LAT_MIN, LAT_MAX = -10, 40
 # LON_MIN, LON_MAX = 80, 170
 
-step = 7  # subsampling step (higher = fewer vectors)
+step = 12  # subsampling step (higher = fewer vectors)
 
 
 def process_grib(grib_file: Path):
