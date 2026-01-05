@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
-import { GlobalStyle, AppContainer, MainContent, FooterWrapper } from './components/styles/global';
+import { GlobalStyle, AppContainer, MainContent, FooterWrapper } from './styles/global';
 import { SectionDivider } from './styles/app';
 import LoadingScreen from './components/LoadingScreen';
 import useIsMobile from './hooks/useIsMobile';
