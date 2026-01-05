@@ -487,15 +487,28 @@ export function addHimawariLayer(map) {
   });
 }
 
-export async function addWindLayer(map) {
-  const geojson = await fetch('/geojson/20251119000000-0h-oper-fc.geojson');
+export async function addWindLayer(map, isDarkMode) {
+  const geojson = await fetch('/geojson/20251128000000-0h-oper-fc.geojson');
   const windData = await geojson.json();
 
-  map.addSource("wind-solarstorm", {
-    type: "raster",
-    url: `mapbox://votewave.windtif?fresh=${Date.now()}`,
-    tileSize: 4096
-  });
+  // Choose tileset based on mode
+  const tileset = isDarkMode
+    ? "mapbox://votewave.darktif"   // 🌙 Darkstorm
+    : "mapbox://votewave.windtif";   // 🌈 Solarstorm
+
+  // Source ID based on theme
+  const sourceId = isDarkMode
+    ? "wind-darkstorm"
+    : "wind-solarstorm";
+
+  // Add raster source
+  if (!map.getSource(sourceId)) {
+    map.addSource(sourceId, {
+      type: "raster",
+      url: `${tileset}?fresh=${Date.now()}`,
+      tileSize: 4096,
+    });
+  }
 
   map.addSource("wind-particles", {
     type: "raster-array",
@@ -518,7 +531,7 @@ export async function addWindLayer(map) {
     {
       id: "wind-solarstorm-layer",
       type: "raster",
-      source: "wind-solarstorm",
+      source: sourceId,
       paint: {
         "raster-opacity": 0.8,          // transparency
         "raster-fade-duration": 100      // smooth transitions between tiles
@@ -573,20 +586,22 @@ export async function addWindLayer(map) {
       "raster-particle-speed-factor": 0.4,        // slower movement = clearer particles
       "raster-particle-fade-opacity-factor": .85, // more visible traces
       "raster-particle-reset-rate-factor": 0.4,   // less frequent resets (longer trails)
-      "raster-particle-count": 64000,             // fewer particles = larger appearance
+      "raster-particle-count": 36000,             // fewer particles = larger appearance
       "raster-particle-max-speed": 160,            // slower, smoother trails
       "raster-particle-color": [
         "interpolate",
         ["linear"],
         ["raster-particle-speed"],
-        0, "rgba(255,255,255,0.7)",
-        100, "rgba(255,255,255,1)"
+        0, "rgba(255,255,255,0.2)",
+        100, "rgba(255,255,255,0.4)"
       ],
     },
     layout: {
       'visibility': 'none'   // 👈 start hidden
     }
-  });
+  },
+    "country-boundaries"
+  );
 
   // WIND ARROWS & LABELS
   map.addLayer({
@@ -628,8 +643,10 @@ export async function addWindLayer(map) {
       'icon-rotation-alignment': 'map',
       'icon-allow-overlap': true,
     },
-    paint: { 'icon-opacity': 0.75 }
-  });
+    paint: { 'icon-opacity': 0.5 }
+  },
+    "country-boundaries"
+  );
 
   // map.addLayer({
   //   id: 'wave-arrows',

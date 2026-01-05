@@ -275,10 +275,10 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   );
 
   const miscLayers = [
-    { name: 'PAR', state: showPAR, key: 'PAR', description: 'Protected Areas and Reserves' },
-    { name: 'Satellite', state: showSatellite, key: 'Satellite', description: 'Satellite Imagery Layer' },
-    { name: 'TCID', state: showTCID, key: 'TCID', description: 'Territorial Coverage ID' },
-    { name: 'TCAD', state: showTCAD, key: 'TCAD', description: 'Territorial Coverage AD' },
+    { name: 'PAR', state: showPAR, key: 'PAR', description: 'Philippine Area of Responsibility' },
+    { name: 'Satellite', state: showSatellite, key: 'Satellite', description: 'Himawari Satellite Image' },
+    { name: 'TCID', state: showTCID, key: 'TCID', description: 'Tropical Cyclone Information Domain' },
+    { name: 'TCAD', state: showTCAD, key: 'TCAD', description: 'Tropical Cyclone Advisory Domain' },
     { name: 'Graticules, Wave & Wind', state: showSHIPPINGZONE, key: 'SHIPPING_ZONE', description: 'Graticules and Wave and Wind Elements' },
     { name: 'Wind Layer', state: showWindLayer, key: 'Wind Layer', description: 'Wind Speed & Direction' },
   ];
