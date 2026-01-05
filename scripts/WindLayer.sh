@@ -159,76 +159,76 @@ retry() {
 # ##############################################
 # ## 1) SOLARSTORM UPLOAD
 # ##############################################
-# log "🔑 Requesting fresh credentials for Solarstorm..."
+log "🔑 Requesting fresh credentials for Solarstorm..."
 
-# SOLAR_CRED=$(curl -s -X POST \
-#   "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME/credentials?access_token=$MAPBOX_TOKEN")
+SOLAR_CRED=$(curl -s -X POST \
+  "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME/credentials?access_token=$MAPBOX_TOKEN")
 
-# SOLAR_AWS_BUCKET=$(echo "$SOLAR_CRED" | jq -r '.bucket')
-# SOLAR_AWS_KEY=$(echo "$SOLAR_CRED" | jq -r '.key')
-# export AWS_ACCESS_KEY_ID=$(echo "$SOLAR_CRED" | jq -r '.accessKeyId')
-# export AWS_SECRET_ACCESS_KEY=$(echo "$SOLAR_CRED" | jq -r '.secretAccessKey')
-# export AWS_SESSION_TOKEN=$(echo "$SOLAR_CRED" | jq -r '.sessionToken')
+SOLAR_AWS_BUCKET=$(echo "$SOLAR_CRED" | jq -r '.bucket')
+SOLAR_AWS_KEY=$(echo "$SOLAR_CRED" | jq -r '.key')
+export AWS_ACCESS_KEY_ID=$(echo "$SOLAR_CRED" | jq -r '.accessKeyId')
+export AWS_SECRET_ACCESS_KEY=$(echo "$SOLAR_CRED" | jq -r '.secretAccessKey')
+export AWS_SESSION_TOKEN=$(echo "$SOLAR_CRED" | jq -r '.sessionToken')
 
-# log "🌈 Uploading Solarstorm → S3"
-# retry "aws s3 cp wind_solarstorm.tif \
-#   \"s3://$SOLAR_AWS_BUCKET/$SOLAR_AWS_KEY\" \
-#   --region us-east-1 --endpoint-url https://s3.amazonaws.com"
+log "🌈 Uploading Solarstorm → S3"
+retry "aws s3 cp wind_solarstorm.tif \
+  \"s3://$SOLAR_AWS_BUCKET/$SOLAR_AWS_KEY\" \
+  --region us-east-1 --endpoint-url https://s3.amazonaws.com"
 
-# SOLAR_URL="https://$SOLAR_AWS_BUCKET.s3.amazonaws.com/$SOLAR_AWS_KEY"
+SOLAR_URL="https://$SOLAR_AWS_BUCKET.s3.amazonaws.com/$SOLAR_AWS_KEY"
 
-# log "🌈 Submitting Solarstorm upload job..."
+log "🌈 Submitting Solarstorm upload job..."
 
-# curl -s -X POST \
-#   -H "Content-Type: application/json" \
-#   -d "{
-#         \"url\": \"$SOLAR_URL\",
-#         \"tileset\": \"$MAPBOX_USERNAME.windtif\",
-#         \"name\": \"Wind Layer Default\"
-#       }" \
-#   "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME?access_token=$MAPBOX_TOKEN" \
-#   | jq .
-
-
-# ##############################################
-# ## 2) DARKSTORM UPLOAD
-# ##############################################
-# log "🔑 Requesting fresh credentials for Darkstorm..."
-
-# DARK_CRED=$(curl -s -X POST \
-#   "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME/credentials?access_token=$MAPBOX_TOKEN")
-
-# DARK_AWS_BUCKET=$(echo "$DARK_CRED" | jq -r '.bucket')
-# DARK_AWS_KEY=$(echo "$DARK_CRED" | jq -r '.key')
-
-# export AWS_ACCESS_KEY_ID=$(echo "$DARK_CRED" | jq -r '.accessKeyId')
-# export AWS_SECRET_ACCESS_KEY=$(echo "$DARK_CRED" | jq -r '.secretAccessKey')
-# export AWS_SESSION_TOKEN=$(echo "$DARK_CRED" | jq -r '.sessionToken')
-
-# log "🌙 Uploading Darkstorm → S3"
-# retry "aws s3 cp wind_darkstorm.tif \
-#   \"s3://$DARK_AWS_BUCKET/$DARK_AWS_KEY\" \
-#   --region us-east-1 --endpoint-url https://s3.amazonaws.com"
-
-# DARK_URL="https://$DARK_AWS_BUCKET.s3.amazonaws.com/$DARK_AWS_KEY"
-
-# log "🌙 Submitting Darkstorm upload job..."
-
-# curl -s -X POST \
-#   -H "Content-Type: application/json" \
-#   -d "{
-#         \"url\": \"$DARK_URL\",
-#         \"tileset\": \"$MAPBOX_USERNAME.darktif\",
-#         \"name\": \"Wind Layer Dark\"
-#       }" \
-#   "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME?access_token=$MAPBOX_TOKEN" \
-#   | jq .
+curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d "{
+        \"url\": \"$SOLAR_URL\",
+        \"tileset\": \"$MAPBOX_USERNAME.windtif\",
+        \"name\": \"Wind Layer Default\"
+      }" \
+  "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME?access_token=$MAPBOX_TOKEN" \
+  | jq .
 
 
-# log "🌀 Both Solarstorm + Darkstorm uploaded successfully!"
+##############################################
+## 2) DARKSTORM UPLOAD
+##############################################
+log "🔑 Requesting fresh credentials for Darkstorm..."
 
-# retry "tilesets upload-raster-source --replace \"$MAPBOX_USERNAME\" ECMWF ECMWF/ecmwf_data/ECMWF.grib2"
-# retry "tilesets publish \"$MAPBOX_USERNAME.ecmwf\""
+DARK_CRED=$(curl -s -X POST \
+  "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME/credentials?access_token=$MAPBOX_TOKEN")
+
+DARK_AWS_BUCKET=$(echo "$DARK_CRED" | jq -r '.bucket')
+DARK_AWS_KEY=$(echo "$DARK_CRED" | jq -r '.key')
+
+export AWS_ACCESS_KEY_ID=$(echo "$DARK_CRED" | jq -r '.accessKeyId')
+export AWS_SECRET_ACCESS_KEY=$(echo "$DARK_CRED" | jq -r '.secretAccessKey')
+export AWS_SESSION_TOKEN=$(echo "$DARK_CRED" | jq -r '.sessionToken')
+
+log "🌙 Uploading Darkstorm → S3"
+retry "aws s3 cp wind_darkstorm.tif \
+  \"s3://$DARK_AWS_BUCKET/$DARK_AWS_KEY\" \
+  --region us-east-1 --endpoint-url https://s3.amazonaws.com"
+
+DARK_URL="https://$DARK_AWS_BUCKET.s3.amazonaws.com/$DARK_AWS_KEY"
+
+log "🌙 Submitting Darkstorm upload job..."
+
+curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d "{
+        \"url\": \"$DARK_URL\",
+        \"tileset\": \"$MAPBOX_USERNAME.darktif\",
+        \"name\": \"Wind Layer Dark\"
+      }" \
+  "https://api.mapbox.com/uploads/v1/$MAPBOX_USERNAME?access_token=$MAPBOX_TOKEN" \
+  | jq .
+
+
+log "🌀 Both Solarstorm + Darkstorm uploaded successfully!"
+
+retry "tilesets upload-raster-source --replace \"$MAPBOX_USERNAME\" ECMWF ECMWF/ecmwf_data/ECMWF.grib2"
+retry "tilesets publish \"$MAPBOX_USERNAME.ecmwf\""
 
 
 ##############################################

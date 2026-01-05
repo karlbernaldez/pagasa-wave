@@ -488,7 +488,7 @@ export function addHimawariLayer(map) {
 }
 
 export async function addWindLayer(map, isDarkMode) {
-  const geojson = await fetch('/geojson/20251119000000-0h-oper-fc.geojson');
+  const geojson = await fetch('/geojson/20251128000000-0h-oper-fc.geojson');
   const windData = await geojson.json();
 
   // Choose tileset based on mode
