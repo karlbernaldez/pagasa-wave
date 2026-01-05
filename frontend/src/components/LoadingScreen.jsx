@@ -1,5 +1,5 @@
 // components/LoadingScreen.js
-import { LoadingOverlay, LoadingContent, LoadingSpinner, LoadingText } from './styles/loading';
+import { LoadingOverlay, LoadingContent, LoadingSpinner, LoadingText } from '../styles/loading';
 
 const LoadingScreen = ({ isDarkMode, message = "Loading..." }) => (
   <LoadingOverlay $isDarkMode={isDarkMode}>
