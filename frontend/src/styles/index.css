@@ -1,14 +1,70 @@
-html, body, #root {
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
   height: 100%;
   font-family: Arial, sans-serif;
-  overflow: auto; /* Allow page to scroll */
+  overflow: auto;
+  /* Allow page to scroll */
   overflow-x: hidden;
 }
 
 .swal2-container {
   z-index: 9999 !important;
+}
+
+/* Blue main button for Swal */
+.swal-main-btn {
+  background-color: #1d4ed8 !important;
+  color: white !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  transition: 0.2s ease-in-out;
+}
+
+.swal-main-btn:hover {
+  background-color: #1e40af !important;
+}
+
+.swal-confirm-btn {
+  background-color: #e53935 !important;
+  color: white !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  margin-left: 10px !important;
+  /* ← ADD THIS */
+  transition: 0.2s ease-in-out;
+}
+
+.swal-confirm-btn:hover {
+  background-color: #c62828 !important;
+}
+
+/* Cancel button */
+.swal-cancel-btn {
+  background-color: #1976d2 !important;
+  color: white !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  margin-right: 10px !important;
+  /* ← ADD THIS */
+  transition: 0.2s ease-in-out;
+}
+
+.swal-cancel-btn:hover {
+  background-color: #0d47a1 !important;
+}
+
+.swal2-actions {
+  gap: 12px !important;
+  justify-content: center;
 }
 
 @tailwind base;
