@@ -164,10 +164,10 @@ const Header = ({ isDarkMode, setIsDarkMode, activeChartType, setActiveChartType
                 ? 'text-white drop-shadow-[0_2px_8px_rgba(59,130,246,0.5)]' 
                 : 'text-gray-900 drop-shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
             }`}>
-              VOTEWAVE
+              WaveLab
             </span>
           </div>
-
+ 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-8">
             {navItems.map((item, index) => (

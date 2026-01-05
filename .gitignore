@@ -32,5 +32,8 @@ scripts/s3Credentials.json
 scripts/wind_colored.png
 scripts/wind_preview.png
 scripts/wind_speed.tif
+scripts/wind_darkstorm.tif
+scripts/wind_dual_preview.png
+scripts/wind_solarstorm.tif
 
 scripts/.env
