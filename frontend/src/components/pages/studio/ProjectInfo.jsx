@@ -5,16 +5,8 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import {
-  FaChevronDown, FaEdit, FaTrash, FaCalendarAlt, FaChartBar, FaFolder,
-  FaBars, FaPlus, FaFileExport, FaSignOutAlt, FaPaperPlane, FaEye
-} from 'react-icons/fa';
-import {
-  fetchProjectById,
-  updateProjectById,
-  fetchUserProjects,
-  deleteProjectById,
-} from "../../api/projectAPI";
+import { FaEdit, FaTrash, FaCalendarAlt, FaChartBar, FaFolder, FaPlus, FaEye } from 'react-icons/fa';
+import { fetchProjectById, updateProjectById, fetchUserProjects, deleteProjectById } from "@/api/projectAPI";
 
 const MySwal = withReactContent(Swal);
 

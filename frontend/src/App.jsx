@@ -1,40 +1,40 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
-import { GlobalStyle, AppContainer, MainContent, FooterWrapper } from './styles/global';
-import { SectionDivider } from './styles/app';
-import LoadingScreen from './components/LoadingScreen';
-import useIsMobile from './hooks/useIsMobile';
-import { darkTheme, theme } from './styles/theme';
-import { useTheme } from './hooks/useTheme';
+import { GlobalStyle, AppContainer, MainContent, FooterWrapper } from '@/styles/global';
+import { SectionDivider } from '@/styles/app';
+import LoadingScreen from '@/components/ui/LoadingScreen';
+import useIsMobile from '@/hooks/useIsMobile';
+import { darkTheme, theme } from '@/styles/theme';
+import { useTheme } from '@/hooks/useTheme';
 import createLogger from '@adovelopers/logado';
-import useRouteChecks from './hooks/useRouteChecks';
-import getLayoutConfig from './utils/getLayoutConfig';
+import useRouteChecks from '@/hooks/useRouteChecks';
+import getLayoutConfig from '@/utils/getLayoutConfig';
 
 // Components (Lazy Loaded)
-const HeaderNavbar = lazy(() => import('./components/Header'));
-const Footer = lazy(() => import('./components/Footer'));
-const ProtectedRoute = lazy(() => import('./middleware/ProtectedRoute'));
-const ProtectedAdminRoute = lazy(() => import('./middleware/ProtectedAdminRoute'));
-const ErrorBoundary = lazy(() => import('./components/ErrorBoundary'));
+const HeaderNavbar = lazy(() => import('@/components/layout/Header'));
+const Footer = lazy(() => import('@/components/layout/Footer'));
+const ProtectedRoute = lazy(() => import('@/middleware/ProtectedRoute'));
+const ProtectedAdminRoute = lazy(() => import('@/middleware/ProtectedAdminRoute'));
+const ErrorBoundary = lazy(() => import('@/components/layout/ErrorBoundary'));
 
 // Pages (Lazy Loaded)
-const Home = lazy(() => import('./pages/Home'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const WaveLab = lazy(() => import('./pages/WaveLab'));
-const Charts = lazy(() => import('./pages/Charts'));
-const AboutUs = lazy(() => import('./pages/AboutUs'));
+const Home = lazy(() => import('@/pages/Home'));
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
+const Studio = lazy(() => import('@/pages/Studio'));
+const Charts = lazy(() => import('@/pages/Charts'));
+const AboutUs = lazy(() => import('@/pages/AboutUs'));
 
 // Modals (Lazy Loaded)
-const MobileAccessModal = lazy(() => import('./components/modals/MobileAccessModal'));
-const AccessDeniedModal = lazy(() => import('./components/modals/AccessDeniedModal'));
-const OnlyAdminModal = lazy(() => import('./components/modals/OnlyAdminModal'));
+const MobileAccessModal = lazy(() => import('@/components/ui/modals/MobileAccessModal'));
+const AccessDeniedModal = lazy(() => import('@/components/ui/modals/AccessDeniedModal'));
+const OnlyAdminModal = lazy(() => import('@/components/ui/modals/OnlyAdminModal'));
 
 // Initialize logger
 const logger = createLogger();
-logger.info('VOTE: Wave Watch 3 Platform initialized');
+logger.info('VOTE: WaveLab Platform initialized');
 
 // Enhanced Layout Component
 const Layout = () => {
@@ -114,14 +114,14 @@ const Layout = () => {
               <Route path="/login" element={<Login isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
               <Route path="/register" element={<Register />} />
               <Route
-                path="/wavelab"
+                path="/studio"
                 element={
                   isMobile ? (
                     <MobileAccessModal isOpen={modalVisible} onClose={handleModalClose} />
                   ) : (
                     <ProtectedRoute
                       element={() => (
-                        <WaveLab isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} logger={logger} isLoggedIn={isLoggedIn} />
+                        <Studio isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} logger={logger} isLoggedIn={isLoggedIn} />
                       )}
                       onDeny={() => <AccessDeniedModal isOpen={true} onClose={handleAccessDeniedClose} />}
                       requireAuth={true}

@@ -1,20 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  ArrowRight, 
-  Play, 
-  Waves, 
-  Navigation, 
-  Wind, 
-  TrendingUp,
-  MapPin,
-  Clock,
-  Eye,
-  Activity,
-  Sun,
-  Moon,
-  BarChart3,
-  Compass
-} from 'lucide-react';
+import { ArrowRight, Waves, Navigation, Wind, TrendingUp, MapPin, Eye, Activity, BarChart3, Compass} from 'lucide-react';
 
 const WaveHeroSection = ({ isDark }) => {
 

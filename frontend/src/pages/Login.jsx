@@ -1,8 +1,8 @@
-import { fetchUserDetails } from '../api/userAPI';
-import { jwtDecode } from 'jwt-decode';
-import { loginUser } from '../api/auth';
+
+import { fetchUserDetails } from '@/api/userAPI';
+import { loginUser } from '@/api/auth';
 import { useNavigate } from 'react-router-dom';
-import useAuthRedirect from '../hooks/useAuthRedirect';
+import useAuthRedirect from '@/hooks/useAuthRedirect';
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, Cloud, Sun, CloudRain, Zap, Wind, AlertCircle, Check } from 'lucide-react';
 import { Container, WeatherElement, FloatingParticle, GradientOverlay, FormWrapper, Header, LogoContainer, Title, Subtitle, FormContainer, Form, InputGroup, InputWrapper, IconWrapper, StyledInput, RightIconWrapper, ErrorMessage, Button, FooterText, FooterLink, BackButton, ForgotPassword } from '../styles/login';
@@ -80,7 +80,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn }) => {
       if (userData.role === 'admin') {
         navigate('/dashboard');
       } else {
-        navigate('/wavelab');
+        navigate('/studio');
       }
       
       setIsLoggedIn(true); 

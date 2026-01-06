@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import Swal from 'sweetalert2';
-import { captureMapSnapshot, getLatestMapInstance } from '../../../utils/mapUtils';
-import { createProject, deleteProjectById } from '../../../api/projectAPI';
+import { captureMapSnapshot, getLatestMapInstance } from '@/utils/mapUtils';
+import { createProject, deleteProjectById } from '@/api/projectAPI';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

@@ -1,28 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  LayoutDashboard,
-  MapPin,
-  Users,
-  BarChart3,
-  Settings,
-  Menu,
-  X,
-  Moon,
-  Sun,
-  Check,
-  XCircle,
-  AlertCircle,
-  Eye,
-  Download,
-  Clock,
-  Zap,
-  ChevronDown,
-  LogOut,
-  User,
-  TrendingUp,
-  Activity,
-  Waves
-} from 'lucide-react';
+import { LayoutDashboard, MapPin, Users, BarChart3, Settings, Menu, X, Moon, Sun, Check, XCircle, AlertCircle, Eye, Download, Clock, ChevronDown, LogOut, User, TrendingUp, Activity, Waves } from 'lucide-react';
 
 // Helper functions
 const getUserInitials = (firstName, lastName, username) => {

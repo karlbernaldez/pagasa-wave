@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import dayjs from "dayjs";
-import { fetchProjectById, fetchUserProjects, deleteProjectById } from "../../api/projectAPI";
+import { fetchProjectById, fetchUserProjects, deleteProjectById } from "@/api/projectAPI";
 import { ChevronDown, Plus, FolderOpen, Settings, Download, LogOut, HelpCircle, Edit3, Eye, Map, Menu, Upload, Layers, Database, Wrench, Info, Undo2, Redo2, ZoomIn, ZoomOut, Grid, FileText, BookOpen } from "lucide-react";
-import ProjectModal from "../modals/ProjectModal";
-import SubmitModal from "../modals/SubmitModal";
-import ProjectListModal from "../modals/ProjectListModal";
-import ExportConfirmModal from "../modals/ExportModal";
+import ProjectModal from "@/components/ui/modals/ProjectModal";
+import SubmitModal from "@/components/ui/modals/SubmitModal";
+import ProjectListModal from "@/components/ui/modals/ProjectListModal";
+import ExportConfirmModal from "@/components/ui/modals/ExportModal";
 import ProjectInfoModal from "./ProjectInfo";
 import { logout, handleCreateProject as createProjectHandler, handleDeleteProject, downloadCachedSnapshotZip } from "./utils/ProjectUtils";
 

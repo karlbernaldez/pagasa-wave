@@ -1,7 +1,7 @@
 import { m } from "framer-motion";
 import { removeFeature } from "./layerUtils";
 import { v4 as uuidv4 } from 'uuid';
-import { saveFeature } from '../../../api/featureServices';
+import { saveFeature } from '@/api/featureServices';
 import Swal from 'sweetalert2';
 
 export const handleDrawModeChange = (mode, draw, setLayersRef) => {

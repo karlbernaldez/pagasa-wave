@@ -1,9 +1,9 @@
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
-import drawStyles from '../components/WaveLab/draw/styles';
-import DrawLineString from '../components/WaveLab/draw/linestring';
-import DrawRectangle from '../components/WaveLab/draw/rectangle';
-import DrawCircle from '../components/WaveLab/draw/circle';
-import SimpleSelect from '../components/WaveLab/draw/simple_select';
+import drawStyles from '@/components/pages/studio/draw/styles';
+import DrawLineString from '@/components/pages/studio/draw/linestring';
+import DrawRectangle from '@/components/pages/studio/draw/rectangle';
+import DrawCircle from '@/components/pages/studio/draw/circle';
+import SimpleSelect from '@/components/pages/studio/draw/simple_select';
 
 function applyWatermark(ctx, width, height, { text, style, font, color, opacity }) {
   ctx.save();

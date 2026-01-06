@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { refreshAccessToken } from '../api/auth';
+import { refreshAccessToken } from '@/api/auth';
 
 const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 

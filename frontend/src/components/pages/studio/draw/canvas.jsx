@@ -1,13 +1,8 @@
 import { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
-import { saveFeature } from '../../../api/featureServices';
-import {
-  smoothPoints,
-  handlePointerDown,
-  handlePointerMove,
-  handlePointerUp,
-} from './canvasUtils';
-import ProjectModal from '../../modals/ProjectModal';
+import { saveFeature } from '@/api/featureServices';
+import { smoothPoints, handlePointerDown, handlePointerMove, handlePointerUp } from './canvasUtils';
+import ProjectModal from '@/components/ui/modals/ProjectModal';
 
 // Memoized slider component to prevent unnecessary re-renders
 const WaveHeightSlider = memo(({ value, onChange, isDarkMode }) => {

@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import comboChart from "../../assets/combo_chart.png";
+import comboChart from "@/assets/combo_chart.png";
 
 // Function to get today's date in MMDDYYYY format
 const getTodayDate = () => {
