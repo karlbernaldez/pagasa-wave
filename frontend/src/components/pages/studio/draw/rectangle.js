@@ -1,4 +1,4 @@
-import { saveFeature } from '../../../api/featureServices';
+import { saveFeature } from '../../../../api/featureServices';
 
 // from https://github.com/thegisdev/mapbox-gl-draw-rectangle-mode
 const doubleClickZoom = {

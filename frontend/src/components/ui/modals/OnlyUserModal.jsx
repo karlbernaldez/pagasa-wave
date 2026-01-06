@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, X, LogOut, AlertTriangle } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { logoutUser } from '../../api/auth';
+import { logoutUser } from '@/api/auth';
 import { useNavigate } from 'react-router-dom';
 
 const Overlay = styled(motion.div)`
