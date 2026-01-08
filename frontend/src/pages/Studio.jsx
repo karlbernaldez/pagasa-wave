@@ -1,21 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import styled, { useTheme, css, keyframes } from 'styled-components';
-import MapComponent from "../components/Edit/MapComponent";
-import LayerPanel from "../components/Edit/LayerPanel";
-import DrawToolBar from "../components/Edit/Toolbar";
-import Canvas from "../components/Edit/draw/canvas";
-import FlagCanvas from "../components/Edit/draw/front";
-import LegendBox from "../components/Edit/Legend";
-import ProjectMenu from "../components/Edit/ProjectMenu";
-import ProjectInfo from "../components/Edit/ProjectInfo";
-import MarkerTitleModal from "../components/modals/MarkerTitleModal";
-import MapLoading from "../components/modals/MapLoading";
-import { typhoonMarker as saveMarkerFn } from "../utils/mapUtils";
-import { savePointFeature } from "../components/Edit/utils/ToolBarUtils";
-import { setupMap } from "../utils/mapSetup";
-import { captureMapSnapshot } from "../utils/mapUtils";
-import { fetchFeatures } from "../api/featureServices";
-import { fetchLatestUserProject } from "../api/projectAPI";
+import MapComponent from "@/components/pages/studio/MapComponent";
+import LayerPanel from "@/components/pages/studio/LayerPanel";
+import DrawToolBar from "@/components/pages/studio/Toolbar";
+import Canvas from "@/components/pages/studio/draw/canvas";
+import FlagCanvas from "@/components/pages/studio/draw/front";
+import LegendBox from "@/components/pages/studio/Legend";
+import ProjectMenu from "@/components/pages/studio/ProjectMenu";
+import MarkerTitleModal from "@/components/ui/modals/MarkerTitleModal";
+import MapLoading from "@/components/ui/modals/MapLoading";
+import { typhoonMarker as saveMarkerFn } from "@/utils/mapUtils";
+import { savePointFeature } from "@/components/pages/studio/utils/ToolBarUtils";
+import { setupMap } from "@/utils/mapSetup";
+import { fetchFeatures } from "@/api/featureServices";
+import { fetchLatestUserProject } from "@/api/projectAPI";
 import Swal from 'sweetalert2';
 
 const Container = styled.div`
@@ -100,6 +98,10 @@ const Edit = ({ isDarkMode, setIsDarkMode, logger }) => {
   const setLayersRef = useRef();
   const markerTitleRef = useRef('');
   let projectId = localStorage.getItem('projectId');
+
+  useEffect(() => {
+    document.title = "WaveLab - Studio";
+  }, []);
 
   useEffect(() => {
     if (!projectId) {

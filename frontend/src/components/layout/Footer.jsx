@@ -11,14 +11,14 @@
 
 import React, { useContext } from "react";
 import styled, { ThemeContext } from "styled-components";
-import Copyright from "../assets/Copyright.svg";
-import Facebook from "../assets/Facebook.svg";
-import Instagram from "../assets/Instagram.png";
-import Linkedin from "../assets/Linkedin.png";
-import Twitter from "../assets/Twitter.svg";
+import Copyright from "@/assets/Copyright.svg";
+import Facebook from "@/assets/Facebook.svg";
+import Instagram from "@/assets/Instagram.png";
+import Linkedin from "@/assets/Linkedin.png";
+import Twitter from "@/assets/Twitter.svg";
 import { PagasaLogo } from "./Logo";
-import line1 from "../assets/line1.png";
-import { theme, darkTheme } from '../styles/theme';
+import line1 from "@/assets/line1.png";
+import { theme, darkTheme } from '@/styles/theme';
 
 const FooterContainer = styled.footer`
   background-color: ${(props) => props.theme.colors.background};

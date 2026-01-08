@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Sun, Moon, User, LogOut, Settings, Wind, Activity, Eye, ChevronDown } from 'lucide-react';
-import { fetchUserDetails } from '../api/userAPI';
-import { logoutUser } from '../api/auth';
+import { fetchUserDetails } from '@/api/userAPI';
+import { logoutUser } from '@/api/auth';
 
 const Header = ({ isDarkMode, setIsDarkMode, activeChartType, setActiveChartType }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -79,7 +79,7 @@ const Header = ({ isDarkMode, setIsDarkMode, activeChartType, setActiveChartType
   const navItems = [
     { name: 'Home', href: '/' },
     { name: 'Charts', href: '/charts', hasDropdown: true },
-    { name: 'WaveLab', href: '/wavelab' },
+    { name: 'Studio', href: '/studio' },
     { name: 'Services', href: '#services' },
     { name: 'About', href: '#about' },
     { name: 'Contact', href: '#contact' }

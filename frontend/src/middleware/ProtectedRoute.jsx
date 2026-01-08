@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
-import OnlyUserModal from '../components/modals/OnlyUserModal';
-import { refreshAccessToken } from '../api/auth';
+import OnlyUserModal from '../components/ui/modals/OnlyUserModal';
+import { refreshAccessToken } from '@/api/auth';
 
 const ModalBackdrop = styled.div`
   position: fixed;
