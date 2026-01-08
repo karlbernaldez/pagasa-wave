@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import LayerItem from "./LayerItem";
 import { FaPlus, FaChevronDown, FaChevronUp, FaLayerGroup, FaToggleOn, FaToggleOff } from "react-icons/fa";
 import { addGeoJsonLayer, toggleLayerVisibility, toggleLayerLock, removeLayer, updateLayerName, handleDragStart, handleDragOver, handleDrop, setActiveLayerOnMap } from "./utils/layerUtils";
-import { theme, darkTheme } from "../../styles/theme";
+import { theme, darkTheme } from "@/styles/theme";
 import { panelStyle, headerStyle, buttonStyle, listStyle, footerStyle } from "./styles/LayerPanelStyles";
-import Modal from "../modals/MapNotReady";
+import Modal from "@/components/ui/modals/MapNotReady";
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 

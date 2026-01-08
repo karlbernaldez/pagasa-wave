@@ -1,4 +1,4 @@
-import { fetchSatelliteImageById } from '../api/satelliteAPI';
+import { fetchSatelliteImageById } from '@/api/satelliteAPI';
 import GIF from 'gif.js.optimized'; // lightweight JS library to create GIFs in browser
 
 export async function preloadHimawariAndCreateGif() {

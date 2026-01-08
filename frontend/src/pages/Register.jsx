@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { registerUser } from '../api/auth';
+import { registerUser } from '@/api/auth';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, User, Mail, Lock, Phone, MapPin, Building, Briefcase, Eye, EyeOff, Check, AlertCircle, Cloud, Sun, CloudRain, Zap, Wind } from 'lucide-react';
 import { Container, WeatherElement, FloatingParticle, GradientOverlay, FormWrapper, Header, LogoContainer, Title, Subtitle, ProgressContainer, ProgressWrapper, ProgressStep, ProgressLine, FormContainer, FormContent, StepContainer, StepTitle, InputRow, InputGroup, InputWrapper, IconWrapper, StyledInput, RightIconWrapper, ErrorMessage, ButtonRow, Button, FooterText, FooterLink } from '../styles/register';

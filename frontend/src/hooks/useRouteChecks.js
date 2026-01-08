@@ -8,7 +8,7 @@ const useRouteChecks = () => {
     isLoginPage: location.pathname === '/login',
     isRegisterPage: location.pathname === '/register',
     isDashboardPage: location.pathname === '/dashboard',
-    isEditPage: location.pathname === '/wavelab',
+    isEditPage: location.pathname === '/studio',
   };
 
   return routeChecks;

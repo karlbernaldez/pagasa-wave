@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { logoutUser } from '../../api/auth';
+import { logoutUser } from '@/api/auth';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdLockOutline, MdClose } from 'react-icons/md';
@@ -235,7 +235,7 @@ const overlayVariants = {
 const AccessDeniedModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const handleGoToEditor = () => {
-    navigate('/wavelab');
+    navigate('/studio');
   };
   const handleProceedWithSignOut = () => {
     onClose();

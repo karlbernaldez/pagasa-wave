@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ZoomIn, BarChart3, TrendingUp, Activity, Thermometer, Wind, CloudRain, Eye, Gauge, Sun, Moon, ChevronRight, Download, Share2, Maximize2, ChevronDown } from 'lucide-react';
+import { X, ZoomIn, TrendingUp, Activity, Wind, Eye, Gauge, Maximize2 } from 'lucide-react';
 
 const ForecastChartsPage = ({ isDarkMode, activeChartType }) => {
   const [previewImage, setPreviewImage] = useState(null);
@@ -7,6 +7,10 @@ const ForecastChartsPage = ({ isDarkMode, activeChartType }) => {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const isDark = isDarkMode;
+
+  useEffect(() => {
+    document.title = "WaveLab - Charts";
+  }, []);
 
   // 🔹 Log whenever active chart type changes
   useEffect(() => {
