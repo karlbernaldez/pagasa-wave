@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
-import { saveFeature } from '@/api/featureServices';
+import { createFeature } from '@/api/featureServices';
 import { smoothPoints, handlePointerDown, handlePointerMove, handlePointerUp } from './canvasUtils';
 import ProjectModal from '@/components/ui/modals/ProjectModal';
 
@@ -163,7 +163,7 @@ const DrawingCanvas = ({
       drawCounter,
       setDrawCounter,
       setLayersRef,
-      saveFeature,
+      createFeature,
       closedMode,
       lineCount,
       labelValue,

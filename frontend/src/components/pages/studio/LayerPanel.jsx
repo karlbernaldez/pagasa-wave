@@ -1,33 +1,31 @@
 import React, { useState, useRef, useEffect } from "react";
-import LayerItem from "./LayerItem";
-import { FaPlus, FaChevronDown, FaChevronUp, FaLayerGroup, FaToggleOn, FaToggleOff } from "react-icons/fa";
+import { removeFeature } from "./utils/layerUtils";
+import { Layers, ChevronDown, Plus, Eye, EyeOff, Lock, Unlock, Trash2, GripVertical, Edit2, Check, X } from 'lucide-react';
 import { addGeoJsonLayer, toggleLayerVisibility, toggleLayerLock, removeLayer, updateLayerName, handleDragStart, handleDragOver, handleDrop, setActiveLayerOnMap } from "./utils/layerUtils";
-import { theme, darkTheme } from "@/styles/theme";
-import { panelStyle, headerStyle, buttonStyle, listStyle, footerStyle } from "./styles/LayerPanelStyles";
 import Modal from "@/components/ui/modals/MapNotReady";
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
 const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMiscCollapsed, setIsMiscCollapsed] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [customLayersExpanded, setCustomLayersExpanded] = useState(true);
+  const [systemLayersExpanded, setSystemLayersExpanded] = useState(true);
   const [mapNotReady, setMapNotReady] = useState(false);
   const [activeLayerId, setActiveLayerId] = useState(null);
   const [activeMapboxLayerId, setActiveMapboxLayerId] = useState(null);
   const [isDragging, setDragging] = useState(false);
   const [draggedLayerIndex, setDraggedLayerIndex] = useState(null);
+  const [editingLayerId, setEditingLayerId] = useState(null);
+  const [editingName, setEditingName] = useState("");
   const fileInputRef = useRef();
-  const [isHovered, setIsHovered] = useState(false);
 
-  // MiscLayer states
+  // System layer states
   const [showPAR, setShowPAR] = useState(false);
   const [showSatellite, setShowSatellite] = useState(false);
   const [showTCID, setShowTCID] = useState(false);
   const [showTCAD, setShowTCAD] = useState(false);
   const [showSHIPPINGZONE, setShowSHIPPINGZONE] = useState(false);
   const [showWindLayer, setShowWindLayer] = useState(false);
-
-  const currentTheme = isDarkMode ? darkTheme : theme;
 
   // Initialize misc layers from localStorage
   useEffect(() => {
@@ -49,7 +47,6 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
     if (mapRef.current) {
       mapRef.current.on('load', () => {
-        // mapRef.current.setLayoutProperty('country-boundaries', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('PAR', 'visibility', layersState.PAR ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('PAR_dash', 'visibility', layersState.PAR ? 'visible' : 'none');
         mapRef.current.setLayoutProperty('Satellite', 'visibility', layersState.Satellite ? 'visible' : 'none');
@@ -83,7 +80,6 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       setMapNotReady(true);
       return;
     }
-
     fileInputRef.current.value = null;
     fileInputRef.current.click();
   };
@@ -163,7 +159,6 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           mapRef.current?.setLayoutProperty('graticules_blur', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', newState ? 'visible' : 'none');
           mapRef.current?.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', newState ? 'visible' : 'none');
-
           mapRef.current.setLayoutProperty('wind-arrows', 'visibility', newState ? 'visible' : 'none');
           mapRef.current.setLayoutProperty('wind-labels', 'visibility', newState ? 'visible' : 'none');
           mapRef.current.setLayoutProperty('wave-arrows', 'visibility', newState ? 'visible' : 'none');
@@ -187,303 +182,378 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     }
   };
 
-  // Enhanced misc layer item component
-  const MiscLayerItem = ({ name, isVisible, onToggle, description }) => (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '8px 12px',
-        margin: '2px 0',
-        borderRadius: currentTheme.borderRadius.small,
-        backgroundColor: isVisible
-          ? `${currentTheme.colors.primary}15`
-          : currentTheme.colors.background,
-        border: `1px solid ${isVisible ? currentTheme.colors.primary : currentTheme.colors.border}`,
-        transition: 'all 0.2s ease',
-        cursor: 'pointer',
-      }}
-      onClick={onToggle}
-      onMouseEnter={(e) => {
-        e.target.style.backgroundColor = isVisible
-          ? `${currentTheme.colors.primary}25`
-          : `${currentTheme.colors.border}20`;
-      }}
-      onMouseLeave={(e) => {
-        e.target.style.backgroundColor = isVisible
-          ? `${currentTheme.colors.primary}15`
-          : currentTheme.colors.background;
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontWeight: '500',
-            fontSize: '0.875rem',
-            color: isVisible ? currentTheme.colors.primary : currentTheme.colors.textPrimary,
-            marginBottom: '2px',
-          }}
-        >
-          {name}
-        </div>
-        {description && (
-          <div
-            style={{
-              fontSize: '0.75rem',
-              color: currentTheme.colors.textSecondary,
-              opacity: 0.8,
-            }}
-          >
-            {description}
-          </div>
-        )}
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
-        <div
-          style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: isVisible ? '#10b981' : '#ef4444',
-            boxShadow: `0 0 0 2px ${isVisible ? '#10b98120' : '#ef444420'}`,
-          }}
-        />
-        {isVisible ? (
-          <FaToggleOn
-            style={{
-              color: currentTheme.colors.primary,
-              fontSize: '1.2rem',
-            }}
-          />
-        ) : (
-          <FaToggleOff
-            style={{
-              color: currentTheme.colors.textSecondary,
-              fontSize: '1.2rem',
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-
-  const miscLayers = [
-    { name: 'PAR', state: showPAR, key: 'PAR', description: 'Philippine Area of Responsibility' },
-    { name: 'Satellite', state: showSatellite, key: 'Satellite', description: 'Himawari Satellite Image' },
-    { name: 'TCID', state: showTCID, key: 'TCID', description: 'Tropical Cyclone Information Domain' },
-    { name: 'TCAD', state: showTCAD, key: 'TCAD', description: 'Tropical Cyclone Advisory Domain' },
-    { name: 'Graticules, Wave & Wind', state: showSHIPPINGZONE, key: 'SHIPPING_ZONE', description: 'Graticules and Wave and Wind Elements' },
-    { name: 'Wind Layer', state: showWindLayer, key: 'Wind Layer', description: 'Wind Speed & Direction' },
+  const systemLayers = [
+    { id: 'PAR', name: 'PAR', subtitle: 'Philippine Area of Responsibility', visible: showPAR, icon: '🗺️' },
+    { id: 'Satellite', name: 'Satellite', subtitle: 'Himawari Satellite Image', visible: showSatellite, icon: '🛰️' },
+    { id: 'TCID', name: 'TCID', subtitle: 'Tropical Cyclone Info Domain', visible: showTCID, icon: '🌀' },
+    { id: 'TCAD', name: 'TCAD', subtitle: 'Tropical Cyclone Advisory Domain', visible: showTCAD, icon: '⚠️' },
+    { id: 'SHIPPING_ZONE', name: 'Graticules, Wave & Wind', subtitle: 'Graticules and Wave and Wind Elements', visible: showSHIPPINGZONE, icon: '🌊' },
+    { id: 'Wind Layer', name: 'Wind Layer', subtitle: 'Wind Speed & Direction', visible: showWindLayer, icon: '💨' }
   ];
+
+  const visibleCount = layers.filter(l => l.visible).length + systemLayers.filter(l => l.visible).length;
+
+  const startEditing = (layer) => {
+    setEditingLayerId(layer.id);
+    setEditingName(layer.name);
+  };
+
+  const saveEdit = () => {
+    if (!editingName.trim()) return; // Don't proceed if empty
+
+    // Update the layer name
+    updateLayerName(editingLayerId, editingName, setLayers, mapRef.current);
+
+    // Reset editing state
+    setEditingLayerId(null);
+    setEditingName("");
+  };
+
+  const cancelEdit = () => {
+    setEditingLayerId(null);
+    setEditingName("");
+  };
+
+  // Collapsed pill state
+  if (!isExpanded) {
+    return (
+      <div className="fixed top-20 right-6 z-40">
+        <button
+          onClick={() => setIsExpanded(true)}
+          className={`group flex items-center gap-2 px-3 py-2.5 rounded-full transition-all duration-300 hover:scale-105 ${isDarkMode
+            ? 'bg-black/40 hover:bg-black/50 border border-white/20'
+            : 'bg-white/60 hover:bg-white/70 border border-black/10'
+            } backdrop-blur-xl shadow-lg`}
+        >
+          <Layers
+            size={16}
+            className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
+            strokeWidth={2.5}
+          />
+          <span className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'
+            }`}>
+            Layers
+          </span>
+          <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isDarkMode ? 'bg-cyan-400/20 text-cyan-300' : 'bg-blue-500/20 text-blue-700'
+            }`}>
+            {visibleCount}
+          </div>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
-      <div
-        style={{
-          ...panelStyle(currentTheme, isCollapsed),
-          ...(isHovered && {
-            transform: "translateY(-4px) scale(1.02)",
-            boxShadow: theme.isDark
-              ? "0 32px 64px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)"
-              : "0 32px 64px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08)",
-          }),
-        }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onDragOver={handleDragOver}
-      >
-        {/* Main Header */}
+      <div className="fixed top-20 right-6 z-40 w-80">
         <div
-          style={{
-            ...headerStyle(currentTheme, isCollapsed),
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 16px',
-            borderBottom: isCollapsed ? 'none' : `1px solid ${currentTheme.colors.border}`,
-          }}
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={`rounded-2xl transition-all duration-300 ${isDarkMode
+            ? 'bg-black/40 border border-white/20'
+            : 'bg-white/60 border border-white/40'
+            } backdrop-blur-xl shadow-xl`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FaLayerGroup style={{ color: currentTheme.colors.primary }} />
-            <span style={{ fontWeight: '600', fontSize: '1rem' }}>Layers</span>
-            <div
-              style={{
-                backgroundColor: currentTheme.colors.primary,
-                color: 'white',
-                borderRadius: '12px',
-                padding: '2px 8px',
-                fontSize: '0.75rem',
-                fontWeight: '500',
-              }}
-            >
-              {layers.length + miscLayers.filter(l => l.state).length}
-            </div>
-          </div>
-          <div>{isCollapsed ? <FaChevronUp /> : <FaChevronDown />}</div>
-        </div>
-
-        {!isCollapsed && (
-          <>
-            {/* Custom Layers Section */}
-            <div style={{ flex: 1, overflowY: "auto", padding: '8px' }}>
-              <div
-                style={{
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: currentTheme.colors.textPrimary,
-                  padding: '8px 4px',
-                  borderBottom: `1px solid ${currentTheme.colors.border}`,
-                  marginBottom: '8px',
-                }}
-              >
-                Custom Layers ({layers.length})
+          {/* Header */}
+          <div className={`flex items-center justify-between px-4 py-3 border-b ${isDarkMode ? 'border-white/10' : 'border-black/10'
+            }`}>
+            <div className="flex items-center gap-2.5">
+              <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-cyan-400/20' : 'bg-blue-500/20'
+                }`}>
+                <Layers
+                  size={16}
+                  className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
+                  strokeWidth={2.5}
+                />
               </div>
-              <div
-                style={{
-                  maxHeight: "min(35vh, 350px)", // adjust as needed
-                  overflowY: "auto",
-                }}
+              <div>
+                <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'
+                  }`}>
+                  Map Layers
+                </div>
+                <div className={`text-[10px] font-medium ${isDarkMode ? 'text-white/50' : 'text-slate-600'
+                  }`}>
+                  {visibleCount} active
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsExpanded(false)}
+              className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 ${isDarkMode
+                ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
+                : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
+                }`}
+            >
+              <ChevronDown size={16} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          {/* Scrollable Content */}
+          <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+            {/* Custom Layers Section */}
+            <div className="p-3">
+              <button
+                onClick={() => setCustomLayersExpanded(!customLayersExpanded)}
+                className={`w-full flex items-center justify-between px-2 py-2 rounded-lg mb-2 transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
+                  }`}
               >
-                <ul style={{ ...listStyle(currentTheme), margin: 0, padding: 0 }}>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${isDarkMode ? 'text-white/80' : 'text-slate-700'
+                    }`}>
+                    Custom Layers
+                  </span>
+                  <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isDarkMode ? 'bg-white/10 text-white/70' : 'bg-black/10 text-slate-700'
+                    }`}>
+                    {layers.length}
+                  </div>
+                </div>
+                <ChevronDown
+                  size={12}
+                  className={`transition-transform ${customLayersExpanded ? 'rotate-180' : ''} ${isDarkMode ? 'text-white/60' : 'text-slate-600'
+                    }`}
+                  strokeWidth={3}
+                />
+              </button>
+
+              {customLayersExpanded && (
+                <div className="space-y-1">
                   {layers.map((layer, index) => (
-                    <LayerItem
+                    <div
                       key={layer.id || `layer-${index}`}
-                      layer={layer}
-                      toggleLayerVisibility={() =>
-                        toggleLayerVisibility(mapRef.current, layer, setLayers)
-                      }
-                      toggleLayerLock={() => toggleLayerLock(layer, setLayers)}
-                      removeLayer={() =>
-                        removeLayer(mapRef.current, layer, setLayers, draw)
-                      }
-                      updateLayerName={(id, newName, setLayers) => {
-                        updateLayerName(layer.id, newName, setLayers);
-                      }}
-                      isActiveLayer={activeLayerId === layer.id}
-                      setActiveLayer={setActiveLayer}
-                      index={index}
-                      isDarkMode={isDarkMode}
                       draggable={true}
                       onDragStart={(e) => handleDragStart(e, index, setDragging, setDraggedLayerIndex)}
                       onDragOver={handleDragOver}
-                      onDrop={(e) =>
-                        handleDrop(
-                          e,
-                          index,
-                          draggedLayerIndex,
-                          layers,
-                          setLayers,
-                          setDragging
-                        )
-                      }
-                      draw={draw}
-                      mapRef={mapRef.current}
-                      setDragging={setDragging}
-                      setDraggedLayerIndex={setDraggedLayerIndex}
-                      setLayers={setLayers}
-                    />
+                      onDrop={(e) => handleDrop(e, index, draggedLayerIndex, layers, setLayers, setDragging)}
+                      onClick={() => setActiveLayer(layer.id)}
+                      className={`group flex items-center gap-2 px-2 py-2 rounded-lg transition-all duration-200 cursor-pointer ${activeLayerId === layer.id
+                        ? isDarkMode
+                          ? 'bg-cyan-400/10 border border-cyan-400/30'
+                          : 'bg-blue-500/10 border border-blue-500/30'
+                        : isDarkMode
+                          ? 'bg-white/5 hover:bg-white/10 border border-transparent'
+                          : 'bg-black/5 hover:bg-black/10 border border-transparent'
+                        }`}
+                    >
+                      <button
+                        className={`cursor-grab active:cursor-grabbing ${isDarkMode ? 'text-white/40 hover:text-white/60' : 'text-slate-400 hover:text-slate-600'
+                          }`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <GripVertical size={14} strokeWidth={2} />
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        {editingLayerId === layer.id ? (
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  saveEdit();
+                                }
+                                if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  cancelEdit();
+                                }
+                              }}
+                              className={`flex-1 px-1 py-0.5 text-xs rounded border ${isDarkMode
+                                ? 'bg-white/10 border-white/20 text-white'
+                                : 'bg-white border-slate-300 text-slate-900'
+                                } outline-none focus:ring-1 focus:ring-cyan-400`}
+                              autoFocus
+                            />
+                            <button onClick={saveEdit} className="p-0.5 hover:bg-white/10 rounded">
+                              <Check size={12} className="text-green-500" strokeWidth={2.5} />
+                            </button>
+                            <button onClick={cancelEdit} className="p-0.5 hover:bg-white/10 rounded">
+                              <X size={12} className="text-red-500" strokeWidth={2.5} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className={`text-xs font-medium truncate ${isDarkMode ? 'text-white/90' : 'text-slate-800'
+                            }`}>
+                            {layer.name}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditing(layer);
+                          }}
+                          className={`p-1 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/10'
+                            }`}
+                        >
+                          <Edit2 size={12} className={isDarkMode ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'} strokeWidth={2} />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleLayerVisibility(mapRef.current, layer, setLayers);
+                          }}
+                          className={`p-1 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/10'
+                            }`}
+                        >
+                          {layer.visible ? (
+                            <Eye size={14} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2} />
+                          ) : (
+                            <EyeOff size={14} className={isDarkMode ? 'text-white/40' : 'text-slate-400'} strokeWidth={2} />
+                          )}
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleLayerLock(layer, setLayers);
+                          }}
+                          className={`p-1 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/10'
+                            }`}
+                        >
+                          {layer.locked ? (
+                            <Lock size={14} className={isDarkMode ? 'text-orange-400' : 'text-orange-600'} strokeWidth={2} />
+                          ) : (
+                            <Unlock size={14} className={isDarkMode ? 'text-white/40' : 'text-slate-400'} strokeWidth={2} />
+                          )}
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            if (layer.locked) {
+                              Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'warning',
+                                title: 'This layer is locked and cannot be deleted.',
+                                showConfirmButton: false,
+                                timer: 2000,
+                                background: isDarkMode ? '#374151' : '#fff',
+                                color: isDarkMode ? '#f3f4f6' : '#111827',
+                              });
+                              return;
+                            }
+
+                            removeLayer(mapRef.current, layer, setLayers, draw);
+                            removeFeature(draw, layer.id, mapRef);
+
+                          }}
+                          disabled={layer.locked}
+                          className={`p-1 rounded transition-colors ${layer.locked
+                            ? 'opacity-40 cursor-not-allowed'
+                            : isDarkMode
+                              ? 'hover:bg-red-500/20 text-white/40 hover:text-red-400'
+                              : 'hover:bg-red-500/20 text-slate-400 hover:text-red-600'
+                            }`}
+                        >
+                          <Trash2 size={14} strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </ul>
-              </div>
-
-              {/* System Layers Section */}
-              <div style={{ marginTop: '16px' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    color: currentTheme.colors.textPrimary,
-                    padding: '8px 4px',
-                    borderBottom: `1px solid ${currentTheme.colors.border}`,
-                    marginBottom: '8px',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => setIsMiscCollapsed(!isMiscCollapsed)}
-                >
-                  <span>System Layers ({miscLayers.filter(l => l.state).length})</span>
-                  {isMiscCollapsed ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
                 </div>
-
-                {!isMiscCollapsed && (
-                  <div style={{ paddingLeft: '4px' }}>
-                    {miscLayers.map((layer) => (
-                      <MiscLayerItem
-                        key={layer.key}
-                        name={layer.name}
-                        description={layer.description}
-                        isVisible={layer.state}
-                        onToggle={() => toggleMiscLayer(layer.key)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Footer */}
-            <div
-              style={{
-                ...footerStyle(currentTheme),
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-                flexShrink: 0,
-                padding: '12px 16px',
-                borderTop: `1px solid ${currentTheme.colors.border}`,
-              }}
-            >
+            {/* System Layers Section */}
+            <div className={`p-3 border-t ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
               <button
-                onClick={addLayer}
-                style={{
-                  ...buttonStyle(currentTheme),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '10px 16px',
-                  fontWeight: '500',
-                  borderRadius: currentTheme.borderRadius.medium,
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'translateY(-1px)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
-                }}
+                onClick={() => setSystemLayersExpanded(!systemLayersExpanded)}
+                className={`w-full flex items-center justify-between px-2 py-2 rounded-lg mb-2 transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
+                  }`}
               >
-                <input
-                  type="file"
-                  accept=".geojson,application/geo+json,application/json"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  onChange={handleGeoJSONUpload}
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${isDarkMode ? 'text-white/80' : 'text-slate-700'
+                    }`}>
+                    System Layers
+                  </span>
+                  <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isDarkMode ? 'bg-white/10 text-white/70' : 'bg-black/10 text-slate-700'
+                    }`}>
+                    {systemLayers.filter(l => l.visible).length}
+                  </div>
+                </div>
+                <ChevronDown
+                  size={12}
+                  className={`transition-transform ${systemLayersExpanded ? 'rotate-180' : ''} ${isDarkMode ? 'text-white/60' : 'text-slate-600'
+                    }`}
+                  strokeWidth={3}
                 />
-                <FaPlus />
-                <span>Add GeoJSON Layer</span>
               </button>
+
+              {systemLayersExpanded && (
+                <div className="space-y-1">
+                  {systemLayers.map((layer) => (
+                    <button
+                      key={layer.id}
+                      onClick={() => toggleMiscLayer(layer.id)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-200 ${layer.visible
+                        ? isDarkMode
+                          ? 'bg-cyan-400/10 border border-cyan-400/30'
+                          : 'bg-blue-500/10 border border-blue-500/30'
+                        : isDarkMode
+                          ? 'bg-white/5 hover:bg-white/10 border border-transparent'
+                          : 'bg-black/5 hover:bg-black/10 border border-transparent'
+                        }`}
+                    >
+                      <div className={`text-lg leading-none flex-shrink-0`}>
+                        {layer.icon}
+                      </div>
+
+                      <div className="flex-1 text-left min-w-0">
+                        <div className={`text-xs font-semibold truncate ${layer.visible
+                          ? isDarkMode ? 'text-cyan-300' : 'text-blue-700'
+                          : isDarkMode ? 'text-white/80' : 'text-slate-700'
+                          }`}>
+                          {layer.name}
+                        </div>
+                        <div className={`text-[10px] font-medium truncate ${isDarkMode ? 'text-white/40' : 'text-slate-500'
+                          }`}>
+                          {layer.subtitle}
+                        </div>
+                      </div>
+
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${layer.visible
+                        ? isDarkMode ? 'bg-cyan-400' : 'bg-blue-600'
+                        : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
+                        }`} />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </>
-        )}
-      </div >
+          </div>
+
+          {/* Footer - Add Layer Button */}
+          <div className={`p-3 border-t ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
+            <button
+              onClick={addLayer}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-xs transition-all duration-200 hover:scale-[1.02] ${isDarkMode
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white shadow-lg shadow-cyan-500/20'
+                : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/20'
+                }`}
+            >
+              <Plus size={14} strokeWidth={3} />
+              Add GeoJSON Layer
+            </button>
+            <input
+              type="file"
+              accept=".geojson,application/geo+json,application/json"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={handleGeoJSONUpload}
+            />
+          </div>
+        </div>
+      </div>
 
       {mapNotReady && (
         <Modal isOpen={mapNotReady} onClose={() => setMapNotReady(false)} />
-      )
-      }
+      )}
     </>
   );
 };

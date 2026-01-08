@@ -1,4 +1,4 @@
-import { saveFeature } from '../../../../api/featureServices';
+import { createFeature } from '@/api/featureServices';
 
 // from https://github.com/thegisdev/mapbox-gl-draw-rectangle-mode
 const doubleClickZoom = {
@@ -140,7 +140,7 @@ const DrawRectangle = {
       });
 
       // Save the feature asynchronously
-      saveFeature({
+      createFeature({
         geometry: geojson.geometry,
         properties: geojson.properties || {},
         name: geojson.properties.layerID,

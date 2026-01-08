@@ -1,6 +1,6 @@
 import { Stage, Layer, Line } from 'react-konva';
 import { useRef, useState, useEffect } from 'react';
-import { saveFeature } from '../../../../api/featureServices';
+import { createFeature } from '../../../../api/featureServices';
 import {
   handlePointerDown,
   handlePointerMove,
@@ -52,7 +52,7 @@ const FlagCanvas = ({
             drawCounter,
             setDrawCounter,
             setLayersRef,
-            saveFeature,
+            createFeature,
             closedMode,
             colorToggle // <-- pass it here
           )

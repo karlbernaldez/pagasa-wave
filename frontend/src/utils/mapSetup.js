@@ -1,4 +1,4 @@
-import { addHimawariLayer, addWindLayer, loadImage, loadCustomImages, initTyphoonLayer, initDrawControl, typhoonMarker as saveMarkerFn } from './mapUtils';
+import { addHimawariLayer, addWindLayer, loadImage, loadCustomImages, initTyphoonLayer, initDrawControl, saveMarker } from './mapUtils';
 
 // === Helper: Classify features ===
 function classifyFeatures(featuresArray) {
@@ -52,7 +52,7 @@ function renderMarkerPoints(markerPoints, mapRef) {
     const markerType = point.properties?.type;
 
     if (lng !== undefined && lat !== undefined) {
-      saveMarkerFn({ lat, lng }, mapRef, () => { }, markerType)(title);
+      saveMarker({ lat, lng }, mapRef, () => { }, markerType)(title);
     }
   });
 }

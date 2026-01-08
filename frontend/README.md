@@ -33,7 +33,7 @@ This web application provides an interactive weather forecasting platform using 
  ┃ ┃ ┣ 🖼️ meteorologist_dark.png
  ┃ ┃ ┣ 📄 Twitter.svg
  ┃ ┣ 📂 components
- ┃ ┃ ┣ 📂 Edit
+ ┃ ┃ ┣ 📂 Studio
  ┃ ┃ ┃ ┣ 📂 draw
  ┃ ┃ ┃ ┃ ┣ 📜 canvas.jsx
  ┃ ┃ ┃ ┃ ┣ 📜 circle.js

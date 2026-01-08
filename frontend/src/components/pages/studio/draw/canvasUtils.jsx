@@ -482,7 +482,7 @@ export const handlePointerUp = async (
   drawCounter,
   setDrawCounter,
   setLayersRef,
-  saveFeature,
+  createFeature,
   closedMode,
   lineCount,
   labelValue = 5,
@@ -670,7 +670,7 @@ export const handlePointerUp = async (
     const feature = geojson.features[0];
 
     try {
-      await saveFeature(
+      await createFeature(
         {
           geometry: feature.geometry,
           properties: {

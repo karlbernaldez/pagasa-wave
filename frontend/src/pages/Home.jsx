@@ -11,7 +11,11 @@
 
 import React, { useEffect } from 'react';
 import HeroSection from '@/components/pages/home/HeroSection';
-import Feature from '@/components/pages/home/Feature';
+import Alerts from '@/components/pages/home/Alerts';
+import Services from '@/components/pages/home/Services';
+import HowItWorksSection from '@/components/pages/home/HowItWorks';
+import Partners from '@/components/pages/home/Partners';
+import Sources from '@/components/pages/home/Sources';
 
 const Home = ({ isDarkMode }) => {
 
@@ -22,7 +26,11 @@ const Home = ({ isDarkMode }) => {
   return (
     <div>
       <HeroSection isDark={isDarkMode} />
-      <Feature isDark={isDarkMode} />
+      <Alerts isDark={isDarkMode} />
+      <Services isDark={isDarkMode} />
+      <Partners isDark={isDarkMode} />
+      <HowItWorksSection isDark={isDarkMode} />
+      <Sources isDark={isDarkMode} />
     </div>
   );
 };

@@ -69,7 +69,7 @@ export const deleteFeature = async (sourceId) => {
 };
 
 // Function to save feature
-export const saveFeature = async (feature) => {
+export const createFeature = async (feature) => {
   try {
     const response = await fetch(`${API_BASE_URL}`, {
       method: 'POST',

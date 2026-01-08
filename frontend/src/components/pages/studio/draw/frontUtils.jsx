@@ -75,7 +75,7 @@ export const handlePointerUp = async (
   drawCounter,
   setDrawCounter,
   setLayersRef,
-  saveFeature,
+  createFeature,
   closedMode,
   colorToggle
 ) => {
@@ -190,7 +190,7 @@ export const handlePointerUp = async (
 
       if (geojson.features.length > 0) {
         const feature = geojson.features[0];
-        saveFeature({
+        createFeature({
           geometry: feature.geometry,
           properties: {
             isFront: true,

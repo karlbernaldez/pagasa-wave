@@ -8,7 +8,7 @@ import storm from "@/assets/draw_icons/hurricane.png";
 import PointInputChoiceModal from '@/components/ui/modals/MarkerChoice';
 import ManualInputModal from '@/components/ui/modals/ManualInputModal';
 import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable';
-import { typhoonMarker as saveMarkerFn } from "@/utils/mapUtils";
+import { saveMarker } from "@/utils/mapUtils";
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { ToolbarContainer, ToolButton, CollapseToggle } from './styles/ToolBarStyles';
 import { handleDrawModeChange, savePointFeature, toggleDrawing, toggleFlagDrawing, startDrawing, startFlagDrawing, stopDrawing, stopFlagDrawing, toggleCollapse } from './utils/ToolBarUtils';
@@ -108,7 +108,7 @@ const DrawToolbar = ({ draw, mapRef, onToggleCanvas, onToggleFlagCanvas, isCanva
             const uuid = uuidv4();
             const title = `Low Waves_${uuid}`;
             setShowTitleModal(false);
-            saveMarkerFn({ lat, lng }, mapRef, setShowTitleModal, selectedType)(title);
+            saveMarker({ lat, lng }, mapRef, setShowTitleModal, selectedType)(title);
             savePointFeature({ coords, title, selectedType, setLayersRef });
           }
 
@@ -127,7 +127,7 @@ const DrawToolbar = ({ draw, mapRef, onToggleCanvas, onToggleFlagCanvas, isCanva
     const coords = [parseFloat(data.lng), parseFloat(data.lat)];
     const title = data.title;
 
-    saveMarkerFn({ lat: data.lat, lng: data.lng }, mapRef, setShowTitleModal, selectedType)(title);
+    saveMarker({ lat: data.lat, lng: data.lng }, mapRef, setShowTitleModal, selectedType)(title);
     savePointFeature({ coords, title, selectedType, setLayersRef });
 
     setManualInputData(data);
