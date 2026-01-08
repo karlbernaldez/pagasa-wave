@@ -121,15 +121,26 @@ export const deleteFeature = async (req, res) => {
     const result = await Feature.deleteOne({ sourceId });
 
     if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Feature not found.' });
+      return res.status(404).json({
+        status: 'fail',
+        message: `Feature with sourceId "${sourceId}" not found. Nothing was deleted.`,
+      });
     }
 
-    res.json({ message: 'Feature deleted successfully.' });
+    res.status(200).json({
+      status: 'success',
+      message: `Feature with sourceId "${sourceId}" was deleted successfully.`,
+    });
   } catch (err) {
     console.error('Error deleting feature:', err);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({
+      status: 'error',
+      message: 'An unexpected error occurred while attempting to delete the feature.',
+      details: err.message, // optional, for debugging
+    });
   }
 };
+
 
 export const updateFeatureName = async (req, res) => {
   try {
@@ -159,11 +170,31 @@ export const updateFeatureName = async (req, res) => {
     if (['low_pressure', 'high_pressure', 'typhoon', 'less_1'].includes(type)) {
       const newSourceId = `${type}_${newName}`;
 
-      // Update both the sourceId and name in a single update
       feature = await Feature.findOneAndUpdate(
-        { sourceId }, // Search using the original sourceId
-        { $set: { sourceId: newSourceId, name: newName } }, // Update sourceId and name together
-        { new: true }
+        { sourceId }, // Find by original sourceId
+        {
+          $set: {
+            sourceId: newSourceId,
+            name: newName,
+            'properties.labelValue': newName,
+            'properties.title': newName
+          }
+        },
+        { new: true } // return the updated document
+      );
+    } else {
+      const newSourceId = newName;
+
+      feature = await Feature.findOneAndUpdate(
+        { sourceId }, // Find by original sourceId
+        {
+          $set: {
+            sourceId: newSourceId,
+            name: newName,
+            'properties.title': newName
+          }
+        },
+        { new: true } // return the updated document
       );
     }
 

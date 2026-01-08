@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; // <-- import navigation
@@ -10,6 +10,10 @@ const AccessDeniedModal = ({ isOpen, onClose, theme = 'dark' }) => {
   const handleCancel = () => {
     navigate('/'); // go to home
   };
+
+  useEffect(() => {
+    document.title = "Access Denied";
+  }, []);
 
   return (
     <AnimatePresence>
@@ -23,11 +27,10 @@ const AccessDeniedModal = ({ isOpen, onClose, theme = 'dark' }) => {
         >
           {/* Animated Background */}
           <motion.div
-            className={`absolute inset-0 backdrop-blur-md ${
-              isDark
+            className={`absolute inset-0 backdrop-blur-md ${isDark
                 ? 'bg-gradient-to-br from-slate-900/60 via-blue-900/40 to-slate-900/60'
                 : 'bg-white/5'
-            }`}
+              }`}
             initial={{ backdropFilter: 'blur(0px)' }}
             animate={{ backdropFilter: 'blur(12px)' }}
             exit={{ backdropFilter: 'blur(0px)' }}
@@ -36,11 +39,10 @@ const AccessDeniedModal = ({ isOpen, onClose, theme = 'dark' }) => {
           {/* Floating Background Elements */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <motion.div
-              className={`absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl ${
-                isDark
+              className={`absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl ${isDark
                   ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20'
                   : 'bg-white/10'
-              }`}
+                }`}
               animate={{
                 x: [0, 50, -50, 0],
                 y: [0, -30, 30, 0],
@@ -49,11 +51,10 @@ const AccessDeniedModal = ({ isOpen, onClose, theme = 'dark' }) => {
               transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
             />
             <motion.div
-              className={`absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-3xl ${
-                isDark
+              className={`absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-3xl ${isDark
                   ? 'bg-gradient-to-r from-indigo-500/20 to-blue-500/20'
                   : 'bg-white/10'
-              }`}
+                }`}
               animate={{
                 x: [0, -40, 40, 0],
                 y: [0, 40, -40, 0],

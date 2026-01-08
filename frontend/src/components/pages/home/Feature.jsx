@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Cloud, Zap, Shield, Smartphone, Globe, Bell, BarChart3, MapPin, Calendar, Thermometer, Wind, Eye, ArrowUpRight, Sun, Moon } from 'lucide-react';
+import { Cloud, Zap, Shield, Smartphone, Globe, BarChart3, MapPin, Thermometer, Wind, Eye, ArrowUpRight } from 'lucide-react';
 
 
 const FeaturesSection = ({ isDark }) => {

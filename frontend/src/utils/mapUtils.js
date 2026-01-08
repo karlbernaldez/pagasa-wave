@@ -320,7 +320,7 @@ export function initDrawControl(map) {
   return draw;
 }
 
-export const typhoonMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (title) => {
+export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (title) => {
   if (!selectedPoint) return;
 
   const { lng, lat } = selectedPoint;

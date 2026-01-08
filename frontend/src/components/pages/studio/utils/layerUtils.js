@@ -1,5 +1,6 @@
 // components/utils/layerUtils.js
 import { deleteFeature, updateFeatureNameAPI } from '@/api/featureServices';
+import { Layers } from 'lucide-react';
 import Swal from 'sweetalert2';  // Import SweetAlert2
 
 export function addWindLayer(map) {
@@ -246,22 +247,24 @@ export function removeLayer(map, layer, setLayers) {
     setLayers((prev) => prev.filter((l) => l.id !== id));
 };
 
-export async function removeFeature(draw, layerID, featureID, layer) {
+export async function removeFeature(draw, layerID) {
+    console.log(`[removeFeature] Called for layerID: ${layerID}`);
 
     // Delete from Mapbox Draw
     if (draw && typeof draw.delete === 'function') {
         draw.trash();
-        draw.delete(featureID)
+        draw.delete(layerID)
     }
 
     // Delete from backend
     try {
         const token = localStorage.getItem('authToken');
 
-        if (featureID) {
-            const cleanedFeatureID = typeof featureID === 'string' && featureID.endsWith('_dash')
-                ? featureID.slice(0, -5)
-                : featureID;
+        if (layerID) {
+            const cleanedFeatureID = typeof layerID === 'string' && layerID.endsWith('_dash')
+                ? layerID.slice(0, -5)
+                : layerID;
+            console.log(`Deleting feature with ID: ${cleanedFeatureID} from backend.`);
             await deleteFeature(cleanedFeatureID, token);
         } else {
             await deleteFeature(layerID, token);
@@ -272,85 +275,148 @@ export async function removeFeature(draw, layerID, featureID, layer) {
     }
 };
 
-export function updateLayerName(layerId, newName, setLayers) {
+export function updateLayerName(layerId, newName, setLayers, map) {
+    const trimmedName = newName.trim();
 
-    // Update the layer name only if it's different from the current name
-    setLayers((prev) => {
-        // Ensure the new name is trimmed and valid
-        const trimmedName = newName.trim();
+    if (!trimmedName) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid name',
+            text: 'Name cannot be empty.',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500,
+        });
+        return;
+    }
 
-        // Only proceed if the new name is different from the current name and is non-empty
-        if (!trimmedName) {
+    let expectedNewId = null;
+    let layerType = null;
+
+    // 1️⃣ Update React state
+    setLayers(prev => {
+        const layerToUpdate = prev.find(layer => layer.id === layerId);
+        console.log("[updateLayerName] layerToUpdate:", layerToUpdate);
+        if (!layerToUpdate) return prev;
+
+        layerType = layerToUpdate.type ?? null;
+        const newLayerKey = trimmedName;
+
+        expectedNewId = layerType
+            ? `${layerType}_${newLayerKey}`
+            : newLayerKey;
+
+        if (
+            layerToUpdate.name === trimmedName &&
+            layerToUpdate.id === expectedNewId
+        ) {
             Swal.fire({
-                icon: 'error',
-                title: 'Invalid name',
-                text: 'Name cannot be empty.',
+                icon: 'info',
+                title: 'No change',
+                text: 'The new name and ID are the same as current.',
                 toast: true,
                 position: 'top-end',
                 showConfirmButton: false,
                 timer: 1500,
             });
-            return prev;  // No changes if the name is invalid
+            return prev;
         }
 
-        const updatedLayers = prev.map((layer) => {
-            if (layer.id === layerId) {
-
-                // If the new name is the same as the old one, skip updating
-                if (layer.name === trimmedName) {
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'No change',
-                        text: 'The new name is the same as the current one.',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 1500,
-                    });
-                    return layer;  // No change if the name is the same
-                }
-
-                // Log the updated layer and apply the new name
-                const updatedLayer = { ...layer, name: trimmedName };
-                
-                // Call the API to update the name in the backend
-                updateFeatureNameAPI(layer.id, trimmedName)
-                    .then(response => {
-                        // Show success toast
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Name Updated',
-                            text: `Layer name successfully updated to "${trimmedName}".`,
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 1500,
-                        });
-
-                        // Refresh the page after the successful update
-                        window.location.reload();  // Trigger a full page refresh
-                    })
-                    .catch(error => {
-                        // Show error toast
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Update Failed',
-                            text: 'Failed to update the feature name in the backend.',
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 1500,
-                        });
-                        console.error("Failed to update feature name in the backend:", error);
-                    });
-
-                return updatedLayer;  // Update name locally
-            }
-            return layer;  // Keep other layers unchanged
-        });
-
-        return updatedLayers;  // Update state with the new layer list
+        return prev.map(layer =>
+            layer.id === layerId
+                ? { ...layer, name: trimmedName, id: expectedNewId, source: expectedNewId }
+                : layer
+        );
     });
+
+    // 2️⃣ Update Mapbox layer
+    if (map && expectedNewId) {
+        const style = map.getStyle();
+        const layerDef = style.layers.find(l => l.id === layerId);
+        const layerDef0 = style.layers.find(l => l.id === `${layerId}-0`);
+        const layerDef1 = style.layers.find(l => l.id === `${layerId}-1`);
+
+        console.log("[updateLayerName] layerDef:", layerDef);
+
+        if (!layerDef) return;
+
+        console.log(
+            `[updateLayerName] Renaming Mapbox layer ${layerId} → ${expectedNewId}`
+        );
+
+        // Remove old layer(s) safely
+        if (layerDef.type === 'line') {
+            if (map.getLayer(layerId)) map.removeLayer(layerId);
+            if (map.getLayer(`${layerId}-0`)) map.removeLayer(`${layerId}-0`);
+            if (map.getLayer(`${layerId}-1`)) map.removeLayer(`${layerId}-1`);
+        } else {
+            if (map.getLayer(layerId)) map.removeLayer(layerId);
+        }
+
+        // Re-add with new ID safely
+        if (layerDef.type === 'line') {
+            if (layerDef) {
+                map.addLayer({
+                    ...layerDef,
+                    id: expectedNewId,
+                });
+            }
+
+            if (layerDef0) {
+                map.addLayer({
+                    ...layerDef0,
+                    id: `${expectedNewId}-0`,
+                });
+            }
+
+            if (layerDef1) {
+                map.addLayer({
+                    ...layerDef1,
+                    id: `${expectedNewId}-1`,
+                });
+            }
+        } else {
+            if (layerDef) {
+                map.addLayer({
+                    ...layerDef,
+                    id: expectedNewId,
+                });
+            }
+        }
+
+        if (
+            layerDef.type === 'symbol' &&
+            !expectedNewId.startsWith('less_1')
+        ) {
+            map.setLayoutProperty(expectedNewId, 'text-field', trimmedName);
+        }
+    }
+
+    // 3️⃣ Backend update
+    updateFeatureNameAPI(layerId, trimmedName)
+        .then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Name Updated',
+                text: `Layer name updated to "${trimmedName}".`,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 1500,
+            });
+        })
+        .catch(() => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Update Failed',
+                text: 'Failed to update the layer name.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 1500,
+            });
+        });
 };
 
 export const handleDragStart = (event, index, setDragging, setDraggedLayerIndex) => {
@@ -386,15 +452,17 @@ export const setActiveLayerOnMap = ({
     setActiveLayerId,
     setActiveMapboxLayerId,
 }) => {
+
     const layer = layers.find((l) => l.id === id);
     if (!layer || !mapRef?.current) {
-        console.warn(`Layer with ID ${id} not found or map not ready.`);
+        console.warn(`[setActiveLayerOnMap] Layer with ID ${id} not found or map not ready.`);
         return;
     }
 
-    let activeLayer = mapRef.current.getLayer(layer.id) || mapRef.current.getLayer(layer.name);
+    const map = mapRef.current;
+    let activeLayer = map.getLayer(layer.id) || map.getLayer(layer.name);
     if (!activeLayer) {
-        console.warn(`Layer ${layer.id} or ${layer.name} not found on map.`);
+        console.warn(`[setActiveLayerOnMap] Layer ${layer.id} or ${layer.name} not found on map.`);
         return;
     }
 
@@ -410,47 +478,58 @@ export const setActiveLayerOnMap = ({
         return isActive ? size.active : size.original;
     };
 
-    const resetPreviousLayer = () => {
-        if (!activeLayerId || activeLayerId === activeLayer.id) return;
-
-        const prevLayer = mapRef.current.getLayer(activeLayerId);
+    const resetLayerStyle = (layerIdToReset) => {
+        const prevLayer = map.getLayer(layerIdToReset);
         if (!prevLayer) return;
 
         const prevLayerInfo = layers.find((l) => l.id === prevLayer.id || l.name === prevLayer.id);
         const prevMarkerType = prevLayerInfo?.type;
 
         if (prevLayer.type === "line") {
-            mapRef.current.setPaintProperty(prevLayer.id, "line-width", 3);
+            map.setPaintProperty(prevLayer.id, "line-width", 3);
         } else if (prevLayer.type === "symbol") {
             const originalSize = getIconSize(prevMarkerType, false);
-            mapRef.current.setLayoutProperty(prevLayer.id, "icon-size", originalSize);
+            map.setLayoutProperty(prevLayer.id, "icon-size", originalSize);
         }
+
     };
 
-    const applyActiveLayerStyle = () => {
-        if (activeLayer.type === "line") {
-            mapRef.current.setPaintProperty(activeLayer.id, "line-width", 8);
-        } else if (activeLayer.type === "symbol") {
+    const applyActiveLayerStyle = (layerToActivate) => {
+        if (layerToActivate.type === "line") {
+            map.setPaintProperty(layerToActivate.id, "line-width", 8);
+        } else if (layerToActivate.type === "symbol") {
             const activeSize = getIconSize(layer.type, true);
-            mapRef.current.setLayoutProperty(activeLayer.id, "icon-size", activeSize);
+            map.setLayoutProperty(layerToActivate.id, "icon-size", activeSize);
         }
+
     };
 
-    const selectFeatureInDraw = () => {
+    const selectFeatureInDraw = (layerToSelect) => {
         if (draw?.get && draw?.changeMode) {
-            const feature = draw.get(activeLayer.id);
+            const feature = draw.get(layerToSelect.id);
             if (feature) {
-                draw.changeMode("simple_select", { featureIds: [activeLayer.id] });
+                draw.changeMode("simple_select", { featureIds: [layerToSelect.id] });
             }
         }
     };
 
-    // Execute
-    resetPreviousLayer();
-    applyActiveLayerStyle();
-    selectFeatureInDraw();
-    setActiveLayerId(layer.id);
-    if (setActiveMapboxLayerId) {
-        setActiveMapboxLayerId(activeLayer.id);
+    // ✅ Toggle logic: if clicked same layer, reset and deactivate
+    if (activeLayerId === layer.id) {
+        resetLayerStyle(activeLayer.id);
+        setActiveLayerId(null);
+        if (setActiveMapboxLayerId) setActiveMapboxLayerId(null);
+        return;
     }
+
+    // Reset previous layer if exists
+    if (activeLayerId) resetLayerStyle(activeLayerId);
+
+    // Apply new active style
+    applyActiveLayerStyle(activeLayer);
+    selectFeatureInDraw(activeLayer);
+
+    // Update active state
+    setActiveLayerId(layer.id);
+    if (setActiveMapboxLayerId) setActiveMapboxLayerId(activeLayer.id);
+
 };
