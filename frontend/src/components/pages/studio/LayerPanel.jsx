@@ -288,7 +288,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           </div>
 
           {/* Scrollable Content */}
-          <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className="max-h-[calc(100vh-250px)] overflow-y-auto hide-scrollbar">
             {/* Custom Layers Section */}
             <div className="p-3">
               <button
