@@ -3,13 +3,13 @@ import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import dayjs from "dayjs";
 import { fetchProjectById, fetchUserProjects, deleteProjectById } from "@/api/projectAPI";
-import { ChevronDown, Plus, FolderOpen, Settings, Download, LogOut, HelpCircle, Edit3, Eye, Map, Menu, Upload, Layers, Database, Wrench, Info, Undo2, Redo2, ZoomIn, ZoomOut, Grid, FileText, BookOpen } from "lucide-react";
+import { ChevronRight, Plus, FolderOpen, Settings, Download, LogOut, HelpCircle, Edit3, Eye, Map, Menu, Upload, Layers, Database, Wrench, Info, Undo2, Redo2, ZoomIn, ZoomOut, Grid, FileText, BookOpen, X } from "lucide-react";
 import ProjectModal from "@/components/ui/modals/ProjectModal";
 import SubmitModal from "@/components/ui/modals/SubmitModal";
 import ProjectListModal from "@/components/ui/modals/ProjectListModal";
 import ExportConfirmModal from "@/components/ui/modals/ExportModal";
 import ProjectInfoModal from "./ProjectInfo";
-import { logout, handleCreateProject as createProjectHandler, handleDeleteProject, downloadCachedSnapshotZip } from "./utils/ProjectUtils";
+import { handleCreateProject as createProjectHandler, handleDeleteProject, downloadCachedSnapshotZip } from "./utils/ProjectUtils";
 
 const MySwal = withReactContent(Swal);
 
@@ -146,151 +146,293 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
     }
   };
 
-  const themeClasses = isDarkMode
-    ? "bg-gray-900/70 text-gray-100 border-gray-700"
-    : "bg-white/70 text-gray-900 border-gray-300 backdrop-saturate-150";
+  // Collapsed state - Menu button only
+  if (!menuOpen) {
+    return (
+      <>
+        <div className="fixed top-20 left-4 z-40 flex gap-2">
+          <button
+            onClick={() => setMenuOpen(true)}
+            className={`group flex items-center gap-2 px-3 py-2.5 rounded-full transition-all duration-300 hover:scale-105 ${
+              isDarkMode
+                ? 'bg-black/40 hover:bg-black/50 border border-white/20'
+                : 'bg-white/60 hover:bg-white/70 border border-white/40'
+            } backdrop-blur-xl shadow-lg`}
+          >
+            <Menu 
+              size={16} 
+              className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
+              strokeWidth={2.5}
+            />
+            <span className={`text-xs font-semibold ${
+              isDarkMode ? 'text-white/90' : 'text-slate-800'
+            }`}>
+              Menu
+            </span>
+          </button>
 
-  const hoverClasses = isDarkMode
-    ? "hover:bg-gray-700/50 text-gray-100"
-    : "hover:bg-white/80 text-gray-900";
+          <button
+            onClick={() => setShowProjectInfo(!showProjectInfo)}
+            className={`group flex items-center gap-2 px-3 py-2.5 rounded-full transition-all duration-300 hover:scale-105 ${
+              isDarkMode
+                ? 'bg-black/40 hover:bg-black/50 border border-white/20'
+                : 'bg-white/60 hover:bg-white/70 border border-white/40'
+            } backdrop-blur-xl shadow-lg`}
+            title="Project Info"
+          >
+            <Info 
+              size={16} 
+              className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
+              strokeWidth={2.5}
+            />
+          </button>
+        </div>
+
+        {/* Modals */}
+        {showProjectInfo && (
+          <ProjectInfoModal
+            isDarkMode={isDarkMode}
+            projectName={projectName}
+            chartType={chartType}
+            forecastDate={forecastDate}
+            description={description}
+            setShowModal={setShowModal}
+            onClose={() => setShowProjectInfo(false)}
+            onEdit={() => console.log("Edit project clicked")}
+            menuOpen={false}
+          />
+        )}
+        
+        <ProjectModal
+          visible={showModal}
+          onClose={() => setShowModal(false)}
+          onSubmit={() =>
+            createProjectHandler({
+              projectName,
+              chartType,
+              description,
+              forecastDate,
+              onNew,
+              setShowModal,
+            })
+          }
+          projectName={projectName}
+          setProjectName={setProjectName}
+          chartType={chartType}
+          setChartType={setChartType}
+          description={description}
+          setDescription={setDescription}
+          forecastDate={forecastDate}
+          setForecastDate={setForecastDate}
+        />
+
+        {showProjectList && (
+          <ProjectListModal
+            visible={showProjectList}
+            projects={projects}
+            onClose={() => setShowProjectList(false)}
+            onSelect={(proj) => {
+              localStorage.setItem("projectId", proj._id);
+              localStorage.setItem("projectName", proj.name);
+              localStorage.setItem("chartType", proj.chartType);
+              setProjectName(proj.name);
+              setChartType(proj.chartType);
+              setShowProjectList(false);
+              if (onSave) onSave(proj);
+            }}
+            onDelete={async (id) => {
+              await handleDeleteProject({
+                projectId: id,
+                onDelete: (deletedId) => {
+                  setProjects((prev) => prev.filter((p) => p._id !== deletedId));
+                  const currentId = localStorage.getItem("projectId");
+                  if (currentId === deletedId) {
+                    ["projectId", "projectName", "chartType", "forecastDate"].forEach((key) =>
+                      localStorage.removeItem(key)
+                    );
+                    setProjectName("");
+                    setChartType("");
+                  }
+                },
+                navigateAfterDelete: false,
+              });
+            }}
+          />
+        )}
+
+        {showSubmitModal && (
+          <SubmitModal
+            visible={showSubmitModal}
+            onClose={() => setShowSubmitModal(false)}
+            onSubmit={handleSubmitFile}
+            projectTitle={projectName}
+            projectType={chartType}
+            forecastDate={forecastDate}
+            isSubmitting={isSubmitting}
+            isDarkMode={isDarkMode}
+          />
+        )}
+
+        {showExportConfirm && (
+          <ExportConfirmModal
+            visible={showExportConfirm}
+            onCancel={() => setShowExportConfirm(false)}
+            onConfirm={handleExportProject}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
       <div
         ref={menuRef}
-        className={`
-        fixed top-18 left-1 z-[9999] w-80 rounded-2xl relative overflow-hidden
-        border border-white/10
-        ${isDarkMode
-            ? "bg-[rgba(20,20,20,0.25)]"
-            : "bg-[rgba(255,255,255,0.2)]"}
-        backdrop-blur-2xl backdrop-saturate-150
-        shadow-[0_8px_32px_rgba(0,0,0,0.1)]
-        transition-all duration-500
-        hover:shadow-[0_10px_36px_rgba(0,0,0,0.15)]
-        hover:scale-[1.005]
-        ${isDarkMode ? "text-gray-100" : "text-gray-800"}
-      `}
+        className={`fixed top-20 left-4 w-72 rounded-xl z-40 transition-all duration-300 ${
+          isDarkMode
+            ? 'bg-black/40 border border-white/20'
+            : 'bg-white/60 border border-white/40'
+        } backdrop-blur-xl shadow-xl max-h-[calc(100vh-120px)] flex flex-col`}
       >
-
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-500/40 mb-2">
-          <h2 className="text-base font-semibold truncate">{projectName}</h2>
-          <div className="flex gap-2">
+        <div className={`flex items-center justify-between px-4 py-3 border-b ${
+          isDarkMode ? 'border-white/10' : 'border-black/10'
+        }`}>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className={`p-1.5 rounded-lg ${
+              isDarkMode ? 'bg-cyan-500/20' : 'bg-blue-500/20'
+            }`}>
+              <Menu 
+                size={16} 
+                className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
+                strokeWidth={2.5}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className={`text-sm font-bold truncate ${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                {projectName}
+              </div>
+              <div className={`text-[10px] font-medium ${
+                isDarkMode ? 'text-white/50' : 'text-slate-600'
+              }`}>
+                Project Menu
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setShowProjectInfo(!showProjectInfo)}
-              className="p-2 rounded-lg hover:bg-white/20 transition"
+              className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 ${
+                isDarkMode
+                  ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
+                  : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
+              }`}
               title="Show Project Info"
             >
-              <Info size={18} />
+              <Info size={16} strokeWidth={2.5} />
             </button>
-
-            {/* <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 rounded-lg hover:bg-white/20 transition"
-            >
-              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button> */}
+            
             <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="p-2 rounded-lg hover:bg-white/20 transition"
-              title="Toggle Menu"
+              onClick={() => setMenuOpen(false)}
+              className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 ${
+                isDarkMode
+                  ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
+                  : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
+              }`}
             >
-              <Menu size={18} />
+              <X size={16} strokeWidth={2.5} />
             </button>
           </div>
         </div>
 
-        {/* Dropdown Menus */}
-        {menuOpen && (
-          <div className="max-h-[70vh] overflow-y-auto pb-3">
-            {/* Project */}
-            <MenuSection
-              title="Project"
-              icon={<FolderOpen size={16} />}
-              active={activeMenu === "project"}
-              toggle={() => toggleSubmenu("project")}
-            >
-              <MenuItem onClick={() => setShowModal(true)} icon={<Plus size={14} />} label="New Project" />
-              <MenuItem onClick={handleOpenProjectList} icon={<FolderOpen size={14} />} label="Open Project" />
-              <MenuItem onClick={() => setShowExportConfirm(true)} icon={<Download size={14} />} label="Export Project" />
-              <MenuItem icon={<Settings size={14} />} label="Project Settings" />
-            </MenuSection>
+        {/* Scrollable Menu Content */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          {/* Project Section */}
+          <MenuSection
+            title="Project"
+            icon={<FolderOpen size={14} strokeWidth={2.5} />}
+            active={activeMenu === "project"}
+            toggle={() => toggleSubmenu("project")}
+            isDarkMode={isDarkMode}
+          >
+            <MenuItem onClick={() => setShowModal(true)} icon={<Plus size={12} strokeWidth={2.5} />} label="New Project" isDarkMode={isDarkMode} />
+            <MenuItem onClick={handleOpenProjectList} icon={<FolderOpen size={12} strokeWidth={2.5} />} label="Open Project" isDarkMode={isDarkMode} />
+            <MenuItem onClick={() => setShowExportConfirm(true)} icon={<Download size={12} strokeWidth={2.5} />} label="Export Project" isDarkMode={isDarkMode} />
+            <MenuItem icon={<Settings size={12} strokeWidth={2.5} />} label="Settings" isDarkMode={isDarkMode} />
+          </MenuSection>
 
-            {/* Edit */}
-            <MenuSection
-              title="Edit"
-              icon={<Edit3 size={16} />}
-              active={activeMenu === "edit"}
-              toggle={() => toggleSubmenu("edit")}
-            >
-              <MenuItem icon={<Undo2 size={14} />} label="Undo" />
-              <MenuItem icon={<Redo2 size={14} />} label="Redo" />
-              <MenuItem icon={<Settings size={14} />} label="Preferences" />
-            </MenuSection>
+          {/* Edit Section */}
+          <MenuSection
+            title="Edit"
+            icon={<Edit3 size={14} strokeWidth={2.5} />}
+            active={activeMenu === "edit"}
+            toggle={() => toggleSubmenu("edit")}
+            isDarkMode={isDarkMode}
+          >
+            <MenuItem icon={<Undo2 size={12} strokeWidth={2.5} />} label="Undo" isDarkMode={isDarkMode} />
+            <MenuItem icon={<Redo2 size={12} strokeWidth={2.5} />} label="Redo" isDarkMode={isDarkMode} />
+            <MenuItem icon={<Settings size={12} strokeWidth={2.5} />} label="Preferences" isDarkMode={isDarkMode} />
+          </MenuSection>
 
-            {/* View */}
-            <MenuSection
-              title="View"
-              icon={<Eye size={16} />}
-              active={activeMenu === "view"}
-              toggle={() => toggleSubmenu("view")}
-            >
-              <MenuItem icon={<ZoomIn size={14} />} label="Zoom In" />
-              <MenuItem icon={<ZoomOut size={14} />} label="Zoom Out" />
-              <MenuItem icon={<Eye size={14} />} label="Reset View" />
-            </MenuSection>
+          {/* View Section */}
+          <MenuSection
+            title="View"
+            icon={<Eye size={14} strokeWidth={2.5} />}
+            active={activeMenu === "view"}
+            toggle={() => toggleSubmenu("view")}
+            isDarkMode={isDarkMode}
+          >
+            <MenuItem icon={<ZoomIn size={12} strokeWidth={2.5} />} label="Zoom In" isDarkMode={isDarkMode} />
+            <MenuItem icon={<ZoomOut size={12} strokeWidth={2.5} />} label="Zoom Out" isDarkMode={isDarkMode} />
+            <MenuItem icon={<Eye size={12} strokeWidth={2.5} />} label="Reset View" isDarkMode={isDarkMode} />
+          </MenuSection>
 
-            {/* Map */}
-            <MenuSection
-              title="Map"
-              icon={<Map size={16} />}
-              active={activeMenu === "map"}
-              toggle={() => toggleSubmenu("map")}
-            >
-              <MenuItem icon={<Layers size={14} />} label="Add Marker" />
-              <MenuItem icon={<Grid size={14} />} label="Toggle Grid" />
-              <MenuItem icon={<Settings size={14} />} label="Map Settings" />
-            </MenuSection>
+          {/* Map Section */}
+          <MenuSection
+            title="Map"
+            icon={<Map size={14} strokeWidth={2.5} />}
+            active={activeMenu === "map"}
+            toggle={() => toggleSubmenu("map")}
+            isDarkMode={isDarkMode}
+          >
+            <MenuItem icon={<Layers size={12} strokeWidth={2.5} />} label="Add Marker" isDarkMode={isDarkMode} />
+            <MenuItem icon={<Grid size={12} strokeWidth={2.5} />} label="Toggle Grid" isDarkMode={isDarkMode} />
+            <MenuItem icon={<Settings size={12} strokeWidth={2.5} />} label="Map Settings" isDarkMode={isDarkMode} />
+          </MenuSection>
 
-            {/* Tools */}
-            <MenuSection
-              title="Tools"
-              icon={<Wrench size={16} />}
-              active={activeMenu === "tools"}
-              toggle={() => toggleSubmenu("tools")}
-            >
-              <MenuItem onClick={() => setShowSubmitModal(true)} icon={<Upload size={14} />} label="Submit Data" />
-              <MenuItem onClick={onView} icon={<Map size={14} />} label="View Map" />
-              <MenuItem icon={<Database size={14} />} label="Manage Layers" />
-            </MenuSection>
+          {/* Tools Section */}
+          <MenuSection
+            title="Tools"
+            icon={<Wrench size={14} strokeWidth={2.5} />}
+            active={activeMenu === "tools"}
+            toggle={() => toggleSubmenu("tools")}
+            isDarkMode={isDarkMode}
+          >
+            <MenuItem onClick={() => setShowSubmitModal(true)} icon={<Upload size={12} strokeWidth={2.5} />} label="Submit Data" isDarkMode={isDarkMode} />
+            <MenuItem onClick={onView} icon={<Map size={12} strokeWidth={2.5} />} label="View Map" isDarkMode={isDarkMode} />
+            <MenuItem icon={<Database size={12} strokeWidth={2.5} />} label="Manage Layers" isDarkMode={isDarkMode} />
+          </MenuSection>
 
-            {/* Help */}
-            <MenuSection
-              title="Help"
-              icon={<HelpCircle size={16} />}
-              active={activeMenu === "help"}
-              toggle={() => toggleSubmenu("help")}
-            >
-              <MenuItem icon={<FileText size={14} />} label="Documentation" />
-              <MenuItem icon={<BookOpen size={14} />} label="Tutorials" />
-              <MenuItem icon={<Info size={14} />} label="About" />
-            </MenuSection>
+          {/* Help Section */}
+          <MenuSection
+            title="Help"
+            icon={<HelpCircle size={14} strokeWidth={2.5} />}
+            active={activeMenu === "help"}
+            toggle={() => toggleSubmenu("help")}
+            isDarkMode={isDarkMode}
+          >
+            <MenuItem icon={<FileText size={12} strokeWidth={2.5} />} label="Documentation" isDarkMode={isDarkMode} />
+            <MenuItem icon={<BookOpen size={12} strokeWidth={2.5} />} label="Tutorials" isDarkMode={isDarkMode} />
+            <MenuItem icon={<Info size={12} strokeWidth={2.5} />} label="About" isDarkMode={isDarkMode} />
+          </MenuSection>
+        </div>
 
-            {/* Logout */}
-            <div>
-              <button
-                onClick={logout}
-                className="w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-red-500 hover:bg-red-500/20"
-              >
-                <LogOut size={16} /> Logout
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Project Info Modal */}
+      {/* Modals */}
       {showProjectInfo && (
         <ProjectInfoModal
           isDarkMode={isDarkMode}
@@ -301,10 +443,10 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
           setShowModal={setShowModal}
           onClose={() => setShowProjectInfo(false)}
           onEdit={() => console.log("Edit project clicked")}
+          menuOpen={true}
         />
       )}
-
-      {/* Modals */}
+      
       <ProjectModal
         visible={showModal}
         onClose={() => setShowModal(false)}
@@ -346,10 +488,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
             await handleDeleteProject({
               projectId: id,
               onDelete: (deletedId) => {
-                // Remove from list in UI
                 setProjects((prev) => prev.filter((p) => p._id !== deletedId));
-
-                // If the deleted project is currently selected, clear it
                 const currentId = localStorage.getItem("projectId");
                 if (currentId === deletedId) {
                   ["projectId", "projectName", "chartType", "forecastDate"].forEach((key) =>
@@ -359,7 +498,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
                   setChartType("");
                 }
               },
-              navigateAfterDelete: false, // don't reload, we already update state
+              navigateAfterDelete: false,
             });
           }}
         />
@@ -390,28 +529,41 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
 };
 
 /* ------------------- Helper Components ------------------- */
-const MenuSection = ({ title, icon, active, toggle, children }) => (
+const MenuSection = ({ title, icon, active, toggle, children, isDarkMode }) => (
   <div>
     <button
       onClick={toggle}
-      className="w-full flex justify-between items-center px-5 py-3 text-sm font-medium hover:bg-white/10 transition"
+      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+        isDarkMode
+          ? 'hover:bg-white/10 text-slate-200'
+          : 'hover:bg-black/10 text-slate-800'
+      }`}
     >
       <span className="flex gap-2 items-center">
         {icon} {title}
       </span>
-      <ChevronDown
-        size={16}
-        className={`transition-transform ${active ? "rotate-180" : ""}`}
+      <ChevronRight
+        size={12}
+        strokeWidth={3}
+        className={`transition-transform duration-200 ${active ? "rotate-90" : ""}`}
       />
     </button>
-    {active && <div className="ml-8 text-sm border-l border-gray-400/20">{children}</div>}
+    {active && (
+      <div className="ml-4 mt-1 space-y-0.5">
+        {children}
+      </div>
+    )}
   </div>
 );
 
-const MenuItem = ({ onClick, icon, label }) => (
+const MenuItem = ({ onClick, icon, label, isDarkMode }) => (
   <button
     onClick={onClick}
-    className="block w-full px-4 py-2 flex items-center gap-2 hover:bg-white/10 transition"
+    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${
+      isDarkMode
+        ? 'hover:bg-white/10 text-slate-300 hover:text-white'
+        : 'hover:bg-black/10 text-slate-700 hover:text-slate-900'
+    }`}
   >
     {icon} {label}
   </button>

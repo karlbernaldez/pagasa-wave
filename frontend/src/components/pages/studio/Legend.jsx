@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 
 const LegendBox = ({ isDarkMode = false }) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -7,173 +7,164 @@ const LegendBox = ({ isDarkMode = false }) => {
   const legendItems = [
     {
       icon: '/wave.png',
-      label: 'Waves',
-      color: isDarkMode ? 'from-blue-500/20 to-cyan-500/20' : 'from-blue-400/30 to-cyan-400/30',
-      iconBg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-400/20'
+      label: 'Wave Heights',
+      subtitle: 'Ocean surface conditions'
     },
     {
       icon: '/hurricane.png',
-      label: 'Cyclone',
-      color: isDarkMode ? 'from-orange-500/20 to-red-500/20' : 'from-orange-400/30 to-red-400/30',
-      iconBg: isDarkMode ? 'bg-orange-500/10' : 'bg-orange-400/20'
+      label: 'Tropical Cyclone',
+      subtitle: 'Active storm systems'
     },
     {
       text: 'L',
-      label: 'Low',
-      color: isDarkMode ? 'from-red-500/20 to-red-600/20' : 'from-red-400/30 to-red-500/30',
+      label: 'Low Pressure',
+      subtitle: 'LPA',
       textColor: isDarkMode ? 'text-red-400' : 'text-red-600',
-      iconBg: isDarkMode ? 'bg-red-500/10' : 'bg-red-400/20'
+      bgColor: isDarkMode ? 'bg-red-500/20' : 'bg-red-400/30'
     },
     {
       text: 'H',
-      label: 'High',
-      color: isDarkMode ? 'from-blue-500/20 to-blue-600/20' : 'from-blue-400/30 to-blue-500/30',
+      label: 'High Pressure',
+      subtitle: 'HPA',
       textColor: isDarkMode ? 'text-blue-400' : 'text-blue-600',
-      iconBg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-400/20'
+      bgColor: isDarkMode ? 'bg-blue-500/20' : 'bg-blue-400/30'
     },
     {
       pattern: true,
-      label: 'Fronts',
-      color: isDarkMode ? 'from-purple-500/20 to-indigo-500/20' : 'from-purple-400/30 to-indigo-400/30',
-      iconBg: isDarkMode ? 'bg-purple-500/10' : 'bg-purple-400/20'
+      label: 'Surface Fronts',
+      subtitle: 'Weather boundaries'
     }
   ];
 
-  if (!isExpanded) {
-    return (
-      <button
-        onClick={() => setIsExpanded(true)}
-        className={`group fixed bottom-6 left-6 flex items-center gap-2 pl-3 pr-2.5 py-2.5 rounded-full z-50 transition-all duration-300 hover:scale-105 ${
-          isDarkMode
-            ? 'bg-slate-900/80 hover:bg-slate-900/90 border border-white/10 shadow-lg shadow-black/50'
-            : 'bg-white/70 hover:bg-white/80 border border-black/5 shadow-lg shadow-black/10'
-        } backdrop-blur-xl`}
-      >
-        <span className={`text-xs font-semibold ${
-          isDarkMode ? 'text-white/90' : 'text-slate-800'
-        }`}>
-          Legend
-        </span>
-        <ChevronRight 
-          size={14} 
-          className={`transition-transform duration-200 group-hover:translate-x-0.5 ${
-            isDarkMode ? 'text-white/60' : 'text-slate-600'
-          }`}
-          strokeWidth={2.5}
-        />
-      </button>
-    );
-  }
-
   return (
-    <div
-      className={`fixed bottom-6 left-6 rounded-2xl z-50 transition-all duration-300 ${
-        isDarkMode
-          ? 'bg-slate-900/80 border border-white/10 shadow-2xl shadow-black/50'
-          : 'bg-white/70 border border-black/5 shadow-xl shadow-black/10'
-      } backdrop-blur-xl`}
-      style={{ 
-        maxWidth: 'fit-content'
-      }}
-    >
-      {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-        <div className={`absolute inset-0 opacity-20 ${
+    <div className="fixed bottom-8 left-4 z-50 w-72">
+      <div
+        className={`rounded-xl transition-all duration-300 ${
           isDarkMode
-            ? 'bg-gradient-to-br from-cyan-500/10 via-transparent to-blue-500/10'
-            : 'bg-gradient-to-br from-blue-400/10 via-transparent to-cyan-400/10'
-        }`} />
-      </div>
-
-      <div className="relative flex items-center gap-3 px-3.5 py-3">
-        {/* Legend Items */}
-        <div className="flex items-center gap-2.5">
-          {legendItems.map((item, index) => (
-            <div
-              key={index}
-              className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-xl transition-all duration-200 hover:scale-105 cursor-default ${
-                isDarkMode
-                  ? 'hover:bg-white/5'
-                  : 'hover:bg-black/5'
-              }`}
-            >
-              {/* Icon Container */}
-              <div className={`relative w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-br ${item.color} ${item.iconBg} transition-all duration-200 group-hover:scale-110`}>
-                {/* Subtle inner glow */}
-                <div className="absolute inset-0 rounded-lg bg-white/5" />
-                
-                {item.icon && (
-                  <img
-                    src={item.icon}
-                    alt={item.label}
-                    className="relative w-4.5 h-4.5 object-contain drop-shadow-md z-10"
-                  />
-                )}
-                {item.text && (
-                  <span className={`relative text-sm font-black ${item.textColor} drop-shadow-sm z-10`}>
-                    {item.text}
-                  </span>
-                )}
-                {item.pattern && (
-                  <div className="relative w-4.5 h-1.5 rounded-full z-10" style={{
-                    background: 'repeating-linear-gradient(90deg, #3b82f6 0px, #3b82f6 3px, #ef4444 3px, #ef4444 6px)',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                  }} />
-                )}
-              </div>
-              
-              {/* Label */}
-              <span className={`text-xs font-semibold whitespace-nowrap ${
-                isDarkMode ? 'text-white/90' : 'text-slate-800'
-              }`}>
-                {item.label}
-              </span>
-
-              {/* Tooltip on hover */}
-              <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded-lg text-[10px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none ${
-                isDarkMode
-                  ? 'bg-slate-800 text-white border border-white/10'
-                  : 'bg-white text-slate-800 border border-black/10'
-              } backdrop-blur-xl shadow-lg`}>
-                {item.label === 'Waves' && 'Ocean surface conditions'}
-                {item.label === 'Cyclone' && 'Tropical storm systems'}
-                {item.label === 'Low' && 'Low pressure area'}
-                {item.label === 'High' && 'High pressure area'}
-                {item.label === 'Fronts' && 'Weather boundaries'}
-              </div>
+            ? 'bg-black/40 border border-white/20'
+            : 'bg-white/60 border border-white/40'
+        } backdrop-blur-xl shadow-xl`}
+      >
+        {/* Header */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-t-xl transition-colors ${
+            isDarkMode
+              ? 'hover:bg-slate-700/30'
+              : 'hover:bg-slate-100/50'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <div className={`p-1 rounded-lg ${
+              isDarkMode ? 'bg-cyan-500/20' : 'bg-blue-500/20'
+            }`}>
+              <Info 
+                size={14} 
+                className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
+                strokeWidth={2.5}
+              />
             </div>
-          ))}
-        </div>
+            <span className={`text-xs font-bold ${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              Map Legend
+            </span>
+          </div>
+          
+          {isExpanded ? (
+            <ChevronUp 
+              size={14} 
+              className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}
+              strokeWidth={2.5}
+            />
+          ) : (
+            <ChevronDown 
+              size={14} 
+              className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}
+              strokeWidth={2.5}
+            />
+          )}
+        </button>
 
         {/* Divider */}
-        <div className={`w-px h-8 ${
-          isDarkMode ? 'bg-white/10' : 'bg-black/10'
-        }`} />
+        {isExpanded && (
+          <div className={`h-px ${isDarkMode ? 'bg-slate-700/50' : 'bg-slate-200/50'}`} />
+        )}
 
-        {/* Collapse Button */}
-        <button
-          onClick={() => setIsExpanded(false)}
-          className={`group flex-shrink-0 p-2 rounded-lg transition-all duration-200 hover:scale-110 ${
-            isDarkMode
-              ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
-              : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
-          }`}
-          aria-label="Collapse legend"
-        >
-          <ChevronLeft 
-            size={14} 
-            strokeWidth={2.5}
-            className="transition-transform duration-200 group-hover:-translate-x-0.5"
-          />
-        </button>
+        {/* Content */}
+        {isExpanded && (
+          <div className="p-2.5 space-y-1.5">
+            {legendItems.map((item, index) => (
+              <div
+                key={index}
+                className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-200 ${
+                  isDarkMode
+                    ? 'hover:bg-slate-700/30'
+                    : 'hover:bg-slate-100/50'
+                }`}
+              >
+                {/* Icon/Symbol Container */}
+                <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                  item.bgColor || (isDarkMode ? 'bg-slate-700/50' : 'bg-slate-200/50')
+                }`}>
+                  {item.icon && (
+                    <img
+                      src={item.icon}
+                      alt={item.label}
+                      className="w-4 h-4 object-contain"
+                    />
+                  )}
+                  {item.text && (
+                    <span className={`text-xs font-black ${item.textColor}`}>
+                      {item.text}
+                    </span>
+                  )}
+                  {item.pattern && (
+                    <div className="w-4 h-1 rounded-full" style={{
+                      background: 'repeating-linear-gradient(90deg, #3b82f6 0px, #3b82f6 3px, #ef4444 3px, #ef4444 6px)'
+                    }} />
+                  )}
+                </div>
+
+                {/* Label */}
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs font-semibold ${
+                    isDarkMode ? 'text-slate-200' : 'text-slate-800'
+                  }`}>
+                    {item.label}
+                  </div>
+                  <div className={`text-[10px] font-medium ${
+                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                  }`}>
+                    {item.subtitle}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Footer */}
+        {isExpanded && (
+          <>
+            <div className={`h-px ${isDarkMode ? 'bg-slate-700/50' : 'bg-slate-200/50'}`} />
+            <div className="px-3 py-2">
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-medium ${
+                  isDarkMode ? 'text-slate-500' : 'text-slate-600'
+                }`}>
+                  Live data
+                </span>
+                <span className={`text-[10px] font-bold tracking-wide ${
+                  isDarkMode ? 'text-cyan-400' : 'text-blue-600'
+                }`}>
+                  PAGASA
+                </span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
-
-      {/* Bottom accent line */}
-      <div className={`absolute bottom-0 left-0 right-0 h-px ${
-        isDarkMode
-          ? 'bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent'
-          : 'bg-gradient-to-r from-transparent via-blue-500/20 to-transparent'
-      }`} />
     </div>
   );
 };
