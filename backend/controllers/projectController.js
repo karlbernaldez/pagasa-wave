@@ -1,183 +1,105 @@
-import Project from '../models/Project.js';
-import Feature from '../models/Feature.js';
-import mongoose from 'mongoose';
+import asyncHandler from '../utils/asyncHandler.js';
 import jwt from 'jsonwebtoken';
+import { throwError } from '../utils/errorHelper.js';
+import {
+  ensureProjectExists,
+  ensureUniqueProjectName,
+  deleteProjectAndFeatures,
+} from '../utils/dbHelpers.js';
+import Project from '../models/Project.js';
 
-export const createProject = async (req, res) => {
-  console.log('📌 Create Project Request');
+// ===============================
+// CREATE PROJECT
+// ===============================
+export const createProject = asyncHandler(async (req, res) => {
+  const { name, description, chartType, forecastDate } = req.body;
+  const owner = req.user?.id;
+
+  if (!owner) throwError('Unauthorized: owner missing', 401);
+  if (!name || !chartType) throwError('Project "name" and "chartType" are required.', 400);
+
+  await ensureUniqueProjectName(name, owner);
+
+  const project = new Project({
+    name: name.trim(),
+    description: description?.trim() || '',
+    chartType: chartType.trim(),
+    forecastDate: forecastDate || null,
+    owner,
+  });
+
+  await project.save();
+  res.status(201).json(project);
+});
+
+// ===============================
+// GET USER PROJECTS
+// ===============================
+export const getUserProjects = asyncHandler(async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) throwError('No token provided', 401);
+
+  let decoded;
   try {
-    // --- Extract data ---
-    const { name, description, chartType, forecastDate } = req.body;
-    const owner = req.user?.id;
-
-    // --- Validate required fields ---
-    if (!owner) {
-      return res.status(401).json({ message: 'Unauthorized: owner missing' });
-    }
-    if (!name || !chartType) {
-      return res.status(400).json({ message: 'Project name and chartType are required.' });
-    }
-
-    // --- Check duplicate project name per owner ---
-    const existing = await Project.findOne({ name, owner });
-    if (existing) {
-      return res.status(409).json({ message: 'A project with this name already exists for this user.' });
-    }
-
-    // --- Create new project ---
-    const project = new Project({
-      name,
-      description: description || '',
-      chartType,
-      forecastDate: forecastDate || null,
-      owner,
-    });
-
-    await project.save();
-
-    // --- Return success ---
-    res.status(201).json(project);
-
-  } catch (error) {
-    console.error('Error creating project:', error);
-
-    // --- Return validation errors if available ---
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: error.message });
-    }
-
-    res.status(500).json({ message: 'Server error', error: error.message });
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    throwError('Invalid or expired token', 403);
   }
-};
 
-export const getUserProjects = async (req, res) => {
-  console.log('📌 Get User Projects Request');
-  try {
-    const token = req.cookies.accessToken;
+  const projects = await Project.find({ owner: decoded.id }).sort({ createdAt: -1 });
+  res.json(projects);
+});
 
-    if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
+// ===============================
+// GET PROJECT BY ID
+// ===============================
+export const getProjectById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const owner = req.user?.id;
 
-    // Decode and verify the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const ownerId = decoded.id;
+  const project = await ensureProjectExists(id, owner);
+  await project.populate('owner', 'firstName lastName email position');
+  res.json(project);
+});
 
-    // Query the projects owned by the user
-    const projects = await Project.find({ owner: ownerId }).sort({ createdAt: -1 });
+// ===============================
+// UPDATE PROJECT
+// ===============================
+export const updateProject = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { name, description, chartType, forecastDate } = req.body;
+  const owner = req.user?.id;
 
-    res.status(200).json(projects);
-  } catch (error) {
-    console.error('Error fetching projects:', error);
+  if (!owner) throwError('Unauthorized', 401);
 
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(403).json({ message: 'Invalid or expired token' });
-    }
+  const project = await ensureProjectExists(id, owner);
 
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+  if (!name || !chartType || !forecastDate) throwError('All fields (name, chartType, forecastDate) are required', 400);
 
-export const getProjectById = async (req, res) => {
-  try {
-    const { id } = req.params;
+  await ensureUniqueProjectName(name, owner, id);
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid project ID' });
-    }
+  project.name = name.trim();
+  project.description = description?.trim() || '';
+  project.chartType = chartType.trim();
+  project.forecastDate = forecastDate;
 
-    // Populate the owner field and exclude sensitive data like password and refreshToken
-    const project = await Project.findById(id)
-      .populate('owner', 'firstName lastName email position') // specify only the fields you need
-      .exec();
+  await project.save();
+  res.json(project);
+});
 
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
+// ===============================
+// DELETE PROJECT
+// ===============================
+export const deleteProject = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const owner = req.user?.id;
 
-    res.status(200).json(project);
-  } catch (error) {
-    console.error('Error fetching project:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+  if (!owner) throwError('Unauthorized', 401);
 
-export const updateProject = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description, chartType, forecastDate } = req.body;
-    const owner = req.user?.id;
+  const deletedFeaturesCount = await deleteProjectAndFeatures(id, owner);
 
-    // Check if the project exists
-    const project = await Project.findOne({ _id: id, owner });
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found or unauthorized' });
-    }
-
-    // Validate input
-    if (!name || !chartType || !forecastDate) {
-      return res.status(400).json({ message: 'All fields (name, chartType, forecastDate) are required' });
-    }
-
-    // Check if the new name is already taken by another project of the same owner
-    const existing = await Project.findOne({ name, owner });
-    if (existing && existing._id.toString() !== id) {
-      return res.status(409).json({ message: 'A project with this name already exists.' });
-    }
-
-    // Update the project with new data
-    project.name = name;
-    project.description = description;
-    project.chartType = chartType;
-    project.forecastDate = forecastDate;
-
-    await project.save(); // Save the updated project
-
-    res.status(200).json(project);
-  } catch (error) {
-    console.error('Error updating project:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-export const deleteProject = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const owner = req.user?.id;
-
-    console.log('🗑️ Delete Request Received');
-    console.log('➡️ Project ID:', id);
-    console.log('➡️ Owner/User ID:', owner);
-
-    // Check if the project exists and belongs to the current user
-    const project = await Project.findOne({ _id: id, owner });
-
-    if (!project) {
-      console.warn('⚠️ Project not found or unauthorized delete attempt');
-      return res.status(404).json({ message: 'Project not found or unauthorized' });
-    }
-
-    console.log('✔️ Project found:', project.name);
-
-    // DELETE all related features
-    const deleteResult = await Feature.deleteMany({
-      'properties.project': id,
-      'properties.owner': owner,
-    });
-
-    console.log(`🧹 Features deleted: ${deleteResult.deletedCount}`);
-
-    // Delete the project itself
-    await project.deleteOne();
-    console.log('🗑️ Project successfully deleted');
-
-    res.status(200).json({
-      message: 'Project and related features deleted successfully',
-      deletedFeatures: deleteResult.deletedCount,
-    });
-
-  } catch (error) {
-    console.error('❌ Error deleting project:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+  res.json({
+    message: 'Project and related features deleted successfully',
+    deletedFeatures: deletedFeaturesCount,
+  });
+});

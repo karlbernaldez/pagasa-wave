@@ -1,13 +1,11 @@
 // hooks/useStudio.js
 import { useState, useEffect, useCallback, useRef } from "react";
-import Swal from 'sweetalert2';
 import { setupMap } from "@/utils/mapSetup";
 import { fetchFeatures } from "@/api/featureServices";
 import { fetchLatestUserProject } from "@/api/projectAPI";
 
 // ─── Constants ───────────────────────────────────────
 const INACTIVITY_TIMEOUT = 640000; // 10.67 minutes
-const BLINK_DURATION = 3000;
 
 // ─── Custom Hooks ────────────────────────────────────
 
@@ -49,12 +47,13 @@ export const useInactivityReload = (timeout = INACTIVITY_TIMEOUT) => {
 };
 
 /**
- * Handles project loading and blink animation for project creation prompt
+ * Handles project loading for project creation prompt
+ * Returns modal state to be controlled by parent component
  */
 export const useProjectLoader = (projectId, updateProjectId) => {
   const [latestProject, setLatestProject] = useState(null);
   const [isLoadingProject, setIsLoadingProject] = useState(true);
-  const [blink, setBlink] = useState(false);
+  const [showNoProjectsModal, setShowNoProjectsModal] = useState(false);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -64,19 +63,8 @@ export const useProjectLoader = (projectId, updateProjectId) => {
         updateProjectId(projectData._id);
       } catch (error) {
         console.error('Failed to fetch the latest project:', error);
-
-        await Swal.fire({
-          icon: "info",
-          title: "No Projects Found",
-          text: "Please create a new project to get started.",
-          confirmButtonText: "Create Project",
-          buttonsStyling: false,
-          customClass: {
-            confirmButton: "swal-main-btn",
-          },
-        });
-        
-        setBlink(true);
+        // Show the custom modal instead of SweetAlert
+        setShowNoProjectsModal(true);
       } finally {
         setIsLoadingProject(false);
       }
@@ -89,15 +77,12 @@ export const useProjectLoader = (projectId, updateProjectId) => {
     }
   }, [projectId, updateProjectId]);
 
-  // Blink effect timeout
-  useEffect(() => {
-    if (!projectId && blink) {
-      const timer = setTimeout(() => setBlink(false), BLINK_DURATION);
-      return () => clearTimeout(timer);
-    }
-  }, [projectId, blink]);
-
-  return { latestProject, isLoadingProject, blink };
+  return { 
+    latestProject, 
+    isLoadingProject,
+    showNoProjectsModal,
+    setShowNoProjectsModal
+  };
 };
 
 /**

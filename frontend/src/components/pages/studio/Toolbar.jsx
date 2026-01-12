@@ -8,7 +8,7 @@ import storm from "@/assets/draw_icons/hurricane.png";
 import PointInputChoiceModal from '@/components/ui/modals/MarkerChoice';
 import ManualInputModal from '@/components/ui/modals/ManualInputModal';
 import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable';
-import { saveMarker } from "@/utils/mapUtils";
+import { saveMarker } from "./map/layers/markerLayer";
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { 
   handleDrawModeChange, 
@@ -167,7 +167,6 @@ const DrawToolbar = ({
   // Theme-aware styles matching ProjectDashboard
   const getThemeStyles = () => {
     if (isDarkMode) {
-      console.log('Dark mode styles applied');
       return {
         container: 'bg-black/40 border-white/20',
         button: 'bg-white/5 hover:bg-white/10 border-white/10',

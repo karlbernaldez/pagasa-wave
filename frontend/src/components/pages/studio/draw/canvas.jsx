@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
 import { createFeature } from '@/api/featureServices';
 import { smoothPoints, handlePointerDown, handlePointerMove, handlePointerUp } from './canvasUtils';
-import ProjectModal from '@/components/ui/modals/ProjectModal';
+import CreateProjectModal from '@/components/ui/modals/CreateProjectModal';
 
 // Memoized slider component to prevent unnecessary re-renders
 const WaveHeightSlider = memo(({ value, onChange, isDarkMode }) => {
@@ -223,7 +223,7 @@ const DrawingCanvas = ({
 
       {/* Project Modal */}
       {showProjectModal && (
-        <ProjectModal onClose={() => setShowProjectModal(false)} />
+        <createImageBitmapProjectModal onClose={() => setShowProjectModal(false)} />
       )}
     </>
   );

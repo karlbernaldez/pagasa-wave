@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import Swal from 'sweetalert2';
-import { captureMapSnapshot, getLatestMapInstance } from '@/utils/mapUtils';
+import { getLatestMapInstance } from '../map/helpers/mapInstance';
+import { captureMapSnapshot } from '@/utils/mapUtils';
 import { createProject, deleteProjectById } from '@/api/projectAPI';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -302,23 +303,6 @@ export const handleDeleteProject = async ({
       timer: 3000,
     });
   }
-
-  // Confirm dialog
-  const confirm = await Swal.fire({
-    title: 'Delete this project?',
-    text: 'This action cannot be undone.',
-    icon: 'warning',
-    showCancelButton: true,
-    buttonsStyling: false,
-    customClass: {
-      confirmButton: 'swal-confirm-btn',
-      cancelButton: 'swal-cancel-btn',
-    },
-    confirmButtonText: 'Yes, delete it',
-    cancelButtonText: 'Cancel',
-  });
-
-  if (!confirm.isConfirmed) return;
 
   try {
     // Call the API

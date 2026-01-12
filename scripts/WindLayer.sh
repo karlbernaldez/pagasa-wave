@@ -246,7 +246,14 @@ python3 ECMWF/utils/grib_to_geojson.py
 
 log "📦 Exporting GeoJSON to frontend"
 mkdir -p "$FRONTEND_GEOJSON"
-cp -f "$GEOJSON_DIR"/*.geojson "$FRONTEND_GEOJSON"
+latest_geojson=$(ls -t "$GEOJSON_DIR"/*.geojson 2>/dev/null | head -n 1)
+
+if [[ -n "$latest_geojson" ]]; then
+  info "📦 Copying latest GeoJSON → $(basename "$latest_geojson")"
+  cp -f "$latest_geojson" "$FRONTEND_GEOJSON"
+else
+  warn "No GeoJSON files found to copy"
+fi
 
 ##############################################
 ## DONE
