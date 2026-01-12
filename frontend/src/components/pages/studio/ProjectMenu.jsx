@@ -1,17 +1,20 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import dayjs from "dayjs";
 import { fetchProjectById, fetchUserProjects, deleteProjectById } from "@/api/projectAPI";
-import { ChevronRight, Plus, FolderOpen, Settings, Download, LogOut, HelpCircle, Edit3, Eye, Map, Menu, Upload, Layers, Database, Wrench, Info, Undo2, Redo2, ZoomIn, ZoomOut, Grid, FileText, BookOpen, X } from "lucide-react";
-import ProjectModal from "@/components/ui/modals/ProjectModal";
+import { ChevronRight, Plus, FolderOpen, Settings, Download, Edit3, Eye, Map, Menu, Upload, Layers, Database, Wrench, Info, Undo2, Redo2, ZoomIn, ZoomOut, Grid, FileText, BookOpen, X } from "lucide-react";
+import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import SubmitModal from "@/components/ui/modals/SubmitModal";
 import ProjectListModal from "@/components/ui/modals/ProjectListModal";
 import ExportConfirmModal from "@/components/ui/modals/ExportModal";
-import ProjectInfoModal from "./ProjectInfo";
+import ProjectInfo from "./ProjectInfo";
 import { handleCreateProject as createProjectHandler, handleDeleteProject, downloadCachedSnapshotZip } from "./utils/ProjectUtils";
 
 const MySwal = withReactContent(Swal);
+
+// In-memory cache for projects
+const projectCache = {};
 
 const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, setIsDarkMode, setCapturedImages }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -25,13 +28,79 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
   const [isExporting, setIsExporting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [projects, setProjects] = useState([]);
-  const [forecastDate, setForecastDate] = useState(dayjs());
-  const [projectName, setProjectName] = useState("Untitled Project");
+  
+  // Current project display state (from cached/fetched project)
+  const [projectName, setProjectName] = useState("No Project Selected");
   const [chartType, setChartType] = useState("Wave Analysis");
-  const [description, setDescription] = useState("");
+  const [forecastDate, setForecastDate] = useState(dayjs());
 
   const menuRef = useRef(null);
 
+  // Load project data with caching
+  useEffect(() => {
+    const fetchData = async () => {
+      const projectId = localStorage.getItem("projectId");
+      if (!projectId) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Check in-memory cache first
+      if (projectCache[projectId]) {
+        const cached = projectCache[projectId];
+        setProjectName(cached.name);
+        setChartType(cached.chartType);
+        setForecastDate(dayjs(cached.forecastDate));
+        setIsLoading(false);
+        return;
+      }
+
+      // Check localStorage cache
+      const localCache = JSON.parse(localStorage.getItem('cachedProject'));
+      if (localCache && localCache.id === projectId) {
+        setProjectName(localCache.name);
+        setChartType(localCache.chartType);
+        setForecastDate(dayjs(localCache.forecastDate));
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch from API
+      try {
+        const project = await fetchProjectById(projectId);
+        if (project) {
+          setProjectName(project.name);
+          setChartType(project.chartType);
+          setForecastDate(dayjs(project.forecastDate));
+
+          // Save to caches
+          projectCache[projectId] = project;
+          localStorage.setItem('cachedProject', JSON.stringify({
+            id: projectId,
+            name: project.name,
+            chartType: project.chartType,
+            description: project.description,
+            forecastDate: project.forecastDate
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching project:', error);
+        Swal.fire({
+          toast: true,
+          position: "top-end",
+          icon: "error",
+          title: "Failed to fetch project data.",
+          showConfirmButton: false,
+          timer: 2000,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Handle outside click
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -43,55 +112,15 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const projectId = localStorage.getItem("projectId");
-      if (!projectId) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const project = await fetchProjectById(projectId);
-        if (project) {
-          setProjectName(project.name);
-          setChartType(project.chartType);
-          setDescription(project.description || "");
-          const date = new Date(project.forecastDate);
-          const formatted = date.toLocaleDateString(undefined, {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          });
-          setForecastDate(dayjs(formatted));
-        }
-      } catch {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Failed to fetch project data.",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  const toggleSubmenu = (menu) =>
+  const toggleSubmenu = (menu) => {
     setActiveMenu(activeMenu === menu ? null : menu);
+  };
 
   const handleExportProject = async () => {
     if (!map) return;
     try {
       setIsExporting(true);
-      await downloadCachedSnapshotZip(
-        setIsDarkMode,
-        features,
-        map,
-        setCapturedImages
-      );
+      await downloadCachedSnapshotZip(setIsDarkMode, features, map, setCapturedImages);
       Swal.fire({
         toast: true,
         position: "top-end",
@@ -146,6 +175,83 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
     }
   };
 
+  // Handle create project with new modal structure
+  const handleCreateProjectSubmit = (formData) => {
+    createProjectHandler({
+      projectName: formData.projectName,
+      chartType: formData.chartType,
+      description: formData.description,
+      forecastDate: dayjs(formData.forecastDate),
+      onNew,
+      setShowModal,
+    });
+  };
+
+  // Memoize menu sections to prevent re-renders
+  const menuSections = useMemo(() => [
+    {
+      id: "project",
+      title: "Project",
+      icon: <FolderOpen size={14} strokeWidth={2.5} />,
+      items: [
+        { onClick: () => setShowModal(true), icon: <Plus size={12} strokeWidth={2.5} />, label: "New Project" },
+        { onClick: handleOpenProjectList, icon: <FolderOpen size={12} strokeWidth={2.5} />, label: "Open Project" },
+        { onClick: () => setShowExportConfirm(true), icon: <Download size={12} strokeWidth={2.5} />, label: "Export Project" },
+        { icon: <Settings size={12} strokeWidth={2.5} />, label: "Settings" }
+      ]
+    },
+    {
+      id: "edit",
+      title: "Edit",
+      icon: <Edit3 size={14} strokeWidth={2.5} />,
+      items: [
+        { icon: <Undo2 size={12} strokeWidth={2.5} />, label: "Undo" },
+        { icon: <Redo2 size={12} strokeWidth={2.5} />, label: "Redo" },
+        { icon: <Settings size={12} strokeWidth={2.5} />, label: "Preferences" }
+      ]
+    },
+    {
+      id: "view",
+      title: "View",
+      icon: <Eye size={14} strokeWidth={2.5} />,
+      items: [
+        { icon: <ZoomIn size={12} strokeWidth={2.5} />, label: "Zoom In" },
+        { icon: <ZoomOut size={12} strokeWidth={2.5} />, label: "Zoom Out" },
+        { icon: <Eye size={12} strokeWidth={2.5} />, label: "Reset View" }
+      ]
+    },
+    {
+      id: "map",
+      title: "Map",
+      icon: <Map size={14} strokeWidth={2.5} />,
+      items: [
+        { icon: <Layers size={12} strokeWidth={2.5} />, label: "Add Marker" },
+        { icon: <Grid size={12} strokeWidth={2.5} />, label: "Toggle Grid" },
+        { icon: <Settings size={12} strokeWidth={2.5} />, label: "Map Settings" }
+      ]
+    },
+    {
+      id: "tools",
+      title: "Tools",
+      icon: <Wrench size={14} strokeWidth={2.5} />,
+      items: [
+        { onClick: () => setShowSubmitModal(true), icon: <Upload size={12} strokeWidth={2.5} />, label: "Submit Data" },
+        { onClick: onView, icon: <Map size={12} strokeWidth={2.5} />, label: "View Map" },
+        { icon: <Database size={12} strokeWidth={2.5} />, label: "Manage Layers" }
+      ]
+    },
+    {
+      id: "help",
+      title: "Help",
+      icon: <BookOpen size={14} strokeWidth={2.5} />,
+      items: [
+        { icon: <FileText size={12} strokeWidth={2.5} />, label: "Documentation" },
+        { icon: <BookOpen size={12} strokeWidth={2.5} />, label: "Tutorials" },
+        { icon: <Info size={12} strokeWidth={2.5} />, label: "About" }
+      ]
+    }
+  ], [handleOpenProjectList, onView]);
+
   // Collapsed state - Menu button only
   if (!menuOpen) {
     return (
@@ -190,40 +296,21 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
 
         {/* Modals */}
         {showProjectInfo && (
-          <ProjectInfoModal
+          <ProjectInfo
             isDarkMode={isDarkMode}
-            projectName={projectName}
-            chartType={chartType}
-            forecastDate={forecastDate}
-            description={description}
             setShowModal={setShowModal}
-            onClose={() => setShowProjectInfo(false)}
-            onEdit={() => console.log("Edit project clicked")}
+            setIsLoading={setIsLoading}
+            onView={onView}
             menuOpen={false}
           />
         )}
         
-        <ProjectModal
+        {/* Updated CreateProjectModal - simplified props */}
+        <CreateProjectModal
           visible={showModal}
           onClose={() => setShowModal(false)}
-          onSubmit={() =>
-            createProjectHandler({
-              projectName,
-              chartType,
-              description,
-              forecastDate,
-              onNew,
-              setShowModal,
-            })
-          }
-          projectName={projectName}
-          setProjectName={setProjectName}
-          chartType={chartType}
-          setChartType={setChartType}
-          description={description}
-          setDescription={setDescription}
-          forecastDate={forecastDate}
-          setForecastDate={setForecastDate}
+          onSubmit={handleCreateProjectSubmit}
+          isDarkMode={isDarkMode}
         />
 
         {showProjectList && (
@@ -238,6 +325,17 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
               setProjectName(proj.name);
               setChartType(proj.chartType);
               setShowProjectList(false);
+              
+              // Update cache
+              projectCache[proj._id] = proj;
+              localStorage.setItem('cachedProject', JSON.stringify({
+                id: proj._id,
+                name: proj.name,
+                chartType: proj.chartType,
+                description: proj.description,
+                forecastDate: proj.forecastDate
+              }));
+              
               if (onSave) onSave(proj);
             }}
             onDelete={async (id) => {
@@ -247,16 +345,18 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
                   setProjects((prev) => prev.filter((p) => p._id !== deletedId));
                   const currentId = localStorage.getItem("projectId");
                   if (currentId === deletedId) {
-                    ["projectId", "projectName", "chartType", "forecastDate"].forEach((key) =>
+                    ["projectId", "projectName", "chartType", "forecastDate", "cachedProject"].forEach((key) =>
                       localStorage.removeItem(key)
                     );
-                    setProjectName("");
-                    setChartType("");
+                    delete projectCache[deletedId];
+                    setProjectName("No Project Selected");
+                    setChartType("Wave Analysis");
                   }
                 },
                 navigateAfterDelete: false,
               });
             }}
+            isDarkMode={isDarkMode}
           />
         )}
 
@@ -278,6 +378,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
             visible={showExportConfirm}
             onCancel={() => setShowExportConfirm(false)}
             onConfirm={handleExportProject}
+            isDarkMode={isDarkMode}
           />
         )}
       </>
@@ -350,124 +451,46 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
 
         {/* Scrollable Menu Content */}
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          {/* Project Section */}
-          <MenuSection
-            title="Project"
-            icon={<FolderOpen size={14} strokeWidth={2.5} />}
-            active={activeMenu === "project"}
-            toggle={() => toggleSubmenu("project")}
-            isDarkMode={isDarkMode}
-          >
-            <MenuItem onClick={() => setShowModal(true)} icon={<Plus size={12} strokeWidth={2.5} />} label="New Project" isDarkMode={isDarkMode} />
-            <MenuItem onClick={handleOpenProjectList} icon={<FolderOpen size={12} strokeWidth={2.5} />} label="Open Project" isDarkMode={isDarkMode} />
-            <MenuItem onClick={() => setShowExportConfirm(true)} icon={<Download size={12} strokeWidth={2.5} />} label="Export Project" isDarkMode={isDarkMode} />
-            <MenuItem icon={<Settings size={12} strokeWidth={2.5} />} label="Settings" isDarkMode={isDarkMode} />
-          </MenuSection>
-
-          {/* Edit Section */}
-          <MenuSection
-            title="Edit"
-            icon={<Edit3 size={14} strokeWidth={2.5} />}
-            active={activeMenu === "edit"}
-            toggle={() => toggleSubmenu("edit")}
-            isDarkMode={isDarkMode}
-          >
-            <MenuItem icon={<Undo2 size={12} strokeWidth={2.5} />} label="Undo" isDarkMode={isDarkMode} />
-            <MenuItem icon={<Redo2 size={12} strokeWidth={2.5} />} label="Redo" isDarkMode={isDarkMode} />
-            <MenuItem icon={<Settings size={12} strokeWidth={2.5} />} label="Preferences" isDarkMode={isDarkMode} />
-          </MenuSection>
-
-          {/* View Section */}
-          <MenuSection
-            title="View"
-            icon={<Eye size={14} strokeWidth={2.5} />}
-            active={activeMenu === "view"}
-            toggle={() => toggleSubmenu("view")}
-            isDarkMode={isDarkMode}
-          >
-            <MenuItem icon={<ZoomIn size={12} strokeWidth={2.5} />} label="Zoom In" isDarkMode={isDarkMode} />
-            <MenuItem icon={<ZoomOut size={12} strokeWidth={2.5} />} label="Zoom Out" isDarkMode={isDarkMode} />
-            <MenuItem icon={<Eye size={12} strokeWidth={2.5} />} label="Reset View" isDarkMode={isDarkMode} />
-          </MenuSection>
-
-          {/* Map Section */}
-          <MenuSection
-            title="Map"
-            icon={<Map size={14} strokeWidth={2.5} />}
-            active={activeMenu === "map"}
-            toggle={() => toggleSubmenu("map")}
-            isDarkMode={isDarkMode}
-          >
-            <MenuItem icon={<Layers size={12} strokeWidth={2.5} />} label="Add Marker" isDarkMode={isDarkMode} />
-            <MenuItem icon={<Grid size={12} strokeWidth={2.5} />} label="Toggle Grid" isDarkMode={isDarkMode} />
-            <MenuItem icon={<Settings size={12} strokeWidth={2.5} />} label="Map Settings" isDarkMode={isDarkMode} />
-          </MenuSection>
-
-          {/* Tools Section */}
-          <MenuSection
-            title="Tools"
-            icon={<Wrench size={14} strokeWidth={2.5} />}
-            active={activeMenu === "tools"}
-            toggle={() => toggleSubmenu("tools")}
-            isDarkMode={isDarkMode}
-          >
-            <MenuItem onClick={() => setShowSubmitModal(true)} icon={<Upload size={12} strokeWidth={2.5} />} label="Submit Data" isDarkMode={isDarkMode} />
-            <MenuItem onClick={onView} icon={<Map size={12} strokeWidth={2.5} />} label="View Map" isDarkMode={isDarkMode} />
-            <MenuItem icon={<Database size={12} strokeWidth={2.5} />} label="Manage Layers" isDarkMode={isDarkMode} />
-          </MenuSection>
-
-          {/* Help Section */}
-          <MenuSection
-            title="Help"
-            icon={<HelpCircle size={14} strokeWidth={2.5} />}
-            active={activeMenu === "help"}
-            toggle={() => toggleSubmenu("help")}
-            isDarkMode={isDarkMode}
-          >
-            <MenuItem icon={<FileText size={12} strokeWidth={2.5} />} label="Documentation" isDarkMode={isDarkMode} />
-            <MenuItem icon={<BookOpen size={12} strokeWidth={2.5} />} label="Tutorials" isDarkMode={isDarkMode} />
-            <MenuItem icon={<Info size={12} strokeWidth={2.5} />} label="About" isDarkMode={isDarkMode} />
-          </MenuSection>
+          {menuSections.map((section) => (
+            <MenuSection
+              key={section.id}
+              title={section.title}
+              icon={section.icon}
+              active={activeMenu === section.id}
+              toggle={() => toggleSubmenu(section.id)}
+              isDarkMode={isDarkMode}
+            >
+              {section.items.map((item, idx) => (
+                <MenuItem 
+                  key={idx}
+                  onClick={item.onClick}
+                  icon={item.icon}
+                  label={item.label}
+                  isDarkMode={isDarkMode}
+                />
+              ))}
+            </MenuSection>
+          ))}
         </div>
-
       </div>
 
       {/* Modals */}
       {showProjectInfo && (
-        <ProjectInfoModal
+        <ProjectInfo
           isDarkMode={isDarkMode}
-          projectName={projectName}
-          chartType={chartType}
-          forecastDate={forecastDate}
-          description={description}
           setShowModal={setShowModal}
-          onClose={() => setShowProjectInfo(false)}
-          onEdit={() => console.log("Edit project clicked")}
+          setIsLoading={setIsLoading}
+          onView={onView}
           menuOpen={true}
         />
       )}
       
-      <ProjectModal
+      {/* Updated CreateProjectModal - simplified props */}
+      <CreateProjectModal
         visible={showModal}
         onClose={() => setShowModal(false)}
-        onSubmit={() =>
-          createProjectHandler({
-            projectName,
-            chartType,
-            description,
-            forecastDate,
-            onNew,
-            setShowModal,
-          })
-        }
-        projectName={projectName}
-        setProjectName={setProjectName}
-        chartType={chartType}
-        setChartType={setChartType}
-        description={description}
-        setDescription={setDescription}
-        forecastDate={forecastDate}
-        setForecastDate={setForecastDate}
+        onSubmit={handleCreateProjectSubmit}
+        isDarkMode={isDarkMode}
       />
 
       {showProjectList && (
@@ -482,6 +505,17 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
             setProjectName(proj.name);
             setChartType(proj.chartType);
             setShowProjectList(false);
+            
+            // Update cache
+            projectCache[proj._id] = proj;
+            localStorage.setItem('cachedProject', JSON.stringify({
+              id: proj._id,
+              name: proj.name,
+              chartType: proj.chartType,
+              description: proj.description,
+              forecastDate: proj.forecastDate
+            }));
+            
             if (onSave) onSave(proj);
           }}
           onDelete={async (id) => {
@@ -491,16 +525,18 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
                 setProjects((prev) => prev.filter((p) => p._id !== deletedId));
                 const currentId = localStorage.getItem("projectId");
                 if (currentId === deletedId) {
-                  ["projectId", "projectName", "chartType", "forecastDate"].forEach((key) =>
+                  ["projectId", "projectName", "chartType", "forecastDate", "cachedProject"].forEach((key) =>
                     localStorage.removeItem(key)
                   );
-                  setProjectName("");
-                  setChartType("");
+                  delete projectCache[deletedId];
+                  setProjectName("No Project Selected");
+                  setChartType("Wave Analysis");
                 }
               },
               navigateAfterDelete: false,
             });
           }}
+          isDarkMode={isDarkMode}
         />
       )}
 
@@ -522,6 +558,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
           visible={showExportConfirm}
           onCancel={() => setShowExportConfirm(false)}
           onConfirm={handleExportProject}
+          isDarkMode={isDarkMode}
         />
       )}
     </>
@@ -529,7 +566,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
 };
 
 /* ------------------- Helper Components ------------------- */
-const MenuSection = ({ title, icon, active, toggle, children, isDarkMode }) => (
+const MenuSection = React.memo(({ title, icon, active, toggle, children, isDarkMode }) => (
   <div>
     <button
       onClick={toggle}
@@ -554,9 +591,9 @@ const MenuSection = ({ title, icon, active, toggle, children, isDarkMode }) => (
       </div>
     )}
   </div>
-);
+));
 
-const MenuItem = ({ onClick, icon, label, isDarkMode }) => (
+const MenuItem = React.memo(({ onClick, icon, label, isDarkMode }) => (
   <button
     onClick={onClick}
     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${
@@ -567,6 +604,6 @@ const MenuItem = ({ onClick, icon, label, isDarkMode }) => (
   >
     {icon} {label}
   </button>
-);
+));
 
 export default ProjectDashboard;

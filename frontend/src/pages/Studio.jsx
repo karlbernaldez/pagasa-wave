@@ -10,12 +10,15 @@ import LegendBox from "@/components/pages/studio/Legend";
 import ProjectMenu from "@/components/pages/studio/ProjectMenu";
 import MarkerTitleModal from "@/components/ui/modals/MarkerTitleModal";
 import MapLoading from "@/components/ui/modals/MapLoading";
+import NoProjectAlert from "@/components/ui/modals/NoProjectAlert";
+import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 
 // Custom Hooks
 import { useProjectId, useInactivityReload, useProjectLoader, useMapSetup, useDrawingState, useMarkerModal, useMapLoader } from "@/hooks/useStudio";
+import { handleCreateProject } from '@/components/pages/studio/utils/ProjectUtils'
 
 // Utils
-import { saveMarker } from "@/utils/mapUtils";
+import { saveMarker } from "@/components/pages/studio/map/layers/markerLayer";
 import { savePointFeature } from "@/components/pages/studio/utils/ToolBarUtils";
 
 // ─── Constants ───────────────────────────────────────
@@ -25,7 +28,26 @@ const TOOLBAR_DELAY = 1000;
 const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
   // Project management
   const [projectId, updateProjectId] = useProjectId();
-  const { latestProject, isLoadingProject, blink } = useProjectLoader(projectId, updateProjectId);
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+
+  const {
+    latestProject,
+    isLoadingProject,
+    showNoProjectsModal,
+    setShowNoProjectsModal
+  } = useProjectLoader(projectId, updateProjectId);
+
+  // Handle "Create Project" button from NoProjectsModal
+  const handleOpenCreateProject = () => {
+    setShowNoProjectsModal(false); // Close "No Projects" modal
+    setShowCreateProjectModal(true); // Open "Create Project" modal
+  };
+
+  // Handle "Maybe Later" from NoProjectsModal
+  const handleMaybeLater = () => {
+    setShowNoProjectsModal(false);
+    // Optional: You might want to redirect or show a different screen
+  };
 
   // Map setup
   const { savedFeatures, layers, setLayers, mapRef, cleanupRef, setupFeaturesAndLayers } = useMapSetup(projectId, logger, isDarkMode);
@@ -214,7 +236,6 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
         <>
           <div className="fixed top-20 left-3 flex flex-col gap-4 z-[100] animate-[slideInLeft_0.6s_ease-out] max-md:top-4 max-md:right-4 max-md:left-4 max-md:items-stretch">
             <ProjectMenu
-              blink={blink}
               projectId={projectId}
               map={mapInstance}
               features={savedFeaturesCollection}
@@ -235,6 +256,20 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
           />
 
           <LegendBox isDarkMode={isDarkMode} />
+
+          <NoProjectAlert
+            visible={showNoProjectsModal}
+            onCreateProject={handleOpenCreateProject}
+            onClose={handleMaybeLater}
+            isDarkMode={isDarkMode}
+          />
+
+          <CreateProjectModal
+            visible={showCreateProjectModal}
+            onClose={() => setShowCreateProjectModal(false)}
+            onSubmit={handleCreateProject}
+            isDarkMode={isDarkMode}
+          />
         </>
       )}
 

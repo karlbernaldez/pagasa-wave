@@ -1,7 +1,7 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
-import { registerMapInstance } from '@/utils/mapUtils';
+import { registerMapInstance } from './map/helpers/mapInstance';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
