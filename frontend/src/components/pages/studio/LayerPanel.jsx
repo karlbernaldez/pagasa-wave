@@ -4,6 +4,7 @@ import { Layers, ChevronDown, Plus, Eye, EyeOff, Lock, Unlock, Trash2, GripVerti
 import { addGeoJsonLayer, toggleLayerVisibility, toggleLayerLock, removeLayer, updateLayerName, handleDragStart, handleDragOver, handleDrop, setActiveLayerOnMap } from "./utils/layerUtils";
 import Modal from "@/components/ui/modals/MapNotReady";
 import Swal from 'sweetalert2';
+import ConfirmationDialog from "@/components/ui/modals/ConfirmationDialog";
 import 'sweetalert2/dist/sweetalert2.min.css';
 
 const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
@@ -18,6 +19,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   const [editingLayerId, setEditingLayerId] = useState(null);
   const [editingName, setEditingName] = useState("");
   const fileInputRef = useRef();
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
 
   // System layer states
   const [showPAR, setShowPAR] = useState(false);
@@ -439,9 +441,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                               return;
                             }
 
-                            removeLayer(mapRef.current, layer, setLayers, draw);
-                            removeFeature(draw, layer.id, mapRef);
-
+                            setConfirmDialog({ isOpen: true, layer });
                           }}
                           disabled={layer.locked}
                           className={`p-1 rounded transition-colors ${layer.locked
@@ -554,6 +554,19 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       {mapNotReady && (
         <Modal isOpen={mapNotReady} onClose={() => setMapNotReady(false)} />
       )}
+
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ isOpen: false, layer: null })}
+        onConfirm={() => {
+          removeLayer(mapRef.current, confirmDialog.layer, setLayers, draw);
+          removeFeature(draw, confirmDialog.layer.id, mapRef);
+        }}
+        title="Delete Layer?"
+        message="Are you sure you want to delete"
+        layerName={confirmDialog.layer?.name}
+        isDarkMode={isDarkMode}
+      />
     </>
   );
 };
