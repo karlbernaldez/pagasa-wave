@@ -130,6 +130,8 @@ const DrawingCanvas = ({
   const [labelValue, setLabelValue] = useState(3);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const stageRef = useRef(null);
+  const drawLock = useRef(false);
+
 
   // Prevent body scroll during drawing
   useEffect(() => {
@@ -147,15 +149,20 @@ const DrawingCanvas = ({
 
   // Optimized pointer handlers with useCallback
   const onPointerDown = useCallback((e) => {
+    if (drawLock.current) return;
     handlePointerDown(e, lines, setLines, isDrawing);
   }, [lines]);
 
   const onPointerMove = useCallback((e) => {
+    if (drawLock.current) return;
     handlePointerMove(e, lines, setLines, isDrawing);
   }, [lines]);
 
-  const onPointerUp = useCallback(() => {
-    handlePointerUp(
+  const onPointerUp = useCallback(async () => {
+    if (drawLock.current) return; // prevent double trigger
+    drawLock.current = true;       // 🔒 lock drawing
+
+    await handlePointerUp(
       mapRef,
       lines,
       setLines,
@@ -170,6 +177,12 @@ const DrawingCanvas = ({
       isDarkMode,
       () => setShowProjectModal(true)
     );
+
+    // small cooldown to prevent instant re-click
+    setTimeout(() => {
+      drawLock.current = false;   // 🔓 unlock drawing
+    }, 50); // adjust cooldown ms if needed
+
   }, [
     mapRef,
     lines,
