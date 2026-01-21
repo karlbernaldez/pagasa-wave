@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { removeFeature } from "./utils/layerUtils";
-import { Layers, ChevronDown, Plus, Eye, EyeOff, Lock, Unlock, Trash2, GripVertical, Edit2, Check, X } from 'lucide-react';
+import { Layers, ChevronDown, ChevronRight, Plus, Eye, EyeOff, Lock, Unlock, Trash2, GripVertical, Edit2, Check, X } from 'lucide-react';
 import { addGeoJsonLayer, toggleLayerVisibility, toggleLayerLock, removeLayer, updateLayerName, handleDragStart, handleDragOver, handleDrop, setActiveLayerOnMap } from "./utils/layerUtils";
 import Modal from "@/components/ui/modals/MapNotReady";
 import Swal from 'sweetalert2';
@@ -21,54 +21,169 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   const fileInputRef = useRef();
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
 
-  // System layer states
-  const [showPAR, setShowPAR] = useState(false);
-  const [showSatellite, setShowSatellite] = useState(false);
-  const [showTCID, setShowTCID] = useState(false);
-  const [showTCAD, setShowTCAD] = useState(false);
-  const [showSHIPPINGZONE, setShowSHIPPINGZONE] = useState(false);
-  const [showWindLayer, setShowWindLayer] = useState(false);
+  // System layer group expansion states
+  const [expandedGroups, setExpandedGroups] = useState({
+    domains: true,
+    utilities: true,
+    satellite: true,
+    wind: true,
+    wave: true
+  });
 
-  // Initialize misc layers from localStorage
+  // Multi-select layer states (Domains)
+  const [domainLayers, setDomainLayers] = useState({
+    PAR: false,
+    TCID: false,
+    TCAD: false
+  });
+
+  // Utilities layer states
+  const [utilitiesLayers, setUtilitiesLayers] = useState({
+    GRATICULES: false,
+    SHIPPING_ZONE: false
+  });
+
+  // Single-select layer states (Satellite)
+  const [satelliteLayer, setSatelliteLayer] = useState(false);
+
+  // Wind Layer configuration
+  const [windConfig, setWindConfig] = useState({
+    enabled: false,
+    model: 'ECMWF', // GFS, ECMWF, NOAA, etc.
+    elements: {
+      particles: false,
+      rasterMap: false,
+      windBarbs: false
+    }
+  });
+
+  // Wave Layer configuration
+  const [waveConfig, setWaveConfig] = useState({
+    enabled: false,
+    model: 'SWAN', // SWAN, WW3, etc.
+    elements: {
+      particles: false,
+      rasterMap: false,
+      waveDirection: false,
+      wavePeriod: false
+    }
+  });
+
+  // Initialize layers from localStorage
   useEffect(() => {
-    const layersState = {
+    const savedDomains = {
       PAR: localStorage.getItem('PAR') === 'true',
-      Satellite: localStorage.getItem('Satellite') === 'true',
       TCID: localStorage.getItem('TCID') === 'true',
-      TCAD: localStorage.getItem('TCAD') === 'true',
-      ShippingZonestate: localStorage.getItem('SHIPPING_ZONE') === 'true',
-      WindLayer: localStorage.getItem('wind-layer') === 'true',
+      TCAD: localStorage.getItem('TCAD') === 'true'
     };
 
-    setShowPAR(layersState.PAR);
-    setShowSatellite(layersState.Satellite);
-    setShowTCID(layersState.TCID);
-    setShowTCAD(layersState.TCAD);
-    setShowSHIPPINGZONE(layersState.ShippingZonestate);
-    setShowWindLayer(layersState.WindLayer);
+    const savedUtilities = {
+      GRATICULES: localStorage.getItem('GRATICULES') === 'true',
+      SHIPPING_ZONE: localStorage.getItem('SHIPPING_ZONE') === 'true'
+    };
+
+    const savedSatellite = localStorage.getItem('SATELLITE') === 'true';
+
+    const savedWind = {
+      enabled: localStorage.getItem('WIND_ENABLED') === 'true',
+      model: localStorage.getItem('WIND_MODEL') || 'ECMWF',
+      elements: {
+        particles: localStorage.getItem('WIND_PARTICLES') === 'true',
+        rasterMap: localStorage.getItem('WIND_RASTER') === 'true',
+        windBarbs: localStorage.getItem('WIND_BARBS') === 'true'
+      }
+    };
+
+    const savedWave = {
+      enabled: localStorage.getItem('WAVE_ENABLED') === 'true',
+      model: localStorage.getItem('WAVE_MODEL') || 'SWAN',
+      elements: {
+        particles: localStorage.getItem('WAVE_PARTICLES') === 'true',
+        rasterMap: localStorage.getItem('WAVE_RASTER') === 'true',
+        waveDirection: localStorage.getItem('WAVE_DIRECTION') === 'true',
+        wavePeriod: localStorage.getItem('WAVE_PERIOD') === 'true'
+      }
+    };
+
+    setDomainLayers(savedDomains);
+    setUtilitiesLayers(savedUtilities);
+    setSatelliteLayer(savedSatellite);
+    setWindConfig(savedWind);
+    setWaveConfig(savedWave);
 
     if (mapRef.current) {
       mapRef.current.on('load', () => {
-        mapRef.current.setLayoutProperty('PAR', 'visibility', layersState.PAR ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('PAR_dash', 'visibility', layersState.PAR ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('Satellite', 'visibility', layersState.Satellite ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('TCID', 'visibility', layersState.TCID ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('TCAD', 'visibility', layersState.TCAD ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('graticules', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('graticules_blur', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', layersState.ShippingZonestate ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('wind-layer', 'visibility', layersState.WindLayer ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('wind-speed-layer', 'visibility', layersState.WindLayer ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('wind-arrows', 'visibility', layersState.WindLayer ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('wind-labels', 'visibility', layersState.WindLayer ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('wave-arrows', 'visibility', layersState.WindLayer ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('wave-period-labels', 'visibility', layersState.WindLayer ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('glass-fill', 'visibility', layersState.WindLayer ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('glass-stroke', 'visibility', layersState.WindLayer ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('glass-depth', 'visibility', layersState.WindLayer ? 'visible' : 'none');
+        // Apply domain layers
+        mapRef.current.setLayoutProperty('PAR', 'visibility', savedDomains.PAR ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('PAR_dash', 'visibility', savedDomains.PAR ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('TCID', 'visibility', savedDomains.TCID ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('TCAD', 'visibility', savedDomains.TCAD ? 'visible' : 'none');
+
+        // Apply utilities layers
+        mapRef.current.setLayoutProperty('graticules', 'visibility', savedUtilities.GRATICULES ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('graticules_blur', 'visibility', savedUtilities.GRATICULES ? 'visible' : 'none');
+
+        mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', savedUtilities.SHIPPING_ZONE ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', savedUtilities.SHIPPING_ZONE ? 'visible' : 'none');
+        mapRef.current.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', savedUtilities.SHIPPING_ZONE ? 'visible' : 'none');
+
+        // Apply satellite layer
+        mapRef.current.setLayoutProperty('Satellite', 'visibility', savedSatellite ? 'visible' : 'none');
+
+        // Apply wind layers
+        if (savedWind.enabled) {
+          applyWindLayers(savedWind);
+        }
+
+        // Apply wave layers
+        if (savedWave.enabled) {
+          applyWaveLayers(savedWave);
+        }
       });
     }
   }, [mapRef]);
+
+  const applyWindLayers = (config) => {
+
+    console.log(config)
+    if (!mapRef.current) return;
+
+    const { elements } = config;
+
+    // Wind particles
+    mapRef.current.setLayoutProperty('wind-layer', 'visibility', elements.particles ? 'visible' : 'none');
+
+    // Wind raster map
+    mapRef.current.setLayoutProperty('wind-speed-layer', 'visibility', elements.rasterMap ? 'visible' : 'none');
+
+    // Wind barbs
+    mapRef.current.setLayoutProperty('wind-arrows', 'visibility', elements.windBarbs ? 'visible' : 'none');
+    mapRef.current.setLayoutProperty('wind-labels', 'visibility', elements.windBarbs ? 'visible' : 'none');
+
+    // Glass layers (base visualization for wind)
+    const showBase = elements.particles || elements.rasterMap || elements.windBarbs;
+    mapRef.current.setLayoutProperty('glass-fill', 'visibility', showBase ? 'visible' : 'none');
+    mapRef.current.setLayoutProperty('glass-stroke', 'visibility', showBase ? 'visible' : 'none');
+    mapRef.current.setLayoutProperty('glass-depth', 'visibility', showBase ? 'visible' : 'none');
+  };
+
+  const applyWaveLayers = (config) => {
+    if (!mapRef.current) return;
+
+    const { elements } = config;
+
+    // Wave particles (if you have a separate wave particle layer)
+    // mapRef.current.setLayoutProperty('wave-particle-layer', 'visibility', elements.particles ? 'visible' : 'none');
+
+    // Wave raster map (if you have a separate wave height raster)
+    // mapRef.current.setLayoutProperty('wave-height-layer', 'visibility', elements.rasterMap ? 'visible' : 'none');
+
+    // Wave direction arrows
+    mapRef.current.setLayoutProperty('wave-arrows', 'visibility', elements.waveDirection ? 'visible' : 'none');
+
+    // Wave period labels
+    mapRef.current.setLayoutProperty('wave-period-labels', 'visibility', elements.wavePeriod ? 'visible' : 'none');
+  };
 
   const handleGeoJSONUpload = (event) => {
     const file = event.target.files[0];
@@ -98,7 +213,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     });
   };
 
-  const toggleMiscLayer = (layer) => {
+  const checkProjectId = () => {
     const projectId = localStorage.getItem('projectId');
     if (!projectId) {
       Swal.fire({
@@ -116,84 +231,177 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           title: 'swal-toast-title'
         }
       });
-      return;
+      return false;
     }
-
-    switch (layer) {
-      case 'PAR':
-        setShowPAR(prev => {
-          const newState = !prev;
-          localStorage.setItem('PAR', newState.toString());
-          mapRef.current?.setLayoutProperty('PAR', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current?.setLayoutProperty('PAR_dash', 'visibility', newState ? 'visible' : 'none');
-          return newState;
-        });
-        break;
-      case 'Satellite':
-        setShowSatellite(prev => {
-          const newState = !prev;
-          localStorage.setItem('Satellite', newState.toString());
-          mapRef.current?.setLayoutProperty('Satellite', 'visibility', newState ? 'visible' : 'none');
-          return newState;
-        });
-        break;
-      case 'TCID':
-        setShowTCID(prev => {
-          const newState = !prev;
-          localStorage.setItem('TCID', newState.toString());
-          mapRef.current?.setLayoutProperty('TCID', 'visibility', newState ? 'visible' : 'none');
-          return newState;
-        });
-        break;
-      case 'TCAD':
-        setShowTCAD(prev => {
-          const newState = !prev;
-          localStorage.setItem('TCAD', newState.toString());
-          mapRef.current?.setLayoutProperty('TCAD', 'visibility', newState ? 'visible' : 'none');
-          return newState;
-        });
-        break;
-      case 'SHIPPING_ZONE':
-        setShowSHIPPINGZONE(prev => {
-          const newState = !prev;
-          localStorage.setItem('SHIPPING_ZONE', newState.toString());
-          mapRef.current?.setLayoutProperty('graticules', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current?.setLayoutProperty('graticules_blur', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current?.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current?.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('wind-arrows', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('wind-labels', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('wave-arrows', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('wave-period-labels', 'visibility', newState ? 'visible' : 'none');
-          return newState;
-        });
-        break;
-      case 'Wind Layer':
-        setShowWindLayer(prev => {
-          const newState = !prev;
-          localStorage.setItem('wind-layer', newState.toString());
-          mapRef.current?.setLayoutProperty('wind-layer', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current?.setLayoutProperty('wind-solarstorm-layer', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('glass-fill', 'visibility', newState ? 'visible' : 'none');
-          mapRef.current.setLayoutProperty('glass-depth', 'visibility', newState ? 'visible' : 'none');
-          return newState;
-        });
-        break;
-      default:
-        break;
-    }
+    return true;
   };
 
-  const systemLayers = [
-    { id: 'PAR', name: 'PAR', subtitle: 'Philippine Area of Responsibility', visible: showPAR, icon: '🗺️' },
-    { id: 'Satellite', name: 'Satellite', subtitle: 'Himawari Satellite Image', visible: showSatellite, icon: '🛰️' },
-    { id: 'TCID', name: 'TCID', subtitle: 'Tropical Cyclone Info Domain', visible: showTCID, icon: '🌀' },
-    { id: 'TCAD', name: 'TCAD', subtitle: 'Tropical Cyclone Advisory Domain', visible: showTCAD, icon: '⚠️' },
-    { id: 'SHIPPING_ZONE', name: 'Graticules, Wave & Wind', subtitle: 'Graticules and Wave and Wind Elements', visible: showSHIPPINGZONE, icon: '🌊' },
-    { id: 'Wind Layer', name: 'Wind Layer', subtitle: 'Wind Speed & Direction', visible: showWindLayer, icon: '💨' }
-  ];
+  const toggleDomainLayer = (layerId) => {
+    if (!checkProjectId()) return;
 
-  const visibleCount = layers.filter(l => l.visible).length + systemLayers.filter(l => l.visible).length;
+    setDomainLayers(prev => {
+      const newState = { ...prev, [layerId]: !prev[layerId] };
+      localStorage.setItem(layerId, newState[layerId].toString());
+
+      // Apply to map
+      if (mapRef.current) {
+        switch (layerId) {
+          case 'PAR':
+            mapRef.current.setLayoutProperty('PAR', 'visibility', newState.PAR ? 'visible' : 'none');
+            mapRef.current.setLayoutProperty('PAR_dash', 'visibility', newState.PAR ? 'visible' : 'none');
+            break;
+          case 'TCID':
+            mapRef.current.setLayoutProperty('TCID', 'visibility', newState.TCID ? 'visible' : 'none');
+            break;
+          case 'TCAD':
+            mapRef.current.setLayoutProperty('TCAD', 'visibility', newState.TCAD ? 'visible' : 'none');
+            break;
+        }
+      }
+
+      return newState;
+    });
+  };
+
+  const toggleUtilityLayer = (layerId) => {
+    if (!checkProjectId()) return;
+
+    setUtilitiesLayers(prev => {
+      const newState = { ...prev, [layerId]: !prev[layerId] };
+      localStorage.setItem(layerId, newState[layerId].toString());
+
+      // Apply to map
+      if (mapRef.current) {
+        switch (layerId) {
+          case 'GRATICULES':
+            mapRef.current.setLayoutProperty('graticules', 'visibility', newState.GRATICULES ? 'visible' : 'none');
+            mapRef.current.setLayoutProperty('graticules_blur', 'visibility', newState.GRATICULES ? 'visible' : 'none');
+            break;
+          case 'SHIPPING_ZONE':
+            mapRef.current.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', newState.SHIPPING_ZONE ? 'visible' : 'none');
+            mapRef.current.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', newState.SHIPPING_ZONE ? 'visible' : 'none');
+            mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', newState.SHIPPING_ZONE ? 'visible' : 'none');
+            break;
+        }
+      }
+
+      return newState;
+    });
+  };
+
+  const toggleSatelliteLayer = () => {
+    if (!checkProjectId()) return;
+
+    setSatelliteLayer(prev => {
+      const newState = !prev;
+      localStorage.setItem('SATELLITE', newState.toString());
+      mapRef.current?.setLayoutProperty('Satellite', 'visibility', newState ? 'visible' : 'none');
+      return newState;
+    });
+  };
+
+  const toggleWindLayer = () => {
+    if (!checkProjectId()) return;
+
+    setWindConfig(prev => {
+      const newState = { ...prev, enabled: !prev.enabled };
+      localStorage.setItem('WIND_ENABLED', newState.enabled.toString());
+
+      if (!newState.enabled) {
+        // Turn off all elements when disabled
+        applyWindLayers({ elements: { particles: false, rasterMap: false, windBarbs: false } });
+      } else {
+        applyWindLayers(newState);
+      }
+
+      return newState;
+    });
+  };
+
+  const toggleWindElement = (element) => {
+    setWindConfig(prev => {
+      const newState = {
+        ...prev,
+        elements: {
+          ...prev.elements,
+          [element]: !prev.elements[element]
+        }
+      };
+
+      localStorage.setItem(`WIND_${element.toUpperCase()}`, newState.elements[element].toString());
+      applyWindLayers(newState);
+
+      return newState;
+    });
+  };
+
+  const setWindModel = (model) => {
+    setWindConfig(prev => {
+      const newState = { ...prev, model };
+      localStorage.setItem('WIND_MODEL', model);
+      return newState;
+    });
+  };
+
+  const toggleWaveLayer = () => {
+    if (!checkProjectId()) return;
+
+    setWaveConfig(prev => {
+      const newState = { ...prev, enabled: !prev.enabled };
+      localStorage.setItem('WAVE_ENABLED', newState.enabled.toString());
+
+      if (!newState.enabled) {
+        // Turn off all elements when disabled
+        applyWaveLayers({ elements: { particles: false, rasterMap: false, waveDirection: false, wavePeriod: false } });
+      } else {
+        applyWaveLayers(newState);
+      }
+
+      return newState;
+    });
+  };
+
+  const toggleWaveElement = (element) => {
+    setWaveConfig(prev => {
+      const newState = {
+        ...prev,
+        elements: {
+          ...prev.elements,
+          [element]: !prev.elements[element]
+        }
+      };
+
+      localStorage.setItem(`WAVE_${element.toUpperCase()}`, newState.elements[element].toString());
+      applyWaveLayers(newState);
+
+      return newState;
+    });
+  };
+
+  const setWaveModel = (model) => {
+    setWaveConfig(prev => {
+      const newState = { ...prev, model };
+      localStorage.setItem('WAVE_MODEL', model);
+      return newState;
+    });
+  };
+
+  const toggleGroupExpansion = (groupId) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }));
+  };
+
+  // Calculate active system layers count
+  const activeSystemLayersCount =
+    Object.values(domainLayers).filter(Boolean).length +
+    Object.values(utilitiesLayers).filter(Boolean).length +
+    (satelliteLayer ? 1 : 0) +
+    (windConfig.enabled ? 1 : 0) +
+    (waveConfig.enabled ? 1 : 0);
+
+  const visibleCount = layers.filter(l => l.visible).length + activeSystemLayersCount;
 
   const startEditing = (layer) => {
     setEditingLayerId(layer.id);
@@ -201,12 +409,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   };
 
   const saveEdit = () => {
-    if (!editingName.trim()) return; // Don't proceed if empty
-
-    // Update the layer name
+    if (!editingName.trim()) return;
     updateLayerName(editingLayerId, editingName, setLayers, mapRef.current);
-
-    // Reset editing state
     setEditingLayerId(null);
     setEditingName("");
   };
@@ -474,7 +678,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                   </span>
                   <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isDarkMode ? 'bg-white/10 text-white/70' : 'bg-black/10 text-slate-700'
                     }`}>
-                    {systemLayers.filter(l => l.visible).length}
+                    {activeSystemLayersCount}
                   </div>
                 </div>
                 <ChevronDown
@@ -486,12 +690,155 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
               </button>
 
               {systemLayersExpanded && (
-                <div className="space-y-1">
-                  {systemLayers.map((layer) => (
+                <div className="space-y-2">
+                  {/* Domains Group (Multi-select) */}
+                  <div className={`rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
                     <button
-                      key={layer.id}
-                      onClick={() => toggleMiscLayer(layer.id)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-200 ${layer.visible
+                      onClick={() => toggleGroupExpansion('domains')}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🗺️</span>
+                        <span className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'
+                          }`}>
+                          Domains
+                        </span>
+                        <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isDarkMode ? 'bg-white/10 text-white/60' : 'bg-black/10 text-slate-600'
+                          }`}>
+                          {Object.values(domainLayers).filter(Boolean).length}
+                        </div>
+                      </div>
+                      {expandedGroups.domains ? (
+                        <ChevronDown size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      ) : (
+                        <ChevronRight size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      )}
+                    </button>
+
+                    {expandedGroups.domains && (
+                      <div className="px-2 pb-2 space-y-1">
+                        {[
+                          { id: 'PAR', name: 'PAR', subtitle: 'Philippine Area of Responsibility' },
+                          { id: 'TCID', name: 'TCID', subtitle: 'Tropical Cyclone Info Domain' },
+                          { id: 'TCAD', name: 'TCAD', subtitle: 'Tropical Cyclone Advisory Domain' }
+                        ].map((domain) => (
+                          <button
+                            key={domain.id}
+                            onClick={() => toggleDomainLayer(domain.id)}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded transition-all ${domainLayers[domain.id]
+                              ? isDarkMode
+                                ? 'bg-cyan-400/10 border border-cyan-400/30'
+                                : 'bg-blue-500/10 border border-blue-500/30'
+                              : isDarkMode
+                                ? 'bg-white/5 hover:bg-white/10 border border-transparent'
+                                : 'bg-black/5 hover:bg-black/10 border border-transparent'
+                              }`}
+                          >
+                            <div className={`w-3 h-3 rounded border-2 flex items-center justify-center flex-shrink-0 ${domainLayers[domain.id]
+                              ? isDarkMode
+                                ? 'bg-cyan-400 border-cyan-400'
+                                : 'bg-blue-600 border-blue-600'
+                              : isDarkMode
+                                ? 'border-white/30'
+                                : 'border-slate-300'
+                              }`}>
+                              {domainLayers[domain.id] && (
+                                <Check size={10} className="text-white" strokeWidth={3} />
+                              )}
+                            </div>
+                            <div className="flex-1 text-left min-w-0">
+                              <div className={`text-xs font-medium truncate ${isDarkMode ? 'text-white/90' : 'text-slate-800'
+                                }`}>
+                                {domain.name}
+                              </div>
+                              <div className={`text-[10px] truncate ${isDarkMode ? 'text-white/40' : 'text-slate-500'
+                                }`}>
+                                {domain.subtitle}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Utilities Group (Multi-select) */}
+                  <div className={`rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                    <button
+                      onClick={() => toggleGroupExpansion('utilities')}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🛠️</span>
+                        <span className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'
+                          }`}>
+                          Utilities
+                        </span>
+                        <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isDarkMode ? 'bg-white/10 text-white/60' : 'bg-black/10 text-slate-600'
+                          }`}>
+                          {Object.values(utilitiesLayers).filter(Boolean).length}
+                        </div>
+                      </div>
+                      {expandedGroups.utilities ? (
+                        <ChevronDown size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      ) : (
+                        <ChevronRight size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      )}
+                    </button>
+
+                    {expandedGroups.utilities && (
+                      <div className="px-2 pb-2 space-y-1">
+                        {[
+                          { id: 'GRATICULES', name: 'Graticules', subtitle: 'Coordinate Grid Lines' },
+                          { id: 'SHIPPING_ZONE', name: 'Shipping Zones', subtitle: 'Maritime Shipping Areas' }
+                        ].map((utility) => (
+                          <button
+                            key={utility.id}
+                            onClick={() => toggleUtilityLayer(utility.id)}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded transition-all ${utilitiesLayers[utility.id]
+                              ? isDarkMode
+                                ? 'bg-cyan-400/10 border border-cyan-400/30'
+                                : 'bg-blue-500/10 border border-blue-500/30'
+                              : isDarkMode
+                                ? 'bg-white/5 hover:bg-white/10 border border-transparent'
+                                : 'bg-black/5 hover:bg-black/10 border border-transparent'
+                              }`}
+                          >
+                            <div className={`w-3 h-3 rounded border-2 flex items-center justify-center flex-shrink-0 ${utilitiesLayers[utility.id]
+                              ? isDarkMode
+                                ? 'bg-cyan-400 border-cyan-400'
+                                : 'bg-blue-600 border-blue-600'
+                              : isDarkMode
+                                ? 'border-white/30'
+                                : 'border-slate-300'
+                              }`}>
+                              {utilitiesLayers[utility.id] && (
+                                <Check size={10} className="text-white" strokeWidth={3} />
+                              )}
+                            </div>
+                            <div className="flex-1 text-left min-w-0">
+                              <div className={`text-xs font-medium truncate ${isDarkMode ? 'text-white/90' : 'text-slate-800'
+                                }`}>
+                                {utility.name}
+                              </div>
+                              <div className={`text-[10px] truncate ${isDarkMode ? 'text-white/40' : 'text-slate-500'
+                                }`}>
+                                {utility.subtitle}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Satellite Layer (Single-select) */}
+                  <div className={`rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                    <button
+                      onClick={toggleSatelliteLayer}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all ${satelliteLayer
                         ? isDarkMode
                           ? 'bg-cyan-400/10 border border-cyan-400/30'
                           : 'bg-blue-500/10 border border-blue-500/30'
@@ -500,29 +847,229 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                           : 'bg-black/5 hover:bg-black/10 border border-transparent'
                         }`}
                     >
-                      <div className={`text-lg leading-none flex-shrink-0`}>
-                        {layer.icon}
-                      </div>
-
+                      <div className="text-lg leading-none flex-shrink-0">🛰️</div>
                       <div className="flex-1 text-left min-w-0">
-                        <div className={`text-xs font-semibold truncate ${layer.visible
+                        <div className={`text-xs font-semibold truncate ${satelliteLayer
                           ? isDarkMode ? 'text-cyan-300' : 'text-blue-700'
                           : isDarkMode ? 'text-white/80' : 'text-slate-700'
                           }`}>
-                          {layer.name}
+                          Satellite
                         </div>
                         <div className={`text-[10px] font-medium truncate ${isDarkMode ? 'text-white/40' : 'text-slate-500'
                           }`}>
-                          {layer.subtitle}
+                          Himawari Satellite Image
                         </div>
                       </div>
-
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${layer.visible
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${satelliteLayer
                         ? isDarkMode ? 'bg-cyan-400' : 'bg-blue-600'
                         : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
                         }`} />
                     </button>
-                  ))}
+                  </div>
+
+                  {/* Wind Layer (Configurable) */}
+                  <div className={`rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                    <div className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg">
+                      <button
+                        onClick={() => toggleGroupExpansion('wind')}
+                        className={`flex-1 flex items-center gap-2 text-left ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
+                      >
+                        <span className="text-base">💨</span>
+                        <div className="flex-1">
+                          <div className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'}`}>Wind</div>
+                          <div className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>
+                            {windConfig.enabled ? `${windConfig.model} Model` : 'Disabled'}
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={toggleWindLayer}
+                        className={`w-2 h-2 rounded-full flex-shrink-0 ${windConfig.enabled
+                          ? isDarkMode ? 'bg-cyan-400' : 'bg-blue-600'
+                          : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
+                          }`}
+                      />
+
+                      {expandedGroups.wind ? (
+                        <ChevronDown size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      ) : (
+                        <ChevronRight size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      )}
+                    </div>
+
+                    {expandedGroups.wind && windConfig.enabled && (
+                      <div className="px-2 pb-2 space-y-2">
+                        {/* Model Selection - Dropdown */}
+                        <div className="space-y-1">
+                          <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
+                            }`}>
+                            Model
+                          </div>
+                          <select
+                            value={windConfig.model}
+                            onChange={(e) => setWindModel(e.target.value)}
+                            className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-all ${isDarkMode
+                              ? 'bg-white/10 text-white border border-white/20 hover:bg-white/15'
+                              : 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50'
+                              } outline-none focus:ring-2 focus:ring-cyan-400`}
+                          >
+                            <option value="GFS">GFS (Global Forecast System)</option>
+                            <option value="ECMWF">ECMWF (European Centre)</option>
+                            <option value="NOAA">NOAA (National Oceanic)</option>
+                            <option value="NAM">NAM (North American Mesoscale)</option>
+                            <option value="HRRR">HRRR (High-Resolution Rapid)</option>
+                          </select>
+                        </div>
+
+                        {/* Elements */}
+                        <div className="space-y-1">
+                          <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
+                            }`}>
+                            Elements
+                          </div>
+                          {[
+                            { id: 'particles', name: 'Particles', icon: '✨' },
+                            { id: 'rasterMap', name: 'Raster Map', icon: '🗾' },
+                            { id: 'windBarbs', name: 'Wind Barbs', icon: '🎐' }
+                          ].map((element) => (
+                            <button
+                              key={element.id}
+                              onClick={() => toggleWindElement(element.id)}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded transition-all ${windConfig.elements[element.id]
+                                ? isDarkMode
+                                  ? 'bg-cyan-400/10 border border-cyan-400/30'
+                                  : 'bg-blue-500/10 border border-blue-500/30'
+                                : isDarkMode
+                                  ? 'bg-white/5 hover:bg-white/10 border border-transparent'
+                                  : 'bg-black/5 hover:bg-black/10 border border-transparent'
+                                }`}
+                            >
+                              <div className={`w-3 h-3 rounded border-2 flex items-center justify-center flex-shrink-0 ${windConfig.elements[element.id]
+                                ? isDarkMode
+                                  ? 'bg-cyan-400 border-cyan-400'
+                                  : 'bg-blue-600 border-blue-600'
+                                : isDarkMode
+                                  ? 'border-white/30'
+                                  : 'border-slate-300'
+                                }`}>
+                                {windConfig.elements[element.id] && (
+                                  <Check size={10} className="text-white" strokeWidth={3} />
+                                )}
+                              </div>
+                              <span className="text-xs mr-1">{element.icon}</span>
+                              <div className={`text-xs font-medium flex-1 text-left ${isDarkMode ? 'text-white/90' : 'text-slate-800'
+                                }`}>
+                                {element.name}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Wave Layer (Configurable) */}
+                  <div className={`rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                    <div className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg">
+                      <button
+                        onClick={() => toggleGroupExpansion('wave')}
+                        className={`flex-1 flex items-center gap-2 text-left ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
+                      >
+                        <span className="text-base">🌊</span>
+                        <div className="flex-1">
+                          <div className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'}`}>Wave</div>
+                          <div className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>
+                            {waveConfig.enabled ? `${waveConfig.model} Model` : 'Disabled'}
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={toggleWaveLayer}
+                        className={`w-2 h-2 rounded-full flex-shrink-0 ${waveConfig.enabled
+                          ? isDarkMode ? 'bg-cyan-400' : 'bg-blue-600'
+                          : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
+                          }`}
+                      />
+
+                      {expandedGroups.wave ? (
+                        <ChevronDown size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      ) : (
+                        <ChevronRight size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      )}
+                    </div>
+
+                    {expandedGroups.wave && waveConfig.enabled && (
+                      <div className="px-2 pb-2 space-y-2">
+                        {/* Model Selection - Dropdown */}
+                        <div className="space-y-1">
+                          <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
+                            }`}>
+                            Model
+                          </div>
+                          <select
+                            value={waveConfig.model}
+                            onChange={(e) => setWaveModel(e.target.value)}
+                            className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-all ${isDarkMode
+                              ? 'bg-white/10 text-white border border-white/20 hover:bg-white/15'
+                              : 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50'
+                              } outline-none focus:ring-2 focus:ring-cyan-400`}
+                          >
+                            <option value="SWAN">SWAN (Simulating Waves)</option>
+                            <option value="WW3">WW3 (WaveWatch III)</option>
+                            <option value="WAM">WAM (Wave Model)</option>
+                            <option value="STWAVE">STWAVE (Steady-State Wave)</option>
+                          </select>
+                        </div>
+
+                        {/* Elements */}
+                        <div className="space-y-1">
+                          <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
+                            }`}>
+                            Elements
+                          </div>
+                          {[
+                            { id: 'particles', name: 'Particles', icon: '✨' },
+                            { id: 'rasterMap', name: 'Raster Map', icon: '🗾' },
+                            { id: 'waveDirection', name: 'Wave Direction', icon: '➡️' },
+                            { id: 'wavePeriod', name: 'Mean Period', icon: '⏱️' }
+                          ].map((element) => (
+                            <button
+                              key={element.id}
+                              onClick={() => toggleWaveElement(element.id)}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded transition-all ${waveConfig.elements[element.id]
+                                ? isDarkMode
+                                  ? 'bg-cyan-400/10 border border-cyan-400/30'
+                                  : 'bg-blue-500/10 border border-blue-500/30'
+                                : isDarkMode
+                                  ? 'bg-white/5 hover:bg-white/10 border border-transparent'
+                                  : 'bg-black/5 hover:bg-black/10 border border-transparent'
+                                }`}
+                            >
+                              <div className={`w-3 h-3 rounded border-2 flex items-center justify-center flex-shrink-0 ${waveConfig.elements[element.id]
+                                ? isDarkMode
+                                  ? 'bg-cyan-400 border-cyan-400'
+                                  : 'bg-blue-600 border-blue-600'
+                                : isDarkMode
+                                  ? 'border-white/30'
+                                  : 'border-slate-300'
+                                }`}>
+                                {waveConfig.elements[element.id] && (
+                                  <Check size={10} className="text-white" strokeWidth={3} />
+                                )}
+                              </div>
+                              <span className="text-xs mr-1">{element.icon}</span>
+                              <div className={`text-xs font-medium flex-1 text-left ${isDarkMode ? 'text-white/90' : 'text-slate-800'
+                                }`}>
+                                {element.name}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

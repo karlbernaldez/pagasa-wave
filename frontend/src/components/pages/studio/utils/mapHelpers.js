@@ -1,6 +1,6 @@
 export async function fetchLatestGeoJSON() {
   try {
-    const res = await fetch('/geojson/today.geojson');
+    const res = await fetch('/geojson/ecmwf-today.geojson');
     if (!res.ok) throw new Error(`Failed to fetch GeoJSON: ${res.status}`);
     return await res.json();
   } catch (err) {

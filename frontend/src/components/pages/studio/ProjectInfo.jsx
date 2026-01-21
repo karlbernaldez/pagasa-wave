@@ -1,23 +1,17 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import Swal from 'sweetalert2';
-import withReactContent from 'sweetalert2-react-content';
-import { FolderOpen, Edit2, Calendar, BarChart3, Plus, Eye, Check, X } from 'lucide-react';
+import { FolderOpen, Edit2, Calendar, BarChart3, Check, X } from 'lucide-react';
 import { fetchProjectById, updateProjectById, deleteProjectById } from "@/api/projectAPI";
 import NoProjectsModal from '@/components/ui/modals/NoProjectAlert.jsx';
-
-const MySwal = withReactContent(Swal);
 
 // In-memory cache
 const projectCache = {};
 
-const ProjectInfo = ({
-  blink, projectId, setShowModal, onView,
-  isDarkMode, setIsLoading, menuOpen
-}) => {
+const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading, menuOpen }) => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedChart, setEditedChart] = useState('');

@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
     visualizer.process_all(
         input_path="wind_speed.tif",
-        tif_solar="wind_solarstorm.tif",
-        tif_dark="wind_darkstorm.tif",
-        preview_png="wind_dual_preview.png"
+        tif_solar="ecmwf_light.tif",
+        tif_dark="ecmwf_dark.tif",
+        preview_png="ecmwf_prev.png"
     )
