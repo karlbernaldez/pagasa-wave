@@ -23,11 +23,20 @@ export async function addWindLayer(map, isDarkMode) {
 
   // Add sources
   if (!map.getSource(sourceId)) {
+    // map.addSource(sourceId, {
+    //   type: "raster",
+    //   url: `${tileset}?fresh=${Date.now()}`,
+    //   tileSize: 4096,
+    // });
+
     map.addSource(sourceId, {
-      type: "raster",
-      url: `${tileset}?fresh=${Date.now()}`,
-      tileSize: 4096,
+      type: 'raster',
+      tiles: [
+        'http://34.45.182.236:5173/tiles/0112T00_hs/{z}/{x}/{y}.png'
+      ],
+      tileSize: 512
     });
+
   }
 
   if (!map.getSource("wind-particles")) {
@@ -47,7 +56,6 @@ export async function addWindLayer(map, isDarkMode) {
 
   if (!map.getSource('wind-points')) {
     map.addSource('wind-points', { type: 'geojson', data: windData });
-    console.log('Wind Points Added')
   }
 
   // Add layers (modularized)
@@ -65,8 +73,8 @@ function addRasterLayer(map, sourceId) {
     id: "wind-solarstorm-layer",
     type: "raster",
     source: sourceId,
-    paint: { "raster-opacity": 0.8, "raster-fade-duration": 100 },
-  }, "country-boundaries");
+    paint: { "raster-opacity": 1, "raster-fade-duration": 100,  },
+  }, "graticules");
 }
 
 function addWindParticlesLayer(map) {

@@ -1,172 +1,158 @@
-import { useEffect } from "react";
-import { motion, AnimatePresence } from 'framer-motion';
-import { Lock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // <-- import navigation
+import { useEffect } from 'react';
+import { Lock, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-const AccessDeniedModal = ({ isOpen, onClose, theme = 'dark' }) => {
-  const isDark = theme === 'dark';
-  const navigate = useNavigate(); // <-- react-router navigation
+const AccessDeniedModal = ({ isOpen, onClose, isDarkMode = true }) => {
+  const navigate = useNavigate();
 
   const handleCancel = () => {
-    navigate('/'); // go to home
+    navigate('/');
   };
 
   useEffect(() => {
-    document.title = "Access Denied";
-  }, []);
+    if (isOpen) {
+      document.title = "Access Denied";
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
-          {/* Animated Background */}
-          <motion.div
-            className={`absolute inset-0 backdrop-blur-md ${isDark
-                ? 'bg-gradient-to-br from-slate-900/60 via-blue-900/40 to-slate-900/60'
-                : 'bg-white/5'
-              }`}
-            initial={{ backdropFilter: 'blur(0px)' }}
-            animate={{ backdropFilter: 'blur(12px)' }}
-            exit={{ backdropFilter: 'blur(0px)' }}
-          />
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={handleBackdropClick}
+    >
+      {/* Backdrop with animated gradient */}
+      <div className={`absolute inset-0 backdrop-blur-md transition-all duration-500 ${
+        isDarkMode 
+          ? 'bg-gradient-to-br from-slate-900/70 via-red-900/30 to-slate-900/70' 
+          : 'bg-black/50'
+      }`} />
+      
+      {/* Modal */}
+      <div className={`relative w-full max-w-md rounded-2xl backdrop-blur-xl shadow-2xl transition-all duration-300 ${
+        isDarkMode
+          ? 'bg-[#0b1220]/60 border border-red-500/20'
+          : 'bg-white/70 border border-red-500/20'
+      }`}>
+        {/* Header */}
+        <div className={`flex items-center justify-between px-5 py-4 border-b ${
+          isDarkMode ? 'border-white/10' : 'border-black/10'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg relative ${
+              isDarkMode ? 'bg-red-500/20' : 'bg-red-500/20'
+            }`}>
+              <Lock 
+                size={20} 
+                strokeWidth={2.5}
+                className={isDarkMode ? 'text-red-400' : 'text-red-600'}
+              />
+              {/* Subtle pulse effect */}
+              <div className={`absolute inset-0 rounded-lg animate-pulse ${
+                isDarkMode ? 'bg-red-500/10' : 'bg-red-500/10'
+              }`} />
+            </div>
+            <div>
+              <div className={`text-base font-semibold tracking-wide ${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Access Denied
+              </div>
+              <div className={`text-xs mt-0.5 ${
+                isDarkMode ? 'text-white/50' : 'text-slate-600'
+              }`}>
+                Authentication required
+              </div>
+            </div>
+          </div>
+          
+          <button
+            onClick={onClose}
+            className={`p-1.5 rounded-lg transition hover:scale-110 ${
+              isDarkMode
+                ? 'hover:bg-white/10 text-white/50 hover:text-white'
+                : 'hover:bg-black/10 text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
+        </div>
 
-          {/* Floating Background Elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <motion.div
-              className={`absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl ${isDark
-                  ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20'
-                  : 'bg-white/10'
-                }`}
-              animate={{
-                x: [0, 50, -50, 0],
-                y: [0, -30, 30, 0],
-                scale: [1, 1.1, 0.9, 1]
-              }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            <motion.div
-              className={`absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-3xl ${isDark
-                  ? 'bg-gradient-to-r from-indigo-500/20 to-blue-500/20'
-                  : 'bg-white/10'
-                }`}
-              animate={{
-                x: [0, -40, 40, 0],
-                y: [0, 40, -40, 0],
-                scale: [1, 0.8, 1.2, 1]
-              }}
-              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-            />
+        {/* Content */}
+        <div className="p-6">
+          {/* Icon Display */}
+          <div className="flex justify-center mb-6">
+            <div className={`relative w-20 h-20 rounded-2xl flex items-center justify-center ${
+              isDarkMode ? 'bg-red-500/10 border border-red-500/30' : 'bg-red-500/10 border border-red-500/30'
+            }`}>
+              <Lock 
+                size={36} 
+                strokeWidth={2.5}
+                className={isDarkMode ? 'text-red-400' : 'text-red-600'}
+              />
+              {/* Glow effect */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-red-500/20 to-transparent blur-xl" />
+            </div>
           </div>
 
-          {/* Modal Container */}
-          <motion.div
-            className="relative backdrop-blur-2xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/20"
-            initial={{ scale: 0.8, y: 20, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.8, y: 20, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              boxShadow:
-                '0 25px 50px -12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            {/* Icon Container */}
-            <motion.div
-              className="relative mx-auto mb-6 w-20 h-20 rounded-2xl backdrop-blur-xl border border-red-500/30 flex items-center justify-center"
-              style={{ background: 'rgba(239, 68, 68, 0.1)' }}
-              animate={{
-                boxShadow: [
-                  '0 0 20px rgba(239, 68, 68, 0.3)',
-                  '0 0 40px rgba(239, 68, 68, 0.5)',
-                  '0 0 20px rgba(239, 68, 68, 0.3)'
-                ]
-              }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <motion.div
-                animate={{ rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <Lock size={32} className="text-red-400" />
-              </motion.div>
-
-              {/* Glow Effect */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-red-500/10 to-transparent blur-xl" />
-            </motion.div>
-
-            {/* Title */}
-            <motion.h2
-              className="text-2xl font-bold text-center mb-3 bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent"
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-            >
-              Access Denied
-            </motion.h2>
-
-            {/* Description */}
-            <motion.p
-              className="text-white/70 text-center mb-8 leading-relaxed"
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
+          {/* Message */}
+          <div className="text-center mb-6">
+            <h3 className={`text-lg font-semibold mb-2 ${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              Authentication Required
+            </h3>
+            <p className={`text-sm leading-relaxed ${
+              isDarkMode ? 'text-white/60' : 'text-slate-600'
+            }`}>
               You need to be authenticated to access this content. Please log in to continue.
-            </motion.p>
+            </p>
+          </div>
 
-            {/* Action Buttons */}
-            <motion.div
-              className="space-y-3"
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            {/* Primary Action - Login */}
+            <button
+              onClick={onClose}
+              className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-300 ${
+                isDarkMode
+                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl'
+                  : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg hover:shadow-xl'
+              }`}
             >
-              <motion.button
-                onClick={onClose}
-                className="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
-                whileHover={{
-                  boxShadow:
-                    '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)'
-                }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <motion.div className="flex items-center justify-center gap-2" whileHover={{ x: 2 }}>
-                  <Lock size={18} />
-                  Login Now
-                </motion.div>
-              </motion.button>
+              <Lock size={18} strokeWidth={2.5} />
+              Login Now
+            </button>
 
-              <motion.button
-                onClick={handleCancel}
-                className="w-full py-3 px-6 bg-white/10 hover:bg-white/20 text-white/90 font-medium rounded-2xl transition-all duration-300 border border-white/20 hover:border-white/30"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Cancel
-              </motion.button>
-            </motion.div>
+            {/* Secondary Action - Cancel */}
+            <button
+              onClick={handleCancel}
+              className={`w-full rounded-xl py-3 text-sm font-medium transition-all duration-300 ${
+                isDarkMode
+                  ? 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
+                  : 'bg-black/5 hover:bg-black/10 text-slate-700 hover:text-slate-900 border border-black/10'
+              }`}
+            >
+              Cancel
+            </button>
+          </div>
 
-            {/* Decorative Elements */}
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden rounded-3xl">
-              <div className="absolute top-4 left-4 w-2 h-2 bg-white/30 rounded-full animate-pulse" />
-              <div className="absolute top-6 right-8 w-1 h-1 bg-blue-400/50 rounded-full animate-ping" />
-              <div
-                className="absolute bottom-8 left-8 w-1.5 h-1.5 bg-cyan-400/40 rounded-full animate-pulse"
-                style={{ animationDelay: '1s' }}
-              />
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          {/* Helper Text */}
+          <div className={`text-xs text-center mt-4 ${
+            isDarkMode ? 'text-white/40' : 'text-slate-500'
+          }`}>
+            Return to home or authenticate to proceed
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -9,19 +9,17 @@ import PointInputChoiceModal from '@/components/ui/modals/MarkerChoice';
 import ManualInputModal from '@/components/ui/modals/ManualInputModal';
 import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable';
 import { saveMarker } from "./map/layers/markerLayer";
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   handleDrawModeChange, 
   savePointFeature, 
   toggleDrawing, 
   toggleFlagDrawing, 
-  startDrawing, 
-  startFlagDrawing, 
   stopDrawing, 
   stopFlagDrawing, 
   toggleCollapse 
 } from './utils/ToolBarUtils';
-import { ChevronRight, X, Circle, Waves } from 'lucide-react';
+import { ChevronRight, X, Circle } from 'lucide-react';
 
 const DrawToolbar = ({ 
   draw, 

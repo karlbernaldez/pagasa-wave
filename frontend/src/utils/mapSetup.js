@@ -12,12 +12,12 @@ const WAVE_HEIGHT_THRESHOLD = 2;
 
 const LAYER_VISIBILITY_CONFIG = [
   { key: 'PAR', ids: ['PAR', 'PAR_dash'] },
-  { key: 'Satellite', ids: ['Satellite'] },
+  { key: 'SATELLITE', ids: ['Satellite'] },
   { key: 'TCID', ids: ['TCID'] },
   { key: 'TCAD', ids: ['TCAD'] },
   { key: 'SHIPPING_ZONE', ids: ['graticules'] },
   { 
-    key: 'wind-layer', 
+    key: 'WIND_LAYER', 
     ids: [
       'wind-layer', 
       'wind-solarstorm-layer', 
@@ -247,8 +247,8 @@ class LineRenderer {
     const layers = [];
 
     points.forEach((coord, i) => {
-      const labelSourceId = `${sourceId}-label-${i}`;
-      const labelLayerId = `${sourceId}-label-${i}`;
+      const labelSourceId = `${sourceId}-${i}`;
+      const labelLayerId = `${sourceId}-${i}`;
 
       sources.push({
         id: labelSourceId,

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Swal from "sweetalert2";
-import withReactContent from "sweetalert2-react-content";
 import dayjs from "dayjs";
 import { fetchProjectById, fetchUserProjects, deleteProjectById } from "@/api/projectAPI";
 import { ChevronRight, Plus, FolderOpen, Settings, Download, Edit3, Eye, Map, Menu, Upload, Layers, Database, Wrench, Info, Undo2, Redo2, ZoomIn, ZoomOut, Grid, FileText, BookOpen, X } from "lucide-react";
@@ -10,8 +9,6 @@ import ProjectListModal from "@/components/ui/modals/ProjectListModal";
 import ExportConfirmModal from "@/components/ui/modals/ExportModal";
 import ProjectInfo from "./ProjectInfo";
 import { handleCreateProject as createProjectHandler, handleDeleteProject, downloadCachedSnapshotZip } from "./utils/ProjectUtils";
-
-const MySwal = withReactContent(Swal);
 
 // In-memory cache for projects
 const projectCache = {};

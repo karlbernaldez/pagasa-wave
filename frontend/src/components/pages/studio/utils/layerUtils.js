@@ -160,7 +160,6 @@ export function removeLayer(map, layer, setLayers) {
 };
 
 export async function removeFeature(draw, layerID) {
-    console.log(`[removeFeature] Called for layerID: ${layerID}`);
 
     // Delete from Mapbox Draw
     if (draw && typeof draw.delete === 'function') {
@@ -176,7 +175,6 @@ export async function removeFeature(draw, layerID) {
             const cleanedFeatureID = typeof layerID === 'string' && layerID.endsWith('_dash')
                 ? layerID.slice(0, -5)
                 : layerID;
-            console.log(`Deleting feature with ID: ${cleanedFeatureID} from backend.`);
             await deleteFeature(cleanedFeatureID, token);
         } else {
             await deleteFeature(layerID, token);
@@ -209,16 +207,15 @@ export function updateLayerName(layerId, newName, setLayers, map) {
     // 1️⃣ Update React state
     setLayers(prev => {
         const layerToUpdate = prev.find(layer => layer.id === layerId);
-        console.log("[updateLayerName] layerToUpdate:", layerToUpdate);
         if (!layerToUpdate) return prev;
 
         layerType = layerToUpdate.type ?? null;
+
         const newLayerKey = trimmedName;
 
-        expectedNewId = layerType
+        expectedNewId = layerType && layerType !== "Wave Height"
             ? `${layerType}_${newLayerKey}`
             : newLayerKey;
-
         if (
             layerToUpdate.name === trimmedName &&
             layerToUpdate.id === expectedNewId
@@ -249,13 +246,8 @@ export function updateLayerName(layerId, newName, setLayers, map) {
         const layerDef0 = style.layers.find(l => l.id === `${layerId}-0`);
         const layerDef1 = style.layers.find(l => l.id === `${layerId}-1`);
 
-        console.log("[updateLayerName] layerDef:", layerDef);
 
         if (!layerDef) return;
-
-        console.log(
-            `[updateLayerName] Renaming Mapbox layer ${layerId} → ${expectedNewId}`
-        );
 
         // Remove old layer(s) safely
         if (layerDef.type === 'line') {
