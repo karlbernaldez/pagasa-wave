@@ -32,9 +32,11 @@ export async function addWindLayer(map, isDarkMode) {
     map.addSource(sourceId, {
       type: 'raster',
       tiles: [
-        'http://34.45.182.236:5173/tiles/0112T00_hs/{z}/{x}/{y}.png'
+        'http://34.45.182.236:5173/tiles/ww3/20260112T00/hs/{z}/{x}/{y}.png'
       ],
-      tileSize: 512
+      tileSize: 256,
+      bounds: [100, -5, 180, 50],
+      scheme: "xyz",
     });
 
   }
@@ -70,10 +72,13 @@ export async function addWindLayer(map, isDarkMode) {
 // ------------------- Layer Helper Functions -------------------
 function addRasterLayer(map, sourceId) {
   map.addLayer({
-    id: "wind-solarstorm-layer",
+    id: "wind-speed-layer",
     type: "raster",
     source: sourceId,
-    paint: { "raster-opacity": 1, "raster-fade-duration": 100,  },
+    paint: {
+      "raster-opacity": 1, "raster-resampling": "linear",
+      "raster-fade-duration": 0
+    },
   }, "graticules");
 }
 
