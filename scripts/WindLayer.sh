@@ -137,40 +137,40 @@ log "✅ Finished download.py"
 ## STEP 2: AIFS CYCLES
 ##############################################
 
-log "🧹 Cleaning GRIB_DIR before downloading..."
-rm -f "$GRIB_DIR"/*.grib2 2>/dev/null || true
+# log "🧹 Cleaning GRIB_DIR before downloading..."
+# rm -f "$GRIB_DIR"/*.grib2 2>/dev/null || true
 
-TODAY=$(date -u +"%Y%m%d")
-YEST=$(date -u -d "yesterday" +"%Y%m%d")
+# TODAY=$(date -u +"%Y%m%d")
+# YEST=$(date -u -d "yesterday" +"%Y%m%d")
 
-LATEST_DATE=""
-LATEST_CYCLE=""
+# LATEST_DATE=""
+# LATEST_CYCLE=""
 
-for hh in "${CYCLES[@]}"; do
-  if download_cycle "$TODAY" "$hh"; then
-    LATEST_DATE="$TODAY"
-    LATEST_CYCLE="$hh"
-    break
-  fi
-done
+# for hh in "${CYCLES[@]}"; do
+#   if download_cycle "$TODAY" "$hh"; then
+#     LATEST_DATE="$TODAY"
+#     LATEST_CYCLE="$hh"
+#     break
+#   fi
+# done
 
-if [[ -z "$LATEST_CYCLE" ]]; then
-  warn "No cycle found today, fallback: $YEST 18Z"
-  LATEST_DATE="$YEST"
-  LATEST_CYCLE="18"
-  download_cycle "$LATEST_DATE" "$LATEST_CYCLE" || true
-fi
+# if [[ -z "$LATEST_CYCLE" ]]; then
+#   warn "No cycle found today, fallback: $YEST 18Z"
+#   LATEST_DATE="$YEST"
+#   LATEST_CYCLE="18"
+#   download_cycle "$LATEST_DATE" "$LATEST_CYCLE" || true
+# fi
 
-ANCHOR_TS=$(date -u -d "${LATEST_DATE} ${LATEST_CYCLE}:00:00" +%s)
+# ANCHOR_TS=$(date -u -d "${LATEST_DATE} ${LATEST_CYCLE}:00:00" +%s)
 
-for offset in 6 12 18; do
-  ts=$((ANCHOR_TS - offset * 3600))
-  download_cycle \
-    "$(date -u -d "@$ts" +"%Y%m%d")" \
-    "$(date -u -d "@$ts" +"%H")" || true
-done
+# for offset in 6 12 18; do
+#   ts=$((ANCHOR_TS - offset * 3600))
+#   download_cycle \
+#     "$(date -u -d "@$ts" +"%Y%m%d")" \
+#     "$(date -u -d "@$ts" +"%H")" || true
+# done
 
-cleanup_latest "$GRIB_DIR" "*.grib2"
+# cleanup_latest "$GRIB_DIR" "*.grib2"
 #_______________________________________________________________________________________________
 # ##############################################
 # ## STEP 3: GRIB → TIFF
