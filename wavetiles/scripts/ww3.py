@@ -41,9 +41,7 @@ PROCESSES = 4         # gdal2tiles processes
 # If you want to force a particular file instead of auto-selecting latest gridded file:
 FORCE_NCFILE = None   # set to a Path(".../ww3_grdo....nc") or leave as None
 
-# ============================================================
-# MRI3 palette (HW bins/colors) — unchanged from your code
-# ============================================================
+
 HW_BINS = np.array(
     [0, 0.25, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 7, 8, 9, 10, 12, 14, 20],
     dtype=np.float32
