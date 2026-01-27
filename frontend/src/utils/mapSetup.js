@@ -3,7 +3,8 @@ import { initDrawControl } from '@/components/pages/studio/map/controls/drawCont
 import { initTyphoonLayer } from '@/components/pages/studio/map/layers/typhoonLayer';
 import { saveMarker } from '@/components/pages/studio/map/layers/markerLayer';
 import { addHimawariLayer } from '@/components/pages/studio/map/layers/satelliteLayer';
-import { addWindLayer } from '@/components/pages/studio/map/layers/windLayer';
+import { addWindSource } from '@/components/pages/studio/map/layers/windLayer';
+import { addWaveSource, addWaveLayer } from '@/components/pages/studio/map/layers/waveLayer';
 
 // === Constants ===
 const MARKER_IMAGES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1'];
@@ -16,26 +17,26 @@ const LAYER_VISIBILITY_CONFIG = [
   { key: 'TCID', ids: ['TCID'] },
   { key: 'TCAD', ids: ['TCAD'] },
   { key: 'SHIPPING_ZONE', ids: ['graticules'] },
-  { 
-    key: 'WIND_LAYER', 
+  {
+    key: 'WIND_LAYER',
     ids: [
-      'wind-layer', 
-      'wind-solarstorm-layer', 
-      'wind-arrows', 
-      'wind-labels', 
-      'wave-arrows', 
-      'wave-period-labels', 
-      'glass-fill', 
-      'glass-stroke', 
+      'wind-particles',
+      'wind-raster',
+      'wind-arrows',
+      'wind-labels',
+      'wave-arrows',
+      'wave-period-labels',
+      'glass-fill',
+      'glass-stroke',
       'glass-depth'
-    ] 
+    ]
   },
 ];
 
 // === Geometry Helpers ===
 const fixMalformedLineString = (coordinates) => {
   if (!Array.isArray(coordinates)) return coordinates;
-  
+
   // Unwrap nested arrays: [[[coords]]] → [[coords]]
   if (
     coordinates.length === 1 &&
@@ -44,18 +45,42 @@ const fixMalformedLineString = (coordinates) => {
   ) {
     return coordinates[0];
   }
-  
+
   return coordinates;
 };
 
 const getValidCoordinates = (geometry) => {
   if (!geometry?.coordinates) return null;
-  
+
   const coords = geometry.coordinates;
   if (!Array.isArray(coords) || coords.length === 0) return null;
-  
+
   return coords;
 };
+
+// === Layer Visibility Manager ===
+class LayerVisibilityManager {
+  constructor(map) {
+    this.map = map;
+  }
+
+  applyFromLocalStorage(config = LAYER_VISIBILITY_CONFIG) {
+    config.forEach(({ key, ids }) => {
+      const isVisible = localStorage.getItem(key) === 'true';
+      const visibility = isVisible ? 'visible' : 'none';
+
+      // console.log(
+      //   `[LayerVisibilityManager] key="${key}", value=${isVisible}, visibility=${visibility}`
+      // );
+
+      ids.forEach(id => {
+        if (this.map.getLayer(id)) {
+          this.map.setLayoutProperty(id, 'visibility', visibility);
+        }
+      });
+    });
+  }
+}
 
 // === Feature Classification ===
 class FeatureClassifier {
@@ -83,16 +108,16 @@ class FeatureClassifier {
       case 'Point':
         this.markerPoints.push(feature);
         break;
-        
+
       case 'Polygon':
         // Handle polygon directly via draw control
         this.addPolygonToDraw(feature);
         break;
-        
+
       case 'LineString':
         this.processLineString(feature);
         break;
-        
+
       default:
         console.warn('Unknown geometry type:', type);
     }
@@ -110,7 +135,7 @@ class FeatureClassifier {
 
   processLineString(feature) {
     this.totalLineCount++;
-    
+
     // Fix malformed coordinates
     if (feature.geometry?.coordinates) {
       feature.geometry.coordinates = fixMalformedLineString(feature.geometry.coordinates);
@@ -151,7 +176,7 @@ class MarkerRenderer {
     const markerType = point.properties?.type;
 
     if (lng !== undefined && lat !== undefined) {
-      saveMarker({ lat, lng }, this.mapRef, () => {}, markerType)(title);
+      saveMarker({ lat, lng }, this.mapRef, () => { }, markerType)(title);
     }
   }
 }
@@ -167,7 +192,7 @@ class LineRenderer {
 
   renderNonFrontLines(nonFrontLines) {
     // Batch source/layer additions for better performance
-    const batch = nonFrontLines.map(feature => 
+    const batch = nonFrontLines.map(feature =>
       this.prepareNonFrontLine(feature)
     );
 
@@ -239,8 +264,8 @@ class LineRenderer {
     const labelValue = String(props.labelValue || feature.name || 'Label');
     const closedMode = props.closedMode;
 
-    const points = closedMode 
-      ? [coords[0]] 
+    const points = closedMode
+      ? [coords[0]]
       : [coords[0], coords[coords.length - 1]];
 
     const sources = [];
@@ -332,26 +357,6 @@ class LineRenderer {
   }
 }
 
-// === Layer Visibility Manager ===
-class LayerVisibilityManager {
-  constructor(map) {
-    this.map = map;
-  }
-
-  applyFromLocalStorage(config = LAYER_VISIBILITY_CONFIG) {
-    config.forEach(({ key, ids }) => {
-      const isVisible = localStorage.getItem(key) === 'true';
-      const visibility = isVisible ? 'visible' : 'none';
-      
-      ids.forEach(id => {
-        if (this.map.getLayer(id)) {
-          this.map.setLayoutProperty(id, 'visibility', visibility);
-        }
-      });
-    });
-  }
-}
-
 // === Image Loader ===
 class ImageLoader {
   constructor(map) {
@@ -361,10 +366,10 @@ class ImageLoader {
 
   async loadAll() {
     const imagePromises = [
-      ...MARKER_IMAGES.map(id => 
+      ...MARKER_IMAGES.map(id =>
         this.loadSingle(id, `/${id.replace('_', '')}.png`)
       ),
-      ...WIND_BARB_IMAGES.map(id => 
+      ...WIND_BARB_IMAGES.map(id =>
         this.loadSingle(id, `/barbs/${id}.svg`)
       ),
     ];
@@ -374,7 +379,7 @@ class ImageLoader {
 
   async loadSingle(id, url) {
     if (this.loadedImages.has(id)) return;
-    
+
     try {
       await loadImage(this.map, id, url);
       this.loadedImages.add(id);
@@ -385,8 +390,7 @@ class ImageLoader {
 }
 
 // === Main Setup Function ===
-export function setupMap({
-  map,
+export async function setupMap({
   mapRef,
   setDrawInstance,
   setMapLoaded,
@@ -402,10 +406,9 @@ export function setupMap({
 }) {
   if (!map) {
     console.warn('No map instance provided');
-    return () => {};
+    return () => { };
   }
 
-  mapRef.current = map;
   setLoading?.(true);
 
   // Initialize theme
@@ -424,7 +427,9 @@ export function setupMap({
   addHimawariLayer(map);
   loadCustomImages(map);
   initTyphoonLayer(map);
-  addWindLayer(map, isDarkMode);
+  addWindSource(map, isDarkMode);
+  await addWaveSource(map, isDarkMode);
+  addWaveLayer(map, isDarkMode);
 
   // Load images asynchronously
   const imageLoader = new ImageLoader(map);
@@ -436,7 +441,7 @@ export function setupMap({
     : initialFeatures?.features || [];
 
   const classifier = new FeatureClassifier();
-  const { markerPoints, frontLines, nonFrontLines, totalLineCount } = 
+  const { markerPoints, frontLines, nonFrontLines, totalLineCount } =
     classifier.classify(featuresArray);
 
   setLineCount?.(totalLineCount);

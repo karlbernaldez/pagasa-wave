@@ -146,15 +146,6 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
     setIsLoading
   );
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (cleanupRef.current) {
-        // cleanupRef.current();
-      }
-    };
-  }, [cleanupRef]);
-
   // ─── Memoized Values ─────────────────────────────────
   const savedFeaturesCollection = useMemo(() => ({
     type: "FeatureCollection",
