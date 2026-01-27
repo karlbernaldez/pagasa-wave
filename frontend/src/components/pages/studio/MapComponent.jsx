@@ -75,11 +75,11 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
     window.map = map;
     map.fitBounds(
       [
-        [93, 0],
+        [93, 5],
         [153.8595159535438, 25],
       ],
       {
-        padding: { top: 100, bottom: 100, left: 200, right: 200 },
+        padding: { top: 50, bottom: 50, left: 200, right: 200 },
         maxZoom: 8,
       }
     );

@@ -7,6 +7,8 @@ import Swal from 'sweetalert2';
 import ConfirmationDialog from "@/components/ui/modals/ConfirmationDialog";
 import 'sweetalert2/dist/sweetalert2.min.css';
 
+import { addWaveLayer, addWaveSource } from '@/components/pages/studio/map/layers/waveLayer';
+
 const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [customLayersExpanded, setCustomLayersExpanded] = useState(true);
@@ -20,6 +22,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   const [editingName, setEditingName] = useState("");
   const fileInputRef = useRef();
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
+  const [isSwitchingWaveModel, setIsSwitchingWaveModel] = useState(false);
 
   // System layer group expansion states
   const [expandedGroups, setExpandedGroups] = useState({
@@ -52,8 +55,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     model: 'ECMWF', // GFS, ECMWF, NOAA, etc.
     elements: {
       particles: false,
-      rasterMap: false,
-      windBarbs: false
+      raster: false,
+      barbs: false
     }
   });
 
@@ -63,14 +66,16 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     model: 'SWAN', // SWAN, WW3, etc.
     elements: {
       particles: false,
-      rasterMap: false,
+      raster: false,
       waveDirection: false,
       wavePeriod: false
     }
   });
 
-  // Initialize layers from localStorage
+  // Initialize layers using saved stated from local storage
   useEffect(() => {
+    console.log('Initializing layers...');
+
     const savedDomains = {
       PAR: localStorage.getItem('PAR') === 'true',
       TCID: localStorage.getItem('TCID') === 'true',
@@ -89,8 +94,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       model: localStorage.getItem('WIND_MODEL') || 'ECMWF',
       elements: {
         particles: localStorage.getItem('WIND_PARTICLES') === 'true',
-        rasterMap: localStorage.getItem('WIND_RASTER') === 'true',
-        windBarbs: localStorage.getItem('WIND_BARBS') === 'true'
+        raster: localStorage.getItem('WIND_RASTER') === 'true',
+        barbs: localStorage.getItem('WIND_BARBS') === 'true'
       }
     };
 
@@ -99,11 +104,13 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       model: localStorage.getItem('WAVE_MODEL') || 'SWAN',
       elements: {
         particles: localStorage.getItem('WAVE_PARTICLES') === 'true',
-        rasterMap: localStorage.getItem('WAVE_RASTER') === 'true',
+        raster: localStorage.getItem('WAVE_RASTER') === 'true',
         waveDirection: localStorage.getItem('WAVE_DIRECTION') === 'true',
         wavePeriod: localStorage.getItem('WAVE_PERIOD') === 'true'
       }
     };
+
+    console.log('Saved Wave Config:', savedWave);
 
     setDomainLayers(savedDomains);
     setUtilitiesLayers(savedUtilities);
@@ -111,78 +118,95 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     setWindConfig(savedWind);
     setWaveConfig(savedWave);
 
-    if (mapRef.current) {
-      mapRef.current.on('load', () => {
-        // Apply domain layers
-        mapRef.current.setLayoutProperty('PAR', 'visibility', savedDomains.PAR ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('PAR_dash', 'visibility', savedDomains.PAR ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('TCID', 'visibility', savedDomains.TCID ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('TCAD', 'visibility', savedDomains.TCAD ? 'visible' : 'none');
+    if (!map) return;
 
-        // Apply utilities layers
-        mapRef.current.setLayoutProperty('graticules', 'visibility', savedUtilities.GRATICULES ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('graticules_blur', 'visibility', savedUtilities.GRATICULES ? 'visible' : 'none');
+    const applySavedLayers = async () => {
+      // Domains
+      map.setLayoutProperty('PAR', 'visibility', savedDomains.PAR ? 'visible' : 'none');
+      map.setLayoutProperty('PAR_dash', 'visibility', savedDomains.PAR ? 'visible' : 'none');
+      map.setLayoutProperty('TCID', 'visibility', savedDomains.TCID ? 'visible' : 'none');
+      map.setLayoutProperty('TCAD', 'visibility', savedDomains.TCAD ? 'visible' : 'none');
 
-        mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', savedUtilities.SHIPPING_ZONE ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', savedUtilities.SHIPPING_ZONE ? 'visible' : 'none');
-        mapRef.current.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', savedUtilities.SHIPPING_ZONE ? 'visible' : 'none');
+      // Utilities
+      map.setLayoutProperty(
+        'SHIPPING_ZONE_FILL',
+        'visibility',
+        savedUtilities.SHIPPING_ZONE ? 'visible' : 'none'
+      );
+      map.setLayoutProperty(
+        'SHIPPING_ZONE_LABELS',
+        'visibility',
+        savedUtilities.SHIPPING_ZONE ? 'visible' : 'none'
+      );
+      map.setLayoutProperty(
+        'SHIPPING_ZONE_OUTLINE',
+        'visibility',
+        savedUtilities.SHIPPING_ZONE ? 'visible' : 'none'
+      );
+      map.setLayoutProperty('graticules', 'visibility', savedUtilities.GRATICULES ? 'visible' : 'none');
+      map.setLayoutProperty('graticules_blur', 'visibility', savedUtilities.GRATICULES ? 'visible' : 'none');
 
-        // Apply satellite layer
-        mapRef.current.setLayoutProperty('Satellite', 'visibility', savedSatellite ? 'visible' : 'none');
+      // Satellite
+      map.setLayoutProperty('Satellite', 'visibility', savedSatellite ? 'visible' : 'none');
 
-        // Apply wind layers
-        if (savedWind.enabled) {
-          applyWindLayers(savedWind);
-        }
+      // Wind
+      if (savedWind.enabled) {
+        applyWindLayers(savedWind);
+      }
 
-        // Apply wave layers
-        if (savedWave.enabled) {
-          applyWaveLayers(savedWave);
-        }
-      });
+      // 🌊 Wave
+      if (savedWave.enabled) {
+        console.log('Wave Layer Enabled');
+        applyWaveLayers(savedWave);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      applySavedLayers();
+    } else {
+      // ⏳ Wait once
+      map.once('load', applySavedLayers);
+      console.log("LOADING MAP")
     }
-  }, [mapRef]);
+  }, [map]);
 
   const applyWindLayers = (config) => {
 
-    console.log(config)
+    console.log('THIS IS CONFIG: ', config)
     if (!mapRef.current) return;
 
     const { elements } = config;
 
     // Wind particles
-    mapRef.current.setLayoutProperty('wind-layer', 'visibility', elements.particles ? 'visible' : 'none');
+    mapRef.current.setLayoutProperty('wind-particles', 'visibility', elements.particles ? 'visible' : 'none');
 
     // Wind raster map
-    mapRef.current.setLayoutProperty('wind-speed-layer', 'visibility', elements.rasterMap ? 'visible' : 'none');
+    mapRef.current.setLayoutProperty('wind-raster-layer', 'visibility', elements.raster ? 'visible' : 'none');
 
     // Wind barbs
-    mapRef.current.setLayoutProperty('wind-arrows', 'visibility', elements.windBarbs ? 'visible' : 'none');
-    mapRef.current.setLayoutProperty('wind-labels', 'visibility', elements.windBarbs ? 'visible' : 'none');
+    mapRef.current.setLayoutProperty('wind-arrows', 'visibility', elements.barbs ? 'visible' : 'none');
+    mapRef.current.setLayoutProperty('wind-labels', 'visibility', elements.barbs ? 'visible' : 'none');
 
     // Glass layers (base visualization for wind)
-    const showBase = elements.particles || elements.rasterMap || elements.windBarbs;
+    const showBase = elements.particles || elements.raster || elements.barbs;
     mapRef.current.setLayoutProperty('glass-fill', 'visibility', showBase ? 'visible' : 'none');
     mapRef.current.setLayoutProperty('glass-stroke', 'visibility', showBase ? 'visible' : 'none');
     mapRef.current.setLayoutProperty('glass-depth', 'visibility', showBase ? 'visible' : 'none');
   };
 
-  const applyWaveLayers = (config) => {
-    if (!mapRef.current) return;
+  const applyWaveLayers = async (config) => {
+    if (!map) return;
 
     const { elements } = config;
 
-    // Wave particles (if you have a separate wave particle layer)
-    // mapRef.current.setLayoutProperty('wave-particle-layer', 'visibility', elements.particles ? 'visible' : 'none');
+    console.log('ELEMENTS: ', elements)
 
-    // Wave raster map (if you have a separate wave height raster)
-    // mapRef.current.setLayoutProperty('wave-height-layer', 'visibility', elements.rasterMap ? 'visible' : 'none');
+    // Wave raster
+    if (map.getLayer('wave-raster')) {
+      console.log("WAVE RASTER LAYER FOUND")
+      map.setLayoutProperty('wave-raster', 'visibility', elements.raster ? 'visible' : 'none');
+    }
 
-    // Wave direction arrows
-    mapRef.current.setLayoutProperty('wave-arrows', 'visibility', elements.waveDirection ? 'visible' : 'none');
-
-    // Wave period labels
-    mapRef.current.setLayoutProperty('wave-period-labels', 'visibility', elements.wavePeriod ? 'visible' : 'none');
   };
 
   const handleGeoJSONUpload = (event) => {
@@ -309,9 +333,10 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
       if (!newState.enabled) {
         // Turn off all elements when disabled
-        applyWindLayers({ elements: { particles: false, rasterMap: false, windBarbs: false } });
+        applyWindLayers({ elements: { particles: false, raster: false, wind: false } });
       } else {
         applyWindLayers(newState);
+
       }
 
       return newState;
@@ -319,6 +344,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   };
 
   const toggleWindElement = (element) => {
+    console.log(element)
     setWindConfig(prev => {
       const newState = {
         ...prev,
@@ -351,10 +377,29 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       localStorage.setItem('WAVE_ENABLED', newState.enabled.toString());
 
       if (!newState.enabled) {
-        // Turn off all elements when disabled
-        applyWaveLayers({ elements: { particles: false, rasterMap: false, waveDirection: false, wavePeriod: false } });
+        // Turn off all wave elements
+        applyWaveLayers({
+          elements: {
+            particles: false,
+            raster: false,
+            waveDirection: false,
+            wavePeriod: false
+          }
+        });
+
+        if (mapRef.current.getLayer('wave-raster')) {
+          mapRef.current.setLayoutProperty('wave-raster', 'visibility', 'none');
+        }
+
       } else {
-        applyWaveLayers(newState);
+        const map = mapRef.current;
+
+        // ✅ Check if wave layer already exists
+        if (map.getLayer('wave-raster')) {
+          applyWaveLayers(newState);
+        } else {
+          addWaveLayer(map, isDarkMode);
+        }
       }
 
       return newState;
@@ -378,12 +423,37 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     });
   };
 
-  const setWaveModel = (model) => {
-    setWaveConfig(prev => {
-      const newState = { ...prev, model };
-      localStorage.setItem('WAVE_MODEL', model);
-      return newState;
-    });
+  const setWaveModel = async (model) => {
+    console.log('[Wave] Model changed to:', model);
+
+    setIsSwitchingWaveModel(true);
+
+    try {
+      if (map.getLayer('wave-raster')) {
+        console.log('[Wave] Removing raster layer');
+        map.removeLayer('wave-raster');
+      }
+
+      if (map.getSource('wave-light')) {
+        console.log('[Wave] Removing source');
+        map.removeSource('wave-light');
+      }
+
+      await addWaveSource(map, isDarkMode, model);
+      addWaveLayer(map, isDarkMode);
+
+      setWaveConfig(prev => {
+        const newState = { ...prev, model };
+        applyWaveLayers(newState);
+        localStorage.setItem('WAVE_MODEL', model);
+        return newState;
+      });
+
+    } catch (err) {
+      console.error('[Wave] Failed to switch model:', err);
+    } finally {
+      setIsSwitchingWaveModel(false);
+    }
   };
 
   const toggleGroupExpansion = (groupId) => {
@@ -930,8 +1000,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                           </div>
                           {[
                             { id: 'particles', name: 'Particles', icon: '✨' },
-                            { id: 'rasterMap', name: 'Raster Map', icon: '🗾' },
-                            { id: 'windBarbs', name: 'Wind Barbs', icon: '🎐' }
+                            { id: 'raster', name: 'Raster Map', icon: '🗾' },
+                            { id: 'barbs', name: 'Wind Barbs', icon: '🎐' }
                           ].map((element) => (
                             <button
                               key={element.id}
@@ -1018,8 +1088,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                           >
                             <option value="SWAN">SWAN (Simulating Waves)</option>
                             <option value="WW3">WW3 (WaveWatch III)</option>
-                            <option value="WAM">WAM (Wave Model)</option>
-                            <option value="STWAVE">STWAVE (Steady-State Wave)</option>
+                            <option value="ECWAM">ECWAM (Wave Model)</option>
+                            <option value="MRI3">MRI3 (Steady-State Wave)</option>
                           </select>
                         </div>
 
@@ -1030,8 +1100,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                             Elements
                           </div>
                           {[
-                            { id: 'particles', name: 'Particles', icon: '✨' },
-                            { id: 'rasterMap', name: 'Raster Map', icon: '🗾' },
+                            // { id: 'particles', name: 'Particles', icon: '✨' },
+                            { id: 'raster', name: 'Raster Map', icon: '🗾' },
                             { id: 'waveDirection', name: 'Wave Direction', icon: '➡️' },
                             { id: 'wavePeriod', name: 'Mean Period', icon: '⏱️' }
                           ].map((element) => (

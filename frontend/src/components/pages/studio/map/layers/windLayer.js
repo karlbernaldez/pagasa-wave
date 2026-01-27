@@ -13,9 +13,14 @@ import { fetchLatestGeoJSON, createWindPopup, getWindTileset, getWindSourceId } 
   document.head.appendChild(style);
 })();
 
-export async function addWindLayer(map, isDarkMode) {
+export async function addWindSource(map, isDarkMode) {
   // Fetch latest wind points GeoJSON
-  const windData = await fetchLatestGeoJSON();
+  const ecmwfWind = await fetchLatestGeoJSON({
+    model: 'ecmwf',
+    product: 'wind',
+    date: 'today'
+  });
+  const windData = ecmwfWind
 
   // Determine tileset & source
   const tileset = getWindTileset(isDarkMode);
@@ -23,21 +28,21 @@ export async function addWindLayer(map, isDarkMode) {
 
   // Add sources
   if (!map.getSource(sourceId)) {
-    // map.addSource(sourceId, {
-    //   type: "raster",
-    //   url: `${tileset}?fresh=${Date.now()}`,
-    //   tileSize: 4096,
-    // });
-
     map.addSource(sourceId, {
-      type: 'raster',
-      tiles: [
-        'http://34.45.182.236:5173/tiles/ww3/20260112T00/hs/{z}/{x}/{y}.png'
-      ],
-      tileSize: 256,
-      bounds: [100, -5, 180, 50],
-      scheme: "xyz",
+      type: "raster",
+      url: `${tileset}?fresh=${Date.now()}`,
+      tileSize: 4096,
     });
+
+    // map.addSource(sourceId, {
+    //   type: 'raster',
+    //   tiles: [
+    //     'http://34.45.182.236:5173/tiles/ecwam/2026011200/{z}/{x}/{y}.png'
+    //   ],
+    //   tileSize: 256,
+    //   bounds: [100, -5, 180, 50],
+    //   scheme: "xyz",
+    // });
 
   }
 
@@ -60,6 +65,10 @@ export async function addWindLayer(map, isDarkMode) {
     map.addSource('wind-points', { type: 'geojson', data: windData });
   }
 
+}
+
+
+export async function addWindLayer(sourceId) {
   // Add layers (modularized)
   addRasterLayer(map, sourceId);
   addWindParticlesLayer(map);
@@ -72,19 +81,20 @@ export async function addWindLayer(map, isDarkMode) {
 // ------------------- Layer Helper Functions -------------------
 function addRasterLayer(map, sourceId) {
   map.addLayer({
-    id: "wind-speed-layer",
+    id: "wind-raster",
     type: "raster",
     source: sourceId,
     paint: {
-      "raster-opacity": 1, "raster-resampling": "linear",
+      "raster-opacity": 1,
       "raster-fade-duration": 0
     },
+    layout: { visibility: 'none' },
   }, "graticules");
 }
 
 function addWindParticlesLayer(map) {
   map.addLayer({
-    id: "wind-layer",
+    id: "wind-particles",
     type: "raster-particle",
     source: "wind-particles",
     "source-layer": "10m_wind",

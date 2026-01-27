@@ -10,31 +10,31 @@ import ManualInputModal from '@/components/ui/modals/ManualInputModal';
 import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable';
 import { saveMarker } from "./map/layers/markerLayer";
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { 
-  handleDrawModeChange, 
-  savePointFeature, 
-  toggleDrawing, 
-  toggleFlagDrawing, 
-  stopDrawing, 
-  stopFlagDrawing, 
-  toggleCollapse 
+import {
+  handleDrawModeChange,
+  savePointFeature,
+  toggleDrawing,
+  toggleFlagDrawing,
+  stopDrawing,
+  stopFlagDrawing,
+  toggleCollapse
 } from './utils/ToolBarUtils';
 import { ChevronRight, X, Circle } from 'lucide-react';
 
-const DrawToolbar = ({ 
-  draw, 
-  mapRef, 
-  onToggleCanvas, 
-  onToggleFlagCanvas, 
-  isCanvasActive, 
-  isDarkMode, 
-  setLayersRef, 
-  setLayers, 
-  closedMode, 
-  setClosedMode, 
-  setType, 
-  selectedToolRef, 
-  title 
+const DrawToolbar = ({
+  draw,
+  mapRef,
+  onToggleCanvas,
+  onToggleFlagCanvas,
+  isCanvasActive,
+  isDarkMode,
+  setLayersRef,
+  setLayers,
+  closedMode,
+  setClosedMode,
+  setType,
+  selectedToolRef,
+  title
 }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [isFlagDrawing, setIsFlagDrawing] = useState(false);
@@ -42,10 +42,10 @@ const DrawToolbar = ({
   const [selectedToolType, setSelectedToolType] = useState(null);
   const [manualInputData, setManualInputData] = useState(null);
   const [showTitleModal, setShowTitleModal] = useState(false);
-  const [openModals, setOpenModals] = useState({ 
-    featureNotAvailable: false, 
-    pointInputChoice: false, 
-    manualInput: false 
+  const [openModals, setOpenModals] = useState({
+    featureNotAvailable: false,
+    pointInputChoice: false,
+    manualInput: false
   });
 
   useEffect(() => {
@@ -177,7 +177,7 @@ const DrawToolbar = ({
         accentBg: 'bg-cyan-400',
       };
     } else {
-      console.log('Light mode styles applied');
+
       return {
         container: 'bg-white/60 border-white/40',
         button: 'bg-black/5 hover:bg-black/10 border-black/10',
@@ -202,16 +202,16 @@ const DrawToolbar = ({
           onClick={toggleCollapseToolbar}
           className={`group flex items-center gap-2 px-3 py-2.5 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-105 shadow-lg ${theme.container}`}
         >
-          <TbTools 
-            size={16} 
+          <TbTools
+            size={16}
             className={theme.accent}
             strokeWidth={2.5}
           />
           <span className={`text-xs font-semibold ${theme.text}`}>
             Drawing Tools
           </span>
-          <ChevronRight 
-            size={14} 
+          <ChevronRight
+            size={14}
             className={theme.textMuted}
             strokeWidth={2.5}
           />
@@ -243,15 +243,15 @@ const DrawToolbar = ({
       {/* Main Toolbar */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
         <div className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl backdrop-blur-xl border shadow-xl ${theme.container}`}>
-          
+
           {/* Collapse Button */}
           <button
             onClick={toggleCollapseToolbar}
             className={`p-2 rounded-lg border transition-all duration-200 hover:scale-105 ${theme.button}`}
             title="Collapse Toolbar"
           >
-            <TbTools 
-              size={16} 
+            <TbTools
+              size={16}
               className={theme.textMuted}
               strokeWidth={2.5}
             />
@@ -265,13 +265,12 @@ const DrawToolbar = ({
             <button
               key={tool.id}
               onClick={() => handleToolClick(tool)}
-              className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${
-                selectedToolType === tool.id ? theme.buttonActive : theme.button
-              }`}
+              className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${selectedToolType === tool.id ? theme.buttonActive : theme.button
+                }`}
               title={tool.label}
             >
               {tool.icon}
-              
+
               {/* Tooltip */}
               <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg backdrop-blur-xl border opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 ${theme.tooltip}`}>
                 <div className={`text-xs font-semibold ${theme.text}`}>
@@ -297,13 +296,12 @@ const DrawToolbar = ({
               if (isDrawing) stopDrawing(setIsDrawing, onToggleCanvas);
               toggleFlagDrawing(isFlagDrawing, setIsFlagDrawing, onToggleFlagCanvas);
             }}
-            className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${
-              isFlagDrawing ? theme.buttonActive : theme.button
-            }`}
+            className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${isFlagDrawing ? theme.buttonActive : theme.button
+              }`}
             title={isFlagDrawing ? 'Stop Flag Drawing' : 'Start Flag Drawing'}
           >
             <span className="text-lg">{isFlagDrawing ? '❌' : '🚩'}</span>
-            
+
             {/* Tooltip */}
             <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg backdrop-blur-xl border opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 ${theme.tooltip}`}>
               <div className={`text-xs font-semibold ${theme.text}`}>
@@ -323,13 +321,12 @@ const DrawToolbar = ({
 
               toggleModal('pointInputChoice', true);
             }}
-            className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${
-              selectedToolType === 'less_1' ? theme.buttonActive : theme.button
-            }`}
+            className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${selectedToolType === 'less_1' ? theme.buttonActive : theme.button
+              }`}
             title="Mark Less than 1 Meter"
           >
             <img src={l1} alt="Less than 1 Meter" className="w-5 h-5" />
-            
+
             {/* Tooltip */}
             <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg backdrop-blur-xl border opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 ${theme.tooltip}`}>
               <div className={`text-xs font-semibold ${theme.text}`}>
@@ -347,9 +344,8 @@ const DrawToolbar = ({
               if (isFlagDrawing) stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
               toggleDrawing(isDrawing, setIsDrawing, onToggleCanvas);
             }}
-            className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${
-              isCanvasActive ? theme.buttonActive : theme.button
-            }`}
+            className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${isCanvasActive ? theme.buttonActive : theme.button
+              }`}
             title={isDrawing ? 'Stop Wave Height Drawing' : 'Start Wave Height Drawing'}
           >
             {isDrawing ? (
@@ -357,7 +353,7 @@ const DrawToolbar = ({
             ) : (
               <img src={wave} alt="Wave Height Drawing" className="w-5 h-5" />
             )}
-            
+
             {/* Tooltip */}
             <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg backdrop-blur-xl border opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 ${theme.tooltip}`}>
               <div className={`text-xs font-semibold ${theme.text}`}>
@@ -372,15 +368,14 @@ const DrawToolbar = ({
               <div className={`w-px h-8 ${theme.divider}`} />
               <button
                 onClick={() => setClosedMode((prev) => !prev)}
-                className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${
-                  closedMode
-                    ? isDarkMode 
+                className={`group relative p-2.5 rounded-lg transition-all duration-200 hover:scale-105 border ${closedMode
+                    ? isDarkMode
                       ? 'bg-green-500/20 border-green-400/40 shadow-lg shadow-green-500/20'
                       : 'bg-green-500/20 border-green-400/40 shadow-lg shadow-green-500/20'
                     : isDarkMode
                       ? 'bg-red-500/20 border-red-400/40 shadow-lg shadow-red-500/20'
                       : 'bg-red-500/20 border-red-400/40 shadow-lg shadow-red-500/20'
-                }`}
+                  }`}
                 title={closedMode ? 'Closed Shape Mode' : 'Open Shape Mode'}
               >
                 <Circle
@@ -389,11 +384,10 @@ const DrawToolbar = ({
                   strokeWidth={2.5}
                   fill={closedMode ? 'currentColor' : 'none'}
                 />
-                
+
                 {/* Mode Badge */}
-                <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                  closedMode ? 'bg-green-400 text-green-950' : 'bg-red-400 text-red-950'
-                }`}>
+                <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${closedMode ? 'bg-green-400 text-green-950' : 'bg-red-400 text-red-950'
+                  }`}>
                   {closedMode ? 'C' : 'O'}
                 </div>
 
@@ -413,16 +407,15 @@ const DrawToolbar = ({
 
         {/* Active Tool Indicator */}
         {selectedToolType && (
-          <div className={`absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg backdrop-blur-xl border shadow-xl ${
-            isDarkMode
+          <div className={`absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg backdrop-blur-xl border shadow-xl ${isDarkMode
               ? 'bg-black/90 border-cyan-400/30'
               : 'bg-white/90 border-blue-400/30'
-          }`}>
+            }`}>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full animate-pulse ${theme.accentBg}`} />
               <span className={`text-xs font-semibold ${theme.text}`}>
-                {tools.find(t => t.id === selectedToolType)?.label || 
-                 (selectedToolType === 'less_1' ? 'Mark Less than 1 Meter' : selectedToolType)}
+                {tools.find(t => t.id === selectedToolType)?.label ||
+                  (selectedToolType === 'less_1' ? 'Mark Less than 1 Meter' : selectedToolType)}
               </span>
             </div>
           </div>
