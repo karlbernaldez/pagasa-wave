@@ -41,6 +41,7 @@ export async function addWaveSource(map, isDarkMode, model = localStorage.getIte
     // Determine tileset & source
     const date = '2026011200'
     const sourceId = getWaveSourceId(isDarkMode);
+    const theme = isDarkMode ? 'dark' : 'light';
 
     console.log('Wave Source ID: ', sourceId)
 
@@ -49,7 +50,7 @@ export async function addWaveSource(map, isDarkMode, model = localStorage.getIte
         map.addSource(sourceId, {
             type: 'raster',
             tiles: [
-                `http://34.45.182.236:5173/tiles/${model}/${date}/{z}/{x}/{y}.png`
+                `http://34.45.182.236:5173/tiles/${model}/${theme}/${date}/{z}/{x}/{y}.png`
             ],
             tileSize: 256,
             bounds: [100, -5, 180, 50],

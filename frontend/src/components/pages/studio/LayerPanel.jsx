@@ -128,11 +128,11 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       map.setLayoutProperty('TCAD', 'visibility', savedDomains.TCAD ? 'visible' : 'none');
 
       // Utilities
-      map.setLayoutProperty(
-        'SHIPPING_ZONE_FILL',
-        'visibility',
-        savedUtilities.SHIPPING_ZONE ? 'visible' : 'none'
-      );
+      // map.setLayoutProperty(
+      //   'SHIPPING_ZONE_FILL',
+      //   'visibility',
+      //   savedUtilities.SHIPPING_ZONE ? 'visible' : 'none'
+      // );
       map.setLayoutProperty(
         'SHIPPING_ZONE_LABELS',
         'visibility',
@@ -156,7 +156,6 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
       // 🌊 Wave
       if (savedWave.enabled) {
-        console.log('Wave Layer Enabled');
         applyWaveLayers(savedWave);
       }
     };
@@ -198,8 +197,6 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     if (!map) return;
 
     const { elements } = config;
-
-    console.log('ELEMENTS: ', elements)
 
     // Wave raster
     if (map.getLayer('wave-raster')) {
@@ -304,7 +301,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           case 'SHIPPING_ZONE':
             mapRef.current.setLayoutProperty('SHIPPING_ZONE_LABELS', 'visibility', newState.SHIPPING_ZONE ? 'visible' : 'none');
             mapRef.current.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', newState.SHIPPING_ZONE ? 'visible' : 'none');
-            mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', newState.SHIPPING_ZONE ? 'visible' : 'none');
+            // mapRef.current.setLayoutProperty('SHIPPING_ZONE_FILL', 'visibility', newState.SHIPPING_ZONE ? 'visible' : 'none');
             break;
         }
       }
@@ -427,6 +424,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     console.log('[Wave] Model changed to:', model);
 
     setIsSwitchingWaveModel(true);
+    const theme = isDarkMode ? 'dark' : 'light';
 
     try {
       if (map.getLayer('wave-raster')) {
@@ -434,9 +432,9 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
         map.removeLayer('wave-raster');
       }
 
-      if (map.getSource('wave-light')) {
+      if (map.getSource(`wave-${theme}`)) {
         console.log('[Wave] Removing source');
-        map.removeSource('wave-light');
+        map.removeSource(`wave-${theme}`);
       }
 
       await addWaveSource(map, isDarkMode, model);

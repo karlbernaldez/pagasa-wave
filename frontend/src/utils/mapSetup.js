@@ -16,7 +16,20 @@ const LAYER_VISIBILITY_CONFIG = [
   { key: 'SATELLITE', ids: ['Satellite'] },
   { key: 'TCID', ids: ['TCID'] },
   { key: 'TCAD', ids: ['TCAD'] },
-  { key: 'SHIPPING_ZONE', ids: ['graticules'] },
+  {
+    key: 'SHIPPING_ZONE',
+    ids: [
+      'SHIPPING_ZONE_OUTLINE',
+      'SHIPPING_ZONE_LABELS',
+    ]
+  },
+  {
+    key: 'GRATICULES',
+    ids: [
+      'graticules',
+      'graticules_blur',
+    ]
+  },
   {
     key: 'WIND_LAYER',
     ids: [
