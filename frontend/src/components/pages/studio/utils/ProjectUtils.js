@@ -252,16 +252,41 @@ export const handleCreateProject = async ({
   }
 
   try {
-    const payload = { name: projectName, chartType, description, forecastDate };
+    const payload = {
+      name: projectName,
+      chartType,
+      description,
+      forecastDate,
+    };
+
     console.log('🚀 Creating project with payload:', payload);
+
     const created = await createProject(payload);
+
     console.log('✅ Project created:', created);
 
-    ['projectId', 'projectName', 'chartType', 'forecastDate'].forEach((key) =>
-      localStorage.setItem(key, key === 'projectId' ? created._id : eval(key))
-    );
+    // ✅ SAFE localStorage persistence (no eval)
+    const storageValues = {
+      projectId: created._id,
+      projectName,
+      chartType,
+      forecastDate,
+    };
 
-    if (onNew) onNew({ name: projectName, chartType, description, forecastDate });
+    Object.entries(storageValues).forEach(([key, value]) => {
+      if (value != null) {
+        localStorage.setItem(key, String(value));
+      }
+    });
+
+    if (onNew) {
+      onNew({
+        name: projectName,
+        chartType,
+        description,
+        forecastDate,
+      });
+    }
 
     Swal.fire({
       toast: true,
@@ -272,7 +297,6 @@ export const handleCreateProject = async ({
       timer: 2000,
     });
 
-    // Reset UI state
     setShowModal(false);
 
     setTimeout(() => window.location.reload(), 1500);
