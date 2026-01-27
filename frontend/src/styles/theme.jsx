@@ -1,5 +1,3 @@
-import lightBg from '../assets/bg_light.png';
-import darkBg from '../assets/bg_dark.png';
 
 const sharedColors = {
   blue: '#01b0ef',
@@ -73,7 +71,6 @@ const sharedBorderRadius = {
 };
 
 export const theme = {
-  backgroundImage: lightBg,
 
   colors: {
     highlight: '#01b0ef',
@@ -136,7 +133,6 @@ export const theme = {
 };
 
 export const darkTheme = {
-  backgroundImage: darkBg,
 
   colors: {
     highlight: '#01b0ef',
