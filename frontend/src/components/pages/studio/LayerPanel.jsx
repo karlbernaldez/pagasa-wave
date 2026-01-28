@@ -8,6 +8,7 @@ import ConfirmationDialog from "@/components/ui/modals/ConfirmationDialog";
 import 'sweetalert2/dist/sweetalert2.min.css';
 
 import { addWaveLayer, addWaveSource } from '@/components/pages/studio/map/layers/waveLayer';
+import { addWindLayer, addWindSource } from '@/components/pages/studio/map/layers/windLayer';
 
 const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -22,7 +23,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   const [editingName, setEditingName] = useState("");
   const fileInputRef = useRef();
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
-  const [isSwitchingWaveModel, setIsSwitchingWaveModel] = useState(false);
+  const [isSwitchingModel, setIsSwitchingModel] = useState(false);
 
   // System layer group expansion states
   const [expandedGroups, setExpandedGroups] = useState({
@@ -110,8 +111,6 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       }
     };
 
-    console.log('Saved Wave Config:', savedWave);
-
     setDomainLayers(savedDomains);
     setUtilitiesLayers(savedUtilities);
     setSatelliteLayer(savedSatellite);
@@ -176,11 +175,13 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
     const { elements } = config;
 
+
+
     // Wind particles
     mapRef.current.setLayoutProperty('wind-particles', 'visibility', elements.particles ? 'visible' : 'none');
 
     // Wind raster map
-    mapRef.current.setLayoutProperty('wind-raster-layer', 'visibility', elements.raster ? 'visible' : 'none');
+    mapRef.current.setLayoutProperty('wind-raster', 'visibility', elements.raster ? 'visible' : 'none');
 
     // Wind barbs
     mapRef.current.setLayoutProperty('wind-arrows', 'visibility', elements.barbs ? 'visible' : 'none');
@@ -322,6 +323,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   };
 
   const toggleWindLayer = () => {
+    console.log("WIND ENABLED")
     if (!checkProjectId()) return;
 
     setWindConfig(prev => {
@@ -330,9 +332,11 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
       if (!newState.enabled) {
         // Turn off all elements when disabled
-        applyWindLayers({ elements: { particles: false, raster: false, wind: false } });
+        applyWindLayers({ elements: { particles: false, raster: false, barbss: false } });
+
       } else {
         applyWindLayers(newState);
+        addWindLayer(map, isDarkMode);
 
       }
 
@@ -359,6 +363,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   };
 
   const setWindModel = (model) => {
+    console.log('[Wind] Model changed to:', model);
+
     setWindConfig(prev => {
       const newState = { ...prev, model };
       localStorage.setItem('WIND_MODEL', model);
@@ -384,19 +390,9 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           }
         });
 
-        if (mapRef.current.getLayer('wave-raster')) {
-          mapRef.current.setLayoutProperty('wave-raster', 'visibility', 'none');
-        }
-
       } else {
-        const map = mapRef.current;
-
-        // ✅ Check if wave layer already exists
-        if (map.getLayer('wave-raster')) {
-          applyWaveLayers(newState);
-        } else {
-          addWaveLayer(map, isDarkMode);
-        }
+        applyWaveLayers(newState);
+        addWaveLayer(map, isDarkMode);
       }
 
       return newState;
@@ -423,7 +419,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   const setWaveModel = async (model) => {
     console.log('[Wave] Model changed to:', model);
 
-    setIsSwitchingWaveModel(true);
+    setIsSwitchingModel(true);
     const theme = isDarkMode ? 'dark' : 'light';
 
     try {
@@ -939,8 +935,16 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                   <div className={`rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
                     <div className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg">
                       <button
-                        onClick={() => toggleGroupExpansion('wind')}
-                        className={`flex-1 flex items-center gap-2 text-left ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
+                        onClick={() => {
+                          if (!windConfig.enabled) return;
+                          toggleGroupExpansion('wind');
+                        }}
+                        className={`flex-1 flex items-center gap-2 text-left ${windConfig.enabled
+                          ? isDarkMode
+                            ? 'hover:bg-white/5'
+                            : 'hover:bg-black/5'
+                          : 'opacity-50 cursor-not-allowed'
+                          }`}
                       >
                         <span className="text-base">💨</span>
                         <div className="flex-1">
@@ -958,11 +962,26 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                           : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
                           }`}
                       />
-
-                      {expandedGroups.wind ? (
-                        <ChevronDown size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      {windConfig.enabled ? (
+                        expandedGroups.wind ? (
+                          <ChevronDown
+                            size={12}
+                            className={isDarkMode ? 'text-white/60' : 'text-slate-600'}
+                            strokeWidth={2.5}
+                          />
+                        ) : (
+                          <ChevronRight
+                            size={12}
+                            className={isDarkMode ? 'text-white/60' : 'text-slate-600'}
+                            strokeWidth={2.5}
+                          />
+                        )
                       ) : (
-                        <ChevronRight size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                        <ChevronRight
+                          size={12}
+                          className={isDarkMode ? 'text-white/30' : 'text-slate-400'}
+                          strokeWidth={2.5}
+                        />
                       )}
                     </div>
 
@@ -1041,8 +1060,16 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                   <div className={`rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
                     <div className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg">
                       <button
-                        onClick={() => toggleGroupExpansion('wave')}
-                        className={`flex-1 flex items-center gap-2 text-left ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
+                        onClick={() => {
+                          if (!waveConfig.enabled) return;
+                          toggleGroupExpansion('wave');
+                        }}
+                        className={`flex-1 flex items-center gap-2 text-left ${waveConfig.enabled
+                          ? isDarkMode
+                            ? 'hover:bg-white/5'
+                            : 'hover:bg-black/5'
+                          : 'opacity-50 cursor-not-allowed'
+                          }`}
                       >
                         <span className="text-base">🌊</span>
                         <div className="flex-1">
@@ -1060,11 +1087,26 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                           : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
                           }`}
                       />
-
-                      {expandedGroups.wave ? (
-                        <ChevronDown size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                      {waveConfig.enabled ? (
+                        expandedGroups.wave ? (
+                          <ChevronDown
+                            size={12}
+                            className={isDarkMode ? 'text-white/60' : 'text-slate-600'}
+                            strokeWidth={2.5}
+                          />
+                        ) : (
+                          <ChevronRight
+                            size={12}
+                            className={isDarkMode ? 'text-white/60' : 'text-slate-600'}
+                            strokeWidth={2.5}
+                          />
+                        )
                       ) : (
-                        <ChevronRight size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+                        <ChevronRight
+                          size={12}
+                          className={isDarkMode ? 'text-white/30' : 'text-slate-400'}
+                          strokeWidth={2.5}
+                        />
                       )}
                     </div>
 

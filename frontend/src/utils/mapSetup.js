@@ -3,7 +3,7 @@ import { initDrawControl } from '@/components/pages/studio/map/controls/drawCont
 import { initTyphoonLayer } from '@/components/pages/studio/map/layers/typhoonLayer';
 import { saveMarker } from '@/components/pages/studio/map/layers/markerLayer';
 import { addHimawariLayer } from '@/components/pages/studio/map/layers/satelliteLayer';
-import { addWindSource } from '@/components/pages/studio/map/layers/windLayer';
+import { addWindSource, addWindLayer } from '@/components/pages/studio/map/layers/windLayer';
 import { addWaveSource, addWaveLayer } from '@/components/pages/studio/map/layers/waveLayer';
 
 // === Constants ===
@@ -28,20 +28,6 @@ const LAYER_VISIBILITY_CONFIG = [
     ids: [
       'graticules',
       'graticules_blur',
-    ]
-  },
-  {
-    key: 'WIND_LAYER',
-    ids: [
-      'wind-particles',
-      'wind-raster',
-      'wind-arrows',
-      'wind-labels',
-      'wave-arrows',
-      'wave-period-labels',
-      'glass-fill',
-      'glass-stroke',
-      'glass-depth'
     ]
   },
 ];
@@ -440,7 +426,8 @@ export async function setupMap({
   addHimawariLayer(map);
   loadCustomImages(map);
   initTyphoonLayer(map);
-  addWindSource(map, isDarkMode);
+  await addWindSource(map, isDarkMode);
+  addWindLayer(map, isDarkMode);
   await addWaveSource(map, isDarkMode);
   addWaveLayer(map, isDarkMode);
 

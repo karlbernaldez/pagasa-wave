@@ -26,6 +26,8 @@ export async function addWindSource(map, isDarkMode) {
   const tileset = getWindTileset(isDarkMode);
   const sourceId = getWindSourceId(isDarkMode);
 
+  console.log("WIND SOURCE ID: ", sourceId)
+
   // Add sources
   if (!map.getSource(sourceId)) {
     map.addSource(sourceId, {
@@ -33,17 +35,7 @@ export async function addWindSource(map, isDarkMode) {
       url: `${tileset}?fresh=${Date.now()}`,
       tileSize: 4096,
     });
-
-    // map.addSource(sourceId, {
-    //   type: 'raster',
-    //   tiles: [
-    //     'http://34.45.182.236:5173/tiles/ecwam/2026011200/{z}/{x}/{y}.png'
-    //   ],
-    //   tileSize: 256,
-    //   bounds: [100, -5, 180, 50],
-    //   scheme: "xyz",
-    // });
-
+    console.log('ADDING WIND RASTER SOURCE')
   }
 
   if (!map.getSource("wind-particles")) {
@@ -52,6 +44,8 @@ export async function addWindSource(map, isDarkMode) {
       url: `mapbox://votewave.ecmwf?fresh=${Date.now()}`,
       tileSize: 4096,
     });
+
+    console.log("ADDING WIND PARTICLES SOURCE")
   }
 
   if (!map.getSource('glass-layer')) {
@@ -68,18 +62,24 @@ export async function addWindSource(map, isDarkMode) {
 }
 
 
-export async function addWindLayer(sourceId) {
-  // Add layers (modularized)
-  addRasterLayer(map, sourceId);
-  addWindParticlesLayer(map);
-  addWindArrowsLayer(map);
-  addGlassLayers(map);
+export async function addWindLayer(map, isDarkMode) {
 
-  setupPopup(map);
+  const sourceId = getWindSourceId(isDarkMode);
+  console.log("ADDING WIND RASTER USING THIS SOURCE: ", sourceId)
+
+  // Add layers (modularized)
+  if (localStorage.getItem('WIND_ENABLED') === 'true') {
+    addRasterLayer(map, sourceId);
+    addWindParticlesLayer(map);
+    addWindArrowsLayer(map);
+
+    setupPopup(map);
+  }
 }
 
 // ------------------- Layer Helper Functions -------------------
 function addRasterLayer(map, sourceId) {
+  const isWindRasterVisible = localStorage.getItem('WIND_RASTER') === 'true';
   map.addLayer({
     id: "wind-raster",
     type: "raster",
@@ -88,11 +88,47 @@ function addRasterLayer(map, sourceId) {
       "raster-opacity": 1,
       "raster-fade-duration": 0
     },
-    layout: { visibility: 'none' },
+    layout: {
+      visibility: isWindRasterVisible ? 'visible' : 'none'
+    },
   }, "graticules");
+
+  map.addLayer({
+    id: 'wind-glass-fill',
+    type: 'fill',
+    source: 'glass-layer',
+    'source-layer': 'ph-bum99e',
+    slot: "top",
+    paint: {
+      'fill-color': 'rgba(255, 255, 255, 0.15)',
+      'fill-opacity': 0.4,
+      'fill-outline-color': 'rgba(255, 255, 255, 0.35)'
+    },
+    layout: {
+      visibility: isWindRasterVisible ? 'visible' : 'none'
+    },
+  });
+
+  map.addLayer({
+    id: 'wind-glass-depth',
+    type: 'fill',
+    source: 'glass-layer',
+    'source-layer': 'ph-bum99e',
+    slot: "top",
+    paint: {
+      'fill-color': ['interpolate', ['linear'], ['zoom'], 5, 'rgba(255,255,255,0.05)', 10, 'rgba(255,255,255,0.25)'],
+      'fill-opacity': 0.3
+    },
+    layout: {
+      visibility: isWindRasterVisible ? 'visible' : 'none'
+    },
+  });
+
+  console.log('ADDING WIND RASTER')
 }
 
 function addWindParticlesLayer(map) {
+  const isWindParticlesVisible = localStorage.getItem('WIND_PARTICLES') === 'true';
   map.addLayer({
     id: "wind-particles",
     type: "raster-particle",
@@ -113,11 +149,14 @@ function addWindParticlesLayer(map) {
         100, "rgba(255,255,255,0.4)"
       ]
     },
-    layout: { visibility: 'none' }
+    layout: {
+      visibility: isWindParticlesVisible ? 'visible' : 'none'
+    },
   }, "country-boundaries");
 }
 
 function addWindArrowsLayer(map) {
+  const isWindBarbsVisible = localStorage.getItem('WIND_BARBS') === 'true';
   map.addLayer({
     id: 'wind-arrows',
     type: 'symbol',
@@ -125,7 +164,7 @@ function addWindArrowsLayer(map) {
     slot: "middle",
     filter: [">=", ["get", "windSpeed"], 3.08],
     layout: {
-      'visibility': 'none',
+      'visibility': isWindBarbsVisible ? 'visible' : 'none',
       'icon-image': [
         'step', ['get', 'windSpeed'],
         ['image', '0KTS', { 'params': { 'color-1': 'rgb(240,240,240)' } }],
@@ -143,35 +182,6 @@ function addWindArrowsLayer(map) {
     },
     paint: { 'icon-opacity': 0.5 }
   }, "country-boundaries");
-}
-
-function addGlassLayers(map) {
-  map.addLayer({
-    id: 'glass-fill',
-    type: 'fill',
-    source: 'glass-layer',
-    'source-layer': 'ph-bum99e',
-    slot: "top",
-    paint: {
-      'fill-color': 'rgba(255, 255, 255, 0.15)',
-      'fill-opacity': 0.4,
-      'fill-outline-color': 'rgba(255, 255, 255, 0.35)'
-    },
-    layout: { 'visibility': 'none' }
-  });
-
-  map.addLayer({
-    id: 'glass-depth',
-    type: 'fill',
-    source: 'glass-layer',
-    'source-layer': 'ph-bum99e',
-    slot: "top",
-    paint: {
-      'fill-color': ['interpolate', ['linear'], ['zoom'], 5, 'rgba(255,255,255,0.05)', 10, 'rgba(255,255,255,0.25)'],
-      'fill-opacity': 0.3
-    },
-    layout: { 'visibility': 'none' }
-  });
 }
 
 function setupPopup(map) {
