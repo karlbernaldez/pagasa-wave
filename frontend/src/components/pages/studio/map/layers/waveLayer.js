@@ -15,8 +15,6 @@ import { fetchLatestGeoJSON, createWavePopup, getWindTileset, getWaveSourceId } 
 
 export async function addWaveSource(map, isDarkMode, model = localStorage.getItem('WAVE_MODEL')) {
 
-    console.log('ADDING WAVE SOURCES FOR MODEL: ', model)
-
     // Fetch latest wind points GeoJSON
     const ww3 = await fetchLatestGeoJSON({
         model: 'ww3',
@@ -43,8 +41,6 @@ export async function addWaveSource(map, isDarkMode, model = localStorage.getIte
     const sourceId = getWaveSourceId(isDarkMode);
     const theme = isDarkMode ? 'dark' : 'light';
 
-    console.log('Wave Source ID: ', sourceId)
-
     // Add sources
     if (!map.getSource(sourceId)) {
         map.addSource(sourceId, {
@@ -56,7 +52,6 @@ export async function addWaveSource(map, isDarkMode, model = localStorage.getIte
             bounds: [100, -5, 180, 50],
             scheme: "xyz",
         });
-        console.log("SOURCE ADDED")
 
     }
 
@@ -68,8 +63,7 @@ export async function addWaveSource(map, isDarkMode, model = localStorage.getIte
 
 
 export async function addWaveLayer(map, isDarkMode) {
-    console.log('Adding wave layers');
-
+    console.log('ADDING WAVE LAYERS')
     // Add layers (modularized)
     const sourceId = getWaveSourceId(isDarkMode);
     addRasterLayer(map, sourceId);
@@ -94,7 +88,37 @@ function addRasterLayer(map, sourceId) {
             },
         }, "graticules");
 
-        console.log("Raster Map added")
+        map.addLayer({
+            id: 'wave-glass-fill',
+            type: 'fill',
+            source: 'glass-layer',
+            'source-layer': 'ph-bum99e',
+            slot: "top",
+            paint: {
+                'fill-color': 'rgba(255, 255, 255, 0.15)',
+                'fill-opacity': 0.8,
+                'fill-outline-color': 'rgba(255, 255, 255, 0.35)'
+            },
+            layout: {
+                visibility: isWaveRasterVisible ? 'visible' : 'none'
+            },
+        });
+
+        map.addLayer({
+            id: 'wave-glass-depth',
+            type: 'fill',
+            source: 'glass-layer',
+            'source-layer': 'ph-bum99e',
+            slot: "top",
+            paint: {
+                'fill-color': ['interpolate', ['linear'], ['zoom'], 5, 'rgba(255,255,255,0.05)', 10, 'rgba(255,255,255,0.25)'],
+                'fill-opacity': 0.8
+            },
+            layout: {
+                visibility: isWaveRasterVisible ? 'visible' : 'none'
+            },
+        });
+
     }
 }
 
