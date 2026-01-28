@@ -63,7 +63,6 @@ export async function addWaveSource(map, isDarkMode, model = localStorage.getIte
 
 
 export async function addWaveLayer(map, isDarkMode) {
-    console.log('ADDING WAVE LAYERS')
     // Add layers (modularized)
     const sourceId = getWaveSourceId(isDarkMode);
     addRasterLayer(map, sourceId);
