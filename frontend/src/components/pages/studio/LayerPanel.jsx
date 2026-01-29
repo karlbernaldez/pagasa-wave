@@ -27,8 +27,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
   // System layer group expansion states
   const [expandedGroups, setExpandedGroups] = useState({
-    domains: true,
-    utilities: true,
+    domains: false,
+    utilities: false,
     satellite: true,
     wind: true,
     wave: true
@@ -40,6 +40,12 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     TCID: false,
     TCAD: false
   });
+
+  const DOMAIN_LAYER_MAP = {
+    PAR: ['PAR', 'PAR_dash'],
+    TCID: ['TCID'],
+    TCAD: ['TCAD'],
+  };
 
   // Utilities layer states
   const [utilitiesLayers, setUtilitiesLayers] = useState({
@@ -88,7 +94,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       SHIPPING_ZONE: localStorage.getItem('SHIPPING_ZONE') === 'true'
     };
 
-    const savedSatellite = localStorage.getItem('SATELLITE') === 'true';
+    const raw = localStorage.getItem('SATELLITE');
+    const savedSatellite = raw === 'true' ? true : raw === 'false' ? false : false;
 
     const savedWind = {
       enabled: localStorage.getItem('WIND_ENABLED') === 'true',
@@ -996,10 +1003,13 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                           <select
                             value={windConfig.model}
                             onChange={(e) => setWindModel(e.target.value)}
-                            className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-all ${isDarkMode
-                              ? 'bg-white/10 text-white border border-white/20 hover:bg-white/15'
-                              : 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50'
-                              } outline-none focus:ring-2 focus:ring-cyan-400`}
+                            className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-all
+                              ${isDarkMode
+                                ? 'bg-slate-800 text-white border border-white/20 hover:bg-slate-700'
+                                : 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50'
+                              }
+                              outline-none focus:ring-2 focus:ring-cyan-400
+                            `}
                           >
                             <option value="GFS">GFS (Global Forecast System)</option>
                             <option value="ECMWF">ECMWF (European Centre)</option>
@@ -1121,10 +1131,13 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                           <select
                             value={waveConfig.model}
                             onChange={(e) => setWaveModel(e.target.value)}
-                            className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-all ${isDarkMode
-                              ? 'bg-white/10 text-white border border-white/20 hover:bg-white/15'
-                              : 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50'
-                              } outline-none focus:ring-2 focus:ring-cyan-400`}
+                            className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-all
+                            ${isDarkMode
+                                ? 'bg-slate-800 text-white border border-white/20 hover:bg-slate-700'
+                                : 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-50'
+                              }
+                            outline-none focus:ring-2 focus:ring-cyan-400
+                          `}
                           >
                             <option value="SWAN">SWAN (Simulating Waves)</option>
                             <option value="WW3">WW3 (WaveWatch III)</option>

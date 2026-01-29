@@ -25,7 +25,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
   const [isExporting, setIsExporting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [projects, setProjects] = useState([]);
-  
+
   // Current project display state (from cached/fetched project)
   const [projectName, setProjectName] = useState("No Project Selected");
   const [chartType, setChartType] = useState("Wave Analysis");
@@ -115,9 +115,16 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
 
   const handleExportProject = async () => {
     if (!map) return;
+
     try {
       setIsExporting(true);
-      await downloadCachedSnapshotZip(setIsDarkMode, features, map, setCapturedImages);
+      await downloadCachedSnapshotZip(
+        setIsDarkMode,
+        features,
+        setCapturedImages,
+        isDarkMode
+      );
+
       Swal.fire({
         toast: true,
         position: "top-end",
@@ -126,7 +133,8 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
         showConfirmButton: false,
         timer: 2000,
       });
-    } catch {
+    } catch (e) {
+      console.error(e);
       Swal.fire({
         toast: true,
         position: "top-end",
@@ -256,35 +264,32 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
         <div className="fixed top-20 left-4 z-40 flex gap-2">
           <button
             onClick={() => setMenuOpen(true)}
-            className={`group flex items-center gap-2 px-3 py-2.5 rounded-full transition-all duration-300 hover:scale-105 ${
-              isDarkMode
+            className={`group flex items-center gap-2 px-3 py-2.5 rounded-full transition-all duration-300 hover:scale-105 ${isDarkMode
                 ? 'bg-black/40 hover:bg-black/50 border border-white/20'
                 : 'bg-white/60 hover:bg-white/70 border border-white/40'
-            } backdrop-blur-xl shadow-lg`}
+              } backdrop-blur-xl shadow-lg`}
           >
-            <Menu 
-              size={16} 
+            <Menu
+              size={16}
               className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
               strokeWidth={2.5}
             />
-            <span className={`text-xs font-semibold ${
-              isDarkMode ? 'text-white/90' : 'text-slate-800'
-            }`}>
+            <span className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'
+              }`}>
               Menu
             </span>
           </button>
 
           <button
             onClick={() => setShowProjectInfo(!showProjectInfo)}
-            className={`group flex items-center gap-2 px-3 py-2.5 rounded-full transition-all duration-300 hover:scale-105 ${
-              isDarkMode
+            className={`group flex items-center gap-2 px-3 py-2.5 rounded-full transition-all duration-300 hover:scale-105 ${isDarkMode
                 ? 'bg-black/40 hover:bg-black/50 border border-white/20'
                 : 'bg-white/60 hover:bg-white/70 border border-white/40'
-            } backdrop-blur-xl shadow-lg`}
+              } backdrop-blur-xl shadow-lg`}
             title="Project Info"
           >
-            <Info 
-              size={16} 
+            <Info
+              size={16}
               className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
               strokeWidth={2.5}
             />
@@ -301,7 +306,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
             menuOpen={false}
           />
         )}
-        
+
         {/* Updated CreateProjectModal - simplified props */}
         <CreateProjectModal
           visible={showModal}
@@ -322,7 +327,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
               setProjectName(proj.name);
               setChartType(proj.chartType);
               setShowProjectList(false);
-              
+
               // Update cache
               projectCache[proj._id] = proj;
               localStorage.setItem('cachedProject', JSON.stringify({
@@ -332,7 +337,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
                 description: proj.description,
                 forecastDate: proj.forecastDate
               }));
-              
+
               if (onSave) onSave(proj);
             }}
             onDelete={async (id) => {
@@ -386,60 +391,53 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
     <>
       <div
         ref={menuRef}
-        className={`fixed top-20 left-4 w-72 rounded-xl z-40 transition-all duration-300 ${
-          isDarkMode
+        className={`fixed top-20 left-4 w-72 rounded-xl z-40 transition-all duration-300 ${isDarkMode
             ? 'bg-black/40 border border-white/20'
             : 'bg-white/60 border border-white/40'
-        } backdrop-blur-xl shadow-xl max-h-[calc(100vh-120px)] flex flex-col`}
+          } backdrop-blur-xl shadow-xl max-h-[calc(100vh-120px)] flex flex-col`}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between px-4 py-3 border-b ${
-          isDarkMode ? 'border-white/10' : 'border-black/10'
-        }`}>
+        <div className={`flex items-center justify-between px-4 py-3 border-b ${isDarkMode ? 'border-white/10' : 'border-black/10'
+          }`}>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <div className={`p-1.5 rounded-lg ${
-              isDarkMode ? 'bg-cyan-500/20' : 'bg-blue-500/20'
-            }`}>
-              <Menu 
-                size={16} 
+            <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-cyan-500/20' : 'bg-blue-500/20'
+              }`}>
+              <Menu
+                size={16}
                 className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
                 strokeWidth={2.5}
               />
             </div>
             <div className="flex-1 min-w-0">
-              <div className={`text-sm font-bold truncate ${
-                isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}>
+              <div className={`text-sm font-bold truncate ${isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
                 {projectName}
               </div>
-              <div className={`text-[10px] font-medium ${
-                isDarkMode ? 'text-white/50' : 'text-slate-600'
-              }`}>
+              <div className={`text-[10px] font-medium ${isDarkMode ? 'text-white/50' : 'text-slate-600'
+                }`}>
                 Project Menu
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-1">
             <button
               onClick={() => setShowProjectInfo(!showProjectInfo)}
-              className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 ${
-                isDarkMode
+              className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 ${isDarkMode
                   ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
                   : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
               title="Show Project Info"
             >
               <Info size={16} strokeWidth={2.5} />
             </button>
-            
+
             <button
               onClick={() => setMenuOpen(false)}
-              className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 ${
-                isDarkMode
+              className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 ${isDarkMode
                   ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
                   : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               <X size={16} strokeWidth={2.5} />
             </button>
@@ -458,7 +456,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
               isDarkMode={isDarkMode}
             >
               {section.items.map((item, idx) => (
-                <MenuItem 
+                <MenuItem
                   key={idx}
                   onClick={item.onClick}
                   icon={item.icon}
@@ -481,7 +479,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
           menuOpen={true}
         />
       )}
-      
+
       {/* Updated CreateProjectModal - simplified props */}
       <CreateProjectModal
         visible={showModal}
@@ -502,7 +500,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
             setProjectName(proj.name);
             setChartType(proj.chartType);
             setShowProjectList(false);
-            
+
             // Update cache
             projectCache[proj._id] = proj;
             localStorage.setItem('cachedProject', JSON.stringify({
@@ -512,7 +510,7 @@ const ProjectDashboard = ({ onNew, onSave, onView, map, features, isDarkMode, se
               description: proj.description,
               forecastDate: proj.forecastDate
             }));
-            
+
             if (onSave) onSave(proj);
           }}
           onDelete={async (id) => {
@@ -567,11 +565,10 @@ const MenuSection = React.memo(({ title, icon, active, toggle, children, isDarkM
   <div>
     <button
       onClick={toggle}
-      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-        isDarkMode
+      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode
           ? 'hover:bg-white/10 text-slate-200'
           : 'hover:bg-black/10 text-slate-800'
-      }`}
+        }`}
     >
       <span className="flex gap-2 items-center">
         {icon} {title}
@@ -593,11 +590,10 @@ const MenuSection = React.memo(({ title, icon, active, toggle, children, isDarkM
 const MenuItem = React.memo(({ onClick, icon, label, isDarkMode }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${
-      isDarkMode
+    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${isDarkMode
         ? 'hover:bg-white/10 text-slate-300 hover:text-white'
         : 'hover:bg-black/10 text-slate-700 hover:text-slate-900'
-    }`}
+      }`}
   >
     {icon} {label}
   </button>

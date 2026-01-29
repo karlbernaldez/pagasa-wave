@@ -6,6 +6,8 @@ import { addHimawariLayer } from '@/components/pages/studio/map/layers/satellite
 import { addWindSource, addWindLayer } from '@/components/pages/studio/map/layers/windLayer';
 import { addWaveSource, addWaveLayer } from '@/components/pages/studio/map/layers/waveLayer';
 
+import { setGlobalMapLoaded, setGlobalSourceIds, } from '@/components/pages/studio/map/helpers/mapGlobalState';
+
 // === Constants ===
 const MARKER_IMAGES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1'];
 const WIND_BARB_IMAGES = ['0kts', '5kts', '10kts', '15kts', '20kts', '25kts', '30kts'];
@@ -440,6 +442,8 @@ export async function setupMap({
     ? initialFeatures
     : initialFeatures?.features || [];
 
+  const sourceIds = featuresArray.map(f => f.sourceId);
+  setGlobalSourceIds(sourceIds);
   const classifier = new FeatureClassifier();
   const { markerPoints, frontLines, nonFrontLines, totalLineCount } =
     classifier.classify(featuresArray);
@@ -482,7 +486,9 @@ export async function setupMap({
   map.once('render', () => {
     setLoading?.(false);
     setMapLoaded(true);
+    setGlobalMapLoaded(true);
     logger?.info('Map setup complete with initial features.');
+
   });
 
   // Return cleanup function
