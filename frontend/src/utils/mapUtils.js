@@ -119,16 +119,8 @@ function drawLabelBox(ctx, labelData, { font, color, bgColor, padding }) {
   });
 }
 
-/**
- * Capture a Mapbox map snapshot and optionally update state, localStorage, and console preview.
- * @param {mapboxgl.Map} map - Mapbox map instance
- * @param {Function} [setCapturedImages] - Optional setter to update React state
- * @param {Object} [options]
- * @param {string} [options.lightKey='map_snapshot_light'] - localStorage key for light mode
- * @param {string} [options.darkKey='map_snapshot_dark'] - localStorage key for dark mode
- * @param {number} [options.consolePreviewSize=1600] - size in px for console preview
- */
-export function captureMapSnapshot(map, setCapturedImages, options = {}) {
+export function captureMapSnapshot(setCapturedImages, options = {}) {
+  console.log('CAPTURING MAP')
   const {
     lightKey = "map_snapshot_light",
     darkKey = "map_snapshot_dark",

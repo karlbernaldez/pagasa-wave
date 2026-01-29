@@ -1,4 +1,5 @@
-export function getLatestMapInstance(mapRef) {
+export function getLatestMapInstance() {
+  const mapRef = map
   try {
     // 1️⃣ Direct Mapbox map instance
     if (mapRef && typeof mapRef.getStyle === 'function') {
