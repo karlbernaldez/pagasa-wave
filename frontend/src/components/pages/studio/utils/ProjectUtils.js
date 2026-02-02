@@ -125,8 +125,15 @@ async function toggleThemeAndWait(setIsDarkMode, value) {
   console.log('🎉 toggleThemeAndWait → complete');
 }
 // --- Snapshot helper ---
-async function captureSnapshot(setCapturedImages) {
-  if (!map) return;
+// --- Snapshot helper ---
+async function captureSnapshot(theme) {
+  if (!map) return null;
+
+  if (theme !== "light" && theme !== "dark") {
+    throw new Error("captureSnapshot requires theme: 'light' | 'dark'");
+  }
+
+  console.group("📸 captureSnapshot", theme);
 
   await map.fitBounds(
     [
@@ -139,9 +146,10 @@ async function captureSnapshot(setCapturedImages) {
     }
   );
 
-  await waitForLayersRendered(map, mapSourceIds );
+  await waitForLayersRendered(map, mapSourceIds);
 
-  return captureMapSnapshot(setCapturedImages, {
+  const image = captureMapSnapshot(null, {
+    forceTheme: theme,
     watermarkText: "DOST-PAGASA",
     watermarkStyle: "diagonal-repeat",
     labelData: {
@@ -150,46 +158,59 @@ async function captureSnapshot(setCapturedImages) {
       annotator: "Karl Bernaldez",
       date: "October 10, 2025",
     },
-    labelFont: "14px Arial",
-    labelColor: "white",
-    labelBgColor: "rgba(0, 0, 0, 0.7)",
-    labelPadding: 12,
   });
+
+  console.groupEnd();
+  return image;
 }
 
 // --- Main export function ---
 export async function downloadCachedSnapshotZip(
   setIsDarkMode,
   features,
-  setCapturedImages,
   isDarkMode
 ) {
   if (!map) throw new Error("No map reference");
 
+  console.group("📦 downloadCachedSnapshotZip");
+
   const originalTheme = isDarkMode;
 
-  // --- LIGHT SNAPSHOT ---
-  await captureSnapshot(setCapturedImages);
-
-  // --- DARK SNAPSHOT ---
-  await toggleThemeAndWait(setIsDarkMode, !originalTheme);
-  await captureSnapshot(setCapturedImages);
-
-  // --- RESTORE THEME ---
-  await toggleThemeAndWait(setIsDarkMode, originalTheme);
-
-  // --- ZIP CREATION ---
-  const projectName = localStorage.getItem("projectName") || "map_snapshots";
-  const zip = new JSZip();
-
-  const snapshots = {
-    map_snapshot_light: "map_snapshot_light.png",
-    map_snapshot_dark: "map_snapshot_dark.png",
+  // ✅ LOCAL BUFFER (NOT React state)
+  const snapshotBuffer = {
+    light: null,
+    dark: null,
   };
 
-  for (const [key, fileName] of Object.entries(snapshots)) {
-    const data = localStorage.getItem(key);
-    if (data) zip.file(fileName, data.split(",")[1], { base64: true });
+  // --- LIGHT SNAPSHOT ---
+  await toggleThemeAndWait(setIsDarkMode, false);
+  snapshotBuffer.light = await captureSnapshot("light");
+
+  // --- DARK SNAPSHOT ---
+  await toggleThemeAndWait(setIsDarkMode, true);
+  snapshotBuffer.dark = await captureSnapshot("dark");
+
+  // --- RESTORE ---
+  await toggleThemeAndWait(setIsDarkMode, originalTheme);
+
+  // --- ZIP ---
+  const zip = new JSZip();
+  const projectName = localStorage.getItem("projectName") || "map_snapshots";
+
+  if (snapshotBuffer.light) {
+    zip.file(
+      "map_snapshot_light.png",
+      snapshotBuffer.light.split(",")[1],
+      { base64: true }
+    );
+  }
+
+  if (snapshotBuffer.dark) {
+    zip.file(
+      "map_snapshot_dark.png",
+      snapshotBuffer.dark.split(",")[1],
+      { base64: true }
+    );
   }
 
   if (features?.type === "FeatureCollection") {
@@ -206,6 +227,9 @@ export async function downloadCachedSnapshotZip(
   document.body.removeChild(link);
 
   restoreLayers(map);
+
+  console.log("✅ Export complete");
+  console.groupEnd();
 }
 
 // --- Logout ---

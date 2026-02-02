@@ -120,15 +120,16 @@ function drawLabelBox(ctx, labelData, { font, color, bgColor, padding }) {
 }
 
 export function captureMapSnapshot(setCapturedImages, options = {}) {
-  console.log('CAPTURING MAP')
+  console.group("🖼 captureMapSnapshot");
+  console.log("Options received:", options);
+
   const {
-    lightKey = "map_snapshot_light",
-    darkKey = "map_snapshot_dark",
+    forceTheme, // 🔥 REQUIRED: "light" | "dark"
     consolePreviewSize = 1600,
     watermarkText = "",
-    watermarkStyle = "diagonal-repeat", // "diagonal-repeat" | "corner" | "center" | "bottom-right" | "pattern-grid"
+    watermarkStyle = "diagonal-repeat",
     crop = null,
-    labelData = null, // { projectName, chartType, annotator, date }
+    labelData = null,
     labelFont = "14px Arial",
     labelColor = "white",
     labelBgColor = "rgba(0, 0, 0, 0.7)",
@@ -138,28 +139,44 @@ export function captureMapSnapshot(setCapturedImages, options = {}) {
     watermarkOpacity = 0.5,
   } = options;
 
-  if (!map) return console.warn("No map instance provided for snapshot.");
+  if (!map) {
+    console.warn("❌ No map instance provided for snapshot.");
+    console.groupEnd();
+    return null;
+  }
+
+  if (!forceTheme) {
+    console.error("❌ forceTheme is required (light | dark)");
+    console.groupEnd();
+    return null;
+  }
 
   try {
-    const canvas = map.getCanvas();
-    const originalWidth = canvas.width;
-    const originalHeight = canvas.height;
+    console.log("🌓 Forced theme:", forceTheme);
 
+    const canvas = map.getCanvas();
     const tempCanvas = document.createElement("canvas");
     const ctx = tempCanvas.getContext("2d");
 
-    const cropX = crop?.x || 0;
-    const cropY = crop?.y || 0;
-    const cropWidth = crop?.width || originalWidth;
-    const cropHeight = crop?.height || originalHeight;
+    const width = crop?.width || canvas.width;
+    const height = crop?.height || canvas.height;
 
-    tempCanvas.width = cropWidth;
-    tempCanvas.height = cropHeight;
+    tempCanvas.width = width;
+    tempCanvas.height = height;
 
-    ctx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+    ctx.drawImage(
+      canvas,
+      crop?.x || 0,
+      crop?.y || 0,
+      width,
+      height,
+      0,
+      0,
+      width,
+      height
+    );
 
-    // Apply watermark based on style
-    applyWatermark(ctx, cropWidth, cropHeight, {
+    applyWatermark(ctx, width, height, {
       text: watermarkText,
       style: watermarkStyle,
       font: watermarkFont,
@@ -167,7 +184,6 @@ export function captureMapSnapshot(setCapturedImages, options = {}) {
       opacity: watermarkOpacity,
     });
 
-    // Add label on upper-left if provided
     if (labelData) {
       drawLabelBox(ctx, labelData, {
         font: labelFont,
@@ -179,24 +195,23 @@ export function captureMapSnapshot(setCapturedImages, options = {}) {
 
     const imageDataUrl = tempCanvas.toDataURL("image/png");
 
-    const darkMode = localStorage.getItem("isDarkMode") === "true";
-    const snapshotKey = darkMode ? darkKey : lightKey;
-
-    localStorage.setItem(snapshotKey, imageDataUrl);
-
     setCapturedImages?.((prev) => ({
       ...prev,
-      [darkMode ? "dark" : "light"]: imageDataUrl,
+      [forceTheme]: imageDataUrl,
     }));
+
+    console.log("✅ Snapshot stored in memory:", forceTheme);
 
     console.log(
       "%c ",
       `font-size:${consolePreviewSize}px; line-height:${consolePreviewSize}px; background:url(${imageDataUrl}) no-repeat; background-size:contain;`
     );
 
+    console.groupEnd();
     return imageDataUrl;
   } catch (e) {
     console.error("❌ Error capturing map snapshot:", e);
+    console.groupEnd();
     return null;
   }
 }
