@@ -1,144 +1,137 @@
 import React from 'react';
-import styled from 'styled-components';
+import { Package, X } from 'lucide-react';
 
-const Overlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  animation: fadeIn 0.2s ease-out;
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-`;
-
-const ModalContainer = styled.div`
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 40px;
-  max-width: 450px;
-  width: 90%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  animation: slideUp 0.3s ease-out;
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(20px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-`;
-
-const IconWrapper = styled.div`
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 20px;
-  background: rgba(72, 187, 120, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-`;
-
-const Title = styled.h2`
-  margin: 0 0 12px;
-  font-size: 24px;
-  font-weight: 600;
-  text-align: center;
-  color: #fff;
-`;
-
-const Message = styled.p`
-  margin: 0 0 30px;
-  font-size: 16px;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.5;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-`;
-
-const Button = styled.button`
-  padding: 12px 32px;
-  font-size: 15px;
-  font-weight: 600;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-  
-  ${props => props.$primary ? `
-    background: rgba(72, 187, 120, 0.3);
-    color: #fff;
-    border: 1px solid rgba(72, 187, 120, 0.5);
-    
-    &:hover {
-      background: rgba(72, 187, 120, 0.4);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
-    }
-  ` : `
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    
-    &:hover {
-      background: rgba(255, 255, 255, 0.15);
-      transform: translateY(-2px);
-    }
-  `}
-  
-  &:active {
-    transform: translateY(0);
-  }
-`;
-
-const ExportConfirmModal = ({ visible, onConfirm, onCancel }) => {
+const ExportConfirmModal = ({ visible, onConfirm, onCancel, isDarkMode = false }) => {
   if (!visible) return null;
 
   return (
-    <Overlay onClick={onCancel}>
-      <ModalContainer onClick={(e) => e.stopPropagation()}>
-        <IconWrapper>📦</IconWrapper>
-        <Title>Export Project</Title>
-        <Message>
-          Are you sure you want to export this project? This will download all project data as a ZIP file.
-        </Message>
-        <ButtonGroup>
-          <Button onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button $primary onClick={onConfirm}>
-            Yes, Export
-          </Button>
-        </ButtonGroup>
-      </ModalContainer>
-    </Overlay>
+    <div 
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 animate-fadeIn bg-black/50 backdrop-blur-sm"
+      onClick={onCancel}
+    >
+      <div
+        className={`relative w-full max-w-md rounded-2xl transition-all duration-300 animate-slideUp ${
+          isDarkMode
+            ? 'bg-black/40 border border-white/20'
+            : 'bg-white/60 border border-white/40'
+        } backdrop-blur-xl shadow-2xl`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onCancel}
+          className={`absolute top-4 right-4 p-1.5 rounded-lg transition-all duration-200 ${
+            isDarkMode
+              ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
+              : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <X size={18} strokeWidth={2.5} />
+        </button>
+
+        {/* Content */}
+        <div className="px-8 pt-10 pb-8">
+          {/* Icon */}
+          <div className={`w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center ${
+            isDarkMode
+              ? 'bg-cyan-500/20 ring-1 ring-cyan-400/40'
+              : 'bg-blue-500/20 ring-1 ring-blue-500/50'
+          }`}>
+            <Package 
+              size={32} 
+              className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
+              strokeWidth={2}
+            />
+          </div>
+
+          {/* Title */}
+          <h2 className={`text-2xl font-bold text-center mb-3 ${
+            isDarkMode ? 'text-white' : 'text-slate-900'
+          }`}>
+            Export Project
+          </h2>
+
+          {/* Message */}
+          <p className={`text-center mb-8 leading-relaxed ${
+            isDarkMode ? 'text-white/80' : 'text-slate-700'
+          }`}>
+            Are you sure you want to export this project? This will download all project data as a ZIP file.
+          </p>
+
+          {/* Button Group */}
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                isDarkMode
+                  ? 'bg-white/10 hover:bg-white/15 text-white/90 border border-white/20 hover:border-white/30'
+                  : 'bg-black/10 hover:bg-black/15 text-slate-800 border border-black/20 hover:border-black/30'
+              } hover:-translate-y-0.5 active:translate-y-0 shadow-lg`}
+            >
+              Cancel
+            </button>
+            
+            <button
+              onClick={onConfirm}
+              className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                isDarkMode
+                  ? 'bg-cyan-500/30 hover:bg-cyan-500/40 text-white border border-cyan-400/50 hover:border-cyan-400/70'
+                  : 'bg-blue-500/30 hover:bg-blue-500/40 text-blue-900 border border-blue-500/50 hover:border-blue-500/70'
+              } hover:-translate-y-0.5 active:translate-y-0 shadow-lg ${
+                isDarkMode ? 'shadow-cyan-500/20' : 'shadow-blue-500/20'
+              }`}
+            >
+              Yes, Export
+            </button>
+          </div>
+        </div>
+
+        {/* Footer badge */}
+        <div className={`px-4 py-2.5 rounded-b-2xl border-t ${
+          isDarkMode 
+            ? 'bg-white/5 border-white/10' 
+            : 'bg-black/5 border-black/10'
+        }`}>
+          <div className="flex items-center justify-center">
+            <span className={`text-xs font-medium ${
+              isDarkMode ? 'text-white/50' : 'text-slate-600'
+            }`}>
+              💾 Your data will be safely packaged
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+
+        .animate-slideUp {
+          animation: slideUp 0.3s ease-out;
+        }
+      `}</style>
+    </div>
   );
 };
 

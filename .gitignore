@@ -12,6 +12,7 @@ scripts/grib_files/
 scripts/upload_wind_raster.txt
 frontend/dist/
 frontend/public/geojson/
+frontend/public/tiles/
 
 backend/frames/
 
@@ -37,3 +38,13 @@ scripts/wind_dual_preview.png
 scripts/wind_solarstorm.tif
 
 scripts/.env
+
+
+wavetiles/cog
+wavetiles/geotiff
+wavetiles/input
+wavetiles/tiles
+wavetiles/utils
+wavetiles/venv
+wavetiles/wave3data
+wavetiles/__pycache__

@@ -215,7 +215,7 @@ const SecondaryButton = styled.button`
   }
 `;
 
-const EditAccessModal = ({ isOpen, onClose }) => {
+const StudioAccessModal = ({ isOpen, onClose }) => {
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
   const navigate = useNavigate();
@@ -305,10 +305,10 @@ const EditAccessModal = ({ isOpen, onClose }) => {
               <User size={28} color="#2563eb" />
             </IconWrapper>
 
-            <Title>Edit Access Required</Title>
+            <Title>Studio Access Required</Title>
             <Subtitle>Standard User Account Needed</Subtitle>
             <Description>
-              To edit this content, you need to be signed in with a standard user account. Please sign in to your existing account or create a new one to continue.
+              To access the studio, you need to be signed in with a standard user account. Please sign in to your existing account or create a new one to continue.
             </Description>
 
             <ButtonGroup>
@@ -350,7 +350,7 @@ const EditAccessModal = ({ isOpen, onClose }) => {
             <Title>Switch Account Required</Title>
             <Subtitle variant="warning">Current Session Will End</Subtitle>
             <Description>
-              To access editing features, you'll need to sign out of your current session and sign in with a standard user account. Your current session will be terminated. Alternatively, you can go to the dashboard to continue without signing out.
+              To access studio features, you'll need to sign out of your current session and sign in with a standard user account. Your current session will be terminated. Alternatively, you can go to the dashboard to continue without signing out.
             </Description>
 
             <ButtonGroup>
@@ -411,4 +411,4 @@ const EditAccessModal = ({ isOpen, onClose }) => {
   );
 };
 
-export default EditAccessModal;
+export default StudioAccessModal;

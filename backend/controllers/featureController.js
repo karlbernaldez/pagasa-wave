@@ -1,176 +1,117 @@
-// backend/controllers/featureController.js
+import asyncHandler from '../utils/asyncHandler.js';
+import { throwError } from '../utils/errorHelper.js';
 import Feature from '../models/Feature.js';
-import Project from '../models/Project.js';
+import {
+  ensureProjectExists,
+  ensureFeatureExists,
+  validateGeometry,
+  buildNewSourceIdAndUpdateData,
+} from '../utils/dbHelpers.js';
 
-export const createFeature = async (req, res) => {
-  try {
-    const {
-      geometry,
-      properties = {},
-      name = 'Untitled Feature',
-      sourceId,
-    } = req.body;
+// ===============================
+// CREATE FEATURE
+// ===============================
+export const createFeature = asyncHandler(async (req, res) => {
+  const { geometry, properties = {}, name = 'Untitled Feature', sourceId } = req.body;
+  const owner = req.user.id;
+  const projectId = properties.project;
 
-    const owner = req.user.id;
-    const projectId = properties.project;
+  validateGeometry(geometry);
+  if (!sourceId || !owner || !projectId) throwError('Missing required fields: sourceId or properties.project.', 400);
 
-    // Validate geometry
-    if (!geometry || !geometry.type || !geometry.coordinates) {
-      return res.status(400).json({ error: 'Invalid geometry object.' });
-    }
+  await ensureProjectExists(projectId, owner);
 
-    // Validate required fields
-    if (!sourceId || !owner || !projectId) {
-      return res.status(400).json({ error: 'Missing required fields: sourceId or properties.project.' });
-    }
+  const fullProperties = { ...properties, owner };
 
-    // ✅ Check project existence
-    const projectExists = await Project.findById(projectId);
-    if (!projectExists) {
-      return res.status(404).json({ error: 'Project not found.' });
-    }
-
-    // Compose properties with owner
-    const fullProperties = {
-      ...properties,
-      owner,
-    };
-
-    // Upsert feature
-    const result = await Feature.updateOne(
-      {
+  const result = await Feature.updateOne(
+    { sourceId, 'properties.owner': owner, 'properties.project': projectId },
+    {
+      $setOnInsert: {
+        type: 'Feature',
+        geometry,
+        properties: fullProperties,
+        name,
         sourceId,
-        'properties.owner': owner,
-        'properties.project': projectId,
       },
-      {
-        $setOnInsert: {
-          type: 'Feature',
-          geometry,
-          properties: fullProperties,
-          name,
-          sourceId,
-        },
-      },
-      { upsert: true }
-    );
+    },
+    { upsert: true }
+  );
 
-    if (result.upsertedCount > 0) {
-      return res.status(201).json({ message: 'Feature saved successfully (new)', sourceId });
-    } else {
-      return res.status(200).json({ message: 'Feature already exists. Skipped saving.', sourceId });
-    }
-  } catch (err) {
-    console.error('Error saving feature:', err);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-};
+  res.status(result.upsertedCount > 0 ? 201 : 200).json({
+    message: result.upsertedCount > 0 ? 'Feature saved successfully (new)' : 'Feature already exists. Skipped saving.',
+    sourceId,
+  });
+});
 
-export const getAllFeatures = async (req, res) => {
-  try {
-    const features = await Feature.find().sort({ createdAt: -1 });
-    res.json(features); // ✅ this returns an array
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-};
+// ===============================
+// GET ALL FEATURES
+// ===============================
+export const getAllFeatures = asyncHandler(async (req, res) => {
+  const features = await Feature.find().sort({ createdAt: -1 });
+  res.json(features);
+});
 
-export const getFeaturesByUserAndProject = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { projectId } = req.params; // Accessing projectId from the route parameter
+// ===============================
+// GET FEATURES BY USER & PROJECT
+// ===============================
+export const getFeaturesByUserAndProject = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { projectId } = req.params;
 
-    if (!projectId) {
-      console.warn('[WARN] Missing projectId in route.');
-      return res.status(400).json({ error: 'Missing projectId in route.' });
-    }
+  if (!projectId) throwError('Missing projectId in route.', 400);
 
-    // 🔍 Query inside properties.owner and properties.project
-    const features = await Feature.find({
-      'properties.owner': userId,
-      'properties.project': projectId,
-    }).sort({ createdAt: -1 });
+  const features = await Feature.find({
+    'properties.owner': userId,
+    'properties.project': projectId,
+  }).sort({ createdAt: -1 });
 
-    res.json(features);
-  } catch (err) {
-    console.error('[ERROR] Error fetching features by user and project:', err);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-};
+  res.json(features);
+});
 
-export const getFeatureBySourceId = async (req, res) => {
-  try {
-    const { sourceId } = req.params;
-    const feature = await Feature.findOne({ sourceId });
+// ===============================
+// GET FEATURE BY SOURCE ID
+// ===============================
+export const getFeatureBySourceId = asyncHandler(async (req, res) => {
+  const { sourceId } = req.params;
+  const feature = await ensureFeatureExists(sourceId);
+  res.json(feature);
+});
 
-    if (!feature) {
-      return res.status(404).json({ error: 'Feature not found.' });
-    }
+// ===============================
+// DELETE FEATURE
+// ===============================
+export const deleteFeature = asyncHandler(async (req, res) => {
+  const { sourceId } = req.params;
 
-    res.json(feature);
-  } catch (err) {
-    console.error('Error fetching feature:', err);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-};
+  const result = await Feature.deleteOne({ sourceId });
+  if (result.deletedCount === 0) throwError(`Feature with sourceId "${sourceId}" not found. Nothing deleted.`, 404);
 
-export const deleteFeature = async (req, res) => {
-  try {
-    const { sourceId } = req.params;
+  res.status(200).json({
+    status: 'success',
+    message: `Feature with sourceId "${sourceId}" was deleted successfully.`,
+  });
+});
 
-    const result = await Feature.deleteOne({ sourceId });
+// ===============================
+// UPDATE FEATURE NAME
+// ===============================
+export const updateFeatureName = asyncHandler(async (req, res) => {
+  const { sourceId } = req.params;
+  const { newName } = req.body;
 
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Feature not found.' });
-    }
+  if (!newName || typeof newName !== 'string') throwError('Invalid name. Name must be a non-empty string.', 400);
 
-    res.json({ message: 'Feature deleted successfully.' });
-  } catch (err) {
-    console.error('Error deleting feature:', err);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-};
+  const feature = await ensureFeatureExists(sourceId);
+  const [newSourceId, updateData] = buildNewSourceIdAndUpdateData(feature, newName);
 
-export const updateFeatureName = async (req, res) => {
-  try {
-    const { sourceId } = req.params; // Incoming sourceId for the feature
-    const { newName } = req.body; // New name to update
+  const updatedFeature = await Feature.findOneAndUpdate(
+    { sourceId },
+    { $set: updateData },
+    { new: true }
+  );
 
-    // Validate the new name
-    if (!newName || typeof newName !== 'string') {
-      return res.status(400).json({ error: 'Invalid name. Name must be a non-empty string.' });
-    }
-
-    // Find the feature to be updated using sourceId
-    let feature = await Feature.findOneAndUpdate(
-      { sourceId },
-      { $set: { name: newName } },
-      { new: true }
-    );
-
-    // Check if feature exists and fetch the type
-    if (!feature) {
-      return res.status(404).json({ error: 'Feature not found.' });
-    }
-
-    const type = feature.properties.type;
-
-    // If the feature type is one of the specified types, update the sourceId accordingly
-    if (['low_pressure', 'high_pressure', 'typhoon', 'less_1'].includes(type)) {
-      const newSourceId = `${type}_${newName}`;
-
-      // Update both the sourceId and name in a single update
-      feature = await Feature.findOneAndUpdate(
-        { sourceId }, // Search using the original sourceId
-        { $set: { sourceId: newSourceId, name: newName } }, // Update sourceId and name together
-        { new: true }
-      );
-    }
-
-    // Return the updated feature
-    res.json({ message: 'Feature name updated successfully.', feature });
-  } catch (err) {
-    console.error('Error updating feature name:', err);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-};
+  res.json({
+    message: 'Feature name updated successfully.',
+    feature: updatedFeature,
+  });
+});

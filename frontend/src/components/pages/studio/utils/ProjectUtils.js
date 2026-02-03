@@ -1,65 +1,61 @@
 import JSZip from 'jszip';
 import Swal from 'sweetalert2';
-import { captureMapSnapshot, getLatestMapInstance } from '@/utils/mapUtils';
+import { captureMapSnapshot } from '@/utils/mapUtils';
 import { createProject, deleteProjectById } from '@/api/projectAPI';
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+import { isMapLoaded, mapSourceIds } from '@/components/pages/studio/map/helpers/mapGlobalState';
 
-const waitForMapReady = (map, timeout = 15000) =>
-  new Promise((resolve) => {
-    if (!map) return resolve();
-    let resolved = false;
-
-    const cleanup = () => {
-      map.off('data', onData);
-      map.off('idle', onIdle);
-      clearTimeout(timer);
-    };
-
-    const onData = (e) => {
-      if (e.sourceId === 'himawari-video' && e.isSourceLoaded && !resolved) {
-        resolved = true;
-        cleanup();
-        resolve();
-      }
-    };
-
-    const onIdle = () => {
-      if (!resolved) {
-        resolved = true;
-        cleanup();
-        resolve();
-      }
-    };
-
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        console.warn(`⏱️ Map not ready after ${timeout / 1000}s, continuing anyway.`);
-        resolved = true;
-        cleanup();
-        resolve();
-      }
-    }, timeout);
-
-    if (!map.isStyleLoaded()) {
-      map.once('render', onIdle);
-    } else {
-      const video = map.getSource('himawari-video')?.getVideo();
-      if (video) {
-        resolved = true;
-        cleanup();
-        resolve();
-      } else {
-        map.on('data', onData);
-        map.once('render', onIdle);
-      }
-    }
-  });
-
-function waitForIdle(map, delayMs = 600) {
+function waitForLayersRendered(map, layerIds = []) {
+  console.log(layerIds)
   return new Promise((resolve) => {
-    if (!map) return resolve();
-    map.once('idle', () => setTimeout(resolve, delayMs));
+    const check = () => {
+      console.groupCollapsed('[waitForLayersRendered] render check');
+
+      for (const id of layerIds) {
+        const layer = map.getLayer(id);
+
+        if (!layer) {
+          console.log(`⏳ Layer missing: ${id}`);
+          console.groupEnd();
+          return;
+        }
+
+        const sourceId = layer.source;
+        if (!sourceId) {
+          console.log(`⚠️ Layer has no source: ${id}`);
+          console.groupEnd();
+          return;
+        }
+
+        const source = map.getSource(sourceId);
+        if (!source) {
+          console.log(`⏳ Source not found: ${sourceId} (layer: ${id})`);
+          console.groupEnd();
+          return;
+        }
+
+        const loaded = map.isSourceLoaded(sourceId);
+        console.log(
+          `🔎 ${id}`,
+          `source=${sourceId}`,
+          `loaded=${loaded}`
+        );
+
+        if (!loaded) {
+          console.groupEnd();
+          return;
+        }
+      }
+
+      console.log('✅ All layers rendered:', layerIds);
+      console.groupEnd();
+
+      map.off('render', check);
+      resolve();
+    };
+
+    map.on('render', check);
+    check();
   });
 }
 
@@ -69,13 +65,6 @@ const mapLayers = [
   'graticules', 'ERA5_c1', 'ERA5_c2',
   'wind-layer', 'Satellite'
 ];
-
-const disableLayers = (map) => {
-  if (!map) return;
-  mapLayers.forEach((layer) => {
-    if (map.getLayer(layer)) map.setLayoutProperty(layer, 'visibility', 'none');
-  });
-};
 
 const restoreLayers = (map) => {
   if (!map) return;
@@ -119,110 +108,128 @@ const restoreLayers = (map) => {
   });
 };
 
+async function toggleThemeAndWait(setIsDarkMode, value) {
+  console.log('🎨 toggleThemeAndWait → start');
+  console.log('🌓 Target theme:', value ? 'dark' : 'light');
+
+  setIsDarkMode(value);
+  localStorage.setItem('isDarkMode', String(value));
+  console.log('✅ Theme state updated');
+
+  // wait until mapSetup marks it ready
+  while (!isMapLoaded) {
+    console.log('⏳ Waiting for global isMapLoaded…');
+    await new Promise(r => setTimeout(r, 50));
+  }
+
+  console.log('🎉 toggleThemeAndWait → complete');
+}
 // --- Snapshot helper ---
-async function captureSnapshot(map, setCapturedImages) {
-  if (!map) return;
-  await waitForMapReady(map);
+// --- Snapshot helper ---
+async function captureSnapshot(theme) {
+  if (!map) return null;
 
-  captureMapSnapshot(map, setCapturedImages, {
-    watermarkText: 'DOST-PAGASA',
-    watermarkStyle: 'diagonal-repeat',
-    labelData: {
-      projectName: 'WA10132025',
-      chartType: 'Wave Analysis',
-      annotator: 'Karl Bernaldez',
-      date: 'October 10, 2025',
-    },
-    labelFont: '14px Arial',
-    labelColor: 'white',
-    labelBgColor: 'rgba(0, 0, 0, 0.7)',
-    labelPadding: 12,
-  });
-}
+  if (theme !== "light" && theme !== "dark") {
+    throw new Error("captureSnapshot requires theme: 'light' | 'dark'");
+  }
 
-// --- Second snapshot after theme toggle ---
-async function captureSecondSnapshot(map, setCapturedImages, setIsDarkMode, isDarkMode) {
-  console.log('🌗 Capturing second snapshot with toggled theme...');
-  if (!map || typeof setIsDarkMode !== 'function') return;
-
-  setIsDarkMode(!isDarkMode);
-  const latestMap = getLatestMapInstance();
-  if (!latestMap) return console.error('⚠️ Could not retrieve latest map instance');
-
-  // Wait for new style to load before snapshot
-  // await new Promise((resolve) => {
-  //   const onStyleLoad = async () => {
-  //     latestMap.off('style.load', onStyleLoad);
-  //     restoreLayers(latestMap);
-  //     await delay(1000); // allow tiles to render
-  //     resolve();
-  //   };
-  //   latestMap.on('style.load', onStyleLoad);
-  // });
-
-  await waitForMapReady(latestMap);
-
-  await captureSnapshot(latestMap, setCapturedImages);
-}
-
-// --- Main export function ---
-export async function downloadCachedSnapshotZip(setIsDarkMode, features, map, setCapturedImages) {
-  if (!map) return console.error('❌ No valid map reference found');
-
-  Swal.fire({
-    title: 'Preparing Export...',
-    html: 'Please wait while generating snapshots and ZIP.',
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    didOpen: () => Swal.showLoading(),
-  });
-
-  disableLayers(map);
+  console.group("📸 captureSnapshot", theme);
 
   await map.fitBounds(
     [
       [93, 0],
       [153.8595159535438, 25],
     ],
-    { padding: { top: 200, bottom: 100, left: 100, right: 200 }, maxZoom: 8 }
+    {
+      padding: { top: 200, bottom: 100, left: 100, right: 200 },
+      maxZoom: 8,
+    }
   );
 
-  await captureSnapshot(map, setCapturedImages);
-  await captureSecondSnapshot(map, setCapturedImages, setIsDarkMode, localStorage.getItem('isDarkMode') === 'true');
+  await waitForLayersRendered(map, mapSourceIds);
 
-  // --- ZIP Creation ---
-  const projectName = localStorage.getItem('projectName') || 'map_snapshots';
+  const image = captureMapSnapshot(null, {
+    forceTheme: theme,
+    watermarkText: "DOST-PAGASA",
+    watermarkStyle: "diagonal-repeat",
+    labelData: {
+      projectName: "WA10132025",
+      chartType: "Wave Analysis",
+      annotator: "Karl Bernaldez",
+      date: "October 10, 2025",
+    },
+  });
+
+  console.groupEnd();
+  return image;
+}
+
+// --- Main export function ---
+export async function downloadCachedSnapshotZip(
+  setIsDarkMode,
+  features,
+  isDarkMode
+) {
+  if (!map) throw new Error("No map reference");
+
+  console.group("📦 downloadCachedSnapshotZip");
+
+  const originalTheme = isDarkMode;
+
+  // ✅ LOCAL BUFFER (NOT React state)
+  const snapshotBuffer = {
+    light: null,
+    dark: null,
+  };
+
+  // --- LIGHT SNAPSHOT ---
+  await toggleThemeAndWait(setIsDarkMode, false);
+  snapshotBuffer.light = await captureSnapshot("light");
+
+  // --- DARK SNAPSHOT ---
+  await toggleThemeAndWait(setIsDarkMode, true);
+  snapshotBuffer.dark = await captureSnapshot("dark");
+
+  // --- RESTORE ---
+  await toggleThemeAndWait(setIsDarkMode, originalTheme);
+
+  // --- ZIP ---
   const zip = new JSZip();
-  const snapshots = { map_snapshot_light: 'map_snapshot_light.png', map_snapshot_dark: 'map_snapshot_dark.png' };
+  const projectName = localStorage.getItem("projectName") || "map_snapshots";
 
-  for (const [key, fileName] of Object.entries(snapshots)) {
-    const data = localStorage.getItem(key);
-    if (data) zip.file(fileName, data.split(',')[1], { base64: true });
+  if (snapshotBuffer.light) {
+    zip.file(
+      "map_snapshot_light.png",
+      snapshotBuffer.light.split(",")[1],
+      { base64: true }
+    );
   }
 
-  if (features?.type === 'FeatureCollection') zip.file('features.geojson', JSON.stringify(features, null, 2));
+  if (snapshotBuffer.dark) {
+    zip.file(
+      "map_snapshot_dark.png",
+      snapshotBuffer.dark.split(",")[1],
+      { base64: true }
+    );
+  }
 
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const link = document.createElement('a');
+  if (features?.type === "FeatureCollection") {
+    zip.file("features.geojson", JSON.stringify(features, null, 2));
+  }
+
+  const blob = await zip.generateAsync({ type: "blob" });
+
+  const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `${projectName.replace(/\s+/g, '_')}.zip`;
+  link.download = `${projectName.replace(/\s+/g, "_")}.zip`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 
-  Swal.close();
-  Swal.fire({
-    icon: 'success',
-    title: 'Downloaded',
-    text: 'Snapshots and GeoJSON exported as ZIP.',
-    toast: true,
-    position: 'top-end',
-    timer: 3000,
-    showConfirmButton: false,
-    willOpen: (popup) => { popup.style.zIndex = '9999'; },
-  });
-
   restoreLayers(map);
+
+  console.log("✅ Export complete");
+  console.groupEnd();
 }
 
 // --- Logout ---
@@ -251,16 +258,41 @@ export const handleCreateProject = async ({
   }
 
   try {
-    const payload = { name: projectName, chartType, description, forecastDate };
+    const payload = {
+      name: projectName,
+      chartType,
+      description,
+      forecastDate,
+    };
+
     console.log('🚀 Creating project with payload:', payload);
+
     const created = await createProject(payload);
+
     console.log('✅ Project created:', created);
 
-    ['projectId', 'projectName', 'chartType', 'forecastDate'].forEach((key) =>
-      localStorage.setItem(key, key === 'projectId' ? created._id : eval(key))
-    );
+    // ✅ SAFE localStorage persistence (no eval)
+    const storageValues = {
+      projectId: created._id,
+      projectName,
+      chartType,
+      forecastDate,
+    };
 
-    if (onNew) onNew({ name: projectName, chartType, description, forecastDate });
+    Object.entries(storageValues).forEach(([key, value]) => {
+      if (value != null) {
+        localStorage.setItem(key, String(value));
+      }
+    });
+
+    if (onNew) {
+      onNew({
+        name: projectName,
+        chartType,
+        description,
+        forecastDate,
+      });
+    }
 
     Swal.fire({
       toast: true,
@@ -271,7 +303,6 @@ export const handleCreateProject = async ({
       timer: 2000,
     });
 
-    // Reset UI state
     setShowModal(false);
 
     setTimeout(() => window.location.reload(), 1500);
@@ -302,23 +333,6 @@ export const handleDeleteProject = async ({
       timer: 3000,
     });
   }
-
-  // Confirm dialog
-  const confirm = await Swal.fire({
-    title: 'Delete this project?',
-    text: 'This action cannot be undone.',
-    icon: 'warning',
-    showCancelButton: true,
-    buttonsStyling: false,
-    customClass: {
-      confirmButton: 'swal-confirm-btn',
-      cancelButton: 'swal-cancel-btn',
-    },
-    confirmButtonText: 'Yes, delete it',
-    cancelButtonText: 'Cancel',
-  });
-
-  if (!confirm.isConfirmed) return;
 
   try {
     // Call the API
