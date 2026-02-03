@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Bell, Radio, Waves, Wind, CloudRain, Zap, Clock, MapPin, ExternalLink, ChevronRight, Info, TrendingUp, Calendar, Eye } from 'lucide-react';
+import { AlertTriangle, Bell, Radio, Waves, Wind, CloudRain, Clock, MapPin, ChevronRight, TrendingUp, Calendar, Eye, ExternalLink } from 'lucide-react';
 
 const AlertsNewsSection = ({ isDark }) => {
   const [activeAlertTab, setActiveAlertTab] = useState('active');
@@ -87,106 +87,138 @@ const AlertsNewsSection = ({ isDark }) => {
 
   const severityConfig = {
     critical: {
-      bg: isDark ? 'bg-red-500/20' : 'bg-red-50',
-      border: isDark ? 'border-red-500/50' : 'border-red-300',
-      text: isDark ? 'text-red-400' : 'text-red-600',
-      badge: isDark ? 'bg-red-500/30 text-red-300' : 'bg-red-100 text-red-700',
+      bg: isDark ? 'bg-red-500/10' : 'bg-red-50',
+      border: isDark ? 'border-red-500/30' : 'border-red-200',
+      text: isDark ? 'text-red-400' : 'text-red-700',
+      badge: isDark ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700',
       icon: 'text-red-500',
-      glow: 'shadow-red-500/25',
+      glow: isDark ? 'shadow-red-500/20' : 'shadow-red-500/10',
       pulse: true
     },
     warning: {
-      bg: isDark ? 'bg-amber-500/20' : 'bg-amber-50',
-      border: isDark ? 'border-amber-500/50' : 'border-amber-300',
-      text: isDark ? 'text-amber-400' : 'text-amber-600',
-      badge: isDark ? 'bg-amber-500/30 text-amber-300' : 'bg-amber-100 text-amber-700',
+      bg: isDark ? 'bg-amber-500/10' : 'bg-amber-50',
+      border: isDark ? 'border-amber-500/30' : 'border-amber-200',
+      text: isDark ? 'text-amber-400' : 'text-amber-700',
+      badge: isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700',
       icon: 'text-amber-500',
-      glow: 'shadow-amber-500/25',
+      glow: isDark ? 'shadow-amber-500/20' : 'shadow-amber-500/10',
       pulse: false
     },
     advisory: {
-      bg: isDark ? 'bg-blue-500/20' : 'bg-blue-50',
-      border: isDark ? 'border-blue-500/50' : 'border-blue-300',
-      text: isDark ? 'text-blue-400' : 'text-blue-600',
-      badge: isDark ? 'bg-blue-500/30 text-blue-300' : 'bg-blue-100 text-blue-700',
+      bg: isDark ? 'bg-blue-500/10' : 'bg-blue-50',
+      border: isDark ? 'border-blue-500/30' : 'border-blue-200',
+      text: isDark ? 'text-blue-400' : 'text-blue-700',
+      badge: isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700',
       icon: 'text-blue-500',
-      glow: 'shadow-blue-500/25',
+      glow: isDark ? 'shadow-blue-500/20' : 'shadow-blue-500/10',
       pulse: false
     }
   };
 
   return (
-    <section className={`relative py-16 transition-all duration-700 ${
-      isDark ? 'bg-slate-900' : 'bg-slate-50'
+    <section className={`relative py-20 lg:py-32 transition-all duration-700 ${
+      isDark ? 'bg-slate-950' : 'bg-slate-50'
     }`}>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Subtle Background Pattern */}
+      <div className="absolute inset-0 opacity-[0.02]">
+        <div className={`absolute inset-0 ${
+          isDark
+            ? 'bg-[radial-gradient(circle_at_50%_50%,#3b82f6_1px,transparent_1px)]'
+            : 'bg-[radial-gradient(circle_at_50%_50%,#60a5fa_1px,transparent_1px)]'
+        } bg-[size:2rem_2rem]`} />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Active Alerts Banner */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${isDark ? 'bg-red-500/20' : 'bg-red-100'}`}>
-                <AlertTriangle className={`w-6 h-6 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
-              </div>
-              <div>
-                <h2 className={`text-2xl lg:text-3xl font-black transition-colors duration-700 ${
+        {/* Active Alerts Section */}
+        <div className="mb-20 lg:mb-24">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`p-2.5 rounded-xl ${
+                  isDark ? 'bg-red-500/10' : 'bg-red-100'
+                }`}>
+                  <AlertTriangle className={`w-6 h-6 ${
+                    isDark ? 'text-red-400' : 'text-red-600'
+                  }`} />
+                </div>
+                <h2 className={`text-3xl lg:text-4xl font-black transition-colors duration-700 ${
                   isDark ? 'text-white' : 'text-slate-900'
                 }`}>
-                  Active Alerts & Warnings
+                  Active Alerts
                 </h2>
-                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Real-time monitoring • Updated every minute
-                </p>
               </div>
+              <p className={`text-base ${
+                isDark ? 'text-slate-400' : 'text-slate-600'
+              }`}>
+                Real-time monitoring • Updated every minute
+              </p>
             </div>
             
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
-              isDark ? 'bg-slate-800' : 'bg-white'
+            <div className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl border ${
+              isDark 
+                ? 'bg-slate-900/50 border-slate-800' 
+                : 'bg-white border-slate-200 shadow-sm'
             }`}>
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {activeAlerts.length} Active
+              <div className="relative flex items-center justify-center">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping" />
+              </div>
+              <span className={`text-sm font-semibold ${
+                isDark ? 'text-white' : 'text-slate-900'
+              }`}>
+                {activeAlerts.length} Active Warnings
               </span>
             </div>
           </div>
 
           {/* Alerts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {activeAlerts.map((alert) => {
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {activeAlerts.map((alert, index) => {
               const config = severityConfig[alert.severity];
               const Icon = alert.icon;
               
               return (
                 <div
                   key={alert.id}
-                  className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105 cursor-pointer ${
+                  className={`group relative p-6 rounded-2xl border-2 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
                     config.bg
                   } ${config.border} hover:shadow-xl ${config.glow}`}
+                  style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}
                 >
                   {/* Severity Badge */}
                   <div className="flex items-center justify-between mb-4">
-                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${config.badge}`}>
-                      {config.pulse && <Radio className="w-3 h-3 animate-pulse" />}
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${config.badge}`}>
+                      {config.pulse && (
+                        <div className="relative flex items-center justify-center">
+                          <Radio className="w-3 h-3" />
+                          <Radio className="w-3 h-3 absolute animate-ping" />
+                        </div>
+                      )}
                       {alert.type}
                     </div>
-                    <Clock className={`w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                    <div className={`text-xs font-medium ${
+                      isDark ? 'text-slate-500' : 'text-slate-400'
+                    }`}>
+                      {alert.time}
+                    </div>
                   </div>
 
                   {/* Icon & Title */}
                   <div className="flex items-start gap-4 mb-4">
-                    <div className={`p-3 rounded-xl ${config.bg}`}>
+                    <div className={`p-3 rounded-xl ${config.bg} border ${config.border}`}>
                       <Icon className={`w-6 h-6 ${config.icon}`} />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <h3 className={`text-lg font-bold mb-1 leading-tight ${config.text}`}>
                         {alert.title}
                       </h3>
                       <div className={`flex items-center gap-2 text-xs ${
                         isDark ? 'text-slate-400' : 'text-slate-600'
                       }`}>
-                        <MapPin className="w-3 h-3" />
-                        {alert.location}
+                        <MapPin className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{alert.location}</span>
                       </div>
                     </div>
                   </div>
@@ -200,16 +232,24 @@ const AlertsNewsSection = ({ isDark }) => {
 
                   {/* Metrics */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-white/70'}`}>
-                      <div className={`text-xs mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <div className={`p-3 rounded-xl ${
+                      isDark ? 'bg-slate-900/40' : 'bg-white/70'
+                    }`}>
+                      <div className={`text-xs mb-1 ${
+                        isDark ? 'text-slate-400' : 'text-slate-600'
+                      }`}>
                         Wave Height
                       </div>
                       <div className={`text-lg font-black ${config.text}`}>
                         {alert.waveHeight}
                       </div>
                     </div>
-                    <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-white/70'}`}>
-                      <div className={`text-xs mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <div className={`p-3 rounded-xl ${
+                      isDark ? 'bg-slate-900/40' : 'bg-white/70'
+                    }`}>
+                      <div className={`text-xs mb-1 ${
+                        isDark ? 'text-slate-400' : 'text-slate-600'
+                      }`}>
                         Wind Speed
                       </div>
                       <div className={`text-lg font-black ${config.text}`}>
@@ -223,8 +263,10 @@ const AlertsNewsSection = ({ isDark }) => {
                     {alert.affectedAreas.map((area, idx) => (
                       <span
                         key={idx}
-                        className={`px-2 py-1 rounded-lg text-xs font-semibold ${
-                          isDark ? 'bg-slate-800/70 text-slate-300' : 'bg-white/70 text-slate-700'
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                          isDark 
+                            ? 'bg-slate-800/70 text-slate-300' 
+                            : 'bg-white/70 text-slate-700'
                         }`}
                       >
                         {area}
@@ -235,17 +277,10 @@ const AlertsNewsSection = ({ isDark }) => {
                   {/* Action Button */}
                   <button className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 group-hover:translate-x-1 ${
                     config.bg
-                  } ${config.text} border ${config.border}`}>
-                    View Full Details
+                  } ${config.text} border-2 ${config.border}`}>
+                    View Details
                     <ChevronRight className="w-4 h-4" />
                   </button>
-
-                  {/* Time Indicator */}
-                  <div className={`absolute top-4 right-4 text-xs font-medium ${
-                    isDark ? 'text-slate-400' : 'text-slate-500'
-                  }`}>
-                    {alert.time}
-                  </div>
                 </div>
               );
             })}
@@ -254,31 +289,33 @@ const AlertsNewsSection = ({ isDark }) => {
 
         {/* News & Updates Section */}
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${
-                isDark ? 'bg-blue-500/20' : 'bg-blue-100'
-              }`}>
-                <TrendingUp className={`w-6 h-6 ${
-                  isDark ? 'text-blue-400' : 'text-blue-600'
-                }`} />
-              </div>
-              <div>
-                <h2 className={`text-2xl lg:text-3xl font-black transition-colors duration-700 ${
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`p-2.5 rounded-xl ${
+                  isDark ? 'bg-blue-500/10' : 'bg-blue-100'
+                }`}>
+                  <TrendingUp className={`w-6 h-6 ${
+                    isDark ? 'text-blue-400' : 'text-blue-600'
+                  }`} />
+                </div>
+                <h2 className={`text-3xl lg:text-4xl font-black transition-colors duration-700 ${
                   isDark ? 'text-white' : 'text-slate-900'
                 }`}>
-                  Latest News & Updates
+                  Latest Updates
                 </h2>
-                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Recent developments and announcements
-                </p>
               </div>
+              <p className={`text-base ${
+                isDark ? 'text-slate-400' : 'text-slate-600'
+              }`}>
+                Recent developments and announcements
+              </p>
             </div>
 
-            <button className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105 ${
+            <button className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-[1.02] border ${
               isDark
-                ? 'bg-slate-800 text-blue-400 hover:bg-slate-700'
-                : 'bg-white text-blue-600 hover:bg-blue-50'
+                ? 'bg-slate-900/50 border-slate-800 text-blue-400 hover:bg-slate-900'
+                : 'bg-white border-slate-200 text-blue-600 hover:bg-blue-50 shadow-sm'
             }`}>
               View All
               <ExternalLink className="w-4 h-4" />
@@ -286,31 +323,32 @@ const AlertsNewsSection = ({ isDark }) => {
           </div>
 
           {/* News Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {latestNews.map((news) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {latestNews.map((news, index) => (
               <div
                 key={news.id}
-                className={`group p-6 rounded-2xl border transition-all duration-300 hover:scale-105 cursor-pointer ${
+                className={`group p-6 rounded-2xl border backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
                   isDark
-                    ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800/70 hover:shadow-xl hover:shadow-slate-900/50'
-                    : 'bg-white border-slate-200 hover:shadow-xl hover:shadow-slate-900/10'
+                    ? 'bg-slate-900/50 border-slate-800 hover:bg-slate-900/70 hover:shadow-xl hover:shadow-slate-900/50'
+                    : 'bg-white border-slate-200 hover:shadow-xl hover:shadow-slate-900/5'
                 }`}
+                style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1 + 0.3}s both` }}
               >
-                <div className="flex gap-4">
-                  {/* Image/Icon */}
+                <div className="flex gap-5">
+                  {/* Icon */}
                   <div className={`w-16 h-16 flex-shrink-0 rounded-xl flex items-center justify-center text-3xl ${
-                    isDark ? 'bg-slate-700/50' : 'bg-slate-100'
+                    isDark ? 'bg-slate-800/50' : 'bg-slate-50'
                   }`}>
                     {news.image}
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
                         isDark
                           ? 'bg-blue-500/20 text-blue-400'
-                          : 'bg-blue-100 text-blue-600'
+                          : 'bg-blue-100 text-blue-700'
                       }`}>
                         {news.category}
                       </span>
@@ -327,12 +365,14 @@ const AlertsNewsSection = ({ isDark }) => {
                     </div>
 
                     <h3 className={`text-base lg:text-lg font-bold mb-2 leading-tight transition-colors duration-300 ${
-                      isDark ? 'text-white group-hover:text-blue-300' : 'text-slate-900 group-hover:text-blue-600'
+                      isDark 
+                        ? 'text-white group-hover:text-blue-300' 
+                        : 'text-slate-900 group-hover:text-blue-600'
                     }`}>
                       {news.title}
                     </h3>
 
-                    <p className={`text-sm mb-3 line-clamp-2 ${
+                    <p className={`text-sm mb-3 line-clamp-2 leading-relaxed ${
                       isDark ? 'text-slate-400' : 'text-slate-600'
                     }`}>
                       {news.excerpt}
@@ -357,6 +397,19 @@ const AlertsNewsSection = ({ isDark }) => {
         </div>
 
       </div>
+
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </section>
   );
 };
