@@ -82,7 +82,7 @@ const Header = ({ isDarkMode, setIsDarkMode, activeChartType, setActiveChartType
     { name: 'Studio', href: '/studio' },
     { name: 'Services', href: '#services' },
     { name: 'About', href: '#about' },
-    { name: 'Contact', href: '#contact' }
+    { name: 'Contact', href: '/contact' }
   ];
 
   const isActiveRoute = (href) => {
@@ -93,6 +93,7 @@ const Header = ({ isDarkMode, setIsDarkMode, activeChartType, setActiveChartType
   };
 
   const handleNavClick = (href) => {
+    console.log(href)
     if (href.startsWith('#')) {
       const section = document.querySelector(href);
       if (section) {

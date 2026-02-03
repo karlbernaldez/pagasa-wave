@@ -227,6 +227,7 @@ const DrawToolbar = ({
         isOpen={openModals.pointInputChoice}
         onClose={() => toggleModal('pointInputChoice', false)}
         onSelect={handlePointInputChoice}
+        isDarkMode={isDarkMode}
       />
 
       <FeatureNotAvailableModal
@@ -238,6 +239,7 @@ const DrawToolbar = ({
         isOpen={openModals.manualInput}
         onClose={() => toggleModal('manualInput', false)}
         onSubmit={handleManualInputSubmit}
+        isDarkMode={isDarkMode}
       />
 
       {/* Main Toolbar */}

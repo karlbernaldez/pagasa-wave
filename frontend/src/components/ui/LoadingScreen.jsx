@@ -1,35 +1,92 @@
-// components/LoadingScreen.js
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 
-const LoadingScreen = ({ isDarkMode, message = "Loading..." }) => (
-  <div 
-    className={`fixed inset-0 w-full h-screen backdrop-blur-[10px] flex justify-center items-center z-[9999] animate-fadeIn ${
-      isDarkMode ? 'bg-[#0f0f23]/95' : 'bg-white/95'
-    }`}
-  >
-    <div 
-      className={`flex flex-col items-center gap-6 p-8 rounded-2xl backdrop-blur-[20px] border ${
-        isDarkMode 
-          ? 'bg-[#1e1e32]/80 border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.3)]' 
-          : 'bg-white/80 border-black/10 shadow-[0_20px_40px_rgba(0,0,0,0.1)]'
-      }`}
-    >
-      <div 
-        className={`w-[50px] h-[50px] border-[3px] rounded-full animate-spin ${
-          isDarkMode 
-            ? 'border-white/10 border-t-blue-500' 
-            : 'border-black/10 border-t-blue-600'
-        }`}
-      />
-      <div 
-        className={`text-lg font-medium text-center tracking-wide ${
-          isDarkMode ? 'text-gray-100' : 'text-gray-900'
-        }`}
+const LoadingScreen = ({ isDarkMode = false, message = "Please wait..." }) => {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/65 backdrop-blur-sm animate-fadeIn">
+      <div
+        className={`relative rounded-2xl transition-all duration-300 animate-scaleIn ${
+          isDarkMode
+            ? 'bg-black/50 border border-white/20'
+            : 'bg-white/70 border border-white/40'
+        } backdrop-blur-xl shadow-2xl px-10 py-8`}
       >
-        {message}
+        {/* Main Content */}
+        <div className="flex flex-col items-center text-center">
+          {/* Animated Icon */}
+          <div className="relative mb-6">
+            {/* Outer pulse ring */}
+            <div 
+              className={`absolute inset-0 rounded-full animate-ping opacity-20 ${
+                isDarkMode ? 'bg-cyan-400' : 'bg-blue-500'
+              }`} 
+              style={{ animationDuration: '2s' }} 
+            />
+            
+            {/* Icon container */}
+            <div className={`relative w-16 h-16 rounded-full flex items-center justify-center ${
+              isDarkMode
+                ? 'bg-cyan-500/20 ring-2 ring-cyan-400/40'
+                : 'bg-blue-500/20 ring-2 ring-blue-500/50'
+            }`}>
+              <Loader2 
+                size={32} 
+                className={`animate-spin ${
+                  isDarkMode ? 'text-cyan-400' : 'text-blue-600'
+                }`}
+                strokeWidth={2}
+                style={{ animationDuration: '1s' }}
+              />
+            </div>
+          </div>
+
+          {/* Loading Text */}
+          <p className={`text-lg font-semibold max-w-xs ${
+            isDarkMode ? 'text-white' : 'text-slate-900'
+          }`}>
+            {message}
+          </p>
+        </div>
+
+        {/* Bottom gradient accent */}
+        <div className={`absolute bottom-0 left-0 right-0 h-1 rounded-b-2xl ${
+          isDarkMode
+            ? 'bg-gradient-to-r from-cyan-500/50 via-blue-500/50 to-purple-500/50'
+            : 'bg-gradient-to-r from-blue-500/50 via-indigo-500/50 to-purple-500/50'
+        }`} />
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+
+        .animate-scaleIn {
+          animation: scaleIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
-  </div>
-);
+  );
+};
 
 export default LoadingScreen;

@@ -19,12 +19,13 @@ const ErrorBoundary = lazy(() => import('@/components/layout/ErrorBoundary'));
 
 // Pages (Lazy Loaded)
 const Home = lazy(() => import('@/pages/Home'));
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Dashboard = lazy(() => import('@/pages/Dashboard')); //AMDIN PAGE
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
 const Studio = lazy(() => import('@/pages/Studio'));
 const Charts = lazy(() => import('@/pages/Charts'));
 const AboutUs = lazy(() => import('@/pages/AboutUs'));
+const Contact = lazy(() => import('@/pages/Contact'));
 
 // Modals (Lazy Loaded)
 const MobileAccessModal = lazy(() => import('@/components/ui/modals/MobileAccessModal'));
@@ -106,7 +107,7 @@ const Layout = () => {
 
         {/* Main Content */}
         <MainContent $isloading={isLoading} style={{ paddingTop: addTopPadding ? undefined : 0 }}>
-          {isLoading && <LoadingScreen isDarkMode={isDarkMode} message={isStudioPage ? "Loading Editor..." : "Loading..."} />}
+          {isLoading && <LoadingScreen isDarkMode={isDarkMode} message={isStudioPage ? "Please wait..." : "Please wait..."} />}
           <Suspense fallback={<LoadingScreen isDarkMode={isDarkMode} />}>
             <Routes>
               <Route path="/" element={<Home isDarkMode={isDarkMode} />} />
@@ -141,6 +142,7 @@ const Layout = () => {
               />
               <Route path="/charts" element={<Charts isDarkMode={isDarkMode} activeChartType={activeChartType} />} />
               <Route path="/about-us" element={<AboutUs isDarkMode={isDarkMode} />} />
+              <Route path="/contact" element={<Contact isDarkMode={isDarkMode} />} />
             </Routes>
           </Suspense>
 

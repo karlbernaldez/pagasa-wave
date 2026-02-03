@@ -220,6 +220,7 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
         onSave={handleSaveTitle}
         inputValue={markerTitle}
         onInputChange={handleTitleChange}
+        isDarkMode={isDarkMode}
       />
 
       {/* Side Panel & UI Elements */}
@@ -265,7 +266,7 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
       )}
 
       {/* Loading Overlay */}
-      {isLoading && <MapLoading />}
+      {isLoading && <MapLoading isDarkMode={isDarkMode}/>}
 
       {/* Animation Keyframes */}
       <style jsx>{`
