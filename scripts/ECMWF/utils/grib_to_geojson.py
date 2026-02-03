@@ -7,7 +7,7 @@ import json
 import re
 
 # === CONFIG ===
-GRIB_DIR = Path("./ECMWF/ecmwf_data/AIFS-SINGLE")
+GRIB_DIR = Path("./ECMWF/ecmwf_data")
 OUTPUT_DIR = Path("./ECMWF/ecmwf_data/GEOJSON")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

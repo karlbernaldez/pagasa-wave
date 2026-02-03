@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
-import { saveFeature } from '@/api/featureServices';
+import { createFeature } from '@/api/featureServices';
 import { smoothPoints, handlePointerDown, handlePointerMove, handlePointerUp } from './canvasUtils';
-import ProjectModal from '@/components/ui/modals/ProjectModal';
+import CreateProjectModal from '@/components/ui/modals/CreateProjectModal';
 
 // Memoized slider component to prevent unnecessary re-renders
 const WaveHeightSlider = memo(({ value, onChange, isDarkMode }) => {
@@ -130,6 +130,8 @@ const DrawingCanvas = ({
   const [labelValue, setLabelValue] = useState(3);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const stageRef = useRef(null);
+  const drawLock = useRef(false);
+
 
   // Prevent body scroll during drawing
   useEffect(() => {
@@ -147,15 +149,20 @@ const DrawingCanvas = ({
 
   // Optimized pointer handlers with useCallback
   const onPointerDown = useCallback((e) => {
+    if (drawLock.current) return;
     handlePointerDown(e, lines, setLines, isDrawing);
   }, [lines]);
 
   const onPointerMove = useCallback((e) => {
+    if (drawLock.current) return;
     handlePointerMove(e, lines, setLines, isDrawing);
   }, [lines]);
 
-  const onPointerUp = useCallback(() => {
-    handlePointerUp(
+  const onPointerUp = useCallback(async () => {
+    if (drawLock.current) return; // prevent double trigger
+    drawLock.current = true;       // 🔒 lock drawing
+
+    await handlePointerUp(
       mapRef,
       lines,
       setLines,
@@ -163,13 +170,19 @@ const DrawingCanvas = ({
       drawCounter,
       setDrawCounter,
       setLayersRef,
-      saveFeature,
+      createFeature,
       closedMode,
       lineCount,
       labelValue,
       isDarkMode,
       () => setShowProjectModal(true)
     );
+
+    // small cooldown to prevent instant re-click
+    setTimeout(() => {
+      drawLock.current = false;   // 🔓 unlock drawing
+    }, 50); // adjust cooldown ms if needed
+
   }, [
     mapRef,
     lines,
@@ -210,7 +223,7 @@ const DrawingCanvas = ({
 
       {/* Project Modal */}
       {showProjectModal && (
-        <ProjectModal onClose={() => setShowProjectModal(false)} />
+        <createImageBitmapProjectModal onClose={() => setShowProjectModal(false)} />
       )}
     </>
   );

@@ -5,17 +5,21 @@ const ForecastChartsPage = ({ isDarkMode, activeChartType }) => {
   const [previewImage, setPreviewImage] = useState(null);
   const [currentDisplayType, setCurrentDisplayType] = useState(activeChartType);
   const [isTransitioning, setIsTransitioning] = useState(false);
-
   const isDark = isDarkMode;
 
-  useEffect(() => {
-    document.title = "WaveLab - Charts";
-  }, []);
+  const chartTypes = [
+    { id: 'wave-wind', name: 'Wave & Wind', icon: Wind, description: 'Combined wave and wind analysis' },
+    { id: 'wave-only', name: 'Wave Only', icon: Activity, description: 'Pure wave height analysis' },
+    { id: 'visually-impaired', name: 'Accessible', icon: Eye, description: 'High contrast charts for accessibility' }
+  ];
 
-  // 🔹 Log whenever active chart type changes
   useEffect(() => {
-    console.log("Active Chart Type:", activeChartType);
-  }, [activeChartType]);
+    const activeChart = chartTypes.find(chart => chart.id === activeChartType);
+    const chartName = activeChart ? activeChart.name : activeChartType;
+
+    document.title = `WaveLab - Charts: ${chartName}`;
+    console.log("Active Chart Type:", activeChartType, "Name:", chartName);
+  }, [activeChartType, chartTypes]);
 
   // 🔹 Handle chart type transitions
   useEffect(() => {
@@ -31,12 +35,6 @@ const ForecastChartsPage = ({ isDarkMode, activeChartType }) => {
       }, 150);
     }
   }, [activeChartType, currentDisplayType]);
-
-  const chartTypes = [
-    { id: 'wave-wind', name: 'Wave & Wind', icon: Wind, description: 'Combined wave and wind analysis' },
-    { id: 'wave-only', name: 'Wave Only', icon: Activity, description: 'Pure wave height analysis' },
-    { id: 'visually-impaired', name: 'Accessible', icon: Eye, description: 'High contrast charts for accessibility' }
-  ];
 
   const chartMeta = {
     1: {

@@ -7,49 +7,6 @@ const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 
 const checkRoute = `${AUTH_API_BASE_URL}/check`;
 
-const ModalBackdrop = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-`;
-
-const LoadingModal = styled.div`
-  background-color: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-`;
-
-const LoadingText = styled.div`
-  margin-top: 10px;
-  font-size: 18px;
-  font-weight: bold;
-`;
-
-const LoadingSpinner = styled.div`
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-
 const ProtectedAdminRoute = ({ element: Element, requireAuth = true, onDeny = null }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,18 +50,6 @@ const ProtectedAdminRoute = ({ element: Element, requireAuth = true, onDeny = nu
   useEffect(() => {
     checkAuthentication();
   }, []);
-
-  // Show a loading spinner while checking the authentication status
-  if (isLoading) {
-    return (
-      <ModalBackdrop>
-        <LoadingModal>
-          <LoadingSpinner />
-          <LoadingText>Loading...</LoadingText>
-        </LoadingModal>
-      </ModalBackdrop>
-    );
-  }
 
   // If authentication is required and the user is not authenticated
   if (requireAuth && !isAuthenticated) {

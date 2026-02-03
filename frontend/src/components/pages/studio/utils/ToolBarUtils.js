@@ -1,7 +1,7 @@
 import { m } from "framer-motion";
 import { removeFeature } from "./layerUtils";
 import { v4 as uuidv4 } from 'uuid';
-import { saveFeature } from '@/api/featureServices';
+import { createFeature } from '@/api/featureServices';
 import Swal from 'sweetalert2';
 
 export const handleDrawModeChange = (mode, draw, setLayersRef) => {
@@ -30,7 +30,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef }) 
 
   const baseName = title || 'Untitled Layer';
   const sourceId = `${selectedType}_${baseName}`;
-  const layerId = `${selectedType}_${baseName}`;
+  const panelId = `${selectedType}_${baseName}`;
   const closedMode = false;
 
   setLayersRef.current((prevLayers) => {
@@ -51,7 +51,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef }) 
       return prevLayers;
     }
     
-    saveFeature({
+    createFeature({
       geometry: feature.geometry,
       properties: {
         labelValue: baseName,
@@ -87,11 +87,12 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef }) 
     return [
       ...prevLayers,
       {
-        id: layerId,
+        id: panelId,
         sourceID: sourceId,
         name: baseName,
         visible: true,
         locked: false,
+        type: selectedType,
       },
     ];
   });

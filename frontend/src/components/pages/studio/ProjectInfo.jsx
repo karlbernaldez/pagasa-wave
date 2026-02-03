@@ -1,104 +1,94 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import Swal from 'sweetalert2';
-import withReactContent from 'sweetalert2-react-content';
-import { FaEdit, FaTrash, FaCalendarAlt, FaChartBar, FaFolder, FaPlus, FaEye } from 'react-icons/fa';
-import { fetchProjectById, updateProjectById, fetchUserProjects, deleteProjectById } from "@/api/projectAPI";
+import { FolderOpen, Edit2, Calendar, BarChart3, Check, X } from 'lucide-react';
+import { fetchProjectById, updateProjectById, deleteProjectById } from "@/api/projectAPI";
+import NoProjectsModal from '@/components/ui/modals/NoProjectAlert.jsx';
 
-const MySwal = withReactContent(Swal);
+// In-memory cache
+const projectCache = {};
 
-const ProjectInfo = ({
-  blink, setBlink, projectId, setShowModal, onSave, onView, features,
-  isDarkMode, setIsDarkMode, setIsLoading, isLoading
-}) => {
-  // Menu state
-  const [mainOpen, setMainOpen] = useState(false);
-  const [projectOpen, setProjectOpen] = useState(false);
-  const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [projects, setProjects] = useState([]);
-  const [showProjectList, setShowProjectList] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const menuRef = useRef(null);
-  const [forecastDate, setForecastDate] = useState(dayjs());
-
-  // Project info state
-  const [projectName, setProjectName] = useState('');
-  const [chartType, setChartType] = useState('');
-  const [description, setDescription] = useState('');
+const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading, menuOpen }) => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedChart, setEditedChart] = useState('');
-  const [editedDate, setEditedDate] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteInput, setDeleteInput] = useState('');
+  const [editedDate, setEditedDate] = useState(null);
+  const [forecastDate, setForecastDate] = useState(null);
+  const [projectName, setProjectName] = useState('');
+  const [chartType, setChartType] = useState('');
+  const [noProjectModalVisible, setNoProjectModalVisible] = useState(false);
+  const menuRef = useRef(null);
 
-  // Click outside handler
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMainOpen(false);
-        setProjectOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Format Date for display
+  const formatDateDisplay = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleDateString(undefined, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
 
-  // Fetch project data
+  // Fetch project with caching
   useEffect(() => {
     const fetchData = async () => {
       const projectId = localStorage.getItem('projectId');
-
       if (!projectId) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'No Project Selected',
-          text: 'Please create or select a valid project before continuing.',
-          confirmButtonText: 'OK',
-          buttonsStyling: false,
-          customClass: {
-            confirmButton: 'swal-main-btn',
-          },
-        });
+        setNoProjectModalVisible(true); // show modal if no project
         setIsLoading(false);
         return;
       }
 
-      try {
-        const project = await fetchProjectById(projectId)
+      // In-memory cache
+      if (projectCache[projectId]) {
+        const cached = projectCache[projectId];
+        setProjectName(cached.name);
+        setChartType(cached.chartType);
+        setForecastDate(cached.forecastDate ? new Date(cached.forecastDate) : null);
+        setIsLoading(false);
+        return;
+      }
 
+      // LocalStorage cache
+      const localCache = JSON.parse(localStorage.getItem('cachedProject'));
+      if (localCache && localCache.id === projectId) {
+        setProjectName(localCache.name);
+        setChartType(localCache.chartType);
+        setForecastDate(localCache.forecastDate ? new Date(localCache.forecastDate) : null);
+        setIsLoading(false);
+        return;
+      }
+
+      // API fetch
+      try {
+        const project = await fetchProjectById(projectId);
         if (!project) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Project Not Found',
-            text: 'The selected project could not be loaded.',
-          });
+          setNoProjectModalVisible(true); // show modal if project not found
           setIsLoading(false);
           return;
         }
 
         setProjectName(project.name);
         setChartType(project.chartType);
-        setDescription(project.description || '');
-        const date = new Date(project.forecastDate);
-        const formatted = date.toLocaleDateString(undefined, {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        });
-        setForecastDate(formatted);
+        setForecastDate(project.forecastDate ? new Date(project.forecastDate) : null);
+
+        // Save caches
+        projectCache[projectId] = project;
+        localStorage.setItem('cachedProject', JSON.stringify({
+          id: projectId,
+          name: project.name,
+          chartType: project.chartType,
+          description: project.description,
+          forecastDate: project.forecastDate
+        }));
       } catch (error) {
         console.error('Error fetching project:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to fetch project data.',
-        });
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to fetch project data.' });
       } finally {
         setIsLoading(false);
       }
@@ -107,24 +97,7 @@ const ProjectInfo = ({
     fetchData();
   }, []);
 
-  // Menu handlers
-  const handleSubmit = async (file) => {
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append('projectFile', file);
-      formData.append('projectId', localStorage.getItem('projectId'));
-
-      console.log('Submitting file:', file);
-      setShowSubmitModal(false);
-    } catch (error) {
-      console.error('Submission failed:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Edit handlers
+  // Open Edit Modal
   const openEditModal = (e) => {
     if (e) e.stopPropagation();
     setEditedName(projectName);
@@ -133,34 +106,41 @@ const ProjectInfo = ({
     setEditModalOpen(true);
   };
 
+  // Save Edit
   const handleSaveEdit = async () => {
     try {
       const projectId = localStorage.getItem('projectId');
-
       const projectData = {
         name: editedName,
         chartType: editedChart,
-        forecastDate: editedDate,
+        forecastDate: editedDate ? editedDate.toISOString() : null
       };
 
       const updatedProject = await updateProjectById(projectId, projectData);
 
       setProjectName(updatedProject.name);
       setChartType(updatedProject.chartType);
-      setForecastDate(updatedProject.forecastDate);
+      setForecastDate(updatedProject.forecastDate ? new Date(updatedProject.forecastDate) : null);
+
+      // Update caches
+      projectCache[projectId] = updatedProject;
+      localStorage.setItem('cachedProject', JSON.stringify({
+        id: projectId,
+        name: updatedProject.name,
+        chartType: updatedProject.chartType,
+        description: updatedProject.description,
+        forecastDate: updatedProject.forecastDate
+      }));
 
       setEditModalOpen(false);
-
       Swal.fire({
         icon: 'success',
         title: 'Project updated successfully!',
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
+        timer: 3000
       });
-
     } catch (error) {
       Swal.fire({
         icon: 'error',
@@ -169,355 +149,190 @@ const ProjectInfo = ({
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
-        timer: 3000,
+        timer: 3000
       });
     }
   };
 
+  // Delete Project
   const handleDelete = async () => {
-    if (deleteInput === projectName) {
-      try {
-        localStorage.removeItem('projectId');
-        localStorage.removeItem('projectName');
-        localStorage.removeItem('chartType');
-        localStorage.removeItem('forecastDate');
+    try {
+      const projectId = localStorage.getItem('projectId');
+      await deleteProjectById(projectId);
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Project deleted successfully!',
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 3000,
-        }).then(() => {
-          window.location.reload();
-        });
+      delete projectCache[projectId];
+      localStorage.removeItem('cachedProject');
+      localStorage.removeItem('projectId');
+      localStorage.removeItem('projectName');
+      localStorage.removeItem('chartType');
+      localStorage.removeItem('forecastDate');
 
-        setShowDeleteConfirm(false);
-      } catch (error) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error deleting project',
-          text: error.message || 'An unexpected error occurred',
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 3000,
-        });
-      }
+      Swal.fire({
+        icon: 'success',
+        title: 'Project deleted successfully!',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      }).then(() => window.location.reload());
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error deleting project',
+        text: error.message || 'An unexpected error occurred',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      });
     }
   };
 
-  const bgPrimary = isDarkMode ? 'bg-slate-900' : 'bg-white';
-  const textPrimary = isDarkMode ? 'text-gray-100' : 'text-gray-900';
-  const bgSecondary = isDarkMode ? 'bg-slate-800' : 'bg-gray-50';
-  const borderColor = isDarkMode ? 'border-slate-700' : 'border-gray-200';
-  const hoverBg = isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100';
-  const accentText = isDarkMode ? 'text-blue-400' : 'text-blue-600';
-
-  const InfoItem = ({ icon, label, value, iconType = 'project' }) => {
-    const iconBgColor = {
-      project: isDarkMode ? 'bg-green-900/20' : 'bg-green-100',
-      chart: isDarkMode ? 'bg-purple-900/20' : 'bg-purple-100',
-      date: isDarkMode ? 'bg-blue-900/20' : 'bg-blue-100',
-    };
-
-    const iconColor = {
-      project: isDarkMode ? 'text-green-400' : 'text-green-600',
-      chart: isDarkMode ? 'text-purple-400' : 'text-purple-600',
-      date: isDarkMode ? 'text-blue-400' : 'text-blue-600',
-    };
-
-    return (
-      <div className="flex items-start gap-3 mb-6 transition-transform hover:translate-x-1">
-        <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${iconBgColor[iconType]}`}>
-          <span className={iconColor[iconType]}>{icon}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} mb-1`}>
-            {label}
-          </div>
-          <div className={`text-sm font-medium ${textPrimary} break-words leading-relaxed`}>
-            {value}
-          </div>
-        </div>
+  // InfoItem
+  const InfoItem = ({ icon: Icon, label, value }) => (
+    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${isDarkMode ? 'hover:bg-slate-700/30' : 'hover:bg-slate-100/50'}`}>
+      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-cyan-500/20' : 'bg-blue-500/20'}`}>
+        <Icon size={14} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
       </div>
-    );
-  };
-
-  if (!projectName) {
-    return (
-      <div
-        ref={menuRef}
-        className={`
-          fixed top-0 left-1 w-80 max-w-96 max-h-96 rounded-2xl p-6 relative overflow-hidden
-          border border-white/10
-          ${isDarkMode
-            ? "bg-[rgba(15,15,15,0.3)]"
-            : "bg-[rgba(255,255,255,0.25)]"}
-          backdrop-blur-2xl backdrop-saturate-150
-          shadow-[0_8px_32px_rgba(0,0,0,0.1)]
-          transition-all duration-500
-          hover:scale-[1.005] hover:shadow-[0_10px_36px_rgba(0,0,0,0.15)]
-          ${blink && !projectId ? "animate-pulse" : ""}
-        `}
-      >
-        <div className={`flex items-center justify-between pb-4 px-3 mb-5 border-b ${borderColor}`}>
-          <h3 className={`text-lg font-semibold flex items-center gap-2 ${textPrimary}`}>
-            <FaFolder /> No Project Selected
-          </h3>
-        </div>
-
-        <div className={`flex items-start gap-3 mb-6`}>
-          <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-yellow-900/20' : 'bg-yellow-100'}`}>
-            <FaFolder className={isDarkMode ? 'text-yellow-400' : 'text-yellow-600'} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} mb-1`}>
-              Status
-            </div>
-            <div className={`text-sm font-medium ${textPrimary} break-words`}>
-              Please create or select a project to get started
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2 mt-6">
-          <button
-            onClick={() => setShowModal(true)}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${isDarkMode
-              ? 'bg-blue-600 hover:bg-blue-700 text-white'
-              : 'bg-blue-500 hover:bg-blue-600 text-white'
-              }`}
-          >
-            <FaPlus /> New Project
-          </button>
-          <button
-            onClick={onView}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${isDarkMode
-              ? 'bg-slate-700 hover:bg-slate-600 text-gray-100'
-              : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
-              }`}
-          >
-            <FaEye /> View
-          </button>
-        </div>
+      <div className="flex-1 min-w-0">
+        <div className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}>{label}</div>
+        <div className={`text-xs font-semibold truncate ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{value}</div>
       </div>
-    );
-  }
+    </div>
+  );
 
+  // Render ProjectInfo or NoProjectsModal
   return (
     <>
-      <div
-        ref={menuRef}
-        className={`
-          fixed -top-2 left-1 w-80 max-w-96 max-h-96 rounded-2xl p-6 relative overflow-y-auto scrollbar-hide
-          border border-white/10
-          ${isDarkMode
-            ? "bg-[rgba(20,20,20,0.25)]"
-            : "bg-[rgba(255,255,255,0.2)]"}
-          backdrop-blur-2xl backdrop-saturate-150
-          shadow-[0_6px_30px_rgba(0,0,0,0.1)]
-          transition-all duration-500
-          hover:scale-[1.005] hover:shadow-[0_8px_36px_rgba(0,0,0,0.15)]
-        `}
-      >
-        <div className={`flex items-center justify-between pb-4 px-3 mb-5 border-b ${borderColor}`}>
-          <h3 className={`text-lg font-semibold flex items-center gap-2 ${textPrimary}`}>
-            <FaFolder /> Project Details
-          </h3>
-          <button
-            onClick={openEditModal}
-            className={`p-2 rounded-lg transition-all ${isDarkMode
-              ? 'text-blue-400 hover:bg-slate-700'
-              : 'text-blue-600 hover:bg-gray-100'
-              }`}
-          >
-            <FaEdit size={18} />
-          </button>
+      {projectName ? (
+        <div ref={menuRef} className={`fixed z-40 w-72 rounded-xl transition-all duration-300 ${menuOpen ? 'top-20 left-80' : 'top-32 left-4'} ${isDarkMode ? 'bg-black/40 border border-white/20' : 'bg-white/60 border border-black/40'} backdrop-blur-xl shadow-xl`}>
+          <div className={`flex items-center justify-between px-4 py-3 border-b ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
+            <div className="flex items-center gap-2.5">
+              <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-cyan-500/20' : 'bg-blue-500/20'}`}>
+                <FolderOpen size={16} className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`} strokeWidth={2.5} />
+              </div>
+              <div>
+                <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Project Details</div>
+                <div className={`text-[10px] font-medium ${isDarkMode ? 'text-white/50' : 'text-slate-600'}`}>Active project</div>
+              </div>
+            </div>
+            <button onClick={openEditModal} className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 ${isDarkMode ? 'hover:bg-white/10 text-white/60 hover:text-white/90' : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'}`}>
+              <Edit2 size={14} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          <div className="p-3 space-y-1.5">
+            <InfoItem icon={FolderOpen} label="Project Name" value={projectName} />
+            <InfoItem icon={BarChart3} label="Chart Type" value={chartType || 'Not specified'} />
+            <InfoItem icon={Calendar} label="Forecast Date" value={formatDateDisplay(forecastDate) || 'Not set'} />
+          </div>
         </div>
-
-        <InfoItem
-          icon={<FaFolder />}
-          label="Project Name"
-          value={projectName}
-          iconType="project"
+      ) : (
+        <NoProjectsModal
+          visible={noProjectModalVisible}
+          onCreateProject={() => setShowModal(true)}
+          onClose={() => setNoProjectModalVisible(false)}
+          isDarkMode={isDarkMode}
         />
-
-        <InfoItem
-          icon={<FaChartBar />}
-          label="Chart Type"
-          value={chartType || 'Not specified'}
-          iconType="chart"
-        />
-
-        <InfoItem
-          icon={<FaCalendarAlt />}
-          label="Forecast Date"
-          value={forecastDate || 'Not set'}
-          iconType="date"
-        />
-      </div>
+      )}
 
       {/* Edit Project Modal */}
       {editModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className={`${bgPrimary} rounded-2xl p-8 w-full max-w-lg shadow-2xl border ${borderColor}`}
-          >
-            <h2 className={`text-2xl font-bold mb-6 bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent`}>
-              Edit Project Details
-            </h2>
-
-            <div className="mb-6">
-              <label className={`block mb-2 font-semibold text-sm uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                Project Name
-              </label>
-              <input
-                type="text"
-                value={editedName}
-                onChange={(e) => setEditedName(e.target.value)}
-                placeholder="Enter project name"
-                className={`w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode
-                  ? 'bg-slate-800 border-slate-700 text-gray-100 focus:border-blue-400'
-                  : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
-                  }`}
-              />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className={`absolute inset-0 ${isDarkMode ? 'bg-black/70' : 'bg-black/50'} backdrop-blur-md`}
+            onClick={() => setEditModalOpen(false)}
+          />
+          
+          <div className={`relative w-full max-w-md rounded-2xl backdrop-blur-xl shadow-2xl transition-all duration-300 ${isDarkMode ? 'bg-[#0b1220]/60 border border-white/10' : 'bg-white/70 border border-black/10'}`}>
+            {/* Header */}
+            <div className={`flex items-center justify-between px-5 py-4 border-b ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-cyan-500/20' : 'bg-blue-500/20'}`}>
+                  <Edit2 size={20} strokeWidth={2.5} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} />
+                </div>
+                <div className={`text-sm font-semibold tracking-wide ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Edit Project</div>
+              </div>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className={`p-1.5 rounded-lg transition hover:scale-110 ${isDarkMode ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/10 text-slate-500 hover:text-slate-900'}`}
+              >
+                <X size={18} strokeWidth={2.5} />
+              </button>
             </div>
 
-            <div className="mb-6">
-              <label className={`block mb-2 font-semibold text-sm uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                Chart Type
-              </label>
-              <input
-                type="text"
-                value={editedChart}
-                onChange={(e) => setEditedChart(e.target.value)}
-                placeholder="Enter chart type"
-                className={`w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode
-                  ? 'bg-slate-800 border-slate-700 text-gray-100 focus:border-blue-400'
-                  : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
-                  }`}
-              />
-            </div>
+            {/* Content */}
+            <div className="px-5 py-6 space-y-4">
+              <div>
+                <label className={`block mb-2 font-semibold text-xs uppercase tracking-wide ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>Project Name</label>
+                <input
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  placeholder="Enter project name"
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDarkMode ? 'bg-white/10 border border-white/10 text-white placeholder-white/40 focus:ring-cyan-500' : 'bg-black/5 border border-black/10 text-slate-900 placeholder-slate-400 focus:ring-blue-500'}`}
+                />
+              </div>
 
-            <div className="mb-6">
-              <label className={`block mb-2 font-semibold text-sm uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                Forecast Date
-              </label>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  value={dayjs(new Date(editedDate))}
-                  onChange={(newValue) => {
-                    if (newValue) {
-                      const formatted = new Date(newValue).toLocaleDateString(undefined, {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      });
-                      setEditedDate(formatted);
-                    }
-                  }}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      variant: 'standard',
-                      InputProps: {
-                        disableUnderline: true,
-                        sx: {
-                          backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc',
-                          borderRadius: '8px',
-                          fontSize: '0.95rem',
-                          color: isDarkMode ? '#f1f5f9' : '#1f2937',
-                          height: '48px',
-                          paddingLeft: '1rem',
-                          border: isDarkMode ? '1px solid #475569' : '1px solid #d1d5db',
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            borderColor: isDarkMode ? '#64748b' : '#e5e7eb',
-                          },
-                          '&.Mui-focused': {
-                            borderColor: '#3b82f6',
-                            boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+              <div>
+                <label className={`block mb-2 font-semibold text-xs uppercase tracking-wide ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>Chart Type</label>
+                <input
+                  type="text"
+                  value={editedChart}
+                  onChange={(e) => setEditedChart(e.target.value)}
+                  placeholder="Enter chart type"
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDarkMode ? 'bg-white/10 border border-white/10 text-white placeholder-white/40 focus:ring-cyan-500' : 'bg-black/5 border border-black/10 text-slate-900 placeholder-slate-400 focus:ring-blue-500'}`}
+                />
+              </div>
+
+              <div>
+                <label className={`block mb-2 font-semibold text-xs uppercase tracking-wide ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>Forecast Date</label>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DatePicker
+                    value={editedDate ? dayjs(editedDate) : null}
+                    onChange={(newValue) => {
+                      if (newValue) setEditedDate(newValue.toDate());
+                    }}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        variant: 'standard',
+                        InputProps: {
+                          disableUnderline: true,
+                          sx: {
+                            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            color: isDarkMode ? '#f1f5f9' : '#1f2937',
+                            height: '42px',
+                            paddingLeft: '0.75rem',
+                            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': { borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' },
+                            '&.Mui-focused': { borderColor: isDarkMode ? '#06b6d4' : '#3b82f6', boxShadow: isDarkMode ? '0 0 0 3px rgba(6, 182, 212, 0.1)' : '0 0 0 3px rgba(59, 130, 246, 0.1)' },
                           },
                         },
                       },
-                    },
-                  }}
-                />
-              </LocalizationProvider>
+                    }}
+                  />
+                </LocalizationProvider>
+              </div>
             </div>
 
-            <div className="flex gap-4">
+            {/* Footer */}
+            <div className={`flex items-center gap-2 px-5 py-4 border-t ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
               <button
                 onClick={() => setEditModalOpen(false)}
-                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${isDarkMode
-                  ? 'bg-slate-700 hover:bg-slate-600 text-gray-100'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
-                  }`}
+                className={`flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02] ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-white/80 border border-white/10' : 'bg-black/5 hover:bg-black/10 text-slate-700 border border-black/10'}`}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
-                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700`}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02] ${isDarkMode ? 'bg-gradient-to-r from-cyan-500/90 to-blue-500/90 hover:from-cyan-400 hover:to-blue-400 text-white shadow-lg shadow-cyan-500/20' : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/30'}`}
               >
+                <Check size={16} strokeWidth={2.5} />
                 Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className={`${bgPrimary} rounded-2xl p-8 w-full max-w-lg shadow-2xl border ${borderColor}`}
-          >
-            <h3 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${textPrimary}`}>
-              ⚠️ Confirm Deletion
-            </h3>
-            <p className={`mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              This action cannot be undone. To confirm deletion of this project, please type{' '}
-              <strong>"{projectName}"</strong> in the field below.
-            </p>
-
-            <div className="mb-6">
-              <input
-                type="text"
-                placeholder={`Type "${projectName}" to confirm`}
-                value={deleteInput}
-                onChange={(e) => setDeleteInput(e.target.value)}
-                className={`w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2 focus:ring-red-500 ${isDarkMode
-                  ? 'bg-slate-800 border-slate-700 text-gray-100 focus:border-red-400'
-                  : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-red-500'
-                  }`}
-              />
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${isDarkMode
-                  ? 'bg-slate-700 hover:bg-slate-600 text-gray-100'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
-                  }`}
-              >
-                Cancel
-              </button>
-              <button
-                disabled={deleteInput !== projectName}
-                onClick={handleDelete}
-                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all text-white flex items-center justify-center gap-2 ${deleteInput === projectName
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-gray-400 cursor-not-allowed'
-                  }`}
-              >
-                <FaTrash /> Confirm Delete
               </button>
             </div>
           </div>

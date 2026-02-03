@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import { GlobalStyle, AppContainer, MainContent, FooterWrapper } from '@/styles/global';
-import { SectionDivider } from '@/styles/app';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import useIsMobile from '@/hooks/useIsMobile';
 import { darkTheme, theme } from '@/styles/theme';
@@ -20,12 +19,13 @@ const ErrorBoundary = lazy(() => import('@/components/layout/ErrorBoundary'));
 
 // Pages (Lazy Loaded)
 const Home = lazy(() => import('@/pages/Home'));
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Dashboard = lazy(() => import('@/pages/Dashboard')); //AMDIN PAGE
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
 const Studio = lazy(() => import('@/pages/Studio'));
 const Charts = lazy(() => import('@/pages/Charts'));
 const AboutUs = lazy(() => import('@/pages/AboutUs'));
+const Contact = lazy(() => import('@/pages/Contact'));
 
 // Modals (Lazy Loaded)
 const MobileAccessModal = lazy(() => import('@/components/ui/modals/MobileAccessModal'));
@@ -39,7 +39,7 @@ logger.info('VOTE: WaveLab Platform initialized');
 // Enhanced Layout Component
 const Layout = () => {
   const isMobile = useIsMobile();
-  const { isLoginPage, isRegisterPage, isDashboardPage, isEditPage } = useRouteChecks(); // Use custom hook
+  const { isLoginPage, isRegisterPage, isDashboardPage, isStudioPage, isChartsPage } = useRouteChecks();
   const isAuthPage = isLoginPage || isRegisterPage;
 
   // State management
@@ -55,18 +55,18 @@ const Layout = () => {
 
   // Mobile edit page modal handling
   useEffect(() => {
-    if (isMobile && isEditPage) {
+    if (isMobile && isStudioPage) {
       setModalVisible(true);
     }
-  }, [isMobile, isEditPage]);
+  }, [isMobile, isStudioPage]);
 
   // Enhanced loading state management
   useEffect(() => {
     setIsLoading(true);
-    const timeout = isEditPage || isAuthPage ? 1200 : 600;
+    const timeout = isStudioPage || isAuthPage ? 1200 : 600;
     const timer = setTimeout(() => setIsLoading(false), timeout);
     return () => clearTimeout(timer);
-  }, [isEditPage, isAuthPage]);
+  }, [isStudioPage, isAuthPage]);
 
   // Callback functions
   const handleModalClose = useCallback(() => {
@@ -82,14 +82,14 @@ const Layout = () => {
   const toggleTheme = useCallback(() => setIsDarkMode(prev => !prev), []);
 
   // Get layout configuration
-  const layoutConfig = useMemo(() => getLayoutConfig({ isAuthPage, isDashboardPage, isEditPage }), [isAuthPage, isDashboardPage, isEditPage]);
+  const layoutConfig = useMemo(() => getLayoutConfig({ isAuthPage, isDashboardPage, isStudioPage, isChartsPage }), [isAuthPage, isDashboardPage, isStudioPage, isChartsPage]);
 
   const { showHeader, showFooter, showDivider, addTopPadding } = layoutConfig;
 
   return (
     <ThemeProvider theme={isDarkMode ? darkTheme : theme}>
       <GlobalStyle />
-      <AppContainer $noscroll={isEditPage} $isloading={isLoading} $isDarkMode={isDarkMode}>
+      <AppContainer $noscroll={isStudioPage} $isloading={isLoading} $isDarkMode={isDarkMode}>
         {/* Header */}
         {showHeader && (
           <Suspense fallback={<div style={{ height: '60px' }} />}>
@@ -107,7 +107,7 @@ const Layout = () => {
 
         {/* Main Content */}
         <MainContent $isloading={isLoading} style={{ paddingTop: addTopPadding ? undefined : 0 }}>
-          {isLoading && <LoadingScreen isDarkMode={isDarkMode} message={isEditPage ? "Loading Editor..." : "Loading..."} />}
+          {isLoading && <LoadingScreen isDarkMode={isDarkMode} message={isStudioPage ? "Please wait..." : "Please wait..."} />}
           <Suspense fallback={<LoadingScreen isDarkMode={isDarkMode} />}>
             <Routes>
               <Route path="/" element={<Home isDarkMode={isDarkMode} />} />
@@ -142,10 +142,10 @@ const Layout = () => {
               />
               <Route path="/charts" element={<Charts isDarkMode={isDarkMode} activeChartType={activeChartType} />} />
               <Route path="/about-us" element={<AboutUs isDarkMode={isDarkMode} />} />
+              <Route path="/contact" element={<Contact isDarkMode={isDarkMode} />} />
             </Routes>
           </Suspense>
 
-          {showDivider && <SectionDivider $isDarkMode={isDarkMode} />}
         </MainContent>
 
         {/* Footer */}
