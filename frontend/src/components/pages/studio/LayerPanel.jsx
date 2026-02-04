@@ -522,7 +522,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
   return (
     <>
-      <div className="fixed top-20 right-2 z-40 w-80">
+      <div className="fixed top-16 right-2 z-40 w-80 mt-1">
         <div
           className={`rounded-2xl transition-all duration-300 ${isDarkMode
             ? 'bg-black/40 border border-white/20'
@@ -565,7 +565,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           </div>
 
           {/* Scrollable Content */}
-          <div className="max-h-[calc(100vh-250px)] overflow-y-auto hide-scrollbar">
+          <div className="max-h-[calc(100vh-320px)] overflow-y-auto hide-scrollbar">
             {/* Custom Layers Section */}
             <div className="p-3">
               <button
