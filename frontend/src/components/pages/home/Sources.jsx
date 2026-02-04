@@ -5,37 +5,37 @@ const DataSourcesSection = ({ isDark }) => {
   const dataSources = [
     {
       icon: Satellite,
-      title: "Satellite Imagery",
+      title: "Satellite Monitoring",
       organization: "NOAA & ESA",
-      description: "High-resolution satellite data from GOES-16/17 and Sentinel missions providing comprehensive ocean surface monitoring.",
-      specs: ["10m resolution", "15-min intervals", "Multi-spectral imaging"],
+      description: "Multi-spectral satellite data supports typhoon analysis, cloud diagnostics, and ocean state monitoring.",
+      specs: ["Rapid scans", "Cloud classification", "Ocean surface tracking"],
       color: "from-blue-500 to-cyan-500",
       glowColor: "blue"
     },
     {
       icon: Radio,
-      title: "Ocean Buoys",
+      title: "Marine Observations",
       organization: "PAGASA Network",
-      description: "Real-time measurements from 50+ ocean buoys deployed across Philippine waters by PAGASA.",
-      specs: ["Wave height sensors", "Water temperature", "Wind speed/direction"],
+      description: "Wave buoys, coastal stations, and ship reports feed operational wave guidance.",
+      specs: ["Wave height", "Sea state", "Wind observations"],
       color: "from-cyan-500 to-teal-500",
       glowColor: "cyan"
     },
     {
       icon: Anchor,
-      title: "Coastal Stations",
+      title: "Coastal & Hydromet Stations",
       organization: "DOST-PHIVOLCS",
-      description: "Network of coastal monitoring stations providing tidal data and seismic sea wave detection.",
-      specs: ["Tide gauges", "Pressure sensors", "Seismic monitoring"],
+      description: "Integrated tide gauges and hydrometeorological sensors support storm surge and rainfall monitoring.",
+      specs: ["Tide gauges", "Hydromet sensors", "Real-time telemetry"],
       color: "from-purple-500 to-blue-500",
       glowColor: "purple"
     },
     {
       icon: Globe2,
-      title: "Weather Radar",
+      title: "Dual-Pol Weather Radar",
       organization: "PAGASA Doppler",
-      description: "Advanced S-band Doppler radar systems covering Philippine Area of Responsibility (PAR).",
-      specs: ["250km radius", "Real-time tracking", "Storm detection"],
+      description: "Dual-polarization radar drives QC, QPE, and QPN rainfall nowcasting products.",
+      specs: ["Dual-pol QC", "QPE/QPN outputs", "Storm monitoring"],
       color: "from-indigo-500 to-purple-500",
       glowColor: "indigo"
     }
@@ -44,27 +44,27 @@ const DataSourcesSection = ({ isDark }) => {
   const techStack = [
     {
       icon: Cpu,
-      title: "AI/ML Processing",
-      description: "Neural networks trained on 20+ years of oceanographic data",
-      badge: "TensorFlow"
+      title: "Forecast Support Tools",
+      description: "Operational aids for typhoon analysis and decision support",
+      badge: "Ops Ready"
     },
     {
       icon: Database,
-      title: "Big Data Analytics",
-      description: "Processing 5TB+ daily from multiple data streams",
-      badge: "PostgreSQL"
+      title: "Regional Data Assimilation",
+      description: "Bias-corrected inputs and new observation integration",
+      badge: "NWP"
     },
     {
       icon: Network,
-      title: "Real-Time Pipeline",
-      description: "Sub-second data ingestion and processing infrastructure",
-      badge: "Apache Kafka"
+      title: "Nowcasting Pipeline",
+      description: "Rapid QPE/QPN generation for rainfall monitoring",
+      badge: "Radar"
     },
     {
       icon: Shield,
-      title: "Data Validation",
-      description: "Multi-layer quality control and anomaly detection",
-      badge: "ISO Certified"
+      title: "S2S Climate Services",
+      description: "Sub-seasonal to seasonal applications for sector planning",
+      badge: "Climate"
     }
   ];
 
@@ -118,27 +118,27 @@ const DataSourcesSection = ({ isDark }) => {
               : 'bg-blue-100/80 text-blue-700 border border-blue-200 hover:border-blue-300'
           }`}>
             <Zap size={16} className="animate-pulse" />
-            Powered by Trusted Sources
+            Powered by Operational Sources
           </div>
 
           <h2 className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 tracking-tight transition-colors duration-700 ${
             isDark ? 'text-white' : 'text-slate-900'
           }`}>
-            Data You Can{' '}
+            Data and Guidance{' '}
             <span className={`bg-gradient-to-r bg-clip-text text-transparent transition-all duration-700 ${
               isDark
                 ? 'from-blue-400 via-cyan-400 to-purple-400'
                 : 'from-blue-600 via-cyan-600 to-purple-600'
             }`}>
-              Trust
+              for PAGASA
             </span>
           </h2>
 
           <p className={`text-lg sm:text-xl max-w-3xl mx-auto leading-relaxed transition-colors duration-700 ${
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
-            Integrating real-time data from official government agencies and international 
-            space organizations to deliver accurate oceanographic insights.
+            Integrating real-time observations and radar products from official agencies
+            to deliver typhoon, marine, and rainfall guidance with dependable clarity.
           </p>
         </div>
 
