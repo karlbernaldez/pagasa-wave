@@ -80,7 +80,6 @@ const Header = ({ isDarkMode, setIsDarkMode, activeChartType, setActiveChartType
     { name: 'Home', href: '/' },
     { name: 'Charts', href: '/charts', hasDropdown: true },
     { name: 'Studio', href: '/studio' },
-    { name: 'Services', href: '#services' },
     { name: 'About', href: '/about-us' },
     { name: 'Contact', href: '/contact' }
   ];

@@ -5,33 +5,33 @@ const QuickAccessServices = ({ isDark }) => {
   const services = [
     {
       icon: Database,
-      title: "Marine Data Portal",
-      description: "Access comprehensive oceanographic datasets, historical records, and real-time measurements from our integrated network.",
+      title: "Typhoon Forecast Support",
+      description: "Analysis and forecast aids that strengthen operational decision-making for tropical cyclone monitoring.",
       color: "from-blue-500 to-cyan-500",
-      features: ["Real-time data", "Historical archives", "API access", "CSV exports"],
-      badge: "Public Access",
+      features: ["Forecast aids", "Operational guidance", "Scenario analysis", "Regional support"],
+      badge: "Objective 01",
       badgeColor: isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700',
-      link: '/data-portal'
+      link: '/forecast-support'
     },
     {
       icon: BarChart3,
-      title: "Wave Forecasts",
-      description: "7-day wave predictions, tide tables, and marine weather forecasts for all Philippine coastal areas with hourly updates.",
+      title: "Wave Prediction Operations",
+      description: "Optimized wave prediction system delivering dependable marine weather services for Philippine coastal waters.",
       color: "from-purple-500 to-pink-500",
-      features: ["7-day forecasts", "Interactive maps", "Location search", "Mobile alerts"],
-      badge: "Free Service",
+      features: ["Operational wave models", "Marine outlooks", "Coastal guidance", "Service delivery"],
+      badge: "Objective 02",
       badgeColor: isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700',
-      link: '/forecasts'
+      link: '/marine-operations'
     },
     {
       icon: FileText,
-      title: "Reports & Publications",
-      description: "Technical reports, research papers, monthly bulletins, and annual summaries from DOST-PAGASA and partner agencies.",
+      title: "Radar & Climate Applications",
+      description: "Dual-pol radar QC, QPE/QPN rainfall monitoring, data assimilation, and S2S climate services.",
       color: "from-amber-500 to-orange-500",
-      features: ["Monthly bulletins", "Annual reports", "Research papers", "Technical docs"],
-      badge: "Updated Weekly",
+      features: ["Radar QC", "QPE/QPN products", "Data assimilation", "S2S services"],
+      badge: "Objectives 03-06",
       badgeColor: isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700',
-      link: '/reports'
+      link: '/research-products'
     }
   ];
 
@@ -71,26 +71,26 @@ const QuickAccessServices = ({ isDark }) => {
               : 'bg-blue-100/80 text-blue-700 border border-blue-200 hover:border-blue-300'
           }`}>
             <Zap size={16} className="animate-pulse" />
-            Quick Access Services
+            Project Focus Areas
           </div>
           
           <h2 className={`text-4xl sm:text-5xl lg:text-6xl font-black mb-6 tracking-tight transition-colors duration-700 ${
             isDark ? 'text-white' : 'text-slate-900'
           }`}>
-            Essential Marine{' '}
+            Component B{' '}
             <span className={`bg-gradient-to-r bg-clip-text text-transparent ${
               isDark
                 ? 'from-blue-400 to-cyan-400'
                 : 'from-blue-600 to-cyan-600'
             }`}>
-              Resources
+              Objectives
             </span>
           </h2>
           
           <p className={`text-lg sm:text-xl max-w-3xl mx-auto leading-relaxed transition-colors duration-700 ${
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
-            Direct access to data, forecasts, and reports for maritime professionals and coastal communities
+            Aligned with the DOST-PAGASA objectives for typhoon, marine weather, radar rainfall, and S2S climate services.
           </p>
         </div>
 

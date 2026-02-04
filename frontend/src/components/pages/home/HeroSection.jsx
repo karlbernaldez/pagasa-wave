@@ -88,40 +88,31 @@ const WaveHeroSection = ({ isDark }) => {
           {/* Left Content */}
           <div className="text-center lg:text-left space-y-8">
 
-            {/* Status Badge */}
-            <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full text-sm font-semibold backdrop-blur-sm transition-all duration-500 hover:scale-105 ${isDark
-              ? 'bg-blue-500/10 text-blue-400 border border-blue-400/20 hover:bg-blue-500/20 hover:shadow-lg hover:shadow-blue-400/25'
-              : 'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 hover:shadow-lg hover:shadow-blue-500/25'
-              }`}>
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              Live Wave Data
-            </div>
-
             {/* Main Headline */}
-            <div className="space-y-4">
+            <div className="space-y-4 mt-24">
               <h1 className={`text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-tight transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
                 }`}>
-                Accurate{' '}
                 <span className={`bg-gradient-to-r bg-clip-text text-transparent transition-all duration-700 ${isDark
                   ? 'from-blue-400 via-cyan-400 to-purple-400'
                   : 'from-blue-500 via-cyan-500 to-purple-500'
                   }`}>
-                  Wave Charts
+                  Typhoon & Marine
                 </span>{' '}
-                & Forecasting
+                Weather Services Excellence
               </h1>
 
               <p className={`text-lg sm:text-xl lg:text-2xl leading-relaxed max-w-2xl transition-colors duration-700 ${isDark ? 'text-slate-300' : 'text-slate-600'
                 }`}>
-                Professional wave height analysis, detailed marine forecasting charts,
-                and comprehensive oceanographic data for coastal planning and marine activities.
+                Advancing DOST-MECO-TECO-VOTE III Component B Project 1 with enhanced typhoon
+                forecast support, operational wave prediction, and integrated marine weather
+                services for confident coastal decision-making.
               </p>
             </div>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <button className="group flex items-center justify-center gap-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25">
-                View Wave Charts
+                View Project Objectives
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform duration-300" />
               </button>
 
@@ -130,7 +121,7 @@ const WaveHeroSection = ({ isDark }) => {
                 : 'border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400'
                 }`}>
                 <BarChart3 size={20} />
-                View Analytics
+                Explore Forecast Tools
               </button>
             </div>
 
@@ -140,33 +131,33 @@ const WaveHeroSection = ({ isDark }) => {
               <div className="text-center lg:text-left">
                 <div className={`text-3xl sm:text-4xl font-black transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
                   }`}>
+                  6
+                </div>
+                <div className={`text-sm font-medium transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-600'
+                  }`}>
+                  Strategic Objectives
+                </div>
+              </div>
+
+              <div className="text-center lg:text-left">
+                <div className={`text-3xl sm:text-4xl font-black transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
+                  }`}>
+                  3
+                </div>
+                <div className={`text-sm font-medium transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-600'
+                  }`}>
+                  Component Projects
+                </div>
+              </div>
+
+              <div className="text-center lg:text-left">
+                <div className={`text-3xl sm:text-4xl font-black transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
+                  }`}>
                   24/7
                 </div>
                 <div className={`text-sm font-medium transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}>
-                  Wave Monitoring
-                </div>
-              </div>
-
-              <div className="text-center lg:text-left">
-                <div className={`text-3xl sm:text-4xl font-black transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                  }`}>
-                  99%+
-                </div>
-                <div className={`text-sm font-medium transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                  Chart Accuracy
-                </div>
-              </div>
-
-              <div className="text-center lg:text-left">
-                <div className={`text-3xl sm:text-4xl font-black transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                  }`}>
-                  500+
-                </div>
-                <div className={`text-sm font-medium transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                  Coastal Locations
+                  Operations Support
                 </div>
               </div>
             </div>
@@ -184,11 +175,11 @@ const WaveHeroSection = ({ isDark }) => {
                 <div className={`flex items-center justify-center gap-2 mb-2 transition-colors duration-700 ${isDark ? 'text-slate-300' : 'text-slate-700'
                   }`}>
                   <MapPin size={18} />
-                  <span className="font-semibold">Manila Bay, Philippines</span>
+                  <span className="font-semibold">PAGASA Marine Forecast Desk</span>
                 </div>
                 <div className={`text-sm transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
                   }`}>
-                  Wave Forecast • {new Date().toLocaleDateString('en-US', {
+                  Operational Guidance • {new Date().toLocaleDateString('en-US', {
                     weekday: 'long',
                     month: 'short',
                     day: 'numeric'
@@ -210,7 +201,7 @@ const WaveHeroSection = ({ isDark }) => {
                 </div>
                 <div className={`text-lg font-medium transition-colors duration-700 ${isDark ? 'text-blue-400' : 'text-blue-600'
                   }`}>
-                  Moderate Wave Conditions
+                  Operational Wave Guidance
                 </div>
               </div>
 
@@ -222,7 +213,7 @@ const WaveHeroSection = ({ isDark }) => {
                     }`} />
                   <div className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
                     }`}>
-                    Period
+                    Wave Period
                   </div>
                   <div className={`text-xs transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
                     }`}>
@@ -236,7 +227,7 @@ const WaveHeroSection = ({ isDark }) => {
                     }`} />
                   <div className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
                     }`}>
-                    Direction
+                    Dominant Direction
                   </div>
                   <div className={`text-xs transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
                     }`}>
@@ -250,7 +241,7 @@ const WaveHeroSection = ({ isDark }) => {
                     }`} />
                   <div className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
                     }`}>
-                    Wind
+                    Marine Wind
                   </div>
                   <div className={`text-xs transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
                     }`}>
@@ -264,7 +255,7 @@ const WaveHeroSection = ({ isDark }) => {
                     }`} />
                   <div className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
                     }`}>
-                    Visibility
+                    Coastal Visibility
                   </div>
                   <div className={`text-xs transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
                     }`}>
@@ -279,7 +270,7 @@ const WaveHeroSection = ({ isDark }) => {
                 <div className="flex items-center justify-between mb-3">
                   <span className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
                     }`}>
-                    7-Day Wave Height Chart
+                    7-Day Marine Outlook
                   </span>
                   <BarChart3 className={`w-4 h-4 transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
                     }`} />
