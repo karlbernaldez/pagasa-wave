@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 // Component imports
 import MapComponent from "@/components/pages/studio/MapComponent";
 import LayerPanel from "@/components/pages/studio/LayerPanel";
+import WaveLegend from "@/components/pages/studio/WaveLegend";
 import DrawToolBar from "@/components/pages/studio/Toolbar";
 import Canvas from "@/components/pages/studio/draw/canvas";
 import FlagCanvas from "@/components/pages/studio/draw/front";
@@ -247,6 +248,8 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
             draw={drawInstance}
           />
 
+          <WaveLegend isDarkMode={isDarkMode} />
+
           <LegendBox isDarkMode={isDarkMode} />
 
           <NoProjectAlert
@@ -266,7 +269,7 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
       )}
 
       {/* Loading Overlay */}
-      {isLoading && <MapLoading isDarkMode={isDarkMode}/>}
+      {isLoading && <MapLoading isDarkMode={isDarkMode} />}
 
       {/* Animation Keyframes */}
       <style jsx>{`

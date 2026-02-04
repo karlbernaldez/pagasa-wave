@@ -26,8 +26,6 @@ export async function addWindSource(map, isDarkMode) {
   const tileset = getWindTileset(isDarkMode);
   const sourceId = getWindSourceId(isDarkMode);
 
-  console.log("WIND SOURCE ID: ", sourceId)
-
   // Add sources
   if (!map.getSource(sourceId)) {
     map.addSource(sourceId, {
@@ -35,7 +33,7 @@ export async function addWindSource(map, isDarkMode) {
       url: `${tileset}?fresh=${Date.now()}`,
       tileSize: 4096,
     });
-    console.log('ADDING WIND RASTER SOURCE')
+    // console.log('ADDING WIND RASTER SOURCE')
   }
 
   if (!map.getSource("wind-particles")) {
@@ -45,7 +43,7 @@ export async function addWindSource(map, isDarkMode) {
       tileSize: 4096,
     });
 
-    console.log("ADDING WIND PARTICLES SOURCE")
+    // console.log("ADDING WIND PARTICLES SOURCE")
   }
 
   if (!map.getSource('glass-layer')) {
@@ -65,7 +63,7 @@ export async function addWindSource(map, isDarkMode) {
 export async function addWindLayer(map, isDarkMode) {
 
   const sourceId = getWindSourceId(isDarkMode);
-  console.log("ADDING WIND RASTER USING THIS SOURCE: ", sourceId)
+  // console.log("ADDING WIND RASTER USING THIS SOURCE: ", sourceId)
 
   // Add layers (modularized)
   if (localStorage.getItem('WIND_ENABLED') === 'true') {

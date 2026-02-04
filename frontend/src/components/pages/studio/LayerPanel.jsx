@@ -41,11 +41,11 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     TCAD: false
   });
 
-  const DOMAIN_LAYER_MAP = {
-    PAR: ['PAR', 'PAR_dash'],
-    TCID: ['TCID'],
-    TCAD: ['TCAD'],
-  };
+  // const DOMAIN_LAYER_MAP = {
+  //   PAR: ['PAR', 'PAR_dash'],
+  //   TCID: ['TCID'],
+  //   TCAD: ['TCAD'],
+  // };
 
   // Utilities layer states
   const [utilitiesLayers, setUtilitiesLayers] = useState({
@@ -81,7 +81,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
   // Initialize layers using saved stated from local storage
   useEffect(() => {
-    console.log('Initializing layers...');
+    // console.log('Initializing layers...');
 
     const savedDomains = {
       PAR: localStorage.getItem('PAR') === 'true',
@@ -171,7 +171,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     } else {
       // ⏳ Wait once
       map.once('load', applySavedLayers);
-      console.log("LOADING MAP")
+      // console.log("LOADING MAP")
     }
   }, [map]);
 
@@ -522,7 +522,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
   return (
     <>
-      <div className="fixed top-20 right-6 z-40 w-80">
+      <div className="fixed top-20 right-2 z-40 w-80">
         <div
           className={`rounded-2xl transition-all duration-300 ${isDarkMode
             ? 'bg-black/40 border border-white/20'
