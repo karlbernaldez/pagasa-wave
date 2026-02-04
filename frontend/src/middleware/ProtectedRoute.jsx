@@ -1,71 +1,90 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import OnlyUserModal from '../components/ui/modals/OnlyUserModal';
 import { refreshAccessToken } from '@/api/auth';
 
-const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null, setIsLoggedIn }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdminUser, setIsAdminUser] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showAdminModal, setShowAdminModal] = useState(false);
+const ProtectedRoute = ({
+  element: Element,
+  requireAuth = true,
+  onDeny,
+  setIsLoggedIn,
+}) => {
+  const [status, setStatus] = useState('loading'); 
+  // 'loading' | 'guest' | 'user' | 'admin'
+
   const navigate = useNavigate();
 
   const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
-
   const checkRoute = `${AUTH_API_BASE_URL}/check`;
 
-  const checkAuthentication = async () => {
-    try {
-      const response = await fetch(checkRoute, {
-        method: 'GET',
-        credentials: 'include', // Send cookies
-      });
+  useEffect(() => {
+    const checkAuthentication = async () => {
+      try {
+        const res = await fetch(checkRoute, {
+          method: 'GET',
+          credentials: 'include',
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        setIsAuthenticated(true);
-        setIsLoggedIn(true);
+        if (res.ok) {
+          const data = await res.json();
+          setIsLoggedIn(true);
 
-        if (data.user.role === 'admin') {
-          setIsAdminUser(true);
-          setShowAdminModal(true);
-          console.warn('Access denied: Admins cannot access this route.');
+          setStatus(data.user.role === 'admin' ? 'admin' : 'user');
+          return;
         }
 
-      } else if (response.status === 403) {
-        const response = await refreshAccessToken();
-        setIsAuthenticated(true);
-        setIsLoggedIn(true);
+        if (res.status === 403) {
+          const refreshed = await refreshAccessToken();
+          if (refreshed) {
+            setIsLoggedIn(true);
+            setStatus('user');
+            return;
+          }
+        }
 
-      } else {
-        setIsAuthenticated(false);
         setIsLoggedIn(false);
+        setStatus('guest');
+      } catch (err) {
+        console.error('Auth check failed:', err);
+        setIsLoggedIn(false);
+        setStatus('guest');
       }
-    } catch (error) {
-      console.error('Auth check error:', error);
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
-  useEffect(() => {
     checkAuthentication();
-  }, []);
+  }, [setIsLoggedIn]);
 
-  const handleModalClose = () => {
-    setShowAdminModal(false);
-    navigate('/login');
-  };
-
-  if (requireAuth && !isAuthenticated) {
-    return typeof onDeny === 'function' ? onDeny() : <Navigate to="/login" replace />;
+  /* ----------------------------------
+     1. LOADING → render nothing / loader
+     ---------------------------------- */
+  if (status === 'loading') {
+    return null;
   }
 
-  if (isAdminUser) {
-    return <OnlyUserModal isOpen={true} onClose={handleModalClose} />;
+  /* ----------------------------------
+     2. NOT AUTHENTICATED
+     ---------------------------------- */
+  if (requireAuth && status === 'guest') {
+    return typeof onDeny === 'function'
+      ? onDeny()
+      : <Navigate to="/login" replace />;
   }
 
+  /* ----------------------------------
+     3. ADMIN BLOCK
+     ---------------------------------- */
+  if (status === 'admin') {
+    return (
+      <OnlyUserModal
+        isOpen
+        onClose={() => navigate('/login')}
+      />
+    );
+  }
+
+  /* ----------------------------------
+     4. ALLOWED
+     ---------------------------------- */
   return <Element />;
 };
 
