@@ -27,7 +27,6 @@ const TOOLBAR_DELAY = 1000;
 
 // ─── Main Component ──────────────────────────────────
 const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
-  // Project management
   const [projectId, updateProjectId] = useProjectId();
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
@@ -38,22 +37,18 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
     setShowNoProjectsModal
   } = useProjectLoader(projectId, updateProjectId);
 
-  // Handle "Create Project" button from NoProjectsModal
   const handleOpenCreateProject = () => {
-    setShowNoProjectsModal(false); // Close "No Projects" modal
-    setShowCreateProjectModal(true); // Open "Create Project" modal
+    setShowNoProjectsModal(false);
+    setShowCreateProjectModal(true);
   };
 
-  // Handle "Maybe Later" from NoProjectsModal
   const handleMaybeLater = () => {
     setShowNoProjectsModal(false);
     // Optional: You might want to redirect or show a different screen
   };
 
-  // Map setup
   const { savedFeatures, layers, setLayers, mapRef, cleanupRef, setupFeaturesAndLayers } = useMapSetup(projectId, logger, isDarkMode);
 
-  // Drawing state
   const {
     drawInstance,
     setDrawInstance,
