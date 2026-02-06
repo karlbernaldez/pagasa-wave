@@ -44,7 +44,8 @@ wavetiles/cog
 wavetiles/geotiff
 wavetiles/input
 wavetiles/tiles
-wavetiles/utils
+wavetiles/utils/shp
+wavetiles/render
 wavetiles/venv
 wavetiles/wave3data
 wavetiles/__pycache__

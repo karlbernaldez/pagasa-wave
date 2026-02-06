@@ -1,0 +1,11 @@
+numpy
+pandas
+xarray
+netcdf4
+matplotlib
+shapely
+pyproj
+fiona
+geopandas
+cartopy
+xlrd>=2.0.1
