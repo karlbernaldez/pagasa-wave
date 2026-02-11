@@ -19,16 +19,15 @@ const WIND_MODELS = [
 ];
 
 const WAVE_MODELS = [
-  { id: 'SWAN', label: 'SWAN' },
   { id: 'WW3', label: 'WW3' },
   { id: 'ECWAM', label: 'ECWAM' },
   { id: 'MRI3', label: 'MRI3' }
 ];
 
 const WIND_ELEMENTS = [
+  { id: 'barbs', name: 'Wind Barbs', icon: '🎐', storageKey: 'WIND_BARBS' },
   { id: 'particles', name: 'Particles', icon: '✨', storageKey: 'WIND_PARTICLES' },
   { id: 'raster', name: 'Raster Map', icon: '🗾', storageKey: 'WIND_RASTER' },
-  { id: 'barbs', name: 'Wind Barbs', icon: '🎐', storageKey: 'WIND_BARBS' }
 ];
 
 const WAVE_ELEMENTS = [
@@ -121,7 +120,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   // Wave Layer configuration
   const [waveConfig, setWaveConfig] = useState({
     enabled: false,
-    models: ['SWAN'], // SWAN, WW3, etc.
+    models: ['WW3'],
     elements: {
       particles: false,
       raster: false,
@@ -160,7 +159,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
     const savedWave = {
       enabled: localStorage.getItem('WAVE_ENABLED') === 'true',
-      models: parseStoredModels(localStorage.getItem('WAVE_MODEL'), 'SWAN'),
+      models: parseStoredModels(localStorage.getItem('WAVE_MODEL'), 'WW3'),
       elements: {
         particles: localStorage.getItem('WAVE_PARTICLES') === 'true',
         raster: localStorage.getItem('WAVE_RASTER') === 'true',
