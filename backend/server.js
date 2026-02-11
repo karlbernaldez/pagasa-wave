@@ -1,15 +1,18 @@
 import express from 'express';
 import path from "path";
-import { fileURLToPath } from "url";
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
+
 import featureRoutes from './routes/featureRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import chartRoutes from './routes/chartRoutes.js';
 import satelliteRoutes from './routes/satelliteRoutes.js';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
+import pdfRoutes from './routes/pdfRoutes.js';
+
+import { fileURLToPath } from "url";
 import { startScheduler } from './services/satelliteServices.js';
 
 const app = express();
@@ -62,6 +65,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/charts', chartRoutes);
 app.use('/api/satellite', satelliteRoutes);
+app.use('/api/pdf', pdfRoutes);
 
 app.use((err, req, res, next) => {
   console.error("❌ Error:", err.message);

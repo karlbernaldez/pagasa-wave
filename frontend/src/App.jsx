@@ -26,6 +26,7 @@ const Studio = lazy(() => import('@/pages/Studio'));
 const Charts = lazy(() => import('@/pages/Charts'));
 const AboutUs = lazy(() => import('@/pages/AboutUs'));
 const Contact = lazy(() => import('@/pages/Contact'));
+const PdfGenerator = lazy(() => import('@/pages/PdfGenerator'));
 
 // Modals (Lazy Loaded)
 const MobileAccessModal = lazy(() => import('@/components/ui/modals/MobileAccessModal'));
@@ -143,6 +144,7 @@ const Layout = () => {
               <Route path="/charts" element={<Charts isDarkMode={isDarkMode} activeChartType={activeChartType} />} />
               <Route path="/about-us" element={<AboutUs isDarkMode={isDarkMode} />} />
               <Route path="/contact" element={<Contact isDarkMode={isDarkMode} />} />
+              <Route path="/pdf" element={<PdfGenerator />} />
             </Routes>
           </Suspense>
 
