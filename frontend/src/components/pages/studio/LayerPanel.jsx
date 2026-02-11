@@ -257,8 +257,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     if (!map) return;
 
     const theme = isDarkMode ? 'dark' : 'light';
-    const selectedModels = models.map((model) => model.toLowerCase());
-    const targetLayerIds = new Set(selectedModels.map((model) => `${WAVE_RASTER_LAYER_PREFIX}${model}`));
+    const selectedModels = [...new Set(models.map((model) => model.toUpperCase()))];
+    const targetLayerIds = new Set(selectedModels.map((model) => `${WAVE_RASTER_LAYER_PREFIX}${model.toLowerCase()}`));
 
     if (map.getLayer('wave-raster')) {
       map.removeLayer('wave-raster');
@@ -283,7 +283,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       .filter((id) => id.startsWith(WAVE_RASTER_SOURCE_PREFIX));
 
     existingSourceIds.forEach((sourceId) => {
-      const model = sourceId.replace(WAVE_RASTER_SOURCE_PREFIX, '');
+      const model = sourceId.replace(WAVE_RASTER_SOURCE_PREFIX, '').toUpperCase();
       if (!selectedModels.includes(model) && map.getSource(sourceId)) {
         map.removeSource(sourceId);
       }
@@ -292,8 +292,9 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     const opacity = selectedModels.length > 0 ? Math.max(0.25, 1 / selectedModels.length) : 0;
 
     selectedModels.forEach((model) => {
-      const sourceId = `${WAVE_RASTER_SOURCE_PREFIX}${model}`;
-      const layerId = `${WAVE_RASTER_LAYER_PREFIX}${model}`;
+      const modelKey = model.toLowerCase();
+      const sourceId = `${WAVE_RASTER_SOURCE_PREFIX}${modelKey}`;
+      const layerId = `${WAVE_RASTER_LAYER_PREFIX}${modelKey}`;
 
       if (!map.getSource(sourceId)) {
         map.addSource(sourceId, {
