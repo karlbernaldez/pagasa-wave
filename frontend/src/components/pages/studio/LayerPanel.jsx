@@ -7,10 +7,62 @@ import Swal from 'sweetalert2';
 import ConfirmationDialog from "@/components/ui/modals/ConfirmationDialog";
 import 'sweetalert2/dist/sweetalert2.min.css';
 
-import { addWaveLayer, addWaveSource } from '@/components/pages/studio/map/layers/waveLayer';
+import { addWaveLayer } from '@/components/pages/studio/map/layers/waveLayer';
 import { addWindLayer, addWindSource } from '@/components/pages/studio/map/layers/windLayer';
 
+const WIND_MODELS = [
+  { id: 'GFS', label: 'GFS' },
+  { id: 'ECMWF', label: 'ECMWF' },
+  { id: 'NOAA', label: 'NOAA' },
+  { id: 'NAM', label: 'NAM' },
+  { id: 'HRRR', label: 'HRRR' }
+];
+
+const WAVE_MODELS = [
+  { id: 'SWAN', label: 'SWAN' },
+  { id: 'WW3', label: 'WW3' },
+  { id: 'ECWAM', label: 'ECWAM' },
+  { id: 'MRI3', label: 'MRI3' }
+];
+
+const WIND_ELEMENTS = [
+  { id: 'particles', name: 'Particles', icon: '✨', storageKey: 'WIND_PARTICLES' },
+  { id: 'raster', name: 'Raster Map', icon: '🗾', storageKey: 'WIND_RASTER' },
+  { id: 'barbs', name: 'Wind Barbs', icon: '🎐', storageKey: 'WIND_BARBS' }
+];
+
+const WAVE_ELEMENTS = [
+  { id: 'raster', name: 'Raster Map', icon: '🗾', storageKey: 'WAVE_RASTER' },
+  { id: 'waveDirection', name: 'Wave Direction', icon: '➡️', storageKey: 'WAVE_DIRECTION' },
+  { id: 'wavePeriod', name: 'Mean Period', icon: '⏱️', storageKey: 'WAVE_PERIOD' }
+];
+
+const getSelectedElement = (elements, options) => {
+  const active = options.find((option) => elements[option.id]);
+  return active ? active.id : '';
+};
+
+const parseStoredModels = (storedValue, fallback) => {
+  if (!storedValue) return [fallback];
+  const parsed = storedValue
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return parsed.length ? parsed : [fallback];
+};
+
+const getModelSummary = (models) => {
+  if (!models?.length) return 'No model selected';
+  if (models.length === 1) return `${models[0]} Model`;
+  return `${models.length} Models Selected`;
+};
+
+const WAVE_RASTER_LAYER_PREFIX = 'wave-raster-model-';
+const WAVE_RASTER_SOURCE_PREFIX = 'wave-source-model-';
+const WAVE_RASTER_DATE = '2026011200';
+
 const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
+  const map = mapRef.current;
   const [isExpanded, setIsExpanded] = useState(true);
   const [customLayersExpanded, setCustomLayersExpanded] = useState(true);
   const [systemLayersExpanded, setSystemLayersExpanded] = useState(true);
@@ -23,7 +75,6 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   const [editingName, setEditingName] = useState("");
   const fileInputRef = useRef();
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
-  const [isSwitchingModel, setIsSwitchingModel] = useState(false);
 
   // System layer group expansion states
   const [expandedGroups, setExpandedGroups] = useState({
@@ -59,7 +110,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   // Wind Layer configuration
   const [windConfig, setWindConfig] = useState({
     enabled: false,
-    model: 'ECMWF', // GFS, ECMWF, NOAA, etc.
+    models: ['ECMWF'], // GFS, ECMWF, NOAA, etc.
     elements: {
       particles: false,
       raster: false,
@@ -70,7 +121,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   // Wave Layer configuration
   const [waveConfig, setWaveConfig] = useState({
     enabled: false,
-    model: 'SWAN', // SWAN, WW3, etc.
+    models: ['SWAN'], // SWAN, WW3, etc.
     elements: {
       particles: false,
       raster: false,
@@ -99,7 +150,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
     const savedWind = {
       enabled: localStorage.getItem('WIND_ENABLED') === 'true',
-      model: localStorage.getItem('WIND_MODEL') || 'ECMWF',
+      models: parseStoredModels(localStorage.getItem('WIND_MODEL'), 'ECMWF'),
       elements: {
         particles: localStorage.getItem('WIND_PARTICLES') === 'true',
         raster: localStorage.getItem('WIND_RASTER') === 'true',
@@ -109,7 +160,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
     const savedWave = {
       enabled: localStorage.getItem('WAVE_ENABLED') === 'true',
-      model: localStorage.getItem('WAVE_MODEL') || 'SWAN',
+      models: parseStoredModels(localStorage.getItem('WAVE_MODEL'), 'SWAN'),
       elements: {
         particles: localStorage.getItem('WAVE_PARTICLES') === 'true',
         raster: localStorage.getItem('WAVE_RASTER') === 'true',
@@ -201,17 +252,92 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     mapRef.current.setLayoutProperty('glass-depth', 'visibility', showBase ? 'visible' : 'none');
   };
 
-  const applyWaveLayers = async (config) => {
+  const syncWaveRasterLayers = (models = [], showRaster = false) => {
+    const map = mapRef.current;
     if (!map) return;
 
-    const { elements } = config;
+    const theme = isDarkMode ? 'dark' : 'light';
+    const selectedModels = models.map((model) => model.toLowerCase());
+    const targetLayerIds = new Set(selectedModels.map((model) => `${WAVE_RASTER_LAYER_PREFIX}${model}`));
 
-    // Wave raster
     if (map.getLayer('wave-raster')) {
-      console.log("WAVE RASTER LAYER FOUND")
-      map.setLayoutProperty('wave-raster', 'visibility', elements.raster ? 'visible' : 'none');
+      map.removeLayer('wave-raster');
     }
 
+    const legacySourceId = isDarkMode ? 'wave-dark' : 'wave-light';
+    if (map.getSource(legacySourceId)) {
+      map.removeSource(legacySourceId);
+    }
+
+    const existingLayerIds = (map.getStyle()?.layers || [])
+      .map((layer) => layer.id)
+      .filter((id) => id.startsWith(WAVE_RASTER_LAYER_PREFIX));
+
+    existingLayerIds.forEach((layerId) => {
+      if (!targetLayerIds.has(layerId) && map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+    });
+
+    const existingSourceIds = Object.keys(map.getStyle()?.sources || {})
+      .filter((id) => id.startsWith(WAVE_RASTER_SOURCE_PREFIX));
+
+    existingSourceIds.forEach((sourceId) => {
+      const model = sourceId.replace(WAVE_RASTER_SOURCE_PREFIX, '');
+      if (!selectedModels.includes(model) && map.getSource(sourceId)) {
+        map.removeSource(sourceId);
+      }
+    });
+
+    const opacity = selectedModels.length > 0 ? Math.max(0.25, 1 / selectedModels.length) : 0;
+
+    selectedModels.forEach((model) => {
+      const sourceId = `${WAVE_RASTER_SOURCE_PREFIX}${model}`;
+      const layerId = `${WAVE_RASTER_LAYER_PREFIX}${model}`;
+
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, {
+          type: 'raster',
+          tiles: [
+            `http://34.45.182.236:5173/tiles/${model}/${theme}/${WAVE_RASTER_DATE}/{z}/{x}/{y}.png`
+          ],
+          tileSize: 256,
+          bounds: [100, -5, 180, 50],
+          scheme: 'xyz',
+        });
+      }
+
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: 'raster',
+          source: sourceId,
+          paint: {
+            'raster-opacity': opacity,
+            'raster-fade-duration': 0
+          },
+          layout: {
+            visibility: showRaster ? 'visible' : 'none'
+          }
+        }, 'graticules');
+      } else {
+        map.setPaintProperty(layerId, 'raster-opacity', opacity);
+        map.setLayoutProperty(layerId, 'visibility', showRaster ? 'visible' : 'none');
+      }
+    });
+
+    ['wave-glass-fill', 'wave-glass-depth'].forEach((id) => {
+      if (map.getLayer(id)) {
+        map.setLayoutProperty(id, 'visibility', showRaster && selectedModels.length > 0 ? 'visible' : 'none');
+      }
+    });
+  };
+
+  const applyWaveLayers = (config) => {
+    if (!mapRef.current) return;
+
+    const showRaster = Boolean(config.enabled && config.elements?.raster);
+    syncWaveRasterLayers(config.models || [], showRaster);
   };
 
   const handleGeoJSONUpload = (event) => {
@@ -339,7 +465,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
       if (!newState.enabled) {
         // Turn off all elements when disabled
-        applyWindLayers({ elements: { particles: false, raster: false, barbss: false } });
+        applyWindLayers({ elements: { particles: false, raster: false, barbs: false } });
 
       } else {
         applyWindLayers(newState);
@@ -351,30 +477,37 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     });
   };
 
-  const toggleWindElement = (element) => {
-    console.log(element)
+  const setWindElement = (element) => {
     setWindConfig(prev => {
+      const updatedElements = WIND_ELEMENTS.reduce((acc, option) => ({
+        ...acc,
+        [option.id]: option.id === element
+      }), {});
+
       const newState = {
         ...prev,
-        elements: {
-          ...prev.elements,
-          [element]: !prev.elements[element]
-        }
+        elements: updatedElements
       };
 
-      localStorage.setItem(`WIND_${element.toUpperCase()}`, newState.elements[element].toString());
+      WIND_ELEMENTS.forEach((option) => {
+        localStorage.setItem(option.storageKey, newState.elements[option.id].toString());
+      });
+
       applyWindLayers(newState);
 
       return newState;
     });
   };
 
-  const setWindModel = (model) => {
-    console.log('[Wind] Model changed to:', model);
-
+  const toggleWindModel = (model) => {
     setWindConfig(prev => {
-      const newState = { ...prev, model };
-      localStorage.setItem('WIND_MODEL', model);
+      const hasModel = prev.models.includes(model);
+      const models = hasModel
+        ? prev.models.filter((id) => id !== model)
+        : [...prev.models, model];
+
+      const newState = { ...prev, models };
+      localStorage.setItem('WIND_MODEL', models.join(','));
       return newState;
     });
   };
@@ -389,6 +522,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       if (!newState.enabled) {
         // Turn off all wave elements
         applyWaveLayers({
+          ...newState,
           elements: {
             particles: false,
             raster: false,
@@ -396,7 +530,6 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
             wavePeriod: false
           }
         });
-
       } else {
         applyWaveLayers(newState);
         addWaveLayer(map, isDarkMode);
@@ -406,55 +539,40 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     });
   };
 
-  const toggleWaveElement = (element) => {
+  const setWaveElement = (element) => {
     setWaveConfig(prev => {
+      const updatedElements = WAVE_ELEMENTS.reduce((acc, option) => ({
+        ...acc,
+        [option.id]: option.id === element
+      }), {});
+
       const newState = {
         ...prev,
-        elements: {
-          ...prev.elements,
-          [element]: !prev.elements[element]
-        }
+        elements: updatedElements
       };
 
-      localStorage.setItem(`WAVE_${element.toUpperCase()}`, newState.elements[element].toString());
+      WAVE_ELEMENTS.forEach((option) => {
+        localStorage.setItem(option.storageKey, newState.elements[option.id].toString());
+      });
+
       applyWaveLayers(newState);
 
       return newState;
     });
   };
 
-  const setWaveModel = async (model) => {
-    console.log('[Wave] Model changed to:', model);
+  const toggleWaveModel = (model) => {
+    setWaveConfig((prev) => {
+      const hasModel = prev.models.includes(model);
+      const models = hasModel
+        ? prev.models.filter((id) => id !== model)
+        : [...prev.models, model];
 
-    setIsSwitchingModel(true);
-    const theme = isDarkMode ? 'dark' : 'light';
-
-    try {
-      if (map.getLayer('wave-raster')) {
-        console.log('[Wave] Removing raster layer');
-        map.removeLayer('wave-raster');
-      }
-
-      if (map.getSource(`wave-${theme}`)) {
-        console.log('[Wave] Removing source');
-        map.removeSource(`wave-${theme}`);
-      }
-
-      await addWaveSource(map, isDarkMode, model);
-      addWaveLayer(map, isDarkMode);
-
-      setWaveConfig(prev => {
-        const newState = { ...prev, model };
-        applyWaveLayers(newState);
-        localStorage.setItem('WAVE_MODEL', model);
-        return newState;
-      });
-
-    } catch (err) {
-      console.error('[Wave] Failed to switch model:', err);
-    } finally {
-      setIsSwitchingWaveModel(false);
-    }
+      const newState = { ...prev, models };
+      localStorage.setItem('WAVE_MODEL', models.join(','));
+      applyWaveLayers(newState);
+      return newState;
+    });
   };
 
   const toggleGroupExpansion = (groupId) => {
@@ -957,7 +1075,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                         <div className="flex-1">
                           <div className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'}`}>Wind</div>
                           <div className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>
-                            {windConfig.enabled ? `${windConfig.model} Model` : 'Disabled'}
+                            {windConfig.enabled ? getModelSummary(windConfig.models) : 'Disabled'}
                           </div>
                         </div>
                       </button>
@@ -994,15 +1112,41 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
                     {expandedGroups.wind && windConfig.enabled && (
                       <div className="px-2 pb-2 space-y-2">
-                        {/* Model Selection - Dropdown */}
+                        {/* Model Selection - Toggle */}
                         <div className="space-y-1">
                           <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
                             }`}>
                             Model
                           </div>
+                          <div className="grid grid-cols-3 gap-1">
+                            {WIND_MODELS.map((model) => (
+                              <button
+                                key={model.id}
+                                onClick={() => toggleWindModel(model.id)}
+                                className={`px-2 py-1.5 rounded text-[10px] font-semibold transition-all border ${windConfig.models.includes(model.id)
+                                  ? isDarkMode
+                                    ? 'bg-cyan-400/20 text-cyan-300 border-cyan-400/40'
+                                    : 'bg-blue-500/15 text-blue-700 border-blue-500/40'
+                                  : isDarkMode
+                                    ? 'bg-white/5 text-white/70 border-white/15 hover:bg-white/10'
+                                    : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                                  }`}
+                              >
+                                {model.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Elements - Dropdown */}
+                        <div className="space-y-1">
+                          <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
+                            }`}>
+                            Elements
+                          </div>
                           <select
-                            value={windConfig.model}
-                            onChange={(e) => setWindModel(e.target.value)}
+                            value={getSelectedElement(windConfig.elements, WIND_ELEMENTS)}
+                            onChange={(e) => setWindElement(e.target.value)}
                             className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-all
                               ${isDarkMode
                                 ? 'bg-slate-800 text-white border border-white/20 hover:bg-slate-700'
@@ -1011,56 +1155,13 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                               outline-none focus:ring-2 focus:ring-cyan-400
                             `}
                           >
-                            <option value="GFS">GFS (Global Forecast System)</option>
-                            <option value="ECMWF">ECMWF (European Centre)</option>
-                            <option value="NOAA">NOAA (National Oceanic)</option>
-                            <option value="NAM">NAM (North American Mesoscale)</option>
-                            <option value="HRRR">HRRR (High-Resolution Rapid)</option>
+                            <option value="">None</option>
+                            {WIND_ELEMENTS.map((element) => (
+                              <option key={element.id} value={element.id}>
+                                {element.icon} {element.name}
+                              </option>
+                            ))}
                           </select>
-                        </div>
-
-                        {/* Elements */}
-                        <div className="space-y-1">
-                          <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
-                            }`}>
-                            Elements
-                          </div>
-                          {[
-                            { id: 'particles', name: 'Particles', icon: '✨' },
-                            { id: 'raster', name: 'Raster Map', icon: '🗾' },
-                            { id: 'barbs', name: 'Wind Barbs', icon: '🎐' }
-                          ].map((element) => (
-                            <button
-                              key={element.id}
-                              onClick={() => toggleWindElement(element.id)}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded transition-all ${windConfig.elements[element.id]
-                                ? isDarkMode
-                                  ? 'bg-cyan-400/10 border border-cyan-400/30'
-                                  : 'bg-blue-500/10 border border-blue-500/30'
-                                : isDarkMode
-                                  ? 'bg-white/5 hover:bg-white/10 border border-transparent'
-                                  : 'bg-black/5 hover:bg-black/10 border border-transparent'
-                                }`}
-                            >
-                              <div className={`w-3 h-3 rounded border-2 flex items-center justify-center flex-shrink-0 ${windConfig.elements[element.id]
-                                ? isDarkMode
-                                  ? 'bg-cyan-400 border-cyan-400'
-                                  : 'bg-blue-600 border-blue-600'
-                                : isDarkMode
-                                  ? 'border-white/30'
-                                  : 'border-slate-300'
-                                }`}>
-                                {windConfig.elements[element.id] && (
-                                  <Check size={10} className="text-white" strokeWidth={3} />
-                                )}
-                              </div>
-                              <span className="text-xs mr-1">{element.icon}</span>
-                              <div className={`text-xs font-medium flex-1 text-left ${isDarkMode ? 'text-white/90' : 'text-slate-800'
-                                }`}>
-                                {element.name}
-                              </div>
-                            </button>
-                          ))}
                         </div>
                       </div>
                     )}
@@ -1085,7 +1186,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                         <div className="flex-1">
                           <div className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'}`}>Wave</div>
                           <div className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>
-                            {waveConfig.enabled ? `${waveConfig.model} Model` : 'Disabled'}
+                            {waveConfig.enabled ? getModelSummary(waveConfig.models) : 'Disabled'}
                           </div>
                         </div>
                       </button>
@@ -1122,15 +1223,41 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
                     {expandedGroups.wave && waveConfig.enabled && (
                       <div className="px-2 pb-2 space-y-2">
-                        {/* Model Selection - Dropdown */}
+                        {/* Model Selection - Toggle */}
                         <div className="space-y-1">
                           <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
                             }`}>
                             Model
                           </div>
+                          <div className="grid grid-cols-2 gap-1">
+                            {WAVE_MODELS.map((model) => (
+                              <button
+                                key={model.id}
+                                onClick={() => toggleWaveModel(model.id)}
+                                className={`px-2 py-1.5 rounded text-[10px] font-semibold transition-all border ${waveConfig.models.includes(model.id)
+                                  ? isDarkMode
+                                    ? 'bg-cyan-400/20 text-cyan-300 border-cyan-400/40'
+                                    : 'bg-blue-500/15 text-blue-700 border-blue-500/40'
+                                  : isDarkMode
+                                    ? 'bg-white/5 text-white/70 border-white/15 hover:bg-white/10'
+                                    : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                                  }`}
+                              >
+                                {model.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Elements - Dropdown */}
+                        <div className="space-y-1">
+                          <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
+                            }`}>
+                            Elements
+                          </div>
                           <select
-                            value={waveConfig.model}
-                            onChange={(e) => setWaveModel(e.target.value)}
+                            value={getSelectedElement(waveConfig.elements, WAVE_ELEMENTS)}
+                            onChange={(e) => setWaveElement(e.target.value)}
                             className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-all
                             ${isDarkMode
                                 ? 'bg-slate-800 text-white border border-white/20 hover:bg-slate-700'
@@ -1139,56 +1266,13 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
                             outline-none focus:ring-2 focus:ring-cyan-400
                           `}
                           >
-                            <option value="SWAN">SWAN (Simulating Waves)</option>
-                            <option value="WW3">WW3 (WaveWatch III)</option>
-                            <option value="ECWAM">ECWAM (Wave Model)</option>
-                            <option value="MRI3">MRI3 (Steady-State Wave)</option>
+                            <option value="">None</option>
+                            {WAVE_ELEMENTS.map((element) => (
+                              <option key={element.id} value={element.id}>
+                                {element.icon} {element.name}
+                              </option>
+                            ))}
                           </select>
-                        </div>
-
-                        {/* Elements */}
-                        <div className="space-y-1">
-                          <div className={`text-[10px] font-semibold px-2 ${isDarkMode ? 'text-white/60' : 'text-slate-600'
-                            }`}>
-                            Elements
-                          </div>
-                          {[
-                            // { id: 'particles', name: 'Particles', icon: '✨' },
-                            { id: 'raster', name: 'Raster Map', icon: '🗾' },
-                            { id: 'waveDirection', name: 'Wave Direction', icon: '➡️' },
-                            { id: 'wavePeriod', name: 'Mean Period', icon: '⏱️' }
-                          ].map((element) => (
-                            <button
-                              key={element.id}
-                              onClick={() => toggleWaveElement(element.id)}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded transition-all ${waveConfig.elements[element.id]
-                                ? isDarkMode
-                                  ? 'bg-cyan-400/10 border border-cyan-400/30'
-                                  : 'bg-blue-500/10 border border-blue-500/30'
-                                : isDarkMode
-                                  ? 'bg-white/5 hover:bg-white/10 border border-transparent'
-                                  : 'bg-black/5 hover:bg-black/10 border border-transparent'
-                                }`}
-                            >
-                              <div className={`w-3 h-3 rounded border-2 flex items-center justify-center flex-shrink-0 ${waveConfig.elements[element.id]
-                                ? isDarkMode
-                                  ? 'bg-cyan-400 border-cyan-400'
-                                  : 'bg-blue-600 border-blue-600'
-                                : isDarkMode
-                                  ? 'border-white/30'
-                                  : 'border-slate-300'
-                                }`}>
-                                {waveConfig.elements[element.id] && (
-                                  <Check size={10} className="text-white" strokeWidth={3} />
-                                )}
-                              </div>
-                              <span className="text-xs mr-1">{element.icon}</span>
-                              <div className={`text-xs font-medium flex-1 text-left ${isDarkMode ? 'text-white/90' : 'text-slate-800'
-                                }`}>
-                                {element.name}
-                              </div>
-                            </button>
-                          ))}
                         </div>
                       </div>
                     )}
