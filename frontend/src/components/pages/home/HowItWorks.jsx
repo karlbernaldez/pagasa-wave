@@ -6,54 +6,54 @@ const HowItWorksSection = ({ isDark }) => {
     {
       number: "01",
       icon: Satellite,
-      title: "Data Collection",
-      description: "Real-time satellite imagery, ocean buoys, and weather stations gather comprehensive marine data across Philippine waters.",
-      features: ["Satellite monitoring", "Ocean buoy networks", "Coastal sensors", "Weather stations"],
+      title: "Typhoon Forecast Support",
+      description: "Upscaled forecast support systems deliver analysis and forecast aids for efficient typhoon operations.",
+      features: ["Forecast aids", "Operational dashboards", "Reliability checks", "Decision support"],
       color: "from-blue-500 to-cyan-500",
       glowColor: "blue"
     },
     {
       number: "02",
-      icon: Database,
-      title: "Data Processing",
-      description: "Advanced algorithms process terabytes of oceanographic data, filtering and validating information for accuracy.",
-      features: ["Big data processing", "Quality validation", "Historical analysis", "Pattern recognition"],
+      icon: Waves,
+      title: "Wave Prediction Operations",
+      description: "Optimized wave prediction system supports PAGASA marine meteorological services.",
+      features: ["Wave model guidance", "Marine advisories", "Operational updates", "Coastal services"],
       color: "from-emerald-500 to-teal-500",
       glowColor: "emerald"
     },
     {
       number: "03",
       icon: Cpu,
-      title: "AI Analysis",
-      description: "Machine learning models analyze patterns and predict wave behavior with unprecedented accuracy using neural networks.",
-      features: ["Neural networks", "Predictive modeling", "Pattern analysis", "Real-time learning"],
+      title: "Dual-Pol Radar QC",
+      description: "Quality control techniques refine dual-polarization radar data for improved monitoring.",
+      features: ["Noise filtering", "Calibration checks", "Signal integrity", "QC automation"],
       color: "from-purple-500 to-violet-500",
       glowColor: "purple"
     },
     {
       number: "04",
       icon: BarChart3,
-      title: "Chart Generation",
-      description: "Sophisticated visualization engines create detailed wave charts and forecasts tailored for marine activities.",
-      features: ["Dynamic charts", "Multi-layer maps", "Custom overlays", "Export options"],
+      title: "QPE/QPN Rainfall Nowcasting",
+      description: "Dual-pol quantitative precipitation estimates and nowcasts support heavy rainfall monitoring.",
+      features: ["QPE products", "QPN nowcasts", "Rainfall alerts", "Rapid refresh"],
       color: "from-amber-500 to-orange-500",
       glowColor: "amber"
     },
     {
       number: "05",
-      icon: Bell,
-      title: "Alert System",
-      description: "Intelligent notification system delivers timely warnings and updates directly to users based on their preferences.",
-      features: ["Smart alerts", "Custom thresholds", "Multi-channel delivery", "Priority notifications"],
+      icon: Database,
+      title: "Regional Data Assimilation",
+      description: "PAGASA regional data assimilation integrates new observations and bias-corrected forecasts.",
+      features: ["New observations", "Bias correction", "Regional NWP", "Model integration"],
       color: "from-pink-500 to-rose-500",
       glowColor: "pink"
     },
     {
       number: "06",
       icon: CheckCircle,
-      title: "Continuous Update",
-      description: "System continuously updates forecasts every minute, ensuring you always have the most current marine conditions.",
-      features: ["Real-time updates", "Auto-refresh", "Version tracking", "Data validation"],
+      title: "S2S Climate Applications",
+      description: "Sub-seasonal to seasonal climate services inform agriculture, water resources, energy, and DRR.",
+      features: ["S2S outlooks", "Sector guidance", "Risk planning", "Climate services"],
       color: "from-indigo-500 to-blue-500",
       glowColor: "indigo"
     }
@@ -104,7 +104,7 @@ const HowItWorksSection = ({ isDark }) => {
               : 'bg-blue-100/80 text-blue-700 border border-blue-200 hover:border-blue-300'
           }`}>
             <Cpu size={18} className="animate-pulse" />
-            Our Technology Pipeline
+            Project Objective Pipeline
           </div>
 
           <h2 className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 tracking-tight transition-colors duration-700 ${
@@ -116,15 +116,16 @@ const HowItWorksSection = ({ isDark }) => {
                 ? 'from-blue-400 via-cyan-400 to-purple-400'
                 : 'from-blue-600 via-cyan-600 to-purple-600'
             }`}>
-              WaveLab Works
+              Component B Delivers
             </span>
           </h2>
 
           <p className={`text-lg sm:text-xl max-w-4xl mx-auto leading-relaxed transition-colors duration-700 ${
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
-            From satellite data to your device in seconds. Our advanced system transforms raw oceanographic 
-            data into actionable marine intelligence through a seamless six-step process.
+            Each objective in Project 1 is mapped into an operational workflow that upgrades typhoon,
+            marine, radar rainfall, and S2S climate services across PAGASA operations with reliable,
+            field-ready outputs.
           </p>
         </div>
 
