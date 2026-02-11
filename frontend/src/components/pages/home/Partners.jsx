@@ -104,13 +104,14 @@ const PartnersCollaborationSection = ({ isDark }) => {
 
   const projectInfo = {
     title: 'DOST-MECO-TECO-VOTE III',
-    subtitle: 'Component B: Marine & Coastal Forecasting System',
+    subtitle: 'Component B • Project 1: Typhoon & Marine Weather Services',
     duration: '2024 - 2026',
     funding: 'Department of Science and Technology',
     objectives: [
-      'Develop advanced wave prediction systems for Philippine waters',
-      'Enhance maritime safety through real-time data dissemination',
-      'Support coastal communities with accurate marine forecasts'
+      'Upscale typhoon forecast support systems with reliable analysis aids',
+      'Optimize operational wave prediction for marine meteorological services',
+      'Develop dual-pol radar QC plus QPE/QPN rainfall nowcasting',
+      'Enhance regional data assimilation and S2S climate applications'
     ]
   };
 
@@ -170,8 +171,8 @@ const PartnersCollaborationSection = ({ isDark }) => {
           <p className={`text-lg sm:text-xl max-w-4xl mx-auto leading-relaxed transition-colors duration-700 ${
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
-            WaveLab is powered by a collaborative network of government agencies, international organizations, 
-            and academic institutions working together for maritime safety.
+            WaveLab supports DOST-PAGASA through a collaborative network of government agencies,
+            international organizations, and academic institutions working together for weather resilience.
           </p>
         </div>
 

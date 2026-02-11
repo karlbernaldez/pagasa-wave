@@ -8,12 +8,12 @@ const AlertsNewsSection = ({ isDark }) => {
     {
       id: 1,
       severity: 'critical',
-      type: 'Typhoon Warning',
+      type: 'Typhoon Operations',
       icon: Wind,
-      title: 'Typhoon Pepito approaching Northern Luzon',
+      title: 'Typhoon readiness watch for Northern Luzon',
       location: 'Philippine Area of Responsibility',
       time: '2 minutes ago',
-      details: 'Signal No. 3 raised in Cagayan and Isabela provinces. Expected landfall in 12 hours.',
+      details: 'Operational forecast support tools indicate elevated risk within 12 hours; coordination underway with regional centers.',
       waveHeight: '4.5m',
       windSpeed: '120 km/h',
       affectedAreas: ['Cagayan', 'Isabela', 'Aurora']
@@ -21,12 +21,12 @@ const AlertsNewsSection = ({ isDark }) => {
     {
       id: 2,
       severity: 'warning',
-      type: 'High Wave Alert',
+      type: 'Marine Operations',
       icon: Waves,
-      title: 'Dangerous surf conditions in Western Visayas',
+      title: 'Elevated wave guidance for Western Visayas',
       location: 'Panay Gulf, Iloilo',
       time: '15 minutes ago',
-      details: '3-4 meter waves expected. Sea travel not advised for small vessels.',
+      details: '3-4 meter wave guidance in effect. Maritime operations advised to review updated wave model outputs.',
       waveHeight: '3.8m',
       windSpeed: '45 km/h',
       affectedAreas: ['Iloilo', 'Guimaras', 'Negros Occidental']
@@ -34,12 +34,12 @@ const AlertsNewsSection = ({ isDark }) => {
     {
       id: 3,
       severity: 'advisory',
-      type: 'Weather Advisory',
+      type: 'Radar Operations',
       icon: CloudRain,
-      title: 'Moderate to heavy rainfall expected',
+      title: 'Dual-pol radar rainfall monitoring activated',
       location: 'Metro Manila and nearby provinces',
       time: '1 hour ago',
-      details: 'Southwest monsoon enhanced by tropical depression. Possible flooding in low-lying areas.',
+      details: 'Enhanced QPE/QPN products support heavy rainfall monitoring and rapid updates for low-lying areas.',
       waveHeight: '1.2m',
       windSpeed: '25 km/h',
       affectedAreas: ['Metro Manila', 'Rizal', 'Cavite']
@@ -50,36 +50,36 @@ const AlertsNewsSection = ({ isDark }) => {
     {
       id: 1,
       category: 'System Update',
-      title: 'WaveLab AI Model Upgrade Improves Forecast Accuracy to 99.2%',
+      title: 'Typhoon forecast support system upgraded for operations',
       date: 'January 5, 2026',
-      excerpt: 'New machine learning algorithms enhance prediction capabilities for extreme weather events.',
+      excerpt: 'New analysis and forecast aids deliver more confident decision support for tropical cyclone operations.',
       image: '📊',
       readTime: '3 min read'
     },
     {
       id: 2,
       category: 'Partnership',
-      title: 'DOST-PAGASA Expands Buoy Network Coverage',
+      title: 'Wave prediction operational system refined for marine services',
       date: 'January 3, 2026',
-      excerpt: '20 additional ocean buoys deployed across Visayas and Mindanao regions for better monitoring.',
+      excerpt: 'Wave model upgrades deliver more reliable guidance for coastal and maritime operations.',
       image: '⚓',
       readTime: '5 min read'
     },
     {
       id: 3,
       category: 'Research',
-      title: 'UP MSI Validates Wave Prediction Models',
+      title: 'Regional data assimilation trials integrate new observations',
       date: 'December 28, 2025',
-      excerpt: 'Independent study confirms 98.7% accuracy in 7-day wave height forecasts.',
+      excerpt: 'Bias-corrected temperature inputs improve regional NWP guidance for PAGASA offices.',
       image: '🔬',
       readTime: '4 min read'
     },
     {
       id: 4,
       category: 'Community',
-      title: 'Coastal LGUs Trained on Emergency Alert System',
+      title: 'S2S climate applications piloted for agriculture and DRR',
       date: 'December 20, 2025',
-      excerpt: '150+ local officials complete training on rapid response protocols.',
+      excerpt: 'Sub-seasonal to seasonal outlooks inform water resources, energy, and disaster risk planning.',
       image: '🏘️',
       readTime: '2 min read'
     }
