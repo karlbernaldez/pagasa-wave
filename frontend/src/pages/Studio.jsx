@@ -17,16 +17,20 @@ import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 // Custom Hooks
 import { useProjectId, useInactivityReload, useProjectLoader, useMapSetup, useDrawingState, useMarkerModal, useMapLoader } from "@/hooks/useStudio";
 import { handleCreateProject } from '@/components/pages/studio/utils/ProjectUtils'
+import { useTheme } from '@/app/providers/ThemeProvider';
 
 // Utils
 import { saveMarker } from "@/components/pages/studio/map/layers/markerLayer";
 import { savePointFeature } from "@/components/pages/studio/utils/ToolBarUtils";
+import { addWindSource, addWindLayer } from '@/components/pages/studio/map/layers/windLayer';
+import { addWaveSource, addWaveLayer } from '@/components/pages/studio/map/layers/waveLayer';
 
 // ─── Constants ───────────────────────────────────────
 const TOOLBAR_DELAY = 1000;
 
 // ─── Main Component ──────────────────────────────────
-const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
+const Studio = ({ logger }) => {
+  const { isDarkMode, setIsDarkMode } = useTheme();
   const [projectId, updateProjectId] = useProjectId();
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
@@ -90,6 +94,14 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
   const selectedToolRef = useRef(null);
   const setLayersRef = useRef();
 
+  const removeLayerSafe = (map, id) => {
+    if (map.getLayer(id)) map.removeLayer(id);
+  };
+
+  const removeSourceSafe = (map, id) => {
+    if (map.getSource(id)) map.removeSource(id);
+  };
+
   // Set page title
   useEffect(() => {
     document.title = "WaveLab - Studio";
@@ -108,6 +120,43 @@ const Studio = ({ isDarkMode, setIsDarkMode, logger }) => {
     const timer = setTimeout(() => setShowToolbar(true), TOOLBAR_DELAY);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const layersToRemove = [
+      "wave-raster",
+      "wave-glass-fill",
+      "wave-glass-depth",
+      "wave-arrows",
+      "wind-raster",
+      "wind-particles",
+      "wind-arrows",
+      "wind-glass-fill",
+      "wind-glass-depth"
+    ];
+
+    const sourcesToRemove = [
+      "wave-dark",
+      "wave-light",
+      "wind-darkstorm",
+      "wind-solarstorm"
+    ];
+
+    layersToRemove.forEach(id => removeLayerSafe(map, id));
+    sourcesToRemove.forEach(id => removeSourceSafe(map, id));
+
+    // rebuild correctly
+    (async () => {
+      await addWindSource(map, isDarkMode);
+      addWindLayer(map, isDarkMode);
+
+      await addWaveSource(map, isDarkMode);
+      addWaveLayer(map, isDarkMode);
+    })();
+
+  }, [isDarkMode]);
 
   // ─── Handlers ────────────────────────────────────────
 
