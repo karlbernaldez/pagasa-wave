@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { X, ZoomIn, TrendingUp, Activity, Wind, Eye, Gauge, Maximize2 } from 'lucide-react';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useChartType } from "@/app/providers/ChartTypeProvider";
 
-const ForecastChartsPage = ({ activeChartType }) => {
+const ForecastChartsPage = () => {
+  const { activeChartType } = useChartType();
   const { isDarkMode } = useTheme();
   const [previewImage, setPreviewImage] = useState(null);
-  const [currentDisplayType, setCurrentDisplayType] = useState(activeChartType);
   const [isTransitioning, setIsTransitioning] = useState(false);
+
   const isDark = isDarkMode;
+  const currentDisplayType = activeChartType;
 
   const chartTypes = [
     { id: 'wave-wind', name: 'Wave & Wind', icon: Wind, description: 'Combined wave and wind analysis' },
@@ -16,27 +19,18 @@ const ForecastChartsPage = ({ activeChartType }) => {
   ];
 
   useEffect(() => {
+    setIsTransitioning(true);
+    const t = setTimeout(() => setIsTransitioning(false), 200);
+    return () => clearTimeout(t);
+  }, [activeChartType]);
+
+  useEffect(() => {
     const activeChart = chartTypes.find(chart => chart.id === activeChartType);
     const chartName = activeChart ? activeChart.name : activeChartType;
 
     document.title = `WaveLab - Charts: ${chartName}`;
     console.log("Active Chart Type:", activeChartType, "Name:", chartName);
   }, [activeChartType, chartTypes]);
-
-  // 🔹 Handle chart type transitions
-  useEffect(() => {
-    if (activeChartType !== currentDisplayType) {
-      setIsTransitioning(true);
-      // Start fade out
-      setTimeout(() => {
-        setCurrentDisplayType(activeChartType);
-        // Start fade in
-        setTimeout(() => {
-          setIsTransitioning(false);
-        }, 150);
-      }, 150);
-    }
-  }, [activeChartType, currentDisplayType]);
 
   const chartMeta = {
     1: {

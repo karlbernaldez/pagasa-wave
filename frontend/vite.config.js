@@ -12,6 +12,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@dashboards': path.resolve(__dirname, './src/dashboards'),
+      '@shared': path.resolve(__dirname, './src/shared'),
     },
   },
 })
