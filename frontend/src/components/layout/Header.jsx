@@ -3,8 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Sun, Moon, User, LogOut, Settings, Wind, Activity, Eye, ChevronDown } from 'lucide-react';
 import { fetchUserDetails } from '@/api/userAPI';
 import { logoutUser } from '@/api/auth';
+import { useTheme } from '@/app/providers/ThemeProvider';
 
-const Header = ({ isDarkMode, setIsDarkMode, activeChartType, setActiveChartType }) => {
+const Header = ({ activeChartType, setActiveChartType }) => {
+  const { isDarkMode, setIsDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);

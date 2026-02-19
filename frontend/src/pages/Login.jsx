@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, Cloud, Droplets, Wind, AlertCircle, Check, Loader2, Waves } from 'lucide-react';
 import useAuthRedirect from '@/hooks/useAuthRedirect';
 import { useFormValidation, useLoginAuth, usePasswordVisibility, useGeolocation } from '@/hooks/useLogin';
+import { useAuth } from '@/hooks/useAuth';
 
-const Login = ({ isLoggedIn, setIsLoggedIn }) => {
+const Login = () => {
   const navigate = useNavigate();
+  const { setIsLoggedIn } = useAuth();
 
   // Custom hooks
   const {
