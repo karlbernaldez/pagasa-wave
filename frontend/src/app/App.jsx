@@ -1,5 +1,5 @@
 import { BrowserRouter } from 'react-router-dom';
-import ErrorBoundary from '@/components/layout/ErrorBoundary';
+import ErrorBoundary from '@shared/layouts/ErrorBoundary';
 import AppProviders from './providers/AppProviders';
 import AppRouter from './router/AppRouter';
 

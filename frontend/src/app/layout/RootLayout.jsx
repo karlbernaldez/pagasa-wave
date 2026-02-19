@@ -1,8 +1,8 @@
 import { Suspense, useMemo } from 'react';
 import { Outlet } from 'react-router-dom';
 
-import HeaderNavbar from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
+import HeaderNavbar from '@shared/layouts/components/Header';
+import Footer from '@shared/layouts/components/Footer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
 import useRouteChecks from '@/hooks/useRouteChecks';

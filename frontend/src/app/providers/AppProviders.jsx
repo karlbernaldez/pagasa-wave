@@ -1,8 +1,10 @@
 import { ThemeProvider } from 'styled-components';
 import { GlobalStyle } from '@/styles/global';
 import { darkTheme, theme } from '@/styles/theme';
+
 import { AuthProvider } from './AuthProvider';
 import { ThemeProviderCustom, useTheme } from './ThemeProvider';
+import { ChartTypeProvider } from "@/app/providers/ChartTypeProvider";
 
 const ThemeWrapper = ({ children }) => {
   const { isDarkMode } = useTheme();
@@ -18,11 +20,19 @@ const ThemeWrapper = ({ children }) => {
 const AppProviders = ({ children }) => {
   return (
     <ThemeProviderCustom>
+
       <AuthProvider>
-        <ThemeWrapper>
-          {children}
-        </ThemeWrapper>
+
+        <ChartTypeProvider>
+
+          <ThemeWrapper>
+            {children}
+          </ThemeWrapper>
+
+        </ChartTypeProvider>
+
       </AuthProvider>
+
     </ThemeProviderCustom>
   );
 };
