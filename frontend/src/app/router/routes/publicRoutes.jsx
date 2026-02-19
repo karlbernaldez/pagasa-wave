@@ -1,11 +1,11 @@
 import { lazy } from 'react';
 
-const Home = lazy(() => import('@/pages/Home'));
+const Home = lazy(() => import('@/dashboards/public/pages/Home'));
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
-const Charts = lazy(() => import('@/pages/Charts'));
-const AboutUs = lazy(() => import('@/pages/AboutUs'));
-const Contact = lazy(() => import('@/pages/Contact'));
+const Charts = lazy(() => import('@/dashboards/public/pages/Charts'));
+const AboutUs = lazy(() => import('@/dashboards/public/pages/AboutUs'));
+const Contact = lazy(() => import('@/dashboards/public/pages/Contact'));
 
 export default [
   { path: '/', element: <Home /> },

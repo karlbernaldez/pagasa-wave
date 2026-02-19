@@ -11,6 +11,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@dashboards': path.resolve(__dirname, './src/dashboards'),
     },
   },
 })

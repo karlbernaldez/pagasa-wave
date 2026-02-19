@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 
-const Studio = lazy(() => import('@/pages/Studio'));
+const Studio = lazy(() => import('@/dashboards/forecaster/pages/Studio'));
 const PdfGenerator = lazy(() => import('@/pages/PdfGenerator'));
 
 export default [
