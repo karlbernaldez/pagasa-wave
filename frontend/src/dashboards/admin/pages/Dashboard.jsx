@@ -6,6 +6,7 @@ import DashboardOverview from '@dashboards/admin/sections/Overview';
 import ChartReviewSection from '@dashboards/admin/sections/ChartReview';
 import UserManagementSection from '@dashboards/admin/sections/UserManagement';
 import AnalyticsSection from '@dashboards/admin/sections/Analytics';
+import CalendarSection from '@dashboards/admin/sections/Calendar';
 import SettingsSection from '@dashboards/admin/sections/Settings';
 import { ADMIN_TABS, MENU_ITEMS, PAGE_META } from '@dashboards/admin/constants/navigation';
 import { useTheme } from '@/app/providers/ThemeProvider';
@@ -13,6 +14,7 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState(ADMIN_TABS.DASHBOARD);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { isDarkMode, setIsDarkMode } = useTheme();
 
   useEffect(() => {
@@ -25,10 +27,15 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case ADMIN_TABS.CHARTS:
         return <ChartReviewSection isDarkMode={isDarkMode} />;
+      case ADMIN_TABS.USERS_PENDING:
+        return <UserManagementSection isDarkMode={isDarkMode} view="pending" />;
+      case ADMIN_TABS.USERS_EXISTING:
       case ADMIN_TABS.USERS:
-        return <UserManagementSection isDarkMode={isDarkMode} />;
+        return <UserManagementSection isDarkMode={isDarkMode} view="existing" />;
       case ADMIN_TABS.ANALYTICS:
         return <AnalyticsSection isDarkMode={isDarkMode} />;
+      case ADMIN_TABS.CALENDAR:
+        return <CalendarSection isDarkMode={isDarkMode} />;
       case ADMIN_TABS.SETTINGS:
         return <SettingsSection isDarkMode={isDarkMode} />;
       default:
@@ -44,6 +51,8 @@ const AdminDashboard = () => {
         setActiveTab={setActiveTab}
         isMobileOpen={isMobileOpen}
         setIsMobileOpen={setIsMobileOpen}
+        isSidebarCollapsed={isSidebarCollapsed}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
         isDarkMode={isDarkMode}
       />
 
@@ -55,7 +64,7 @@ const AdminDashboard = () => {
           onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
         />
 
-        <main className="flex-1 p-8 overflow-y-auto">{renderedSection}</main>
+        <main className="flex-1 p-6 md:p-8 overflow-y-auto">{renderedSection}</main>
       </div>
     </div>
   );
