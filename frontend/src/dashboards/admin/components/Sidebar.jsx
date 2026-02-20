@@ -12,7 +12,7 @@ const Sidebar = ({
   setIsSidebarCollapsed,
   isDarkMode,
 }) => {
-  const isUsersExpanded = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_PENDING, ADMIN_TABS.USERS_EXISTING].includes(activeTab);
+  const isUsersExpanded = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES].includes(activeTab);
 
   return (
     <>
@@ -98,11 +98,11 @@ const Sidebar = ({
                   <div className="ml-6 mt-2 space-y-1">
                     <button
                       onClick={() => {
-                        setActiveTab(ADMIN_TABS.USERS_PENDING);
+                        setActiveTab(ADMIN_TABS.USERS_LIST);
                         setIsMobileOpen(false);
                       }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium ${
-                        activeTab === ADMIN_TABS.USERS_PENDING
+                        activeTab === ADMIN_TABS.USERS_LIST || activeTab === ADMIN_TABS.USERS
                           ? isDarkMode
                             ? 'bg-gray-700 text-cyan-300'
                             : 'bg-blue-100 text-blue-700'
@@ -111,15 +111,15 @@ const Sidebar = ({
                             : 'text-gray-600 hover:bg-gray-100'
                       }`}
                     >
-                      Pending Requests
+                      User List
                     </button>
                     <button
                       onClick={() => {
-                        setActiveTab(ADMIN_TABS.USERS_EXISTING);
+                        setActiveTab(ADMIN_TABS.USERS_ROLES);
                         setIsMobileOpen(false);
                       }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium ${
-                        activeTab === ADMIN_TABS.USERS_EXISTING || activeTab === ADMIN_TABS.USERS
+                        activeTab === ADMIN_TABS.USERS_ROLES
                           ? isDarkMode
                             ? 'bg-gray-700 text-cyan-300'
                             : 'bg-blue-100 text-blue-700'
@@ -128,7 +128,7 @@ const Sidebar = ({
                             : 'text-gray-600 hover:bg-gray-100'
                       }`}
                     >
-                      Existing Users
+                      Roles
                     </button>
                   </div>
                 )}
