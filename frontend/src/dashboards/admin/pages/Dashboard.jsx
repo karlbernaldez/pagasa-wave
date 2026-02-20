@@ -4,7 +4,7 @@ import Sidebar from '@dashboards/admin/components/Sidebar';
 import Header from '@dashboards/admin/components/Header';
 import DashboardOverview from '@dashboards/admin/sections/Overview';
 import ChartReviewSection from '@dashboards/admin/sections/ChartReview';
-import UserManagementSection from '@dashboards/admin/sections/UserManagement';
+import UserManagementSection from '@dashboards/admin/sections/user-management/UserManagement';
 import AnalyticsSection from '@dashboards/admin/sections/Analytics';
 import CalendarSection from '@dashboards/admin/sections/Calendar';
 import SettingsSection from '@dashboards/admin/sections/Settings';

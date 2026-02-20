@@ -31,11 +31,32 @@ const COLOR_CLASSES = {
   },
 };
 
-const StatCard = ({ title, value, change, color, icon: Icon, isDarkMode, trend }) => {
-  const palette = COLOR_CLASSES[color];
+const DEFAULT_COLOR = 'blue';
+
+const StatCard = ({
+  title,
+  value,
+  change,
+  color = DEFAULT_COLOR,
+  icon: Icon,
+  isDarkMode = false,
+  trend = 'up',
+}) => {
+
+  const palette = COLOR_CLASSES[color] || COLOR_CLASSES[DEFAULT_COLOR];
+
+  if (!COLOR_CLASSES[color]) {
+    console.warn(`StatCard: invalid color "${color}" → fallback to "${DEFAULT_COLOR}"`);
+  }
+
   const panelClass = isDarkMode ? palette.panel : palette.lightPanel;
   const textClass = isDarkMode ? palette.text : palette.lightText;
-  const trendClass = trend === 'up' ? textClass : isDarkMode ? 'text-red-400' : 'text-red-600';
+  const trendClass =
+    trend === 'up'
+      ? textClass
+      : isDarkMode
+      ? 'text-red-400'
+      : 'text-red-600';
 
   return (
     <div className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
@@ -43,6 +64,7 @@ const StatCard = ({ title, value, change, color, icon: Icon, isDarkMode, trend }
         ? 'bg-gray-800/50 border-gray-700/50 hover:border-gray-600'
         : 'bg-white/50 border-white/50 backdrop-blur-sm hover:border-gray-200'
     }`}>
+
       <div className={`absolute inset-0 bg-gradient-to-br ${panelClass} opacity-40 group-hover:opacity-60 transition-opacity duration-300`} />
       <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${palette.accent}`} />
 
@@ -52,18 +74,24 @@ const StatCard = ({ title, value, change, color, icon: Icon, isDarkMode, trend }
             <p className={`text-sm font-medium tracking-wide uppercase ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               {title}
             </p>
+
             <p className={`text-4xl font-bold mt-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               {value}
             </p>
           </div>
-          <div className={`p-3 rounded-xl bg-gradient-to-br ${panelClass} transition-transform duration-300 group-hover:scale-110`}>
-            <Icon size={28} className={textClass} />
-          </div>
+
+          {Icon && (
+            <div className={`p-3 rounded-xl bg-gradient-to-br ${panelClass} transition-transform duration-300 group-hover:scale-110`}>
+              <Icon size={28} className={textClass} />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200/20">
           <TrendingUp size={16} className={trendClass} />
-          <span className={`text-sm font-semibold ${trendClass}`}>{change}</span>
+          <span className={`text-sm font-semibold ${trendClass}`}>
+            {change}
+          </span>
         </div>
       </div>
     </div>
