@@ -3,6 +3,7 @@ import { Mail, Phone, MapPin, Clock, Send, MessageCircle, Globe, CheckCircle2, Z
 import { useTheme } from '@/app/providers/ThemeProvider';
 
 const Contact = () => {
+  document.title = `Contact Us | WaveLab`;
   const { isDarkMode } = useTheme();
   const [formData, setFormData] = useState({
     name: '',
@@ -115,9 +116,9 @@ const Contact = () => {
 
   return (
     <div
-      className={`relative min-h-screen pt-28 pb-20 px-4 md:px-6 overflow-hidden transition-all duration-700 ${isDarkMode
-          ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
-          : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'
+      className={`relative min-h-screen pt-32 pb-20 px-4 md:px-6 overflow-hidden transition-all duration-700 ${isDarkMode
+        ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+        : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'
         }`}
     >
       <style>
@@ -147,8 +148,8 @@ const Contact = () => {
       <div className="absolute inset-0 opacity-[0.02]">
         <div
           className={`absolute inset-0 transition-all duration-700 ${isDarkMode
-              ? 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.500)_1px,_transparent_1px)]'
-              : 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.400)_1px,_transparent_1px)]'
+            ? 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.500)_1px,_transparent_1px)]'
+            : 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.400)_1px,_transparent_1px)]'
             } bg-[length:30px_30px]`}
         />
       </div>
@@ -159,8 +160,8 @@ const Contact = () => {
         <section className="text-center mb-8">
           <div
             className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] ${isDarkMode
-                ? 'bg-blue-500/10 text-blue-300 border border-blue-400/20 hover:border-blue-400/40'
-                : 'bg-blue-100/80 text-blue-700 border border-blue-200 hover:border-blue-300'
+              ? 'bg-blue-500/10 text-blue-300 border border-blue-400/20 hover:border-blue-400/40'
+              : 'bg-blue-100/80 text-blue-700 border border-blue-200 hover:border-blue-300'
               }`}
           >
             <Globe className="animate-pulse" size={18} />
@@ -168,14 +169,14 @@ const Contact = () => {
           </div>
 
           <h1
-            className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 tracking-tight transition-colors duration-700 ${isDarkMode ? 'text-white' : 'text-slate-900'
+            className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mt-8 mb-6 tracking-tight transition-colors duration-700 ${isDarkMode ? 'text-white' : 'text-slate-900'
               }`}
           >
             Let&apos;s Build a{' '}
             <span
               className={`bg-gradient-to-r bg-clip-text text-transparent transition-all duration-700 ${isDarkMode
-                  ? 'from-blue-400 via-cyan-400 to-emerald-400'
-                  : 'from-blue-600 via-cyan-600 to-emerald-600'
+                ? 'from-blue-400 via-cyan-400 to-emerald-400'
+                : 'from-blue-600 via-cyan-600 to-emerald-600'
                 }`}
             >
               Safer Coastline
@@ -184,7 +185,7 @@ const Contact = () => {
           </h1>
 
           <p
-            className={`text-lg sm:text-xl max-w-4xl mx-auto leading-relaxed transition-colors duration-700 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'
+            className={`-mb-16 text-lg sm:text-xl max-w-4xl mx-auto leading-relaxed transition-colors duration-700 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'
               }`}
           >
             WaveLab combines coastal intelligence, forecasting, and decision support. Share your needs
@@ -202,8 +203,8 @@ const Contact = () => {
             >
               <div
                 className={`relative h-full p-8 rounded-2xl backdrop-blur-sm border transition-all duration-300 hover:scale-[1.02] overflow-hidden ${isDarkMode
-                    ? 'bg-slate-900/70 border-slate-700/70 hover:bg-slate-900/90 hover:border-slate-600 hover:shadow-2xl'
-                    : 'bg-white/90 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-2xl'
+                  ? 'bg-slate-900/70 border-slate-700/70 hover:bg-slate-900/90 hover:border-slate-600 hover:shadow-2xl'
+                  : 'bg-white/90 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-2xl'
                   }`}
               >
                 {/* Background Gradient */}
@@ -241,8 +242,8 @@ const Contact = () => {
         {/* Response Targets Banner */}
         <section
           className={`p-8 lg:p-10 rounded-2xl backdrop-blur-sm border transition-all duration-300 hover:scale-[1.01] ${isDarkMode
-              ? 'bg-gradient-to-br from-blue-900/20 to-cyan-900/10 border-blue-700/30'
-              : 'bg-gradient-to-br from-blue-50/80 to-cyan-50/60 border-blue-200/50'
+            ? 'bg-gradient-to-br from-blue-900/20 to-cyan-900/10 border-blue-700/30'
+            : 'bg-gradient-to-br from-blue-50/80 to-cyan-50/60 border-blue-200/50'
             }`}
         >
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-center">
@@ -296,8 +297,8 @@ const Contact = () => {
               Meet the{' '}
               <span
                 className={`bg-gradient-to-r bg-clip-text text-transparent ${isDarkMode
-                    ? 'from-blue-400 via-cyan-400 to-emerald-400'
-                    : 'from-blue-600 via-cyan-600 to-emerald-600'
+                  ? 'from-blue-400 via-cyan-400 to-emerald-400'
+                  : 'from-blue-600 via-cyan-600 to-emerald-600'
                   }`}
               >
                 WaveLab Team
@@ -335,8 +336,8 @@ const Contact = () => {
                     <div
                       key={`${member.name}-${index}`}
                       className={`group min-w-[280px] rounded-2xl border p-6 shadow-lg transition-all duration-300 hover:scale-[1.02] ${isDarkMode
-                          ? 'border-slate-700 bg-slate-950/80 hover:bg-slate-950 hover:border-slate-600 hover:shadow-2xl'
-                          : 'border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 hover:shadow-2xl'
+                        ? 'border-slate-700 bg-slate-950/80 hover:bg-slate-950 hover:border-slate-600 hover:shadow-2xl'
+                        : 'border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 hover:shadow-2xl'
                         }`}
                     >
                       <div className="flex items-start gap-4 mb-5">
@@ -424,8 +425,8 @@ const Contact = () => {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className={`rounded-xl border px-4 py-3.5 text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-cyan-400 ${isDarkMode
-                        ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
-                        : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
+                      ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
+                      : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
                       }`}
                   />
                 </label>
@@ -437,8 +438,8 @@ const Contact = () => {
                     value={formData.organization}
                     onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
                     className={`rounded-xl border px-4 py-3.5 text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-cyan-400 ${isDarkMode
-                        ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
-                        : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
+                      ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
+                      : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
                       }`}
                   />
                 </label>
@@ -453,8 +454,8 @@ const Contact = () => {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className={`rounded-xl border px-4 py-3.5 text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-cyan-400 ${isDarkMode
-                        ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
-                        : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
+                      ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
+                      : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
                       }`}
                   />
                 </label>
@@ -466,8 +467,8 @@ const Contact = () => {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className={`rounded-xl border px-4 py-3.5 text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-cyan-400 ${isDarkMode
-                        ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
-                        : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
+                      ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
+                      : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
                       }`}
                   />
                 </label>
@@ -481,8 +482,8 @@ const Contact = () => {
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   className={`rounded-xl border px-4 py-3.5 text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-cyan-400 resize-none ${isDarkMode
-                      ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
-                      : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
+                    ? 'border-slate-700 bg-slate-950/60 text-slate-100 placeholder:text-slate-500'
+                    : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
                     }`}
                 />
               </label>
@@ -535,8 +536,8 @@ const Contact = () => {
                   >
                     <div
                       className={`flex-shrink-0 h-10 w-10 rounded-lg bg-gradient-to-br ${index === 0 ? 'from-blue-500 to-cyan-500' :
-                          index === 1 ? 'from-emerald-500 to-teal-500' :
-                            'from-purple-500 to-violet-500'
+                        index === 1 ? 'from-emerald-500 to-teal-500' :
+                          'from-purple-500 to-violet-500'
                         } flex items-center justify-center shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:rotate-6`}
                     >
                       <item.icon className="h-5 w-5 text-white" />

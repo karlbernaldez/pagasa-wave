@@ -150,10 +150,11 @@ const stats = [
 ];
 
 const AboutUs = () => {
+  document.title = `About Us | WaveLab`;
   const { isDarkMode } = useTheme();
   return (
     <div
-      className={`relative min-h-screen pt-28 pb-20 px-4 md:px-6 overflow-hidden transition-all duration-700 ${
+      className={`relative min-h-screen pt-32 pb-20 px-4 md:px-6 overflow-hidden transition-all duration-700 ${
         isDarkMode
           ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
           : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'
@@ -209,7 +210,7 @@ const AboutUs = () => {
           </div>
 
           <h1
-            className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 tracking-tight transition-colors duration-700 ${
+            className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mt-8 mb-6 tracking-tight transition-colors duration-700 ${
               isDarkMode ? 'text-white' : 'text-slate-900'
             }`}
           >

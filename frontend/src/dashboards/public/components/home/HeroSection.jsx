@@ -1,345 +1,482 @@
-import React, { useState } from 'react';
-import { ArrowRight, Waves, Navigation, Wind, TrendingUp, MapPin, Eye, Anchor, Ship, BarChart3, Compass } from 'lucide-react';
+import React, { useRef } from 'react';
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useInView,
+} from 'framer-motion';
+import {
+  ArrowRight, Waves, Wind, TrendingUp,
+  MapPin, Eye, BarChart3, Compass, CheckCircle2,
+} from 'lucide-react';
 
+/* ─── Reusable animation variants ─── */
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  show: (delay = 0) => ({
+    opacity: 1, y: 0,
+    transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94], delay },
+  }),
+};
+
+const staggerContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.1, delayChildren: 0.15 } },
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.88 },
+  show: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'backOut' } },
+};
+
+/* ─── Mini bar chart bar ─── */
+const Bar = ({ height, index, isDark }) => (
+  <motion.div
+    className={`flex-1 rounded-t ${
+      isDark
+        ? 'bg-gradient-to-t from-blue-500 to-cyan-400'
+        : 'bg-gradient-to-t from-blue-500 to-cyan-500'
+    }`}
+    initial={{ scaleY: 0, originY: 1 }}
+    animate={{ scaleY: 1 }}
+    transition={{ duration: 0.6, delay: 0.9 + index * 0.07, ease: 'backOut' }}
+    style={{ height: `${(height / 4) * 100}%` }}
+    whileHover={{ opacity: 0.75 }}
+  />
+);
+
+/* ─── Stat counter ─── */
+const Stat = ({ value, label, isDark, delay = 0 }) => {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+  return (
+    <motion.div
+      ref={ref}
+      className="text-center lg:text-left"
+      variants={fadeUp}
+      custom={delay}
+      initial="hidden"
+      animate={inView ? 'show' : 'hidden'}
+    >
+      <div
+        className={`text-3xl sm:text-4xl font-black bg-gradient-to-br from-blue-500 to-cyan-600 bg-clip-text text-transparent`}
+      >
+        {value}
+      </div>
+      <div className={`text-sm font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        {label}
+      </div>
+    </motion.div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   Main Component
+════════════════════════════════════════════════════════════ */
 const WaveHeroSection = ({ isDark }) => {
+  const containerRef = useRef(null);
+
+  /* Scroll-linked parallax */
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ['start start', 'end start'],
+  });
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 25 });
+  const heroY = useTransform(smoothProgress, [0, 1], ['0%', '-14%']);
+  const cardY = useTransform(smoothProgress, [0, 1], ['0%', '-6%']);
+  const opacity = useTransform(smoothProgress, [0, 0.55], [1, 0]);
+  const scrollIndicatorOpacity = useTransform(smoothProgress, [0, 0.15], [1, 0]);
+  const progressBarScale = useTransform(scrollYProgress, [0, 1], [0, 1]);
+
+  const detail = [
+    { Icon: TrendingUp, label: 'Wave Period',        value: '12–14 sec', color: isDark ? 'text-emerald-400' : 'text-emerald-500' },
+    { Icon: Compass,    label: 'Direction',          value: 'SW 225°',   color: isDark ? 'text-purple-400' : 'text-purple-500' },
+    { Icon: Wind,       label: 'Marine Wind',        value: '8–12 kts',  color: isDark ? 'text-cyan-400'   : 'text-cyan-500'   },
+    { Icon: Eye,        label: 'Visibility',         value: '10+ km',    color: isDark ? 'text-amber-400'  : 'text-amber-500'  },
+  ];
 
   return (
-    <section className={`relative min-h-screen flex items-center justify-center overflow-hidden transition-all duration-700 ${isDark
-      ? 'bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950'
-      : 'bg-gradient-to-br from-blue-50 via-white to-cyan-50'
-      }`}>
+    <section
+      ref={containerRef}
+      className={`relative min-h-screen flex items-center justify-center overflow-hidden transition-colors duration-700 ${
+        isDark
+          ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+          : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'
+      }`}
+    >
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes wave-pulse {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50%       { transform: translateY(-6px) rotate(8deg); }
+        }
+      `}</style>
 
-      {/* Animated Wave Background */}
-      <div className="absolute inset-0 opacity-10">
-        <svg className="w-full h-full" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
-          <defs>
-            <linearGradient id="wave1" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" className={isDark ? 'stop-blue-400' : 'stop-blue-500'} />
-              <stop offset="100%" className={isDark ? 'stop-cyan-400' : 'stop-cyan-500'} />
-            </linearGradient>
-            <linearGradient id="wave2" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" className={isDark ? 'stop-purple-400' : 'stop-purple-500'} />
-              <stop offset="100%" className={isDark ? 'stop-blue-400' : 'stop-blue-500'} />
-            </linearGradient>
-          </defs>
-          <path
-            d="M0,200 Q300,150 600,180 T1200,160 L1200,600 L0,600 Z"
-            fill="url(#wave1)"
-            className="animate-pulse"
-            style={{ animation: 'wave1 8s ease-in-out infinite' }}
-          />
-          <path
-            d="M0,250 Q200,200 400,220 T800,200 T1200,190 L1200,600 L0,600 Z"
-            fill="url(#wave2)"
-            style={{ animation: 'wave2 10s ease-in-out infinite reverse' }}
-          />
-        </svg>
+      {/* ── Dot-grid background (matching About/Contact) ── */}
+      <div className="absolute inset-0 opacity-[0.025] pointer-events-none">
+        <div
+          className={`absolute inset-0 ${
+            isDark
+              ? 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.500)_1px,_transparent_1px)]'
+              : 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.400)_1px,_transparent_1px)]'
+          } bg-[length:30px_30px]`}
+        />
       </div>
 
-      {/* Particle Effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className={`absolute w-1 h-1 rounded-full ${isDark ? 'bg-cyan-400/30' : 'bg-blue-400/30'
-              }`}
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animation: `float ${5 + Math.random() * 10}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 5}s`
-            }}
-          />
-        ))}
+      {/* ── Soft ambient glow blobs ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+          className={`absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full blur-3xl ${
+            isDark ? 'bg-blue-600/10' : 'bg-blue-400/15'
+          }`}
+        />
+        <div
+          className={`absolute -bottom-24 -right-24 w-[420px] h-[420px] rounded-full blur-3xl ${
+            isDark ? 'bg-cyan-600/10' : 'bg-cyan-400/12'
+          }`}
+        />
       </div>
 
-      {/* Enhanced Floating Icons */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute top-20 left-20 transition-colors duration-700 ${isDark ? 'text-blue-400/30' : 'text-blue-500/30'
-          }`} style={{ animation: 'float1 8s ease-in-out infinite' }}>
-          <Anchor size={60} strokeWidth={1.5} />
-        </div>
+      {/* ══════════════════ MAIN CONTENT ══════════════════ */}
+      <motion.div
+        className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24"
+        style={{ y: heroY, opacity }}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-16 items-center">
 
-        <div className={`absolute top-40 right-24 transition-colors duration-700 ${isDark ? 'text-cyan-400/30' : 'text-cyan-500/30'
-          }`} style={{ animation: 'float2 10s ease-in-out infinite' }}>
-          <Ship size={70} strokeWidth={1.5} />
-        </div>
+          {/* ── Left: text ── */}
+          <motion.div
+            className="text-center lg:text-left space-y-8"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+          >
+            {/* Badge — matches About/Contact style exactly */}
+            <motion.div variants={scaleIn}>
+              <div
+                className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] ${
+                  isDark
+                    ? 'bg-blue-500/10 text-blue-300 border border-blue-400/20 hover:border-blue-400/40'
+                    : 'bg-blue-100/80 text-blue-700 border border-blue-200 hover:border-blue-300'
+                }`}
+              >
+                <Waves className="animate-pulse" size={18} />
+                DOST-MECO-TECO-VOTE III · Component B · Project 1
+              </div>
+            </motion.div>
 
-        <div className={`absolute bottom-40 left-32 transition-colors duration-700 ${isDark ? 'text-purple-400/30' : 'text-purple-500/30'
-          }`} style={{ animation: 'float3 9s ease-in-out infinite' }}>
-          <Navigation size={50} strokeWidth={1.5} />
-        </div>
-
-        <div className={`absolute bottom-32 right-20 transition-colors duration-700 ${isDark ? 'text-indigo-400/30' : 'text-indigo-500/30'
-          }`} style={{ animation: 'float4 11s ease-in-out infinite' }}>
-          <Compass size={65} strokeWidth={1.5} />
-        </div>
-
-        <div className={`absolute top-1/2 left-1/4 transition-colors duration-700 ${isDark ? 'text-teal-400/20' : 'text-teal-500/20'
-          }`} style={{ animation: 'float5 12s ease-in-out infinite' }}>
-          <Wind size={55} strokeWidth={1.5} />
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-
-          {/* Left Content */}
-          <div className="text-center lg:text-left space-y-8">
-
-            {/* Main Headline */}
-            <div className="space-y-4 mt-24">
-              <h1 className={`text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-tight transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                }`}>
-                <span className={`bg-gradient-to-r bg-clip-text text-transparent transition-all duration-700 ${isDark
-                  ? 'from-blue-400 via-cyan-400 to-purple-400'
-                  : 'from-blue-500 via-cyan-500 to-purple-500'
-                  }`}>
-                  Typhoon & Marine
+            {/* Headline */}
+            <motion.div className="space-y-5" variants={fadeUp} custom={0.1}>
+              <h1
+                className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight ${
+                  isDark ? 'text-white' : 'text-slate-900'
+                }`}
+              >
+                <span
+                  className={`bg-gradient-to-r bg-clip-text text-transparent ${
+                    isDark
+                      ? 'from-blue-400 via-cyan-400 to-emerald-400'
+                      : 'from-blue-600 via-cyan-600 to-emerald-600'
+                  }`}
+                >
+                  Typhoon &amp; Marine
                 </span>{' '}
                 Weather Services Excellence
               </h1>
 
-              <p className={`text-lg sm:text-xl lg:text-2xl leading-relaxed max-w-2xl transition-colors duration-700 ${isDark ? 'text-slate-300' : 'text-slate-600'
-                }`}>
-                Advancing DOST-MECO-TECO-VOTE III Component B Project 1 with enhanced typhoon
-                forecast support, operational wave prediction, and integrated marine weather
-                services for confident coastal decision-making.
+              <p
+                className={`text-lg sm:text-xl leading-relaxed max-w-2xl ${
+                  isDark ? 'text-slate-300' : 'text-slate-600'
+                }`}
+              >
+                Advancing enhanced typhoon forecast support, operational wave prediction, and
+                integrated marine weather services for confident coastal decision-making.
               </p>
-            </div>
+            </motion.div>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <button className="group flex items-center justify-center gap-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25">
+            {/* CTA buttons — matches About/Contact button style */}
+            <motion.div
+              className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
+              variants={fadeUp}
+              custom={0.22}
+            >
+              <motion.a
+                href="#objectives"
+                className="group inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+                whileTap={{ scale: 0.97 }}
+              >
                 View Project Objectives
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform duration-300" />
-              </button>
+                <ArrowRight
+                  className="h-4 w-4 group-hover:translate-x-0.5 transition-transform duration-300"
+                />
+              </motion.a>
 
-              <button className={`group flex items-center justify-center gap-3 font-semibold px-8 py-4 rounded-2xl border-2 transition-all duration-300 hover:scale-105 ${isDark
-                ? 'border-slate-600 text-slate-300 hover:bg-slate-800/50 hover:border-slate-500'
-                : 'border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400'
-                }`}>
-                <BarChart3 size={20} />
+              <motion.a
+                href="#forecast"
+                className={`inline-flex items-center justify-center gap-2.5 rounded-xl border px-7 py-3.5 text-sm font-semibold transition-all duration-300 hover:scale-[1.02] ${
+                  isDark
+                    ? 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
+                    : 'border-slate-300 text-slate-700 hover:bg-white hover:border-slate-400'
+                }`}
+                whileTap={{ scale: 0.97 }}
+              >
+                <BarChart3 size={16} />
                 Explore Forecast Tools
-              </button>
-            </div>
+              </motion.a>
+            </motion.div>
 
-            {/* Stats */}
-            <div className={`grid grid-cols-3 gap-8 pt-8 border-t transition-colors duration-700 ${isDark ? 'border-slate-700/50' : 'border-slate-200'
-              }`}>
-              <div className="text-center lg:text-left">
-                <div className={`text-3xl sm:text-4xl font-black transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                  }`}>
-                  6
-                </div>
-                <div className={`text-sm font-medium transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                  Strategic Objectives
-                </div>
-              </div>
+            {/* Stats row */}
+            <motion.div
+              className={`grid grid-cols-3 gap-6 pt-8 border-t ${
+                isDark ? 'border-slate-800' : 'border-slate-200'
+              }`}
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+            >
+              <Stat value="6"    label="Strategic Objectives" isDark={isDark} delay={0.3} />
+              <Stat value="3"    label="Component Projects"   isDark={isDark} delay={0.4} />
+              <Stat value="24/7" label="Operations Support"   isDark={isDark} delay={0.5} />
+            </motion.div>
+          </motion.div>
 
-              <div className="text-center lg:text-left">
-                <div className={`text-3xl sm:text-4xl font-black transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                  }`}>
-                  3
-                </div>
-                <div className={`text-sm font-medium transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                  Component Projects
-                </div>
-              </div>
+          {/* ── Right: forecast card — matches About/Contact card style ── */}
+          <motion.div
+            className="flex justify-center lg:justify-end"
+            style={{ y: cardY }}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.3 }}
+          >
+            {/* Outer group for shine effect */}
+            <div className="group relative w-full max-w-md">
+              <motion.div
+                className={`relative h-full p-8 rounded-2xl backdrop-blur-sm border transition-all duration-300 overflow-hidden ${
+                  isDark
+                    ? 'bg-slate-900/70 border-slate-700/70 hover:bg-slate-900/90 hover:border-slate-600 hover:shadow-2xl'
+                    : 'bg-white/90 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-2xl'
+                }`}
+                whileHover={{ scale: 1.02, y: -6 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 22 }}
+              >
+                {/* Hover background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500" />
 
-              <div className="text-center lg:text-left">
-                <div className={`text-3xl sm:text-4xl font-black transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                  }`}>
-                  24/7
+                {/* Shine sweep */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                  <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
                 </div>
-                <div className={`text-sm font-medium transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                  Operations Support
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Right Content - Wave Forecast Card */}
-          <div className="flex justify-center lg:justify-end">
-            <div className={`group relative w-full max-w-md p-8 rounded-3xl backdrop-blur-xl border transition-all duration-500 hover:scale-105 hover:-translate-y-2 ${isDark
-              ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800/70 hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-900/50'
-              : 'bg-white/70 border-white/50 hover:bg-white/90 hover:border-slate-200 hover:shadow-2xl hover:shadow-slate-900/10'
-              }`}>
+                {/* Decorative corner dots */}
+                <motion.div
+                  className="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full"
+                  animate={{ scale: [1, 1.4, 1] }}
+                  transition={{ duration: 2.2, repeat: Infinity }}
+                />
+                <motion.div
+                  className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full"
+                  animate={{ scale: [1, 1.4, 1] }}
+                  transition={{ duration: 2.2, repeat: Infinity, delay: 1.1 }}
+                />
 
-              {/* Card Header */}
-              <div className="text-center mb-6">
-                <div className={`flex items-center justify-center gap-2 mb-2 transition-colors duration-700 ${isDark ? 'text-slate-300' : 'text-slate-700'
-                  }`}>
-                  <MapPin size={18} />
-                  <span className="font-semibold">PAGASA Marine Forecast Desk</span>
-                </div>
-                <div className={`text-sm transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
-                  }`}>
-                  Operational Guidance • {new Date().toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                </div>
-              </div>
-
-              {/* Wave Height Display */}
-              <div className="text-center mb-8">
+                {/* Card header */}
                 <div className="relative">
-                  <div className={`text-6xl font-black mb-2 transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                    }`}>
-                    2.8m
-                  </div>
-                  <div className="absolute -top-2 -right-2">
-                    <Waves className={`w-12 h-12 transition-colors duration-700 ${isDark ? 'text-blue-400' : 'text-blue-500'
-                      }`} style={{ animation: 'bounce 2s infinite' }} />
-                  </div>
-                </div>
-                <div className={`text-lg font-medium transition-colors duration-700 ${isDark ? 'text-blue-400' : 'text-blue-600'
-                  }`}>
-                  Operational Wave Guidance
-                </div>
-              </div>
-
-              {/* Wave Details Grid */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className={`text-center p-4 rounded-2xl transition-all duration-300 ${isDark ? 'bg-slate-700/50 hover:bg-slate-700/70' : 'bg-slate-50 hover:bg-slate-100'
-                  }`}>
-                  <TrendingUp className={`w-6 h-6 mx-auto mb-2 transition-colors duration-700 ${isDark ? 'text-emerald-400' : 'text-emerald-500'
-                    }`} />
-                  <div className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                    }`}>
-                    Wave Period
-                  </div>
-                  <div className={`text-xs transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
-                    }`}>
-                    12-14 sec
-                  </div>
-                </div>
-
-                <div className={`text-center p-4 rounded-2xl transition-all duration-300 ${isDark ? 'bg-slate-700/50 hover:bg-slate-700/70' : 'bg-slate-50 hover:bg-slate-100'
-                  }`}>
-                  <Compass className={`w-6 h-6 mx-auto mb-2 transition-colors duration-700 ${isDark ? 'text-purple-400' : 'text-purple-500'
-                    }`} />
-                  <div className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                    }`}>
-                    Dominant Direction
-                  </div>
-                  <div className={`text-xs transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
-                    }`}>
-                    SW 225°
-                  </div>
-                </div>
-
-                <div className={`text-center p-4 rounded-2xl transition-all duration-300 ${isDark ? 'bg-slate-700/50 hover:bg-slate-700/70' : 'bg-slate-50 hover:bg-slate-100'
-                  }`}>
-                  <Wind className={`w-6 h-6 mx-auto mb-2 transition-colors duration-700 ${isDark ? 'text-cyan-400' : 'text-cyan-500'
-                    }`} />
-                  <div className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                    }`}>
-                    Marine Wind
-                  </div>
-                  <div className={`text-xs transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
-                    }`}>
-                    8-12 kts
-                  </div>
-                </div>
-
-                <div className={`text-center p-4 rounded-2xl transition-all duration-300 ${isDark ? 'bg-slate-700/50 hover:bg-slate-700/70' : 'bg-slate-50 hover:bg-slate-100'
-                  }`}>
-                  <Eye className={`w-6 h-6 mx-auto mb-2 transition-colors duration-700 ${isDark ? 'text-amber-400' : 'text-amber-500'
-                    }`} />
-                  <div className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                    }`}>
-                    Coastal Visibility
-                  </div>
-                  <div className={`text-xs transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
-                    }`}>
-                    10+ km
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Chart Preview */}
-              <div className={`p-4 rounded-2xl transition-all duration-300 ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'
-                }`}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`text-sm font-semibold transition-colors duration-700 ${isDark ? 'text-white' : 'text-slate-900'
-                    }`}>
-                    7-Day Marine Outlook
-                  </span>
-                  <BarChart3 className={`w-4 h-4 transition-colors duration-700 ${isDark ? 'text-slate-400' : 'text-slate-500'
-                    }`} />
-                </div>
-
-                {/* Mini Wave Chart */}
-                <div className="flex items-end justify-between h-16 gap-1">
-                  {[2.1, 2.8, 3.2, 2.9, 2.3, 2.6, 3.1, 3.4].map((height, index) => (
+                  <motion.div
+                    className="text-center mb-6"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55 }}
+                  >
                     <div
-                      key={index}
-                      className={`flex-1 rounded-t transition-all duration-500 hover:opacity-80 ${isDark ? 'bg-gradient-to-t from-blue-500 to-cyan-400' : 'bg-gradient-to-t from-blue-500 to-cyan-500'
+                      className={`flex items-center justify-center gap-2 mb-1.5 font-semibold text-sm ${
+                        isDark ? 'text-slate-300' : 'text-slate-700'
+                      }`}
+                    >
+                      <MapPin size={16} />
+                      PAGASA Marine Forecast Desk
+                    </div>
+                    <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Operational Guidance &bull;{' '}
+                      {new Date().toLocaleDateString('en-US', {
+                        weekday: 'long', month: 'short', day: 'numeric',
+                      })}
+                    </div>
+                  </motion.div>
+
+                  {/* Wave height */}
+                  <motion.div
+                    className="text-center mb-8"
+                    initial={{ scale: 0.75, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 180, damping: 14, delay: 0.65 }}
+                  >
+                    <div className="relative inline-block">
+                      <span
+                        className={`text-6xl font-black ${
+                          isDark ? 'text-white' : 'text-slate-900'
                         }`}
-                      style={{
-                        height: `${(height / 4) * 100}%`,
-                        animationDelay: `${index * 100}ms`
-                      }}
-                    />
-                  ))}
+                      >
+                        2.8m
+                      </span>
+                      <div
+                        className="absolute -top-3 -right-10"
+                        style={{ animation: 'wave-pulse 3s ease-in-out infinite' }}
+                      >
+                        <Waves
+                          className={`w-10 h-10 ${isDark ? 'text-blue-400' : 'text-blue-500'}`}
+                        />
+                      </div>
+                    </div>
+                    <div
+                      className={`text-sm font-semibold mt-2 ${
+                        isDark ? 'text-blue-400' : 'text-blue-600'
+                      }`}
+                    >
+                      Operational Wave Guidance
+                    </div>
+                  </motion.div>
+
+                  {/* Detail grid — same card pattern as About/Contact */}
+                  <motion.div
+                    className="grid grid-cols-2 gap-3 mb-5"
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="show"
+                  >
+                    {detail.map(({ Icon, label, value, color }) => (
+                      <motion.div
+                        key={label}
+                        variants={scaleIn}
+                        className={`group/item text-center p-4 rounded-xl border transition-all duration-300 hover:scale-[1.04] ${
+                          isDark
+                            ? 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60 hover:border-slate-600'
+                            : 'bg-slate-50 border-slate-200/80 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                      >
+                        <Icon
+                          className={`w-5 h-5 mx-auto mb-2 transition-all duration-500 group-hover/item:scale-110 group-hover/item:rotate-6 ${color}`}
+                        />
+                        <div
+                          className={`text-xs font-bold ${
+                            isDark ? 'text-white' : 'text-slate-900'
+                          }`}
+                        >
+                          {label}
+                        </div>
+                        <div className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {value}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+
+                  {/* Mini bar chart */}
+                  <div
+                    className={`p-4 rounded-xl border ${
+                      isDark
+                        ? 'bg-slate-800/30 border-slate-700/40'
+                        : 'bg-slate-50 border-slate-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span
+                        className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                      >
+                        7-Day Marine Outlook
+                      </span>
+                      <BarChart3
+                        className={`w-3.5 h-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                      />
+                    </div>
+                    <div className="flex items-end justify-between h-14 gap-1">
+                      {[2.1, 2.8, 3.2, 2.9, 2.3, 2.6, 3.1, 3.4].map((h, i) => (
+                        <Bar key={i} height={h} index={i} isDark={isDark} />
+                      ))}
+                    </div>
+                    <div className="flex justify-between mt-2">
+                      <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Today
+                      </span>
+                      <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        7 Days
+                      </span>
+                    </div>
+                  </div>
                 </div>
-
-                <div className="flex justify-between mt-2 text-xs">
-                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Today</span>
-                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>7 Days</span>
-                </div>
-              </div>
-
-              {/* Decorative Elements */}
-              <div className="absolute -top-2 -left-2 w-4 h-4 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full animate-pulse" />
-              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
-
-              {/* Glow Effect on Hover */}
-              <div className={`absolute inset-0 rounded-3xl transition-opacity duration-500 opacity-0 group-hover:opacity-100 ${isDark ? 'shadow-2xl shadow-blue-500/20' : 'shadow-2xl shadow-blue-500/10'
-                }`} />
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
 
-      <style jsx>{`
-        @keyframes wave1 {
-          0%, 100% { d: path('M0,200 Q300,150 600,180 T1200,160 L1200,600 L0,600 Z'); }
-          50% { d: path('M0,180 Q300,130 600,160 T1200,140 L1200,600 L0,600 Z'); }
-        }
-        
-        @keyframes wave2 {
-          0%, 100% { d: path('M0,250 Q200,200 400,220 T800,200 T1200,190 L1200,600 L0,600 Z'); }
-          50% { d: path('M0,230 Q200,180 400,200 T800,180 T1200,170 L1200,600 L0,600 Z'); }
-        }
-        
-        @keyframes float1 {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(5deg); }
-        }
-        
-        @keyframes float2 {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-15px) rotate(-3deg); }
-        }
-        
-        @keyframes float3 {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-25px) rotate(7deg); }
-        }
-        
-        @keyframes float4 {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-18px) rotate(-5deg); }
-        }
-      `}</style>
+        {/* ── Keyword pills (matching program badge style) ── */}
+        <motion.div
+          className="flex flex-wrap justify-center gap-3 mt-16 pt-10 border-t border-dashed"
+          style={{
+            borderColor: isDark ? 'rgba(51,65,85,0.6)' : 'rgba(203,213,225,0.8)',
+          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1, duration: 0.6 }}
+        >
+          {[
+            { icon: CheckCircle2, label: 'Typhoon Forecast' },
+            { icon: Waves,        label: 'Wave Prediction' },
+            { icon: BarChart3,    label: 'Radar Technology' },
+            { icon: Compass,      label: 'Climate Services' },
+            { icon: Wind,         label: 'Marine Weather' },
+          ].map(({ icon: Icon, label }) => (
+            <span
+              key={label}
+              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] transition-all duration-300 hover:scale-105 ${
+                isDark
+                  ? 'border-slate-700 text-slate-300 bg-slate-800/40 hover:bg-slate-800/70 hover:border-slate-500'
+                  : 'border-slate-200 text-slate-600 bg-white/70 hover:bg-white hover:border-slate-300'
+              }`}
+            >
+              <Icon size={13} className={isDark ? 'text-blue-400' : 'text-blue-500'} />
+              {label}
+            </span>
+          ))}
+        </motion.div>
+      </motion.div>
+
+      {/* ── Scroll progress bar at bottom ── */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500 to-transparent"
+        style={{ scaleX: progressBarScale, transformOrigin: 'left' }}
+      />
+
+      {/* ── Scroll indicator ── */}
+      <motion.div
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.4 }}
+        style={{ opacity: scrollIndicatorOpacity }}
+      >
+        <span
+          className={`text-xs tracking-widest uppercase font-medium ${
+            isDark ? 'text-slate-500' : 'text-slate-400'
+          }`}
+        >
+          Scroll
+        </span>
+        <div
+          className={`w-5 h-8 rounded-full border-2 flex items-start justify-center pt-1.5 ${
+            isDark ? 'border-slate-700' : 'border-slate-300'
+          }`}
+        >
+          <motion.div
+            className={`w-1 h-2 rounded-full ${isDark ? 'bg-slate-400' : 'bg-slate-500'}`}
+            animate={{ y: [0, 10, 0], opacity: [1, 0.3, 1] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        </div>
+      </motion.div>
     </section>
   );
 };
