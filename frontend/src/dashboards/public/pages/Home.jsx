@@ -28,7 +28,7 @@ const Home = () => {
   return (
     <div>
       <HeroSection isDark={isDarkMode} />
-      <Alerts isDark={isDarkMode} />
+      {/* <Alerts isDark={isDarkMode} /> */}
       <Services isDark={isDarkMode} />
       <Partners isDark={isDarkMode} />
       <HowItWorksSection isDark={isDarkMode} />

@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 import ProtectedAdminRoute from '@/middleware/ProtectedAdminRoute';
 
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Dashboard = lazy(() => import('@dashboards/admin/pages/Dashboard'));
 
 export default [
   {

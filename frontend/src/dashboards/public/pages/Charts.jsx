@@ -28,7 +28,7 @@ const ForecastChartsPage = () => {
     const activeChart = chartTypes.find(chart => chart.id === activeChartType);
     const chartName = activeChart ? activeChart.name : activeChartType;
 
-    document.title = `WaveLab - Charts: ${chartName}`;
+    document.title = `Charts - ${chartName}`;
     console.log("Active Chart Type:", activeChartType, "Name:", chartName);
   }, [activeChartType, chartTypes]);
 

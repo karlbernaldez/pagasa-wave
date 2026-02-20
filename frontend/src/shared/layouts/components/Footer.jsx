@@ -10,6 +10,7 @@
 //  ╚═══════════════════════════════════════════════════════════════════════╝
 
 import React from "react";
+import { useTheme } from '@/app/providers/ThemeProvider';
 import { PagasaLogo } from "./Logo";
 import { ExternalLink, Mail, Phone, MapPin, ChevronRight } from "lucide-react";
 import Facebook from "@/assets/Facebook.svg";
@@ -150,7 +151,8 @@ const ContactItem = ({ icon: Icon, text, isDark }) => (
   </div>
 );
 
-const Footer = ({ isDarkMode = false }) => {
+const Footer = () => {
+  const { isDarkMode } = useTheme();
   const currentYear = new Date().getFullYear();
 
   return (
