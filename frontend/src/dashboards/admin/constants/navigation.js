@@ -4,8 +4,8 @@ export const ADMIN_TABS = {
   DASHBOARD: 'dashboard',
   CHARTS: 'charts',
   USERS: 'users',
-  USERS_PENDING: 'users_pending',
-  USERS_EXISTING: 'users_existing',
+  USERS_LIST: 'users_list',
+  USERS_ROLES: 'users_roles',
   ANALYTICS: 'analytics',
   CALENDAR: 'calendar',
   SETTINGS: 'settings',
@@ -33,13 +33,13 @@ export const PAGE_META = {
     title: 'User Management',
     description: 'Manage Forecasters, Admins, and other user roles',
   },
-  [ADMIN_TABS.USERS_PENDING]: {
-    title: 'Pending User Requests',
-    description: 'Review and approve account requests from new users',
+  [ADMIN_TABS.USERS_LIST]: {
+    title: 'User List',
+    description: 'View and manage all user accounts and access statuses',
   },
-  [ADMIN_TABS.USERS_EXISTING]: {
-    title: 'Existing Users',
-    description: 'Maintain active user records and update permissions',
+  [ADMIN_TABS.USERS_ROLES]: {
+    title: 'Roles & Permissions',
+    description: 'Configure available roles and access levels',
   },
   [ADMIN_TABS.ANALYTICS]: {
     title: 'Analytics & Reports',

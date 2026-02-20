@@ -27,11 +27,11 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case ADMIN_TABS.CHARTS:
         return <ChartReviewSection isDarkMode={isDarkMode} />;
-      case ADMIN_TABS.USERS_PENDING:
-        return <UserManagementSection isDarkMode={isDarkMode} view="pending" />;
-      case ADMIN_TABS.USERS_EXISTING:
+      case ADMIN_TABS.USERS_ROLES:
+        return <UserManagementSection isDarkMode={isDarkMode} mode="roles" />;
+      case ADMIN_TABS.USERS_LIST:
       case ADMIN_TABS.USERS:
-        return <UserManagementSection isDarkMode={isDarkMode} view="existing" />;
+        return <UserManagementSection isDarkMode={isDarkMode} mode="list" />;
       case ADMIN_TABS.ANALYTICS:
         return <AnalyticsSection isDarkMode={isDarkMode} />;
       case ADMIN_TABS.CALENDAR:
