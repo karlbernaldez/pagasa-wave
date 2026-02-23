@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 
+import settingsRoutes from './routes/settingsRoutes.js';
 import featureRoutes from './routes/featureRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -59,6 +60,7 @@ app.get('/status', (req, res) => {
 });
 
 // API routes
+app.use('/api/settings', settingsRoutes);
 app.use('/api/features', featureRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
