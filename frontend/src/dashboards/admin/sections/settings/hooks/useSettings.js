@@ -1,11 +1,9 @@
 // ╔══════════════════════════════════════════════════════╗
-// ║                   useSettings.js                     ║
-// ║  Handles: load from API / localStorage               ║
-// ║           save per active tab                        ║
-// ║           reset to defaults                          ║
-// ║           status auto-dismiss                        ║
+// ║          hooks/useSettings.js  (Admin)               ║
+// ║  Admin settings panel — load & save via API helper.  ║
 // ╚══════════════════════════════════════════════════════╝
 import { useState, useEffect, useCallback } from 'react';
+import { getSettings, saveSettings } from '@/api/siteSettings';
 import { DEFAULT_GENERAL, DEFAULT_ABOUT } from '../constants/defaults';
 
 const LS_KEY = 'admin.settings.general';
@@ -15,31 +13,37 @@ const useSettings = () => {
   const [generalData, setGeneralData] = useState(DEFAULT_GENERAL);
   const [aboutData,   setAboutData]   = useState(DEFAULT_ABOUT);
   const [saving,      setSaving]      = useState(false);
-  const [status,      setStatus]      = useState(null); // { type: 'success'|'error', message }
+  const [status,      setStatus]      = useState(null);
 
-  // ── Load on mount ─────────────────────────────────────────────────────────
+  // ── Load on mount ──────────────────────────────────────────────────────────
   useEffect(() => {
-    // General — localStorage
+    // General — localStorage only
     try {
       const stored = localStorage.getItem(LS_KEY);
       if (stored) setGeneralData((p) => ({ ...p, ...JSON.parse(stored) }));
     } catch (_) {}
 
-    // About — Express API
-    fetch('/api/settings/about')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data) setAboutData((p) => ({ ...p, ...data })); })
-      .catch(() => {}); // fallback to defaults silently
+    // About — from API helper
+    const loadAbout = async () => {
+      try {
+        const data = await getSettings('about');
+        if (data && Object.keys(data).length > 0) {
+          setAboutData((prev) => ({ ...prev, ...data }));
+        }
+      } catch (_) {} // silently fallback to defaults
+    };
+
+    loadAbout();
   }, []);
 
-  // ── Auto-dismiss status after 4 s ─────────────────────────────────────────
+  // ── Auto-dismiss status after 4s ───────────────────────────────────────────
   useEffect(() => {
     if (!status) return;
     const t = setTimeout(() => setStatus(null), 4000);
     return () => clearTimeout(t);
   }, [status]);
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
@@ -48,12 +52,7 @@ const useSettings = () => {
         setStatus({ type: 'success', message: 'General settings saved.' });
 
       } else if (activeTab === 'about') {
-        const res = await fetch('/api/settings/about', {
-          method:  'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(aboutData),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await saveSettings('about', aboutData);
         setStatus({ type: 'success', message: 'About page saved to database.' });
       }
     } catch (err) {
@@ -63,7 +62,7 @@ const useSettings = () => {
     }
   }, [activeTab, generalData, aboutData]);
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
+  // ── Reset ──────────────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
     if (activeTab === 'general') {
       setGeneralData(DEFAULT_GENERAL);
