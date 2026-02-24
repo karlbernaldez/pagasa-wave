@@ -6,6 +6,52 @@ import { checkAuthSession, logoutUser } from '@/api/auth';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from "@/app/providers/ChartTypeProvider";
 
+let headerUserRequest = null;
+let headerUserCache = null;
+
+const resetHeaderUserCache = () => {
+  headerUserCache = null;
+  headerUserRequest = null;
+};
+
+const loadHeaderUserData = async () => {
+  if (headerUserCache) {
+    return headerUserCache;
+  }
+
+  if (headerUserRequest) {
+    return headerUserRequest;
+  }
+
+  headerUserRequest = (async () => {
+    const { authenticated, user } = await checkAuthSession();
+
+    if (authenticated && user?.id) {
+      const userDetailsResponse = await fetchUserDetails(user.id);
+      headerUserCache = {
+        currentUser: userDetailsResponse,
+        isLoggedIn: true,
+      };
+      return headerUserCache;
+    }
+
+    headerUserCache = {
+      currentUser: null,
+      isLoggedIn: false,
+    };
+    return headerUserCache;
+  })();
+
+  try {
+    return await headerUserRequest;
+  } catch (error) {
+    resetHeaderUserCache();
+    throw error;
+  } finally {
+    headerUserRequest = null;
+  }
+};
+
 const Header = () => {
   const { activeChartType, setActiveChartType } = useChartType();
   const { isDarkMode, setIsDarkMode } = useTheme();
@@ -53,23 +99,19 @@ const Header = () => {
 
     const loadUserData = async () => {
       try {
-        const { authenticated, user } = await checkAuthSession();
+        const { currentUser: userData, isLoggedIn: loggedIn } = await loadHeaderUserData();
+        if (!mounted) return;
 
-        if (authenticated && user?.id) {
-          const userDetailsResponse = await fetchUserDetails(user.id);
-          if (!mounted) return;
-
-          setCurrentUser(userDetailsResponse);
-          setIsLoggedIn(true);
-        } else {
-          if (!mounted) return;
-          setIsLoggedIn(false);
-        }
+        setCurrentUser(userData);
+        setIsLoggedIn(loggedIn);
       } catch (error) {
-        if (mounted) setLoading(false);
+        if (!mounted) return;
         setIsLoggedIn(false);
+        setCurrentUser(null);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -115,6 +157,8 @@ const Header = () => {
 
   const handleSignOut = () => {
     logoutUser();
+    resetHeaderUserCache();
+    setCurrentUser(null);
     setIsLoggedIn(false);
     setIsUserDropdownOpen(false);
     setIsMobileMenuOpen(false);

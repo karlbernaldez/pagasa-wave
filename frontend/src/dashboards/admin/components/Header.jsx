@@ -15,6 +15,46 @@ import { getFullName, getUserInitials } from '@dashboards/admin/utils/user';
 import { fetchUserDetails } from '@/api/userAPI';
 import { checkAuthSession, logoutUser } from '@/api/auth';
 
+let adminHeaderUserRequest = null;
+let adminHeaderUserCache = null;
+
+const resetAdminHeaderUserCache = () => {
+  adminHeaderUserCache = null;
+  adminHeaderUserRequest = null;
+};
+
+const loadAdminHeaderUserData = async () => {
+  if (adminHeaderUserCache) {
+    return adminHeaderUserCache;
+  }
+
+  if (adminHeaderUserRequest) {
+    return adminHeaderUserRequest;
+  }
+
+  adminHeaderUserRequest = (async () => {
+    const { authenticated, user } = await checkAuthSession();
+
+    if (!authenticated || !user?.id) {
+      adminHeaderUserCache = null;
+      return null;
+    }
+
+    const userDetails = await fetchUserDetails(user.id);
+    adminHeaderUserCache = userDetails;
+    return userDetails;
+  })();
+
+  try {
+    return await adminHeaderUserRequest;
+  } catch (error) {
+    resetAdminHeaderUserCache();
+    throw error;
+  } finally {
+    adminHeaderUserRequest = null;
+  }
+};
+
 const NOTIFICATIONS = [
   { id: 1, title: '3 pending user requests', time: '5m ago' },
   { id: 2, title: 'New wave chart submitted for review', time: '20m ago' },
@@ -42,10 +82,7 @@ const Header = ({
 
     const loadUserData = async () => {
       try {
-        const { authenticated, user } = await checkAuthSession();
-        if (!authenticated || !user?.id) return;
-
-        const userDetails = await fetchUserDetails(user.id);
+        const userDetails = await loadAdminHeaderUserData();
         if (mounted) {
           setCurrentUser(userDetails);
         }
@@ -280,6 +317,8 @@ const Header = ({
                     <button
                       onClick={async () => {
                         await logoutUser();
+                        resetAdminHeaderUserCache();
+                        setCurrentUser(null);
                         setShowUserDropdown(false);
                       }}
                       className={`w-full px-6 py-3 flex items-center gap-3 text-sm font-bold ${isDarkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-600 hover:bg-red-50'
