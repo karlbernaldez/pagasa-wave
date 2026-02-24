@@ -1,18 +1,77 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { fetchAllUsers } from '@/api/userAPI';
 import { INITIAL_USERS } from '../constants';
 import { defaultNewUser, fullName } from '../utils';
 
-// ─── useUsers Hook ──────────────────────────────────────────────────────────
+let adminUsersBootstrapCache = null;
+let adminUsersBootstrapPromise = null;
 
-/**
- * Encapsulates all user-list state and mutations.
- * Returns the filtered list plus CRUD-style handlers.
- */
+const normalizeUser = (user) => ({
+  id: user._id,
+  firstName: user.firstName ?? '',
+  lastName: user.lastName ?? '',
+  email: user.email ?? '',
+  contact: user.contact ?? '',
+  agency: user.agency ?? '',
+  position: user.position ?? '',
+  role: user.role ?? 'Forecaster',
+  status: user.isApproved ? 'Active' : 'Pending',
+  memberSince: user.createdAt ? new Date(user.createdAt).toISOString().slice(0, 10) : '—',
+  lastLogin: user.lastLogin ?? 'Never',
+  avatarUrl: user.avatarUrl ?? '',
+});
+
+const getBootstrappedAdminUsers = async () => {
+  if (adminUsersBootstrapCache) return adminUsersBootstrapCache;
+
+  if (!adminUsersBootstrapPromise) {
+    adminUsersBootstrapPromise = fetchAllUsers()
+      .then((response) => (Array.isArray(response) ? response : []).map(normalizeUser))
+      .then((data) => {
+        adminUsersBootstrapCache = data;
+        return data;
+      })
+      .finally(() => {
+        adminUsersBootstrapPromise = null;
+      });
+  }
+
+  return adminUsersBootstrapPromise;
+};
+
 export function useUsers() {
   const [users, setUsers] = useState(INITIAL_USERS);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [usersError, setUsersError] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [newUser, setNewUser] = useState(defaultNewUser());
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUsers = async () => {
+      setIsLoadingUsers(true);
+      setUsersError('');
+
+      try {
+        const bootstrappedUsers = await getBootstrappedAdminUsers();
+        if (!isMounted) return;
+        setUsers(bootstrappedUsers);
+      } catch (error) {
+        if (!isMounted) return;
+        setUsersError(error.message || 'Failed to load users from API.');
+      } finally {
+        if (isMounted) setIsLoadingUsers(false);
+      }
+    };
+
+    loadUsers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // ── Derived: filtered list ──────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
@@ -58,6 +117,8 @@ export function useUsers() {
 
   return {
     users,
+    isLoadingUsers,
+    usersError,
     filteredUsers,
     query,
     setQuery,
