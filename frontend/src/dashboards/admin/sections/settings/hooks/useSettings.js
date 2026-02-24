@@ -1,98 +1,134 @@
-// ╔══════════════════════════════════════════════════════╗
-// ║          hooks/useSettings.js  (Admin)               ║
-// ║  Admin settings panel — load & save via API helper.  ║
-// ╚══════════════════════════════════════════════════════╝
 import { useState, useEffect, useCallback } from 'react';
 import { getSettings, saveSettings } from '@/api/siteSettings';
 import { DEFAULT_GENERAL, DEFAULT_ABOUT, DEFAULT_CONTACT } from '../constants/defaults';
 
 const LS_KEY = 'admin.settings.general';
 
-const useSettings = () => {
+/* ======================================================
+   BOOTSTRAP CACHE (module-level, shared across mounts)
+====================================================== */
+let bootstrapPromise = null;
+let bootstrapCache = null;
+
+const loadBootstrap = () => {
+  if (bootstrapCache) return Promise.resolve(bootstrapCache);
+  if (bootstrapPromise) return bootstrapPromise;
+
+  bootstrapPromise = Promise.all([
+    getSettings('about').catch(() => null),
+    getSettings('contact').catch(() => null),
+  ])
+    .then(([about, contact]) => {
+      bootstrapCache = {
+        about: about && Object.keys(about).length ? about : null,
+        contact: contact && Object.keys(contact).length ? contact : null,
+      };
+      return bootstrapCache;
+    });
+
+  return bootstrapPromise;
+};
+
+/* ======================================================
+   HOOK
+====================================================== */
+export default function useSettings() {
+
   const [activeTab, setActiveTab] = useState('general');
-  const [generalData, setGeneralData] = useState(DEFAULT_GENERAL);
-  const [contactData, setContactData] = useState(DEFAULT_CONTACT);
-  const [aboutData, setAboutData] = useState(DEFAULT_ABOUT);
+
+  const [pages, setPages] = useState({
+    general: DEFAULT_GENERAL,
+    about: DEFAULT_ABOUT,
+    contact: DEFAULT_CONTACT,
+  });
+
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
-
-  // Tracks when ALL async sources have resolved so SettingsSection
-  // knows to reset the undo/redo history with the real server data.
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // ── Load on mount ──────────────────────────────────────────────────────────
+  /* ======================================================
+     LOAD ON MOUNT
+  ====================================================== */
   useEffect(() => {
-    // General — localStorage only (synchronous, resolves immediately)
+
+    // ---- load local general settings
     try {
       const stored = localStorage.getItem(LS_KEY);
-      if (stored) setGeneralData((p) => ({ ...p, ...JSON.parse(stored) }));
-    } catch (_) { }
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setPages(prev => ({ ...prev, general: { ...prev.general, ...parsed } }));
+      }
+    } catch { }
 
-    // About + Contact — from API helper (async)
-    const loadAll = async () => {
-      const loadPage = async (page, setter) => {
-        try {
-          const data = await getSettings(page);
-          if (data && Object.keys(data).length > 0) {
-            setter((prev) => ({ ...prev, ...data }));
-          }
-        } catch (_) { } // silently fallback to defaults
-      };
+    // ---- load API bootstrap
+    let cancelled = false;
 
-      await Promise.all([
-        loadPage('about', setAboutData),
-        loadPage('contact', setContactData),
-      ]);
+    loadBootstrap().then(data => {
+      if (cancelled) return;
 
-      // Signal that all remote data is ready — SettingsSection will now
-      // reset the history so the user sees DB values, not stale defaults.
+      setPages(prev => ({
+        general: prev.general,
+        about: data?.about ? { ...prev.about, ...data.about } : prev.about,
+        contact: data?.contact ? { ...prev.contact, ...data.contact } : prev.contact,
+      }));
+
       setDataLoaded(true);
-    };
+    });
 
-    loadAll();
+    return () => { cancelled = true; };
+
   }, []);
 
-  // ── Auto-dismiss status after 4s ───────────────────────────────────────────
+  /* ======================================================
+     AUTO CLEAR STATUS
+  ====================================================== */
   useEffect(() => {
     if (!status) return;
     const t = setTimeout(() => setStatus(null), 4000);
     return () => clearTimeout(t);
   }, [status]);
 
-  // ── Save ───────────────────────────────────────────────────────────────────
+  /* ======================================================
+     SAVE
+  ====================================================== */
   const handleSave = useCallback(async (settings) => {
+
+    const payload = settings?.[activeTab] ?? {};
     setSaving(true);
 
     try {
 
       if (activeTab === 'general') {
 
-        const payload = settings?.general ?? {};
         localStorage.setItem(LS_KEY, JSON.stringify(payload));
 
+        setPages(prev => ({
+          ...prev,
+          general: { ...prev.general, ...payload }
+        }));
+
+        setStatus({ type: 'success', message: 'General settings saved.' });
+
+      } else {
+
+        await saveSettings(activeTab, payload);
+
+        setPages(prev => ({
+          ...prev,
+          [activeTab]: { ...prev[activeTab], ...payload }
+        }));
+
+        bootstrapCache = {
+          ...(bootstrapCache || {}),
+          [activeTab]: {
+            ...(bootstrapCache?.[activeTab] || {}),
+            ...payload
+          }
+        };
+
         setStatus({
           type: 'success',
-          message: 'General settings saved.'
-        });
-
-      } else if (activeTab === 'about') {
-
-        const payload = settings?.about ?? {};
-        await saveSettings('about', payload);
-
-        setStatus({
-          type: 'success',
-          message: 'About page saved to database.'
-        });
-
-      } else if (activeTab === 'contact') {
-
-        const payload = settings?.contact ?? {};
-        await saveSettings('contact', payload);
-
-        setStatus({
-          type: 'success',
-          message: 'Contact page saved to database.'
+          message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} page saved to database.`
         });
 
       }
@@ -110,30 +146,55 @@ const useSettings = () => {
 
   }, [activeTab]);
 
-  // ── Reset ──────────────────────────────────────────────────────────────────
+  /* ======================================================
+     RESET
+  ====================================================== */
   const handleReset = useCallback(() => {
+
+    const defaults = {
+      general: DEFAULT_GENERAL,
+      about: DEFAULT_ABOUT,
+      contact: DEFAULT_CONTACT,
+    };
+
+    setPages(prev => ({
+      ...prev,
+      [activeTab]: defaults[activeTab]
+    }));
+
     if (activeTab === 'general') {
-      setGeneralData(DEFAULT_GENERAL);
       localStorage.removeItem(LS_KEY);
-    } else if (activeTab === 'about') {
-      setAboutData(DEFAULT_ABOUT);
-    } else if (activeTab === 'contact') {
-      setContactData(DEFAULT_CONTACT);
+    } else {
+      bootstrapCache = {
+        ...(bootstrapCache || {}),
+        [activeTab]: defaults[activeTab]
+      };
     }
+
     setStatus({ type: 'success', message: 'Reset to default values.' });
+
   }, [activeTab]);
 
+  /* ======================================================
+     RETURN
+  ====================================================== */
   return {
-    activeTab, setActiveTab,
-    generalData, setGeneralData,
-    aboutData, setAboutData,
-    contactData, setContactData,
+    activeTab,
+    setActiveTab,
+
+    generalData: pages.general,
+    aboutData: pages.about,
+    contactData: pages.contact,
+
+    setGeneralData: v => setPages(p => ({ ...p, general: v })),
+    setAboutData: v => setPages(p => ({ ...p, about: v })),
+    setContactData: v => setPages(p => ({ ...p, contact: v })),
+
     saving,
     status,
     dataLoaded,
+
     handleSave,
     handleReset,
   };
-};
-
-export default useSettings;
+}

@@ -24,23 +24,25 @@ const Sidebar = ({
       )}
 
       <aside
-        className={`fixed lg:static inset-y-0 left-0 transition-all duration-300 z-40 overflow-y-auto ${
-          isSidebarCollapsed ? 'w-[88px]' : 'w-72'
-        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${
-          isDarkMode
+        className={`fixed lg:static inset-y-0 left-0 transition-all duration-300 z-40 overflow-y-auto ${isSidebarCollapsed ? 'w-[88px]' : 'w-72'
+          } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${isDarkMode
             ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-gray-700/50'
             : 'bg-gradient-to-b from-white via-gray-50 to-white border-gray-200/50'
-        } border-r backdrop-blur-xl`}
+          } border-r backdrop-blur-xl`}
       >
         <div className={`flex items-center justify-between p-5 border-b ${isDarkMode ? 'border-gray-700/30' : 'border-gray-200/30'}`}>
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 bg-gradient-to-br from-blue-400 via-cyan-400 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-              <Waves size={24} className="text-white" />
+            <div className="w-11 h-11 bg-gradient-to-br from-blue-400 via-cyan-400 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shrink-0 overflow-hidden">
+              <img
+                src="/pagasa-logo.png"
+                alt="PAGASA Logo"
+                className="w-7 h-7 object-contain"
+              />
             </div>
             {!isSidebarCollapsed && (
               <div>
-                <h1 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>WaveAdmin</h1>
-                <p className={`text-xs font-semibold ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>Forecast Hub</p>
+                <h1 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>WaveLab</h1>
+                <p className={`text-xs font-semibold ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>Admin Dashboard</p>
               </div>
             )}
           </div>
@@ -75,15 +77,14 @@ const Sidebar = ({
                     setActiveTab(id);
                     setIsMobileOpen(false);
                   }}
-                  className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-300 relative group ${
-                    isActive || (isUsers && isUsersExpanded)
+                  className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-300 relative group ${isActive || (isUsers && isUsersExpanded)
                       ? isDarkMode
                         ? 'bg-gradient-to-r from-blue-600/80 to-cyan-600/80 text-white shadow-lg shadow-blue-500/30'
                         : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700'
                       : isDarkMode
                         ? 'text-gray-300 hover:bg-gray-700/40'
                         : 'text-gray-700 hover:bg-gray-100/60'
-                  }`}
+                    }`}
                   title={isSidebarCollapsed ? label : undefined}
                 >
                   <div className="flex items-center gap-3">
@@ -101,15 +102,14 @@ const Sidebar = ({
                         setActiveTab(ADMIN_TABS.USERS_LIST);
                         setIsMobileOpen(false);
                       }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium ${
-                        activeTab === ADMIN_TABS.USERS_LIST || activeTab === ADMIN_TABS.USERS
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium ${activeTab === ADMIN_TABS.USERS_LIST || activeTab === ADMIN_TABS.USERS
                           ? isDarkMode
                             ? 'bg-gray-700 text-cyan-300'
                             : 'bg-blue-100 text-blue-700'
                           : isDarkMode
                             ? 'text-gray-300 hover:bg-gray-700/40'
                             : 'text-gray-600 hover:bg-gray-100'
-                      }`}
+                        }`}
                     >
                       User List
                     </button>
@@ -118,15 +118,14 @@ const Sidebar = ({
                         setActiveTab(ADMIN_TABS.USERS_ROLES);
                         setIsMobileOpen(false);
                       }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium ${
-                        activeTab === ADMIN_TABS.USERS_ROLES
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium ${activeTab === ADMIN_TABS.USERS_ROLES
                           ? isDarkMode
                             ? 'bg-gray-700 text-cyan-300'
                             : 'bg-blue-100 text-blue-700'
                           : isDarkMode
                             ? 'text-gray-300 hover:bg-gray-700/40'
                             : 'text-gray-600 hover:bg-gray-100'
-                      }`}
+                        }`}
                     >
                       Roles
                     </button>
