@@ -1,6 +1,7 @@
 // ╔══════════════════════════════════════════════════════╗
 // ║                    HeroSection                       ║
-// ║  Props: title, subtitle, badgeText,                  ║
+// ║  Props: titlePrefix, titleHighlight, titleSuffix,    ║
+// ║         subtitle, badgeText,                         ║
 // ║         ctaPrimaryLabel, ctaPrimaryLink,             ║
 // ║         ctaSecondaryLabel, ctaSecondaryLink          ║
 // ╚══════════════════════════════════════════════════════╝
@@ -9,7 +10,9 @@ import { Waves, ArrowRight } from 'lucide-react';
 import { useTheme } from '@/app/providers/ThemeProvider';
 
 const HeroSection = ({
-  title,
+  titlePrefix,
+  titleHighlight,
+  titleSuffix,
   subtitle,
   badgeText,
   ctaPrimaryLabel,
@@ -19,16 +22,9 @@ const HeroSection = ({
 }) => {
   const { isDarkMode } = useTheme();
 
-  // Split title at last space before "Typhoon" so the gradient part
-  // can be rendered separately. Supports any title via a simple heuristic:
-  // the last sentence / phrase after the last comma or "for" keyword gets the gradient.
-  const gradientKeyword = 'for';
-  const splitIdx = title.toLowerCase().lastIndexOf(` ${gradientKeyword} `);
-  const titlePlain  = splitIdx !== -1 ? title.slice(0, splitIdx)  : title;
-  const titleAccent = splitIdx !== -1 ? title.slice(splitIdx + 1) : '';
-
   return (
     <section className="text-center mb-8">
+
       {/* Badge */}
       <div
         className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] ${
@@ -47,8 +43,9 @@ const HeroSection = ({
           isDarkMode ? 'text-white' : 'text-slate-900'
         }`}
       >
-        {titlePlain}{' '}
-        {titleAccent && (
+        {titlePrefix && <span>{titlePrefix} </span>}
+
+        {titleHighlight && (
           <span
             className={`bg-gradient-to-r bg-clip-text text-transparent transition-all duration-700 ${
               isDarkMode
@@ -56,9 +53,11 @@ const HeroSection = ({
                 : 'from-blue-600 via-cyan-600 to-emerald-600'
             }`}
           >
-            {titleAccent}
+            {titleHighlight}
           </span>
         )}
+
+        {titleSuffix && <span> {titleSuffix}</span>}
       </h1>
 
       {/* Subtitle */}
@@ -90,6 +89,7 @@ const HeroSection = ({
           {ctaSecondaryLabel}
         </a>
       </div>
+
     </section>
   );
 };

@@ -86,3 +86,57 @@ export const DEFAULT_ABOUT = {
   ctaButtonLabel: 'Contact the Team',
   ctaButtonLink: '/contact',
 };
+
+export const DEFAULT_CONTACT = {
+  heroBadgeText: 'Get in Touch with WaveLab',
+  heroTitlePrefix: "Let's Build a",
+  heroTitleHighlight: 'Safer Coastline',
+  heroTitleSuffix: 'Together',
+  heroDescription:
+    "WaveLab combines coastal intelligence, forecasting, and decision support. Share your needs with us and we'll route you to the right PAGASA team.",
+  contactCards: [
+    {
+      title: 'Email the team',
+      description: 'Get in touch with our analysts for tailored guidance.',
+      value: 'support@wavelab.ph',
+      icon: 'mail',
+      color: 'from-blue-500 to-cyan-500',
+    },
+    {
+      title: 'Call our hotline',
+      description: 'We are available 24/7 for urgent coastal advisories.',
+      value: '+63 (02) 8123-4567',
+      icon: 'phone',
+      color: 'from-emerald-500 to-teal-500',
+    },
+    {
+      title: 'Visit WaveLab HQ',
+      description: 'Science Garden Complex, Quezon City, PH',
+      value: 'Mon-Fri · 8:00 AM - 6:00 PM',
+      icon: 'map-pin',
+      color: 'from-purple-500 to-violet-500',
+    },
+  ],
+  assistanceItems: [
+    {
+      title: 'Data Partnerships',
+      description: 'Collaborate on data-sharing initiatives for coastal monitoring.',
+      icon: 'globe',
+    },
+    {
+      title: 'Operational Support',
+      description: '24/7 alert routing for LGUs, port authorities, and disaster teams.',
+      icon: 'shield',
+    },
+    {
+      title: 'Training & Workshops',
+      description: 'Hands-on sessions for interpreting wave intelligence dashboards.',
+      icon: 'users',
+    },
+  ],
+  responseTargets: [
+    { type: 'Critical incidents', time: 'Under 1 hour', icon: 'zap' },
+    { type: 'Operational requests', time: 'Within 6 hours', icon: 'clock' },
+    { type: 'General inquiries', time: '1-2 business days', icon: 'message-circle' },
+  ],
+};
