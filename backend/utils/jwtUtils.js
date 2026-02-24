@@ -6,8 +6,9 @@ export const generateAccessToken = (payload) =>
     algorithm: 'HS512',
   });
 
-export const generateRefreshToken = (payload) =>
+export const generateRefreshToken = (payload, options = {}) =>
   jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
     expiresIn: '7d',
     algorithm: 'HS512',
+    ...options,
   });

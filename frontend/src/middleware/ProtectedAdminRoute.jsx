@@ -2,34 +2,21 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import OnlyAdminModal from '@/components/ui/modals/OnlyAdminModal';
 import { useAuth } from '@/hooks/useAuth';
+import { checkAuthSession } from '@/api/auth';
 
 const ProtectedAdminRoute = ({ children, requireAuth = true, onDeny }) => {
-
   const { setIsLoggedIn } = useAuth();
   const [status, setStatus] = useState('loading');
   const navigate = useNavigate();
 
-  const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
-  const checkRoute = `${AUTH_API_BASE_URL}/check`;
-
   useEffect(() => {
     const checkAuthentication = async () => {
       try {
-        const res = await fetch(checkRoute, {
-          method: 'GET',
-          credentials: 'include',
-        });
+        const { authenticated, user } = await checkAuthSession();
 
-        if (res.ok) {
-          const data = await res.json();
+        if (authenticated && user) {
           setIsLoggedIn(true);
-
-          if (data.user.role === 'admin') {
-            setStatus('admin');
-          } else {
-            setStatus('user');
-          }
-
+          setStatus(user.role === 'admin' ? 'admin' : 'user');
           return;
         }
 
@@ -43,7 +30,7 @@ const ProtectedAdminRoute = ({ children, requireAuth = true, onDeny }) => {
     };
 
     checkAuthentication();
-  }, []);
+  }, [setIsLoggedIn]);
 
   if (status === 'loading') return null;
 
@@ -52,14 +39,7 @@ const ProtectedAdminRoute = ({ children, requireAuth = true, onDeny }) => {
   }
 
   if (status === 'user') {
-    return onDeny
-      ? onDeny()
-      : (
-        <OnlyAdminModal
-          isOpen
-          onClose={() => navigate('/')}
-        />
-      );
+    return onDeny ? onDeny() : <OnlyAdminModal isOpen onClose={() => navigate('/')} />;
   }
 
   return children;

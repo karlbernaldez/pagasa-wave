@@ -11,12 +11,9 @@ import {
   Search,
 } from 'lucide-react';
 
-import {
-  fetchUserDetails,
-  getFullName,
-  getUserInitials,
-  logoutUser,
-} from '@dashboards/admin/utils/user';
+import { getFullName, getUserInitials } from '@dashboards/admin/utils/user';
+import { fetchUserDetails } from '@/api/userAPI';
+import { checkAuthSession, logoutUser } from '@/api/auth';
 
 const NOTIFICATIONS = [
   { id: 1, title: '3 pending user requests', time: '5m ago' },
@@ -37,31 +34,31 @@ const Header = ({
 
   const searchRef = useRef(null);
 
-  const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/api/auth`;
-
   /* ===============================
      Load current user
   =============================== */
   useEffect(() => {
+    let mounted = true;
+
     const loadUserData = async () => {
       try {
-        const checkResponse = await fetch(`${AUTH_API_BASE_URL}/check`, {
-          method: 'GET',
-          credentials: 'include',
-        });
+        const { authenticated, user } = await checkAuthSession();
+        if (!authenticated || !user?.id) return;
 
-        if (!checkResponse.ok) return;
-
-        const checkData = await checkResponse.json();
-        const userDetails = await fetchUserDetails(checkData.user.id);
-        setCurrentUser(userDetails);
+        const userDetails = await fetchUserDetails(user.id);
+        if (mounted) {
+          setCurrentUser(userDetails);
+        }
       } catch (error) {
         console.error('Error loading user data:', error);
       }
     };
 
     loadUserData();
-  }, [AUTH_API_BASE_URL]);
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   /* ===============================
      Keyboard shortcut (Cmd/Ctrl + K)
@@ -150,15 +147,15 @@ const Header = ({
               onChange={(e) => setSearchValue(e.target.value)}
               placeholder="Search or type command..."
               className={`w-full pl-9 pr-12 py-2 rounded-xl text-sm outline-none border transition ${isDarkMode
-                  ? 'bg-gray-900/70 border-gray-700 text-gray-100 placeholder-gray-500 focus:border-gray-500'
-                  : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-gray-400'
+                ? 'bg-gray-900/70 border-gray-700 text-gray-100 placeholder-gray-500 focus:border-gray-500'
+                : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-gray-400'
                 }`}
             />
 
             <span
               className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs px-2 py-0.5 rounded-md border ${isDarkMode
-                  ? 'border-gray-700 text-gray-400'
-                  : 'border-gray-300 text-gray-500'
+                ? 'border-gray-700 text-gray-400'
+                : 'border-gray-300 text-gray-500'
                 }`}
             >
               ⌘K
@@ -174,8 +171,8 @@ const Header = ({
           <button
             onClick={onToggleDarkMode}
             className={`p-3 rounded-xl transition-all ${isDarkMode
-                ? 'bg-gray-700/60 text-yellow-300 hover:bg-gray-700'
-                : 'bg-gray-100/90 text-amber-500 hover:bg-gray-200'
+              ? 'bg-gray-700/60 text-yellow-300 hover:bg-gray-700'
+              : 'bg-gray-100/90 text-amber-500 hover:bg-gray-200'
               }`}
             aria-label="Toggle dark mode"
           >
@@ -187,8 +184,8 @@ const Header = ({
             <button
               onClick={() => setShowNotificationDropdown((prev) => !prev)}
               className={`relative p-3 rounded-xl ${isDarkMode
-                  ? 'bg-gray-700/60 text-gray-200 hover:bg-gray-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-gray-700/60 text-gray-200 hover:bg-gray-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               aria-label="Notifications"
             >
