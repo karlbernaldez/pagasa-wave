@@ -1,6 +1,6 @@
 import SiteSettings from '../models/SiteSettings.js';
 
-const ALLOWED_PAGES = ['general', 'about'];
+const ALLOWED_PAGES = ['general', 'about', 'contact'];
 
 const normalizePage = (page) => page?.toLowerCase().trim();
 

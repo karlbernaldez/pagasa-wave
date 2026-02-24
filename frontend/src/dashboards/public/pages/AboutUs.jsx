@@ -9,18 +9,18 @@ import React from 'react';
 import { useTheme } from '@/app/providers/ThemeProvider';
 
 // ── Section Components ──────────────────────────────────────────────────────
-import HeroSection        from '../components/about/HeroSection';
-import StatsSection       from '../components/about/StatsSection';
+import HeroSection          from '../components/about/HeroSection';
+import StatsSection         from '../components/about/StatsSection';
 import MissionVisionSection from '../components/about/MissionVisionSection';
-import ObjectivesSection  from '../components/about/ObjectivesSection';
-import FocusAreasSection  from '../components/about/FocusAreasSection';
-import TimelineSection    from '../components/about/TimelineSection';
-import LeadershipSection  from '../components/about/LeadershipSection';
-import PartnersSection    from '../components/about/PartnersSection';
-import CTASection         from '../components/about/CTASection';
+import ObjectivesSection    from '../components/about/ObjectivesSection';
+import FocusAreasSection    from '../components/about/FocusAreasSection';
+import TimelineSection      from '../components/about/TimelineSection';
+import LeadershipSection    from '../components/about/LeadershipSection';
+import PartnersSection      from '../components/about/PartnersSection';
+import CTASection           from '../components/about/CTASection';
 
 // ── Data Hook ───────────────────────────────────────────────────────────────
-import useAboutSettings   from '@dashboards/public/hooks/useAboutSettings';
+import useAboutSettings from '@dashboards/public/hooks/useAboutSettings';
 
 // ── Loading Skeleton ─────────────────────────────────────────────────────────
 const Skeleton = ({ isDarkMode }) => (
@@ -81,7 +81,9 @@ const AboutUs = () => {
           <>
             {/* 1. Hero — Title & Subtitle */}
             <HeroSection
-              title={settings.title}
+              titlePrefix={settings.titlePrefix}
+              titleHighlight={settings.titleHighlight}
+              titleSuffix={settings.titleSuffix}
               subtitle={settings.subtitle}
               badgeText={settings.badgeText}
               ctaPrimaryLabel={settings.ctaPrimaryLabel}

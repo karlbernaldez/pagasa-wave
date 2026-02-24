@@ -2,7 +2,7 @@
 // ║                      tabs.js                         ║
 // ║  Tab config — add new pages here to auto-register    ║
 // ╚══════════════════════════════════════════════════════╝
-import { Settings, FileText } from 'lucide-react';
+import { Settings, FileText, Mail } from 'lucide-react';
 
 // ─── To add a new settings tab (e.g. Contact):
 //   1. Add its default data to constants/defaults.js
@@ -11,17 +11,21 @@ import { Settings, FileText } from 'lucide-react';
 // ──────────────────────────────────────────────────────
 export const TABS = [
   {
-    id:      'general',
-    label:   'General',
-    icon:    Settings,
+    id: 'general',
+    label: 'General',
+    icon: Settings,
     apiPage: null,          // null = localStorage only
   },
   {
-    id:      'about',
-    label:   'About Page',
-    icon:    FileText,
+    id: 'about',
+    label: 'About Page',
+    icon: FileText,
     apiPage: 'about',       // maps to GET/PUT /api/settings/about
   },
-  // Future:
-  // { id: 'contact', label: 'Contact Page', icon: Mail, apiPage: 'contact' },
+  {
+    id: 'contact',
+    label: 'Contact Page',
+    icon: Mail,
+    apiPage: 'contact',
+  },
 ];

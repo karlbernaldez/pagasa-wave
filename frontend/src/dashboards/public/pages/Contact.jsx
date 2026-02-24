@@ -1,10 +1,24 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Clock, Send, MessageCircle, Globe, CheckCircle2, Zap, Users, Shield } from 'lucide-react';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import useContactSettings from '@/dashboards/public/hooks/useContactSettings';
+
+const ICON_MAP = {
+  mail: Mail,
+  phone: Phone,
+  'map-pin': MapPin,
+  globe: Globe,
+  shield: Shield,
+  users: Users,
+  zap: Zap,
+  clock: Clock,
+  'message-circle': MessageCircle,
+};
 
 const Contact = () => {
   document.title = `Contact Us | WaveLab`;
   const { isDarkMode } = useTheme();
+  const settings = useContactSettings();
   const [formData, setFormData] = useState({
     name: '',
     organization: '',
@@ -14,105 +28,22 @@ const Contact = () => {
     subscribe: false
   });
 
-  const contactCards = [
-    {
-      title: 'Email the team',
-      description: 'Get in touch with our analysts for tailored guidance.',
-      value: 'support@wavelab.ph',
-      icon: Mail,
-      color: 'from-blue-500 to-cyan-500',
-    },
-    {
-      title: 'Call our hotline',
-      description: 'We are available 24/7 for urgent coastal advisories.',
-      value: '+63 (02) 8123-4567',
-      icon: Phone,
-      color: 'from-emerald-500 to-teal-500',
-    },
-    {
-      title: 'Visit WaveLab HQ',
-      description: 'Science Garden Complex, Quezon City, PH',
-      value: 'Mon-Fri · 8:00 AM - 6:00 PM',
-      icon: MapPin,
-      color: 'from-purple-500 to-violet-500',
-    },
-  ];
+  const contactCards = (settings.contactCards ?? []).map((card) => ({
+    ...card,
+    icon: ICON_MAP[card.icon] || Mail,
+  }));
 
-  const assistanceItems = [
-    {
-      title: 'Data Partnerships',
-      description: 'Collaborate on data-sharing initiatives for coastal monitoring.',
-      icon: Globe,
-    },
-    {
-      title: 'Operational Support',
-      description: '24/7 alert routing for LGUs, port authorities, and disaster teams.',
-      icon: Shield,
-    },
-    {
-      title: 'Training & Workshops',
-      description: 'Hands-on sessions for interpreting wave intelligence dashboards.',
-      icon: Users,
-    },
-  ];
+  const assistanceItems = (settings.assistanceItems ?? []).map((item) => ({
+    ...item,
+    icon: ICON_MAP[item.icon] || Globe,
+  }));
 
-  const teamMembers = [
-    {
-      name: 'JEHAN FE S. PANTI',
-      role: 'Weather Specialist / Component Lead',
-      email: 'jehan.panti1295@gmail.com',
-      phone: '+63 917 820 1432',
-      avatar: 'https://lh3.googleusercontent.com/a-/ALV-UjVEQMbz24lpwXBYV4g6CLaF5wU8yB9RTi0DTHNfMSTYyWZ7Qvnq=s64-p-k-rw-no',
-    },
-    {
-      name: 'JOHN MARK I. DOLENDO',
-      role: 'Senior Weather Specialist',
-      email: 'jmdolendo@pagasa.dost.gov.ph',
-      phone: '+63 917 610 7789',
-      avatar: 'https://media.licdn.com/dms/image/v2/C5103AQHgQ7pH57lFpg/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1580554934063?e=1771459200&v=beta&t=XVtfY0B6r2X3AUczvclBrIEJMK5Qt_lLdWAT4LOSx_8',
-    },
-    {
-      name: 'DARWIN R. ALEJOS, JR',
-      role: 'Senior Weather Specialist',
-      email: 'darwinalejosjr@gmail.com',
-      phone: '+63 917 540 2211',
-      avatar: 'https://lh3.googleusercontent.com/a-/ALV-UjXLOxxVyjxfefcDBcDtkiAVaBDMN6IVA1gMPB73CEQ82bEWakdW=s240-p-k-rw-no',
-    },
-    {
-      name: 'MONICO C. ALEJO',
-      role: 'Weather Specialist',
-      email: 'monico.alejo@pagasa.dost.gov.ph',
-      phone: '+63 917 332 9801',
-      avatar: 'https://media.licdn.com/dms/image/v2/C5603AQEytShtm4_t6Q/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1593326362472?e=1771459200&v=beta&t=HQCIphmNGF6A3Jt_aPjPQP3gXL_odeJQS76_dVycGoM',
-    },
-    {
-      name: 'DANIEL JAMES E. VILLAMIL',
-      role: 'Weather Specialist',
-      email: 'katrina.dizon@wavelab.ph',
-      phone: '+63 917 445 6670',
-      avatar: 'https://lh3.googleusercontent.com/a-/ALV-UjUWxwwpxyhdaPKWkGBE0FR4iz09A9awTewGrJmtdWCmEvTZd-I=s240-p-k-rw-no',
-    },
-    {
-      name: 'RIZZA LIZ ABANILLA',
-      role: 'Admin Officer',
-      email: 'izaabanilla8@gmail.com',
-      phone: '+63 917 700 3144',
-      avatar: 'https://lh3.googleusercontent.com/a-/ALV-UjVMrfZm9mN-ez8RlXZjNxsWzEVIfhLcWlWdEdRCrwR66mnbh1eftH7o5CEfrH_tdTci0Y3SwFf6D4MJdC2nnU6gKFJqc6KWmdYRKVtjSIU93YNahBznhFm47fTsfAOSwv1MToqlhuhO_qw1mBI4X3VKVSKnNznFyoR3eALx749_ZiilgmAYkV6hrVqInyvYU9PF-SlZg7g4CLnEGquQwbGxxPFA__t5_VrK90LsdMX7ir7CfdYQUQN4Y2BtdvTzlkWEpS0WD65eTTTh3ZXbeit3-A2SBfhDoplf1S1AXCB46Ng8ewaLTRsdgbgzSJ0U3GocHwY-2oFGVmgOZ1U_Gf42zy6Q_iY-bD7bL_qvuPj5rxivu9FxCHMwYCCJDHoKIG1sKbgDz8PsGjJczwizO3Tk5iukO2jBFhCg2xsrMxNN3LeDW7bRlsQDXcYwOXhnABmOydIcaSODSgKEM1lfbOugpYZbIlhTWJ3fCGukAPOa8Qydx4AF-NtF5jM-0KM2Nrh0b02zNwqzdGTSiar18735wGE9hHHS1wMOLjOtml0JqDoNiGIVP582VgBP2ZZrP5C4WSpQSr8amIPADjB2PlikWPAjH4hoMPxRI8OJ3z9CaFXFlXpSFB8o2xx3HBER-am44R3Q2ePRqQOVZL66jxADZci8TUCepJPLxTGJS0zwb30DiCQE67Jp3YMH_S9xmoUUdyabHXzV0khbGVEkITEhXtUVI53r-qQ_fBBwUMJT31Afcw9z2O771IBQsh78a6dG9NzfssJZuuRioF6eNKTXl1AdljihWw_rIzYd-VDGYlrmUiv1VhgypdhMuJLpqjHEadrXHTDyFZVS4jHTpFNay7zDO7aZcumf3IkwvT0zU4gBCKItq-OolOaD4_nMN5uQIaJx2qCihEhSJJYT4VGqy24a2NlTnsHKRojCE2Jbb7DBNwmxm7jMASFZoHBVZMSBxC_8YLDCHuAwoduI5dYlpTx4bdsC6eVvFTzsnuwT_87Yp2KMlUc88A5o6p7MxGbL_qZClhYWj6s9pBkpiguz9aoSdPCJiIVGJmyX4jwkWNhQ1nNn_SZehA=s240-p-k-rw-no',
-    },
-    {
-      name: 'KARL SANTIAGO B. BERNALDEZ',
-      role: 'Technical Specialist',
-      email: 'bernaldezkarlsantiago@gmail.com',
-      phone: '+63 917 700 3144',
-      avatar: 'https://lh3.googleusercontent.com/a/ACg8ocJ7wuDxl85cVks_J9i7isy6SBEMNMdojYuOkDkWW1nN9SJB7ng=s240-p-k-rw-no',
-    },
-  ];
+  const responseTargets = (settings.responseTargets ?? []).map((target) => ({
+    ...target,
+    icon: ICON_MAP[target.icon] || Clock,
+  }));
 
-  const responseTargets = [
-    { type: 'Critical incidents', time: 'Under 1 hour', icon: Zap },
-    { type: 'Operational requests', time: 'Within 6 hours', icon: Clock },
-    { type: 'General inquiries', time: '1-2 business days', icon: MessageCircle },
-  ];
+  const teamMembers = settings.teamMembers ?? [];
 
   return (
     <div
@@ -165,31 +96,30 @@ const Contact = () => {
               }`}
           >
             <Globe className="animate-pulse" size={18} />
-            Get in Touch with WaveLab
+            {settings.heroBadgeText}
           </div>
 
           <h1
             className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mt-8 mb-6 tracking-tight transition-colors duration-700 ${isDarkMode ? 'text-white' : 'text-slate-900'
               }`}
           >
-            Let&apos;s Build a{' '}
+            {settings.heroTitlePrefix}{' '}
             <span
               className={`bg-gradient-to-r bg-clip-text text-transparent transition-all duration-700 ${isDarkMode
                 ? 'from-blue-400 via-cyan-400 to-emerald-400'
                 : 'from-blue-600 via-cyan-600 to-emerald-600'
                 }`}
             >
-              Safer Coastline
+              {settings.heroTitleHighlight}
             </span>{' '}
-            Together
+            {settings.heroTitleSuffix}
           </h1>
 
           <p
             className={`-mb-16 text-lg sm:text-xl max-w-4xl mx-auto leading-relaxed transition-colors duration-700 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'
               }`}
           >
-            WaveLab combines coastal intelligence, forecasting, and decision support. Share your needs
-            with us and we&apos;ll route you to the right PAGASA team.
+            {settings.heroDescription}
           </p>
         </section>
 

@@ -29,6 +29,15 @@ export function useUndoRedoState(initialState, opts = {}) {
     });
   }, [isEqual, maxHistory]);
 
+  // Replaces present with a new value and wipes all history.
+  // Use this when loading fresh data from an external source (e.g. API)
+  // so the user can't undo back to stale defaults.
+  const reset = useCallback((newState) => {
+    pastRef.current = [];
+    futureRef.current = [];
+    setPresent(newState);
+  }, []);
+
   const undo = useCallback(() => {
     setPresent((prev) => {
       if (pastRef.current.length === 0) return prev;
@@ -72,8 +81,8 @@ export function useUndoRedoState(initialState, opts = {}) {
   }, [redo, undo, hotkeys]);
 
   const api = useMemo(
-    () => ({ present, set, undo, redo, canUndo, canRedo }),
-    [present, set, undo, redo, canUndo, canRedo]
+    () => ({ present, set, reset, undo, redo, canUndo, canRedo }),
+    [present, set, reset, undo, redo, canUndo, canRedo]
   );
 
   return api;
