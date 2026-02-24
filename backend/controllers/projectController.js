@@ -9,6 +9,27 @@ import {
 import Project from '../models/Project.js';
 
 // ===============================
+// GET ALL PROJECTS (ADMIN)
+// ===============================
+export const getAllProjects = asyncHandler(async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) throwError('No token provided', 401);
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    throwError('Invalid or expired token', 403);
+  }
+
+  const projects = await Project.find()
+    .populate('owner', 'firstName lastName email username')
+    .sort({ createdAt: -1 });
+
+  res.json(projects);
+});
+
+// ===============================
 // CREATE PROJECT
 // ===============================
 export const createProject = asyncHandler(async (req, res) => {

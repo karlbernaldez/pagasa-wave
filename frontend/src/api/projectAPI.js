@@ -123,3 +123,20 @@ export const deleteProjectById = async (id) => {
   }
 };
 
+
+
+// 📌 Get all projects (Admin)
+export const fetchAllProjectsForAdmin = async () => {
+  const response = await fetch(`${PROJECT_API_BASE_URL}/all`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to fetch all projects');
+  }
+
+  return response.json();
+};
