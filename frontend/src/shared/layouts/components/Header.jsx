@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Sun, Moon, User, LogOut, Settings, Wind, Activity, Eye, ChevronDown } from 'lucide-react';
 import { fetchUserDetails } from '@/api/userAPI';
-import { logoutUser } from '@/api/auth';
+import { checkAuthSession, logoutUser } from '@/api/auth';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from "@/app/providers/ChartTypeProvider";
 
@@ -23,9 +23,6 @@ const Header = () => {
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const toggleUserDropdown = () => setIsUserDropdownOpen(!isUserDropdownOpen);
-
-  const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
-  const checkRoute = `${AUTH_API_BASE_URL}/check`;
 
   const chartTypes = [
     {
@@ -52,25 +49,24 @@ const Header = () => {
   ];
 
   useEffect(() => {
+    let mounted = true;
+
     const loadUserData = async () => {
       try {
-        const checkResponse = await fetch(checkRoute, {
-          method: 'GET',
-          credentials: 'include',
-        });
+        const { authenticated, user } = await checkAuthSession();
 
-        if (checkResponse.ok) {
-          const checkData = await checkResponse.json();
-          const userId = checkData.user.id;
-          const userDetailsResponse = await fetchUserDetails(userId);
+        if (authenticated && user?.id) {
+          const userDetailsResponse = await fetchUserDetails(user.id);
+          if (!mounted) return;
+
           setCurrentUser(userDetailsResponse);
           setIsLoggedIn(true);
         } else {
-          console.error('Failed to authenticate user');
+          if (!mounted) return;
           setIsLoggedIn(false);
         }
       } catch (error) {
-        console.error('Error loading user data:', error);
+        if (mounted) setLoading(false);
         setIsLoggedIn(false);
       } finally {
         setLoading(false);
@@ -78,6 +74,9 @@ const Header = () => {
     };
 
     loadUserData();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const navItems = [
@@ -148,22 +147,22 @@ const Header = () => {
     <>
       {/* Header Container */}
       <header className={`fixed top-0 left-0 right-0 z-[1000] backdrop-blur-xl border-b transition-all duration-300 ${isDarkMode
-          ? 'border-gray-600/30'
-          : 'border-gray-200/20'
+        ? 'border-gray-600/30'
+        : 'border-gray-200/20'
         }`}>
         {/* Nav */}
         <nav className="max-w-[1400px] mx-auto px-4 md:px-6 flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center gap-3 cursor-pointer group">
             <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-0.5 group-hover:scale-105 ${isDarkMode
-                ? 'bg-gradient-to-br from-sky-400 to-blue-500'
-                : 'bg-gradient-to-br from-sky-500 to-blue-600'
+              ? 'bg-gradient-to-br from-sky-400 to-blue-500'
+              : 'bg-gradient-to-br from-sky-500 to-blue-600'
               }`}>
               <img src="/pagasa-logo.png" alt="PAGASA logo" className="w-7 h-7 object-contain" />
             </div>
             <span className={`text-2xl font-black tracking-tight transition-all duration-300 group-hover:scale-105 ${isDarkMode
-                ? 'text-white drop-shadow-[0_2px_8px_rgba(59,130,246,0.5)]'
-                : 'text-gray-900 drop-shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+              ? 'text-white drop-shadow-[0_2px_8px_rgba(59,130,246,0.5)]'
+              : 'text-gray-900 drop-shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
               }`}>
               WaveLab
             </span>
@@ -183,12 +182,12 @@ const Header = () => {
                     <button
                       onClick={() => handleNavClick(item.href)}
                       className={`px-4 py-2 border-none bg-transparent cursor-pointer text-base font-semibold rounded-md transition-all duration-200 relative flex items-center gap-2 ${isActiveRoute(item.href)
-                          ? isDarkMode
-                            ? 'text-white bg-blue-900/30'
-                            : 'text-gray-900 bg-blue-100'
-                          : isDarkMode
-                            ? 'text-gray-100 hover:text-white hover:bg-gray-800'
-                            : 'text-gray-900 hover:text-blue-900 hover:bg-slate-50'
+                        ? isDarkMode
+                          ? 'text-white bg-blue-900/30'
+                          : 'text-gray-900 bg-blue-100'
+                        : isDarkMode
+                          ? 'text-gray-100 hover:text-white hover:bg-gray-800'
+                          : 'text-gray-900 hover:text-blue-900 hover:bg-slate-50'
                         }`}
                     >
                       {item.name}
@@ -206,8 +205,8 @@ const Header = () => {
                     {/* Chart Dropdown */}
                     {isChartDropdownOpen && (
                       <div className={`absolute top-full left-0 mt-2 w-[280px] rounded-xl backdrop-blur-2xl border shadow-2xl z-50 p-2 ${isDarkMode
-                          ? 'bg-slate-800/95 border-slate-600/50'
-                          : 'bg-white/95 border-gray-200/50'
+                        ? 'bg-slate-800/95 border-slate-600/50'
+                        : 'bg-white/95 border-gray-200/50'
                         }`}>
                         <div className={`px-4 py-3 mb-2 border-b ${isDarkMode ? 'border-white/20' : 'border-gray-200'
                           }`}>
@@ -229,10 +228,10 @@ const Header = () => {
                               key={type.id}
                               onClick={() => handleChartTypeSelect(type.id)}
                               className={`w-full flex items-center gap-3 p-3 rounded-lg border-none cursor-pointer transition-all duration-200 mb-1 ${isActive
-                                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg scale-[1.02]'
-                                  : isDarkMode
-                                    ? 'bg-transparent text-gray-100 hover:bg-slate-700/70 hover:text-white hover:shadow-md hover:scale-[1.02]'
-                                    : 'bg-transparent text-gray-800 hover:bg-blue-50 hover:text-blue-900 hover:shadow-md hover:scale-[1.02]'
+                                ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg scale-[1.02]'
+                                : isDarkMode
+                                  ? 'bg-transparent text-gray-100 hover:bg-slate-700/70 hover:text-white hover:shadow-md hover:scale-[1.02]'
+                                  : 'bg-transparent text-gray-800 hover:bg-blue-50 hover:text-blue-900 hover:shadow-md hover:scale-[1.02]'
                                 }`}
                             >
                               <Icon size={18} className={isActive ? 'text-white' : ''} />
@@ -242,10 +241,10 @@ const Header = () => {
                                   {type.name}
                                 </div>
                                 <div className={`text-xs ${isActive
-                                    ? 'text-white/90'
-                                    : isDarkMode
-                                      ? 'text-gray-300'
-                                      : 'text-gray-600'
+                                  ? 'text-white/90'
+                                  : isDarkMode
+                                    ? 'text-gray-300'
+                                    : 'text-gray-600'
                                   }`}>
                                   {type.description}
                                 </div>
@@ -263,12 +262,12 @@ const Header = () => {
                   <button
                     onClick={() => handleNavClick(item.href)}
                     className={`px-4 py-2 border-none bg-transparent cursor-pointer text-base font-semibold rounded-md transition-all duration-200 relative ${isActiveRoute(item.href)
-                        ? isDarkMode
-                          ? 'text-white bg-blue-900/30'
-                          : 'text-gray-900 bg-blue-100'
-                        : isDarkMode
-                          ? 'text-gray-100 hover:text-white hover:bg-gray-800'
-                          : 'text-gray-900 hover:text-blue-900 hover:bg-slate-50'
+                      ? isDarkMode
+                        ? 'text-white bg-blue-900/30'
+                        : 'text-gray-900 bg-blue-100'
+                      : isDarkMode
+                        ? 'text-gray-100 hover:text-white hover:bg-gray-800'
+                        : 'text-gray-900 hover:text-blue-900 hover:bg-slate-50'
                       }`}
                   >
                     {item.name}
@@ -288,8 +287,8 @@ const Header = () => {
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               className={`rounded-xl p-3 cursor-pointer transition-all duration-300 flex items-center justify-center backdrop-blur-xl border ${isDarkMode
-                  ? 'bg-gray-800/80 border-gray-600/30 hover:bg-gray-800 hover:border-gray-600/40'
-                  : 'bg-white/90 border-white/20 hover:bg-white hover:border-gray-200/30'
+                ? 'bg-gray-800/80 border-gray-600/30 hover:bg-gray-800 hover:border-gray-600/40'
+                : 'bg-white/90 border-white/20 hover:bg-white hover:border-gray-200/30'
                 } hover:-translate-y-0.5 hover:scale-105 active:translate-y-0 active:scale-95`}
             >
               {isDarkMode ? (
@@ -313,8 +312,8 @@ const Header = () => {
                 <button
                   onClick={toggleUserDropdown}
                   className={`flex items-center gap-2 px-3 py-2 border-none cursor-pointer rounded-lg transition-all duration-200 ${isUserDropdownOpen
-                      ? isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                      : 'bg-transparent'
+                    ? isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+                    : 'bg-transparent'
                     } ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                 >
                   <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
@@ -399,8 +398,8 @@ const Header = () => {
             <button
               onClick={toggleMobileMenu}
               className={`md:hidden rounded-xl p-3 cursor-pointer transition-all duration-300 backdrop-blur-xl border flex items-center justify-center ${isDarkMode
-                  ? 'bg-gray-800/80 border-gray-600/30 text-gray-300 hover:text-white hover:bg-gray-800'
-                  : 'bg-white/90 border-white/20 text-gray-600 hover:text-gray-900 hover:bg-white'
+                ? 'bg-gray-800/80 border-gray-600/30 text-gray-300 hover:text-white hover:bg-gray-800'
+                : 'bg-white/90 border-white/20 text-gray-600 hover:text-gray-900 hover:bg-white'
                 } hover:-translate-y-0.5 hover:scale-105`}
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -422,12 +421,12 @@ const Header = () => {
                   <button
                     onClick={() => setIsChartDropdownOpen(!isChartDropdownOpen)}
                     className={`text-xl px-4 py-3 w-full text-left flex items-center justify-between border-none bg-transparent cursor-pointer font-medium rounded-md transition-all duration-200 ${isActiveRoute(item.href)
-                        ? isDarkMode
-                          ? 'text-blue-400 bg-blue-900/20'
-                          : 'text-blue-600 bg-blue-100'
-                        : isDarkMode
-                          ? 'text-gray-300 hover:text-blue-300 hover:bg-gray-800'
-                          : 'text-gray-700 hover:text-blue-800 hover:bg-slate-50'
+                      ? isDarkMode
+                        ? 'text-blue-400 bg-blue-900/20'
+                        : 'text-blue-600 bg-blue-100'
+                      : isDarkMode
+                        ? 'text-gray-300 hover:text-blue-300 hover:bg-gray-800'
+                        : 'text-gray-700 hover:text-blue-800 hover:bg-slate-50'
                       }`}
                   >
                     {item.name}
@@ -447,10 +446,10 @@ const Header = () => {
                             key={type.id}
                             onClick={() => handleChartTypeSelect(type.id)}
                             className={`w-full flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 text-left border-none ${isActive
-                                ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg scale-[1.02]'
-                                : isDarkMode
-                                  ? 'bg-transparent text-gray-100 hover:bg-slate-700/70 hover:text-white hover:shadow-md hover:scale-[1.02]'
-                                  : 'bg-transparent text-gray-800 hover:bg-blue-50 hover:text-blue-900 hover:shadow-md hover:scale-[1.02]'
+                              ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg scale-[1.02]'
+                              : isDarkMode
+                                ? 'bg-transparent text-gray-100 hover:bg-slate-700/70 hover:text-white hover:shadow-md hover:scale-[1.02]'
+                                : 'bg-transparent text-gray-800 hover:bg-blue-50 hover:text-blue-900 hover:shadow-md hover:scale-[1.02]'
                               }`}
                           >
                             <Icon size={18} className={isActive ? 'text-white' : ''} />
@@ -460,10 +459,10 @@ const Header = () => {
                                 {type.name}
                               </div>
                               <div className={`text-xs ${isActive
-                                  ? 'text-white/90'
-                                  : isDarkMode
-                                    ? 'text-gray-300'
-                                    : 'text-gray-600'
+                                ? 'text-white/90'
+                                : isDarkMode
+                                  ? 'text-gray-300'
+                                  : 'text-gray-600'
                                 }`}>
                                 {type.description}
                               </div>
@@ -478,12 +477,12 @@ const Header = () => {
                 <button
                   onClick={() => handleNavClick(item.href)}
                   className={`text-xl px-4 py-3 w-full text-left border-none bg-transparent cursor-pointer font-medium rounded-md transition-all duration-200 relative ${isActiveRoute(item.href)
-                      ? isDarkMode
-                        ? 'text-blue-400 bg-blue-900/20 before:content-[""] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-5 before:bg-blue-400 before:rounded-r-sm'
-                        : 'text-blue-600 bg-blue-100 before:content-[""] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-5 before:bg-blue-600 before:rounded-r-sm'
-                      : isDarkMode
-                        ? 'text-gray-300 hover:text-blue-300 hover:bg-gray-800'
-                        : 'text-gray-700 hover:text-blue-800 hover:bg-slate-50'
+                    ? isDarkMode
+                      ? 'text-blue-400 bg-blue-900/20 before:content-[""] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-5 before:bg-blue-400 before:rounded-r-sm'
+                      : 'text-blue-600 bg-blue-100 before:content-[""] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-5 before:bg-blue-600 before:rounded-r-sm'
+                    : isDarkMode
+                      ? 'text-gray-300 hover:text-blue-300 hover:bg-gray-800'
+                      : 'text-gray-700 hover:text-blue-800 hover:bg-slate-50'
                     }`}
                 >
                   {item.name}

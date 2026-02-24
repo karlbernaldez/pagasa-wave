@@ -1,8 +1,71 @@
 import bcrypt from 'bcryptjs';
-import cookie from 'cookie';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import Session from '../models/Session.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwtUtils.js';
+
+const ACCESS_COOKIE_MAX_AGE_MS = 60 * 60 * 1000;
+const REFRESH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+const hashToken = (token) =>
+  crypto.createHash('sha256').update(token).digest('hex');
+
+const setAuthCookies = (res, accessToken, refreshToken) => {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+    path: '/',
+  };
+
+  res.cookie('accessToken', accessToken, {
+    ...cookieOptions,
+    maxAge: ACCESS_COOKIE_MAX_AGE_MS,
+  });
+
+  res.cookie('refreshToken', refreshToken, {
+    ...cookieOptions,
+    maxAge: REFRESH_COOKIE_MAX_AGE_MS,
+  });
+};
+
+const clearAuthCookies = (res) => {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+    path: '/',
+  };
+
+  res.clearCookie('accessToken', cookieOptions);
+  res.clearCookie('refreshToken', cookieOptions);
+};
+
+const buildAuthPayload = (user) => ({
+  id: user._id,
+  email: user.email,
+  username: user.username,
+  role: user.role,
+});
+
+const createSession = async ({ refreshToken, userId, jti, req }) => {
+  const decodedRefresh = jwt.decode(refreshToken);
+
+  if (!decodedRefresh?.exp) {
+    throw new Error('Invalid refresh token payload');
+  }
+
+  return Session.create({
+    user: userId,
+    jti,
+    tokenHash: hashToken(refreshToken),
+    userAgent: req.get('user-agent') || '',
+    ip: req.ip || '',
+    expiresAt: new Date(decodedRefresh.exp * 1000),
+  });
+};
+
 
 export const registerUser = async (req, res) => {
   try {
@@ -95,35 +158,14 @@ export const loginUser = async (req, res) => {
     user.status = 'Active';  // Set status to active on successful login
     await user.save();
 
-    // Create payload including the user role
-    const payload = {
-      id: user._id,
-      email: user.email,
-      username: user.username,
-      role: user.role,
-    };
-
-    // Generate tokens
+    const payload = buildAuthPayload(user);
     const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+    const jti = crypto.randomUUID();
+    const refreshToken = generateRefreshToken(payload, { jwtid: jti });
 
-    // Set HttpOnly cookie
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',                    
-    });
+    await createSession({ refreshToken, userId: user._id, jti, req });
 
-    // Similarly for accessToken:
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      maxAge: 60 * 60 * 1000,
-      path: '/',
-    });
+    setAuthCookies(res, accessToken, refreshToken);
 
     // Send response with the access token, refresh token, and user details
     res.status(200).json({
@@ -155,30 +197,45 @@ export const refreshAccessToken = async (req, res) => {
   try {
     // Verify the refresh token
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const { id: userId, jti } = decoded;
+
+    if (!userId || !jti) {
+      return res.status(403).json({ message: 'Invalid refresh token payload.' });
+    }
+
+    const session = await Session.findOne({ user: userId, jti, revokedAt: null });
+    if (!session) {
+      return res.status(403).json({ message: 'Refresh session not found or revoked.' });
+    }
+
+    if (session.tokenHash !== hashToken(refreshToken)) {
+      session.revokedAt = new Date();
+      await session.save();
+      return res.status(403).json({ message: 'Refresh token mismatch. Session revoked.' });
+    }
 
     // Find the user using the decoded token data
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(userId);
     if (!user) {
+      session.revokedAt = new Date();
+      await session.save();
       return res.status(403).json({ message: 'User not found.' });
     }
 
     // Generate a new access token
-    const newAccessToken = generateAccessToken({
-      id: user._id,
-      email: user.email,
-      username: user.username,
-      role: user.role,
-    });
+    session.revokedAt = new Date();
+    await session.save();
 
-    res.cookie('accessToken', newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      maxAge: 16 * 60 * 1000, // 15 minutes
-      path: '/',
-    });
+    const payload = buildAuthPayload(user);
+    const newAccessToken = generateAccessToken(payload);
+    const newJti = crypto.randomUUID();
+    const newRefreshToken = generateRefreshToken(payload, { jwtid: newJti });
 
     // Send the new access token in the response body (optional)
+    await createSession({ refreshToken: newRefreshToken, userId: user._id, jti: newJti, req });
+
+    setAuthCookies(res, newAccessToken, newRefreshToken);
+
     return res.status(200).json({ accessToken: newAccessToken });
 
   } catch (err) {
@@ -189,19 +246,23 @@ export const refreshAccessToken = async (req, res) => {
 
 export const logoutUser = async (req, res) => {
   try {
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // true in production, false in dev/local
-      sameSite: 'Strict',
-      path: '/', // must match the cookie's original path
-    });
+    const refreshToken = req.cookies.refreshToken;
 
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      path: '/',
-    });
+    if (refreshToken) {
+      try {
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        if (decoded?.id && decoded?.jti) {
+          await Session.updateOne(
+            { user: decoded.id, jti: decoded.jti, revokedAt: null },
+            { $set: { revokedAt: new Date() } }
+          );
+        }
+      } catch (error) {
+        console.warn('Failed to verify refresh token during logout:', error.message);
+      }
+    }
+
+    clearAuthCookies(res);
 
     res.status(200).json({ message: 'Logged out successfully' });
   } catch (err) {

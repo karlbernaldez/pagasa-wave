@@ -1,119 +1,201 @@
 const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
-console.log('Auth API Base URL:', AUTH_API_BASE_URL); // Debugging log
+const AUTH_CACHE_TTL_MS = 1500;
 
-export const registerUser = async(userData) => {
-    const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
+let refreshInFlight = null;
+let authCheckInFlight = null;
+let authCache = {
+  value: null,
+  ts: 0,
+};
+
+const setAuthCache = (value) => {
+  authCache = {
+    value,
+    ts: Date.now(),
+  };
+  return value;
+};
+
+const getCachedAuth = () => {
+  if (!authCache.value) return null;
+  if (Date.now() - authCache.ts > AUTH_CACHE_TTL_MS) return null;
+  return authCache.value;
+};
+
+export const registerUser = async (userData) => {
+  const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Registration failed');
+  }
+
+  return response.json();
+};
+
+export const loginUser = async (credentials) => {
+  try {
+    const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+      credentials: 'include',
     });
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Registration failed');
+      const error = await response.json();
+      throw new Error(error.message || 'Login failed. Please check your credentials.');
     }
 
-    return response.json();
+    authCache = { value: null, ts: 0 };
+    return await response.json();
+  } catch (error) {
+    console.error('Login Error:', error);
+    throw new Error(error.message || 'Something went wrong during login.');
+  }
 };
 
-export const loginUser = async(credentials) => {
+export const refreshAccessToken = async () => {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
     try {
-        const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(credentials),
-            credentials: 'include', // Ensure cookies are included in the request
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Login failed. Please check your credentials.');
-        }
-
-        return await response.json(); // Contains token or user data
-    } catch (error) {
-        console.error('Login Error:', error); // Log for debugging
-        throw new Error(error.message || 'Something went wrong during login.');
-    }
-};
-
-export const refreshAccessToken = async() => {
-    try {
-        const response = await fetch(`${AUTH_API_BASE_URL}/refresh-token`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-        });
-
-        if (!response.ok) {
-            console.error(`Failed to refresh access token. Status: ${response.status}`);
-            const errorData = await response.json();
-            console.error('Error details:', errorData);
-            throw new Error(`Failed to refresh access token. ${errorData.message || response.statusText}`);
-        }
-
-        const data = await response.json();
-        return data.accessToken;
-    } catch (err) {
-        console.error('Error refreshing access token:', err);
-        return null;
-    }
-};
-
-export const fetchWithAuth = async(url, options = {}) => {
-    let accessToken = localStorage.getItem('authToken');
-    if (!accessToken) {
-        throw new Error('No access token found.');
-    }
-
-    const response = await fetch(url, {
-        ...options,
+      const response = await fetch(`${AUTH_API_BASE_URL}/refresh-token`, {
+        method: 'POST',
         headers: {
-            ...options.headers,
-            'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
-        credentials: 'include', // Ensure cookies are included
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Failed to refresh access token. ${errorData.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      authCache = { value: null, ts: 0 };
+      return data.accessToken;
+    } catch (err) {
+      console.error('Error refreshing access token:', err);
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+};
+
+const fetchAuthCheck = async () => {
+  const res = await fetch(`${AUTH_API_BASE_URL}/check`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    return { ok: false, status: res.status, data: null };
+  }
+
+  const data = await res.json();
+  return { ok: true, status: res.status, data };
+};
+
+export const checkAuthSession = async ({ force = false } = {}) => {
+  if (!force) {
+    const cached = getCachedAuth();
+    if (cached) return cached;
+    if (authCheckInFlight) return authCheckInFlight;
+  }
+
+  authCheckInFlight = (async () => {
+    const initial = await fetchAuthCheck();
+
+    if (initial.ok) {
+      return setAuthCache({
+        authenticated: true,
+        user: initial.data?.user || null,
+      });
+    }
+
+    if (initial.status === 403) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        const retried = await fetchAuthCheck();
+        if (retried.ok) {
+          return setAuthCache({
+            authenticated: true,
+            user: retried.data?.user || null,
+          });
+        }
+      }
+    }
+
+    return setAuthCache({ authenticated: false, user: null });
+  })();
+
+  try {
+    return await authCheckInFlight;
+  } finally {
+    authCheckInFlight = null;
+  }
+};
+
+export const fetchWithAuth = async (url, options = {}) => {
+  let accessToken = localStorage.getItem('authToken');
+  if (!accessToken) {
+    throw new Error('No access token found.');
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    credentials: 'include',
+  });
+
+  if (response.status === 401) {
+    accessToken = await refreshAccessToken();
+    if (!accessToken) {
+      throw new Error('Unable to refresh token. Please log in again.');
+    }
+
+    return fetchWithAuth(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  return response;
+};
+
+export const logoutUser = async () => {
+  try {
+    const response = await fetch(`${AUTH_API_BASE_URL}/logout`, {
+      method: 'POST',
+      credentials: 'include',
     });
 
-    // If the token is expired (401), refresh it
-    if (response.status === 401) {
-        try {
-            accessToken = await refreshAccessToken();
-            return fetchWithAuth(url, {
-                ...options,
-                headers: {
-                    ...options.headers,
-                    'Authorization': `Bearer ${accessToken}`,
-                },
-            });
-        } catch (err) {
-            throw new Error('Unable to refresh token. Please log in again.');
-        }
+    localStorage.clear();
+    authCache = { value: null, ts: 0 };
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => null);
+      throw new Error(errData?.message || 'Failed to logout on server');
     }
 
-    return response;
-};
-
-export const logoutUser = async() => {
-    try {
-        const response = await fetch(`${AUTH_API_BASE_URL}/logout`, {
-            method: 'POST',
-            credentials: 'include',
-        });
-
-        // Clear local storage (optional, depending on what you're storing)
-        localStorage.clear();
-
-        if (!response.ok) {
-            const errData = await response.json().catch(() => null);
-            throw new Error(errData.message || 'Failed to logout on server');
-        }
-
-        window.location.href = '/login';
-    } catch (error) {
-        console.error('Error during logout:', error.message || error);
-        alert('Logout failed. Please try again.');
-    }
+    window.location.href = '/login';
+  } catch (error) {
+    console.error('Error during logout:', error.message || error);
+    alert('Logout failed. Please try again.');
+  }
 };
