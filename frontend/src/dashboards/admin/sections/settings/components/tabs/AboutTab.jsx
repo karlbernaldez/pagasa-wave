@@ -11,9 +11,8 @@ import { SortableDnD } from '../ui/Sortable';
 /* ─── tiny local helpers ──────────────────────────────────── */
 
 const SectionLabel = ({ children, dark }) => (
-  <p className={`text-[10px] font-black uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5 ${
-    dark ? 'text-slate-400' : 'text-slate-500'
-  }`}>
+  <p className={`text-[10px] font-black uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'
+    }`}>
     <span className={`inline-block w-4 h-px ${dark ? 'bg-slate-600' : 'bg-slate-300'}`} />
     {children}
     <span className={`flex-1 h-px ${dark ? 'bg-slate-700' : 'bg-slate-200'}`} />
@@ -21,20 +20,18 @@ const SectionLabel = ({ children, dark }) => (
 );
 
 const InfoPanel = ({ dark, children }) => (
-  <div className={`rounded-2xl border p-4 transition-colors ${
-    dark
+  <div className={`rounded-2xl border p-4 transition-colors ${dark
       ? 'border-slate-700/60 bg-slate-800/40 backdrop-blur-sm'
       : 'border-slate-200 bg-slate-50/80'
-  }`}>
+    }`}>
     {children}
   </div>
 );
 
 const AvatarPreview = ({ src, alt, dark }) =>
   src ? (
-    <div className={`flex items-center gap-3 mt-2 py-2 px-3 rounded-xl border ${
-      dark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white'
-    }`}>
+    <div className={`flex items-center gap-3 mt-2 py-2 px-3 rounded-xl border ${dark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white'
+      }`}>
       <img
         src={src}
         alt={alt}
@@ -108,18 +105,16 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
 
                 {/* Live preview */}
                 {(s.titlePrefix || s.titleHighlight || s.titleSuffix) && (
-                  <p className={`text-sm font-semibold mb-3 leading-snug ${
-                    dark ? 'text-slate-300' : 'text-slate-700'
-                  }`}>
+                  <p className={`text-sm font-semibold mb-3 leading-snug ${dark ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
                     {s.titlePrefix && (
                       <span>{s.titlePrefix} </span>
                     )}
                     {s.titleHighlight && (
-                      <span className={`px-1 rounded ${
-                        dark
+                      <span className={`px-1 rounded ${dark
                           ? 'bg-blue-500/20 text-blue-300'
                           : 'bg-blue-100 text-blue-700'
-                      }`}>
+                        }`}>
                         {s.titleHighlight}
                       </span>
                     )}
@@ -171,28 +166,24 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
 
               {/* Primary */}
-              <div className={`rounded-xl p-3 border ${
-                dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white'
-              }`}>
-                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${
-                  dark ? 'text-blue-400' : 'text-blue-600'
-                }`}>Primary</p>
+              <div className={`rounded-xl p-3 border ${dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white'
+                }`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${dark ? 'text-blue-400' : 'text-blue-600'
+                  }`}>Primary</p>
                 <div className="flex flex-col gap-2">
                   <Field label="Label" value={s.ctaPrimaryLabel ?? ''} onChange={set('ctaPrimaryLabel')} dark={dark} />
-                  <Field label="Link"  value={s.ctaPrimaryLink  ?? ''} onChange={set('ctaPrimaryLink')}  dark={dark} />
+                  <Field label="Link" value={s.ctaPrimaryLink ?? ''} onChange={set('ctaPrimaryLink')} dark={dark} />
                 </div>
               </div>
 
               {/* Secondary */}
-              <div className={`rounded-xl p-3 border ${
-                dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white'
-              }`}>
-                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${
-                  dark ? 'text-slate-400' : 'text-slate-500'
-                }`}>Secondary</p>
+              <div className={`rounded-xl p-3 border ${dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white'
+                }`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${dark ? 'text-slate-400' : 'text-slate-500'
+                  }`}>Secondary</p>
                 <div className="flex flex-col gap-2">
                   <Field label="Label" value={s.ctaSecondaryLabel ?? ''} onChange={set('ctaSecondaryLabel')} dark={dark} />
-                  <Field label="Link"  value={s.ctaSecondaryLink  ?? ''} onChange={set('ctaSecondaryLink')}  dark={dark} />
+                  <Field label="Link" value={s.ctaSecondaryLink ?? ''} onChange={set('ctaSecondaryLink')} dark={dark} />
                 </div>
               </div>
 
@@ -211,11 +202,11 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             strategy="list"
             onReorder={(next) => reorderArray('stats', next)}
             className="flex flex-col gap-2"
-            renderItem={(stat) => (
-              <ArrayRow key={stat.id} onRemove={() => removeArrayItem('stats', stat.id)} dark={dark}>
+            renderItem={(stat, sortableProps) => (
+              <ArrayRow key={stat.id} onRemove={() => removeArrayItem('stats', stat.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="grid grid-cols-3 gap-3">
-                  <Field label="Number"   value={stat.number   ?? ''} onChange={(v) => updateArrayItem('stats', stat.id, { number:   v })} dark={dark} />
-                  <Field label="Label"    value={stat.label    ?? ''} onChange={(v) => updateArrayItem('stats', stat.id, { label:    v })} dark={dark} />
+                  <Field label="Number" value={stat.number ?? ''} onChange={(v) => updateArrayItem('stats', stat.id, { number: v })} dark={dark} />
+                  <Field label="Label" value={stat.label ?? ''} onChange={(v) => updateArrayItem('stats', stat.id, { label: v })} dark={dark} />
                   <Field label="Sublabel" value={stat.sublabel ?? ''} onChange={(v) => updateArrayItem('stats', stat.id, { sublabel: v })} dark={dark} />
                 </div>
               </ArrayRow>
@@ -234,8 +225,8 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             strategy="list"
             onReorder={(next) => reorderArray('highlights', next)}
             className="flex flex-col gap-2"
-            renderItem={(h) => (
-              <ArrayRow key={h.id} onRemove={() => removeArrayItem('highlights', h.id)} dark={dark}>
+            renderItem={(h, sortableProps) => (
+              <ArrayRow key={h.id} onRemove={() => removeArrayItem('highlights', h.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="flex flex-col gap-3">
                   <Field label="Title" value={h.title ?? ''} onChange={(v) => updateArrayItem('highlights', h.id, { title: v })} dark={dark} />
                   <TextareaField label="Description" value={h.description ?? ''} onChange={(v) => updateArrayItem('highlights', h.id, { description: v })} rows={3} dark={dark} />
@@ -256,8 +247,8 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             strategy="list"
             onReorder={(next) => reorderArray('programObjectives', next)}
             className="flex flex-col gap-2"
-            renderItem={(obj) => (
-              <ArrayRow key={obj.id} onRemove={() => removeArrayItem('programObjectives', obj.id)} dark={dark}>
+            renderItem={(obj, sortableProps) => (
+              <ArrayRow key={obj.id} onRemove={() => removeArrayItem('programObjectives', obj.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="flex flex-col gap-3">
                   <Field label="Title" value={obj.title ?? ''} onChange={(v) => updateArrayItem('programObjectives', obj.id, { title: v })} dark={dark} />
                   <TextareaField label="Description" value={obj.description ?? ''} onChange={(v) => updateArrayItem('programObjectives', obj.id, { description: v })} rows={2} dark={dark} />
@@ -278,8 +269,8 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             strategy="list"
             onReorder={(next) => reorderArray('pillars', next)}
             className="flex flex-col gap-2"
-            renderItem={(pillar) => (
-              <ArrayRow key={pillar.id} onRemove={() => removeArrayItem('pillars', pillar.id)} dark={dark}>
+            renderItem={(pillar, sortableProps) => (
+              <ArrayRow key={pillar.id} onRemove={() => removeArrayItem('pillars', pillar.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="flex flex-col gap-3">
                   <Field label="Title" value={pillar.title ?? ''} onChange={(v) => updateArrayItem('pillars', pillar.id, { title: v })} dark={dark} />
                   <TextareaField label="Description" value={pillar.description ?? ''} onChange={(v) => updateArrayItem('pillars', pillar.id, { description: v })} rows={2} dark={dark} />
@@ -300,8 +291,8 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             strategy="list"
             onReorder={(next) => reorderArray('milestones', next)}
             className="flex flex-col gap-2"
-            renderItem={(ms) => (
-              <ArrayRow key={ms.id} onRemove={() => removeArrayItem('milestones', ms.id)} dark={dark}>
+            renderItem={(ms, sortableProps) => (
+              <ArrayRow key={ms.id} onRemove={() => removeArrayItem('milestones', ms.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="flex flex-col gap-3">
 
                   {/* Year + title in a 1:2 split, collapses to stacked on mobile */}
@@ -347,14 +338,14 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             strategy="list"
             onReorder={(next) => reorderArray('leaders', next)}
             className="flex flex-col gap-2"
-            renderItem={(leader) => (
-              <ArrayRow key={leader.id} onRemove={() => removeArrayItem('leaders', leader.id)} dark={dark}>
+            renderItem={(leader, sortableProps) => (
+              <ArrayRow key={leader.id} onRemove={() => removeArrayItem('leaders', leader.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="flex flex-col gap-3">
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Field label="Full Name"   value={leader.name   ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { name:   v })} dark={dark} />
-                    <Field label="Role / Title" value={leader.role  ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { role:   v })} dark={dark} />
-                    <Field label="Avatar URL"  value={leader.avatar ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { avatar: v })} dark={dark} />
+                    <Field label="Full Name" value={leader.name ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { name: v })} dark={dark} />
+                    <Field label="Role / Title" value={leader.role ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { role: v })} dark={dark} />
+                    <Field label="Avatar URL" value={leader.avatar ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { avatar: v })} dark={dark} />
                   </div>
 
                   <AvatarPreview src={leader.avatar} alt={leader.name} dark={dark} />
@@ -376,24 +367,22 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             strategy="list"
             onReorder={(next) => reorderArray('partners', next)}
             className="flex flex-col gap-2"
-            renderItem={(partner) => (
-              <ArrayRow key={partner.id} onRemove={() => removeArrayItem('partners', partner.id)} dark={dark}>
+            renderItem={(partner, sortableProps) => (
+              <ArrayRow key={partner.id} onRemove={() => removeArrayItem('partners', partner.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="flex flex-col gap-3">
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Field label="Agency Name" value={partner.name ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { name: v })} dark={dark} />
-                    <Field label="Logo URL"    value={partner.logo ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { logo: v })} dark={dark} />
-                    <Field label="Website"     value={partner.link ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { link: v })} dark={dark} />
+                    <Field label="Logo URL" value={partner.logo ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { logo: v })} dark={dark} />
+                    <Field label="Website" value={partner.link ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { link: v })} dark={dark} />
                   </div>
 
                   {/* logo preview — wider variant for logos */}
                   {partner.logo && (
-                    <div className={`flex items-center gap-3 mt-1 py-2 px-3 rounded-xl border ${
-                      dark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white'
-                    }`}>
-                      <div className={`flex items-center justify-center h-9 w-16 rounded-lg border overflow-hidden ${
-                        dark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'
+                    <div className={`flex items-center gap-3 mt-1 py-2 px-3 rounded-xl border ${dark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white'
                       }`}>
+                      <div className={`flex items-center justify-center h-9 w-16 rounded-lg border overflow-hidden ${dark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'
+                        }`}>
                         <img
                           src={partner.logo}
                           alt={partner.name}
@@ -410,9 +399,8 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
                             href={partner.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`text-[10px] underline underline-offset-2 truncate max-w-[180px] inline-block ${
-                              dark ? 'text-blue-400' : 'text-blue-500'
-                            }`}
+                            className={`text-[10px] underline underline-offset-2 truncate max-w-[180px] inline-block ${dark ? 'text-blue-400' : 'text-blue-500'
+                              }`}
                           >
                             {partner.link}
                           </a>
@@ -448,7 +436,7 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             <SectionLabel dark={dark}>Button</SectionLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Label" value={s.ctaButtonLabel ?? ''} onChange={set('ctaButtonLabel')} dark={dark} />
-              <Field label="Link"  value={s.ctaButtonLink  ?? ''} onChange={set('ctaButtonLink')}  dark={dark} />
+              <Field label="Link" value={s.ctaButtonLink ?? ''} onChange={set('ctaButtonLink')} dark={dark} />
             </div>
           </InfoPanel>
 

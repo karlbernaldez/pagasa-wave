@@ -16,34 +16,34 @@ const ContactTab = ({ settings = {}, setSettings, dark }) => {
      FIELD SETTER (same as General/About)
   ========================================================= */
 
-  const setField = (key)=>(value)=>
-    setSettings(prev=>({...prev,[key]:value}));
+  const setField = (key) => (value) =>
+    setSettings(prev => ({ ...prev, [key]: value }));
 
 
   /* =========================================================
      ARRAY HELPERS (IMMUTABLE)
   ========================================================= */
 
-  const updateArrayItem=(key,id,patch)=>
-    setSettings(prev=>({
+  const updateArrayItem = (key, id, patch) =>
+    setSettings(prev => ({
       ...prev,
-      [key]:(prev[key]??[]).map(it=>it.id===id?{...it,...patch}:it)
+      [key]: (prev[key] ?? []).map(it => it.id === id ? { ...it, ...patch } : it)
     }));
 
-  const removeArrayItem=(key,id)=>
-    setSettings(prev=>({
+  const removeArrayItem = (key, id) =>
+    setSettings(prev => ({
       ...prev,
-      [key]:(prev[key]??[]).filter(it=>it.id!==id)
+      [key]: (prev[key] ?? []).filter(it => it.id !== id)
     }));
 
-  const addArrayItem=(key,item)=>
-    setSettings(prev=>({
+  const addArrayItem = (key, item) =>
+    setSettings(prev => ({
       ...prev,
-      [key]:[...(prev[key]??[]),{id:crypto.randomUUID(),...item}]
+      [key]: [...(prev[key] ?? []), { id: crypto.randomUUID(), ...item }]
     }));
 
-  const reorderArray=(key,next)=>
-    setSettings(prev=>({...prev,[key]:next}));
+  const reorderArray = (key, next) =>
+    setSettings(prev => ({ ...prev, [key]: next }));
 
 
   return (
@@ -95,37 +95,38 @@ const ContactTab = ({ settings = {}, setSettings, dark }) => {
         <SortableDnD
           items={s.contactCards ?? []}
           strategy="list"
-          onReorder={(next)=>reorderArray('contactCards',next)}
+          onReorder={(next) => reorderArray('contactCards', next)}
           className="flex flex-col gap-3"
-          renderItem={(card)=>(
+          renderItem={(card, sortableProps) => (
 
             <ArrayRow key={card.id}
-              onRemove={()=>removeArrayItem('contactCards',card.id)}
+              onRemove={() => removeArrayItem('contactCards', card.id)}
               dark={dark}
+              dragHandleProps={sortableProps.dragHandleProps}
             >
 
               <div className="grid md:grid-cols-2 gap-3">
 
                 <Field label="Title"
                   value={card.title ?? ''}
-                  onChange={(v)=>updateArrayItem('contactCards',card.id,{title:v})}
+                  onChange={(v) => updateArrayItem('contactCards', card.id, { title: v })}
                   dark={dark}
                 />
 
                 <Field label="Value"
                   value={card.value ?? ''}
-                  onChange={(v)=>updateArrayItem('contactCards',card.id,{value:v})}
+                  onChange={(v) => updateArrayItem('contactCards', card.id, { value: v })}
                   dark={dark}
                 />
 
                 <IconPicker value={card.icon ?? 'mail'}
-                  onChange={(v)=>updateArrayItem('contactCards',card.id,{icon:v})}
+                  onChange={(v) => updateArrayItem('contactCards', card.id, { icon: v })}
                   dark={dark}
                 />
 
                 <Field label="Gradient color classes"
                   value={card.color ?? ''}
-                  onChange={(v)=>updateArrayItem('contactCards',card.id,{color:v})}
+                  onChange={(v) => updateArrayItem('contactCards', card.id, { color: v })}
                   dark={dark}
                 />
 
@@ -133,7 +134,7 @@ const ContactTab = ({ settings = {}, setSettings, dark }) => {
 
               <TextareaField label="Description"
                 value={card.description ?? ''}
-                onChange={(v)=>updateArrayItem('contactCards',card.id,{description:v})}
+                onChange={(v) => updateArrayItem('contactCards', card.id, { description: v })}
                 rows={2}
                 dark={dark}
               />
@@ -143,12 +144,12 @@ const ContactTab = ({ settings = {}, setSettings, dark }) => {
         />
 
         <AddButton
-          onClick={()=>addArrayItem('contactCards',{
-            title:'',
-            description:'',
-            value:'',
-            icon:'mail',
-            color:'from-blue-500 to-cyan-500'
+          onClick={() => addArrayItem('contactCards', {
+            title: '',
+            description: '',
+            value: '',
+            icon: 'mail',
+            color: 'from-blue-500 to-cyan-500'
           })}
           label="Add Contact Card"
           dark={dark}
@@ -161,29 +162,30 @@ const ContactTab = ({ settings = {}, setSettings, dark }) => {
         <SortableDnD
           items={s.responseTargets ?? []}
           strategy="list"
-          onReorder={(next)=>reorderArray('responseTargets',next)}
+          onReorder={(next) => reorderArray('responseTargets', next)}
           className="flex flex-col gap-3"
-          renderItem={(target)=>(
+          renderItem={(target, sortableProps) => (
 
             <ArrayRow key={target.id}
-              onRemove={()=>removeArrayItem('responseTargets',target.id)}
+              onRemove={() => removeArrayItem('responseTargets', target.id)}
               dark={dark}
+              dragHandleProps={sortableProps.dragHandleProps}
             >
 
               <Field label="Type"
                 value={target.type ?? ''}
-                onChange={(v)=>updateArrayItem('responseTargets',target.id,{type:v})}
+                onChange={(v) => updateArrayItem('responseTargets', target.id, { type: v })}
                 dark={dark}
               />
 
               <Field label="Time"
                 value={target.time ?? ''}
-                onChange={(v)=>updateArrayItem('responseTargets',target.id,{time:v})}
+                onChange={(v) => updateArrayItem('responseTargets', target.id, { time: v })}
                 dark={dark}
               />
 
               <IconPicker value={target.icon ?? 'clock'}
-                onChange={(v)=>updateArrayItem('responseTargets',target.id,{icon:v})}
+                onChange={(v) => updateArrayItem('responseTargets', target.id, { icon: v })}
                 dark={dark}
               />
 
@@ -192,7 +194,7 @@ const ContactTab = ({ settings = {}, setSettings, dark }) => {
         />
 
         <AddButton
-          onClick={()=>addArrayItem('responseTargets',{type:'',time:'',icon:'clock'})}
+          onClick={() => addArrayItem('responseTargets', { type: '', time: '', icon: 'clock' })}
           label="Add Response Target"
           dark={dark}
         />
@@ -204,38 +206,39 @@ const ContactTab = ({ settings = {}, setSettings, dark }) => {
         <SortableDnD
           items={s.teamMembers ?? []}
           strategy="list"
-          onReorder={(next)=>reorderArray('teamMembers',next)}
+          onReorder={(next) => reorderArray('teamMembers', next)}
           className="flex flex-col gap-3"
-          renderItem={(member)=>(
+          renderItem={(member, sortableProps)=>(
 
             <ArrayRow key={member.id}
-              onRemove={()=>removeArrayItem('teamMembers',member.id)}
+              onRemove={() => removeArrayItem('teamMembers', member.id)}
               dark={dark}
+              dragHandleProps={sortableProps.dragHandleProps}
             >
 
               <div className="grid md:grid-cols-2 gap-3">
 
                 <Field label="Full Name"
                   value={member.name ?? ''}
-                  onChange={(v)=>updateArrayItem('teamMembers',member.id,{name:v})}
+                  onChange={(v) => updateArrayItem('teamMembers', member.id, { name: v })}
                   dark={dark}
                 />
 
                 <Field label="Role"
                   value={member.role ?? ''}
-                  onChange={(v)=>updateArrayItem('teamMembers',member.id,{role:v})}
+                  onChange={(v) => updateArrayItem('teamMembers', member.id, { role: v })}
                   dark={dark}
                 />
 
                 <Field label="Email"
                   value={member.email ?? ''}
-                  onChange={(v)=>updateArrayItem('teamMembers',member.id,{email:v})}
+                  onChange={(v) => updateArrayItem('teamMembers', member.id, { email: v })}
                   dark={dark}
                 />
 
                 <Field label="Phone"
                   value={member.phone ?? ''}
-                  onChange={(v)=>updateArrayItem('teamMembers',member.id,{phone:v})}
+                  onChange={(v) => updateArrayItem('teamMembers', member.id, { phone: v })}
                   dark={dark}
                 />
 
@@ -243,14 +246,14 @@ const ContactTab = ({ settings = {}, setSettings, dark }) => {
 
               <Field label="Avatar URL"
                 value={member.avatar ?? ''}
-                onChange={(v)=>updateArrayItem('teamMembers',member.id,{avatar:v})}
+                onChange={(v) => updateArrayItem('teamMembers', member.id, { avatar: v })}
                 dark={dark}
               />
 
               <div className="flex items-center gap-3 mt-2">
                 <img
                   src={member.avatar || FALLBACK_AVATAR}
-                  onError={(e)=>{e.currentTarget.src=FALLBACK_AVATAR}}
+                  onError={(e) => { e.currentTarget.src = FALLBACK_AVATAR }}
                   alt={member.name || 'avatar'}
                   className="h-12 w-12 rounded-lg object-cover border border-slate-300/30"
                 />
@@ -262,8 +265,8 @@ const ContactTab = ({ settings = {}, setSettings, dark }) => {
         />
 
         <AddButton
-          onClick={()=>addArrayItem('teamMembers',{
-            name:'',role:'',email:'',phone:'',avatar:''
+          onClick={() => addArrayItem('teamMembers', {
+            name: '', role: '', email: '', phone: '', avatar: ''
           })}
           label="Add Team Member"
           dark={dark}
