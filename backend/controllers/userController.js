@@ -62,7 +62,7 @@ export const updateUserDetails = async (req, res) => {
 
   const allowedFields = [
     'username', 'firstName', 'lastName', 'email',
-    'agency', 'position', 'contact', 'address', 'birthday'
+    'agency', 'position', 'contact', 'address', 'birthday', 
   ];
 
   const updates = {};

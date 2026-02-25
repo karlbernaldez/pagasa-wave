@@ -75,7 +75,8 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
   const initializedForId = useRef(null);
 
   const handleSave = async () => {
-    if (!formData?.id) return;
+    const userId = formData?.id ?? user?.id ?? user?._id;
+    if (!userId) return;
 
     try {
       setSaving(true);
@@ -85,11 +86,11 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
       // update status separately if changed
       if (formData.status !== user.status) {
-        updatedStatusUser = await updateUserStatusAPI(formData.id, formData.status);
+        updatedStatusUser = await updateUserStatusAPI(userId, formData.status);
       }
 
       // update allowed profile fields
-      const profileUpdated = await updateUserDetailsAPI(formData.id, {
+      const profileUpdated = await updateUserDetailsAPI(userId, {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
@@ -97,12 +98,14 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
         position: formData.position,
         contact: formData.contact,
         address: formData.address,
-        birthday: formData.birthday
+        birthday: formData.birthday,
+        role: formData.role,
       });
 
       const merged = {
         ...profileUpdated,
-        ...(updatedStatusUser ?? {})
+        ...(updatedStatusUser ?? {}),
+        id: profileUpdated?.id ?? updatedStatusUser?.id ?? profileUpdated?._id ?? updatedStatusUser?._id ?? userId,
       };
 
       onSave?.(merged);
@@ -144,7 +147,7 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
   /* ---------- STYLES ---------- */
 
-  const gradient = avatarGradient(fullName(user));
+  const gradient = avatarGradient(fullName(formData));
 
   const card = isDarkMode
     ? 'bg-slate-900 border border-slate-700/80 shadow-2xl shadow-black/60'
@@ -218,7 +221,7 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className={`font-semibold text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                    {fullName(user)}
+                    {fullName(formData)}
                   </p>
 
                   <StatusBadge status={formData.status} isDarkMode={isDarkMode} size="sm" />
@@ -234,21 +237,21 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
             {/* META */}
             <div className={`mt-3 pt-3 border-t space-y-1.5 ${divider}`}>
               <p className={`text-xs flex items-center gap-2 ${data}`}>
-                <Mail size={11} /> {user.email}
+                <Mail size={11} /> {formData.email || user.email}
               </p>
 
-              {user.contact &&
+              {(formData.contact || user.contact) &&
                 <p className={`text-xs flex items-center gap-2 ${data}`}>
-                  <Phone size={11} /> {user.contact}
+                  <Phone size={11} /> {formData.contact || user.contact}
                 </p>
               }
 
               <p className={`text-xs flex items-center gap-2 ${data}`}>
-                <Building2 size={11} /> {user.agency} · {user.position}
+                <Building2 size={11} /> {formData.agency || user.agency} · {formData.position || user.position}
               </p>
 
               <p className={`text-xs flex items-center gap-2 ${meta}`}>
-                <Clock size={11} /> Last login: {user.lastLogin}
+                <Clock size={11} /> Last login: {formData.lastLogin || user.lastLogin}
               </p>
             </div>
 

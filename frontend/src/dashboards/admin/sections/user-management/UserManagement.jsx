@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Plus, Users, UserCheck, Clock, Ban } from 'lucide-react';
 
 import { useUsers } from './hooks/useUsers';
@@ -7,6 +7,7 @@ import { UserTable } from './components/UserTable';
 import { AddUserModal } from './components/AddUserModal';
 import { ManageUserModal } from './components/ManageUserModal';
 import { RolesSection } from './components/RolesSection';
+import { STATUS_LABELS } from './constants';
 
 function StatCard({ icon: Icon, label, value, color, isDarkMode }) {
 
@@ -43,28 +44,38 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     newUser,
     setNewUser,
     createUser,
-    updateUser,
+    bulkUpdateUsers,
     resetNewUser,
-    deleteUser,
+    replaceUser,
   } = useUsers();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [manageUserId, setManageUserId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const { replaceUser } = useUsers();
 
-  const managedUser = users.find((u) => u.id === manageUserId) ?? null;
+  const managedUser = useMemo(
+    () => users.find(u => u.id === manageUserId) ?? null,
+    [users, manageUserId]
+  );
 
   // ✅ FIXED STATS (lowercase)
-  const stats = useMemo(() => ({
-    total: users.length,
-    active: users.filter(u => u.status === 'active').length,
-    pending: users.filter(u => u.status === 'pending').length,
-    suspended: users.filter(u => u.status === 'suspended').length,
-  }), [users]);
+  const stats = useMemo(() => {
+    const result = {
+      total: users.length,
+      active: 0,
+      pending: 0,
+      suspended: 0
+    };
 
-  const handleAddSubmit = () => {
-    const ok = createUser();
+    for (const u of users) {
+      if (result[u.status] !== undefined) result[u.status]++;
+    }
+
+    return result;
+  }, [users]);
+
+  const handleAddSubmit = async () => {
+    const ok = await createUser();
     if (ok) setIsAddModalOpen(false);
   };
 
@@ -73,48 +84,39 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     setIsAddModalOpen(false);
   };
 
-  const toggleSelect = (id) => {
+  const toggleSelect = useCallback((id) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
+  }, []);
 
-  const clearSelection = () => setSelectedIds(new Set());
-  const selectAll = (ids) => setSelectedIds(new Set(ids));
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+  const selectAll = useCallback((ids) => setSelectedIds(new Set(ids)), []);
 
   // ✅ FIXED BULK ACTIONS (lowercase)
-  const applyBulkAction = (action, payload) => {
-
-    selectedIds.forEach(id => {
-
-      switch (action) {
-
-        case 'suspend':
-          updateUser(id, 'status', 'suspended');
-          break;
-
-        case 'activate':
-          updateUser(id, 'status', 'active');
-          break;
-
-        case 'delete':
-          deleteUser(id);
-          break;
-
-        case 'role':
-          updateUser(id, 'role', payload);
-          break;
-
-        default:
-          break;
-      }
-
-    });
+  const applyBulkAction = useCallback((action, payload) => {
+    switch (action) {
+      case 'delete':
+        bulkUpdateUsers(selectedIds, 'delete');
+        break;
+      case 'activate':
+        bulkUpdateUsers(selectedIds, (user) => ({ ...user, status: 'active', statusLabel: STATUS_LABELS.active }));
+        break;
+      case 'suspend':
+        bulkUpdateUsers(selectedIds, (user) => ({ ...user, status: 'suspended', statusLabel: STATUS_LABELS.suspended }));
+        break;
+      case 'role':
+        bulkUpdateUsers(selectedIds, (user) => ({ ...user, role: payload }));
+        break;
+      default:
+        break;
+    }
 
     clearSelection();
-  };
+
+  }, [bulkUpdateUsers, clearSelection, selectedIds]);
 
   if (mode === 'roles') {
     return <RolesSection isDarkMode={isDarkMode} />;
@@ -169,7 +171,6 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
           <UserTable
             filteredUsers={filteredUsers}
             isDarkMode={isDarkMode}
-            onUpdateUser={updateUser}
             onManage={setManageUserId}
 
             selectedIds={selectedIds}
@@ -191,7 +192,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
         />
       )}
 
-      {manageUserId && managedUser && (
+      {manageUserId !== null && managedUser && (
         <ManageUserModal
           user={managedUser}
           isDarkMode={isDarkMode}
