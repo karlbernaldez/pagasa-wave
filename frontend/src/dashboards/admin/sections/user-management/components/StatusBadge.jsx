@@ -1,28 +1,43 @@
 import React from 'react';
-import { STATUS_CONFIG } from '../constants';
-
-// ─── StatusBadge ─────────────────────────────────────────────────────────────
+import { STATUS_CONFIG, STATUS_LABELS } from '../constants';
 
 /**
- * Renders an animated status dot + pill label.
- * @param {{ status: string, isDarkMode: boolean, size?: 'sm'|'md' }} props
+ * Animated status badge
+ * status: backend machine value ('active','pending',...)
  */
-export function StatusBadge({ status, isDarkMode, size = 'md' }) {
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG['Suspended'];
+export function StatusBadge({ status = 'pending', isDarkMode, size = 'md' }) {
+
+  const machine = status?.toLowerCase?.() || 'pending';
+
+  const cfg =
+    STATUS_CONFIG[machine] ??
+    STATUS_CONFIG['suspended']; // safe fallback
+
+  const label =
+    STATUS_LABELS?.[machine] ??
+    machine.charAt(0).toUpperCase() + machine.slice(1);
+
   const badgeClass = isDarkMode ? cfg.badge : cfg.badgeLight;
-  const textSize = size === 'sm' ? 'text-xs' : 'text-xs';
+  const textSize = 'text-xs';
   const px = size === 'sm' ? 'px-2 py-0.5' : 'px-2.5 py-1';
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full font-medium ${textSize} ${px} ${badgeClass}`}>
-      {/* Pulsing dot — only for Active */}
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full font-medium ${textSize} ${px} ${badgeClass}`}
+    >
+      {/* Pulsing dot only when active */}
       <span className="relative flex h-1.5 w-1.5">
-        {status === 'Active' && (
-          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${cfg.dot} opacity-75`} />
+        {machine === 'active' && (
+          <span
+            className={`animate-ping absolute inline-flex h-full w-full rounded-full ${cfg.dot} opacity-75`}
+          />
         )}
-        <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${cfg.dot}`} />
+        <span
+          className={`relative inline-flex rounded-full h-1.5 w-1.5 ${cfg.dot}`}
+        />
       </span>
-      {status}
+
+      {label}
     </span>
   );
 }
