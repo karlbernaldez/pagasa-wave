@@ -1,79 +1,140 @@
 import User from '../models/User.js';
 import moment from 'moment';
 
-// Get all users (for admin dashboard) 
+// GET ALL USERS
 export const getAllUsers = async (req, res) => {
-    try {
-        // Only select the fields you want
-        const users = await User.find().select('_id username firstName lastName email agency role position isApproved lastLogin');
+  try {
 
-        const formattedUsers = users.map(user => ({
-            ...user.toObject(),
-            lastLogin: user.lastLogin ? moment(user.lastLogin).fromNow() : 'Never'
-        }));
+    const users = await User.find()
+      .select('username firstName lastName contact email agency role position status lastLogin createdAt')
+      .lean();
 
-        res.status(200).json(formattedUsers);
-    } catch (err) {
-        res.status(500).json({ message: 'Error fetching users', error: err.message });
-    }
+    const formattedUsers = users.map(u => ({
+      id: u._id,
+      username: u.username,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      contact: u.contact,
+      email: u.email,
+      agency: u.agency,
+      role: u.role,
+      position: u.position,
+      status: u.status,
+      lastLogin: u.lastLogin,
+      createdAt: u.createdAt
+    }));
+
+    res.status(200).json(formattedUsers);
+
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching users', error: err.message });
+  }
 };
 
 // Get user details
 export const getUserDetails = async (req, res) => {
-    const { userId } = req.params;
+  const { userId } = req.params;
 
-    try {
-        const user = await User.findById(userId).select('_id firstName lastName birthday address agency position email contact role username');
+  try {
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+    const user = await User.findById(userId)
+      .select('username firstName lastName birthday address agency position email contact role status createdAt lastLogin')
+      .lean();
 
-        res.status(200).json(user);
-    } catch (err) {
-        res.status(500).json({ message: 'Error fetching user details', error: err.message });
-    }
+    if (!user)
+      return res.status(404).json({ message: 'User not found' });
+
+    user.id = user._id;
+    delete user._id;
+
+    res.status(200).json(user);
+
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching user details', error: err.message });
+  }
 };
 
 // Update user details
 export const updateUserDetails = async (req, res) => {
-    const { userId } = req.params;
-    const { username, firstName, lastName, email } = req.body;
+  const { userId } = req.params;
 
-    try {
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { username, firstName, lastName, email },
-            { new: true }
-        );
+  const allowedFields = [
+    'username', 'firstName', 'lastName', 'email',
+    'agency', 'position', 'contact', 'address', 'birthday'
+  ];
 
-        if (!updatedUser) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+  const updates = {};
 
-        res.status(200).json(updatedUser);
-    } catch (err) {
-        res.status(500).json({ message: 'Error updating user details', error: err.message });
-    }
+  allowedFields.forEach(field => {
+    if (req.body[field] !== undefined)
+      updates[field] = req.body[field];
+  });
+
+  try {
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updates,
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser)
+      return res.status(404).json({ message: 'User not found' });
+
+    res.status(200).json(updatedUser);
+
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating user', error: err.message });
+  }
 };
 
 // Approve user
-export const approveUser = async (req, res) => {
-    const { userId } = req.params;
+export const updateUserStatus = async (req, res) => {
+
+  const { userId } = req.params;
+  const { status } = req.body;
+
+  const allowed = [
+    'Pending Approval',
+    'Active',
+    'Locked',
+    'Suspended',
+    'Inactive'
+  ];
+
+  if (!allowed.includes(status))
+    return res.status(400).json({ message: 'Invalid status' });
+
+  try {
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { status },
+      { new: true }
+    ).select('-password');
+
+    if (!user)
+      return res.status(404).json({ message: 'User not found' });
+
+    res.json(user);
+
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating status', error: err.message });
+  }
 };
 
 // Delete user
 export const deleteUser = async (req, res) => {
-    const { userId } = req.params;
+  const { userId } = req.params;
 
-    try {
-        const deletedUser = await User.findByIdAndDelete(userId);
-        if (!deletedUser) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        res.status(200).json({ message: 'User deleted successfully' });
-    } catch (err) {
-        res.status(500).json({ message: 'Error deleting user', error: err.message });
+  try {
+    const deletedUser = await User.findByIdAndDelete(userId);
+    if (!deletedUser) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error deleting user', error: err.message });
+  }
 };

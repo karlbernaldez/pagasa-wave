@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Plus, Users, UserCheck, Clock, Ban } from 'lucide-react';
 
 import { useUsers } from './hooks/useUsers';
@@ -8,7 +8,6 @@ import { AddUserModal } from './components/AddUserModal';
 import { ManageUserModal } from './components/ManageUserModal';
 import { RolesSection } from './components/RolesSection';
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, color, isDarkMode }) {
 
   const colorMap = {
@@ -26,22 +25,14 @@ function StatCard({ icon: Icon, label, value, color, isDarkMode }) {
       </div>
       <div>
         <p className={`text-xl font-bold leading-none ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{value}</p>
-        <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{label}</p>
+        <p className="text-xs mt-0.5 text-slate-500">{label}</p>
       </div>
     </div>
   );
 }
 
-// ─── UserManagementSection ────────────────────────────────────────────────────
-
-/**
- * Root component for the User Management section.
- *
- * Props:
- *   isDarkMode  boolean   — whether the parent is in dark mode
- *   mode        'list'|'roles'  — which sub-view to render (default: 'list')
- */
 const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
+
   const {
     users,
     filteredUsers,
@@ -62,11 +53,13 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
 
   const managedUser = users.find((u) => u.id === manageUserId) ?? null;
 
-  // ── Derived stats ─────────────────────────────────────────────────────────
-  const totalUsers = users.length;
-  const activeUsers = users.filter((u) => u.status === 'Active').length;
-  const pendingUsers = users.filter((u) => u.status === 'Pending').length;
-  const suspendedUsers = users.filter((u) => u.status === 'Suspended').length;
+  // ✅ FIXED STATS (lowercase)
+  const stats = useMemo(() => ({
+    total: users.length,
+    active: users.filter(u => u.status === 'active').length,
+    pending: users.filter(u => u.status === 'pending').length,
+    suspended: users.filter(u => u.status === 'suspended').length,
+  }), [users]);
 
   const handleAddSubmit = () => {
     const ok = createUser();
@@ -87,11 +80,9 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
   };
 
   const clearSelection = () => setSelectedIds(new Set());
+  const selectAll = (ids) => setSelectedIds(new Set(ids));
 
-  const selectAll = (ids) => {
-    setSelectedIds(new Set(ids));
-  };
-
+  // ✅ FIXED BULK ACTIONS (lowercase)
   const applyBulkAction = (action, payload) => {
 
     selectedIds.forEach(id => {
@@ -99,15 +90,15 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
       switch (action) {
 
         case 'suspend':
-          updateUser(id, 'status', 'Suspended');
+          updateUser(id, 'status', 'suspended');
           break;
 
         case 'activate':
-          updateUser(id, 'status', 'Active');
+          updateUser(id, 'status', 'active');
           break;
 
         case 'delete':
-          updateUser(id, 'delete');   // or your real delete handler
+          updateUser(id, 'delete'); // your handler
           break;
 
         case 'role':
@@ -123,35 +114,32 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     clearSelection();
   };
 
-  // ── Roles view ────────────────────────────────────────────────────────────
   if (mode === 'roles') {
     return <RolesSection isDarkMode={isDarkMode} />;
   }
 
-  // ── List view ─────────────────────────────────────────────────────────────
   const card = isDarkMode
     ? 'bg-slate-900/80 border border-slate-700/60'
     : 'bg-white border border-slate-200';
 
   return (
     <>
-      {/* Stats row */}
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <StatCard icon={Users} label="Total Users" value={totalUsers} color="cyan" isDarkMode={isDarkMode} />
-        <StatCard icon={UserCheck} label="Active" value={activeUsers} color="emerald" isDarkMode={isDarkMode} />
-        <StatCard icon={Clock} label="Pending" value={pendingUsers} color="amber" isDarkMode={isDarkMode} />
-        <StatCard icon={Ban} label="Suspended" value={suspendedUsers} color="red" isDarkMode={isDarkMode} />
+        <StatCard icon={Users} label="Total Users" value={stats.total} color="cyan" isDarkMode={isDarkMode} />
+        <StatCard icon={UserCheck} label="Active" value={stats.active} color="emerald" isDarkMode={isDarkMode} />
+        <StatCard icon={Clock} label="Pending" value={stats.pending} color="amber" isDarkMode={isDarkMode} />
+        <StatCard icon={Ban} label="Suspended" value={stats.suspended} color="red" isDarkMode={isDarkMode} />
       </div>
 
-      {/* Main card */}
+      {/* Main */}
       <div className={`rounded-2xl overflow-hidden ${card}`}>
-        {/* Card header */}
         <div className={`px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
           <div>
             <h3 className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
               User Directory
             </h3>
-            <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+            <p className="text-xs mt-0.5 text-slate-500">
               {filteredUsers.length === users.length
                 ? `${users.length} users registered`
                 : `Showing ${filteredUsers.length} of ${users.length} users`}
@@ -167,7 +155,6 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
           </button>
         </div>
 
-        {/* Filters + table */}
         <div className="px-6 pt-5 pb-6">
           <SearchBar
             query={query}
@@ -176,6 +163,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
             onStatusChange={setStatusFilter}
             isDarkMode={isDarkMode}
           />
+
           <UserTable
             filteredUsers={filteredUsers}
             isDarkMode={isDarkMode}
@@ -191,7 +179,6 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
         </div>
       </div>
 
-      {/* Modals */}
       {isAddModalOpen && (
         <AddUserModal
           isDarkMode={isDarkMode}
@@ -209,7 +196,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
           onClose={() => setManageUserId(null)}
           onSave={(updatedUser) => {
             updateUser(updatedUser.id, 'role', updatedUser.role);
-            updateUser(updatedUser.id, 'status', updatedUser.status);
+            updateUser(updatedUser.id, 'status', updatedUser.status); // expects lowercase
           }}
         />
       )}

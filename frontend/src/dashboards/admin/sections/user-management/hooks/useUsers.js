@@ -1,32 +1,53 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { fetchAllUsers } from '@/api/userAPI';
-import { INITIAL_USERS } from '../constants';
 import { defaultNewUser, fullName } from '../utils';
+import { STATUS_LABELS } from '../constants';
 
 let adminUsersBootstrapCache = null;
 let adminUsersBootstrapPromise = null;
 
-const normalizeUser = (user) => ({
-  id: user._id,
-  firstName: user.firstName ?? '',
-  lastName: user.lastName ?? '',
-  email: user.email ?? '',
-  contact: user.contact ?? '',
-  agency: user.agency ?? '',
-  position: user.position ?? '',
-  role: user.role ?? 'Forecaster',
-  status: user.isApproved ? 'Active' : 'Pending',
-  memberSince: user.createdAt ? new Date(user.createdAt).toISOString().slice(0, 10) : '—',
-  lastLogin: user.lastLogin ?? 'Never',
-  avatarUrl: user.avatarUrl ?? '',
-});
+const safeLower = (v) => (v || '').toString().toLowerCase();
+
+const formatDate = (iso) => {
+  if (!iso) return 'Never';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? 'Never' : d.toLocaleString();
+};
+
+const normalizeUser = (user) => {
+  const status = user.status || 'pending';
+
+  return {
+    id: user.id ?? user._id ?? crypto.randomUUID(),
+
+    firstName: user.firstName ?? '',
+    lastName: user.lastName ?? '',
+    email: user.email ?? '',
+    contact: user.contact ?? '',
+    agency: user.agency ?? '',
+    position: user.position ?? '',
+    role: user.role ?? 'user',
+
+    status,
+    statusLabel: STATUS_LABELS[status] ?? STATUS_LABELS.pending,
+
+    memberSince: user.createdAt
+      ? new Date(user.createdAt).toISOString().slice(0, 10)
+      : '—',
+
+    lastLogin: formatDate(user.lastLogin),
+    avatarUrl: user.avatarUrl ?? '',
+  };
+};
 
 const getBootstrappedAdminUsers = async () => {
   if (adminUsersBootstrapCache) return adminUsersBootstrapCache;
 
   if (!adminUsersBootstrapPromise) {
     adminUsersBootstrapPromise = fetchAllUsers()
-      .then((response) => (Array.isArray(response) ? response : []).map(normalizeUser))
+      .then((response) =>
+        (Array.isArray(response) ? response : []).map(normalizeUser)
+      )
       .then((data) => {
         adminUsersBootstrapCache = data;
         return data;
@@ -40,76 +61,93 @@ const getBootstrappedAdminUsers = async () => {
 };
 
 export function useUsers() {
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [usersError, setUsersError] = useState('');
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [newUser, setNewUser] = useState(defaultNewUser());
 
-  useEffect(() => {
-    let isMounted = true;
+  // ---- LOAD USERS ----
+  const loadUsers = useCallback(async () => {
+    setIsLoadingUsers(true);
+    setUsersError('');
 
-    const loadUsers = async () => {
-      setIsLoadingUsers(true);
-      setUsersError('');
-
-      try {
-        const bootstrappedUsers = await getBootstrappedAdminUsers();
-        if (!isMounted) return;
-        setUsers(bootstrappedUsers);
-      } catch (error) {
-        if (!isMounted) return;
-        setUsersError(error.message || 'Failed to load users from API.');
-      } finally {
-        if (isMounted) setIsLoadingUsers(false);
-      }
-    };
-
-    loadUsers();
-
-    return () => {
-      isMounted = false;
-    };
+    try {
+      const bootstrappedUsers = await getBootstrappedAdminUsers();
+      setUsers(bootstrappedUsers);
+    } catch (error) {
+      setUsersError(error.message || 'Failed to load users from API.');
+    } finally {
+      setIsLoadingUsers(false);
+    }
   }, []);
 
-  // ── Derived: filtered list ──────────────────────────────────────────────
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  // ---- MANUAL REFRESH (clears cache) ----
+  const refreshUsers = useCallback(async () => {
+    adminUsersBootstrapCache = null;
+    adminUsersBootstrapPromise = null;
+    await loadUsers();
+  }, [loadUsers]);
+
+  // ---- FILTERED USERS ----
   const filteredUsers = useMemo(() => {
-    const q = query.toLowerCase();
+    const q = safeLower(query);
+
     return users.filter((user) => {
       const textMatch =
-        fullName(user).toLowerCase().includes(q) ||
-        user.email.toLowerCase().includes(q) ||
-        user.agency.toLowerCase().includes(q) ||
-        user.position.toLowerCase().includes(q) ||
-        user.role.toLowerCase().includes(q) ||
-        user.status.toLowerCase().includes(q);
-      const statusMatch = statusFilter === 'All' || user.status === statusFilter;
+        safeLower(fullName(user)).includes(q) ||
+        safeLower(user.email).includes(q) ||
+        safeLower(user.agency).includes(q) ||
+        safeLower(user.position).includes(q) ||
+        safeLower(user.role).includes(q) ||
+        safeLower(user.statusLabel).includes(q);
+
+      const statusMatch =
+        statusFilter === 'all' || user.status === statusFilter;
+
       return textMatch && statusMatch;
     });
   }, [users, query, statusFilter]);
 
-  // ── Mutations ───────────────────────────────────────────────────────────
+  // ---- LOCAL CREATE (optimistic) ----
   const createUser = () => {
-    if (!newUser.firstName.trim() || !newUser.lastName.trim() || !newUser.email.trim()) return false;
-    setUsers((prev) => [
-      {
-        id: Date.now(),
-        ...newUser,
-        firstName: newUser.firstName.trim(),
-        lastName: newUser.lastName.trim(),
-        email: newUser.email.trim(),
-        lastLogin: 'Never',
-      },
-      ...prev,
-    ]);
+    if (
+      !newUser.firstName?.trim() ||
+      !newUser.lastName?.trim() ||
+      !newUser.email?.trim()
+    )
+      return false;
+
+    const created = normalizeUser({
+      id: Date.now().toString(),
+      ...newUser,
+      firstName: newUser.firstName.trim(),
+      lastName: newUser.lastName.trim(),
+      email: newUser.email.trim(),
+      status: 'pending',
+      lastLogin: null,
+      createdAt: new Date().toISOString(),
+    });
+
+    setUsers((prev) => [created, ...prev]);
     setNewUser(defaultNewUser());
+
     return true;
   };
 
+  // ---- LOCAL UPDATE ----
   const updateUser = (userId, field, value) => {
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, [field]: value } : u))
+      prev.map((u) =>
+        u.id === userId
+          ? normalizeUser({ ...u, [field]: value })
+          : u
+      )
     );
   };
 
@@ -117,17 +155,23 @@ export function useUsers() {
 
   return {
     users,
+    filteredUsers,
     isLoadingUsers,
     usersError,
-    filteredUsers,
+
     query,
     setQuery,
+
     statusFilter,
     setStatusFilter,
+
     newUser,
     setNewUser,
+
     createUser,
     updateUser,
     resetNewUser,
+
+    refreshUsers, // ⭐ added
   };
 }
