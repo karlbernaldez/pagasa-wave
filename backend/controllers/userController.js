@@ -151,21 +151,71 @@ export const createUserByAdmin = async (req, res) => {
 
 // Update user details
 export const updateUserDetails = async (req, res) => {
-  const { userId } = req.params;
-
-  const allowedFields = [
-    'username', 'firstName', 'lastName', 'email',
-    'agency', 'position', 'contact', 'address', 'birthday',
-  ];
-
-  const updates = {};
-
-  allowedFields.forEach(field => {
-    if (req.body[field] !== undefined)
-      updates[field] = req.body[field];
-  });
-
   try {
+    const { userId } = req.params;
+    const actor = req.user;
+
+    if (!actor) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const isOwner = actor._id.toString() === userId;
+    const isAdmin = actor.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    // ---- updated permissions ----
+    const OWNER_FIELDS = [
+      'firstName',
+      'lastName',
+      'contact',
+      'address',
+      'birthday',
+      'email',
+      'agency',
+      'position'
+    ];
+
+    const ADMIN_FIELDS = [
+      ...OWNER_FIELDS,
+      'username',
+      'role'
+    ];
+
+    const allowedFields = isAdmin ? ADMIN_FIELDS : OWNER_FIELDS;
+
+    const updates = {};
+
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        message: 'No permitted fields to update'
+      });
+    }
+
+    // ---- duplicate check if email or username changed ----
+    if (updates.email || updates.username) {
+      const exists = await User.findOne({
+        _id: { $ne: userId },
+        $or: [
+          ...(updates.email ? [{ email: updates.email }] : []),
+          ...(updates.username ? [{ username: updates.username }] : [])
+        ]
+      });
+
+      if (exists) {
+        return res.status(409).json({
+          message: 'Email or username already in use'
+        });
+      }
+    }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
@@ -173,12 +223,14 @@ export const updateUserDetails = async (req, res) => {
       { new: true, runValidators: true }
     ).select('-password');
 
-    if (!updatedUser)
+    if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
+    }
 
     res.status(200).json(updatedUser);
 
   } catch (err) {
+    console.error('updateUserDetails error:', err);
     res.status(500).json({ message: 'Error updating user', error: err.message });
   }
 };
