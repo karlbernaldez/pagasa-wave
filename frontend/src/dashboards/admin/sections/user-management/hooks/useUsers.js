@@ -141,15 +141,33 @@ export function useUsers() {
   };
 
   // ---- LOCAL UPDATE ----
-  const updateUser = (userId, field, value) => {
+  const updateUser = useCallback((userId, field, value) => {
     setUsers(prev =>
-      prev.map(u =>
-        u.id === userId
-          ? { ...u, [field]: value }
-          : u
-      )
+      prev.map((u) => {
+        if (u.id !== userId) return u;
+        if (field === 'status') {
+          return {
+            ...u,
+            status: value,
+            statusLabel: STATUS_LABELS[value] ?? STATUS_LABELS.pending,
+          };
+        }
+
+        return { ...u, [field]: value };
+      })
     );
-  };
+  }, []);
+
+  const bulkUpdateUsers = useCallback((ids, updater) => {
+    if (!ids?.size) return;
+
+    setUsers((prev) => prev
+      .map((user) => {
+        if (!ids.has(user.id)) return user;
+        return updater(user);
+      })
+      .filter(Boolean));
+  }, []);
 
   const resetNewUser = () => setNewUser(defaultNewUser());
 
@@ -180,6 +198,7 @@ export function useUsers() {
 
     createUser,
     updateUser,
+    bulkUpdateUsers,
     resetNewUser,
     deleteUser,
     refreshUsers,

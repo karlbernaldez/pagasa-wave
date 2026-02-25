@@ -15,7 +15,6 @@ export const ROLE_OPTIONS = [
 ];
 
 export const STATUS_OPTIONS = [
-  { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
   { value: 'pending', label: 'Pending' },
   { value: 'suspended', label: 'Suspended' },

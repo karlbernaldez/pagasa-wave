@@ -1,37 +1,63 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { STATUS_CONFIG, STATUS_LABELS } from '../constants';
 
 /**
- * Animated status badge
- * status: backend machine value ('active','pending',...)
+ * StatusBadge
+ * status: backend machine value ('active','pending','suspended',...)
+ * size: 'sm' | 'md' | 'lg'
  */
-export function StatusBadge({ status = 'pending', isDarkMode, size = 'md' }) {
+function StatusBadgeComponent({
+  status = 'pending',
+  isDarkMode = true,
+  size = 'md',
+}) {
 
-  const machine = status?.toLowerCase?.() || 'pending';
+  // normalize safely
+  const machine = useMemo(() => {
+    if (!status) return 'pending';
+    return String(status).toLowerCase().trim();
+  }, [status]);
 
-  const cfg =
-    STATUS_CONFIG[machine] ??
-    STATUS_CONFIG['suspended']; // safe fallback
+  // resolve config safely
+  const cfg = useMemo(() => {
+    return STATUS_CONFIG[machine] ?? STATUS_CONFIG.pending ?? STATUS_CONFIG.suspended;
+  }, [machine]);
 
-  const label =
-    STATUS_LABELS?.[machine] ??
-    machine.charAt(0).toUpperCase() + machine.slice(1);
+  // resolve label
+  const label = useMemo(() => {
+    if (STATUS_LABELS?.[machine]) return STATUS_LABELS[machine];
+    return machine.charAt(0).toUpperCase() + machine.slice(1);
+  }, [machine]);
+
+  // size classes
+  const sizeClass = useMemo(() => {
+    switch (size) {
+      case 'sm':
+        return 'text-[11px] px-2 py-0.5';
+      case 'lg':
+        return 'text-sm px-3 py-1.5';
+      default:
+        return 'text-xs px-2.5 py-1';
+    }
+  }, [size]);
 
   const badgeClass = isDarkMode ? cfg.badge : cfg.badgeLight;
-  const textSize = 'text-xs';
-  const px = size === 'sm' ? 'px-2 py-0.5' : 'px-2.5 py-1';
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-medium ${textSize} ${px} ${badgeClass}`}
+      role="status"
+      aria-label={`User status: ${label}`}
+      className={`inline-flex items-center gap-1.5 rounded-full font-medium ${sizeClass} ${badgeClass}`}
     >
-      {/* Pulsing dot only when active */}
+      {/* dot */}
       <span className="relative flex h-1.5 w-1.5">
+
         {machine === 'active' && (
           <span
             className={`animate-ping absolute inline-flex h-full w-full rounded-full ${cfg.dot} opacity-75`}
           />
         )}
+
         <span
           className={`relative inline-flex rounded-full h-1.5 w-1.5 ${cfg.dot}`}
         />
@@ -41,3 +67,5 @@ export function StatusBadge({ status = 'pending', isDarkMode, size = 'md' }) {
     </span>
   );
 }
+
+export const StatusBadge = memo(StatusBadgeComponent);
