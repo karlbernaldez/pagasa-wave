@@ -134,7 +134,14 @@ function UserRowComponent({
 
       {/* Status */}
       <td className="py-3.5 pr-3">
-        <StatusBadge status={user?.status} isDarkMode={isDarkMode} />
+        <StatusBadge
+          status={
+            user?.status
+              ? user.status.charAt(0).toUpperCase() + user.status.slice(1).toLowerCase()
+              : undefined
+          }
+          isDarkMode={isDarkMode}
+        />
       </td>
 
       {/* Member Since */}
@@ -149,9 +156,9 @@ function UserRowComponent({
           aria-label={`Manage ${name}`}
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
           ${isDarkMode
-            ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25'
-            : 'bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-500 hover:text-white'
-          }`}
+              ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25'
+              : 'bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-500 hover:text-white'
+            }`}
         >
           <UserCog size={13} />
           Manage

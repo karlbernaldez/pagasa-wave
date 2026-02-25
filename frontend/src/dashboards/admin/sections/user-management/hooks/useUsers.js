@@ -114,7 +114,6 @@ export function useUsers() {
     });
   }, [users, query, statusFilter]);
 
-  // ---- LOCAL CREATE (optimistic) ----
   const createUser = () => {
     if (
       !newUser.firstName?.trim() ||
@@ -129,7 +128,7 @@ export function useUsers() {
       firstName: newUser.firstName.trim(),
       lastName: newUser.lastName.trim(),
       email: newUser.email.trim(),
-      status: 'pending',
+      // ✅ removed hardcoded status: 'pending' — newUser.status from the form is used
       lastLogin: null,
       createdAt: new Date().toISOString(),
     });

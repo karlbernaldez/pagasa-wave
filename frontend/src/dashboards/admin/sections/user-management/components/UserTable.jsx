@@ -50,7 +50,7 @@ export function UserTable({
 
   // URL is the single source of truth
   const page = useMemo(() => clampInt(params.get('page'), 1, Number.MAX_SAFE_INTEGER, 1), [params]);
-  const limit = useMemo(() => clampInt(params.get('limit'), 1, 1000, 10), [params]); // cap if you want
+  const limit = useMemo(() => clampInt(params.get('limit'), 5, 1000, 10), [params]); // cap if you want
 
   const dataCount = isServer ? Number(totalCount ?? 0) : filteredUsers.length;
   const totalPages = useMemo(() => Math.max(1, Math.ceil(dataCount / limit)), [dataCount, limit]);
@@ -58,14 +58,20 @@ export function UserTable({
   // keep URL in a safe range if someone types invalid values / external nav
   useEffect(() => {
     const clampedPage = clampInt(page, 1, totalPages, 1);
-    if (clampedPage !== page) {
+    const normalizedLimit = PAGE_OPTIONS.includes(limit)
+      ? limit
+      : PAGE_OPTIONS.reduce((prev, cur) =>
+        Math.abs(cur - limit) < Math.abs(prev - limit) ? cur : prev
+      );
+
+    if (clampedPage !== page || normalizedLimit !== limit) {
       const next = new URLSearchParams(params);
       next.set('page', String(clampedPage));
-      next.set('limit', String(limit));
+      next.set('limit', String(normalizedLimit));
       setParams(next, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, totalPages]);
+  }, [page, limit, totalPages]);
 
   // notify parent (server mode)
   useEffect(() => {
@@ -111,7 +117,7 @@ export function UserTable({
 
   const handleLimitChange = useCallback(
     (e) => {
-      const nextLimit = clampInt(e.target.value, 1, 1000, 10);
+      const nextLimit = clampInt(e.target.value, 5, 1000, 10);
       // changing limit usually resets to page 1 (good UX)
       updateUrl({ limit: nextLimit, page: 1 });
     },
@@ -142,9 +148,8 @@ export function UserTable({
     [filteredUsers, onClearSelection, onSelectAll, pageIds, selectAllScope]
   );
 
-  const thClass = `text-left text-xs font-semibold tracking-widest uppercase py-3 pr-3 ${
-    isDarkMode ? 'text-slate-500' : 'text-slate-400'
-  }`;
+  const thClass = `text-left text-xs font-semibold tracking-widest uppercase py-3 pr-3 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'
+    }`;
 
   return (
     <div className="overflow-x-auto -mx-1 px-1 transition-all duration-300">
@@ -175,9 +180,8 @@ export function UserTable({
               <td colSpan={COLUMNS.length} className="py-16 text-center">
                 <div className="flex flex-col items-center gap-3">
                   <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                      isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
-                    }`}
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
+                      }`}
                   >
                     <Users size={22} className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} />
                   </div>
@@ -205,9 +209,8 @@ export function UserTable({
       {/* ─── Bulk Actions Bar ───────────────────────── */}
       {selectedIds?.size > 0 && (
         <div
-          className={`flex items-center justify-between px-3 py-2 rounded-xl mb-3 border ${
-            isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'
-          }`}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl mb-3 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'
+            }`}
         >
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
 
@@ -249,9 +252,8 @@ export function UserTable({
             <select
               value={limit}
               onChange={handleLimitChange}
-              className={`px-2 py-1 rounded-lg border ${
-                isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
-              }`}
+              className={`px-2 py-1 rounded-lg border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
+                }`}
             >
               {PAGE_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
@@ -265,9 +267,8 @@ export function UserTable({
             <button
               disabled={page === 1}
               onClick={() => gotoPage(page - 1)}
-              className={`px-2 py-1 rounded-lg border ${
-                page === 1 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-              } ${isDarkMode ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}
+              className={`px-2 py-1 rounded-lg border ${page === 1 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                } ${isDarkMode ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}
               aria-label="Previous page"
             >
               <ChevronLeft size={14} />
@@ -280,9 +281,8 @@ export function UserTable({
             <button
               disabled={page === totalPages}
               onClick={() => gotoPage(page + 1)}
-              className={`px-2 py-1 rounded-lg border ${
-                page === totalPages ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-              } ${isDarkMode ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}
+              className={`px-2 py-1 rounded-lg border ${page === totalPages ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                } ${isDarkMode ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`}
               aria-label="Next page"
             >
               <ChevronRight size={14} />
@@ -303,9 +303,8 @@ export function UserTable({
                   setJump('');
                 }
               }}
-              className={`w-14 px-2 py-1 rounded-lg border text-xs ${
-                isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
-              }`}
+              className={`w-14 px-2 py-1 rounded-lg border text-xs ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
+                }`}
               aria-label="Jump to page"
             />
           </div>
