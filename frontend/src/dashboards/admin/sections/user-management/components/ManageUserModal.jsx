@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   X,
   Mail,
@@ -17,6 +17,32 @@ import { ROLE_OPTIONS, STATUS_OPTIONS } from '../constants';
 import { fullName, getInitials, avatarGradient } from '../utils';
 import { StatusBadge } from './StatusBadge';
 
+
+const EDITABLE_PROFILE_FIELDS = [
+  'firstName',
+  'lastName',
+  'email',
+  'agency',
+  'position',
+  'contact',
+  'address',
+  'birthday',
+  'role',
+];
+
+const getUserId = (user) => user?.id ?? user?._id;
+
+const pickChangedFields = (source, baseline, fields) => {
+  const updates = {};
+
+  fields.forEach((field) => {
+    if (source?.[field] !== baseline?.[field]) {
+      updates[field] = source?.[field];
+    }
+  });
+
+  return updates;
+};
 
 // ───────────────── ACTION BUTTONS CONFIG ─────────────────
 
@@ -59,7 +85,6 @@ const actionColors = {
   }
 };
 
-
 // ───────────────── COMPONENT ─────────────────
 
 export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
@@ -72,11 +97,32 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const initializedForId = useRef(null);
+  const userId = useMemo(() => getUserId(user), [user]);
+
+  const changedProfileFields = useMemo(
+    () => pickChangedFields(formData, user, EDITABLE_PROFILE_FIELDS),
+    [formData, user]
+  );
+
+  const statusChanged = formData?.status !== user?.status;
+  const hasChanges = statusChanged || Object.keys(changedProfileFields).length > 0;
+
+  const selectClasses = `w-full px-3 py-2 rounded-lg border text-sm ${isDarkMode
+    ? 'bg-slate-900 border-slate-700 text-slate-200'
+    : 'bg-white border-slate-200 text-slate-700'
+    }`;
+
+  const avatarSrc = formData?.avatarUrl || formData?.photo;
+
+  const handleFieldChange = useCallback((field, value) => {
+    setFormData((previous) => ({ ...previous, [field]: value }));
+  }, []);
 
   const handleSave = async () => {
-    const userId = formData?.id ?? user?.id ?? user?._id;
-    if (!userId) return;
+    if (!userId || !hasChanges) {
+      onClose?.();
+      return;
+    }
 
     try {
       setSaving(true);
@@ -84,25 +130,18 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
       let updatedStatusUser = null;
 
-      // update status separately if changed
-      if (formData.status !== user.status) {
+      if (statusChanged) {
         updatedStatusUser = await updateUserStatusAPI(userId, formData.status);
       }
 
-      // update allowed profile fields
-      const profileUpdated = await updateUserDetailsAPI(userId, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        agency: formData.agency,
-        position: formData.position,
-        contact: formData.contact,
-        address: formData.address,
-        birthday: formData.birthday,
-        role: formData.role,
-      });
+      let profileUpdated = null;
+      if (Object.keys(changedProfileFields).length > 0) {
+        profileUpdated = await updateUserDetailsAPI(userId, changedProfileFields);
+      }
 
       const merged = {
+        ...user,
+        ...formData,
         ...profileUpdated,
         ...(updatedStatusUser ?? {}),
         id: profileUpdated?.id ?? updatedStatusUser?.id ?? profileUpdated?._id ?? updatedStatusUser?._id ?? userId,
@@ -122,14 +161,15 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
   useEffect(() => {
     if (!user) return;
 
-    if (initializedForId.current === user.id) return;
-
-    initializedForId.current = user.id;
-
     setFormData(user);
-    console.log('Loaded user into form:', user);
+    setError('');
+  }, [userId, user]);
 
-  }, [user]);
+  useEffect(() => {
+    if (!showAvatarPreview) {
+      setImageLoaded(false);
+    }
+  }, [showAvatarPreview]);
 
   // ESC closes preview OR modal
   useEffect(() => {
@@ -163,7 +203,10 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
   return (
     <>
       {/* MAIN MODAL */}
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
 
         <div
           className={`w-full max-w-md rounded-2xl p-6 ${card}`}
@@ -200,9 +243,9 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
                 className="w-11 h-11 rounded-xl overflow-hidden shadow-md flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
               >
 
-                {(formData.avatarUrl || formData.photo) ? (
+                {avatarSrc ? (
                   <img
-                    src={formData.avatarUrl || formData.photo}
+                    src={avatarSrc}
                     alt={fullName(formData)}
                     className="w-full h-full object-cover"
                   />
@@ -267,11 +310,8 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
               <label className={`block text-xs font-semibold mb-1 ${meta}`}>Role</label>
               <select
                 value={formData.role}
-                onChange={(e) => setFormData(p => ({ ...p, role: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg border text-sm ${isDarkMode
-                  ? 'bg-slate-900 border-slate-700 text-slate-200'
-                  : 'bg-white border-slate-200 text-slate-700'
-                  }`}
+                onChange={(e) => handleFieldChange('role', e.target.value)}
+                className={selectClasses}
               >
                 {ROLE_OPTIONS.map(r => (
                   <option key={r.value} value={r.value}>
@@ -286,11 +326,8 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
               <label className={`block text-xs font-semibold mb-1 ${meta}`}>Status</label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData(p => ({ ...p, status: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg border text-sm ${isDarkMode
-                  ? 'bg-slate-900 border-slate-700 text-slate-200'
-                  : 'bg-white border-slate-200 text-slate-700'
-                  }`}
+                onChange={(e) => handleFieldChange('status', e.target.value)}
+                className={selectClasses}
               >
                 {STATUS_OPTIONS
                   .filter(o => {
@@ -353,6 +390,7 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
               </p>
             )}
             <button
+              type="button"
               onClick={onClose}
               className={`px-4 py-2 rounded-xl text-sm font-semibold ${isDarkMode
                 ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
@@ -363,11 +401,12 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
             </button>
 
             <button
+              type="button"
               onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 rounded-xl text-sm font-semibold bg-cyan-500 text-white hover:bg-cyan-600"
+              disabled={saving || !hasChanges}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-cyan-500 text-white hover:bg-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save Changes
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
 
           </div>
@@ -394,9 +433,9 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
               <X size={26} />
             </button>
 
-            {(formData.avatarUrl || formData.photo) ? (
+            {avatarSrc ? (
               <img
-                src={formData.avatarUrl || formData.photo}
+                src={avatarSrc}
                 loading="lazy"
                 onLoad={() => setImageLoaded(true)}
                 alt={fullName(formData)}
