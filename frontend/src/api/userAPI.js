@@ -1,14 +1,24 @@
 const USER_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/users`;
 
 /* -------------------------------------------------------
-   Helper: parse JSON safely
+   Common request helper
 ------------------------------------------------------- */
-const parseJSON = async (res) => {
+const request = async (url, options = {}) => {
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
   let data = null;
+
   try {
     data = await res.json();
   } catch {
-    /* ignore */
+    /* ignore non-json responses */
   }
 
   if (!res.ok) {
@@ -21,69 +31,62 @@ const parseJSON = async (res) => {
 /* -------------------------------------------------------
    GET ALL USERS (Admin)
 ------------------------------------------------------- */
-export const fetchAllUsers = async () => {
-  const res = await fetch(USER_API_BASE_URL, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-  });
-
-  return parseJSON(res);
-};
+export const fetchAllUsers = () =>
+  request(USER_API_BASE_URL, { method: 'GET' });
 
 /* -------------------------------------------------------
    GET USER DETAILS
 ------------------------------------------------------- */
-export const fetchUserDetails = async (userId) => {
-  const res = await fetch(`${USER_API_BASE_URL}/${userId}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
+export const fetchUserDetails = (userId) =>
+  request(`${USER_API_BASE_URL}/${userId}`, { method: 'GET' });
+
+/* -------------------------------------------------------
+   CREATE USER (Admin)
+------------------------------------------------------- */
+export const createUserAPI = async (payload) => {
+  const data = await request(USER_API_BASE_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 
-  return parseJSON(res);
+  // backend returns:
+  // { message, user, defaultPassword }
+
+  return {
+    user: data.user,
+    defaultPassword: data.defaultPassword,
+    message: data.message,
+  };
 };
 
 /* -------------------------------------------------------
    UPDATE USER PROFILE (allowedFields only)
 ------------------------------------------------------- */
-export const updateUserDetailsAPI = async (userId, payload) => {
-  const res = await fetch(`${USER_API_BASE_URL}/${userId}`, {
+export const updateUserDetailsAPI = (userId, payload) =>
+  request(`${USER_API_BASE_URL}/${userId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(payload),
   });
-
-  return parseJSON(res);
-};
 
 /* -------------------------------------------------------
    UPDATE USER STATUS
 ------------------------------------------------------- */
 export const updateUserStatusAPI = async (userId, status) => {
-  const res = await fetch(`${USER_API_BASE_URL}/${userId}/status`, {
+  const data = await request(`${USER_API_BASE_URL}/${userId}/status`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ status }),
   });
 
-  const data = await parseJSON(res);
-
-  // backend returns { message, user }
-  return data.user;
+  return data.user; // backend returns { message, user }
 };
 
 /* -------------------------------------------------------
    DELETE USER
 ------------------------------------------------------- */
 export const deleteUserAPI = async (userId) => {
-  const res = await fetch(`${USER_API_BASE_URL}/${userId}`, {
+  await request(`${USER_API_BASE_URL}/${userId}`, {
     method: 'DELETE',
-    credentials: 'include',
   });
 
-  await parseJSON(res);
   return true;
 };

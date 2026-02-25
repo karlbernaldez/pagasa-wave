@@ -76,11 +76,13 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
 
   const handleAddSubmit = async () => {
     const ok = await createUser();
-    if (ok) setIsAddModalOpen(false);
+    if (ok) {
+      setIsAddModalOpen(false);
+      resetNewUser();
+    }
   };
 
   const handleCloseAdd = () => {
-    resetNewUser();
     setIsAddModalOpen(false);
   };
 

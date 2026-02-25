@@ -8,10 +8,10 @@ export const STATUS_LABELS = {
 };
 
 export const ROLE_OPTIONS = [
+  { value: 'user', label: 'User' },
   { value: 'admin', label: 'Admin' },
   { value: 'forecaster', label: 'Forecaster' },
   { value: 'data_analyst', label: 'Data Analyst' },
-  { value: 'user', label: 'User' },
 ];
 
 export const STATUS_OPTIONS = [
