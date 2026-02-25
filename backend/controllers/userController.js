@@ -1,12 +1,13 @@
 import User from '../models/User.js';
-import moment from 'moment';
+
+const ALLOWED_STATUSES = ['pending','active','locked','suspended','inactive'];
 
 // GET ALL USERS
 export const getAllUsers = async (req, res) => {
   try {
 
     const users = await User.find()
-      .select('username firstName lastName contact email agency role position status lastLogin createdAt')
+      .select('username firstName lastName contact email agency role position status lastLogin activatedAt')
       .lean();
 
     const formattedUsers = users.map(u => ({
@@ -20,6 +21,7 @@ export const getAllUsers = async (req, res) => {
       role: u.role,
       position: u.position,
       status: u.status,
+      activatedAt: u.activatedAt,
       lastLogin: u.lastLogin,
       createdAt: u.createdAt
     }));
@@ -88,38 +90,43 @@ export const updateUserDetails = async (req, res) => {
   }
 };
 
-// Approve user
 export const updateUserStatus = async (req, res) => {
-
-  const { userId } = req.params;
-  const { status } = req.body;
-
-  const allowed = [
-    'Pending Approval',
-    'Active',
-    'Locked',
-    'Suspended',
-    'Inactive'
-  ];
-
-  if (!allowed.includes(status))
-    return res.status(400).json({ message: 'Invalid status' });
-
   try {
+    const { userId } = req.params;
+    const { status } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { status },
-      { new: true }
-    ).select('-password');
+    // ✅ Early validation (fast fail, no DB work)
+    if (!ALLOWED_STATUSES.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value' });
+    }
 
-    if (!user)
-      return res.status(404).json({ message: 'User not found' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    res.json(user);
+    // ✅ First-time activation audit
+    if (status === 'active' && !user.activatedAt) {
+      user.activatedAt = new Date();
+      user.activatedBy = req.user._id;
+    }
+
+    user.status = status;
+
+    await user.save();
+
+    res.json({
+      message: 'User status updated successfully',
+      user
+    });
 
   } catch (err) {
-    res.status(500).json({ message: 'Error updating status', error: err.message });
+    console.error('updateUserStatus error:', err);
+
+    // ✅ Convert mongoose enum errors → clean API response
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ message: err.message });
+    }
+
+    res.status(500).json({ message: 'Server error updating user status' });
   }
 };
 

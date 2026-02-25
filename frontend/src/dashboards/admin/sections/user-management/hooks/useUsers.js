@@ -31,8 +31,8 @@ const normalizeUser = (user) => {
     status,
     statusLabel: STATUS_LABELS[status] ?? STATUS_LABELS.pending,
 
-    memberSince: user.createdAt
-      ? new Date(user.createdAt).toISOString().slice(0, 10)
+    memberSince: user.activatedAt
+      ? new Date(user.activatedAt).toISOString().slice(0, 10)
       : '—',
 
     lastLogin: formatDate(user.lastLogin),
@@ -142,16 +142,26 @@ export function useUsers() {
 
   // ---- LOCAL UPDATE ----
   const updateUser = (userId, field, value) => {
-    setUsers((prev) =>
-      prev.map((u) =>
+    setUsers(prev =>
+      prev.map(u =>
         u.id === userId
-          ? normalizeUser({ ...u, [field]: value })
+          ? { ...u, [field]: value }
           : u
       )
     );
   };
 
   const resetNewUser = () => setNewUser(defaultNewUser());
+
+  const deleteUser = useCallback((id) => {
+    setUsers(prev => prev.filter(u => u.id !== id));
+  }, []);
+
+  const replaceUser = useCallback((updated) => {
+    setUsers(prev =>
+      prev.map(u => u.id === updated.id ? normalizeUser(updated) : u)
+    );
+  }, []);
 
   return {
     users,
@@ -171,7 +181,8 @@ export function useUsers() {
     createUser,
     updateUser,
     resetNewUser,
-
-    refreshUsers, // ⭐ added
+    deleteUser,
+    refreshUsers,
+    replaceUser,
   };
 }

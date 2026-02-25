@@ -45,11 +45,13 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     createUser,
     updateUser,
     resetNewUser,
+    deleteUser,
   } = useUsers();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [manageUserId, setManageUserId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const { replaceUser } = useUsers();
 
   const managedUser = users.find((u) => u.id === manageUserId) ?? null;
 
@@ -98,7 +100,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
           break;
 
         case 'delete':
-          updateUser(id, 'delete'); // your handler
+          deleteUser(id);
           break;
 
         case 'role':
@@ -194,10 +196,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
           user={managedUser}
           isDarkMode={isDarkMode}
           onClose={() => setManageUserId(null)}
-          onSave={(updatedUser) => {
-            updateUser(updatedUser.id, 'role', updatedUser.role);
-            updateUser(updatedUser.id, 'status', updatedUser.status); // expects lowercase
-          }}
+          onSave={replaceUser}
         />
       )}
     </>

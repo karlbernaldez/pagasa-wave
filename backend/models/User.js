@@ -67,6 +67,18 @@ const userSchema = new mongoose.Schema({
     index: true
   },
 
+  activatedAt: {
+    type: Date,
+    default: null,
+    index: true
+  },
+
+  activatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+
   failedLoginAttempts: {
     type: Number,
     default: 0,

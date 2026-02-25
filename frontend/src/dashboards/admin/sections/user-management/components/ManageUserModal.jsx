@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Mail,
@@ -10,6 +10,8 @@ import {
   ScrollText,
   ShieldAlert
 } from 'lucide-react';
+
+import { updateUserDetailsAPI, updateUserStatusAPI } from '@/api/userAPI';
 
 import { ROLE_OPTIONS, STATUS_OPTIONS } from '../constants';
 import { fullName, getInitials, avatarGradient } from '../utils';
@@ -64,12 +66,66 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
   /* ---------- STATE ---------- */
 
-  const [formData, setFormData] = useState(user);
+  const [formData, setFormData] = useState(() => user ?? {});
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const initializedForId = useRef(null);
+
+  const handleSave = async () => {
+    if (!formData?.id) return;
+
+    try {
+      setSaving(true);
+      setError('');
+
+      let updatedStatusUser = null;
+
+      // update status separately if changed
+      if (formData.status !== user.status) {
+        updatedStatusUser = await updateUserStatusAPI(formData.id, formData.status);
+      }
+
+      // update allowed profile fields
+      const profileUpdated = await updateUserDetailsAPI(formData.id, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        agency: formData.agency,
+        position: formData.position,
+        contact: formData.contact,
+        address: formData.address,
+        birthday: formData.birthday
+      });
+
+      const merged = {
+        ...profileUpdated,
+        ...(updatedStatusUser ?? {})
+      };
+
+      onSave?.(merged);
+      onClose();
+
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
+    if (!user) return;
+
+    if (initializedForId.current === user.id) return;
+
+    initializedForId.current = user.id;
+
     setFormData(user);
+    console.log('Loaded user into form:', user);
+
   }, [user]);
 
   // ESC closes preview OR modal
@@ -119,21 +175,19 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
             <button
               onClick={onClose}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                isDarkMode
-                  ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-              }`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDarkMode
+                ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                }`}
             >
-              <X size={15}/>
+              <X size={15} />
             </button>
           </div>
 
 
           {/* USER CARD */}
-          <div className={`rounded-xl p-4 mb-5 border ${
-            isDarkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-200'
-          }`}>
+          <div className={`rounded-xl p-4 mb-5 border ${isDarkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-200'
+            }`}>
 
             <div className="flex items-start gap-3">
 
@@ -167,7 +221,7 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
                     {fullName(user)}
                   </p>
 
-                  <StatusBadge status={formData.status} isDarkMode={isDarkMode} size="sm"/>
+                  <StatusBadge status={formData.status} isDarkMode={isDarkMode} size="sm" />
                 </div>
 
                 <p className={`text-xs mt-1 font-mono ${meta}`}>
@@ -180,21 +234,21 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
             {/* META */}
             <div className={`mt-3 pt-3 border-t space-y-1.5 ${divider}`}>
               <p className={`text-xs flex items-center gap-2 ${data}`}>
-                <Mail size={11}/> {user.email}
+                <Mail size={11} /> {user.email}
               </p>
 
               {user.contact &&
                 <p className={`text-xs flex items-center gap-2 ${data}`}>
-                  <Phone size={11}/> {user.contact}
+                  <Phone size={11} /> {user.contact}
                 </p>
               }
 
               <p className={`text-xs flex items-center gap-2 ${data}`}>
-                <Building2 size={11}/> {user.agency} · {user.position}
+                <Building2 size={11} /> {user.agency} · {user.position}
               </p>
 
               <p className={`text-xs flex items-center gap-2 ${meta}`}>
-                <Clock size={11}/> Last login: {user.lastLogin}
+                <Clock size={11} /> Last login: {user.lastLogin}
               </p>
             </div>
 
@@ -202,23 +256,25 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
 
           {/* EDITABLE FIELDS */}
-          <div className={`rounded-xl p-4 mb-5 border space-y-3 ${
-            isDarkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200'
-          }`}>
+          <div className={`rounded-xl p-4 mb-5 border space-y-3 ${isDarkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200'
+            }`}>
 
             {/* ROLE */}
             <div>
               <label className={`block text-xs font-semibold mb-1 ${meta}`}>Role</label>
               <select
                 value={formData.role}
-                onChange={(e)=>setFormData(p=>({...p,role:e.target.value}))}
-                className={`w-full px-3 py-2 rounded-lg border text-sm ${
-                  isDarkMode
-                    ? 'bg-slate-900 border-slate-700 text-slate-200'
-                    : 'bg-white border-slate-200 text-slate-700'
-                }`}
+                onChange={(e) => setFormData(p => ({ ...p, role: e.target.value }))}
+                className={`w-full px-3 py-2 rounded-lg border text-sm ${isDarkMode
+                  ? 'bg-slate-900 border-slate-700 text-slate-200'
+                  : 'bg-white border-slate-200 text-slate-700'
+                  }`}
               >
-                {ROLE_OPTIONS.map(r=><option key={r}>{r}</option>)}
+                {ROLE_OPTIONS.map(r => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -227,16 +283,27 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
               <label className={`block text-xs font-semibold mb-1 ${meta}`}>Status</label>
               <select
                 value={formData.status}
-                onChange={(e)=>setFormData(p=>({...p,status:e.target.value}))}
-                className={`w-full px-3 py-2 rounded-lg border text-sm ${
-                  isDarkMode
-                    ? 'bg-slate-900 border-slate-700 text-slate-200'
-                    : 'bg-white border-slate-200 text-slate-700'
-                }`}
+                onChange={(e) => setFormData(p => ({ ...p, status: e.target.value }))}
+                className={`w-full px-3 py-2 rounded-lg border text-sm ${isDarkMode
+                  ? 'bg-slate-900 border-slate-700 text-slate-200'
+                  : 'bg-white border-slate-200 text-slate-700'
+                  }`}
               >
-                {STATUS_OPTIONS.filter(o=>o!=='All').map(o=>(
-                  <option key={o}>{o}</option>
-                ))}
+                {STATUS_OPTIONS
+                  .filter(o => {
+                    const value = typeof o === "string" ? o : o.value;
+                    return value.toLowerCase() !== "all";
+                  })
+                  .map(o => {
+                    const value = typeof o === "string" ? o : o.value;
+                    const label = typeof o === "string" ? o : o.label;
+
+                    return (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    );
+                  })}
               </select>
             </div>
 
@@ -245,17 +312,16 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
           {/* ACTIONS */}
           <div className="space-y-2 mb-5">
-            {ACTION_BUTTONS.map(({icon:Icon,label,desc,color,disabled})=>{
-              const col=actionColors[color];
-              return(
+            {ACTION_BUTTONS.map(({ icon: Icon, label, desc, color, disabled }) => {
+              const col = actionColors[color];
+              return (
                 <button
                   key={label}
                   disabled={disabled}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left ${
-                    disabled?'opacity-40 cursor-not-allowed':'cursor-pointer'
-                  } ${isDarkMode?col.dark:col.light}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                    } ${isDarkMode ? col.dark : col.light}`}
                 >
-                  <Icon size={15}/>
+                  <Icon size={15} />
                   <div>
                     <p className="text-sm font-semibold">{label}</p>
                     <p className={`text-xs ${meta}`}>{desc}</p>
@@ -267,10 +333,9 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
 
           {/* NOTE */}
-          <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 border mb-5 ${
-            isDarkMode ? 'bg-slate-800/40 border-slate-700/40' : 'bg-amber-50 border-amber-100'
-          }`}>
-            <ShieldAlert size={13} className={`mt-0.5 ${meta}`}/>
+          <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 border mb-5 ${isDarkMode ? 'bg-slate-800/40 border-slate-700/40' : 'bg-amber-50 border-amber-100'
+            }`}>
+            <ShieldAlert size={13} className={`mt-0.5 ${meta}`} />
             <p className={`text-xs ${meta}`}>
               Admin actions above will be enabled once backend endpoints are ready.
             </p>
@@ -279,20 +344,24 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
           {/* FOOTER */}
           <div className={`flex justify-end gap-2 pt-4 border-t ${divider}`}>
-
+            {error && (
+              <p className="text-xs text-red-500 mb-3">
+                {error}
+              </p>
+            )}
             <button
               onClick={onClose}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold ${
-                isDarkMode
-                  ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold ${isDarkMode
+                ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
             >
               Cancel
             </button>
 
             <button
-              onClick={()=>{onSave(formData);onClose();}}
+              onClick={handleSave}
+              disabled={saving}
               className="px-4 py-2 rounded-xl text-sm font-semibold bg-cyan-500 text-white hover:bg-cyan-600"
             >
               Save Changes
@@ -308,29 +377,28 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
       {showAvatarPreview && (
         <div
           className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-md flex items-center justify-center p-6"
-          onClick={()=>setShowAvatarPreview(false)}
+          onClick={() => setShowAvatarPreview(false)}
         >
           <div
             className="relative max-w-2xl w-full flex items-center justify-center"
-            onClick={(e)=>e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
 
             <button
-              onClick={()=>setShowAvatarPreview(false)}
+              onClick={() => setShowAvatarPreview(false)}
               className="absolute -top-12 right-0 text-white hover:opacity-70"
             >
-              <X size={26}/>
+              <X size={26} />
             </button>
 
             {(formData.avatarUrl || formData.photo) ? (
               <img
                 src={formData.avatarUrl || formData.photo}
                 loading="lazy"
-                onLoad={()=>setImageLoaded(true)}
+                onLoad={() => setImageLoaded(true)}
                 alt={fullName(formData)}
-                className={`rounded-2xl shadow-2xl max-h-[75vh] object-contain transition-all duration-300 ${
-                  imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-                }`}
+                className={`rounded-2xl shadow-2xl max-h-[75vh] object-contain transition-all duration-300 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                  }`}
               />
             ) : (
               <div
