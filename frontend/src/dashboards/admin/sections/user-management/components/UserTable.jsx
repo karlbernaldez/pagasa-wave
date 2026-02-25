@@ -46,9 +46,20 @@ export function UserTable({
   const [limit, setLimit] = useState(initialLimit);
   const [jump, setJump] = useState('');
 
+  useEffect(() => {
+    const p = Number(params.get('page')) || 1;
+    const l = Number(params.get('limit')) || 10;
+
+    setPage(p);
+    setLimit(l);
+  }, [params]);
+
   // persist to URL
   useEffect(() => {
-    setParams({ page, limit });
+    const next = new URLSearchParams(params);
+    next.set('page', page);
+    next.set('limit', limit);
+    setParams(next, { replace: true });
   }, [page, limit]);
 
   // notify parent if server mode
@@ -57,7 +68,7 @@ export function UserTable({
       onPageChange?.(page);
       onLimitChange?.(limit);
     }
-  }, [page, limit, isServer]);
+  }, [page, limit, isServer, onPageChange, onLimitChange]);
 
   // ─── totals
   const dataCount = isServer ? totalCount ?? 0 : filteredUsers.length;
@@ -68,7 +79,7 @@ export function UserTable({
     if (page > totalPages) setPage(1);
   }, [totalPages]);
 
-  // ─── local pagination slice (client mode only)
+  // ─── pagination slice
   const paginatedUsers = useMemo(() => {
     if (isServer) return filteredUsers;
     const start = (page - 1) * limit;
@@ -97,7 +108,7 @@ export function UserTable({
                     }
                     onChange={(e) => {
                       if (e.target.checked) {
-                        onSelectAll(paginatedUsers.map(u => u.id));
+                        onSelectAll(paginatedUsers.map(u => u.id))
                       } else {
                         onClearSelection();
                       }
@@ -133,7 +144,6 @@ export function UserTable({
                 isDarkMode={isDarkMode}
                 onUpdateUser={onUpdateUser}
                 onManage={onManage}
-
                 selected={selectedIds.has(user.id)}
                 onToggleSelect={onToggleSelect}
               />
@@ -142,10 +152,11 @@ export function UserTable({
         </tbody>
       </table>
 
+      {/* ─── Bulk Actions Bar ───────────────────────── */}
       {selectedIds?.size > 0 && (
         <div className={`flex items-center justify-between px-3 py-2 rounded-xl mb-3 border
-    ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}
-  `}>
+          ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}
+        `}>
 
           <span className="text-sm font-medium">
             {selectedIds.size} selected
@@ -189,7 +200,6 @@ export function UserTable({
       {!isEmpty && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-1">
 
-          {/* rows per page */}
           <div className="flex items-center gap-2 text-xs">
             <span className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>
               Rows per page:
@@ -212,7 +222,6 @@ export function UserTable({
             </select>
           </div>
 
-          {/* page controls */}
           <div className="flex items-center gap-2">
 
             <button
@@ -247,7 +256,6 @@ export function UserTable({
               <ChevronRight size={14} />
             </button>
 
-            {/* jump to page */}
             <input
               type="number"
               min="1"
@@ -271,7 +279,6 @@ export function UserTable({
             />
 
           </div>
-
         </div>
       )}
 

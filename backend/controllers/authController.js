@@ -14,14 +14,6 @@ const REFRESH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const MAX_ATTEMPTS = 5;
 const LOCK_TIME_MS = 30 * 60 * 1000; // 30 minutes
 
-const ALLOWED_STATUSES = new Set([
-  'Pending Approval',
-  'Active',
-  'Locked',
-  'Suspended',
-  'Inactive',
-]);
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,10 +80,10 @@ const isValidPHMobile = (contact) => /^(\+63|0)9\d{9}$/.test(contact);
 
 const statusMessage = (status) => {
   const messages = {
-    'Pending Approval': 'Account pending approval.',
-    'Locked': 'Account locked. Contact administrator.',
-    'Suspended': 'Account suspended. Contact administrator.',
-    'Inactive': 'Account inactive.',
+    pending: 'Account pending approval.',
+    locked: 'Account locked. Contact administrator.',
+    suspended: 'Account suspended. Contact administrator.',
+    inactive: 'Account inactive.',
   };
   return messages[status] || 'Account not allowed to login.';
 };
@@ -215,8 +207,8 @@ export const loginUser = async (req, res) => {
       user.failedLoginAttempts = 0;
 
       // Only auto-restore if it was locked due to attempts
-      if (user.status === 'Locked') {
-        user.status = 'Active';
+      if (user.status === 'locked') {
+        user.status = 'active';
       }
 
       await user.save();
@@ -231,7 +223,7 @@ export const loginUser = async (req, res) => {
     }
 
     // Status gate (must be Active)
-    if (user.status !== 'Active') {
+    if (user.status !== 'active') {
       return res.status(403).json({ message: statusMessage(user.status) });
     }
 
@@ -242,7 +234,7 @@ export const loginUser = async (req, res) => {
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
 
       if (user.failedLoginAttempts >= MAX_ATTEMPTS) {
-        user.status = 'Locked';
+        user.status = 'locked';
         user.lockUntil = new Date(Date.now() + LOCK_TIME_MS);
 
         await user.save();
@@ -344,7 +336,7 @@ export const refreshAccessToken = async (req, res) => {
     }
 
     // If you want, block refresh for non-active accounts:
-    if (user.status !== 'Active') {
+    if (user.status !== 'active') {
       session.revokedAt = new Date();
       await session.save();
       clearAuthCookies(res);

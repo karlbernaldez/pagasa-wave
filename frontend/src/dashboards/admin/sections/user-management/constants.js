@@ -7,7 +7,12 @@ export const STATUS_LABELS = {
   inactive: 'Inactive'
 };
 
-export const ROLE_OPTIONS = ['Admin', 'Forecaster', 'Data Analyst'];
+export const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'forecaster', label: 'Forecaster' },
+  { value: 'data_analyst', label: 'Data Analyst' },
+  { value: 'user', label: 'User' },
+];
 
 export const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
