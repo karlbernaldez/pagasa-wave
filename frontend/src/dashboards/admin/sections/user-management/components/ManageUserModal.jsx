@@ -8,10 +8,12 @@ import {
   KeyRound,
   LockKeyhole,
   ScrollText,
-  ShieldAlert
+  ShieldAlert,
+  Trash2
 } from 'lucide-react';
+import { ConfirmDeleteUserModal } from '../modals/ConfirmDeleteUser';
 
-import { updateUserDetailsAPI, updateUserStatusAPI } from '@/api/userAPI';
+import { updateUserDetailsAPI, updateUserStatusAPI, deleteUserAPI } from '@/api/userAPI';
 
 import { ROLE_OPTIONS, STATUS_OPTIONS } from '../constants';
 import { fullName, getInitials, avatarGradient } from '../utils';
@@ -30,7 +32,7 @@ const EDITABLE_PROFILE_FIELDS = [
   'role',
 ];
 
-const getUserId = (user) => user?.id ?? user?._id;
+const getUserId = (user) => user?._id || user?.id;
 
 const pickChangedFields = (source, baseline, fields) => {
   const updates = {};
@@ -67,6 +69,14 @@ const ACTION_BUTTONS = [
     desc: 'Inspect login history and admin actions for this user.',
     color: 'violet',
     disabled: true
+  },
+  {
+    icon: Trash2,
+    label: 'Delete User',
+    desc: 'Permanently remove this user account.',
+    color: 'danger',
+    disabled: false,
+    destructive: true
   }
 ];
 
@@ -82,12 +92,16 @@ const actionColors = {
   violet: {
     dark: 'border-violet-500/30 text-violet-300 hover:bg-violet-500/10',
     light: 'border-violet-200 text-violet-600 hover:bg-violet-50'
+  },
+  danger: {
+    dark: 'border-red-500/40 text-red-300 hover:bg-red-500/10',
+    light: 'border-red-200 text-red-600 hover:bg-red-50'
   }
 };
 
 // ───────────────── COMPONENT ─────────────────
 
-export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
+export function ManageUserModal({ user, isDarkMode, onClose, onSave, onDelete }) {
 
   /* ---------- STATE ---------- */
 
@@ -95,6 +109,9 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [error, setError] = useState('');
 
   const userId = useMemo(() => getUserId(user), [user]);
@@ -139,12 +156,18 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
         profileUpdated = await updateUserDetailsAPI(userId, changedProfileFields);
       }
 
+      const normalizedId =
+        profileUpdated?._id ||
+        updatedStatusUser?._id ||
+        user?._id;
+
       const merged = {
         ...user,
         ...formData,
         ...profileUpdated,
         ...(updatedStatusUser ?? {}),
-        id: profileUpdated?.id ?? updatedStatusUser?.id ?? profileUpdated?._id ?? updatedStatusUser?._id ?? userId,
+        _id: normalizedId,
+        id: normalizedId,
       };
 
       onSave?.(merged);
@@ -155,6 +178,24 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
       setError(err.message || 'Failed to save changes');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!userId) return;
+
+    try {
+      setDeleting(true);
+      setError('');
+
+      await onDelete?.(userId);   // 🔥 call hook delete
+
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Failed to delete user');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -352,19 +393,43 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
           {/* ACTIONS */}
           <div className="space-y-2 mb-5">
-            {ACTION_BUTTONS.map(({ icon: Icon, label, desc, color, disabled }) => {
+            {ACTION_BUTTONS.map(({ icon: Icon, label, desc, color, disabled, destructive }) => {
+
               const col = actionColors[color];
+
+              const isDelete = label === 'Delete User';
+
+              const onClick = isDelete
+                ? () => setShowDeleteModal(true)
+                : undefined;
+
+              const isLoading = isDelete && deleting;
+
               return (
                 <button
                   key={label}
-                  disabled={disabled}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
-                    } ${isDarkMode ? col.dark : col.light}`}
+                  disabled={disabled || isLoading}
+                  onClick={onClick}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left
+                    ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+                    ${isDarkMode ? col.dark : col.light}`}
                 >
                   <Icon size={15} />
+
                   <div>
-                    <p className="text-sm font-semibold">{label}</p>
-                    <p className={`text-xs ${meta}`}>{desc}</p>
+                    <p className="text-sm font-semibold">
+                      {isDelete && confirmDelete
+                        ? 'Confirm Delete User'
+                        : isLoading
+                          ? 'Deleting...'
+                          : label}
+                    </p>
+
+                    <p className={`text-xs ${meta}`}>
+                      {isDelete && confirmDelete
+                        ? 'Click again to permanently delete this account.'
+                        : desc}
+                    </p>
                   </div>
                 </button>
               );
@@ -453,6 +518,16 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave }) {
 
           </div>
         </div>
+      )}
+
+      {showDeleteModal && (
+        <ConfirmDeleteUserModal
+          user={user}
+          isDarkMode={isDarkMode}
+          loading={deleting}
+          onCancel={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+        />
       )}
 
     </>
