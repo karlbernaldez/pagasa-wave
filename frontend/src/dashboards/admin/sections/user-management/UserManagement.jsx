@@ -9,85 +9,90 @@ import { ManageUserModal } from './components/ManageUserModal';
 import { RolesSection } from './components/RolesSection';
 import { STATUS_LABELS } from './constants';
 
-function StatCard({ icon: Icon, label, value, color, isDarkMode }) {
+// ─── StatCard ─────────────────────────────────────────────────────────────────
 
-  const colorMap = {
-    cyan: { icon: isDarkMode ? 'text-cyan-400' : 'text-cyan-600', bg: isDarkMode ? 'bg-cyan-400/10 border-cyan-400/20' : 'bg-cyan-50 border-cyan-100' },
-    emerald: { icon: isDarkMode ? 'text-emerald-400' : 'text-emerald-600', bg: isDarkMode ? 'bg-emerald-400/10 border-emerald-400/20' : 'bg-emerald-50 border-emerald-100' },
-    amber: { icon: isDarkMode ? 'text-amber-400' : 'text-amber-600', bg: isDarkMode ? 'bg-amber-400/10 border-amber-400/20' : 'bg-amber-50 border-amber-100' },
-    red: { icon: isDarkMode ? 'text-red-400' : 'text-red-600', bg: isDarkMode ? 'bg-red-400/10 border-red-400/20' : 'bg-red-50 border-red-100' },
-  };
-  const c = colorMap[color];
+const COLOR_MAP = {
+  cyan:    { light: 'text-cyan-600 bg-cyan-50 border-cyan-100',       dark: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20'    },
+  emerald: { light: 'text-emerald-600 bg-emerald-50 border-emerald-100', dark: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
+  amber:   { light: 'text-amber-600 bg-amber-50 border-amber-100',    dark: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
+  red:     { light: 'text-red-600 bg-red-50 border-red-100',          dark: 'text-red-400 bg-red-400/10 border-red-400/20'       },
+};
+
+function StatCard({ icon: Icon, label, value, color, isDarkMode }) {
+  const c = COLOR_MAP[color]?.[isDarkMode ? 'dark' : 'light'] ?? '';
 
   return (
-    <div className={`rounded-xl border p-4 flex items-center gap-3 ${isDarkMode ? 'bg-slate-900/60 border-slate-700/60' : 'bg-white border-slate-200'}`}>
-      <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${c.bg}`}>
-        <Icon size={16} className={c.icon} />
+    <div
+      className={`rounded-xl border p-4 flex items-center gap-3 ${
+        isDarkMode ? 'bg-slate-900/60 border-slate-700/60' : 'bg-white border-slate-200'
+      }`}
+    >
+      <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${c}`}>
+        <Icon size={16} />
       </div>
       <div>
-        <p className={`text-xl font-bold leading-none ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{value}</p>
+        <p className={`text-xl font-bold leading-none ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+          {value}
+        </p>
         <p className="text-xs mt-0.5 text-slate-500">{label}</p>
       </div>
     </div>
   );
 }
 
-const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
+// ─── UserManagementSection ────────────────────────────────────────────────────
 
+const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
   const {
-    users,
-    filteredUsers,
+    users,         // current page rows
+    total,         // total matching documents (from server)
+    isLoadingUsers,
     query,
     setQuery,
     statusFilter,
     setStatusFilter,
     newUser,
     setNewUser,
-    createUser,
-    bulkUpdateUsers,
     resetNewUser,
+    createUser,
     replaceUser,
+    deleteUser,
+    bulkUpdateUsers,
   } = useUsers();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [manageUserId, setManageUserId] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [manageUserId,   setManageUserId]   = useState(null);
+  const [selectedIds,    setSelectedIds]    = useState(new Set());
 
   const managedUser = useMemo(
-    () => users.find(u => u.id === manageUserId) ?? null,
+    () => users.find((u) => u.id === manageUserId) ?? null,
     [users, manageUserId]
   );
 
-  // ✅ FIXED STATS (lowercase)
+  // Stats are derived from the FULL total returned by the server.
+  // We only have current-page users locally, so per-status counts
+  // should ideally come from a separate /stats endpoint. For now,
+  // we tally what we have and show the server total for "Total Users".
   const stats = useMemo(() => {
-    const result = {
-      total: users.length,
-      active: 0,
-      pending: 0,
-      suspended: 0
-    };
-
+    const counts = { active: 0, pending: 0, suspended: 0 };
     for (const u of users) {
-      if (result[u.status] !== undefined) result[u.status]++;
+      if (u.status in counts) counts[u.status]++;
     }
+    return { total, ...counts };
+  }, [users, total]);
 
-    return result;
-  }, [users]);
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
-  const handleAddSubmit = async () => {
-    const ok = await createUser();
+  const handleAddSubmit = async (payload) => {
+    const ok = await createUser(payload);
     if (ok) {
       setIsAddModalOpen(false);
       resetNewUser();
     }
   };
 
-  const handleCloseAdd = () => {
-    setIsAddModalOpen(false);
-  };
-
-  const toggleSelect = useCallback((id) => {
-    setSelectedIds(prev => {
+  const toggleSelect   = useCallback((id) => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -95,34 +100,41 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
   }, []);
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
-  const selectAll = useCallback((ids) => setSelectedIds(new Set(ids)), []);
+  const selectAll      = useCallback((ids) => setSelectedIds(new Set(ids)), []);
 
-  // ✅ FIXED BULK ACTIONS (lowercase)
   const applyBulkAction = useCallback((action, payload) => {
     switch (action) {
       case 'delete':
         bulkUpdateUsers(selectedIds, 'delete');
         break;
       case 'activate':
-        bulkUpdateUsers(selectedIds, (user) => ({ ...user, status: 'active', statusLabel: STATUS_LABELS.active }));
+        bulkUpdateUsers(selectedIds, (u) => ({ ...u, status: 'active', statusLabel: STATUS_LABELS.active }));
         break;
       case 'suspend':
-        bulkUpdateUsers(selectedIds, (user) => ({ ...user, status: 'suspended', statusLabel: STATUS_LABELS.suspended }));
+        bulkUpdateUsers(selectedIds, (u) => ({ ...u, status: 'suspended', statusLabel: STATUS_LABELS.suspended }));
         break;
       case 'role':
-        bulkUpdateUsers(selectedIds, (user) => ({ ...user, role: payload }));
+        bulkUpdateUsers(selectedIds, (u) => ({ ...u, role: payload }));
         break;
       default:
         break;
     }
-
     clearSelection();
-
   }, [bulkUpdateUsers, clearSelection, selectedIds]);
 
-  if (mode === 'roles') {
-    return <RolesSection isDarkMode={isDarkMode} />;
-  }
+  // ── Subtitle ─────────────────────────────────────────────────────────────────
+
+  const subtitle = useMemo(() => {
+    if (isLoadingUsers) return 'Loading…';
+    const hasFilter = query.trim() || statusFilter;
+    return hasFilter
+      ? `Showing ${total} result${total !== 1 ? 's' : ''} for your filter`
+      : `${total} user${total !== 1 ? 's' : ''} registered`;
+  }, [isLoadingUsers, query, statusFilter, total]);
+
+  // ── Roles mode ───────────────────────────────────────────────────────────────
+
+  if (mode === 'roles') return <RolesSection isDarkMode={isDarkMode} />;
 
   const card = isDarkMode
     ? 'bg-slate-900/80 border border-slate-700/60'
@@ -132,35 +144,41 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     <>
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <StatCard icon={Users} label="Total Users" value={stats.total} color="cyan" isDarkMode={isDarkMode} />
-        <StatCard icon={UserCheck} label="Active" value={stats.active} color="emerald" isDarkMode={isDarkMode} />
-        <StatCard icon={Clock} label="Pending" value={stats.pending} color="amber" isDarkMode={isDarkMode} />
-        <StatCard icon={Ban} label="Suspended" value={stats.suspended} color="red" isDarkMode={isDarkMode} />
+        <StatCard icon={Users}     label="Total Users" value={stats.total}     color="cyan"    isDarkMode={isDarkMode} />
+        <StatCard icon={UserCheck} label="Active"      value={stats.active}    color="emerald" isDarkMode={isDarkMode} />
+        <StatCard icon={Clock}     label="Pending"     value={stats.pending}   color="amber"   isDarkMode={isDarkMode} />
+        <StatCard icon={Ban}       label="Suspended"   value={stats.suspended} color="red"     isDarkMode={isDarkMode} />
       </div>
 
-      {/* Main */}
+      {/* Main card */}
       <div className={`rounded-2xl overflow-hidden ${card}`}>
-        <div className={`px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+
+        {/* Header */}
+        <div
+          className={`px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+            isDarkMode ? 'border-slate-800' : 'border-slate-100'
+          }`}
+        >
           <div>
             <h3 className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
               User Directory
             </h3>
-            <p className="text-xs mt-0.5 text-slate-500">
-              {filteredUsers.length === users.length
-                ? `${users.length} users registered`
-                : `Showing ${filteredUsers.length} of ${users.length} users`}
-            </p>
+            <p className="text-xs mt-0.5 text-slate-500">{subtitle}</p>
           </div>
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 transition-all shadow-md shadow-cyan-500/20 hover:shadow-cyan-400/30 hover:-translate-y-px"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white
+              bg-gradient-to-r from-cyan-500 to-blue-500
+              hover:from-cyan-400 hover:to-blue-400
+              transition-all shadow-md shadow-cyan-500/20 hover:shadow-cyan-400/30 hover:-translate-y-px"
           >
             <Plus size={15} />
             Add User
           </button>
         </div>
 
+        {/* Body */}
         <div className="px-6 pt-5 pb-6">
           <SearchBar
             query={query}
@@ -171,10 +189,17 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
           />
 
           <UserTable
-            filteredUsers={filteredUsers}
+            // ── data ──────────────────────────────────────────────────────
+            filteredUsers={users}       // already server-filtered + paginated
+            totalCount={total}          // total for pagination maths
+            isLoading={isLoadingUsers}       // ← prevents premature page-1 reset on reload
+            isServer                    // tell the table the server owns pagination
+
+            // ── UI ────────────────────────────────────────────────────────
             isDarkMode={isDarkMode}
             onManage={setManageUserId}
 
+            // ── selection ─────────────────────────────────────────────────
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
             onSelectAll={selectAll}
@@ -184,12 +209,13 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
         </div>
       </div>
 
+      {/* Modals */}
       {isAddModalOpen && (
         <AddUserModal
           isDarkMode={isDarkMode}
           newUser={newUser}
           setNewUser={setNewUser}
-          onClose={handleCloseAdd}
+          onClose={() => setIsAddModalOpen(false)}
           onSubmit={handleAddSubmit}
         />
       )}
@@ -200,6 +226,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
           isDarkMode={isDarkMode}
           onClose={() => setManageUserId(null)}
           onSave={replaceUser}
+          onDelete={deleteUser}
         />
       )}
     </>

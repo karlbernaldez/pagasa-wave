@@ -1,7 +1,17 @@
 import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react';
-import { X, UserPlus, User, Briefcase, Shield, ChevronRight, Check, Loader2, RotateCcw } from 'lucide-react';
+import {
+  X,
+  UserPlus,
+  User,
+  Briefcase,
+  Shield,
+  ChevronRight,
+  Check,
+  Loader2,
+  RotateCcw
+} from 'lucide-react';
+
 import { ROLE_OPTIONS, STATUS_OPTIONS } from '../constants';
-import { createUserAPI } from '@/api/userAPI';
 
 /* ─────────────────────────────────────────────────────────────
    PURE HELPERS
@@ -12,37 +22,15 @@ const normalize = (arr = []) =>
 const slugify = (first = '', last = '') =>
   `${first}.${last}`.toLowerCase().replace(/\s+/g, '');
 
-const capitalize = (str = '') =>
-  str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
-
 const labelFor = (list, value) =>
   list.find(o => o.value === value)?.label ?? value ?? '—';
 
-const normalizeApiUser = (user) => ({
-  id: user._id ?? user.id,
-  username: user.username,
-  firstName: user.firstName,
-  lastName: user.lastName,
-  email: user.email,
-  contact: user.contact,
-  agency: user.agency,
-  position: user.position,
-  role: user.role,
-  status: user.status?.toLowerCase() ?? 'active',  // ✅ always lowercase
-  memberSince: user.createdAt
-    ? new Date(user.createdAt).toLocaleDateString()
-    : new Date().toLocaleDateString(),
-  lastLogin: user.lastLogin ?? null,
-  activatedAt: user.activatedAt ?? null,
-});
+/** Sanitize display — strip leading/trailing whitespace and collapse inner spaces */
+const sanitizeText = (str = '') => str.trim().replace(/\s{2,}/g, ' ');
 
 /* ─────────────────────────────────────────────────────────────
    VALIDATION RULES
    Each rule returns a string (error message) or null (pass).
-   Layered approach:
-     1. Threat patterns  — reject dangerous input first
-     2. Format rules     — enforce expected shape
-     3. Business rules   — domain-specific constraints
 ───────────────────────────────────────────────────────────── */
 
 /** Detects common injection/XSS payloads in any field */
@@ -51,7 +39,7 @@ const THREAT_PATTERNS = [
   { re: /<[^>]*>/, msg: 'HTML tags are not allowed' },
   { re: /javascript\s*:/i, msg: 'Invalid characters detected' },
   { re: /on\w+\s*=/i, msg: 'Invalid characters detected' },
-  // SQL injection
+  // SQL injection-ish patterns (best-effort; backend must still validate)
   { re: /('|--|;|\/\*|\*\/)/, msg: 'Invalid characters detected' },
   {
     re: /\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|EXEC|CAST|CONVERT)\b/i,
@@ -65,13 +53,10 @@ const THREAT_PATTERNS = [
 
 const checkThreats = (value) => {
   for (const { re, msg } of THREAT_PATTERNS) {
-    if (re.test(value)) return msg;
+    if (re.test(String(value))) return msg;
   }
   return null;
 };
-
-/** Sanitize display — strip leading/trailing whitespace and collapse inner spaces */
-const sanitizeText = (str = '') => str.trim().replace(/\s{2,}/g, ' ');
 
 const MAX_DATE = new Date();                             // not in the future
 const MIN_DATE = new Date('1900-01-01');
@@ -109,10 +94,9 @@ const VALIDATORS = {
   email: (v) => {
     if (!v?.trim()) return 'Required';
     const t = checkThreats(v); if (t) return t;
-    if (v.length > 254) return 'Email too long';                  // RFC 5321
+    if (v.length > 254) return 'Email too long';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()))
       return 'Invalid email address';
-    // block disposable / obviously fake TLDs
     if (/\.(test|invalid|example|localhost)$/i.test(v))
       return 'Please use a real email address';
     return null;
@@ -121,10 +105,9 @@ const VALIDATORS = {
   birthday: (v) => {
     if (!v) return 'Required';
     const d = new Date(v);
-    if (isNaN(d.getTime())) return 'Invalid date';
+    if (Number.isNaN(d.getTime())) return 'Invalid date';
     if (d > MAX_DATE) return 'Birthday cannot be in the future';
     if (d < MIN_DATE) return 'Birthday is too far in the past';
-    // must be at least 18 years old
     const age = new Date().getFullYear() - d.getFullYear();
     if (age < 18) return 'User must be at least 18 years old';
     if (age > 100) return 'Please enter a valid birthday';
@@ -136,8 +119,7 @@ const VALIDATORS = {
     const t = checkThreats(v); if (t) return t;
     const digits = v.replace(/\D/g, '');
     if (digits.length < 7) return 'Too short to be a valid number';
-    if (digits.length > 15) return 'Too long — max 15 digits (ITU-T E.164)';
-    // allow: +63 912 345 6789 / 09123456789 / (02) 1234-5678
+    if (digits.length > 15) return 'Too long — max 15 digits';
     if (!/^[+\d()\s-]+$/.test(v.trim())) return 'Invalid characters in contact number';
     return null;
   },
@@ -342,13 +324,12 @@ export function AddUserModal({ isDarkMode = true, newUser = {}, setNewUser, onCl
     , [errors]);
 
   /* ── submit ── */
-  const handleSubmit = useCallback(async e => {
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
 
     // Touch all fields to surface every error at once
     if (!canSubmit) {
       setTouched(Object.fromEntries([...REQUIRED].map(f => [f, true])));
-      // Jump to first section with an error
       const errFields = new Set(Object.keys(errors));
       const firstBadSection = SECTIONS.findIndex(s => s.fields.some(f => errFields.has(f)));
       if (firstBadSection !== -1) setActiveSection(firstBadSection);
@@ -357,30 +338,27 @@ export function AddUserModal({ isDarkMode = true, newUser = {}, setNewUser, onCl
 
     setLoading(true);
     try {
-      // Final sanitization pass before sending to API —
-      // even though we validate on change, this is a last defense
       const { _usernameAuto, ...raw } = newUser;
       const payload = Object.fromEntries(
         Object.entries(raw).map(([k, v]) => [k, typeof v === 'string' ? sanitizeText(v) : v])
       );
 
-      const { user, defaultPassword } = await createUserAPI(payload);
+      // ✅ delegate creation to parent (useUsers / react-query)
+      await onSubmit?.(payload);
+
       Draft.clear();
-      alert(`User created.\nTemporary password: ${defaultPassword}`);
-      onSubmit?.(normalizeApiUser(user));
       onClose?.();
     } catch (err) {
-      alert(err.message);
+      alert(err?.message || 'Failed to create user');
     } finally {
       setLoading(false);
     }
   }, [newUser, canSubmit, errors, onSubmit, onClose]);
 
-  const handleKeyDown = useCallback(e => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') onClose?.();
   }, [onClose]);
 
-  /* ── render ── */
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -412,19 +390,32 @@ export function AddUserModal({ isDarkMode = true, newUser = {}, setNewUser, onCl
           style={{ borderBottom: '1px solid rgba(99,102,241,0.1)' }}>
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(139,92,246,0.15))', border: '1px solid rgba(99,102,241,0.3)' }}>
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(139,92,246,0.15))',
+                  border: '1px solid rgba(99,102,241,0.3)'
+                }}
+              >
                 <UserPlus size={17} className="text-indigo-400" />
               </div>
-              <div className="absolute -inset-0.5 rounded-xl opacity-30 blur-sm"
-                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', zIndex: -1 }} />
+              <div
+                className="absolute -inset-0.5 rounded-xl opacity-30 blur-sm"
+                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', zIndex: -1 }}
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="text-base font-bold text-slate-100 tracking-tight">Add New User</h4>
                 {hasDraft && (
-                  <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold"
-                    style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.25)' }}>
+                  <span
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold"
+                    style={{
+                      background: 'rgba(245,158,11,0.15)',
+                      color: '#fbbf24',
+                      border: '1px solid rgba(245,158,11,0.25)'
+                    }}
+                  >
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
                     Draft restored
                   </span>
@@ -436,15 +427,21 @@ export function AddUserModal({ isDarkMode = true, newUser = {}, setNewUser, onCl
 
           <div className="flex items-center gap-1">
             {hasDraft && (
-              <button type="button" onClick={handleClearDraft} title="Clear saved draft"
+              <button
+                type="button"
+                onClick={handleClearDraft}
+                title="Clear saved draft"
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500
-                  hover:text-amber-400 hover:bg-slate-800 transition-all duration-150">
+                  hover:text-amber-400 hover:bg-slate-800 transition-all duration-150"
+              >
                 <RotateCcw size={14} />
               </button>
             )}
-            <button onClick={onClose}
+            <button
+              onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500
-                hover:text-slate-300 hover:bg-slate-800 transition-all duration-150">
+                hover:text-slate-300 hover:bg-slate-800 transition-all duration-150"
+            >
               <X size={16} />
             </button>
           </div>
@@ -456,16 +453,20 @@ export function AddUserModal({ isDarkMode = true, newUser = {}, setNewUser, onCl
             const Icon = s.icon;
             const active = activeSection === i;
             const done = sectionDone[i];
-            // Show red dot on tab if it has touched errors
             const hasError = s.fields.some(f => touched[f] && errors[f]);
+
             return (
-              <button key={s.id} type="button" onClick={() => setActiveSection(i)}
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setActiveSection(i)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all duration-200"
                 style={{
                   background: active ? 'rgba(99,102,241,0.15)' : 'transparent',
                   border: active ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent',
                   color: active ? '#a5b4fc' : hasError ? '#f87171' : done ? '#64748b' : '#475569',
-                }}>
+                }}
+              >
                 {done && !active && !hasError
                   ? <Check size={12} className="text-emerald-500" />
                   : hasError && !active
@@ -519,13 +520,19 @@ export function AddUserModal({ isDarkMode = true, newUser = {}, setNewUser, onCl
                 </Field>
 
                 <Field label="Role">
-                  <FormSelect options={ROLES} value={newUser.role || ROLE_DEFAULT}
-                    onChange={e => update('role', e.target.value)} />
+                  <FormSelect
+                    options={ROLES}
+                    value={newUser.role || ROLE_DEFAULT}
+                    onChange={e => update('role', e.target.value)}
+                  />
                 </Field>
 
                 <Field label="Status">
-                  <FormSelect options={STATUSES} value={newUser.status || STATUS_DEFAULT}
-                    onChange={e => update('status', e.target.value)} />
+                  <FormSelect
+                    options={STATUSES}
+                    value={newUser.status || STATUS_DEFAULT}
+                    onChange={e => update('status', e.target.value)}
+                  />
                 </Field>
               </div>
             )}
@@ -560,7 +567,6 @@ export function AddUserModal({ isDarkMode = true, newUser = {}, setNewUser, onCl
                   <Input
                     type="date"
                     value={newUser.birthday || ''}
-                    // Constrain the date picker UI to valid range
                     min="1900-01-01"
                     max={MAX_DATE.toISOString().split('T')[0]}
                     onBlur={() => touch('birthday')}
@@ -618,8 +624,10 @@ export function AddUserModal({ isDarkMode = true, newUser = {}, setNewUser, onCl
                 </Field>
 
                 {/* Quick Review */}
-                <div className="col-span-2 mt-2 rounded-xl p-4"
-                  style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                <div
+                  className="col-span-2 mt-2 rounded-xl p-4"
+                  style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.15)' }}
+                >
                   <p className="text-[11px] font-semibold tracking-widest uppercase text-indigo-400/70 mb-3">
                     Quick Review
                   </p>
@@ -647,42 +655,56 @@ export function AddUserModal({ isDarkMode = true, newUser = {}, setNewUser, onCl
           </div>
 
           {/* ── Footer ── */}
-          <div className="flex items-center justify-between px-6 py-4"
-            style={{ borderTop: '1px solid rgba(99,102,241,0.1)' }}>
-
+          <div
+            className="flex items-center justify-between px-6 py-4"
+            style={{ borderTop: '1px solid rgba(99,102,241,0.1)' }}
+          >
             <div className="flex gap-1.5">
               {SECTIONS.map((_, i) => (
-                <button key={i} type="button" onClick={() => setActiveSection(i)}
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActiveSection(i)}
                   className="rounded-full transition-all duration-300"
                   style={{
                     width: activeSection === i ? 20 : 6,
                     height: 6,
                     background: activeSection === i ? '#6366f1' : sectionDone[i] ? '#10b981' : '#1e293b',
-                  }} />
+                  }}
+                />
               ))}
             </div>
 
             <div className="flex items-center gap-2">
-              <button type="button" onClick={onClose}
+              <button
+                type="button"
+                onClick={onClose}
                 className="px-4 py-2 rounded-xl text-sm text-slate-400
-                  hover:text-slate-200 hover:bg-slate-800 transition-all duration-150">
+                  hover:text-slate-200 hover:bg-slate-800 transition-all duration-150"
+              >
                 Cancel
               </button>
 
               {activeSection < SECTIONS.length - 1 ? (
-                <button type="button" onClick={() => setActiveSection(i => i + 1)}
+                <button
+                  type="button"
+                  onClick={() => setActiveSection(i => i + 1)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all duration-150"
-                  style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                  style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+                >
                   Next <ChevronRight size={14} />
                 </button>
               ) : (
-                <button type="submit" disabled={!canSubmit || loading}
+                <button
+                  type="submit"
+                  disabled={!canSubmit || loading}
                   className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-semibold
                     text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     background: canSubmit && !loading ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : '#1e293b',
                     boxShadow: canSubmit && !loading ? '0 4px 14px rgba(99,102,241,0.35)' : 'none',
-                  }}>
+                  }}
+                >
                   {loading
                     ? <><Loader2 size={14} className="animate-spin" /> Creating…</>
                     : <><Check size={14} /> Create User</>

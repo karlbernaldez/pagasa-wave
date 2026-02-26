@@ -29,10 +29,23 @@ const request = async (url, options = {}) => {
 };
 
 /* -------------------------------------------------------
-   GET ALL USERS (Admin)
+   GET ALL USERS (Admin) — paginated + filtered
+   
+   Params:
+     page    – page number       (default 1)
+     limit   – rows per page     (default 10)
+     search  – text search       (optional)
+     status  – filter by status  (optional)
+
+   Returns: { data: User[], total, page, limit, totalPages }
 ------------------------------------------------------- */
-export const fetchAllUsers = () =>
-  request(USER_API_BASE_URL, { method: 'GET' });
+export const fetchAllUsers = ({ page = 1, limit = 10, search, status } = {}) => {
+  const query = new URLSearchParams({ page, limit });
+  if (search) query.set('search', search);
+  if (status) query.set('status', status);
+
+  return request(`${USER_API_BASE_URL}?${query}`, { method: 'GET' });
+};
 
 /* -------------------------------------------------------
    GET USER DETAILS
@@ -49,13 +62,11 @@ export const createUserAPI = async (payload) => {
     body: JSON.stringify(payload),
   });
 
-  // backend returns:
-  // { message, user, defaultPassword }
-
+  // backend returns: { message, user, defaultPassword }
   return {
-    user: data.user,
+    user:            data.user,
     defaultPassword: data.defaultPassword,
-    message: data.message,
+    message:         data.message,
   };
 };
 
