@@ -100,6 +100,7 @@ const Header = () => {
     const loadUserData = async () => {
       try {
         const { currentUser: userData, isLoggedIn: loggedIn } = await loadHeaderUserData();
+        console.log('Header user data loaded:', { userData, loggedIn });
         if (!mounted) return;
 
         setCurrentUser(userData);
@@ -362,8 +363,8 @@ const Header = () => {
                 >
                   <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
                     }`}>
-                    {currentUser?.avatar ? (
-                      <img src={currentUser.avatar} alt={currentUser.username} className="w-full h-full object-cover" />
+                    {currentUser?.avatarUrl ? (
+                      <img src={currentUser.avatarUrl} alt={currentUser.username} className="w-full h-full object-cover" />
                     ) : (
                       <User size={16} className={isDarkMode ? 'text-gray-400' : 'text-gray-500'} />
                     )}
@@ -542,9 +543,9 @@ const Header = () => {
               <div className="flex items-center px-4 py-2 gap-3 mb-4">
                 <div className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
                   }`}>
-                  {currentUser?.avatar ? (
+                  {currentUser?.avatarUrl ? (
                     <img
-                      src={currentUser.avatar}
+                      src={currentUser.avatarUrl}
                       alt={currentUser.username}
                       className="w-full h-full object-cover"
                     />

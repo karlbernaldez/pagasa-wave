@@ -14,8 +14,8 @@ const OWNER_FIELDS = ['firstName', 'lastName', 'contact', 'address', 'birthday',
 const ADMIN_FIELDS = [...OWNER_FIELDS, 'username', 'role'];
 
 // Fields returned by list / detail queries (no password, no __v)
-const LIST_FIELDS   = 'username firstName lastName contact email agency role position status lastLogin activatedAt createdAt';
-const DETAIL_FIELDS = 'username firstName lastName birthday address agency position email contact role status createdAt lastLogin';
+const LIST_FIELDS   = 'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
+const DETAIL_FIELDS = 'username firstName lastName birthday address agency position email contact role status avatarUrl createdAt lastLogin';
 
 // ─── Pure helpers (no side-effects, easy to unit-test) ────────────────────────
 
@@ -46,6 +46,7 @@ const formatUser = (u) => ({
   role:        u.role,
   position:    u.position,
   status:      u.status,
+  avatarUrl:   u.avatarUrl ?? null,
   activatedAt: u.activatedAt,
   lastLogin:   u.lastLogin,
   createdAt:   u.createdAt,
