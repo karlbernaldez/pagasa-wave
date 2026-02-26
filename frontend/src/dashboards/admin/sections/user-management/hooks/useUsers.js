@@ -36,14 +36,14 @@ const normalizeUser = (user) => {
     _id,
     id: _id,
 
-    username:  user.username  ?? '',
+    username: user.username ?? '',
     firstName: user.firstName ?? '',
-    lastName:  user.lastName  ?? '',
-    email:     user.email     ?? '',
-    contact:   user.contact   ?? '',
-    agency:    user.agency    ?? '',
-    position:  user.position  ?? '',
-    role:      user.role      ?? 'user',
+    lastName: user.lastName ?? '',
+    email: user.email ?? '',
+    contact: user.contact ?? '',
+    agency: user.agency ?? '',
+    position: user.position ?? '',
+    role: user.role ?? 'user',
 
     status,
     statusLabel: STATUS_LABELS[status] ?? STATUS_LABELS.pending,
@@ -66,24 +66,22 @@ const normalizeUser = (user) => {
  * Pagination state lives in the URL (?page & ?limit) so it survives
  * full page reloads and stays in sync with UserTable automatically.
  *
- * Search is debounced (350ms) to avoid hammering the API on every keystroke.
- * Status filter is applied immediately (it's a discrete select, not text input).
+ * Search/status are passed in by the section so UI state ownership stays local
+ * to User Management and never couples to global header or URL state.
  *
  * NOTE: fetchAllUsers must accept { page, limit, search, status } and return
  *       { data: User[], total: number } — update your userAPI accordingly.
  */
-export function useUsers() {
+export function useUsers({ searchQuery = '', statusFilter = 'all' } = {}) {
   const [params] = useSearchParams();
+  const page = params.get('page') ?? 1;
+  const limit = params.get('limit') ?? 10;
 
   // ── Server state ─────────────────────────────────────────────────────────
-  const [users,          setUsers]          = useState([]);
-  const [total,          setTotal]          = useState(0);
+  const [users, setUsers] = useState([]);
+  const [total, setTotal] = useState(0);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
-  const [usersError,     setUsersError]     = useState('');
-
-  // ── Filter state ──────────────────────────────────────────────────────────
-  const [query,        setQuery]        = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [usersError, setUsersError] = useState('');
 
   // ── Add-user form state ───────────────────────────────────────────────────
   const [newUser, setNewUser] = useState(defaultNewUser);
@@ -94,9 +92,9 @@ export function useUsers() {
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedQuery(query.trim()), 350);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 350);
     return () => clearTimeout(debounceRef.current);
-  }, [query]);
+  }, [searchQuery]);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -109,8 +107,6 @@ export function useUsers() {
     setUsersError('');
 
     try {
-      const page  = params.get('page')  ?? 1;
-      const limit = params.get('limit') ?? 10;
 
       const response = await fetchAllUsers({
         page,
@@ -140,7 +136,7 @@ export function useUsers() {
     } finally {
       setIsLoadingUsers(false);
     }
-  }, [params, debouncedQuery, statusFilter]);
+  }, [page, limit, debouncedQuery, statusFilter]);
 
   // Re-fetch whenever page / limit / search / status changes
   useEffect(() => {
@@ -197,7 +193,7 @@ export function useUsers() {
 
       const detailKeys = Object.keys(updates).filter((k) => k !== 'status');
       if (detailKeys.length > 0) {
-        const detailPayload  = Object.fromEntries(detailKeys.map((k) => [k, updates[k]]));
+        const detailPayload = Object.fromEntries(detailKeys.map((k) => [k, updates[k]]));
         const detailResponse = await updateUserDetailsAPI(userId, detailPayload);
         updated = detailResponse ?? updated;
       }
@@ -269,7 +265,7 @@ export function useUsers() {
             const user = users.find((u) => u.id === id);
             if (!user) return Promise.resolve();
 
-            const updated  = action(user);
+            const updated = action(user);
             const onlyStatus =
               updated.status !== user.status &&
               Object.keys(updated).filter((k) => updated[k] !== user[k]).length === 1;
@@ -327,12 +323,6 @@ export function useUsers() {
     stats,           // { total, active, pending, suspended }
     isLoadingUsers,
     usersError,
-
-    // filters — bind directly to SearchBar
-    query,
-    setQuery,
-    statusFilter,
-    setStatusFilter,
 
     // add-user form
     newUser,

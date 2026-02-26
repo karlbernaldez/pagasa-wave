@@ -66,11 +66,12 @@ const Header = ({
   onMobileMenuToggle,
   isDarkMode,
   onToggleDarkMode,
+  globalSearchValue = '',
+  onGlobalSearchChange,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [searchValue, setSearchValue] = useState('');
 
   const searchRef = useRef(null);
 
@@ -180,8 +181,8 @@ const Header = ({
             <input
               ref={searchRef}
               type="text"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
+              value={globalSearchValue}
+              onChange={(e) => onGlobalSearchChange?.(e.target.value)}
               placeholder="Search or type command..."
               className={`w-full pl-9 pr-12 py-2 rounded-xl text-sm outline-none border transition ${isDarkMode
                 ? 'bg-gray-900/70 border-gray-700 text-gray-100 placeholder-gray-500 focus:border-gray-500'

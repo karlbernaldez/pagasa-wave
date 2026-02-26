@@ -12,10 +12,10 @@ import { STATUS_LABELS } from './constants';
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 
 const COLOR_MAP = {
-  cyan:    { light: 'text-cyan-600 bg-cyan-50 border-cyan-100',       dark: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20'    },
+  cyan: { light: 'text-cyan-600 bg-cyan-50 border-cyan-100', dark: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20' },
   emerald: { light: 'text-emerald-600 bg-emerald-50 border-emerald-100', dark: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
-  amber:   { light: 'text-amber-600 bg-amber-50 border-amber-100',    dark: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
-  red:     { light: 'text-red-600 bg-red-50 border-red-100',          dark: 'text-red-400 bg-red-400/10 border-red-400/20'       },
+  amber: { light: 'text-amber-600 bg-amber-50 border-amber-100', dark: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
+  red: { light: 'text-red-600 bg-red-50 border-red-100', dark: 'text-red-400 bg-red-400/10 border-red-400/20' },
 };
 
 function StatCard({ icon: Icon, label, value, color, isDarkMode }) {
@@ -23,9 +23,8 @@ function StatCard({ icon: Icon, label, value, color, isDarkMode }) {
 
   return (
     <div
-      className={`rounded-xl border p-4 flex items-center gap-3 ${
-        isDarkMode ? 'bg-slate-900/60 border-slate-700/60' : 'bg-white border-slate-200'
-      }`}
+      className={`rounded-xl border p-4 flex items-center gap-3 ${isDarkMode ? 'bg-slate-900/60 border-slate-700/60' : 'bg-white border-slate-200'
+        }`}
     >
       <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${c}`}>
         <Icon size={16} />
@@ -43,14 +42,13 @@ function StatCard({ icon: Icon, label, value, color, isDarkMode }) {
 // ─── UserManagementSection ────────────────────────────────────────────────────
 
 const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
   const {
     users,         // current page rows
     total,         // total matching documents (from server)
     isLoadingUsers,
-    query,
-    setQuery,
-    statusFilter,
-    setStatusFilter,
     newUser,
     setNewUser,
     resetNewUser,
@@ -58,11 +56,14 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     replaceUser,
     deleteUser,
     bulkUpdateUsers,
-  } = useUsers();
+  } = useUsers({
+    searchQuery: userSearchQuery,
+    statusFilter,
+  });
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [manageUserId,   setManageUserId]   = useState(null);
-  const [selectedIds,    setSelectedIds]    = useState(new Set());
+  const [manageUserId, setManageUserId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const managedUser = useMemo(
     () => users.find((u) => u.id === manageUserId) ?? null,
@@ -91,7 +92,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     }
   };
 
-  const toggleSelect   = useCallback((id) => {
+  const toggleSelect = useCallback((id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -100,7 +101,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
   }, []);
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
-  const selectAll      = useCallback((ids) => setSelectedIds(new Set(ids)), []);
+  const selectAll = useCallback((ids) => setSelectedIds(new Set(ids)), []);
 
   const applyBulkAction = useCallback((action, payload) => {
     switch (action) {
@@ -126,11 +127,11 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
 
   const subtitle = useMemo(() => {
     if (isLoadingUsers) return 'Loading…';
-    const hasFilter = query.trim() || statusFilter;
+    const hasFilter = userSearchQuery.trim() || statusFilter;
     return hasFilter
       ? `Showing ${total} result${total !== 1 ? 's' : ''} for your filter`
       : `${total} user${total !== 1 ? 's' : ''} registered`;
-  }, [isLoadingUsers, query, statusFilter, total]);
+  }, [isLoadingUsers, userSearchQuery, statusFilter, total]);
 
   // ── Roles mode ───────────────────────────────────────────────────────────────
 
@@ -144,10 +145,10 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     <>
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <StatCard icon={Users}     label="Total Users" value={stats.total}     color="cyan"    isDarkMode={isDarkMode} />
-        <StatCard icon={UserCheck} label="Active"      value={stats.active}    color="emerald" isDarkMode={isDarkMode} />
-        <StatCard icon={Clock}     label="Pending"     value={stats.pending}   color="amber"   isDarkMode={isDarkMode} />
-        <StatCard icon={Ban}       label="Suspended"   value={stats.suspended} color="red"     isDarkMode={isDarkMode} />
+        <StatCard icon={Users} label="Total Users" value={stats.total} color="cyan" isDarkMode={isDarkMode} />
+        <StatCard icon={UserCheck} label="Active" value={stats.active} color="emerald" isDarkMode={isDarkMode} />
+        <StatCard icon={Clock} label="Pending" value={stats.pending} color="amber" isDarkMode={isDarkMode} />
+        <StatCard icon={Ban} label="Suspended" value={stats.suspended} color="red" isDarkMode={isDarkMode} />
       </div>
 
       {/* Main card */}
@@ -155,9 +156,8 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
 
         {/* Header */}
         <div
-          className={`px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
-            isDarkMode ? 'border-slate-800' : 'border-slate-100'
-          }`}
+          className={`px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'
+            }`}
         >
           <div>
             <h3 className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
@@ -181,8 +181,8 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
         {/* Body */}
         <div className="px-6 pt-5 pb-6">
           <SearchBar
-            query={query}
-            onQueryChange={setQuery}
+            query={userSearchQuery}
+            onQueryChange={setUserSearchQuery}
             statusFilter={statusFilter}
             onStatusChange={setStatusFilter}
             isDarkMode={isDarkMode}
