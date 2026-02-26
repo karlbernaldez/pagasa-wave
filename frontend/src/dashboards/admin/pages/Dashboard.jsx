@@ -36,8 +36,6 @@ const SECTION_MAP = {
 const renderSection = (tab, isDarkMode) =>
   (SECTION_MAP[tab]?.(isDarkMode)) ?? <DashboardOverview isDarkMode={isDarkMode} />;
 
-const GLOBAL_SEARCH_PARAM = 'q';
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const AdminDashboard = () => {
@@ -46,8 +44,6 @@ const AdminDashboard = () => {
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  const globalSearchValue = searchParams.get(GLOBAL_SEARCH_PARAM) ?? '';
 
   // ── Active tab — URL → localStorage → default ────────────────────────────
   const activeTab =
@@ -64,30 +60,12 @@ const AdminDashboard = () => {
 
       const next = new URLSearchParams({ tab });
 
-      const existingGlobalQuery = searchParams.get(GLOBAL_SEARCH_PARAM)?.trim();
-      if (existingGlobalQuery) {
-        next.set(GLOBAL_SEARCH_PARAM, existingGlobalQuery);
-      }
-
       if (PAGINATED_TABS.has(tab)) {
         // Carry forward existing pagination or start at page 1
         next.set('page', searchParams.get('page') ?? '1');
         next.set('limit', searchParams.get('limit') ?? '5');
       }
 
-      setSearchParams(next, { replace: true });
-    },
-    [searchParams, setSearchParams],
-  );
-
-  const handleGlobalSearchChange = useCallback(
-    (value) => {
-      const next = new URLSearchParams(searchParams);
-      if (value.trim()) {
-        next.set(GLOBAL_SEARCH_PARAM, value);
-      } else {
-        next.delete(GLOBAL_SEARCH_PARAM);
-      }
       setSearchParams(next, { replace: true });
     },
     [searchParams, setSearchParams],
@@ -134,8 +112,6 @@ const AdminDashboard = () => {
           onMobileMenuToggle={toggleMobileMenu}
           isDarkMode={isDarkMode}
           onToggleDarkMode={toggleDarkMode}
-          globalSearchValue={globalSearchValue}
-          onGlobalSearchChange={handleGlobalSearchChange}
         />
 
         <main className="flex-1 p-6 md:p-8 overflow-y-auto">

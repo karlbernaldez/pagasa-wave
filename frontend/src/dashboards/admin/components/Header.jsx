@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Menu,
   Moon,
@@ -8,7 +8,6 @@ import {
   User,
   Settings,
   Bell,
-  Search,
 } from 'lucide-react';
 
 import { getFullName, getUserInitials } from '@dashboards/admin/utils/user';
@@ -66,14 +65,10 @@ const Header = ({
   onMobileMenuToggle,
   isDarkMode,
   onToggleDarkMode,
-  globalSearchValue = '',
-  onGlobalSearchChange,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-
-  const searchRef = useRef(null);
 
   /* ===============================
      Load current user
@@ -96,21 +91,6 @@ const Header = ({
     return () => {
       mounted = false;
     };
-  }, []);
-
-  /* ===============================
-     Keyboard shortcut (Cmd/Ctrl + K)
-  =============================== */
-  useEffect(() => {
-    const handler = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   /* ===============================
@@ -168,36 +148,6 @@ const Header = ({
             <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               {activeMeta.description}
             </p>
-          </div>
-
-          {/* COMPACT SEARCH */}
-          <div className="hidden md:flex flex-1 max-w-md relative">
-            <Search
-              size={16}
-              className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}
-            />
-
-            <input
-              ref={searchRef}
-              type="text"
-              value={globalSearchValue}
-              onChange={(e) => onGlobalSearchChange?.(e.target.value)}
-              placeholder="Search or type command..."
-              className={`w-full pl-9 pr-12 py-2 rounded-xl text-sm outline-none border transition ${isDarkMode
-                ? 'bg-gray-900/70 border-gray-700 text-gray-100 placeholder-gray-500 focus:border-gray-500'
-                : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-gray-400'
-                }`}
-            />
-
-            <span
-              className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs px-2 py-0.5 rounded-md border ${isDarkMode
-                ? 'border-gray-700 text-gray-400'
-                : 'border-gray-300 text-gray-500'
-                }`}
-            >
-              ⌘K
-            </span>
           </div>
 
         </div>
