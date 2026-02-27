@@ -8,9 +8,9 @@ const FeatureSchema = new mongoose.Schema({
       required: true,
     },
     coordinates: {
-      type: [[[Number]]], // Nested array to support both Polygon and LineString
+      type: mongoose.Schema.Types.Mixed,
       required: true,
-    },
+    }
   },
   properties: {
     labelValue: { type: String },

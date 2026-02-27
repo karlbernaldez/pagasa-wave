@@ -217,6 +217,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
             totalCount={normalizedSearchQuery ? filteredUsers.length : total}
             isLoading={isLoadingUsers}
             isServer={!normalizedSearchQuery}
+            
             // ── UI ────────────────────────────────────────────────────────
             isDarkMode={isDarkMode}
             onManage={setManageUserId}

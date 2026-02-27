@@ -51,6 +51,28 @@ export const getAllFeatures = asyncHandler(async (req, res) => {
   res.json(features);
 });
 
+// GET FEATURES AS FEATURECOLLECTION (ADMIN)
+export const getProjectFeatureCollection = asyncHandler(async (req, res) => {
+  const { projectId } = req.params;
+
+  if (!projectId) throwError('Missing projectId.', 400);
+
+  const features = await Feature.find({
+    'properties.project': projectId
+  });
+
+  const featureCollection = {
+    type: 'FeatureCollection',
+    features: features.map(f => ({
+      type: 'Feature',
+      geometry: f.geometry,
+      properties: f.properties
+    }))
+  };
+
+  res.json(featureCollection);
+});
+
 // ===============================
 // GET FEATURES BY USER & PROJECT
 // ===============================
