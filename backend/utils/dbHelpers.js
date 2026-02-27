@@ -42,8 +42,73 @@ export const ensureFeatureExists = async (sourceId, owner = null, projectId = nu
  * @param {Object} geometry
  */
 export const validateGeometry = (geometry) => {
-  if (!geometry || !geometry.type || !geometry.coordinates) {
-    throwError('Invalid geometry object.', 400);
+  if (!geometry || typeof geometry !== 'object') {
+    throwError('Geometry must be an object.', 400);
+  }
+
+  const { type, coordinates } = geometry;
+
+  if (!type || !coordinates) {
+    throwError('Invalid geometry object. Missing type or coordinates.', 400);
+  }
+
+  const isNumber = (n) => typeof n === 'number' && !isNaN(n);
+
+  const isLngLat = (coord) =>
+    Array.isArray(coord) &&
+    coord.length === 2 &&
+    isNumber(coord[0]) &&
+    isNumber(coord[1]) &&
+    coord[0] >= -180 &&
+    coord[0] <= 180 &&
+    coord[1] >= -90 &&
+    coord[1] <= 90;
+
+  if (type === 'Point') {
+    if (!isLngLat(coordinates)) {
+      throwError('Invalid Point coordinates. Must be [lng, lat].', 400);
+    }
+  }
+
+  if (type === 'LineString') {
+    if (
+      !Array.isArray(coordinates) ||
+      coordinates.length < 2 ||
+      !coordinates.every(isLngLat)
+    ) {
+      throwError('Invalid LineString coordinates.', 400);
+    }
+  }
+
+  if (type === 'Polygon') {
+    if (
+      !Array.isArray(coordinates) ||
+      coordinates.length === 0
+    ) {
+      throwError('Invalid Polygon coordinates.', 400);
+    }
+
+    coordinates.forEach((ring) => {
+      if (
+        !Array.isArray(ring) ||
+        ring.length < 4 ||
+        !ring.every(isLngLat)
+      ) {
+        throwError('Invalid Polygon ring. Must contain at least 4 [lng, lat] points.', 400);
+      }
+
+      // Check if polygon is closed
+      const first = ring[0];
+      const last = ring[ring.length - 1];
+
+      if (first[0] !== last[0] || first[1] !== last[1]) {
+        throwError('Polygon ring must be closed (first and last coordinates must match).', 400);
+      }
+    });
+  }
+
+  if (!['Point', 'LineString', 'Polygon'].includes(type)) {
+    throwError(`Unsupported geometry type: ${type}`, 400);
   }
 };
 
