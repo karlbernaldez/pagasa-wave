@@ -57,13 +57,36 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     deleteUser,
     bulkUpdateUsers,
   } = useUsers({
-    searchQuery: userSearchQuery,
     statusFilter,
   });
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [manageUserId, setManageUserId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+
+  const normalizedSearchQuery = userSearchQuery.trim().toLowerCase();
+
+  const filteredUsers = useMemo(() => {
+    if (!normalizedSearchQuery) return users;
+
+    return users.filter((u) => {
+      const haystack = [
+        u.username,
+        u.firstName,
+        u.lastName,
+        u.email,
+        u.contact,
+        u.agency,
+        u.position,
+        u.role,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(normalizedSearchQuery);
+    });
+  }, [users, normalizedSearchQuery]);
 
   const managedUser = useMemo(
     () => users.find((u) => u.id === manageUserId) ?? null,
@@ -76,11 +99,11 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
   // we tally what we have and show the server total for "Total Users".
   const stats = useMemo(() => {
     const counts = { active: 0, pending: 0, suspended: 0 };
-    for (const u of users) {
+    for (const u of filteredUsers) {
       if (u.status in counts) counts[u.status]++;
     }
     return { total, ...counts };
-  }, [users, total]);
+  }, [filteredUsers, total]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -129,9 +152,9 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     if (isLoadingUsers) return 'Loading…';
     const hasFilter = userSearchQuery.trim() || statusFilter;
     return hasFilter
-      ? `Showing ${total} result${total !== 1 ? 's' : ''} for your filter`
+      ? `Showing ${filteredUsers.length} result${filteredUsers.length !== 1 ? 's' : ''} on this page`
       : `${total} user${total !== 1 ? 's' : ''} registered`;
-  }, [isLoadingUsers, userSearchQuery, statusFilter, total]);
+  }, [filteredUsers.length, isLoadingUsers, userSearchQuery, statusFilter, total]);
 
   // ── Roles mode ───────────────────────────────────────────────────────────────
 
@@ -190,11 +213,10 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
 
           <UserTable
             // ── data ──────────────────────────────────────────────────────
-            filteredUsers={users}       // already server-filtered + paginated
-            totalCount={total}          // total for pagination maths
-            isLoading={isLoadingUsers}       // ← prevents premature page-1 reset on reload
-            isServer                    // tell the table the server owns pagination
-
+            filteredUsers={filteredUsers}
+            totalCount={normalizedSearchQuery ? filteredUsers.length : total}
+            isLoading={isLoadingUsers}
+            isServer={!normalizedSearchQuery}
             // ── UI ────────────────────────────────────────────────────────
             isDarkMode={isDarkMode}
             onManage={setManageUserId}

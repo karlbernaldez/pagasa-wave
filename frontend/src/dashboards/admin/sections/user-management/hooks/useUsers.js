@@ -62,17 +62,17 @@ const normalizeUser = (user) => {
 /**
  * useUsers
  *
- * Fetches a paginated, server-filtered list of users.
+ * Fetches a paginated list of users from the server.
  * Pagination state lives in the URL (?page & ?limit) so it survives
  * full page reloads and stays in sync with UserTable automatically.
  *
- * Search/status are passed in by the section so UI state ownership stays local
+ * Status is passed in by the section so UI state ownership stays local
  * to User Management and never couples to global header or URL state.
  *
- * NOTE: fetchAllUsers must accept { page, limit, search, status } and return
+ * NOTE: fetchAllUsers must accept { page, limit, status } and return
  *       { data: User[], total: number } — update your userAPI accordingly.
  */
-export function useUsers({ searchQuery = '', statusFilter = 'all' } = {}) {
+export function useUsers({ statusFilter = 'all' } = {}) {
   const [params] = useSearchParams();
   const page = params.get('page') ?? 1;
   const limit = params.get('limit') ?? 10;
@@ -86,15 +86,7 @@ export function useUsers({ searchQuery = '', statusFilter = 'all' } = {}) {
   // ── Add-user form state ───────────────────────────────────────────────────
   const [newUser, setNewUser] = useState(defaultNewUser);
 
-  // ── Debounce search query ─────────────────────────────────────────────────
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const debounceRef = useRef(null);
-
-  useEffect(() => {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 350);
-    return () => clearTimeout(debounceRef.current);
-  }, [searchQuery]);
+  const lastRequestKeyRef = useRef('');
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -102,7 +94,10 @@ export function useUsers({ searchQuery = '', statusFilter = 'all' } = {}) {
    * Core fetch function.
    * Reads pagination from URL so it re-runs whenever the user navigates pages.
    */
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async ({ force = false } = {}) => {
+    const requestKey = `${page}|${limit}|${statusFilter}`;
+    if (!force && requestKey === lastRequestKeyRef.current) return;
+    lastRequestKeyRef.current = requestKey;
     setIsLoadingUsers(true);
     setUsersError('');
 
@@ -111,7 +106,6 @@ export function useUsers({ searchQuery = '', statusFilter = 'all' } = {}) {
       const response = await fetchAllUsers({
         page,
         limit,
-        search: debouncedQuery || undefined,
         // 'all' is a UI-only sentinel — don't send it to the server
         status: statusFilter !== 'all' ? statusFilter : undefined,
       });
@@ -136,9 +130,9 @@ export function useUsers({ searchQuery = '', statusFilter = 'all' } = {}) {
     } finally {
       setIsLoadingUsers(false);
     }
-  }, [page, limit, debouncedQuery, statusFilter]);
+  }, [page, limit, statusFilter]);
 
-  // Re-fetch whenever page / limit / search / status changes
+  // Re-fetch whenever page / limit / status changes
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
@@ -147,7 +141,7 @@ export function useUsers({ searchQuery = '', statusFilter = 'all' } = {}) {
 
   /** Forces a re-fetch of the current page. */
   const refreshUsers = useCallback(() => {
-    fetchUsers();
+    fetchUsers({ force: true });
   }, [fetchUsers]);
 
   // ── Create ────────────────────────────────────────────────────────────────
@@ -166,7 +160,7 @@ export function useUsers({ searchQuery = '', statusFilter = 'all' } = {}) {
       setTotal((prev) => prev + 1);
 
       // Full refresh to keep pagination counts correct
-      await fetchUsers();
+      await fetchUsers({ force: true });
 
       return true;
     } catch (err) {
@@ -228,7 +222,7 @@ export function useUsers({ searchQuery = '', statusFilter = 'all' } = {}) {
       setTotal((prev) => Math.max(0, prev - 1));
 
       // Refresh to fix pagination (e.g. last item on page was deleted)
-      await fetchUsers();
+      await fetchUsers({ force: true });
     } catch (err) {
       console.error('[useUsers] deleteUser error:', err);
       throw err;
