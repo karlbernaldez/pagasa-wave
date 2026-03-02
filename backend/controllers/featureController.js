@@ -8,9 +8,7 @@ import {
   buildNewSourceIdAndUpdateData,
 } from '../utils/dbHelpers.js';
 
-// ===============================
 // CREATE FEATURE
-// ===============================
 export const createFeature = asyncHandler(async (req, res) => {
   const { geometry, properties = {}, name = 'Untitled Feature', sourceId } = req.body;
   const owner = req.user.id;
@@ -43,9 +41,7 @@ export const createFeature = asyncHandler(async (req, res) => {
   });
 });
 
-// ===============================
 // GET ALL FEATURES
-// ===============================
 export const getAllFeatures = asyncHandler(async (req, res) => {
   const features = await Feature.find().sort({ createdAt: -1 });
   res.json(features);
@@ -73,9 +69,7 @@ export const getProjectFeatureCollection = asyncHandler(async (req, res) => {
   res.json(featureCollection);
 });
 
-// ===============================
 // GET FEATURES BY USER & PROJECT
-// ===============================
 export const getFeaturesByUserAndProject = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const { projectId } = req.params;
@@ -90,18 +84,14 @@ export const getFeaturesByUserAndProject = asyncHandler(async (req, res) => {
   res.json(features);
 });
 
-// ===============================
 // GET FEATURE BY SOURCE ID
-// ===============================
 export const getFeatureBySourceId = asyncHandler(async (req, res) => {
   const { sourceId } = req.params;
   const feature = await ensureFeatureExists(sourceId);
   res.json(feature);
 });
 
-// ===============================
 // DELETE FEATURE
-// ===============================
 export const deleteFeature = asyncHandler(async (req, res) => {
   const { sourceId } = req.params;
 
@@ -114,9 +104,7 @@ export const deleteFeature = asyncHandler(async (req, res) => {
   });
 });
 
-// ===============================
 // UPDATE FEATURE NAME
-// ===============================
 export const updateFeatureName = asyncHandler(async (req, res) => {
   const { sourceId } = req.params;
   const { newName } = req.body;
@@ -136,4 +124,29 @@ export const updateFeatureName = asyncHandler(async (req, res) => {
     message: 'Feature name updated successfully.',
     feature: updatedFeature,
   });
+});
+
+// UPDATE FEATURE COORDINATES (drag)
+export const updateFeatureCoordinates = asyncHandler(async (req, res) => {
+  const { sourceId } = req.params;
+  const { coordinates } = req.body;
+
+  if (
+    !Array.isArray(coordinates) ||
+    coordinates.length !== 2 ||
+    typeof coordinates[0] !== 'number' ||
+    typeof coordinates[1] !== 'number'
+  ) {
+    throwError('Invalid coordinates. Must be [lng, lat] as numbers.', 400);
+  }
+
+  await ensureFeatureExists(sourceId);
+
+  const updated = await Feature.findOneAndUpdate(
+    { sourceId },
+    { $set: { 'geometry.coordinates': coordinates } },
+    { new: true }
+  );
+
+  res.json({ message: 'Coordinates updated.', sourceId, coordinates });
 });

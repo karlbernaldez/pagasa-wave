@@ -145,3 +145,19 @@ export async function updateFeatureNameAPI(layerId, newName) {
     throw new Error('Failed to update feature name');
   }
 }
+
+export async function updateFeatureCoordinates(sourceId, coordinates) {
+  const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/coordinates`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ coordinates }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || 'Failed to update coordinates');
+  }
+
+  return response.json();
+}

@@ -1,12 +1,10 @@
-import { m } from "framer-motion";
-import { removeFeature } from "./layerUtils";
-import { v4 as uuidv4 } from 'uuid';
 import { createFeature } from '@/api/featureServices';
 import Swal from 'sweetalert2';
 
 export const handleDrawModeChange = (mode, draw, setLayersRef) => {
   if (draw?.changeMode) {
     if (mode === 'typhoon') { mode = 'draw_point'; } // Normalize to draw_point for typhoon
+    console.log(`Changing draw mode to: ${mode}`);
     draw.changeMode(mode, {
       setLayersRef,
     });
@@ -16,11 +14,25 @@ export const handleDrawModeChange = (mode, draw, setLayersRef) => {
 export function savePointFeature({ coords, title, selectedType, setLayersRef }) {
   if (typeof setLayersRef?.current !== 'function') return;
 
+  // ✅ Normalize coords in case an object is passed instead of [lng, lat]
+  let [lng, lat] = coords;
+  if (typeof lng === 'object' && lng !== null) {
+    lng = lng.lng;
+    lat = lng.lat ?? coords[1]?.lat;
+  }
+
+  if (typeof lng !== 'number' || typeof lat !== 'number') {
+    console.error('❌ Invalid coords passed to savePointFeature:', coords);
+    return;
+  }
+
+  const normalizedCoords = [lng, lat];
+
   const feature = {
     type: "Feature",
     geometry: {
       type: "Point",
-      coordinates: coords,
+      coordinates: normalizedCoords, // ✅ always [number, number]
     },
     properties: {
       title,
@@ -50,7 +62,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef }) 
       });
       return prevLayers;
     }
-    
+
     createFeature({
       geometry: feature.geometry,
       properties: {

@@ -9,7 +9,7 @@ import { addWaveSource, addWaveLayer } from '@dashboards/forecaster/map/layers/w
 import { setGlobalMapLoaded, setGlobalSourceIds, } from '@dashboards/forecaster/map/helpers/mapGlobalState';
 
 // === Constants ===
-const MARKER_IMAGES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1']; 
+const MARKER_IMAGES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1'];
 const WIND_BARB_IMAGES = ['0kts', '5kts', '10kts', '15kts', '20kts', '25kts', '30kts'];
 const WAVE_HEIGHT_THRESHOLD = 2;
 
@@ -165,20 +165,27 @@ class MarkerRenderer {
     const coords = getValidCoordinates(point.geometry);
     if (!coords) return;
 
-    // Handle nested Point structure
-    const [points] = coords;
-    if (!Array.isArray(points) || points.length === 0) return;
+    let lng, lat;
 
-    const [coordinates] = points;
-    if (!Array.isArray(coordinates) || coordinates.length < 2) return;
+    // ✅ Handle flat [lng, lat]
+    if (typeof coords[0] === 'number') {
+      [lng, lat] = coords;
+    }
+    // ✅ Handle nested [[lng, lat]]
+    else if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+      [lng, lat] = coords[0];
+    }
+    // ✅ Handle triple nested [[[lng, lat]]]
+    else if (Array.isArray(coords[0]) && Array.isArray(coords[0][0])) {
+      [lng, lat] = coords[0][0];
+    }
 
-    const [lng, lat] = coordinates;
+    if (lng === undefined || lat === undefined) return;
+
     const title = point.name || '';
     const markerType = point.properties?.type;
 
-    if (lng !== undefined && lat !== undefined) {
-      saveMarker({ lat, lng }, this.mapRef, () => { }, markerType)(title);
-    }
+    saveMarker({ lat, lng }, this.mapRef, () => { }, markerType)(title);
   }
 }
 

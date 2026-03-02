@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
 import LayerPanel from "@dashboards/forecaster/components/LayerPanel";
 import WaveLegend from "@dashboards/forecaster/components/WaveLegend";
-import DrawToolBar from "@dashboards/forecaster/components/Toolbar";
+import DrawToolBar from "@dashboards/forecaster/components/Toolbar/Toolbar";
 import LegendBox from "@dashboards/forecaster/components/Legend";
 import ProjectMenu from "@dashboards/forecaster/components/ProjectMenu";
 import MarkerTitleModal from "@/components/ui/modals/MarkerTitleModal";
@@ -215,7 +215,6 @@ const Studio = ({ logger }) => {
       {showToolbar && projectId && (
         <DrawToolBar
           draw={drawInstance}
-          mapRef={mapRef}
           onToggleCanvas={toggleCanvas}
           onToggleFlagCanvas={toggleFlagCanvas}
           isCanvasActive={isCanvasActive}
