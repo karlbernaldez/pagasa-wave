@@ -1,38 +1,106 @@
-import React from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, X, Check } from 'lucide-react';
+import { MapPin, X, Check, Tag } from 'lucide-react';
 
 const animationVariants = {
-  hidden: { opacity: 0, y: -20 },
-  visible: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 }
+  hidden: { opacity: 0, y: -20, scale: 0.97 },
+  visible: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -20, scale: 0.97, pointerEvents: 'none' }
 };
 
-const MarkerTitleModal = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  inputValue, 
-  onInputChange,
-  isDarkMode = false 
-}) => {
-  const handleSave = () => {
-    const title = inputValue || 'Untitled Marker';
-    onSave(title);
+const typeConfig = {
+  typhoon: { label: 'Storm', accent: { dark: 'purple', light: 'violet' } },
+  low_pressure: { label: 'Low Pressure Area', accent: { dark: 'cyan', light: 'blue' } },
+  high_pressure: { label: 'High Pressure Area', accent: { dark: 'orange', light: 'orange' } },
+  less_1: { label: 'Low Waves', accent: { dark: 'green', light: 'green' } },
+};
+
+const MarkerTitleModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, markerType = 'typhoon' }) => {
+  const [title, setTitle] = useState('');
+  const [error, setError] = useState('');
+  const inputRef = useRef(null);
+
+  const config = typeConfig[markerType] || typeConfig.typhoon;
+  const accentKey = isDarkMode ? config.accent.dark : config.accent.light;
+
+  const accentClasses = {
+    purple: {
+      icon: 'bg-purple-500/20 ring-1 ring-purple-400/40',
+      iconColor: 'text-purple-400',
+      input: 'focus:border-purple-400/60 focus:ring-purple-400/20',
+      button: 'bg-purple-500/20 hover:bg-purple-500/30 border-purple-400/40 text-purple-300',
+      dot: 'bg-purple-400',
+    },
+    cyan: {
+      icon: 'bg-cyan-500/20 ring-1 ring-cyan-400/40',
+      iconColor: 'text-cyan-400',
+      input: 'focus:border-cyan-400/60 focus:ring-cyan-400/20',
+      button: 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-400/40 text-cyan-300',
+      dot: 'bg-cyan-400',
+    },
+    blue: {
+      icon: 'bg-blue-500/20 ring-1 ring-blue-500/50',
+      iconColor: 'text-blue-600',
+      input: 'focus:border-blue-400/60 focus:ring-blue-400/20',
+      button: 'bg-blue-500/20 hover:bg-blue-500/30 border-blue-400/40 text-blue-700',
+      dot: 'bg-blue-500',
+    },
+    orange: {
+      icon: 'bg-orange-500/20 ring-1 ring-orange-400/40',
+      iconColor: isDarkMode ? 'text-orange-400' : 'text-orange-600',
+      input: 'focus:border-orange-400/60 focus:ring-orange-400/20',
+      button: isDarkMode
+        ? 'bg-orange-500/20 hover:bg-orange-500/30 border-orange-400/40 text-orange-300'
+        : 'bg-orange-500/20 hover:bg-orange-500/30 border-orange-400/40 text-orange-700',
+      dot: 'bg-orange-400',
+    },
+    violet: {
+      icon: 'bg-violet-500/20 ring-1 ring-violet-500/50',
+      iconColor: 'text-violet-600',
+      input: 'focus:border-violet-400/60 focus:ring-violet-400/20',
+      button: 'bg-violet-500/20 hover:bg-violet-500/30 border-violet-400/40 text-violet-700',
+      dot: 'bg-violet-500',
+    },
+    green: {
+      icon: 'bg-green-500/20 ring-1 ring-green-400/40',
+      iconColor: isDarkMode ? 'text-green-400' : 'text-green-600',
+      input: 'focus:border-green-400/60 focus:ring-green-400/20',
+      button: isDarkMode
+        ? 'bg-green-500/20 hover:bg-green-500/30 border-green-400/40 text-green-300'
+        : 'bg-green-500/20 hover:bg-green-500/30 border-green-400/40 text-green-700',
+      dot: 'bg-green-400',
+    },
+  };
+
+  const accent = accentClasses[accentKey];
+
+  useEffect(() => {
+    if (isOpen) {
+      setTitle('');
+      setError('');
+      setTimeout(() => inputRef.current?.focus(), 150);
+    }
+  }, [isOpen]);
+
+  const handleSubmit = () => {
+    if (!title.trim()) {
+      setError('Please enter a marker name.');
+      return;
+    }
+    onSubmit(title.trim());
+    setTitle('');
+    setError('');
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      onClose();
-    }
+    if (e.key === 'Enter') handleSubmit();
+    if (e.key === 'Escape') onClose();
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={onClose}
         >
@@ -61,100 +129,68 @@ const MarkerTitleModal = ({
               <X size={18} strokeWidth={2.5} />
             </button>
 
-            {/* Content */}
             <div className="px-6 pt-10 pb-6">
               {/* Icon */}
-              <div className={`w-14 h-14 mx-auto mb-5 rounded-full flex items-center justify-center ${
-                isDarkMode
-                  ? 'bg-cyan-500/20 ring-1 ring-cyan-400/40'
-                  : 'bg-blue-500/20 ring-1 ring-blue-500/50'
-              }`}>
-                <MapPin 
-                  size={28} 
-                  className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
-                  strokeWidth={2}
-                />
+              <div className={`w-14 h-14 mx-auto mb-5 rounded-full flex items-center justify-center ${accent.icon}`}>
+                <Tag size={26} className={accent.iconColor} strokeWidth={2} />
               </div>
 
               {/* Title */}
-              <h2 className={`text-xl font-bold text-center mb-2 ${
-                isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}>
-                Enter Typhoon or Storm Name
+              <h2 className={`text-xl font-bold text-center mb-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                Name this Marker
               </h2>
-
-              {/* Subtitle */}
-              <p className={`text-sm text-center mb-6 ${
-                isDarkMode ? 'text-white/60' : 'text-slate-600'
-              }`}>
-                Give your marker a memorable name
+              <p className={`text-xs text-center mb-6 ${isDarkMode ? 'text-white/50' : 'text-slate-500'}`}>
+                {config.label}
               </p>
 
-              {/* Input Field */}
-              <div className="mb-6">
+              {/* Input */}
+              <div className="mb-4">
                 <div className="relative">
                   <input
+                    ref={inputRef}
                     type="text"
-                    value={inputValue}
-                    onChange={(e) => onInputChange(e.target.value)}
+                    value={title}
+                    onChange={(e) => { setTitle(e.target.value); setError(''); }}
                     onKeyDown={handleKeyDown}
-                    placeholder="e.g. Kristine"
-                    autoFocus
-                    className={`w-full px-4 py-3 rounded-xl outline-none transition-all duration-200 ${
+                    placeholder="e.g. Typhoon Carina"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 outline-none border ring-2 ring-transparent ${
                       isDarkMode
-                        ? 'bg-white/10 border border-white/20 focus:border-cyan-400/50 focus:bg-white/15 text-white placeholder:text-white/40'
-                        : 'bg-white/50 border border-white/30 focus:border-blue-500/50 focus:bg-white/70 text-slate-900 placeholder:text-slate-500'
-                    } backdrop-blur-sm`}
+                        ? `bg-white/5 border-white/10 text-white placeholder-white/30 ${accent.input}`
+                        : `bg-black/5 border-black/10 text-slate-900 placeholder-slate-400 ${accent.input}`
+                    } ${error ? 'border-red-400/60 ring-red-400/20' : ''}`}
                   />
-                  {inputValue && (
-                    <button
-                      onClick={() => onInputChange('')}
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all duration-200 ${
-                        isDarkMode
-                          ? 'hover:bg-white/10 text-white/40 hover:text-white/70'
-                          : 'hover:bg-black/10 text-slate-400 hover:text-slate-700'
-                      }`}
-                    >
-                      <X size={16} strokeWidth={2.5} />
-                    </button>
-                  )}
                 </div>
+                {error && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-xs text-red-400 mt-1.5 ml-1"
+                  >
+                    {error}
+                  </motion.p>
+                )}
               </div>
 
-              {/* Button Group */}
-              <div className="flex gap-3">
-                <button
-                  onClick={onClose}
-                  className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
-                    isDarkMode
-                      ? 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 hover:border-white/20'
-                      : 'bg-black/5 hover:bg-black/10 text-slate-700 border border-black/10 hover:border-black/20'
-                  } hover:-translate-y-0.5 active:translate-y-0`}
-                >
-                  Cancel
-                </button>
+              {/* Submit button */}
+              <button
+                onClick={handleSubmit}
+                className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 border hover:-translate-y-0.5 active:translate-y-0 shadow-lg mb-3 ${accent.button}`}
+              >
+                <Check size={16} strokeWidth={2.5} />
+                Confirm Marker
+              </button>
 
-                <button
-                  onClick={handleSave}
-                  className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-                    isDarkMode
-                      ? 'bg-cyan-500/30 hover:bg-cyan-500/40 text-white border border-cyan-400/50 hover:border-cyan-400/70'
-                      : 'bg-blue-500/30 hover:bg-blue-500/40 text-blue-900 border border-blue-500/50 hover:border-blue-500/70'
-                  } hover:-translate-y-0.5 active:translate-y-0 shadow-lg ${
-                    isDarkMode ? 'shadow-cyan-500/20' : 'shadow-blue-500/20'
-                  }`}
-                >
-                  <Check size={18} strokeWidth={2.5} />
-                  Add Marker
-                </button>
-              </div>
-
-              {/* Hint text */}
-              <p className={`text-xs text-center mt-4 ${
-                isDarkMode ? 'text-white/40' : 'text-slate-500'
-              }`}>
-                Press Enter to save • Esc to cancel
-              </p>
+              {/* Cancel */}
+              <button
+                onClick={onClose}
+                className={`w-full px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                  isDarkMode
+                    ? 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 hover:border-white/20'
+                    : 'bg-black/5 hover:bg-black/10 text-slate-700 border border-black/10 hover:border-black/20'
+                } hover:-translate-y-0.5 active:translate-y-0`}
+              >
+                Cancel
+              </button>
             </div>
           </motion.div>
         </div>
