@@ -1,49 +1,6 @@
-import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 
 const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/features`; // Adjust if using a different port
-
-const isTokenValid = (token) => {
-  if (!token) return false;
-
-  try {
-    const decodedToken = jwtDecode(token);  // Decode the JWT
-    const currentTime = Date.now() / 1000; // Current time in seconds
-
-    // Check if token has expired
-    if (decodedToken.exp < currentTime) {
-      console.error('[ERROR] Token has expired');
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('[ERROR] Invalid token:', error);
-    return false;
-  }
-};
-
-// Function to refresh the access token using the refresh token
-const refreshAccessToken = async () => {
-  try {
-    const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/auth/refresh-token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // This ensures cookies are sent with the request
-    });
-
-    if (!response.ok) {
-      console.error('[ERROR] Failed to refresh token.');
-      return null;
-    }
-
-    const data = await response.json();
-    return data.accessToken; // Return the new access token
-  } catch (error) {
-    console.error('[ERROR] Error while refreshing token:', error);
-    return null;
-  }
-};
 
 // Function to delete a feature
 export const deleteFeature = async (sourceId) => {
@@ -124,6 +81,44 @@ export const fetchFeatures = async (projectId) => {
   }
 };
 
+// ADMIN: Fetch FeatureCollection by Project
+export const fetchProjectFeatureCollection = async (projectId) => {
+  if (!projectId) {
+    throw new Error('Missing projectId when fetching project FeatureCollection');
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/admin/project/${projectId}/features`,
+      {
+        method: 'GET',
+        credentials: 'include',
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        alert('Session expired. Please log in again.');
+        window.location.href = '/login';
+        return;
+      }
+
+      const errorData = await response.json();
+      console.error(
+        '[ERROR] Failed to fetch project FeatureCollection:',
+        response.status,
+        errorData
+      );
+      throw new Error(errorData.error || 'Failed to fetch project features');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('[ERROR] Error in fetchProjectFeatureCollection:', error);
+    throw error;
+  }
+};
+
 export async function updateFeatureNameAPI(layerId, newName) {
   try {
     const response = await axios.patch(
@@ -149,4 +144,20 @@ export async function updateFeatureNameAPI(layerId, newName) {
     }
     throw new Error('Failed to update feature name');
   }
+}
+
+export async function updateFeatureCoordinates(sourceId, coordinates) {
+  const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/coordinates`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ coordinates }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || 'Failed to update coordinates');
+  }
+
+  return response.json();
 }

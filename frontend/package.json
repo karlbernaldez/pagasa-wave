@@ -5,6 +5,9 @@
   "dependencies": {
     "@adovelopers/logado": "^1.1.0",
     "@babel/runtime": "^7.27.6",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mapbox/mapbox-gl-draw": "^1.5.0",
@@ -13,6 +16,7 @@
     "@mui/system": "^7.1.1",
     "@mui/x-date-pickers": "^8.5.2",
     "@react-oauth/google": "^0.12.2",
+    "@tanstack/react-query": "^5.90.21",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -45,7 +49,7 @@
     "react-responsive": "^10.0.1",
     "react-router-dom": "^7.5.0",
     "react-scripts": "^5.0.1",
-    "recharts": "^3.1.0",
+    "recharts": "^3.7.0",
     "shp-write": "^0.3.2",
     "styled-components": "^6.1.19",
     "sweetalert2": "^11.22.0",
@@ -55,7 +59,7 @@
     "webgl-wind": "github:mapbox/webgl-wind"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview"
   },
