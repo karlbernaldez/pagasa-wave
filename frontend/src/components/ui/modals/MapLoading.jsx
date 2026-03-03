@@ -108,7 +108,7 @@ const MapLoading = ({ isDarkMode = false }) => {
         }`} />
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;
