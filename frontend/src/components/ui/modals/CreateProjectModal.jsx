@@ -8,10 +8,10 @@ import { X, FolderOpen, FileText, BarChart3, Calendar } from 'lucide-react';
 
 // Constants
 const CHART_TYPES = [
-  { value: 'Wave Analysis', label: 'Wave Analysis' },
-  { value: '24', label: '24' },
-  { value: '36', label: '36' },
-  { value: '48', label: '48' },
+  { value: 'analysis', label: 'Wave Analysis' },
+  { value: 'forecast_24h', label: '24 Hour Forecast' },
+  { value: 'forecast_36h', label: '36 Hour Forecast' },
+  { value: 'forecast_48h', label: '48 Hour Forecast' },
 ];
 
 const KEYBOARD_SHORTCUTS = {
@@ -36,8 +36,9 @@ const CreateProjectModal = ({
   // Local state for form fields
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
-  const [chartType, setChartType] = useState('Wave Analysis');
+  const [chartType, setChartType] = useState('analysis');
   const [forecastDate, setForecastDate] = useState(dayjs());
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Memoized theme classes
   const themeClasses = useMemo(
@@ -77,7 +78,7 @@ const CreateProjectModal = ({
   const resetForm = useCallback(() => {
     setProjectName('');
     setDescription('');
-    setChartType('Wave Analysis');
+    setChartType('analysis'); // FIXED
     setForecastDate(dayjs());
   }, []);
 
@@ -286,8 +287,8 @@ const CreateProjectModal = ({
               }}
             >
               {CHART_TYPES.map(({ value, label }) => (
-                <option 
-                  key={value} 
+                <option
+                  key={value}
                   value={value}
                   style={{
                     backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',

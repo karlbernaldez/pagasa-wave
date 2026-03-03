@@ -57,7 +57,7 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
     'icon-size': [
       'case',
       ['==', ['get', 'markerType'], 'low_pressure'], 0.015,
-      ['==', ['get', 'markerType'], 'high_pressure'], 0.028,
+      ['==', ['get', 'markerType'], 'high_pressure'], 0.015,
       ['==', ['get', 'markerType'], 'less_1'], 0.28,
       0.03,
     ],

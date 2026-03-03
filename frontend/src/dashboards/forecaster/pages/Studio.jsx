@@ -2,11 +2,11 @@ import { useState, useEffect, useRef, useMemo } from "react";
 
 // Component imports
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
-import LayerPanel from "@dashboards/forecaster/components/LayerPanel";
+import LayerPanel from "@dashboards/forecaster/components/LayerPanel/LayerPanel";
 import WaveLegend from "@dashboards/forecaster/components/WaveLegend";
 import DrawToolBar from "@dashboards/forecaster/components/Toolbar/Toolbar";
 import LegendBox from "@dashboards/forecaster/components/Legend";
-import ProjectMenu from "@dashboards/forecaster/components/ProjectMenu";
+import ProjectMenu from "@dashboards/forecaster/components/Menu/ProjectMenu";
 import MarkerTitleModal from "@/components/ui/modals/MarkerTitleModal";
 import MapLoading from "@/components/ui/modals/MapLoading";
 import NoProjectAlert from "@/components/ui/modals/NoProjectAlert";
