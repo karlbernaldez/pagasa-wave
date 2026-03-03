@@ -372,9 +372,9 @@ export const setActiveLayerOnMap = ({
 
     const getIconSize = (markerType, isActive) => {
         const sizes = {
-            typhoon: { original: 0.07, active: 0.1 },
-            low_pressure: { original: 0.028, active: 0.06 },
-            high_pressure: { original: 0.028, active: 0.06 },
+            typhoon: { original: 0.03, active: 0.1 },
+            low_pressure: { original: 0.015, active: 0.06 },
+            high_pressure: { original: 0.015, active: 0.06 },
             less_1: { original: 0.28, active: 0.6 },
         };
         const defaultSize = { original: 0.07, active: 0.1 };

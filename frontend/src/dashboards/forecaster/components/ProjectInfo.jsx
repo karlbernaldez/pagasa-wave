@@ -154,40 +154,6 @@ const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading, menuOpen }) => {
     }
   };
 
-  // Delete Project
-  const handleDelete = async () => {
-    try {
-      const projectId = localStorage.getItem('projectId');
-      await deleteProjectById(projectId);
-
-      delete projectCache[projectId];
-      localStorage.removeItem('cachedProject');
-      localStorage.removeItem('projectId');
-      localStorage.removeItem('projectName');
-      localStorage.removeItem('chartType');
-      localStorage.removeItem('forecastDate');
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Project deleted successfully!',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000
-      }).then(() => window.location.reload());
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error deleting project',
-        text: error.message || 'An unexpected error occurred',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000
-      });
-    }
-  };
-
   // InfoItem
   const InfoItem = ({ icon: Icon, label, value }) => (
     <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${isDarkMode ? 'hover:bg-slate-700/30' : 'hover:bg-slate-100/50'}`}>

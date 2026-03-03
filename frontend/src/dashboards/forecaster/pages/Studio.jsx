@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 // Component imports
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
 import LayerPanel from "@dashboards/forecaster/components/LayerPanel/LayerPanel";
-import WaveLegend from "@dashboards/forecaster/components/WaveLegend";
+// import WaveLegend from "@dashboards/forecaster/components/WaveLegend";
 import DrawToolBar from "@dashboards/forecaster/components/Toolbar/Toolbar";
 import LegendBox from "@dashboards/forecaster/components/Legend";
 import ProjectMenu from "@dashboards/forecaster/components/Menu/ProjectMenu";
@@ -202,6 +202,7 @@ const Studio = ({ logger }) => {
   // ─── Render ──────────────────────────────────────────
   return (
     <div className="relative h-screen w-full flex overflow-hidden">
+
       {/* Map Wrapper */}
       <div className={`flex-grow h-full relative transition-[width] duration-300 ease-in-out ${collapsed ? 'w-screen' : 'w-[calc(100vw-250px)]'}`}>
         <MapComponent
@@ -291,7 +292,7 @@ const Studio = ({ logger }) => {
             draw={drawInstance}
           />
 
-          <WaveLegend isDarkMode={isDarkMode} />
+          {/* <WaveLegend isDarkMode={isDarkMode} /> */}
 
           <LegendBox isDarkMode={isDarkMode} />
 
@@ -315,7 +316,7 @@ const Studio = ({ logger }) => {
       {isLoading && <MapLoading isDarkMode={isDarkMode} />}
 
       {/* Animation Keyframes */}
-      <style jsx>{`
+      <style>{`
         @keyframes slideInLeft {
           from {
             opacity: 0;
