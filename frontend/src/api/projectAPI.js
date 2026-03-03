@@ -1,125 +1,111 @@
 const PROJECT_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/projects`;
 
-// 📌 Create a new project
-export const createProject = async (projectData) => {
-  const response = await fetch(`${PROJECT_API_BASE_URL}`, {
+/* =========================================================
+   CORE REQUEST HELPER
+========================================================= */
+const request = async (url, options = {}) => {
+  const response = await fetch(url, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+
+  let data = null;
+
+  try {
+    data = await response.json();
+  } catch {
+    // No JSON body (e.g., 204)
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.message || 'Request failed');
+  }
+
+  return data;
+};
+
+/* =========================================================
+   USER PROJECT ROUTES
+========================================================= */
+
+// Create new project
+export const createProject = (projectData) =>
+  request(PROJECT_API_BASE_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(projectData),
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Project creation failed');
-  }
-
-  return response.json();
+// Get all projects for current user
+export const fetchUserProjects = ({ page = 1, limit = 8, search = '', status = '' } = {}) => {
+  const params = new URLSearchParams({ page, limit, search, status });
+  return request(`${PROJECT_API_BASE_URL}?${params}`);
 };
 
-// 📌 Get all projects for the current user
-export const fetchUserProjects = async () => {
-  try {
-    const response = await fetch(`${PROJECT_API_BASE_URL}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    });
-
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to fetch projects');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Fetch user projects failed:', error);
-    throw error;
-  }
-};
-
+// Get latest user project
 export const fetchLatestUserProject = async () => {
-  const response = await fetch(`${PROJECT_API_BASE_URL}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch projects');
-  }
-
-  const projects = await response.json();
-
-  // Assuming projects are returned in an array and sorted by most recent first
-  const latestProject = projects[0];
-
-  if (!latestProject) throw new Error('No projects found for this user');
-
-  return latestProject;
+  const res = await request(`${PROJECT_API_BASE_URL}/latest`);
+  return res?.project || null;
 };
 
-// 📌 Get a single project by ID
-export const fetchProjectById = async (id) => {
-  const response = await fetch(`${PROJECT_API_BASE_URL}/${id}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-  });
+// Get project by ID
+export const fetchProjectById = (id) =>
+  request(`${PROJECT_API_BASE_URL}/${id}`);
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch project');
-  }
-
-  return response.json();
-};
-
-export const updateProjectById = async (id, projectData) => {
-  const response = await fetch(`${PROJECT_API_BASE_URL}/${id}`, {
+// Update project (Draft or Rejected only)
+export const updateProjectById = (id, projectData) =>
+  request(`${PROJECT_API_BASE_URL}/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(projectData),
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to update project');
-  }
+// Delete project
+export const deleteProjectById = (id) =>
+  request(`${PROJECT_API_BASE_URL}/${id}`, {
+    method: 'DELETE',
+  });
 
-  return response.json();
+/* =========================================================
+   WORKFLOW ROUTES
+========================================================= */
+
+// Submit project (Owner)
+export const submitProject = (id) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/submit`, {
+    method: 'PATCH',
+  });
+
+// Approve project (Admin)
+export const approveProject = (id) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/approve`, {
+    method: 'PATCH',
+  });
+
+// Reject project (Admin)
+export const rejectProject = (id, comment = '') =>
+  request(`${PROJECT_API_BASE_URL}/${id}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify({ comment }),
+  });
+
+// Publish project (Admin)
+export const publishProject = (id) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/publish`, {
+    method: 'PATCH',
+  });
+
+// Archive project (Admin)
+export const archiveProject = (id) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/archive`, {
+    method: 'PATCH',
+  });
+
+/* =========================================================
+   ADMIN ROUTES
+========================================================= */
+
+// Fetch all projects (Admin) with optional status filter
+export const fetchAllProjectsForAdmin = (status = null) => {
+  const query = status ? `?status=${encodeURIComponent(status)}` : '';
+  return request(`${PROJECT_API_BASE_URL}/admin/all${query}`);
 };
-
-// 📌 Delete a project
-export const deleteProjectById = async (id) => {
-  try {
-    const response = await fetch(`${PROJECT_API_BASE_URL}/${id}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-    });
-
-    // Check if the response status is OK
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || `Failed to delete project with ID: ${id}`);
-    }
-
-    // If no content is returned (204 No Content), no need to parse JSON
-    if (response.status === 204) {
-      return { message: 'Project deleted successfully' };
-    }
-
-    // If response includes content, parse JSON (in case it returns additional info)
-    return response.json();
-  } catch (error) {
-    console.error('Error deleting project:', error);
-    throw new Error(error.message || 'An unexpected error occurred');
-  }
-};
-
