@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import Swal from 'sweetalert2';
+import { useProjectId } from "@dashboards/forecaster/hooks/useStudio";
 import { fetchProjectById } from '@/api/projectAPI';
 
 /**
@@ -487,17 +488,26 @@ export const handlePointerUp = async (
   lineCount,
   labelValue = 5,
   isDarkMode,
-  openProjectModal
+  projectId          // ← passed in from the component, sourced from useProjectId()
 ) => {
   const map = mapRef.current;
   if (!map) return;
 
   isDrawing.current = false;
 
-  // Get user data
   const owner = JSON.parse(localStorage.getItem('user'));
-  const projectId = localStorage.getItem('projectId');
   const token = localStorage.getItem('authToken');
+
+  // Guard early — no point continuing without a valid project
+  if (!projectId) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'No Project Selected',
+      text: 'Please create or select a valid project before saving features.',
+      confirmButtonColor: isDarkMode ? '#6366f1' : '#3b82f6',
+    });
+    return;
+  }
 
   const lineColor = isDarkMode ? '#19b8b7' : '#000000';
   const textColor = isDarkMode ? '#ffffff' : '#19b8b7';
@@ -506,12 +516,11 @@ export const handlePointerUp = async (
   if (lines.length > 0) {
     const lastIndex = lines.length - 1;
     const lastLine = { ...lines[lastIndex] };
-    
+
     if (lastLine.rawPoints?.length >= 4) {
-      // Use Hermite spline smoothing for final output
       lastLine.points = smoothPoints(lastLine.rawPoints, 0.5);
     }
-    
+
     const updatedLines = [...lines];
     updatedLines[lastIndex] = lastLine;
     setLines(updatedLines);
@@ -522,11 +531,11 @@ export const handlePointerUp = async (
   if (closedMode && lines.length > 0) {
     const lastIndex = lines.length - 1;
     const lastLine = { ...lines[lastIndex] };
-    
+
     if (lastLine.points.length >= 4) {
       const [firstX, firstY] = lastLine.points;
       lastLine.points = [...lastLine.points, firstX, firstY];
-      
+
       const updatedLines = [...lines];
       updatedLines[lastIndex] = lastLine;
       setLines(updatedLines);
@@ -558,10 +567,10 @@ export const handlePointerUp = async (
   let labelSourceId = '';
 
   // Add line layer (visual feedback)
-  map.addSource(sourceId, { 
-    type: 'geojson', 
-    data: geojson, 
-    lineMetrics: true 
+  map.addSource(sourceId, {
+    type: 'geojson',
+    data: geojson,
+    lineMetrics: true,
   });
 
   map.addLayer(
@@ -569,9 +578,9 @@ export const handlePointerUp = async (
       id: layerId,
       type: 'line',
       source: sourceId,
-      layout: { 
-        'line-join': 'round', 
-        'line-cap': 'round' 
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round',
       },
       slot: 'top',
       paint: {
@@ -591,7 +600,7 @@ export const handlePointerUp = async (
     labelSourceId = `${sourceId}-0`;
     labelLayerId = `${sourceId}-0`;
 
-    if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
+    if (map.getLayer(labelLayerId))  map.removeLayer(labelLayerId);
     if (map.getSource(labelSourceId)) map.removeSource(labelSourceId);
 
     map.addSource(labelSourceId, {
@@ -630,7 +639,7 @@ export const handlePointerUp = async (
     }
   }
 
-  // Validate project
+  // Validate project using the param-sourced ID — not localStorage
   const project = await validateProject(projectId);
 
   if (!project) {
@@ -678,7 +687,7 @@ export const handlePointerUp = async (
             closedMode,
             isFront: false,
             owner: owner?.id,
-            project: projectId,
+            project: projectId,   // ← guaranteed to be the currently active project
           },
           name: computedName,
           sourceId,
@@ -691,7 +700,7 @@ export const handlePointerUp = async (
         setLayersRef.current((prevLayers) => {
           let nameToInsert = computedName;
           const existingNames = prevLayers.map((l) => l.name);
-          
+
           if (existingNames.includes(nameToInsert)) {
             let counter = 1;
             while (existingNames.includes(`${nameToInsert} ${counter}`)) {
@@ -713,18 +722,9 @@ export const handlePointerUp = async (
         });
       }
 
-      // Optional: Show success message
-      // await Swal.fire({
-      //   icon: 'success',
-      //   title: 'Saved!',
-      //   text: 'Wave height layer saved successfully.',
-      //   timer: 1500,
-      //   showConfirmButton: false,
-      // });
-
     } catch (err) {
       console.error('Error saving feature:', err);
-      
+
       await Swal.fire({
         icon: 'error',
         title: 'Save Failed',

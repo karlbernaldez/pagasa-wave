@@ -4,11 +4,12 @@ import dayjs from "dayjs";
 import { Menu, Info, X } from "lucide-react";
 import ProjectInfo from "../ProjectInfo";
 import SharedModals, { createDeleteHandler } from "./SharedModals";
+import ShareProjectModal from "@/components/ui/modals/ShareProjectModal";
 import { MenuSection, MenuItem } from "./MenuItems";
 import { useProjectData } from "./hooks/useProjectData";
 import { useMenuState } from "./hooks/useMenuState";
 import { buildMenuSections } from "./constants/menuConfig";
-import { handleCreateProject as createProjectHandler, downloadCachedSnapshotZip } from "@dashboards/forecaster/utils/ProjectUtils";
+import { handleCreateProject as createProjectHandler } from "@dashboards/forecaster/utils/ProjectUtils";
 
 /* ─── Sub-components ────────────────────────────────────────────────────── */
 
@@ -54,12 +55,7 @@ const MenuToggleBar = ({ isDarkMode, onOpenMenu, showProjectInfo, onToggleInfo }
   </div>
 );
 
-const MenuHeader = ({
-  projectName,
-  isDarkMode,
-  onToggleInfo,
-  onClose,
-}) => (
+const MenuHeader = ({ projectName, isDarkMode, onToggleInfo, onClose }) => (
   <div
     className={`flex items-center justify-between px-4 py-3 border-b ${
       isDarkMode ? "border-white/10" : "border-black/10"
@@ -154,26 +150,10 @@ const ProjectDashboard = ({
   const [showModal, setShowModal] = useState(false);
   const [showProjectList, setShowProjectList] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [showExportConfirm, setShowExportConfirm] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-
-  const handleExportProject = useCallback(async () => {
-    if (!map) return;
-    try {
-      setIsExporting(true);
-      await downloadCachedSnapshotZip(setIsDarkMode, features, setCapturedImages, isDarkMode);
-      Swal.fire({ toast: true, position: "top-end", icon: "success", title: "Export complete", showConfirmButton: false, timer: 2000 });
-    } catch (e) {
-      console.error(e);
-      Swal.fire({ toast: true, position: "top-end", icon: "error", title: "Export failed", showConfirmButton: false, timer: 2000 });
-    } finally {
-      setIsExporting(false);
-      setShowExportConfirm(false);
-    }
-  }, [map, features, isDarkMode, setIsDarkMode, setCapturedImages]);
 
   const handleSubmitFile = useCallback(async (file) => {
     setIsSubmitting(true);
@@ -217,6 +197,31 @@ const ProjectDashboard = ({
     [resetProject]
   );
 
+  const handleShareProject = useCallback(async ({ users, permission, message }) => {
+    try {
+      // TODO: wire up your share API here
+      // await shareProjectAPI({ projectId: localStorage.getItem("projectId"), users, permission, message });
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "success",
+        title: `Project shared with ${users.length} user${users.length !== 1 ? "s" : ""}`,
+        showConfirmButton: false,
+        timer: 2500,
+      });
+      setShowShareModal(false);
+    } catch {
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "error",
+        title: "Failed to share project",
+        showConfirmButton: false,
+        timer: 2500,
+      });
+    }
+  }, []);
+
   // ── Menu config ────────────────────────────────────────────────────────────
 
   const menuSections = useMemo(
@@ -224,7 +229,7 @@ const ProjectDashboard = ({
       buildMenuSections({
         openNewProject: () => setShowModal(true),
         openProjectList: () => setShowProjectList(true),
-        openExport: () => setShowExportConfirm(true),
+        openShareProject: () => setShowShareModal(true),
         openSubmitData: () => setShowSubmitModal(true),
         onView,
       }),
@@ -238,16 +243,13 @@ const ProjectDashboard = ({
     showModal,
     showProjectList,
     showSubmitModal,
-    showExportConfirm,
     onCloseCreate: () => setShowModal(false),
     onCloseProjectList: () => setShowProjectList(false),
     onCloseSubmit: () => setShowSubmitModal(false),
-    onCloseExport: () => setShowExportConfirm(false),
     onCreateProject: handleCreateProjectSubmit,
     onSelectProject: handleSelectProject,
     onDeleteProject: handleDeleteProject,
     onSubmitFile: handleSubmitFile,
-    onConfirmExport: handleExportProject,
     projectName,
     chartType,
     forecastDate,
@@ -274,6 +276,13 @@ const ProjectDashboard = ({
           />
         )}
         <SharedModals {...sharedModalProps} />
+        <ShareProjectModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          onShare={handleShareProject}
+          projectName={projectName}
+          isDarkMode={isDarkMode}
+        />
       </>
     );
   }
@@ -329,6 +338,13 @@ const ProjectDashboard = ({
       )}
 
       <SharedModals {...sharedModalProps} />
+      <ShareProjectModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        onShare={handleShareProject}
+        projectName={projectName}
+        isDarkMode={isDarkMode}
+      />
     </>
   );
 };

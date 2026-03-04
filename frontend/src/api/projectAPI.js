@@ -52,6 +52,13 @@ export const fetchLatestUserProject = async () => {
 export const fetchProjectById = (id) =>
   request(`${PROJECT_API_BASE_URL}/${id}`);
 
+// Rename project (any status — name only)
+export const renameProject = (id, name) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/rename`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+
 // Update project (Draft or Rejected only)
 export const updateProjectById = (id, projectData) =>
   request(`${PROJECT_API_BASE_URL}/${id}`, {

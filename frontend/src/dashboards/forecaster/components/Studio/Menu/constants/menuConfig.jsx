@@ -3,7 +3,6 @@ import {
   Plus,
   FolderOpen,
   Settings,
-  Download,
   Edit3,
   Eye,
   Map,
@@ -19,13 +18,14 @@ import {
   Grid,
   FileText,
   BookOpen,
+  Share2,
 } from "lucide-react";
 
 export const buildMenuSections = ({
   openNewProject,
   openProjectList,
-  openExport,
   openSubmitData,
+  openShareProject,
   onView,
 }) => [
     {
@@ -49,9 +49,9 @@ export const buildMenuSections = ({
           onClick: openSubmitData,
         },
         {
-          label: "Export Project",
-          icon: <Download size={12} strokeWidth={2.5} />,
-          onClick: openExport,
+          label: "Share Project",
+          icon: <Share2 size={12} strokeWidth={2.5} />,
+          onClick: openShareProject,
         },
         {
           label: "Settings",

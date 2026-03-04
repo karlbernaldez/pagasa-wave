@@ -1,5 +1,5 @@
 // utils/getLayoutConfig.js
-const getLayoutConfig = ({ isAuthPage, isDashboardPage, isStudioPage, isChartsPage }) => ({
+const getLayoutConfig = ({ isAuthPage, isDashboardPage, isStudioPage, isStudioProjectPage, isChartsPage }) => ({
   showHeader: !(isAuthPage || isDashboardPage),
   showFooter: !(isStudioPage || isAuthPage || isDashboardPage || isChartsPage),
   showDivider: !(isStudioPage || isAuthPage || isDashboardPage || isChartsPage),

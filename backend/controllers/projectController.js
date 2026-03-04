@@ -165,6 +165,41 @@ export const getProjectById = asyncHandler(async (req, res) => {
 });
 
 /* =========================================================
+   UPDATE PROJECT NAME
+========================================================= */
+export const renameProject = asyncHandler(async (req, res) => {
+  const { name } = req.body;
+
+  if (!name || !name.trim()) {
+    throwError('name is required', 400);
+  }
+
+  const project = await ensureProjectExists(req.params.id, req.user.id);
+
+  // No-op if the name hasn't changed
+  if (project.name === name.trim()) {
+    return res.json(project);
+  }
+
+  await ensureUniqueProjectName(name.trim(), req.user.id, project._id);
+
+  const previousName = project.name;
+  project.name = name.trim();
+
+  project.auditLogs.push({
+    action: 'renamed',
+    performedBy: req.user.id,
+    previousStatus: project.status,
+    newStatus: project.status,
+    comment: `Renamed from "${previousName}" to "${name.trim()}"`,
+  });
+
+  await project.save();
+
+  res.json(project);
+});
+
+/* =========================================================
    UPDATE PROJECT (ONLY DRAFT OR REJECTED)
 ========================================================= */
 export const updateProject = asyncHandler(async (req, res) => {

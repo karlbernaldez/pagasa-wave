@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 
 // Component imports
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
-import LayerPanel from "@dashboards/forecaster/components/LayerPanel/LayerPanel";
-// import WaveLegend from "@dashboards/forecaster/components/WaveLegend";
-import DrawToolBar from "@dashboards/forecaster/components/Toolbar/Toolbar";
-import LegendBox from "@dashboards/forecaster/components/Legend";
-import ProjectMenu from "@dashboards/forecaster/components/Menu/ProjectMenu";
+import LayerPanel from "@dashboards/forecaster/components/Studio/LayerPanel/LayerPanel";
+import DrawToolBar from "@dashboards/forecaster/components/Studio/Toolbar/Toolbar";
+import LegendBox from "@dashboards/forecaster/components/Studio/Legend";
+import ProjectMenu from "@dashboards/forecaster/components/Studio/Menu/ProjectMenu";
 import MarkerTitleModal from "@/components/ui/modals/MarkerTitleModal";
 import MapLoading from "@/components/ui/modals/MapLoading";
 import NoProjectAlert from "@/components/ui/modals/NoProjectAlert";
@@ -15,15 +14,23 @@ import Canvas from "@dashboards/forecaster/draw/canvas";
 import FlagCanvas from "@dashboards/forecaster/draw/front";
 
 // Custom Hooks
-import { useProjectId, useInactivityReload, useProjectLoader, useMapSetup, useDrawingState, useMarkerModal, useMapLoader } from "@dashboards/forecaster/hooks/useStudio";
-import { useTheme } from '@/app/providers/ThemeProvider';
+import {
+  useProjectId,
+  useInactivityReload,
+  useProjectLoader,
+  useMapSetup,
+  useDrawingState,
+  useMarkerModal,
+  useMapLoader,
+} from "@dashboards/forecaster/hooks/useStudio";
+import { useTheme } from "@/app/providers/ThemeProvider";
 
 // Utils
 import { savePointFeature } from "@dashboards/forecaster/utils/ToolBarUtils";
-import { handleCreateProject } from '@dashboards/forecaster/utils/ProjectUtils'
+import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
 import { saveMarker } from "@dashboards/forecaster/map/layers/markerLayer";
-import { addWindSource, addWindLayer } from '@dashboards/forecaster/map/layers/windLayer';
-import { addWaveSource, addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
+import { addWindSource, addWindLayer } from "@dashboards/forecaster/map/layers/windLayer";
+import { addWaveSource, addWaveLayer } from "@dashboards/forecaster/map/layers/waveLayer";
 
 // ─── Constants ───────────────────────────────────────
 const TOOLBAR_DELAY = 1000;
@@ -31,14 +38,17 @@ const TOOLBAR_DELAY = 1000;
 // ─── Main Component ──────────────────────────────────
 const Studio = ({ logger }) => {
   const { isDarkMode, setIsDarkMode } = useTheme();
+
   const [projectId, updateProjectId] = useProjectId();
+
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
   const {
     latestProject,
     isLoadingProject,
     showNoProjectsModal,
-    setShowNoProjectsModal
+    setShowNoProjectsModal,
+    message,
   } = useProjectLoader(projectId, updateProjectId);
 
   const handleOpenCreateProject = () => {
@@ -48,10 +58,16 @@ const Studio = ({ logger }) => {
 
   const handleMaybeLater = () => {
     setShowNoProjectsModal(false);
-    // Optional: You might want to redirect or show a different screen
   };
 
-  const { savedFeatures, layers, setLayers, mapRef, cleanupRef, setupFeaturesAndLayers } = useMapSetup(projectId, logger, isDarkMode);
+  const {
+    savedFeatures,
+    layers,
+    setLayers,
+    mapRef,
+    cleanupRef,
+    setupFeaturesAndLayers,
+  } = useMapSetup(projectId, logger, isDarkMode);
 
   const {
     drawInstance,
@@ -68,7 +84,6 @@ const Studio = ({ logger }) => {
     toggleFlagCanvas,
   } = useDrawingState();
 
-  // Marker modal
   const {
     selectedPoint,
     setSelectedPoint,
@@ -94,28 +109,34 @@ const Studio = ({ logger }) => {
   const selectedToolRef = useRef(null);
   const setLayersRef = useRef();
 
-  const removeLayerSafe = (map, id) => {
-    if (map.getLayer(id)) map.removeLayer(id);
-  };
+  const removeLayerSafe = (map, id) => { if (map.getLayer(id)) map.removeLayer(id); };
+  const removeSourceSafe = (map, id) => { if (map.getSource(id)) map.removeSource(id); };
 
-  const removeSourceSafe = (map, id) => {
-    if (map.getSource(id)) map.removeSource(id);
-  };
+  // ─── Project menu callbacks ───────────────────────────
+  // Called when a new project is created — updateProjectId navigates to /studio/:id
+  const handleNewProject = useCallback((project) => {
+    if (project?._id) updateProjectId(project._id);
+  }, [updateProjectId]);
 
-  // Set page title
+  // Called when a project is selected from the list — same navigation via hook
+  const handleSaveProject = useCallback((project) => {
+    if (project?._id) updateProjectId(project._id);
+  }, [updateProjectId]);
+
+  // ─── Effects ─────────────────────────────────────────
+
   useEffect(() => {
-    document.title = "WaveLab - Studio";
-  }, []);
+    document.title = latestProject?.name
+      ? `${latestProject.name}`
+      : "WaveLab - Studio";
+  }, [latestProject?.name]);
 
-  // Keep setLayersRef in sync
   useEffect(() => {
     setLayersRef.current = setLayers;
   }, [setLayers]);
 
-  // Inactivity reload
   useInactivityReload();
 
-  // Delayed toolbar display
   useEffect(() => {
     const timer = setTimeout(() => setShowToolbar(true), TOOLBAR_DELAY);
     return () => clearTimeout(timer);
@@ -126,36 +147,22 @@ const Studio = ({ logger }) => {
     if (!map || !map.isStyleLoaded()) return;
 
     const layersToRemove = [
-      "wave-raster",
-      "wave-glass-fill",
-      "wave-glass-depth",
-      "wave-arrows",
-      "wind-raster",
-      "wind-particles",
-      "wind-arrows",
-      "wind-glass-fill",
-      "wind-glass-depth"
+      "wave-raster", "wave-glass-fill", "wave-glass-depth", "wave-arrows",
+      "wind-raster", "wind-particles", "wind-arrows", "wind-glass-fill", "wind-glass-depth",
     ];
-
     const sourcesToRemove = [
-      "wave-dark",
-      "wave-light",
-      "wind-darkstorm",
-      "wind-solarstorm"
+      "wave-dark", "wave-light", "wind-darkstorm", "wind-solarstorm",
     ];
 
-    layersToRemove.forEach(id => removeLayerSafe(map, id));
-    sourcesToRemove.forEach(id => removeSourceSafe(map, id));
+    layersToRemove.forEach((id) => removeLayerSafe(map, id));
+    sourcesToRemove.forEach((id) => removeSourceSafe(map, id));
 
-    // rebuild correctly
     (async () => {
       await addWindSource(map, isDarkMode);
       addWindLayer(map, isDarkMode);
-
       await addWaveSource(map, isDarkMode);
       addWaveLayer(map, isDarkMode);
     })();
-
   }, [isDarkMode]);
 
   // ─── Handlers ────────────────────────────────────────
@@ -163,17 +170,10 @@ const Studio = ({ logger }) => {
   const handleSaveTitle = (title) => {
     markerTitleRef.current = title;
     saveMarker(selectedPoint, mapRef, setShowTitleModal, type)(title);
-
     const coords = [selectedPoint.lng, selectedPoint.lat];
-    savePointFeature({
-      coords,
-      title,
-      selectedType: type,
-      setLayersRef
-    });
+    savePointFeature({ coords, title, selectedType: type, setLayersRef });
   };
 
-  // Map loader hook
   const handleMapLoad = useMapLoader(
     projectId,
     logger,
@@ -192,9 +192,10 @@ const Studio = ({ logger }) => {
   );
 
   // ─── Memoized Values ─────────────────────────────────
+
   const savedFeaturesCollection = useMemo(() => ({
     type: "FeatureCollection",
-    features: savedFeatures
+    features: savedFeatures,
   }), [savedFeatures]);
 
   const showMainUI = !isLoadingProject;
@@ -204,7 +205,7 @@ const Studio = ({ logger }) => {
     <div className="relative h-screen w-full flex overflow-hidden">
 
       {/* Map Wrapper */}
-      <div className={`flex-grow h-full relative transition-[width] duration-300 ease-in-out ${collapsed ? 'w-screen' : 'w-[calc(100vw-250px)]'}`}>
+      <div className={`flex-grow h-full relative transition-[width] duration-300 ease-in-out ${collapsed ? "w-screen" : "w-[calc(100vw-250px)]"}`}>
         <MapComponent
           onMapLoad={handleMapLoad}
           isDarkMode={isDarkMode}
@@ -273,13 +274,13 @@ const Studio = ({ logger }) => {
         <>
           <div className="fixed top-20 left-3 flex flex-col gap-4 z-[100] animate-[slideInLeft_0.6s_ease-out] max-md:top-4 max-md:right-4 max-md:left-4 max-md:items-stretch">
             <ProjectMenu
-              projectId={projectId}
+              onNew={handleNewProject}
+              onSave={handleSaveProject}
+              onView={() => mapRef.current?.flyTo({ zoom: 5 })}
               map={mapInstance}
               features={savedFeaturesCollection}
               isDarkMode={isDarkMode}
               setIsDarkMode={setIsDarkMode}
-              setMapLoaded={setMapLoaded}
-              isLoading={isLoading}
               setCapturedImages={setCapturedImages}
             />
           </div>
@@ -292,8 +293,6 @@ const Studio = ({ logger }) => {
             draw={drawInstance}
           />
 
-          {/* <WaveLegend isDarkMode={isDarkMode} /> */}
-
           <LegendBox isDarkMode={isDarkMode} />
 
           <NoProjectAlert
@@ -301,6 +300,7 @@ const Studio = ({ logger }) => {
             onCreateProject={handleOpenCreateProject}
             onClose={handleMaybeLater}
             isDarkMode={isDarkMode}
+            message={message}
           />
 
           <CreateProjectModal
@@ -315,17 +315,10 @@ const Studio = ({ logger }) => {
       {/* Loading Overlay */}
       {isLoading && <MapLoading isDarkMode={isDarkMode} />}
 
-      {/* Animation Keyframes */}
       <style>{`
         @keyframes slideInLeft {
-          from {
-            opacity: 0;
-            transform: translateX(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
+          from { opacity: 0; transform: translateX(-20px); }
+          to   { opacity: 1; transform: translateX(0); }
         }
       `}</style>
     </div>

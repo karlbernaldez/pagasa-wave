@@ -3,9 +3,9 @@ import User from '../models/User.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SALT_ROUNDS     = 10;
-const PAGE_OPTIONS    = [5, 10, 25, 50];
-const DEFAULT_LIMIT   = 10;
+const SALT_ROUNDS = 10;
+const PAGE_OPTIONS = [5, 10, 25, 50];
+const DEFAULT_LIMIT = 10;
 
 const ALLOWED_STATUSES = ['pending', 'active', 'locked', 'suspended', 'inactive'];
 
@@ -14,8 +14,8 @@ const OWNER_FIELDS = ['firstName', 'lastName', 'contact', 'address', 'birthday',
 const ADMIN_FIELDS = [...OWNER_FIELDS, 'username', 'role'];
 
 // Fields returned by list / detail queries (no password, no __v)
-const LIST_FIELDS   = 'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
-const DETAIL_FIELDS = 'username firstName lastName birthday address agency position email contact role status avatarUrl createdAt lastLogin';
+const LIST_FIELDS = 'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
+const DETAIL_FIELDS = 'username firstName lastName birthday address agency position email contact role status avatarUrl createdAt lastLogin activatedAt';
 
 // ─── Pure helpers (no side-effects, easy to unit-test) ────────────────────────
 
@@ -28,28 +28,28 @@ const snapToPageOption = (limit) =>
   PAGE_OPTIONS.includes(limit)
     ? limit
     : PAGE_OPTIONS.reduce((best, cur) =>
-        Math.abs(cur - limit) < Math.abs(best - limit) ? cur : best
-      );
+      Math.abs(cur - limit) < Math.abs(best - limit) ? cur : best
+    );
 
 const generateDefaultPassword = (username) =>
   `${username}@${Math.floor(1000 + Math.random() * 9000)}`;
 
 /** Strips sensitive fields and normalises _id → id. */
 const formatUser = (u) => ({
-  id:          u._id.toString(),
-  username:    u.username,
-  firstName:   u.firstName,
-  lastName:    u.lastName,
-  contact:     u.contact,
-  email:       u.email,
-  agency:      u.agency,
-  role:        u.role,
-  position:    u.position,
-  status:      u.status,
-  avatarUrl:   u.avatarUrl ?? null,
+  id: u._id.toString(),
+  username: u.username,
+  firstName: u.firstName,
+  lastName: u.lastName,
+  contact: u.contact,
+  email: u.email,
+  agency: u.agency,
+  role: u.role,
+  position: u.position,
+  status: u.status,
+  avatarUrl: u.avatarUrl ?? null,
   activatedAt: u.activatedAt,
-  lastLogin:   u.lastLogin,
-  createdAt:   u.createdAt,
+  lastLogin: u.lastLogin,
+  createdAt: u.createdAt,
 });
 
 /** Builds a Mongoose filter from validated query params. */
@@ -59,15 +59,15 @@ const buildUserFilter = ({ search, status, role } = {}) => {
   if (search?.trim()) {
     const regex = new RegExp(search.trim(), 'i');
     filter.$or = [
-      { username:  regex },
+      { username: regex },
       { firstName: regex },
-      { lastName:  regex },
-      { email:     regex },
+      { lastName: regex },
+      { email: regex },
     ];
   }
 
   if (status) filter.status = status;
-  if (role)   filter.role   = role;
+  if (role) filter.role = role;
 
   return filter;
 };
@@ -80,9 +80,9 @@ const buildUserFilter = ({ search, status, role } = {}) => {
  */
 export const getAllUsers = async (req, res) => {
   try {
-    const page   = clampInt(req.query.page, 1, Number.MAX_SAFE_INTEGER, 1);
-    const limit  = snapToPageOption(clampInt(req.query.limit, 5, 50, DEFAULT_LIMIT));
-    const skip   = (page - 1) * limit;
+    const page = clampInt(req.query.page, 1, Number.MAX_SAFE_INTEGER, 1);
+    const limit = snapToPageOption(clampInt(req.query.limit, 5, 50, DEFAULT_LIMIT));
+    const skip = (page - 1) * limit;
     const filter = buildUserFilter(req.query);
 
     const [total, users] = await Promise.all([
@@ -98,9 +98,9 @@ export const getAllUsers = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     return res.status(200).json({
-      data:       users.map(formatUser),
+      data: users.map(formatUser),
       total,
-      page:       Math.min(page, totalPages), // guard against out-of-range page
+      page: Math.min(page, totalPages), // guard against out-of-range page
       limit,
       totalPages,
     });
@@ -143,7 +143,7 @@ export const createUserByAdmin = async (req, res) => {
 
     // Required field check
     const missing = ['username', 'firstName', 'lastName', 'birthday', 'address',
-                     'agency', 'position', 'email', 'contact']
+      'agency', 'position', 'email', 'contact']
       .filter((f) => !req.body[f]);
 
     if (missing.length) {
@@ -156,26 +156,26 @@ export const createUserByAdmin = async (req, res) => {
       return res.status(409).json({ message: 'A user with this email or username already exists' });
     }
 
-    const safeStatus    = ALLOWED_STATUSES.includes(status) ? status : 'active';
-    const rawPassword   = generateDefaultPassword(username);
+    const safeStatus = ALLOWED_STATUSES.includes(status) ? status : 'active';
+    const rawPassword = generateDefaultPassword(username);
     const hashedPassword = await bcrypt.hash(rawPassword, SALT_ROUNDS);
-    const isActive      = safeStatus === 'active';
+    const isActive = safeStatus === 'active';
 
     const user = await User.create({
       username, firstName, lastName, birthday, address,
       agency, position, email, contact,
-      role:     role || 'user',
-      status:   safeStatus,
+      role: role || 'user',
+      status: safeStatus,
       password: hashedPassword,
-      activatedAt: isActive ? new Date()       : null,
-      activatedBy: isActive ? req.user?._id    : null,
+      activatedAt: isActive ? new Date() : null,
+      activatedBy: isActive ? req.user?._id : null,
     });
 
     const { password: _, ...safeUser } = user.toObject();
 
     return res.status(201).json({
-      message:         'User created successfully',
-      user:            safeUser,
+      message: 'User created successfully',
+      user: safeUser,
       defaultPassword: rawPassword, // returned once — never stored in plain text
     });
   } catch (err) {
@@ -188,13 +188,51 @@ export const createUserByAdmin = async (req, res) => {
 };
 
 /**
+ * PUT /api/users/:userId/change-password
+ */
+export const changePassword = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { currentPassword, newPassword } = req.body;
+    const actor = req.user;
+
+    if (!actor) return res.status(401).json({ message: 'Unauthorized' });
+
+    const isOwner = actor._id.toString() === userId;
+    const isAdmin = actor.role === 'admin';
+    if (!isOwner && !isAdmin) return res.status(403).json({ message: 'Forbidden' });
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current and new password are required.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters.' });
+    }
+
+    const user = await User.findById(userId).select('+password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) return res.status(400).json({ message: 'Incorrect current password.' });
+
+    user.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await user.save();
+
+    return res.status(200).json({ message: 'Password updated successfully.' });
+  } catch (err) {
+    console.error('[changePassword]', err);
+    return res.status(500).json({ message: 'Error changing password', error: err.message });
+  }
+};
+
+/**
  * PUT /api/users/:userId
  * Owners can update their own profile fields; admins get additional fields.
  */
 export const updateUserDetails = async (req, res) => {
   try {
     const { userId } = req.params;
-    const actor      = req.user;
+    const actor = req.user;
 
     if (!actor) return res.status(401).json({ message: 'Unauthorized' });
 
@@ -219,9 +257,9 @@ export const updateUserDetails = async (req, res) => {
     // Duplicate email / username guard
     if (updates.email || updates.username) {
       const conflict = await User.findOne({
-        _id:  { $ne: userId },
+        _id: { $ne: userId },
         $or: [
-          ...(updates.email    ? [{ email:    updates.email    }] : []),
+          ...(updates.email ? [{ email: updates.email }] : []),
           ...(updates.username ? [{ username: updates.username }] : []),
         ],
       }).lean();
@@ -232,8 +270,8 @@ export const updateUserDetails = async (req, res) => {
     }
 
     const updatedUser = await User.findByIdAndUpdate(userId, updates, {
-      new:            true,
-      runValidators:  true,
+      new: true,
+      runValidators: true,
     }).select('-password');
 
     if (!updatedUser) return res.status(404).json({ message: 'User not found' });
@@ -250,8 +288,8 @@ export const updateUserDetails = async (req, res) => {
  */
 export const updateUserStatus = async (req, res) => {
   try {
-    const { userId }  = req.params;
-    const { status }  = req.body;
+    const { userId } = req.params;
+    const { status } = req.body;
 
     if (!ALLOWED_STATUSES.includes(status)) {
       return res.status(400).json({ message: `Invalid status. Allowed: ${ALLOWED_STATUSES.join(', ')}` });

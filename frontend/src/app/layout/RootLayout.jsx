@@ -16,6 +16,7 @@ const RootLayout = () => {
     isRegisterPage,
     isDashboardPage,
     isStudioPage,
+    isStudioProjectPage,
     isChartsPage,
   } = useRouteChecks();
 
@@ -25,9 +26,10 @@ const RootLayout = () => {
         isAuthPage: isLoginPage || isRegisterPage,
         isDashboardPage,
         isStudioPage,
+        isStudioProjectPage,
         isChartsPage,
       }),
-    [isLoginPage, isRegisterPage, isDashboardPage, isStudioPage, isChartsPage]
+    [isLoginPage, isRegisterPage, isDashboardPage, isStudioPage, isStudioProjectPage, isChartsPage]
   );
 
   const { showHeader, showFooter, addTopPadding } = layoutConfig;
