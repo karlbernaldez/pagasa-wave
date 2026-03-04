@@ -29,7 +29,8 @@ export function useProjects() {
   });
 
   /* ─────────────────────────────
-     Fetch projects (StrictMode safe)
+     Fetch ALL projects once — client handles pagination/filtering
+     Pass limit=0 (or a large number) to bypass server-side paging
   ───────────────────────────── */
   useEffect(() => {
     if (fetchedRef.current) return;
@@ -40,7 +41,8 @@ export function useProjects() {
     const controller = new AbortController();
     controllerRef.current = controller;
 
-    fetchUserProjects({ signal: controller.signal })
+    // limit=1000 fetches everything; client-side pagination takes over
+    fetchUserProjects({ limit: 1000, signal: controller.signal })
       .then((d) => setAllProjects(d.projects ?? []))
       .catch((err) => {
         if (err.name !== "AbortError") console.error(err);
@@ -75,7 +77,6 @@ export function useProjects() {
 
     if (debouncedSearch.trim()) {
       const q = debouncedSearch.toLowerCase();
-
       r = r.filter(
         (p) =>
           p.name?.toLowerCase().includes(q) ||
@@ -87,30 +88,18 @@ export function useProjects() {
   }, [allProjects, statusFilter, debouncedSearch]);
 
   const total = filtered.length;
-
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
-
-  const paged = filtered.slice(
-    (page - 1) * PAGE_LIMIT,
-    page * PAGE_LIMIT
-  );
+  const paged = filtered.slice((page - 1) * PAGE_LIMIT, page * PAGE_LIMIT);
 
   /* ─────────────────────────────
      Actions
   ───────────────────────────── */
-
-  /* Delete Project */
   const deleteProject = async (id) => {
     if (pending.current.delete.has(id)) return;
-
     pending.current.delete.add(id);
-
     try {
       await deleteProjectById(id);
-
-      setAllProjects((prev) =>
-        prev.filter((p) => p._id !== id)
-      );
+      setAllProjects((prev) => prev.filter((p) => p._id !== id));
     } catch (err) {
       console.error(err);
     } finally {
@@ -118,19 +107,13 @@ export function useProjects() {
     }
   };
 
-  /* Rename Project */
   const renameProject = async (id, newName) => {
     if (pending.current.rename.has(id)) return;
-
     pending.current.rename.add(id);
-
     try {
       await apiRenameProject(id, newName);
-
       setAllProjects((prev) =>
-        prev.map((p) =>
-          p._id === id ? { ...p, name: newName } : p
-        )
+        prev.map((p) => (p._id === id ? { ...p, name: newName } : p))
       );
     } catch (err) {
       console.error(err);
@@ -139,22 +122,16 @@ export function useProjects() {
     }
   };
 
-  /* Create Project */
   const createProject = (formData, setShowModal) => {
     if (pending.current.create) return;
-
     pending.current.create = true;
-
     const newTab = window.open("", "_blank");
-
     handleCreateProject({
       ...formData,
       onNew: (project) => {
         pending.current.create = false;
-
         if (project?._id) {
           setAllProjects((prev) => [project, ...prev]);
-
           if (newTab) {
             newTab.location.href = `/studio/${project._id}`;
           } else {
@@ -168,30 +145,18 @@ export function useProjects() {
     });
   };
 
-  /* ─────────────────────────────
-     Return API
-  ───────────────────────────── */
-
   return {
-    /* state */
     loading,
     allProjects,
-
     search,
     setSearch,
-
     statusFilter,
     setStatusFilter,
-
     page,
     setPage,
-
-    /* derived */
     paged,
     total,
     totalPages,
-
-    /* actions */
     deleteProject,
     renameProject,
     createProject,

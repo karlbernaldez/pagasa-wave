@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import {
   Plus, Search, Filter, X,
-  ChevronLeft, ChevronRight, Layers, Sparkles, FolderOpen,
+  ChevronLeft, ChevronRight, Sparkles, FolderOpen, Waves,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 
@@ -14,263 +15,367 @@ import { DeleteDialog, RenameDialog, ShareDialog } from "@dashboards/forecaster/
 import { STATUS_FILTERS }    from "@dashboards/forecaster/components/StudioBase/constants";
 import { cn, buildPageNumbers } from "@dashboards/forecaster/components/StudioBase/utils";
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show:   (d = 0) => ({
+    opacity: 1, y: 0,
+    transition: { duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94], delay: d },
+  }),
+};
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } } };
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.88 },
+  show:   { opacity: 1, scale: 1, transition: { duration: 0.45, ease: "backOut" } },
+};
+
 export default function StudioLanding() {
   const { isDarkMode: isDark } = useTheme();
-
   const {
-    loading, allProjects,
-    search, setSearch,
-    statusFilter, setStatusFilter,
-    page, setPage,
+    loading, allProjects, search, setSearch,
+    statusFilter, setStatusFilter, page, setPage,
     paged, total, totalPages,
     deleteProject, renameProject, createProject,
   } = useProjects();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [deleteTarget, setDeleteTarget]       = useState(null);
-  const [deletingId, setDeletingId]           = useState(null);
-  const [renameTarget, setRenameTarget]       = useState(null);
-  const [renamingId, setRenamingId]           = useState(null);
-  const [shareTarget, setShareTarget]         = useState(null);
+  const [deleteTarget,    setDeleteTarget]    = useState(null);
+  const [deletingId,      setDeletingId]      = useState(null);
+  const [renameTarget,    setRenameTarget]    = useState(null);
+  const [renamingId,      setRenamingId]      = useState(null);
+  const [shareTarget,     setShareTarget]     = useState(null);
 
   useEffect(() => { document.title = "WaveLab · Studio"; }, []);
 
-  /* ── action handlers ── */
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    try {
-      setDeletingId(deleteTarget._id);
-      await deleteProject(deleteTarget._id);
-      setDeleteTarget(null);
-    } catch (e) { console.error(e); }
-    finally { setDeletingId(null); }
+    try { setDeletingId(deleteTarget._id); await deleteProject(deleteTarget._id); setDeleteTarget(null); }
+    catch (e) { console.error(e); } finally { setDeletingId(null); }
   };
-
   const handleRename = async (newName) => {
     if (!renameTarget) return;
-    try {
-      setRenamingId(renameTarget._id);
-      await renameProject(renameTarget._id, newName);
-      setRenameTarget(null);
-    } catch (e) { console.error(e); }
-    finally { setRenamingId(null); }
+    try { setRenamingId(renameTarget._id); await renameProject(renameTarget._id, newName); setRenameTarget(null); }
+    catch (e) { console.error(e); } finally { setRenamingId(null); }
   };
-
-  /* ── resolved theme tokens ── */
-  const pageBg   = isDark ? "bg-[#070e1c]"  : "bg-slate-50";
-  const headText = isDark ? "text-white"     : "text-slate-900";
-  const muteText = isDark ? "text-slate-500" : "text-slate-400";
-  const inputCls = isDark
-    ? "bg-slate-900 border-slate-800 text-white focus-within:border-slate-600"
-    : "bg-white border-slate-200 text-slate-900 focus-within:border-blue-400 shadow-sm";
-  const pgBtn    = isDark
-    ? "border-slate-800 hover:bg-slate-800 text-slate-500 hover:text-slate-200"
-    : "border-slate-200 hover:bg-slate-100 text-slate-400 hover:text-slate-700";
-  const pgActive = isDark
-    ? "bg-cyan-500/20 text-cyan-300 border-cyan-700"
-    : "bg-blue-600 text-white border-blue-600 shadow-sm";
 
   const pageNums = buildPageNumbers(totalPages, page);
 
-  return (
-    <div className={cn("min-h-screen transition-colors duration-200 pt-16", pageBg)}>
+  const headText = isDark ? "text-white"     : "text-slate-900";
+  const bodyText = isDark ? "text-slate-300" : "text-slate-600";
+  const muteText = isDark ? "text-slate-400" : "text-slate-500";
+  const pgBtn    = isDark
+    ? "border-slate-700/60 hover:bg-slate-800/60 text-slate-500 hover:text-slate-200"
+    : "border-slate-200 hover:bg-slate-100 text-slate-400 hover:text-slate-700";
+  const pgActive = "bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-transparent shadow-lg shadow-blue-500/20";
 
-      {/* Ambient glow */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        {isDark ? (
-          <>
-            <div className="absolute -top-48 left-1/4 w-[800px] h-[600px] rounded-full blur-[200px] opacity-[0.07] bg-cyan-500" />
-            <div className="absolute bottom-0 right-0 w-[500px] h-[400px] rounded-full blur-[180px] opacity-[0.04] bg-blue-600" />
-          </>
-        ) : (
-          <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-blue-50/70 to-transparent" />
-        )}
+  /* Stats — use real schema statuses, not "Active" */
+  const stats = !loading && allProjects.length > 0 ? [
+    { value: allProjects.length,                                           label: "Total"     },
+    { value: allProjects.filter(p => p.status === "Published").length,     label: "Published" },
+    { value: allProjects.filter(p => p.status === "Under Review").length,  label: "In Review" },
+    { value: allProjects.filter(p => p.status === "Draft").length,         label: "Drafts"    },
+  ] : [];
+
+  return (
+    <div className={cn(
+      "min-h-screen transition-colors duration-700 pt-16 relative overflow-hidden",
+      isDark
+        ? "bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
+        : "bg-gradient-to-br from-slate-50 via-white to-slate-100"
+    )}>
+
+      {/* Dot-grid */}
+      <div className="absolute inset-0 opacity-[0.025] pointer-events-none z-0">
+        <div className={cn(
+          "absolute inset-0 bg-[length:30px_30px]",
+          isDark
+            ? "bg-[radial-gradient(circle_at_center,_theme(colors.blue.500)_1px,_transparent_1px)]"
+            : "bg-[radial-gradient(circle_at_center,_theme(colors.blue.400)_1px,_transparent_1px)]"
+        )} />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-6 py-10">
+      {/* Ambient blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className={cn("absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full blur-3xl",
+          isDark ? "bg-blue-600/10" : "bg-blue-400/15")} />
+        <div className={cn("absolute -bottom-24 -right-24 w-[450px] h-[450px] rounded-full blur-3xl",
+          isDark ? "bg-cyan-600/10" : "bg-cyan-400/12")} />
+      </div>
 
-        {/* ── Header ── */}
-        <div className="flex items-start justify-between mb-10 flex-wrap gap-4">
-          <div>
-            <p className={cn("flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] mb-3", muteText)}>
-              <Layers size={10} strokeWidth={3} />
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+
+        {/* ══ Header ══ */}
+        <motion.div className="mb-14" variants={stagger} initial="hidden" animate="show">
+          <motion.div variants={scaleIn} className="mb-7">
+            <div className={cn(
+              "inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold",
+              "backdrop-blur-sm transition-all duration-300 hover:scale-[1.02]",
+              isDark
+                ? "bg-blue-500/10 text-blue-300 border border-blue-400/20 hover:border-blue-400/40"
+                : "bg-blue-100/80 text-blue-700 border border-blue-200 hover:border-blue-300"
+            )}>
+              <Waves size={16} className="animate-pulse" />
               WaveLab Studio
-            </p>
-            <h1 className={cn("text-4xl font-black tracking-tight leading-none mb-2.5", headText)}>
-              Your Projects
-            </h1>
-            <p className={cn("text-sm", muteText)}>
-              {loading ? "Loading…"
-                : allProjects.length > 0
-                  ? `${allProjects.length} project${allProjects.length !== 1 ? "s" : ""} · click any card to open`
-                  : "Create your first project to get started"}
-            </p>
+            </div>
+          </motion.div>
+
+          <div className="flex items-end justify-between gap-8 flex-wrap">
+            <div className="space-y-5">
+              <motion.h1
+                variants={fadeUp} custom={0.05}
+                className={cn("text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight", headText)}
+              >
+                Your{" "}
+                <span className={cn("bg-gradient-to-r bg-clip-text text-transparent",
+                  isDark
+                    ? "from-blue-400 via-cyan-400 to-emerald-400"
+                    : "from-blue-600 via-cyan-600 to-emerald-600"
+                )}>
+                  Projects
+                </span>
+              </motion.h1>
+
+              <motion.p variants={fadeUp} custom={0.12}
+                className={cn("text-lg sm:text-xl leading-relaxed max-w-xl", bodyText)}
+              >
+                {loading ? "Loading…"
+                  : allProjects.length > 0
+                    ? `${allProjects.length} project${allProjects.length !== 1 ? "s" : ""} · click any card to open`
+                    : "Create your first project to get started."}
+              </motion.p>
+            </div>
+
+            <motion.button
+              variants={fadeUp} custom={0.18}
+              onClick={() => setShowCreateModal(true)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              className="group inline-flex items-center gap-2.5 rounded-xl
+                bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700
+                px-7 py-3.5 text-sm font-semibold text-white
+                shadow-lg shadow-blue-500/25 transition-all duration-300 hover:shadow-xl"
+            >
+              <Plus size={16} strokeWidth={2.5}
+                className="group-hover:rotate-90 transition-transform duration-300" />
+              New Project
+            </motion.button>
           </div>
 
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold border transition-all",
-              "hover:scale-[1.02] active:scale-[0.98]",
-              isDark
-                ? "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-800 shadow-[0_0_20px_rgba(6,182,212,0.10)]"
-                : "bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shadow-lg shadow-blue-500/20"
-            )}
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            New Project
-          </button>
-        </div>
-
-        {/* ── Search ── */}
-        <div className={cn(
-          "flex items-center gap-3 rounded-2xl px-4 py-3 border mb-3 transition-all",
-          inputCls
-        )}>
-          <Search size={14} strokeWidth={2} className={muteText} />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or description…"
-            className="flex-1 bg-transparent text-sm outline-none"
-          />
-          {search && (
-            <button onClick={() => setSearch("")}
-              className={cn("hover:opacity-70 transition-opacity", muteText)}>
-              <X size={13} />
-            </button>
-          )}
-        </div>
-
-        {/* ── Filter pills ── */}
-        <div className="flex items-center gap-1.5 mb-8 flex-wrap">
-          <Filter size={11} strokeWidth={2} className={cn(muteText, "flex-shrink-0 mr-0.5")} />
-          {STATUS_FILTERS.map((s) => (
-            <button key={s} onClick={() => setStatusFilter(s)}
+          {/* Stats row — 4 columns, schema-accurate */}
+          {stats.length > 0 && (
+            <motion.div
+              variants={fadeUp} custom={0.24}
               className={cn(
-                "text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap",
-                statusFilter === s
-                  ? isDark
-                    ? "bg-cyan-500/20 text-cyan-300 border-cyan-700"
-                    : "bg-blue-600 text-white border-blue-600 shadow-sm"
-                  : isDark
-                    ? "bg-slate-900 text-slate-500 hover:bg-slate-800 hover:text-slate-300 border-slate-800"
-                    : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 border-slate-200"
-              )}>
-              {s}
-            </button>
-          ))}
-          {(search || statusFilter !== "All") && total > 0 && (
-            <span className={cn("text-xs ml-1 tabular-nums", muteText)}>
-              {total} result{total !== 1 ? "s" : ""}
-            </span>
+                "grid grid-cols-4 gap-6 pt-8 mt-8 border-t",
+                isDark ? "border-slate-800" : "border-slate-200"
+              )}
+            >
+              {stats.map(({ value, label }) => (
+                <div key={label} className="text-center lg:text-left">
+                  <div className="text-3xl sm:text-4xl font-black bg-gradient-to-br from-blue-500 to-cyan-600 bg-clip-text text-transparent">
+                    {value}
+                  </div>
+                  <div className={cn("text-sm font-medium mt-0.5",
+                    isDark ? "text-slate-400" : "text-slate-600")}>
+                    {label}
+                  </div>
+                </div>
+              ))}
+            </motion.div>
           )}
-        </div>
+        </motion.div>
 
-        {/* ── Grid ── */}
+        {/* ══ Search + Filters ══ */}
+        <motion.div
+          className="mb-10 space-y-4"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.28 }}
+        >
+          <div className={cn(
+            "flex items-center gap-3 rounded-2xl px-5 py-4 border transition-all",
+            isDark
+              ? "bg-slate-900/60 border-slate-700/60 text-white backdrop-blur-sm focus-within:border-blue-500/60"
+              : "bg-white/80 border-slate-200 text-slate-900 backdrop-blur-sm shadow-sm focus-within:border-blue-400"
+          )}>
+            <Search size={16} strokeWidth={2} className={muteText} />
+            <input
+              type="text" value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or description…"
+              className="flex-1 bg-transparent text-sm leading-relaxed outline-none placeholder:text-slate-500"
+            />
+            {search && (
+              <button onClick={() => setSearch("")}
+                className={cn("hover:opacity-70 transition-opacity", muteText)}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Filter pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter size={12} strokeWidth={2} className={cn(muteText, "flex-shrink-0")} />
+            {STATUS_FILTERS.map((s) => (
+              <motion.button
+                key={s}
+                whileHover={{ scale: 1.05 }}
+                onClick={() => setStatusFilter(s)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl border px-3.5 py-1.5",
+                  "text-xs font-bold uppercase tracking-[0.1em] transition-all duration-300",
+                  statusFilter === s
+                    ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-blue-500 shadow-md shadow-blue-500/20"
+                    : isDark
+                      ? "border-slate-700 text-slate-300 bg-slate-800/40 hover:bg-slate-800/70 hover:border-slate-500"
+                      : "border-slate-200 text-slate-600 bg-white/70 hover:bg-white hover:border-slate-300"
+                )}
+              >
+                {s}
+              </motion.button>
+            ))}
+            {(search || statusFilter !== "All") && total > 0 && (
+              <span className={cn("text-sm font-medium ml-1 tabular-nums", muteText)}>
+                {total} result{total !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+        </motion.div>
+
+        {/* ══ Card Grid ══ */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} isDark={isDark} />)}
           </div>
         ) : paged.length === 0 ? (
           <EmptyState isDark={isDark} hasFilters={!!search || statusFilter !== "All"}
             onCreateClick={() => setShowCreateModal(true)} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            variants={stagger} initial="hidden" animate="show"
+          >
             {paged.map((project) => (
-              <ProjectCard key={project._id} project={project} isDark={isDark}
-                onDelete={setDeleteTarget}
-                onRename={setRenameTarget}
-                onShare={setShareTarget}
-              />
+              <motion.div key={project._id} variants={scaleIn}>
+                <ProjectCard project={project} isDark={isDark}
+                  onDelete={setDeleteTarget}
+                  onRename={setRenameTarget}
+                  onShare={setShareTarget}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
-        {/* ── Pagination ── */}
+        {/* ══ Pagination ══ */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-1.5 mt-10">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              className={cn("p-2 rounded-xl border transition-all disabled:opacity-25 disabled:cursor-not-allowed", pgBtn)}>
-              <ChevronLeft size={15} />
+          <motion.div
+            className="flex items-center justify-center gap-2 mt-14"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-semibold",
+                "transition-all disabled:opacity-25 disabled:cursor-not-allowed", pgBtn
+              )}
+            >
+              <ChevronLeft size={14} /> Prev
             </button>
-            {pageNums.map((item, idx) =>
-              item === "…" ? (
-                <span key={`e-${idx}`} className={cn("text-xs px-1", muteText)}>…</span>
-              ) : (
-                <button key={item} onClick={() => setPage(item)}
-                  className={cn("w-9 h-9 rounded-xl text-xs font-bold border transition-all",
-                    page === item ? pgActive : pgBtn)}>
-                  {item}
-                </button>
-              )
-            )}
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className={cn("p-2 rounded-xl border transition-all disabled:opacity-25 disabled:cursor-not-allowed", pgBtn)}>
-              <ChevronRight size={15} />
+
+            <div className="flex items-center gap-1.5">
+              {pageNums.map((item, idx) =>
+                item === "…" ? (
+                  <span key={`e-${idx}`} className={cn("w-10 h-10 flex items-center justify-center text-sm", muteText)}>…</span>
+                ) : (
+                  <button key={item} onClick={() => setPage(item)}
+                    className={cn("w-10 h-10 rounded-xl text-sm font-bold border transition-all",
+                      page === item ? pgActive : pgBtn)}>
+                    {item}
+                  </button>
+                )
+              )}
+            </div>
+
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-semibold",
+                "transition-all disabled:opacity-25 disabled:cursor-not-allowed", pgBtn
+              )}
+            >
+              Next <ChevronRight size={14} />
             </button>
-          </div>
+          </motion.div>
+        )}
+
+        {totalPages > 1 && (
+          <p className={cn("text-center text-xs mt-4 tabular-nums", muteText)}>
+            Page {page} of {totalPages} · {total} project{total !== 1 ? "s" : ""}
+          </p>
         )}
       </div>
 
       {/* ── Modals ── */}
-      <CreateProjectModal
-        visible={showCreateModal}
+      <CreateProjectModal visible={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onSubmit={(formData) => createProject(formData, setShowCreateModal)}
-        isDarkMode={isDark}
-      />
+        onSubmit={(fd) => createProject(fd, setShowCreateModal)}
+        isDarkMode={isDark} />
       {deleteTarget && (
         <DeleteDialog project={deleteTarget} isDark={isDark}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}
           loading={deletingId === deleteTarget._id} />
       )}
       {renameTarget && (
         <RenameDialog project={renameTarget} isDark={isDark}
-          onCancel={() => setRenameTarget(null)}
-          onConfirm={handleRename}
+          onCancel={() => setRenameTarget(null)} onConfirm={handleRename}
           loading={renamingId === renameTarget._id} />
       )}
       {shareTarget && (
-        <ShareDialog project={shareTarget} isDark={isDark}
-          onClose={() => setShareTarget(null)} />
+        <ShareDialog project={shareTarget} isDark={isDark} onClose={() => setShareTarget(null)} />
       )}
     </div>
   );
 }
 
-/* ── EmptyState (local, small enough to inline) ── */
 function EmptyState({ isDark, hasFilters, onCreateClick }) {
-  const headText = isDark ? "text-white"     : "text-slate-900";
-  const muteText = isDark ? "text-slate-500" : "text-slate-400";
   return (
-    <div className="flex flex-col items-center justify-center py-28 gap-5 text-center">
-      <div className={cn("w-20 h-20 rounded-3xl border flex items-center justify-center",
-        isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
-        <FolderOpen size={36} className={muteText} strokeWidth={1.4} />
+    <motion.div
+      className="flex flex-col items-center justify-center py-32 gap-7 text-center"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className={cn(
+        "w-24 h-24 rounded-3xl border flex items-center justify-center backdrop-blur-sm",
+        isDark ? "bg-slate-900/60 border-slate-700/60" : "bg-white/80 border-slate-200 shadow-sm"
+      )}>
+        <FolderOpen size={40} className={isDark ? "text-slate-500" : "text-slate-400"} strokeWidth={1.4} />
       </div>
-      <div>
-        <h3 className={cn("font-bold text-lg mb-1.5", headText)}>
+      <div className="space-y-3">
+        <h3 className={cn("font-bold text-2xl tracking-tight", isDark ? "text-white" : "text-slate-900")}>
           {hasFilters ? "No matching projects" : "No projects yet"}
         </h3>
-        <p className={cn("text-sm", muteText)}>
+        <p className={cn("text-lg leading-relaxed max-w-sm", isDark ? "text-slate-300" : "text-slate-600")}>
           {hasFilters ? "Try a different search or clear the filter." : "Create your first project to get started."}
         </p>
       </div>
       {!hasFilters && (
-        <button onClick={onCreateClick}
-          className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold border transition-all hover:scale-[1.02]",
-            isDark
-              ? "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-800"
-              : "bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shadow-md shadow-blue-500/20"
-          )}>
-          <Sparkles size={14} strokeWidth={2.5} />
+        <motion.button
+          onClick={onCreateClick}
+          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+          className="group inline-flex items-center gap-2.5 rounded-xl
+            bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700
+            px-7 py-3.5 text-sm font-semibold text-white
+            shadow-lg shadow-blue-500/25 transition-all duration-300 hover:shadow-xl"
+        >
+          <Sparkles size={16} strokeWidth={2.5} />
           Create First Project
-        </button>
+        </motion.button>
       )}
-    </div>
+    </motion.div>
   );
 }
