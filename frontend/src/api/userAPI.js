@@ -64,11 +64,17 @@ export const createUserAPI = async (payload) => {
 
   // backend returns: { message, user, defaultPassword }
   return {
-    user:            data.user,
+    user: data.user,
     defaultPassword: data.defaultPassword,
-    message:         data.message,
+    message: data.message,
   };
 };
+
+export const changePasswordAPI = (userId, { currentPassword, newPassword }) =>
+  request(`${USER_API_BASE_URL}/${userId}/change-password`, {
+    method: 'PUT',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 
 /* -------------------------------------------------------
    UPDATE USER PROFILE (allowedFields only)

@@ -13,6 +13,7 @@ const AuditLogSchema = new Schema({
     enum: [
       'created',
       'edited',
+      'renamed',
       'submitted',
       'moved_to_review',
       'approved',

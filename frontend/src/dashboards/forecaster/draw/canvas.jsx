@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
 import { createFeature } from '@/api/featureServices';
 import { smoothPoints, handlePointerDown, handlePointerMove, handlePointerUp } from './canvasUtils';
+import { useProjectId } from "@dashboards/forecaster/hooks/useStudio";
 import CreateProjectModal from '@/components/ui/modals/CreateProjectModal';
 
 // Memoized slider component to prevent unnecessary re-renders
@@ -131,7 +132,7 @@ const DrawingCanvas = ({
   const [showProjectModal, setShowProjectModal] = useState(false);
   const stageRef = useRef(null);
   const drawLock = useRef(false);
-
+  const [projectId] = useProjectId();
 
   // Prevent body scroll during drawing
   useEffect(() => {
@@ -175,6 +176,7 @@ const DrawingCanvas = ({
       lineCount,
       labelValue,
       isDarkMode,
+      projectId,
       () => setShowProjectModal(true)
     );
 
