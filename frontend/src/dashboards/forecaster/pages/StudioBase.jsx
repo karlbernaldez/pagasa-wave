@@ -1,8 +1,9 @@
 // studio/StudioLanding.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Plus, Search, Filter, X,
   ChevronLeft, ChevronRight, Sparkles, FolderOpen, Waves,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/app/providers/ThemeProvider";
@@ -28,6 +29,35 @@ const scaleIn = {
   show:   { opacity: 1, scale: 1, transition: { duration: 0.45, ease: "backOut" } },
 };
 
+// ── Sort config ──────────────────────────────────────────────────────────────
+const SORT_OPTIONS = [
+  { value: "updatedAt", label: "Last Updated" },
+  { value: "createdAt", label: "Date Created" },
+  { value: "name",      label: "Name"         },
+  { value: "status",    label: "Status"       },
+];
+
+function sortProjects(projects, sortBy, sortDir) {
+  return [...projects].sort((a, b) => {
+    let valA, valB;
+    if (sortBy === "name") {
+      valA = (a.name ?? "").toLowerCase();
+      valB = (b.name ?? "").toLowerCase();
+    } else if (sortBy === "status") {
+      valA = (a.status ?? "").toLowerCase();
+      valB = (b.status ?? "").toLowerCase();
+    } else {
+      // date fields
+      valA = new Date(a[sortBy] ?? 0).getTime();
+      valB = new Date(b[sortBy] ?? 0).getTime();
+    }
+    if (valA < valB) return sortDir === "asc" ? -1 :  1;
+    if (valA > valB) return sortDir === "asc" ?  1 : -1;
+    return 0;
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function StudioLanding() {
   const { isDarkMode: isDark } = useTheme();
   const {
@@ -43,6 +73,20 @@ export default function StudioLanding() {
   const [renameTarget,    setRenameTarget]    = useState(null);
   const [renamingId,      setRenamingId]      = useState(null);
   const [shareTarget,     setShareTarget]     = useState(null);
+
+  // ── Sort state ──
+  const [sortBy,  setSortBy]  = useState("updatedAt");
+  const [sortDir, setSortDir] = useState("desc");
+
+  // Apply sorting on top of the already-filtered+paged slice.
+  // NOTE: For true cross-page sorting wire sortBy/sortDir into useProjects
+  // so sorting happens before pagination. This sorts the current page only.
+  const sortedPaged = useMemo(
+    () => sortProjects(paged, sortBy, sortDir),
+    [paged, sortBy, sortDir]
+  );
+
+  const toggleDir = () => setSortDir((d) => (d === "asc" ? "desc" : "asc"));
 
   useEffect(() => { document.title = "WaveLab · Studio"; }, []);
 
@@ -67,13 +111,20 @@ export default function StudioLanding() {
     : "border-slate-200 hover:bg-slate-100 text-slate-400 hover:text-slate-700";
   const pgActive = "bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-transparent shadow-lg shadow-blue-500/20";
 
-  /* Stats — use real schema statuses, not "Active" */
   const stats = !loading && allProjects.length > 0 ? [
     { value: allProjects.length,                                           label: "Total"     },
     { value: allProjects.filter(p => p.status === "Published").length,     label: "Published" },
     { value: allProjects.filter(p => p.status === "Under Review").length,  label: "In Review" },
     { value: allProjects.filter(p => p.status === "Draft").length,         label: "Drafts"    },
   ] : [];
+
+  // Shared control styles
+  const controlBase = cn(
+    "inline-flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all duration-200",
+    isDark
+      ? "border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:border-slate-500"
+      : "border-slate-200 bg-white/70 text-slate-600 hover:bg-white hover:border-slate-300"
+  );
 
   return (
     <div className={cn(
@@ -160,7 +211,7 @@ export default function StudioLanding() {
             </motion.button>
           </div>
 
-          {/* Stats row — 4 columns, schema-accurate */}
+          {/* Stats row */}
           {stats.length > 0 && (
             <motion.div
               variants={fadeUp} custom={0.24}
@@ -184,13 +235,14 @@ export default function StudioLanding() {
           )}
         </motion.div>
 
-        {/* ══ Search + Filters ══ */}
+        {/* ══ Search + Filters + Sort ══ */}
         <motion.div
           className="mb-10 space-y-4"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.28 }}
         >
+          {/* Search bar */}
           <div className={cn(
             "flex items-center gap-3 rounded-2xl px-5 py-4 border transition-all",
             isDark
@@ -212,32 +264,99 @@ export default function StudioLanding() {
             )}
           </div>
 
-          {/* Filter pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter size={12} strokeWidth={2} className={cn(muteText, "flex-shrink-0")} />
-            {STATUS_FILTERS.map((s) => (
+          {/* Filter pills + Sort controls in one row */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+
+            {/* Left — status filters */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Filter size={12} strokeWidth={2} className={cn(muteText, "flex-shrink-0")} />
+              {STATUS_FILTERS.map((s) => (
+                <motion.button
+                  key={s}
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => setStatusFilter(s)}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-xl border px-3.5 py-1.5",
+                    "text-xs font-bold uppercase tracking-[0.1em] transition-all duration-300",
+                    statusFilter === s
+                      ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-blue-500 shadow-md shadow-blue-500/20"
+                      : isDark
+                        ? "border-slate-700 text-slate-300 bg-slate-800/40 hover:bg-slate-800/70 hover:border-slate-500"
+                        : "border-slate-200 text-slate-600 bg-white/70 hover:bg-white hover:border-slate-300"
+                  )}
+                >
+                  {s}
+                </motion.button>
+              ))}
+              {(search || statusFilter !== "All") && total > 0 && (
+                <span className={cn("text-sm font-medium ml-1 tabular-nums", muteText)}>
+                  {total} result{total !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            {/* Right — sort controls */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <ArrowUpDown size={12} strokeWidth={2} className={cn(muteText, "flex-shrink-0")} />
+
+              {/* Sort-by select */}
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className={cn(
+                    controlBase,
+                    "pl-3 pr-7 py-1.5 appearance-none cursor-pointer",
+                    // keep native arrow but hide default focus ring
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  )}
+                  style={{ backgroundImage: "none" }}
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <option
+                      key={opt.value}
+                      value={opt.value}
+                      className={isDark ? "bg-slate-900 text-slate-200" : "bg-white text-slate-800"}
+                    >
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {/* Custom chevron */}
+                <ChevronRight
+                  size={12}
+                  className={cn(
+                    "absolute right-2 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none",
+                    muteText
+                  )}
+                />
+              </div>
+
+              {/* Asc / Desc toggle */}
               <motion.button
-                key={s}
+                onClick={toggleDir}
                 whileHover={{ scale: 1.05 }}
-                onClick={() => setStatusFilter(s)}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-xl border px-3.5 py-1.5",
-                  "text-xs font-bold uppercase tracking-[0.1em] transition-all duration-300",
-                  statusFilter === s
-                    ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-blue-500 shadow-md shadow-blue-500/20"
-                    : isDark
-                      ? "border-slate-700 text-slate-300 bg-slate-800/40 hover:bg-slate-800/70 hover:border-slate-500"
-                      : "border-slate-200 text-slate-600 bg-white/70 hover:bg-white hover:border-slate-300"
-                )}
+                whileTap={{ scale: 0.95 }}
+                title={sortDir === "asc" ? "Ascending — click for descending" : "Descending — click for ascending"}
+                className={cn(controlBase, "px-2.5 py-1.5")}
               >
-                {s}
+                <motion.span
+                  key={sortDir}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex items-center"
+                >
+                  {sortDir === "asc"
+                    ? <ArrowUp  size={13} strokeWidth={2.5} />
+                    : <ArrowDown size={13} strokeWidth={2.5} />
+                  }
+                </motion.span>
+                <span className="uppercase tracking-[0.1em]">
+                  {sortDir === "asc" ? "Asc" : "Desc"}
+                </span>
               </motion.button>
-            ))}
-            {(search || statusFilter !== "All") && total > 0 && (
-              <span className={cn("text-sm font-medium ml-1 tabular-nums", muteText)}>
-                {total} result{total !== 1 ? "s" : ""}
-              </span>
-            )}
+            </div>
           </div>
         </motion.div>
 
@@ -246,7 +365,7 @@ export default function StudioLanding() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} isDark={isDark} />)}
           </div>
-        ) : paged.length === 0 ? (
+        ) : sortedPaged.length === 0 ? (
           <EmptyState isDark={isDark} hasFilters={!!search || statusFilter !== "All"}
             onCreateClick={() => setShowCreateModal(true)} />
         ) : (
@@ -254,7 +373,7 @@ export default function StudioLanding() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
             variants={stagger} initial="hidden" animate="show"
           >
-            {paged.map((project) => (
+            {sortedPaged.map((project) => (
               <motion.div key={project._id} variants={scaleIn}>
                 <ProjectCard project={project} isDark={isDark}
                   onDelete={setDeleteTarget}
