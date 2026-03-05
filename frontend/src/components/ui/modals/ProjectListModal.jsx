@@ -36,11 +36,33 @@ const ProjectListModal = ({ visible, onClose, onSelect, onDelete, isDarkMode }) 
   // Fetch once when the modal opens
   useEffect(() => {
     if (!visible) return;
-    setLoading(true);
-    fetchUserProjects()
-      .then((data) => setAllProjects(data.projects ?? []))
-      .catch((err) => console.error('Failed to load projects:', err))
-      .finally(() => setLoading(false));
+
+    let isMounted = true;
+
+    const loadProjects = async () => {
+      try {
+        setLoading(true);
+
+        const data = await fetchUserProjects({
+          page: 1,
+        });
+
+        if (isMounted) {
+          setAllProjects(data?.projects || []);
+        }
+
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadProjects();
+
+    return () => {
+      isMounted = false;
+    };
   }, [visible]);
 
   // Debounce search
@@ -177,12 +199,12 @@ const ProjectListModal = ({ visible, onClose, onSelect, onDelete, isDarkMode }) 
                   key={s}
                   onClick={() => setStatusFilter(s)}
                   className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${statusFilter === s
-                      ? isDarkMode
-                        ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
-                        : 'bg-blue-500/20 text-blue-700 border border-blue-500/30'
-                      : isDarkMode
-                        ? 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
-                        : 'bg-black/5 text-slate-500 hover:bg-black/10 border border-black/10'
+                    ? isDarkMode
+                      ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
+                      : 'bg-blue-500/20 text-blue-700 border border-blue-500/30'
+                    : isDarkMode
+                      ? 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
+                      : 'bg-black/5 text-slate-500 hover:bg-black/10 border border-black/10'
                     }`}
                 >
                   {s}
@@ -301,12 +323,12 @@ const ProjectListModal = ({ visible, onClose, onSelect, onDelete, isDarkMode }) 
                       key={item}
                       onClick={() => setPage(item)}
                       className={`w-7 h-7 rounded-lg text-xs font-semibold transition ${page === item
-                          ? isDarkMode
-                            ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
-                            : 'bg-blue-500/20 text-blue-700 border border-blue-400/30'
-                          : isDarkMode
-                            ? 'hover:bg-white/10 text-gray-400'
-                            : 'hover:bg-black/10 text-slate-500'
+                        ? isDarkMode
+                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
+                          : 'bg-blue-500/20 text-blue-700 border border-blue-400/30'
+                        : isDarkMode
+                          ? 'hover:bg-white/10 text-gray-400'
+                          : 'hover:bg-black/10 text-slate-500'
                         }`}
                     >
                       {item}

@@ -35,10 +35,10 @@ export const getStrokeOutlinePoints = (points, options = {}) => {
   for (let i = 0; i < streamlined.length; i++) {
     const point = streamlined[i];
     const pressure = point.pressure || 0.5;
-    
+
     // Calculate width based on pressure and thinning
     const width = size * (1 - thinning * (1 - pressure));
-    
+
     strokePoints.push({
       ...point,
       width,
@@ -180,7 +180,7 @@ export const smoothPoints = (points, tension = 0.5) => {
   if (reducedPoints.length < 4) return reducedPoints;
 
   const result = [];
-  
+
   // Add first point
   result.push(reducedPoints[0], reducedPoints[1]);
 
@@ -339,7 +339,7 @@ export const handlePointerMove = (e, lines, setLines, isDrawing) => {
 
   const stage = e.target.getStage();
   const point = stage.getPointerPosition();
-  
+
   if (!point) return;
 
   const lastLine = lines[lines.length - 1];
@@ -351,7 +351,7 @@ export const handlePointerMove = (e, lines, setLines, isDrawing) => {
     const lastX = rawPoints[rawPoints.length - 2];
     const lastY = rawPoints[rawPoints.length - 1];
     const dist = Math.sqrt((point.x - lastX) ** 2 + (point.y - lastY) ** 2);
-    
+
     // Only add point if it's far enough from last point
     if (dist < 2) return;
   }
@@ -446,7 +446,7 @@ const cleanupMapArtifacts = (map, prefix, sourceId, layerId, labelSourceId, labe
 
     // Extra safety: clear any layers/sources with this prefix
     const style = map.getStyle();
-    
+
     style.layers
       .filter((l) => l.id.startsWith(prefix + '_'))
       .forEach((l) => {
@@ -600,7 +600,7 @@ export const handlePointerUp = async (
     labelSourceId = `${sourceId}-0`;
     labelLayerId = `${sourceId}-0`;
 
-    if (map.getLayer(labelLayerId))  map.removeLayer(labelLayerId);
+    if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
     if (map.getSource(labelSourceId)) map.removeSource(labelSourceId);
 
     map.addSource(labelSourceId, {
@@ -710,14 +710,15 @@ export const handlePointerUp = async (
           }
 
           return [
-            ...prevLayers,
             {
               id: layerId,
+              type: 'Wave Height',
               sourceID: sourceId,
               name: nameToInsert,
               visible: true,
               locked: false,
             },
+            ...prevLayers,
           ];
         });
       }

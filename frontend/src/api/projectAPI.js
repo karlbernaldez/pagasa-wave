@@ -37,7 +37,7 @@ export const createProject = (projectData) =>
   });
 
 // Get all projects for current user
-export const fetchUserProjects = ({ page = 1, limit = 8, search = '', status = '' } = {}) => {
+export const fetchUserProjects = ({ page = 1, limit, search = '', status = '' } = {}) => {
   const params = new URLSearchParams({ page, limit, search, status });
   return request(`${PROJECT_API_BASE_URL}?${params}`);
 };

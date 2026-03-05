@@ -14,7 +14,7 @@ import { handleCreateProject as createProjectHandler } from "@dashboards/forecas
 /* ─── Sub-components ────────────────────────────────────────────────────── */
 
 const MenuToggleBar = ({ isDarkMode, onOpenMenu, showProjectInfo, onToggleInfo }) => (
-  <div className="fixed top-20 left-4 z-40 flex gap-2">
+  <div className="fixed top-16 left-4 z-40 flex gap-2">
     <button
       onClick={onOpenMenu}
       className={`group flex items-center gap-2 px-3 py-2.5 rounded-full transition-all duration-300 hover:scale-105 backdrop-blur-xl shadow-lg ${
@@ -291,7 +291,7 @@ const ProjectDashboard = ({
     <>
       <div
         ref={menuRef}
-        className={`fixed top-20 left-4 w-72 rounded-xl z-40 transition-all duration-300 backdrop-blur-xl shadow-xl max-h-[calc(100vh-120px)] flex flex-col ${
+        className={`fixed top-16 left-4 w-72 rounded-xl z-40 transition-all duration-300 backdrop-blur-xl shadow-xl max-h-[calc(100vh-120px)] flex flex-col ${
           isDarkMode
             ? "bg-black/40 border border-white/20"
             : "bg-white/60 border border-white/40"

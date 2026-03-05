@@ -14,7 +14,7 @@ import { ChartDropdown } from './ChartDropdown';
 import { UserDropdown } from './UserDropdown';
 import { MobileMenu } from './MobileMenu';
 
-const Header = () => {
+const Header = ({ isStudioProjectPage }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -64,39 +64,54 @@ const Header = () => {
     return (
         <>
             {/* ── Top bar ─────────────────────────────────────────────────────── */}
-            <header className={`
-        fixed top-0 left-0 right-0 z-[1000]
-        backdrop-blur-xl border-b transition-all duration-300
-        ${isDarkMode ? 'border-gray-600/30' : 'border-gray-200/20'}
-      `}>
-                <nav className="max-w-[1400px] mx-auto px-4 md:px-6 flex items-center justify-between h-16">
+            <header
+                className={`
+                fixed top-0 left-0 right-0 z-[1000]
+                transition-all duration-300
+                ${isStudioProjectPage
+                        ? 'bg-transparent border-none backdrop-blur-0'
+                        : `backdrop-blur-xl border-b ${isDarkMode ? 'border-gray-600/30' : 'border-gray-200/20'}`
+                    }
+            `}
+            >
+
+                <nav
+                    className={`
+                        flex items-center justify-between h-16
+                        ${isStudioProjectPage
+                            ? 'w-full px-3 md:px-4'
+                            : 'max-w-[1400px] mx-auto px-4 md:px-6'}
+                    `}
+                >
 
                     {/* Logo */}
                     <Logo isDarkMode={isDarkMode} onClick={() => handleNavigate('/')} />
 
                     {/* Desktop nav links */}
-                    <div className="hidden md:flex items-center gap-8">
-                        {NAV_ITEMS.map((item) =>
-                            item.hasDropdown ? (
-                                <ChartDropdown
-                                    key={item.href}
-                                    isDarkMode={isDarkMode}
-                                    activeChartType={activeChartType}
-                                    isActive={isActiveRoute(item.href)}
-                                    onNavigate={handleNavigate}
-                                    onSelectType={handleSelectChartType}
-                                />
-                            ) : (
-                                <NavButton
-                                    key={item.href}
-                                    item={item}
-                                    isDarkMode={isDarkMode}
-                                    isActive={isActiveRoute(item.href)}
-                                    onClick={() => handleNavigate(item.href)}
-                                />
-                            )
-                        )}
-                    </div>
+                    {!isStudioProjectPage && (
+                        <div className="hidden md:flex items-center gap-8">
+                            {NAV_ITEMS.map((item) =>
+                                item.hasDropdown ? (
+                                    <ChartDropdown
+                                        key={item.href}
+                                        isDarkMode={isDarkMode}
+                                        activeChartType={activeChartType}
+                                        isActive={isActiveRoute(item.href)}
+                                        onNavigate={handleNavigate}
+                                        onSelectType={handleSelectChartType}
+                                    />
+                                ) : (
+                                    <NavButton
+                                        key={item.href}
+                                        item={item}
+                                        isDarkMode={isDarkMode}
+                                        isActive={isActiveRoute(item.href)}
+                                        onClick={() => handleNavigate(item.href)}
+                                    />
+                                )
+                            )}
+                        </div>
+                    )}
 
                     {/* Right-side actions */}
                     <div className="flex items-center gap-3">
@@ -168,7 +183,7 @@ function Logo({ isDarkMode, onClick }) {
             onClick={onClick}
             className="flex items-center gap-3 cursor-pointer group select-none"
         >
-        <div className={`
+            <div className={`
             w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0
             ring-1 backdrop-blur-sm shadow-md
             transition-all duration-300

@@ -41,7 +41,7 @@ const SystemLayersSection = ({
     >
       <div className="flex items-center gap-2">
         <span className={`text-xs font-bold ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>
-          System Layers
+          Data Layers
         </span>
         <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
           isDarkMode ? 'bg-white/10 text-white/70' : 'bg-black/10 text-slate-700'
