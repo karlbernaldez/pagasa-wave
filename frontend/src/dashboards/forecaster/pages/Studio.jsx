@@ -25,7 +25,6 @@ import {
   useMapLoader,
 } from "@dashboards/forecaster/hooks/useStudio";
 import { useTheme } from "@/app/providers/ThemeProvider";
-import { useUndoRedo } from "@dashboards/forecaster/hooks/useUndoRedo";
 
 // Utils
 import { savePointFeature } from "@dashboards/forecaster/utils/ToolBarUtils";

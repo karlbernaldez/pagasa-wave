@@ -356,7 +356,6 @@ const CustomLayersSection = ({
                   isDarkMode ? 'border-white/8' : 'border-slate-200/60'
                 }`}>
                   {items.map(({ layer, index }) => (
-                    console.log('Rendering layer:', layer) ||
                     <LayerRow
                       key={layer.id ?? `layer-${index}`}
                       layer={layer}
