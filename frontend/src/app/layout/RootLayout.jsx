@@ -38,7 +38,7 @@ const RootLayout = () => {
     <AppContainer $noscroll={isStudioPage}>
       {showHeader && (
         <Suspense fallback={<div style={{ height: 60 }} />}>
-          <HeaderNavbar />
+          <HeaderNavbar isStudioProjectPage={isStudioProjectPage} />
         </Suspense>
       )}
 

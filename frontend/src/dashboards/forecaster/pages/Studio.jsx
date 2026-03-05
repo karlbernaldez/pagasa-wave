@@ -12,6 +12,7 @@ import NoProjectAlert from "@/components/ui/modals/NoProjectAlert";
 import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Canvas from "@dashboards/forecaster/draw/canvas";
 import FlagCanvas from "@dashboards/forecaster/draw/front";
+import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
 
 // Custom Hooks
 import {
@@ -24,6 +25,7 @@ import {
   useMapLoader,
 } from "@dashboards/forecaster/hooks/useStudio";
 import { useTheme } from "@/app/providers/ThemeProvider";
+import { useUndoRedo } from "@dashboards/forecaster/hooks/useUndoRedo";
 
 // Utils
 import { savePointFeature } from "@dashboards/forecaster/utils/ToolBarUtils";
@@ -212,6 +214,10 @@ const Studio = ({ logger }) => {
           setMapInstance={setMapInstance}
         />
       </div>
+
+      {mapRef.current && (
+        <MapStatusBar mapRef={mapRef} />
+      )}
 
       {/* Toolbar */}
       {showToolbar && projectId && (

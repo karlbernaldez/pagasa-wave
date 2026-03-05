@@ -5,41 +5,54 @@ import { smoothPoints, handlePointerDown, handlePointerMove, handlePointerUp } f
 import { useProjectId } from "@dashboards/forecaster/hooks/useStudio";
 import CreateProjectModal from '@/components/ui/modals/CreateProjectModal';
 
+import { Waves } from 'lucide-react';
+
 // Memoized slider component to prevent unnecessary re-renders
+
 const WaveHeightSlider = memo(({ value, onChange, isDarkMode }) => {
   const marks = [1, 3, 5, 8, 10, 12, 15];
+  const pct = ((value - 1) / 14) * 100;
 
   return (
-    <div
-      className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] 
-                  backdrop-blur-xl rounded-2xl border
-                  transition-all duration-300 ease-out
-                  px-4 py-3 min-w-[280px]
-                  ${isDarkMode
-          ? 'bg-slate-800 border-slate-700 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.6)] hover:shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)]'
-          : 'bg-white border-slate-200 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.25)] hover:shadow-[0_32px_64px_-12px_rgba(0,0,0,0.35)]'
-        }`}>
+    <div className={`
+      fixed bottom-24 left-1/2 -translate-x-1/2 z-[100]
+      w-64 px-3 py-2.5 rounded-2xl
+      backdrop-blur-xl border shadow-lg
+      transition-all duration-300
+      ${isDarkMode
+        ? 'bg-black/40 border-white/10'
+        : 'bg-white/60 border-white/40'
+      }
+    `}>
 
-      {/* Compact Header */}
-      <div className="flex items-center justify-between gap-3 mb-2.5">
-        <div className="flex items-center gap-2">
-          <span className="text-base">🌊</span>
-          <span className={`font-semibold text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>
+      {/* Top accent — Tier 1 */}
+      <div className={`absolute top-0 left-6 right-6 h-px ${isDarkMode
+          ? 'bg-gradient-to-r from-transparent via-cyan-500/35 to-transparent'
+          : 'bg-gradient-to-r from-transparent via-blue-400/25 to-transparent'
+        }`} />
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-1.5">
+          <Waves size={13} className={isDarkMode ? 'text-cyan-400/70' : 'text-blue-500/70'} strokeWidth={2} />
+          <span className={`text-[11px] font-medium ${isDarkMode ? 'text-white/70' : 'text-slate-600'}`}>
             Wave Height
           </span>
         </div>
-        <div
-          className={`flex items-center justify-center px-2.5 h-7
-                      text-white rounded-lg font-bold text-sm shadow-md
-                      ${isDarkMode
-              ? 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/40'
-              : 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/30'
-            }`}>
-          {value}<span className="text-[10px] ml-0.5 opacity-85">m</span>
+
+        {/* Value badge — same style as layer count badges */}
+        <div className={`
+          flex items-center gap-0.5 px-2 py-0.5 rounded-md
+          ${isDarkMode ? 'bg-cyan-500/15 border border-cyan-400/20' : 'bg-blue-500/10 border border-blue-400/20'}
+        `}>
+          <span className={`text-xs font-bold tabular-nums ${isDarkMode ? 'text-cyan-300' : 'text-blue-600'}`}>
+            {value}
+          </span>
+          <span className={`text-[9px] font-medium ${isDarkMode ? 'text-cyan-400/60' : 'text-blue-500/60'}`}>m</span>
         </div>
       </div>
 
-      {/* Compact Slider */}
+      {/* Slider */}
       <div className="relative">
         <input
           type="range"
@@ -48,48 +61,48 @@ const WaveHeightSlider = memo(({ value, onChange, isDarkMode }) => {
           step="1"
           value={value}
           onChange={(e) => onChange(parseInt(e.target.value))}
-          className={`w-full h-1.5 appearance-none cursor-pointer rounded-full
-                     [&::-webkit-slider-thumb]:appearance-none
-                     [&::-webkit-slider-thumb]:w-4
-                     [&::-webkit-slider-thumb]:h-4
-                     [&::-webkit-slider-thumb]:rounded-full
-                     [&::-webkit-slider-thumb]:bg-white
-                     [&::-webkit-slider-thumb]:border-2
-                     [&::-webkit-slider-thumb]:shadow-md
-                     [&::-webkit-slider-thumb]:transition-transform
-                     [&::-webkit-slider-thumb]:duration-150
-                     [&::-webkit-slider-thumb]:hover:scale-110
-                     [&::-webkit-slider-thumb]:active:scale-115
-                     [&::-moz-range-thumb]:w-4
-                     [&::-moz-range-thumb]:h-4
-                     [&::-moz-range-thumb]:rounded-full
-                     [&::-moz-range-thumb]:bg-white
-                     [&::-moz-range-thumb]:border-2
-                     [&::-moz-range-thumb]:shadow-md
-                     [&::-moz-range-thumb]:transition-transform
-                     [&::-moz-range-thumb]:duration-150
-                     [&::-moz-range-thumb]:hover:scale-110
-                     [&::-moz-range-thumb]:active:scale-115`}
+          className={`
+            w-full h-1 appearance-none cursor-pointer rounded-full
+            [&::-webkit-slider-thumb]:appearance-none
+            [&::-webkit-slider-thumb]:w-3.5
+            [&::-webkit-slider-thumb]:h-3.5
+            [&::-webkit-slider-thumb]:rounded-full
+            [&::-webkit-slider-thumb]:bg-white
+            [&::-webkit-slider-thumb]:border-2
+            [&::-webkit-slider-thumb]:shadow-sm
+            [&::-webkit-slider-thumb]:cursor-grab
+            [&::-webkit-slider-thumb]:active:cursor-grabbing
+            [&::-webkit-slider-thumb]:transition-transform
+            [&::-webkit-slider-thumb]:duration-100
+            [&::-webkit-slider-thumb]:hover:scale-110
+            [&::-moz-range-thumb]:w-3.5
+            [&::-moz-range-thumb]:h-3.5
+            [&::-moz-range-thumb]:rounded-full
+            [&::-moz-range-thumb]:bg-white
+            [&::-moz-range-thumb]:border-2
+            [&::-moz-range-thumb]:shadow-sm
+            [&::-moz-range-thumb]:border-none
+          `}
           style={{
-            background: `linear-gradient(to right, 
-              ${isDarkMode ? '#6366f1' : '#3b82f6'} 0%, 
-              ${isDarkMode ? '#6366f1' : '#3b82f6'} ${((value - 1) / 14) * 100}%, 
-              ${isDarkMode ? '#475569' : '#e2e8f0'} ${((value - 1) / 14) * 100}%, 
-              ${isDarkMode ? '#475569' : '#e2e8f0'} 100%)`,
-            borderColor: isDarkMode ? '#6366f1' : '#3b82f6'
+            background: `linear-gradient(to right,
+              ${isDarkMode ? '#22d3ee' : '#3b82f6'} 0%,
+              ${isDarkMode ? '#22d3ee' : '#3b82f6'} ${pct}%,
+              ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} ${pct}%,
+              ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} 100%)`,
+            '--thumb-border': isDarkMode ? '#22d3ee' : '#3b82f6',
           }}
         />
 
-        {/* Minimal Marks */}
-        <div className="flex justify-between mt-1 px-0.5">
+        {/* Marks */}
+        <div className="flex justify-between mt-1.5 px-0.5">
           {marks.map((mark) => (
-            <span
-              key={mark}
-              className={`text-[9px] font-medium transition-colors duration-200
-                         ${value >= mark
-                  ? (isDarkMode ? 'text-indigo-400' : 'text-blue-600')
-                  : (isDarkMode ? 'text-slate-500' : 'text-slate-400')
-                }`}>
+            <span key={mark} className={`
+              text-[9px] font-medium tabular-nums transition-colors duration-150
+              ${value >= mark
+                ? isDarkMode ? 'text-cyan-400/70' : 'text-blue-500/70'
+                : isDarkMode ? 'text-white/20' : 'text-slate-300'
+              }
+            `}>
               {mark}
             </span>
           ))}
