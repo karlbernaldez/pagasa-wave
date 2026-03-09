@@ -7,6 +7,10 @@ import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
 
 import connectDB from './config/db.js';
+import { checkRedisHealth }                    from '#lib/redis';
+import { RedisPendingAuthStore, RedisOtpStore } from '#lib/redisOtpStore';
+import { setStore }                             from '#controllers/auth/otp';
+
 
 import settingsRoutes from './routes/settingsRoutes.js';
 import featureRoutes from './routes/featureRoutes.js';
@@ -17,6 +21,7 @@ import chartRoutes from './routes/chartRoutes.js';
 import pdfRoutes from './routes/pdfRoutes.js';
 
 import { fileURLToPath } from 'url';
+import 'module-alias/register';
 
 const app = express();
 
@@ -29,6 +34,10 @@ try {
   console.error('DB connection failed:', err);
   process.exit(1);
 }
+
+setStore(new RedisPendingAuthStore(), new RedisOtpStore());
+await checkRedisHealth();
+console.info('[App] Redis OTP store ready');
 
 /* ======================================================
    TRUST PROXY (needed for correct IPs behind proxies)

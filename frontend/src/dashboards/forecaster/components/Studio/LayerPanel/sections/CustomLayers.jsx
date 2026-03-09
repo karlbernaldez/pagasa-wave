@@ -14,39 +14,18 @@ import {
 } from '@dashboards/forecaster/utils/layerUtils';
 
 // ─── Layer type registry ──────────────────────────────────────────────────────
-// `match` is checked as a case-insensitive substring of layer.type
 const TYPE_GROUPS = [
-  {
-    key: 'wave',
-    label: 'Wave Heights',
-    icon: Waves,
-    match: ['wave', 'swell', 'ocean', 'tide'],
-  },
-  {
-    key: 'cyclone',
-    label: 'Tropical Cyclones',
-    icon: Wind,
-    match: ['cyclone', 'typhoon', 'tropical', 'storm', 'track'],
-  },
-  {
-    key: 'lpa',
-    label: 'Low Pressure',
-    icon: TrendingDown,
-    match: ['low', 'lpa', 'depression', 'trough'],
-  },
-  {
-    key: 'hpa',
-    label: 'High Pressure',
-    icon: TrendingUp,
-    match: ['high', 'hpa', 'ridge', 'anticyclone'],
-  },
-  {
-    key: 'other',
-    label: 'Other',
-    icon: Layers,
-    match: [], // catch-all — always last
-  },
+  { key: 'wave',    label: 'Wave Heights',      icon: Waves,        match: ['wave', 'swell', 'ocean', 'tide'] },
+  { key: 'cyclone', label: 'Tropical Cyclones', icon: Wind,         match: ['cyclone', 'typhoon', 'tropical', 'storm', 'track'] },
+  { key: 'lpa',     label: 'Low Pressure',      icon: TrendingDown, match: ['low', 'lpa', 'depression', 'trough'] },
+  { key: 'hpa',     label: 'High Pressure',     icon: TrendingUp,   match: ['high', 'hpa', 'ridge', 'anticyclone'] },
+  { key: 'other',   label: 'Other',             icon: Layers,       match: [] },
 ];
+
+// How many rows to show before the group starts scrolling
+const GROUP_MAX_ROWS  = 5;
+const ROW_HEIGHT_PX   = 28; // approx px per LayerRow
+const GROUP_MAX_HEIGHT = GROUP_MAX_ROWS * ROW_HEIGHT_PX; // 140px
 
 function resolveGroup(layer) {
   const t = (layer.type ?? '').toLowerCase();
@@ -61,15 +40,15 @@ const ActionBtn = ({ onClick, isDarkMode, disabled, danger, children }) => (
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`p-1 rounded transition-colors ${
+    className={`p-0.5 rounded transition-colors ${
       disabled
         ? 'opacity-30 cursor-not-allowed'
         : danger
           ? isDarkMode
-            ? 'hover:bg-red-500/20 text-white/35 hover:text-red-400'
+            ? 'hover:bg-red-500/20 text-white/30 hover:text-red-400'
             : 'hover:bg-red-500/20 text-slate-400 hover:text-red-500'
           : isDarkMode
-            ? 'hover:bg-white/10 text-white/40 hover:text-white/80'
+            ? 'hover:bg-white/10 text-white/35 hover:text-white/75'
             : 'hover:bg-black/10 text-slate-400 hover:text-slate-700'
     }`}
   >
@@ -97,7 +76,7 @@ const LayerRow = ({
       onDrop={(e) => handleDrop(e, index, draggedLayerIndex, layers, setLayers, setDragging)}
       onClick={() => !isEditing && onSetActiveLayer(layer.id)}
       className={`
-        group relative flex items-center gap-2 px-2 py-1.5 rounded-lg
+        group relative flex items-center gap-1.5 px-1.5 py-1 rounded-md
         transition-all duration-150 cursor-pointer
         ${isActive
           ? isDarkMode
@@ -116,7 +95,7 @@ const LayerRow = ({
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical size={12} strokeWidth={2} />
+        <GripVertical size={10} strokeWidth={2} />
       </button>
 
       {/* Name / inline editor */}
@@ -134,7 +113,7 @@ const LayerRow = ({
                 if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
               }}
               className={`
-                flex-1 px-1.5 py-0.5 text-xs rounded border outline-none
+                flex-1 px-1 py-0.5 text-[11px] rounded border outline-none
                 focus:ring-1 focus:ring-cyan-400/60
                 ${isDarkMode
                   ? 'bg-white/10 border-white/20 text-white'
@@ -144,8 +123,8 @@ const LayerRow = ({
             />
           </div>
         ) : (
-          <span className={`block text-xs font-medium truncate ${
-            isDarkMode ? 'text-white/80' : 'text-slate-800'
+          <span className={`block text-[11px] font-medium truncate ${
+            isDarkMode ? 'text-white/75' : 'text-slate-700'
           }`}>
             {layer.name}
           </span>
@@ -161,20 +140,20 @@ const LayerRow = ({
           transition-all duration-150
         `}>
           <ActionBtn isDarkMode={isDarkMode} onClick={(e) => { e.stopPropagation(); startEditing(layer); }}>
-            <Edit2 size={11} strokeWidth={2} />
+            <Edit2 size={10} strokeWidth={2} />
           </ActionBtn>
 
           <ActionBtn isDarkMode={isDarkMode} onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(mapRef.current, layer, setLayers); }}>
             {layer.visible
-              ? <Eye    size={12} strokeWidth={2} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} />
-              : <EyeOff size={12} strokeWidth={2} />
+              ? <Eye    size={10} strokeWidth={2} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} />
+              : <EyeOff size={10} strokeWidth={2} />
             }
           </ActionBtn>
 
           <ActionBtn isDarkMode={isDarkMode} onClick={(e) => { e.stopPropagation(); toggleLayerLock(layer, setLayers); }}>
             {layer.locked
-              ? <Lock   size={12} strokeWidth={2} className={isDarkMode ? 'text-orange-400' : 'text-orange-500'} />
-              : <Unlock size={12} strokeWidth={2} />
+              ? <Lock   size={10} strokeWidth={2} className={isDarkMode ? 'text-orange-400' : 'text-orange-500'} />
+              : <Unlock size={10} strokeWidth={2} />
             }
           </ActionBtn>
 
@@ -191,15 +170,15 @@ const LayerRow = ({
               onRequestDelete(layer);
             }}
           >
-            <Trash2 size={12} strokeWidth={2} />
+            <Trash2 size={10} strokeWidth={2} />
           </ActionBtn>
         </div>
       )}
 
-      {/* Visibility dot — visible at rest, hidden when controls appear */}
+      {/* Visibility dot */}
       {!isEditing && (
         <div className={`
-          absolute right-2.5 w-1.5 h-1.5 rounded-full
+          absolute right-2 w-1.5 h-1.5 rounded-full
           opacity-100 group-hover:opacity-0 transition-opacity duration-150
           ${layer.visible
             ? isDarkMode ? 'bg-cyan-400/50' : 'bg-blue-500/40'
@@ -215,16 +194,16 @@ const LayerRow = ({
 const GroupHeader = ({ group, count, isOpen, onToggle, onToggleAll, allVisible, isDarkMode }) => {
   const Icon = group.icon;
   return (
-    <div className={`flex items-center gap-1.5 px-1 py-1 rounded-md mb-0.5 group/gh cursor-pointer ${
+    <div className={`flex items-center gap-1 px-1 py-0.5 rounded-md mb-0.5 group/gh cursor-pointer ${
       isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
     }`}>
-      <button onClick={onToggle} className="flex items-center gap-1.5 flex-1 min-w-0">
+      <button onClick={onToggle} className="flex items-center gap-1 flex-1 min-w-0">
         {isOpen
-          ? <ChevronDown  size={11} strokeWidth={3} className={isDarkMode ? 'text-white/35' : 'text-slate-400'} />
-          : <ChevronRight size={11} strokeWidth={3} className={isDarkMode ? 'text-white/35' : 'text-slate-400'} />
+          ? <ChevronDown  size={9} strokeWidth={3} className={isDarkMode ? 'text-white/35' : 'text-slate-400'} />
+          : <ChevronRight size={9} strokeWidth={3} className={isDarkMode ? 'text-white/35' : 'text-slate-400'} />
         }
-        <Icon size={11} strokeWidth={2} className={isDarkMode ? 'text-white/45' : 'text-slate-500'} />
-        <span className={`text-[10px] font-semibold uppercase tracking-wider truncate ${
+        <Icon size={9} strokeWidth={2} className={isDarkMode ? 'text-white/45' : 'text-slate-500'} />
+        <span className={`text-[9px] font-semibold uppercase tracking-wider truncate ${
           isDarkMode ? 'text-white/45' : 'text-slate-500'
         }`}>
           {group.label}
@@ -236,19 +215,18 @@ const GroupHeader = ({ group, count, isOpen, onToggle, onToggleAll, allVisible, 
         </span>
       </button>
 
-      {/* Group visibility — appears on group-header hover */}
       <button
         onClick={(e) => { e.stopPropagation(); onToggleAll(); }}
         title={allVisible ? 'Hide all in group' : 'Show all in group'}
         className={`
-          p-1 rounded transition-all flex-shrink-0
+          p-0.5 rounded transition-all flex-shrink-0
           opacity-0 group-hover/gh:opacity-100
           ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/10'}
         `}
       >
         {allVisible
-          ? <Eye    size={11} strokeWidth={2} className={isDarkMode ? 'text-white/50' : 'text-slate-400'} />
-          : <EyeOff size={11} strokeWidth={2} className={isDarkMode ? 'text-white/30' : 'text-slate-300'} />
+          ? <Eye    size={9} strokeWidth={2} className={isDarkMode ? 'text-white/50' : 'text-slate-400'} />
+          : <EyeOff size={9} strokeWidth={2} className={isDarkMode ? 'text-white/30' : 'text-slate-300'} />
         }
       </button>
     </div>
@@ -257,25 +235,13 @@ const GroupHeader = ({ group, count, isOpen, onToggle, onToggleAll, allVisible, 
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 const CustomLayersSection = ({
-  layers,
-  setLayers,
-  mapRef,
-  draw,
-  expanded,
-  onToggleExpand,
-  activeLayerId,
-  onSetActiveLayer,
-  editingLayerId,
-  editingName,
-  setEditingName,
-  draggedLayerIndex,
-  setDragging,
-  setDraggedLayerIndex,
-  startEditing,
-  saveEdit,
-  cancelEdit,
-  onRequestDelete,
-  isDarkMode,
+  layers, setLayers, mapRef, draw,
+  expanded, onToggleExpand,
+  activeLayerId, onSetActiveLayer,
+  editingLayerId, editingName, setEditingName,
+  draggedLayerIndex, setDragging, setDraggedLayerIndex,
+  startEditing, saveEdit, cancelEdit,
+  onRequestDelete, isDarkMode,
 }) => {
   const [openGroups, setOpenGroups] = useState(() =>
     Object.fromEntries(TYPE_GROUPS.map((g) => [g.key, true]))
@@ -310,26 +276,26 @@ const CustomLayersSection = ({
   };
 
   return (
-    <div className="p-3">
+    <div className="px-2.5 pt-2.5 pb-2">
       {/* Section header */}
       <button
         onClick={onToggleExpand}
-        className={`w-full flex items-center justify-between px-2 py-2 rounded-lg mb-2 transition-colors ${
+        className={`w-full flex items-center justify-between px-1.5 py-1.5 rounded-lg mb-1.5 transition-colors ${
           isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
         }`}
       >
-        <div className="flex items-center gap-2">
-          <span className={`text-xs font-bold ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>
+        <div className="flex items-center gap-1.5">
+          <span className={`text-[11px] font-bold ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>
             Annotations
           </span>
-          <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-            isDarkMode ? 'bg-white/10 text-white/60' : 'bg-black/10 text-slate-600'
+          <div className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+            isDarkMode ? 'bg-white/10 text-white/55' : 'bg-black/10 text-slate-500'
           }`}>
             {layers.length}
           </div>
         </div>
         <ChevronDown
-          size={12}
+          size={11}
           strokeWidth={3}
           className={`transition-transform ${expanded ? 'rotate-180' : ''} ${
             isDarkMode ? 'text-white/50' : 'text-slate-500'
@@ -338,7 +304,7 @@ const CustomLayersSection = ({
       </button>
 
       {expanded && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {grouped.map(({ group, items }) => (
             <div key={group.key}>
               <GroupHeader
@@ -352,9 +318,18 @@ const CustomLayersSection = ({
               />
 
               {openGroups[group.key] && (
-                <div className={`space-y-0.5 pl-2 border-l ${
-                  isDarkMode ? 'border-white/8' : 'border-slate-200/60'
-                }`}>
+                <div
+                  className={`pl-2 border-l space-y-0.5 overflow-y-auto ${
+                    isDarkMode ? 'border-white/8' : 'border-slate-200/60'
+                  }`}
+                  style={{
+                    maxHeight: `${GROUP_MAX_HEIGHT}px`,
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: isDarkMode
+                      ? 'rgba(255,255,255,0.15) transparent'
+                      : 'rgba(0,0,0,0.12) transparent',
+                  }}
+                >
                   {items.map(({ layer, index }) => (
                     <LayerRow
                       key={layer.id ?? `layer-${index}`}

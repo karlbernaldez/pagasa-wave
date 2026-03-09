@@ -22,6 +22,38 @@ const getCachedAuth = () => {
   return authCache.value;
 };
 
+export const sendOtp = async ({ email }) => {
+  const response = await fetch(`${AUTH_API_BASE_URL}/otp/send`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to send OTP.');
+  }
+
+  return response.json();
+};
+
+export const verifyOtp = async ({ email, otp }) => {
+  const response = await fetch(`${AUTH_API_BASE_URL}/otp/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Invalid or expired OTP.');
+  }
+
+  return response.json();
+};
+
 export const registerUser = async (userData) => {
   const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
     method: 'POST',

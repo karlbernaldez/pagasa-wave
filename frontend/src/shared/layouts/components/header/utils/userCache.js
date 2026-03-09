@@ -48,7 +48,6 @@ export function invalidateHeaderUserCache() {
 
 async function _fetchUser() {
   const { authenticated, user } = await checkAuthSession();
-
   if (authenticated && user?.id) {
     const userDetails = await fetchUserDetails(user.id);
     _cache = { currentUser: userDetails, isLoggedIn: true };
