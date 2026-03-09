@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import ProtectedRoute from '@/middleware/ProtectedRoute';
 
 const Home = lazy(() => import('@/dashboards/public/pages/Home'));
 const Login = lazy(() => import('@/pages/Login'));
@@ -9,7 +10,14 @@ const Contact = lazy(() => import('@/dashboards/public/pages/Contact'));
 
 export default [
   { path: '/', element: <Home /> },
-  { path: '/login', element: <Login /> },
+  {
+    path: '/login',
+    element: (
+      <ProtectedRoute requireAuth={false} authenticatedRedirect="/studio">
+        <Login />
+      </ProtectedRoute>
+    ),
+  },
   { path: '/register', element: <Register /> },
   { path: '/charts', element: <Charts /> },
   { path: '/about-us', element: <AboutUs /> },

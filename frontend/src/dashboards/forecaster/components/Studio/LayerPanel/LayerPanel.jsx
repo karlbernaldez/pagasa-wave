@@ -9,9 +9,9 @@ import {
 import Modal from '@/components/ui/modals/MapNotReady';
 import ConfirmationDialog from '@/components/ui/modals/ConfirmationDialog';
 
-import { useSystemLayers } from './hooks/useSystemLayers';
-import { useWindConfig }   from './hooks/useWindConfig';
-import { useWaveConfig }   from './hooks/useWaveConfig';
+import { useSystemLayers }    from './hooks/useSystemLayers';
+import { useWindConfig }      from './hooks/useWindConfig';
+import { useWaveConfig }      from './hooks/useWaveConfig';
 import { useCustomLayerEdit } from './hooks/useCustomLayerEdit';
 
 import CustomLayersSection from './sections/CustomLayers';
@@ -91,20 +91,20 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   // ── Collapsed pill ───────────────────────────────────────────────────────────
   if (!isExpanded) {
     return (
-      <div className="fixed top-20 right-6 z-40">
+      <div className="fixed top-20 right-4 z-40">
         <button
           onClick={() => setIsExpanded(true)}
-          className={`group flex items-center gap-2 px-3 py-2.5 rounded-full transition-all duration-300 hover:scale-105 backdrop-blur-xl shadow-lg ${
+          className={`group flex items-center gap-1.5 px-2.5 py-2 rounded-full transition-all duration-300 hover:scale-105 backdrop-blur-xl shadow-lg ${
             isDarkMode
               ? 'bg-black/40 hover:bg-black/50 border border-white/20'
               : 'bg-white/60 hover:bg-white/70 border border-black/10'
           }`}
         >
-          <Layers size={16} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
-          <span className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'}`}>
+          <Layers size={14} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
+          <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'}`}>
             Layers
           </span>
-          <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+          <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
             isDarkMode ? 'bg-cyan-400/20 text-cyan-300' : 'bg-blue-500/20 text-blue-700'
           }`}>
             {visibleCount}
@@ -117,23 +117,25 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   // ── Expanded panel ───────────────────────────────────────────────────────────
   return (
     <>
-      <div className="fixed top-16 right-2 z-40 w-80 mt-1">
-        <div className={`rounded-2xl transition-all duration-300 backdrop-blur-xl shadow-xl ${
+      {/* w-64 = 256px, down from w-80 = 320px */}
+      <div className="fixed top-16 right-2 z-40 w-64 mt-1">
+        <div className={`rounded-xl transition-all duration-300 backdrop-blur-xl shadow-xl ${
           isDarkMode ? 'bg-black/40 border border-white/20' : 'bg-white/60 border border-white/40'
         }`}>
+
           {/* ── Panel header ─────────────────────────────────────────────────── */}
-          <div className={`flex items-center justify-between px-4 py-3 border-b ${
+          <div className={`flex items-center justify-between px-3 py-2.5 border-b ${
             isDarkMode ? 'border-white/10' : 'border-black/10'
           }`}>
-            <div className="flex items-center gap-2.5">
-              <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-cyan-400/20' : 'bg-blue-500/20'}`}>
-                <Layers size={16} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
+            <div className="flex items-center gap-2">
+              <div className={`p-1 rounded-md ${isDarkMode ? 'bg-cyan-400/20' : 'bg-blue-500/20'}`}>
+                <Layers size={13} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
               </div>
               <div>
-                <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   Map Layers
                 </div>
-                <div className={`text-[10px] font-medium ${isDarkMode ? 'text-white/50' : 'text-slate-600'}`}>
+                <div className={`text-[9px] font-medium leading-tight ${isDarkMode ? 'text-white/50' : 'text-slate-500'}`}>
                   {visibleCount} active
                 </div>
               </div>
@@ -141,18 +143,18 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
             <button
               onClick={() => setIsExpanded(false)}
-              className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 ${
+              className={`p-1 rounded-md transition-all duration-200 hover:scale-110 ${
                 isDarkMode
                   ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
                   : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
               }`}
             >
-              <ChevronDown size={16} strokeWidth={2.5} />
+              <ChevronDown size={13} strokeWidth={2.5} />
             </button>
           </div>
 
           {/* ── Scrollable content ───────────────────────────────────────────── */}
-          <div className="max-h-[calc(100vh-320px)] overflow-y-auto hide-scrollbar">
+          <div className="max-h-[calc(100vh-280px)] overflow-y-auto hide-scrollbar">
             <CustomLayersSection
               layers={layers}
               setLayers={setLayers}
@@ -192,16 +194,16 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           </div>
 
           {/* ── Footer: add layer ─────────────────────────────────────────────── */}
-          <div className={`p-3 border-t ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
+          <div className={`p-2.5 border-t ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
             <button
               onClick={addLayer}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-xs transition-all duration-200 hover:scale-[1.02] ${
+              className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-[11px] transition-all duration-200 hover:scale-[1.02] ${
                 isDarkMode
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white shadow-lg shadow-cyan-500/20'
                   : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/20'
               }`}
             >
-              <Plus size={14} strokeWidth={3} />
+              <Plus size={12} strokeWidth={3} />
               Add GeoJSON Layer
             </button>
             <input
