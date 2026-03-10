@@ -29,6 +29,13 @@ const COLOR_CLASSES = {
     lightText: 'text-red-600',
     accent: 'bg-red-400',
   },
+  cyan: {
+    panel: 'from-cyan-600/20 to-blue-600/20 text-cyan-400',
+    lightPanel: 'from-cyan-50 to-blue-50 text-cyan-600',
+    text: 'text-cyan-300',
+    lightText: 'text-cyan-600',
+    accent: 'bg-cyan-400',
+  },
 };
 
 const DEFAULT_COLOR = 'blue';
@@ -55,15 +62,14 @@ const StatCard = ({
     trend === 'up'
       ? textClass
       : isDarkMode
-      ? 'text-red-400'
-      : 'text-red-600';
+        ? 'text-red-400'
+        : 'text-red-600';
 
   return (
-    <div className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-      isDarkMode
+    <div className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${isDarkMode
         ? 'bg-gray-800/50 border-gray-700/50 hover:border-gray-600'
         : 'bg-white/50 border-white/50 backdrop-blur-sm hover:border-gray-200'
-    }`}>
+      }`}>
 
       <div className={`absolute inset-0 bg-gradient-to-br ${panelClass} opacity-40 group-hover:opacity-60 transition-opacity duration-300`} />
       <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${palette.accent}`} />
