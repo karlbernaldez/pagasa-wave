@@ -5,7 +5,7 @@ import User from '../models/User.js';
 
 const SALT_ROUNDS = 10;
 const PAGE_OPTIONS = [5, 10, 25, 50];
-const DEFAULT_LIMIT = 10;
+const DEFAULT_LIMIT = 5;
 
 const ALLOWED_STATUSES = ['pending', 'active', 'locked', 'suspended', 'inactive'];
 

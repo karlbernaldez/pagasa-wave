@@ -18,15 +18,16 @@ const serverError = (res, label, err) => {
   return res.status(500).json({ message: 'Server error.' });
 };
 
-// ─── Controllers ──────────────────────────────────────────────────────────────
+/** Resolve userId from either `_id` or `id` in the JWT payload, cast to ObjectId. */
+const resolveUserId = (user) => {
+  const raw = user._id ?? user.id;
+  return mongoose.isValidObjectId(raw) ? new mongoose.Types.ObjectId(raw) : raw;
+};
 
-/**
- * GET /api/notifications
- * Returns paginated notifications and the total unread count for the caller.
- */
 export const getNotifications = async (req, res) => {
   try {
-    const { _id: userId, role } = req.user;
+    const userId = resolveUserId(req.user);
+    const { role } = req.user;
     const limit = Math.min(parseNonNegativeInt(req.query.limit, 20), 100);
     const skip  = parseNonNegativeInt(req.query.skip, 0);
 
@@ -47,13 +48,10 @@ export const getNotifications = async (req, res) => {
   }
 };
 
-/**
- * PATCH /api/notifications/:id/read
- * Marks a single notification as read for the caller.
- */
 export const markNotificationRead = async (req, res) => {
   try {
-    const { _id: userId, role } = req.user;
+    const userId = resolveUserId(req.user);
+    const { role } = req.user;
     const { id } = req.params;
 
     if (!mongoose.isValidObjectId(id)) {
@@ -69,13 +67,10 @@ export const markNotificationRead = async (req, res) => {
   }
 };
 
-/**
- * PATCH /api/notifications/read-all
- * Marks every visible unread notification as read for the caller.
- */
 export const markAllNotificationsRead = async (req, res) => {
   try {
-    const { _id: userId, role } = req.user;
+    const userId = resolveUserId(req.user);
+    const { role } = req.user;
     const modifiedCount = await markAllAsRead(userId, role);
 
     return res.status(200).json({ message: 'All notifications marked as read.', modifiedCount });

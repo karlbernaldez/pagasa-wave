@@ -3,35 +3,39 @@ import {
   Bell, CheckCheck, Clock, Inbox, X, ArrowRight,
 } from 'lucide-react';
 
-import Backdrop     from './Backdrop';
+import Backdrop from './Backdrop';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { formatTime } from '../utils/formatTime';
 
 // ─── Type config ───────────────────────────────────────────────────────────────
-// Only icon + label vary. All colours stay within the app's cyan/neutral palette
-// so nothing looks out-of-place on the dark dashboard.
 
 const TYPE_CONFIG = {
-  user_registered: { icon: UserPlus,    label: 'User'     },
-  security_alert:  { icon: ShieldAlert, label: 'Security' },
-  system_update:   { icon: RefreshCw,   label: 'System'   },
-  info:            { icon: Info,         label: 'Info'     },
+  user_registered: { icon: UserPlus, label: 'User' },
+  security_alert: { icon: ShieldAlert, label: 'Security' },
+  system_update: { icon: RefreshCw, label: 'System' },
+  info: { icon: Info, label: 'Info' },
 };
 const DEFAULT_TYPE = { icon: Bell, label: 'Notice' };
 const getType = (t) => TYPE_CONFIG[t] ?? DEFAULT_TYPE;
 
 // ─── NotificationItem ─────────────────────────────────────────────────────────
 
-const NotificationItem = ({ item, index, isDarkMode, onMarkOneRead }) => {
+const NotificationItem = ({ item, index, isDarkMode, onMarkOneRead, onNotificationClick }) => {
   const { icon: Icon, label } = getType(item.type);
 
-  const handleClick = () => item.unread && onMarkOneRead(item._id);
-  const handleKey   = (e) => e.key === 'Enter' && handleClick();
+  const handleClick = async () => {
+    if (item.unread) await onMarkOneRead(item._id);
+    if (item.resourceType?.toLowerCase() === 'user' && item.message) {
+      const name = item.message.trim().split(/\s+/).slice(0, 2).join(' ');
+      onNotificationClick?.({ resourceType: item.resourceType, query: name });
+    }
+  };
+  const handleKey = (e) => e.key === 'Enter' && handleClick();
 
   return (
     <div
-      role={item.unread ? 'button' : undefined}
-      tabIndex={item.unread ? 0 : undefined}
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKey}
       className="notif-item group relative flex items-start gap-3 px-4 py-3 transition-colors duration-150 outline-none"
@@ -43,19 +47,16 @@ const NotificationItem = ({ item, index, isDarkMode, onMarkOneRead }) => {
       )}
 
       {/* Hover layer */}
-      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${
-        isDarkMode ? 'bg-white/[0.03]' : 'bg-black/[0.025]'
-      }`} />
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${isDarkMode ? 'bg-white/[0.03]' : 'bg-black/[0.025]'
+        }`} />
 
       {/* Icon */}
-      <div className={`relative z-[1] mt-0.5 shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
-        isDarkMode ? 'bg-white/[0.06]' : 'bg-black/[0.05]'
-      }`}>
+      <div className={`relative z-[1] mt-0.5 shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-white/[0.06]' : 'bg-black/[0.05]'
+        }`}>
         <Icon size={14} className={item.unread ? 'text-cyan-400' : isDarkMode ? 'text-gray-500' : 'text-gray-400'} />
         {item.unread && (
-          <span className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 ring-[1.5px] ${
-            isDarkMode ? 'ring-[#0d1117]' : 'ring-white'
-          }`} />
+          <span className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 ring-[1.5px] ${isDarkMode ? 'ring-[#0d1117]' : 'ring-white'
+            }`} />
         )}
       </div>
 
@@ -64,32 +65,28 @@ const NotificationItem = ({ item, index, isDarkMode, onMarkOneRead }) => {
 
         {/* Title row */}
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <p className={`text-[12.5px] font-semibold leading-tight truncate ${
-            item.unread
+          <p className={`text-[12.5px] font-semibold leading-tight truncate ${item.unread
               ? isDarkMode ? 'text-gray-100' : 'text-gray-800'
               : isDarkMode ? 'text-gray-500' : 'text-gray-500'
-          }`}>
+            }`}>
             {item.title}
           </p>
-          {/* Type chip — matches the "USER" chip style in the screenshot */}
-          <span className={`shrink-0 text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded border ${
-            item.unread
+          <span className={`shrink-0 text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded border ${item.unread
               ? isDarkMode
                 ? 'text-cyan-400 border-cyan-500/30 bg-cyan-500/[0.08]'
                 : 'text-cyan-600 border-cyan-500/30 bg-cyan-500/[0.06]'
               : isDarkMode
                 ? 'text-gray-600 border-white/8 bg-white/[0.03]'
                 : 'text-gray-400 border-black/10 bg-black/[0.03]'
-          }`}>
+            }`}>
             {label}
           </span>
         </div>
 
         {/* Message */}
         {item.message && (
-          <p className={`text-[11.5px] leading-[1.5] line-clamp-2 mb-1.5 ${
-            isDarkMode ? 'text-gray-500' : 'text-gray-400'
-          }`}>
+          <p className={`text-[11.5px] leading-[1.5] line-clamp-2 mb-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'
+            }`}>
             {item.message}
           </p>
         )}
@@ -97,15 +94,13 @@ const NotificationItem = ({ item, index, isDarkMode, onMarkOneRead }) => {
         {/* Footer row */}
         <div className="flex items-center gap-1.5">
           {item.resourceType && (
-            <span className={`text-[10px] font-medium px-1.5 py-px rounded-[4px] ${
-              isDarkMode ? 'bg-white/[0.05] text-gray-500' : 'bg-black/[0.05] text-gray-400'
-            }`}>
+            <span className={`text-[10px] font-medium px-1.5 py-px rounded-[4px] ${isDarkMode ? 'bg-white/[0.05] text-gray-500' : 'bg-black/[0.05] text-gray-400'
+              }`}>
               {item.resourceType}
             </span>
           )}
-          <span className={`flex items-center gap-1 text-[10px] ml-auto tabular-nums ${
-            isDarkMode ? 'text-gray-600' : 'text-gray-400'
-          }`}>
+          <span className={`flex items-center gap-1 text-[10px] ml-auto tabular-nums ${isDarkMode ? 'text-gray-600' : 'text-gray-400'
+            }`}>
             <Clock size={9} strokeWidth={2} />
             {formatTime(item.createdAt)}
           </span>
@@ -139,19 +134,21 @@ const EmptyState = ({ isDarkMode }) => (
 
 /**
  * @param {{
- *   isOpen:        boolean,
- *   onClose:       () => void,
- *   isDarkMode:    boolean,
- *   dropdownCls:   string,
- *   notifications: object[],
- *   unreadCount:   number,
- *   onMarkAllRead: () => void,
- *   onMarkOneRead: (id: string) => void,
+ *   isOpen:               boolean,
+ *   onClose:              () => void,
+ *   isDarkMode:           boolean,
+ *   dropdownCls:          string,
+ *   notifications:        object[],
+ *   unreadCount:          number,
+ *   onMarkAllRead:        () => void,
+ *   onMarkOneRead:        (id: string) => void,
+ *   onNotificationClick:  (info: { resourceType: string, query: string }) => void,
  * }} props
  */
 const NotificationDropdown = ({
   isOpen, onClose, isDarkMode, dropdownCls,
   notifications, unreadCount, onMarkAllRead, onMarkOneRead,
+  onNotificationClick,
 }) => {
   useEscapeKey(isOpen, onClose);
   if (!isOpen) return null;
@@ -185,9 +182,8 @@ const NotificationDropdown = ({
       >
 
         {/* ── Header ── */}
-        <div className={`flex items-center justify-between px-4 py-3 border-b ${
-          isDarkMode ? 'border-white/[0.07]' : 'border-black/[0.07]'
-        }`}>
+        <div className={`flex items-center justify-between px-4 py-3 border-b ${isDarkMode ? 'border-white/[0.07]' : 'border-black/[0.07]'
+          }`}>
           <div className="flex items-center gap-2">
             <Bell size={13} className="text-cyan-400" />
             <span className={`text-[13px] font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
@@ -204,11 +200,10 @@ const NotificationDropdown = ({
             {hasUnread && (
               <button
                 onClick={onMarkAllRead}
-                className={`flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md transition-colors duration-150 ${
-                  isDarkMode
+                className={`flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md transition-colors duration-150 ${isDarkMode
                     ? 'text-cyan-400 hover:text-cyan-300 hover:bg-white/[0.05]'
                     : 'text-cyan-600 hover:text-cyan-700 hover:bg-black/[0.04]'
-                }`}
+                  }`}
               >
                 <CheckCheck size={11} strokeWidth={2.5} />
                 All read
@@ -217,11 +212,10 @@ const NotificationDropdown = ({
             <button
               onClick={onClose}
               aria-label="Close notifications"
-              className={`p-1.5 rounded-md transition-colors duration-150 ${
-                isDarkMode
+              className={`p-1.5 rounded-md transition-colors duration-150 ${isDarkMode
                   ? 'text-gray-600 hover:text-gray-400 hover:bg-white/[0.05]'
                   : 'text-gray-400 hover:text-gray-600 hover:bg-black/[0.04]'
-              }`}
+                }`}
             >
               <X size={13} />
             </button>
@@ -241,6 +235,10 @@ const NotificationDropdown = ({
                   index={i}
                   isDarkMode={isDarkMode}
                   onMarkOneRead={onMarkOneRead}
+                  onNotificationClick={(info) => {
+                    onClose();
+                    onNotificationClick?.(info);
+                  }}
                 />
               ))}
             </div>
@@ -250,11 +248,10 @@ const NotificationDropdown = ({
         {/* ── Footer ── */}
         {notifications.length > 0 && (
           <div className={`border-t ${isDarkMode ? 'border-white/[0.07]' : 'border-black/[0.07]'}`}>
-            <button className={`w-full flex items-center justify-center gap-1.5 px-4 py-2.5 text-[11px] font-medium transition-colors duration-150 ${
-              isDarkMode
+            <button className={`w-full flex items-center justify-center gap-1.5 px-4 py-2.5 text-[11px] font-medium transition-colors duration-150 ${isDarkMode
                 ? 'text-gray-600 hover:text-gray-400 hover:bg-white/[0.03]'
                 : 'text-gray-400 hover:text-gray-600 hover:bg-black/[0.02]'
-            }`}>
+              }`}>
               View all notifications
               <ArrowRight size={10} strokeWidth={2.5} />
             </button>
