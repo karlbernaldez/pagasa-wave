@@ -28,17 +28,15 @@ function applyWatermark(ctx, width, height, { text, style, font, color, opacity 
 }
 
 function applyDiagonalRepeat(ctx, width, height, text) {
-  const spacing = 300; // Space between text repetitions
-  const lineSpacing = 250; // Space between diagonal lines
-  const angle = -Math.PI / 4; // 45 degrees
+  const spacing = 300;
+  const lineSpacing = 250;
+  const angle = -Math.PI / 4;
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  // Calculate the diagonal length to cover entire canvas
   const diagonalLength = Math.sqrt(width * width + height * height) + 200;
 
-  // Create multiple diagonal lines
   for (let line = -diagonalLength; line < diagonalLength; line += lineSpacing) {
     for (let i = -diagonalLength; i < diagonalLength; i += spacing) {
       ctx.save();
@@ -95,7 +93,6 @@ function drawLabelBox(ctx, labelData, { font, color, bgColor, padding }) {
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
 
-  // Calculate box dimensions
   const lineHeight = 20;
   const boxWidth = Math.max(...lines.map(line => ctx.measureText(line).width)) + padding * 2;
   const boxHeight = lines.length * lineHeight + padding * 2;
@@ -103,16 +100,13 @@ function drawLabelBox(ctx, labelData, { font, color, bgColor, padding }) {
   const x = 10;
   const y = 10;
 
-  // Draw background box
   ctx.fillStyle = bgColor;
   ctx.fillRect(x, y, boxWidth, boxHeight);
 
-  // Draw border
   ctx.strokeStyle = color;
   ctx.lineWidth = 1;
   ctx.strokeRect(x, y, boxWidth, boxHeight);
 
-  // Draw text
   ctx.fillStyle = color;
   lines.forEach((line, index) => {
     ctx.fillText(line, x + padding, y + padding + index * lineHeight);
@@ -120,12 +114,8 @@ function drawLabelBox(ctx, labelData, { font, color, bgColor, padding }) {
 }
 
 export function captureMapSnapshot(setCapturedImages, options = {}) {
-  console.group("🖼 captureMapSnapshot");
-  console.log("Options received:", options);
-
   const {
-    forceTheme, // 🔥 REQUIRED: "light" | "dark"
-    consolePreviewSize = 1600,
+    forceTheme,
     watermarkText = "",
     watermarkStyle = "diagonal-repeat",
     crop = null,
@@ -139,21 +129,10 @@ export function captureMapSnapshot(setCapturedImages, options = {}) {
     watermarkOpacity = 0.5,
   } = options;
 
-  if (!map) {
-    console.warn("❌ No map instance provided for snapshot.");
-    console.groupEnd();
-    return null;
-  }
-
-  if (!forceTheme) {
-    console.error("❌ forceTheme is required (light | dark)");
-    console.groupEnd();
-    return null;
-  }
+  if (!map) return null;
+  if (!forceTheme) return null;
 
   try {
-    console.log("🌓 Forced theme:", forceTheme);
-
     const canvas = map.getCanvas();
     const tempCanvas = document.createElement("canvas");
     const ctx = tempCanvas.getContext("2d");
@@ -200,18 +179,8 @@ export function captureMapSnapshot(setCapturedImages, options = {}) {
       [forceTheme]: imageDataUrl,
     }));
 
-    console.log("✅ Snapshot stored in memory:", forceTheme);
-
-    console.log(
-      "%c ",
-      `font-size:${consolePreviewSize}px; line-height:${consolePreviewSize}px; background:url(${imageDataUrl}) no-repeat; background-size:contain;`
-    );
-
-    console.groupEnd();
     return imageDataUrl;
   } catch (e) {
-    console.error("❌ Error capturing map snapshot:", e);
-    console.groupEnd();
     return null;
   }
 }

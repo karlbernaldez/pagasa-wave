@@ -83,10 +83,10 @@ export const useProjectLoader = (projectId, updateProjectId) => {
         let projectData;
 
         if (projectId) {
-          console.log("Fetching project by ID:", projectId);
+          // console.log("Fetching project by ID:", projectId);
           projectData = await fetchProjectById(projectId);
         } else {
-          console.log("No project ID found. Fetching latest user project.");
+          // console.log("No project ID found. Fetching latest user project.");
           projectData = await fetchLatestUserProject();
 
           updateProjectId(projectData._id);
@@ -96,7 +96,7 @@ export const useProjectLoader = (projectId, updateProjectId) => {
       } catch (error) {
         console.error("Failed to fetch project:", error);
         setShowNoProjectsModal(true);
-        console.log("Error message:", error.message);
+        // console.log("Error message:", error.message);
         setMessage(error.message);
       } finally {
         setIsLoadingProject(false);

@@ -29,7 +29,7 @@ const ForecastChartsPage = () => {
     const chartName = activeChart ? activeChart.name : activeChartType;
 
     document.title = `Charts - ${chartName}`;
-    console.log("Active Chart Type:", activeChartType, "Name:", chartName);
+    // console.log("Active Chart Type:", activeChartType, "Name:", chartName);
   }, [activeChartType, chartTypes]);
 
   const chartMeta = {
