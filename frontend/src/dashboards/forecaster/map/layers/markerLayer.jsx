@@ -123,7 +123,7 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
     layerId,
     sourceId,
     async ({ lng: newLng, lat: newLat }) => {
-      console.log(`📍 Marker "${title}" moved to`, newLng, newLat);
+      // console.log(`📍 Marker "${title}" moved to`, newLng, newLat);
 
       // ✅ Persist new coordinates to backend
       try {

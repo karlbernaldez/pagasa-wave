@@ -9,7 +9,6 @@ export const AuthProvider = ({ children }) => {
   const connectCalledRef            = useRef(false);
 
   useEffect(() => {
-    console.log('[AuthProvider] isLoggedIn:', isLoggedIn);
     if (isLoggedIn) {
       if (!connectCalledRef.current) {
         connectCalledRef.current = true;

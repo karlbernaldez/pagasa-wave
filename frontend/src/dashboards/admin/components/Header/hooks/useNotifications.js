@@ -44,7 +44,6 @@ const useNotifications = () => {
 
     const onNew = (notification) => {
       if (!mountedRef.current) return;
-      console.log('[Socket] notification:new received', notification);
       setNotifications((prev) => {
         if (prev.some((n) => n._id === notification._id)) return prev;
         return [notification, ...prev];
@@ -76,9 +75,9 @@ const useNotifications = () => {
     socket.on(EVENTS.READ,     onRead);
     socket.on(EVENTS.ALL_READ, onAllRead);
 
-    // Debug — remove after confirmed working
-    const onAny = (event, ...args) => console.log('[Socket event]', event, args);
-    socket.onAny(onAny);
+    // // Debug — remove after confirmed working
+    // const onAny = (event, ...args) => console.log('[Socket event]', event, args);
+    // socket.onAny(onAny);
 
     return () => {
       mountedRef.current = false;
