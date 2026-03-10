@@ -1,9 +1,9 @@
 // utils/getLayoutConfig.js
-const getLayoutConfig = ({ isAuthPage, isDashboardPage, isStudioPage, isStudioProjectPage, isChartsPage }) => ({
-  showHeader: !(isAuthPage || isDashboardPage),
-  showFooter: !(isStudioPage || isAuthPage || isDashboardPage || isChartsPage),
-  showDivider: !(isStudioPage || isAuthPage || isDashboardPage || isChartsPage),
-  addTopPadding: !isAuthPage && !isDashboardPage,
+const getLayoutConfig = ({ isAuthPage, isDashboardPage, isStudioPage, isStudioProjectPage, isChartsPage, isVerifyEmailPage }) => ({
+  showHeader: !(isAuthPage || isDashboardPage || isVerifyEmailPage),
+  showFooter: !(isStudioPage || isAuthPage || isDashboardPage || isChartsPage || isVerifyEmailPage),
+  showDivider: !(isStudioPage || isAuthPage || isDashboardPage || isChartsPage || isVerifyEmailPage),
+  addTopPadding: !isAuthPage && !isDashboardPage
 });
 
 export default getLayoutConfig;

@@ -13,7 +13,7 @@ const sessionSchema = new mongoose.Schema(
     userAgent: { type: String, default: '' },
     ip: { type: String, default: '' },
 
-    expiresAt: { type: Date, required: true, index: true },
+    expiresAt: { type: Date, required: true },
   },
   { timestamps: true }
 );

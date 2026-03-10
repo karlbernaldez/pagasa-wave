@@ -4,6 +4,7 @@ import ProtectedRoute from '@/middleware/ProtectedRoute';
 const Home = lazy(() => import('@/dashboards/public/pages/Home'));
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
+const VerifyEmail = lazy(() => import('@/pages/VerifyEmail'));
 const Charts = lazy(() => import('@/dashboards/public/pages/Charts'));
 const AboutUs = lazy(() => import('@/dashboards/public/pages/AboutUs'));
 const Contact = lazy(() => import('@/dashboards/public/pages/Contact'));
@@ -19,6 +20,7 @@ export default [
     ),
   },
   { path: '/register', element: <Register /> },
+  { path: '/verify-email', element: <VerifyEmail /> },
   { path: '/charts', element: <Charts /> },
   { path: '/about-us', element: <AboutUs /> },
   { path: '/contact', element: <Contact /> },

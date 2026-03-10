@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { fetchUserDetails } from '@/api/userAPI';
-import { loginUser, sendOtp, verifyOtp as verifyOtpApi } from '@/api/auth';
+import { loginUser, sendOtp, verifyOtp as verifyOtpApi, resendVerificationEmail } from '@/api/auth'; // ← added resendVerificationEmail
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -15,32 +15,29 @@ const MAX_OTP_ATTEMPTS = 5; // mirrors the server-side cap — used for UI feedb
 // useFormValidation
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Manages email/password field state and inline validation.
- */
 export const useFormValidation = () => {
-  const [email,    setEmail]    = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [touched,  setTouched]  = useState({ email: false, password: false });
+  const [touched, setTouched] = useState({ email: false, password: false });
 
   const validateEmail = useCallback((value) =>
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
       ? 'Please enter a valid email'
       : '',
-  []);
+    []);
 
   const validatePassword = useCallback((value) =>
     value.length < 1 ? 'Password is required' : '',
-  []);
+    []);
 
-  const handleEmailChange    = useCallback((e) => setEmail(e.target.value),    []);
+  const handleEmailChange = useCallback((e) => setEmail(e.target.value), []);
   const handlePasswordChange = useCallback((e) => setPassword(e.target.value), []);
 
   const handleBlur = useCallback((field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
   }, []);
 
-  const emailError    = touched.email    ? validateEmail(email)       : '';
+  const emailError = touched.email ? validateEmail(email) : '';
   const passwordError = touched.password ? validatePassword(password) : '';
 
   return {
@@ -50,7 +47,7 @@ export const useFormValidation = () => {
     setTouched,
     emailError,
     passwordError,
-    hasEmailSuccess:    touched.email    && !emailError    && !!email,
+    hasEmailSuccess: touched.email && !emailError && !!email,
     hasPasswordSuccess: touched.password && !passwordError && !!password,
     handleEmailChange,
     handlePasswordChange,
@@ -64,30 +61,56 @@ export const useFormValidation = () => {
 // useLoginAuth
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Orchestrates the two-step login flow:
- *   Step 1 — validateCredentials  → server confirms email + password
- *   Step 2 — requestOtp           → server sends a 6-digit code
- *   Step 3 — verifyOtp            → code confirmed, tokens issued, user navigated
- */
 export const useLoginAuth = (setIsLoggedIn, setRole) => {
-  const navigate           = useNavigate();
-  const [error, setError]  = useState('');
+  const navigate = useNavigate();
+
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [otpAttempts, setOtpAttempts] = useState(0);
+  const [emailUnverified, setEmailUnverified] = useState(false);
+  const [resendStatus, setResendStatus] = useState(null); // null | 'sending' | 'sent' | 'error'
+  const [resendError, setResendError] = useState(null);
+  const [cooldown, setCooldown] = useState(0);   // seconds remaining
 
-  // ── Step 1: validate credentials ──────────────────────────────────────────
-  /**
-   * Calls /api/auth/login. On success, the server marks the email as
-   * "credentials verified" so the OTP step is unlocked server-side.
-   *
-   * @param {string}   email
-   * @param {string}   password
-   * @param {Function} validateEmail
-   * @param {Function} validatePassword
-   * @param {Function} setTouched
-   * @param {{ captchaToken?: string, onCredentialsValid?: () => void }} [options]
-   */
+  const cooldownRef = useRef(null);
+
+  // ── Clear cooldown timer on unmount ───────────────────────────────────────
+  useEffect(() => () => clearInterval(cooldownRef.current), []);
+
+  // ── Start the 30s countdown ───────────────────────────────────────────────
+  const startCooldown = useCallback(() => {
+    clearInterval(cooldownRef.current);
+    setCooldown(30);
+
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current);
+          setResendStatus(null); // re-enable the button
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1_000);
+  }, []);
+
+  // ── Resend verification email ─────────────────────────────────────────────
+  const resendVerification = useCallback(async (email) => {
+    setResendStatus('sending');
+    setResendError(null);
+    try {
+      await resendVerificationEmail(email);
+      setResendStatus('sent');
+      startCooldown(); // begin 30s cooldown after every successful send
+    } catch (err) {
+      const message = err?.message ?? 'Failed to resend. Please try again.';
+      setResendStatus('error');
+      setResendError(message);
+      console.error('[resendVerification]', message);
+    }
+  }, [startCooldown]);
+
+  // ── Step 1: verify credentials + send OTP ────────────────────────────────
   const handleLogin = useCallback(async (
     email,
     password,
@@ -96,12 +119,11 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
     setTouched,
     options = {},
   ) => {
-    const { captchaToken, onCredentialsValid } = options;
+    const { captchaToken, coordinates, onCredentialsValid } = options;
 
-    // Force both fields to "touched" so inline errors appear immediately.
     setTouched({ email: true, password: true });
 
-    const emailErr    = validateEmail(email);
+    const emailErr = validateEmail(email);
     const passwordErr = validatePassword(password);
 
     if (emailErr || passwordErr) {
@@ -111,24 +133,42 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
 
     setIsLoading(true);
     setError('');
+    setEmailUnverified(false);
+    setResendStatus(null);
+    setResendError(null);
+    setCooldown(0);
+    clearInterval(cooldownRef.current);
 
     try {
-      await loginUser({ email, password, captchaToken });
-      onCredentialsValid?.();
+      const res = await loginUser({ email, password, captchaToken, coordinates: coordinates ?? null });
+
+      if (res.trustedDevice) {
+        // ── Trusted device: server already issued tokens, skip OTP entirely ──
+        const userData = await fetchUserDetails(res.user.id);
+        flushSync(() => {
+          setRole(userData.role);
+          setIsLoggedIn(true);
+        });
+        navigate(userData.role === 'admin' ? '/dashboard' : '/studio', { replace: true });
+      } else {
+        // ── Unknown device: OTP was sent, open the modal ──────────────────────
+        onCredentialsValid?.();
+      }
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
+      const message = err.message || 'Login failed. Please try again.';
+      if (message === 'Please verify your email before logging in.') {
+        setEmailUnverified(true);
+        resendVerification(email);
+      } else {
+        setError(message);
+      }
+      throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [resendVerification, navigate, setIsLoggedIn, setRole]);
 
-  // ── Step 2: request OTP ────────────────────────────────────────────────────
-  /**
-   * Asks the server to send a fresh OTP to the given address.
-   * Throws on failure so the caller (e.g. a "Resend" button) can react.
-   *
-   * @param {string} email
-   */
+  // ── Resend OTP ────────────────────────────────────────────────────────────
   const requestOtp = useCallback(async (email) => {
     setError('');
     try {
@@ -140,17 +180,7 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
     }
   }, []);
 
-  // ── Step 3: verify OTP → complete login ───────────────────────────────────
-  /**
-   * Submits the OTP, fetches the full user profile on success, then atomically
-   * updates auth context via flushSync before navigating.
-   *
-   * Tracks client-side attempt count so the UI can disable the form after
-   * MAX_OTP_ATTEMPTS, matching the server-side lock.
-   *
-   * @param {string} email
-   * @param {string} otp
-   */
+  // ── Step 2: verify OTP + complete login ──────────────────────────────────
   const verifyOtp = useCallback(async (email, otp) => {
     setError('');
     setIsLoading(true);
@@ -164,8 +194,6 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
 
       const userData = await fetchUserDetails(res.user.id);
 
-      // Commit both state updates synchronously before React schedules the
-      // navigation — prevents a window where isLoggedIn is true but role is stale.
       flushSync(() => {
         setRole(userData.role);
         setIsLoggedIn(true);
@@ -175,8 +203,6 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
     } catch (err) {
       const newAttempts = otpAttempts + 1;
       setOtpAttempts(newAttempts);
-
-      // Propagate so the OTP form can decide whether to lock the UI.
       const message = err.message || 'OTP verification failed. Please try again.';
       setError(message);
       throw Object.assign(new Error(message), { attempts: newAttempts });
@@ -188,14 +214,10 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
   const otpLocked = otpAttempts >= MAX_OTP_ATTEMPTS;
 
   return {
-    error,
-    isLoading,
-    otpAttempts,
-    otpLocked,
-    setError,
+    error, isLoading, setError,
+    otpAttempts, otpLocked, requestOtp, verifyOtp,
     handleLogin,
-    requestOtp,
-    verifyOtp,
+    emailUnverified, resendStatus, resendError, cooldown, resendVerification,
   };
 };
 
@@ -217,23 +239,11 @@ export const usePasswordVisibility = () => {
 // useGeolocation
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Returns the user's coordinates via the Geolocation API.
- *
- * Stores position in a ref (not window) and exposes it as a plain value.
- * The optional `onPosition` callback fires once the position is obtained so
- * callers can push it into context, state, or an API call without coupling
- * this hook to any particular store.
- *
- * @param {{ onPosition?: (coords: GeolocationCoordinates) => void }} [options]
- * @returns {{ position: GeolocationCoordinates | null, geoError: string }}
- */
 export const useGeolocation = ({ onPosition } = {}) => {
-  const [position, setPosition]   = useState(null);
-  const [geoError, setGeoError]   = useState('');
-  const onPositionRef              = useRef(onPosition);
+  const [position, setPosition] = useState(null);
+  const [geoError, setGeoError] = useState('');
+  const onPositionRef = useRef(onPosition);
 
-  // Keep the callback ref current without re-running the effect.
   useEffect(() => { onPositionRef.current = onPosition; }, [onPosition]);
 
   useEffect(() => {
@@ -248,16 +258,15 @@ export const useGeolocation = ({ onPosition } = {}) => {
       ({ coords }) => {
         if (cancelled) return;
         const snapshot = {
-          latitude:  coords.latitude,
+          latitude: coords.latitude,
           longitude: coords.longitude,
-          accuracy:  coords.accuracy,
+          accuracy: coords.accuracy,
         };
         setPosition(snapshot);
         onPositionRef.current?.(snapshot);
       },
       (err) => {
         if (cancelled) return;
-        // Don't expose raw GeolocationPositionError codes to the UI.
         const messages = {
           1: 'Location permission denied.',
           2: 'Location unavailable.',
@@ -272,7 +281,7 @@ export const useGeolocation = ({ onPosition } = {}) => {
       cancelled = true;
       navigator.geolocation.clearWatch(watchId);
     };
-  }, []); // intentionally empty — runs once on mount
+  }, []);
 
   return { position, geoError };
 };
