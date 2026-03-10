@@ -22,6 +22,20 @@ const getCachedAuth = () => {
   return authCache.value;
 };
 
+const fetchAuthCheck = async () => {
+  const res = await fetch(`${AUTH_API_BASE_URL}/check`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    return { ok: false, status: res.status, data: null };
+  }
+
+  const data = await res.json();
+  return { ok: true, status: res.status, data };
+};
+
 export const sendOtp = async ({ email }) => {
   const response = await fetch(`${AUTH_API_BASE_URL}/otp/send`, {
     method: 'POST',
@@ -52,6 +66,48 @@ export const verifyOtp = async ({ email, otp }) => {
   }
 
   return response.json();
+};
+
+export const verifyEmail = async (token) => {
+  const response = await fetch(`${AUTH_API_BASE_URL}/verify-email?token=${token}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw { message: error.message || 'Verification failed.', expired: false };
+  }
+
+  return response.json(); // e.g. { message: 'Email verified.', email: 'user@example.com' }
+};
+
+export const resendVerificationEmail = async (email) => {
+  let response;
+
+  try {
+    response = await fetch(`${AUTH_API_BASE_URL}/resend-verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+      credentials: "include",
+    });
+  } catch (networkErr) {
+    // fetch itself threw — network is down or CORS blocked
+    throw new Error("Network error. Please check your connection and try again.");
+  }
+
+  // Parse body regardless of status so we can surface the server's message
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data.message
+      || `Request failed with status ${response.status}.`
+    );
+  }
+
+  return data;
 };
 
 export const registerUser = async (userData) => {
@@ -121,20 +177,6 @@ export const refreshAccessToken = async () => {
   })();
 
   return refreshInFlight;
-};
-
-const fetchAuthCheck = async () => {
-  const res = await fetch(`${AUTH_API_BASE_URL}/check`, {
-    method: 'GET',
-    credentials: 'include',
-  });
-
-  if (!res.ok) {
-    return { ok: false, status: res.status, data: null };
-  }
-
-  const data = await res.json();
-  return { ok: true, status: res.status, data };
 };
 
 export const checkAuthSession = async ({ force = false } = {}) => {

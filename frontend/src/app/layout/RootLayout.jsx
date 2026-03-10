@@ -14,6 +14,7 @@ const RootLayout = () => {
   const {
     isLoginPage,
     isRegisterPage,
+    isVerifyEmailPage,
     isDashboardPage,
     isStudioPage,
     isStudioProjectPage,
@@ -28,6 +29,7 @@ const RootLayout = () => {
         isStudioPage,
         isStudioProjectPage,
         isChartsPage,
+        isVerifyEmailPage,
       }),
     [isLoginPage, isRegisterPage, isDashboardPage, isStudioPage, isStudioProjectPage, isChartsPage]
   );

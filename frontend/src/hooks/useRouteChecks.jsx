@@ -7,6 +7,7 @@ const useRouteChecks = () => {
   const routeChecks = {
     isLoginPage: location.pathname === '/login',
     isRegisterPage: location.pathname === '/register',
+    isVerifyEmailPage: location.pathname === '/verify-email',
     isDashboardPage: location.pathname === '/dashboard',
     isStudioPage: location.pathname === '/studio',
     isStudioProjectPage: location.pathname.startsWith('/studio/'),

@@ -24,7 +24,8 @@ const InputIcon = ({ children }) => (
  *   auth            — { error, isLoading }
  *   visibility      — { showPassword, togglePasswordVisibility }
  *   captchaVerified boolean
- *   onCaptchaVerify (isValid: boolean) => void
+ *   captchaKey      number  — bump to remount & reset the CaptchaWidget
+ *   onCaptchaVerify (token: string | null) => void
  *   onSubmit        (e: FormEvent) => void
  *   onNavigate      (path: string) => void
  */
@@ -34,6 +35,7 @@ const LoginForm = ({
   auth,
   visibility,
   captchaVerified,
+  captchaKey,
   onCaptchaVerify,
   onSubmit,
   onNavigate,
@@ -144,8 +146,11 @@ const LoginForm = ({
         {passwordError && <FieldError id="password-error" message={passwordError} />}
       </div>
 
-      {/* CAPTCHA ─────────────────────────────────────────────────────────── */}
-      <CaptchaWidget onVerify={onCaptchaVerify} />
+      {/* CAPTCHA — key forces a full remount when captchaKey changes ──────── */}
+      <CaptchaWidget
+        key={captchaKey}
+        onVerify={onCaptchaVerify}
+      />
 
       {/* Submit ──────────────────────────────────────────────────────────── */}
       <button
