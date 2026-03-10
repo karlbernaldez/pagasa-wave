@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Menu, Moon, Sun, ChevronDown, Bell, Waves } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 import { getDropdownCls, HEADER_STYLES } from './constants';
 import useCurrentUser                    from './hooks/useCurrentUser';
@@ -23,12 +24,26 @@ const Header = ({ activeMeta, onMobileMenuToggle, isDarkMode, onToggleDarkMode }
   const [showUser,          setShowUser]          = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const { user, logout }                                               = useCurrentUser();
   const { notifications, unreadCount, handleMarkAllRead,
           handleMarkOneRead }                                          = useNotifications();
 
   const closeUser          = useCallback(() => setShowUser(false),          []);
   const closeNotifications = useCallback(() => setShowNotifications(false), []);
+
+  // Navigate to the users tab and seed the search query via URL param
+  const handleNotificationClick = useCallback(({ resourceType, query }) => {
+    if (resourceType?.toLowerCase() === 'user') {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', 'users');
+      next.set('page', '1');
+      next.set('limit', searchParams.get('limit') ?? '5');
+      next.set('q', query);
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const dropdownCls       = getDropdownCls(isDarkMode);
   const sharedDropdown    = { isDarkMode, dropdownCls };
@@ -120,6 +135,7 @@ const Header = ({ activeMeta, onMobileMenuToggle, isDarkMode, onToggleDarkMode }
                   unreadCount={unreadCount}
                   onMarkAllRead={handleMarkAllRead}
                   onMarkOneRead={handleMarkOneRead}
+                  onNotificationClick={handleNotificationClick}
                 />
               </div>
             </div>

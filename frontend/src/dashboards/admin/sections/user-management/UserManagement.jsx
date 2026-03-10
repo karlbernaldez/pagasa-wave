@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Plus, Users, UserCheck, Clock, Ban } from 'lucide-react';
-
+import { useSearchParams } from 'react-router-dom';
 import { useUsers } from './hooks/useUsers';
 import { SearchBar } from './components/SearchBar';
 import { UserTable } from './components/UserTable';
@@ -42,7 +42,8 @@ function StatCard({ icon: Icon, label, value, color, isDarkMode }) {
 // ─── UserManagementSection ────────────────────────────────────────────────────
 
 const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
-  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [userSearchQuery, setUserSearchQuery] = useState(() => searchParams.get('q') ?? '');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const {
@@ -93,10 +94,6 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     [users, manageUserId]
   );
 
-  // Stats are derived from the FULL total returned by the server.
-  // We only have current-page users locally, so per-status counts
-  // should ideally come from a separate /stats endpoint. For now,
-  // we tally what we have and show the server total for "Total Users".
   const stats = useMemo(() => {
     const counts = { active: 0, pending: 0, suspended: 0 };
     for (const u of filteredUsers) {
@@ -104,6 +101,11 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
     }
     return { total, ...counts };
   }, [filteredUsers, total]);
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q !== null) setUserSearchQuery(q);
+  }, [searchParams]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -217,7 +219,7 @@ const UserManagementSection = ({ isDarkMode = true, mode = 'list' }) => {
             totalCount={normalizedSearchQuery ? filteredUsers.length : total}
             isLoading={isLoadingUsers}
             isServer={!normalizedSearchQuery}
-            
+
             // ── UI ────────────────────────────────────────────────────────
             isDarkMode={isDarkMode}
             onManage={setManageUserId}
