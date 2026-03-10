@@ -2,6 +2,8 @@ docker-compose.yml
 backend/Dockerfile
 backend/public/himawari.mp4
 backend/public/himawari.gif
+backend/logs/
+backend/tmp/
 
 frontend/Dockerfile
 scripts/era5_ph_wind_wave.geojson
