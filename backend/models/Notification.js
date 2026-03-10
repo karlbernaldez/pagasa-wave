@@ -1,40 +1,42 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-const notificationSchema = new mongoose.Schema({
-  type: { type: String, required: true },
+const { Schema, model } = mongoose;
 
-  title: { type: String, required: true },
+const notificationSchema = new Schema(
+  {
+    type: { type: String, required: true, trim: true },
 
-  message: { type: String, required: true },
+    title:   { type: String, required: true, trim: true },
+    message: { type: String, required: true, trim: true },
 
-  recipientUser: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    default: null
+    recipientUser: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    recipientRole: { type: String,                              default: null, index: true },
+    broadcast:     { type: Boolean,                            default: false, index: true },
+
+    resourceType: { type: String },
+    resourceId:   { type: Schema.Types.ObjectId },
+
+    readBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   },
-
-  recipientRole: {
-    type: String,
-    default: null
+  {
+    timestamps: true,
+    toJSON:  { virtuals: true },
+    toObject: { virtuals: true },
   },
+);
 
-  broadcast: {
-    type: Boolean,
-    default: false
-  },
+// ─── Indexes ──────────────────────────────────────────────────────────────────
 
-  resourceType: String,
-  resourceId: mongoose.Schema.Types.ObjectId,
+// Primary query pattern: visibility filter + sort by newest
+notificationSchema.index({ recipientUser: 1, createdAt: -1 });
+notificationSchema.index({ recipientRole: 1, createdAt: -1 });
+notificationSchema.index({ broadcast:     1, createdAt: -1 });
 
-  readBy: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  }],
+// Unread-count query: filter readBy array efficiently
+notificationSchema.index({ readBy: 1 });
 
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
+// Optional: auto-delete very old notifications (e.g. after 90 days).
+// Remove or adjust the `expireAfterSeconds` value to suit your retention policy.
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
 
-export default mongoose.model("Notification", notificationSchema);
+export default model('Notification', notificationSchema);

@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^3.0.2",
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
@@ -19,7 +20,9 @@
     "node-fetch": "^3.3.2",
     "nodemailer": "^8.0.1",
     "puppeteer": "^24.37.2",
+    "redis": "^5.11.0",
     "sharp": "^0.34.5",
+    "socket.io": "^4.8.3",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "xss-clean": "^0.1.4"
@@ -33,7 +36,9 @@
     "#models/*": "./models/*.js",
     "#utils/*": "./utils/*.js",
     "#lib/*": "./lib/*.js",
-    "#services/*": "./services/*.js"
+    "#services/*": "./services/*.js",
+    "#queries/*": "./queries/*.js",
+    "#socket/*": "./socket/*.js"
   },
   "name": "server",
   "version": "1.0.0",

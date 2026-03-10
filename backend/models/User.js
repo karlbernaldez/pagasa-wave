@@ -190,9 +190,13 @@ const userSchema = new mongoose.Schema(
     },
 
     lastLoginLocation: {
-      lat: { type: Number, default: null },
-      lng: { type: Number, default: null },
-      accuracyM: { type: Number, default: null },
+      type: {
+        lat: { type: Number, default: null },
+        lng: { type: Number, default: null },
+        accuracyM: { type: Number, default: null },
+      },
+      default: null,
+      select: false,
     },
 
     /* ─────────────────────────────

@@ -5,7 +5,7 @@ import User from '../../models/User.js';
 
 import { normalizeEmail, normalizeUsername, validateRegistrationPayload } from '#controllers/auth/utils/validators';
 
-import { createNotification } from "#services/notification";
+import { createNotification } from "#services/notification/notificationService";
 import { sendVerificationEmail } from "#services/email/sendVerificationEmail";
 import { createAuditLog } from "#services/auditLog";
 import { logger } from "#utils/logger";
@@ -148,7 +148,6 @@ export const registerUser = async (req, res) => {
       🔔 Admin notification
     */
     try {
-
       await createNotification({
         type: "user_registered",
         title: "New User Awaiting Approval",
@@ -157,7 +156,7 @@ export const registerUser = async (req, res) => {
         resourceType: "User",
         resourceId: user._id
       });
-
+      console.log('[register] ✅ createNotification succeeded'); // ← add
     } catch (notifErr) {
 
       logger.error("Notification creation failed", {
