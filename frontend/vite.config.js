@@ -15,6 +15,11 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, './src/shared'),
     },
   },
+  server: {
+    allowedHosts: [
+      "dev.wavelab.adovelopers.com"
+    ]
+  },
 })
 
 

@@ -5,6 +5,7 @@ import MapComponent from "@dashboards/forecaster/map/MapComponent";
 import LayerPanel from "@dashboards/forecaster/components/Studio/LayerPanel/LayerPanel";
 import DrawToolBar from "@dashboards/forecaster/components/Studio/Toolbar/Toolbar";
 import LegendBox from "@dashboards/forecaster/components/Studio/Legend";
+import WaveLegned from "@dashboards/forecaster/components/Studio/WaveLegend";
 import ProjectMenu from "@dashboards/forecaster/components/Studio/Menu/ProjectMenu";
 import MarkerTitleModal from "@/components/ui/modals/MarkerTitleModal";
 import MapLoading from "@/components/ui/modals/MapLoading";
@@ -114,12 +115,10 @@ const Studio = ({ logger }) => {
   const removeSourceSafe = (map, id) => { if (map.getSource(id)) map.removeSource(id); };
 
   // ─── Project menu callbacks ───────────────────────────
-  // Called when a new project is created — updateProjectId navigates to /studio/:id
   const handleNewProject = useCallback((project) => {
     if (project?._id) updateProjectId(project._id);
   }, [updateProjectId]);
 
-  // Called when a project is selected from the list — same navigation via hook
   const handleSaveProject = useCallback((project) => {
     if (project?._id) updateProjectId(project._id);
   }, [updateProjectId]);
@@ -264,14 +263,15 @@ const Studio = ({ logger }) => {
         />
       )}
 
-      {/* Marker Title Modal */}
+      {/* Marker Title Modal — single source of truth, markerType drives accent color */}
       <MarkerTitleModal
         isOpen={showTitleModal}
         onClose={closeModal}
-        onSave={handleSaveTitle}
+        onSubmit={handleSaveTitle}
         inputValue={markerTitle}
         onInputChange={handleTitleChange}
         isDarkMode={isDarkMode}
+        markerType={type}
       />
 
       {/* Side Panel & UI Elements */}
@@ -299,6 +299,7 @@ const Studio = ({ logger }) => {
           />
 
           <LegendBox isDarkMode={isDarkMode} />
+          <WaveLegned isDarkMode={isDarkMode} />
 
           <NoProjectAlert
             visible={showNoProjectsModal}

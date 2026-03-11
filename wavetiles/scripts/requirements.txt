@@ -9,3 +9,5 @@ fiona
 geopandas
 cartopy
 xlrd>=2.0.1
+rasterio
+tqdm
