@@ -116,7 +116,7 @@ class ErrorBoundary extends React.Component {
     };
     
     // Send to your error tracking service (e.g., Sentry, LogRocket, etc.)
-    console.log('Error data to be sent:', errorData);
+    // console.log('Error data to be sent:', errorData);
   };
 
   handleReload = () => {

@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 export const handleDrawModeChange = (mode, draw, setLayersRef) => {
   if (draw?.changeMode) {
     if (mode === 'typhoon') { mode = 'draw_point'; } // Normalize to draw_point for typhoon
-    console.log(`Changing draw mode to: ${mode}`);
+    // console.log(`Changing draw mode to: ${mode}`);
     draw.changeMode(mode, {
       setLayersRef,
     });

@@ -1,7 +1,7 @@
 import { Suspense, useMemo } from 'react';
 import { Outlet } from 'react-router-dom';
 
-import HeaderNavbar from '@shared/layouts/components/Header';
+import HeaderNavbar from '@shared/layouts/components/header/Header';
 import Footer from '@shared/layouts/components/Footer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
@@ -14,8 +14,10 @@ const RootLayout = () => {
   const {
     isLoginPage,
     isRegisterPage,
+    isVerifyEmailPage,
     isDashboardPage,
     isStudioPage,
+    isStudioProjectPage,
     isChartsPage,
   } = useRouteChecks();
 
@@ -25,9 +27,11 @@ const RootLayout = () => {
         isAuthPage: isLoginPage || isRegisterPage,
         isDashboardPage,
         isStudioPage,
+        isStudioProjectPage,
         isChartsPage,
+        isVerifyEmailPage,
       }),
-    [isLoginPage, isRegisterPage, isDashboardPage, isStudioPage, isChartsPage]
+    [isLoginPage, isRegisterPage, isDashboardPage, isStudioPage, isStudioProjectPage, isChartsPage]
   );
 
   const { showHeader, showFooter, addTopPadding } = layoutConfig;
@@ -36,7 +40,7 @@ const RootLayout = () => {
     <AppContainer $noscroll={isStudioPage}>
       {showHeader && (
         <Suspense fallback={<div style={{ height: 60 }} />}>
-          <HeaderNavbar />
+          <HeaderNavbar isStudioProjectPage={isStudioProjectPage} />
         </Suspense>
       )}
 

@@ -36,7 +36,7 @@ except Exception:
 # ============================================================
 # CONFIG
 # ============================================================
-GRIB_FILE = Path("../input/W1P01120000011200011.nc")  # GRIB1 despite .nc
+GRIB_FILE = Path("../input/12/00/W1P01120000011200011")  # GRIB1 despite .nc
 BAND_INDEX = 1
 TIME_TAG = "2026011200"
 

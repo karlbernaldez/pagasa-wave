@@ -13,54 +13,44 @@ import { fetchLatestGeoJSON, createWavePopup, getWindTileset, getWaveSourceId } 
     document.head.appendChild(style);
 })();
 
+const MRI3_TIMESTEP = '012';
+
+const buildTileUrl = (model, theme, date, step = MRI3_TIMESTEP) => {
+    const m = model.trim().toUpperCase();
+    const base = `https://storage.googleapis.com/wavelab-tiles/${m}/${theme}/${date}`;
+
+    return m === 'MRI3'
+        ? `${base}/${step}/{z}/{x}/{y}.png`
+        : `${base}/{z}/{x}/{y}.png`;
+};
+
 export async function addWaveSource(map, isDarkMode, model = localStorage.getItem('WAVE_MODEL')) {
+    const ww3 = await fetchLatestGeoJSON({ model: 'ww3', product: 'wave', date: 'today' });
 
-    // Fetch latest wind points GeoJSON
-    const ww3 = await fetchLatestGeoJSON({
-        model: 'ww3',
-        product: 'wave',
-        date: 'today'
-    });
-
-    const ecwam = await fetchLatestGeoJSON({
-        model: 'ecwam',
-        product: 'wave',
-        date: 'today'
-    });
-
-    const mri3 = await fetchLatestGeoJSON({
-        model: 'mri3',
-        product: 'wave',
-        date: 'today'
-    });
-
-    const waveData = ww3
-
-    // Determine tileset & source
-    const date = '2026011200'
-    const sourceId = getWaveSourceId(isDarkMode);
+    let date = '2026011200';
     const theme = isDarkMode ? 'dark' : 'light';
+    const models = (model || 'WW3').split(',').map((m) => m.trim().toUpperCase());
 
-    // Add sources
-    if (!map.getSource(sourceId)) {
-        map.addSource(sourceId, {
-            type: 'raster',
-            tiles: [
-                `http://34.45.182.236:5173/tiles/${model}/${theme}/${date}/{z}/{x}/{y}.png`
-            ],
-            tileSize: 256,
-            bounds: [100, -5, 180, 50],
-            scheme: "xyz",
-        });
+    models.forEach((m) => {
+        const sourceId = `wave-source-${m}`;
+        if (m == 'WW3') date = '2026011200'
+        const tileUrl = buildTileUrl(m, theme, date);
 
-    }
+        if (!map.getSource(sourceId)) {
+            map.addSource(sourceId, {
+                type: 'raster',
+                tiles: [tileUrl],
+                tileSize: 256,
+                bounds: [100, -5, 180, 50],
+                scheme: 'xyz',
+            });
+        }
+    });
 
     if (!map.getSource('wave-points')) {
-        map.addSource('wave-points', { type: 'geojson', data: waveData });
+        map.addSource('wave-points', { type: 'geojson', data: ww3 });
     }
-
 }
-
 
 export async function addWaveLayer(map, isDarkMode) {
     // Add layers (modularized)

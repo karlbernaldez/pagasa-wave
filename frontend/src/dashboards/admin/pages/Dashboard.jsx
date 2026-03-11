@@ -2,7 +2,7 @@ import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import Sidebar from '@dashboards/admin/components/Sidebar';
-import Header from '@dashboards/admin/components/Header';
+import Header from '@dashboards/admin/components/Header/index';
 import DashboardOverview from '@dashboards/admin/sections/Overview';
 import ChartReviewSection from '@dashboards/admin/sections/chart-review/ChartReview';
 import UserManagementSection from '@dashboards/admin/sections/user-management/UserManagement';

@@ -1,3 +1,5 @@
 .env
 /node_modules/
 /frames/
+/logs/*.log
+*.tmp
