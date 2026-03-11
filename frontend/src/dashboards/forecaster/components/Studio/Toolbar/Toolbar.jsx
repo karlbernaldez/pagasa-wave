@@ -150,7 +150,7 @@ const DrawToolbar = ({
     <>
       {/* Modals */}
       <PointInputChoiceModal  isOpen={openModals.pointInputChoice}  onClose={() => toggleModal('pointInputChoice', false)}  onSelect={handlePointInputChoice}  isDarkMode={isDarkMode} />
-      <MarkerTitleModal       isOpen={openModals.markerTitle}       onClose={() => { toggleModal('markerTitle', false); setPendingMapClick(null); }} onSubmit={handleMarkerTitleSubmit}  isDarkMode={isDarkMode} markerType={selectedToolType} />
+      {/* <MarkerTitleModal       isOpen={openModals.markerTitle}       onClose={() => { toggleModal('markerTitle', false); setPendingMapClick(null); }} onSubmit={handleMarkerTitleSubmit}  isDarkMode={isDarkMode} markerType={selectedToolType} /> */}
       <ManualInputModal       isOpen={openModals.manualInput}       onClose={() => toggleModal('manualInput', false)}       onSubmit={handleManualInputSubmit} isDarkMode={isDarkMode} />
       <FeatureNotAvailableModal isOpen={openModals.featureNotAvailable} onClose={() => toggleModal('featureNotAvailable', false)} />
 

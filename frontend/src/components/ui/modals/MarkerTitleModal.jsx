@@ -15,14 +15,14 @@ const typeConfig = {
   less_1: { label: 'Low Waves', accent: { dark: 'green', light: 'green' } },
 };
 
-const MarkerTitleModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, markerType = 'typhoon' }) => {
+const MarkerTitleModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, markerType = 'typhoon', source }) => {
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef(null);
 
   const config = typeConfig[markerType] || typeConfig.typhoon;
   const accentKey = isDarkMode ? config.accent.dark : config.accent.light;
-
+  
   const accentClasses = {
     purple: {
       icon: 'bg-purple-500/20 ring-1 ring-purple-400/40',
