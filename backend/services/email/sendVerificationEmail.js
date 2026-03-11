@@ -7,7 +7,7 @@ const {
   EMAIL_PASS,
   EMAIL_FROM,
   APP_NAME = "WaveLab",
-  APP_URL = "http://localhost:5173"
+  APP_URL = "https://wavelab.adovelopers.com"
 } = process.env;
 
 const transporter = nodemailer.createTransport({

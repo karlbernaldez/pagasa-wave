@@ -7,7 +7,7 @@ const {
   EMAIL_PASS,
   EMAIL_FROM,
   APP_NAME      = 'WaveLab',
-  APP_URL       = 'https://adovelopers.com',
+  APP_URL       = 'https://wavelab.adovelopers.com',
   SUPPORT_EMAIL = 'support@adovelopers.com',
   NODE_ENV,
 } = process.env;
