@@ -1,5 +1,5 @@
 // models/SiteSettings.js
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const SiteSettingsSchema = new mongoose.Schema(
   {
@@ -9,18 +9,17 @@ const SiteSettingsSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       lowercase: true,
+      index: true
     },
 
     // store full frontend payload here
     data: {
       type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
+      default: {}
+    }
   },
   { timestamps: true }
 );
 
-SiteSettingsSchema.index({ page: 1 }, { unique: true });
-
 export default mongoose.models.SiteSettings ||
-  mongoose.model('SiteSettings', SiteSettingsSchema);
+  mongoose.model("SiteSettings", SiteSettingsSchema);

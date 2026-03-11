@@ -1,99 +1,199 @@
-import React, { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, Cloud, Droplets, Wind, AlertCircle, Check, Loader2, Waves } from 'lucide-react';
-import useAuthRedirect from '@/hooks/useAuthRedirect';
+import { ArrowLeft, MailWarning, RefreshCw, CheckCircle } from 'lucide-react';
+
 import { useFormValidation, useLoginAuth, usePasswordVisibility, useGeolocation } from '@/hooks/useLogin';
 import { useAuth } from '@/hooks/useAuth';
 
+import AnimatedBackground from '@/components/login/Background.jsx';
+import LoginForm from '@/components/login/LoginForm.jsx';
+import OtpModal from '@/components/login/OTPModal.jsx';
+import '@/components/login/animations.css';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unverified email banner
+// ─────────────────────────────────────────────────────────────────────────────
+const UnverifiedEmailBanner = ({ email, status, error, cooldown, onResend }) => {
+  const isCoolingDown = cooldown > 0;
+  const isSending = status === 'sending';
+  const isDisabled = isSending || isCoolingDown;
+
+  // Derive button appearance from priority: sending → cooldown → error/idle
+  const buttonStyle = (() => {
+    if (isCoolingDown) return {
+      border: '1px solid rgba(99,102,241,0.25)',
+      background: 'rgba(99,102,241,0.08)',
+      color: '#818cf8',
+    };
+    if (status === 'error') return {
+      border: '1px solid rgba(248,113,113,0.25)',
+      background: 'rgba(248,113,113,0.08)',
+      color: '#f87171',
+    };
+    // idle (null) — ready to resend
+    return {
+      border: '1px solid rgba(245,158,11,0.25)',
+      background: 'rgba(245,158,11,0.10)',
+      color: '#fcd34d',
+    };
+  })();
+
+  return (
+    <div
+      role="alert"
+      className="flex flex-col gap-3 rounded-2xl border border-amber-500/20 px-4 py-4 text-sm"
+      style={{ background: 'rgba(245,158,11,0.06)' }}
+    >
+      <div className="flex items-start gap-3">
+        <MailWarning size={18} className="mt-0.5 shrink-0 text-amber-400" />
+        <div className="space-y-0.5">
+          <p className="font-semibold text-amber-300">Email not verified</p>
+          <p className="text-amber-200/60 leading-relaxed">
+            {isCoolingDown || status === 'sent'
+              ? <>A verification link was sent to{' '}<span className="font-medium text-amber-200/90">{email}</span>. Check your inbox and spam folder.</>
+              : <>Verify your email address to activate your account.</>
+            }
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onResend}
+        disabled={isDisabled}
+        className="ml-7 flex w-fit items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-200 disabled:cursor-not-allowed"
+        style={{ ...buttonStyle, opacity: isDisabled ? 0.7 : 1 }}
+      >
+        {isSending && (
+          <><RefreshCw size={12} className="animate-spin" /> Sending…</>
+        )}
+        {!isSending && isCoolingDown && (
+          <><RefreshCw size={12} /> Resend in {cooldown}s</>
+        )}
+        {!isSending && !isCoolingDown && (
+          <><RefreshCw size={12} /> {status === 'error' ? 'Try again' : 'Resend verification email'}</>
+        )}
+      </button>
+
+      {status === 'error' && !isCoolingDown && (
+        <p className="ml-7 text-xs text-red-400/80">
+          {error ?? 'Failed to resend. Please try again in a moment.'}
+        </p>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Login page
+// ─────────────────────────────────────────────────────────────────────────────
 const Login = () => {
   const navigate = useNavigate();
-  const { setIsLoggedIn } = useAuth();
+  const { setIsLoggedIn, setRole } = useAuth();
 
-  // Custom hooks
+  const { position } = useGeolocation();
+
   const {
-    email,
-    password,
-    touched,
-    setTouched,
-    emailError,
-    passwordError,
-    hasEmailSuccess,
-    handleEmailChange,
-    handlePasswordChange,
-    handleBlur,
-    validateEmail,
-    validatePassword,
+    email, password, touched, setTouched,
+    emailError, passwordError, hasEmailSuccess,
+    handleEmailChange, handlePasswordChange,
+    handleBlur, validateEmail, validatePassword,
   } = useFormValidation();
 
-  const { error, isLoading, handleLogin } = useLoginAuth(setIsLoggedIn);
+  const {
+    error,
+    isLoading,
+    setError,
+    otpAttempts,
+    otpLocked,
+    requestOtp,
+    verifyOtp,
+    handleLogin,
+    emailUnverified,
+    resendStatus,
+    resendError,
+    cooldown,
+    resendVerification,
+  } = useLoginAuth(setIsLoggedIn, setRole);
+
   const { showPassword, togglePasswordVisibility } = usePasswordVisibility();
 
-  useAuthRedirect();
-  useGeolocation();
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaKey, setCaptchaKey] = useState(0);   // bump to remount & reset the widget
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otpError, setOtpError] = useState(null);
+  const [otpLoading, setOtpLoading] = useState(false);
 
-  useEffect(() => {
-    document.title = "WaveLab - Login";
+  useEffect(() => { document.title = 'WaveLab - Login'; }, []);
+
+  // ── Resets the captcha widget and clears the stored token ─────────────────
+  const resetCaptcha = useCallback(() => {
+    setCaptchaToken(null);
+    setCaptchaKey((k) => k + 1); // forces CaptchaWidget to remount with a clean state
   }, []);
 
-  const onSubmit = (e) => {
+  // ── Step 1: credentials ───────────────────────────────────────────────────
+  const onSubmit = useCallback(async (e) => {
     e.preventDefault();
-    handleLogin(email, password, validateEmail, validatePassword, setTouched);
-  };
+    try {
+      await handleLogin(email, password, validateEmail, validatePassword, setTouched, {
+        captchaToken,
+        coordinates: position,
+        onCredentialsValid: () => setOtpOpen(true),
+      });
+    } catch {
+      // Reset captcha on every failed attempt so the used token cannot be
+      // replayed and the user must re-verify before trying again.
+      resetCaptcha();
+    }
+  }, [email, password, handleLogin, validateEmail, validatePassword, setTouched, captchaToken, resetCaptcha]);
+
+  // ── Step 2: OTP ───────────────────────────────────────────────────────────
+  const handleOtpVerify = useCallback(async (otp) => {
+    setOtpLoading(true);
+    setOtpError(null);
+    try {
+      await verifyOtp(email, otp);
+      setOtpOpen(false);
+    } catch (err) {
+      const message = err?.response?.data?.message ?? err?.message ?? 'Invalid or expired code.';
+      setOtpError(message);
+      throw err;
+    } finally {
+      setOtpLoading(false);
+    }
+  }, [email, verifyOtp]);
+
+  const handleOtpResend = useCallback(async () => {
+    setOtpError(null);
+    await requestOtp(email);
+  }, [email, requestOtp]);
+
+  const handleOtpClose = useCallback(() => {
+    setOtpOpen(false);
+    setOtpError(null);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Gradient Mesh */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse-slow animation-delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-3xl animate-pulse-slow animation-delay-2000" />
+      <AnimatedBackground />
 
-        {/* Weather Icons */}
-        <div className="absolute top-20 left-20 text-blue-400/10 animate-float pointer-events-none">
-          <Cloud size={100} strokeWidth={1.5} />
-        </div>
-        <div className="absolute top-32 right-32 text-cyan-400/10 animate-float animation-delay-1000 pointer-events-none">
-          <Droplets size={80} strokeWidth={1.5} />
-        </div>
-        <div className="absolute bottom-32 left-32 text-blue-300/10 animate-float animation-delay-2000 pointer-events-none">
-          <Wind size={90} strokeWidth={1.5} />
-        </div>
-        <div className="absolute bottom-40 right-40 text-cyan-300/10 animate-float animation-delay-1500 pointer-events-none">
-          <Waves size={70} strokeWidth={1.5} />
-        </div>
-
-        {/* Grid Pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.03)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
-      </div>
-
-      {/* Back Button */}
       <button
         onClick={() => navigate('/')}
-        className="absolute top-8 left-8 group bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl w-12 h-12 flex items-center justify-center text-white/70 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-300 z-50"
+        aria-label="Go back to home"
+        className="absolute top-8 left-8 z-50 group bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl w-12 h-12 flex items-center justify-center text-white/70 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-300"
       >
-        <ArrowLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+        <ArrowLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true" />
       </button>
 
-      {/* Main Content */}
-      <div className="relative z-10 w-full max-w-md">
-        {/* Header Section */}
-        <div className="text-center mb-10 space-y-4">
-          {/* Logo */}
+      <main className="relative z-10 w-full max-w-md animate-fade-up">
+        <header className="text-center mb-10 space-y-4">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-2xl shadow-blue-500/20 mb-2">
-            <img
-              src="/pagasa-logo.png"
-              alt="PAGASA Logo"
-              className="w-16 h-16 object-contain drop-shadow-lg"
-            />
+            <img src="/pagasa-logo.png" alt="PAGASA Logo" className="w-16 h-16 object-contain drop-shadow-lg" />
           </div>
-
-          {/* Title */}
           <div className="space-y-2">
-            <h1 className="text-5xl font-bold text-white tracking-tight">
-              WaveLab
-            </h1>
-            <div className="flex items-center justify-center gap-2 text-blue-300/90">
+            <h1 className="text-5xl font-bold text-white tracking-tight">WaveLab</h1>
+            <div className="flex items-center justify-center gap-2 text-blue-300/90" aria-hidden="true">
               <div className="h-px w-8 bg-gradient-to-r from-transparent to-blue-400/50" />
               <p className="text-sm font-medium tracking-wide uppercase">PAGASA</p>
               <div className="h-px w-8 bg-gradient-to-l from-transparent to-blue-400/50" />
@@ -102,246 +202,54 @@ const Login = () => {
               Philippine Atmospheric, Geophysical and Astronomical Services Administration
             </p>
           </div>
-        </div>
+        </header>
 
-        {/* Form Card */}
         <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/10 relative overflow-hidden">
-          {/* Card Glow Effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 rounded-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 rounded-3xl pointer-events-none" aria-hidden="true" />
+          <div className="relative space-y-4">
 
-          <div className="relative">
-            <form onSubmit={onSubmit} className="space-y-5">
-              {/* Global Error */}
-              {error && (
-                <div className="flex items-center gap-3 text-red-200 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-4 backdrop-blur-sm animate-shake">
-                  <AlertCircle size={18} className="flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
+            {emailUnverified && (
+              <UnverifiedEmailBanner
+                email={email}
+                status={resendStatus}
+                error={resendError}
+                cooldown={cooldown}
+                onResend={() => resendVerification(email)}
+              />
+            )}
 
-              {/* Email Field */}
-              <div className="space-y-2">
-                <label className="text-blue-200/80 text-sm font-medium ml-1">Email Address</label>
-                <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300/60 group-focus-within:text-blue-300 transition-colors">
-                    <Mail size={20} />
-                  </div>
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={handleEmailChange}
-                    onBlur={() => handleBlur('email')}
-                    className={`w-full pl-12 pr-12 py-3.5 bg-white/5 backdrop-blur-sm rounded-xl text-white border ${emailError ? 'border-red-500/50 focus:border-red-500/70' : 'border-white/10 focus:border-blue-400/50'} placeholder:text-white/30 outline-none transition-all duration-200 focus:bg-white/10 focus:shadow-lg focus:shadow-blue-500/10 hover:bg-white/[0.07]`} />
-                  {hasEmailSuccess && (
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-green-400 animate-scale-in">
-                      <Check size={20} />
-                    </div>
-                  )}
-                </div>
-                {emailError && (
-                  <div className="flex items-center gap-2 text-red-300/90 text-xs ml-1 animate-slide-down">
-                    <AlertCircle size={12} />
-                    <span>{emailError}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Password Field */}
-              <div className="space-y-2">
-                <label className="text-blue-200/80 text-sm font-medium ml-1">Password</label>
-                <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300/60 group-focus-within:text-blue-300 transition-colors">
-                    <Lock size={20} />
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={handlePasswordChange}
-                    onBlur={() => handleBlur('password')}
-                    className={`
-                      w-full pl-12 pr-12 py-3.5 bg-white/5 backdrop-blur-sm rounded-xl text-white
-                      border ${passwordError ? 'border-red-500/50 focus:border-red-500/70' : 'border-white/10 focus:border-blue-400/50'}
-                      placeholder:text-white/30 outline-none
-                      transition-all duration-200
-                      focus:bg-white/10 focus:shadow-lg focus:shadow-blue-500/10
-                      hover:bg-white/[0.07]
-                    `}
-                  />
-                  <button
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-300/60 hover:text-blue-300 transition-colors"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-                {passwordError && (
-                  <div className="flex items-center gap-2 text-red-300/90 text-xs ml-1 animate-slide-down">
-                    <AlertCircle size={12} />
-                    <span>{passwordError}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Forgot Password */}
-              <div className="text-right">
-                <button
-                  type="button"
-                  className="text-sm text-blue-300/70 hover:text-blue-300 font-medium transition-colors"
-                >
-                  Forgot password?
-                </button>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="
-                  w-full py-3.5 mt-2
-                  bg-gradient-to-r from-blue-500 to-cyan-500 
-                  text-white font-semibold rounded-xl
-                  shadow-lg shadow-blue-500/25
-                  hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02]
-                  active:scale-[0.98]
-                  disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-                  transition-all duration-200
-                  flex items-center justify-center gap-2
-                  relative overflow-hidden
-                  group
-                "
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                <span className="relative flex items-center gap-2">
-                  {isLoading ? (
-                    <>
-                      <Loader2 size={20} className="animate-spin" />
-                      Signing In...
-                    </>
-                  ) : (
-                    'Sign In'
-                  )}
-                </span>
-              </button>
-
-              {/* Divider */}
-              <div className="relative py-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="px-4 bg-transparent text-blue-200/40">New to WaveLab?</span>
-                </div>
-              </div>
-
-              {/* Register Link */}
-              <button
-                type="button"
-                onClick={() => navigate('/register')}
-                className="
-                  w-full py-3.5
-                  bg-white/5 backdrop-blur-sm
-                  text-blue-300 font-medium rounded-xl
-                  border border-white/10
-                  hover:bg-white/10 hover:border-white/20
-                  transition-all duration-200
-                "
-              >
-                Create an Account
-              </button>
-            </form>
+            <LoginForm
+              formState={{ email, password, touched, emailError, passwordError, hasEmailSuccess }}
+              handlers={{ handleEmailChange, handlePasswordChange, handleBlur }}
+              auth={{ error, isLoading }}
+              visibility={{ showPassword, togglePasswordVisibility }}
+              captchaVerified={!!captchaToken}
+              captchaKey={captchaKey}         // ← passed down so LoginForm can key CaptchaWidget
+              onCaptchaVerify={setCaptchaToken}
+              onSubmit={onSubmit}
+              onNavigate={navigate}
+            />
           </div>
         </div>
 
-        {/* Footer Text */}
         <p className="text-center text-blue-200/40 text-xs mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy
+          By continuing, you agree to our{' '}
+          <button type="button" className="underline underline-offset-2 hover:text-blue-200/70 transition-colors">Terms of Service</button>
+          {' '}and{' '}
+          <button type="button" className="underline underline-offset-2 hover:text-blue-200/70 transition-colors">Privacy Policy</button>
         </p>
-      </div>
+      </main>
 
-      {/* Custom Animations */}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-        }
-
-        @keyframes pulse-slow {
-          0%, 100% {
-            opacity: 0.3;
-          }
-          50% {
-            opacity: 0.6;
-          }
-        }
-
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-4px); }
-          75% { transform: translateX(4px); }
-        }
-
-        @keyframes slide-down {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.8) translateY(-50%);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(-50%);
-          }
-        }
-
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-
-        .animate-pulse-slow {
-          animation: pulse-slow 8s ease-in-out infinite;
-        }
-
-        .animate-shake {
-          animation: shake 0.4s ease-in-out;
-        }
-
-        .animate-slide-down {
-          animation: slide-down 0.3s ease-out;
-        }
-
-        .animate-scale-in {
-          animation: scale-in 0.3s ease-out;
-        }
-
-        .animation-delay-1000 {
-          animation-delay: 1s;
-        }
-
-        .animation-delay-1500 {
-          animation-delay: 1.5s;
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-      `}</style>
+      {otpOpen && (
+        <OtpModal
+          email={email}
+          onVerify={handleOtpVerify}
+          onResend={handleOtpResend}
+          onClose={handleOtpClose}
+          isLoading={otpLoading}
+          error={otpError}
+        />
+      )}
     </div>
   );
 };

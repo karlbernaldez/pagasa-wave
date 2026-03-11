@@ -37,7 +37,7 @@ export const createProject = (projectData) =>
   });
 
 // Get all projects for current user
-export const fetchUserProjects = ({ page = 1, limit = 8, search = '', status = '' } = {}) => {
+export const fetchUserProjects = ({ page = 1, limit, search = '', status = '' } = {}) => {
   const params = new URLSearchParams({ page, limit, search, status });
   return request(`${PROJECT_API_BASE_URL}?${params}`);
 };
@@ -51,6 +51,13 @@ export const fetchLatestUserProject = async () => {
 // Get project by ID
 export const fetchProjectById = (id) =>
   request(`${PROJECT_API_BASE_URL}/${id}`);
+
+// Rename project (any status — name only)
+export const renameProject = (id, name) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/rename`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
 
 // Update project (Draft or Rejected only)
 export const updateProjectById = (id, projectData) =>

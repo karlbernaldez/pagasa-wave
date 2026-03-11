@@ -13,6 +13,7 @@ const AuditLogSchema = new Schema({
     enum: [
       'created',
       'edited',
+      'renamed',
       'submitted',
       'moved_to_review',
       'approved',
@@ -118,7 +119,7 @@ const ProjectSchema = new Schema({
 
   /* ===============================
      Ownership & Review Metadata
-  =============================== */
+  ================================ */
 
   owner: {
     type: Schema.Types.ObjectId,
@@ -127,7 +128,6 @@ const ProjectSchema = new Schema({
   },
 
   submittedAt: Date,
-
   reviewedAt: Date,
 
   approvedBy: {
@@ -141,8 +141,27 @@ const ProjectSchema = new Schema({
   },
 
   reviewComment: String,
-
   publishedAt: Date,
+
+  /* ===============================
+     Access Tracking
+  ================================ */
+
+  lastOpenedAt: {
+    type: Date,
+    default: null
+  },
+
+  lastOpenedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+
+  openCount: {
+    type: Number,
+    default: 0
+  },
 
   /* ===============================
      Version History & Audit

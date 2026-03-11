@@ -122,7 +122,7 @@ function addRasterLayer(map, sourceId) {
     },
   });
 
-  console.log('ADDING WIND RASTER')
+  // console.log('ADDING WIND RASTER')
 }
 
 function addWindParticlesLayer(map) {

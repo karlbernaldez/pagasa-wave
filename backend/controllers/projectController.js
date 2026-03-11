@@ -51,7 +51,12 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
 
   const projects = await Project.find(filter)
     .populate('owner', 'firstName lastName email username')
-    .sort({ submittedAt: -1, createdAt: -1 })
+    .sort({
+      lastOpenedAt: -1,  // 🔥 most recently opened
+      updatedAt: -1,     // recently edited
+      submittedAt: -1,   // recent submissions
+      createdAt: -1      // fallback
+    })
     .lean();
 
   res.json(projects);
@@ -121,7 +126,15 @@ export const getUserProjects = asyncHandler(async (req, res) => {
   const skip = (Number(page) - 1) * Number(limit);
 
   const [projects, total] = await Promise.all([
-    Project.find(query).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
+    Project.find(query)
+      .sort({
+        lastOpenedAt: -1,  // recently opened
+        updatedAt: -1,     // recently edited
+        createdAt: -1      // fallback
+      })
+      .skip(skip)
+      .limit(Number(limit))
+      .lean(),
     Project.countDocuments(query)
   ]);
 
@@ -160,6 +173,48 @@ export const getProjectById = asyncHandler(async (req, res) => {
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
   await project.populate('owner', 'firstName lastName email position');
+
+  // Track project access
+  project.lastOpenedAt = new Date();
+  project.lastOpenedBy = req.user.id;
+  project.openCount += 1;
+
+  await project.save();
+
+  res.json(project);
+});
+
+/* =========================================================
+   UPDATE PROJECT NAME
+========================================================= */
+export const renameProject = asyncHandler(async (req, res) => {
+  const { name } = req.body;
+
+  if (!name || !name.trim()) {
+    throwError('name is required', 400);
+  }
+
+  const project = await ensureProjectExists(req.params.id, req.user.id);
+
+  // No-op if the name hasn't changed
+  if (project.name === name.trim()) {
+    return res.json(project);
+  }
+
+  await ensureUniqueProjectName(name.trim(), req.user.id, project._id);
+
+  const previousName = project.name;
+  project.name = name.trim();
+
+  project.auditLogs.push({
+    action: 'renamed',
+    performedBy: req.user.id,
+    previousStatus: project.status,
+    newStatus: project.status,
+    comment: `Renamed from "${previousName}" to "${name.trim()}"`,
+  });
+
+  await project.save();
 
   res.json(project);
 });

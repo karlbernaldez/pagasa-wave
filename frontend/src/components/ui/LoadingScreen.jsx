@@ -56,7 +56,7 @@ const LoadingScreen = ({ isDarkMode = false, message = "Please wait..." }) => {
         }`} />
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;

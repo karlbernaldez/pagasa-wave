@@ -6,49 +6,22 @@ import { createProject, deleteProjectById } from '@/api/projectAPI';
 import { isMapLoaded, mapSourceIds } from '@dashboards/forecaster/map/helpers/mapGlobalState';
 
 function waitForLayersRendered(map, layerIds = []) {
-  console.log(layerIds)
   return new Promise((resolve) => {
     const check = () => {
-      console.groupCollapsed('[waitForLayersRendered] render check');
-
       for (const id of layerIds) {
         const layer = map.getLayer(id);
 
-        if (!layer) {
-          console.log(`⏳ Layer missing: ${id}`);
-          console.groupEnd();
-          return;
-        }
+        if (!layer) return;
 
         const sourceId = layer.source;
-        if (!sourceId) {
-          console.log(`⚠️ Layer has no source: ${id}`);
-          console.groupEnd();
-          return;
-        }
+        if (!sourceId) return;
 
         const source = map.getSource(sourceId);
-        if (!source) {
-          console.log(`⏳ Source not found: ${sourceId} (layer: ${id})`);
-          console.groupEnd();
-          return;
-        }
+        if (!source) return;
 
         const loaded = map.isSourceLoaded(sourceId);
-        console.log(
-          `🔎 ${id}`,
-          `source=${sourceId}`,
-          `loaded=${loaded}`
-        );
-
-        if (!loaded) {
-          console.groupEnd();
-          return;
-        }
+        if (!loaded) return;
       }
-
-      console.log('✅ All layers rendered:', layerIds);
-      console.groupEnd();
 
       map.off('render', check);
       resolve();
@@ -93,8 +66,6 @@ const restoreLayers = (map) => {
         visible = layersState.TCAD ? 'visible' : 'none';
         break;
       case 'graticules':
-        // case 'ERA5_c1':
-        // case 'ERA5_c2':
         visible = layersState.ShippingZone ? 'visible' : 'none';
         break;
       case 'wind-layer':
@@ -109,22 +80,14 @@ const restoreLayers = (map) => {
 };
 
 async function toggleThemeAndWait(setIsDarkMode, value) {
-  console.log('🎨 toggleThemeAndWait → start');
-  console.log('🌓 Target theme:', value ? 'dark' : 'light');
-
   setIsDarkMode(value);
   localStorage.setItem('isDarkMode', String(value));
-  console.log('✅ Theme state updated');
 
-  // wait until mapSetup marks it ready
   while (!isMapLoaded) {
-    console.log('⏳ Waiting for global isMapLoaded…');
     await new Promise(r => setTimeout(r, 50));
   }
-
-  console.log('🎉 toggleThemeAndWait → complete');
 }
-// --- Snapshot helper ---
+
 // --- Snapshot helper ---
 async function captureSnapshot(theme) {
   if (!map) return null;
@@ -132,8 +95,6 @@ async function captureSnapshot(theme) {
   if (theme !== "light" && theme !== "dark") {
     throw new Error("captureSnapshot requires theme: 'light' | 'dark'");
   }
-
-  console.group("📸 captureSnapshot", theme);
 
   await map.fitBounds(
     [
@@ -160,7 +121,6 @@ async function captureSnapshot(theme) {
     },
   });
 
-  console.groupEnd();
   return image;
 }
 
@@ -172,11 +132,8 @@ export async function downloadCachedSnapshotZip(
 ) {
   if (!map) throw new Error("No map reference");
 
-  console.group("📦 downloadCachedSnapshotZip");
-
   const originalTheme = isDarkMode;
 
-  // ✅ LOCAL BUFFER (NOT React state)
   const snapshotBuffer = {
     light: null,
     dark: null,
@@ -227,9 +184,6 @@ export async function downloadCachedSnapshotZip(
   document.body.removeChild(link);
 
   restoreLayers(map);
-
-  console.log("✅ Export complete");
-  console.groupEnd();
 }
 
 // --- Logout ---
@@ -265,13 +219,8 @@ export const handleCreateProject = async ({
       forecastDate,
     };
 
-    console.log('🚀 Creating project with payload:', payload);
-
     const created = await createProject(payload);
 
-    console.log('✅ Project created:', created);
-
-    // ✅ SAFE localStorage persistence (no eval)
     const storageValues = {
       projectId: created._id,
       projectName,
@@ -335,16 +284,12 @@ export const handleDeleteProject = async ({
   }
 
   try {
-    // Call the API
     const result = await deleteProjectById(projectId);
-    console.log('🗑️ Project deleted:', result);
 
-    // Remove from localStorage
     ['projectId', 'projectName', 'chartType', 'forecastDate'].forEach((key) =>
       localStorage.removeItem(key)
     );
 
-    // Fire success toast
     Swal.fire({
       toast: true,
       position: 'top-end',
@@ -354,17 +299,13 @@ export const handleDeleteProject = async ({
       timer: 2000,
     });
 
-    // Trigger UI refresh if parent wants it
     if (typeof onDelete === 'function') onDelete(projectId);
 
-    // Navigate or reload
     if (navigateAfterDelete) {
       setTimeout(() => window.location.reload(), 1200);
     }
 
   } catch (error) {
-    console.error('❌ Delete failed:', error);
-
     Swal.fire({
       toast: true,
       position: 'top-end',

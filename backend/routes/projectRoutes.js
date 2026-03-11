@@ -13,7 +13,8 @@ import {
   approveProject,
   rejectProject,
   publishProject,
-  archiveProject
+  archiveProject,
+  renameProject
 } from '../controllers/projectController.js';
 
 import protect from '../middleware/authMiddleware.js';
@@ -36,7 +37,8 @@ router.get('/latest', getLatestUserProject);
 router.get('/:id', isOwnerOrAdmin, getProjectById);
 
 router.put('/:id', isOwnerOrAdmin, updateProject); 
-// IMPORTANT: updateProject must NOT allow status changes
+
+router.patch('/:id/rename', isOwnerOrAdmin, renameProject); // IMPORTANT: updateProject must NOT allow status changes
 
 router.delete('/:id', isOwnerOrAdmin, deleteProject);
 
