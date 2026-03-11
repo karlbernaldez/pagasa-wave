@@ -1,0 +1,73 @@
+name: WaveLab Deploy Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+
+          script: |
+            if [ "${{ github.ref_name }}" = "main" ]; then
+              echo "Deploying PRODUCTION..."
+
+              cd /var/www/wavelab/prod
+              git pull origin main
+
+              cd frontend
+              npm install
+              npm run build
+
+              cd ../backend
+              npm install
+
+              pm2 restart wavelab-prod
+            fi
+
+            if [ "${{ github.ref_name }}" = "staging" ]; then
+              echo "Deploying STAGING..."
+
+              cd /var/www/wavelab/staging
+              git pull origin staging
+
+              cd frontend
+              npm install
+              npm run build
+
+              cd ../backend
+              npm install
+
+              pm2 restart wavelab-staging
+            fi
+
+            if [ "${{ github.ref_name }}" = "dev" ]; then
+              echo "Deploying DEV..."
+
+              cd /var/www/wavelab/dev
+              git pull origin dev
+
+              cd frontend
+              npm install
+
+              pm2 restart wavelab-dev-frontend
+
+              cd ../backend
+              npm install
+
+              pm2 restart wavelab-dev-api
+            fi
