@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom';
 import HeaderNavbar from '@shared/layouts/components/header/Header';
 import Footer from '@shared/layouts/components/Footer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
+import Chatbot from '@/components/Chatbot/index';
 
 import useRouteChecks from '@/hooks/useRouteChecks';
 import getLayoutConfig from '@/utils/getLayoutConfig';
@@ -53,7 +54,11 @@ const RootLayout = () => {
       {showFooter && (
         <FooterWrapper>
           <Suspense fallback={<div style={{ height: 100 }} />}>
+
             <Footer />
+
+            <Chatbot />
+
           </Suspense>
         </FooterWrapper>
       )}
