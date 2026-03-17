@@ -13,12 +13,14 @@ export const getSelectedElement = (elements, options) => {
  */
 export const parseStoredModels = (storedValue, fallback) => {
   if (!storedValue) return [fallback];
+  if (storedValue === 'NONE') return [];
   const parsed = storedValue
     .split(',')
     .map((v) => v.trim())
     .filter(Boolean);
   return parsed.length ? parsed : [fallback];
 };
+
 
 /**
  * Returns a human-readable summary of the currently selected model(s).
