@@ -43,6 +43,8 @@ scripts/.env
 
 
 wavetiles/cog
+wavetiles/wavelab
+wavetiles/scripts/geojson_output/
 wavetiles/geotiff
 wavetiles/input
 wavetiles/tiles

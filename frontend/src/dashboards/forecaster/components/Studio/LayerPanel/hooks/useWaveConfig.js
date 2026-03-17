@@ -10,10 +10,10 @@ import {
 import { parseStoredModels, readBoolStorage } from '../utils/layerPanelUtils';
 
 const OFF_ELEMENTS = {
-  particles: false,
-  raster: false,
+  particles:     false,
+  raster:        false,
   waveDirection: false,
-  wavePeriod: false,
+  wavePeriod:    false,
 };
 
 const MRI3_TIMESTEP    = '012';
@@ -23,21 +23,44 @@ const normalizeModelName = (model = '') => model.trim().toUpperCase();
 
 const buildWaveTileUrl = ({ model, theme, date }) => {
   const m = normalizeModelName(model);
-  if (m === 'MRI3') return `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`;
-  if (m === 'WW3')  return `${WAVE_BUCKET_BASE}/${m}/${theme}/2026011200/{z}/{x}/{y}.png`;
+  if (m === 'MRI3')  return `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`;
+  if (m === 'WW3')   return `${WAVE_BUCKET_BASE}/${m}/${theme}/2026011200/{z}/{x}/{y}.png`;
   return `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}/{z}/{x}/{y}.png`;
 };
 
-// ── Surgical raster sync ──────────────────────────────────────────────────────
+// ── Element → layer visibility map ───────────────────────────────────────────
 //
-// Strategy (no flicker):
-//   1. Model added?     → add only the new source/layer
-//   2. Model removed?   → remove only the stale source/layer
-//   3. Theme changed?   → remove + re-add only the affected source/layer
-//   4. Just opacity/visibility change? → setPaintProperty/setLayoutProperty in-place
+// Each element key maps to which map layers should be visible.
+// Layers not listed for an element are hidden.
 //
-// Nothing is torn down unless it actually needs to change.
+const ELEMENT_LAYER_MAP = {
+  raster:        ['wave-raster'],      // handled by syncWaveRasterLayers; listed for clarity
+  waveDirection: ['wave-direction'],
+  wavePeriod:    [],                   // period is raster-only — set the right tile URL instead
+  particles:     [],                   // particles handled separately if you add that layer
+};
 
+// Symbol layers that this hook controls (toggled exclusively)
+const SYMBOL_LAYERS = ['wave-direction', 'wave-arrows'];
+
+// ── Sync symbol layers based on active element ────────────────────────────────
+const syncWaveSymbolLayers = (map, elements = {}, enabled = false) => {
+  if (!map) return;
+
+  SYMBOL_LAYERS.forEach((layerId) => {
+    if (!map.getLayer(layerId)) return;
+
+    let show = false;
+    if (enabled) {
+      if (layerId === 'wave-direction') show = Boolean(elements.waveDirection);
+      if (layerId === 'wave-arrows')    show = Boolean(elements.waveDirection); // wind barbs follow same toggle
+    }
+
+    map.setLayoutProperty(layerId, 'visibility', show ? 'visible' : 'none');
+  });
+};
+
+// ── Surgical raster sync ──────────────────────────────────────────────────────
 const syncWaveRasterLayers = (map, models = [], showRaster = false, isDarkMode = false, themeChanged = false) => {
   if (!map) return;
 
@@ -62,7 +85,7 @@ const syncWaveRasterLayers = (map, models = [], showRaster = false, isDarkMode =
     selectedModels.map((m) => `${WAVE_RASTER_SOURCE_PREFIX}${m}`)
   );
 
-  // ── 3. Remove stale models (deselected) ───────────────────────────────────
+  // ── 3. Remove stale (deselected) model layers ─────────────────────────────
   existingSourceIds.forEach((sourceId) => {
     if (!targetSourceIds.has(sourceId)) {
       const layerId = sourceId.replace(WAVE_RASTER_SOURCE_PREFIX, WAVE_RASTER_LAYER_PREFIX);
@@ -80,73 +103,38 @@ const syncWaveRasterLayers = (map, models = [], showRaster = false, isDarkMode =
     const layerExists  = map.getLayer(layerId);
 
     if (sourceExists && themeChanged) {
-      // Theme flipped — swap tile URL for this source only, no other models touched
       if (layerExists)   map.removeLayer(layerId);
       map.removeSource(sourceId);
-
-      map.addSource(sourceId, {
-        type: 'raster',
-        tiles: [tileUrl],
-        tileSize: 256,
-        bounds: [100, -5, 180, 50],
-        scheme: 'xyz',
-      });
-      map.addLayer(
-        {
-          id: layerId,
-          type: 'raster',
-          source: sourceId,
-          paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0 },
-          layout: { visibility: showRaster ? 'visible' : 'none' },
-        },
-        'graticules'
-      );
+      map.addSource(sourceId, { type: 'raster', tiles: [tileUrl], tileSize: 256, bounds: [100, -5, 180, 50], scheme: 'xyz' });
+      map.addLayer({ id: layerId, type: 'raster', source: sourceId,
+        paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0 },
+        layout: { visibility: showRaster ? 'visible' : 'none' } }, 'graticules');
     } else if (sourceExists && layerExists) {
-      // Already correct — update paint/layout in-place, no flicker
       map.setPaintProperty(layerId,  'raster-opacity', opacity);
       map.setLayoutProperty(layerId, 'visibility', showRaster ? 'visible' : 'none');
     } else {
-      // New model — add from scratch
       if (!map.getSource(sourceId)) {
-        map.addSource(sourceId, {
-          type: 'raster',
-          tiles: [tileUrl],
-          tileSize: 256,
-          bounds: [100, -5, 180, 50],
-          scheme: 'xyz',
-        });
+        map.addSource(sourceId, { type: 'raster', tiles: [tileUrl], tileSize: 256, bounds: [100, -5, 180, 50], scheme: 'xyz' });
       }
       if (!map.getLayer(layerId)) {
-        map.addLayer(
-          {
-            id: layerId,
-            type: 'raster',
-            source: sourceId,
-            paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0 },
-            layout: { visibility: showRaster ? 'visible' : 'none' },
-          },
-          'graticules'
-        );
+        map.addLayer({ id: layerId, type: 'raster', source: sourceId,
+          paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0 },
+          layout: { visibility: showRaster ? 'visible' : 'none' } }, 'graticules');
       }
     }
   });
 
-  // ── 5. Re-balance opacity across all active layers after count changes ─────
+  // ── 5. Re-balance opacity ─────────────────────────────────────────────────
   selectedModels.forEach((model) => {
     const layerId = `${WAVE_RASTER_LAYER_PREFIX}${model}`;
-    if (map.getLayer(layerId)) {
-      map.setPaintProperty(layerId, 'raster-opacity', opacity);
-    }
+    if (map.getLayer(layerId)) map.setPaintProperty(layerId, 'raster-opacity', opacity);
   });
 
   // ── 6. Glass overlay visibility ───────────────────────────────────────────
   ['wave-glass-fill', 'wave-glass-depth'].forEach((id) => {
     if (map.getLayer(id)) {
-      map.setLayoutProperty(
-        id,
-        'visibility',
-        showRaster && selectedModels.length > 0 ? 'visible' : 'none'
-      );
+      map.setLayoutProperty(id, 'visibility',
+        showRaster && selectedModels.length > 0 ? 'visible' : 'none');
     }
   });
 };
@@ -160,7 +148,6 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     elements: OFF_ELEMENTS,
   });
 
-  // Track previous theme so we only trigger a source swap when it actually changes
   const prevThemeRef = useRef(isDarkMode ? 'dark' : 'light');
 
   const applyWaveLayers = useCallback((map, config, dark) => {
@@ -168,9 +155,16 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
 
     const nextTheme    = dark ? 'dark' : 'light';
     const themeChanged = prevThemeRef.current !== nextTheme;
-    const showRaster   = Boolean(config.enabled && config.elements?.raster);
 
+    const elements  = config.elements || OFF_ELEMENTS;
+    const enabled   = Boolean(config.enabled);
+
+    // Raster: only visible when element === 'raster' AND layer is enabled
+    const showRaster = enabled && Boolean(elements.raster);
     syncWaveRasterLayers(map, config.models || [], showRaster, dark, themeChanged);
+
+    // Symbol layers: only visible for their specific element, mutually exclusive
+    syncWaveSymbolLayers(map, elements, enabled);
 
     prevThemeRef.current = nextTheme;
   }, []);
@@ -190,11 +184,11 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     setWaveConfig(saved);
   }, []);
 
-  // ── Re-sync only when isDarkMode flips ────────────────────────────────────
+  // ── Re-sync when isDarkMode flips ─────────────────────────────────────────
   useEffect(() => {
     setWaveConfig((prev) => {
       applyWaveLayers(mapRef.current, prev, isDarkMode);
-      return prev; // no state change, just side-effect
+      return prev;
     });
   }, [isDarkMode, mapRef, applyWaveLayers]);
 
@@ -205,6 +199,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       localStorage.setItem(STORAGE_KEYS.WAVE_ENABLED, String(next.enabled));
 
       if (!next.enabled) {
+        // Turned off — hide everything
         applyWaveLayers(mapRef.current, { ...next, elements: OFF_ELEMENTS }, isDarkMode);
       } else {
         applyWaveLayers(mapRef.current, next, isDarkMode);
@@ -214,17 +209,21 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     });
   }, [mapRef, isDarkMode, applyWaveLayers]);
 
-  // ── Select element ────────────────────────────────────────────────────────
+  // ── Select element (mutually exclusive) ───────────────────────────────────
   const setWaveElement = useCallback((elementId) => {
     setWaveConfig((prev) => {
+      // Turn off all elements, then activate only the selected one
       const updatedElements = WAVE_ELEMENTS.reduce(
         (acc, opt) => ({ ...acc, [opt.id]: opt.id === elementId }),
         {}
       );
       const next = { ...prev, elements: updatedElements };
+
+      // Persist
       WAVE_ELEMENTS.forEach((opt) =>
         localStorage.setItem(opt.storageKey, String(next.elements[opt.id]))
       );
+
       applyWaveLayers(mapRef.current, next, isDarkMode);
       return next;
     });
