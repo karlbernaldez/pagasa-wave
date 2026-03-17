@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import { sendUserUpdateEmail } from '#services/email/sendUserUpdateEmail';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -82,28 +83,29 @@ export const getAllUsers = async (req, res) => {
   try {
     const page = clampInt(req.query.page, 1, Number.MAX_SAFE_INTEGER, 1);
     const limit = snapToPageOption(clampInt(req.query.limit, 5, 50, DEFAULT_LIMIT));
-    const skip = (page - 1) * limit;
     const filter = buildUserFilter(req.query);
 
-    const [total, users] = await Promise.all([
-      User.countDocuments(filter),
-      User.find(filter)
-        .select(LIST_FIELDS)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-    ]);
-
+    const total = await User.countDocuments(filter);
     const totalPages = Math.max(1, Math.ceil(total / limit));
+
+    const safePage = Math.min(page, totalPages);
+    const skip = (safePage - 1) * limit;
+
+    const users = await User.find(filter)
+      .select(LIST_FIELDS)
+      .sort({ createdAt: -1, _id: -1 }) // ✅ stable sort
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
     return res.status(200).json({
       data: users.map(formatUser),
       total,
-      page: Math.min(page, totalPages), // guard against out-of-range page
+      page: safePage,
       limit,
       totalPages,
     });
+
   } catch (err) {
     console.error('[getAllUsers]', err);
     return res.status(500).json({ message: 'Error fetching users', error: err.message });
@@ -298,6 +300,8 @@ export const updateUserStatus = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    const previousStatus = user.status;
+
     // First-time activation audit
     if (status === 'active' && !user.activatedAt) {
       user.activatedAt = new Date();
@@ -306,6 +310,12 @@ export const updateUserStatus = async (req, res) => {
 
     user.status = status;
     await user.save();
+
+    // Notify the user of their status change — fire-and-forget so a
+    // failed email never rolls back a successful status update.
+    sendUserUpdateEmail(user.email, user.firstName, [
+      { field: 'Status', from: previousStatus, to: status },
+    ]).catch((err) => console.warn('[updateUserStatus] Email notification failed:', err.message));
 
     return res.status(200).json({ message: 'Status updated successfully', user });
   } catch (err) {

@@ -32,6 +32,11 @@ const EDITABLE_PROFILE_FIELDS = [
   'role',
 ];
 
+// Statuses an admin should never be able to manually assign.
+// "pending" is system-assigned on registration — reverting to it makes no
+// sense and could break downstream approval flows.
+const EXCLUDED_STATUSES = new Set(['all', 'pending']);
+
 const getUserId = (user) => user?._id || user?.id;
 
 const pickChangedFields = (source, baseline, fields) => {
@@ -238,6 +243,15 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave, onDelete })
   const data = isDarkMode ? 'text-slate-300' : 'text-slate-600';
   const divider = isDarkMode ? 'border-slate-800' : 'border-slate-100';
 
+  // Always exclude "all". Only exclude "pending" if the user isn't currently
+  // pending — if they are, keep it visible as their current value.
+  const assignableStatuses = STATUS_OPTIONS.filter((o) => {
+    const value = (typeof o === 'string' ? o : o.value).toLowerCase();
+    if (value === 'all') return false;
+    if (value === 'pending') return user?.status?.toLowerCase() === 'pending';
+    return true;
+  });
+
 
   /* ---------- RENDER ---------- */
 
@@ -370,21 +384,16 @@ export function ManageUserModal({ user, isDarkMode, onClose, onSave, onDelete })
                 onChange={(e) => handleFieldChange('status', e.target.value)}
                 className={selectClasses}
               >
-                {STATUS_OPTIONS
-                  .filter(o => {
-                    const value = typeof o === "string" ? o : o.value;
-                    return value.toLowerCase() !== "all";
-                  })
-                  .map(o => {
-                    const value = typeof o === "string" ? o : o.value;
-                    const label = typeof o === "string" ? o : o.label;
+                {assignableStatuses.map((o) => {
+                  const value = typeof o === 'string' ? o : o.value;
+                  const label = typeof o === 'string' ? o : o.label;
 
-                    return (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    );
-                  })}
+                  return (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

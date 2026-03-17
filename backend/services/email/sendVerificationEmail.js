@@ -1,24 +1,4 @@
-import nodemailer from "nodemailer";
-
-const {
-  EMAIL_HOST = "smtp.hostinger.com",
-  EMAIL_PORT = "465",
-  EMAIL_USER,
-  EMAIL_PASS,
-  EMAIL_FROM,
-  APP_NAME = "WaveLab",
-  APP_URL = "https://wavelab.adovelopers.com"
-} = process.env;
-
-const transporter = nodemailer.createTransport({
-  host: EMAIL_HOST,
-  port: parseInt(EMAIL_PORT, 10),
-  secure: true,
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS
-  }
-});
+import { transporter, FROM_ADDRESS, APP_NAME, APP_URL, EMAIL_USER, NODE_ENV } from './mailer.config.js';
 
 const buildEmailTemplate = ({ title, preheader, body, ctaText, ctaUrl }) => `
 <!DOCTYPE html>
@@ -116,8 +96,7 @@ const buildEmailTemplate = ({ title, preheader, body, ctaText, ctaUrl }) => `
             <td align="center" style="padding:0 48px 24px;">
               <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">
                 Button not working? Copy and paste this link into your browser:<br/>
-                <a href="${ctaUrl}"
-                   style="color:#0ea5e9;word-break:break-all;text-decoration:none;">
+                <a href="${ctaUrl}" style="color:#0ea5e9;word-break:break-all;text-decoration:none;">
                   ${ctaUrl}
                 </a>
               </p>
@@ -144,11 +123,9 @@ const buildEmailTemplate = ({ title, preheader, body, ctaText, ctaUrl }) => `
           </tr>
 
         </table>
-
       </td>
     </tr>
   </table>
-
 </body>
 </html>
 `;
@@ -157,10 +134,10 @@ export const sendVerificationEmail = async (email, username, token) => {
   const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
 
   const html = buildEmailTemplate({
-    title: `Verify your ${APP_NAME} email`,
-    preheader: `Hi ${username}, please verify your email address to activate your ${APP_NAME} account.`,
-    ctaText: "Verify Email Address",
-    ctaUrl: verifyUrl,
+    title:      `Verify your ${APP_NAME} email`,
+    preheader:  `Hi ${username}, please verify your email address to activate your ${APP_NAME} account.`,
+    ctaText:    'Verify Email Address',
+    ctaUrl:     verifyUrl,
     body: `
       <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#0f172a;letter-spacing:-0.5px;">
         Verify your email
@@ -168,7 +145,6 @@ export const sendVerificationEmail = async (email, username, token) => {
       <p style="margin:0 0 24px;font-size:14px;color:#94a3b8;letter-spacing:0.5px;text-transform:uppercase;font-weight:500;">
         Account Activation
       </p>
-
       <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">
         Hi <strong style="color:#0f172a;">${username}</strong>,
       </p>
@@ -176,10 +152,7 @@ export const sendVerificationEmail = async (email, username, token) => {
         Thanks for signing up for ${APP_NAME}! To get started, please verify your
         email address by clicking the button below.
       </p>
-
-      <!-- Expiry notice -->
-      <table cellpadding="0" cellspacing="0" border="0" width="100%"
-             style="margin:28px 0;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:28px 0;">
         <tr>
           <td style="background-color:#f8fafc;border-left:3px solid #0ea5e9;border-radius:4px;padding:14px 18px;">
             <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
@@ -189,18 +162,17 @@ export const sendVerificationEmail = async (email, username, token) => {
           </td>
         </tr>
       </table>
-
       <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">
         If you didn't create a ${APP_NAME} account, you can safely ignore this email —
         no action is required.
       </p>
-    `
+    `,
   });
 
   await transporter.sendMail({
-    from: EMAIL_FROM ?? `${APP_NAME} <${EMAIL_USER}>`,
-    to: email,
+    from:    FROM_ADDRESS,
+    to:      email,
     subject: `Verify your ${APP_NAME} email address`,
-    html
+    html,
   });
 };
