@@ -50,18 +50,24 @@ export async function addWaveSource(map, isDarkMode, model = localStorage.getIte
     if (!map.getSource('wave-points')) {
         map.addSource('wave-points', { type: 'geojson', data: ww3 });
     }
+
+    if (!map.getSource('ph-boundaries')) {
+        map.addSource('ph-boundaries', {
+            type: 'vector',
+            url: 'mapbox://mapbox.country-boundaries-v1',
+        });
+    }
 }
 
 export async function addWaveLayer(map, isDarkMode) {
-    // Add layers (modularized)
     const sourceId = getWaveSourceId(isDarkMode);
-    addRasterLayer(map, sourceId);
+    addRasterLayer(map, sourceId, isDarkMode);
 
     setupPopup(map);
 }
 
 // ------------------- Layer Helper Functions -------------------
-function addRasterLayer(map, sourceId) {
+function addRasterLayer(map, sourceId, isDarkMode) {
     const isWaveRasterVisible = localStorage.getItem('WAVE_RASTER') === 'true';
     if (localStorage.getItem('WAVE_ENABLED') === 'true') {
         map.addLayer({
@@ -108,6 +114,37 @@ function addRasterLayer(map, sourceId) {
             },
         });
 
+        map.addLayer({
+            id: 'ph-overlay',
+            type: 'fill',
+            source: 'ph-boundaries',       // ✅ own source, no conflict
+            'source-layer': 'country_boundaries',
+            filter: [
+                "all",
+                ["match", ["get", "iso_3166_1_alpha_3"], ["PHL"], true, false]
+            ],
+            paint: {
+                'fill-color': isDarkMode ? '#0f1117' : '#f2f2f2',
+                'fill-opacity': 1,
+            },
+        });
+
+        map.addLayer({
+            id: 'ph-overlay-outline',
+            type: 'line',
+            source: 'ph-boundaries',
+            'source-layer': 'country_boundaries',
+            filter: [
+                "all",
+                ["match", ["get", "iso_3166_1_alpha_3"], ["PHL"], true, false]
+            ],
+            paint: {
+                'line-color': isDarkMode ? '#1e3a5f' : '#000000',
+                'line-width': 0.5,
+                'line-opacity': 0.8,
+            },
+        });
+
     }
 }
 
@@ -139,16 +176,16 @@ function addWaveArrowsLayer(map) {
     }, "country-boundaries");
 }
 
-function setupPopup(map) {
+function setupPopup(map, isDarkMode) {
     const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
 
-    map.on('mousemove', 'wind-arrows', (e) => {
+    map.on('mousemove', 'wave-arrows', (e) => {
         if (!e.features.length) return;
         popup.setLngLat(e.lngLat)
-            .setHTML(createWavePopup(e.features[0]))
+            .setHTML(createWavePopup(e.features[0], isDarkMode))
             .setOffset([0, -5])
             .addTo(map);
     });
 
-    map.on('mouseleave', 'wind-arrows', () => popup.remove());
+    map.on('mouseleave', 'wave-arrows', () => popup.remove());
 }

@@ -16,7 +16,7 @@ const THEME_COLORS = {
   },
   light: {
     land: '#f2f2f2',
-    water: '#9cccf2',
+    water: '#cbedfa',
   },
 };
 
