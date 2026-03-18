@@ -3,7 +3,14 @@ import { ChevronDown } from 'lucide-react';
 import LayerGroupCard from './SystemLayers/LayerGroupCard';
 import CheckboxLayerRow from './SystemLayers/CheckboxLayerRow';
 import ConfigurableLayerGroup from './SystemLayers/ConfigurableLayerGroup';
-import { DOMAIN_LAYERS, UTILITY_LAYERS, WIND_MODELS, WAVE_MODELS, WIND_ELEMENTS, WAVE_ELEMENTS } from '../constants/layerConstants';
+import {
+  DOMAIN_LAYERS,
+  UTILITY_LAYERS,
+  WIND_MODELS,
+  WAVE_MODELS,
+  WIND_ELEMENTS,
+  WAVE_ELEMENTS,
+} from '../constants/layerConstants';
 
 const SystemLayersSection = ({
   expanded, onToggleExpand, activeCount,
@@ -13,9 +20,11 @@ const SystemLayersSection = ({
   onToggleDomain, onToggleUtility, onToggleSatellite,
   onToggleWind, onSetWindElement, onToggleWindModel,
   onToggleWave, onSetWaveElement, onToggleWaveModel,
+  onSetWaveDirectionStyle,   // ← new
   isDarkMode,
 }) => (
   <div className={`px-2.5 pt-2 pb-2.5 border-t ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
+
     {/* Section header */}
     <button
       onClick={onToggleExpand}
@@ -44,7 +53,8 @@ const SystemLayersSection = ({
 
     {expanded && (
       <div className="space-y-1.5">
-        {/* ── Domains ────────────────────────────────────────────────────── */}
+
+        {/* ── Domains ──────────────────────────────────────────────────── */}
         <LayerGroupCard
           emoji="🗺️"
           title="Domains"
@@ -66,7 +76,7 @@ const SystemLayersSection = ({
           ))}
         </LayerGroupCard>
 
-        {/* ── Utilities ──────────────────────────────────────────────────── */}
+        {/* ── Utilities ────────────────────────────────────────────────── */}
         <LayerGroupCard
           emoji="🛠️"
           title="Utilities"
@@ -88,7 +98,7 @@ const SystemLayersSection = ({
           ))}
         </LayerGroupCard>
 
-        {/* ── Satellite ──────────────────────────────────────────────────── */}
+        {/* ── Satellite ────────────────────────────────────────────────── */}
         <button
           onClick={onToggleSatellite}
           className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all ${
@@ -121,7 +131,7 @@ const SystemLayersSection = ({
           }`} />
         </button>
 
-        {/* ── Wind ───────────────────────────────────────────────────────── */}
+        {/* ── Wind ─────────────────────────────────────────────────────── */}
         <ConfigurableLayerGroup
           emoji="💨"
           title="Wind"
@@ -138,7 +148,7 @@ const SystemLayersSection = ({
           compact
         />
 
-        {/* ── Wave ───────────────────────────────────────────────────────── */}
+        {/* ── Wave ─────────────────────────────────────────────────────── */}
         <ConfigurableLayerGroup
           emoji="🌊"
           title="Wave"
@@ -150,6 +160,7 @@ const SystemLayersSection = ({
           onToggleEnabled={onToggleWave}
           onSetElement={onSetWaveElement}
           onToggleModel={onToggleWaveModel}
+          onSetDirectionStyle={onSetWaveDirectionStyle}   // ← new
           modelCols={2}
           isDarkMode={isDarkMode}
           compact

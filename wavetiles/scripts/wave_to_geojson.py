@@ -2,21 +2,33 @@
 """
 wave_to_geojson.py — Convert WW3, MRI3, and ECWAM wave model files to GeoJSON.
 
+Output filenames:
+  ww3-wave-today.geojson
+  mri3-wave-today.geojson
+  ecwam-wave-today.geojson
+
+With --all-times:
+  ww3-wave-today.geojson, ww3-wave-today-t001.geojson, ...
+
 Usage:
-  python3 wave_to_geojson.py --ww3  ../input/2026011200/ww3_grdo.20260115T00.nc
-  python3 wave_to_geojson.py --mri3 ../input/mri3_2026011200/2026011200_PH.nc
-  python3 wave_to_geojson.py --ecwam ../input/12/00/W1P01120000011200011
+  python3 wave_to_geojson.py --ww3  ../input/ww3.nc
+  python3 wave_to_geojson.py --mri3 ../input/mri3.nc
+  python3 wave_to_geojson.py --ecwam ../input/W1P011200...
 
-  # Directories (processes all matching files)
-  python3 wave_to_geojson.py --ww3-dir  ../input/2026011200/ \\
-                              --mri3-dir ../input/mri3_2026011200/ \\
-                              --ecwam-dir ../input/12/00/
+  # Per-model subsampling steps (overrides --step for that model)
+  python3 wave_to_geojson.py \\
+      --ww3  ../input/ww3.nc  --ww3-step  2 \\
+      --mri3 ../input/mri3.nc --mri3-step 4 \\
+      --ecwam ../input/ecwam  --ecwam-step 6
 
-  # All MRI3 timesteps (73 hourly steps → 73 GeoJSON files)
-  python3 wave_to_geojson.py --mri3 ... --all-times
+  # Global fallback step (used when a model-specific step is not set)
+  python3 wave_to_geojson.py --ww3 ... --step 3
 
   # Crop + subsample
-  python3 wave_to_geojson.py --ww3 ... --bbox 115 5 135 25 --step 2
+  python3 wave_to_geojson.py --ww3 ... --bbox 115 5 135 25 --ww3-step 2
+
+  # All MRI3 timesteps
+  python3 wave_to_geojson.py --mri3 ... --all-times --mri3-step 3
 
   # Override output directory
   python3 wave_to_geojson.py --ww3 ... --out ./my_geojson
@@ -48,40 +60,40 @@ except ImportError:
 # ══════════════════════════════════════════════════════════════════════════
 # CONFIG DEFAULTS
 # ══════════════════════════════════════════════════════════════════════════
-DEFAULT_STEP       = 4           # grid subsampling (1 = every point)
+DEFAULT_STEP       = 4           # global fallback subsampling step
 DEFAULT_OUTPUT_DIR = Path("./geojson_output")
 DEFAULT_BBOX       = None        # (lon_min, lat_min, lon_max, lat_max) or None
 
-NODATA_ECWAM  = 9999.0
-FILL_THRESH   = 1e10
+NODATA_ECWAM = 9999.0
+FILL_THRESH  = 1e10
 
 
 # ══════════════════════════════════════════════════════════════════════════
 # ECWAM band layout (1-based)
 # ══════════════════════════════════════════════════════════════════════════
 ECWAM_BANDS = {
-    "waveHeight"        : 1,   # SWH   — significant wave height [m]
-    "waveDirection"     : 2,   # MWD   — mean wave direction [deg]
-    "wavePeriod"        : 3,   # MWP   — mean wave period [s]
-    "windSeaHeight"     : 4,   # SHWW  — significant height of wind waves [m]
-    "windSeaPeriod"     : 5,   # MPWW  — mean period of wind waves [s]
-    "windSeaDirection"  : 6,   # MDWW  — mean direction of wind waves [deg]
-    "swell2Height"      : 7,   # var121 — secondary swell height [m]
-    "swell1Height"      : 8,   # SHPS  — primary swell height [m]
-    "swell3Height"      : 9,   # var124 — tertiary swell height [m]
-    "swell3Direction"   : 10,  # var125 — tertiary swell direction [deg]
-    "swell2Direction"   : 11,  # var122 — secondary swell direction [deg]
-    "swell1Period"      : 12,  # MPPS  — primary swell period [s]
-    "swell1Direction"   : 13,  # MDPS  — primary swell direction [deg]
-    "swell3Period"      : 14,  # var126 — tertiary swell period [s]
-    "swell2Period"      : 15,  # var123 — secondary swell period [s]
-    "peakPeriod"        : 16,  # var218 — spectral peak period [s]
-    "windSpeed"         : 17,  # 10MS  — 10 m wind speed [m/s]
-    "windDirection"     : 18,  # var249 — 10 m wind direction [deg]
-    "peakPeriodAlt"     : 19,  # var217
-    "spectralWidth"     : 20,  # var222
-    "stokesDriftU"      : 21,  # var215 — U Stokes drift [m/s]
-    "stokesDriftV"      : 22,  # var216 — V Stokes drift [m/s]
+    "waveHeight"        : 1,
+    "waveDirection"     : 2,
+    "wavePeriod"        : 3,
+    "windSeaHeight"     : 4,
+    "windSeaPeriod"     : 5,
+    "windSeaDirection"  : 6,
+    "swell2Height"      : 7,
+    "swell1Height"      : 8,
+    "swell3Height"      : 9,
+    "swell3Direction"   : 10,
+    "swell2Direction"   : 11,
+    "swell1Period"      : 12,
+    "swell1Direction"   : 13,
+    "swell3Period"      : 14,
+    "swell2Period"      : 15,
+    "peakPeriod"        : 16,
+    "windSpeed"         : 17,
+    "windDirection"     : 18,
+    "peakPeriodAlt"     : 19,
+    "spectralWidth"     : 20,
+    "stokesDriftU"      : 21,
+    "stokesDriftV"      : 22,
 }
 
 
@@ -99,14 +111,14 @@ def safe(val) -> "float | None":
 
 def uv_to_met_speed_dir(u: np.ndarray, v: np.ndarray):
     """Wind U/V → speed (m/s) + meteorological direction (deg FROM, CW from N)."""
-    speed = np.sqrt(u ** 2 + v ** 2)
+    speed     = np.sqrt(u ** 2 + v ** 2)
     direction = (np.degrees(np.arctan2(u, v)) + 180.0) % 360.0
     return speed, direction
 
 
 def uv_to_ocean_speed_dir(u: np.ndarray, v: np.ndarray):
     """Stokes drift U/V → speed + direction TOWARD (oceanographic convention)."""
-    speed = np.sqrt(u ** 2 + v ** 2)
+    speed     = np.sqrt(u ** 2 + v ** 2)
     direction = (np.degrees(np.arctan2(u, v))) % 360.0
     return speed, direction
 
@@ -148,11 +160,11 @@ def nc_load(ds, name: str, t_idx: int) -> "np.ndarray | None":
     """Load a 2-D (lat × lon) slice from an xarray Dataset at time index t_idx."""
     if name not in ds.data_vars and name not in ds.coords:
         return None
-    da = ds[name]
+    da        = ds[name]
     time_dims = [d for d in da.dims if d in ("time", "Time", "forecast_time")]
     if time_dims:
         da = da.isel({d: t_idx for d in time_dims})
-    arr = da.values.astype(np.float32)
+    arr  = da.values.astype(np.float32)
     fill = da.attrs.get("_FillValue", da.attrs.get("missing_value"))
     if fill is not None:
         arr[arr == float(fill)] = np.nan
@@ -168,20 +180,37 @@ def nc_time_label(ds, t_idx: int) -> str:
     return f"t{t_idx:03d}"
 
 
+def make_out_path(out_dir: Path, model: str, t_idx: int, all_times: bool) -> Path:
+    """
+    Build the fixed output filename:
+      single timestep  →  {model}-wave-today.geojson
+      multiple steps   →  {model}-wave-today-t{NNN}.geojson  (t000 keeps clean name)
+    """
+    base = f"{model.lower()}-wave-today"
+    if all_times and t_idx > 0:
+        base = f"{base}-t{t_idx:03d}"
+    return out_dir / f"{base}.geojson"
+
+
+def resolve_step(model_step: "int | None", global_step: int) -> int:
+    """Return the model-specific step if provided, otherwise the global fallback."""
+    return model_step if model_step is not None else global_step
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # WW3 (NetCDF)
 # ══════════════════════════════════════════════════════════════════════════
 def _ww3_features(ds, t_idx: int, rows, cols, lats, lons) -> list:
-    hs    = nc_load(ds, "hs",   t_idx)
-    fp    = nc_load(ds, "fp",   t_idx)
-    tp    = fp_to_tp(fp) if fp is not None else None
-    dir_  = nc_load(ds, "dir",  t_idx)
-    dp    = nc_load(ds, "dp",   t_idx)
-    uwnd  = nc_load(ds, "uwnd", t_idx)
-    vwnd  = nc_load(ds, "vwnd", t_idx)
-    phs   = [nc_load(ds, f"phs{i}",  t_idx) for i in range(3)]
-    ptp   = [nc_load(ds, f"ptp{i}",  t_idx) for i in range(3)]
-    pdir  = [nc_load(ds, f"pdir{i}", t_idx) for i in range(3)]
+    hs   = nc_load(ds, "hs",   t_idx)
+    fp   = nc_load(ds, "fp",   t_idx)
+    tp   = fp_to_tp(fp) if fp is not None else None
+    dir_ = nc_load(ds, "dir",  t_idx)
+    dp   = nc_load(ds, "dp",   t_idx)
+    uwnd = nc_load(ds, "uwnd", t_idx)
+    vwnd = nc_load(ds, "vwnd", t_idx)
+    phs  = [nc_load(ds, f"phs{i}",  t_idx) for i in range(3)]
+    ptp  = [nc_load(ds, f"ptp{i}",  t_idx) for i in range(3)]
+    pdir = [nc_load(ds, f"pdir{i}", t_idx) for i in range(3)]
 
     wind_speed = wind_dir = None
     if uwnd is not None and vwnd is not None:
@@ -192,6 +221,7 @@ def _ww3_features(ds, t_idx: int, rows, cols, lats, lons) -> list:
         lat = float(lats[i])
         for j in cols:
             lon = float(lons[j])
+
             def v(arr):
                 return safe(arr[i, j]) if arr is not None else None
 
@@ -227,7 +257,7 @@ def convert_ww3(nc_path: Path, out_dir: Path,
                 step: int, bbox, all_times: bool):
     if not HAVE_XR:
         print("  ❌  xarray not installed"); return
-    print(f"\n🌊 WW3  → GeoJSON: {nc_path.name}")
+    print(f"\n🌊 WW3  → GeoJSON: {nc_path.name}  (step={step})")
 
     ds   = xr.open_dataset(nc_path)
     lats = ds["latitude"].values
@@ -238,9 +268,8 @@ def convert_ww3(nc_path: Path, out_dir: Path,
     t_range = range(n_times) if all_times else range(1)
 
     for t in t_range:
-        features  = _ww3_features(ds, t, rows, cols, lats, lons)
-        tl        = nc_time_label(ds, t)
-        out_file  = out_dir / f"ww3_{nc_path.stem}_{tl}.geojson"
+        features = _ww3_features(ds, t, rows, cols, lats, lons)
+        out_file = make_out_path(out_dir, "ww3", t, all_times)
         write_geojson(features, out_file)
 
     ds.close()
@@ -278,6 +307,7 @@ def _mri3_features(ds, t_idx: int, rows, cols, lats, lons) -> list:
         lat = float(lats[i])
         for j in cols:
             lon = float(lons[j])
+
             def v(arr):
                 return safe(arr[i, j]) if arr is not None else None
 
@@ -316,7 +346,7 @@ def convert_mri3(nc_path: Path, out_dir: Path,
                  step: int, bbox, all_times: bool):
     if not HAVE_XR:
         print("  ❌  xarray not installed"); return
-    print(f"\n🌊 MRI3 → GeoJSON: {nc_path.name}")
+    print(f"\n🌊 MRI3 → GeoJSON: {nc_path.name}  (step={step})")
 
     ds   = xr.open_dataset(nc_path)
     lats = ds["lat"].values
@@ -328,8 +358,7 @@ def convert_mri3(nc_path: Path, out_dir: Path,
 
     for t in t_range:
         features = _mri3_features(ds, t, rows, cols, lats, lons)
-        tl       = nc_time_label(ds, t)
-        out_file = out_dir / f"mri3_{nc_path.stem}_{tl}.geojson"
+        out_file = make_out_path(out_dir, "mri3", t, all_times)
         write_geojson(features, out_file)
 
     ds.close()
@@ -342,18 +371,18 @@ def convert_ecwam(grib_path: Path, out_dir: Path,
                   step: int, bbox):
     if not HAVE_RIO:
         print("  ❌  rasterio not installed"); return
-    print(f"\n🌊 ECWAM → GeoJSON: {grib_path.name}")
+    print(f"\n🌊 ECWAM → GeoJSON: {grib_path.name}  (step={step})")
 
-    src       = rasterio.open(str(grib_path))
-    transform = src.transform
-    height, width = src.height, src.width
+    src             = rasterio.open(str(grib_path))
+    transform       = src.transform
+    height, width   = src.height, src.width
 
     # Read all 22 bands at once
     bands: dict[str, np.ndarray] = {}
     for key, band_idx in ECWAM_BANDS.items():
-        arr = src.read(band_idx).astype(np.float64)
-        arr[arr == NODATA_ECWAM]        = np.nan
-        arr[np.abs(arr) > FILL_THRESH]  = np.nan
+        arr                            = src.read(band_idx).astype(np.float64)
+        arr[arr == NODATA_ECWAM]       = np.nan
+        arr[np.abs(arr) > FILL_THRESH] = np.nan
         bands[key] = arr
 
     # Derived: Stokes drift speed + direction
@@ -363,8 +392,8 @@ def convert_ecwam(grib_path: Path, out_dir: Path,
     )
 
     # Coordinate arrays
-    lons_1d = np.array([transform.c + (j + 0.5) * transform.a for j in range(width)])
-    lats_1d = np.array([transform.f + (i + 0.5) * transform.e for i in range(height)])
+    lons_1d    = np.array([transform.c + (j + 0.5) * transform.a for j in range(width)])
+    lats_1d    = np.array([transform.f + (i + 0.5) * transform.e for i in range(height)])
     rows, cols = bbox_filter(bbox, lons_1d, lats_1d, step)
 
     # Timestamp from GRIB metadata
@@ -374,8 +403,11 @@ def convert_ecwam(grib_path: Path, out_dir: Path,
     print(f"  🕐  Valid time: {time_label}")
     src.close()
 
-    # All property keys to emit
-    all_keys = list(ECWAM_BANDS.keys()) + ["stokesDriftSpeed", "stokesDriftDirection"]
+    # All property keys to emit (drop raw U/V, keep derived speed/dir)
+    all_keys = [
+        k for k in list(ECWAM_BANDS.keys()) + ["stokesDriftSpeed", "stokesDriftDirection"]
+        if k not in ("stokesDriftU", "stokesDriftV")
+    ]
 
     features = []
     for i in rows:
@@ -388,11 +420,7 @@ def convert_ecwam(grib_path: Path, out_dir: Path,
 
             props = {"model": "ECWAM"}
             for key in all_keys:
-                # drop the raw U/V components — keep only derived speed/dir
-                if key in ("stokesDriftU", "stokesDriftV"):
-                    continue
-                val = bands[key][i, j] if key in bands else None
-                props[key] = safe(val)
+                props[key] = safe(bands[key][i, j] if key in bands else None)
 
             features.append({
                 "type": "Feature",
@@ -400,7 +428,7 @@ def convert_ecwam(grib_path: Path, out_dir: Path,
                 "properties": props,
             })
 
-    out_file = out_dir / f"ecwam_{grib_path.name}_{time_label}.geojson"
+    out_file = make_out_path(out_dir, "ecwam", 0, False)
     write_geojson(features, out_file)
 
 
@@ -413,30 +441,62 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    # Input
+
+    # ── Input files / directories ──────────────────────────────────────────
     p.add_argument("--ww3",       type=Path, help="WW3 .nc file")
     p.add_argument("--ww3-dir",   type=Path, help="Directory of WW3 .nc files")
     p.add_argument("--mri3",      type=Path, help="MRI3 .nc file")
     p.add_argument("--mri3-dir",  type=Path, help="Directory of MRI3 .nc files")
     p.add_argument("--ecwam",     type=Path, help="ECWAM GRIB file")
     p.add_argument("--ecwam-dir", type=Path, help="Directory of ECWAM GRIB files")
-    # Options
-    p.add_argument("--out",       type=Path, default=DEFAULT_OUTPUT_DIR,
-                   help=f"Output directory (default: {DEFAULT_OUTPUT_DIR})")
-    p.add_argument("--step",      type=int,  default=DEFAULT_STEP,
-                   help=f"Grid subsampling step (default: {DEFAULT_STEP})")
-    p.add_argument("--bbox",      type=float, nargs=4,
-                   metavar=("LON_MIN", "LAT_MIN", "LON_MAX", "LAT_MAX"),
-                   help="Bounding-box filter  e.g. --bbox 115 5 135 25")
-    p.add_argument("--all-times", action="store_true",
-                   help="Export every timestep (MRI3 has 73, WW3 usually 1)")
+
+    # ── Subsampling ────────────────────────────────────────────────────────
+    p.add_argument(
+        "--step", type=int, default=DEFAULT_STEP,
+        help=f"Global fallback subsampling step (default: {DEFAULT_STEP}). "
+             "Used when a model-specific step is not set.",
+    )
+    p.add_argument(
+        "--ww3-step", type=int, default=None,
+        help="Subsampling step for WW3 (overrides --step)",
+    )
+    p.add_argument(
+        "--mri3-step", type=int, default=None,
+        help="Subsampling step for MRI3 (overrides --step)",
+    )
+    p.add_argument(
+        "--ecwam-step", type=int, default=None,
+        help="Subsampling step for ECWAM (overrides --step)",
+    )
+
+    # ── Other options ──────────────────────────────────────────────────────
+    p.add_argument(
+        "--out", type=Path, default=DEFAULT_OUTPUT_DIR,
+        help=f"Output directory (default: {DEFAULT_OUTPUT_DIR})",
+    )
+    p.add_argument(
+        "--bbox", type=float, nargs=4,
+        metavar=("LON_MIN", "LAT_MIN", "LON_MAX", "LAT_MAX"),
+        help="Bounding-box filter  e.g. --bbox 115 5 135 25",
+    )
+    p.add_argument(
+        "--all-times", action="store_true",
+        help="Export every timestep (MRI3 has 73, WW3 usually 1)",
+    )
     return p.parse_args()
 
 
 def main():
-    args  = parse_args()
-    bbox  = tuple(args.bbox) if args.bbox else DEFAULT_BBOX
-    ran   = False
+    args = parse_args()
+    bbox = tuple(args.bbox) if args.bbox else DEFAULT_BBOX
+    ran  = False
+
+    # Resolve per-model steps (fall back to global --step if not set)
+    ww3_step   = resolve_step(args.ww3_step,   args.step)
+    mri3_step  = resolve_step(args.mri3_step,  args.step)
+    ecwam_step = resolve_step(args.ecwam_step, args.step)
+
+    print(f"📐  Steps — WW3: {ww3_step}  MRI3: {mri3_step}  ECWAM: {ecwam_step}")
 
     # ── WW3 ───────────────────────────────────────────────────────────────
     ww3_files = ([args.ww3] if args.ww3
@@ -445,8 +505,7 @@ def main():
     if args.ww3_dir:
         print(f"🔍  WW3:   {len(ww3_files)} file(s) in {args.ww3_dir}")
     for f in ww3_files:
-        convert_ww3(f, args.out, step=args.step, bbox=bbox,
-                    all_times=args.all_times)
+        convert_ww3(f, args.out, step=ww3_step, bbox=bbox, all_times=args.all_times)
         ran = True
 
     # ── MRI3 ──────────────────────────────────────────────────────────────
@@ -456,8 +515,7 @@ def main():
     if args.mri3_dir:
         print(f"🔍  MRI3:  {len(mri3_files)} file(s) in {args.mri3_dir}")
     for f in mri3_files:
-        convert_mri3(f, args.out, step=args.step, bbox=bbox,
-                     all_times=args.all_times)
+        convert_mri3(f, args.out, step=mri3_step, bbox=bbox, all_times=args.all_times)
         ran = True
 
     # ── ECWAM ─────────────────────────────────────────────────────────────
@@ -472,7 +530,7 @@ def main():
     else:
         ecwam_files = []
     for f in ecwam_files:
-        convert_ecwam(f, args.out, step=args.step, bbox=bbox)
+        convert_ecwam(f, args.out, step=ecwam_step, bbox=bbox)
         ran = True
 
     if not ran:

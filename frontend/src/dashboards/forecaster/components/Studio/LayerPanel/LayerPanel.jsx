@@ -9,9 +9,9 @@ import {
 import Modal from '@/components/ui/modals/MapNotReady';
 import ConfirmationDialog from '@/components/ui/modals/ConfirmationDialog';
 
-import { useSystemLayers }    from './hooks/useSystemLayers';
-import { useWindConfig }      from './hooks/useWindConfig';
-import { useWaveConfig }      from './hooks/useWaveConfig';
+import { useSystemLayers } from './hooks/useSystemLayers';
+import { useWindConfig } from './hooks/useWindConfig';
+import { useWaveConfig } from './hooks/useWaveConfig';
 import { useCustomLayerEdit } from './hooks/useCustomLayerEdit';
 
 import CustomLayersSection from './sections/CustomLayers';
@@ -19,7 +19,7 @@ import SystemLayersSection from './sections/SystemLayers';
 
 const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   // ── Panel expansion state ───────────────────────────────────────────────────
-  const [isExpanded,           setIsExpanded]           = useState(true);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [customLayersExpanded, setCustomLayersExpanded] = useState(true);
   const [systemLayersExpanded, setSystemLayersExpanded] = useState(true);
 
@@ -32,10 +32,10 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   }, []);
 
   // ── Custom layer interaction state ──────────────────────────────────────────
-  const [activeLayerId,       setActiveLayerId]       = useState(null);
+  const [activeLayerId, setActiveLayerId] = useState(null);
   const [activeMapboxLayerId, setActiveMapboxLayerId] = useState(null);
-  const [mapNotReady,         setMapNotReady]         = useState(false);
-  const [confirmDialog,       setConfirmDialog]       = useState({ isOpen: false, layer: null });
+  const [mapNotReady, setMapNotReady] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
 
   const fileInputRef = useRef();
 
@@ -53,7 +53,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
   // ── Wave ─────────────────────────────────────────────────────────────────────
   const {
-    waveConfig, toggleWaveLayer, setWaveElement, toggleWaveModel,
+    waveConfig, toggleWaveLayer, setWaveElement, toggleWaveModel, setDirectionStyle, applyOnMapReady,
   } = useWaveConfig({ mapRef, isDarkMode });
 
   // ── Custom layer editing / drag ─────────────────────────────────────────────
@@ -94,19 +94,17 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
       <div className="fixed top-20 right-4 z-40">
         <button
           onClick={() => setIsExpanded(true)}
-          className={`group flex items-center gap-1.5 px-2.5 py-2 rounded-full transition-all duration-300 hover:scale-105 backdrop-blur-xl shadow-lg ${
-            isDarkMode
+          className={`group flex items-center gap-1.5 px-2.5 py-2 rounded-full transition-all duration-300 hover:scale-105 backdrop-blur-xl shadow-lg ${isDarkMode
               ? 'bg-black/40 hover:bg-black/50 border border-white/20'
               : 'bg-white/60 hover:bg-white/70 border border-black/10'
-          }`}
+            }`}
         >
           <Layers size={14} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
           <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'}`}>
             Layers
           </span>
-          <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
-            isDarkMode ? 'bg-cyan-400/20 text-cyan-300' : 'bg-blue-500/20 text-blue-700'
-          }`}>
+          <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${isDarkMode ? 'bg-cyan-400/20 text-cyan-300' : 'bg-blue-500/20 text-blue-700'
+            }`}>
             {visibleCount}
           </div>
         </button>
@@ -119,14 +117,12 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
     <>
       {/* w-64 = 256px, down from w-80 = 320px */}
       <div className="fixed top-16 right-2 z-40 w-64 mt-1">
-        <div className={`rounded-xl transition-all duration-300 backdrop-blur-xl shadow-xl ${
-          isDarkMode ? 'bg-black/40 border border-white/20' : 'bg-white/60 border border-white/40'
-        }`}>
+        <div className={`rounded-xl transition-all duration-300 backdrop-blur-xl shadow-xl ${isDarkMode ? 'bg-black/40 border border-white/20' : 'bg-white/60 border border-white/40'
+          }`}>
 
           {/* ── Panel header ─────────────────────────────────────────────────── */}
-          <div className={`flex items-center justify-between px-3 py-2.5 border-b ${
-            isDarkMode ? 'border-white/10' : 'border-black/10'
-          }`}>
+          <div className={`flex items-center justify-between px-3 py-2.5 border-b ${isDarkMode ? 'border-white/10' : 'border-black/10'
+            }`}>
             <div className="flex items-center gap-2">
               <div className={`p-1 rounded-md ${isDarkMode ? 'bg-cyan-400/20' : 'bg-blue-500/20'}`}>
                 <Layers size={13} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
@@ -143,11 +139,10 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
             <button
               onClick={() => setIsExpanded(false)}
-              className={`p-1 rounded-md transition-all duration-200 hover:scale-110 ${
-                isDarkMode
+              className={`p-1 rounded-md transition-all duration-200 hover:scale-110 ${isDarkMode
                   ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
                   : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               <ChevronDown size={13} strokeWidth={2.5} />
             </button>
@@ -189,6 +184,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
               onToggleWave={toggleWaveLayer}
               onSetWaveElement={setWaveElement}
               onToggleWaveModel={toggleWaveModel}
+              onSetWaveDirectionStyle={setDirectionStyle}
               isDarkMode={isDarkMode}
             />
           </div>
@@ -197,11 +193,10 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
           <div className={`p-2.5 border-t ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
             <button
               onClick={addLayer}
-              className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-[11px] transition-all duration-200 hover:scale-[1.02] ${
-                isDarkMode
+              className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-[11px] transition-all duration-200 hover:scale-[1.02] ${isDarkMode
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white shadow-lg shadow-cyan-500/20'
                   : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/20'
-              }`}
+                }`}
             >
               <Plus size={12} strokeWidth={3} />
               Add GeoJSON Layer
