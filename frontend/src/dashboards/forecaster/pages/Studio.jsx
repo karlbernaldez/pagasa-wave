@@ -31,8 +31,6 @@ import { useTheme } from "@/app/providers/ThemeProvider";
 import { savePointFeature } from "@dashboards/forecaster/utils/ToolBarUtils";
 import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
 import { saveMarker } from "@dashboards/forecaster/map/layers/markerLayer";
-import { addWindSource, addWindLayer } from "@dashboards/forecaster/map/layers/windLayer";
-import { addWaveSource, addWaveLayer } from "@dashboards/forecaster/map/layers/waveLayer";
 
 // ─── Constants ───────────────────────────────────────
 const TOOLBAR_DELAY = 1000;
@@ -157,12 +155,6 @@ const Studio = ({ logger }) => {
     layersToRemove.forEach((id) => removeLayerSafe(map, id));
     sourcesToRemove.forEach((id) => removeSourceSafe(map, id));
 
-    (async () => {
-      await addWindSource(map, isDarkMode);
-      addWindLayer(map, isDarkMode);
-      await addWaveSource(map, isDarkMode);
-      addWaveLayer(map, isDarkMode);
-    })();
   }, [isDarkMode]);
 
   // ─── Handlers ────────────────────────────────────────

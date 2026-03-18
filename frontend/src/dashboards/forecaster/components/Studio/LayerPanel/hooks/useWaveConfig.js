@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getLatestMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
 import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
 import {
   WAVE_ELEMENTS,
@@ -6,42 +7,13 @@ import {
   WAVE_RASTER_SOURCE_PREFIX,
   WAVE_RASTER_DATE,
   STORAGE_KEYS,
+  OFF_ELEMENTS,
+  DEFAULT_DIRECTION_STYLE,
+  BASE_SIZE_STOPS,
+  COLORED_ICON_COLOR,
+  BLACK_ICON_COLOR
 } from '../constants/layerConstants';
 import { parseStoredModels, readBoolStorage } from '../utils/layerPanelUtils';
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const OFF_ELEMENTS = {
-  particles:     false,
-  raster:        false,
-  waveDirection: false,
-  wavePeriod:    false,
-};
-
-const DEFAULT_DIRECTION_STYLE = {
-  theme: 'colored', // 'colored' | 'black'
-  size:  1.0,       // multiplier applied to all icon-size stops
-};
-
-// icon-size base stops — user size is a multiplier on top of these
-const BASE_SIZE_STOPS = [
-  [0.0, 0.30],
-  [1.0, 0.45],
-  [3.0, 0.65],
-  [6.0, 0.85],
-];
-
-// Colored ramp paint expression
-const COLORED_ICON_COLOR = [
-  'interpolate', ['linear'], ['get', 'waveHeight'],
-  0.0, 'rgba(160, 220, 255, 0.70)',
-  1.0, 'rgba( 64, 196, 180, 0.80)',
-  2.5, 'rgba( 80, 200,  80, 0.85)',
-  4.0, 'rgba(255, 160,  40, 0.90)',
-  6.0, 'rgba(220,  40,  40, 0.95)',
-];
-
-const BLACK_ICON_COLOR = 'rgba(20, 20, 20, 0.88)';
 
 const MRI3_TIMESTEP    = '012';
 const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
@@ -217,7 +189,8 @@ const syncAllWaveLayers = (map, config, dark, prevThemeRef) => {
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export const useWaveConfig = ({ mapRef, isDarkMode }) => {
+export const useWaveConfig = ({ isDarkMode }) => {
+  const map = getLatestMapInstance();
   const [waveConfig, setWaveConfig] = useState({
     enabled:        false,
     models:         ['WW3'],
@@ -254,19 +227,19 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
 
     setWaveConfig(saved);
 
-    if (mapRef.current && saved.enabled) {
-      addWaveLayer(mapRef.current, isDarkMode, saved.models);
-      applyWaveLayers(mapRef.current, saved, isDarkMode);
+    if (map && saved.enabled) {
+      addWaveLayer(map, isDarkMode, saved.models);
+      applyWaveLayers(map, saved, isDarkMode);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Re-sync on dark mode change ─────────────────────────────────────────────
   useEffect(() => {
     setWaveConfig((prev) => {
-      applyWaveLayers(mapRef.current, prev, isDarkMode);
+      applyWaveLayers(map, prev, isDarkMode);
       return prev;
     });
-  }, [isDarkMode, mapRef, applyWaveLayers]);
+  }, [isDarkMode, map, applyWaveLayers]);
 
   // ── Toggle wave on / off ────────────────────────────────────────────────────
   const toggleWaveLayer = useCallback(() => {
@@ -275,14 +248,14 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       localStorage.setItem(STORAGE_KEYS.WAVE_ENABLED, String(next.enabled));
 
       if (!next.enabled) {
-        applyWaveLayers(mapRef.current, { ...next, elements: OFF_ELEMENTS }, isDarkMode);
+        applyWaveLayers(map, { ...next, elements: OFF_ELEMENTS }, isDarkMode);
       } else {
-        addWaveLayer(mapRef.current, isDarkMode, next.models);
-        applyWaveLayers(mapRef.current, next, isDarkMode);
+        addWaveLayer(map, isDarkMode, next.models);
+        applyWaveLayers(map, next, isDarkMode);
       }
       return next;
     });
-  }, [mapRef, isDarkMode, applyWaveLayers]);
+  }, [map, isDarkMode, applyWaveLayers]);
 
   // ── Select element (single-select, exclusive) ───────────────────────────────
   const setWaveElement = useCallback((elementId) => {
@@ -295,10 +268,10 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       WAVE_ELEMENTS.forEach((opt) =>
         localStorage.setItem(opt.storageKey, String(next.elements[opt.id]))
       );
-      applyWaveLayers(mapRef.current, next, isDarkMode);
+      applyWaveLayers(map, next, isDarkMode);
       return next;
     });
-  }, [mapRef, isDarkMode, applyWaveLayers]);
+  }, [map, isDarkMode, applyWaveLayers]);
 
   // ── Toggle model (multi-select) ─────────────────────────────────────────────
   const toggleWaveModel = useCallback((model) => {
@@ -313,12 +286,12 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       localStorage.setItem(STORAGE_KEYS.WAVE_MODEL, models.join(','));
 
       if (isAdding && next.enabled) {
-        addWaveLayer(mapRef.current, isDarkMode, [normalized]);
+        addWaveLayer(map, isDarkMode, [normalized]);
       }
-      applyWaveLayers(mapRef.current, next, isDarkMode);
+      applyWaveLayers(map, next, isDarkMode);
       return next;
     });
-  }, [mapRef, isDarkMode, applyWaveLayers]);
+  }, [map, isDarkMode, applyWaveLayers]);
 
   // ── Set direction style (theme + size) ─────────────────────────────────────
   const setDirectionStyle = useCallback((patch) => {
@@ -328,25 +301,16 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
         directionStyle: { ...prev.directionStyle, ...patch },
       };
       localStorage.setItem('WAVE_DIRECTION_STYLE', JSON.stringify(next.directionStyle));
-      applyWaveLayers(mapRef.current, next, isDarkMode);
+      applyWaveLayers(map, next, isDarkMode);
       return next;
     });
-  }, [mapRef, isDarkMode, applyWaveLayers]);
-
-  // ── Apply on map ready ──────────────────────────────────────────────────────
-  const applyOnMapReady = useCallback((config) => {
-    if (config.enabled) {
-      addWaveLayer(mapRef.current, isDarkMode, config.models);
-    }
-    applyWaveLayers(mapRef.current, config, isDarkMode);
-  }, [mapRef, isDarkMode, applyWaveLayers]);
+  }, [map, isDarkMode, applyWaveLayers]);
 
   return {
     waveConfig,
     toggleWaveLayer,
     setWaveElement,
     toggleWaveModel,
-    setDirectionStyle,   // ← new, wire to onSetWaveDirectionStyle
-    applyOnMapReady,
+    setDirectionStyle,
   };
 };

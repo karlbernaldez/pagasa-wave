@@ -29,7 +29,7 @@ const WIND_PARTICLE_TILESETS = {
 };
 
 // ── Exported constants (used by useWindConfig) ────────────────────────────────
-export const WIND_RASTER_LAYER_PREFIX  = 'wind-raster-layer-';
+export const WIND_RASTER_LAYER_PREFIX = 'wind-raster-layer-';
 export const WIND_RASTER_SOURCE_PREFIX = 'wind-raster-source-';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -69,18 +69,14 @@ const EMPTY_GEOJSON = { type: 'FeatureCollection', features: [] };
 // Per-model raster sources are managed surgically by useWindConfig's sync fn.
 
 export async function addWindSource(map, isDarkMode, model) {
-  const raw            = model ?? localStorage.getItem('WIND_MODEL');
-  const primaryModel   = resolveParticleModel(raw);
+  const raw = model ?? localStorage.getItem('WIND_MODEL');
+  const primaryModel = resolveParticleModel(raw);
   const particleTileset = primaryModel ? getParticleTileset(primaryModel) : null;
-  const hasData         = Boolean(particleTileset);
-
-  console.log(`[WindSource] raw="${raw}" resolved="${primaryModel ?? 'none'}" hasData=${hasData}`);
+  const hasData = Boolean(particleTileset);
 
   const windData = hasData
     ? await fetchLatestGeoJSON({ model: primaryModel.toLowerCase(), product: 'wind', date: 'today' }) ?? EMPTY_GEOJSON
     : EMPTY_GEOJSON;
-
-  console.log(`[WindSource] GeoJSON features: ${windData.features?.length ?? 0}`);
 
   // Glass overlay (shared with wave layer)
   if (!map.getSource('glass-layer')) {
@@ -116,7 +112,6 @@ export async function addWindSource(map, isDarkMode, model) {
 // Does NOT add per-model raster layers — those are managed by useWindConfig.
 
 export async function addWindLayer(map, isDarkMode) {
-  console.log(`[WindLayer] addWindLayer WIND_ENABLED=${localStorage.getItem('WIND_ENABLED')}`);
   if (localStorage.getItem('WIND_ENABLED') !== 'true') return;
 
   addGlassLayers(map);
@@ -124,7 +119,6 @@ export async function addWindLayer(map, isDarkMode) {
   addWindArrowsLayer(map);
   setupPopup(map, isDarkMode);
 
-  console.log('[WindLayer] all non-raster layers added ✓');
 }
 
 // ── Layer helpers ─────────────────────────────────────────────────────────────
@@ -169,7 +163,6 @@ function addGlassLayers(map) {
 
 function addWindParticlesLayer(map) {
   const visible = localStorage.getItem('WIND_PARTICLES') === 'true';
-  console.log(`[WindLayer] addWindParticlesLayer visible=${visible} source-exists=${Boolean(map.getSource('wind-particles'))}`);
 
   if (!map.getSource('wind-particles')) {
     console.warn('[WindLayer] wind-particles source not found — skipping');
@@ -191,7 +184,7 @@ function addWindParticlesLayer(map) {
         'raster-particle-max-speed': 160,
         'raster-particle-color': [
           'interpolate', ['linear'], ['raster-particle-speed'],
-          0,   'rgba(255,255,255,0.2)',
+          0, 'rgba(255,255,255,0.2)',
           100, 'rgba(255,255,255,0.4)',
         ],
       },
@@ -202,7 +195,6 @@ function addWindParticlesLayer(map) {
 
 function addWindArrowsLayer(map) {
   const visible = localStorage.getItem('WIND_BARBS') === 'true';
-  console.log(`[WindLayer] addWindArrowsLayer visible=${visible} source-exists=${Boolean(map.getSource('wind-points'))}`);
 
   if (!map.getLayer('wind-arrows')) {
     map.addLayer({
@@ -216,11 +208,11 @@ function addWindArrowsLayer(map) {
         'icon-image': [
           'step', ['get', 'windSpeed'],
           ['image', '0KTS', { params: { 'color-1': 'rgb(240,240,240)' } }],
-          2,        ['image', '5 kts'],
-          3.57632,  ['image', '10kts (1)'],
-          6.25856,  ['image', '15 kts'],
-          8.9408,   ['image', '20 kts'],
-          11.176,   ['image', '25 kts'],
+          2, ['image', '5 kts'],
+          3.57632, ['image', '10kts (1)'],
+          6.25856, ['image', '15 kts'],
+          8.9408, ['image', '20 kts'],
+          11.176, ['image', '25 kts'],
           13.85824, ['image', '30 kts'],
         ],
         'icon-size': ['interpolate', ['linear'], ['get', 'windSpeed'], 0, 2.25, 16.5, 3.15],

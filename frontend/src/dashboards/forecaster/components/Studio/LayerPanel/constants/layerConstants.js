@@ -56,3 +56,35 @@ export const STORAGE_KEYS = {
   WAVE_MODEL: 'WAVE_MODEL',
   SATELLITE: 'SATELLITE',
 };
+
+export const OFF_ELEMENTS = {
+  particles: false,
+  raster: false,
+  waveDirection: false,
+  wavePeriod: false,
+};
+
+export const DEFAULT_DIRECTION_STYLE = {
+  theme: 'colored', // 'colored' | 'black'
+  size: 1.0,       // multiplier applied to all icon-size stops
+};
+
+// icon-size base stops — user size is a multiplier on top of these
+export const BASE_SIZE_STOPS = [
+  [0.0, 0.30],
+  [1.0, 0.45],
+  [3.0, 0.65],
+  [6.0, 0.85],
+];
+
+// Colored ramp paint expression
+export const COLORED_ICON_COLOR = [
+  'interpolate', ['linear'], ['get', 'waveHeight'],
+  0.0, 'rgba(160, 220, 255, 0.70)',
+  1.0, 'rgba( 64, 196, 180, 0.80)',
+  2.5, 'rgba( 80, 200,  80, 0.85)',
+  4.0, 'rgba(255, 160,  40, 0.90)',
+  6.0, 'rgba(220,  40,  40, 0.95)',
+];
+
+export const BLACK_ICON_COLOR = 'rgba(20, 20, 20, 0.88)';
