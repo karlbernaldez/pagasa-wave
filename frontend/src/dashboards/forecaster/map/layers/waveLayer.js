@@ -1,318 +1,312 @@
-import { fetchLatestGeoJSON, createWavePopup, getWindTileset, getWaveSourceId } from '../../utils/mapHelpers';
+import { fetchLatestGeoJSON, createWavePopup, getWaveSourceId } from '../../utils/mapHelpers';
+
+// ── Popup style injection (once) ──────────────────────────────────────────────
 
 (function injectPopupStyle() {
-    const style = document.createElement("style");
-    style.textContent = `
+  const style = document.createElement('style');
+  style.textContent = `
     .mapboxgl-popup-content {
       background: transparent !important;
       padding: 0 !important;
       box-shadow: none !important;
     }
-    .mapboxgl-popup-tip { display:none !important; }
+    .mapboxgl-popup-tip { display: none !important; }
   `;
-    document.head.appendChild(style);
+  document.head.appendChild(style);
 })();
 
-const MRI3_TIMESTEP = '012';
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const buildTileUrl = (model, theme, date, step = MRI3_TIMESTEP) => {
-    const m = model.trim().toUpperCase();
-    const base = `https://storage.googleapis.com/wavelab-tiles/${m}/${theme}/${date}`;
+const MRI3_TIMESTEP    = '012';
+const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
 
-    return m === 'MRI3'
-        ? `${base}/${step}/{z}/{x}/{y}.png`
-        : `${base}/{z}/{x}/{y}.png`;
+// Tracks which layers already have popup listeners — never double-register
+const _popupListeners = new Set();
+
+// Default icon-size expression (size multiplier = 1.0).
+// useWaveConfig.syncWaveSymbolLayers will override this at runtime when
+// the user adjusts the size slider.
+const DEFAULT_ICON_SIZE = [
+  'interpolate', ['linear'], ['get', 'waveHeight'],
+  0.0, 0.30,
+  1.0, 0.45,
+  3.0, 0.65,
+  6.0, 0.85,
+];
+
+// Default colored ramp — overridden at runtime by syncWaveSymbolLayers
+const DEFAULT_ICON_COLOR = [
+  'interpolate', ['linear'], ['get', 'waveHeight'],
+  0.0, 'rgba(160, 220, 255, 0.70)',
+  1.0, 'rgba( 64, 196, 180, 0.80)',
+  2.5, 'rgba( 80, 200,  80, 0.85)',
+  4.0, 'rgba(255, 160,  40, 0.90)',
+  6.0, 'rgba(220,  40,  40, 0.95)',
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const normalizeModel = (model = '') => model.trim().toUpperCase();
+
+const resolveDate = (model) => {
+  switch (model) {
+    case 'WW3': return '2026011200'; // TODO: replace with dynamic date
+    default:    return '2026011200';
+  }
 };
 
-export async function addWaveSource(map, isDarkMode, modelInput = localStorage.getItem('WAVE_MODEL')) {
-    if (!map) return;
+const buildTileUrl = (model, theme) => {
+  const m    = normalizeModel(model);
+  const date = resolveDate(m);
+  const base = `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}`;
+  return m === 'MRI3'
+    ? `${base}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`
+    : `${base}/{z}/{x}/{y}.png`;
+};
 
-    const theme = isDarkMode ? 'dark' : 'light';
+const ensureSource = (map, id, config) => {
+  if (!map.getSource(id)) map.addSource(id, config);
+};
 
-    // Normalize models safely
-    const models = (modelInput || 'WW3')
-        .split(',')
-        .map(m => m.trim().toUpperCase())
-        .filter(Boolean);
-
-    // Fetch GeoJSON once with fallback safety
-    let geojsonData = null;
-    try {
-        geojsonData = await fetchLatestGeoJSON({
-            model: models[0].toLowerCase(),
-            product: 'wave',
-            date: 'today'
-        });
-    } catch (err) {
-        console.error('[Wave] Failed to fetch GeoJSON:', err);
-    }
-
-    // Helper: add source if not exists
-    const ensureSource = (id, config) => {
-        if (!map.getSource(id)) {
-            map.addSource(id, config);
-        }
-    };
-
-    // Optional: centralize date logic
-    const resolveDate = (model) => {
-        switch (model) {
-            case 'WW3':
-                return '2026011200'; // TODO: replace with dynamic
-            default:
-                return '2026011200';
-        }
-    };
-
-    // Add raster sources
-    for (const model of models) {
-        const sourceId = `wave-source-${model}`;
-        const date = resolveDate(model);
-        const tileUrl = buildTileUrl(model, theme, date);
-
-        ensureSource(sourceId, {
-            type: 'raster',
-            tiles: [tileUrl],
-            tileSize: 256,
-            bounds: [100, -5, 180, 50],
-            scheme: 'xyz',
-        });
-    }
-
-    // Add GeoJSON points
-    if (geojsonData) {
-        ensureSource('wave-points', {
-            type: 'geojson',
-            data: geojsonData,
-        });
-    }
-
-    // Add PH boundaries
-    ensureSource('ph-boundaries', {
-        type: 'vector',
-        url: 'mapbox://mapbox.country-boundaries-v1',
-    });
-}
-
-export async function addWaveLayer(map, isDarkMode) {
-    const sourceId = getWaveSourceId(isDarkMode);
-    addRasterLayer(map, sourceId, isDarkMode);
-    addWaveDirectionLayer(map);    // wave direction arrows (new)
-    setupPopup(map, isDarkMode);
-}
-
-// ------------------- Layer Helper Functions -------------------
-function addRasterLayer(map, sourceId, isDarkMode) {
-    const isWaveRasterVisible = localStorage.getItem('WAVE_RASTER') === 'true';
-    if (localStorage.getItem('WAVE_ENABLED') === 'true') {
-        map.addLayer({
-            id: "wave-raster",
-            type: "raster",
-            source: sourceId,
-            paint: {
-                "raster-opacity": 1,
-                "raster-fade-duration": 0
-            },
-            layout: {
-                visibility: isWaveRasterVisible ? 'visible' : 'none'
-            },
-        }, "graticules");
-
-        map.addLayer({
-            id: 'wave-glass-fill',
-            type: 'fill',
-            source: 'glass-layer',
-            'source-layer': 'ph-bum99e',
-            slot: "top",
-            paint: {
-                'fill-color': 'rgba(255, 255, 255, 0.15)',
-                'fill-opacity': 0.8,
-                'fill-outline-color': 'rgba(255, 255, 255, 0.35)'
-            },
-            layout: {
-                visibility: isWaveRasterVisible ? 'visible' : 'none'
-            },
-        });
-
-        map.addLayer({
-            id: 'wave-glass-depth',
-            type: 'fill',
-            source: 'glass-layer',
-            'source-layer': 'ph-bum99e',
-            slot: "top",
-            paint: {
-                'fill-color': ['interpolate', ['linear'], ['zoom'], 5, 'rgba(255,255,255,0.05)', 10, 'rgba(255,255,255,0.25)'],
-                'fill-opacity': 0.8
-            },
-            layout: {
-                visibility: isWaveRasterVisible ? 'visible' : 'none'
-            },
-        });
-
-        map.addLayer({
-            id: 'ph-overlay',
-            type: 'fill',
-            source: 'ph-boundaries',
-            'source-layer': 'country_boundaries',
-            filter: [
-                "all",
-                ["match", ["get", "iso_3166_1_alpha_3"], ["PHL"], true, false]
-            ],
-            paint: {
-                'fill-color': isDarkMode ? '#0f1117' : '#f2f2f2',
-                'fill-opacity': 1,
-            },
-        });
-
-        map.addLayer({
-            id: 'ph-overlay-outline',
-            type: 'line',
-            source: 'ph-boundaries',
-            'source-layer': 'country_boundaries',
-            filter: [
-                "all",
-                ["match", ["get", "iso_3166_1_alpha_3"], ["PHL"], true, false]
-            ],
-            paint: {
-                'line-color': isDarkMode ? '#1e3a5f' : '#000000',
-                'line-width': 0.5,
-                'line-opacity': 0.8,
-            },
-        });
-    }
-}
-
-// ── Wave direction arrows (new) ────────────────────────────────────────────
-//
-// Requires a sprite entry named "wave-arrow" — a simple single-headed arrow
-// pointing UP (north, 0°). Mapbox will rotate it by waveDirection degrees CW.
-//
-// If you don't have a sprite image yet, loadWaveArrowImage() below generates
-// a plain canvas arrow at runtime so you can test without touching the sprite.
-//
-function addWaveDirectionLayer(map) {
-    // Register a programmatic arrow icon if "wave-arrow" is not in the sprite
-    if (!map.hasImage('wave-arrow')) {
-        loadWaveArrowImage(map);
-    }
-
-    map.addLayer({
-        id: 'wave-direction',
-        type: 'symbol',
-        source: 'wave-points',
-        slot: 'middle',
-
-        // Only show points that have a valid wave height + direction
-        filter: [
-            'all',
-            ['has', 'waveDirection'],
-            ['>', ['to-number', ['get', 'waveHeight'], 0], 0],
-        ],
-
-        layout: {
-            // Controlled externally via setWaveElement → applyWaveLayers
-            visibility: 'none',
-
-            'icon-image': 'wave-arrow',
-
-            // Scale arrow with wave height: calm (~0.5 m) → small, rough (~4 m+) → large
-            'icon-size': [
-                'interpolate', ['linear'], ['get', 'waveHeight'],
-                0.0, 0.3,
-                1.0, 0.45,
-                3.0, 0.65,
-                6.0, 0.85,
-            ],
-
-            // Rotate arrow to point in the direction waves are TRAVELING
-            'icon-rotate': ['to-number', ['get', 'waveDirection'], 0],
-            'icon-rotation-alignment': 'map',   // rotates with the map
-            'icon-pitch-alignment': 'map',
-
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true,
-        },
-
-        paint: {
-            // Tint arrow color by wave height:
-            //   calm  (< 1 m) → soft cyan
-            //   moderate (2 m) → teal/green
-            //   rough  (4 m+) → orange-red
-            'icon-color': [
-                'interpolate', ['linear'], ['get', 'waveHeight'],
-                0.0, 'rgba(160, 220, 255, 0.7)',
-                1.0, 'rgba( 64, 196, 180, 0.8)',
-                2.5, 'rgba( 80, 200,  80, 0.85)',
-                4.0, 'rgba(255, 160,  40, 0.9)',
-                6.0, 'rgba(220,  40,  40, 0.95)',
-            ],
-
-            // Fade out at low zoom, fully visible from zoom 5+
-            'icon-opacity': [
-                'interpolate', ['linear'], ['zoom'],
-                3, 0.0,
-                4, 0.5,
-                5, 1.0,
-            ],
-        },
-    }, 'country-boundaries');
-}
+// ── Sources ───────────────────────────────────────────────────────────────────
 
 /**
- * Draws a minimal north-pointing arrow onto a canvas and registers it
- * as a Mapbox SDF image named "wave-arrow".
- * SDF = true  →  icon-color expressions work on it.
+ * Registers raster tile sources and per-model GeoJSON point sources.
+ * Safe to call multiple times — every add is guarded by getSource checks.
  */
-function loadWaveArrowImage(map) {
-    const SIZE = 64;
-    const canvas = document.createElement('canvas');
-    canvas.width = SIZE;
-    canvas.height = SIZE;
-    const ctx = canvas.getContext('2d');
+export async function addWaveSource(map, isDarkMode, models = ['WW3']) {
+  if (!map) return;
 
-    const cx = SIZE / 2;
+  const theme = isDarkMode ? 'dark' : 'light';
 
-    // Shaft: vertical line pointing up from center
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(cx, SIZE * 0.80);   // tail
-    ctx.lineTo(cx, SIZE * 0.18);   // tip
-    ctx.stroke();
+  for (const model of models) {
+    // Raster tile source
+    ensureSource(map, `wave-source-${model}`, {
+      type: 'raster',
+      tiles: [buildTileUrl(model, theme)],
+      tileSize: 256,
+      bounds: [100, -5, 180, 50],
+      scheme: 'xyz',
+    });
 
-    // Arrowhead
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.moveTo(cx, SIZE * 0.08);   // tip
-    ctx.lineTo(cx - SIZE * 0.18, SIZE * 0.32); // left wing
-    ctx.lineTo(cx + SIZE * 0.18, SIZE * 0.32); // right wing
-    ctx.closePath();
-    ctx.fill();
+    // Per-model GeoJSON source for direction arrows
+    const pointSourceId = `wave-points-${model}`;
+    if (map.getSource(pointSourceId)) continue;
 
-    map.addImage('wave-arrow', ctx.getImageData(0, 0, SIZE, SIZE), { sdf: true });
+    try {
+      const geojson = await fetchLatestGeoJSON({
+        model: model.toLowerCase(),
+        product: 'wave',
+        date: 'today',
+      });
+      if (geojson) {
+        ensureSource(map, pointSourceId, { type: 'geojson', data: geojson });
+      }
+    } catch (err) {
+      console.error(`[Wave] GeoJSON fetch failed for ${model}:`, err);
+    }
+  }
+
+  // Shared PH boundaries vector source
+  ensureSource(map, 'ph-boundaries', {
+    type: 'vector',
+    url: 'mapbox://mapbox.country-boundaries-v1',
+  });
 }
 
-// ── Popup (covers both wave-arrows and wave-direction layers) ──────────────
-function setupPopup(map, isDarkMode) {
-    const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+// ── Main entry point ──────────────────────────────────────────────────────────
 
-    const showPopup = (e) => {
-        if (!e.features.length) return;
-        popup
-            .setLngLat(e.lngLat)
-            .setHTML(createWavePopup(e.features[0], isDarkMode))
-            .setOffset([0, -5])
-            .addTo(map);
-    };
+/**
+ * Registers all map sources and layers for the given models.
+ * Idempotent — safe to call repeatedly or with a single new model.
+ */
+export async function addWaveLayer(map, isDarkMode, models = ['WW3']) {
+  if (!map) return;
 
-    const hidePopup = () => popup.remove();
+  const normalized = models.map(normalizeModel).filter(Boolean);
 
-    // Wind barbs
-    map.on('mousemove', 'wave-arrows', showPopup);
-    map.on('mouseleave', 'wave-arrows', hidePopup);
+  await addWaveSource(map, isDarkMode, normalized);
+  addSharedLayers(map, isDarkMode);
+  addWaveDirectionLayers(map, normalized);
+  setupPopup(map, isDarkMode, normalized);
+}
 
-    // Wave direction arrows
-    map.on('mousemove', 'wave-direction', showPopup);
-    map.on('mouseleave', 'wave-direction', hidePopup);
+// ── Shared (non-per-model) layers ─────────────────────────────────────────────
+
+function addSharedLayers(map, isDarkMode) {
+  if (!map.getLayer('wave-glass-fill')) {
+    map.addLayer({
+      id: 'wave-glass-fill',
+      type: 'fill',
+      source: 'glass-layer',
+      'source-layer': 'ph-bum99e',
+      slot: 'top',
+      paint: {
+        'fill-color': 'rgba(255, 255, 255, 0.15)',
+        'fill-opacity': 0.8,
+        'fill-outline-color': 'rgba(255, 255, 255, 0.35)',
+      },
+      layout: { visibility: 'none' },
+    });
+  }
+
+  if (!map.getLayer('wave-glass-depth')) {
+    map.addLayer({
+      id: 'wave-glass-depth',
+      type: 'fill',
+      source: 'glass-layer',
+      'source-layer': 'ph-bum99e',
+      slot: 'top',
+      paint: {
+        'fill-color': [
+          'interpolate', ['linear'], ['zoom'],
+          5,  'rgba(255,255,255,0.05)',
+          10, 'rgba(255,255,255,0.25)',
+        ],
+        'fill-opacity': 0.8,
+      },
+      layout: { visibility: 'none' },
+    });
+  }
+
+  if (!map.getLayer('ph-overlay')) {
+    map.addLayer({
+      id: 'ph-overlay',
+      type: 'fill',
+      source: 'ph-boundaries',
+      'source-layer': 'country_boundaries',
+      filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
+      paint: {
+        'fill-color':   isDarkMode ? '#0f1117' : '#f2f2f2',
+        'fill-opacity': 1,
+      },
+    });
+  }
+
+  if (!map.getLayer('ph-overlay-outline')) {
+    map.addLayer({
+      id: 'ph-overlay-outline',
+      type: 'line',
+      source: 'ph-boundaries',
+      'source-layer': 'country_boundaries',
+      filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
+      paint: {
+        'line-color':   isDarkMode ? '#1e3a5f' : '#000000',
+        'line-width':   0.5,
+        'line-opacity': 0.8,
+      },
+    });
+  }
+}
+
+// ── Per-model wave direction symbol layers ────────────────────────────────────
+//
+// Each model gets its own layer (wave-direction-WW3, wave-direction-ECWAM …)
+// reading from its own GeoJSON source (wave-points-WW3 etc.).
+//
+// The layer is registered with default color + size values.
+// useWaveConfig.syncWaveSymbolLayers overrides icon-color and icon-size at
+// runtime whenever the user changes theme or size — no layer rebuild needed.
+//
+function addWaveDirectionLayers(map, models = []) {
+  if (!map.hasImage('wave-arrow')) loadWaveArrowImage(map);
+
+  models.forEach((model) => {
+    const layerId  = `wave-direction-${model}`;
+    const sourceId = `wave-points-${model}`;
+
+    if (map.getLayer(layerId))    return; // already registered
+    if (!map.getSource(sourceId)) return; // GeoJSON not ready yet
+
+    map.addLayer({
+      id: layerId,
+      type: 'symbol',
+      source: sourceId,
+      slot: 'middle',
+
+      filter: [
+        'all',
+        ['has', 'waveDirection'],
+        ['>', ['to-number', ['get', 'waveHeight'], 0], 0],
+      ],
+
+      layout: {
+        visibility: 'none', // controlled by useWaveConfig
+
+        'icon-image': 'wave-arrow',
+        'icon-size':  DEFAULT_ICON_SIZE,   // overridden by syncWaveSymbolLayers
+
+        'icon-rotate':             ['to-number', ['get', 'waveDirection'], 0],
+        'icon-rotation-alignment': 'map',
+        'icon-pitch-alignment':    'map',
+        'icon-allow-overlap':      true,
+        'icon-ignore-placement':   true,
+      },
+
+      paint: {
+        'icon-color':   DEFAULT_ICON_COLOR, // overridden by syncWaveSymbolLayers
+        'icon-opacity': [
+          'interpolate', ['linear'], ['zoom'],
+          3, 0.0,
+          4, 0.5,
+          5, 1.0,
+        ],
+      },
+    }, 'country-boundaries');
+  });
+}
+
+// ── Canvas arrow SDF image ────────────────────────────────────────────────────
+
+function loadWaveArrowImage(map) {
+  const SIZE = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width  = SIZE;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext('2d');
+  const cx  = SIZE / 2;
+
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth   = 6;
+  ctx.lineCap     = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx, SIZE * 0.80);
+  ctx.lineTo(cx, SIZE * 0.18);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(cx,               SIZE * 0.08);
+  ctx.lineTo(cx - SIZE * 0.18, SIZE * 0.32);
+  ctx.lineTo(cx + SIZE * 0.18, SIZE * 0.32);
+  ctx.closePath();
+  ctx.fill();
+
+  map.addImage('wave-arrow', ctx.getImageData(0, 0, SIZE, SIZE), { sdf: true });
+}
+
+// ── Popup ─────────────────────────────────────────────────────────────────────
+
+function setupPopup(map, isDarkMode, models = []) {
+  const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+
+  const showPopup = (e) => {
+    if (!e.features?.length) return;
+    popup
+      .setLngLat(e.lngLat)
+      .setHTML(createWavePopup(e.features[0], isDarkMode))
+      .setOffset([0, -5])
+      .addTo(map);
+  };
+  const hidePopup = () => popup.remove();
+
+  const attach = (layerId) => {
+    if (_popupListeners.has(layerId)) return;
+    map.on('mousemove',  layerId, showPopup);
+    map.on('mouseleave', layerId, hidePopup);
+    _popupListeners.add(layerId);
+  };
+
+  attach('wave-arrows');
+  models.forEach((model) => attach(`wave-direction-${model}`));
 }
