@@ -3,13 +3,14 @@ import {
   DEFAULT_DIRECTION_STYLE,
   BASE_SIZE_STOPS,
   BLACK_ICON_COLOR,
-  COLORED_ICON_COLOR,} from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
+  COLORED_ICON_COLOR,
+} from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
 
 // ── Popup style injection (once) ──────────────────────────────────────────────
 
 (function injectPopupStyle() {
-    const style = document.createElement('style');
-    style.textContent = `
+  const style = document.createElement('style');
+  style.textContent = `
     .mapboxgl-popup-content {
       background: transparent !important;
       padding: 0 !important;
@@ -17,16 +18,27 @@ import {
     }
     .mapboxgl-popup-tip { display: none !important; }
   `;
-    document.head.appendChild(style);
-  })();
+  document.head.appendChild(style);
+})();
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MRI3_TIMESTEP = '012';
+const MRI3_TIMESTEP   = '012';
 const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
 
-// Tracks which layers already have popup listeners — never double-register
-const _popupListeners = new Set();
+// ── Module-level singletons ───────────────────────────────────────────────────
+
+// One popup instance shared across all wave direction layers and all calls to
+// addWaveLayer — prevents multiple popups when models change or layers re-init.
+let _wavePopup = null;
+const _popupListeners = new Set();  // never double-register a layer
+
+const getWavePopup = () => {
+  if (!_wavePopup) {
+    _wavePopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+  }
+  return _wavePopup;
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,12 +47,12 @@ const normalizeModel = (model = '') => model.trim().toUpperCase();
 const resolveDate = (model) => {
   switch (model) {
     case 'WW3': return '2026011200'; // TODO: replace with dynamic date
-    default: return '2026011200';
+    default:    return '2026011200';
   }
 };
 
 const buildTileUrl = (model, theme) => {
-  const m = normalizeModel(model);
+  const m    = normalizeModel(model);
   const date = resolveDate(m);
   const base = `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}`;
   return m === 'MRI3'
@@ -109,8 +121,8 @@ export async function addWaveLayer(map, isDarkMode, models) {
 
   await addWaveSource(map, isDarkMode, normalized);
   addWaveDirectionLayers(map, normalized);
-  setupPopup(map, isDarkMode, normalized);
   addSharedLayers(map, isDarkMode);
+  setupPopup(map, isDarkMode, normalized);   // always after layers exist
 }
 
 // ── Shared (non-per-model) layers ─────────────────────────────────────────────
@@ -146,10 +158,12 @@ function addSharedLayers(map, isDarkMode) {
   }
 }
 
+// ── Wave direction layers ─────────────────────────────────────────────────────
+
 function addWaveDirectionLayers(map, models = []) {
   if (!map.hasImage('wave-arrow')) loadWaveArrowImage(map);
 
-  // ── Read saved direction style from localStorage ───────────────────────────
+  // Read saved direction style from localStorage
   let savedStyle = DEFAULT_DIRECTION_STYLE;
   try {
     const raw = localStorage.getItem('WAVE_DIRECTION_STYLE');
@@ -159,24 +173,23 @@ function addWaveDirectionLayers(map, models = []) {
   }
 
   const iconColor = savedStyle.theme === 'black' ? BLACK_ICON_COLOR : COLORED_ICON_COLOR;
-  const iconSize = [
+  const iconSize  = [
     'interpolate', ['linear'], ['get', 'waveHeight'],
     ...BASE_SIZE_STOPS.flatMap(([waveH, baseSize]) => [waveH, baseSize * (savedStyle.size ?? 1.0)]),
   ];
-  // ─────────────────────────────────────────────────────────────────────────────
 
   models.forEach((model) => {
-    const layerId = `wave-direction-${model}`;
+    const layerId  = `wave-direction-${model}`;
     const sourceId = `wave-points-${model}`;
 
-    if (map.getLayer(layerId)) return;
+    if (map.getLayer(layerId))   return;
     if (!map.getSource(sourceId)) return;
 
     map.addLayer({
-      id: layerId,
-      type: 'symbol',
+      id:     layerId,
+      type:   'symbol',
       source: sourceId,
-      slot: 'middle',
+      slot:   'middle',
 
       filter: [
         'all',
@@ -185,26 +198,19 @@ function addWaveDirectionLayers(map, models = []) {
       ],
 
       layout: {
-        visibility: 'visible',
-
-        'icon-image': 'wave-arrow',
-        'icon-size': iconSize,   // ← restored from localStorage
-
-        'icon-rotate': ['to-number', ['get', 'waveDirection'], 0],
+        visibility:                'visible',
+        'icon-image':              'wave-arrow',
+        'icon-size':               iconSize,
+        'icon-rotate':             ['to-number', ['get', 'waveDirection'], 0],
         'icon-rotation-alignment': 'map',
-        'icon-pitch-alignment': 'map',
-        'icon-allow-overlap': true,
-        'icon-ignore-placement': true,
+        'icon-pitch-alignment':    'map',
+        'icon-allow-overlap':      true,
+        'icon-ignore-placement':   true,
       },
 
       paint: {
-        'icon-color': iconColor,  // ← restored from localStorage
-        'icon-opacity': [
-          'interpolate', ['linear'], ['zoom'],
-          3, 0.0,
-          4, 0.5,
-          5, 1.0,
-        ],
+        'icon-color':   iconColor,
+        'icon-opacity': savedStyle.opacity ?? 1.0,
       },
     });
   });
@@ -213,16 +219,16 @@ function addWaveDirectionLayers(map, models = []) {
 // ── Canvas arrow SDF image ────────────────────────────────────────────────────
 
 function loadWaveArrowImage(map) {
-  const SIZE = 64;
+  const SIZE   = 64;
   const canvas = document.createElement('canvas');
-  canvas.width = SIZE;
+  canvas.width  = SIZE;
   canvas.height = SIZE;
   const ctx = canvas.getContext('2d');
-  const cx = SIZE / 2;
+  const cx  = SIZE / 2;
 
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 6;
-  ctx.lineCap = 'round';
+  ctx.lineWidth   = 6;
+  ctx.lineCap     = 'round';
   ctx.beginPath();
   ctx.moveTo(cx, SIZE * 0.80);
   ctx.lineTo(cx, SIZE * 0.18);
@@ -230,9 +236,9 @@ function loadWaveArrowImage(map) {
 
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.moveTo(cx, SIZE * 0.08);
-  ctx.lineTo(cx - SIZE * 0.18, SIZE * 0.32);
-  ctx.lineTo(cx + SIZE * 0.18, SIZE * 0.32);
+  ctx.moveTo(cx,                SIZE * 0.08);
+  ctx.lineTo(cx - SIZE * 0.18,  SIZE * 0.32);
+  ctx.lineTo(cx + SIZE * 0.18,  SIZE * 0.32);
   ctx.closePath();
   ctx.fill();
 
@@ -242,7 +248,10 @@ function loadWaveArrowImage(map) {
 // ── Popup ─────────────────────────────────────────────────────────────────────
 
 function setupPopup(map, isDarkMode, models = []) {
-  const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+  // Use the module-level singleton — all layers share one popup so only
+  // one card can ever be visible at a time, regardless of how many models
+  // are active or how many times addWaveLayer is called.
+  const popup = getWavePopup();
 
   const showPopup = (e) => {
     if (!e.features?.length) return;
@@ -256,11 +265,10 @@ function setupPopup(map, isDarkMode, models = []) {
 
   const attach = (layerId) => {
     if (_popupListeners.has(layerId)) return;
-    map.on('mousemove', layerId, showPopup);
+    map.on('mousemove',  layerId, showPopup);
     map.on('mouseleave', layerId, hidePopup);
     _popupListeners.add(layerId);
   };
 
-  attach('wave-arrows');
   models.forEach((model) => attach(`wave-direction-${model}`));
 }
