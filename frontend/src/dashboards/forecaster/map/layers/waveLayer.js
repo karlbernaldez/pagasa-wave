@@ -23,15 +23,13 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MRI3_TIMESTEP   = '012';
+const MRI3_TIMESTEP    = '012';
 const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
 
 // ── Module-level singletons ───────────────────────────────────────────────────
 
-// One popup instance shared across all wave direction layers and all calls to
-// addWaveLayer — prevents multiple popups when models change or layers re-init.
 let _wavePopup = null;
-const _popupListeners = new Set();  // never double-register a layer
+const _popupListeners = new Set();
 
 const getWavePopup = () => {
   if (!_wavePopup) {
@@ -46,7 +44,7 @@ const normalizeModel = (model = '') => model.trim().toUpperCase();
 
 const resolveDate = (model) => {
   switch (model) {
-    case 'WW3': return '2026011200'; // TODO: replace with dynamic date
+    case 'WW3': return '2026011200';
     default:    return '2026011200';
   }
 };
@@ -64,19 +62,18 @@ const ensureSource = (map, id, config) => {
   if (!map.getSource(id)) map.addSource(id, config);
 };
 
+// Extract model name from layer id — 'wave-direction-WW3' → 'WW3'
+const modelFromLayerId = (layerId = '', prefix = 'wave-direction-') =>
+  layerId.startsWith(prefix) ? layerId.slice(prefix.length) : '';
+
 // ── Sources ───────────────────────────────────────────────────────────────────
 
-/**
- * Registers raster tile sources and per-model GeoJSON point sources.
- * Safe to call multiple times — every add is guarded by getSource checks.
- */
 export async function addWaveSource(map, isDarkMode, models) {
   if (!map) return;
 
   const theme = isDarkMode ? 'dark' : 'light';
 
   for (const model of models) {
-    // Raster tile source
     ensureSource(map, `wave-source-${model}`, {
       type: 'raster',
       tiles: [buildTileUrl(model, theme)],
@@ -85,7 +82,6 @@ export async function addWaveSource(map, isDarkMode, models) {
       scheme: 'xyz',
     });
 
-    // Per-model GeoJSON source for direction arrows
     const pointSourceId = `wave-points-${model}`;
     if (map.getSource(pointSourceId)) continue;
 
@@ -103,17 +99,12 @@ export async function addWaveSource(map, isDarkMode, models) {
     }
   }
 
-  // Shared PH boundaries vector source
   ensureSource(map, 'ph-boundaries', {
     type: 'vector',
     url: 'mapbox://mapbox.country-boundaries-v1',
   });
 }
 
-/**
- * Registers all map sources and layers for the given models.
- * Idempotent — safe to call repeatedly or with a single new model.
- */
 export async function addWaveLayer(map, isDarkMode, models) {
   if (!map) return;
 
@@ -122,7 +113,7 @@ export async function addWaveLayer(map, isDarkMode, models) {
   await addWaveSource(map, isDarkMode, normalized);
   addWaveDirectionLayers(map, normalized);
   addSharedLayers(map, isDarkMode);
-  setupPopup(map, isDarkMode, normalized);   // always after layers exist
+  setupPopup(map, isDarkMode, normalized);
 }
 
 // ── Shared (non-per-model) layers ─────────────────────────────────────────────
@@ -163,7 +154,6 @@ function addSharedLayers(map, isDarkMode) {
 function addWaveDirectionLayers(map, models = []) {
   if (!map.hasImage('wave-arrow')) loadWaveArrowImage(map);
 
-  // Read saved direction style from localStorage
   let savedStyle = DEFAULT_DIRECTION_STYLE;
   try {
     const raw = localStorage.getItem('WAVE_DIRECTION_STYLE');
@@ -182,7 +172,7 @@ function addWaveDirectionLayers(map, models = []) {
     const layerId  = `wave-direction-${model}`;
     const sourceId = `wave-points-${model}`;
 
-    if (map.getLayer(layerId))   return;
+    if (map.getLayer(layerId))    return;
     if (!map.getSource(sourceId)) return;
 
     map.addLayer({
@@ -236,9 +226,9 @@ function loadWaveArrowImage(map) {
 
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.moveTo(cx,                SIZE * 0.08);
-  ctx.lineTo(cx - SIZE * 0.18,  SIZE * 0.32);
-  ctx.lineTo(cx + SIZE * 0.18,  SIZE * 0.32);
+  ctx.moveTo(cx,               SIZE * 0.08);
+  ctx.lineTo(cx - SIZE * 0.18, SIZE * 0.32);
+  ctx.lineTo(cx + SIZE * 0.18, SIZE * 0.32);
   ctx.closePath();
   ctx.fill();
 
@@ -248,25 +238,25 @@ function loadWaveArrowImage(map) {
 // ── Popup ─────────────────────────────────────────────────────────────────────
 
 function setupPopup(map, isDarkMode, models = []) {
-  // Use the module-level singleton — all layers share one popup so only
-  // one card can ever be visible at a time, regardless of how many models
-  // are active or how many times addWaveLayer is called.
   const popup = getWavePopup();
-
-  const showPopup = (e) => {
-    if (!e.features?.length) return;
-    popup
-      .setLngLat(e.lngLat)
-      .setHTML(createWavePopup(e.features[0], isDarkMode))
-      .setOffset([0, -5])
-      .addTo(map);
-  };
-  const hidePopup = () => popup.remove();
 
   const attach = (layerId) => {
     if (_popupListeners.has(layerId)) return;
-    map.on('mousemove',  layerId, showPopup);
-    map.on('mouseleave', layerId, hidePopup);
+
+    // Extract model from layer id so the popup subtitle is always accurate
+    const model = modelFromLayerId(layerId);
+
+    map.on('mousemove', layerId, (e) => {
+      if (!e.features?.length) return;
+      popup
+        .setLngLat(e.lngLat)
+        .setHTML(createWavePopup(e.features[0], isDarkMode, model))
+        .setOffset([0, -5])
+        .addTo(map);
+    });
+
+    map.on('mouseleave', layerId, () => popup.remove());
+
     _popupListeners.add(layerId);
   };
 
