@@ -8,6 +8,18 @@ export const WIND_MODELS = [
   { id: 'HRRR', label: 'HRRR', available: false },
 ];
 
+export const WIND_PARTICLE_TILESETS = {
+  ECMWF: 'mapbox://votewave.ecmwf',
+  // GFS:   'mapbox://votewave.gfs',
+  // NAM:   'mapbox://votewave.nam',
+  // HRRR:  'mapbox://votewave.hrrr',
+  // NOAA:  'mapbox://votewave.noaa',
+};
+
+export const WIND_RASTER_TILESETS = {
+  ECMWF: { light: 'mapbox://votewave.windtif', dark: 'mapbox://votewave.darktif' },
+};
+
 export const WAVE_MODELS = [
   { id: 'WW3', label: 'WW3' },
   { id: 'ECWAM', label: 'ECWAM' },
@@ -67,6 +79,7 @@ export const OFF_ELEMENTS = {
 export const DEFAULT_DIRECTION_STYLE = {
   theme: 'colored', // 'colored' | 'black'
   size: 1.0,       // multiplier applied to all icon-size stops
+  opacity: 1.0,
 };
 
 // icon-size base stops — user size is a multiplier on top of these
@@ -88,3 +101,5 @@ export const COLORED_ICON_COLOR = [
 ];
 
 export const BLACK_ICON_COLOR = 'rgba(20, 20, 20, 0.88)';
+export const MRI3_TIMESTEP = '12';
+export const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';

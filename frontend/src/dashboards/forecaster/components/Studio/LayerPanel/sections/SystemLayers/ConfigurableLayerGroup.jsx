@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { ModelSelector, ElementSelector, WaveDirectionStylePanel } from './LayerSelectors';
+import { ModelSelector, ElementSelector, WaveDirectionStylePanel, WindBarbStylePanel } from './LayerSelectors';
 import { getSelectedElement, getModelSummary } from '../../utils/layerPanelUtils';
 
 /**
@@ -33,16 +33,23 @@ const ConfigurableLayerGroup = ({
   onSetElement,
   onToggleModel,
   onSetDirectionStyle,
+  onSetBarbStyle,
   modelCols = 3,
   isDarkMode,
 }) => {
   const { enabled } = config;
 
   const selectedElement = getSelectedElement(config.elements, elements);
+
   const showDirectionStyle =
     enabled &&
     expanded &&
     selectedElement === 'waveDirection';
+
+  const showWindBarbStyle =
+    enabled &&
+    expanded &&
+    selectedElement === 'barbs';
 
   return (
     <div className={`rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
@@ -53,9 +60,8 @@ const ConfigurableLayerGroup = ({
         {/* Left: expand trigger (disabled when layer is off) */}
         <button
           onClick={enabled ? onToggleExpand : undefined}
-          className={`flex-1 flex items-center gap-2 text-left ${
-            enabled ? '' : 'opacity-50 cursor-not-allowed'
-          }`}
+          className={`flex-1 flex items-center gap-2 text-left ${enabled ? '' : 'opacity-50 cursor-not-allowed'
+            }`}
         >
           <span className="text-base">{emoji}</span>
           <div className="flex-1">
@@ -71,17 +77,16 @@ const ConfigurableLayerGroup = ({
         {/* Enable / disable dot */}
         <button
           onClick={onToggleEnabled}
-          className={`w-2 h-2 rounded-full flex-shrink-0 mx-2 ${
-            enabled
-              ? isDarkMode ? 'bg-cyan-400' : 'bg-blue-600'
-              : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
-          }`}
+          className={`w-2 h-2 rounded-full flex-shrink-0 mx-2 ${enabled
+            ? isDarkMode ? 'bg-cyan-400' : 'bg-blue-600'
+            : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
+            }`}
         />
 
         {/* Chevron */}
         {enabled ? (
           expanded
-            ? <ChevronDown  size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+            ? <ChevronDown size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
             : <ChevronRight size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
         ) : (
           <ChevronRight size={12} className={isDarkMode ? 'text-white/30' : 'text-slate-400'} strokeWidth={2.5} />
@@ -110,6 +115,14 @@ const ConfigurableLayerGroup = ({
             <WaveDirectionStylePanel
               style={config.directionStyle}
               onChange={onSetDirectionStyle}
+              isDarkMode={isDarkMode}
+            />
+          )}
+
+          {showWindBarbStyle && (
+            <WindBarbStylePanel
+              style={config.barbStyle}
+              onChange={onSetBarbStyle}
               isDarkMode={isDarkMode}
             />
           )}
