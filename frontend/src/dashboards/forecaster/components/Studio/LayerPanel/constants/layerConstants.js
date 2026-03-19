@@ -101,5 +101,5 @@ export const COLORED_ICON_COLOR = [
 ];
 
 export const BLACK_ICON_COLOR = 'rgba(20, 20, 20, 0.88)';
-export const MRI3_TIMESTEP = '12';
+export const MRI3_TIMESTEP = '012';
 export const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';

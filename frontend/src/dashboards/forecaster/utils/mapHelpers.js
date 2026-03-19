@@ -123,11 +123,34 @@ export function createWindPopup(feature, isDarkMode = false) {
   `;
 }
 
-export function createWavePopup(feature, isDarkMode = false) {
+// ── Model display name map ────────────────────────────────────────────────────
+
+const WAVE_MODEL_LABELS = {
+  WW3:  'Wave Watch III',
+  MRI3: 'MRI III',
+  ECWAM: 'ECWAM'
+};
+
+const waveModelLabel = (model = '') => {
+  const key = model.trim().toUpperCase();
+  return WAVE_MODEL_LABELS[key] ?? model.toUpperCase();
+};
+
+// ── Wave popup ────────────────────────────────────────────────────────────────
+
+/**
+ * @param {object} feature   - Mapbox GeoJSON feature
+ * @param {boolean} isDarkMode
+ * @param {string}  model    - Model name extracted from the layer id (e.g. 'WW3')
+ */
+export function createWavePopup(feature, isDarkMode = false, model = '') {
   const props      = feature.properties;
   const waveDir    = props.waveDirection != null ? Number(props.waveDirection).toFixed(1) : null;
   const wavePeriod = props.wavePeriod    != null ? Number(props.wavePeriod).toFixed(1)    : null;
   const waveHeight = props.waveHeight    != null ? Number(props.waveHeight).toFixed(2)    : null;
+
+  // e.g. "NOAA WW3 Surface" or "MRI WaveWatch III Surface"
+  const modelLabel = `${waveModelLabel(model)} Surface`;
 
   const t = isDarkMode
     ? {
@@ -170,8 +193,8 @@ export function createWavePopup(feature, isDarkMode = false) {
     </div>
   `;
 
-  const val  = (v, unit) => `<span style="font-size:14px; font-weight:700; color:${t.valueColor};">${v} ${unit}</span>`;
-  const null_ = ()       => `<span style="font-size:13px; color:${t.subColor};">—</span>`;
+  const val   = (v, unit) => `<span style="font-size:14px; font-weight:700; color:${t.valueColor};">${v} ${unit}</span>`;
+  const null_ = ()        => `<span style="font-size:13px; color:${t.subColor};">—</span>`;
 
   const dirRow = waveDir != null
     ? `
@@ -209,7 +232,6 @@ export function createWavePopup(feature, isDarkMode = false) {
 
       <div style="padding:14px 16px; background:${t.innerBg};">
 
-        <!-- Header -->
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
           <div style="
             width:30px; height:30px; border-radius:8px;
@@ -224,15 +246,15 @@ export function createWavePopup(feature, isDarkMode = false) {
           </div>
           <div>
             <div style="font-size:13px; font-weight:700; color:${t.titleColor}; line-height:1;">Wave</div>
-            <div style="font-size:10px; color:${t.labelColor}; margin-top:2px; text-transform:uppercase; letter-spacing:0.06em;">WW3 Surface</div>
+            <div style="font-size:10px; color:${t.labelColor}; margin-top:2px; text-transform:uppercase; letter-spacing:0.06em;">${modelLabel}</div>
           </div>
         </div>
 
         <div style="height:1px; background:${t.divider}; margin-bottom:10px;"></div>
 
         <div style="display:grid; gap:9px;">
-          ${waveHeight != null ? row('Height',  val(waveHeight, 'm'))  : row('Height',  null_())}
-          ${wavePeriod != null ? row('Period',   val(wavePeriod, 's'))  : row('Period',  null_())}
+          ${waveHeight != null ? row('Height',  val(waveHeight, 'm')) : row('Height',  null_())}
+          ${wavePeriod != null ? row('Period',   val(wavePeriod, 's')) : row('Period',  null_())}
           ${dirRow}
         </div>
 
