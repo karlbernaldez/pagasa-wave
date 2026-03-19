@@ -3,7 +3,7 @@ import { initDrawControl } from '@dashboards/forecaster/map/controls/drawControl
 import { initTyphoonLayer } from '@dashboards/forecaster//map/layers/typhoonLayer';
 import { saveMarker } from '@dashboards/forecaster/map/layers/markerLayer';
 import { addHimawariLayer } from '@dashboards/forecaster/map/layers/satelliteLayer';
-import { addWindSource } from '@dashboards/forecaster/map/layers/windLayer';
+import { addWindSource, addWindLayer } from '@dashboards/forecaster/map/layers/windLayer';
 import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
 
 import { setGlobalMapLoaded, setGlobalSourceIds, } from '@dashboards/forecaster/map/helpers/mapGlobalState';
@@ -436,6 +436,7 @@ export async function setupMap({
   loadCustomImages(map);
   initTyphoonLayer(map);
   await addWindSource(map, isDarkMode);
+  await addWindLayer(map, isDarkMode);
   const parseStoredModels = (raw) => {
     if (!raw) return ['WW3'];
     try {

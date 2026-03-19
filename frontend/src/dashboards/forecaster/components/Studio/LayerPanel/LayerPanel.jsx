@@ -48,12 +48,12 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
 
   // ── Wind ─────────────────────────────────────────────────────────────────────
   const {
-    windConfig, toggleWindLayer, setWindElement, toggleWindModel,
+    windConfig, toggleWindLayer, setWindElement, toggleWindModel, setWindBarbStyle,
   } = useWindConfig({ mapRef, isDarkMode });
 
   // ── Wave ─────────────────────────────────────────────────────────────────────
   const {
-    waveConfig, toggleWaveLayer, setWaveElement, toggleWaveModel, setDirectionStyle, applyOnMapReady,
+    waveConfig, toggleWaveLayer, setWaveElement, toggleWaveModel, setDirectionStyle,
   } = useWaveConfig({ mapRef, isDarkMode });
 
   // ── Custom layer editing / drag ─────────────────────────────────────────────
@@ -95,8 +95,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
         <button
           onClick={() => setIsExpanded(true)}
           className={`group flex items-center gap-1.5 px-2.5 py-2 rounded-full transition-all duration-300 hover:scale-105 backdrop-blur-xl shadow-lg ${isDarkMode
-              ? 'bg-black/40 hover:bg-black/50 border border-white/20'
-              : 'bg-white/60 hover:bg-white/70 border border-black/10'
+            ? 'bg-black/40 hover:bg-black/50 border border-white/20'
+            : 'bg-white/60 hover:bg-white/70 border border-black/10'
             }`}
         >
           <Layers size={14} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
@@ -140,8 +140,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
             <button
               onClick={() => setIsExpanded(false)}
               className={`p-1 rounded-md transition-all duration-200 hover:scale-110 ${isDarkMode
-                  ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
-                  : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
+                ? 'hover:bg-white/10 text-white/60 hover:text-white/90'
+                : 'hover:bg-black/10 text-slate-600 hover:text-slate-900'
                 }`}
             >
               <ChevronDown size={13} strokeWidth={2.5} />
@@ -184,6 +184,7 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
               onToggleWave={toggleWaveLayer}
               onSetWaveElement={setWaveElement}
               onToggleWaveModel={toggleWaveModel}
+              onSetWindBarbStyle={setWindBarbStyle}
               onSetWaveDirectionStyle={setDirectionStyle}
               isDarkMode={isDarkMode}
             />
@@ -194,8 +195,8 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
             <button
               onClick={addLayer}
               className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-[11px] transition-all duration-200 hover:scale-[1.02] ${isDarkMode
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white shadow-lg shadow-cyan-500/20'
-                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/20'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white shadow-lg shadow-cyan-500/20'
+                : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/20'
                 }`}
             >
               <Plus size={12} strokeWidth={3} />
