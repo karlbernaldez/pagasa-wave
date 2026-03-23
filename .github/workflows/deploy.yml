@@ -26,7 +26,7 @@ jobs:
             if [ "${{ github.ref_name }}" = "main" ]; then
               echo "Deploying PRODUCTION..."
 
-              cd /var/www/wavelab/prod
+              cd /var/www/wavelab/pagasa-wave
               git pull origin main
 
               cd frontend
