@@ -13,7 +13,7 @@ scripts/era5_ph_wind_wave.grib.5b7b6.idx
 scripts/grib_files/
 scripts/upload_wind_raster.txt
 frontend/dist/
-frontend/public/geojson/
+# frontend/public/geojson/
 frontend/public/tiles/
 
 backend/frames/
@@ -43,6 +43,8 @@ scripts/.env
 
 
 wavetiles/cog
+wavetiles/wavelab
+wavetiles/scripts/geojson_output/
 wavetiles/geotiff
 wavetiles/input
 wavetiles/tiles

@@ -5,15 +5,15 @@ import { fetchNotifications, markAllRead, markOneRead } from '@/api/notification
 import socket from '@/socket/socketClient';
 
 const EVENTS = {
-  NEW:      'notification:new',
-  READ:     'notification:read',
+  NEW: 'notification:new',
+  READ: 'notification:read',
   ALL_READ: 'notification:all_read',
 };
 
 const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount,   setUnreadCount]   = useState(0);
-  const [isConnected,   setIsConnected]   = useState(socket.connected);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isConnected, setIsConnected] = useState(socket.connected);
 
   const mountedRef = useRef(true);
 
@@ -39,7 +39,7 @@ const useNotifications = () => {
     // Sync whatever the socket's current state is right now
     setIsConnected(socket.connected);
 
-    const onConnect    = () => { if (mountedRef.current) setIsConnected(true); };
+    const onConnect = () => { if (mountedRef.current) setIsConnected(true); };
     const onDisconnect = () => { if (mountedRef.current) setIsConnected(false); };
 
     const onNew = (notification) => {
@@ -69,10 +69,10 @@ const useNotifications = () => {
       setUnreadCount(0);
     };
 
-    socket.on('connect',       onConnect);
-    socket.on('disconnect',    onDisconnect);
-    socket.on(EVENTS.NEW,      onNew);
-    socket.on(EVENTS.READ,     onRead);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on(EVENTS.NEW, onNew);
+    socket.on(EVENTS.READ, onRead);
     socket.on(EVENTS.ALL_READ, onAllRead);
 
     // // Debug — remove after confirmed working
@@ -81,12 +81,12 @@ const useNotifications = () => {
 
     return () => {
       mountedRef.current = false;
-      socket.off('connect',       onConnect);
-      socket.off('disconnect',    onDisconnect);
-      socket.off(EVENTS.NEW,      onNew);
-      socket.off(EVENTS.READ,     onRead);
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off(EVENTS.NEW, onNew);
+      socket.off(EVENTS.READ, onRead);
       socket.off(EVENTS.ALL_READ, onAllRead);
-      socket.offAny(onAny);
+      // socket.offAny(onAny);
       // ⚠️ No socket.connect() or socket.disconnect() — AuthProvider owns that
     };
   }, []);

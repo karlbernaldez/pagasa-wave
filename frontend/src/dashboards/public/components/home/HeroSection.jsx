@@ -165,7 +165,7 @@ const WaveHeroSection = ({ isDark }) => {
                 }`}
               >
                 <Waves className="animate-pulse" size={18} />
-                DOST-MECO-TECO-VOTE III · Component B · Project 1
+                DOST-MECO-TECO-VOTE III : Component B · Project 1
               </div>
             </motion.div>
 
