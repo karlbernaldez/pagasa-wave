@@ -1,183 +1,429 @@
+import asyncHandler from '../utils/asyncHandler.js';
+import { throwError } from '../utils/errorHelper.js';
+import {
+  ensureProjectExists,
+  ensureUniqueProjectName,
+  deleteProjectAndFeatures,
+} from '../utils/dbHelpers.js';
 import Project from '../models/Project.js';
-import Feature from '../models/Feature.js';
-import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
 
-export const createProject = async (req, res) => {
-  console.log('📌 Create Project Request');
-  try {
-    // --- Extract data ---
-    const { name, description, chartType, forecastDate } = req.body;
-    const owner = req.user?.id;
+/* =========================================================
+   STATUS TRANSITION MAP
+========================================================= */
+const allowedTransitions = {
+  Draft: ['Submitted'],
+  Submitted: ['Under Review'],
+  'Under Review': ['Approved', 'Rejected'],
+  Approved: ['Published'],
+  Rejected: ['Draft'],
+  Published: ['Archived'],
+};
 
-    // --- Validate required fields ---
-    if (!owner) {
-      return res.status(401).json({ message: 'Unauthorized: owner missing' });
+/* =========================================================
+   ADMIN: GET ALL PROJECTS
+========================================================= */
+export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
+  if (!req.user || req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const allowedAdminStatuses = [
+    'Submitted',
+    'Under Review',
+    'Approved',
+    'Published',
+    'Rejected',
+    'Archived'
+  ];
+
+  const { status } = req.query;
+
+  const filter = {
+    status: { $in: allowedAdminStatuses }
+  };
+
+  if (status) {
+    if (!allowedAdminStatuses.includes(status)) {
+      throwError('Invalid or unauthorized status filter', 400);
     }
-    if (!name || !chartType) {
-      return res.status(400).json({ message: 'Project name and chartType are required.' });
-    }
+    filter.status = status;
+  }
 
-    // --- Check duplicate project name per owner ---
-    const existing = await Project.findOne({ name, owner });
-    if (existing) {
-      return res.status(409).json({ message: 'A project with this name already exists for this user.' });
-    }
+  const projects = await Project.find(filter)
+    .populate('owner', 'firstName lastName email username')
+    .sort({
+      lastOpenedAt: -1,  // 🔥 most recently opened
+      updatedAt: -1,     // recently edited
+      submittedAt: -1,   // recent submissions
+      createdAt: -1      // fallback
+    })
+    .lean();
 
-    // --- Create new project ---
-    const project = new Project({
-      name,
-      description: description || '',
-      chartType,
-      forecastDate: forecastDate || null,
-      owner,
+  res.json(projects);
+});
+
+/* =========================================================
+   CREATE PROJECT
+========================================================= */
+export const createProject = asyncHandler(async (req, res) => {
+  const { name, description, chartType, forecastDate } = req.body;
+
+  if (!req.user) throwError('Unauthorized', 401);
+  if (!name || !chartType || !forecastDate) {
+    throwError('name, chartType and forecastDate are required', 400);
+  }
+
+  await ensureUniqueProjectName(name, req.user.id);
+
+  const project = await Project.create({
+    name: name.trim(),
+    description: description?.trim() || '',
+    chartType: chartType.trim(),
+    forecastDate,
+    owner: req.user.id,
+    status: 'Draft',
+    version: 1,
+    auditLogs: [
+      {
+        action: 'created',
+        performedBy: req.user.id,
+        previousStatus: null,
+        newStatus: 'Draft',
+        comment: 'Project created',
+      },
+    ],
+  });
+
+  res.status(201).json(project);
+});
+
+/* =========================================================
+   GET USER PROJECTS
+========================================================= */
+export const getUserProjects = asyncHandler(async (req, res) => {
+  if (!req.user) throwError('Unauthorized', 401);
+
+  const {
+    page = 1,
+    limit = 8,
+    search = '',
+    status = ''
+  } = req.query;
+
+  const query = { owner: req.user.id };
+
+  if (search.trim()) {
+    query.$or = [
+      { name: { $regex: search.trim(), $options: 'i' } },
+      { description: { $regex: search.trim(), $options: 'i' } }
+    ];
+  }
+
+  if (status && status !== 'All') {
+    query.status = status;
+  }
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [projects, total] = await Promise.all([
+    Project.find(query)
+      .sort({
+        lastOpenedAt: -1,  // recently opened
+        updatedAt: -1,     // recently edited
+        createdAt: -1      // fallback
+      })
+      .skip(skip)
+      .limit(Number(limit))
+      .lean(),
+    Project.countDocuments(query)
+  ]);
+
+  res.json({
+    projects,
+    total,
+    page: Number(page),
+    totalPages: Math.ceil(total / Number(limit))
+  });
+});
+
+/* =========================================================
+   GET LATEST USER PROJECT
+========================================================= */
+export const getLatestUserProject = asyncHandler(async (req, res) => {
+  if (!req.user) throwError('Unauthorized', 401);
+
+  const project = await Project.findOne({ owner: req.user.id })
+    .sort({ updatedAt: -1 }) // Most recently modified
+    .lean();
+
+  if (!project) {
+    return res.json({
+      project: null,
+      message: 'No projects found for this user'
     });
-
-    await project.save();
-
-    // --- Return success ---
-    res.status(201).json(project);
-
-  } catch (error) {
-    console.error('Error creating project:', error);
-
-    // --- Return validation errors if available ---
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: error.message });
-    }
-
-    res.status(500).json({ message: 'Server error', error: error.message });
   }
-};
 
-export const getUserProjects = async (req, res) => {
-  console.log('📌 Get User Projects Request');
-  try {
-    const token = req.cookies.accessToken;
+  res.json({ project });
+});
 
-    if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
+/* =========================================================
+   GET PROJECT BY ID
+========================================================= */
+export const getProjectById = asyncHandler(async (req, res) => {
+  const project = await ensureProjectExists(req.params.id, req.user.id);
 
-    // Decode and verify the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const ownerId = decoded.id;
+  await project.populate('owner', 'firstName lastName email position');
 
-    // Query the projects owned by the user
-    const projects = await Project.find({ owner: ownerId }).sort({ createdAt: -1 });
+  // Track project access
+  project.lastOpenedAt = new Date();
+  project.lastOpenedBy = req.user.id;
+  project.openCount += 1;
 
-    res.status(200).json(projects);
-  } catch (error) {
-    console.error('Error fetching projects:', error);
+  await project.save();
 
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(403).json({ message: 'Invalid or expired token' });
-    }
+  res.json(project);
+});
 
-    res.status(500).json({ message: 'Server error' });
+/* =========================================================
+   UPDATE PROJECT NAME
+========================================================= */
+export const renameProject = asyncHandler(async (req, res) => {
+  const { name } = req.body;
+
+  if (!name || !name.trim()) {
+    throwError('name is required', 400);
   }
-};
 
-export const getProjectById = async (req, res) => {
-  try {
-    const { id } = req.params;
+  const project = await ensureProjectExists(req.params.id, req.user.id);
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid project ID' });
-    }
-
-    // Populate the owner field and exclude sensitive data like password and refreshToken
-    const project = await Project.findById(id)
-      .populate('owner', 'firstName lastName email position') // specify only the fields you need
-      .exec();
-
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-
-    res.status(200).json(project);
-  } catch (error) {
-    console.error('Error fetching project:', error);
-    res.status(500).json({ message: 'Server error' });
+  // No-op if the name hasn't changed
+  if (project.name === name.trim()) {
+    return res.json(project);
   }
-};
 
-export const updateProject = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description, chartType, forecastDate } = req.body;
-    const owner = req.user?.id;
+  await ensureUniqueProjectName(name.trim(), req.user.id, project._id);
 
-    // Check if the project exists
-    const project = await Project.findOne({ _id: id, owner });
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found or unauthorized' });
-    }
+  const previousName = project.name;
+  project.name = name.trim();
 
-    // Validate input
-    if (!name || !chartType || !forecastDate) {
-      return res.status(400).json({ message: 'All fields (name, chartType, forecastDate) are required' });
-    }
+  project.auditLogs.push({
+    action: 'renamed',
+    performedBy: req.user.id,
+    previousStatus: project.status,
+    newStatus: project.status,
+    comment: `Renamed from "${previousName}" to "${name.trim()}"`,
+  });
 
-    // Check if the new name is already taken by another project of the same owner
-    const existing = await Project.findOne({ name, owner });
-    if (existing && existing._id.toString() !== id) {
-      return res.status(409).json({ message: 'A project with this name already exists.' });
-    }
+  await project.save();
 
-    // Update the project with new data
-    project.name = name;
-    project.description = description;
-    project.chartType = chartType;
-    project.forecastDate = forecastDate;
+  res.json(project);
+});
 
-    await project.save(); // Save the updated project
+/* =========================================================
+   UPDATE PROJECT (ONLY DRAFT OR REJECTED)
+========================================================= */
+export const updateProject = asyncHandler(async (req, res) => {
+  const { name, description, chartType, forecastDate } = req.body;
 
-    res.status(200).json(project);
-  } catch (error) {
-    console.error('Error updating project:', error);
-    res.status(500).json({ message: 'Server error' });
+  const project = await ensureProjectExists(req.params.id, req.user.id);
+
+  if (!['Draft', 'Rejected'].includes(project.status)) {
+    throwError('Only Draft or Rejected projects can be edited', 400);
   }
-};
 
-export const deleteProject = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const owner = req.user?.id;
-
-    console.log('🗑️ Delete Request Received');
-    console.log('➡️ Project ID:', id);
-    console.log('➡️ Owner/User ID:', owner);
-
-    // Check if the project exists and belongs to the current user
-    const project = await Project.findOne({ _id: id, owner });
-
-    if (!project) {
-      console.warn('⚠️ Project not found or unauthorized delete attempt');
-      return res.status(404).json({ message: 'Project not found or unauthorized' });
-    }
-
-    console.log('✔️ Project found:', project.name);
-
-    // DELETE all related features
-    const deleteResult = await Feature.deleteMany({
-      'properties.project': id,
-      'properties.owner': owner,
-    });
-
-    console.log(`🧹 Features deleted: ${deleteResult.deletedCount}`);
-
-    // Delete the project itself
-    await project.deleteOne();
-    console.log('🗑️ Project successfully deleted');
-
-    res.status(200).json({
-      message: 'Project and related features deleted successfully',
-      deletedFeatures: deleteResult.deletedCount,
-    });
-
-  } catch (error) {
-    console.error('❌ Error deleting project:', error);
-    res.status(500).json({ message: 'Server error' });
+  if (!name || !chartType || !forecastDate) {
+    throwError('All fields are required', 400);
   }
-};
+
+  await ensureUniqueProjectName(name, req.user.id, project._id);
+
+  project.name = name.trim();
+  project.description = description?.trim() || '';
+  project.chartType = chartType.trim();
+  project.forecastDate = forecastDate;
+
+  project.auditLogs.push({
+    action: 'edited',
+    performedBy: req.user.id,
+    previousStatus: project.status,
+    newStatus: project.status,
+    comment: 'Project edited',
+  });
+
+  await project.save();
+
+  res.json(project);
+});
+
+/* =========================================================
+   SUBMIT PROJECT (OWNER)
+========================================================= */
+export const submitProject = asyncHandler(async (req, res) => {
+  const project = await ensureProjectExists(req.params.id, req.user.id);
+
+  if (!allowedTransitions[project.status]?.includes('Submitted')) {
+    throwError('Invalid status transition', 400);
+  }
+
+  project.status = 'Submitted';
+  project.submittedAt = new Date();
+
+  project.auditLogs.push({
+    action: 'submitted',
+    performedBy: req.user.id,
+    previousStatus: 'Draft',
+    newStatus: 'Submitted',
+    comment: 'Submitted for review',
+  });
+
+  await project.save();
+
+  res.json(project);
+});
+
+/* =========================================================
+   APPROVE PROJECT (ADMIN)
+========================================================= */
+export const approveProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const project = await Project.findById(req.params.id);
+  if (!project) throwError('Project not found', 404);
+
+  if (!allowedTransitions[project.status]?.includes('Approved')) {
+    throwError('Invalid status transition', 400);
+  }
+
+  if (project.owner.toString() === req.user.id) {
+    throwError('You cannot approve your own project', 400);
+  }
+
+  project.status = 'Approved';
+  project.reviewedAt = new Date();
+  project.approvedBy = req.user.id;
+
+  project.auditLogs.push({
+    action: 'approved',
+    performedBy: req.user.id,
+    previousStatus: project.status,
+    newStatus: 'Approved',
+    comment: 'Project approved',
+  });
+
+  await project.save();
+
+  res.json(project);
+});
+
+/* =========================================================
+   REJECT PROJECT (ADMIN)
+========================================================= */
+export const rejectProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const { comment } = req.body;
+
+  const project = await Project.findById(req.params.id);
+  if (!project) throwError('Project not found', 404);
+
+  if (!allowedTransitions[project.status]?.includes('Rejected')) {
+    throwError('Invalid status transition', 400);
+  }
+
+  project.status = 'Rejected';
+  project.rejectedBy = req.user.id;
+  project.reviewComment = comment || '';
+  project.reviewedAt = new Date();
+
+  project.auditLogs.push({
+    action: 'rejected',
+    performedBy: req.user.id,
+    previousStatus: project.status,
+    newStatus: 'Rejected',
+    comment: comment || 'Rejected',
+  });
+
+  await project.save();
+
+  res.json(project);
+});
+
+/* =========================================================
+   PUBLISH PROJECT (ADMIN)
+========================================================= */
+export const publishProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const project = await Project.findById(req.params.id);
+  if (!project) throwError('Project not found', 404);
+
+  if (!allowedTransitions[project.status]?.includes('Published')) {
+    throwError('Invalid status transition', 400);
+  }
+
+  project.status = 'Published';
+  project.publishedAt = new Date();
+
+  project.auditLogs.push({
+    action: 'published',
+    performedBy: req.user.id,
+    previousStatus: project.status,
+    newStatus: 'Published',
+    comment: 'Project published',
+  });
+
+  await project.save();
+
+  res.json(project);
+});
+
+/* =========================================================
+   DELETE PROJECT
+========================================================= */
+export const deleteProject = asyncHandler(async (req, res) => {
+  const deletedFeaturesCount = await deleteProjectAndFeatures(
+    req.params.id,
+    req.user.id
+  );
+
+  res.json({
+    message: 'Project and related features deleted successfully',
+    deletedFeatures: deletedFeaturesCount,
+  });
+});
+
+/* =========================================================
+   ARCHIVE PROJECT (ADMIN)
+========================================================= */
+export const archiveProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const project = await Project.findById(req.params.id);
+  if (!project) throwError('Project not found', 404);
+
+  if (project.status !== 'Published') {
+    throwError('Only published projects can be archived', 400);
+  }
+
+  project.status = 'Archived';
+
+  project.auditLogs.push({
+    action: 'archived',
+    performedBy: req.user.id,
+    previousStatus: 'Published',
+    newStatus: 'Archived',
+    comment: 'Project archived',
+  });
+
+  await project.save();
+
+  res.json(project);
+});

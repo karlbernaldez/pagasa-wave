@@ -1,127 +1,103 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
-import styled from 'styled-components';
-import OnlyUserModal from '../components/modals/OnlyUserModal';
-import { refreshAccessToken } from '../api/auth';
+import { useEffect, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 
-const ModalBackdrop = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-`;
+import { checkAuthSession } from '@/api/auth';
+import { useAuth } from '@/hooks/useAuth';
+import OnlyUserModal from '@/components/ui/modals/OnlyUserModal';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 
-const LoadingModal = styled.div`
-  background-color: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-`;
+// ─── constants ────────────────────────────────────────────────────────────────
 
-const LoadingText = styled.div`
-  margin-top: 10px;
-  font-size: 18px;
-  font-weight: bold;
-`;
+const ALLOWED_ROLES = ['user'];   // roles that may access user-facing routes
+const ADMIN_ROLES   = ['admin'];  // roles that must be bounced to OnlyUserModal
 
-const LoadingSpinner = styled.div`
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
+// ─────────────────────────────────────────────────────────────────────────────
+// ProtectedRoute
+//
+// Props:
+//   children              ReactNode — rendered when access is granted
+//   requireAuth           boolean   — true (default): auth required; false: guest-only
+//   redirectTo            string    — where to send unauthenticated users (default: /login)
+//   adminRedirect         string    — where the OnlyUserModal close button navigates (default: /login)
+//   authenticatedRedirect string    — where authenticated users are sent on guest-only routes
+// ─────────────────────────────────────────────────────────────────────────────
 
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-
-const ProtectedRoute = ({ element: Element, requireAuth = true, onDeny = null, setIsLoggedIn }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdminUser, setIsAdminUser] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showAdminModal, setShowAdminModal] = useState(false);
+const ProtectedRoute = ({
+  children,
+  requireAuth = true,
+  redirectTo = '/login',
+  adminRedirect = '/login',
+  authenticatedRedirect = '/studio',
+}) => {
   const navigate = useNavigate();
+  const { isLoggedIn, role: contextRole, setIsLoggedIn, setRole } = useAuth();
 
-  const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
-
-  const checkRoute = `${AUTH_API_BASE_URL}/check`;
-
-  const checkAuthentication = async () => {
-    try {
-      const response = await fetch(checkRoute, {
-        method: 'GET',
-        credentials: 'include', // Send cookies
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setIsAuthenticated(true);
-        setIsLoggedIn(true);
-
-        if (data.user.role === 'admin') {
-          setIsAdminUser(true);
-          setShowAdminModal(true);
-          console.warn('Access denied: Admins cannot access this route.');
-        }
-
-      } else if (response.status === 403) {
-        const response = await refreshAccessToken();
-        setIsAuthenticated(true);
-        setIsLoggedIn(true);
-
-      } else {
-        setIsAuthenticated(false);
-        setIsLoggedIn(false);
-      }
-    } catch (error) {
-      console.error('Auth check error:', error);
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // API-verified fallback — only used when context is empty (fresh page load / hard refresh)
+  const [apiState, setApiState] = useState({ phase: 'loading', isAuthenticated: false, role: null });
 
   useEffect(() => {
-    checkAuthentication();
-  }, []);
+    // ✅ Context already has auth info (populated during login flow) — skip API call entirely
+    if (isLoggedIn && contextRole) return;
 
-  const handleModalClose = () => {
-    setShowAdminModal(false);
-    navigate('/login');
-  };
+    let cancelled = false;
 
-  if (isLoading) {
-    return (
-      <ModalBackdrop>
-        <LoadingModal>
-          <LoadingSpinner />
-          <LoadingText>Loading...</LoadingText>
-        </LoadingModal>
-      </ModalBackdrop>
-    );
+    const verify = async () => {
+      try {
+        const { authenticated, user } = await checkAuthSession();
+        if (cancelled) return;
+
+        if (authenticated && user) {
+          setIsLoggedIn(true);
+          setRole(user.role);
+          setApiState({ phase: 'resolved', isAuthenticated: true, role: user.role });
+        } else {
+          setIsLoggedIn(false);
+          setApiState({ phase: 'resolved', isAuthenticated: false, role: null });
+        }
+      } catch (err) {
+        console.error('[ProtectedRoute] Auth check failed:', err);
+        if (!cancelled) {
+          setIsLoggedIn(false);
+          setApiState({ phase: 'resolved', isAuthenticated: false, role: null });
+        }
+      }
+    };
+
+    verify();
+    return () => { cancelled = true; };
+  }, [isLoggedIn, contextRole, setIsLoggedIn, setRole]);
+
+  // ✅ Always derive from live context — reactive to every render, never stale.
+  // Falls back to apiState only when context is empty (hard refresh scenario).
+  const phase           = (isLoggedIn && contextRole) ? 'resolved'  : apiState.phase;
+  const isAuthenticated = (isLoggedIn && contextRole) ? true        : apiState.isAuthenticated;
+  const role            = (isLoggedIn && contextRole) ? contextRole : apiState.role;
+
+  // ── Still checking ─────────────────────────────────────────────────────────
+  if (phase === 'loading') return <LoadingScreen />;
+
+  // ── Guest-only routes (e.g. /login, /register) ────────────────────────────
+  if (!requireAuth) {
+    return isAuthenticated
+      ? <Navigate to={authenticatedRedirect} replace />
+      : children;
   }
 
-  if (requireAuth && !isAuthenticated) {
-    return typeof onDeny === 'function' ? onDeny() : <Navigate to="/login" replace />;
+  // ── Auth-required routes ───────────────────────────────────────────────────
+  if (!isAuthenticated) return <Navigate to={redirectTo} replace />;
+
+  // ── Role check: admins are not allowed in the user portal ─────────────────
+  if (ADMIN_ROLES.includes(role)) {
+    return <OnlyUserModal isOpen onClose={() => navigate(adminRedirect, { replace: true })} />;
   }
 
-  if (isAdminUser) {
-    return <OnlyUserModal isOpen={true} onClose={handleModalClose} />;
+  // ── Role check: unknown / unrecognised roles ───────────────────────────────
+  if (!ALLOWED_ROLES.includes(role)) {
+    console.warn(`[ProtectedRoute] Unrecognised role "${role}" — denying access.`);
+    return <Navigate to={redirectTo} replace />;
   }
 
-  return <Element />;
+  return children;
 };
 
 export default ProtectedRoute;

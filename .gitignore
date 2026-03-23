@@ -2,6 +2,8 @@ docker-compose.yml
 backend/Dockerfile
 backend/public/himawari.mp4
 backend/public/himawari.gif
+backend/logs/
+backend/tmp/
 
 frontend/Dockerfile
 scripts/era5_ph_wind_wave.geojson
@@ -11,7 +13,8 @@ scripts/era5_ph_wind_wave.grib.5b7b6.idx
 scripts/grib_files/
 scripts/upload_wind_raster.txt
 frontend/dist/
-frontend/public/geojson/
+# frontend/public/geojson/
+frontend/public/tiles/
 
 backend/frames/
 
@@ -37,3 +40,16 @@ scripts/wind_dual_preview.png
 scripts/wind_solarstorm.tif
 
 scripts/.env
+
+
+wavetiles/cog
+wavetiles/wavelab
+wavetiles/scripts/geojson_output/
+wavetiles/geotiff
+wavetiles/input
+wavetiles/tiles
+wavetiles/utils/shp
+wavetiles/render
+wavetiles/venv
+wavetiles/wave3data
+wavetiles/__pycache__

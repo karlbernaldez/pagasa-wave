@@ -1,4 +1,114 @@
 const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
+const AUTH_CACHE_TTL_MS = 1500;
+
+let refreshInFlight = null;
+let authCheckInFlight = null;
+let authCache = {
+  value: null,
+  ts: 0,
+};
+
+const setAuthCache = (value) => {
+  authCache = {
+    value,
+    ts: Date.now(),
+  };
+  return value;
+};
+
+const getCachedAuth = () => {
+  if (!authCache.value) return null;
+  if (Date.now() - authCache.ts > AUTH_CACHE_TTL_MS) return null;
+  return authCache.value;
+};
+
+const fetchAuthCheck = async () => {
+  const res = await fetch(`${AUTH_API_BASE_URL}/check`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    return { ok: false, status: res.status, data: null };
+  }
+
+  const data = await res.json();
+  return { ok: true, status: res.status, data };
+};
+
+export const sendOtp = async ({ email }) => {
+  const response = await fetch(`${AUTH_API_BASE_URL}/otp/send`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to send OTP.');
+  }
+
+  return response.json();
+};
+
+export const verifyOtp = async ({ email, otp }) => {
+  const response = await fetch(`${AUTH_API_BASE_URL}/otp/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Invalid or expired OTP.');
+  }
+
+  return response.json();
+};
+
+export const verifyEmail = async (token) => {
+  const response = await fetch(`${AUTH_API_BASE_URL}/verify-email?token=${token}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw { message: error.message || 'Verification failed.', expired: false };
+  }
+
+  return response.json(); // e.g. { message: 'Email verified.', email: 'user@example.com' }
+};
+
+export const resendVerificationEmail = async (email) => {
+  let response;
+
+  try {
+    response = await fetch(`${AUTH_API_BASE_URL}/resend-verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+      credentials: "include",
+    });
+  } catch (networkErr) {
+    // fetch itself threw — network is down or CORS blocked
+    throw new Error("Network error. Please check your connection and try again.");
+  }
+
+  // Parse body regardless of status so we can surface the server's message
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data.message
+      || `Request failed with status ${response.status}.`
+    );
+  }
+
+  return data;
+};
 
 export const registerUser = async (userData) => {
   const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
@@ -21,7 +131,7 @@ export const loginUser = async (credentials) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
-      credentials: 'include', // Ensure cookies are included in the request
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -29,35 +139,83 @@ export const loginUser = async (credentials) => {
       throw new Error(error.message || 'Login failed. Please check your credentials.');
     }
 
-    return await response.json(); // Contains token or user data
+    authCache = { value: null, ts: 0 };
+    return await response.json();
   } catch (error) {
-    console.error('Login Error:', error); // Log for debugging
+    console.error('Login Error:', error);
     throw new Error(error.message || 'Something went wrong during login.');
   }
 };
 
 export const refreshAccessToken = async () => {
-  try {
-    const response = await fetch(`${AUTH_API_BASE_URL}/refresh-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    });
+  if (refreshInFlight) return refreshInFlight;
 
-    if (!response.ok) {
-      console.error(`Failed to refresh access token. Status: ${response.status}`);
-      const errorData = await response.json();
-      console.error('Error details:', errorData);
-      throw new Error(`Failed to refresh access token. ${errorData.message || response.statusText}`);
+  refreshInFlight = (async () => {
+    try {
+      const response = await fetch(`${AUTH_API_BASE_URL}/refresh-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Failed to refresh access token. ${errorData.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      authCache = { value: null, ts: 0 };
+      return data.accessToken;
+    } catch (err) {
+      console.error('Error refreshing access token:', err);
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+};
+
+export const checkAuthSession = async ({ force = false } = {}) => {
+  if (!force) {
+    const cached = getCachedAuth();
+    if (cached) return cached;
+    if (authCheckInFlight) return authCheckInFlight;
+  }
+
+  authCheckInFlight = (async () => {
+    const initial = await fetchAuthCheck();
+
+    if (initial.ok) {
+      return setAuthCache({
+        authenticated: true,
+        user: initial.data?.user || null,
+      });
     }
 
-    const data = await response.json();
-    return data.accessToken;
-  } catch (err) {
-    console.error('Error refreshing access token:', err);
-    return null;
+    if (initial.status === 403) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        const retried = await fetchAuthCheck();
+        if (retried.ok) {
+          return setAuthCache({
+            authenticated: true,
+            user: retried.data?.user || null,
+          });
+        }
+      }
+    }
+
+    return setAuthCache({ authenticated: false, user: null });
+  })();
+
+  try {
+    return await authCheckInFlight;
+  } finally {
+    authCheckInFlight = null;
   }
 };
 
@@ -71,25 +229,24 @@ export const fetchWithAuth = async (url, options = {}) => {
     ...options,
     headers: {
       ...options.headers,
-      'Authorization': `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
     },
-    credentials: 'include', // Ensure cookies are included
+    credentials: 'include',
   });
 
-  // If the token is expired (401), refresh it
   if (response.status === 401) {
-    try {
-      accessToken = await refreshAccessToken();
-      return fetchWithAuth(url, {
-        ...options,
-        headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-    } catch (err) {
+    accessToken = await refreshAccessToken();
+    if (!accessToken) {
       throw new Error('Unable to refresh token. Please log in again.');
     }
+
+    return fetchWithAuth(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
   }
 
   return response;
@@ -102,8 +259,8 @@ export const logoutUser = async () => {
       credentials: 'include',
     });
 
-    // Clear local storage (optional, depending on what you're storing)
     localStorage.clear();
+    authCache = { value: null, ts: 0 };
 
     if (!response.ok) {
       const errData = await response.json().catch(() => null);
