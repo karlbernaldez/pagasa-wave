@@ -3,7 +3,14 @@ import { ChevronDown } from 'lucide-react';
 import LayerGroupCard from './SystemLayers/LayerGroupCard';
 import CheckboxLayerRow from './SystemLayers/CheckboxLayerRow';
 import ConfigurableLayerGroup from './SystemLayers/ConfigurableLayerGroup';
-import { DOMAIN_LAYERS, UTILITY_LAYERS, WIND_MODELS, WAVE_MODELS, WIND_ELEMENTS, WAVE_ELEMENTS } from '../constants/layerConstants';
+import {
+  DOMAIN_LAYERS,
+  UTILITY_LAYERS,
+  WIND_MODELS,
+  WAVE_MODELS,
+  WIND_ELEMENTS,
+  WAVE_ELEMENTS,
+} from '../constants/layerConstants';
 
 const SystemLayersSection = ({
   expanded, onToggleExpand, activeCount,
@@ -13,38 +20,38 @@ const SystemLayersSection = ({
   onToggleDomain, onToggleUtility, onToggleSatellite,
   onToggleWind, onSetWindElement, onToggleWindModel,
   onToggleWave, onSetWaveElement, onToggleWaveModel,
+  onSetWaveDirectionStyle, onSetWindBarbStyle,
   isDarkMode,
 }) => (
   <div className={`px-2.5 pt-2 pb-2.5 border-t ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
+
     {/* Section header */}
     <button
       onClick={onToggleExpand}
-      className={`w-full flex items-center justify-between px-1.5 py-1.5 rounded-lg mb-1.5 transition-colors ${
-        isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
-      }`}
+      className={`w-full flex items-center justify-between px-1.5 py-1.5 rounded-lg mb-1.5 transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
+        }`}
     >
       <div className="flex items-center gap-1.5">
         <span className={`text-[11px] font-bold ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>
           Data Layers
         </span>
-        <div className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-          isDarkMode ? 'bg-white/10 text-white/55' : 'bg-black/10 text-slate-500'
-        }`}>
+        <div className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${isDarkMode ? 'bg-white/10 text-white/55' : 'bg-black/10 text-slate-500'
+          }`}>
           {activeCount}
         </div>
       </div>
       <ChevronDown
         size={11}
         strokeWidth={3}
-        className={`transition-transform ${expanded ? 'rotate-180' : ''} ${
-          isDarkMode ? 'text-white/50' : 'text-slate-500'
-        }`}
+        className={`transition-transform ${expanded ? 'rotate-180' : ''} ${isDarkMode ? 'text-white/50' : 'text-slate-500'
+          }`}
       />
     </button>
 
     {expanded && (
       <div className="space-y-1.5">
-        {/* ── Domains ────────────────────────────────────────────────────── */}
+
+        {/* ── Domains ──────────────────────────────────────────────────── */}
         <LayerGroupCard
           emoji="🗺️"
           title="Domains"
@@ -66,7 +73,7 @@ const SystemLayersSection = ({
           ))}
         </LayerGroupCard>
 
-        {/* ── Utilities ──────────────────────────────────────────────────── */}
+        {/* ── Utilities ────────────────────────────────────────────────── */}
         <LayerGroupCard
           emoji="🛠️"
           title="Utilities"
@@ -88,40 +95,37 @@ const SystemLayersSection = ({
           ))}
         </LayerGroupCard>
 
-        {/* ── Satellite ──────────────────────────────────────────────────── */}
+        {/* ── Satellite ────────────────────────────────────────────────── */}
         <button
           onClick={onToggleSatellite}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all ${
-            satelliteLayer
-              ? isDarkMode
-                ? 'bg-cyan-400/10 border border-cyan-400/30'
-                : 'bg-blue-500/10 border border-blue-500/30'
-              : isDarkMode
-                ? 'bg-white/5 hover:bg-white/10 border border-transparent'
-                : 'bg-black/5 hover:bg-black/10 border border-transparent'
-          }`}
+          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all ${satelliteLayer
+            ? isDarkMode
+              ? 'bg-cyan-400/10 border border-cyan-400/30'
+              : 'bg-blue-500/10 border border-blue-500/30'
+            : isDarkMode
+              ? 'bg-white/5 hover:bg-white/10 border border-transparent'
+              : 'bg-black/5 hover:bg-black/10 border border-transparent'
+            }`}
         >
           <span className="text-sm leading-none flex-shrink-0">🛰️</span>
           <div className="flex-1 text-left min-w-0">
-            <div className={`text-[11px] font-semibold truncate ${
-              satelliteLayer
-                ? isDarkMode ? 'text-cyan-300' : 'text-blue-700'
-                : isDarkMode ? 'text-white/75' : 'text-slate-700'
-            }`}>
+            <div className={`text-[11px] font-semibold truncate ${satelliteLayer
+              ? isDarkMode ? 'text-cyan-300' : 'text-blue-700'
+              : isDarkMode ? 'text-white/75' : 'text-slate-700'
+              }`}>
               Satellite
             </div>
             <div className={`text-[9px] font-medium truncate ${isDarkMode ? 'text-white/35' : 'text-slate-400'}`}>
               Himawari Satellite Image
             </div>
           </div>
-          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-            satelliteLayer
-              ? isDarkMode ? 'bg-cyan-400' : 'bg-blue-600'
-              : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
-          }`} />
+          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${satelliteLayer
+            ? isDarkMode ? 'bg-cyan-400' : 'bg-blue-600'
+            : isDarkMode ? 'bg-white/20' : 'bg-slate-300'
+            }`} />
         </button>
 
-        {/* ── Wind ───────────────────────────────────────────────────────── */}
+        {/* ── Wind ─────────────────────────────────────────────────────── */}
         <ConfigurableLayerGroup
           emoji="💨"
           title="Wind"
@@ -133,12 +137,13 @@ const SystemLayersSection = ({
           onToggleEnabled={onToggleWind}
           onSetElement={onSetWindElement}
           onToggleModel={onToggleWindModel}
+          onSetBarbStyle={onSetWindBarbStyle}
           modelCols={3}
           isDarkMode={isDarkMode}
           compact
         />
 
-        {/* ── Wave ───────────────────────────────────────────────────────── */}
+        {/* ── Wave ─────────────────────────────────────────────────────── */}
         <ConfigurableLayerGroup
           emoji="🌊"
           title="Wave"
@@ -150,6 +155,7 @@ const SystemLayersSection = ({
           onToggleEnabled={onToggleWave}
           onSetElement={onSetWaveElement}
           onToggleModel={onToggleWaveModel}
+          onSetDirectionStyle={onSetWaveDirectionStyle}
           modelCols={2}
           isDarkMode={isDarkMode}
           compact
