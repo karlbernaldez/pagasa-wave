@@ -1,26 +1,18 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
+import { checkAuthSession } from '@/api/auth';
 
-const useAuthRedirect = (redirectPath = '/wavelab') => {
+const useAuthRedirect = (redirectPath = '/studio') => {
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch(`${AUTH_API_BASE_URL}/check`, {
-          method: 'GET',
-          credentials: 'include',
-        });
-        const data = await response.json();
-
-        if (response.ok) {
-          if (data.user.role === 'admin') {
-            redirectPath = '/dashboard';
-          }
-          // User is authenticated
-          navigate(redirectPath);
+        const { authenticated, user } = await checkAuthSession();
+        if (authenticated && user) {
+          const nextPath = user.role === 'admin' ? '/dashboard' : redirectPath;
+          navigate(nextPath);
         }
       } catch (err) {
         console.error('Auth check failed:', err);

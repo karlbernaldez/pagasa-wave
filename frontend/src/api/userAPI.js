@@ -1,33 +1,109 @@
 const USER_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/users`;
 
-// 📌 Get all users (Admin)
-export const fetchAllUsers = async (token) => {
-  const response = await fetch(`${USER_API_BASE_URL}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
+/* -------------------------------------------------------
+   Common request helper
+------------------------------------------------------- */
+const request = async (url, options = {}) => {
+  const res = await fetch(url, {
     credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+    ...options,
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch users');
+  let data = null;
+
+  try {
+    data = await res.json();
+  } catch {
+    /* ignore non-json responses */
   }
 
-  return response.json();
+  if (!res.ok) {
+    throw new Error(data?.message || 'Request failed');
+  }
+
+  return data;
 };
 
-// 📌 Get user details by ID
-export const fetchUserDetails = async (userId) => {
-  const response = await fetch(`${USER_API_BASE_URL}/${userId}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
+/* -------------------------------------------------------
+   GET ALL USERS (Admin) — paginated + filtered
+   
+   Params:
+     page    – page number       (default 1)
+     limit   – rows per page     (default 10)
+     search  – text search       (optional)
+     status  – filter by status  (optional)
+
+   Returns: { data: User[], total, page, limit, totalPages }
+------------------------------------------------------- */
+export const fetchAllUsers = ({ page = 1, limit = 10, search, status } = {}) => {
+  const query = new URLSearchParams({ page, limit });
+  if (search) query.set('search', search);
+  if (status) query.set('status', status);
+
+  return request(`${USER_API_BASE_URL}?${query}`, { method: 'GET' });
+};
+
+/* -------------------------------------------------------
+   GET USER DETAILS
+------------------------------------------------------- */
+export const fetchUserDetails = (userId) =>
+  request(`${USER_API_BASE_URL}/${userId}`, { method: 'GET' });
+
+/* -------------------------------------------------------
+   CREATE USER (Admin)
+------------------------------------------------------- */
+export const createUserAPI = async (payload) => {
+  const data = await request(USER_API_BASE_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch user details');
-  }
+  // backend returns: { message, user, defaultPassword }
+  return {
+    user: data.user,
+    defaultPassword: data.defaultPassword,
+    message: data.message,
+  };
+};
 
-  return response.json();
+export const changePasswordAPI = (userId, { currentPassword, newPassword }) =>
+  request(`${USER_API_BASE_URL}/${userId}/change-password`, {
+    method: 'PUT',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+
+/* -------------------------------------------------------
+   UPDATE USER PROFILE (allowedFields only)
+------------------------------------------------------- */
+export const updateUserDetailsAPI = (userId, payload) =>
+  request(`${USER_API_BASE_URL}/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+
+/* -------------------------------------------------------
+   UPDATE USER STATUS
+------------------------------------------------------- */
+export const updateUserStatusAPI = async (userId, status) => {
+  const data = await request(`${USER_API_BASE_URL}/${userId}/status`, {
+    method: 'PUT',
+    body: JSON.stringify({ status }),
+  });
+
+  return data.user; // backend returns { message, user }
+};
+
+/* -------------------------------------------------------
+   DELETE USER
+------------------------------------------------------- */
+export const deleteUserAPI = async (userId) => {
+  await request(`${USER_API_BASE_URL}/${userId}`, {
+    method: 'DELETE',
+  });
+
+  return true;
 };
