@@ -9,15 +9,16 @@ import React from 'react';
 import { useTheme } from '@/app/providers/ThemeProvider';
 
 // ── Section Components ──────────────────────────────────────────────────────
-import HeroSection          from '../components/about/HeroSection';
-import StatsSection         from '../components/about/StatsSection';
+import HeroSection from '../components/about/HeroSection';
+import StatsSection from '../components/about/StatsSection';
 import MissionVisionSection from '../components/about/MissionVisionSection';
-import ObjectivesSection    from '../components/about/ObjectivesSection';
-import FocusAreasSection    from '../components/about/FocusAreasSection';
-import TimelineSection      from '../components/about/TimelineSection';
-import LeadershipSection    from '../components/about/LeadershipSection';
-import PartnersSection      from '../components/about/PartnersSection';
-import CTASection           from '../components/about/CTASection';
+import ObjectivesSection from '../components/about/ObjectivesSection';
+import FocusAreasSection from '../components/about/FocusAreasSection';
+import TimelineSection from '../components/about/TimelineSection';
+import LeadershipSection from '../components/about/LeadershipSection';
+import PartnersSection from '../components/about/PartnersSection';
+import FAQSection from '../components/about/FAQSection';
+import CTASection from '../components/about/CTASection';
 
 // ── Data Hook ───────────────────────────────────────────────────────────────
 import useAboutSettings from '@dashboards/public/hooks/useAboutSettings';
@@ -43,11 +44,10 @@ const AboutUs = () => {
 
   return (
     <div
-      className={`relative min-h-screen pt-32 pb-20 px-4 md:px-6 overflow-hidden transition-all duration-700 ${
-        isDarkMode
-          ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
-          : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'
-      }`}
+      className={`relative min-h-screen pt-32 pb-20 px-4 md:px-6 overflow-hidden transition-all duration-700 ${isDarkMode
+        ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+        : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'
+        }`}
     >
       {/* ── Animations ─────────────────────────────────────────────────── */}
       <style>{`
@@ -64,11 +64,10 @@ const AboutUs = () => {
       {/* ── Subtle Dot Grid Background ──────────────────────────────────── */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none">
         <div
-          className={`absolute inset-0 transition-all duration-700 ${
-            isDarkMode
-              ? 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.500)_1px,_transparent_1px)]'
-              : 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.400)_1px,_transparent_1px)]'
-          } bg-[length:30px_30px]`}
+          className={`absolute inset-0 transition-all duration-700 ${isDarkMode
+            ? 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.500)_1px,_transparent_1px)]'
+            : 'bg-[radial-gradient(circle_at_center,_theme(colors.blue.400)_1px,_transparent_1px)]'
+            } bg-[length:30px_30px]`}
         />
       </div>
 
@@ -116,17 +115,19 @@ const AboutUs = () => {
             {/* 6. Timeline */}
             <TimelineSection
               sectionTitle="Program Timeline"
-              sectionSubtitle={`MECO-TECO-VOTE III Component B journey — ${
-                settings.milestones[0]?.year ?? ''
-              } to ${settings.milestones[settings.milestones.length - 1]?.year ?? ''}`}
+              sectionSubtitle={`MECO-TECO-VOTE III Component B journey — ${settings.milestones[0]?.year ?? ''
+                } to ${settings.milestones[settings.milestones.length - 1]?.year ?? ''}`}
               milestones={settings.milestones}
             />
 
             {/* 7. Leadership + Partners — side by side on large screens */}
             <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
               <LeadershipSection leaders={settings.leaders} />
-              <PartnersSection   partners={settings.partners} />
+              <PartnersSection partners={settings.partners} />
             </section>
+
+            {/* 8. FAQ */}
+            <FAQSection faqs={settings.faqs || []} />
 
             {/* 8. Bottom CTA */}
             <CTASection
