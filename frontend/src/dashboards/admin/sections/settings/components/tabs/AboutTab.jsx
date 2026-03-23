@@ -1,6 +1,7 @@
 import {
   Star, BarChart2, Eye, Target, Layers,
-  Clock, User, Link, Hash, AlignLeft, Zap
+  Clock, User, Link, Hash, AlignLeft, Zap,
+  HelpCircle
 } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
@@ -294,8 +295,6 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             renderItem={(ms, sortableProps) => (
               <ArrayRow key={ms.id} onRemove={() => removeArrayItem('milestones', ms.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="flex flex-col gap-3">
-
-                  {/* Year + title in a 1:2 split, collapses to stacked on mobile */}
                   <div className="grid grid-cols-1 xs:grid-cols-3 gap-3">
                     <Field
                       label="Year / Period"
@@ -312,7 +311,6 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
                       />
                     </div>
                   </div>
-
                   <TextareaField
                     label="Description"
                     value={ms.description ?? ''}
@@ -320,7 +318,6 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
                     rows={2}
                     dark={dark}
                   />
-
                 </div>
               </ArrayRow>
             )}
@@ -341,15 +338,12 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             renderItem={(leader, sortableProps) => (
               <ArrayRow key={leader.id} onRemove={() => removeArrayItem('leaders', leader.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="flex flex-col gap-3">
-
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Field label="Full Name" value={leader.name ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { name: v })} dark={dark} />
                     <Field label="Role / Title" value={leader.role ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { role: v })} dark={dark} />
                     <Field label="Avatar URL" value={leader.avatar ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { avatar: v })} dark={dark} />
                   </div>
-
                   <AvatarPreview src={leader.avatar} alt={leader.name} dark={dark} />
-
                 </div>
               </ArrayRow>
             )}
@@ -370,14 +364,11 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             renderItem={(partner, sortableProps) => (
               <ArrayRow key={partner.id} onRemove={() => removeArrayItem('partners', partner.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
                 <div className="flex flex-col gap-3">
-
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Field label="Agency Name" value={partner.name ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { name: v })} dark={dark} />
                     <Field label="Logo URL" value={partner.logo ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { logo: v })} dark={dark} />
                     <Field label="Website" value={partner.link ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { link: v })} dark={dark} />
                   </div>
-
-                  {/* logo preview — wider variant for logos */}
                   {partner.logo && (
                     <div className={`flex items-center gap-3 mt-1 py-2 px-3 rounded-xl border ${dark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white'
                       }`}>
@@ -408,7 +399,6 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
                       </div>
                     </div>
                   )}
-
                 </div>
               </ArrayRow>
             )}
@@ -418,7 +408,60 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
       </Accordion>
 
 
-      {/* ── 9. BOTTOM CTA ── */}
+      {/* ── 9. FAQ ── */}
+      <Accordion icon={HelpCircle} title="FAQ" count={(s.faqs ?? []).length} dark={dark}>
+        <div className="flex flex-col gap-3">
+
+          {/* Helper hint */}
+          <div className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-[10px] leading-relaxed ${
+            dark
+              ? 'border-slate-700/60 bg-slate-800/40 text-slate-400'
+              : 'border-slate-200 bg-slate-50 text-slate-500'
+          }`}>
+            <HelpCircle size={12} className="flex-shrink-0 mt-0.5 opacity-60" />
+            Items are displayed as an accordion on the About page. Drag to reorder.
+          </div>
+
+          <SortableDnD
+            items={s.faqs ?? []}
+            strategy="list"
+            onReorder={(next) => reorderArray('faqs', next)}
+            className="flex flex-col gap-2"
+            renderItem={(faq, sortableProps) => (
+              <ArrayRow
+                key={faq.id}
+                onRemove={() => removeArrayItem('faqs', faq.id)}
+                dark={dark}
+                dragHandleProps={sortableProps.dragHandleProps}
+              >
+                <div className="flex flex-col gap-3">
+                  <Field
+                    label="Question"
+                    value={faq.question ?? ''}
+                    onChange={(v) => updateArrayItem('faqs', faq.id, { question: v })}
+                    dark={dark}
+                  />
+                  <TextareaField
+                    label="Answer"
+                    value={faq.answer ?? ''}
+                    onChange={(v) => updateArrayItem('faqs', faq.id, { answer: v })}
+                    rows={3}
+                    dark={dark}
+                  />
+                </div>
+              </ArrayRow>
+            )}
+          />
+          <AddButton
+            onClick={() => addArrayItem('faqs', { question: '', answer: '' })}
+            label="Add FAQ Item"
+            dark={dark}
+          />
+        </div>
+      </Accordion>
+
+
+      {/* ── 10. BOTTOM CTA ── */}
       <Accordion icon={Link} title="Bottom Call-to-Action" dark={dark}>
         <div className="flex flex-col gap-4">
 
