@@ -31,8 +31,8 @@ const Home = () => {
       {/* <Alerts isDark={isDarkMode} /> */}
       <Services isDark={isDarkMode} />
       <Partners isDark={isDarkMode} />
-      <HowItWorksSection isDark={isDarkMode} />
-      <Sources isDark={isDarkMode} />
+      {/* <HowItWorksSection isDark={isDarkMode} />
+      <Sources isDark={isDarkMode} /> */}
     </div>
   );
 };
