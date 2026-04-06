@@ -1,8 +1,22 @@
 import axios from 'axios';
+import { showSessionModal } from '@/components/ui/modals/SessionModal';
 
-const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/features`; // Adjust if using a different port
+const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/features`;
 
-// Function to delete a feature
+// ── Shared session-expired handler ────────────────────────────────────────────
+
+async function handleSessionExpired() {
+  await showSessionModal({
+    variant:      'warning',
+    title:        'Session Expired',
+    message:      'Your session has timed out. Please log in again to continue.',
+    confirmLabel: 'Go to Login',
+  });
+  window.location.href = '/login';
+}
+
+// ── Feature API ───────────────────────────────────────────────────────────────
+
 export const deleteFeature = async (sourceId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/${sourceId}`, {
@@ -25,7 +39,6 @@ export const deleteFeature = async (sourceId) => {
   }
 };
 
-// Function to save feature
 export const createFeature = async (feature) => {
   try {
     const response = await fetch(`${API_BASE_URL}`, {
@@ -33,7 +46,7 @@ export const createFeature = async (feature) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      credentials: 'include', // keeps cookies/session
+      credentials: 'include',
       body: JSON.stringify(feature),
     });
 
@@ -43,14 +56,13 @@ export const createFeature = async (feature) => {
       throw new Error(data.error || 'Failed to save feature');
     }
 
-    return data; // return API response (success or duplicate info)
+    return data;
   } catch (error) {
     console.error('[ERROR] Failed to save feature:', error.message);
     throw error;
   }
 };
 
-// Function to fetch features with token validation and refresh logic
 export const fetchFeatures = async (projectId) => {
   if (!projectId) {
     throw new Error('Missing projectId when fetching features');
@@ -59,13 +71,12 @@ export const fetchFeatures = async (projectId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/my-projects/${projectId}`, {
       method: 'GET',
-      credentials: 'include', // send cookies (e.g., accessToken)
+      credentials: 'include',
     });
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
-        alert('Session expired. Please log in again.');
-        window.location.href = '/login';
+        await handleSessionExpired(); // ← styled modal, then redirect
         return;
       }
 
@@ -81,7 +92,6 @@ export const fetchFeatures = async (projectId) => {
   }
 };
 
-// ADMIN: Fetch FeatureCollection by Project
 export const fetchProjectFeatureCollection = async (projectId) => {
   if (!projectId) {
     throw new Error('Missing projectId when fetching project FeatureCollection');
@@ -98,8 +108,7 @@ export const fetchProjectFeatureCollection = async (projectId) => {
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
-        alert('Session expired. Please log in again.');
-        window.location.href = '/login';
+        await handleSessionExpired(); // ← styled modal, then redirect
         return;
       }
 
@@ -128,13 +137,12 @@ export async function updateFeatureNameAPI(layerId, newName) {
         headers: {
           'Content-Type': 'application/json',
         },
-        withCredentials: true, // ✅ send cookies
+        withCredentials: true,
       }
     );
 
     return response.data;
   } catch (err) {
-    // Log specific errors
     if (err.response) {
       console.error('API Error:', err.response.data);
     } else if (err.request) {
