@@ -5,7 +5,6 @@ import MapComponent from "@dashboards/forecaster/map/MapComponent";
 import LayerPanel from "@dashboards/forecaster/components/Studio/LayerPanel/LayerPanel";
 import DrawToolBar from "@dashboards/forecaster/components/Studio/Toolbar/Toolbar";
 import LegendBox from "@dashboards/forecaster/components/Studio/Legend";
-import WaveLegned from "@dashboards/forecaster/components/Studio/WaveLegend";
 import ProjectMenu from "@dashboards/forecaster/components/Studio/Menu/ProjectMenu";
 import MarkerTitleModal from "@/components/ui/modals/MarkerTitleModal";
 import MapLoading from "@/components/ui/modals/MapLoading";
@@ -291,7 +290,6 @@ const Studio = ({ logger }) => {
           />
 
           <LegendBox isDarkMode={isDarkMode} />
-          <WaveLegned isDarkMode={isDarkMode} />
 
           <NoProjectAlert
             visible={showNoProjectsModal}
