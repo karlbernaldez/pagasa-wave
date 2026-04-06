@@ -17,6 +17,8 @@ import { useCustomLayerEdit } from './hooks/useCustomLayerEdit';
 import CustomLayersSection from './sections/CustomLayers';
 import SystemLayersSection from './sections/SystemLayers';
 
+import WaveLegend from "@dashboards/forecaster/components/Studio/WaveLegend";
+
 const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
   // ── Panel expansion state ───────────────────────────────────────────────────
   const [isExpanded, setIsExpanded] = useState(true);
@@ -230,6 +232,10 @@ const LayerPanel = ({ mapRef, isDarkMode, layers, setLayers, draw }) => {
         layerName={confirmDialog.layer?.name}
         isDarkMode={isDarkMode}
       />
+
+      {waveConfig.enabled && waveConfig.elements?.raster && (
+        <WaveLegend isDarkMode={isDarkMode} />
+      )}
     </>
   );
 };
