@@ -74,7 +74,7 @@ const LayerRow = ({
       onDragStart={(e) => handleDragStart(e, index, setDragging, setDraggedLayerIndex)}
       onDragOver={handleDragOver}
       onDrop={(e) => handleDrop(e, index, draggedLayerIndex, layers, setLayers, setDragging)}
-      onClick={() => !isEditing && onSetActiveLayer(layer.id)}
+      onClick={() => !isEditing && onSetActiveLayer(layer)}
       className={`
         group relative flex items-center gap-1.5 px-1.5 py-1 rounded-md
         transition-all duration-150 cursor-pointer

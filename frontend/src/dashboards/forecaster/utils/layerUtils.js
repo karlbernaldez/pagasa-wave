@@ -348,6 +348,7 @@ export const handleDrop = (event, index, draggedLayerIndex, layers, setLayers, s
 };
 
 export const setActiveLayerOnMap = ({
+    layer,
     id,
     mapRef,
     draw,
@@ -356,84 +357,120 @@ export const setActiveLayerOnMap = ({
     setActiveLayerId,
     setActiveMapboxLayerId,
 }) => {
-
-    const layer = layers.find((l) => l.id === id);
-    if (!layer || !mapRef?.current) {
+    // Find the logical layer
+    const layerInfo = layers.find((l) => l.id === id);
+    if (!layerInfo || !mapRef?.current) {
         console.warn(`[setActiveLayerOnMap] Layer with ID ${id} not found or map not ready.`);
         return;
     }
 
     const map = mapRef.current;
-    let activeLayer = map.getLayer(layer.id) || map.getLayer(layer.name);
-    if (!activeLayer) {
-        console.warn(`[setActiveLayerOnMap] Layer ${layer.id} or ${layer.name} not found on map.`);
+
+    // Determine the actual Mapbox layer IDs for this logical layer
+    let mapboxLayerIds = [layerInfo.id];
+    if (layerInfo.type === "Wave Height") {
+        mapboxLayerIds = [
+            layerInfo.id,
+            `${layerInfo.id}-0`,
+            `${layerInfo.id}-1`
+        ];
+    }
+
+    // Check that all layers exist on the map
+    const existingLayers = mapboxLayerIds.filter((lid) => map.getLayer(lid));
+    if (!existingLayers.length) {
+        console.warn(`[setActiveLayerOnMap] No Mapbox layers found for ${layerInfo.id}`);
         return;
     }
 
-    const getIconSize = (markerType, isActive) => {
-        const sizes = {
-            typhoon: { original: 0.03, active: 0.1 },
-            low_pressure: { original: 0.015, active: 0.06 },
-            high_pressure: { original: 0.015, active: 0.06 },
-            less_1: { original: 0.28, active: 0.6 },
+    const SYMBOL_SIZES = {
+        typhoon: { icon: { original: 0.03, active: 0.1 }, text: { original: 12, active: 16 } },
+        low_pressure: { icon: { original: 0.015, active: 0.06 }, text: { original: 11, active: 14 } },
+        high_pressure: { icon: { original: 0.015, active: 0.06 }, text: { original: 11, active: 14 } },
+        less_1: { icon: { original: 0.28, active: 0.6 }, text: { original: 12, active: 18 } },
+        "Wave Height": { icon: { original: 0.12, active: 0.12 }, text: { original: 18, active: 24 } },
+        default: { icon: { original: 0.07, active: 0.1 }, text: { original: 18, active: 24 } },
+    };
+
+    function getSymbolSizes(markerType, isActive) {
+        const cfg = SYMBOL_SIZES[markerType] || SYMBOL_SIZES.default;
+        return {
+            iconSize: isActive ? cfg.icon.active : cfg.icon.original,
+            textSize: isActive ? cfg.text.active : cfg.text.original,
         };
-        const defaultSize = { original: 0.07, active: 0.1 };
-        const size = sizes[markerType] || defaultSize;
-        return isActive ? size.active : size.original;
-    };
+    }
 
-    const resetLayerStyle = (layerIdToReset) => {
-        const prevLayer = map.getLayer(layerIdToReset);
-        if (!prevLayer) return;
+    const resetLayerStyle = (layerIdsToReset) => {
+        layerIdsToReset.forEach((layerIdToReset) => {
+            const prevLayer = map.getLayer(layerIdToReset);
+            if (!prevLayer) return;
 
-        const prevLayerInfo = layers.find((l) => l.id === prevLayer.id || l.name === prevLayer.id);
-        const prevMarkerType = prevLayerInfo?.type;
+            const prevLayerInfo = layers.find(l => l.id === prevLayer.id || l.name === prevLayer.id);
+            const markerType = prevLayerInfo?.type;
 
-        if (prevLayer.type === "line") {
-            map.setPaintProperty(prevLayer.id, "line-width", 3);
-        } else if (prevLayer.type === "symbol") {
-            const originalSize = getIconSize(prevMarkerType, false);
-            map.setLayoutProperty(prevLayer.id, "icon-size", originalSize);
-        }
-
-    };
-
-    const applyActiveLayerStyle = (layerToActivate) => {
-        if (layerToActivate.type === "line") {
-            map.setPaintProperty(layerToActivate.id, "line-width", 8);
-        } else if (layerToActivate.type === "symbol") {
-            const activeSize = getIconSize(layer.type, true);
-            map.setLayoutProperty(layerToActivate.id, "icon-size", activeSize);
-        }
-
-    };
-
-    const selectFeatureInDraw = (layerToSelect) => {
-        if (draw?.get && draw?.changeMode) {
-            const feature = draw.get(layerToSelect.id);
-            if (feature) {
-                draw.changeMode("simple_select", { featureIds: [layerToSelect.id] });
+            if (prevLayer.type === "line") {
+                map.setPaintProperty(prevLayer.id, "line-width", 3);
+            } else if (prevLayer.type === "symbol") {
+                const { iconSize, textSize } = getSymbolSizes(markerType, false);
+                map.setLayoutProperty(prevLayer.id, "icon-size", iconSize);
+                map.setLayoutProperty(prevLayer.id, "text-size", textSize);
             }
+        });
+    };
+
+    const applyActiveLayerStyle = (layerIdsToActivate) => {
+        layerIdsToActivate.forEach((layerIdToActivate) => {
+            const mapLayer = map.getLayer(layerIdToActivate);
+            if (!mapLayer) return;
+
+            if (mapLayer.type === "line") {
+                map.setPaintProperty(mapLayer.id, "line-width", 8);
+            } else if (mapLayer.type === "symbol") {
+                const { iconSize, textSize } = getSymbolSizes(layerInfo.type, true);
+                map.setLayoutProperty(mapLayer.id, "icon-size", iconSize);
+                map.setLayoutProperty(mapLayer.id, "text-size", textSize);
+            }
+        });
+    };
+
+    const selectFeatureInDraw = (layerIdsToSelect) => {
+        if (draw?.get && draw?.changeMode) {
+            layerIdsToSelect.forEach((layerIdToSelect) => {
+                const feature = draw.get(layerIdToSelect);
+                if (feature) {
+                    draw.changeMode("simple_select", { featureIds: [layerIdToSelect] });
+                }
+            });
         }
     };
 
     // ✅ Toggle logic: if clicked same layer, reset and deactivate
-    if (activeLayerId === layer.id) {
-        resetLayerStyle(activeLayer.id);
+    if (activeLayerId === layerInfo.id) {
+        resetLayerStyle(mapboxLayerIds);
         setActiveLayerId(null);
         if (setActiveMapboxLayerId) setActiveMapboxLayerId(null);
         return;
     }
 
     // Reset previous layer if exists
-    if (activeLayerId) resetLayerStyle(activeLayerId);
+    if (activeLayerId) {
+        const prevLayerInfo = layers.find((l) => l.id === activeLayerId);
+        let prevLayerIds = [prevLayerInfo.id];
+        if (prevLayerInfo.type === "Wave Height") {
+            prevLayerIds = [
+                prevLayerInfo.id,
+                `${prevLayerInfo.id}-0`,
+                `${prevLayerInfo.id}-1`
+            ];
+        }
+        resetLayerStyle(prevLayerIds);
+    }
 
     // Apply new active style
-    applyActiveLayerStyle(activeLayer);
-    selectFeatureInDraw(activeLayer);
+    applyActiveLayerStyle(mapboxLayerIds);
+    selectFeatureInDraw(mapboxLayerIds);
 
     // Update active state
-    setActiveLayerId(layer.id);
-    if (setActiveMapboxLayerId) setActiveMapboxLayerId(activeLayer.id);
-
+    setActiveLayerId(layerInfo.id);
+    if (setActiveMapboxLayerId) setActiveMapboxLayerId(mapboxLayerIds);
 };

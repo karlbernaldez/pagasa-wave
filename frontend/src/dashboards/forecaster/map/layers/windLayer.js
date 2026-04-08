@@ -79,7 +79,7 @@ const readBarbStyle = () => {
  */
 export const buildIconSizeExpression = (multiplier = 1.0) => [
   'interpolate', ['linear'], ['get', 'windSpeed'],
-  0,    2.25 * multiplier,
+  0, 2.25 * multiplier,
   16.5, 3.15 * multiplier,
 ];
 
@@ -90,6 +90,8 @@ export const buildIconSizeExpression = (multiplier = 1.0) => [
  * Safe to call multiple times — every add is guarded by ensureSource checks.
  */
 export async function addWindSource(map, isDarkMode, model) {
+  if (!model) { model = 'ECMWF'; }
+
   if (!map) return;
 
   const raw = model ?? localStorage.getItem('WIND_MODEL');
@@ -137,7 +139,6 @@ export async function addWindLayer(map, isDarkMode, model) {
   if (localStorage.getItem('WIND_ENABLED') !== 'true') return;
 
   await addWindSource(map, isDarkMode, model);
-  addSharedLayers(map);
   addWindParticlesLayer(map);
   addWindArrowsLayer(map);
   setupPopup(map, isDarkMode);
@@ -188,11 +189,6 @@ function addSharedLayers(map) {
 function addWindParticlesLayer(map) {
   const visible = localStorage.getItem('WIND_PARTICLES') === 'true';
 
-  if (!map.getSource('wind-particles')) {
-    console.warn('[WindLayer] wind-particles source not found — skipping');
-    return;
-  }
-
   if (!map.getLayer('wind-particles')) {
     map.addLayer({
       id: 'wind-particles',
@@ -213,7 +209,7 @@ function addWindParticlesLayer(map) {
         ],
       },
       layout: { visibility: visible ? 'visible' : 'none' },
-    }, 'country-boundaries');
+    });
   }
 }
 
@@ -235,20 +231,20 @@ function addWindArrowsLayer(map) {
         'icon-image': [
           'step', ['get', 'windSpeed'],
           ['image', '0KTS', { params: { 'color-1': 'rgb(240,240,240)' } }],
-          2,        ['image', '5 kts'],
-          3.57632,  ['image', '10kts (1)'],
-          6.25856,  ['image', '15 kts'],
-          8.9408,   ['image', '20 kts'],
-          11.176,   ['image', '25 kts'],
+          2, ['image', '5 kts'],
+          3.57632, ['image', '10kts (1)'],
+          6.25856, ['image', '15 kts'],
+          8.9408, ['image', '20 kts'],
+          11.176, ['image', '25 kts'],
           13.85824, ['image', '30 kts'],
         ],
-        'icon-size':                 buildIconSizeExpression(size),
-        'icon-rotate':               ['+', ['to-number', ['get', 'windDirection'], 0], 360],
-        'icon-rotation-alignment':   'map',
-        'icon-allow-overlap':        true,
+        'icon-size': buildIconSizeExpression(size),
+        'icon-rotate': ['+', ['to-number', ['get', 'windDirection'], 0], 360],
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
       },
       paint: { 'icon-opacity': opacity },
-    }, 'country-boundaries');
+    });
   }
 }
 
