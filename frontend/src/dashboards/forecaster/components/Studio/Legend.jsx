@@ -1,24 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 
-/**
- * HIERARCHY TIER 2 — Context Panel
- *
- * Visual weight rules applied:
- *   Tier 1 (Map, Layers, Drawing) → full opacity, strong shadow, z-40+
- *   Tier 2 (Legend, Forecast)     → 80% opacity at rest, medium shadow, z-30
- *   Tier 3 (Menu, Profile)        → 60% opacity at rest, no shadow, z-20
- *
- * Changes from original:
- *   - Container: opacity-80 at rest, opacity-100 on hover (group hover)
- *   - Background: slightly more transparent (bg-black/30 vs /40)
- *   - Shadow: shadow-md instead of shadow-xl — recedes behind Tier 1 panels
- *   - Header text: one step lighter weight (font-semibold → font-medium)
- *   - "PAGASA" badge: lowered to text-[9px] to reduce competition
- *   - Collapse hint: auto-collapses to header-only on small viewports
- *   - scale-95 at rest, scale-100 on hover — subtle depth cue
- */
-
 const LegendBox = ({ isDarkMode = false }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -57,7 +39,7 @@ const LegendBox = ({ isDarkMode = false }) => {
   return (
     <div
       className={`
-        fixed bottom-8 left-4 z-30 w-64
+        fixed bottom-8 right-4 z-30 w-64
         group
         opacity-80 hover:opacity-100
         scale-[0.97] hover:scale-100
