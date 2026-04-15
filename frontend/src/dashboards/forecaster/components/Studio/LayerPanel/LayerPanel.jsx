@@ -3,7 +3,7 @@ import { Layers, ChevronDown, Plus, Menu, Info, X, ChevronRight } from 'lucide-r
 import Swal from 'sweetalert2';
 import dayjs from 'dayjs';
 
-import { addGeoJsonLayer, removeLayer, removeFeature, setActiveLayerOnMap } from '@dashboards/forecaster/utils/layerUtils';
+import { addGeoJsonLayer, removeLayer, removeFeature, setActiveLayerOnMap, toggleLayerVisibility } from '@dashboards/forecaster/utils/layers/index';
 import { handleCreateProject as createProjectHandler } from '@dashboards/forecaster/utils/ProjectUtils';
 
 import { useSystemLayers } from './hooks/useSystemLayers';
@@ -21,6 +21,7 @@ import ProjectInfo from '../ProjectInfo';
 import SharedModals, { createDeleteHandler } from '../Menu/SharedModals';
 import ShareProjectModal from '@/components/ui/modals/ShareProjectModal';
 import { buildMenuSections } from '../Menu/constants/menuConfig';
+import { LayerStylePanel } from '@dashboards/forecaster/components/Studio/LayerStylePanel/LayerStylePanel';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -48,7 +49,7 @@ const StudioPanel = ({
     domains: false, utilities: false, satellite: true, wind: true, wave: true,
   });
   const [activeLayerId, setActiveLayerId] = useState(null);
-  const [activeMapboxLayerId, setActiveMapboxLayerId] = useState(null);
+  const [activeMapboxLayerIds, setActiveMapboxLayerIds] = useState([]);
   const [mapNotReady, setMapNotReady] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
   const fileInputRef = useRef();
@@ -114,9 +115,13 @@ const StudioPanel = ({
 
   // ── Active layer ─────────────────────────────────────────────────────────────
   const setActiveLayer = useCallback((layer) => {
-    console.log(layer);
-    const id = layer.id
-    setActiveLayerOnMap({ layer, id, mapRef, draw, layers, activeLayerId, setActiveLayerId, setActiveMapboxLayerId });
+    const id = layer.id;
+    setActiveLayerOnMap({
+      layer, id, mapRef, draw, layers,
+      activeLayerId,
+      setActiveLayerId,
+      setActiveMapboxLayerId: setActiveMapboxLayerIds,
+    });
   }, [mapRef, draw, layers, activeLayerId]);
 
   // ── Project handlers ─────────────────────────────────────────────────────────
@@ -462,6 +467,18 @@ const StudioPanel = ({
 
       {/* ── Wave legend ──────────────────────────────────────────────────────────── */}
       {waveConfig.enabled && waveConfig.elements?.raster && <WaveLegend isDarkMode={isDarkMode} />}
+
+      {/* ── Layer style panel ─────────────────────────────────────────────────────── */}
+      <LayerStylePanel
+        mapRef={mapRef}
+        layers={layers}
+        setLayers={setLayers}
+        activeLayerId={activeLayerId}
+        activeMapboxLayerIds={activeMapboxLayerIds}
+        isDarkMode={isDarkMode}
+        onToggleVisibility={(layer) => toggleLayerVisibility(mapRef.current, layer, setLayers)}
+      />
+
     </>
   );
 };
