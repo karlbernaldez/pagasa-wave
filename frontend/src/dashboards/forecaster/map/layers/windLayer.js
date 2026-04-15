@@ -1,8 +1,5 @@
 import { fetchLatestGeoJSON, createWindPopup } from '@dashboards/forecaster/utils/mapHelpers';
-import {
-  WIND_RASTER_TILESETS,
-  WIND_PARTICLE_TILESETS,
-} from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
+import { WIND_RASTER_TILESETS, WIND_PARTICLE_TILESETS } from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
 
 (function injectPopupStyle() {
   const style = document.createElement('style');
