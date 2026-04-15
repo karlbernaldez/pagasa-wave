@@ -4,7 +4,6 @@ import { initTyphoonLayer } from '@dashboards/forecaster//map/layers/typhoonLaye
 import { saveMarker } from '@dashboards/forecaster/map/layers/markerLayer';
 import { addHimawariLayer } from '@dashboards/forecaster/map/layers/satelliteLayer';
 import { addWindSource, addWindLayer } from '@dashboards/forecaster/map/layers/windLayer';
-import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
 
 import { setGlobalMapLoaded, setGlobalSourceIds, } from '@dashboards/forecaster/map/helpers/mapGlobalState';
 
