@@ -289,7 +289,7 @@ const Studio = ({ logger }) => {
             draw={drawInstance}
           />
 
-          <LegendBox isDarkMode={isDarkMode} />
+          {/* <LegendBox isDarkMode={isDarkMode} /> */}
 
           <NoProjectAlert
             visible={showNoProjectsModal}
