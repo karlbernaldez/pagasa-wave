@@ -39,7 +39,7 @@ const LegendBox = ({ isDarkMode = false }) => {
   return (
     <div
       className={`
-        fixed bottom-8 right-4 z-30 w-64
+        fixed bottom-8 right-2 z-30 w-52
         group
         opacity-80 hover:opacity-100
         scale-[0.97] hover:scale-100

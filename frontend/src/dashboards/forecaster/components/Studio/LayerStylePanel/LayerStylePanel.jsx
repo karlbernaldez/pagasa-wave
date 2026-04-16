@@ -68,15 +68,6 @@ const TYPE_META = {
     'Wave Height': { label: 'Wave Height', color: 'from-teal-500 to-cyan-600' },
 };
 
-const BLEND_OPTIONS = [
-    { value: 'normal', label: 'Normal' },
-    { value: 'multiply', label: 'Multiply' },
-    { value: 'screen', label: 'Screen' },
-    { value: 'overlay', label: 'Overlay' },
-    { value: 'darken', label: 'Darken' },
-    { value: 'lighten', label: 'Lighten' },
-];
-
 // ── Primitive components ──────────────────────────────────────────────────────
 export function Section({ title, defaultOpen = true, isDarkMode, children }) {
     const [open, setOpen] = useState(defaultOpen);
@@ -429,15 +420,6 @@ export function LayerStylePanel({
                 </Section>
 
                 {renderControls(layerInfo, sharedProps)}
-
-                <Section title="Blend mode" isDarkMode={isDarkMode}>
-                    <PropSelect
-                        label="Mode" isDarkMode={isDarkMode}
-                        value="normal"
-                        options={BLEND_OPTIONS}
-                        onChange={() => { }}
-                    />
-                </Section>
 
                 <div className="h-2" />
             </div>
