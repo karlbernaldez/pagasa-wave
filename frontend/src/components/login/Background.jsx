@@ -1,84 +1,54 @@
-import { Cloud, Droplets, Wind, Waves, Radio } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
-const AnimatedBackground = () => (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+const AnimatedBackground = () => {
+  const glowRef = useRef(null);
 
-    {/* Deep base gradient */}
-    <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_20%_50%,#0c1a3a_0%,#020b1a_60%,#000d1f_100%)]" />
+  useEffect(() => {
+    const node = glowRef.current;
+    if (!node) return;
 
-    {/* Radar rings — centered left on the branding panel */}
-    <div className="absolute left-[22%] top-1/2 -translate-y-1/2 -translate-x-1/2">
-      {[180, 280, 380, 480, 580].map((size, i) => (
-        <div
-          key={size}
-          className="absolute rounded-full border border-cyan-400/10 animate-pulse-glow"
-          style={{
-            width: size,
-            height: size,
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            animationDelay: `${i * 0.6}s`,
-          }}
-        />
-      ))}
-      {/* Sweep arm */}
+    let t = 0;
+    let raf;
+
+    const animate = () => {
+      t += 0.0028;
+      const x = Math.sin(t) * 22;
+      const y = Math.cos(t * 0.9) * 16;
+      node.style.transform = `translate(${x}px, ${y}px)`;
+      raf = requestAnimationFrame(animate);
+    };
+
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,#020617_0%,#07111f_38%,#0a1a2a_100%)]" />
+
       <div
-        className="absolute animate-radar-sweep"
-        style={{
-          width: 290,
-          height: 290,
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          transformOrigin: 'center',
-        }}
-      >
-        <div
-          className="absolute top-0 left-1/2 w-px origin-bottom"
-          style={{
-            height: '50%',
-            background: 'linear-gradient(to top, rgba(34,211,238,0.4), transparent)',
-          }}
-        />
-      </div>
-      {/* Ping blip */}
-      <div
-        className="absolute rounded-full border border-cyan-400/30 animate-radar-ping"
-        style={{ width: 16, height: 16, top: 'calc(50% - 55px)', left: 'calc(50% + 70px)', transform: 'translate(-50%, -50%)' }}
+        ref={glowRef}
+        className="absolute -left-24 top-20 h-[28rem] w-[28rem] rounded-full bg-cyan-400/[0.09] blur-3xl"
       />
-    </div>
+      <div className="absolute bottom-[-6rem] right-[-4rem] h-[24rem] w-[24rem] rounded-full bg-sky-500/[0.07] blur-3xl" />
 
-    {/* Ambient blobs */}
-    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/8 rounded-full blur-[120px] animate-pulse-glow" />
-    <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] bg-cyan-600/6 rounded-full blur-[100px] animate-pulse-glow animation-delay-2000" />
+      <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.8)_1px,transparent_1px)] [background-size:64px_64px]" />
 
-    {/* Floating icons — right side only so they don't overlap the form */}
-    <div className="absolute top-16 right-24 text-cyan-400/8 animate-float animation-delay-1000">
-      <Cloud size={90} strokeWidth={1} />
-    </div>
-    <div className="absolute top-1/3 right-12 text-blue-400/8 animate-float animation-delay-2000">
-      <Droplets size={64} strokeWidth={1} />
-    </div>
-    <div className="absolute bottom-28 right-32 text-cyan-300/8 animate-float animation-delay-600">
-      <Wind size={72} strokeWidth={1} />
-    </div>
-    <div className="absolute bottom-16 right-1/4 text-blue-300/6 animate-float animation-delay-1500">
-      <Waves size={56} strokeWidth={1} />
-    </div>
+      <svg
+        className="absolute inset-0 h-full w-full opacity-[0.10]"
+        viewBox="0 0 1440 1024"
+        fill="none"
+        preserveAspectRatio="none"
+      >
+        <path d="M0 720C145 700 205 610 354 610C503 610 567 732 709 732C865 732 926 535 1089 535C1241 535 1304 616 1440 596" stroke="white" strokeWidth="1.2" />
+        <path d="M0 806C179 806 255 684 392 684C516 684 587 789 739 789C877 789 977 649 1115 649C1260 649 1330 731 1440 731" stroke="white" strokeWidth="1.2" />
+        <path d="M0 908C166 908 281 842 403 842C541 842 645 918 774 918C919 918 1021 813 1155 813C1287 813 1367 865 1440 865" stroke="white" strokeWidth="1.2" />
+      </svg>
 
-    {/* Horizontal rule lines for that instrument-panel feel */}
-    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent" />
-    <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/15 to-transparent" />
-
-    {/* Subtle dot grid */}
-    <div className="absolute inset-0 opacity-[0.03]"
-      style={{
-        backgroundImage: 'radial-gradient(circle, #67e8f9 1px, transparent 1px)',
-        backgroundSize: '40px 40px',
-      }}
-    />
-  </div>
-);
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_22%,rgba(255,255,255,0.08),transparent_18%),radial-gradient(circle_at_70%_70%,rgba(255,255,255,0.04),transparent_20%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.18)_58%,rgba(2,6,23,0.68)_100%)]" />
+    </div>
+  );
+};
 
 export default AnimatedBackground;
