@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { ShieldCheck, RefreshCw } from 'lucide-react';
 
 const SITE_KEY  = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
@@ -8,10 +8,24 @@ const CALLBACK  = '__onRecaptchaLoad__';
 /**
  * Props:
  *   onVerify  (token: string | null) => void
+ *
+ * Ref handle:
+ *   reset()  — resets the widget and clears the token
  */
-const CaptchaWidget = ({ onVerify }) => {
+const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
   const containerRef = useRef(null);
   const widgetIdRef  = useRef(null);
+
+  // Expose reset() so parent components can invalidate the token
+  // without needing to key-remount this component.
+  useImperativeHandle(ref, () => ({
+    reset() {
+      if (widgetIdRef.current !== null) {
+        window.grecaptcha?.reset(widgetIdRef.current);
+        onVerify(null);
+      }
+    },
+  }), [onVerify]);
 
   useEffect(() => {
     if (!SITE_KEY) {
@@ -38,18 +52,18 @@ const CaptchaWidget = ({ onVerify }) => {
     window[CALLBACK] = () => window.grecaptcha.ready(renderWidget);
 
     if (!document.getElementById(SCRIPT_ID)) {
-      const script = document.createElement('script');
-      script.id    = SCRIPT_ID;
-      script.src   = `https://www.google.com/recaptcha/api.js?onload=${CALLBACK}&render=explicit`;
-      script.async = true;
-      script.defer = true;
+      const script  = document.createElement('script');
+      script.id     = SCRIPT_ID;
+      script.src    = `https://www.google.com/recaptcha/api.js?onload=${CALLBACK}&render=explicit`;
+      script.async  = true;
+      script.defer  = true;
       document.head.appendChild(script);
     }
 
     return () => { delete window[CALLBACK]; };
   }, [onVerify]);
 
-  const resetWidget = () => {
+  const handleReset = () => {
     if (widgetIdRef.current !== null) {
       window.grecaptcha?.reset(widgetIdRef.current);
       onVerify(null);
@@ -66,23 +80,20 @@ const CaptchaWidget = ({ onVerify }) => {
         </label>
         <button
           type="button"
-          onClick={resetWidget}
+          onClick={handleReset}
           className="flex items-center gap-1 font-mono-ibm text-[10px] text-slate-500 hover:text-cyan-400/60 transition-colors"
+          aria-label="Reset CAPTCHA"
         >
-          <RefreshCw size={10} />
+          <RefreshCw size={10} aria-hidden="true" />
           Reset
         </button>
       </div>
 
-      {/* reCAPTCHA container — wrapped to contain the iframe */}
-      <div
-        className="rounded-xl overflow-hidden border border-white/5 bg-black/20"
-        aria-label="reCAPTCHA verification"
-      >
-        <div ref={containerRef} />
-      </div>
+      {/* No wrapper — any div around the iframe picks up the card's dark bg
+          and renders as a visible box around the widget's fixed dimensions. */}
+      <div ref={containerRef} aria-label="reCAPTCHA verification" />
     </div>
   );
-};
+});
 
 export default CaptchaWidget;
