@@ -269,7 +269,7 @@ const Studio = ({ logger }) => {
       {showMainUI && (
         <>
           <div className="fixed top-20 left-3 flex flex-col gap-4 z-[100] animate-[slideInLeft_0.6s_ease-out] max-md:top-4 max-md:right-4 max-md:left-4 max-md:items-stretch">
-            <ProjectMenu
+            {/* <ProjectMenu
               onNew={handleNewProject}
               onSave={handleSaveProject}
               onView={() => mapRef.current?.flyTo({ zoom: 5 })}
@@ -278,7 +278,7 @@ const Studio = ({ logger }) => {
               isDarkMode={isDarkMode}
               setIsDarkMode={setIsDarkMode}
               setCapturedImages={setCapturedImages}
-            />
+            /> */}
           </div>
 
           <LayerPanel
@@ -289,7 +289,7 @@ const Studio = ({ logger }) => {
             draw={drawInstance}
           />
 
-          <LegendBox isDarkMode={isDarkMode} />
+          {/* <LegendBox isDarkMode={isDarkMode} /> */}
 
           <NoProjectAlert
             visible={showNoProjectsModal}

@@ -1,15 +1,6 @@
 import { checkAuthSession } from '@/api/auth';
 import { fetchUserDetails } from '@/api/userAPI';
 
-/**
- * Module-level singleton cache for the authenticated user's details.
- *
- * Keeping this outside React means that multiple Header mounts during the
- * same browser session share a single network round-trip, and the data
- * survives fast-refresh cycles during development.
- *
- * Shape: { currentUser: UserDetails | null, isLoggedIn: boolean }
- */
 let _cache = null;
 
 /** In-flight promise – prevents duplicate concurrent fetches (request deduplication). */
@@ -34,17 +25,11 @@ export async function loadHeaderUser() {
   return _inflightRequest;
 }
 
-/**
- * Clears the cache – call this on logout so the next page load re-fetches.
- */
+
 export function invalidateHeaderUserCache() {
   _cache            = null;
   _inflightRequest  = null;
 }
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
 
 async function _fetchUser() {
   const { authenticated, user } = await checkAuthSession();
