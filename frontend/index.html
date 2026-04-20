@@ -1,122 +1,127 @@
 <!doctype html>
 <html lang="en" dir="ltr">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
   <!-- ─── Primary Meta ──────────────────────────────────────────────── -->
-  <title>WaveLab</title>
+  <title>WaveLab — DOST-PAGASA Wave Analysis Platform</title>
   <meta name="description"
     content="WaveLab is DOST-PAGASA's wave analysis and forecasting platform for monitoring sea state, tropical cyclones, and oceanographic conditions across the Philippine Area of Responsibility." />
-  <meta name="author" content="DOST-PAGASA" />
-  <meta name="keywords"
-    content="wave analysis, weather forecasting, PAGASA, tropical cyclone, oceanography, Philippines" />
-  <meta name="robots" content="noindex, nofollow" />
-  <meta name="theme-color" content="#0a1628" media="(prefers-color-scheme: dark)" />
+  <meta name="author"   content="DOST-PAGASA" />
+  <meta name="keywords" content="wave analysis, weather forecasting, PAGASA, tropical cyclone, oceanography, Philippines" />
+  <meta name="robots"   content="noindex, nofollow" />
+  <meta name="theme-color" content="#030d1c" media="(prefers-color-scheme: dark)" />
   <meta name="theme-color" content="#0f4c81" media="(prefers-color-scheme: light)" />
   <meta name="color-scheme" content="dark light" />
 
-  <!-- ─── PWA / App ─────────────────────────────────────────────────── -->
-  <!-- <link rel="manifest" href="/manifest.webmanifest" /> -->
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <!-- ─── PWA ──────────────────────────────────────────────────────── -->
+  <meta name="mobile-web-app-capable"              content="yes" />
+  <meta name="apple-mobile-web-app-capable"        content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="WaveLab" />
-  <meta name="application-name" content="WaveLab" />
+  <meta name="apple-mobile-web-app-title"          content="WaveLab" />
+  <meta name="application-name"                    content="WaveLab" />
 
-  <!-- ─── Open Graph ────────────────────────────────────────────────── -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://wavelab.adovelopers.com" />
-  <meta property="og:site_name" content="WaveLab" />
-  <meta property="og:title" content="WaveLab — DOST-PAGASA Wave Analysis Platform" />
-  <meta property="og:description"
-    content="Wave analysis and forecasting platform for the Philippine Area of Responsibility." />
-  <meta property="og:image" content="https://wavelab.adovelopers.com/og-image.png" />
-  <meta property="og:image:width" content="1200" />
+  <!-- ─── Open Graph ───────────────────────────────────────────────── -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content="https://wavelab.adovelopers.com" />
+  <meta property="og:site_name"   content="WaveLab" />
+  <meta property="og:title"       content="WaveLab — DOST-PAGASA Wave Analysis Platform" />
+  <meta property="og:description" content="Wave analysis and forecasting platform for the Philippine Area of Responsibility." />
+  <meta property="og:image"       content="https://wavelab.adovelopers.com/og-image.png" />
+  <meta property="og:image:width"  content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="WaveLab — DOST-PAGASA Wave Analysis Platform" />
-  <meta property="og:locale" content="en_PH" />
+  <meta property="og:image:alt"   content="WaveLab — DOST-PAGASA Wave Analysis Platform" />
+  <meta property="og:locale"      content="en_PH" />
 
-  <!-- ─── Twitter / X Card ─────────────────────────────────────────── -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="WaveLab — DOST-PAGASA Wave Analysis Platform" />
-  <meta name="twitter:description"
-    content="Wave analysis and forecasting platform for the Philippine Area of Responsibility." />
-  <meta name="twitter:image" content="https://wavelab.adovelopers.com/og-image.png" />
-  <meta name="twitter:image:alt" content="WaveLab — DOST-PAGASA Wave Analysis Platform" />
+  <!-- ─── Twitter Card ─────────────────────────────────────────────── -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content="WaveLab — DOST-PAGASA Wave Analysis Platform" />
+  <meta name="twitter:description" content="Wave analysis and forecasting platform for the Philippine Area of Responsibility." />
+  <meta name="twitter:image"       content="https://wavelab.adovelopers.com/og-image.png" />
+  <meta name="twitter:image:alt"   content="WaveLab — DOST-PAGASA Wave Analysis Platform" />
 
-  <!-- ─── Favicons ──────────────────────────────────────────────────── -->
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-  <link rel="icon" type="image/svg+xml" href="/pagasa-logo.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <!-- ─── Favicons ─────────────────────────────────────────────────── -->
+  <link rel="icon"            type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon"            type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="icon"            type="image/svg+xml"           href="/pagasa-logo.png" />
+  <link rel="apple-touch-icon" sizes="180x180"               href="/apple-touch-icon.png" />
 
-  <!-- ─── Performance Hints ─────────────────────────────────────────── -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://api.mapbox.com" />
+  <!-- ─── Performance Hints ────────────────────────────────────────── -->
+  <link rel="preconnect"  href="https://fonts.googleapis.com" />
+  <link rel="preconnect"  href="https://fonts.gstatic.com"    crossorigin />
+  <link rel="preconnect"  href="https://api.mapbox.com" />
   <link rel="dns-prefetch" href="https://events.mapbox.com" />
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
 
-  <!-- ─── Fonts ─────────────────────────────────────────────────────── -->
+  <!-- ─── Fonts ────────────────────────────────────────────────────── -->
   <link
-    href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet" />
 
-  <!-- ─── Mapbox ────────────────────────────────────────────────────── -->
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.11.0/mapbox-gl.css" rel="stylesheet" />
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.11.0/mapbox-gl.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/gif.js/dist/gif.js" defer></script>
+  <!-- ─── Mapbox ───────────────────────────────────────────────────── -->
+  <link   href="https://api.mapbox.com/mapbox-gl-js/v3.11.0/mapbox-gl.css" rel="stylesheet" />
+  <script  src="https://api.mapbox.com/mapbox-gl-js/v3.11.0/mapbox-gl.js"  defer></script>
+  <script  src="https://cdn.jsdelivr.net/npm/gif.js/dist/gif.js"            defer></script>
 
-  <!-- ─── Splash: skip on repeat visits (runs before first paint) ───── -->
+  <!-- ─── Skip splash on returning visits ──────────────────────────── -->
   <script>
-    if (localStorage.getItem('wavelab_splash_seen')) {
+    if (sessionStorage.getItem('wl_splash')) {
       document.documentElement.classList.add('splash-skip');
     }
   </script>
 
-  <!-- ─── Splash Screen ─────────────────────────────────────────────── -->
+  <!-- ─── Styles ───────────────────────────────────────────────────── -->
   <style>
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    /* ── Reset ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* ── Design Tokens ──────────────────────────────────────────────── */
     :root {
-      --splash-bg: #050d1a;
-      --splash-surface: #0a1628;
-      --splash-accent: #00c6d7;
-      --splash-mid: #0f4c81;
-      --splash-text: #e2eaf5;
-      --splash-muted: #4a6280;
-      --font-mono: 'JetBrains Mono', monospace;
-      --font-sans: 'Poppins', sans-serif;
+      /* palette */
+      --c-bg:        #030d1c;
+      --c-bg-mid:    #071428;
+      --c-accent:    #00c8da;
+      --c-accent-dim:#007b88;
+      --c-navy:      #0f4c81;
+      --c-text:      #ddeaf7;
+      --c-muted:     #3a5670;
+      --c-faint:     rgba(0, 200, 218, 0.07);
+
+      /* type */
+      --f-sans: 'Poppins', sans-serif;
+      --f-mono: 'JetBrains Mono', monospace;
+
+      /* motion */
+      --dur-rise: 0.85s;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+      /* layout */
+      --splash-radius: min(30vmin, 180px);
     }
 
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      background: var(--splash-bg);
+    /* ── Base ───────────────────────────────────────────────────────── */
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--c-bg);
       overflow: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
-    #root {
-      width: 100%;
-      height: 100%;
+    #root { width: 100%; height: 100%; }
+
+    /* ── Skip flag ──────────────────────────────────────────────────── */
+    html.splash-skip #splash { display: none !important; }
+
+    /* ── Reduced motion ─────────────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      #splash * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
 
-    /* ── Hide splash entirely on repeat visits ── */
-    html.splash-skip #splash {
-      display: none !important;
-    }
-
-    /* ── Splash wrapper ── */
+    /* ══════════════════════════════════════════════════════════════════
+       SPLASH SCREEN
+    ══════════════════════════════════════════════════════════════════ */
     #splash {
       position: fixed;
       inset: 0;
@@ -125,278 +130,642 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: var(--splash-bg);
-      gap: 2rem;
-      transition: opacity 0.5s ease, visibility 0.5s ease;
+      background: var(--c-bg);
+      overflow: hidden;
+      isolation: isolate;
+
+      /* dismiss transition */
+      transition: opacity 0.55s var(--ease-out), visibility 0.55s;
     }
 
-    #splash.hidden {
+    #splash.is-hidden {
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
     }
 
-    /* ── Ocean grid ── */
-    .splash-grid {
+    /* ── Full-bleed canvas ───────────────────────────────────────────── */
+    #splash-canvas {
       position: absolute;
       inset: 0;
-      background-image:
-        linear-gradient(rgba(0, 198, 215, 0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 198, 215, 0.04) 1px, transparent 1px);
-      background-size: 48px 48px;
-      mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 30%, transparent 100%);
+      width: 100%;
+      height: 100%;
+      will-change: transform; /* own compositor layer */
     }
 
-    /* ── Radial glow ── */
-    .splash-glow {
+    /* ── Scan-line overlay (pure CSS, zero JS) ───────────────────────── */
+    #splash::after {
+      content: '';
       position: absolute;
-      width: 600px;
-      height: 600px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(0, 198, 215, 0.08) 0%, transparent 70%);
-      animation: pulse-glow 3s ease-in-out infinite;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent               0px,
+        transparent               2px,
+        rgba(0, 0, 0, 0.06)       2px,
+        rgba(0, 0, 0, 0.06)       4px
+      );
+      pointer-events: none;
+      z-index: 2;
     }
 
-    @keyframes pulse-glow {
-      0%, 100% { transform: scale(1);   opacity: 0.6; }
-      50%       { transform: scale(1.1); opacity: 1;   }
-    }
-
-    /* ── Logo block ── */
-    .splash-logo {
-      position: relative;
+    /* ── Atmospheric radial vignette ──────────────────────────────────── */
+    #splash-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        ellipse 75% 65% at 50% 40%,
+        transparent 30%,
+        rgba(3, 13, 28, 0.55) 70%,
+        rgba(3, 13, 28, 0.90) 100%
+      );
+      pointer-events: none;
       z-index: 1;
+    }
+
+    /* ── Content ─────────────────────────────────────────────────────── */
+    .splash-content {
+      position: relative;
+      z-index: 3;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1.25rem;
+      gap: 0.75rem;
     }
 
-    .splash-icon {
-      width: 88px;
-      height: 88px;
+    /* ── Logo badge ──────────────────────────────────────────────────── */
+    .splash-logo {
+      width: 76px;
+      height: 76px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(3, 13, 28, 0.80);
+      border: 1px solid rgba(0, 200, 218, 0.25);
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 0 40px rgba(0, 198, 215, 0.25), 0 0 0 1px rgba(0, 198, 215, 0.15);
-      animation: icon-appear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-      padding: 10px;
+      padding: 12px;
+      box-shadow: 0 0 0 6px rgba(0, 200, 218, 0.05),
+                  0 0 32px rgba(0, 200, 218, 0.10);
+
+      animation: rise var(--dur-rise) 0.2s var(--ease-out) both;
     }
 
-    @keyframes icon-appear {
-      from { transform: scale(0.6) rotate(-10deg); opacity: 0; }
-      to   { transform: scale(1)   rotate(0deg);   opacity: 1; }
-    }
-
-    .splash-icon img {
+    .splash-logo img {
       width: 100%;
       height: 100%;
       object-fit: contain;
-      filter: drop-shadow(0 0 8px rgba(0, 198, 215, 0.4));
     }
 
+    /* ── Wordmark ─────────────────────────────────────────────────────── */
     .splash-wordmark {
       display: flex;
       flex-direction: column;
       align-items: center;
-      animation: wordmark-appear 0.7s 0.15s ease both;
-    }
-
-    @keyframes wordmark-appear {
-      from { transform: translateY(10px); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
+      gap: 0.2rem;
+      animation: rise var(--dur-rise) 0.32s var(--ease-out) both;
     }
 
     .splash-title {
-      font-family: var(--font-sans);
+      font-family: var(--f-sans);
       font-weight: 700;
-      font-size: 2.25rem;
-      letter-spacing: 0.08em;
-      color: var(--splash-text);
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      letter-spacing: 0.06em;
+      color: var(--c-text);
       line-height: 1;
     }
 
-    .splash-title span {
-      background: linear-gradient(90deg, var(--splash-accent), #5be8f5);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+    .splash-title em {
+      font-style: normal;
+      color: var(--c-accent);
     }
 
-    .splash-sub {
-      font-family: var(--font-mono);
-      font-size: 0.65rem;
-      font-weight: 400;
+    .splash-tagline {
+      font-family: var(--f-mono);
+      font-size: clamp(0.52rem, 1.5vw, 0.62rem);
       letter-spacing: 0.22em;
       text-transform: uppercase;
-      color: var(--splash-muted);
-      margin-top: 6px;
+      color: var(--c-muted);
     }
 
-    /* ── Progress bar ── */
+    /* ── HUD status row ───────────────────────────────────────────────── */
+    .splash-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+      animation: rise var(--dur-rise) 0.44s var(--ease-out) both;
+    }
+
+    .splash-status-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--c-accent);
+      animation: dot-pulse 1.8s ease-in-out infinite;
+    }
+
+    .splash-status-text {
+      font-family: var(--f-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--c-muted);
+    }
+
+    /* ── Progress bar ─────────────────────────────────────────────────── */
     .splash-progress {
-      position: relative;
-      z-index: 1;
-      width: 220px;
-      animation: progress-appear 0.6s 0.3s ease both;
+      width: min(220px, 60vw);
+      height: 1px;
+      background: rgba(0, 200, 218, 0.10);
+      border-radius: 1px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+      animation: rise var(--dur-rise) 0.52s var(--ease-out) both;
     }
 
-    @keyframes progress-appear {
-      from { opacity: 0; transform: translateY(6px); }
+    .splash-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--c-accent-dim), var(--c-accent));
+      border-radius: 1px;
+      transition: width 0.4s ease;
+      box-shadow: 0 0 8px var(--c-accent);
+    }
+
+    /* ── Footer ──────────────────────────────────────────────────────── */
+    .splash-footer {
+      position: absolute;
+      bottom: 2rem;
+      z-index: 3;
+      font-family: var(--f-mono);
+      font-size: 0.54rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--c-muted);
+      opacity: 0.45;
+      text-align: center;
+      padding: 0 2rem;
+      animation: rise var(--dur-rise) 0.60s var(--ease-out) both;
+    }
+
+    /* ── Corner HUD decorations ──────────────────────────────────────── */
+    .splash-hud-corner {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      z-index: 3;
+      opacity: 0.3;
+      animation: rise var(--dur-rise) 0.65s var(--ease-out) both;
+    }
+    .splash-hud-corner--tl { top: 1.5rem; left: 1.5rem;
+      border-top: 1px solid var(--c-accent); border-left: 1px solid var(--c-accent); }
+    .splash-hud-corner--tr { top: 1.5rem; right: 1.5rem;
+      border-top: 1px solid var(--c-accent); border-right: 1px solid var(--c-accent); }
+    .splash-hud-corner--bl { bottom: 1.5rem; left: 1.5rem;
+      border-bottom: 1px solid var(--c-accent); border-left: 1px solid var(--c-accent); }
+    .splash-hud-corner--br { bottom: 1.5rem; right: 1.5rem;
+      border-bottom: 1px solid var(--c-accent); border-right: 1px solid var(--c-accent); }
+
+    /* ── Keyframes ───────────────────────────────────────────────────── */
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(16px); }
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    .splash-progress-track {
-      height: 2px;
-      background: rgba(0, 198, 215, 0.12);
-      border-radius: 99px;
-      overflow: hidden;
-    }
-
-    .splash-progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, var(--splash-mid), var(--splash-accent));
-      border-radius: 99px;
-      animation: loading-bar 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-      box-shadow: 0 0 8px rgba(0, 198, 215, 0.7);
-    }
-
-    @keyframes loading-bar {
-      0%   { width: 0%; }
-      60%  { width: 75%; }
-      85%  { width: 88%; }
-      100% { width: 100%; }
-    }
-
-    .splash-status {
-      margin-top: 10px;
-      font-family: var(--font-mono);
-      font-size: 0.6rem;
-      letter-spacing: 0.12em;
-      color: var(--splash-muted);
-      text-align: center;
-    }
-
-    /* ── Footer badge ── */
-    .splash-badge {
-      position: absolute;
-      bottom: 2rem;
-      font-family: var(--font-mono);
-      font-size: 0.58rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--splash-muted);
-      opacity: 0.6;
-      animation: wordmark-appear 0.8s 0.4s ease both;
+    @keyframes dot-pulse {
+      0%, 70%, 100% { opacity: 0.25; transform: scale(1); }
+      35%           { opacity: 1;    transform: scale(1.5); }
     }
   </style>
 </head>
 
 <body>
 
-  <!-- ─── Splash Screen ─────────────────────────────────────────────── -->
-  <div id="splash" role="status" aria-label="Loading WaveLab" aria-live="polite">
-    <div class="splash-grid" aria-hidden="true"></div>
-    <div class="splash-glow" aria-hidden="true"></div>
+  <!-- ─── Splash ───────────────────────────────────────────────────── -->
+  <div
+    id="splash"
+    role="status"
+    aria-label="Loading WaveLab"
+    aria-live="polite"
+    aria-busy="true"
+  >
 
-    <div class="splash-logo">
-      <div class="splash-icon" aria-hidden="true">
-        <img src="/pagasa-logo.png" alt="PAGASA Logo" />
+    <canvas id="splash-canvas" aria-hidden="true"></canvas>
+    <div id="splash-vignette" aria-hidden="true"></div>
+
+    <!-- HUD corners -->
+    <div class="splash-hud-corner splash-hud-corner--tl" aria-hidden="true"></div>
+    <div class="splash-hud-corner splash-hud-corner--tr" aria-hidden="true"></div>
+    <div class="splash-hud-corner splash-hud-corner--bl" aria-hidden="true"></div>
+    <div class="splash-hud-corner splash-hud-corner--br" aria-hidden="true"></div>
+
+    <div class="splash-content">
+
+      <div class="splash-logo" aria-hidden="true">
+        <img src="/pagasa-logo.png" alt="" role="presentation" />
       </div>
 
       <div class="splash-wordmark">
-        <div class="splash-title">Wave<span>Lab</span></div>
-        <div class="splash-sub">DOST-PAGASA · Wave Forecasting Platform</div>
+        <h1 class="splash-title">Wave<em>Lab</em></h1>
+        <p class="splash-tagline">DOST-PAGASA · Wave Forecasting Platform</p>
       </div>
+
+      <div class="splash-status" aria-hidden="true">
+        <div class="splash-status-dot"></div>
+        <span class="splash-status-text" id="splash-status-label">Initialising</span>
+      </div>
+
+      <div class="splash-progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Loading progress">
+        <div class="splash-progress-fill" id="splash-bar"></div>
+      </div>
+
     </div>
 
-    <div class="splash-progress" aria-hidden="true">
-      <div class="splash-progress-track">
-        <div class="splash-progress-bar"></div>
-      </div>
-      <div class="splash-status" id="splash-status-text">Initializing…</div>
-    </div>
+    <p class="splash-footer" aria-hidden="true">
+      Department of Science and Technology —
+      Philippine Atmospheric, Geophysical and Astronomical Services Administration
+    </p>
 
-    <div class="splash-badge" aria-hidden="true">Department of Science and Technology - Philippine Atmospheric,
-      Geophysical and Astronomical Services Administration</div>
   </div>
 
   <!-- ─── App Root ──────────────────────────────────────────────────── -->
   <div id="root"></div>
 
-  <!-- ─── Splash Dismiss ────────────────────────────────────────────── -->
+  <!-- ─── Canvas Renderer ──────────────────────────────────────────── -->
   <script>
-    (function () {
-      var splash = document.getElementById('splash');
+  'use strict';
 
-      // Already seen on a previous visit — splash is hidden via CSS, bail out
-      if (!splash || getComputedStyle(splash).display === 'none') return;
+  (function SplashRenderer() {
 
-      var status  = document.getElementById('splash-status-text');
-      var logoImg = splash.querySelector('.splash-icon img');
-      var labels  = ['Initializing…', 'Loading assets…', 'Mounting app…', 'Ready'];
-      var idx     = 0;
+    /* ── constants ──────────────────────────────────────────────────── */
+    const SWEEP_SPEED  = 0.50;          // rotations / second
+    const SWEEP_TRAIL  = Math.PI * 1.2; // arc length in radians
+    const RINGS        = 4;
+    const RING_LABELS  = ['N', 'E', 'S', 'W'];
 
-      var ticker = setInterval(function () {
-        idx = Math.min(idx + 1, labels.length - 1);
-        if (status) status.textContent = labels[idx];
-        if (idx === labels.length - 1) clearInterval(ticker);
-      }, 600);
+    const BLIPS = [
+      { a: 0.08, r: 0.40, size: 2.8 },
+      { a: 0.22, r: 0.58, size: 2.2 },
+      { a: 0.37, r: 0.27, size: 3.0 },
+      { a: 0.53, r: 0.65, size: 2.4 },
+      { a: 0.66, r: 0.44, size: 2.6 },
+      { a: 0.79, r: 0.55, size: 2.0 },
+      { a: 0.91, r: 0.33, size: 2.8 },
+      { a: 0.46, r: 0.72, size: 2.0 },
+    ];
 
-      // Two conditions must both be true before we dismiss:
-      //   1. logo image has finished loading
-      //   2. React has mounted at least one child into #root
-      var imageReady = false;
-      var appReady   = false;
+    // blip "last-hit" timestamp for ripple rings
+    const blipLastHit = new Array(BLIPS.length).fill(-Infinity);
 
-      function tryDismiss() {
-        if (!imageReady || !appReady) return;
-        clearInterval(ticker);
-        localStorage.setItem('wavelab_splash_seen', '1');
-        splash.classList.add('hidden');
-        setTimeout(function () {
-          if (splash.parentNode) splash.parentNode.removeChild(splash);
-        }, 600);
-      }
+    const WAVES = [
+      { amp: 22, freq: 0.017, speed: 0.011, yR: 0.70, alpha: 0.14, color: '#00c8da' },
+      { amp: 14, freq: 0.024, speed: 0.017, yR: 0.75, alpha: 0.09, color: '#0f4c81' },
+      { amp: 26, freq: 0.013, speed: 0.008, yR: 0.81, alpha: 0.08, color: '#00c8da' },
+      { amp:  9, freq: 0.031, speed: 0.024, yR: 0.66, alpha: 0.05, color: '#5be8f5' },
+      { amp: 17, freq: 0.019, speed: 0.014, yR: 0.86, alpha: 0.11, color: '#0f4c81' },
+    ];
 
-      // 1. Track image load
-      if (logoImg) {
-        if (logoImg.complete && logoImg.naturalWidth > 0) {
-          imageReady = true; // already cached
-        } else {
-          logoImg.addEventListener('load',  function () { imageReady = true; tryDismiss(); });
-          logoImg.addEventListener('error', function () { imageReady = true; tryDismiss(); }); // broken img shouldn't block forever
-        }
-      } else {
-        imageReady = true;
-      }
+    /* ── state ──────────────────────────────────────────────────────── */
+    const canvas = document.getElementById('splash-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W, H, DPR, raf, t0 = null;
+    let running = true;
 
-      // 2. Track React mount
-      var observer = new MutationObserver(function () {
-        var root = document.getElementById('root');
-        if (root && root.children.length > 0) {
-          observer.disconnect();
-          appReady = true;
-          tryDismiss();
-        }
+    /* ── resize (debounced with ResizeObserver) ─────────────────────── */
+    function setSize() {
+      DPR = window.devicePixelRatio || 1;
+      W   = canvas.offsetWidth;
+      H   = canvas.offsetHeight;
+      canvas.width  = Math.round(W * DPR);
+      canvas.height = Math.round(H * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+
+    let resizeTimer;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(setSize, 60);
+    });
+    ro.observe(canvas);
+    setSize();
+
+    /* ── reduce-motion guard ─────────────────────────────────────────── */
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ── helpers ─────────────────────────────────────────────────────── */
+    function sonarCentre() {
+      return { cx: W / 2, cy: H * 0.40, maxR: Math.min(W, H) * 0.29 };
+    }
+
+    /* ── draw: compass rose ──────────────────────────────────────────── */
+    function drawCompass(cx, cy, maxR) {
+      ctx.save();
+      ctx.font = '500 9px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const dist = maxR + 14;
+      const dirs = [
+        { label: 'N', dx:  0, dy: -1 },
+        { label: 'E', dx:  1, dy:  0 },
+        { label: 'S', dx:  0, dy:  1 },
+        { label: 'W', dx: -1, dy:  0 },
+      ];
+      dirs.forEach(({ label, dx, dy }) => {
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle   = '#00c8da';
+        ctx.fillText(label, cx + dx * dist, cy + dy * dist);
       });
-      observer.observe(document.getElementById('root'), { childList: true, subtree: false });
+      ctx.restore();
+    }
 
-      // Hard fallback — never block past 8s
-      setTimeout(function () {
-        observer.disconnect();
-        imageReady = true;
-        appReady   = true;
-        tryDismiss();
-      }, 8000);
-    })();
+    /* ── draw: sonar grid ────────────────────────────────────────────── */
+    function drawSonarGrid(cx, cy, maxR) {
+      // range rings
+      for (let i = 1; i <= RINGS; i++) {
+        const r = (i / RINGS) * maxR;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle   = '#00c8da';
+        ctx.globalAlpha   = i === RINGS ? 0.12 : 0.07;
+        ctx.lineWidth     = 0.75;
+        ctx.stroke();
+      }
+      // crosshairs
+      ctx.globalAlpha = 0.06;
+      ctx.strokeStyle = '#00c8da';
+      ctx.lineWidth   = 0.5;
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 4;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(a) * maxR, cy + Math.sin(a) * maxR);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /* ── draw: sweep trail + line ────────────────────────────────────── */
+    function drawSweep(cx, cy, maxR, angle) {
+      const STEPS = 72;
+      for (let s = 0; s < STEPS; s++) {
+        const a0   = angle - SWEEP_TRAIL * ((s + 1) / STEPS);
+        const a1   = angle - SWEEP_TRAIL * (s / STEPS);
+        const fade = s / STEPS;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, maxR, a0, a1);
+        ctx.closePath();
+        ctx.fillStyle   = '#00c8da';
+        ctx.globalAlpha = fade * fade * 0.20;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // sweep line
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angle) * maxR, cy + Math.sin(angle) * maxR);
+      ctx.strokeStyle = '#00c8da';
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+
+      // origin dot
+      ctx.beginPath();
+      ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle   = '#00c8da';
+      ctx.globalAlpha = 0.90;
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+    }
+
+    /* ── draw: blips with ripple rings ───────────────────────────────── */
+    function drawBlips(cx, cy, maxR, angle, elapsed) {
+      BLIPS.forEach((blip, i) => {
+        const ba = blip.a * Math.PI * 2;
+        const bx = cx + Math.cos(ba) * blip.r * maxR;
+        const by = cy + Math.sin(ba) * blip.r * maxR;
+
+        // how far behind the sweep arm is this blip?
+        const behind = (angle - ba + Math.PI * 2) % (Math.PI * 2);
+
+        // record last-hit moment
+        if (behind < 0.04) blipLastHit[i] = elapsed;
+
+        if (behind > SWEEP_TRAIL * 1.35) return;
+
+        const intensity = Math.max(0, 1 - behind / (SWEEP_TRAIL * 1.35));
+        const dotR = blip.size + intensity * 1.8;
+
+        // glow halo
+        ctx.beginPath();
+        ctx.arc(bx, by, dotR + 6, 0, Math.PI * 2);
+        ctx.fillStyle   = '#00ffcc';
+        ctx.globalAlpha = intensity * 0.14;
+        ctx.fill();
+
+        // core dot
+        ctx.beginPath();
+        ctx.arc(bx, by, dotR, 0, Math.PI * 2);
+        ctx.fillStyle   = '#00ffcc';
+        ctx.globalAlpha = intensity * 0.88;
+        ctx.fill();
+
+        // ripple rings (expand outward from last hit)
+        const age = elapsed - blipLastHit[i];
+        if (age < 2.0 && age >= 0) {
+          for (let ring = 0; ring < 2; ring++) {
+            const rAge    = age - ring * 0.45;
+            if (rAge < 0) continue;
+            const rProg   = Math.min(rAge / 1.0, 1);
+            const rRadius = dotR + rProg * 18;
+            const rAlpha  = (1 - rProg) * 0.30 * intensity;
+            ctx.beginPath();
+            ctx.arc(bx, by, rRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = '#00ffcc';
+            ctx.globalAlpha = rAlpha;
+            ctx.lineWidth   = 0.75;
+            ctx.stroke();
+          }
+        }
+
+        ctx.globalAlpha = 1;
+      });
+    }
+
+    /* ── draw: wave layer ────────────────────────────────────────────── */
+    function drawWave(wave, elapsed) {
+      const baseY = H * wave.yR;
+      const step  = 3;
+
+      function calcY(x) {
+        return baseY
+          + Math.sin(x * wave.freq + elapsed * wave.speed * 60) * wave.amp
+          + Math.sin(x * wave.freq * 1.7 + elapsed * wave.speed * 38) * wave.amp * 0.38;
+      }
+
+      // filled body
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += step) {
+        x === 0 ? ctx.moveTo(x, calcY(x)) : ctx.lineTo(x, calcY(x));
+      }
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      ctx.fillStyle   = wave.color;
+      ctx.globalAlpha = wave.alpha;
+      ctx.fill();
+
+      // crest stroke
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += step) {
+        x === 0 ? ctx.moveTo(x, calcY(x)) : ctx.lineTo(x, calcY(x));
+      }
+      ctx.strokeStyle = wave.color;
+      ctx.globalAlpha = wave.alpha * 2.8;
+      ctx.lineWidth   = 1;
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+    }
+
+    /* ── draw: coordinate HUD readout ────────────────────────────────── */
+    function drawHUD(cx, cy, angle) {
+      const deg  = ((angle * 180 / Math.PI) % 360 + 360) % 360;
+      const text = `HDG ${deg.toFixed(1).padStart(5, '0')}°`;
+      ctx.save();
+      ctx.font         = '400 9px "JetBrains Mono", monospace';
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle    = '#00c8da';
+      ctx.globalAlpha  = 0.22;
+      ctx.fillText(text, cx - (Math.min(W, H) * 0.29) - 4, cy + (Math.min(W, H) * 0.29) + 6);
+      ctx.restore();
+    }
+
+    /* ── main render loop ────────────────────────────────────────────── */
+    function frame(ts) {
+      if (!running) return;
+      if (t0 === null) t0 = ts;
+      const elapsed = (ts - t0) / 1000;
+
+      ctx.clearRect(0, 0, W, H);
+
+      const { cx, cy, maxR } = sonarCentre();
+      const angle = reducedMotion ? 0 : (elapsed * SWEEP_SPEED * Math.PI * 2) % (Math.PI * 2);
+
+      drawSonarGrid(cx, cy, maxR);
+      drawCompass(cx, cy, maxR);
+      drawSweep(cx, cy, maxR, angle);
+      drawBlips(cx, cy, maxR, angle, elapsed);
+      drawHUD(cx, cy, angle);
+
+      WAVES.forEach(w => drawWave(w, elapsed));
+
+      raf = requestAnimationFrame(frame);
+    }
+
+    raf = requestAnimationFrame(frame);
+
+    /* ── expose cleanup ──────────────────────────────────────────────── */
+    window._splashStop = function () {
+      running = false;
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+
+  })(); // end SplashRenderer
   </script>
 
-  <!-- ─── Entry ─────────────────────────────────────────────────────── -->
+  <!-- ─── Progress simulation + status labels ───────────────────────── -->
+  <script>
+  'use strict';
+
+  (function SplashProgress() {
+    const bar    = document.getElementById('splash-bar');
+    const label  = document.getElementById('splash-status-label');
+    const splash = document.getElementById('splash');
+    if (!bar || !splash) return;
+
+    const progressEl = splash.querySelector('[role="progressbar"]');
+
+    const STAGES = [
+      { pct: 15,  msg: 'Initialising',    ms: 300  },
+      { pct: 35,  msg: 'Loading assets',  ms: 700  },
+      { pct: 60,  msg: 'Building charts', ms: 400  },
+      { pct: 80,  msg: 'Loading map',     ms: 500  },
+      { pct: 95,  msg: 'Almost ready',    ms: 600  },
+    ];
+
+    let stageIdx = 0;
+    let appReady = false, imageReady = false;
+
+    function advanceStage() {
+      if (stageIdx >= STAGES.length) return;
+      const stage = STAGES[stageIdx++];
+      bar.style.width = stage.pct + '%';
+      if (label)    label.textContent = stage.msg;
+      if (progressEl) progressEl.setAttribute('aria-valuenow', stage.pct);
+      if (stageIdx < STAGES.length) setTimeout(advanceStage, stage.ms);
+    }
+
+    advanceStage();
+
+    function finish() {
+      if (!appReady || !imageReady) return;
+      bar.style.width = '100%';
+      if (label)    label.textContent = 'Ready';
+      if (progressEl) progressEl.setAttribute('aria-valuenow', 100);
+      sessionStorage.setItem('wl_splash', '1');
+      splash.setAttribute('aria-busy', 'false');
+      setTimeout(dismiss, 320);
+    }
+
+    function dismiss() {
+      splash.classList.add('is-hidden');
+      setTimeout(() => {
+        if (window._splashStop) window._splashStop();
+        splash.remove();
+      }, 600);
+    }
+
+    // Watch for logo image load
+    const img = splash.querySelector('.splash-logo img');
+    if (!img || (img.complete && img.naturalWidth > 0)) {
+      imageReady = true;
+    } else {
+      img.addEventListener('load',  () => { imageReady = true; finish(); });
+      img.addEventListener('error', () => { imageReady = true; finish(); });
+    }
+
+    // Watch for React/Vite app mount
+    const observer = new MutationObserver(() => {
+      const root = document.getElementById('root');
+      if (root && root.childElementCount > 0) {
+        observer.disconnect();
+        appReady = true;
+        finish();
+      }
+    });
+    observer.observe(document.getElementById('root'), { childList: true });
+
+    // Hard deadline — never block indefinitely
+    const deadline = setTimeout(() => {
+      observer.disconnect();
+      imageReady = true;
+      appReady   = true;
+      finish();
+    }, 9000);
+
+    // Clean up if app mounts quickly
+    window.addEventListener('load', () => clearTimeout(deadline), { once: true });
+  })();
+  </script>
+
+  <!-- ─── Entry Point ───────────────────────────────────────────────── -->
   <script type="module" src="/src/app/main.jsx"></script>
 
 </body>
-
 </html>
