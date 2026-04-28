@@ -1,17 +1,17 @@
 import { Loader2 } from 'lucide-react';
 import { tokens } from '@/styles/tokens';
 
-const { colors, gradients, shadows } = tokens;
+const { colors, shadows } = tokens;
 
 const variants = {
   primary: {
-    color: colors.brand.secondary,
-    background: gradients.primary,
+    color: '#FFFFFF',
+    background: colors.brand.primary,
     borderColor: 'transparent',
-    boxShadow: '0 14px 34px rgba(1, 176, 239, 0.26)',
-    '--auth-button-hover-bg': gradients.primaryHover,
-    '--auth-button-hover-shadow': shadows.brandGlow,
-    '--auth-button-ring': 'rgba(255, 254, 6, 0.32)',
+    boxShadow: '0 10px 24px rgba(1, 176, 239, 0.28)',
+    '--auth-button-hover-bg': colors.action.primaryHover,
+    '--auth-button-hover-shadow': '0 14px 30px rgba(1, 176, 239, 0.34)',
+    '--auth-button-ring': 'rgba(255, 254, 6, 0.35)',
   },
   secondary: {
     color: colors.brand.secondary,
@@ -19,7 +19,7 @@ const variants = {
     borderColor: 'rgba(1, 176, 239, 0.34)',
     boxShadow: shadows.sm,
     '--auth-button-hover-bg': colors.surface.light.muted,
-    '--auth-button-hover-shadow': '0 12px 28px rgba(1, 176, 239, 0.18)',
+    '--auth-button-hover-shadow': '0 10px 24px rgba(1, 176, 239, 0.18)',
     '--auth-button-ring': 'rgba(1, 176, 239, 0.24)',
   },
   ghost: {
@@ -31,12 +31,12 @@ const variants = {
     '--auth-button-ring': 'rgba(1, 176, 239, 0.20)',
   },
   danger: {
-    color: colors.text.dark.primary,
-    background: gradients.danger,
+    color: '#FFFFFF',
+    background: colors.brand.danger,
     borderColor: 'transparent',
     '--auth-button-hover-bg': colors.action.dangerHover,
-    '--auth-button-hover-shadow': '0 12px 28px rgba(252, 5, 13, 0.24)',
-    '--auth-button-ring': 'rgba(252, 5, 13, 0.24)',
+    '--auth-button-hover-shadow': '0 12px 28px rgba(252, 5, 13, 0.28)',
+    '--auth-button-ring': 'rgba(252, 5, 13, 0.28)',
   },
   subtle: {
     color: colors.brand.secondary,
@@ -79,7 +79,7 @@ export default function AuthButton({
       aria-disabled={isDisabled}
       aria-label={ariaLabel}
       style={{ ...variantStyle, ...style }}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl border font-bold transition hover:scale-[1.01] hover:bg-[image:var(--auth-button-hover-bg)] hover:shadow-[var(--auth-button-hover-shadow)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--auth-button-ring)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${sizes[size] || sizes.lg} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl border font-bold transition hover:scale-[1.01] hover:bg-[color:var(--auth-button-hover-bg)] hover:shadow-[var(--auth-button-hover-shadow)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--auth-button-ring)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${sizes[size] || sizes.lg} ${className}`}
       {...props}
     >
       {isLoading ? (
