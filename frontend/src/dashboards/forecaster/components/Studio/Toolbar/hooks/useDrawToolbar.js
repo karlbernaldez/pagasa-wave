@@ -82,7 +82,9 @@ export function useDrawToolbar({
     }
 
     if (method === 'map' && MAP_CLICK_TYPES.includes(selectedType)) {
+      console.log('Enabling map click for point input');
       const map = getLatestMapInstance();
+      console.log('Latest map instance:', map);
       if (!map) {
         console.warn('Map is not ready yet.');
         return;
@@ -91,6 +93,7 @@ export function useDrawToolbar({
       handleDrawModeChange('draw_point', draw, setLayersRef);
 
       map.once('click', (e) => {
+        console.log('Map clicked at:', e.lngLat);
         const lng = e.lngLat.lng;
         const lat = e.lngLat.lat;
         const coords = [lng, lat];
@@ -101,6 +104,7 @@ export function useDrawToolbar({
           const title = `${MARKER_LABEL_MAP.less_1}_${uuidv4()}`;
           savePoint({ lat, lng, coords, title, selectedType, map });
         } else {
+          console.log('Storing pending map click for marker title input');
           setPendingMapClick({ lat, lng, coords });
           toggleModal('markerTitle', true);
         }

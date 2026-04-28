@@ -15,13 +15,13 @@ const NoProjectsModal = ({
 
   const navigate = useNavigate();
 
-  // Normalize message
   const msg = message?.toLowerCase?.() || "";
 
-  // Dynamic content mapping
   let title = "Something went wrong";
   let description = message || "An unexpected error occurred.";
   let showCreateButton = false;
+  let secondaryLabel = "Select Another Project";
+  let secondaryAction = () => { onClose?.(); navigate("/studio"); };
 
   if (msg.includes("no projects")) {
     title = "No Projects Found";
@@ -46,12 +46,9 @@ const NoProjectsModal = ({
     title = "Session Expired";
     description =
       "Your session has expired. Please log in again to continue.";
+    secondaryLabel = "Go to Login";
+    secondaryAction = () => { onClose?.(); navigate("/login"); };
   }
-
-  const handleSelectAnother = () => {
-    onClose?.();
-    navigate("/studio");
-  };
 
   return (
     <div
@@ -151,7 +148,7 @@ const NoProjectsModal = ({
             )}
 
             <button
-              onClick={handleSelectAnother}
+              onClick={secondaryAction}
               className={cn(
                 "w-full px-6 py-3 rounded-lg font-semibold text-sm transition-all hover:scale-[1.02]",
                 isDarkMode
@@ -159,7 +156,7 @@ const NoProjectsModal = ({
                   : "bg-black/5 hover:bg-black/10 text-slate-700 border border-black/10"
               )}
             >
-              Select Another Project
+              {secondaryLabel}
             </button>
           </div>
         </div>
