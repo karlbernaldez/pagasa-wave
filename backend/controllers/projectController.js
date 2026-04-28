@@ -19,6 +19,30 @@ const allowedTransitions = {
   Published: ['Archived'],
 };
 
+const USER_PROJECT_SORT_FIELDS = {
+  name: 'name',
+  chartType: 'chartType',
+  type: 'chartType',
+  forecastDate: 'forecastDate',
+  status: 'status',
+  lastOpenedAt: 'lastOpenedAt',
+  updatedAt: 'updatedAt',
+  createdAt: 'createdAt',
+};
+
+function getDateRangeFilter(dateRange) {
+  const daysByRange = {
+    '7d': 7,
+    '30d': 30,
+    '90d': 90,
+  };
+
+  const days = daysByRange[dateRange];
+  if (!days) return null;
+
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
 /* =========================================================
    ADMIN: GET ALL PROJECTS
 ========================================================= */
@@ -52,10 +76,10 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
   const projects = await Project.find(filter)
     .populate('owner', 'firstName lastName email username')
     .sort({
-      lastOpenedAt: -1,  // 🔥 most recently opened
-      updatedAt: -1,     // recently edited
-      submittedAt: -1,   // recent submissions
-      createdAt: -1      // fallback
+      lastOpenedAt: -1,
+      updatedAt: -1,
+      submittedAt: -1,
+      createdAt: -1
     })
     .lean();
 
@@ -105,17 +129,25 @@ export const getUserProjects = asyncHandler(async (req, res) => {
 
   const {
     page = 1,
-    limit = 8,
+    limit = 10,
     search = '',
-    status = ''
+    status = '',
+    type = '',
+    dateRange = '',
+    sortBy = 'updatedAt',
+    sortDir = 'desc',
   } = req.query;
+
+  const pageNumber = Math.max(Number(page) || 1, 1);
+  const limitNumber = Math.min(Math.max(Number(limit) || 10, 1), 100);
+  const skip = (pageNumber - 1) * limitNumber;
 
   const query = { owner: req.user.id };
 
   if (search.trim()) {
     query.$or = [
       { name: { $regex: search.trim(), $options: 'i' } },
-      { description: { $regex: search.trim(), $options: 'i' } }
+      { description: { $regex: search.trim(), $options: 'i' } },
     ];
   }
 
@@ -123,26 +155,41 @@ export const getUserProjects = asyncHandler(async (req, res) => {
     query.status = status;
   }
 
-  const skip = (Number(page) - 1) * Number(limit);
+  if (type && type !== 'All') {
+    query.chartType = { $regex: type, $options: 'i' };
+  }
+
+  const cutoffDate = getDateRangeFilter(dateRange);
+  if (cutoffDate) {
+    const dateQuery = { $gte: cutoffDate };
+    query.$or = query.$or
+      ? [...query.$or.map((condition) => ({ ...condition, updatedAt: dateQuery })), { forecastDate: dateQuery }]
+      : [{ updatedAt: dateQuery }, { forecastDate: dateQuery }];
+  }
+
+  const sortField = USER_PROJECT_SORT_FIELDS[sortBy] || 'updatedAt';
+  const sortDirection = sortDir === 'asc' ? 1 : -1;
+  const sortQuery = {
+    [sortField]: sortDirection,
+    updatedAt: -1,
+    createdAt: -1,
+  };
 
   const [projects, total] = await Promise.all([
     Project.find(query)
-      .sort({
-        lastOpenedAt: -1,  // recently opened
-        updatedAt: -1,     // recently edited
-        createdAt: -1      // fallback
-      })
+      .sort(sortQuery)
       .skip(skip)
-      .limit(Number(limit))
+      .limit(limitNumber)
       .lean(),
-    Project.countDocuments(query)
+    Project.countDocuments(query),
   ]);
 
   res.json({
     projects,
     total,
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit))
+    page: pageNumber,
+    limit: limitNumber,
+    totalPages: Math.max(1, Math.ceil(total / limitNumber)),
   });
 });
 
@@ -153,7 +200,7 @@ export const getLatestUserProject = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
   const project = await Project.findOne({ owner: req.user.id })
-    .sort({ updatedAt: -1 }) // Most recently modified
+    .sort({ updatedAt: -1 })
     .lean();
 
   if (!project) {
@@ -174,7 +221,6 @@ export const getProjectById = asyncHandler(async (req, res) => {
 
   await project.populate('owner', 'firstName lastName email position');
 
-  // Track project access
   project.lastOpenedAt = new Date();
   project.lastOpenedBy = req.user.id;
   project.openCount += 1;
@@ -196,7 +242,6 @@ export const renameProject = asyncHandler(async (req, res) => {
 
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
-  // No-op if the name hasn't changed
   if (project.name === name.trim()) {
     return res.json(project);
   }
