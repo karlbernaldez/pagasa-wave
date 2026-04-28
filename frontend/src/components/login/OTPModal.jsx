@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, Loader2, RotateCcw, X, ShieldCheck } from 'l
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
-const OTP_LENGTH        = 6;
+const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_S = 60;
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -12,6 +12,16 @@ const maskEmail = (addr = '') => {
   const [user, domain] = addr.split('@');
   if (!user || !domain) return addr;
   return `${user.slice(0, 2)}${'•'.repeat(Math.max(user.length - 2, 3))}@${domain}`;
+};
+
+const getFocusableElements = (container) => {
+  if (!container) return [];
+
+  return Array.from(
+    container.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((element) => element.offsetParent !== null || element === document.activeElement);
 };
 
 // ─── Inline styles / keyframes ────────────────────────────────────────────────
@@ -85,12 +95,52 @@ const STYLES = `
   .otp-stagger-2 { animation: otp-fade-up 0.3s 0.12s ease both; }
   .otp-stagger-3 { animation: otp-fade-up 0.3s 0.20s ease both; }
   .otp-stagger-4 { animation: otp-fade-up 0.3s 0.28s ease both; }
+
+  .otp-close-button:hover {
+    background: rgba(255,255,255,0.08) !important;
+    color: rgba(255,255,255,0.7) !important;
+  }
+
+  .otp-close-button:focus-visible,
+  .otp-resend-button:focus-visible,
+  .otp-digit-input:focus-visible {
+    outline: 2px solid rgba(56,189,248,0.9) !important;
+    outline-offset: 2px;
+  }
+
+  .otp-digit-input:hover:not(:disabled):not(.otp-cell-filled) {
+    border-color: rgba(255,255,255,0.16) !important;
+  }
+
+  .otp-resend-button:hover:not(:disabled) {
+    background: rgba(14,165,233,0.12) !important;
+    border-color: rgba(14,165,233,0.35) !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .otp-modal-panel,
+    .otp-overlay,
+    .otp-cell-filled,
+    .otp-shake,
+    .otp-success-icon,
+    .otp-stagger-1,
+    .otp-stagger-2,
+    .otp-stagger-3,
+    .otp-stagger-4 {
+      animation: none !important;
+    }
+
+    .otp-animated-element {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
 `;
 
 // ─── StepIndicator ────────────────────────────────────────────────────────────
 
 const StepIndicator = () => (
-  <div className="flex items-center gap-0 mb-8">
+  <div className="flex items-center gap-0 mb-8" aria-hidden="true">
     {/* Step 1 - done */}
     <div className="flex items-center gap-2">
       <div style={{
@@ -131,7 +181,7 @@ const StepIndicator = () => (
         flexShrink: 0, position: 'relative',
       }}>
         {/* Ping ring */}
-        <div style={{
+        <div className="otp-animated-element" style={{
           position: 'absolute', inset: -4, borderRadius: '50%',
           border: '1px solid rgba(34,211,238,0.25)',
           animation: 'otp-ping 2s ease-out infinite',
@@ -155,12 +205,14 @@ const StepIndicator = () => (
 // ─── OtpModal ─────────────────────────────────────────────────────────────────
 
 const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
-  const [digits,    setDigits]    = useState(Array(OTP_LENGTH).fill(''));
-  const [cooldown,  setCooldown]  = useState(RESEND_COOLDOWN_S);
+  const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(''));
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_S);
   const [resending, setResending] = useState(false);
-  const [success,   setSuccess]   = useState(false);
-  const [shakeKey,  setShakeKey]  = useState(0);
+  const [success, setSuccess] = useState(false);
+  const [shakeKey, setShakeKey] = useState(0);
   const inputRefs = useRef([]);
+  const modalRef = useRef(null);
+  const previousFocusRef = useRef(null);
 
   // Countdown
   useEffect(() => {
@@ -169,8 +221,15 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
     return () => clearTimeout(id);
   }, [cooldown]);
 
-  // Auto-focus first on open
-  useEffect(() => { inputRefs.current[0]?.focus(); }, []);
+  // Auto-focus first on open and restore focus when closed.
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement;
+    inputRefs.current[0]?.focus();
+
+    return () => {
+      previousFocusRef.current?.focus?.();
+    };
+  }, []);
 
   // Auto-submit when all digits filled
   useEffect(() => {
@@ -186,11 +245,35 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
     setTimeout(() => inputRefs.current[0]?.focus(), 0);
   }, [error]);
 
-  // Escape to close
+  // Escape to close + focus trap.
   useEffect(() => {
-    const fn = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', fn);
-    return () => document.removeEventListener('keydown', fn);
+    const handleDocumentKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusableElements = getFocusableElements(modalRef.current);
+      if (!focusableElements.length) return;
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      }
+
+      if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    return () => document.removeEventListener('keydown', handleDocumentKeyDown);
   }, [onClose]);
 
   const handleSubmit = async (otp) => {
@@ -217,7 +300,7 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
   const handleKeyDown = useCallback((index, e) => {
     if (e.key === 'Backspace' && !digits[index] && index > 0)
       inputRefs.current[index - 1]?.focus();
-    if (e.key === 'ArrowLeft'  && index > 0) inputRefs.current[index - 1]?.focus();
+    if (e.key === 'ArrowLeft' && index > 0) inputRefs.current[index - 1]?.focus();
     if (e.key === 'ArrowRight' && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
   }, [digits]);
 
@@ -252,10 +335,18 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 16, pointerEvents: 'none',
       }}>
-        <div className="otp-modal-panel" style={{
-          width: '100%', maxWidth: 400, pointerEvents: 'auto',
-          position: 'relative',
-        }}>
+        <div
+          ref={modalRef}
+          className="otp-modal-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="otp-title"
+          aria-describedby="otp-description"
+          style={{
+            width: '100%', maxWidth: 400, pointerEvents: 'auto',
+            position: 'relative',
+          }}
+        >
 
           {/* Outer glow ring */}
           <div style={{
@@ -281,7 +372,7 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                 position: 'absolute', top: 0, left: 0, right: 0,
                 height: 2, overflow: 'hidden', zIndex: 10,
               }}>
-                <div style={{
+                <div className="otp-animated-element" style={{
                   height: '100%',
                   background: 'linear-gradient(90deg, transparent, rgba(34,211,238,0.6), transparent)',
                   animation: 'otp-scan 3.5s ease-in-out infinite',
@@ -302,8 +393,10 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
 
               {/* Close button */}
               <button
+                type="button"
                 onClick={onClose}
-                aria-label="Close"
+                aria-label="Close verification dialog"
+                className="otp-close-button"
                 style={{
                   position: 'absolute', top: 16, right: 16,
                   width: 30, height: 30, borderRadius: 8,
@@ -313,16 +406,8 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                   cursor: 'pointer', transition: 'all 0.15s',
                   color: 'rgba(255,255,255,0.3)',
                 }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                  e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                  e.currentTarget.style.color = 'rgba(255,255,255,0.3)';
-                }}
               >
-                <X size={14} />
+                <X size={14} aria-hidden="true" />
               </button>
 
               {/* Step indicator */}
@@ -341,7 +426,7 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                     margin: '0 auto 20px',
                     boxShadow: '0 0 32px rgba(34,197,94,0.15)',
                   }}>
-                    <ShieldCheck size={30} color="#4ade80" />
+                    <ShieldCheck size={30} color="#4ade80" aria-hidden="true" />
                   </div>
                   <p style={{
                     fontFamily: "'Outfit', sans-serif",
@@ -360,7 +445,7 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                     marginTop: 24, height: 2, borderRadius: 1,
                     background: 'rgba(34,197,94,0.12)', overflow: 'hidden',
                   }}>
-                    <div style={{
+                    <div className="otp-animated-element" style={{
                       height: '100%',
                       background: 'linear-gradient(90deg, #4ade80, #22d3ee)',
                       animation: 'otp-bar-fill 1.8s cubic-bezier(0.4,0,0.2,1) both',
@@ -380,7 +465,7 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                           border: '1px solid rgba(14,165,233,0.2)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
                               stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M22 6l-10 7L2 6"
@@ -390,18 +475,24 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                       </div>
 
                       <div style={{ paddingTop: 2 }}>
-                        <p style={{
-                          fontFamily: "'Outfit', sans-serif",
-                          fontSize: 17, fontWeight: 700,
-                          color: '#f0f9ff', margin: '0 0 4px', letterSpacing: '-0.2px',
-                        }}>
+                        <p
+                          id="otp-title"
+                          style={{
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: 17, fontWeight: 700,
+                            color: '#f0f9ff', margin: '0 0 4px', letterSpacing: '-0.2px',
+                          }}
+                        >
                           Check your inbox
                         </p>
-                        <p style={{
-                          fontFamily: "'DM Mono', monospace",
-                          fontSize: 11, color: 'rgba(148,163,184,0.7)',
-                          margin: 0, lineHeight: 1.6,
-                        }}>
+                        <p
+                          id="otp-description"
+                          style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: 11, color: 'rgba(148,163,184,0.7)',
+                            margin: 0, lineHeight: 1.6,
+                          }}
+                        >
                           Code sent to{' '}
                           <span style={{ color: 'rgba(125,211,252,0.8)', fontWeight: 500 }}>
                             {maskEmail(email)}
@@ -415,6 +506,9 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                   {error && (
                     <div
                       key={shakeKey}
+                      id="otp-error"
+                      role="alert"
+                      aria-live="assertive"
                       className="otp-shake"
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10,
@@ -424,7 +518,7 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                         borderLeft: '3px solid rgba(239,68,68,0.5)',
                       }}
                     >
-                      <AlertCircle size={13} color="#f87171" style={{ flexShrink: 0 }} />
+                      <AlertCircle size={13} color="#f87171" style={{ flexShrink: 0 }} aria-hidden="true" />
                       <span style={{
                         fontFamily: "'DM Mono', monospace",
                         fontSize: 11.5, color: 'rgba(252,165,165,0.85)',
@@ -482,7 +576,9 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                             onFocus={(e) => e.target.select()}
                             disabled={isLoading}
                             aria-label={`Digit ${i + 1} of ${OTP_LENGTH}`}
-                            className={digit ? 'otp-cell-filled' : ''}
+                            aria-invalid={Boolean(error)}
+                            aria-describedby={error ? 'otp-error' : 'otp-description'}
+                            className={`otp-digit-input ${digit ? 'otp-cell-filled' : ''}`}
                             style={{
                               width: 48, height: 58,
                               textAlign: 'center',
@@ -519,14 +615,6 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                               opacity: isLoading ? 0.5 : 1,
                               cursor: isLoading ? 'not-allowed' : 'text',
                             }}
-                            onMouseEnter={e => {
-                              if (!digit && !isLoading)
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)';
-                            }}
-                            onMouseLeave={e => {
-                              if (!digit && !isLoading)
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                            }}
                           />
                         </div>
                       ))}
@@ -548,15 +636,19 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
 
                   {/* ── LOADING ──────────────────────────── */}
                   {isLoading && (
-                    <div style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      gap: 8, marginBottom: 16,
-                      fontFamily: "'DM Mono', monospace",
-                      fontSize: 11, color: 'rgba(103,232,249,0.5)',
-                      letterSpacing: '0.05em',
-                    }}>
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: 8, marginBottom: 16,
+                        fontFamily: "'DM Mono', monospace",
+                        fontSize: 11, color: 'rgba(103,232,249,0.5)',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
                       <Loader2 size={13} color="rgba(103,232,249,0.5)"
-                        style={{ animation: 'spin 0.8s linear infinite' }} />
+                        className="otp-animated-element" style={{ animation: 'spin 0.8s linear infinite' }} aria-hidden="true" />
                       Authenticating…
                     </div>
                   )}
@@ -571,7 +663,7 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                         border: '1px solid rgba(255,255,255,0.06)',
                       }}>
                         {/* Cooldown arc */}
-                        <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0 }} aria-hidden="true">
                           <circle cx="7" cy="7" r="5.5" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5"/>
                           <circle cx="7" cy="7" r="5.5" fill="none"
                             stroke="rgba(34,211,238,0.35)" strokeWidth="1.5"
@@ -601,6 +693,7 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                         type="button"
                         onClick={handleResend}
                         disabled={resending}
+                        className="otp-resend-button"
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 7,
                           padding: '8px 18px', borderRadius: 100,
@@ -613,20 +706,10 @@ const OtpModal = ({ email, onVerify, onResend, onClose, isLoading, error }) => {
                           transition: 'all 0.15s',
                           opacity: resending ? 0.6 : 1,
                         }}
-                        onMouseEnter={e => {
-                          if (!resending) {
-                            e.currentTarget.style.background = 'rgba(14,165,233,0.12)';
-                            e.currentTarget.style.borderColor = 'rgba(14,165,233,0.35)';
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'rgba(14,165,233,0.07)';
-                          e.currentTarget.style.borderColor = 'rgba(14,165,233,0.2)';
-                        }}
                       >
                         {resending
-                          ? <><Loader2 size={11} style={{ animation: 'spin 0.8s linear infinite' }} /> Sending…</>
-                          : <><RotateCcw size={11} /> Resend code</>
+                          ? <><Loader2 size={11} className="otp-animated-element" style={{ animation: 'spin 0.8s linear infinite' }} aria-hidden="true" /> Sending…</>
+                          : <><RotateCcw size={11} aria-hidden="true" /> Resend code</>
                         }
                       </button>
                     )}
