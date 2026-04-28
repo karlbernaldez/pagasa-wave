@@ -224,6 +224,38 @@ export const animation = {
   },
 };
 
+// Explicit DS-01 semantic groups. These aliases make the token contract easy to
+// consume without requiring components to know the nested color structure.
+export const surfaces = colors.surface;
+export const borders = colors.border;
+export const statusColors = colors.state;
+export const motion = animation;
+
+export const mapPanels = {
+  dark: {
+    surface: colors.studio.panelGlass,
+    surfaceSolid: colors.studio.panel,
+    border: colors.studio.panelBorder,
+    shadow: shadows.studioPanel,
+    control: colors.studio.control,
+    controlHover: colors.studio.controlHover,
+    controlActive: colors.studio.controlActive,
+    badge: colors.studio.badge,
+    badgeText: colors.studio.badgeText,
+  },
+  light: {
+    surface: colors.studio.panelGlassLight,
+    surfaceSolid: colors.surface.light.raised,
+    border: colors.studio.panelBorderLight,
+    shadow: shadows.md,
+    control: 'rgba(15, 23, 42, 0.05)',
+    controlHover: 'rgba(15, 23, 42, 0.08)',
+    controlActive: 'rgba(0, 87, 184, 0.12)',
+    badge: 'rgba(0, 87, 184, 0.12)',
+    badgeText: colors.brand.primary,
+  },
+};
+
 export const tokens = {
   palette,
   colors,
@@ -235,4 +267,9 @@ export const tokens = {
   blur,
   zIndex,
   animation,
+  motion,
+  surfaces,
+  borders,
+  statusColors,
+  mapPanels,
 };
