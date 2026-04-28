@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { useTheme } from "@/app/providers/ThemeProvider";
-import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 
 import { useProjects } from "@dashboards/forecaster/components/StudioBase/hooks/useProjects";
 import ProjectStats from "@dashboards/forecaster/components/project-library/ProjectStats";
 import ProjectToolbar from "@dashboards/forecaster/components/project-library/ProjectToolbar";
 import ProjectTable from "@dashboards/forecaster/components/project-library/ProjectTable";
+import ProjectPagination from "@dashboards/forecaster/components/project-library/ProjectPagination";
+import ProjectDialogsHost from "@dashboards/forecaster/components/project-library/ProjectDialogsHost";
 
 import { getProjectStats } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 
@@ -18,8 +19,18 @@ export default function StudioBase() {
     search,
     setSearch,
     paged,
-    createProject,
+    page,
+    setPage,
+    total,
+    totalPages,
+    deleteProject,
+    renameProject,
   } = useProjects();
+
+  const dialogs = ProjectDialogsHost({
+    onDeleteConfirm: (p) => deleteProject(p._id),
+    onRenameConfirm: (p, name) => renameProject(p._id, name),
+  });
 
   useEffect(() => {
     document.title = "WaveLab · Forecast Operations";
@@ -36,13 +47,6 @@ export default function StudioBase() {
             <h1 className="text-2xl font-black text-slate-900">Forecast Operations</h1>
             <p className="text-sm text-slate-500">Track, manage, and continue active marine forecast projects.</p>
           </div>
-
-          <button
-            onClick={() => createProject({}, () => {})}
-            className="rounded-lg bg-blue-700 px-5 py-2 text-sm font-bold text-white"
-          >
-            + New Project
-          </button>
         </div>
 
         <ProjectStats stats={stats} />
@@ -52,15 +56,20 @@ export default function StudioBase() {
         <ProjectTable
           projects={paged}
           onOpen={(p) => window.open(`/studio/${p._id}`, "_blank")}
+          onRename={dialogs.openRename}
+          onDelete={dialogs.openDelete}
+        />
+
+        <ProjectPagination
+          page={page}
+          total={total}
+          totalPages={totalPages}
+          pageSize={10}
+          onPageChange={setPage}
         />
       </div>
 
-      <CreateProjectModal
-        visible={false}
-        onClose={() => {}}
-        onSubmit={(fd) => createProject(fd)}
-        isDarkMode={isDarkMode}
-      />
+      {dialogs.dialogs}
     </div>
   );
 }
