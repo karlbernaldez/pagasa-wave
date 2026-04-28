@@ -1,9 +1,41 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ShieldCheck, RefreshCw } from 'lucide-react';
 
-const SITE_KEY  = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+const SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 const SCRIPT_ID = 'recaptcha-v2-script';
-const CALLBACK  = '__onRecaptchaLoad__';
+const CALLBACK = '__onRecaptchaLoad__';
+
+function loadRecaptchaScript() {
+  if (window.grecaptcha?.render) {
+    return Promise.resolve(window.grecaptcha);
+  }
+
+  if (window.__recaptchaLoadPromise__) {
+    return window.__recaptchaLoadPromise__;
+  }
+
+  window.__recaptchaLoadPromise__ = new Promise((resolve, reject) => {
+    window[CALLBACK] = () => {
+      window.grecaptcha.ready(() => resolve(window.grecaptcha));
+    };
+
+    const existingScript = document.getElementById(SCRIPT_ID);
+    if (existingScript) {
+      existingScript.addEventListener('error', reject, { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = SCRIPT_ID;
+    script.src = `https://www.google.com/recaptcha/api.js?onload=${CALLBACK}&render=explicit`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  return window.__recaptchaLoadPromise__;
+}
 
 /**
  * Props:
@@ -14,74 +46,73 @@ const CALLBACK  = '__onRecaptchaLoad__';
  */
 const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
   const containerRef = useRef(null);
-  const widgetIdRef  = useRef(null);
-
-  // Expose reset() so parent components can invalidate the token
-  // without needing to key-remount this component.
-  useImperativeHandle(ref, () => ({
-    reset() {
-      if (widgetIdRef.current !== null) {
-        window.grecaptcha?.reset(widgetIdRef.current);
-        onVerify(null);
-      }
-    },
-  }), [onVerify]);
+  const widgetIdRef = useRef(null);
+  const onVerifyRef = useRef(onVerify);
+  const [isReady, setIsReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (!SITE_KEY) {
-      console.error('[CaptchaWidget] VITE_RECAPTCHA_SITE_KEY is not set.');
-      return;
-    }
-
-    const renderWidget = () => {
-      if (!containerRef.current || widgetIdRef.current !== null) return;
-      widgetIdRef.current = window.grecaptcha.render(containerRef.current, {
-        sitekey:            SITE_KEY,
-        theme:              'dark',
-        callback:           (token) => onVerify(token),
-        'expired-callback': ()      => onVerify(null),
-        'error-callback':   ()      => onVerify(null),
-      });
-    };
-
-    if (window.grecaptcha?.render) {
-      window.grecaptcha.ready(renderWidget);
-      return;
-    }
-
-    window[CALLBACK] = () => window.grecaptcha.ready(renderWidget);
-
-    if (!document.getElementById(SCRIPT_ID)) {
-      const script  = document.createElement('script');
-      script.id     = SCRIPT_ID;
-      script.src    = `https://www.google.com/recaptcha/api.js?onload=${CALLBACK}&render=explicit`;
-      script.async  = true;
-      script.defer  = true;
-      document.head.appendChild(script);
-    }
-
-    return () => { delete window[CALLBACK]; };
+    onVerifyRef.current = onVerify;
   }, [onVerify]);
 
-  const handleReset = () => {
-    if (widgetIdRef.current !== null) {
-      window.grecaptcha?.reset(widgetIdRef.current);
-      onVerify(null);
+  const resetCaptcha = () => {
+    if (widgetIdRef.current !== null && window.grecaptcha?.reset) {
+      window.grecaptcha.reset(widgetIdRef.current);
     }
+
+    onVerifyRef.current?.(null);
   };
+
+  useImperativeHandle(ref, () => ({
+    reset: resetCaptcha,
+  }));
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!SITE_KEY) {
+      console.error('[CaptchaWidget] VITE_RECAPTCHA_SITE_KEY is not set.');
+      setLoadError(true);
+      return undefined;
+    }
+
+    loadRecaptchaScript()
+      .then((grecaptcha) => {
+        if (!isMounted || !containerRef.current || widgetIdRef.current !== null) return;
+
+        widgetIdRef.current = grecaptcha.render(containerRef.current, {
+          sitekey: SITE_KEY,
+          theme: 'dark',
+          callback: (token) => onVerifyRef.current?.(token),
+          'expired-callback': () => onVerifyRef.current?.(null),
+          'error-callback': () => onVerifyRef.current?.(null),
+        });
+
+        setIsReady(true);
+      })
+      .catch((error) => {
+        console.error('[CaptchaWidget] Failed to load reCAPTCHA.', error);
+        if (isMounted) setLoadError(true);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-2.5">
-      {/* Label row */}
       <div className="flex items-center justify-between">
         <label className="font-mono-ibm text-cyan-300/70 text-xs tracking-widest uppercase flex items-center gap-2">
           <ShieldCheck size={13} className="text-cyan-400/60" aria-hidden="true" />
           Verification
         </label>
+
         <button
           type="button"
-          onClick={handleReset}
-          className="flex items-center gap-1 font-mono-ibm text-[10px] text-slate-500 hover:text-cyan-400/60 transition-colors"
+          onClick={resetCaptcha}
+          disabled={!isReady}
+          className="flex items-center gap-1 font-mono-ibm text-[10px] text-slate-500 transition-colors hover:text-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-slate-500"
           aria-label="Reset CAPTCHA"
         >
           <RefreshCw size={10} aria-hidden="true" />
@@ -89,8 +120,12 @@ const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
         </button>
       </div>
 
-      {/* No wrapper — any div around the iframe picks up the card's dark bg
-          and renders as a visible box around the widget's fixed dimensions. */}
+      {loadError && (
+        <p role="alert" className="text-xs font-medium text-red-500">
+          CAPTCHA failed to load. Check the site key or refresh the page.
+        </p>
+      )}
+
       <div ref={containerRef} aria-label="reCAPTCHA verification" />
     </div>
   );
