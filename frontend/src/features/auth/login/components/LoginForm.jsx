@@ -5,6 +5,7 @@ import { tokens } from '@/styles/tokens';
 import AuthButton from '@/features/auth/shared/AuthButton.jsx';
 import AuthInput from '@/features/auth/shared/AuthInput.jsx';
 import AuthPasswordField from '@/features/auth/shared/AuthPasswordField.jsx';
+import AuthFooter from '@/features/auth/shared/AuthFooter.jsx';
 
 import CaptchaSection from './CaptchaSection.jsx';
 
@@ -117,16 +118,9 @@ const LoginForm = forwardRef(function LoginForm(
         Create Account
       </AuthButton>
 
-      <p className="text-center text-sm font-medium" style={{ color: colors.text.light.muted }}>
-        By signing in, you agree to our{' '}
-        <button type="button" className="font-bold underline" style={{ color: colors.brand.primary }}>
-          Terms of Use
-        </button>{' '}
-        and{' '}
-        <button type="button" className="font-bold underline" style={{ color: colors.brand.primary }}>
-          Privacy Policy
-        </button>
-      </p>
+      <AuthFooter
+        termsPrefix="By signing in, you agree to our"
+      />
     </form>
   );
 });
