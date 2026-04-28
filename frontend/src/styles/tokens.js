@@ -4,9 +4,12 @@
 // and future shared UI primitives can consume the same values.
 
 export const palette = {
-  pagasaBlue: '#0057B8',
-  navy: '#0A2540',
-  cyan: '#00C8DA',
+  // Sampled from the PAGASA logo mark.
+  pagasaCyan: '#01B0EF',
+  pagasaSky: '#03C3F4',
+  pagasaYellow: '#FFFE06',
+  pagasaRed: '#FC050D',
+  pagasaBlack: '#0C0C0C',
 
   white: '#FFFFFF',
   black: '#000000',
@@ -24,109 +27,119 @@ export const palette = {
   slate950: '#020617',
 
   green500: '#22C55E',
-  amber500: '#F59E0B',
-  red500: '#EF4444',
+  amber500: '#FFFE06',
+  red500: '#FC050D',
 };
 
 export const colors = {
   brand: {
-    primary: palette.pagasaBlue,
-    secondary: palette.navy,
-    accent: palette.cyan,
+    primary: palette.pagasaCyan,
+    primaryStrong: '#00A9E8',
+    secondary: palette.pagasaBlack,
+    accent: palette.pagasaYellow,
+    danger: palette.pagasaRed,
+    sky: palette.pagasaSky,
   },
 
   state: {
     success: palette.green500,
-    warning: palette.amber500,
-    error: palette.red500,
+    warning: palette.pagasaYellow,
+    error: palette.pagasaRed,
   },
 
   text: {
     light: {
-      primary: palette.slate950,
-      secondary: palette.slate600,
-      muted: palette.slate500,
+      primary: palette.pagasaBlack,
+      secondary: '#334155',
+      muted: '#64748B',
       inverse: palette.white,
+      accent: '#0369A1',
     },
     dark: {
       primary: palette.white,
-      secondary: palette.slate300,
-      muted: palette.slate400,
-      inverse: palette.slate950,
+      secondary: '#D7F7FF',
+      muted: '#91DFF6',
+      inverse: palette.pagasaBlack,
+      accent: palette.pagasaYellow,
     },
   },
 
   surface: {
     light: {
-      page: palette.slate50,
+      page: '#F3FBFF',
       raised: palette.white,
-      muted: palette.slate100,
-      elevated: 'rgba(255, 255, 255, 0.86)',
+      muted: '#E6F8FE',
+      elevated: 'rgba(255, 255, 255, 0.88)',
+      brandWash: 'rgba(1, 176, 239, 0.10)',
     },
     dark: {
-      page: '#071A2A',
-      raised: '#0B1E2D',
-      muted: '#102A43',
-      elevated: 'rgba(11, 30, 45, 0.88)',
+      page: palette.pagasaBlack,
+      raised: '#101A20',
+      muted: '#122E3A',
+      elevated: 'rgba(12, 12, 12, 0.88)',
+      brandWash: 'rgba(1, 176, 239, 0.16)',
     },
   },
 
   border: {
     light: {
-      subtle: 'rgba(15, 23, 42, 0.08)',
-      default: palette.slate200,
-      strong: palette.slate300,
-      focus: palette.pagasaBlue,
+      subtle: 'rgba(12, 12, 12, 0.08)',
+      default: 'rgba(1, 176, 239, 0.28)',
+      strong: 'rgba(1, 176, 239, 0.44)',
+      focus: palette.pagasaCyan,
+      accent: 'rgba(255, 254, 6, 0.72)',
     },
     dark: {
-      subtle: 'rgba(255, 255, 255, 0.10)',
-      default: 'rgba(148, 163, 184, 0.24)',
-      strong: 'rgba(148, 163, 184, 0.40)',
-      focus: palette.cyan,
+      subtle: 'rgba(255, 255, 255, 0.12)',
+      default: 'rgba(1, 176, 239, 0.34)',
+      strong: 'rgba(3, 195, 244, 0.52)',
+      focus: palette.pagasaYellow,
+      accent: 'rgba(255, 254, 6, 0.78)',
     },
   },
 
   action: {
-    primary: palette.pagasaBlue,
-    primaryHover: '#004A9F',
-    secondary: palette.navy,
-    secondaryHover: '#071A2A',
-    accent: palette.cyan,
-    accentHover: '#00AFC0',
-    danger: palette.red500,
-    dangerHover: '#DC2626',
-    warning: palette.amber500,
-    warningHover: '#D97706',
+    primary: palette.pagasaCyan,
+    primaryHover: '#00A9E8',
+    secondary: palette.pagasaBlack,
+    secondaryHover: '#000000',
+    accent: palette.pagasaYellow,
+    accentHover: '#E7E600',
+    danger: palette.pagasaRed,
+    dangerHover: '#D9040B',
+    warning: palette.pagasaYellow,
+    warningHover: '#E7E600',
   },
 
   overlay: {
-    scrim: 'rgba(2, 6, 23, 0.56)',
-    scrimStrong: 'rgba(2, 6, 23, 0.72)',
+    scrim: 'rgba(12, 12, 12, 0.56)',
+    scrimStrong: 'rgba(12, 12, 12, 0.74)',
     blur: 'blur(8px)',
   },
 
   studio: {
-    panel: '#0F2A44',
-    panelGlass: 'rgba(15, 42, 68, 0.82)',
-    panelGlassLight: 'rgba(255, 255, 255, 0.72)',
-    panelBorder: 'rgba(255, 255, 255, 0.18)',
-    panelBorderLight: 'rgba(15, 23, 42, 0.12)',
-    control: 'rgba(255, 255, 255, 0.08)',
-    controlHover: 'rgba(255, 255, 255, 0.14)',
-    controlActive: 'rgba(0, 200, 218, 0.20)',
-    badge: 'rgba(0, 200, 218, 0.18)',
-    badgeText: '#67E8F9',
+    panel: '#0C0C0C',
+    panelGlass: 'rgba(12, 12, 12, 0.84)',
+    panelGlassLight: 'rgba(255, 255, 255, 0.76)',
+    panelBorder: 'rgba(1, 176, 239, 0.28)',
+    panelBorderLight: 'rgba(1, 176, 239, 0.22)',
+    control: 'rgba(1, 176, 239, 0.10)',
+    controlHover: 'rgba(1, 176, 239, 0.18)',
+    controlActive: 'rgba(255, 254, 6, 0.24)',
+    badge: 'rgba(255, 254, 6, 0.18)',
+    badgeText: palette.pagasaYellow,
   },
 };
 
 export const gradients = {
-  primary: `linear-gradient(135deg, ${colors.brand.primary} 0%, ${colors.brand.accent} 100%)`,
-  primaryHover: `linear-gradient(135deg, ${colors.action.primaryHover} 0%, ${colors.action.accentHover} 100%)`,
-  pageLight: 'linear-gradient(135deg, #F8FAFC 0%, #FFFFFF 45%, #E0F2FE 100%)',
-  pageDark: 'linear-gradient(135deg, #071A2A 0%, #0A2540 50%, #020617 100%)',
-  studioPanel: 'linear-gradient(180deg, rgba(15, 42, 68, 0.92) 0%, rgba(10, 37, 64, 0.86) 100%)',
-  warning: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-  danger: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+  primary: `linear-gradient(135deg, ${colors.brand.primary} 0%, ${colors.brand.sky} 48%, ${colors.brand.accent} 100%)`,
+  primaryHover: `linear-gradient(135deg, ${colors.action.primaryHover} 0%, ${colors.brand.sky} 52%, ${colors.action.accentHover} 100%)`,
+  pageLight: 'linear-gradient(135deg, #FFFFFF 0%, #F3FBFF 42%, #D7F4FD 100%)',
+  pageDark: 'linear-gradient(135deg, #0C0C0C 0%, #102A35 48%, #01B0EF 140%)',
+  studioPanel: 'linear-gradient(180deg, rgba(12, 12, 12, 0.94) 0%, rgba(16, 42, 53, 0.88) 100%)',
+  pagasaSeal: 'linear-gradient(135deg, #01B0EF 0%, #03C3F4 40%, #FFFE06 72%, #FC050D 100%)',
+  warning: 'linear-gradient(135deg, #FFFE06 0%, #E7E600 100%)',
+  danger: 'linear-gradient(135deg, #FC050D 0%, #D9040B 100%)',
 };
 
 export const typography = {
@@ -188,13 +201,15 @@ export const radius = {
 
 export const shadows = {
   none: 'none',
-  sm: '0 2px 6px rgba(15, 23, 42, 0.08)',
-  md: '0 8px 20px rgba(15, 23, 42, 0.12)',
-  lg: '0 16px 40px rgba(15, 23, 42, 0.16)',
-  xl: '0 24px 64px rgba(15, 23, 42, 0.24)',
-  studioPanel: '0 18px 44px rgba(2, 6, 23, 0.28)',
-  focus: '0 0 0 3px rgba(0, 87, 184, 0.24)',
-  focusDark: '0 0 0 3px rgba(0, 200, 218, 0.22)',
+  sm: '0 2px 6px rgba(12, 12, 12, 0.08)',
+  md: '0 8px 20px rgba(12, 12, 12, 0.12)',
+  lg: '0 16px 40px rgba(12, 12, 12, 0.16)',
+  xl: '0 24px 64px rgba(12, 12, 12, 0.24)',
+  studioPanel: '0 18px 44px rgba(12, 12, 12, 0.30)',
+  focus: '0 0 0 3px rgba(1, 176, 239, 0.26)',
+  focusDark: '0 0 0 3px rgba(255, 254, 6, 0.24)',
+  brandGlow: '0 0 32px rgba(1, 176, 239, 0.34)',
+  sealGlow: '0 0 36px rgba(255, 254, 6, 0.28)',
 };
 
 export const blur = {
@@ -248,10 +263,10 @@ export const mapPanels = {
     surfaceSolid: colors.surface.light.raised,
     border: colors.studio.panelBorderLight,
     shadow: shadows.md,
-    control: 'rgba(15, 23, 42, 0.05)',
-    controlHover: 'rgba(15, 23, 42, 0.08)',
-    controlActive: 'rgba(0, 87, 184, 0.12)',
-    badge: 'rgba(0, 87, 184, 0.12)',
+    control: 'rgba(12, 12, 12, 0.05)',
+    controlHover: 'rgba(1, 176, 239, 0.10)',
+    controlActive: 'rgba(255, 254, 6, 0.20)',
+    badge: 'rgba(1, 176, 239, 0.12)',
     badgeText: colors.brand.primary,
   },
 };
