@@ -1,13 +1,9 @@
-// dashboards/forecaster/hooks/useProjects.js
-import { useState, useEffect, useMemo, useRef } from "react";
-import {
-  fetchUserProjects,
-  deleteProjectById,
-  renameProject as apiRenameProject,
-} from "@/api/projectAPI";
-import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchUserProjects } from "@/api/projectAPI";
 import { PAGE_LIMIT } from "@dashboards/forecaster/constants/projectLibrary";
 import { sortProjects } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
+import { projectLibraryQueryKeys, PROJECT_LIBRARY_QUERY_LIMIT } from "@dashboards/forecaster/services/projectLibraryQueryKeys";
 
 function getProjectType(project) {
   return String(project.chartType || project.type || project.category || "").toLowerCase();
@@ -30,43 +26,14 @@ function isWithinDateRange(project, dateRange) {
 }
 
 export function useProjects() {
-  const [allProjects, setAllProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [dateRangeFilter, setDateRangeFilter] = useState("All");
   const [page, setPage] = useState(1);
-
   const [sortBy, setSortBy] = useState("updatedAt");
   const [sortDir, setSortDir] = useState("desc");
-
-  const fetchedRef = useRef(false);
-  const controllerRef = useRef(null);
-
-  const pending = useRef({ delete: new Set(), rename: new Set(), create: false });
-
-  useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-
-    controllerRef.current?.abort();
-
-    const controller = new AbortController();
-    controllerRef.current = controller;
-
-    fetchUserProjects({ limit: 1000, signal: controller.signal })
-      .then((data) => setAllProjects(data.projects ?? []))
-      .catch((error) => {
-        if (error.name !== "AbortError") console.error(error);
-      })
-      .finally(() => setLoading(false));
-
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(search), 350);
@@ -76,6 +43,15 @@ export function useProjects() {
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, statusFilter, typeFilter, dateRangeFilter, sortBy, sortDir]);
+
+  const query = useQuery({
+    queryKey: projectLibraryQueryKeys.list({ limit: PROJECT_LIBRARY_QUERY_LIMIT }),
+    queryFn: ({ signal }) => fetchUserProjects({ limit: PROJECT_LIBRARY_QUERY_LIMIT, signal }),
+    staleTime: 30000,
+    keepPreviousData: true,
+  });
+
+  const allProjects = query.data?.projects ?? [];
 
   const filtered = useMemo(() => {
     let result = allProjects;
@@ -95,19 +71,22 @@ export function useProjects() {
     }
 
     if (debouncedSearch.trim()) {
-      const query = debouncedSearch.toLowerCase();
+      const queryText = debouncedSearch.toLowerCase();
       result = result.filter(
         (project) =>
-          project.name?.toLowerCase().includes(query) ||
-          project.description?.toLowerCase().includes(query) ||
-          project.region?.toLowerCase().includes(query)
+          project.name?.toLowerCase().includes(queryText) ||
+          project.description?.toLowerCase().includes(queryText) ||
+          project.region?.toLowerCase().includes(queryText)
       );
     }
 
     return result;
   }, [allProjects, statusFilter, typeFilter, dateRangeFilter, debouncedSearch]);
 
-  const sorted = useMemo(() => sortProjects(filtered, sortBy, sortDir), [filtered, sortBy, sortDir]);
+  const sorted = useMemo(
+    () => sortProjects(filtered, sortBy, sortDir),
+    [filtered, sortBy, sortDir]
+  );
 
   const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
@@ -128,70 +107,19 @@ export function useProjects() {
     setSortDir("desc");
   };
 
-  const deleteProject = async (id) => {
-    if (pending.current.delete.has(id)) return;
-    pending.current.delete.add(id);
-
-    try {
-      await deleteProjectById(id);
-      setAllProjects((previousProjects) =>
-        previousProjects.filter((project) => project._id !== id)
-      );
-    } catch (error) {
-      console.error(error);
-    } finally {
-      pending.current.delete.delete(id);
-    }
-  };
-
-  const renameProject = async (id, newName) => {
-    if (pending.current.rename.has(id)) return;
-    pending.current.rename.add(id);
-
-    try {
-      await apiRenameProject(id, newName);
-      setAllProjects((previousProjects) =>
-        previousProjects.map((project) =>
-          project._id === id ? { ...project, name: newName } : project
-        )
-      );
-    } catch (error) {
-      console.error(error);
-    } finally {
-      pending.current.rename.delete(id);
-    }
-  };
-
-  const createProject = (formData, setShowModal) => {
-    if (pending.current.create) return;
-    pending.current.create = true;
-
-    const newTab = window.open("", "_blank");
-
-    handleCreateProject({
-      ...formData,
-      onNew: (project) => {
-        pending.current.create = false;
-
-        if (project?._id) {
-          setAllProjects((previousProjects) => [project, ...previousProjects]);
-
-          if (newTab) {
-            newTab.location.href = `/studio/${project._id}`;
-          } else {
-            window.open(`/studio/${project._id}`, "_blank");
-          }
-        } else {
-          newTab?.close();
-        }
-      },
-      setShowModal,
-    });
-  };
-
   return {
-    loading,
+    loading: query.isLoading,
+    error: query.error,
+    isFetching: query.isFetching,
+    refetch: query.refetch,
+
     allProjects,
+    paged,
+    total,
+    totalPages,
+    page,
+    setPage,
+
     search,
     setSearch,
     statusFilter,
@@ -202,15 +130,6 @@ export function useProjects() {
     setDateRangeFilter,
     activeFilterCount,
     resetFilters,
-    page,
-    setPage,
-    paged,
-    total,
-    totalPages,
-    pageSize: PAGE_LIMIT,
-    deleteProject,
-    renameProject,
-    createProject,
     sortBy,
     setSortBy,
     sortDir,
