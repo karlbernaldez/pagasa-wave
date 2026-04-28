@@ -1,9 +1,10 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { AlertCircle, UserPlus } from 'lucide-react';
 
-import LoginField from './LoginField.jsx';
+import AuthButton from '@/features/auth/shared/AuthButton.jsx';
+import AuthInput from '@/features/auth/shared/AuthInput.jsx';
+
 import PasswordField from './PasswordField.jsx';
-import SubmitButton from './SubmitButton.jsx';
 import CaptchaSection from './CaptchaSection.jsx';
 
 const LoginForm = forwardRef(function LoginForm(
@@ -41,17 +42,19 @@ const LoginForm = forwardRef(function LoginForm(
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
+      {/* Global error */}
       {error && (
         <div
           role="alert"
           className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700"
         >
-          <AlertCircle size={18} />
+          <AlertCircle size={18} aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
 
-      <LoginField
+      {/* Email */}
+      <AuthInput
         id="login-email"
         label="Email address"
         type="email"
@@ -59,12 +62,15 @@ const LoginForm = forwardRef(function LoginForm(
         placeholder="you@example.com"
         value={email}
         error={emailError}
+        required
         onChange={handleEmailChange}
         onBlur={() => handleBlur('email')}
       />
 
+      {/* Password */}
       <PasswordField
         id="login-password"
+        label="Password"
         value={password}
         error={passwordError}
         showPassword={showPassword}
@@ -73,32 +79,48 @@ const LoginForm = forwardRef(function LoginForm(
         onToggleVisibility={togglePasswordVisibility}
       />
 
+      {/* CAPTCHA (unchanged logic) */}
       <CaptchaSection ref={captchaRef} onVerify={onCaptchaVerify} />
 
-      <SubmitButton isLoading={isLoading} disabled={isLoading || !captchaVerified} />
+      {/* Submit */}
+      <AuthButton
+        type="submit"
+        variant="primary"
+        size="lg"
+        isLoading={isLoading}
+        disabled={isLoading || !captchaVerified}
+        className="w-full"
+      >
+        Sign In
+      </AuthButton>
 
-      <div className="flex items-center gap-4">
+      {/* Divider */}
+      <div className="flex items-center gap-4" aria-hidden="true">
         <div className="h-px flex-1 bg-slate-200" />
         <span className="text-sm font-semibold text-slate-500">or</span>
         <div className="h-px flex-1 bg-slate-200" />
       </div>
 
-      <button
+      {/* Register CTA */}
+      <AuthButton
         type="button"
+        variant="secondary"
+        size="lg"
+        icon={UserPlus}
         onClick={() => onNavigate('/register')}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-600 bg-white px-4 py-3.5 text-base font-bold text-cyan-700 transition hover:bg-cyan-50 focus:outline-none focus:ring-4 focus:ring-cyan-100"
+        className="w-full"
       >
-        <UserPlus size={20} />
         Create Account
-      </button>
+      </AuthButton>
 
+      {/* Terms */}
       <p className="text-center text-sm font-medium text-slate-500">
         By signing in, you agree to our{' '}
-        <button type="button" className="font-bold text-cyan-700 underline">
+        <button type="button" className="font-bold text-blue-800 underline">
           Terms of Use
         </button>{' '}
         and{' '}
-        <button type="button" className="font-bold text-cyan-700 underline">
+        <button type="button" className="font-bold text-blue-800 underline">
           Privacy Policy
         </button>
       </p>
