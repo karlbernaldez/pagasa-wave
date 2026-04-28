@@ -7,6 +7,7 @@ import {
 } from "@/api/projectAPI";
 import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
 import { PAGE_LIMIT } from "../constants";
+import { sortProjects } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 
 export function useProjects() {
   const [allProjects, setAllProjects] = useState([]);
@@ -18,20 +19,14 @@ export function useProjects() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [page, setPage] = useState(1);
 
-  /* request guards */
+  const [sortBy, setSortBy] = useState("updatedAt");
+  const [sortDir, setSortDir] = useState("desc");
+
   const fetchedRef = useRef(false);
   const controllerRef = useRef(null);
 
-  const pending = useRef({
-    delete: new Set(),
-    rename: new Set(),
-    create: false,
-  });
+  const pending = useRef({ delete: new Set(), rename: new Set(), create: false });
 
-  /* ─────────────────────────────
-     Fetch ALL projects once — client handles pagination/filtering
-     Pass limit=0 (or a large number) to bypass server-side paging
-  ───────────────────────────── */
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
@@ -41,7 +36,6 @@ export function useProjects() {
     const controller = new AbortController();
     controllerRef.current = controller;
 
-    // limit=1000 fetches everything; client-side pagination takes over
     fetchUserProjects({ limit: 1000, signal: controller.signal })
       .then((d) => setAllProjects(d.projects ?? []))
       .catch((err) => {
@@ -52,22 +46,15 @@ export function useProjects() {
     return () => controller.abort();
   }, []);
 
-  /* ─────────────────────────────
-     Debounce search
-  ───────────────────────────── */
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(t);
   }, [search]);
 
-  /* reset page when filters change */
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, sortBy, sortDir]);
 
-  /* ─────────────────────────────
-     Derived state
-  ───────────────────────────── */
   const filtered = useMemo(() => {
     let r = allProjects;
 
@@ -87,13 +74,12 @@ export function useProjects() {
     return r;
   }, [allProjects, statusFilter, debouncedSearch]);
 
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
-  const paged = filtered.slice((page - 1) * PAGE_LIMIT, page * PAGE_LIMIT);
+  const sorted = useMemo(() => sortProjects(filtered, sortBy, sortDir), [filtered, sortBy, sortDir]);
 
-  /* ─────────────────────────────
-     Actions
-  ───────────────────────────── */
+  const total = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
+  const paged = sorted.slice((page - 1) * PAGE_LIMIT, page * PAGE_LIMIT);
+
   const deleteProject = async (id) => {
     if (pending.current.delete.has(id)) return;
     pending.current.delete.add(id);
@@ -160,5 +146,9 @@ export function useProjects() {
     deleteProject,
     renameProject,
     createProject,
+    sortBy,
+    setSortBy,
+    sortDir,
+    setSortDir,
   };
 }
