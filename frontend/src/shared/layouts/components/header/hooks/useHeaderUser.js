@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { loadHeaderUser } from '../utils/userCache';
+import { loadHeaderUser, invalidateHeaderUserCache } from '../utils/userCache';
 
 /**
  * Loads the authenticated user's profile from the module-level cache.
@@ -16,6 +16,8 @@ export function useHeaderUser() {
 
   useEffect(() => {
     let cancelled = false;
+    
+    invalidateHeaderUserCache(); // Clear cache on mount to ensure fresh data (e.g., after logout).
 
     loadHeaderUser()
       .then(({ currentUser, isLoggedIn }) => {

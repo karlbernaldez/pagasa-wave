@@ -4,7 +4,6 @@ import { initTyphoonLayer } from '@dashboards/forecaster//map/layers/typhoonLaye
 import { saveMarker } from '@dashboards/forecaster/map/layers/markerLayer';
 import { addHimawariLayer } from '@dashboards/forecaster/map/layers/satelliteLayer';
 import { addWindSource, addWindLayer } from '@dashboards/forecaster/map/layers/windLayer';
-import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
 
 import { setGlobalMapLoaded, setGlobalSourceIds, } from '@dashboards/forecaster/map/helpers/mapGlobalState';
 
@@ -32,6 +31,7 @@ const LAYER_VISIBILITY_CONFIG = [
       'graticules_blur',
     ]
   },
+
 ];
 
 // === Geometry Helpers ===
@@ -437,18 +437,6 @@ export async function setupMap({
   initTyphoonLayer(map);
   await addWindSource(map, isDarkMode);
   await addWindLayer(map, isDarkMode);
-  const parseStoredModels = (raw) => {
-    if (!raw) return ['WW3'];
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [parsed];
-    } catch {
-      return raw.split(',').map(m => m.trim()).filter(Boolean);
-    }
-  };
-
-  const storedModels = parseStoredModels(localStorage.getItem('WAVE_MODEL'));
-  await addWaveLayer(map, isDarkMode, storedModels);
 
   // Load images asynchronously
   const imageLoader = new ImageLoader(map);
