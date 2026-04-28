@@ -34,6 +34,7 @@ export default function InlineOtpPanel({
   const [resending, setResending] = useState(false);
   const [success, setSuccess] = useState(false);
   const inputRefs = useRef([]);
+  const submittedOtpRef = useRef(null);
 
   useEffect(() => {
     inputRefs.current[0]?.focus();
@@ -47,45 +48,53 @@ export default function InlineOtpPanel({
 
   useEffect(() => {
     if (!error) return;
+    submittedOtpRef.current = null;
     setDigits(Array(OTP_LENGTH).fill(''));
     setTimeout(() => inputRefs.current[0]?.focus(), 0);
   }, [error]);
 
-  const handleSubmit = useCallback(
+  const submitOtp = useCallback(
     async (otp) => {
-      if (isLoading || success) return;
+      if (isLoading || success || otp.length !== OTP_LENGTH || submittedOtpRef.current === otp) return;
+
+      submittedOtpRef.current = otp;
 
       try {
         await onVerify(otp);
         setSuccess(true);
       } catch {
-        // Parent owns the error state.
+        submittedOtpRef.current = null;
       }
     },
     [isLoading, onVerify, success]
   );
 
-  useEffect(() => {
-    const otp = digits.join('');
+  const updateDigitsAndMaybeSubmit = useCallback(
+    (nextDigits) => {
+      setDigits(nextDigits);
 
-    if (otp.length === OTP_LENGTH && digits.every(Boolean)) {
-      handleSubmit(otp);
-    }
-  }, [digits, handleSubmit]);
+      const otp = nextDigits.join('');
+      if (otp.length === OTP_LENGTH && nextDigits.every(Boolean)) {
+        submitOtp(otp);
+      }
+    },
+    [submitOtp]
+  );
 
   const handleChange = useCallback(
     (index, value) => {
       if (value.length > 1) {
         const pasted = value.replace(/\D/g, '').slice(0, OTP_LENGTH).split('');
-        const next = [...digits];
+        if (!pasted.length) return;
 
+        const next = [...digits];
         pasted.forEach((digit, pastedIndex) => {
           if (index + pastedIndex < OTP_LENGTH) {
             next[index + pastedIndex] = digit;
           }
         });
 
-        setDigits(next);
+        updateDigitsAndMaybeSubmit(next);
         inputRefs.current[Math.min(index + pasted.length, OTP_LENGTH - 1)]?.focus();
         return;
       }
@@ -94,13 +103,13 @@ export default function InlineOtpPanel({
 
       const next = [...digits];
       next[index] = value;
-      setDigits(next);
+      updateDigitsAndMaybeSubmit(next);
 
       if (value && index < OTP_LENGTH - 1) {
         inputRefs.current[index + 1]?.focus();
       }
     },
-    [digits]
+    [digits, updateDigitsAndMaybeSubmit]
   );
 
   const handleKeyDown = useCallback(
@@ -125,6 +134,7 @@ export default function InlineOtpPanel({
 
     try {
       await onResend();
+      submittedOtpRef.current = null;
       setDigits(Array(OTP_LENGTH).fill(''));
       setCooldown(RESEND_COOLDOWN_S);
       inputRefs.current[0]?.focus();
