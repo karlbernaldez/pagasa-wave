@@ -8,6 +8,9 @@ import {
   RotateCcw,
   ShieldCheck,
 } from 'lucide-react';
+import { tokens } from '@/styles/tokens';
+
+const { colors } = tokens;
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_S = 60;
@@ -48,74 +51,25 @@ export default function InlineOtpPanel({
     setTimeout(() => inputRefs.current[0]?.focus(), 0);
   }, [error]);
 
-  useEffect(() => {
-    const otp = digits.join('');
-
-    if (otp.length === OTP_LENGTH && digits.every(Boolean)) {
-      handleSubmit(otp);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [digits]);
-
   const handleSubmit = async (otp) => {
     try {
       await onVerify(otp);
       setSuccess(true);
-    } catch {
-      // parent owns the error state
-    }
+    } catch {}
   };
 
-  const handleChange = useCallback(
-    (index, value) => {
-      if (value.length > 1) {
-        const pasted = value.replace(/\D/g, '').slice(0, OTP_LENGTH).split('');
-        const next = [...digits];
-
-        pasted.forEach((digit, pastedIndex) => {
-          if (index + pastedIndex < OTP_LENGTH) {
-            next[index + pastedIndex] = digit;
-          }
-        });
-
-        setDigits(next);
-        inputRefs.current[Math.min(index + pasted.length, OTP_LENGTH - 1)]?.focus();
-        return;
-      }
-
-      if (!/^\d?$/.test(value)) return;
-
-      const next = [...digits];
-      next[index] = value;
-      setDigits(next);
-
-      if (value && index < OTP_LENGTH - 1) {
-        inputRefs.current[index + 1]?.focus();
-      }
-    },
-    [digits]
-  );
-
-  const handleKeyDown = useCallback(
-    (index, event) => {
-      if (event.key === 'Backspace' && !digits[index] && index > 0) {
-        inputRefs.current[index - 1]?.focus();
-      }
-
-      if (event.key === 'ArrowLeft' && index > 0) {
-        inputRefs.current[index - 1]?.focus();
-      }
-
-      if (event.key === 'ArrowRight' && index < OTP_LENGTH - 1) {
-        inputRefs.current[index + 1]?.focus();
-      }
-    },
-    [digits]
-  );
+  const handleChange = useCallback((index, value) => {
+    if (!/^\d?$/.test(value)) return;
+    const next = [...digits];
+    next[index] = value;
+    setDigits(next);
+    if (value && index < OTP_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  }, [digits]);
 
   const handleResend = async () => {
     setResending(true);
-
     try {
       await onResend();
       setDigits(Array(OTP_LENGTH).fill(''));
@@ -126,28 +80,19 @@ export default function InlineOtpPanel({
     }
   };
 
-  const filled = digits.filter(Boolean).length;
-  const progress = (filled / OTP_LENGTH) * 100;
-
   if (success) {
     return (
       <div className="space-y-6 text-center">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-600">
+        <div
+          className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl"
+          style={{ background: 'rgba(1,176,239,0.12)', color: colors.brand.primary }}
+        >
           <ShieldCheck className="h-10 w-10" />
         </div>
 
-        <div>
-          <h3 className="text-3xl font-extrabold text-blue-950">
-            Identity confirmed
-          </h3>
-          <p className="mt-2 text-base font-medium text-slate-500">
-            Redirecting to your workspace...
-          </p>
-        </div>
-
-        <div className="h-2 overflow-hidden rounded-full bg-emerald-100">
-          <div className="h-full animate-pulse rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500" />
-        </div>
+        <h3 style={{ color: colors.brand.secondary }} className="text-3xl font-extrabold">
+          Identity confirmed
+        </h3>
       </div>
     );
   }
@@ -157,142 +102,71 @@ export default function InlineOtpPanel({
       <button
         type="button"
         onClick={onClose}
-        className="inline-flex items-center gap-2 text-sm font-bold text-cyan-700 hover:text-cyan-900"
+        className="inline-flex items-center gap-2 text-sm font-bold"
+        style={{ color: colors.brand.primary }}
       >
-        <ArrowLeft size={16} />
-        Back to sign in
+        <ArrowLeft size={16} /> Back
       </button>
 
-      <div className="flex items-center justify-center gap-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
-            <CheckCircle2 size={15} />
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 line-through">
-            Credentials
-          </span>
-        </div>
-
-        <div className="h-px w-12 bg-cyan-200" />
-
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-50 text-cyan-700 ring-2 ring-cyan-200">
-            2
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-cyan-700">
-            Verify OTP
-          </span>
-        </div>
-      </div>
-
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 text-cyan-700">
+        <div
+          className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full"
+          style={{ background: 'rgba(1,176,239,0.12)', color: colors.brand.primary }}
+        >
           <Mail className="h-8 w-8" />
         </div>
 
-        <h3 className="text-3xl font-extrabold text-blue-950">
+        <h3 className="text-3xl font-extrabold" style={{ color: colors.brand.secondary }}>
           Check your inbox
         </h3>
 
-        <p className="mt-2 text-base font-medium text-slate-500">
-          We sent a 6-digit code to{' '}
-          <span className="font-bold text-cyan-700">{maskEmail(email)}</span>
+        <p style={{ color: colors.text.light.muted }}>
+          Code sent to <span style={{ color: colors.brand.primary }}>{maskEmail(email)}</span>
         </p>
       </div>
 
       {error && (
         <div
           role="alert"
-          className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"
+          className="flex items-center gap-3 rounded-xl border p-4 text-sm"
+          style={{
+            color: colors.brand.danger,
+            background: 'rgba(252,5,13,0.08)',
+            borderColor: 'rgba(252,5,13,0.28)',
+          }}
         >
-          <AlertCircle size={18} />
-          <span>{error}</span>
+          <AlertCircle size={18} /> {error}
         </div>
       )}
 
-      <div>
-        <div className="mb-4 h-2 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className={`h-full rounded-full transition-all ${
-              error
-                ? 'bg-red-400'
-                : 'bg-gradient-to-r from-cyan-600 to-teal-500'
-            }`}
-            style={{ width: `${progress}%` }}
+      <div className="flex justify-center gap-2">
+        {digits.map((digit, index) => (
+          <input
+            key={index}
+            ref={(el) => (inputRefs.current[index] = el)}
+            value={digit}
+            onChange={(e) => handleChange(index, e.target.value)}
+            className="h-14 w-11 rounded-xl border text-center text-xl font-bold"
+            style={{
+              borderColor: error ? colors.brand.danger : 'rgba(1,176,239,0.4)',
+              background: colors.surface.light.raised,
+              color: colors.brand.secondary,
+            }}
           />
-        </div>
-
-        <div
-          role="group"
-          aria-label="One-time password"
-          className="flex justify-center gap-2 sm:gap-3"
-        >
-          {digits.map((digit, index) => (
-            <input
-              key={index}
-              ref={(el) => {
-                inputRefs.current[index] = el;
-              }}
-              type="text"
-              inputMode="numeric"
-              maxLength={OTP_LENGTH}
-              value={digit}
-              disabled={isLoading}
-              aria-label={`Digit ${index + 1} of ${OTP_LENGTH}`}
-              onChange={(event) => handleChange(index, event.target.value)}
-              onKeyDown={(event) => handleKeyDown(index, event)}
-              onFocus={(event) => event.target.select()}
-              className={`h-14 w-11 rounded-xl border text-center text-2xl font-extrabold text-blue-950 outline-none transition sm:h-16 sm:w-12 ${
-                error
-                  ? 'border-red-300 bg-red-50 text-red-600 focus:ring-4 focus:ring-red-100'
-                  : digit
-                    ? 'border-cyan-500 bg-cyan-50 focus:ring-4 focus:ring-cyan-100'
-                    : 'border-slate-300 bg-white focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100'
-              }`}
-            />
-          ))}
-        </div>
-
-        <p className="mt-3 text-center text-xs font-bold uppercase tracking-wider text-slate-400">
-          {filled < OTP_LENGTH
-            ? `${OTP_LENGTH - filled} digit${OTP_LENGTH - filled !== 1 ? 's' : ''} remaining`
-            : 'Verifying...'}
-        </p>
+        ))}
       </div>
-
-      {isLoading && (
-        <div className="flex items-center justify-center gap-2 text-sm font-bold text-cyan-700">
-          <Loader2 size={16} className="animate-spin" />
-          Authenticating...
-        </div>
-      )}
 
       <div className="text-center">
         {cooldown > 0 ? (
-          <p className="text-sm font-semibold text-slate-500">
-            Resend code in{' '}
-            <span className="font-bold text-cyan-700">
-              0:{String(cooldown).padStart(2, '0')}
-            </span>
-          </p>
+          <p style={{ color: colors.text.light.muted }}>Resend in {cooldown}s</p>
         ) : (
           <button
             type="button"
             onClick={handleResend}
-            disabled={resending}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-5 py-2 text-sm font-bold text-cyan-700 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full px-4 py-2 font-bold"
+            style={{ background: colors.brand.primary, color: '#fff' }}
           >
-            {resending ? (
-              <>
-                <Loader2 size={15} className="animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <RotateCcw size={15} />
-                Resend code
-              </>
-            )}
+            {resending ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />} Resend
           </button>
         )}
       </div>
