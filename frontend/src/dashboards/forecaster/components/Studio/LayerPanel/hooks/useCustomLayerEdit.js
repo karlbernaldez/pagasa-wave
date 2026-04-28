@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { updateLayerName } from '@dashboards/forecaster/utils/layerUtils';
+import { updateLayerName } from '@dashboards/forecaster/utils/layers';
 
 /**
  * Manages inline rename editing and drag-and-drop state for custom layers.
  */
 export const useCustomLayerEdit = ({ setLayers, mapRef }) => {
   const [editingLayerId, setEditingLayerId] = useState(null);
-  const [editingName,    setEditingName]    = useState('');
-  const [isDragging,     setDragging]       = useState(false);
+  const [editingName, setEditingName] = useState('');
+  const [isDragging, setDragging] = useState(false);
   const [draggedLayerIndex, setDraggedLayerIndex] = useState(null);
 
   const startEditing = (layer) => {

@@ -27,7 +27,7 @@ export const getSettings = async (page) => {
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
-        alert('Session expired. Please log in again.');
+        alert('Session expired. Please log in again./');
         window.location.href = '/login';
         return;
       }

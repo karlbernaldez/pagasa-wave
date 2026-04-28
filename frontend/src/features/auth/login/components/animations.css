@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+
+/* ── Keyframes ─────────────────────────────────────────────────────────────── */
+
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes radar-ping {
+  0%   { transform: scale(0.6); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50%       { transform: translateY(-14px) rotate(2deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.15; }
+  50%       { opacity: 0.35; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-right {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-5px); }
+  40%       { transform: translateX(5px); }
+  60%       { transform: translateX(-3px); }
+  80%       { transform: translateX(3px); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.85) translateY(-50%); }
+  to   { opacity: 1; transform: scale(1)    translateY(-50%); }
+}
+
+@keyframes otp-pop {
+  0%  { transform: scale(1); }
+  45% { transform: scale(1.1); }
+  100%{ transform: scale(1); }
+}
+
+@keyframes step-fill {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+@keyframes scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* ── Utility classes ────────────────────────────────────────────────────────── */
+
+.font-syne     { font-family: 'Syne', sans-serif; }
+.font-mono-ibm { font-family: 'IBM Plex Mono', monospace; }
+
+.animate-radar-sweep  { animation: radar-sweep 6s linear infinite; }
+.animate-radar-ping   { animation: radar-ping 3s ease-out infinite; }
+.animate-float        { animation: float 7s ease-in-out infinite; }
+.animate-pulse-glow   { animation: pulse-glow 4s ease-in-out infinite; }
+.animate-fade-up      { animation: fade-up 0.5s ease-out both; }
+.animate-fade-in      { animation: fade-in 0.3s ease-out both; }
+.animate-slide-right  { animation: slide-right 0.4s ease-out both; }
+.animate-shake        { animation: shake 0.45s ease-in-out; }
+.animate-slide-down   { animation: slide-down 0.25s ease-out; }
+.animate-scale-in     { animation: scale-in 0.25s ease-out; }
+.animate-otp-pop      { animation: otp-pop 0.18s ease-out; }
+.animate-step-fill    { animation: step-fill 0.4s ease-out both; }
+
+.animation-delay-200  { animation-delay: 0.2s; }
+.animation-delay-400  { animation-delay: 0.4s; }
+.animation-delay-600  { animation-delay: 0.6s; }
+.animation-delay-800  { animation-delay: 0.8s; }
+.animation-delay-1000 { animation-delay: 1s; }
+.animation-delay-1500 { animation-delay: 1.5s; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-3000 { animation-delay: 3s; }
+
+/* ── reCAPTCHA dark theme override ─────────────────────────────────────────── */
+.grecaptcha-badge { visibility: hidden !important; }
