@@ -30,6 +30,10 @@ const USER_PROJECT_SORT_FIELDS = {
   createdAt: 'createdAt',
 };
 
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function getDateRangeFilter(dateRange) {
   const daysByRange = {
     '7d': 7,
@@ -143,28 +147,40 @@ export const getUserProjects = asyncHandler(async (req, res) => {
   const skip = (pageNumber - 1) * limitNumber;
 
   const query = { owner: req.user.id };
+  const filters = [];
+  const trimmedSearch = search.trim();
 
-  if (search.trim()) {
-    query.$or = [
-      { name: { $regex: search.trim(), $options: 'i' } },
-      { description: { $regex: search.trim(), $options: 'i' } },
-    ];
+  if (trimmedSearch) {
+    const safeSearch = escapeRegex(trimmedSearch.slice(0, 80));
+    filters.push({
+      $or: [
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { description: { $regex: safeSearch, $options: 'i' } },
+      ],
+    });
   }
 
   if (status && status !== 'All') {
-    query.status = status;
+    filters.push({ status });
   }
 
   if (type && type !== 'All') {
-    query.chartType = { $regex: type, $options: 'i' };
+    filters.push({ chartType: type });
   }
 
   const cutoffDate = getDateRangeFilter(dateRange);
   if (cutoffDate) {
     const dateQuery = { $gte: cutoffDate };
-    query.$or = query.$or
-      ? [...query.$or.map((condition) => ({ ...condition, updatedAt: dateQuery })), { forecastDate: dateQuery }]
-      : [{ updatedAt: dateQuery }, { forecastDate: dateQuery }];
+    filters.push({
+      $or: [
+        { updatedAt: dateQuery },
+        { forecastDate: dateQuery },
+      ],
+    });
+  }
+
+  if (filters.length > 0) {
+    query.$and = filters;
   }
 
   const sortField = USER_PROJECT_SORT_FIELDS[sortBy] || 'updatedAt';
@@ -173,6 +189,7 @@ export const getUserProjects = asyncHandler(async (req, res) => {
     [sortField]: sortDirection,
     updatedAt: -1,
     createdAt: -1,
+    _id: -1,
   };
 
   const [projects, total] = await Promise.all([
