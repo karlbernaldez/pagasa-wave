@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Filter, Search, X } from "lucide-react";
-import { STATUS_FILTERS } from "@dashboards/forecaster/components/StudioBase/constants";
+import { STATUS_FILTERS } from "./constants";
 import { SORT_OPTIONS } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 
 const TYPE_OPTIONS = [

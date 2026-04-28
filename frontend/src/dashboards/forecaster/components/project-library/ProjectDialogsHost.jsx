@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DeleteDialog, RenameDialog } from "@dashboards/forecaster/components/StudioBase/ProjectDialogs";
+import { DeleteDialog, RenameDialog } from "./ProjectDialogs";
 import { useTheme } from "@/app/providers/ThemeProvider";
 
 export default function ProjectDialogsHost({ onDeleteConfirm, onRenameConfirm }) {
