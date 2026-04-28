@@ -18,6 +18,18 @@ export default function StudioBase() {
     allProjects,
     search,
     setSearch,
+    statusFilter,
+    setStatusFilter,
+    typeFilter,
+    setTypeFilter,
+    dateRangeFilter,
+    setDateRangeFilter,
+    sortBy,
+    setSortBy,
+    sortDir,
+    setSortDir,
+    activeFilterCount,
+    resetFilters,
     paged,
     page,
     setPage,
@@ -51,7 +63,22 @@ export default function StudioBase() {
 
         <ProjectStats stats={stats} />
 
-        <ProjectToolbar search={search} setSearch={setSearch} />
+        <ProjectToolbar
+          search={search}
+          setSearch={setSearch}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          dateRangeFilter={dateRangeFilter}
+          setDateRangeFilter={setDateRangeFilter}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          sortDir={sortDir}
+          setSortDir={setSortDir}
+          activeFilterCount={activeFilterCount}
+          onClear={resetFilters}
+        />
 
         <ProjectTable
           projects={paged}
