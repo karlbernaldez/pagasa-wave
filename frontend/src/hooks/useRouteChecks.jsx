@@ -11,6 +11,11 @@ const useRouteChecks = () => {
     isDashboardPage: location.pathname === '/dashboard',
     isStudioPage: location.pathname === '/studio',
     isStudioProjectPage: location.pathname.startsWith('/studio/'),
+    isForecasterDashboardPage:
+      location.pathname === '/studio' ||
+      location.pathname === '/profile' ||
+      location.pathname === '/edit-profile' ||
+      location.pathname === '/pdf',
     isChartsPage: location.pathname === '/charts',
   };
 
