@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Filter, Search, X } from "lucide-react";
+import Button from "@/components/ui/Button";
 import { STATUS_FILTERS } from "./constants";
 import { SORT_OPTIONS } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 
@@ -50,6 +51,7 @@ export default function ProjectToolbar({
   setSortDir,
   activeFilterCount,
   onClear,
+  isFetching,
 }) {
   const statusOptions = STATUS_FILTERS.map((status) => ({
     value: status,
@@ -66,7 +68,7 @@ export default function ProjectToolbar({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by title, region, or description..."
+              placeholder="Search by title or description..."
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
             />
             {search && (
@@ -81,18 +83,14 @@ export default function ProjectToolbar({
         <SelectControl label="Type" value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} />
         <SelectControl label="Date Range" value={dateRangeFilter} onChange={setDateRangeFilter} options={DATE_OPTIONS} />
 
-        <button
-          type="button"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-bold text-blue-700"
-        >
-          <Filter size={15} />
-          Filters
-          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs">{activeFilterCount}</span>
-        </button>
+        <Button variant="secondary" size="md">
+          <Filter size={16} />
+          Filters ({activeFilterCount})
+        </Button>
 
-        <button type="button" onClick={onClear} className="h-10 px-2 text-sm font-bold text-blue-600 hover:text-blue-800">
+        <Button variant="ghost" size="md" onClick={onClear}>
           Clear
-        </button>
+        </Button>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
@@ -109,14 +107,18 @@ export default function ProjectToolbar({
           ))}
         </select>
 
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 hover:bg-slate-50"
         >
-          {sortDir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />}
-          {sortDir === "asc" ? "Oldest First" : "Newest First"}
-        </button>
+          {sortDir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+          {sortDir === "asc" ? "Oldest" : "Newest"}
+        </Button>
+
+        {isFetching && (
+          <span className="text-xs text-slate-400">Updating…</span>
+        )}
       </div>
     </section>
   );
