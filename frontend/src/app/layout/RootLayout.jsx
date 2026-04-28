@@ -19,6 +19,7 @@ const RootLayout = () => {
     isDashboardPage,
     isStudioPage,
     isStudioProjectPage,
+    isForecasterDashboardPage,
     isChartsPage,
   } = useRouteChecks();
 
@@ -29,10 +30,11 @@ const RootLayout = () => {
         isDashboardPage,
         isStudioPage,
         isStudioProjectPage,
+        isForecasterDashboardPage,
         isChartsPage,
         isVerifyEmailPage,
       }),
-    [isLoginPage, isRegisterPage, isDashboardPage, isStudioPage, isStudioProjectPage, isChartsPage]
+    [isLoginPage, isRegisterPage, isDashboardPage, isStudioPage, isStudioProjectPage, isForecasterDashboardPage, isChartsPage, isVerifyEmailPage]
   );
 
   const { showHeader, showFooter, addTopPadding } = layoutConfig;
@@ -54,11 +56,8 @@ const RootLayout = () => {
       {showFooter && (
         <FooterWrapper>
           <Suspense fallback={<div style={{ height: 100 }} />}>
-
             <Footer />
-
             <Chatbot />
-
           </Suspense>
         </FooterWrapper>
       )}
