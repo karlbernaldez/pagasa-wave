@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { useProjects } from "@dashboards/forecaster/components/StudioBase/hooks/useProjects";
+import { useProjects } from "@dashboards/forecaster/hooks/useProjects";
 import ProjectDialogsHost from "@dashboards/forecaster/components/project-library/ProjectDialogsHost";
 import { getProjectStats } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 
