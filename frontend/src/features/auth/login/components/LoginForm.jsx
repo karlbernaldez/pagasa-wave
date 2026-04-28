@@ -1,11 +1,14 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { AlertCircle, UserPlus } from 'lucide-react';
+import { tokens } from '@/styles/tokens';
 
 import AuthButton from '@/features/auth/shared/AuthButton.jsx';
 import AuthInput from '@/features/auth/shared/AuthInput.jsx';
 
 import PasswordField from './PasswordField.jsx';
 import CaptchaSection from './CaptchaSection.jsx';
+
+const { colors } = tokens;
 
 const LoginForm = forwardRef(function LoginForm(
   {
@@ -46,7 +49,12 @@ const LoginForm = forwardRef(function LoginForm(
       {error && (
         <div
           role="alert"
-          className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700"
+          className="flex items-center gap-3 rounded-xl border p-4 text-sm font-medium"
+          style={{
+            color: colors.brand.danger,
+            background: 'rgba(252, 5, 13, 0.08)',
+            borderColor: 'rgba(252, 5, 13, 0.28)',
+          }}
         >
           <AlertCircle size={18} aria-hidden="true" />
           <span>{error}</span>
@@ -96,9 +104,11 @@ const LoginForm = forwardRef(function LoginForm(
 
       {/* Divider */}
       <div className="flex items-center gap-4" aria-hidden="true">
-        <div className="h-px flex-1 bg-slate-200" />
-        <span className="text-sm font-semibold text-slate-500">or</span>
-        <div className="h-px flex-1 bg-slate-200" />
+        <div className="h-px flex-1" style={{ background: 'rgba(1, 176, 239, 0.22)' }} />
+        <span className="text-sm font-semibold" style={{ color: colors.text.light.muted }}>
+          or
+        </span>
+        <div className="h-px flex-1" style={{ background: 'rgba(1, 176, 239, 0.22)' }} />
       </div>
 
       {/* Register CTA */}
@@ -114,13 +124,13 @@ const LoginForm = forwardRef(function LoginForm(
       </AuthButton>
 
       {/* Terms */}
-      <p className="text-center text-sm font-medium text-slate-500">
+      <p className="text-center text-sm font-medium" style={{ color: colors.text.light.muted }}>
         By signing in, you agree to our{' '}
-        <button type="button" className="font-bold text-blue-800 underline">
+        <button type="button" className="font-bold underline" style={{ color: colors.brand.primary }}>
           Terms of Use
         </button>{' '}
         and{' '}
-        <button type="button" className="font-bold text-blue-800 underline">
+        <button type="button" className="font-bold underline" style={{ color: colors.brand.primary }}>
           Privacy Policy
         </button>
       </p>
