@@ -51,7 +51,7 @@ This project is licensed under the **[MIT license](https://github.com/karlbernal
 ## 📸 Screenshots
 
 ### WaveLab Dashboard
-![WaveLab Dashboard](https://github.com/karlbernaldez/pagasa-wave/blob/feature/waveLayer/frontend/src/assets/Wavelab.png)
+![WaveLab Dashboard](https://github.com/karlbernaldez/pagasa-wave/blob/main/Wavelab.png)
 
 ---
 
