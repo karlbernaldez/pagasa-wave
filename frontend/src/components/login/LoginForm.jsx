@@ -1,11 +1,19 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { AlertCircle, Check, Eye, EyeOff, Lock, Loader2, Mail } from 'lucide-react';
+import { tokens } from '@/styles/tokens';
 import CaptchaWidget from './CaptchaWidget.jsx';
+
+const { colors, gradients, shadows } = tokens;
 
 // ─── small shared UI pieces ───────────────────────────────────────────────────
 
 const FieldError = ({ id, message }) => (
-  <p id={id} role="alert" className="flex items-center gap-2 text-red-300/90 text-xs ml-1 animate-slide-down">
+  <p
+    id={id}
+    role="alert"
+    className="flex items-center gap-2 text-xs ml-1 animate-slide-down"
+    style={{ color: 'rgba(252, 5, 13, 0.9)' }}
+  >
     <AlertCircle size={12} aria-hidden="true" />
     {message}
   </p>
@@ -13,7 +21,12 @@ const FieldError = ({ id, message }) => (
 
 const InputIcon = ({ children }) => (
   <span
-    className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300/60 group-focus-within:text-blue-300 transition-colors"
+    className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-[color:var(--auth-input-icon-focus)]"
+    style={{
+      color: 'var(--auth-input-icon)',
+      '--auth-input-icon': 'rgba(1, 176, 239, 0.68)',
+      '--auth-input-icon-focus': colors.brand.accent,
+    }}
     aria-hidden="true"
   >
     {children}
@@ -66,6 +79,32 @@ const LoginForm = forwardRef(function LoginForm({
   const emailId    = `${formId}-email`;
   const passwordId = `${formId}-password`;
 
+  const inputBaseStyle = {
+    '--auth-input-border': colors.border.dark.default,
+    '--auth-input-border-focus': colors.border.dark.focus,
+    '--auth-input-bg': 'rgba(255, 255, 255, 0.06)',
+    '--auth-input-bg-focus': 'rgba(1, 176, 239, 0.10)',
+    '--auth-input-bg-hover': 'rgba(1, 176, 239, 0.08)',
+    '--auth-input-shadow-focus': shadows.focusDark,
+    color: colors.text.dark.primary,
+  };
+
+  const inputErrorStyle = {
+    '--auth-input-border': 'rgba(252, 5, 13, 0.55)',
+    '--auth-input-border-focus': colors.brand.danger,
+    '--auth-input-shadow-focus': '0 0 0 3px rgba(252, 5, 13, 0.22)',
+  };
+
+  const authInputClassName = `
+    w-full pl-12 pr-12 py-3.5
+    backdrop-blur-sm rounded-xl
+    border border-[color:var(--auth-input-border)] focus:border-[color:var(--auth-input-border-focus)]
+    bg-[color:var(--auth-input-bg)] focus:bg-[color:var(--auth-input-bg-focus)] hover:bg-[color:var(--auth-input-bg-hover)]
+    placeholder:text-white/35 outline-none
+    transition-all duration-200
+    focus:shadow-[var(--auth-input-shadow-focus)]
+  `;
+
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
 
@@ -73,7 +112,12 @@ const LoginForm = forwardRef(function LoginForm({
       {error && (
         <div
           role="alert"
-          className="flex items-center gap-3 text-red-200 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-4 backdrop-blur-sm animate-shake"
+          className="flex items-center gap-3 text-sm rounded-xl p-4 backdrop-blur-sm animate-shake"
+          style={{
+            color: '#FFD7D9',
+            background: 'rgba(252, 5, 13, 0.10)',
+            border: '1px solid rgba(252, 5, 13, 0.28)',
+          }}
         >
           <AlertCircle size={18} className="flex-shrink-0" aria-hidden="true" />
           <span>{error}</span>
@@ -82,7 +126,11 @@ const LoginForm = forwardRef(function LoginForm({
 
       {/* Email ────────────────────────────────────────────────────────────── */}
       <div className="space-y-2">
-        <label htmlFor={emailId} className="text-blue-200/80 text-sm font-medium ml-1">
+        <label
+          htmlFor={emailId}
+          className="text-sm font-medium ml-1"
+          style={{ color: 'rgba(215, 247, 255, 0.84)' }}
+        >
           Email Address
         </label>
         <div className="relative group">
@@ -97,20 +145,15 @@ const LoginForm = forwardRef(function LoginForm({
             onBlur={() => handleBlur('email')}
             aria-invalid={!!emailError}
             aria-describedby={emailError ? `${emailId}-error` : undefined}
-            className={`
-              w-full pl-12 pr-12 py-3.5
-              bg-white/5 backdrop-blur-sm rounded-xl text-white
-              border ${emailError
-                ? 'border-red-500/50 focus:border-red-500/70'
-                : 'border-white/10 focus:border-blue-400/50'}
-              placeholder:text-white/30 outline-none
-              transition-all duration-200
-              focus:bg-white/10 focus:shadow-lg focus:shadow-blue-500/10
-              hover:bg-white/[0.07]
-            `}
+            className={authInputClassName}
+            style={emailError ? { ...inputBaseStyle, ...inputErrorStyle } : inputBaseStyle}
           />
           {hasEmailSuccess && (
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-green-400 animate-scale-in" aria-hidden="true">
+            <span
+              className="absolute right-4 top-1/2 -translate-y-1/2 animate-scale-in"
+              style={{ color: colors.brand.accent }}
+              aria-hidden="true"
+            >
               <Check size={20} />
             </span>
           )}
@@ -121,12 +164,20 @@ const LoginForm = forwardRef(function LoginForm({
       {/* Password ───────────────────────────────────────────────────────── */}
       <div className="space-y-2">
         <div className="flex items-center justify-between mx-1">
-          <label htmlFor={passwordId} className="text-blue-200/80 text-sm font-medium">
+          <label
+            htmlFor={passwordId}
+            className="text-sm font-medium"
+            style={{ color: 'rgba(215, 247, 255, 0.84)' }}
+          >
             Password
           </label>
           <button
             type="button"
-            className="text-xs text-blue-300/60 hover:text-blue-300 font-medium transition-colors"
+            className="text-xs font-medium transition-colors hover:text-[color:var(--auth-link-hover)]"
+            style={{
+              color: 'rgba(1, 176, 239, 0.72)',
+              '--auth-link-hover': colors.brand.accent,
+            }}
           >
             Forgot password?
           </button>
@@ -143,23 +194,18 @@ const LoginForm = forwardRef(function LoginForm({
             onBlur={() => handleBlur('password')}
             aria-invalid={!!passwordError}
             aria-describedby={passwordError ? `${passwordId}-error` : undefined}
-            className={`
-              w-full pl-12 pr-12 py-3.5
-              bg-white/5 backdrop-blur-sm rounded-xl text-white
-              border ${passwordError
-                ? 'border-red-500/50 focus:border-red-500/70'
-                : 'border-white/10 focus:border-blue-400/50'}
-              placeholder:text-white/30 outline-none
-              transition-all duration-200
-              focus:bg-white/10 focus:shadow-lg focus:shadow-blue-500/10
-              hover:bg-white/[0.07]
-            `}
+            className={authInputClassName}
+            style={passwordError ? { ...inputBaseStyle, ...inputErrorStyle } : inputBaseStyle}
           />
           <button
             type="button"
             onClick={togglePasswordVisibility}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-300/60 hover:text-blue-300 transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors hover:text-[color:var(--auth-icon-hover)]"
+            style={{
+              color: 'rgba(1, 176, 239, 0.72)',
+              '--auth-icon-hover': colors.brand.accent,
+            }}
           >
             {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
           </button>
@@ -180,18 +226,22 @@ const LoginForm = forwardRef(function LoginForm({
         aria-disabled={isLoading || !captchaVerified}
         className="
           w-full py-3.5 mt-2
-          bg-gradient-to-r from-blue-500 to-cyan-500
-          text-white font-semibold rounded-xl
-          shadow-lg shadow-blue-500/25
-          hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02]
+          text-black font-semibold rounded-xl
+          shadow-lg
+          hover:shadow-xl hover:scale-[1.02]
           active:scale-[0.98]
           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none
           transition-all duration-200
           flex items-center justify-center gap-2 relative overflow-hidden group
         "
+        style={{
+          background: gradients.primary,
+          boxShadow: '0 14px 34px rgba(1, 176, 239, 0.26)',
+        }}
       >
         <span
-          className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          style={{ background: gradients.primaryHover }}
           aria-hidden="true"
         />
         <span className="relative flex items-center gap-2">
@@ -206,10 +256,10 @@ const LoginForm = forwardRef(function LoginForm({
       {/* Divider ─────────────────────────────────────────────────────────── */}
       <div className="relative py-2" aria-hidden="true">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-white/10" />
+          <div className="w-full border-t" style={{ borderColor: 'rgba(1, 176, 239, 0.20)' }} />
         </div>
         <div className="relative flex justify-center text-xs">
-          <span className="px-4 text-blue-200/40">New to WaveLab?</span>
+          <span className="px-4" style={{ color: 'rgba(215, 247, 255, 0.50)' }}>New to WaveLab?</span>
         </div>
       </div>
 
@@ -219,11 +269,24 @@ const LoginForm = forwardRef(function LoginForm({
         onClick={() => onNavigate('/register')}
         className="
           w-full py-3.5
-          bg-white/5 backdrop-blur-sm text-blue-300 font-medium rounded-xl
-          border border-white/10
-          hover:bg-white/10 hover:border-white/20
+          backdrop-blur-sm font-medium rounded-xl
+          border
+          hover:scale-[1.01]
           transition-all duration-200
         "
+        style={{
+          color: colors.brand.accent,
+          background: 'rgba(1, 176, 239, 0.08)',
+          borderColor: 'rgba(255, 254, 6, 0.24)',
+        }}
+        onMouseEnter={(event) => {
+          event.currentTarget.style.background = 'rgba(1, 176, 239, 0.14)';
+          event.currentTarget.style.borderColor = 'rgba(255, 254, 6, 0.42)';
+        }}
+        onMouseLeave={(event) => {
+          event.currentTarget.style.background = 'rgba(1, 176, 239, 0.08)';
+          event.currentTarget.style.borderColor = 'rgba(255, 254, 6, 0.24)';
+        }}
       >
         Create an Account
       </button>
