@@ -11,12 +11,14 @@ export default function AuthInput({
   success,
   required,
   disabled,
+  icon: Icon,
   className = '',
   style,
   ...props
 }) {
   const errorId = `${id}-error`;
   const message = error || success;
+  const hasIcon = Boolean(Icon);
 
   const inputStyle = {
     color: colors.text.light.primary,
@@ -41,16 +43,26 @@ export default function AuthInput({
         </label>
       )}
 
-      <input
-        id={id}
-        disabled={disabled}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? errorId : undefined}
-        aria-required={required}
-        style={inputStyle}
-        className={`w-full rounded-xl border px-4 py-3 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-[color:var(--auth-input-hover-border)] focus:border-[color:var(--auth-input-focus-border)] focus:ring-4 focus:ring-[color:var(--auth-input-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
-        {...props}
-      />
+      <div className="relative">
+        {Icon && (
+          <Icon
+            className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2"
+            style={{ color: 'rgba(1, 176, 239, 0.62)' }}
+            aria-hidden="true"
+          />
+        )}
+
+        <input
+          id={id}
+          disabled={disabled}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          aria-required={required}
+          style={inputStyle}
+          className={`w-full rounded-xl border py-3 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-[color:var(--auth-input-hover-border)] focus:border-[color:var(--auth-input-focus-border)] focus:ring-4 focus:ring-[color:var(--auth-input-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60 ${hasIcon ? 'pl-12 pr-4' : 'px-4'} ${className}`}
+          {...props}
+        />
+      </div>
 
       {hint && !error && (
         <p className="text-xs" style={{ color: colors.text.light.muted }}>
@@ -65,7 +77,7 @@ export default function AuthInput({
           className="flex items-center gap-2 text-sm"
           style={{ color: error ? colors.brand.danger : colors.state.success }}
         >
-          {error && <AlertCircle size={14} />}
+          {error && <AlertCircle size={14} aria-hidden="true" />}
           {message}
         </p>
       )}
