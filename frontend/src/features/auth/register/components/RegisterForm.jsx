@@ -8,7 +8,6 @@ import {
   MapPin,
   Building,
   Briefcase,
-  Loader2,
   ArrowRight,
   ArrowLeft,
   ShieldCheck,
@@ -24,6 +23,7 @@ import {
   useDateUtils,
 } from '@/hooks/useRegister';
 
+import AuthButton from '@/features/auth/shared/AuthButton.jsx';
 import ModernDatePicker from '@/components/ui/ModernDatePicker';
 
 import RegisterField from './RegisterField.jsx';
@@ -167,14 +167,16 @@ export default function RegisterForm() {
               {...sharedFieldProps}
             />
 
-            <button
+            <AuthButton
               type="button"
+              variant="primary"
+              size="lg"
+              icon={ArrowRight}
               onClick={nextStep}
-              className="flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-cyan-700 to-teal-600 px-4 py-4 text-lg font-extrabold text-white shadow-lg shadow-cyan-900/20 transition hover:from-cyan-800 hover:to-teal-700 focus:outline-none focus:ring-4 focus:ring-cyan-200"
+              className="w-full"
             >
               Continue
-              <ArrowRight size={22} />
-            </button>
+            </AuthButton>
           </div>
         )}
 
@@ -255,29 +257,27 @@ export default function RegisterForm() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button
+              <AuthButton
                 type="button"
+                variant="secondary"
+                size="lg"
+                icon={ArrowLeft}
                 onClick={prevStep}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-600 bg-white px-4 py-3.5 text-base font-bold text-cyan-700 transition hover:bg-cyan-50 focus:outline-none focus:ring-4 focus:ring-cyan-100"
+                className="flex-1"
               >
-                <ArrowLeft size={20} />
                 Back
-              </button>
+              </AuthButton>
 
-              <button
+              <AuthButton
                 type="submit"
+                variant="primary"
+                size="lg"
+                isLoading={isSubmitting}
                 disabled={isSubmitting}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-700 to-teal-600 px-4 py-3.5 text-base font-extrabold text-white shadow-lg shadow-cyan-900/20 transition hover:from-cyan-800 hover:to-teal-700 focus:outline-none focus:ring-4 focus:ring-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex-1"
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  'Create Account'
-                )}
-              </button>
+                Create Account
+              </AuthButton>
             </div>
           </div>
         )}
