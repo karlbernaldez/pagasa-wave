@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { tokens } from '@/styles/tokens';
+import AuthButton from '@/features/auth/shared/AuthButton.jsx';
 
 const { colors } = tokens;
 
@@ -152,7 +153,7 @@ export default function InlineOtpPanel({
           className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl"
           style={{ background: 'rgba(1,176,239,0.12)', color: colors.brand.primary }}
         >
-          <ShieldCheck className="h-10 w-10" />
+          <ShieldCheck className="h-10 w-10" aria-hidden="true" />
         </div>
 
         <div>
@@ -169,15 +170,16 @@ export default function InlineOtpPanel({
 
   return (
     <div className="space-y-6">
-      <button
+      <AuthButton
         type="button"
+        variant="ghost"
+        size="sm"
+        icon={ArrowLeft}
         onClick={onClose}
-        className="inline-flex items-center gap-2 text-sm font-bold"
-        style={{ color: colors.brand.primary }}
+        className="px-0 hover:scale-100"
       >
-        <ArrowLeft size={16} />
         Back to sign in
-      </button>
+      </AuthButton>
 
       <div className="flex items-center justify-center gap-3">
         <div className="flex items-center gap-2">
@@ -189,7 +191,7 @@ export default function InlineOtpPanel({
               ringColor: 'rgba(34, 197, 94, 0.24)',
             }}
           >
-            <CheckCircle2 size={15} />
+            <CheckCircle2 size={15} aria-hidden="true" />
           </div>
           <span className="text-xs font-bold uppercase tracking-wider line-through" style={{ color: colors.text.light.muted }}>
             Credentials
@@ -220,7 +222,7 @@ export default function InlineOtpPanel({
           className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full"
           style={{ background: 'rgba(1,176,239,0.12)', color: colors.brand.primary }}
         >
-          <Mail className="h-8 w-8" />
+          <Mail className="h-8 w-8" aria-hidden="true" />
         </div>
 
         <h3 className="text-3xl font-extrabold" style={{ color: colors.brand.secondary }}>
@@ -245,7 +247,7 @@ export default function InlineOtpPanel({
             borderColor: 'rgba(252,5,13,0.28)',
           }}
         >
-          <AlertCircle size={18} />
+          <AlertCircle size={18} aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
@@ -277,7 +279,7 @@ export default function InlineOtpPanel({
               onChange={(event) => handleChange(index, event.target.value)}
               onKeyDown={(event) => handleKeyDown(index, event)}
               onFocus={(event) => event.target.select()}
-              className="h-14 w-11 rounded-xl border text-center text-2xl font-extrabold outline-none transition focus:ring-4 sm:h-16 sm:w-12"
+              className="h-14 w-11 rounded-xl border text-center text-2xl font-extrabold outline-none transition focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 sm:h-16 sm:w-12"
               style={{
                 borderColor: error
                   ? colors.brand.danger
@@ -301,7 +303,7 @@ export default function InlineOtpPanel({
 
       {isLoading && (
         <div className="flex items-center justify-center gap-2 text-sm font-bold" style={{ color: colors.brand.primary }}>
-          <Loader2 size={16} className="animate-spin" />
+          <Loader2 size={16} className="animate-spin" aria-hidden="true" />
           Authenticating...
         </div>
       )}
@@ -315,29 +317,18 @@ export default function InlineOtpPanel({
             </span>
           </p>
         ) : (
-          <button
+          <AuthButton
             type="button"
+            variant="subtle"
+            size="md"
+            icon={RotateCcw}
             onClick={handleResend}
+            isLoading={resending}
             disabled={resending}
-            className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60"
-            style={{
-              background: 'rgba(1,176,239,0.10)',
-              borderColor: 'rgba(1,176,239,0.28)',
-              color: colors.brand.primary,
-            }}
+            className="rounded-full"
           >
-            {resending ? (
-              <>
-                <Loader2 size={15} className="animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <RotateCcw size={15} />
-                Resend code
-              </>
-            )}
-          </button>
+            {resending ? 'Sending...' : 'Resend code'}
+          </AuthButton>
         )}
       </div>
     </div>
