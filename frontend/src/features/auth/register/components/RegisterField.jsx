@@ -1,4 +1,7 @@
 import { Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
+import { tokens } from '@/styles/tokens';
+
+const { colors, shadows } = tokens;
 
 export default function RegisterField({
   icon: Icon,
@@ -30,15 +33,26 @@ export default function RegisterField({
   const hasSuccess = Boolean(!errors[name] && formData[name] && touched[name]);
   const errorId = `${name}-error`;
 
+  const inputStyle = {
+    color: colors.text.light.primary,
+    background: colors.surface.light.raised,
+    borderColor: hasError ? colors.brand.danger : 'rgba(1, 176, 239, 0.30)',
+    boxShadow: shadows.sm,
+    '--register-field-focus-border': hasError ? colors.brand.danger : colors.brand.primary,
+    '--register-field-focus-ring': hasError ? 'rgba(252, 5, 13, 0.18)' : 'rgba(1, 176, 239, 0.20)',
+    '--register-field-hover-border': hasError ? 'rgba(252, 5, 13, 0.62)' : 'rgba(1, 176, 239, 0.48)',
+  };
+
   return (
     <div className="space-y-2">
-      <label htmlFor={name} className="text-sm font-bold text-blue-950">
+      <label htmlFor={name} className="text-sm font-bold" style={{ color: colors.brand.secondary }}>
         {label}
       </label>
 
       <div className="relative">
         <Icon
-          className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+          className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2"
+          style={{ color: 'rgba(1, 176, 239, 0.62)' }}
           aria-hidden="true"
         />
 
@@ -55,11 +69,8 @@ export default function RegisterField({
           aria-describedby={hasError ? errorId : undefined}
           max={name === 'birthday' ? getMaxDate() : undefined}
           min={name === 'birthday' ? getMinDate() : undefined}
-          className={`w-full rounded-xl border bg-white py-3.5 pl-12 pr-12 text-blue-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
-            hasError
-              ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
-              : 'border-slate-300 focus:border-cyan-500 focus:ring-cyan-100'
-          }`}
+          style={inputStyle}
+          className="w-full rounded-xl border py-3.5 pl-12 pr-12 outline-none transition placeholder:text-slate-400 hover:border-[color:var(--register-field-hover-border)] focus:border-[color:var(--register-field-focus-border)] focus:ring-4 focus:ring-[color:var(--register-field-focus-ring)]"
         />
 
         {isPassword ? (
@@ -67,18 +78,21 @@ export default function RegisterField({
             type="button"
             onClick={() => setShowPasswordState(!showPasswordState)}
             aria-label={showPasswordState ? 'Hide password' : 'Show password'}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-blue-900"
+            className="absolute right-4 top-1/2 -translate-y-1/2 transition"
+            style={{ color: 'rgba(1, 176, 239, 0.68)' }}
           >
             {showPasswordState ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         ) : hasSuccess ? (
           <Check
-            className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-emerald-500"
+            className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2"
+            style={{ color: colors.state.success }}
             aria-hidden="true"
           />
         ) : hasError ? (
           <AlertCircle
-            className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-red-500"
+            className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2"
+            style={{ color: colors.brand.danger }}
             aria-hidden="true"
           />
         ) : null}
@@ -88,7 +102,8 @@ export default function RegisterField({
         <p
           id={errorId}
           role="alert"
-          className="flex items-center gap-2 text-sm font-medium text-red-600"
+          className="flex items-center gap-2 text-sm font-medium"
+          style={{ color: colors.brand.danger }}
         >
           <AlertCircle size={14} aria-hidden="true" />
           {errors[name]}
