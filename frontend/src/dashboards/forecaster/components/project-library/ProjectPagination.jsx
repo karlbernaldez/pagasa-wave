@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { buildPageNumbers, cn } from "@dashboards/forecaster/components/StudioBase/utils";
+import { buildPageNumbers, cn } from "./utils";
 
 export default function ProjectPagination({ page, total, totalPages, pageSize, onPageChange }) {
   if (totalPages <= 1) return null;

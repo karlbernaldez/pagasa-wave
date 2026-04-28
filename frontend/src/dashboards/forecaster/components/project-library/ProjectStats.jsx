@@ -1,5 +1,5 @@
 import { CheckCircle2, FileText, FolderKanban, Send, Users } from "lucide-react";
-import { cn } from "@dashboards/forecaster/components/StudioBase/utils";
+import { cn } from "./utils";
 
 const STAT_STYLE = {
   "Total Projects": { icon: FolderKanban, tile: "bg-blue-50 text-blue-700" },
