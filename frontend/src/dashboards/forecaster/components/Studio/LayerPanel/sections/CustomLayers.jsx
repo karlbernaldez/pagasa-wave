@@ -11,20 +11,20 @@ import {
   handleDragStart,
   handleDragOver,
   handleDrop,
-} from '@dashboards/forecaster/utils/layerUtils';
+} from '@dashboards/forecaster/utils/layers';
 
 // ─── Layer type registry ──────────────────────────────────────────────────────
 const TYPE_GROUPS = [
-  { key: 'wave',    label: 'Wave Heights',      icon: Waves,        match: ['wave', 'swell', 'ocean', 'tide'] },
-  { key: 'cyclone', label: 'Tropical Cyclones', icon: Wind,         match: ['cyclone', 'typhoon', 'tropical', 'storm', 'track'] },
-  { key: 'lpa',     label: 'Low Pressure',      icon: TrendingDown, match: ['low', 'lpa', 'depression', 'trough'] },
-  { key: 'hpa',     label: 'High Pressure',     icon: TrendingUp,   match: ['high', 'hpa', 'ridge', 'anticyclone'] },
-  { key: 'other',   label: 'Other',             icon: Layers,       match: [] },
+  { key: 'wave', label: 'Wave Heights', icon: Waves, match: ['wave', 'swell', 'ocean', 'tide'] },
+  { key: 'cyclone', label: 'Tropical Cyclones', icon: Wind, match: ['cyclone', 'typhoon', 'tropical', 'storm', 'track'] },
+  { key: 'lpa', label: 'Low Pressure', icon: TrendingDown, match: ['low', 'lpa', 'depression', 'trough'] },
+  { key: 'hpa', label: 'High Pressure', icon: TrendingUp, match: ['high', 'hpa', 'ridge', 'anticyclone'] },
+  { key: 'other', label: 'Other', icon: Layers, match: [] },
 ];
 
 // How many rows to show before the group starts scrolling
-const GROUP_MAX_ROWS  = 5;
-const ROW_HEIGHT_PX   = 28; // approx px per LayerRow
+const GROUP_MAX_ROWS = 5;
+const ROW_HEIGHT_PX = 28; // approx px per LayerRow
 const GROUP_MAX_HEIGHT = GROUP_MAX_ROWS * ROW_HEIGHT_PX; // 140px
 
 function resolveGroup(layer) {
@@ -40,8 +40,7 @@ const ActionBtn = ({ onClick, isDarkMode, disabled, danger, children }) => (
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`p-0.5 rounded transition-colors ${
-      disabled
+    className={`p-0.5 rounded transition-colors ${disabled
         ? 'opacity-30 cursor-not-allowed'
         : danger
           ? isDarkMode
@@ -50,7 +49,7 @@ const ActionBtn = ({ onClick, isDarkMode, disabled, danger, children }) => (
           : isDarkMode
             ? 'hover:bg-white/10 text-white/35 hover:text-white/75'
             : 'hover:bg-black/10 text-slate-400 hover:text-slate-700'
-    }`}
+      }`}
   >
     {children}
   </button>
@@ -65,7 +64,7 @@ const LayerRow = ({
   startEditing, saveEdit, cancelEdit,
   onRequestDelete, isDarkMode,
 }) => {
-  const isActive  = activeLayerId === layer.id;
+  const isActive = activeLayerId === layer.id;
   const isEditing = editingLayerId === layer.id;
 
   return (
@@ -74,7 +73,7 @@ const LayerRow = ({
       onDragStart={(e) => handleDragStart(e, index, setDragging, setDraggedLayerIndex)}
       onDragOver={handleDragOver}
       onDrop={(e) => handleDrop(e, index, draggedLayerIndex, layers, setLayers, setDragging)}
-      onClick={() => !isEditing && onSetActiveLayer(layer.id)}
+      onClick={() => !isEditing && onSetActiveLayer(layer)}
       className={`
         group relative flex items-center gap-1.5 px-1.5 py-1 rounded-md
         transition-all duration-150 cursor-pointer
@@ -90,9 +89,8 @@ const LayerRow = ({
     >
       {/* Drag handle */}
       <button
-        className={`flex-shrink-0 cursor-grab active:cursor-grabbing ${
-          isDarkMode ? 'text-white/15 hover:text-white/40' : 'text-slate-200 hover:text-slate-400'
-        }`}
+        className={`flex-shrink-0 cursor-grab active:cursor-grabbing ${isDarkMode ? 'text-white/15 hover:text-white/40' : 'text-slate-200 hover:text-slate-400'
+          }`}
         onClick={(e) => e.stopPropagation()}
       >
         <GripVertical size={10} strokeWidth={2} />
@@ -109,7 +107,7 @@ const LayerRow = ({
               onChange={(e) => setEditingName(e.target.value)}
               onBlur={cancelEdit}
               onKeyDown={(e) => {
-                if (e.key === 'Enter')  { e.preventDefault(); saveEdit();   }
+                if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
                 if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
               }}
               className={`
@@ -123,9 +121,8 @@ const LayerRow = ({
             />
           </div>
         ) : (
-          <span className={`block text-[11px] font-medium truncate ${
-            isDarkMode ? 'text-white/75' : 'text-slate-700'
-          }`}>
+          <span className={`block text-[11px] font-medium truncate ${isDarkMode ? 'text-white/75' : 'text-slate-700'
+            }`}>
             {layer.name}
           </span>
         )}
@@ -145,14 +142,14 @@ const LayerRow = ({
 
           <ActionBtn isDarkMode={isDarkMode} onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(mapRef.current, layer, setLayers); }}>
             {layer.visible
-              ? <Eye    size={10} strokeWidth={2} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} />
+              ? <Eye size={10} strokeWidth={2} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} />
               : <EyeOff size={10} strokeWidth={2} />
             }
           </ActionBtn>
 
           <ActionBtn isDarkMode={isDarkMode} onClick={(e) => { e.stopPropagation(); toggleLayerLock(layer, setLayers); }}>
             {layer.locked
-              ? <Lock   size={10} strokeWidth={2} className={isDarkMode ? 'text-orange-400' : 'text-orange-500'} />
+              ? <Lock size={10} strokeWidth={2} className={isDarkMode ? 'text-orange-400' : 'text-orange-500'} />
               : <Unlock size={10} strokeWidth={2} />
             }
           </ActionBtn>
@@ -182,7 +179,7 @@ const LayerRow = ({
           opacity-100 group-hover:opacity-0 transition-opacity duration-150
           ${layer.visible
             ? isDarkMode ? 'bg-cyan-400/50' : 'bg-blue-500/40'
-            : isDarkMode ? 'bg-white/15'    : 'bg-slate-300'
+            : isDarkMode ? 'bg-white/15' : 'bg-slate-300'
           }
         `} />
       )}
@@ -194,23 +191,20 @@ const LayerRow = ({
 const GroupHeader = ({ group, count, isOpen, onToggle, onToggleAll, allVisible, isDarkMode }) => {
   const Icon = group.icon;
   return (
-    <div className={`flex items-center gap-1 px-1 py-0.5 rounded-md mb-0.5 group/gh cursor-pointer ${
-      isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
-    }`}>
+    <div className={`flex items-center gap-1 px-1 py-0.5 rounded-md mb-0.5 group/gh cursor-pointer ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
+      }`}>
       <button onClick={onToggle} className="flex items-center gap-1 flex-1 min-w-0">
         {isOpen
-          ? <ChevronDown  size={9} strokeWidth={3} className={isDarkMode ? 'text-white/35' : 'text-slate-400'} />
+          ? <ChevronDown size={9} strokeWidth={3} className={isDarkMode ? 'text-white/35' : 'text-slate-400'} />
           : <ChevronRight size={9} strokeWidth={3} className={isDarkMode ? 'text-white/35' : 'text-slate-400'} />
         }
         <Icon size={9} strokeWidth={2} className={isDarkMode ? 'text-white/45' : 'text-slate-500'} />
-        <span className={`text-[9px] font-semibold uppercase tracking-wider truncate ${
-          isDarkMode ? 'text-white/45' : 'text-slate-500'
-        }`}>
+        <span className={`text-[9px] font-semibold uppercase tracking-wider truncate ${isDarkMode ? 'text-white/45' : 'text-slate-500'
+          }`}>
           {group.label}
         </span>
-        <span className={`text-[9px] px-1 py-0.5 rounded font-bold flex-shrink-0 ${
-          isDarkMode ? 'bg-white/8 text-white/35' : 'bg-black/8 text-slate-400'
-        }`}>
+        <span className={`text-[9px] px-1 py-0.5 rounded font-bold flex-shrink-0 ${isDarkMode ? 'bg-white/8 text-white/35' : 'bg-black/8 text-slate-400'
+          }`}>
           {count}
         </span>
       </button>
@@ -225,7 +219,7 @@ const GroupHeader = ({ group, count, isOpen, onToggle, onToggleAll, allVisible, 
         `}
       >
         {allVisible
-          ? <Eye    size={9} strokeWidth={2} className={isDarkMode ? 'text-white/50' : 'text-slate-400'} />
+          ? <Eye size={9} strokeWidth={2} className={isDarkMode ? 'text-white/50' : 'text-slate-400'} />
           : <EyeOff size={9} strokeWidth={2} className={isDarkMode ? 'text-white/30' : 'text-slate-300'} />
         }
       </button>
@@ -280,26 +274,23 @@ const CustomLayersSection = ({
       {/* Section header */}
       <button
         onClick={onToggleExpand}
-        className={`w-full flex items-center justify-between px-1.5 py-1.5 rounded-lg mb-1.5 transition-colors ${
-          isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
-        }`}
+        className={`w-full flex items-center justify-between px-1.5 py-1.5 rounded-lg mb-1.5 transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
+          }`}
       >
         <div className="flex items-center gap-1.5">
           <span className={`text-[11px] font-bold ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>
             Annotations
           </span>
-          <div className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-            isDarkMode ? 'bg-white/10 text-white/55' : 'bg-black/10 text-slate-500'
-          }`}>
+          <div className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${isDarkMode ? 'bg-white/10 text-white/55' : 'bg-black/10 text-slate-500'
+            }`}>
             {layers.length}
           </div>
         </div>
         <ChevronDown
           size={11}
           strokeWidth={3}
-          className={`transition-transform ${expanded ? 'rotate-180' : ''} ${
-            isDarkMode ? 'text-white/50' : 'text-slate-500'
-          }`}
+          className={`transition-transform ${expanded ? 'rotate-180' : ''} ${isDarkMode ? 'text-white/50' : 'text-slate-500'
+            }`}
         />
       </button>
 
@@ -319,9 +310,8 @@ const CustomLayersSection = ({
 
               {openGroups[group.key] && (
                 <div
-                  className={`pl-2 border-l space-y-0.5 overflow-y-auto ${
-                    isDarkMode ? 'border-white/8' : 'border-slate-200/60'
-                  }`}
+                  className={`pl-2 border-l space-y-0.5 overflow-y-auto ${isDarkMode ? 'border-white/8' : 'border-slate-200/60'
+                    }`}
                   style={{
                     maxHeight: `${GROUP_MAX_HEIGHT}px`,
                     scrollbarWidth: 'thin',
