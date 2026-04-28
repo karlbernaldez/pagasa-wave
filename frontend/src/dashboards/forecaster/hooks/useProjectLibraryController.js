@@ -13,6 +13,9 @@ const PAGE_SIZE = 10;
 export function useProjectLibraryController() {
   const {
     loading,
+    error,
+    isFetching,
+    refetch,
     allProjects,
     search,
     setSearch,
@@ -48,7 +51,9 @@ export function useProjectLibraryController() {
     document.title = "WaveLab · Forecast Operations";
   }, []);
 
-  const stats = !loading && allProjects.length > 0 ? getProjectStats(allProjects) : [];
+  const stats = !loading
+    ? getProjectStats(paged, total)
+    : [];
 
   return {
     header: {
@@ -73,9 +78,13 @@ export function useProjectLibraryController() {
       setSortDir,
       activeFilterCount,
       onClear: resetFilters,
+      isFetching,
     },
     table: {
       projects: paged,
+      loading,
+      error,
+      onRetry: refetch,
       onOpen: (project) => window.open(`/studio/${project._id}`, "_blank"),
       onRename: dialogs.openRename,
       onDelete: dialogs.openDelete,
