@@ -2,7 +2,7 @@ import { lazy } from 'react';
 import ForecasterRouteLayout from '@/dashboards/forecaster/layout/ForecasterRouteLayout';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 
-const StudioBase = lazy(() => import('@/dashboards/forecaster/pages/StudioBase'));
+const ProjectLibraryPage = lazy(() => import('@/dashboards/forecaster/pages/ProjectLibraryPage'));
 const Studio = lazy(() => import('@/dashboards/forecaster/pages/Studio'));
 const Profile = lazy(() => import('@/dashboards/forecaster/pages/Profile'));
 const EditProfile = lazy(() => import('@/dashboards/forecaster/pages/EditProfile'));
@@ -12,7 +12,7 @@ export default [
   {
     element: <ForecasterRouteLayout />,
     children: [
-      { path: '/studio', element: <StudioBase /> },
+      { path: '/studio', element: <ProjectLibraryPage /> },
       { path: '/profile', element: <Profile /> },
       { path: '/edit-profile', element: <EditProfile /> },
     ],
