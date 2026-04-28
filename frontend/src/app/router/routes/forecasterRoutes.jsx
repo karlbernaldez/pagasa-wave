@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
+import ForecasterShell from '@/dashboards/forecaster/layout/ForecasterShell';
 
 const StudioBase = lazy(() => import('@/dashboards/forecaster/pages/StudioBase'));
 const Studio = lazy(() => import('@/dashboards/forecaster/pages/Studio'));
@@ -12,7 +13,9 @@ export default [
     path: '/studio',
     element: (
       <ProtectedRoute requireAuth={true}>
-        <StudioBase />
+        <ForecasterShell>
+          <StudioBase />
+        </ForecasterShell>
       </ProtectedRoute>
     ),
   },
@@ -28,7 +31,9 @@ export default [
     path: '/profile',
     element: (
       <ProtectedRoute requireAuth={true}>
-        <Profile />
+        <ForecasterShell>
+          <Profile />
+        </ForecasterShell>
       </ProtectedRoute>
     ),
   },
@@ -36,7 +41,9 @@ export default [
     path: '/edit-profile',
     element: (
       <ProtectedRoute requireAuth={true}>
-        <EditProfile />
+        <ForecasterShell>
+          <EditProfile />
+        </ForecasterShell>
       </ProtectedRoute>
     ),
   },
