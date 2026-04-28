@@ -4,8 +4,8 @@ import { tokens } from '@/styles/tokens';
 
 import AuthButton from '@/features/auth/shared/AuthButton.jsx';
 import AuthInput from '@/features/auth/shared/AuthInput.jsx';
+import AuthPasswordField from '@/features/auth/shared/AuthPasswordField.jsx';
 
-import PasswordField from './PasswordField.jsx';
 import CaptchaSection from './CaptchaSection.jsx';
 
 const { colors } = tokens;
@@ -45,7 +45,6 @@ const LoginForm = forwardRef(function LoginForm(
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
-      {/* Global error */}
       {error && (
         <div
           role="alert"
@@ -61,7 +60,6 @@ const LoginForm = forwardRef(function LoginForm(
         </div>
       )}
 
-      {/* Email */}
       <AuthInput
         id="login-email"
         label="Email address"
@@ -75,9 +73,9 @@ const LoginForm = forwardRef(function LoginForm(
         onBlur={() => handleBlur('email')}
       />
 
-      {/* Password */}
-      <PasswordField
+      <AuthPasswordField
         id="login-password"
+        name="password"
         label="Password"
         value={password}
         error={passwordError}
@@ -87,10 +85,8 @@ const LoginForm = forwardRef(function LoginForm(
         onToggleVisibility={togglePasswordVisibility}
       />
 
-      {/* CAPTCHA (unchanged logic) */}
       <CaptchaSection ref={captchaRef} onVerify={onCaptchaVerify} />
 
-      {/* Submit */}
       <AuthButton
         type="submit"
         variant="primary"
@@ -102,7 +98,6 @@ const LoginForm = forwardRef(function LoginForm(
         Sign In
       </AuthButton>
 
-      {/* Divider */}
       <div className="flex items-center gap-4" aria-hidden="true">
         <div className="h-px flex-1" style={{ background: 'rgba(1, 176, 239, 0.22)' }} />
         <span className="text-sm font-semibold" style={{ color: colors.text.light.muted }}>
@@ -111,7 +106,6 @@ const LoginForm = forwardRef(function LoginForm(
         <div className="h-px flex-1" style={{ background: 'rgba(1, 176, 239, 0.22)' }} />
       </div>
 
-      {/* Register CTA */}
       <AuthButton
         type="button"
         variant="secondary"
@@ -123,7 +117,6 @@ const LoginForm = forwardRef(function LoginForm(
         Create Account
       </AuthButton>
 
-      {/* Terms */}
       <p className="text-center text-sm font-medium" style={{ color: colors.text.light.muted }}>
         By signing in, you agree to our{' '}
         <button type="button" className="font-bold underline" style={{ color: colors.brand.primary }}>
