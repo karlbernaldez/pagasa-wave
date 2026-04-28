@@ -78,7 +78,7 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
       'case',
       ['==', ['get', 'markerType'], 'low_pressure'], 12,
       ['==', ['get', 'markerType'], 'high_pressure'], 12,
-      10,
+      12,
     ];
   }
 
