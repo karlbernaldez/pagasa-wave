@@ -106,7 +106,7 @@ export function useLoginFlow() {
 
       try {
         await verifyOtp(form.email, otp);
-        dispatchOtp({ type: OTP_ACTION.SET_LOADING, payload: false });
+        dispatchOtp({ type: OTP_ACTION.CLOSE });
       } catch (err) {
         const message =
           err?.response?.data?.message ||
