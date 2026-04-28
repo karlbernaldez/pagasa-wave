@@ -1,9 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ShieldCheck, RefreshCw } from 'lucide-react';
+import { tokens } from '@/styles/tokens';
 
 const SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 const SCRIPT_ID = 'recaptcha-v2-script';
 const CALLBACK = '__onRecaptchaLoad__';
+const { colors } = tokens;
 
 function loadRecaptchaScript() {
   if (window.grecaptcha?.render) {
@@ -82,7 +84,7 @@ const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
 
         widgetIdRef.current = grecaptcha.render(containerRef.current, {
           sitekey: SITE_KEY,
-          theme: 'dark',
+          theme: 'light',
           callback: (token) => onVerifyRef.current?.(token),
           'expired-callback': () => onVerifyRef.current?.(null),
           'error-callback': () => onVerifyRef.current?.(null),
@@ -103,8 +105,11 @@ const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between">
-        <label className="font-mono-ibm text-cyan-300/70 text-xs tracking-widest uppercase flex items-center gap-2">
-          <ShieldCheck size={13} className="text-cyan-400/60" aria-hidden="true" />
+        <label
+          className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider"
+          style={{ color: colors.brand.primary }}
+        >
+          <ShieldCheck size={13} style={{ color: colors.brand.primary }} aria-hidden="true" />
           Verification
         </label>
 
@@ -112,16 +117,17 @@ const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
           type="button"
           onClick={resetCaptcha}
           disabled={!isReady}
-          className="flex items-center gap-1 font-mono-ibm text-[10px] text-slate-500 transition-colors hover:text-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-slate-500"
+          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+          style={{ color: colors.text.light.muted }}
           aria-label="Reset CAPTCHA"
         >
-          <RefreshCw size={10} aria-hidden="true" />
+          <RefreshCw size={11} aria-hidden="true" />
           Reset
         </button>
       </div>
 
       {loadError && (
-        <p role="alert" className="text-xs font-medium text-red-500">
+        <p role="alert" className="text-xs font-medium" style={{ color: colors.brand.danger }}>
           CAPTCHA failed to load. Check the site key or refresh the page.
         </p>
       )}
