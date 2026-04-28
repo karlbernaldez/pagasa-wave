@@ -1,16 +1,51 @@
 import { Loader2 } from 'lucide-react';
+import { tokens } from '@/styles/tokens';
+
+const { colors, gradients, shadows } = tokens;
 
 const variants = {
-  primary:
-    'border-transparent bg-blue-800 text-white shadow-sm hover:bg-blue-900 focus-visible:ring-blue-200',
-  secondary:
-    'border-blue-200 bg-white text-blue-800 hover:bg-blue-50 focus-visible:ring-blue-100',
-  ghost:
-    'border-transparent bg-transparent text-blue-800 hover:bg-blue-50 focus-visible:ring-blue-100',
-  danger:
-    'border-transparent bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-200',
-  subtle:
-    'border-transparent bg-blue-50 text-blue-800 hover:bg-blue-100 focus-visible:ring-blue-100',
+  primary: {
+    color: colors.brand.secondary,
+    background: gradients.primary,
+    borderColor: 'transparent',
+    boxShadow: '0 14px 34px rgba(1, 176, 239, 0.26)',
+    '--auth-button-hover-bg': gradients.primaryHover,
+    '--auth-button-hover-shadow': shadows.brandGlow,
+    '--auth-button-ring': 'rgba(255, 254, 6, 0.32)',
+  },
+  secondary: {
+    color: colors.brand.secondary,
+    background: colors.surface.light.raised,
+    borderColor: 'rgba(1, 176, 239, 0.34)',
+    boxShadow: shadows.sm,
+    '--auth-button-hover-bg': colors.surface.light.muted,
+    '--auth-button-hover-shadow': '0 12px 28px rgba(1, 176, 239, 0.18)',
+    '--auth-button-ring': 'rgba(1, 176, 239, 0.24)',
+  },
+  ghost: {
+    color: colors.brand.secondary,
+    background: 'transparent',
+    borderColor: 'transparent',
+    '--auth-button-hover-bg': 'rgba(1, 176, 239, 0.10)',
+    '--auth-button-hover-shadow': 'none',
+    '--auth-button-ring': 'rgba(1, 176, 239, 0.20)',
+  },
+  danger: {
+    color: colors.text.dark.primary,
+    background: gradients.danger,
+    borderColor: 'transparent',
+    '--auth-button-hover-bg': colors.action.dangerHover,
+    '--auth-button-hover-shadow': '0 12px 28px rgba(252, 5, 13, 0.24)',
+    '--auth-button-ring': 'rgba(252, 5, 13, 0.24)',
+  },
+  subtle: {
+    color: colors.brand.secondary,
+    background: 'rgba(1, 176, 239, 0.10)',
+    borderColor: 'rgba(1, 176, 239, 0.18)',
+    '--auth-button-hover-bg': 'rgba(255, 254, 6, 0.18)',
+    '--auth-button-hover-shadow': '0 10px 24px rgba(1, 176, 239, 0.16)',
+    '--auth-button-ring': 'rgba(255, 254, 6, 0.26)',
+  },
 };
 
 const sizes = {
@@ -29,11 +64,13 @@ export default function AuthButton({
   disabled = false,
   icon: Icon,
   className = '',
+  style,
   'aria-label': ariaLabel,
   ...props
 }) {
   const isDisabled = disabled || isLoading;
   const isIconOnly = Boolean(Icon) && !children;
+  const variantStyle = variants[variant] || variants.primary;
 
   return (
     <button
@@ -41,7 +78,8 @@ export default function AuthButton({
       disabled={isDisabled}
       aria-disabled={isDisabled}
       aria-label={ariaLabel}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl border font-bold transition focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60 ${variants[variant] || variants.primary} ${sizes[size] || sizes.lg} ${className}`}
+      style={{ ...variantStyle, ...style }}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl border font-bold transition hover:scale-[1.01] hover:bg-[image:var(--auth-button-hover-bg)] hover:shadow-[var(--auth-button-hover-shadow)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--auth-button-ring)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${sizes[size] || sizes.lg} ${className}`}
       {...props}
     >
       {isLoading ? (
