@@ -1,12 +1,55 @@
 import { format } from "date-fns";
 import { ExternalLink, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
+import Button from "@/components/ui/Button";
 
-export default function ProjectTable({ projects, onOpen, onRename, onDelete }) {
+const STATUS_STYLE = {
+  Draft: "bg-slate-100 text-slate-700",
+  Submitted: "bg-amber-100 text-amber-700",
+  "Under Review": "bg-orange-100 text-orange-700",
+  Published: "bg-emerald-100 text-emerald-700",
+};
+
+export default function ProjectTable({
+  projects,
+  loading,
+  error,
+  onRetry,
+  onOpen,
+  onRename,
+  onDelete,
+}) {
   const [active, setActive] = useState(null);
 
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+        Loading projects...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-600 flex items-center justify-between">
+        Failed to load projects
+        <Button variant="ghost" size="sm" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (!projects || projects.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
+        No projects found
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-slate-600 font-semibold">
           <tr>
@@ -28,7 +71,9 @@ export default function ProjectTable({ projects, onOpen, onRename, onDelete }) {
               </td>
 
               <td className="px-4 py-3">
-                <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                <span
+                  className={`rounded-full px-2 py-1 text-xs font-semibold ${STATUS_STYLE[p.status] || "bg-blue-50 text-blue-700"}`}
+                >
                   {p.status}
                 </span>
               </td>
@@ -39,20 +84,17 @@ export default function ProjectTable({ projects, onOpen, onRename, onDelete }) {
 
               <td className="px-4 py-3 text-right relative">
                 <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => onOpen(p)}
-                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"
-                  >
+                  <Button size="sm" onClick={() => onOpen(p)} icon={ExternalLink}>
                     Open
-                    <ExternalLink size={12} />
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    icon={MoreHorizontal}
+                    aria-label="More actions"
                     onClick={() => setActive(active === p._id ? null : p._id)}
-                    className="h-8 w-8 flex items-center justify-center rounded-md border"
-                  >
-                    <MoreHorizontal size={14} />
-                  </button>
+                  />
                 </div>
 
                 {active === p._id && (
