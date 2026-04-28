@@ -46,12 +46,37 @@ export function sortProjects(projects, sortBy, sortDir) {
   });
 }
 
-export function getProjectStats(projects) {
+export function getProjectStats(projects, total = projects.length) {
   return [
-    { value: projects.length, label: 'Total Projects', helper: 'All projects', tone: 'blue' },
-    { value: projects.filter((p) => p.status === 'Draft').length, label: 'Drafts', helper: 'In progress', tone: 'blue' },
-    { value: projects.filter((p) => p.status === 'Under Review').length, label: 'Under Review', helper: 'With reviewers', tone: 'amber' },
-    { value: projects.filter((p) => p.status === 'Submitted').length, label: 'Submitted', helper: 'Awaiting approval', tone: 'slate' },
-    { value: projects.filter((p) => p.status === 'Published').length, label: 'Published', helper: 'Completed forecasts', tone: 'emerald' },
+    {
+      value: total,
+      label: 'Total Projects',
+      helper: 'Matching filters',
+      tone: 'blue',
+    },
+    {
+      value: projects.filter((p) => p.status === 'Draft').length,
+      label: 'Drafts',
+      helper: 'Visible page',
+      tone: 'blue',
+    },
+    {
+      value: projects.filter((p) => p.status === 'Under Review').length,
+      label: 'Under Review',
+      helper: 'Visible page',
+      tone: 'amber',
+    },
+    {
+      value: projects.filter((p) => p.status === 'Submitted').length,
+      label: 'Submitted',
+      helper: 'Visible page',
+      tone: 'slate',
+    },
+    {
+      value: projects.filter((p) => p.status === 'Published').length,
+      label: 'Published',
+      helper: 'Visible page',
+      tone: 'emerald',
+    },
   ];
 }
