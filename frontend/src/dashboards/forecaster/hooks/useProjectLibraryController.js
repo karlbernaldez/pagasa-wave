@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 
 import { useProjects } from "@dashboards/forecaster/hooks/useProjects";
+import {
+  useDeleteProjectMutation,
+  useRenameProjectMutation,
+} from "@dashboards/forecaster/hooks/useProjectMutations";
 import ProjectDialogsHost from "@dashboards/forecaster/components/project-library/ProjectDialogsHost";
 import { getProjectStats } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 
@@ -29,13 +33,15 @@ export function useProjectLibraryController() {
     setPage,
     total,
     totalPages,
-    deleteProject,
-    renameProject,
   } = useProjects();
 
+  const deleteProjectMutation = useDeleteProjectMutation();
+  const renameProjectMutation = useRenameProjectMutation();
+
   const dialogs = ProjectDialogsHost({
-    onDeleteConfirm: (project) => deleteProject(project._id),
-    onRenameConfirm: (project, name) => renameProject(project._id, name),
+    onDeleteConfirm: (project) => deleteProjectMutation.mutate(project._id),
+    onRenameConfirm: (project, name) =>
+      renameProjectMutation.mutate({ id: project._id, name }),
   });
 
   useEffect(() => {
