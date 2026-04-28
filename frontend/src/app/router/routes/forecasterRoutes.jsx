@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import ForecasterRouteLayout from '@/dashboards/forecaster/layout/ForecasterRouteLayout';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 
 const StudioBase = lazy(() => import('@/dashboards/forecaster/pages/StudioBase'));
@@ -9,34 +10,18 @@ const PdfGenerator = lazy(() => import('@/pages/PdfGenerator'));
 
 export default [
   {
-    path: '/studio',
-    element: (
-      <ProtectedRoute requireAuth={true}>
-        <StudioBase />
-      </ProtectedRoute>
-    ),
+    element: <ForecasterRouteLayout />,
+    children: [
+      { path: '/studio', element: <StudioBase /> },
+      { path: '/profile', element: <Profile /> },
+      { path: '/edit-profile', element: <EditProfile /> },
+    ],
   },
   {
     path: '/studio/:projectId',
     element: (
       <ProtectedRoute requireAuth={true}>
         <Studio />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/profile',
-    element: (
-      <ProtectedRoute requireAuth={true}>
-        <Profile />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/edit-profile',
-    element: (
-      <ProtectedRoute requireAuth={true}>
-        <EditProfile />
       </ProtectedRoute>
     ),
   },

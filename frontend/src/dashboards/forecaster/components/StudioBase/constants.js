@@ -1,6 +1,6 @@
 // studio/constants.js
 
-export const PAGE_LIMIT = 6;
+export const PAGE_LIMIT = 10;
 
 /** Must mirror Project.js status enum exactly */
 export const STATUS_FILTERS = [
@@ -17,39 +17,39 @@ export const STATUS_FILTERS = [
 /** Card badge colours per status */
 export const STATUS_META = {
   Draft: {
-    dot:   "bg-slate-400",
-    light: "bg-slate-100 text-slate-600 border-slate-200",
-    dark:  "bg-slate-800/60 text-slate-400 border-slate-700/60",
+    dot:   "bg-blue-500",
+    light: "bg-blue-50 text-blue-700 border-blue-100",
+    dark:  "bg-blue-900/30 text-blue-300 border-blue-700/50",
   },
   Submitted: {
-    dot:   "bg-amber-400",
-    light: "bg-amber-50 text-amber-700 border-amber-200",
-    dark:  "bg-amber-900/30 text-amber-400 border-amber-700/50",
+    dot:   "bg-slate-500",
+    light: "bg-slate-100 text-slate-700 border-slate-200",
+    dark:  "bg-slate-800/60 text-slate-300 border-slate-700/60",
   },
   "Under Review": {
-    dot:   "bg-orange-400",
-    light: "bg-orange-50 text-orange-700 border-orange-200",
-    dark:  "bg-orange-900/30 text-orange-400 border-orange-700/50",
+    dot:   "bg-amber-500",
+    light: "bg-amber-50 text-amber-700 border-amber-100",
+    dark:  "bg-amber-900/30 text-amber-300 border-amber-700/50",
   },
   Approved: {
-    dot:   "bg-emerald-400",
-    light: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    dark:  "bg-emerald-900/30 text-emerald-400 border-emerald-700/50",
+    dot:   "bg-emerald-500",
+    light: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    dark:  "bg-emerald-900/30 text-emerald-300 border-emerald-700/50",
   },
   Published: {
-    dot:   "bg-green-400",
-    light: "bg-green-50 text-green-700 border-green-200",
-    dark:  "bg-green-900/30 text-green-400 border-green-700/50",
+    dot:   "bg-emerald-500",
+    light: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    dark:  "bg-emerald-900/30 text-emerald-300 border-emerald-700/50",
   },
   Rejected: {
-    dot:   "bg-red-400",
-    light: "bg-red-50 text-red-700 border-red-200",
-    dark:  "bg-red-900/30 text-red-400 border-red-700/50",
+    dot:   "bg-rose-500",
+    light: "bg-rose-50 text-rose-700 border-rose-100",
+    dark:  "bg-rose-900/30 text-rose-300 border-rose-700/50",
   },
   Archived: {
     dot:   "bg-slate-500",
     light: "bg-slate-100 text-slate-500 border-slate-200",
-    dark:  "bg-slate-800/40 text-slate-500 border-slate-700/40",
+    dark:  "bg-slate-800/40 text-slate-400 border-slate-700/40",
   },
 };
 

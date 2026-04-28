@@ -7,6 +7,27 @@ import {
 } from "@/api/projectAPI";
 import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
 import { PAGE_LIMIT } from "../constants";
+import { sortProjects } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
+
+function getProjectType(project) {
+  return String(project.chartType || project.type || project.category || "").toLowerCase();
+}
+
+function isWithinDateRange(project, dateRange) {
+  if (dateRange === "All") return true;
+
+  const rawDate = project.forecastDate || project.updatedAt || project.createdAt;
+  if (!rawDate) return false;
+
+  const date = new Date(rawDate);
+  const now = new Date();
+  const days = Math.ceil((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (dateRange === "7d") return days <= 7;
+  if (dateRange === "30d") return days <= 30;
+  if (dateRange === "90d") return days <= 90;
+  return true;
+}
 
 export function useProjects() {
   const [allProjects, setAllProjects] = useState([]);
@@ -16,22 +37,18 @@ export function useProjects() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [statusFilter, setStatusFilter] = useState("All");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [dateRangeFilter, setDateRangeFilter] = useState("All");
   const [page, setPage] = useState(1);
 
-  /* request guards */
+  const [sortBy, setSortBy] = useState("updatedAt");
+  const [sortDir, setSortDir] = useState("desc");
+
   const fetchedRef = useRef(false);
   const controllerRef = useRef(null);
 
-  const pending = useRef({
-    delete: new Set(),
-    rename: new Set(),
-    create: false,
-  });
+  const pending = useRef({ delete: new Set(), rename: new Set(), create: false });
 
-  /* ─────────────────────────────
-     Fetch ALL projects once — client handles pagination/filtering
-     Pass limit=0 (or a large number) to bypass server-side paging
-  ───────────────────────────── */
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
@@ -41,7 +58,6 @@ export function useProjects() {
     const controller = new AbortController();
     controllerRef.current = controller;
 
-    // limit=1000 fetches everything; client-side pagination takes over
     fetchUserProjects({ limit: 1000, signal: controller.signal })
       .then((d) => setAllProjects(d.projects ?? []))
       .catch((err) => {
@@ -52,22 +68,15 @@ export function useProjects() {
     return () => controller.abort();
   }, []);
 
-  /* ─────────────────────────────
-     Debounce search
-  ───────────────────────────── */
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(t);
   }, [search]);
 
-  /* reset page when filters change */
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, typeFilter, dateRangeFilter, sortBy, sortDir]);
 
-  /* ─────────────────────────────
-     Derived state
-  ───────────────────────────── */
   const filtered = useMemo(() => {
     let r = allProjects;
 
@@ -75,25 +84,44 @@ export function useProjects() {
       r = r.filter((p) => (p.status || "Draft") === statusFilter);
     }
 
+    if (typeFilter !== "All") {
+      r = r.filter((p) => getProjectType(p).includes(typeFilter.toLowerCase()));
+    }
+
+    if (dateRangeFilter !== "All") {
+      r = r.filter((p) => isWithinDateRange(p, dateRangeFilter));
+    }
+
     if (debouncedSearch.trim()) {
       const q = debouncedSearch.toLowerCase();
       r = r.filter(
         (p) =>
           p.name?.toLowerCase().includes(q) ||
-          p.description?.toLowerCase().includes(q)
+          p.description?.toLowerCase().includes(q) ||
+          p.region?.toLowerCase().includes(q)
       );
     }
 
     return r;
-  }, [allProjects, statusFilter, debouncedSearch]);
+  }, [allProjects, statusFilter, typeFilter, dateRangeFilter, debouncedSearch]);
 
-  const total = filtered.length;
+  const sorted = useMemo(() => sortProjects(filtered, sortBy, sortDir), [filtered, sortBy, sortDir]);
+
+  const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
-  const paged = filtered.slice((page - 1) * PAGE_LIMIT, page * PAGE_LIMIT);
+  const paged = sorted.slice((page - 1) * PAGE_LIMIT, page * PAGE_LIMIT);
 
-  /* ─────────────────────────────
-     Actions
-  ───────────────────────────── */
+  const activeFilterCount = [statusFilter !== "All", typeFilter !== "All", dateRangeFilter !== "All"].filter(Boolean).length;
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("All");
+    setTypeFilter("All");
+    setDateRangeFilter("All");
+    setSortBy("updatedAt");
+    setSortDir("desc");
+  };
+
   const deleteProject = async (id) => {
     if (pending.current.delete.has(id)) return;
     pending.current.delete.add(id);
@@ -152,13 +180,24 @@ export function useProjects() {
     setSearch,
     statusFilter,
     setStatusFilter,
+    typeFilter,
+    setTypeFilter,
+    dateRangeFilter,
+    setDateRangeFilter,
+    activeFilterCount,
+    resetFilters,
     page,
     setPage,
     paged,
     total,
     totalPages,
+    pageSize: PAGE_LIMIT,
     deleteProject,
     renameProject,
     createProject,
+    sortBy,
+    setSortBy,
+    sortDir,
+    setSortDir,
   };
 }
