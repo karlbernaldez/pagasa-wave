@@ -15,48 +15,14 @@ import { SkeletonCard }      from "@dashboards/forecaster/components/StudioBase/
 import { DeleteDialog, RenameDialog, ShareDialog } from "@dashboards/forecaster/components/StudioBase/ProjectDialogs";
 import { STATUS_FILTERS }    from "@dashboards/forecaster/components/StudioBase/constants";
 import { cn, buildPageNumbers } from "@dashboards/forecaster/components/StudioBase/utils";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  show:   (d = 0) => ({
-    opacity: 1, y: 0,
-    transition: { duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94], delay: d },
-  }),
-};
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } } };
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.88 },
-  show:   { opacity: 1, scale: 1, transition: { duration: 0.45, ease: "backOut" } },
-};
-
-// ── Sort config ──────────────────────────────────────────────────────────────
-const SORT_OPTIONS = [
-  { value: "updatedAt", label: "Last Updated" },
-  { value: "createdAt", label: "Date Created" },
-  { value: "name",      label: "Name"         },
-  { value: "status",    label: "Status"       },
-];
-
-function sortProjects(projects, sortBy, sortDir) {
-  return [...projects].sort((a, b) => {
-    let valA, valB;
-    if (sortBy === "name") {
-      valA = (a.name ?? "").toLowerCase();
-      valB = (b.name ?? "").toLowerCase();
-    } else if (sortBy === "status") {
-      valA = (a.status ?? "").toLowerCase();
-      valB = (b.status ?? "").toLowerCase();
-    } else {
-      // date fields
-      valA = new Date(a[sortBy] ?? 0).getTime();
-      valB = new Date(b[sortBy] ?? 0).getTime();
-    }
-    if (valA < valB) return sortDir === "asc" ? -1 :  1;
-    if (valA > valB) return sortDir === "asc" ?  1 : -1;
-    return 0;
-  });
-}
-// ─────────────────────────────────────────────────────────────────────────────
+import {
+  SORT_OPTIONS,
+  fadeUp,
+  getProjectStats,
+  scaleIn,
+  sortProjects,
+  stagger,
+} from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 
 export default function StudioLanding() {
   const { isDarkMode: isDark } = useTheme();
@@ -111,12 +77,7 @@ export default function StudioLanding() {
     : "border-slate-200 hover:bg-slate-100 text-slate-400 hover:text-slate-700";
   const pgActive = "bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-transparent shadow-lg shadow-blue-500/20";
 
-  const stats = !loading && allProjects.length > 0 ? [
-    { value: allProjects.length,                                           label: "Total"     },
-    { value: allProjects.filter(p => p.status === "Published").length,     label: "Published" },
-    { value: allProjects.filter(p => p.status === "Under Review").length,  label: "In Review" },
-    { value: allProjects.filter(p => p.status === "Draft").length,         label: "Drafts"    },
-  ] : [];
+  const stats = !loading && allProjects.length > 0 ? getProjectStats(allProjects) : [];
 
   // Shared control styles
   const controlBase = cn(
