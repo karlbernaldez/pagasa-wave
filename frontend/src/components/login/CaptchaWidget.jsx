@@ -7,36 +7,35 @@ const SCRIPT_ID = 'recaptcha-v2-script';
 const CALLBACK = '__onRecaptchaLoad__';
 const { colors } = tokens;
 
+let recaptchaScriptPromise;
+
 function loadRecaptchaScript() {
   if (window.grecaptcha?.render) {
     return Promise.resolve(window.grecaptcha);
   }
 
-  if (window.__recaptchaLoadPromise__) {
-    return window.__recaptchaLoadPromise__;
+  if (recaptchaScriptPromise) {
+    return recaptchaScriptPromise;
   }
 
-  window.__recaptchaLoadPromise__ = new Promise((resolve, reject) => {
+  recaptchaScriptPromise = new Promise((resolve, reject) => {
     window[CALLBACK] = () => {
       window.grecaptcha.ready(() => resolve(window.grecaptcha));
     };
 
     const existingScript = document.getElementById(SCRIPT_ID);
-    if (existingScript) {
-      existingScript.addEventListener('error', reject, { once: true });
-      return;
-    }
+    if (existingScript) return;
 
     const script = document.createElement('script');
     script.id = SCRIPT_ID;
     script.src = `https://www.google.com/recaptcha/api.js?onload=${CALLBACK}&render=explicit`;
     script.async = true;
     script.defer = true;
-    script.onerror = reject;
+    script.onerror = () => reject(new Error('Failed to load reCAPTCHA.'));
     document.head.appendChild(script);
   });
 
-  return window.__recaptchaLoadPromise__;
+  return recaptchaScriptPromise;
 }
 
 /**
@@ -70,17 +69,18 @@ const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
   }));
 
   useEffect(() => {
-    let isMounted = true;
+    let cancelled = false;
 
     if (!SITE_KEY) {
       console.error('[CaptchaWidget] VITE_RECAPTCHA_SITE_KEY is not set.');
       setLoadError(true);
+      onVerifyRef.current?.(null);
       return undefined;
     }
 
     loadRecaptchaScript()
       .then((grecaptcha) => {
-        if (!isMounted || !containerRef.current || widgetIdRef.current !== null) return;
+        if (cancelled || !containerRef.current || widgetIdRef.current !== null) return;
 
         widgetIdRef.current = grecaptcha.render(containerRef.current, {
           sitekey: SITE_KEY,
@@ -94,11 +94,14 @@ const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
       })
       .catch((error) => {
         console.error('[CaptchaWidget] Failed to load reCAPTCHA.', error);
-        if (isMounted) setLoadError(true);
+        if (!cancelled) {
+          setLoadError(true);
+          onVerifyRef.current?.(null);
+        }
       });
 
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
   }, []);
 
@@ -117,7 +120,7 @@ const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
           type="button"
           onClick={resetCaptcha}
           disabled={!isReady}
-          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
           style={{ color: colors.text.light.muted }}
           aria-label="Reset CAPTCHA"
         >
@@ -132,7 +135,7 @@ const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
         </p>
       )}
 
-      <div ref={containerRef} aria-label="reCAPTCHA verification" />
+      <div className="overflow-hidden rounded-lg" ref={containerRef} aria-label="reCAPTCHA verification" />
     </div>
   );
 });
