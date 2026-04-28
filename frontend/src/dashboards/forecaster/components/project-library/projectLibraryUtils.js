@@ -9,12 +9,12 @@ export const fadeUp = {
 
 export const stagger = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } },
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
 };
 
 export const scaleIn = {
-  hidden: { opacity: 0, scale: 0.88 },
-  show: { opacity: 1, scale: 1, transition: { duration: 0.45, ease: 'backOut' } },
+  hidden: { opacity: 0, scale: 0.98, y: 8 },
+  show: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.24, ease: 'easeOut' } },
 };
 
 export const SORT_OPTIONS = [
@@ -48,9 +48,10 @@ export function sortProjects(projects, sortBy, sortDir) {
 
 export function getProjectStats(projects) {
   return [
-    { value: projects.length, label: 'Total' },
-    { value: projects.filter((p) => p.status === 'Published').length, label: 'Published' },
-    { value: projects.filter((p) => p.status === 'Under Review').length, label: 'In Review' },
-    { value: projects.filter((p) => p.status === 'Draft').length, label: 'Drafts' },
+    { value: projects.length, label: 'Total Projects', helper: 'All projects', tone: 'blue' },
+    { value: projects.filter((p) => p.status === 'Draft').length, label: 'Drafts', helper: 'In progress', tone: 'blue' },
+    { value: projects.filter((p) => p.status === 'Under Review').length, label: 'Under Review', helper: 'With reviewers', tone: 'amber' },
+    { value: projects.filter((p) => p.status === 'Submitted').length, label: 'Submitted', helper: 'Awaiting approval', tone: 'slate' },
+    { value: projects.filter((p) => p.status === 'Published').length, label: 'Published', helper: 'Completed forecasts', tone: 'emerald' },
   ];
 }
