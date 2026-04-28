@@ -24,6 +24,7 @@ import {
 } from '@/hooks/useRegister';
 
 import AuthButton from '@/features/auth/shared/AuthButton.jsx';
+import AuthFooter from '@/features/auth/shared/AuthFooter.jsx';
 import ModernDatePicker from '@/components/ui/ModernDatePicker';
 
 import RegisterField from './RegisterField.jsx';
@@ -133,48 +134,15 @@ export default function RegisterForm() {
             </h2>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <RegisterField
-                icon={User}
-                name="firstName"
-                placeholder="Enter first name"
-                label="First Name"
-                {...sharedFieldProps}
-              />
-
-              <RegisterField
-                icon={User}
-                name="lastName"
-                placeholder="Enter last name"
-                label="Last Name"
-                {...sharedFieldProps}
-              />
+              <RegisterField icon={User} name="firstName" placeholder="Enter first name" label="First Name" {...sharedFieldProps} />
+              <RegisterField icon={User} name="lastName" placeholder="Enter last name" label="Last Name" {...sharedFieldProps} />
             </div>
 
-            <RegisterField
-              icon={User}
-              name="username"
-              placeholder="Choose a username"
-              label="Username"
-              {...sharedFieldProps}
-            />
+            <RegisterField icon={User} name="username" placeholder="Choose a username" label="Username" {...sharedFieldProps} />
 
-            <RegisterField
-              icon={Mail}
-              type="email"
-              name="email"
-              placeholder="you@example.com"
-              label="Email Address"
-              {...sharedFieldProps}
-            />
+            <RegisterField icon={Mail} type="email" name="email" placeholder="you@example.com" label="Email Address" {...sharedFieldProps} />
 
-            <AuthButton
-              type="button"
-              variant="primary"
-              size="lg"
-              icon={ArrowRight}
-              onClick={nextStep}
-              className="w-full"
-            >
+            <AuthButton type="button" variant="primary" size="lg" icon={ArrowRight} onClick={nextStep} className="w-full">
               Continue
             </AuthButton>
           </div>
@@ -187,14 +155,7 @@ export default function RegisterForm() {
             </h2>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <RegisterField
-                icon={Phone}
-                type="tel"
-                name="contact"
-                placeholder="Enter phone number"
-                label="Phone Number"
-                {...sharedFieldProps}
-              />
+              <RegisterField icon={Phone} type="tel" name="contact" placeholder="Enter phone number" label="Phone Number" {...sharedFieldProps} />
 
               <ModernDatePicker
                 value={formData.birthday}
@@ -204,78 +165,30 @@ export default function RegisterForm() {
                 label="Date of Birth"
                 error={errors.birthday}
                 touched={touched.birthday}
-                hasSuccess={
-                  !errors.birthday && formData.birthday && touched.birthday
-                }
+                hasSuccess={!errors.birthday && formData.birthday && touched.birthday}
                 getMaxDate={getMaxDate}
                 getMinDate={getMinDate}
               />
             </div>
 
-            <RegisterField
-              icon={MapPin}
-              name="address"
-              placeholder="Enter your address"
-              label="Address"
-              {...sharedFieldProps}
-            />
+            <RegisterField icon={MapPin} name="address" placeholder="Enter your address" label="Address" {...sharedFieldProps} />
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <RegisterField
-                icon={Building}
-                name="agency"
-                placeholder="Enter agency name"
-                label="Agency"
-                {...sharedFieldProps}
-              />
-
-              <RegisterField
-                icon={Briefcase}
-                name="position"
-                placeholder="Enter your position"
-                label="Position"
-                {...sharedFieldProps}
-              />
+              <RegisterField icon={Building} name="agency" placeholder="Enter agency name" label="Agency" {...sharedFieldProps} />
+              <RegisterField icon={Briefcase} name="position" placeholder="Enter your position" label="Position" {...sharedFieldProps} />
             </div>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <RegisterField
-                icon={Lock}
-                name="password"
-                placeholder="Create a password"
-                label="Password"
-                {...sharedFieldProps}
-              />
-
-              <RegisterField
-                icon={Lock}
-                name="confirmPassword"
-                placeholder="Confirm your password"
-                label="Confirm Password"
-                {...sharedFieldProps}
-              />
+              <RegisterField icon={Lock} name="password" placeholder="Create a password" label="Password" {...sharedFieldProps} />
+              <RegisterField icon={Lock} name="confirmPassword" placeholder="Confirm your password" label="Confirm Password" {...sharedFieldProps} />
             </div>
 
             <div className="flex gap-3 pt-2">
-              <AuthButton
-                type="button"
-                variant="secondary"
-                size="lg"
-                icon={ArrowLeft}
-                onClick={prevStep}
-                className="flex-1"
-              >
+              <AuthButton type="button" variant="secondary" size="lg" icon={ArrowLeft} onClick={prevStep} className="flex-1">
                 Back
               </AuthButton>
 
-              <AuthButton
-                type="submit"
-                variant="primary"
-                size="lg"
-                isLoading={isSubmitting}
-                disabled={isSubmitting}
-                className="flex-1"
-              >
+              <AuthButton type="submit" variant="primary" size="lg" isLoading={isSubmitting} disabled={isSubmitting} className="flex-1">
                 Create Account
               </AuthButton>
             </div>
@@ -283,29 +196,12 @@ export default function RegisterForm() {
         )}
       </form>
 
-      <div className="mt-6 border-t border-slate-200 pt-5 text-center">
-        <p className="text-sm font-medium text-slate-500">
-          Already have an account?{' '}
-          <button
-            type="button"
-            onClick={() => navigate('/login')}
-            className="font-extrabold text-cyan-700 underline underline-offset-2 hover:text-cyan-900"
-          >
-            Sign in here
-          </button>
-        </p>
-
-        <p className="mt-4 text-xs font-medium text-slate-500">
-          By creating an account, you agree to our{' '}
-          <button type="button" className="font-bold text-cyan-700 underline">
-            Terms of Use
-          </button>{' '}
-          and{' '}
-          <button type="button" className="font-bold text-cyan-700 underline">
-            Privacy Policy
-          </button>
-        </p>
-      </div>
+      <AuthFooter
+        switchText="Already have an account?"
+        switchActionText="Sign in here"
+        onSwitchAction={() => navigate('/login')}
+        termsPrefix="By creating an account, you agree to our"
+      />
     </>
   );
 }
