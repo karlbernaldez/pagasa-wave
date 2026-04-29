@@ -1,6 +1,25 @@
-import Sidebar from '@dashboards/admin/components/Sidebar';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+
 import Header from '@dashboards/admin/components/Header/index';
-import { MENU_ITEMS } from '@dashboards/admin/constants/navigation';
+import { ADMIN_TABS, MENU_ITEMS } from '@dashboards/admin/constants/navigation';
+import DashboardSidebar from '@/shared/dashboard-shell/DashboardSidebar';
+
+const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
+
+const adminSidebarItems = MENU_ITEMS.map((item) => {
+  if (item.id !== ADMIN_TABS.USERS) return item;
+
+  return {
+    ...item,
+    isActive: (activeId) => USER_TABS.includes(activeId),
+    isExpanded: (activeId) => USER_TABS.includes(activeId),
+    expandIcon: (isExpanded) => isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />,
+    children: [
+      { id: ADMIN_TABS.USERS_LIST, label: 'User List' },
+      { id: ADMIN_TABS.USERS_ROLES, label: 'Roles' },
+    ],
+  };
+});
 
 const AdminShell = ({
   activeMeta,
@@ -21,18 +40,19 @@ const AdminShell = ({
         isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
       }`}
     >
-      <Sidebar
-        menuItems={MENU_ITEMS}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        isMobileOpen={isMobileOpen}
-        setIsMobileOpen={setIsMobileOpen}
-        isSidebarCollapsed={isSidebarCollapsed}
-        setIsSidebarCollapsed={setIsSidebarCollapsed}
+      <DashboardSidebar
+        activeId={activeTab}
         isDarkMode={isDarkMode}
+        isMobileOpen={isMobileOpen}
+        isSidebarCollapsed={isSidebarCollapsed}
+        items={adminSidebarItems}
+        label="Admin Dashboard"
+        onItemSelect={(item) => setActiveTab(item.id)}
+        setIsMobileOpen={setIsMobileOpen}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
       />
 
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
         <Header
           activeMeta={activeMeta}
           onMobileMenuToggle={onMobileMenuToggle}
