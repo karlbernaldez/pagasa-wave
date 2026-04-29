@@ -2,6 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { fetchFeatures, fetchProjectFeatureCollection } from '@/api/featureServices';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -38,13 +39,17 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
-function addPreviewLayers(map, featureCollection) {
-  const sourceId = 'project-preview-features';
-
+function removePreviewLayers(map) {
   if (map.getLayer('project-preview-points')) map.removeLayer('project-preview-points');
   if (map.getLayer('project-preview-lines')) map.removeLayer('project-preview-lines');
   if (map.getLayer('project-preview-polygons')) map.removeLayer('project-preview-polygons');
-  if (map.getSource(sourceId)) map.removeSource(sourceId);
+  if (map.getSource('project-preview-features')) map.removeSource('project-preview-features');
+}
+
+function addPreviewLayers(map, featureCollection) {
+  const sourceId = 'project-preview-features';
+
+  removePreviewLayers(map);
 
   map.addSource(sourceId, {
     type: 'geojson',
@@ -89,8 +94,20 @@ function addPreviewLayers(map, featureCollection) {
   });
 }
 
+async function loadProjectFeatures(projectId, scope) {
+  if (!projectId) return null;
+
+  if (scope === 'admin') {
+    return fetchProjectFeatureCollection(projectId);
+  }
+
+  return fetchFeatures(projectId);
+}
+
 export default function ProjectPreviewMap({
+  projectId,
   features,
+  featureScope = 'user',
   className = '',
   height = 180,
   isDarkMode = false,
@@ -99,11 +116,54 @@ export default function ProjectPreviewMap({
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
+  const [remoteFeatures, setRemoteFeatures] = useState(null);
+  const [isLoadingFeatures, setIsLoadingFeatures] = useState(false);
 
-  const featureCollection = useMemo(
+  const providedFeatureCollection = useMemo(
     () => normalizeFeatureCollection(features),
     [features]
   );
+
+  const shouldFetchFeatures = Boolean(projectId) && providedFeatureCollection.features.length === 0;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!shouldFetchFeatures) {
+      setRemoteFeatures(null);
+      setIsLoadingFeatures(false);
+      return undefined;
+    }
+
+    setIsLoadingFeatures(true);
+
+    loadProjectFeatures(projectId, featureScope)
+      .then((data) => {
+        if (!isMounted) return;
+        setRemoteFeatures(data);
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        console.error('[ProjectPreviewMap] Failed to load project features:', error);
+        setRemoteFeatures(null);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingFeatures(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [featureScope, projectId, shouldFetchFeatures]);
+
+  const featureCollection = useMemo(() => {
+    if (providedFeatureCollection.features.length > 0) {
+      return providedFeatureCollection;
+    }
+
+    return normalizeFeatureCollection(remoteFeatures);
+  }, [providedFeatureCollection, remoteFeatures]);
+
   const hasFeatures = featureCollection.features.length > 0;
 
   useEffect(() => {
@@ -143,10 +203,7 @@ export default function ProjectPreviewMap({
     if (!map || !isReady) return;
 
     if (!hasFeatures) {
-      if (map.getLayer('project-preview-points')) map.removeLayer('project-preview-points');
-      if (map.getLayer('project-preview-lines')) map.removeLayer('project-preview-lines');
-      if (map.getLayer('project-preview-polygons')) map.removeLayer('project-preview-polygons');
-      if (map.getSource('project-preview-features')) map.removeSource('project-preview-features');
+      removePreviewLayers(map);
       map.fitBounds(DEFAULT_BOUNDS, { padding: 18, maxZoom: 6, duration: 0 });
       return;
     }
@@ -170,9 +227,15 @@ export default function ProjectPreviewMap({
     >
       <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
 
-      {!hasFeatures && (
+      {!hasFeatures && !isLoadingFeatures && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/50 text-xs font-semibold text-slate-500 backdrop-blur-[1px]">
           {emptyLabel}
+        </div>
+      )}
+
+      {isLoadingFeatures && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/40 text-xs font-semibold text-slate-500 backdrop-blur-[1px]">
+          Loading annotations…
         </div>
       )}
 
