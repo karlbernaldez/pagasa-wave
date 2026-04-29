@@ -1,7 +1,29 @@
 import { useCallback, useState } from 'react';
-import ForecasterSidebar from '../components/sidebar/ForecasterSidebar';
+import {
+  BarChart3,
+  Box,
+  CloudSun,
+  FolderKanban,
+  Map,
+  RadioTower,
+  Settings,
+  Waves,
+} from 'lucide-react';
+
 import ForecasterHeader from '../components/header/ForecasterHeader';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import DashboardSidebar from '@/shared/dashboard-shell/DashboardSidebar';
+
+const NAV_ITEMS = [
+  { id: 'project-library', label: 'Project Library', path: '/studio', icon: FolderKanban },
+  { id: 'models', label: 'Models', path: '/studio?section=models', icon: Box, disabled: true },
+  { id: 'observations', label: 'Observations', path: '/studio?section=observations', icon: CloudSun, disabled: true },
+  { id: 'nowcast', label: 'Nowcast', path: '/studio?section=nowcast', icon: RadioTower, disabled: true },
+  { id: 'analytics', label: 'Analytics', path: '/studio?section=analytics', icon: BarChart3, disabled: true },
+  { id: 'map-viewer', label: 'Map Viewer', path: '/studio?section=map-viewer', icon: Map, disabled: true },
+  { id: 'report-builder', label: 'Report Builder', path: '/pdf', icon: Waves, disabled: true },
+  { id: 'settings', label: 'Settings', path: '/profile', icon: Settings },
+];
 
 export default function ForecasterShell({ children }) {
   const { isDarkMode, setIsDarkMode } = useTheme();
@@ -18,12 +40,14 @@ export default function ForecasterShell({ children }) {
         isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
       }`}
     >
-      <ForecasterSidebar
-        isMobileOpen={isMobileOpen}
-        setIsMobileOpen={setIsMobileOpen}
-        isSidebarCollapsed={isSidebarCollapsed}
-        setIsSidebarCollapsed={setIsSidebarCollapsed}
+      <DashboardSidebar
         isDarkMode={isDarkMode}
+        isMobileOpen={isMobileOpen}
+        isSidebarCollapsed={isSidebarCollapsed}
+        items={NAV_ITEMS}
+        label="Forecaster Studio"
+        setIsMobileOpen={setIsMobileOpen}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
       />
 
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
