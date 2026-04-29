@@ -16,6 +16,9 @@ import Canvas from "@dashboards/forecaster/draw/canvas";
 import FlagCanvas from "@dashboards/forecaster/draw/front";
 import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
 
+// NEW: shared normalizer
+import { normalizeFeatureCollection } from "@/features/projects/utils/normalizeFeatureCollection";
+
 // Custom Hooks
 import {
   useProjectId,
@@ -195,10 +198,9 @@ const Studio = ({ logger }) => {
 
   // ─── Memoized Values ─────────────────────────────────
 
-  const savedFeaturesCollection = useMemo(() => ({
-    type: "FeatureCollection",
-    features: savedFeatures,
-  }), [savedFeatures]);
+  const savedFeaturesCollection = useMemo(() => {
+    return normalizeFeatureCollection(savedFeatures);
+  }, [savedFeatures]);
 
   const showMainUI = !isLoadingProject;
   const projectName = latestProject?.name || "No Project Selected";
