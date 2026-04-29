@@ -1,5 +1,7 @@
 import { lazy } from 'react';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
+import PublicLayout from '@/app/layout/PublicLayout';
+import AuthLayout from '@/app/layout/AuthLayout';
 
 const Home = lazy(() => import('@/dashboards/public/pages/Home'));
 const Login = lazy(() => import('@/pages/Login'));
@@ -10,18 +12,28 @@ const AboutUs = lazy(() => import('@/dashboards/public/pages/AboutUs'));
 const Contact = lazy(() => import('@/dashboards/public/pages/Contact'));
 
 export default [
-  { path: '/', element: <Home /> },
   {
-    path: '/login',
-    element: (
-      <ProtectedRoute requireAuth={false} authenticatedRedirect="/studio">
-        <Login />
-      </ProtectedRoute>
-    ),
+    element: <PublicLayout />,
+    children: [
+      { path: '/', element: <Home /> },
+      { path: '/charts', element: <Charts /> },
+      { path: '/about-us', element: <AboutUs /> },
+      { path: '/contact', element: <Contact /> },
+    ],
   },
-  { path: '/register', element: <Register /> },
-  { path: '/verify-email', element: <VerifyEmail /> },
-  { path: '/charts', element: <Charts /> },
-  { path: '/about-us', element: <AboutUs /> },
-  { path: '/contact', element: <Contact /> },
+  {
+    element: <AuthLayout />,
+    children: [
+      {
+        path: '/login',
+        element: (
+          <ProtectedRoute requireAuth={false} authenticatedRedirect="/studio">
+            <Login />
+          </ProtectedRoute>
+        ),
+      },
+      { path: '/register', element: <Register /> },
+      { path: '/verify-email', element: <VerifyEmail /> },
+    ],
+  },
 ];
