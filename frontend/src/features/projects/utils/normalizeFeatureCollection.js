@@ -3,21 +3,44 @@ const EMPTY_FEATURE_COLLECTION = Object.freeze({
   features: [],
 });
 
+function unwrapCoordinates(coords) {
+  if (!Array.isArray(coords)) return coords;
+
+  if (coords.length === 1 && Array.isArray(coords[0])) {
+    return unwrapCoordinates(coords[0]);
+  }
+
+  return coords;
+}
+
 function isGeoJsonFeature(value) {
   return Boolean(value && value.type === 'Feature' && value.geometry);
+}
+
+function normalizeGeometry(geometry) {
+  if (!geometry) return null;
+
+  return {
+    ...geometry,
+    coordinates: unwrapCoordinates(geometry.coordinates),
+  };
 }
 
 function toFeature(value) {
   if (!value) return null;
 
   if (isGeoJsonFeature(value)) {
-    return value;
+    return {
+      ...value,
+      geometry: normalizeGeometry(value.geometry),
+      properties: value.properties ?? {},
+    };
   }
 
   if (value.geometry) {
     return {
       type: 'Feature',
-      geometry: value.geometry,
+      geometry: normalizeGeometry(value.geometry),
       properties: value.properties ?? {},
       ...Object.fromEntries(
         Object.entries(value).filter(
