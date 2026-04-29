@@ -1,22 +1,167 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import {
+  approveProject,
+  fetchAllProjectsForAdmin,
+  publishProject,
+  rejectProject,
+} from "@/api/projectAPI";
 import { useProjects } from "@dashboards/forecaster/hooks/useProjects";
 import {
   useDeleteProjectMutation,
   useRenameProjectMutation,
 } from "@dashboards/forecaster/hooks/useProjectMutations";
 import ProjectDialogsHost from "@dashboards/forecaster/components/project-library/ProjectDialogsHost";
-import { getProjectStats } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
+import {
+  getProjectStats,
+  sortProjects,
+} from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 
 const PAGE_SIZE = 10;
+const ADMIN_PAGE_SIZE = 12;
 
-export function useProjectLibraryController() {
+function formatOwner(owner) {
+  if (!owner) return "Project Owner";
+  if (typeof owner === "string") return owner;
+
+  const fullName = `${owner.firstName ?? ""} ${owner.lastName ?? ""}`.trim();
+  return fullName || owner.email || "Project Owner";
+}
+
+function normalizeAdminProject(project) {
+  return {
+    ...project,
+    _id: project._id,
+    id: project._id,
+    name: project.name || project.title || "Untitled Project",
+    title: project.name || project.title || "Untitled Project",
+    owner: formatOwner(project.owner),
+    rawOwner: project.owner,
+    chartType: project.chartType || project.type || "forecast",
+    status: (project.status || "Draft").trim(),
+  };
+}
+
+function useAdminProjectLibrary() {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [dateRangeFilter, setDateRangeFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("updatedAt");
+  const [sortDir, setSortDir] = useState("desc");
+  const [page, setPage] = useState(1);
+
+  const load = async () => {
+    setIsFetching(true);
+    setError(null);
+
+    try {
+      const data = await fetchAllProjectsForAdmin();
+      setProjects((Array.isArray(data) ? data : []).map(normalizeAdminProject));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+      setIsFetching(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, typeFilter, dateRangeFilter, sortBy, sortDir]);
+
+  const filtered = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return projects.filter((project) => {
+      const matchesSearch = !normalizedSearch ||
+        project.name?.toLowerCase().includes(normalizedSearch) ||
+        project.title?.toLowerCase().includes(normalizedSearch) ||
+        project.owner?.toLowerCase().includes(normalizedSearch);
+
+      const matchesStatus = statusFilter === "All" || project.status === statusFilter;
+      const projectType = String(project.chartType || project.type || "").toLowerCase();
+      const matchesType = typeFilter === "All" || projectType === typeFilter.toLowerCase();
+
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  }, [dateRangeFilter, projects, search, statusFilter, typeFilter]);
+
+  const sorted = useMemo(
+    () => sortProjects(filtered, sortBy, sortDir),
+    [filtered, sortBy, sortDir]
+  );
+
+  const total = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
+  const paged = sorted.slice((page - 1) * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE);
+
+  const activeFilterCount = [
+    statusFilter !== "All",
+    typeFilter !== "All",
+    dateRangeFilter !== "All",
+  ].filter(Boolean).length;
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("All");
+    setTypeFilter("All");
+    setDateRangeFilter("All");
+    setSortBy("updatedAt");
+    setSortDir("desc");
+  };
+
+  return {
+    loading,
+    error,
+    isFetching,
+    refetch: load,
+    paged,
+    total,
+    totalPages,
+    page,
+    setPage,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
+    typeFilter,
+    setTypeFilter,
+    dateRangeFilter,
+    setDateRangeFilter,
+    sortBy,
+    setSortBy,
+    sortDir,
+    setSortDir,
+    activeFilterCount,
+    resetFilters,
+  };
+}
+
+export function useProjectLibraryController({
+  role = "forecaster",
+  title,
+  description,
+} = {}) {
+  const isAdmin = role === "admin";
+
+  const forecasterProjects = useProjects();
+  const adminProjects = useAdminProjectLibrary();
+  const projectState = isAdmin ? adminProjects : forecasterProjects;
+
   const {
     loading,
     error,
     isFetching,
     refetch,
-    allProjects,
     search,
     setSearch,
     statusFilter,
@@ -36,7 +181,7 @@ export function useProjectLibraryController() {
     setPage,
     total,
     totalPages,
-  } = useProjects();
+  } = projectState;
 
   const deleteProjectMutation = useDeleteProjectMutation();
   const renameProjectMutation = useRenameProjectMutation();
@@ -48,17 +193,35 @@ export function useProjectLibraryController() {
   });
 
   useEffect(() => {
-    document.title = "WaveLab · Forecast Operations";
-  }, []);
+    document.title = isAdmin
+      ? "WaveLab · Project Review"
+      : "WaveLab · Forecast Operations";
+  }, [isAdmin]);
+
+  const handleApprove = async (project) => {
+    await approveProject(project._id);
+    await refetch();
+  };
+
+  const handleReject = async (project) => {
+    await rejectProject(project._id, "Needs revision");
+    await refetch();
+  };
+
+  const handlePublish = async (project) => {
+    await publishProject(project._id);
+    await refetch();
+  };
 
   const stats = !loading
     ? getProjectStats(paged, total)
     : [];
 
   return {
+    role,
     header: {
-      title: "Forecast Operations",
-      description: "Track, manage, and continue active marine forecast projects.",
+      title: title || "Forecast Operations",
+      description: description || "Track, manage, and continue active marine forecast projects.",
     },
     stats: {
       stats,
@@ -86,16 +249,20 @@ export function useProjectLibraryController() {
       error,
       onRetry: refetch,
       onOpen: (project) => window.open(`/studio/${project._id}`, "_blank"),
-      onRename: dialogs.openRename,
-      onDelete: dialogs.openDelete,
+      onRename: isAdmin ? undefined : dialogs.openRename,
+      onDelete: isAdmin ? undefined : dialogs.openDelete,
+      onApprove: isAdmin ? handleApprove : undefined,
+      onReject: isAdmin ? handleReject : undefined,
+      onPublish: isAdmin ? handlePublish : undefined,
+      mode: isAdmin ? "review" : "library",
     },
     pagination: {
       page,
       total,
       totalPages,
-      pageSize: PAGE_SIZE,
+      pageSize: isAdmin ? ADMIN_PAGE_SIZE : PAGE_SIZE,
       onPageChange: setPage,
     },
-    dialogs: dialogs.dialogs,
+    dialogs: isAdmin ? null : dialogs.dialogs,
   };
 }
