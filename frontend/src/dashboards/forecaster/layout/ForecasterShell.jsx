@@ -11,8 +11,7 @@ import {
 } from 'lucide-react';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import DashboardHeader from '@/shared/dashboard-shell/DashboardHeader';
-import DashboardSidebar from '@/shared/dashboard-shell/DashboardSidebar';
+import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 
 const NAV_ITEMS = [
   { id: 'project-library', label: 'Project Library', path: '/studio', icon: FolderKanban },
@@ -35,36 +34,26 @@ export default function ForecasterShell({ children }) {
   const toggleDarkMode = useCallback(() => setIsDarkMode((p) => !p), [setIsDarkMode]);
 
   return (
-    <div
-      className={`min-h-screen flex transition-colors duration-500 ${
-        isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
-      }`}
+    <DashboardShell
+      isDarkMode={isDarkMode}
+      isMobileOpen={isMobileOpen}
+      isSidebarCollapsed={isSidebarCollapsed}
+      setIsMobileOpen={setIsMobileOpen}
+      setIsSidebarCollapsed={setIsSidebarCollapsed}
+      onMobileMenuToggle={toggleMobileMenu}
+      onThemeToggle={toggleDarkMode}
+      sidebar={{
+        items: NAV_ITEMS,
+        label: 'Forecaster Studio',
+      }}
+      header={{
+        eyebrow: 'Forecaster Studio',
+        title: 'WaveLab Operations',
+        description: 'Track, manage, and continue active marine forecast projects',
+        user: { name: 'Juan Dela Cruz', role: 'Forecaster', initials: 'JD' },
+      }}
     >
-      <DashboardSidebar
-        isDarkMode={isDarkMode}
-        isMobileOpen={isMobileOpen}
-        isSidebarCollapsed={isSidebarCollapsed}
-        items={NAV_ITEMS}
-        label="Forecaster Studio"
-        setIsMobileOpen={setIsMobileOpen}
-        setIsSidebarCollapsed={setIsSidebarCollapsed}
-      />
-
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
-        <DashboardHeader
-          eyebrow="Forecaster Studio"
-          title="WaveLab Operations"
-          description="Track, manage, and continue active marine forecast projects"
-          isDarkMode={isDarkMode}
-          onMobileMenuToggle={toggleMobileMenu}
-          onThemeToggle={toggleDarkMode}
-          user={{ name: 'Juan Dela Cruz', role: 'Forecaster', initials: 'JD' }}
-        />
-
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
-      </div>
-    </div>
+      {children}
+    </DashboardShell>
   );
 }
