@@ -22,18 +22,36 @@ const NAV_ITEMS = [
   { label: 'Settings', path: '/profile', icon: Settings },
 ];
 
-export default function ForecasterSidebar() {
+export default function ForecasterSidebar({ isDarkMode }) {
   return (
-    <aside className="hidden lg:flex w-[280px] shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-[72px] items-center gap-3 border-b border-slate-200 px-6">
+    <aside
+      className={`hidden lg:flex w-[280px] shrink-0 flex-col border-r transition-colors ${
+        isDarkMode
+          ? 'bg-gray-900 border-gray-700'
+          : 'bg-white border-slate-200'
+      }`}
+    >
+      <div
+        className={`flex h-[72px] items-center gap-3 border-b px-6 ${
+          isDarkMode ? 'border-gray-700' : 'border-slate-200'
+        }`}
+      >
         <img
           src="/pagasa-logo.png"
           alt="PAGASA"
           className="h-11 w-11 object-contain"
         />
         <div className="leading-tight">
-          <p className="text-2xl font-black tracking-tight text-blue-700">PAGASA</p>
-          <p className="text-[10px] font-semibold text-slate-500">The Weather and Climate Authority</p>
+          <p className={`text-2xl font-black tracking-tight ${
+            isDarkMode ? 'text-gray-100' : 'text-blue-700'
+          }`}>
+            PAGASA
+          </p>
+          <p className={`text-[10px] font-semibold ${
+            isDarkMode ? 'text-gray-400' : 'text-slate-500'
+          }`}>
+            The Weather and Climate Authority
+          </p>
         </div>
       </div>
 
@@ -45,7 +63,9 @@ export default function ForecasterSidebar() {
                 key={label}
                 type="button"
                 disabled
-                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-slate-500 opacity-80"
+                className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold opacity-80 ${
+                  isDarkMode ? 'text-gray-500' : 'text-slate-500'
+                }`}
               >
                 <Icon size={18} strokeWidth={1.8} />
                 <span>{label}</span>
@@ -60,8 +80,12 @@ export default function ForecasterSidebar() {
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition ${
                   isActive
-                    ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700'
+                    ? isDarkMode
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100'
+                    : isDarkMode
+                      ? 'text-gray-300 hover:bg-gray-800'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700'
                 }`
               }
             >
@@ -72,10 +96,18 @@ export default function ForecasterSidebar() {
         })}
       </nav>
 
-      <div className="space-y-5 border-t border-slate-200 p-5">
+      <div
+        className={`space-y-5 border-t p-5 ${
+          isDarkMode ? 'border-gray-700' : 'border-slate-200'
+        }`}
+      >
         <button
           type="button"
-          className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-sm font-semibold transition ${
+            isDarkMode
+              ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+              : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
         >
           <span className="inline-flex items-center gap-3">
             <CircleHelp size={18} />
@@ -84,7 +116,11 @@ export default function ForecasterSidebar() {
           <span className="text-lg leading-none">›</span>
         </button>
 
-        <div className="flex items-start gap-3 text-[11px] font-semibold leading-snug text-slate-500">
+        <div
+          className={`flex items-start gap-3 text-[11px] font-semibold leading-snug ${
+            isDarkMode ? 'text-gray-500' : 'text-slate-500'
+          }`}
+        >
           <img
             src="/pagasa-logo.png"
             alt=""
