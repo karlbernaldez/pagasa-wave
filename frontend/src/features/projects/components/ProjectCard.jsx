@@ -1,5 +1,14 @@
 import { format } from 'date-fns';
-import { ExternalLink, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertCircle,
+  Check,
+  Download,
+  ExternalLink,
+  MoreHorizontal,
+  Pencil,
+  Send,
+  Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import Button from '@/components/ui/Button';
@@ -9,6 +18,7 @@ const STATUS_STYLE = {
   Draft: 'bg-slate-100 text-slate-700 border-slate-200',
   Submitted: 'bg-amber-50 text-amber-700 border-amber-200',
   'Under Review': 'bg-orange-50 text-orange-700 border-orange-200',
+  Approved: 'bg-blue-50 text-blue-700 border-blue-200',
   Published: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   Rejected: 'bg-red-50 text-red-700 border-red-200',
   Archived: 'bg-slate-100 text-slate-500 border-slate-200',
@@ -36,25 +46,20 @@ function getProjectType(project) {
   return project?.chartType || project?.type || 'Forecast';
 }
 
+function getProjectOwner(project) {
+  if (!project?.owner) return null;
+  if (typeof project.owner === 'string') return project.owner;
+
+  const fullName = `${project.owner.firstName ?? ''} ${project.owner.lastName ?? ''}`.trim();
+  return fullName || project.owner.email || null;
+}
+
 function getProjectFeatures(project) {
   return project?.features || project?.featureCollection || project?.annotations || [];
 }
 
-export default function ProjectCard({
-  project,
-  onOpen,
-  onRename,
-  onDelete,
-  actions,
-}) {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const id = getProjectId(project);
-  const name = getProjectName(project);
-  const status = project?.status || 'Draft';
-  const statusClass = STATUS_STYLE[status] || 'bg-blue-50 text-blue-700 border-blue-200';
-  const featureSource = getProjectFeatures(project);
-  const menuActions = actions ?? [
+function getDefaultMenuActions({ project, onRename, onDelete }) {
+  return [
     onRename && {
       key: 'rename',
       label: 'Rename',
@@ -69,25 +74,135 @@ export default function ProjectCard({
       onClick: () => onDelete(project),
     },
   ].filter(Boolean);
+}
+
+function getReviewActions({ project, onApprove, onReject, onPublish, onDownload }) {
+  const status = project?.status?.trim();
+
+  if (['Submitted', 'Under Review'].includes(status)) {
+    return [
+      onApprove && {
+        key: 'approve',
+        label: 'Approve',
+        icon: Check,
+        variant: 'primary',
+        onClick: () => onApprove(project),
+      },
+      onReject && {
+        key: 'reject',
+        label: 'Reject',
+        icon: AlertCircle,
+        variant: 'secondary',
+        danger: true,
+        onClick: () => onReject(project),
+      },
+    ].filter(Boolean);
+  }
+
+  if (status === 'Approved') {
+    return [
+      onPublish && {
+        key: 'publish',
+        label: 'Publish',
+        icon: Send,
+        variant: 'primary',
+        onClick: () => onPublish(project),
+      },
+    ].filter(Boolean);
+  }
+
+  if (status === 'Published') {
+    return [
+      onDownload && {
+        key: 'download',
+        label: 'Download',
+        icon: Download,
+        variant: 'secondary',
+        onClick: () => onDownload(project),
+      },
+    ].filter(Boolean);
+  }
+
+  return [];
+}
+
+export default function ProjectCard({
+  project,
+  mode = 'library',
+  isDarkMode = false,
+  onOpen,
+  onRename,
+  onDelete,
+  onApprove,
+  onReject,
+  onPublish,
+  onDownload,
+  onActionComplete,
+  actions,
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [busyAction, setBusyAction] = useState(null);
+
+  const id = getProjectId(project);
+  const name = getProjectName(project);
+  const status = project?.status || 'Draft';
+  const statusClass = STATUS_STYLE[status] || 'bg-blue-50 text-blue-700 border-blue-200';
+  const featureSource = getProjectFeatures(project);
+  const owner = getProjectOwner(project);
+  const isReviewMode = mode === 'review';
+  const featureScope = isReviewMode ? 'admin' : 'user';
+
+  const menuActions = actions ?? getDefaultMenuActions({ project, onRename, onDelete });
+  const reviewActions = getReviewActions({ project, onApprove, onReject, onPublish, onDownload });
+
+  const runAction = async (action) => {
+    try {
+      setBusyAction(action.key || action.label);
+      await action.onClick?.(project);
+      onActionComplete?.();
+    } catch (error) {
+      console.error(error);
+      alert(error.message || 'Action failed. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  };
 
   return (
     <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
-      <ProjectPreviewMap features={featureSource} height={168} />
+      <div className="relative">
+        <ProjectPreviewMap
+          projectId={id}
+          features={featureSource}
+          featureScope={featureScope}
+          height={isReviewMode ? 190 : 168}
+          isDarkMode={isDarkMode}
+          className="rounded-none border-0"
+        />
 
-      <div className="space-y-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-              {getProjectType(project)}
-            </p>
-            <h3 className="mt-1 truncate text-base font-black text-slate-900" title={name}>
-              {name}
-            </h3>
-          </div>
-
-          <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold ${statusClass}`}>
+        <div className="absolute right-3 top-3 z-10">
+          <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur ${statusClass}`}>
             {status}
           </span>
+        </div>
+
+        <div className="absolute bottom-3 left-3 z-10">
+          <span className="rounded-md border border-white/70 bg-white/85 px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm backdrop-blur">
+            {getProjectType(project)}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-4 p-4">
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-black text-slate-900" title={name}>
+            {name}
+          </h3>
+          {owner && (
+            <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+              {owner}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-xs">
@@ -100,17 +215,34 @@ export default function ProjectCard({
           <div>
             <p className="font-bold text-slate-400">Updated</p>
             <p className="mt-1 font-semibold text-slate-700">
-              {formatDate(project?.updatedAt, 'MMM d, h:mm a')}
+              {formatDate(project?.updatedAt || project?.submittedAt || project?.createdAt, 'MMM d, h:mm a')}
             </p>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
           <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
-            Open
+            {isReviewMode ? 'Review' : 'Open'}
           </Button>
 
-          {menuActions.length > 0 && (
+          {isReviewMode && reviewActions.length > 0 && (
+            <div className="flex flex-1 justify-end gap-2">
+              {reviewActions.map((action) => (
+                <Button
+                  key={action.key || action.label}
+                  variant={action.danger ? 'secondary' : action.variant || 'secondary'}
+                  size="sm"
+                  icon={action.icon}
+                  loading={busyAction === (action.key || action.label)}
+                  onClick={() => runAction(action)}
+                >
+                  {action.label}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {!isReviewMode && menuActions.length > 0 && (
             <div className="relative">
               <Button
                 variant="icon"
