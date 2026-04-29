@@ -10,8 +10,8 @@ import {
   Waves,
 } from 'lucide-react';
 
-import ForecasterHeader from '../components/header/ForecasterHeader';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import DashboardHeader from '@/shared/dashboard-shell/DashboardHeader';
 import DashboardSidebar from '@/shared/dashboard-shell/DashboardSidebar';
 
 const NAV_ITEMS = [
@@ -51,10 +51,14 @@ export default function ForecasterShell({ children }) {
       />
 
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
-        <ForecasterHeader
-          onMobileMenuToggle={toggleMobileMenu}
+        <DashboardHeader
+          eyebrow="Forecaster Studio"
+          title="WaveLab Operations"
+          description="Track, manage, and continue active marine forecast projects"
           isDarkMode={isDarkMode}
-          onToggleDarkMode={toggleDarkMode}
+          onMobileMenuToggle={toggleMobileMenu}
+          onThemeToggle={toggleDarkMode}
+          user={{ name: 'Juan Dela Cruz', role: 'Forecaster', initials: 'JD' }}
         />
 
         <main className="flex-1 overflow-y-auto">
