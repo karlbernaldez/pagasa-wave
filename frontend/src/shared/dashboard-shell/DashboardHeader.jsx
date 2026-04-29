@@ -1,9 +1,17 @@
 import { Bell, ChevronDown, Menu, Moon, Sun, Waves } from 'lucide-react';
-import { useTheme } from '@/app/providers/ThemeProvider';
 
-export default function ForecasterHeader({ onMobileMenuToggle }) {
-  const { isDarkMode, setIsDarkMode } = useTheme();
-
+const DashboardHeader = ({
+  description,
+  eyebrow,
+  isDarkMode,
+  notificationBadge,
+  onMobileMenuToggle,
+  onNotificationClick,
+  onThemeToggle,
+  onUserClick,
+  title,
+  user,
+}) => {
   const iconButtonClass = `h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${
     isDarkMode
       ? 'text-gray-300 hover:bg-white/[0.06]'
@@ -48,7 +56,7 @@ export default function ForecasterHeader({ onMobileMenuToggle }) {
                   isDarkMode ? 'text-cyan-400/70' : 'text-cyan-600/80'
                 }`}
               >
-                Forecaster Studio
+                {eyebrow}
               </span>
             </div>
             <h2
@@ -56,15 +64,17 @@ export default function ForecasterHeader({ onMobileMenuToggle }) {
                 isDarkMode ? 'text-gray-100' : 'text-slate-900'
               }`}
             >
-              WaveLab Operations
+              {title}
             </h2>
-            <p
-              className={`hidden sm:block text-[11px] leading-none mt-0.5 truncate max-w-xs ${
-                isDarkMode ? 'text-gray-500' : 'text-gray-400'
-              }`}
-            >
-              Track, manage, and continue active marine forecast projects
-            </p>
+            {description && (
+              <p
+                className={`hidden sm:block text-[11px] leading-none mt-0.5 truncate max-w-xs ${
+                  isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                }`}
+              >
+                {description}
+              </p>
+            )}
           </div>
         </div>
 
@@ -78,7 +88,7 @@ export default function ForecasterHeader({ onMobileMenuToggle }) {
           >
             <button
               type="button"
-              onClick={() => setIsDarkMode((p) => !p)}
+              onClick={onThemeToggle}
               className={iconButtonClass}
               aria-label="Toggle theme"
             >
@@ -87,8 +97,18 @@ export default function ForecasterHeader({ onMobileMenuToggle }) {
 
             <div className={`w-px h-5 mx-0.5 ${isDarkMode ? 'bg-white/10' : 'bg-black/8'}`} />
 
-            <button type="button" className={iconButtonClass} aria-label="Notifications">
+            <button
+              type="button"
+              onClick={onNotificationClick}
+              className={`relative ${iconButtonClass}`}
+              aria-label="Notifications"
+            >
               <Bell size={17} />
+              {notificationBadge ? (
+                <span className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-red-500 px-1 text-[10px] font-bold leading-[18px] text-white">
+                  {notificationBadge}
+                </span>
+              ) : null}
             </button>
           </div>
 
@@ -96,6 +116,7 @@ export default function ForecasterHeader({ onMobileMenuToggle }) {
 
           <button
             type="button"
+            onClick={onUserClick}
             className={`flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-2xl border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
               isDarkMode
                 ? 'border-white/10 hover:border-white/18 hover:bg-white/[0.05]'
@@ -103,14 +124,14 @@ export default function ForecasterHeader({ onMobileMenuToggle }) {
             }`}
             aria-haspopup="dialog"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-bold text-white">
-              JD
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-bold text-white overflow-hidden">
+              {user?.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" /> : user?.initials ?? 'WL'}
             </span>
             <span className="hidden text-left leading-none gap-0.5 sm:flex sm:flex-col">
               <span className={`text-sm font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-                Juan Dela Cruz
+                {user?.name ?? 'WaveLab User'}
               </span>
-              <span className="text-[11px] font-semibold text-cyan-400">Forecaster</span>
+              <span className="text-[11px] font-semibold text-cyan-400">{user?.role ?? 'User'}</span>
             </span>
             <ChevronDown
               size={13}
@@ -122,4 +143,6 @@ export default function ForecasterHeader({ onMobileMenuToggle }) {
       </div>
     </header>
   );
-}
+};
+
+export default DashboardHeader;
