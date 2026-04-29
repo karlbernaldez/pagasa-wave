@@ -1,0 +1,64 @@
+const EMPTY_FEATURE_COLLECTION = Object.freeze({
+  type: 'FeatureCollection',
+  features: [],
+});
+
+function isGeoJsonFeature(value) {
+  return Boolean(value && value.type === 'Feature' && value.geometry);
+}
+
+function toFeature(value) {
+  if (!value) return null;
+
+  if (isGeoJsonFeature(value)) {
+    return value;
+  }
+
+  if (value.geometry) {
+    return {
+      type: 'Feature',
+      geometry: value.geometry,
+      properties: value.properties ?? {},
+      ...Object.fromEntries(
+        Object.entries(value).filter(
+          ([key]) => !['geometry', 'properties'].includes(key)
+        )
+      ),
+    };
+  }
+
+  return null;
+}
+
+export function normalizeFeatureCollection(input) {
+  if (!input) {
+    return EMPTY_FEATURE_COLLECTION;
+  }
+
+  if (input.type === 'FeatureCollection') {
+    return {
+      type: 'FeatureCollection',
+      features: Array.isArray(input.features)
+        ? input.features.map(toFeature).filter(Boolean)
+        : [],
+    };
+  }
+
+  if (Array.isArray(input)) {
+    return {
+      type: 'FeatureCollection',
+      features: input.map(toFeature).filter(Boolean),
+    };
+  }
+
+  const feature = toFeature(input);
+
+  if (feature) {
+    return {
+      type: 'FeatureCollection',
+      features: [feature],
+    };
+  }
+
+  return EMPTY_FEATURE_COLLECTION;
+}
