@@ -1,20 +1,16 @@
-import { memo, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, CircleHelp } from 'lucide-react';
-import { ADMIN_TABS } from '@dashboards/admin/constants/navigation';
-
-const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
-
-const SUB_ITEMS = [
-  { id: ADMIN_TABS.USERS_LIST, label: 'User List' },
-  { id: ADMIN_TABS.USERS_ROLES, label: 'Roles' },
-];
+import { ChevronLeft, ChevronRight, CircleHelp, X } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
 const getShellClasses = (isDarkMode) =>
   isDarkMode
     ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-gray-700/50'
     : 'bg-gradient-to-b from-white via-gray-50 to-white border-gray-200/50';
 
-const getNavClasses = ({ isActive, isDarkMode }) => {
+const getNavClasses = ({ isActive, isDarkMode, disabled }) => {
+  if (disabled) {
+    return isDarkMode ? 'text-gray-500 opacity-70' : 'text-slate-500 opacity-80';
+  }
+
   if (isActive) {
     return isDarkMode
       ? 'bg-gradient-to-r from-blue-600/80 to-cyan-600/80 text-white shadow-lg shadow-blue-500/30'
@@ -38,88 +34,104 @@ const getSubNavClasses = ({ isActive, isDarkMode }) => {
     : 'text-slate-500 hover:bg-gray-100/60 hover:text-blue-700';
 };
 
-const SubMenu = memo(({ activeTab, isDarkMode, onSelect }) => (
-  <div className="ml-6 mt-2 space-y-1">
-    {SUB_ITEMS.map(({ id, label }) => {
-      const isActive =
-        activeTab === id ||
-        (id === ADMIN_TABS.USERS_LIST && activeTab === ADMIN_TABS.USERS);
+const DashboardSidebar = ({
+  activeId,
+  footerText = 'Philippine Atmospheric, Geophysical and Astronomical Services Administration',
+  isDarkMode,
+  isMobileOpen,
+  isSidebarCollapsed,
+  items,
+  label,
+  onItemSelect,
+  setIsMobileOpen,
+  setIsSidebarCollapsed,
+  title = 'WaveLab',
+}) => {
+  const toggleCollapse = () => setIsSidebarCollapsed((prev) => !prev);
+  const closeMobile = () => setIsMobileOpen(false);
 
-      return (
-        <button
-          key={id}
-          type="button"
-          onClick={() => onSelect(id)}
-          className={`w-full rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors ${getSubNavClasses({ isActive, isDarkMode })}`}
-        >
-          {label}
-        </button>
-      );
-    })}
-  </div>
-));
-SubMenu.displayName = 'SubMenu';
+  const renderNavItem = (item) => {
+    const Icon = item.icon;
+    const isActive = item.isActive?.(activeId) ?? activeId === item.id ?? false;
+    const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+    const isExpanded = item.isExpanded?.(activeId) ?? (hasChildren && item.children.some((child) => child.id === activeId));
+    const baseClass = `relative group flex w-full items-center gap-3 rounded-xl px-4 py-3 font-semibold transition-all duration-300 ${
+      isSidebarCollapsed ? 'justify-center' : 'justify-between'
+    } ${getNavClasses({ isActive: isActive || isExpanded, isDarkMode, disabled: item.disabled })}`;
 
-const NavItem = memo(({ item, activeTab, isDarkMode, isCollapsed, onSelect }) => {
-  const { id, label, icon: Icon } = item;
-  const isUsers = id === ADMIN_TABS.USERS;
-  const isExpanded = isUsers && USER_TABS.includes(activeTab);
-  const isActive = activeTab === id || isExpanded;
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => onSelect(id)}
-        title={isCollapsed ? label : undefined}
-        className={`relative group flex w-full items-center gap-3 rounded-xl px-4 py-3 font-semibold transition-all duration-300 ${
-          isCollapsed ? 'justify-center' : 'justify-between'
-        } ${getNavClasses({ isActive, isDarkMode })}`}
-      >
+    const content = (
+      <>
         <div className="flex min-w-0 items-center gap-3">
           <Icon size={20} />
-          {!isCollapsed && <span className="truncate">{label}</span>}
+          {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
         </div>
+        {!isSidebarCollapsed && hasChildren && item.expandIcon?.(isExpanded)}
+      </>
+    );
 
-        {!isCollapsed && isUsers && (
-          isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+    return (
+      <div key={item.id ?? item.path ?? item.label}>
+        {item.path && !item.disabled ? (
+          <NavLink
+            to={item.path}
+            title={isSidebarCollapsed ? item.label : undefined}
+            className={({ isActive: routeActive }) =>
+              `relative group flex w-full items-center gap-3 rounded-xl px-4 py-3 font-semibold transition-all duration-300 ${
+                isSidebarCollapsed ? 'justify-center' : ''
+              } ${getNavClasses({ isActive: routeActive || isActive, isDarkMode })}`
+            }
+            onClick={closeMobile}
+          >
+            <Icon size={20} />
+            {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+          </NavLink>
+        ) : (
+          <button
+            type="button"
+            disabled={item.disabled}
+            onClick={() => {
+              if (!item.disabled) {
+                onItemSelect?.(item);
+                closeMobile();
+              }
+            }}
+            title={isSidebarCollapsed ? item.label : undefined}
+            className={baseClass}
+          >
+            {content}
+          </button>
         )}
-      </button>
 
-      {!isCollapsed && isExpanded && (
-        <SubMenu activeTab={activeTab} isDarkMode={isDarkMode} onSelect={onSelect} />
-      )}
-    </div>
-  );
-});
-NavItem.displayName = 'NavItem';
-
-const Sidebar = ({
-  menuItems,
-  activeTab,
-  setActiveTab,
-  isMobileOpen,
-  setIsMobileOpen,
-  isSidebarCollapsed,
-  setIsSidebarCollapsed,
-  isDarkMode,
-}) => {
-  const handleSelect = useCallback((id) => {
-    setActiveTab(id);
-    setIsMobileOpen(false);
-  }, [setActiveTab, setIsMobileOpen]);
-
-  const toggleCollapse = useCallback(
-    () => setIsSidebarCollapsed((prev) => !prev),
-    [setIsSidebarCollapsed],
-  );
+        {!isSidebarCollapsed && hasChildren && isExpanded && (
+          <div className="ml-6 mt-2 space-y-1">
+            {item.children.map((child) => {
+              const childActive = child.isActive?.(activeId) ?? activeId === child.id;
+              return (
+                <button
+                  key={child.id}
+                  type="button"
+                  onClick={() => {
+                    onItemSelect?.(child);
+                    closeMobile();
+                  }}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors ${getSubNavClasses({ isActive: childActive, isDarkMode })}`}
+                >
+                  {child.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
       {isMobileOpen && (
         <div
           className="fixed inset-0 bg-black/50 lg:hidden z-30 backdrop-blur-sm"
-          onClick={() => setIsMobileOpen(false)}
+          onClick={closeMobile}
         />
       )}
 
@@ -137,10 +149,10 @@ const Sidebar = ({
             {!isSidebarCollapsed && (
               <div>
                 <h1 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  WaveLab
+                  {title}
                 </h1>
                 <p className={`text-xs font-semibold ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>
-                  Admin Dashboard
+                  {label}
                 </p>
               </div>
             )}
@@ -160,7 +172,7 @@ const Sidebar = ({
 
             <button
               type="button"
-              onClick={() => setIsMobileOpen(false)}
+              onClick={closeMobile}
               className={`lg:hidden p-2 rounded-lg transition-colors ${
                 isDarkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-700'
               }`}
@@ -172,16 +184,7 @@ const Sidebar = ({
         </div>
 
         <nav className="p-4 space-y-2 mt-4">
-          {menuItems.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              activeTab={activeTab}
-              isDarkMode={isDarkMode}
-              isCollapsed={isSidebarCollapsed}
-              onSelect={handleSelect}
-            />
-          ))}
+          {items.map(renderNavItem)}
         </nav>
 
         {!isSidebarCollapsed && (
@@ -203,7 +206,7 @@ const Sidebar = ({
 
             <div className={`flex items-start gap-3 text-[11px] font-semibold leading-snug ${isDarkMode ? 'text-gray-500' : 'text-slate-500'}`}>
               <img src="/pagasa-logo.png" alt="" className="h-9 w-9 object-contain" aria-hidden="true" />
-              <p>Philippine Atmospheric, Geophysical and Astronomical Services Administration</p>
+              <p>{footerText}</p>
             </div>
           </div>
         )}
@@ -212,4 +215,4 @@ const Sidebar = ({
   );
 };
 
-export default memo(Sidebar);
+export default DashboardSidebar;
