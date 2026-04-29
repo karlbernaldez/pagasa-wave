@@ -1,35 +1,34 @@
-import { useState } from 'react';
-
-import ChartReviewSection from '@dashboards/admin/sections/chart-review/ChartReview';
-import ProjectLibraryPage from '@dashboards/forecaster/pages/ProjectLibraryPage';
-import { ROLES } from '@/core/auth/roles';
 import ProjectsFeatureLayout from './components/ProjectsFeatureLayout';
 import ProjectsHeader from './components/ProjectsHeader';
 import ProjectsStatusTabs from './components/ProjectsStatusTabs';
+import ProjectsList from './components/ProjectsList';
 import { getProjectActions, getProjectsCopy } from './projectRoleConfig';
+import { useProjectsFeatureController } from './useProjectsFeatureController';
 
 const ProjectsPage = ({ role, isDarkMode }) => {
-  const [activeStatus, setActiveStatus] = useState('all');
-
   const copy = getProjectsCopy(role);
   const actions = getProjectActions(role);
+
+  const controller = useProjectsFeatureController({ role, isDarkMode });
 
   return (
     <ProjectsFeatureLayout>
       <ProjectsHeader
         title={copy.title}
         description={copy.description}
+        count={controller.count}
       />
 
-      {actions.canReview && (
-        <ProjectsStatusTabs active={activeStatus} onChange={setActiveStatus} />
+      {actions.canReview && controller.status && (
+        <ProjectsStatusTabs
+          active={controller.status.active}
+          onChange={controller.status.onChange}
+        />
       )}
 
-      {role === ROLES.ADMIN ? (
-        <ChartReviewSection isDarkMode={isDarkMode} />
-      ) : (
-        <ProjectLibraryPage />
-      )}
+      <ProjectsList {...controller.list} />
+
+      {controller.dialogs}
     </ProjectsFeatureLayout>
   );
 };
