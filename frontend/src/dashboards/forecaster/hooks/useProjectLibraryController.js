@@ -28,11 +28,20 @@ function formatOwner(owner) {
   return fullName || owner.email || "Project Owner";
 }
 
+function getAdminProjectsFromResponse(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.projects)) return data.projects;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
+}
+
 function normalizeAdminProject(project) {
   return {
     ...project,
-    _id: project._id,
-    id: project._id,
+    _id: project._id || project.id,
+    id: project._id || project.id,
     name: project.name || project.title || "Untitled Project",
     title: project.name || project.title || "Untitled Project",
     owner: formatOwner(project.owner),
@@ -61,7 +70,7 @@ function useAdminProjectLibrary() {
 
     try {
       const data = await fetchAllProjectsForAdmin();
-      setProjects((Array.isArray(data) ? data : []).map(normalizeAdminProject));
+      setProjects(getAdminProjectsFromResponse(data).map(normalizeAdminProject));
     } catch (err) {
       setError(err);
     } finally {
