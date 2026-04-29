@@ -1,34 +1,76 @@
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+
+import { ROLES } from '@/core/auth/roles';
+import { useDeleteProjectMutation, useRenameProjectMutation } from '@dashboards/forecaster/hooks/useProjectMutations';
+import ProjectDialogsHost from '@dashboards/forecaster/components/project-library/ProjectDialogsHost';
+import ChartDetailModal from '@dashboards/admin/sections/chart-review/components/ChartDetailModal';
 import ProjectsFeatureLayout from './components/ProjectsFeatureLayout';
 import ProjectsHeader from './components/ProjectsHeader';
 import ProjectsStatusTabs from './components/ProjectsStatusTabs';
 import ProjectsList from './components/ProjectsList';
 import { getProjectActions, getProjectsCopy } from './projectRoleConfig';
-import { useProjectsFeatureController } from './useProjectsFeatureController';
+import { useProjectsData } from './hooks/useProjectsData';
 
 const ProjectsPage = ({ role, isDarkMode }) => {
   const copy = getProjectsCopy(role);
   const actions = getProjectActions(role);
+  const data = useProjectsData({ role });
 
-  const controller = useProjectsFeatureController({ role, isDarkMode });
+  const [selectedAdminProject, setSelectedAdminProject] = useState(null);
+
+  const deleteProjectMutation = useDeleteProjectMutation();
+  const renameProjectMutation = useRenameProjectMutation();
+
+  const forecasterDialogs = ProjectDialogsHost({
+    onDeleteConfirm: (project) => deleteProjectMutation.mutate(project._id),
+    onRenameConfirm: (project, name) => renameProjectMutation.mutate({ id: project._id, name }),
+  });
+
+  const isAdmin = role === ROLES.ADMIN;
+  const dialogs = isAdmin
+    ? selectedAdminProject
+      ? createPortal(
+          <ChartDetailModal
+            chart={selectedAdminProject}
+            isDarkMode={isDarkMode}
+            onClose={() => setSelectedAdminProject(null)}
+            onActionComplete={data.refetch}
+          />,
+          document.body,
+        )
+      : null
+    : forecasterDialogs.dialogs;
 
   return (
     <ProjectsFeatureLayout>
       <ProjectsHeader
         title={copy.title}
         description={copy.description}
-        count={controller.count}
+        count={data.total}
       />
 
-      {actions.canReview && controller.status && (
+      {actions.canReview && data.filters.activeStatus && (
         <ProjectsStatusTabs
-          active={controller.status.active}
-          onChange={controller.status.onChange}
+          active={data.filters.activeStatus}
+          onChange={data.filters.setActiveStatus}
         />
       )}
 
-      <ProjectsList {...controller.list} />
+      <ProjectsList
+        role={role}
+        isDarkMode={isDarkMode}
+        projects={data.projects}
+        loading={data.loading}
+        error={data.error}
+        onRetry={data.refetch}
+        onOpen={isAdmin ? setSelectedAdminProject : (project) => window.open(`/studio/${project._id}`, '_blank')}
+        onApprove={isAdmin ? setSelectedAdminProject : undefined}
+        onRename={!isAdmin ? forecasterDialogs.openRename : undefined}
+        onDelete={!isAdmin ? forecasterDialogs.openDelete : undefined}
+      />
 
-      {controller.dialogs}
+      {dialogs}
     </ProjectsFeatureLayout>
   );
 };
