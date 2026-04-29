@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-import Header from '@dashboards/admin/components/Header/index';
 import { ADMIN_TABS, MENU_ITEMS } from '@dashboards/admin/constants/navigation';
+import DashboardHeader from '@/shared/dashboard-shell/DashboardHeader';
 import DashboardSidebar from '@/shared/dashboard-shell/DashboardSidebar';
 
 const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
@@ -53,11 +53,14 @@ const AdminShell = ({
       />
 
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
-        <Header
-          activeMeta={activeMeta}
-          onMobileMenuToggle={onMobileMenuToggle}
+        <DashboardHeader
+          description={activeMeta?.description}
+          eyebrow="Admin Dashboard"
           isDarkMode={isDarkMode}
-          onToggleDarkMode={onToggleDarkMode}
+          onMobileMenuToggle={onMobileMenuToggle}
+          onThemeToggle={onToggleDarkMode}
+          title={activeMeta?.title ?? 'Dashboard Overview'}
+          user={{ name: 'Admin User', role: 'Administrator', initials: 'AU' }}
         />
 
         <main className="flex-1 p-6 md:p-8 overflow-y-auto">
