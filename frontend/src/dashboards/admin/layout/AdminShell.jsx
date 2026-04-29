@@ -1,8 +1,7 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 import { ADMIN_TABS, MENU_ITEMS } from '@dashboards/admin/constants/navigation';
-import DashboardHeader from '@/shared/dashboard-shell/DashboardHeader';
-import DashboardSidebar from '@/shared/dashboard-shell/DashboardSidebar';
+import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 
 const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
 
@@ -35,39 +34,29 @@ const AdminShell = ({
   setIsSidebarCollapsed,
 }) => {
   return (
-    <div
-      className={`min-h-screen flex transition-colors duration-500 ${
-        isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
-      }`}
+    <DashboardShell
+      activeId={activeTab}
+      isDarkMode={true}
+      isMobileOpen={isMobileOpen}
+      isSidebarCollapsed={isSidebarCollapsed}
+      onItemSelect={(item) => setActiveTab(item.id)}
+      onMobileMenuToggle={onMobileMenuToggle}
+      onThemeToggle={onToggleDarkMode}
+      setIsMobileOpen={setIsMobileOpen}
+      setIsSidebarCollapsed={setIsSidebarCollapsed}
+      sidebar={{
+        items: adminSidebarItems,
+        label: 'Admin Dashboard',
+      }}
+      header={{
+        description: activeMeta?.description,
+        eyebrow: 'Admin Dashboard',
+        title: activeMeta?.title ?? 'Dashboard Overview',
+        user: { name: 'Admin User', role: 'Administrator', initials: 'AU' },
+      }}
     >
-      <DashboardSidebar
-        activeId={activeTab}
-        isDarkMode={isDarkMode}
-        isMobileOpen={isMobileOpen}
-        isSidebarCollapsed={isSidebarCollapsed}
-        items={adminSidebarItems}
-        label="Admin Dashboard"
-        onItemSelect={(item) => setActiveTab(item.id)}
-        setIsMobileOpen={setIsMobileOpen}
-        setIsSidebarCollapsed={setIsSidebarCollapsed}
-      />
-
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
-        <DashboardHeader
-          description={activeMeta?.description}
-          eyebrow="Admin Dashboard"
-          isDarkMode={isDarkMode}
-          onMobileMenuToggle={onMobileMenuToggle}
-          onThemeToggle={onToggleDarkMode}
-          title={activeMeta?.title ?? 'Dashboard Overview'}
-          user={{ name: 'Admin User', role: 'Administrator', initials: 'AU' }}
-        />
-
-        <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-          {children}
-        </main>
-      </div>
-    </div>
+      {children}
+    </DashboardShell>
   );
 };
 
