@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { AlertCircle, Check, Clock3, MessageSquareText, Send, UserRound, X } from 'lucide-react';
+import { AlertCircle, Check, Clock3, GitCompareArrows, MessageSquareText, Send, UserRound, X } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
+import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 
 function getProjectName(project) {
   return project?.name || project?.title || 'Untitled project';
@@ -96,6 +97,54 @@ function getReviewer(project) {
   return getUserLabel(project?.approvedBy || project?.rejectedBy || project?.reviewStartedBy);
 }
 
+function getCurrentFeatureSource(project) {
+  return project?.features || project?.featureCollection || project?.annotations || [];
+}
+
+function getPreviousFeatureSource(project) {
+  const versions = Array.isArray(project?.versions) ? project.versions : [];
+  const previousVersion = versions.length > 1 ? versions[versions.length - 2] : versions[0];
+
+  return previousVersion?.features || previousVersion?.featureCollection || previousVersion?.annotations || [];
+}
+
+function getFeatureKey(feature) {
+  return feature?._id || feature?.id || feature?.properties?.id || JSON.stringify(feature?.geometry || {});
+}
+
+function getAnnotationDiff(project) {
+  const previous = normalizeFeatureCollection(getPreviousFeatureSource(project)).features;
+  const current = normalizeFeatureCollection(getCurrentFeatureSource(project)).features;
+
+  const previousKeys = new Set(previous.map(getFeatureKey));
+  const currentKeys = new Set(current.map(getFeatureKey));
+
+  return {
+    previousCount: previous.length,
+    currentCount: current.length,
+    added: current.filter((feature) => !previousKeys.has(getFeatureKey(feature))).length,
+    removed: previous.filter((feature) => !currentKeys.has(getFeatureKey(feature))).length,
+    unchanged: current.filter((feature) => previousKeys.has(getFeatureKey(feature))).length,
+    hasPreviousSnapshot: previous.length > 0,
+  };
+}
+
+function DiffMetric({ label, value, tone = 'slate' }) {
+  const toneClass = {
+    blue: 'bg-blue-50 text-blue-700 border-blue-100',
+    green: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    red: 'bg-red-50 text-red-700 border-red-100',
+    slate: 'bg-slate-50 text-slate-700 border-slate-100',
+  }[tone];
+
+  return (
+    <div className={`rounded-xl border p-3 ${toneClass}`}>
+      <p className="text-[11px] font-black uppercase tracking-[0.14em] opacity-70">{label}</p>
+      <p className="mt-1 text-xl font-black">{value}</p>
+    </div>
+  );
+}
+
 export default function ProjectReviewModal({
   project,
   onClose,
@@ -106,6 +155,7 @@ export default function ProjectReviewModal({
 }) {
   const [remarks, setRemarks] = useState('');
   const [busyAction, setBusyAction] = useState(null);
+  const [mapMode, setMapMode] = useState('preview');
 
   if (!project) return null;
 
@@ -116,6 +166,9 @@ export default function ProjectReviewModal({
   const timeline = getTimeline(project);
   const previousRemarks = getPreviousRemarks(project);
   const reviewer = getReviewer(project);
+  const diff = getAnnotationDiff(project);
+  const previousFeatureSource = getPreviousFeatureSource(project);
+  const currentFeatureSource = getCurrentFeatureSource(project);
 
   const runAction = async (key, action) => {
     try {
@@ -133,7 +186,7 @@ export default function ProjectReviewModal({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+      <div className="flex max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
@@ -157,15 +210,93 @@ export default function ProjectReviewModal({
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 gap-0 overflow-y-auto lg:grid-cols-[1.5fr_0.9fr]">
-          <section className="min-h-[420px] border-b border-slate-200 bg-slate-100 p-4 lg:border-b-0 lg:border-r">
-            <ProjectPreviewMap
-              projectId={projectId}
-              featureScope="admin"
-              height="100%"
-              className="h-full min-h-[420px] rounded-2xl"
-              emptyLabel="No annotations available"
-            />
+        <div className="grid min-h-0 flex-1 gap-0 overflow-y-auto lg:grid-cols-[1.55fr_0.9fr]">
+          <section className="min-h-[420px] space-y-4 border-b border-slate-200 bg-slate-100 p-4 lg:border-b-0 lg:border-r">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Map Review</p>
+                <h3 className="text-base font-black text-slate-900">Annotation Preview</h3>
+              </div>
+              <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setMapMode('preview')}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-black transition ${mapMode === 'preview' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                >
+                  Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapMode('diff')}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-black transition ${mapMode === 'diff' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                >
+                  Diff
+                </button>
+              </div>
+            </div>
+
+            {mapMode === 'preview' ? (
+              <ProjectPreviewMap
+                projectId={projectId}
+                features={currentFeatureSource}
+                featureScope="admin"
+                height={520}
+                className="rounded-2xl"
+                emptyLabel="No annotations available"
+              />
+            ) : (
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <DiffMetric label="Previous" value={diff.previousCount} />
+                  <DiffMetric label="Current" value={diff.currentCount} tone="blue" />
+                  <DiffMetric label="Added" value={diff.added} tone="green" />
+                  <DiffMetric label="Removed" value={diff.removed} tone="red" />
+                </div>
+
+                {!diff.hasPreviousSnapshot && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+                    No previous annotation snapshot is available yet. The diff viewer is ready, but it needs saved project versions or annotation snapshots to compare against.
+                  </div>
+                )}
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+                      <GitCompareArrows size={16} className="text-slate-400" />
+                      <div>
+                        <p className="text-sm font-black text-slate-900">Previous annotations</p>
+                        <p className="text-xs text-slate-500">Latest saved snapshot before current review</p>
+                      </div>
+                    </div>
+                    <ProjectPreviewMap
+                      features={previousFeatureSource}
+                      featureScope="admin"
+                      height={320}
+                      className="rounded-none border-0"
+                      emptyLabel="No previous snapshot"
+                    />
+                  </div>
+
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+                      <GitCompareArrows size={16} className="text-blue-500" />
+                      <div>
+                        <p className="text-sm font-black text-slate-900">Current annotations</p>
+                        <p className="text-xs text-slate-500">Submitted annotations under review</p>
+                      </div>
+                    </div>
+                    <ProjectPreviewMap
+                      projectId={projectId}
+                      features={currentFeatureSource}
+                      featureScope="admin"
+                      height={320}
+                      className="rounded-none border-0"
+                      emptyLabel="No current annotations"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
 
           <aside className="space-y-5 p-6">
