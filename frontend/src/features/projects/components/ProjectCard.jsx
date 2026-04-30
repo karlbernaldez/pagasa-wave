@@ -18,6 +18,7 @@ const STATUS_STYLE = {
   Draft: 'bg-slate-100 text-slate-700 border-slate-200',
   Submitted: 'bg-amber-50 text-amber-700 border-amber-200',
   'Under Review': 'bg-orange-50 text-orange-700 border-orange-200',
+  'Revision Requested': 'bg-yellow-50 text-yellow-700 border-yellow-200',
   Approved: 'bg-blue-50 text-blue-700 border-blue-200',
   Published: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   Rejected: 'bg-red-50 text-red-700 border-red-200',
@@ -204,8 +205,8 @@ export default function ProjectCard({
   };
 
   return (
-    <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
-      <div className="relative">
+    <article className="group rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
+      <div className="relative overflow-hidden rounded-t-2xl">
         <ProjectPreviewMap
           projectId={id}
           features={featureSource}
@@ -274,23 +275,6 @@ export default function ProjectCard({
             )}
           </div>
 
-          {isReviewMode && reviewActions.length > 0 && (
-            <div className="flex flex-1 justify-end gap-2">
-              {reviewActions.map((action) => (
-                <Button
-                  key={action.key || action.label}
-                  variant={action.danger ? 'secondary' : action.variant || 'secondary'}
-                  size="sm"
-                  icon={action.icon}
-                  loading={busyAction === (action.key || action.label)}
-                  onClick={() => runAction(action)}
-                >
-                  {action.label}
-                </Button>
-              ))}
-            </div>
-          )}
-
           {!isReviewMode && menuActions.length > 0 && (
             <div className="relative">
               <Button
@@ -302,7 +286,7 @@ export default function ProjectCard({
               />
 
               {menuOpen && (
-                <div className="absolute right-0 z-20 mt-2 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg">
+                <div className="absolute right-0 bottom-full mb-2 z-50 w-36 rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg">
                   {menuActions.map((action) => {
                     const Icon = action.icon;
                     return (
@@ -324,6 +308,23 @@ export default function ProjectCard({
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {isReviewMode && reviewActions.length > 0 && (
+            <div className="flex flex-1 justify-end gap-2">
+              {reviewActions.map((action) => (
+                <Button
+                  key={action.key || action.label}
+                  variant={action.danger ? 'secondary' : action.variant || 'secondary'}
+                  size="sm"
+                  icon={action.icon}
+                  loading={busyAction === (action.key || action.label)}
+                  onClick={() => runAction(action)}
+                >
+                  {action.label}
+                </Button>
+              ))}
             </div>
           )}
         </div>
