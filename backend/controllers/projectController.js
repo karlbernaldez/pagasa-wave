@@ -344,6 +344,42 @@ export const submitProject = asyncHandler(async (req, res) => {
 });
 
 /* =========================================================
+   START PROJECT REVIEW (ADMIN)
+========================================================= */
+export const startReviewProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const project = await Project.findById(req.params.id);
+  if (!project) throwError('Project not found', 404);
+
+  if (project.status === 'Under Review') {
+    return res.json(project);
+  }
+
+  if (!allowedTransitions[project.status]?.includes('Under Review')) {
+    throwError('Invalid status transition', 400);
+  }
+
+  project.status = 'Under Review';
+  project.reviewStartedAt = new Date();
+  project.reviewStartedBy = req.user.id;
+
+  project.auditLogs.push({
+    action: 'review_started',
+    performedBy: req.user.id,
+    previousStatus: 'Submitted',
+    newStatus: 'Under Review',
+    comment: 'Project review started',
+  });
+
+  await project.save();
+
+  res.json(project);
+});
+
+/* =========================================================
    APPROVE PROJECT (ADMIN)
 ========================================================= */
 export const approveProject = asyncHandler(async (req, res) => {
@@ -362,6 +398,7 @@ export const approveProject = asyncHandler(async (req, res) => {
     throwError('You cannot approve your own project', 400);
   }
 
+  const previousStatus = project.status;
   project.status = 'Approved';
   project.reviewedAt = new Date();
   project.approvedBy = req.user.id;
@@ -369,7 +406,7 @@ export const approveProject = asyncHandler(async (req, res) => {
   project.auditLogs.push({
     action: 'approved',
     performedBy: req.user.id,
-    previousStatus: project.status,
+    previousStatus,
     newStatus: 'Approved',
     comment: 'Project approved',
   });
@@ -396,6 +433,7 @@ export const rejectProject = asyncHandler(async (req, res) => {
     throwError('Invalid status transition', 400);
   }
 
+  const previousStatus = project.status;
   project.status = 'Rejected';
   project.rejectedBy = req.user.id;
   project.reviewComment = comment || '';
@@ -404,7 +442,7 @@ export const rejectProject = asyncHandler(async (req, res) => {
   project.auditLogs.push({
     action: 'rejected',
     performedBy: req.user.id,
-    previousStatus: project.status,
+    previousStatus,
     newStatus: 'Rejected',
     comment: comment || 'Rejected',
   });
@@ -429,13 +467,14 @@ export const publishProject = asyncHandler(async (req, res) => {
     throwError('Invalid status transition', 400);
   }
 
+  const previousStatus = project.status;
   project.status = 'Published';
   project.publishedAt = new Date();
 
   project.auditLogs.push({
     action: 'published',
     performedBy: req.user.id,
-    previousStatus: project.status,
+    previousStatus,
     newStatus: 'Published',
     comment: 'Project published',
   });
@@ -475,12 +514,13 @@ export const archiveProject = asyncHandler(async (req, res) => {
     throwError('Only published projects can be archived', 400);
   }
 
+  const previousStatus = project.status;
   project.status = 'Archived';
 
   project.auditLogs.push({
     action: 'archived',
     performedBy: req.user.id,
-    previousStatus: 'Published',
+    previousStatus,
     newStatus: 'Archived',
     comment: 'Project archived',
   });
