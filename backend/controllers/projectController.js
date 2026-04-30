@@ -13,11 +13,58 @@ import Project from '../models/Project.js';
 const allowedTransitions = {
   Draft: ['Submitted'],
   Submitted: ['Under Review'],
-  'Under Review': ['Approved', 'Rejected'],
+  'Under Review': ['Revision Requested', 'Approved', 'Rejected'],
+  'Revision Requested': ['Submitted'],
   Approved: ['Published'],
   Rejected: ['Draft'],
   Published: ['Archived'],
 };
+
+const USER_PROJECT_SORT_FIELDS = {
+  name: 'name',
+  chartType: 'chartType',
+  type: 'chartType',
+  forecastDate: 'forecastDate',
+  status: 'status',
+  lastOpenedAt: 'lastOpenedAt',
+  updatedAt: 'updatedAt',
+  createdAt: 'createdAt',
+};
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getDateRangeFilter(dateRange) {
+  const daysByRange = {
+    '7d': 7,
+    '30d': 30,
+    '90d': 90,
+  };
+
+  const days = daysByRange[dateRange];
+  if (!days) return null;
+
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
+function getRequiredComment(value, label = 'Comment') {
+  const comment = String(value || '').trim();
+  if (!comment) throwError(`${label} is required`, 400);
+  if (comment.length > 1000) throwError(`${label} must be 1000 characters or less`, 400);
+  return comment;
+}
+
+async function sendProject(project, res) {
+  await project.populate([
+    { path: 'owner', select: 'firstName lastName email username' },
+    { path: 'reviewStartedBy', select: 'firstName lastName email username' },
+    { path: 'approvedBy', select: 'firstName lastName email username' },
+    { path: 'rejectedBy', select: 'firstName lastName email username' },
+    { path: 'auditLogs.performedBy', select: 'firstName lastName email username' },
+  ]);
+  res.json(project);
+}
 
 /* =========================================================
    ADMIN: GET ALL PROJECTS
@@ -30,6 +77,7 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
   const allowedAdminStatuses = [
     'Submitted',
     'Under Review',
+    'Revision Requested',
     'Approved',
     'Published',
     'Rejected',
@@ -51,11 +99,15 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
 
   const projects = await Project.find(filter)
     .populate('owner', 'firstName lastName email username')
+    .populate('reviewStartedBy', 'firstName lastName email username')
+    .populate('approvedBy', 'firstName lastName email username')
+    .populate('rejectedBy', 'firstName lastName email username')
+    .populate('auditLogs.performedBy', 'firstName lastName email username')
     .sort({
-      lastOpenedAt: -1,  // 🔥 most recently opened
-      updatedAt: -1,     // recently edited
-      submittedAt: -1,   // recent submissions
-      createdAt: -1      // fallback
+      lastOpenedAt: -1,
+      updatedAt: -1,
+      submittedAt: -1,
+      createdAt: -1
     })
     .lean();
 
@@ -105,44 +157,80 @@ export const getUserProjects = asyncHandler(async (req, res) => {
 
   const {
     page = 1,
-    limit = 8,
+    limit = 10,
     search = '',
-    status = ''
+    status = '',
+    type = '',
+    dateRange = '',
+    sortBy = 'updatedAt',
+    sortDir = 'desc',
   } = req.query;
 
-  const query = { owner: req.user.id };
+  const pageNumber = Math.max(Number(page) || 1, 1);
+  const limitNumber = Math.min(Math.max(Number(limit) || 10, 1), 100);
+  const skip = (pageNumber - 1) * limitNumber;
 
-  if (search.trim()) {
-    query.$or = [
-      { name: { $regex: search.trim(), $options: 'i' } },
-      { description: { $regex: search.trim(), $options: 'i' } }
-    ];
+  const query = { owner: req.user.id };
+  const filters = [];
+  const trimmedSearch = search.trim();
+
+  if (trimmedSearch) {
+    const safeSearch = escapeRegex(trimmedSearch.slice(0, 80));
+    filters.push({
+      $or: [
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { description: { $regex: safeSearch, $options: 'i' } },
+      ],
+    });
   }
 
   if (status && status !== 'All') {
-    query.status = status;
+    filters.push({ status });
   }
 
-  const skip = (Number(page) - 1) * Number(limit);
+  if (type && type !== 'All') {
+    filters.push({ chartType: type });
+  }
+
+  const cutoffDate = getDateRangeFilter(dateRange);
+  if (cutoffDate) {
+    const dateQuery = { $gte: cutoffDate };
+    filters.push({
+      $or: [
+        { updatedAt: dateQuery },
+        { forecastDate: dateQuery },
+      ],
+    });
+  }
+
+  if (filters.length > 0) {
+    query.$and = filters;
+  }
+
+  const sortField = USER_PROJECT_SORT_FIELDS[sortBy] || 'updatedAt';
+  const sortDirection = sortDir === 'asc' ? 1 : -1;
+  const sortQuery = {
+    [sortField]: sortDirection,
+    updatedAt: -1,
+    createdAt: -1,
+    _id: -1,
+  };
 
   const [projects, total] = await Promise.all([
     Project.find(query)
-      .sort({
-        lastOpenedAt: -1,  // recently opened
-        updatedAt: -1,     // recently edited
-        createdAt: -1      // fallback
-      })
+      .sort(sortQuery)
       .skip(skip)
-      .limit(Number(limit))
+      .limit(limitNumber)
       .lean(),
-    Project.countDocuments(query)
+    Project.countDocuments(query),
   ]);
 
   res.json({
     projects,
     total,
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit))
+    page: pageNumber,
+    limit: limitNumber,
+    totalPages: Math.max(1, Math.ceil(total / limitNumber)),
   });
 });
 
@@ -153,7 +241,7 @@ export const getLatestUserProject = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
   const project = await Project.findOne({ owner: req.user.id })
-    .sort({ updatedAt: -1 }) // Most recently modified
+    .sort({ updatedAt: -1 })
     .lean();
 
   if (!project) {
@@ -174,7 +262,6 @@ export const getProjectById = asyncHandler(async (req, res) => {
 
   await project.populate('owner', 'firstName lastName email position');
 
-  // Track project access
   project.lastOpenedAt = new Date();
   project.lastOpenedBy = req.user.id;
   project.openCount += 1;
@@ -196,7 +283,6 @@ export const renameProject = asyncHandler(async (req, res) => {
 
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
-  // No-op if the name hasn't changed
   if (project.name === name.trim()) {
     return res.json(project);
   }
@@ -220,15 +306,15 @@ export const renameProject = asyncHandler(async (req, res) => {
 });
 
 /* =========================================================
-   UPDATE PROJECT (ONLY DRAFT OR REJECTED)
+   UPDATE PROJECT (DRAFT, REJECTED, OR REVISION REQUESTED)
 ========================================================= */
 export const updateProject = asyncHandler(async (req, res) => {
   const { name, description, chartType, forecastDate } = req.body;
 
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
-  if (!['Draft', 'Rejected'].includes(project.status)) {
-    throwError('Only Draft or Rejected projects can be edited', 400);
+  if (!['Draft', 'Rejected', 'Revision Requested'].includes(project.status)) {
+    throwError('Only Draft, Rejected, or Revision Requested projects can be edited', 400);
   }
 
   if (!name || !chartType || !forecastDate) {
@@ -265,13 +351,14 @@ export const submitProject = asyncHandler(async (req, res) => {
     throwError('Invalid status transition', 400);
   }
 
+  const previousStatus = project.status;
   project.status = 'Submitted';
   project.submittedAt = new Date();
 
   project.auditLogs.push({
     action: 'submitted',
     performedBy: req.user.id,
-    previousStatus: 'Draft',
+    previousStatus,
     newStatus: 'Submitted',
     comment: 'Submitted for review',
   });
@@ -279,6 +366,105 @@ export const submitProject = asyncHandler(async (req, res) => {
   await project.save();
 
   res.json(project);
+});
+
+/* =========================================================
+   START PROJECT REVIEW (ADMIN)
+========================================================= */
+export const startReviewProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const project = await Project.findById(req.params.id);
+  if (!project) throwError('Project not found', 404);
+
+  if (project.status === 'Under Review') {
+    return sendProject(project, res);
+  }
+
+  if (!allowedTransitions[project.status]?.includes('Under Review')) {
+    throwError('Invalid status transition', 400);
+  }
+
+  const previousStatus = project.status;
+  project.status = 'Under Review';
+  project.reviewStartedAt = new Date();
+  project.reviewStartedBy = req.user.id;
+
+  project.auditLogs.push({
+    action: 'review_started',
+    performedBy: req.user.id,
+    previousStatus,
+    newStatus: 'Under Review',
+    comment: 'Project review started',
+  });
+
+  await project.save();
+
+  return sendProject(project, res);
+});
+
+/* =========================================================
+   ADD REVIEW COMMENT (ADMIN)
+========================================================= */
+export const addReviewComment = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const comment = getRequiredComment(req.body?.comment);
+  const project = await Project.findById(req.params.id);
+  if (!project) throwError('Project not found', 404);
+
+  if (!['Submitted', 'Under Review'].includes(project.status)) {
+    throwError('Comments can only be added while a project is submitted or under review', 400);
+  }
+
+  project.auditLogs.push({
+    action: 'comment_added',
+    performedBy: req.user.id,
+    previousStatus: project.status,
+    newStatus: project.status,
+    comment,
+  });
+
+  await project.save();
+  return sendProject(project, res);
+});
+
+/* =========================================================
+   REQUEST REVISION (ADMIN)
+========================================================= */
+export const requestProjectRevision = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const comment = getRequiredComment(req.body?.comment, 'Revision comment');
+  const project = await Project.findById(req.params.id);
+  if (!project) throwError('Project not found', 404);
+
+  if (!allowedTransitions[project.status]?.includes('Revision Requested')) {
+    throwError('Invalid status transition', 400);
+  }
+
+  const previousStatus = project.status;
+  project.status = 'Revision Requested';
+  project.rejectedBy = undefined;
+  project.reviewComment = comment;
+  project.reviewedAt = new Date();
+
+  project.auditLogs.push({
+    action: 'revision_requested',
+    performedBy: req.user.id,
+    previousStatus,
+    newStatus: 'Revision Requested',
+    comment,
+  });
+
+  await project.save();
+  return sendProject(project, res);
 });
 
 /* =========================================================
@@ -300,6 +486,7 @@ export const approveProject = asyncHandler(async (req, res) => {
     throwError('You cannot approve your own project', 400);
   }
 
+  const previousStatus = project.status;
   project.status = 'Approved';
   project.reviewedAt = new Date();
   project.approvedBy = req.user.id;
@@ -307,14 +494,14 @@ export const approveProject = asyncHandler(async (req, res) => {
   project.auditLogs.push({
     action: 'approved',
     performedBy: req.user.id,
-    previousStatus: project.status,
+    previousStatus,
     newStatus: 'Approved',
     comment: 'Project approved',
   });
 
   await project.save();
 
-  res.json(project);
+  return sendProject(project, res);
 });
 
 /* =========================================================
@@ -325,7 +512,7 @@ export const rejectProject = asyncHandler(async (req, res) => {
     throwError('Admin access required', 403);
   }
 
-  const { comment } = req.body;
+  const comment = getRequiredComment(req.body?.comment, 'Rejection comment');
 
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
@@ -334,22 +521,23 @@ export const rejectProject = asyncHandler(async (req, res) => {
     throwError('Invalid status transition', 400);
   }
 
+  const previousStatus = project.status;
   project.status = 'Rejected';
   project.rejectedBy = req.user.id;
-  project.reviewComment = comment || '';
+  project.reviewComment = comment;
   project.reviewedAt = new Date();
 
   project.auditLogs.push({
     action: 'rejected',
     performedBy: req.user.id,
-    previousStatus: project.status,
+    previousStatus,
     newStatus: 'Rejected',
-    comment: comment || 'Rejected',
+    comment,
   });
 
   await project.save();
 
-  res.json(project);
+  return sendProject(project, res);
 });
 
 /* =========================================================
@@ -367,20 +555,21 @@ export const publishProject = asyncHandler(async (req, res) => {
     throwError('Invalid status transition', 400);
   }
 
+  const previousStatus = project.status;
   project.status = 'Published';
   project.publishedAt = new Date();
 
   project.auditLogs.push({
     action: 'published',
     performedBy: req.user.id,
-    previousStatus: project.status,
+    previousStatus,
     newStatus: 'Published',
     comment: 'Project published',
   });
 
   await project.save();
 
-  res.json(project);
+  return sendProject(project, res);
 });
 
 /* =========================================================
@@ -413,17 +602,18 @@ export const archiveProject = asyncHandler(async (req, res) => {
     throwError('Only published projects can be archived', 400);
   }
 
+  const previousStatus = project.status;
   project.status = 'Archived';
 
   project.auditLogs.push({
     action: 'archived',
     performedBy: req.user.id,
-    previousStatus: 'Published',
+    previousStatus,
     newStatus: 'Archived',
     comment: 'Project archived',
   });
 
   await project.save();
 
-  res.json(project);
+  return sendProject(project, res);
 });

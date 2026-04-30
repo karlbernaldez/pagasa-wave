@@ -10,6 +10,9 @@ import {
   updateProject,
   deleteProject,
   submitProject,
+  startReviewProject,
+  addReviewComment,
+  requestProjectRevision,
   approveProject,
   rejectProject,
   publishProject,
@@ -24,6 +27,25 @@ import { isAdmin } from '../middleware/adminMiddleware.js';
 const router = express.Router();
 
 router.use(protect);
+
+// ─────────────────────────────────────────────
+// Admin routes - keep before dynamic /:id routes
+// ─────────────────────────────────────────────
+router.get('/admin/all', isAdmin, getAllProjectsForAdmin);
+
+router.patch('/:id/start-review', isAdmin, startReviewProject);
+
+router.post('/:id/review-comment', isAdmin, addReviewComment);
+
+router.patch('/:id/request-revision', isAdmin, requestProjectRevision);
+
+router.patch('/:id/approve', isAdmin, approveProject);
+
+router.patch('/:id/reject', isAdmin, rejectProject);
+
+router.patch('/:id/publish', isAdmin, publishProject);
+
+router.patch('/:id/archive', isAdmin, archiveProject);
 
 // ─────────────────────────────────────────────
 // Owner routes
@@ -44,18 +66,5 @@ router.delete('/:id', isOwnerOrAdmin, deleteProject);
 
 // Workflow - owner action
 router.patch('/:id/submit', submitProject);
-
-// ─────────────────────────────────────────────
-// Admin routes
-// ─────────────────────────────────────────────
-router.get('/admin/all', isAdmin, getAllProjectsForAdmin);
-
-router.patch('/:id/approve', isAdmin, approveProject);
-
-router.patch('/:id/reject', isAdmin, rejectProject);
-
-router.patch('/:id/publish', isAdmin, publishProject);
-
-router.patch('/:id/archive', isAdmin, archiveProject);
 
 export default router;

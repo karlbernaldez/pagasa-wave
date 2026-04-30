@@ -1,88 +1,143 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ShieldCheck, RefreshCw } from 'lucide-react';
+import { tokens } from '@/styles/tokens';
 
-const SITE_KEY  = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+const SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 const SCRIPT_ID = 'recaptcha-v2-script';
-const CALLBACK  = '__onRecaptchaLoad__';
+const CALLBACK = '__onRecaptchaLoad__';
+const { colors } = tokens;
+
+let recaptchaScriptPromise;
+
+function loadRecaptchaScript() {
+  if (window.grecaptcha?.render) {
+    return Promise.resolve(window.grecaptcha);
+  }
+
+  if (recaptchaScriptPromise) {
+    return recaptchaScriptPromise;
+  }
+
+  recaptchaScriptPromise = new Promise((resolve, reject) => {
+    window[CALLBACK] = () => {
+      window.grecaptcha.ready(() => resolve(window.grecaptcha));
+    };
+
+    const existingScript = document.getElementById(SCRIPT_ID);
+    if (existingScript) return;
+
+    const script = document.createElement('script');
+    script.id = SCRIPT_ID;
+    script.src = `https://www.google.com/recaptcha/api.js?onload=${CALLBACK}&render=explicit`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => reject(new Error('Failed to load reCAPTCHA.'));
+    document.head.appendChild(script);
+  });
+
+  return recaptchaScriptPromise;
+}
 
 /**
  * Props:
  *   onVerify  (token: string | null) => void
+ *
+ * Ref handle:
+ *   reset()  — resets the widget and clears the token
  */
-const CaptchaWidget = ({ onVerify }) => {
+const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify }, ref) {
   const containerRef = useRef(null);
-  const widgetIdRef  = useRef(null);
+  const widgetIdRef = useRef(null);
+  const onVerifyRef = useRef(onVerify);
+  const [isReady, setIsReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (!SITE_KEY) {
-      console.error('[CaptchaWidget] VITE_RECAPTCHA_SITE_KEY is not set.');
-      return;
-    }
-
-    const renderWidget = () => {
-      if (!containerRef.current || widgetIdRef.current !== null) return;
-      widgetIdRef.current = window.grecaptcha.render(containerRef.current, {
-        sitekey:            SITE_KEY,
-        theme:              'dark',
-        callback:           (token) => onVerify(token),
-        'expired-callback': ()      => onVerify(null),
-        'error-callback':   ()      => onVerify(null),
-      });
-    };
-
-    if (window.grecaptcha?.render) {
-      window.grecaptcha.ready(renderWidget);
-      return;
-    }
-
-    window[CALLBACK] = () => window.grecaptcha.ready(renderWidget);
-
-    if (!document.getElementById(SCRIPT_ID)) {
-      const script = document.createElement('script');
-      script.id    = SCRIPT_ID;
-      script.src   = `https://www.google.com/recaptcha/api.js?onload=${CALLBACK}&render=explicit`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
-
-    return () => { delete window[CALLBACK]; };
+    onVerifyRef.current = onVerify;
   }, [onVerify]);
 
-  const resetWidget = () => {
-    if (widgetIdRef.current !== null) {
-      window.grecaptcha?.reset(widgetIdRef.current);
-      onVerify(null);
+  const resetCaptcha = () => {
+    if (widgetIdRef.current !== null && window.grecaptcha?.reset) {
+      window.grecaptcha.reset(widgetIdRef.current);
     }
+
+    onVerifyRef.current?.(null);
   };
+
+  useImperativeHandle(ref, () => ({
+    reset: resetCaptcha,
+  }));
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!SITE_KEY) {
+      console.error('[CaptchaWidget] VITE_RECAPTCHA_SITE_KEY is not set.');
+      setLoadError(true);
+      onVerifyRef.current?.(null);
+      return undefined;
+    }
+
+    loadRecaptchaScript()
+      .then((grecaptcha) => {
+        if (cancelled || !containerRef.current || widgetIdRef.current !== null) return;
+
+        widgetIdRef.current = grecaptcha.render(containerRef.current, {
+          sitekey: SITE_KEY,
+          theme: 'light',
+          callback: (token) => onVerifyRef.current?.(token),
+          'expired-callback': () => onVerifyRef.current?.(null),
+          'error-callback': () => onVerifyRef.current?.(null),
+        });
+
+        setIsReady(true);
+      })
+      .catch((error) => {
+        console.error('[CaptchaWidget] Failed to load reCAPTCHA.', error);
+        if (!cancelled) {
+          setLoadError(true);
+          onVerifyRef.current?.(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="space-y-2.5">
-      {/* Label row */}
       <div className="flex items-center justify-between">
-        <label className="font-mono-ibm text-cyan-300/70 text-xs tracking-widest uppercase flex items-center gap-2">
-          <ShieldCheck size={13} className="text-cyan-400/60" aria-hidden="true" />
+        <label
+          className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider"
+          style={{ color: colors.brand.primary }}
+        >
+          <ShieldCheck size={13} style={{ color: colors.brand.primary }} aria-hidden="true" />
           Verification
         </label>
+
         <button
           type="button"
-          onClick={resetWidget}
-          className="flex items-center gap-1 font-mono-ibm text-[10px] text-slate-500 hover:text-cyan-400/60 transition-colors"
+          onClick={resetCaptcha}
+          disabled={!isReady}
+          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+          style={{ color: colors.text.light.muted }}
+          aria-label="Reset CAPTCHA"
         >
-          <RefreshCw size={10} />
+          <RefreshCw size={11} aria-hidden="true" />
           Reset
         </button>
       </div>
 
-      {/* reCAPTCHA container — wrapped to contain the iframe */}
-      <div
-        className="rounded-xl overflow-hidden border border-white/5 bg-black/20"
-        aria-label="reCAPTCHA verification"
-      >
-        <div ref={containerRef} />
-      </div>
+      {loadError && (
+        <p role="alert" className="text-xs font-medium" style={{ color: colors.brand.danger }}>
+          CAPTCHA failed to load. Check the site key or refresh the page.
+        </p>
+      )}
+
+      <div className="overflow-hidden rounded-lg" ref={containerRef} aria-label="reCAPTCHA verification" />
     </div>
   );
-};
+});
 
 export default CaptchaWidget;

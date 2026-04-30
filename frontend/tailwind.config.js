@@ -8,10 +8,6 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Add your custom theme colors here if needed
-        // Example:
-        // background: '#ffffff',
-        // darkBackground: '#1a1a1a',
       },
       animation: {
         'fadeIn': 'fadeIn 0.3s ease-in-out',
@@ -46,5 +42,16 @@ module.exports = {
       };
       addUtilities(newUtilities);
     },
+  ],
+  safelist: [
+    // sessionModal dynamic classes
+    'opacity-0', 'opacity-100',
+    'translate-y-0', 'translate-y-3',
+    'scale-100', 'scale-[0.97]',
+    { pattern: /^(bg|border|stroke)-(orange|red|blue|amber|rose|sky)-(400|500)/ },
+    { pattern: /\/(10|20)$/ },
+    'from-orange-500', 'via-orange-400', 'to-amber-400',
+    'from-red-500', 'via-red-400', 'to-rose-400',
+    'from-blue-500', 'via-blue-400', 'to-sky-300',
   ],
 };
