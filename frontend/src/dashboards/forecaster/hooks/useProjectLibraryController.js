@@ -19,10 +19,22 @@ import {
   sortProjects,
 } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 import { adaptProjects, adaptProject } from "@/features/projects/projectAdapter";
-import { isProjectSubmitted } from "@/features/projects/projectStatuses";
+import {
+  PROJECT_STATUS,
+  isProjectSubmitted,
+  isProjectUnderReview,
+} from "@/features/projects/projectStatuses";
 
 const PAGE_SIZE = 10;
 const ADMIN_PAGE_SIZE = 12;
+
+function getProjectId(project) {
+  return project?._id || project?.id;
+}
+
+function getProjectFromResponse(data, fallbackProject) {
+  return data?.project || data?.data?.project || data?.data || data || fallbackProject;
+}
 
 function getAdminProjectsFromResponse(data) {
   if (Array.isArray(data)) return data;
@@ -59,6 +71,16 @@ function useAdminProjectLibrary() {
       setLoading(false);
       setIsFetching(false);
     }
+  };
+
+  const replaceProject = (nextProject) => {
+    const adaptedProject = adaptProject(nextProject);
+    setProjects((currentProjects) =>
+      currentProjects.map((project) =>
+        getProjectId(project) === adaptedProject._id ? adaptedProject : project
+      )
+    );
+    return adaptedProject;
   };
 
   useEffect(() => {
@@ -115,6 +137,7 @@ function useAdminProjectLibrary() {
     error,
     isFetching,
     refetch: load,
+    replaceProject,
     paged,
     total,
     totalPages,
@@ -156,6 +179,7 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
     error,
     isFetching,
     refetch,
+    replaceProject,
     search,
     setSearch,
     statusFilter,
@@ -193,7 +217,7 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
   }, [isAdmin]);
 
   const handleSubmit = async (project) => {
-    const projectId = project._id;
+    const projectId = getProjectId(project);
     if (!projectId || submittingProjectId) return;
 
     setSubmittingProjectId(projectId);
@@ -206,27 +230,40 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
   };
 
   const handleStartReview = async (project) => {
+    const projectId = getProjectId(project);
+    if (!projectId) throw new Error("Project ID is missing.");
+
+    if (isProjectUnderReview(project.status)) {
+      return project;
+    }
+
     if (!isProjectSubmitted(project.status)) {
       return project;
     }
 
-    const updatedProject = await startReviewProject(project._id);
-    await refetch();
-    return adaptProject(updatedProject);
+    const response = await startReviewProject(projectId);
+    const transitionedProject = adaptProject({
+      ...project,
+      ...getProjectFromResponse(response, project),
+      status: PROJECT_STATUS.UNDER_REVIEW,
+    });
+
+    replaceProject?.(transitionedProject);
+    return transitionedProject;
   };
 
   const handleApprove = async (project) => {
-    await approveProject(project._id);
+    await approveProject(getProjectId(project));
     await refetch();
   };
 
   const handleReject = async (project, comment = "Needs revision") => {
-    await rejectProject(project._id, comment);
+    await rejectProject(getProjectId(project), comment);
     await refetch();
   };
 
   const handlePublish = async (project) => {
-    await publishProject(project._id);
+    await publishProject(getProjectId(project));
     await refetch();
   };
 
@@ -261,7 +298,7 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
       loading,
       error,
       onRetry: refetch,
-      onOpen: (project) => window.open(`/studio/${project._id}`, "_blank"),
+      onOpen: (project) => window.open(`/studio/${getProjectId(project)}`, "_blank"),
       onRename: isAdmin ? undefined : dialogs.openRename,
       onDelete: isAdmin ? undefined : dialogs.openDelete,
       onSubmit: isAdmin ? undefined : handleSubmit,
