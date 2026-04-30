@@ -39,29 +39,6 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
-function getPrimaryCoordinate(featureCollection) {
-  let coordinate = null;
-
-  const visit = (coordinates) => {
-    if (coordinate || !Array.isArray(coordinates)) return;
-
-    if (
-      coordinates.length >= 2 &&
-      typeof coordinates[0] === 'number' &&
-      typeof coordinates[1] === 'number'
-    ) {
-      coordinate = coordinates;
-      return;
-    }
-
-    coordinates.forEach(visit);
-  };
-
-  featureCollection.features.forEach((feature) => visit(feature?.geometry?.coordinates));
-
-  return coordinate;
-}
-
 function removePreviewLayers(map) {
   [
     'project-preview-points-label',
@@ -81,7 +58,10 @@ function removePreviewLayers(map) {
 function addPreviewLayers(map, featureCollection) {
   const sourceId = 'project-preview-features';
 
-  removePreviewLayers(map);
+  if (map.getSource(sourceId)) {
+    map.getSource(sourceId).setData(featureCollection);
+    return;
+  }
 
   map.addSource(sourceId, {
     type: 'geojson',
@@ -194,11 +174,16 @@ async function loadProjectFeatures(projectId, scope) {
   return fetchFeatures(projectId);
 }
 
-function useNearViewport(rootMargin = '400px') {
+function useNearViewport(rootMargin = '400px', disabled = false) {
   const targetRef = useRef(null);
-  const [isNearViewport, setIsNearViewport] = useState(false);
+  const [isNearViewport, setIsNearViewport] = useState(disabled);
 
   useEffect(() => {
+    if (disabled) {
+      setIsNearViewport(true);
+      return undefined;
+    }
+
     const target = targetRef.current;
     if (!target || isNearViewport) return undefined;
 
@@ -220,7 +205,7 @@ function useNearViewport(rootMargin = '400px') {
     observer.observe(target);
 
     return () => observer.disconnect();
-  }, [isNearViewport, rootMargin]);
+  }, [disabled, isNearViewport, rootMargin]);
 
   return [targetRef, isNearViewport];
 }
@@ -233,11 +218,12 @@ export default function ProjectPreviewMap({
   height = 180,
   isDarkMode = false,
   emptyLabel = 'No annotations yet',
-  onFeatureCollectionLoad,
+  lazy = true,
 }) {
-  const [viewportRef, isNearViewport] = useNearViewport();
+  const [viewportRef, isNearViewport] = useNearViewport('400px', !lazy);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  const fittedFeaturesKeyRef = useRef('');
   const [isReady, setIsReady] = useState(false);
   const [remoteFeatures, setRemoteFeatures] = useState(null);
   const [isLoadingFeatures, setIsLoadingFeatures] = useState(false);
@@ -254,7 +240,6 @@ export default function ProjectPreviewMap({
 
     if (!shouldFetchFeatures) {
       if (!isNearViewport) return undefined;
-      setRemoteFeatures(null);
       setIsLoadingFeatures(false);
       return undefined;
     }
@@ -289,11 +274,10 @@ export default function ProjectPreviewMap({
   }, [providedFeatureCollection, remoteFeatures]);
 
   const hasFeatures = featureCollection.features.length > 0;
-
-  useEffect(() => {
-    if (!isNearViewport) return;
-    onFeatureCollectionLoad?.(featureCollection);
-  }, [featureCollection, isNearViewport, onFeatureCollectionLoad]);
+  const featureKey = useMemo(() => JSON.stringify(featureCollection.features.map((feature) => ({
+    geometry: feature.geometry,
+    id: feature.id || feature._id || feature.properties?.id || feature.properties?.sourceId,
+  }))), [featureCollection]);
 
   useEffect(() => {
     if (!isNearViewport || !containerRef.current || mapRef.current) return undefined;
@@ -325,6 +309,7 @@ export default function ProjectPreviewMap({
     return () => {
       map.remove();
       mapRef.current = null;
+      fittedFeaturesKeyRef.current = '';
       setIsReady(false);
     };
   }, [isNearViewport]);
@@ -335,14 +320,16 @@ export default function ProjectPreviewMap({
 
     if (!hasFeatures) {
       removePreviewLayers(map);
+      fittedFeaturesKeyRef.current = '';
       map.fitBounds(DEFAULT_BOUNDS, { padding: 18, maxZoom: 6, duration: 0 });
       return;
     }
 
     addPreviewLayers(map, featureCollection);
 
+    if (fittedFeaturesKeyRef.current === featureKey) return;
+
     const bounds = getFeatureBounds(featureCollection);
-    const primaryCoordinate = getPrimaryCoordinate(featureCollection);
 
     if (bounds) {
       map.fitBounds(bounds, {
@@ -350,10 +337,9 @@ export default function ProjectPreviewMap({
         maxZoom: featureCollection.features.length === 1 ? 8 : 10,
         duration: 0,
       });
-    } else if (primaryCoordinate) {
-      map.flyTo({ center: primaryCoordinate, zoom: 7, duration: 0 });
+      fittedFeaturesKeyRef.current = featureKey;
     }
-  }, [featureCollection, hasFeatures, isReady]);
+  }, [featureCollection, featureKey, hasFeatures, isReady]);
 
   return (
     <div
