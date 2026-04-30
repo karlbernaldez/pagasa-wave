@@ -76,6 +76,36 @@ function getDefaultMenuActions({ project, onRename, onDelete }) {
   ].filter(Boolean);
 }
 
+function getSubmitAction({ project, onSubmit, submittingProjectId }) {
+  const status = project?.status?.trim();
+
+  if (!onSubmit) return null;
+
+  if (status === 'Draft') {
+    return {
+      key: 'submit',
+      label: 'Submit',
+      icon: Send,
+      variant: 'primary',
+      loading: submittingProjectId === project._id,
+      onClick: () => onSubmit(project),
+    };
+  }
+
+  if (status === 'Rejected' || status === 'Revision Requested') {
+    return {
+      key: 'resubmit',
+      label: 'Resubmit',
+      icon: Send,
+      variant: 'primary',
+      loading: submittingProjectId === project._id,
+      onClick: () => onSubmit(project),
+    };
+  }
+
+  return null;
+}
+
 function getReviewActions({ project, onApprove, onReject, onPublish, onDownload }) {
   const status = project?.status?.trim();
 
@@ -133,6 +163,8 @@ export default function ProjectCard({
   onOpen,
   onRename,
   onDelete,
+  onSubmit,
+  submittingProjectId,
   onApprove,
   onReject,
   onPublish,
@@ -154,6 +186,9 @@ export default function ProjectCard({
 
   const menuActions = actions ?? getDefaultMenuActions({ project, onRename, onDelete });
   const reviewActions = getReviewActions({ project, onApprove, onReject, onPublish, onDownload });
+  const submitAction = !isReviewMode
+    ? getSubmitAction({ project, onSubmit, submittingProjectId })
+    : null;
 
   const runAction = async (action) => {
     try {
@@ -221,9 +256,23 @@ export default function ProjectCard({
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
-          <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
-            {isReviewMode ? 'Review' : 'Open'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
+              {isReviewMode ? 'Review' : 'Open'}
+            </Button>
+
+            {submitAction && (
+              <Button
+                size="sm"
+                variant="primary"
+                icon={submitAction.icon}
+                loading={submitAction.loading}
+                onClick={() => runAction(submitAction)}
+              >
+                {submitAction.label}
+              </Button>
+            )}
+          </div>
 
           {isReviewMode && reviewActions.length > 0 && (
             <div className="flex flex-1 justify-end gap-2">
