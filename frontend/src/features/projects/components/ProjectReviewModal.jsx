@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 import { addReviewComment, requestProjectRevision } from '@/api/projectAPI';
+import { fetchProjectFeatureCollection } from '@/api/featureServices';
 import {
   getProjectStatusLabel,
   isProjectApproved,
@@ -105,7 +106,7 @@ function getReviewer(project) {
   return getUserLabel(project?.approvedBy || project?.rejectedBy || project?.reviewStartedBy);
 }
 
-function getCurrentFeatureSource(project) {
+function getEmbeddedCurrentFeatureSource(project) {
   return project?.features || project?.featureCollection || project?.annotations || [];
 }
 
@@ -155,19 +156,50 @@ function DiffMetric({ label, value, tone = 'slate' }) {
 
 export default function ProjectReviewModal({ project, onClose, onApprove, onReject, onPublish, onActionComplete }) {
   const [currentProject, setCurrentProject] = useState(project);
-  const [currentFeatureCollection, setCurrentFeatureCollection] = useState(() => normalizeFeatureCollection(getCurrentFeatureSource(project)));
+  const [currentFeatureCollection, setCurrentFeatureCollection] = useState(() => normalizeFeatureCollection(getEmbeddedCurrentFeatureSource(project)));
+  const [isLoadingCurrentFeatures, setIsLoadingCurrentFeatures] = useState(false);
+  const [featureLoadError, setFeatureLoadError] = useState('');
   const [remarks, setRemarks] = useState('');
   const [busyAction, setBusyAction] = useState(null);
   const [mapMode, setMapMode] = useState('preview');
 
   useEffect(() => {
     setCurrentProject(project);
-    setCurrentFeatureCollection(normalizeFeatureCollection(getCurrentFeatureSource(project)));
+    setCurrentFeatureCollection(normalizeFeatureCollection(getEmbeddedCurrentFeatureSource(project)));
+    setFeatureLoadError('');
   }, [project]);
+
+  const projectId = getProjectId(currentProject);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!projectId) return undefined;
+
+    setIsLoadingCurrentFeatures(true);
+    setFeatureLoadError('');
+
+    fetchProjectFeatureCollection(projectId)
+      .then((featureCollection) => {
+        if (!isMounted) return;
+        setCurrentFeatureCollection(normalizeFeatureCollection(featureCollection));
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        console.error('[ProjectReviewModal] Failed to load current annotations:', error);
+        setFeatureLoadError(error?.message || 'Failed to load current annotations.');
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingCurrentFeatures(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
 
   if (!currentProject) return null;
 
-  const projectId = getProjectId(currentProject);
   const statusLabel = getProjectStatusLabel(currentProject?.status);
   const isReviewable = isProjectReviewable(currentProject?.status);
   const isUnderReview = isProjectUnderReview(currentProject?.status);
@@ -176,21 +208,9 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
   const previousRemarks = getPreviousRemarks(currentProject);
   const reviewer = getReviewer(currentProject);
   const previousFeatureSource = getPreviousFeatureSource(currentProject);
-  const currentFeatureSource = currentFeatureCollection.features.length > 0
-    ? currentFeatureCollection
-    : getCurrentFeatureSource(currentProject);
+  const currentFeatureSource = currentFeatureCollection;
   const diff = getAnnotationDiff(previousFeatureSource, currentFeatureSource);
   const hasRemarks = remarks.trim().length > 0;
-
-  const handleCurrentFeatureCollectionLoad = (featureCollection) => {
-    const normalized = normalizeFeatureCollection(featureCollection);
-    setCurrentFeatureCollection((previous) => {
-      if (previous.features.length > 0 && normalized.features.length === 0) {
-        return previous;
-      }
-      return normalized;
-    });
-  };
 
   const runAction = async (key, action, { requireRemarks = false, closeOnSuccess = true } = {}) => {
     if (busyAction) return;
@@ -243,7 +263,9 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
               <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Annotation Preview</p>
-                  <p className="text-sm font-semibold text-slate-700">Large map review workspace</p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {isLoadingCurrentFeatures ? 'Loading current annotations…' : 'Large map review workspace'}
+                  </p>
                 </div>
                 <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                   <button
@@ -263,16 +285,20 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
                 </div>
               </div>
 
+              {featureLoadError && (
+                <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
+                  {featureLoadError}
+                </div>
+              )}
+
               <div className="relative flex-1">
                 {mapMode === 'preview' ? (
                   <ProjectPreviewMap
-                    projectId={projectId}
-                    featureScope="admin"
                     features={currentFeatureSource}
                     className="h-full min-h-[460px] rounded-none border-0"
                     height="100%"
-                    emptyLabel="No current annotations yet"
-                    onFeatureCollectionLoad={handleCurrentFeatureCollectionLoad}
+                    emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
+                    lazy={false}
                   />
                 ) : (
                   <div className="grid h-full min-h-[460px] gap-4 p-4 lg:grid-cols-2">
@@ -285,6 +311,7 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
                         className="h-[410px] rounded-none border-0"
                         height={410}
                         emptyLabel="No previous snapshot"
+                        lazy={false}
                       />
                     </div>
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
@@ -292,13 +319,11 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
                         Current Submission
                       </div>
                       <ProjectPreviewMap
-                        projectId={projectId}
-                        featureScope="admin"
                         features={currentFeatureSource}
                         className="h-[410px] rounded-none border-0"
                         height={410}
-                        emptyLabel="No current annotations yet"
-                        onFeatureCollectionLoad={handleCurrentFeatureCollectionLoad}
+                        emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
+                        lazy={false}
                       />
                     </div>
                   </div>
