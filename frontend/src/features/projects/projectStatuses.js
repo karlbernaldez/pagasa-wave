@@ -85,6 +85,10 @@ export function isProjectUnderReview(status) {
   return normalizeProjectStatus(status) === PROJECT_STATUS.UNDER_REVIEW;
 }
 
+export function isProjectRevisionRequested(status) {
+  return normalizeProjectStatus(status) === PROJECT_STATUS.REVISION_REQUESTED;
+}
+
 export function isProjectReviewable(status) {
   return [PROJECT_STATUS.SUBMITTED, PROJECT_STATUS.UNDER_REVIEW].includes(
     normalizeProjectStatus(status)
