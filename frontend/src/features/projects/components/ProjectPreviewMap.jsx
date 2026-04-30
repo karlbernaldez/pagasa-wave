@@ -143,6 +143,7 @@ export default function ProjectPreviewMap({
   height = 180,
   isDarkMode = false,
   emptyLabel = 'No annotations yet',
+  onFeatureCollectionLoad,
 }) {
   const [viewportRef, isNearViewport] = useNearViewport();
   const containerRef = useRef(null);
@@ -198,6 +199,11 @@ export default function ProjectPreviewMap({
   }, [providedFeatureCollection, remoteFeatures]);
 
   const hasFeatures = featureCollection.features.length > 0;
+
+  useEffect(() => {
+    if (!isNearViewport) return;
+    onFeatureCollectionLoad?.(featureCollection);
+  }, [featureCollection, isNearViewport, onFeatureCollectionLoad]);
 
   useEffect(() => {
     if (!isNearViewport || !containerRef.current || mapRef.current) return undefined;
