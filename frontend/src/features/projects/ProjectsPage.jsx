@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { submitProject } from '@/api/projectAPI';
+import { startReviewProject, submitProject } from '@/api/projectAPI';
 import { ROLES } from '@/core/auth/roles';
 import { useDeleteProjectMutation, useRenameProjectMutation } from '@dashboards/forecaster/hooks/useProjectMutations';
 import ProjectDialogsHost from '@dashboards/forecaster/components/project-library/ProjectDialogsHost';
@@ -19,6 +19,7 @@ const ProjectsPage = ({ role, isDarkMode }) => {
   const data = useProjectsData({ role });
 
   const [selectedAdminProject, setSelectedAdminProject] = useState(null);
+  const [reviewingProjectId, setReviewingProjectId] = useState(null);
   const [submittingProjectId, setSubmittingProjectId] = useState(null);
 
   const deleteProjectMutation = useDeleteProjectMutation();
@@ -46,6 +47,32 @@ const ProjectsPage = ({ role, isDarkMode }) => {
     }
   };
 
+  const handleReviewProject = async (project) => {
+    const projectId = project?._id || project?.id;
+    if (!projectId || reviewingProjectId) return;
+
+    setReviewingProjectId(projectId);
+    try {
+      const updatedProject = project.status === 'Submitted'
+        ? await startReviewProject(projectId)
+        : project;
+
+      setSelectedAdminProject(updatedProject || project);
+      await data.refetch?.();
+    } catch (error) {
+      window.alert(error?.message || 'Failed to open project review.');
+    } finally {
+      setReviewingProjectId(null);
+    }
+  };
+
+  const handleAdminActionComplete = async (updatedProject) => {
+    if (updatedProject) {
+      setSelectedAdminProject(updatedProject);
+    }
+    await data.refetch?.();
+  };
+
   const dialogs = isAdmin
     ? selectedAdminProject
       ? createPortal(
@@ -53,7 +80,7 @@ const ProjectsPage = ({ role, isDarkMode }) => {
             chart={selectedAdminProject}
             isDarkMode={isDarkMode}
             onClose={() => setSelectedAdminProject(null)}
-            onActionComplete={data.refetch}
+            onActionComplete={handleAdminActionComplete}
           />,
           document.body,
         )
@@ -82,10 +109,11 @@ const ProjectsPage = ({ role, isDarkMode }) => {
         loading={data.loading}
         error={data.error}
         onRetry={data.refetch}
-        onOpen={isAdmin ? setSelectedAdminProject : (project) => window.open(`/studio/${project._id}`, '_blank')}
-        onApprove={isAdmin ? setSelectedAdminProject : undefined}
+        onOpen={isAdmin ? handleReviewProject : (project) => window.open(`/studio/${project._id}`, '_blank')}
+        onApprove={isAdmin ? handleReviewProject : undefined}
         onSubmit={!isAdmin ? handleSubmitProject : undefined}
         submittingProjectId={submittingProjectId}
+        reviewingProjectId={reviewingProjectId}
         onRename={!isAdmin ? forecasterDialogs.openRename : undefined}
         onDelete={!isAdmin ? forecasterDialogs.openDelete : undefined}
       />
