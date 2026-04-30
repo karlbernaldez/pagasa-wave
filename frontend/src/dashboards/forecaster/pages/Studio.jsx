@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { ArrowLeft, Moon, Sun } from "lucide-react";
+import { ArrowLeft, MessageSquareText, Moon, Send, Sun } from "lucide-react";
 
 // Component imports
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
@@ -16,7 +16,15 @@ import Canvas from "@dashboards/forecaster/draw/canvas";
 import FlagCanvas from "@dashboards/forecaster/draw/front";
 import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
 
-// NEW: shared normalizer
+// NEW: shared normalizers
+import { getLatestReviewRemarks } from "@/features/projects/projectAdapter";
+import {
+  PROJECT_STATUS,
+  canSubmitProjectStatus,
+  getProjectStatusLabel,
+  getProjectStatusStyle,
+  isProjectRevisionRequested,
+} from "@/features/projects/projectStatuses";
 import { normalizeFeatureCollection } from "@/features/projects/utils/normalizeFeatureCollection";
 
 // Custom Hooks
@@ -31,6 +39,9 @@ import {
 } from "@dashboards/forecaster/hooks/useStudio";
 import { useTheme } from "@/app/providers/ThemeProvider";
 
+// API
+import { submitProject } from "@/api/projectAPI";
+
 // Utils
 import { savePointFeature } from "@dashboards/forecaster/utils/ToolBarUtils";
 import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
@@ -39,6 +50,12 @@ import { saveMarker } from "@dashboards/forecaster/map/layers/markerLayer";
 // ─── Constants ───────────────────────────────────────
 const TOOLBAR_DELAY = 1000;
 const STUDIO_HEADER_HEIGHT = 64;
+
+function getSubmitLabel(status) {
+  if (status === PROJECT_STATUS.DRAFT) return "Submit";
+  if (isProjectRevisionRequested(status)) return "Resubmit Revision";
+  return "Resubmit";
+}
 
 // ─── Main Component ──────────────────────────────────
 const Studio = ({ logger }) => {
@@ -55,6 +72,13 @@ const Studio = ({ logger }) => {
     setShowNoProjectsModal,
     message,
   } = useProjectLoader(projectId, updateProjectId);
+
+  const [currentProject, setCurrentProject] = useState(null);
+  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
+
+  useEffect(() => {
+    setCurrentProject(latestProject || null);
+  }, [latestProject]);
 
   const handleOpenCreateProject = () => {
     setShowNoProjectsModal(false);
@@ -134,13 +158,28 @@ const Studio = ({ logger }) => {
     setIsDarkMode((value) => !value);
   }, [setIsDarkMode]);
 
+  const handleSubmitProject = useCallback(async () => {
+    const id = currentProject?._id || currentProject?.id || projectId;
+    if (!id || isSubmittingProject || !canSubmitProjectStatus(currentProject?.status)) return;
+
+    setIsSubmittingProject(true);
+    try {
+      const updatedProject = await submitProject(id);
+      setCurrentProject(updatedProject);
+    } catch (error) {
+      window.alert(error?.message || "Failed to submit project for review.");
+    } finally {
+      setIsSubmittingProject(false);
+    }
+  }, [currentProject, isSubmittingProject, projectId]);
+
   // ─── Effects ─────────────────────────────────────────
 
   useEffect(() => {
-    document.title = latestProject?.name
-      ? `${latestProject.name}`
+    document.title = currentProject?.name
+      ? `${currentProject.name}`
       : "WaveLab - Studio";
-  }, [latestProject?.name]);
+  }, [currentProject?.name]);
 
   useEffect(() => {
     setLayersRef.current = setLayers;
@@ -203,7 +242,19 @@ const Studio = ({ logger }) => {
   }, [savedFeatures]);
 
   const showMainUI = !isLoadingProject;
-  const projectName = latestProject?.name || "No Project Selected";
+  const projectName = currentProject?.name || "No Project Selected";
+  const projectStatus = currentProject?.status;
+  const projectStatusLabel = isProjectRevisionRequested(projectStatus)
+    ? "Needs Revision"
+    : getProjectStatusLabel(projectStatus);
+  const projectStatusStyle = isProjectRevisionRequested(projectStatus)
+    ? "border-amber-300 bg-amber-50 text-amber-800"
+    : getProjectStatusStyle(projectStatus);
+  const canSubmitProject = currentProject && canSubmitProjectStatus(projectStatus);
+  const latestReviewRemarks = useMemo(
+    () => getLatestReviewRemarks(currentProject),
+    [currentProject]
+  );
 
   // ─── Render ──────────────────────────────────────────
   return (
@@ -218,13 +269,31 @@ const Studio = ({ logger }) => {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               WaveLab Studio
             </p>
-            <h1 className="truncate text-sm font-bold text-slate-900 dark:text-slate-50">
-              {projectName}
-            </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="truncate text-sm font-bold text-slate-900 dark:text-slate-50">
+                {projectName}
+              </h1>
+              {currentProject?.status && (
+                <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black md:inline-flex ${projectStatusStyle}`}>
+                  {projectStatusLabel}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {canSubmitProject && (
+            <Button
+              size="sm"
+              icon={Send}
+              loading={isSubmittingProject}
+              disabled={isSubmittingProject}
+              onClick={handleSubmitProject}
+            >
+              {isSubmittingProject ? "Submitting..." : getSubmitLabel(projectStatus)}
+            </Button>
+          )}
           <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 md:inline-flex dark:border-emerald-900/70 dark:bg-emerald-950/60 dark:text-emerald-300">
             Auto-save active
           </span>
@@ -237,6 +306,24 @@ const Studio = ({ logger }) => {
           />
         </div>
       </header>
+
+      {latestReviewRemarks?.comment && (
+        <div className="absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-3 text-amber-950 shadow-lg backdrop-blur-md" style={{ top: STUDIO_HEADER_HEIGHT + 12 }}>
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-lg bg-amber-100 p-1.5 text-amber-700">
+              <MessageSquareText size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700">
+                Admin remarks
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed">
+                {latestReviewRemarks.comment}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="relative flex w-full overflow-hidden" style={{ height: `calc(100vh - ${STUDIO_HEADER_HEIGHT}px)`, marginTop: STUDIO_HEADER_HEIGHT }}>
         {/* Map Wrapper */}
