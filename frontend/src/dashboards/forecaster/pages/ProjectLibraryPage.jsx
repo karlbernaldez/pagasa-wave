@@ -107,6 +107,11 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     onOpen(project);
   };
 
+  const tableProps = {
+    ...controller.table,
+    onOpen: handleOpen,
+  };
+
   return (
     <div className="min-h-full bg-slate-50">
       <div className="mx-auto max-w-[1400px] space-y-6 p-6">
@@ -172,7 +177,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
         )}
 
         {view === "list" && (
-          <ProjectTable {...controller.table} />
+          <ProjectTable {...tableProps} />
         )}
 
         <ProjectPagination {...controller.pagination} />
