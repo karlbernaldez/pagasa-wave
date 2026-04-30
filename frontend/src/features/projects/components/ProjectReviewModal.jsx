@@ -117,12 +117,12 @@ function getPreviousFeatureSource(project) {
 }
 
 function getFeatureKey(feature) {
-  return feature?._id || feature?.id || feature?.properties?.id || JSON.stringify(feature?.geometry || {});
+  return feature?._id || feature?.id || feature?.properties?.id || feature?.properties?.sourceId || JSON.stringify(feature?.geometry || {});
 }
 
-function getAnnotationDiff(project) {
-  const previous = normalizeFeatureCollection(getPreviousFeatureSource(project)).features;
-  const current = normalizeFeatureCollection(getCurrentFeatureSource(project)).features;
+function getAnnotationDiff(previousFeatureSource, currentFeatureSource) {
+  const previous = normalizeFeatureCollection(previousFeatureSource).features;
+  const current = normalizeFeatureCollection(currentFeatureSource).features;
 
   const previousKeys = new Set(previous.map(getFeatureKey));
   const currentKeys = new Set(current.map(getFeatureKey));
@@ -155,12 +155,14 @@ function DiffMetric({ label, value, tone = 'slate' }) {
 
 export default function ProjectReviewModal({ project, onClose, onApprove, onReject, onPublish, onActionComplete }) {
   const [currentProject, setCurrentProject] = useState(project);
+  const [currentFeatureCollection, setCurrentFeatureCollection] = useState(() => normalizeFeatureCollection(getCurrentFeatureSource(project)));
   const [remarks, setRemarks] = useState('');
   const [busyAction, setBusyAction] = useState(null);
   const [mapMode, setMapMode] = useState('preview');
 
   useEffect(() => {
     setCurrentProject(project);
+    setCurrentFeatureCollection(normalizeFeatureCollection(getCurrentFeatureSource(project)));
   }, [project]);
 
   if (!currentProject) return null;
@@ -173,10 +175,22 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
   const timeline = getTimeline(currentProject);
   const previousRemarks = getPreviousRemarks(currentProject);
   const reviewer = getReviewer(currentProject);
-  const diff = getAnnotationDiff(currentProject);
   const previousFeatureSource = getPreviousFeatureSource(currentProject);
-  const currentFeatureSource = getCurrentFeatureSource(currentProject);
+  const currentFeatureSource = currentFeatureCollection.features.length > 0
+    ? currentFeatureCollection
+    : getCurrentFeatureSource(currentProject);
+  const diff = getAnnotationDiff(previousFeatureSource, currentFeatureSource);
   const hasRemarks = remarks.trim().length > 0;
+
+  const handleCurrentFeatureCollectionLoad = (featureCollection) => {
+    const normalized = normalizeFeatureCollection(featureCollection);
+    setCurrentFeatureCollection((previous) => {
+      if (previous.features.length > 0 && normalized.features.length === 0) {
+        return previous;
+      }
+      return normalized;
+    });
+  };
 
   const runAction = async (key, action, { requireRemarks = false, closeOnSuccess = true } = {}) => {
     if (busyAction) return;
@@ -251,7 +265,15 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
 
               <div className="relative flex-1">
                 {mapMode === 'preview' ? (
-                  <ProjectPreviewMap project={currentProject} className="h-full min-h-[460px] rounded-none border-0" lazy={false} />
+                  <ProjectPreviewMap
+                    projectId={projectId}
+                    featureScope="admin"
+                    features={currentFeatureSource}
+                    className="h-full min-h-[460px] rounded-none border-0"
+                    height="100%"
+                    emptyLabel="No current annotations yet"
+                    onFeatureCollectionLoad={handleCurrentFeatureCollectionLoad}
+                  />
                 ) : (
                   <div className="grid h-full min-h-[460px] gap-4 p-4 lg:grid-cols-2">
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
@@ -259,9 +281,10 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
                         Previous Snapshot
                       </div>
                       <ProjectPreviewMap
-                        project={{ ...currentProject, features: previousFeatureSource, featureCollection: previousFeatureSource }}
+                        features={previousFeatureSource}
                         className="h-[410px] rounded-none border-0"
-                        lazy={false}
+                        height={410}
+                        emptyLabel="No previous snapshot"
                       />
                     </div>
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
@@ -269,9 +292,13 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
                         Current Submission
                       </div>
                       <ProjectPreviewMap
-                        project={{ ...currentProject, features: currentFeatureSource, featureCollection: currentFeatureSource }}
+                        projectId={projectId}
+                        featureScope="admin"
+                        features={currentFeatureSource}
                         className="h-[410px] rounded-none border-0"
-                        lazy={false}
+                        height={410}
+                        emptyLabel="No current annotations yet"
+                        onFeatureCollectionLoad={handleCurrentFeatureCollectionLoad}
                       />
                     </div>
                   </div>
@@ -302,7 +329,7 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
 
             {!diff.hasPreviousSnapshot && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
-                No previous annotation snapshot is available yet. Diff counts are based on the current submitted data.
+                No previous annotation snapshot is available yet. Current submission annotations are shown from the live project data.
               </div>
             )}
 
