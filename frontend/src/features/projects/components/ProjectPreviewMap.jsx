@@ -39,10 +39,42 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
+function getPrimaryCoordinate(featureCollection) {
+  let coordinate = null;
+
+  const visit = (coordinates) => {
+    if (coordinate || !Array.isArray(coordinates)) return;
+
+    if (
+      coordinates.length >= 2 &&
+      typeof coordinates[0] === 'number' &&
+      typeof coordinates[1] === 'number'
+    ) {
+      coordinate = coordinates;
+      return;
+    }
+
+    coordinates.forEach(visit);
+  };
+
+  featureCollection.features.forEach((feature) => visit(feature?.geometry?.coordinates));
+
+  return coordinate;
+}
+
 function removePreviewLayers(map) {
-  if (map.getLayer('project-preview-points')) map.removeLayer('project-preview-points');
-  if (map.getLayer('project-preview-lines')) map.removeLayer('project-preview-lines');
-  if (map.getLayer('project-preview-polygons')) map.removeLayer('project-preview-polygons');
+  [
+    'project-preview-points-label',
+    'project-preview-points-core',
+    'project-preview-points-halo',
+    'project-preview-lines-casing',
+    'project-preview-lines',
+    'project-preview-polygons-outline',
+    'project-preview-polygons',
+  ].forEach((layerId) => {
+    if (map.getLayer(layerId)) map.removeLayer(layerId);
+  });
+
   if (map.getSource('project-preview-features')) map.removeSource('project-preview-features');
 }
 
@@ -60,10 +92,34 @@ function addPreviewLayers(map, featureCollection) {
     id: 'project-preview-polygons',
     type: 'fill',
     source: sourceId,
-    filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
+    filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
     paint: {
-      'fill-color': '#0ea5e9',
-      'fill-opacity': 0.22,
+      'fill-color': '#38bdf8',
+      'fill-opacity': 0.36,
+    },
+  });
+
+  map.addLayer({
+    id: 'project-preview-polygons-outline',
+    type: 'line',
+    source: sourceId,
+    filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
+    paint: {
+      'line-color': '#0f172a',
+      'line-width': 2.5,
+      'line-opacity': 0.9,
+    },
+  });
+
+  map.addLayer({
+    id: 'project-preview-lines-casing',
+    type: 'line',
+    source: sourceId,
+    filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
+    paint: {
+      'line-color': '#ffffff',
+      'line-width': 8,
+      'line-opacity': 0.95,
     },
   });
 
@@ -71,25 +127,59 @@ function addPreviewLayers(map, featureCollection) {
     id: 'project-preview-lines',
     type: 'line',
     source: sourceId,
-    filter: ['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]],
+    filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
     paint: {
       'line-color': '#0284c7',
-      'line-width': 2,
-      'line-opacity': 0.9,
+      'line-width': 4,
+      'line-opacity': 1,
     },
   });
 
   map.addLayer({
-    id: 'project-preview-points',
+    id: 'project-preview-points-halo',
     type: 'circle',
     source: sourceId,
-    filter: ['in', ['geometry-type'], ['literal', ['Point', 'MultiPoint']]],
+    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+    paint: {
+      'circle-color': '#ffffff',
+      'circle-radius': 13,
+      'circle-opacity': 0.95,
+      'circle-stroke-color': '#0284c7',
+      'circle-stroke-width': 3,
+    },
+  });
+
+  map.addLayer({
+    id: 'project-preview-points-core',
+    type: 'circle',
+    source: sourceId,
+    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
     paint: {
       'circle-color': '#f97316',
-      'circle-radius': 4,
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 1.5,
-      'circle-opacity': 0.95,
+      'circle-radius': 7,
+      'circle-stroke-color': '#0f172a',
+      'circle-stroke-width': 2,
+      'circle-opacity': 1,
+    },
+  });
+
+  map.addLayer({
+    id: 'project-preview-points-label',
+    type: 'symbol',
+    source: sourceId,
+    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+    layout: {
+      'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], 'Annotation'],
+      'text-size': 12,
+      'text-offset': [0, 1.6],
+      'text-anchor': 'top',
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+    },
+    paint: {
+      'text-color': '#0f172a',
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 1.5,
     },
   });
 }
@@ -252,12 +342,16 @@ export default function ProjectPreviewMap({
     addPreviewLayers(map, featureCollection);
 
     const bounds = getFeatureBounds(featureCollection);
+    const primaryCoordinate = getPrimaryCoordinate(featureCollection);
+
     if (bounds) {
       map.fitBounds(bounds, {
-        padding: 28,
-        maxZoom: 10,
+        padding: 72,
+        maxZoom: featureCollection.features.length === 1 ? 8 : 10,
         duration: 0,
       });
+    } else if (primaryCoordinate) {
+      map.flyTo({ center: primaryCoordinate, zoom: 7, duration: 0 });
     }
   }, [featureCollection, hasFeatures, isReady]);
 
