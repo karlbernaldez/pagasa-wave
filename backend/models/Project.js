@@ -7,7 +7,18 @@ const AuditLogSchema = new Schema({
   action: {
     type: String,
     enum: [
-      'created','edited','renamed','submitted','review_started','moved_to_review','approved','rejected','published','archived'
+      'created',
+      'edited',
+      'renamed',
+      'submitted',
+      'review_started',
+      'moved_to_review',
+      'comment_added',
+      'revision_requested',
+      'approved',
+      'rejected',
+      'published',
+      'archived'
     ],
     required: true
   },
@@ -44,7 +55,16 @@ const ProjectSchema = new Schema({
 
   status: {
     type: String,
-    enum: ['Draft','Submitted','Under Review','Approved','Published','Rejected','Archived'],
+    enum: [
+      'Draft',
+      'Submitted',
+      'Under Review',
+      'Revision Requested',
+      'Approved',
+      'Published',
+      'Rejected',
+      'Archived'
+    ],
     default: 'Draft'
   },
 
