@@ -13,7 +13,8 @@ import Project from '../models/Project.js';
 const allowedTransitions = {
   Draft: ['Submitted'],
   Submitted: ['Under Review'],
-  'Under Review': ['Approved', 'Rejected'],
+  'Under Review': ['Revision Requested', 'Approved', 'Rejected'],
+  'Revision Requested': ['Submitted'],
   Approved: ['Published'],
   Rejected: ['Draft'],
   Published: ['Archived'],
@@ -76,6 +77,7 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
   const allowedAdminStatuses = [
     'Submitted',
     'Under Review',
+    'Revision Requested',
     'Approved',
     'Published',
     'Rejected',
@@ -304,15 +306,15 @@ export const renameProject = asyncHandler(async (req, res) => {
 });
 
 /* =========================================================
-   UPDATE PROJECT (ONLY DRAFT OR REJECTED)
+   UPDATE PROJECT (DRAFT, REJECTED, OR REVISION REQUESTED)
 ========================================================= */
 export const updateProject = asyncHandler(async (req, res) => {
   const { name, description, chartType, forecastDate } = req.body;
 
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
-  if (!['Draft', 'Rejected'].includes(project.status)) {
-    throwError('Only Draft or Rejected projects can be edited', 400);
+  if (!['Draft', 'Rejected', 'Revision Requested'].includes(project.status)) {
+    throwError('Only Draft, Rejected, or Revision Requested projects can be edited', 400);
   }
 
   if (!name || !chartType || !forecastDate) {
@@ -443,13 +445,13 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
-  if (project.status !== 'Under Review') {
-    throwError('Only under review projects can request revision', 400);
+  if (!allowedTransitions[project.status]?.includes('Revision Requested')) {
+    throwError('Invalid status transition', 400);
   }
 
   const previousStatus = project.status;
-  project.status = 'Rejected';
-  project.rejectedBy = req.user.id;
+  project.status = 'Revision Requested';
+  project.rejectedBy = undefined;
   project.reviewComment = comment;
   project.reviewedAt = new Date();
 
@@ -457,7 +459,7 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
     action: 'revision_requested',
     performedBy: req.user.id,
     previousStatus,
-    newStatus: 'Rejected',
+    newStatus: 'Revision Requested',
     comment,
   });
 
