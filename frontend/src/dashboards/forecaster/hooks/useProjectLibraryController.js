@@ -18,47 +18,11 @@ import {
   getProjectStats,
   sortProjects,
 } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
+import { adaptProjects, adaptProject } from "@/features/projects/projectAdapter";
+import { isProjectSubmitted } from "@/features/projects/projectStatuses";
 
 const PAGE_SIZE = 10;
 const ADMIN_PAGE_SIZE = 12;
-
-const WORKFLOW_STATUS_LABELS = {
-  draft: "Draft",
-  submitted: "Submitted",
-  underreview: "Under Review",
-  under_review: "Under Review",
-  review: "Under Review",
-  revisionrequested: "Revision Requested",
-  revision_requested: "Revision Requested",
-  needsrevision: "Revision Requested",
-  needs_revision: "Revision Requested",
-  approved: "Approved",
-  published: "Published",
-  rejected: "Rejected",
-  archived: "Archived",
-};
-
-function normalizeWorkflowStatus(status, fallback = "Draft") {
-  const rawStatus = String(status || "").trim();
-  if (!rawStatus) return fallback;
-
-  const compactKey = rawStatus.toLowerCase().replace(/[\s-]+/g, "");
-  const snakeKey = rawStatus.toLowerCase().replace(/[\s-]+/g, "_");
-
-  return WORKFLOW_STATUS_LABELS[compactKey] || WORKFLOW_STATUS_LABELS[snakeKey] || rawStatus;
-}
-
-function getProjectId(project) {
-  return project?._id || project?.id;
-}
-
-function formatOwner(owner) {
-  if (!owner) return "Project Owner";
-  if (typeof owner === "string") return owner;
-
-  const fullName = `${owner.firstName ?? ""} ${owner.lastName ?? ""}`.trim();
-  return fullName || owner.email || "Project Owner";
-}
 
 function getAdminProjectsFromResponse(data) {
   if (Array.isArray(data)) return data;
@@ -67,22 +31,6 @@ function getAdminProjectsFromResponse(data) {
   if (Array.isArray(data?.results)) return data.results;
   if (Array.isArray(data?.items)) return data.items;
   return [];
-}
-
-function normalizeAdminProject(project) {
-  const id = getProjectId(project);
-
-  return {
-    ...project,
-    _id: id,
-    id,
-    name: project.name || project.title || "Untitled Project",
-    title: project.name || project.title || "Untitled Project",
-    owner: formatOwner(project.owner),
-    rawOwner: project.owner,
-    chartType: project.chartType || project.type || "forecast",
-    status: normalizeWorkflowStatus(project.status),
-  };
 }
 
 function useAdminProjectLibrary() {
@@ -104,7 +52,7 @@ function useAdminProjectLibrary() {
 
     try {
       const data = await fetchAllProjectsForAdmin();
-      setProjects(getAdminProjectsFromResponse(data).map(normalizeAdminProject));
+      setProjects(adaptProjects(getAdminProjectsFromResponse(data)));
     } catch (err) {
       setError(err);
     } finally {
@@ -128,15 +76,15 @@ function useAdminProjectLibrary() {
       const matchesSearch = !normalizedSearch ||
         project.name?.toLowerCase().includes(normalizedSearch) ||
         project.title?.toLowerCase().includes(normalizedSearch) ||
-        project.owner?.toLowerCase().includes(normalizedSearch);
+        project.ownerDisplay?.toLowerCase().includes(normalizedSearch);
 
       const matchesStatus = statusFilter === "All" || project.status === statusFilter;
-      const projectType = String(project.chartType || project.type || "").toLowerCase();
+      const projectType = String(project.chartType || "").toLowerCase();
       const matchesType = typeFilter === "All" || projectType === typeFilter.toLowerCase();
 
       return matchesSearch && matchesStatus && matchesType;
     });
-  }, [dateRangeFilter, projects, search, statusFilter, typeFilter]);
+  }, [projects, search, statusFilter, typeFilter]);
 
   const sorted = useMemo(
     () => sortProjects(filtered, sortBy, sortDir),
@@ -189,17 +137,19 @@ function useAdminProjectLibrary() {
   };
 }
 
-export function useProjectLibraryController({
-  role = "forecaster",
-  title,
-  description,
-} = {}) {
+export function useProjectLibraryController({ role = "forecaster", title, description } = {}) {
   const isAdmin = role === "admin";
   const [submittingProjectId, setSubmittingProjectId] = useState(null);
 
   const forecasterProjects = useProjects();
   const adminProjects = useAdminProjectLibrary();
-  const projectState = isAdmin ? adminProjects : forecasterProjects;
+
+  const projectState = isAdmin
+    ? adminProjects
+    : {
+        ...forecasterProjects,
+        paged: adaptProjects(forecasterProjects.paged),
+      };
 
   const {
     loading,
@@ -243,7 +193,7 @@ export function useProjectLibraryController({
   }, [isAdmin]);
 
   const handleSubmit = async (project) => {
-    const projectId = getProjectId(project);
+    const projectId = project._id;
     if (!projectId || submittingProjectId) return;
 
     setSubmittingProjectId(projectId);
@@ -256,40 +206,31 @@ export function useProjectLibraryController({
   };
 
   const handleStartReview = async (project) => {
-    const projectId = getProjectId(project);
-    const status = normalizeWorkflowStatus(project?.status);
-
-    if (!projectId) {
-      throw new Error("Project ID is missing.");
+    if (!isProjectSubmitted(project.status)) {
+      return project;
     }
 
-    if (status !== "Submitted") {
-      return normalizeAdminProject({ ...project, status });
-    }
-
-    const updatedProject = await startReviewProject(projectId);
+    const updatedProject = await startReviewProject(project._id);
     await refetch();
-    return normalizeAdminProject(updatedProject);
+    return adaptProject(updatedProject);
   };
 
   const handleApprove = async (project) => {
-    await approveProject(getProjectId(project));
+    await approveProject(project._id);
     await refetch();
   };
 
   const handleReject = async (project, comment = "Needs revision") => {
-    await rejectProject(getProjectId(project), comment);
+    await rejectProject(project._id, comment);
     await refetch();
   };
 
   const handlePublish = async (project) => {
-    await publishProject(getProjectId(project));
+    await publishProject(project._id);
     await refetch();
   };
 
-  const stats = !loading
-    ? getProjectStats(paged, total)
-    : [];
+  const stats = !loading ? getProjectStats(paged, total) : [];
 
   return {
     role,
@@ -297,9 +238,7 @@ export function useProjectLibraryController({
       title: title || "Forecast Operations",
       description: description || "Track, manage, and continue active marine forecast projects.",
     },
-    stats: {
-      stats,
-    },
+    stats: { stats },
     toolbar: {
       search,
       setSearch,
@@ -322,7 +261,7 @@ export function useProjectLibraryController({
       loading,
       error,
       onRetry: refetch,
-      onOpen: (project) => window.open(`/studio/${getProjectId(project)}`, "_blank"),
+      onOpen: (project) => window.open(`/studio/${project._id}`, "_blank"),
       onRename: isAdmin ? undefined : dialogs.openRename,
       onDelete: isAdmin ? undefined : dialogs.openDelete,
       onSubmit: isAdmin ? undefined : handleSubmit,
