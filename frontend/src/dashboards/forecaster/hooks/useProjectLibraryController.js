@@ -5,6 +5,7 @@ import {
   fetchAllProjectsForAdmin,
   publishProject,
   rejectProject,
+  startReviewProject,
 } from "@/api/projectAPI";
 import { useProjects } from "@dashboards/forecaster/hooks/useProjects";
 import {
@@ -207,13 +208,23 @@ export function useProjectLibraryController({
       : "WaveLab · Forecast Operations";
   }, [isAdmin]);
 
+  const handleStartReview = async (project) => {
+    if (project.status !== "Submitted") {
+      return normalizeAdminProject(project);
+    }
+
+    const updatedProject = await startReviewProject(project._id);
+    await refetch();
+    return normalizeAdminProject(updatedProject);
+  };
+
   const handleApprove = async (project) => {
     await approveProject(project._id);
     await refetch();
   };
 
-  const handleReject = async (project) => {
-    await rejectProject(project._id, "Needs revision");
+  const handleReject = async (project, comment = "Needs revision") => {
+    await rejectProject(project._id, comment);
     await refetch();
   };
 
@@ -260,6 +271,7 @@ export function useProjectLibraryController({
       onOpen: (project) => window.open(`/studio/${project._id}`, "_blank"),
       onRename: isAdmin ? undefined : dialogs.openRename,
       onDelete: isAdmin ? undefined : dialogs.openDelete,
+      onStartReview: isAdmin ? handleStartReview : undefined,
       onApprove: isAdmin ? handleApprove : undefined,
       onReject: isAdmin ? handleReject : undefined,
       onPublish: isAdmin ? handlePublish : undefined,
