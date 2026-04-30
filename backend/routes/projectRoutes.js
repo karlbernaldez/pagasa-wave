@@ -10,6 +10,7 @@ import {
   updateProject,
   deleteProject,
   submitProject,
+  startReviewProject,
   approveProject,
   rejectProject,
   publishProject,
@@ -49,6 +50,8 @@ router.patch('/:id/submit', submitProject);
 // Admin routes
 // ─────────────────────────────────────────────
 router.get('/admin/all', isAdmin, getAllProjectsForAdmin);
+
+router.patch('/:id/start-review', isAdmin, startReviewProject);
 
 router.patch('/:id/approve', isAdmin, approveProject);
 
