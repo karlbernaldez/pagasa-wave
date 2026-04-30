@@ -6,6 +6,7 @@ import {
   deleteProjectAndFeatures,
 } from '../utils/dbHelpers.js';
 import Project from '../models/Project.js';
+import Feature from '../models/Feature.js';
 
 /* =========================================================
    STATUS TRANSITION MAP
@@ -53,6 +54,44 @@ function getRequiredComment(value, label = 'Comment') {
   if (!comment) throwError(`${label} is required`, 400);
   if (comment.length > 1000) throwError(`${label} must be 1000 characters or less`, 400);
   return comment;
+}
+
+function toFeatureSnapshot(feature) {
+  return {
+    type: 'Feature',
+    geometry: feature.geometry,
+    properties: {
+      ...(feature.properties || {}),
+      name: feature.name,
+      sourceId: feature.sourceId,
+    },
+  };
+}
+
+async function createProjectVersionSnapshot(project, userId, reason = 'submit') {
+  const features = await Feature.find({
+    'properties.project': project._id,
+  }).lean();
+
+  const featureCollection = {
+    type: 'FeatureCollection',
+    features: features.map(toFeatureSnapshot),
+  };
+
+  const lastVersion = project.versions?.length
+    ? project.versions[project.versions.length - 1].versionNumber
+    : 0;
+  const nextVersion = lastVersion + 1;
+
+  project.version = nextVersion;
+  project.versions.push({
+    versionNumber: nextVersion,
+    snapshot: featureCollection,
+    features: featureCollection.features,
+    featureCollection,
+    createdBy: userId,
+    reason,
+  });
 }
 
 async function sendProject(project, res) {
@@ -352,6 +391,12 @@ export const submitProject = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+  await createProjectVersionSnapshot(
+    project,
+    req.user.id,
+    previousStatus === 'Revision Requested' ? 'resubmit' : 'submit'
+  );
+
   project.status = 'Submitted';
   project.submittedAt = new Date();
 
@@ -360,7 +405,9 @@ export const submitProject = asyncHandler(async (req, res) => {
     performedBy: req.user.id,
     previousStatus,
     newStatus: 'Submitted',
-    comment: 'Submitted for review',
+    comment: previousStatus === 'Revision Requested'
+      ? 'Revision resubmitted for review'
+      : 'Submitted for review',
   });
 
   await project.save();
