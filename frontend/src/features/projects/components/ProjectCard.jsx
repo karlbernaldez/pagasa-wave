@@ -13,17 +13,15 @@ import { useState } from 'react';
 
 import Button from '@/components/ui/Button';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
-
-const STATUS_STYLE = {
-  Draft: 'bg-slate-100 text-slate-700 border-slate-200',
-  Submitted: 'bg-amber-50 text-amber-700 border-amber-200',
-  'Under Review': 'bg-orange-50 text-orange-700 border-orange-200',
-  'Revision Requested': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  Approved: 'bg-blue-50 text-blue-700 border-blue-200',
-  Published: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Rejected: 'bg-red-50 text-red-700 border-red-200',
-  Archived: 'bg-slate-100 text-slate-500 border-slate-200',
-};
+import {
+  PROJECT_STATUS,
+  canSubmitProjectStatus,
+  getProjectStatusLabel,
+  getProjectStatusStyle,
+  isProjectApproved,
+  isProjectPublished,
+  isProjectReviewable,
+} from '@/features/projects/projectStatuses';
 
 function formatDate(value, pattern = 'MMM d, yyyy') {
   if (!value) return '—';
@@ -48,6 +46,7 @@ function getProjectType(project) {
 }
 
 function getProjectOwner(project) {
+  if (project?.ownerDisplay) return project.ownerDisplay;
   if (!project?.owner) return null;
   if (typeof project.owner === 'string') return project.owner;
 
@@ -78,39 +77,22 @@ function getDefaultMenuActions({ project, onRename, onDelete }) {
 }
 
 function getSubmitAction({ project, onSubmit, submittingProjectId }) {
-  const status = project?.status?.trim();
+  if (!onSubmit || !canSubmitProjectStatus(project?.status)) return null;
 
-  if (!onSubmit) return null;
+  const isInitialSubmit = project.status === PROJECT_STATUS.DRAFT;
 
-  if (status === 'Draft') {
-    return {
-      key: 'submit',
-      label: 'Submit',
-      icon: Send,
-      variant: 'primary',
-      loading: submittingProjectId === project._id,
-      onClick: () => onSubmit(project),
-    };
-  }
-
-  if (status === 'Rejected' || status === 'Revision Requested') {
-    return {
-      key: 'resubmit',
-      label: 'Resubmit',
-      icon: Send,
-      variant: 'primary',
-      loading: submittingProjectId === project._id,
-      onClick: () => onSubmit(project),
-    };
-  }
-
-  return null;
+  return {
+    key: isInitialSubmit ? 'submit' : 'resubmit',
+    label: isInitialSubmit ? 'Submit' : 'Resubmit',
+    icon: Send,
+    variant: 'primary',
+    loading: submittingProjectId === project._id,
+    onClick: () => onSubmit(project),
+  };
 }
 
 function getReviewActions({ project, onApprove, onReject, onPublish, onDownload }) {
-  const status = project?.status?.trim();
-
-  if (['Submitted', 'Under Review'].includes(status)) {
+  if (isProjectReviewable(project?.status)) {
     return [
       onApprove && {
         key: 'approve',
@@ -130,7 +112,7 @@ function getReviewActions({ project, onApprove, onReject, onPublish, onDownload 
     ].filter(Boolean);
   }
 
-  if (status === 'Approved') {
+  if (isProjectApproved(project?.status)) {
     return [
       onPublish && {
         key: 'publish',
@@ -142,7 +124,7 @@ function getReviewActions({ project, onApprove, onReject, onPublish, onDownload 
     ].filter(Boolean);
   }
 
-  if (status === 'Published') {
+  if (isProjectPublished(project?.status)) {
     return [
       onDownload && {
         key: 'download',
@@ -178,8 +160,8 @@ export default function ProjectCard({
 
   const id = getProjectId(project);
   const name = getProjectName(project);
-  const status = project?.status || 'Draft';
-  const statusClass = STATUS_STYLE[status] || 'bg-blue-50 text-blue-700 border-blue-200';
+  const statusLabel = getProjectStatusLabel(project?.status);
+  const statusClass = getProjectStatusStyle(project?.status);
   const featureSource = getProjectFeatures(project);
   const owner = getProjectOwner(project);
   const isReviewMode = mode === 'review';
@@ -218,7 +200,7 @@ export default function ProjectCard({
 
         <div className="absolute right-3 top-3 z-10">
           <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur ${statusClass}`}>
-            {status}
+            {statusLabel}
           </span>
         </div>
 
