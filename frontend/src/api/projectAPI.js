@@ -106,6 +106,12 @@ export const submitProject = (id) =>
     method: 'PATCH',
   });
 
+// Start review (Admin)
+export const startReviewProject = (id) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/start-review`, {
+    method: 'PATCH',
+  });
+
 // Approve project (Admin)
 export const approveProject = (id) =>
   request(`${PROJECT_API_BASE_URL}/${id}/approve`, {
