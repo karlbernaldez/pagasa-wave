@@ -1,7 +1,9 @@
 import { lazy } from 'react';
+import ForecasterRouteLayout from '@/dashboards/forecaster/layout/ForecasterRouteLayout';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
+import StudioLayout from '@/app/layout/StudioLayout';
 
-const StudioBase = lazy(() => import('@/dashboards/forecaster/pages/StudioBase'));
+const ProjectLibraryPage = lazy(() => import('@/dashboards/forecaster/pages/ProjectLibraryPage'));
 const Studio = lazy(() => import('@/dashboards/forecaster/pages/Studio'));
 const Profile = lazy(() => import('@/dashboards/forecaster/pages/Profile'));
 const EditProfile = lazy(() => import('@/dashboards/forecaster/pages/EditProfile'));
@@ -9,36 +11,25 @@ const PdfGenerator = lazy(() => import('@/pages/PdfGenerator'));
 
 export default [
   {
-    path: '/studio',
-    element: (
-      <ProtectedRoute requireAuth={true}>
-        <StudioBase />
-      </ProtectedRoute>
-    ),
+    element: <ForecasterRouteLayout />,
+    children: [
+      { path: '/studio', element: <ProjectLibraryPage /> },
+      { path: '/profile', element: <Profile /> },
+      { path: '/edit-profile', element: <EditProfile /> },
+      { path: '/pdf', element: <PdfGenerator /> },
+    ],
   },
   {
-    path: '/studio/:projectId',
-    element: (
-      <ProtectedRoute requireAuth={true}>
-        <Studio />
-      </ProtectedRoute>
-    ),
+    element: <StudioLayout />,
+    children: [
+      {
+        path: '/studio/:projectId',
+        element: (
+          <ProtectedRoute requireAuth={true}>
+            <Studio />
+          </ProtectedRoute>
+        ),
+      },
+    ],
   },
-  {
-    path: '/profile',
-    element: (
-      <ProtectedRoute requireAuth={true}>
-        <Profile />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/edit-profile',
-    element: (
-      <ProtectedRoute requireAuth={true}>
-        <EditProfile />
-      </ProtectedRoute>
-    ),
-  },
-  { path: '/pdf', element: <PdfGenerator /> },
 ];

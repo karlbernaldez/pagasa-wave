@@ -3,10 +3,6 @@ import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
-/**
- * Audit Log Subdocument
- * Tracks every workflow action.
- */
 const AuditLogSchema = new Schema({
   action: {
     type: String,
@@ -15,7 +11,10 @@ const AuditLogSchema = new Schema({
       'edited',
       'renamed',
       'submitted',
+      'review_started',
       'moved_to_review',
+      'comment_added',
+      'revision_requested',
       'approved',
       'rejected',
       'published',
@@ -31,72 +30,28 @@ const AuditLogSchema = new Schema({
   previousStatus: String,
   newStatus: String,
   comment: String,
-  timestamp: {
-    type: Date,
-    default: Date.now
-  }
+  timestamp: { type: Date, default: Date.now }
 }, { _id: false });
 
-/**
- * Version Snapshot Subdocument
- * Stores immutable historical versions.
- */
 const VersionSchema = new Schema({
-  versionNumber: {
-    type: Number,
-    required: true
-  },
-  snapshot: {
-    type: Schema.Types.Mixed, // Stores frozen chart data / annotations
-    required: true
-  },
-  createdBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  versionNumber: { type: Number, required: true },
+  snapshot: { type: Schema.Types.Mixed, required: true },
+  features: { type: [Schema.Types.Mixed], default: [] },
+  featureCollection: { type: Schema.Types.Mixed, default: null },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now },
+  reason: { type: String, default: 'snapshot' }
 }, { _id: false });
 
 const ProjectSchema = new Schema({
-
-  /* ===============================
-     Basic Information
-  =============================== */
-
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-
-  description: {
-    type: String,
-    default: ''
-  },
-
+  name: { type: String, required: true, trim: true },
+  description: { type: String, default: '' },
   chartType: {
     type: String,
-    enum: [
-      'analysis',
-      'forecast_24h',
-      'forecast_36h',
-      'forecast_48h'
-    ],
+    enum: ['analysis','forecast_24h','forecast_36h','forecast_48h'],
     required: true
   },
-
-  forecastDate: {
-    type: Date,
-    required: true
-  },
-
-  /* ===============================
-     Workflow State Machine
-  =============================== */
+  forecastDate: { type: Date, required: true },
 
   status: {
     type: String,
@@ -104,6 +59,7 @@ const ProjectSchema = new Schema({
       'Draft',
       'Submitted',
       'Under Review',
+      'Revision Requested',
       'Approved',
       'Published',
       'Rejected',
@@ -112,75 +68,35 @@ const ProjectSchema = new Schema({
     default: 'Draft'
   },
 
-  version: {
-    type: Number,
-    default: 1
-  },
+  version: { type: Number, default: 1 },
 
-  /* ===============================
-     Ownership & Review Metadata
-  ================================ */
-
-  owner: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
+  owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 
   submittedAt: Date,
   reviewedAt: Date,
-
-  approvedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  },
-
-  rejectedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  },
-
+  reviewStartedAt: Date,
+  reviewStartedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   reviewComment: String,
   publishedAt: Date,
 
-  /* ===============================
-     Access Tracking
-  ================================ */
-
-  lastOpenedAt: {
-    type: Date,
-    default: null
-  },
-
-  lastOpenedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    default: null
-  },
-
-  openCount: {
-    type: Number,
-    default: 0
-  },
-
-  /* ===============================
-     Version History & Audit
-  =============================== */
+  lastOpenedAt: { type: Date, default: null },
+  lastOpenedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  openCount: { type: Number, default: 0 },
 
   versions: [VersionSchema],
-
   auditLogs: [AuditLogSchema]
 
-}, {
-  timestamps: true // auto adds createdAt + updatedAt
-});
+}, { timestamps: true });
 
-
-/**
- * Compound Unique Index
- * Prevent duplicate project names per owner.
- */
 ProjectSchema.index({ name: 1, owner: 1 }, { unique: true });
 
+// NEW PERFORMANCE INDEXES
+ProjectSchema.index({ owner: 1, updatedAt: -1 });
+ProjectSchema.index({ owner: 1, status: 1, updatedAt: -1 });
+ProjectSchema.index({ owner: 1, chartType: 1, updatedAt: -1 });
+ProjectSchema.index({ owner: 1, forecastDate: -1 });
+ProjectSchema.index({ status: 1, updatedAt: -1 });
 
 export default mongoose.models.Project || mongoose.model('Project', ProjectSchema);

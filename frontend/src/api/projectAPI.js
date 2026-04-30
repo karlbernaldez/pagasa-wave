@@ -25,6 +25,11 @@ const request = async (url, options = {}) => {
   return data;
 };
 
+const appendQueryParam = (params, key, value) => {
+  if (value === undefined || value === null || value === '' || value === 'All') return;
+  params.set(key, String(value));
+};
+
 /* =========================================================
    USER PROJECT ROUTES
 ========================================================= */
@@ -36,10 +41,29 @@ export const createProject = (projectData) =>
     body: JSON.stringify(projectData),
   });
 
-// Get all projects for current user
-export const fetchUserProjects = ({ page = 1, limit, search = '', status = '' } = {}) => {
-  const params = new URLSearchParams({ page, limit, search, status });
-  return request(`${PROJECT_API_BASE_URL}?${params}`);
+// Get projects for current user. Supports server-driven search, filtering, sorting, and pagination.
+export const fetchUserProjects = ({
+  page = 1,
+  limit = 10,
+  search = '',
+  status = '',
+  type = '',
+  dateRange = '',
+  sortBy = 'updatedAt',
+  sortDir = 'desc',
+  signal,
+} = {}) => {
+  const params = new URLSearchParams();
+  appendQueryParam(params, 'page', page);
+  appendQueryParam(params, 'limit', limit);
+  appendQueryParam(params, 'search', search.trim());
+  appendQueryParam(params, 'status', status);
+  appendQueryParam(params, 'type', type);
+  appendQueryParam(params, 'dateRange', dateRange);
+  appendQueryParam(params, 'sortBy', sortBy);
+  appendQueryParam(params, 'sortDir', sortDir);
+
+  return request(`${PROJECT_API_BASE_URL}?${params}`, { signal });
 };
 
 // Get latest user project
@@ -59,7 +83,7 @@ export const renameProject = (id, name) =>
     body: JSON.stringify({ name }),
   });
 
-// Update project (Draft or Rejected only)
+// Update project (Draft, Rejected, or Revision Requested only)
 export const updateProjectById = (id, projectData) =>
   request(`${PROJECT_API_BASE_URL}/${id}`, {
     method: 'PUT',
@@ -80,6 +104,26 @@ export const deleteProjectById = (id) =>
 export const submitProject = (id) =>
   request(`${PROJECT_API_BASE_URL}/${id}/submit`, {
     method: 'PATCH',
+  });
+
+// Start review (Admin)
+export const startReviewProject = (id) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/start-review`, {
+    method: 'PATCH',
+  });
+
+// Add review comment without changing status (Admin)
+export const addReviewComment = (id, comment) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/review-comment`, {
+    method: 'POST',
+    body: JSON.stringify({ comment }),
+  });
+
+// Request revision (Admin)
+export const requestProjectRevision = (id, comment) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/request-revision`, {
+    method: 'PATCH',
+    body: JSON.stringify({ comment }),
   });
 
 // Approve project (Admin)
