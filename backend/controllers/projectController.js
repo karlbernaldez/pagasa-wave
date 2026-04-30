@@ -68,6 +68,11 @@ function toFeatureSnapshot(feature) {
   };
 }
 
+function getLatestVersionReason(project) {
+  if (!project.versions?.length) return null;
+  return project.versions[project.versions.length - 1]?.reason || null;
+}
+
 async function createProjectVersionSnapshot(project, userId, reason = 'submit') {
   const features = await Feature.find({
     'properties.project': project._id,
@@ -497,6 +502,11 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+
+  if (getLatestVersionReason(project) !== 'revision_baseline') {
+    await createProjectVersionSnapshot(project, req.user.id, 'revision_baseline');
+  }
+
   project.status = 'Revision Requested';
   project.rejectedBy = undefined;
   project.reviewComment = comment;
