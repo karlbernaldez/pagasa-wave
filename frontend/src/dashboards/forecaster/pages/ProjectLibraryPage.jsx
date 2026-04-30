@@ -98,13 +98,20 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
         setReviewProject(updatedProject || project);
       } catch (err) {
         console.error('Failed to start review:', err);
-        setReviewProject(project);
+        window.alert(err?.message || 'Failed to start project review.');
       } finally {
         setIsStartingReview(false);
       }
       return;
     }
     onOpen(project);
+  };
+
+  const handleReviewActionComplete = async (updatedProject) => {
+    if (updatedProject) {
+      setReviewProject(updatedProject);
+    }
+    await onRetry?.();
   };
 
   const tableProps = {
@@ -198,7 +205,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
           onApprove={onApprove}
           onReject={onReject}
           onPublish={onPublish}
-          onActionComplete={onRetry}
+          onActionComplete={handleReviewActionComplete}
         />
       )}
     </div>
