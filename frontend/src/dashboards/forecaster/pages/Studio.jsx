@@ -244,10 +244,11 @@ const Studio = ({ logger }) => {
   const showMainUI = !isLoadingProject;
   const projectName = currentProject?.name || "No Project Selected";
   const projectStatus = currentProject?.status;
-  const projectStatusLabel = isProjectRevisionRequested(projectStatus)
+  const isRevisionRequested = isProjectRevisionRequested(projectStatus);
+  const projectStatusLabel = isRevisionRequested
     ? "Needs Revision"
     : getProjectStatusLabel(projectStatus);
-  const projectStatusStyle = isProjectRevisionRequested(projectStatus)
+  const projectStatusStyle = isRevisionRequested
     ? "border-amber-300 bg-amber-50 text-amber-800"
     : getProjectStatusStyle(projectStatus);
   const canSubmitProject = currentProject && canSubmitProjectStatus(projectStatus);
@@ -255,6 +256,7 @@ const Studio = ({ logger }) => {
     () => getLatestReviewRemarks(currentProject),
     [currentProject]
   );
+  const hasActiveReviewRemarks = isRevisionRequested && Boolean(latestReviewRemarks?.comment);
 
   // ─── Render ──────────────────────────────────────────
   return (
@@ -307,7 +309,7 @@ const Studio = ({ logger }) => {
         </div>
       </header>
 
-      {latestReviewRemarks?.comment && (
+      {hasActiveReviewRemarks && (
         <div className="absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-3 text-amber-950 shadow-lg backdrop-blur-md" style={{ top: STUDIO_HEADER_HEIGHT + 12 }}>
           <div className="flex items-start gap-3">
             <div className="mt-0.5 rounded-lg bg-amber-100 p-1.5 text-amber-700">
