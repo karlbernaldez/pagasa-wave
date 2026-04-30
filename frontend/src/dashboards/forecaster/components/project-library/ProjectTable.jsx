@@ -1,11 +1,12 @@
 import { format } from "date-fns";
-import { ExternalLink, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ExternalLink, MessageSquareText, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import Button from "@/components/ui/Button";
 import {
   getProjectStatusLabel,
   getProjectStatusStyle,
+  isProjectRevisionRequested,
 } from "@/features/projects/projectStatuses";
 
 function formatDate(value, pattern = "MMM d, yyyy") {
@@ -80,16 +81,26 @@ export default function ProjectTable({
         <tbody>
           {projects.map((project) => {
             const projectId = getProjectId(project);
-            const statusLabel = getProjectStatusLabel(project.status);
-            const statusClass = getProjectStatusStyle(project.status);
+            const needsRevision = isProjectRevisionRequested(project.status);
+            const statusLabel = needsRevision ? "Needs Revision" : getProjectStatusLabel(project.status);
+            const statusClass = needsRevision
+              ? "bg-amber-50 text-amber-800 border-amber-300"
+              : getProjectStatusStyle(project.status);
+            const latestRemarks = project.latestReviewRemarks;
 
             return (
-              <tr key={projectId} className="border-t hover:bg-slate-50">
+              <tr key={projectId} className={`border-t hover:bg-slate-50 ${needsRevision ? "bg-amber-50/30" : ""}`}>
                 <td className="px-4 py-3">
                   <p className="font-semibold text-slate-900">{project.name}</p>
                   <p className="mt-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                     {project.chartType || "Forecast"}
                   </p>
+                  {needsRevision && latestRemarks?.comment && (
+                    <p className="mt-2 flex max-w-md items-start gap-1.5 text-xs font-semibold leading-relaxed text-amber-800">
+                      <MessageSquareText size={13} className="mt-0.5 shrink-0" />
+                      <span className="line-clamp-2">{latestRemarks.comment}</span>
+                    </p>
+                  )}
                 </td>
 
                 {isReviewMode && (
@@ -115,7 +126,7 @@ export default function ProjectTable({
                 <td className="relative px-4 py-3 text-right">
                   <div className="flex justify-end gap-2">
                     <Button size="sm" onClick={() => onOpen(project)} icon={ExternalLink}>
-                      {isReviewMode ? "Review" : "Open"}
+                      {isReviewMode ? "Review" : needsRevision ? "Open and Revise" : "Open"}
                     </Button>
 
                     {hasMenuActions && (
