@@ -6,6 +6,7 @@ import {
   publishProject,
   rejectProject,
   startReviewProject,
+  submitProject,
 } from "@/api/projectAPI";
 import { useProjects } from "@dashboards/forecaster/hooks/useProjects";
 import {
@@ -162,6 +163,7 @@ export function useProjectLibraryController({
   description,
 } = {}) {
   const isAdmin = role === "admin";
+  const [submittingProjectId, setSubmittingProjectId] = useState(null);
 
   const forecasterProjects = useProjects();
   const adminProjects = useAdminProjectLibrary();
@@ -207,6 +209,19 @@ export function useProjectLibraryController({
       ? "WaveLab · Project Review"
       : "WaveLab · Forecast Operations";
   }, [isAdmin]);
+
+  const handleSubmit = async (project) => {
+    const projectId = project?._id || project?.id;
+    if (!projectId || submittingProjectId) return;
+
+    setSubmittingProjectId(projectId);
+    try {
+      await submitProject(projectId);
+      await refetch();
+    } finally {
+      setSubmittingProjectId(null);
+    }
+  };
 
   const handleStartReview = async (project) => {
     if (project.status !== "Submitted") {
@@ -271,6 +286,8 @@ export function useProjectLibraryController({
       onOpen: (project) => window.open(`/studio/${project._id}`, "_blank"),
       onRename: isAdmin ? undefined : dialogs.openRename,
       onDelete: isAdmin ? undefined : dialogs.openDelete,
+      onSubmit: isAdmin ? undefined : handleSubmit,
+      submittingProjectId,
       onStartReview: isAdmin ? handleStartReview : undefined,
       onApprove: isAdmin ? handleApprove : undefined,
       onReject: isAdmin ? handleReject : undefined,
