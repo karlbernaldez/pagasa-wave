@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { submitProject } from '@/api/projectAPI';
 import { ROLES } from '@/core/auth/roles';
 import { useDeleteProjectMutation, useRenameProjectMutation } from '@dashboards/forecaster/hooks/useProjectMutations';
 import ProjectDialogsHost from '@dashboards/forecaster/components/project-library/ProjectDialogsHost';
@@ -18,6 +19,7 @@ const ProjectsPage = ({ role, isDarkMode }) => {
   const data = useProjectsData({ role });
 
   const [selectedAdminProject, setSelectedAdminProject] = useState(null);
+  const [submittingProjectId, setSubmittingProjectId] = useState(null);
 
   const deleteProjectMutation = useDeleteProjectMutation();
   const renameProjectMutation = useRenameProjectMutation();
@@ -28,6 +30,22 @@ const ProjectsPage = ({ role, isDarkMode }) => {
   });
 
   const isAdmin = role === ROLES.ADMIN;
+
+  const handleSubmitProject = async (project) => {
+    const projectId = project?._id || project?.id;
+    if (!projectId || submittingProjectId) return;
+
+    setSubmittingProjectId(projectId);
+    try {
+      await submitProject(projectId);
+      await data.refetch?.();
+    } catch (error) {
+      window.alert(error?.message || 'Failed to submit project for review.');
+    } finally {
+      setSubmittingProjectId(null);
+    }
+  };
+
   const dialogs = isAdmin
     ? selectedAdminProject
       ? createPortal(
@@ -66,6 +84,8 @@ const ProjectsPage = ({ role, isDarkMode }) => {
         onRetry={data.refetch}
         onOpen={isAdmin ? setSelectedAdminProject : (project) => window.open(`/studio/${project._id}`, '_blank')}
         onApprove={isAdmin ? setSelectedAdminProject : undefined}
+        onSubmit={!isAdmin ? handleSubmitProject : undefined}
+        submittingProjectId={submittingProjectId}
         onRename={!isAdmin ? forecasterDialogs.openRename : undefined}
         onDelete={!isAdmin ? forecasterDialogs.openDelete : undefined}
       />
