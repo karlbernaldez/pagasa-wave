@@ -73,6 +73,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
   const controller = useProjectLibraryController({ role, title, description });
   const [view, setView] = useState("grid");
   const [reviewProject, setReviewProject] = useState(null);
+  const [isStartingReview, setIsStartingReview] = useState(false);
 
   const {
     projects,
@@ -82,15 +83,25 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     onOpen,
     onRename,
     onDelete,
+    onStartReview,
     onApprove,
     onReject,
     onPublish,
     mode,
   } = controller.table;
 
-  const handleOpen = (project) => {
+  const handleOpen = async (project) => {
     if (role === 'admin') {
-      setReviewProject(project);
+      setIsStartingReview(true);
+      try {
+        const updatedProject = await onStartReview?.(project);
+        setReviewProject(updatedProject || project);
+      } catch (err) {
+        console.error('Failed to start review:', err);
+        setReviewProject(project);
+      } finally {
+        setIsStartingReview(false);
+      }
       return;
     }
     onOpen(project);
@@ -168,6 +179,12 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       </div>
 
       {controller.dialogs}
+
+      {isStartingReview && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">
+          Starting review…
+        </div>
+      )}
 
       {role === 'admin' && (
         <ProjectReviewModal
