@@ -215,7 +215,7 @@ const Studio = ({ logger }) => {
     markerTitleRef.current = title;
     saveMarker(selectedPoint, mapRef, setShowTitleModal, type)(title);
     const coords = [selectedPoint.lng, selectedPoint.lat];
-    savePointFeature({ coords, title, selectedType: type, setLayersRef });
+    savePointFeature({ coords, title, selectedType: type, setLayersRef, projectId });
   };
 
   const handleMapLoad = useMapLoader(
