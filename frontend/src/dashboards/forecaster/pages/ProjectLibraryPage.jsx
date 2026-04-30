@@ -7,6 +7,7 @@ import ProjectTable from "@dashboards/forecaster/components/project-library/Proj
 import ProjectPagination from "@dashboards/forecaster/components/project-library/ProjectPagination";
 
 import ProjectCard from "@/features/projects/components/ProjectCard";
+import ProjectReviewModal from "@/features/projects/components/ProjectReviewModal";
 import Button from "@/components/ui/Button";
 
 import { useProjectLibraryController } from "@dashboards/forecaster/hooks/useProjectLibraryController";
@@ -70,7 +71,8 @@ function GridState({ type, onRetry }) {
 
 export default function ProjectLibraryPage({ role = "forecaster", title, description }) {
   const controller = useProjectLibraryController({ role, title, description });
-  const [view, setView] = useState("grid"); // 'grid' | 'list'
+  const [view, setView] = useState("grid");
+  const [reviewProject, setReviewProject] = useState(null);
 
   const {
     projects,
@@ -85,6 +87,14 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     onPublish,
     mode,
   } = controller.table;
+
+  const handleOpen = (project) => {
+    if (role === 'admin') {
+      setReviewProject(project);
+      return;
+    }
+    onOpen(project);
+  };
 
   return (
     <div className="min-h-full bg-slate-50">
@@ -136,7 +146,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
                     key={p._id || p.id}
                     project={p}
                     mode={mode}
-                    onOpen={onOpen}
+                    onOpen={handleOpen}
                     onRename={onRename}
                     onDelete={onDelete}
                     onApprove={onApprove}
@@ -158,6 +168,17 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       </div>
 
       {controller.dialogs}
+
+      {role === 'admin' && (
+        <ProjectReviewModal
+          project={reviewProject}
+          onClose={() => setReviewProject(null)}
+          onApprove={onApprove}
+          onReject={onReject}
+          onPublish={onPublish}
+          onActionComplete={onRetry}
+        />
+      )}
     </div>
   );
 }
