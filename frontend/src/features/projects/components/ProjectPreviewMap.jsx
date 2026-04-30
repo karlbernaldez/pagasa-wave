@@ -104,6 +104,37 @@ async function loadProjectFeatures(projectId, scope) {
   return fetchFeatures(projectId);
 }
 
+function useNearViewport(rootMargin = '400px') {
+  const targetRef = useRef(null);
+  const [isNearViewport, setIsNearViewport] = useState(false);
+
+  useEffect(() => {
+    const target = targetRef.current;
+    if (!target || isNearViewport) return undefined;
+
+    if (!('IntersectionObserver' in window)) {
+      setIsNearViewport(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsNearViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin }
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [isNearViewport, rootMargin]);
+
+  return [targetRef, isNearViewport];
+}
+
 export default function ProjectPreviewMap({
   projectId,
   features,
@@ -113,6 +144,7 @@ export default function ProjectPreviewMap({
   isDarkMode = false,
   emptyLabel = 'No annotations yet',
 }) {
+  const [viewportRef, isNearViewport] = useNearViewport();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
@@ -124,12 +156,13 @@ export default function ProjectPreviewMap({
     [features]
   );
 
-  const shouldFetchFeatures = Boolean(projectId) && providedFeatureCollection.features.length === 0;
+  const shouldFetchFeatures = isNearViewport && Boolean(projectId) && providedFeatureCollection.features.length === 0;
 
   useEffect(() => {
     let isMounted = true;
 
     if (!shouldFetchFeatures) {
+      if (!isNearViewport) return undefined;
       setRemoteFeatures(null);
       setIsLoadingFeatures(false);
       return undefined;
@@ -154,7 +187,7 @@ export default function ProjectPreviewMap({
     return () => {
       isMounted = false;
     };
-  }, [featureScope, projectId, shouldFetchFeatures]);
+  }, [featureScope, isNearViewport, projectId, shouldFetchFeatures]);
 
   const featureCollection = useMemo(() => {
     if (providedFeatureCollection.features.length > 0) {
@@ -167,7 +200,7 @@ export default function ProjectPreviewMap({
   const hasFeatures = featureCollection.features.length > 0;
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return undefined;
+    if (!isNearViewport || !containerRef.current || mapRef.current) return undefined;
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
@@ -178,6 +211,7 @@ export default function ProjectPreviewMap({
       interactive: false,
       attributionControl: false,
       preserveDrawingBuffer: false,
+      fadeDuration: 0,
     });
 
     mapRef.current = map;
@@ -195,8 +229,9 @@ export default function ProjectPreviewMap({
     return () => {
       map.remove();
       mapRef.current = null;
+      setIsReady(false);
     };
-  }, []);
+  }, [isNearViewport]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -222,12 +257,17 @@ export default function ProjectPreviewMap({
 
   return (
     <div
+      ref={viewportRef}
       className={`relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100 ${className}`}
       style={{ height }}
     >
-      <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
+      {isNearViewport ? (
+        <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
+      ) : (
+        <div className="h-full w-full animate-pulse bg-slate-200" aria-hidden="true" />
+      )}
 
-      {!hasFeatures && !isLoadingFeatures && (
+      {!hasFeatures && !isLoadingFeatures && isNearViewport && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/50 text-xs font-semibold text-slate-500 backdrop-blur-[1px]">
           {emptyLabel}
         </div>
