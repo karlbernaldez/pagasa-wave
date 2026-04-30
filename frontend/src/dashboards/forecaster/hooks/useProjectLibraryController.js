@@ -22,6 +22,36 @@ import {
 const PAGE_SIZE = 10;
 const ADMIN_PAGE_SIZE = 12;
 
+const WORKFLOW_STATUS_LABELS = {
+  draft: "Draft",
+  submitted: "Submitted",
+  underreview: "Under Review",
+  under_review: "Under Review",
+  review: "Under Review",
+  revisionrequested: "Revision Requested",
+  revision_requested: "Revision Requested",
+  needsrevision: "Revision Requested",
+  needs_revision: "Revision Requested",
+  approved: "Approved",
+  published: "Published",
+  rejected: "Rejected",
+  archived: "Archived",
+};
+
+function normalizeWorkflowStatus(status, fallback = "Draft") {
+  const rawStatus = String(status || "").trim();
+  if (!rawStatus) return fallback;
+
+  const compactKey = rawStatus.toLowerCase().replace(/[\s-]+/g, "");
+  const snakeKey = rawStatus.toLowerCase().replace(/[\s-]+/g, "_");
+
+  return WORKFLOW_STATUS_LABELS[compactKey] || WORKFLOW_STATUS_LABELS[snakeKey] || rawStatus;
+}
+
+function getProjectId(project) {
+  return project?._id || project?.id;
+}
+
 function formatOwner(owner) {
   if (!owner) return "Project Owner";
   if (typeof owner === "string") return owner;
@@ -40,16 +70,18 @@ function getAdminProjectsFromResponse(data) {
 }
 
 function normalizeAdminProject(project) {
+  const id = getProjectId(project);
+
   return {
     ...project,
-    _id: project._id || project.id,
-    id: project._id || project.id,
+    _id: id,
+    id,
     name: project.name || project.title || "Untitled Project",
     title: project.name || project.title || "Untitled Project",
     owner: formatOwner(project.owner),
     rawOwner: project.owner,
     chartType: project.chartType || project.type || "forecast",
-    status: (project.status || "Draft").trim(),
+    status: normalizeWorkflowStatus(project.status),
   };
 }
 
@@ -211,7 +243,7 @@ export function useProjectLibraryController({
   }, [isAdmin]);
 
   const handleSubmit = async (project) => {
-    const projectId = project?._id || project?.id;
+    const projectId = getProjectId(project);
     if (!projectId || submittingProjectId) return;
 
     setSubmittingProjectId(projectId);
@@ -224,27 +256,34 @@ export function useProjectLibraryController({
   };
 
   const handleStartReview = async (project) => {
-    if (project.status !== "Submitted") {
-      return normalizeAdminProject(project);
+    const projectId = getProjectId(project);
+    const status = normalizeWorkflowStatus(project?.status);
+
+    if (!projectId) {
+      throw new Error("Project ID is missing.");
     }
 
-    const updatedProject = await startReviewProject(project._id);
+    if (status !== "Submitted") {
+      return normalizeAdminProject({ ...project, status });
+    }
+
+    const updatedProject = await startReviewProject(projectId);
     await refetch();
     return normalizeAdminProject(updatedProject);
   };
 
   const handleApprove = async (project) => {
-    await approveProject(project._id);
+    await approveProject(getProjectId(project));
     await refetch();
   };
 
   const handleReject = async (project, comment = "Needs revision") => {
-    await rejectProject(project._id, comment);
+    await rejectProject(getProjectId(project), comment);
     await refetch();
   };
 
   const handlePublish = async (project) => {
-    await publishProject(project._id);
+    await publishProject(getProjectId(project));
     await refetch();
   };
 
@@ -283,7 +322,7 @@ export function useProjectLibraryController({
       loading,
       error,
       onRetry: refetch,
-      onOpen: (project) => window.open(`/studio/${project._id}`, "_blank"),
+      onOpen: (project) => window.open(`/studio/${getProjectId(project)}`, "_blank"),
       onRename: isAdmin ? undefined : dialogs.openRename,
       onDelete: isAdmin ? undefined : dialogs.openDelete,
       onSubmit: isAdmin ? undefined : handleSubmit,
