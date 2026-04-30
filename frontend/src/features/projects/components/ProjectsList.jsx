@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Check, ExternalLink, Eye, MoreHorizontal } from 'lucide-react';
+import { Check, ExternalLink, Eye, MoreHorizontal, Send } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import { ROLES } from '@/core/auth/roles';
@@ -9,6 +9,7 @@ const STATUS_STYLE = {
   Draft: 'bg-slate-100 text-slate-700',
   Submitted: 'bg-amber-100 text-amber-700',
   'Under Review': 'bg-orange-100 text-orange-700',
+  'Revision Requested': 'bg-rose-100 text-rose-700',
   Approved: 'bg-blue-100 text-blue-700',
   Published: 'bg-emerald-100 text-emerald-700',
   Pending: 'bg-amber-100 text-amber-700',
@@ -41,6 +42,8 @@ const StatusBadge = ({ status }) => (
   </span>
 );
 
+const canSubmit = (status) => ['Draft', 'Rejected', 'Revision Requested'].includes(status);
+
 const ProjectsList = ({
   error,
   isDarkMode,
@@ -50,6 +53,8 @@ const ProjectsList = ({
   onOpen,
   onRename,
   onRetry,
+  onSubmit,
+  submittingProjectId,
   projects,
   role,
 }) => {
@@ -151,52 +156,72 @@ const ProjectsList = ({
         </thead>
 
         <tbody>
-          {projects.map((project) => (
-            <tr key={project._id} className="border-t hover:bg-slate-50">
-              <td className="px-4 py-3 font-medium text-slate-900">{getProjectName(project)}</td>
-              <td className="px-4 py-3 text-slate-600">{formatDate(project.forecastDate)}</td>
-              <td className="px-4 py-3"><StatusBadge status={project.status} /></td>
-              <td className="px-4 py-3 text-slate-600">{formatDate(project.updatedAt, 'MMM d, yyyy hh:mm a')}</td>
-              <td className="relative px-4 py-3 text-right">
-                <div className="flex justify-end gap-2">
-                  <Button size="sm" onClick={() => onOpen?.(project)} icon={ExternalLink}>
-                    Open
-                  </Button>
+          {projects.map((project) => {
+            const isSubmittable = canSubmit(project.status);
+            const isSubmitting = submittingProjectId === project._id;
 
-                  <Button
-                    variant="icon"
-                    size="sm"
-                    icon={MoreHorizontal}
-                    aria-label="More actions"
-                    onClick={() => setActive(active === project._id ? null : project._id)}
-                  />
-                </div>
+            return (
+              <tr key={project._id} className="border-t hover:bg-slate-50">
+                <td className="px-4 py-3 font-medium text-slate-900">{getProjectName(project)}</td>
+                <td className="px-4 py-3 text-slate-600">{formatDate(project.forecastDate)}</td>
+                <td className="px-4 py-3"><StatusBadge status={project.status} /></td>
+                <td className="px-4 py-3 text-slate-600">{formatDate(project.updatedAt, 'MMM d, yyyy hh:mm a')}</td>
+                <td className="relative px-4 py-3 text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" onClick={() => onOpen?.(project)} icon={ExternalLink}>
+                      Open
+                    </Button>
 
-                {active === project._id && (
-                  <div className="absolute right-4 z-10 mt-2 w-32 rounded-md border bg-white text-xs shadow-md">
-                    {onRename && (
-                      <button
-                        type="button"
-                        onClick={() => { setActive(null); onRename(project); }}
-                        className="block w-full px-3 py-2 text-left hover:bg-slate-50"
+                    {isSubmittable && onSubmit && (
+                      <Button
+                        size="sm"
+                        icon={Send}
+                        disabled={isSubmitting}
+                        onClick={() => onSubmit(project)}
                       >
-                        Rename
-                      </button>
+                        {isSubmitting
+                          ? 'Submitting...'
+                          : project.status === 'Draft'
+                          ? 'Submit'
+                          : 'Resubmit'}
+                      </Button>
                     )}
-                    {onDelete && (
-                      <button
-                        type="button"
-                        onClick={() => { setActive(null); onDelete(project); }}
-                        className="block w-full px-3 py-2 text-left text-red-600 hover:bg-slate-50"
-                      >
-                        Delete
-                      </button>
-                    )}
+
+                    <Button
+                      variant="icon"
+                      size="sm"
+                      icon={MoreHorizontal}
+                      aria-label="More actions"
+                      onClick={() => setActive(active === project._id ? null : project._id)}
+                    />
                   </div>
-                )}
-              </td>
-            </tr>
-          ))}
+
+                  {active === project._id && (
+                    <div className="absolute right-4 z-10 mt-2 w-32 rounded-md border bg-white text-xs shadow-md">
+                      {onRename && (
+                        <button
+                          type="button"
+                          onClick={() => { setActive(null); onRename(project); }}
+                          className="block w-full px-3 py-2 text-left hover:bg-slate-50"
+                        >
+                          Rename
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          type="button"
+                          onClick={() => { setActive(null); onDelete(project); }}
+                          className="block w-full px-3 py-2 text-left text-red-600 hover:bg-slate-50"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
