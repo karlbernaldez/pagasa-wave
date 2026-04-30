@@ -4,6 +4,7 @@ import {
   Check,
   Download,
   ExternalLink,
+  MessageSquareText,
   MoreHorizontal,
   Pencil,
   Send,
@@ -21,6 +22,7 @@ import {
   isProjectApproved,
   isProjectPublished,
   isProjectReviewable,
+  isProjectRevisionRequested,
 } from '@/features/projects/projectStatuses';
 
 function formatDate(value, pattern = 'MMM d, yyyy') {
@@ -80,10 +82,11 @@ function getSubmitAction({ project, onSubmit, submittingProjectId }) {
   if (!onSubmit || !canSubmitProjectStatus(project?.status)) return null;
 
   const isInitialSubmit = project.status === PROJECT_STATUS.DRAFT;
+  const needsRevision = isProjectRevisionRequested(project.status);
 
   return {
     key: isInitialSubmit ? 'submit' : 'resubmit',
-    label: isInitialSubmit ? 'Submit' : 'Resubmit',
+    label: isInitialSubmit ? 'Submit' : needsRevision ? 'Resubmit Revision' : 'Resubmit',
     icon: Send,
     variant: 'primary',
     loading: submittingProjectId === project._id,
@@ -160,12 +163,16 @@ export default function ProjectCard({
 
   const id = getProjectId(project);
   const name = getProjectName(project);
-  const statusLabel = getProjectStatusLabel(project?.status);
-  const statusClass = getProjectStatusStyle(project?.status);
+  const needsRevision = isProjectRevisionRequested(project?.status);
+  const statusLabel = needsRevision ? 'Needs Revision' : getProjectStatusLabel(project?.status);
+  const statusClass = needsRevision
+    ? 'bg-amber-50 text-amber-800 border-amber-300'
+    : getProjectStatusStyle(project?.status);
   const featureSource = getProjectFeatures(project);
   const owner = getProjectOwner(project);
   const isReviewMode = mode === 'review';
   const featureScope = isReviewMode ? 'admin' : 'user';
+  const latestRemarks = project?.latestReviewRemarks;
 
   const menuActions = actions ?? getDefaultMenuActions({ project, onRename, onDelete });
   const reviewActions = getReviewActions({ project, onApprove, onReject, onPublish, onDownload });
@@ -187,7 +194,7 @@ export default function ProjectCard({
   };
 
   return (
-    <article className="group rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
+    <article className={`group rounded-2xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${needsRevision ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200 hover:border-blue-200'}`}>
       <div className="relative overflow-hidden rounded-t-2xl">
         <ProjectPreviewMap
           projectId={id}
@@ -223,6 +230,18 @@ export default function ProjectCard({
           )}
         </div>
 
+        {needsRevision && latestRemarks?.comment && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
+            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-amber-700">
+              <MessageSquareText size={14} />
+              Latest admin remarks
+            </p>
+            <p className="mt-1 line-clamp-2 font-semibold leading-relaxed text-amber-900">
+              {latestRemarks.comment}
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
             <p className="font-bold text-slate-400">Forecast Date</p>
@@ -241,7 +260,7 @@ export default function ProjectCard({
         <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
           <div className="flex items-center gap-2">
             <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
-              {isReviewMode ? 'Review' : 'Open'}
+              {isReviewMode ? 'Review' : needsRevision ? 'Open and Revise' : 'Open'}
             </Button>
 
             {submitAction && (
