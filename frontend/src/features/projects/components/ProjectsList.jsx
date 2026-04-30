@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Check, ExternalLink, Eye, MoreHorizontal, Send } from 'lucide-react';
+import { ExternalLink, Eye, MoreHorizontal, Send, ClipboardCheck } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import { ROLES } from '@/core/auth/roles';
@@ -43,6 +43,7 @@ const StatusBadge = ({ status }) => (
 );
 
 const canSubmit = (status) => ['Draft', 'Rejected', 'Revision Requested'].includes(status);
+const canReview = (status) => ['Submitted', 'Under Review'].includes(status);
 
 const ProjectsList = ({
   error,
@@ -54,6 +55,7 @@ const ProjectsList = ({
   onRename,
   onRetry,
   onSubmit,
+  reviewingProjectId,
   submittingProjectId,
   projects,
   role,
@@ -95,11 +97,13 @@ const ProjectsList = ({
       <div className={`overflow-hidden rounded-xl border ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-slate-200 bg-white'}`}>
         {projects.map((project) => {
           const status = project.status;
-          const isPending = status === 'Pending' || status === 'Submitted';
+          const projectId = project._id || project.id;
+          const isReviewable = canReview(status);
+          const isOpeningReview = reviewingProjectId === projectId;
 
           return (
             <div
-              key={project._id}
+              key={projectId}
               onClick={() => onOpen?.(project)}
               className={`flex cursor-pointer items-center justify-between gap-4 border-b px-5 py-4 transition-colors last:border-b-0 ${
                 isDarkMode
@@ -125,14 +129,15 @@ const ProjectsList = ({
                 <StatusBadge status={status} />
                 <Button
                   size="sm"
-                  icon={isPending ? Check : Eye}
+                  icon={isReviewable ? ClipboardCheck : Eye}
+                  disabled={isOpeningReview}
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (isPending && onApprove) onApprove(project);
+                    if (isReviewable && onApprove) onApprove(project);
                     else onOpen?.(project);
                   }}
                 >
-                  {isPending && onApprove ? 'Approve' : 'View'}
+                  {isOpeningReview ? 'Opening...' : isReviewable ? 'Review' : 'View'}
                 </Button>
               </div>
             </div>
