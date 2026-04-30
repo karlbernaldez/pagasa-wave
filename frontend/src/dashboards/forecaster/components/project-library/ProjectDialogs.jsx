@@ -1,6 +1,6 @@
 // studio/components/ProjectDialogs.jsx
 import { useState, useEffect, useRef } from "react";
-import { AlertTriangle, Pencil, Share2, Copy, Check, Trash2 } from "lucide-react";
+import { AlertTriangle, Pencil, Share2, Copy, Check, Trash2, XCircle } from "lucide-react";
 import { Dialog, DialogIcon, DialogActions } from "./Dialog";
 import { cn } from "./utils";
 
@@ -29,6 +29,56 @@ export function DeleteDialog({ project, isDark, onCancel, onConfirm, loading }) 
         confirmLabel="Delete"
         confirmCls="bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-900/30"
         loading={loading}
+      />
+    </Dialog>
+  );
+}
+
+/* ── RejectDialog ─────────────────────── */
+export function RejectDialog({ project, isDark, onCancel, onConfirm, loading }) {
+  const [comment, setComment] = useState("Needs revision");
+  const inputRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => inputRef.current?.select(), 60); }, []);
+
+  return (
+    <Dialog isDark={isDark} onBackdrop={onCancel}>
+      <DialogIcon isDark={isDark} darkCls="bg-red-950 border-red-900" lightCls="bg-red-50 border-red-100">
+        <XCircle size={20} className="text-red-500" strokeWidth={2} />
+      </DialogIcon>
+
+      <h3 className={cn("font-bold text-base mb-1.5", isDark ? "text-white" : "text-slate-900")}>
+        Reject project?
+      </h3>
+      <p className={cn("text-sm mb-5 leading-relaxed", isDark ? "text-slate-400" : "text-slate-500")}>
+        Add a short reason for rejecting{" "}
+        <span className={cn("font-semibold", isDark ? "text-slate-200" : "text-slate-800")}>
+          "{project.name || project.title}"
+        </span>.
+      </p>
+
+      <textarea
+        ref={inputRef}
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        rows={4}
+        className={cn(
+          "w-full resize-none rounded-xl px-4 py-3 text-sm border outline-none transition-all",
+          isDark
+            ? "bg-slate-800 border-slate-700 text-white placeholder-slate-600 focus:border-red-500"
+            : "bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+        )}
+        placeholder="Explain what needs revision…"
+      />
+
+      <DialogActions
+        isDark={isDark}
+        onCancel={onCancel}
+        onConfirm={() => comment.trim() && onConfirm(comment.trim())}
+        confirmLabel="Reject"
+        confirmCls="bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-900/30"
+        loading={loading}
+        disabled={!comment.trim()}
       />
     </Dialog>
   );
