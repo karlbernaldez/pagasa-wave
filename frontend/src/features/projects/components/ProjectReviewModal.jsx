@@ -247,9 +247,10 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
   const mutedText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
   const labelText = isDarkMode ? 'text-slate-500' : 'text-slate-400';
   const strongText = isDarkMode ? 'text-slate-100' : 'text-slate-800';
+  const disabledReviewButton = isDarkMode ? 'opacity-45' : 'opacity-50';
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-slate-950/80 p-2 backdrop-blur-sm sm:p-4 xl:items-center xl:p-6">
+    <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-slate-950/80 p-1 backdrop-blur-sm sm:p-4 xl:items-center xl:p-6">
       <div className={`flex h-full w-full max-w-[1480px] flex-col overflow-hidden rounded-2xl border shadow-2xl ring-1 ring-white/10 sm:h-[min(94vh,940px)] sm:rounded-[28px] ${surface}`}>
         <header className={`flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
           <div className="min-w-0">
@@ -277,8 +278,8 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
         </header>
 
         <div className="grid min-h-0 flex-1 overflow-y-auto xl:grid-cols-[minmax(0,1.6fr)_430px] xl:overflow-hidden">
-          <section className={`min-h-[420px] overflow-hidden p-3 sm:p-4 xl:min-h-0 ${isDarkMode ? 'bg-slate-950' : 'bg-slate-100'}`}>
-            <div className={`flex h-full min-h-[390px] flex-col overflow-hidden rounded-2xl border shadow-sm sm:rounded-3xl xl:min-h-0 ${panel}`}>
+          <section className={`overflow-visible p-3 sm:p-4 xl:min-h-0 xl:overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-slate-100'}`}>
+            <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm sm:rounded-3xl xl:h-full ${panel}`}>
               <div className={`flex shrink-0 flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
                 <div>
                   <p className={`text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>Annotation Preview</p>
@@ -310,21 +311,21 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 overflow-hidden p-3 sm:p-4">
+              <div className="min-h-0 flex-1 overflow-visible p-3 sm:p-4 xl:overflow-hidden">
                 {mapMode === 'preview' ? (
                   <ProjectPreviewMap
                     projectId={projectId}
                     features={currentFeatureSource}
                     featureScope="admin"
                     isDarkMode={isDarkMode}
-                    className={`h-full min-h-[320px] rounded-2xl sm:min-h-[420px] xl:min-h-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
+                    className={`h-[310px] rounded-2xl sm:h-[460px] xl:h-full ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
                     height="100%"
                     emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                     lazy={false}
                   />
                 ) : (
-                  <div className="grid h-full min-h-0 gap-4 xl:grid-cols-2">
-                    <div className={`flex min-h-[300px] flex-col overflow-hidden rounded-2xl border shadow-sm xl:min-h-0 ${softPanel}`}>
+                  <div className="grid gap-3 xl:h-full xl:min-h-0 xl:grid-cols-2 xl:gap-4">
+                    <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${softPanel}`}>
                       <div className={`shrink-0 border-b px-4 py-3 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-white/10 bg-slate-950/60 text-slate-500' : 'border-slate-200 bg-white/70 text-slate-400'}`}>
                         Previous Snapshot
                       </div>
@@ -332,13 +333,13 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                         features={previousFeatureSource}
                         featureScope="admin"
                         isDarkMode={isDarkMode}
-                        className="min-h-[300px] flex-1 rounded-none border-0 xl:min-h-0"
+                        className="h-[248px] flex-none rounded-none border-0 sm:h-[360px] xl:h-full xl:flex-1"
                         height="100%"
                         emptyLabel="No previous snapshot"
                         lazy={false}
                       />
                     </div>
-                    <div className={`flex min-h-[300px] flex-col overflow-hidden rounded-2xl border shadow-sm xl:min-h-0 ${isDarkMode ? 'border-blue-400/20 bg-blue-500/5' : 'border-blue-100 bg-blue-50/40'}`}>
+                    <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${isDarkMode ? 'border-blue-400/20 bg-blue-500/5' : 'border-blue-100 bg-blue-50/40'}`}>
                       <div className={`shrink-0 border-b px-4 py-3 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-blue-400/20 bg-slate-950/60 text-blue-300' : 'border-blue-100 bg-white/80 text-blue-500'}`}>
                         Current Submission
                       </div>
@@ -347,7 +348,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                         features={currentFeatureSource}
                         featureScope="admin"
                         isDarkMode={isDarkMode}
-                        className="min-h-[300px] flex-1 rounded-none border-0 xl:min-h-0"
+                        className="h-[248px] flex-none rounded-none border-0 sm:h-[360px] xl:h-full xl:flex-1"
                         height="100%"
                         emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                         lazy={false}
@@ -360,8 +361,8 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
           </section>
 
           <aside className={`flex min-h-0 flex-col border-t xl:border-l xl:border-t-0 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-visible p-4 sm:p-5 xl:overflow-y-auto">
-              <div className={`rounded-3xl border p-4 ${softPanel}`}>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-visible p-3 sm:space-y-4 sm:p-5 xl:overflow-y-auto">
+              <div className={`rounded-2xl border p-4 sm:rounded-3xl ${softPanel}`}>
                 <p className={`text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>Review Status</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                   <span className={`${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-50 text-blue-700'} w-fit rounded-full border px-3 py-1 text-xs font-black`}>
@@ -373,7 +374,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 xl:grid-cols-2">
                 <DiffMetric label="Previous" value={diff.previousCount} isDarkMode={isDarkMode} />
                 <DiffMetric label="Current" value={diff.currentCount} tone="blue" isDarkMode={isDarkMode} />
                 <DiffMetric label="Added" value={diff.added} tone="green" isDarkMode={isDarkMode} />
@@ -381,12 +382,12 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               </div>
 
               {!diff.hasPreviousSnapshot && (
-                <div className={`${isDarkMode ? 'border-amber-400/30 bg-amber-950/30 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'} rounded-3xl border p-4 text-sm font-semibold leading-relaxed`}>
+                <div className={`${isDarkMode ? 'border-amber-400/30 bg-amber-950/30 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'} rounded-2xl border p-4 text-sm font-semibold leading-relaxed sm:rounded-3xl`}>
                   No previous annotation snapshot is available yet. Current submission annotations are shown from the live project data.
                 </div>
               )}
 
-              <div className={`rounded-3xl border p-4 shadow-sm ${panel}`}>
+              <div className={`rounded-2xl border p-4 shadow-sm sm:rounded-3xl ${panel}`}>
                 <label className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>
                   <MessageSquareText size={15} />
                   Remarks / Comments
@@ -396,11 +397,11 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                   onChange={(event) => setRemarks(event.target.value)}
                   disabled={!isReviewable || Boolean(busyAction)}
                   placeholder="Write review remarks. The same text is saved as the review comment."
-                  className={`mt-3 h-24 w-full resize-none rounded-2xl border p-3 text-sm font-semibold leading-relaxed outline-none transition disabled:cursor-not-allowed disabled:opacity-60 ${isDarkMode ? 'border-white/10 bg-slate-950 text-slate-100 placeholder:text-slate-600 focus:border-blue-400/40 focus:bg-slate-950 focus:ring-4 focus:ring-blue-500/10' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100'}`}
+                  className={`mt-3 h-20 w-full resize-none rounded-2xl border p-3 text-sm font-semibold leading-relaxed outline-none transition disabled:cursor-not-allowed disabled:opacity-60 sm:h-24 ${isDarkMode ? 'border-white/10 bg-slate-950 text-slate-100 placeholder:text-slate-600 focus:border-blue-400/40 focus:bg-slate-950 focus:ring-4 focus:ring-blue-500/10' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100'}`}
                 />
               </div>
 
-              <div className={`rounded-3xl border p-4 shadow-sm ${panel}`}>
+              <div className={`rounded-2xl border p-4 shadow-sm sm:rounded-3xl ${panel}`}>
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                   <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>
                     <UserRound size={15} />
@@ -415,7 +416,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               </div>
 
               {previousRemarks.length > 0 && (
-                <div className={`rounded-3xl border p-4 shadow-sm ${panel}`}>
+                <div className={`rounded-2xl border p-4 shadow-sm sm:rounded-3xl ${panel}`}>
                   <p className={`text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>Previous Remarks</p>
                   <div className="mt-3 space-y-3">
                     {previousRemarks.slice(0, 3).map((item) => (
@@ -430,7 +431,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                 </div>
               )}
 
-              <div className={`rounded-3xl border p-4 shadow-sm ${panel}`}>
+              <div className={`rounded-2xl border p-4 shadow-sm sm:rounded-3xl ${panel}`}>
                 <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>
                   <GitCompareArrows size={15} />
                   Audit Timeline
@@ -453,50 +454,46 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               </div>
             </div>
 
-            <div className={`shrink-0 border-t p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur sm:p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
+            <div className={`sticky bottom-0 z-10 shrink-0 border-t p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.16)] backdrop-blur sm:p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
               <div className="flex flex-col gap-2">
                 {isReviewable && (
-                  <>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <Button
-                        variant="secondary"
-                        icon={MessageSquareText}
-                        loading={busyAction === 'comment'}
-                        disabled={!hasRemarks || Boolean(busyAction)}
-                        onClick={() => runAction('comment', () => addReviewComment(projectId, remarks.trim()), { requireRemarks: true, closeOnSuccess: false })}
-                      >
-                        Add Comment
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        icon={AlertCircle}
-                        loading={busyAction === 'revision'}
-                        disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
-                        onClick={() => runAction('revision', () => requestProjectRevision(projectId, remarks.trim()), { requireRemarks: true })}
-                      >
-                        Request Revision
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <Button
-                        icon={Check}
-                        loading={busyAction === 'approve'}
-                        disabled={!isUnderReview || Boolean(busyAction)}
-                        onClick={() => runAction('approve', () => onApprove(currentProject))}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        variant="danger"
-                        icon={AlertCircle}
-                        loading={busyAction === 'reject'}
-                        disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
-                        onClick={() => runAction('reject', () => onReject(currentProject, remarks.trim()), { requireRemarks: true })}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </>
+                  <div className="grid grid-cols-2 gap-2 [&>button]:min-h-10 [&>button]:w-full">
+                    <Button
+                      variant={hasRemarks ? 'secondary' : 'ghost'}
+                      icon={MessageSquareText}
+                      loading={busyAction === 'comment'}
+                      disabled={!hasRemarks || Boolean(busyAction)}
+                      onClick={() => runAction('comment', () => addReviewComment(projectId, remarks.trim()), { requireRemarks: true, closeOnSuccess: false })}
+                    >
+                      Add Comment
+                    </Button>
+                    <Button
+                      variant={hasRemarks && isUnderReview ? 'secondary' : 'ghost'}
+                      icon={AlertCircle}
+                      loading={busyAction === 'revision'}
+                      disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
+                      onClick={() => runAction('revision', () => requestProjectRevision(projectId, remarks.trim()), { requireRemarks: true })}
+                    >
+                      Request Revision
+                    </Button>
+                    <Button
+                      icon={Check}
+                      loading={busyAction === 'approve'}
+                      disabled={!isUnderReview || Boolean(busyAction)}
+                      onClick={() => runAction('approve', () => onApprove(currentProject))}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant={hasRemarks && isUnderReview ? 'danger' : 'ghost'}
+                      icon={AlertCircle}
+                      loading={busyAction === 'reject'}
+                      disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
+                      onClick={() => runAction('reject', () => onReject(currentProject, remarks.trim()), { requireRemarks: true })}
+                    >
+                      Reject
+                    </Button>
+                  </div>
                 )}
 
                 {isApproved && (
@@ -514,6 +511,11 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                   Close
                 </Button>
               </div>
+              {!hasRemarks && isReviewable && (
+                <p className={`mt-2 text-center text-[11px] font-semibold ${isDarkMode ? 'text-slate-600' : 'text-slate-400'} ${disabledReviewButton}`}>
+                  Add remarks to enable comment, revision, or reject actions.
+                </p>
+              )}
             </div>
           </aside>
         </div>
