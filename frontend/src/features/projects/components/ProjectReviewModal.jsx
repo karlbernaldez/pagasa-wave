@@ -154,9 +154,9 @@ function DiffMetric({ label, value, tone = 'slate', isDarkMode = false }) {
       }[tone];
 
   return (
-    <div className={`rounded-2xl border p-4 ring-1 ${toneClass}`}>
-      <p className="text-[11px] font-black uppercase tracking-[0.14em] opacity-70">{label}</p>
-      <p className="mt-1 text-2xl font-black leading-none">{value}</p>
+    <div className={`rounded-2xl border p-3 ring-1 sm:p-4 ${toneClass}`}>
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] opacity-70 sm:text-[11px]">{label}</p>
+      <p className="mt-1 text-xl font-black leading-none sm:text-2xl">{value}</p>
     </div>
   );
 }
@@ -249,18 +249,18 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
   const strongText = isDarkMode ? 'text-slate-100' : 'text-slate-800';
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm sm:p-6">
-      <div className={`flex h-[min(92vh,900px)] w-full max-w-[1480px] flex-col overflow-hidden rounded-[28px] border shadow-2xl ring-1 ring-white/10 ${surface}`}>
-        <header className={`flex shrink-0 items-start justify-between gap-4 border-b px-6 py-4 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
+    <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-slate-950/80 p-2 backdrop-blur-sm sm:p-4 xl:items-center xl:p-6">
+      <div className={`flex h-full w-full max-w-[1480px] flex-col overflow-hidden rounded-2xl border shadow-2xl ring-1 ring-white/10 sm:h-[min(94vh,940px)] sm:rounded-[28px] ${surface}`}>
+        <header className={`flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-500">Project Review</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500 sm:text-xs">Project Review</p>
               <span className={`${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-100 bg-blue-50 text-blue-700'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>
                 {statusLabel}
               </span>
             </div>
-            <h2 className={`mt-2 truncate text-2xl font-black leading-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{getProjectName(currentProject)}</h2>
-            <p className={`mt-1 text-sm font-semibold ${mutedText}`}>
+            <h2 className={`mt-2 truncate text-lg font-black leading-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{getProjectName(currentProject)}</h2>
+            <p className={`mt-1 text-xs font-semibold sm:text-sm ${mutedText}`}>
               {getProjectType(currentProject)} · {getOwner(currentProject)} · Forecast {formatDate(currentProject.forecastDate)}
             </p>
           </div>
@@ -276,17 +276,17 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1.6fr)_430px]">
-          <section className={`min-h-0 overflow-hidden p-4 ${isDarkMode ? 'bg-slate-950' : 'bg-slate-100'}`}>
-            <div className={`flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border shadow-sm ${panel}`}>
-              <div className={`flex shrink-0 items-center justify-between gap-4 border-b px-5 py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+        <div className="grid min-h-0 flex-1 overflow-y-auto xl:grid-cols-[minmax(0,1.6fr)_430px] xl:overflow-hidden">
+          <section className={`min-h-[420px] overflow-hidden p-3 sm:p-4 xl:min-h-0 ${isDarkMode ? 'bg-slate-950' : 'bg-slate-100'}`}>
+            <div className={`flex h-full min-h-[390px] flex-col overflow-hidden rounded-2xl border shadow-sm sm:rounded-3xl xl:min-h-0 ${panel}`}>
+              <div className={`flex shrink-0 flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
                 <div>
                   <p className={`text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>Annotation Preview</p>
-                  <p className={`mt-1 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <p className={`mt-1 text-xs font-semibold sm:text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                     {isLoadingCurrentFeatures ? 'Loading current annotations…' : mapMode === 'diff' ? 'Compare previous snapshot against current submission' : 'Large map review workspace'}
                   </p>
                 </div>
-                <div className={`flex shrink-0 rounded-2xl border p-1 shadow-inner ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                <div className={`grid grid-cols-2 rounded-2xl border p-1 shadow-inner sm:flex sm:shrink-0 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
                   <button
                     type="button"
                     onClick={() => setMapMode('preview')}
@@ -310,21 +310,21 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 overflow-hidden p-4">
+              <div className="min-h-0 flex-1 overflow-hidden p-3 sm:p-4">
                 {mapMode === 'preview' ? (
                   <ProjectPreviewMap
                     projectId={projectId}
                     features={currentFeatureSource}
                     featureScope="admin"
                     isDarkMode={isDarkMode}
-                    className={`h-full min-h-[420px] rounded-2xl ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
+                    className={`h-full min-h-[320px] rounded-2xl sm:min-h-[420px] xl:min-h-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
                     height="100%"
                     emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                     lazy={false}
                   />
                 ) : (
                   <div className="grid h-full min-h-0 gap-4 xl:grid-cols-2">
-                    <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${softPanel}`}>
+                    <div className={`flex min-h-[300px] flex-col overflow-hidden rounded-2xl border shadow-sm xl:min-h-0 ${softPanel}`}>
                       <div className={`shrink-0 border-b px-4 py-3 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-white/10 bg-slate-950/60 text-slate-500' : 'border-slate-200 bg-white/70 text-slate-400'}`}>
                         Previous Snapshot
                       </div>
@@ -332,13 +332,13 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                         features={previousFeatureSource}
                         featureScope="admin"
                         isDarkMode={isDarkMode}
-                        className="min-h-[360px] flex-1 rounded-none border-0"
+                        className="min-h-[300px] flex-1 rounded-none border-0 xl:min-h-0"
                         height="100%"
                         emptyLabel="No previous snapshot"
                         lazy={false}
                       />
                     </div>
-                    <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${isDarkMode ? 'border-blue-400/20 bg-blue-500/5' : 'border-blue-100 bg-blue-50/40'}`}>
+                    <div className={`flex min-h-[300px] flex-col overflow-hidden rounded-2xl border shadow-sm xl:min-h-0 ${isDarkMode ? 'border-blue-400/20 bg-blue-500/5' : 'border-blue-100 bg-blue-50/40'}`}>
                       <div className={`shrink-0 border-b px-4 py-3 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-blue-400/20 bg-slate-950/60 text-blue-300' : 'border-blue-100 bg-white/80 text-blue-500'}`}>
                         Current Submission
                       </div>
@@ -347,7 +347,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                         features={currentFeatureSource}
                         featureScope="admin"
                         isDarkMode={isDarkMode}
-                        className="min-h-[360px] flex-1 rounded-none border-0"
+                        className="min-h-[300px] flex-1 rounded-none border-0 xl:min-h-0"
                         height="100%"
                         emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                         lazy={false}
@@ -359,12 +359,12 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
             </div>
           </section>
 
-          <aside className={`flex min-h-0 flex-col border-l ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+          <aside className={`flex min-h-0 flex-col border-t xl:border-l xl:border-t-0 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-visible p-4 sm:p-5 xl:overflow-y-auto">
               <div className={`rounded-3xl border p-4 ${softPanel}`}>
                 <p className={`text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>Review Status</p>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className={`${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-50 text-blue-700'} rounded-full border px-3 py-1 text-xs font-black`}>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <span className={`${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-50 text-blue-700'} w-fit rounded-full border px-3 py-1 text-xs font-black`}>
                     {statusLabel}
                   </span>
                   <span className={`text-xs font-semibold ${mutedText}`}>
@@ -373,7 +373,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">
                 <DiffMetric label="Previous" value={diff.previousCount} isDarkMode={isDarkMode} />
                 <DiffMetric label="Current" value={diff.currentCount} tone="blue" isDarkMode={isDarkMode} />
                 <DiffMetric label="Added" value={diff.added} tone="green" isDarkMode={isDarkMode} />
@@ -401,14 +401,14 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               </div>
 
               <div className={`rounded-3xl border p-4 shadow-sm ${panel}`}>
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                   <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>
                     <UserRound size={15} />
                     Reviewer
                   </p>
                   <p className={`truncate text-sm font-black ${strongText}`}>{reviewer}</p>
                 </div>
-                <div className={`mt-3 flex items-center justify-between gap-3 text-sm font-semibold ${mutedText}`}>
+                <div className={`mt-3 flex flex-col gap-1 text-sm font-semibold sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${mutedText}`}>
                   <span className="inline-flex items-center gap-2"><Clock3 size={15} /> Reviewed</span>
                   <span>{formatDateTime(currentProject.reviewedAt || currentProject.reviewStartedAt)}</span>
                 </div>
@@ -453,11 +453,11 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               </div>
             </div>
 
-            <div className={`shrink-0 border-t p-4 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
+            <div className={`shrink-0 border-t p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur sm:p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
               <div className="flex flex-col gap-2">
                 {isReviewable && (
                   <>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <Button
                         variant="secondary"
                         icon={MessageSquareText}
@@ -477,7 +477,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                         Request Revision
                       </Button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <Button
                         icon={Check}
                         loading={busyAction === 'approve'}
