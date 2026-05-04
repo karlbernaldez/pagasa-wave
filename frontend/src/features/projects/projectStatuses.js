@@ -103,10 +103,14 @@ export function isProjectPublished(status) {
   return normalizeProjectStatus(status) === PROJECT_STATUS.PUBLISHED;
 }
 
-export function canSubmitProjectStatus(status) {
+export function canEditProjectStatus(status) {
   return [
     PROJECT_STATUS.DRAFT,
     PROJECT_STATUS.REJECTED,
     PROJECT_STATUS.REVISION_REQUESTED,
   ].includes(normalizeProjectStatus(status));
+}
+
+export function canSubmitProjectStatus(status) {
+  return canEditProjectStatus(status);
 }
