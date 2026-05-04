@@ -55,7 +55,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     return;
   }
 
-  const activeProjectId = projectId || localStorage.getItem('projectId');
+  const activeProjectId = projectId;
   if (!activeProjectId) {
     console.error('❌ Missing projectId when saving marker feature.');
     Swal.fire({
