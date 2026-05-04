@@ -14,26 +14,38 @@ export default function ProjectStats({ stats, isDarkMode = false }) {
   if (!stats?.length) return null;
 
   return (
-    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="Forecast project summary">
-      {stats.map(({ value, label, helper }) => {
+    <section
+      className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+      aria-label="Forecast project summary"
+    >
+      {stats.map(({ value, label, helper }, index) => {
         const style = STAT_STYLE[label] ?? STAT_STYLE["Total Projects"];
         const Icon = style.icon;
+        const isPrimary = index === 0;
 
         return (
           <article
             key={label}
             className={cn(
-              "flex min-h-[92px] items-center gap-4 rounded-xl border p-4 shadow-sm transition-colors",
+              "min-w-0 rounded-xl border p-3 shadow-sm transition-colors sm:flex sm:min-h-[92px] sm:items-center sm:gap-4 sm:p-4",
+              isPrimary && "col-span-2 lg:col-span-1",
               isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white"
             )}
           >
-            <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-lg", isDarkMode ? style.darkTile : style.tile)}>
-              <Icon size={22} strokeWidth={2} />
-            </div>
-            <div className="min-w-0">
-              <p className={cn("truncate text-xs font-bold", isDarkMode ? "text-slate-400" : "text-slate-500")}>{label}</p>
-              <p className={cn("text-2xl font-black leading-tight tracking-tight", isDarkMode ? "text-slate-50" : "text-slate-950")}>{value}</p>
-              <p className={cn("truncate text-xs font-medium", isDarkMode ? "text-slate-500" : "text-slate-500")}>{helper}</p>
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+              <div
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12",
+                  isDarkMode ? style.darkTile : style.tile
+                )}
+              >
+                <Icon size={20} strokeWidth={2} className="sm:h-[22px] sm:w-[22px]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={cn("truncate text-[11px] font-bold sm:text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>{label}</p>
+                <p className={cn("text-xl font-black leading-tight tracking-tight sm:text-2xl", isDarkMode ? "text-slate-50" : "text-slate-950")}>{value}</p>
+                <p className={cn("truncate text-[11px] font-medium sm:text-xs", isDarkMode ? "text-slate-500" : "text-slate-500")}>{helper}</p>
+              </div>
             </div>
           </article>
         );
