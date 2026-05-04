@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { ArrowLeft, MessageSquareText, Moon, Send, Sun } from "lucide-react";
+import { AlertTriangle, ArrowLeft, MessageSquareText, Moon, Send, Sun } from "lucide-react";
 
 // Component imports
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
@@ -141,6 +141,21 @@ const Studio = ({ logger }) => {
   const removeLayerSafe = (map, id) => { if (map.getLayer(id)) map.removeLayer(id); };
   const removeSourceSafe = (map, id) => { if (map.getSource(id)) map.removeSource(id); };
 
+  const isBlockingWorkspaceModalOpen =
+    showTitleModal ||
+    showCreateProjectModal ||
+    showNoProjectsModal ||
+    isCanvasActive ||
+    isFlagCanvasActive;
+
+  const {
+    isInactivityPromptVisible,
+    stayActive,
+    refreshWorkspace,
+  } = useInactivityReload(undefined, {
+    disabled: isBlockingWorkspaceModalOpen,
+  });
+
   // ─── Project menu callbacks ───────────────────────────
   const handleNewProject = useCallback((project) => {
     if (project?._id) updateProjectId(project._id);
@@ -184,8 +199,6 @@ const Studio = ({ logger }) => {
   useEffect(() => {
     setLayersRef.current = setLayers;
   }, [setLayers]);
-
-  useInactivityReload();
 
   useEffect(() => {
     const timer = setTimeout(() => setShowToolbar(true), TOOLBAR_DELAY);
@@ -444,6 +457,44 @@ const Studio = ({ logger }) => {
         {/* Loading Overlay */}
         {isLoading && <MapLoading isDarkMode={isDarkMode} />}
       </main>
+
+      {isInactivityPromptVisible && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="studio-inactivity-title"
+            className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+          >
+            <div className="flex items-start gap-4">
+              <div className="rounded-2xl bg-amber-50 p-3 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/70">
+                <AlertTriangle size={24} aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 id="studio-inactivity-title" className="text-lg font-black text-slate-950 dark:text-slate-50">
+                  You’ve been inactive
+                </h2>
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-600 dark:text-slate-300">
+                  Refresh the Studio workspace only if you want to reload the map and project data. You can stay here to continue from your current view.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-300">
+              Auto-save is active, but in-progress tool selections or open dialogs may reset after refresh.
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="secondary" onClick={stayActive}>
+                Stay here
+              </Button>
+              <Button variant="primary" onClick={refreshWorkspace}>
+                Refresh workspace
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes slideInLeft {
