@@ -198,7 +198,7 @@ export default function ProjectCard({
     : `bg-white ${needsRevision ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200 hover:border-blue-200'}`;
 
   return (
-    <article className={`group rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
+    <article className={`group min-w-0 overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
       <div className="relative overflow-hidden rounded-t-2xl">
         <ProjectPreviewMap
           projectId={id}
@@ -209,20 +209,20 @@ export default function ProjectCard({
           className="rounded-none border-0"
         />
 
-        <div className="absolute right-3 top-3 z-10">
-          <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur ${statusClass}`}>
+        <div className="absolute right-2 top-2 z-10 max-w-[calc(100%-16px)] sm:right-3 sm:top-3">
+          <span className={`inline-flex max-w-full shrink-0 truncate rounded-full border px-2 py-1 text-[11px] font-bold shadow-sm backdrop-blur sm:px-2.5 sm:text-xs ${statusClass}`}>
             {statusLabel}
           </span>
         </div>
 
-        <div className="absolute bottom-3 left-3 z-10">
-          <span className={`rounded-md border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] shadow-sm backdrop-blur ${isDarkMode ? 'border-white/10 bg-slate-950/80 text-slate-300' : 'border-white/70 bg-white/85 text-slate-600'}`}>
+        <div className="absolute bottom-3 left-3 z-10 max-w-[calc(100%-24px)]">
+          <span className={`inline-flex max-w-full truncate rounded-md border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] shadow-sm backdrop-blur ${isDarkMode ? 'border-white/10 bg-slate-950/80 text-slate-300' : 'border-white/70 bg-white/85 text-slate-600'}`}>
             {getProjectType(project)}
           </span>
         </div>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="min-w-0 space-y-4 p-4">
         <div className="min-w-0">
           <h3 className={`truncate text-base font-black ${isDarkMode ? 'text-slate-50' : 'text-slate-900'}`} title={name}>
             {name}
@@ -235,10 +235,10 @@ export default function ProjectCard({
         </div>
 
         {needsRevision && latestRemarks?.comment && (
-          <div className={`rounded-xl border p-3 text-sm ${isDarkMode ? 'border-amber-400/30 bg-amber-950/30' : 'border-amber-200 bg-amber-50'}`}>
-            <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
-              <MessageSquareText size={14} />
-              Latest admin remarks
+          <div className={`min-w-0 rounded-xl border p-3 text-sm ${isDarkMode ? 'border-amber-400/30 bg-amber-950/30' : 'border-amber-200 bg-amber-50'}`}>
+            <p className={`flex min-w-0 items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+              <MessageSquareText size={14} className="shrink-0" />
+              <span className="truncate">Latest admin remarks</span>
             </p>
             <p className={`mt-1 line-clamp-2 font-semibold leading-relaxed ${isDarkMode ? 'text-amber-100' : 'text-amber-900'}`}>
               {latestRemarks.comment}
@@ -246,23 +246,23 @@ export default function ProjectCard({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div>
+        <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+          <div className="min-w-0">
             <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Forecast Date</p>
-            <p className={`mt-1 font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+            <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
               {formatDate(project?.forecastDate)}
             </p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Updated</p>
-            <p className={`mt-1 font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+            <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
               {formatDate(project?.updatedAt || project?.submittedAt || project?.createdAt, 'MMM d, h:mm a')}
             </p>
           </div>
         </div>
 
-        <div className={`flex items-center justify-between gap-2 border-t pt-4 ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
-          <div className="flex items-center gap-2">
+        <div className={`flex min-w-0 flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:flex sm:items-center">
             <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
               {isReviewMode ? 'Review' : needsRevision ? 'Open and Revise' : 'Open'}
             </Button>
@@ -281,7 +281,7 @@ export default function ProjectCard({
           </div>
 
           {!isReviewMode && menuActions.length > 0 && (
-            <div className="relative">
+            <div className="relative self-end sm:self-auto">
               <Button
                 variant="icon"
                 size="sm"
@@ -321,7 +321,7 @@ export default function ProjectCard({
           )}
 
           {isReviewMode && reviewActions.length > 0 && (
-            <div className="flex flex-1 justify-end gap-2">
+            <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:flex sm:flex-1 sm:flex-wrap sm:justify-end">
               {reviewActions.map((action) => (
                 <Button
                   key={action.key || action.label}
