@@ -140,16 +140,16 @@ function getAnnotationDiff(previousFeatureSource, currentFeatureSource) {
 
 function DiffMetric({ label, value, tone = 'slate' }) {
   const toneClass = {
-    blue: 'bg-blue-50 text-blue-700 border-blue-100',
-    green: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    red: 'bg-red-50 text-red-700 border-red-100',
-    slate: 'bg-slate-50 text-slate-700 border-slate-100',
+    blue: 'border-blue-100 bg-blue-50 text-blue-700 ring-blue-100',
+    green: 'border-emerald-100 bg-emerald-50 text-emerald-700 ring-emerald-100',
+    red: 'border-red-100 bg-red-50 text-red-700 ring-red-100',
+    slate: 'border-slate-100 bg-slate-50 text-slate-700 ring-slate-100',
   }[tone];
 
   return (
-    <div className={`rounded-xl border p-3 ${toneClass}`}>
+    <div className={`rounded-2xl border p-4 ring-1 ${toneClass}`}>
       <p className="text-[11px] font-black uppercase tracking-[0.14em] opacity-70">{label}</p>
-      <p className="mt-1 text-xl font-black">{value}</p>
+      <p className="mt-1 text-2xl font-black leading-none">{value}</p>
     </div>
   );
 }
@@ -235,12 +235,17 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-        <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6">
+      <div className="flex h-[min(92vh,900px)] w-full max-w-[1480px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-slate-50 shadow-2xl ring-1 ring-white/20">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Project Review</p>
-            <h2 className="mt-1 truncate text-xl font-black text-slate-950">{getProjectName(currentProject)}</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Project Review</p>
+              <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[11px] font-black text-blue-700">
+                {statusLabel}
+              </span>
+            </div>
+            <h2 className="mt-2 truncate text-2xl font-black leading-tight text-slate-950">{getProjectName(currentProject)}</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">
               {getProjectType(currentProject)} · {getOwner(currentProject)} · Forecast {formatDate(currentProject.forecastDate)}
             </p>
@@ -250,35 +255,35 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
             type="button"
             onClick={onClose}
             disabled={Boolean(busyAction)}
-            className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-2xl border border-transparent p-2 text-slate-500 transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Close review modal"
           >
             <X size={20} />
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 gap-0 overflow-y-auto lg:grid-cols-[1.55fr_0.9fr]">
-          <section className="min-h-[360px] border-r border-slate-200 bg-slate-100 p-4">
-            <div className="flex h-full min-h-[520px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+        <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1.6fr)_430px]">
+          <section className="min-h-0 overflow-hidden bg-slate-100 p-4">
+            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Annotation Preview</p>
-                  <p className="text-sm font-semibold text-slate-700">
-                    {isLoadingCurrentFeatures ? 'Loading current annotations…' : 'Large map review workspace'}
+                  <p className="mt-1 text-sm font-semibold text-slate-700">
+                    {isLoadingCurrentFeatures ? 'Loading current annotations…' : mapMode === 'diff' ? 'Compare previous snapshot against current submission' : 'Large map review workspace'}
                   </p>
                 </div>
-                <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                <div className="flex shrink-0 rounded-2xl border border-slate-200 bg-slate-50 p-1 shadow-inner">
                   <button
                     type="button"
                     onClick={() => setMapMode('preview')}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-black ${mapMode === 'preview' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}
+                    className={`rounded-xl px-4 py-2 text-xs font-black transition ${mapMode === 'preview' ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                   >
                     Preview
                   </button>
                   <button
                     type="button"
                     onClick={() => setMapMode('diff')}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-black ${mapMode === 'diff' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}
+                    className={`rounded-xl px-4 py-2 text-xs font-black transition ${mapMode === 'diff' ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                   >
                     Diff
                   </button>
@@ -286,47 +291,47 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
               </div>
 
               {featureLoadError && (
-                <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
+                <div className="shrink-0 border-b border-red-200 bg-red-50 px-5 py-2 text-sm font-semibold text-red-700">
                   {featureLoadError}
                 </div>
               )}
 
-              <div className="relative flex-1">
+              <div className="min-h-0 flex-1 overflow-hidden p-4">
                 {mapMode === 'preview' ? (
                   <ProjectPreviewMap
                     projectId={projectId}
                     features={currentFeatureSource}
                     featureScope="admin"
-                    className="h-full min-h-[460px] rounded-none border-0"
+                    className="h-full min-h-[420px] rounded-2xl border-slate-200"
                     height="100%"
                     emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                     lazy={false}
                   />
                 ) : (
-                  <div className="grid h-full min-h-[460px] gap-4 p-4 lg:grid-cols-2">
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                      <div className="border-b border-slate-200 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                  <div className="grid h-full min-h-0 gap-4 xl:grid-cols-2">
+                    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+                      <div className="shrink-0 border-b border-slate-200 bg-white/70 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
                         Previous Snapshot
                       </div>
                       <ProjectPreviewMap
                         features={previousFeatureSource}
                         featureScope="admin"
-                        className="h-[410px] rounded-none border-0"
-                        height={410}
+                        className="min-h-[360px] flex-1 rounded-none border-0"
+                        height="100%"
                         emptyLabel="No previous snapshot"
                         lazy={false}
                       />
                     </div>
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                      <div className="border-b border-slate-200 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/40 shadow-sm">
+                      <div className="shrink-0 border-b border-blue-100 bg-white/80 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-blue-500">
                         Current Submission
                       </div>
                       <ProjectPreviewMap
                         projectId={projectId}
                         features={currentFeatureSource}
                         featureScope="admin"
-                        className="h-[410px] rounded-none border-0"
-                        height={410}
+                        className="min-h-[360px] flex-1 rounded-none border-0"
+                        height="100%"
                         emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                         lazy={false}
                       />
@@ -337,153 +342,161 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
             </div>
           </section>
 
-          <aside className="space-y-5 p-6">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Review Status</p>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
-                  {statusLabel}
-                </span>
-                <span className="text-xs font-semibold text-slate-500">
-                  Last updated {formatDate(currentProject.updatedAt || currentProject.createdAt)}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <DiffMetric label="Previous" value={diff.previousCount} />
-              <DiffMetric label="Current" value={diff.currentCount} tone="blue" />
-              <DiffMetric label="Added" value={diff.added} tone="green" />
-              <DiffMetric label="Removed" value={diff.removed} tone="red" />
-            </div>
-
-            {!diff.hasPreviousSnapshot && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
-                No previous annotation snapshot is available yet. Current submission annotations are shown from the live project data.
-              </div>
-            )}
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
-                <MessageSquareText size={15} />
-                Remarks / Comments
-              </label>
-              <textarea
-                value={remarks}
-                onChange={(event) => setRemarks(event.target.value)}
-                disabled={!isReviewable || Boolean(busyAction)}
-                placeholder="Write review remarks. The same text is saved as the review comment."
-                className="mt-3 h-28 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-              />
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
-                  <UserRound size={15} />
-                  Reviewer
-                </p>
-                <p className="text-sm font-black text-slate-800">{reviewer}</p>
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-3 text-sm font-semibold text-slate-500">
-                <span className="inline-flex items-center gap-2"><Clock3 size={15} /> Reviewed</span>
-                <span>{formatDateTime(currentProject.reviewedAt || currentProject.reviewStartedAt)}</span>
-              </div>
-            </div>
-
-            {previousRemarks.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Previous Remarks</p>
-                <div className="mt-3 space-y-3">
-                  {previousRemarks.slice(0, 3).map((item) => (
-                    <div key={item.id} className="rounded-xl bg-slate-50 p-3">
-                      <p className="text-sm font-semibold text-slate-700">{item.comment}</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-400">
-                        {item.actor} · {formatDateTime(item.date)}
-                      </p>
-                    </div>
-                  ))}
+          <aside className="flex min-h-0 flex-col border-l border-slate-200 bg-white">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Review Status</p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
+                    {statusLabel}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">
+                    Updated {formatDate(currentProject.updatedAt || currentProject.createdAt)}
+                  </span>
                 </div>
               </div>
-            )}
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
-                <GitCompareArrows size={15} />
-                Audit Timeline
-              </p>
-              <div className="mt-4 space-y-3">
-                {timeline.length === 0 ? (
-                  <p className="text-sm font-semibold text-slate-400">No audit events yet.</p>
-                ) : (
-                  timeline.slice(0, 5).map((item) => (
-                    <div key={item.id} className="border-l-2 border-blue-100 pl-3">
-                      <p className="text-sm font-black capitalize text-slate-800">{item.action.replaceAll('_', ' ')}</p>
-                      <p className="text-xs font-semibold text-slate-500">
-                        {item.actor} · {formatDateTime(item.date)}
-                      </p>
-                      {item.comment && <p className="mt-1 text-xs text-slate-500">{item.comment}</p>}
-                    </div>
-                  ))
-                )}
+              <div className="grid grid-cols-2 gap-3">
+                <DiffMetric label="Previous" value={diff.previousCount} />
+                <DiffMetric label="Current" value={diff.currentCount} tone="blue" />
+                <DiffMetric label="Added" value={diff.added} tone="green" />
+                <DiffMetric label="Removed" value={diff.removed} tone="red" />
+              </div>
+
+              {!diff.hasPreviousSnapshot && (
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-relaxed text-amber-800">
+                  No previous annotation snapshot is available yet. Current submission annotations are shown from the live project data.
+                </div>
+              )}
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+                  <MessageSquareText size={15} />
+                  Remarks / Comments
+                </label>
+                <textarea
+                  value={remarks}
+                  onChange={(event) => setRemarks(event.target.value)}
+                  disabled={!isReviewable || Boolean(busyAction)}
+                  placeholder="Write review remarks. The same text is saved as the review comment."
+                  className="mt-3 h-24 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold leading-relaxed text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+                    <UserRound size={15} />
+                    Reviewer
+                  </p>
+                  <p className="truncate text-sm font-black text-slate-800">{reviewer}</p>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3 text-sm font-semibold text-slate-500">
+                  <span className="inline-flex items-center gap-2"><Clock3 size={15} /> Reviewed</span>
+                  <span>{formatDateTime(currentProject.reviewedAt || currentProject.reviewStartedAt)}</span>
+                </div>
+              </div>
+
+              {previousRemarks.length > 0 && (
+                <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Previous Remarks</p>
+                  <div className="mt-3 space-y-3">
+                    {previousRemarks.slice(0, 3).map((item) => (
+                      <div key={item.id} className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                        <p className="line-clamp-3 text-sm font-semibold leading-relaxed text-slate-700">{item.comment}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-400">
+                          {item.actor} · {formatDateTime(item.date)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+                  <GitCompareArrows size={15} />
+                  Audit Timeline
+                </p>
+                <div className="mt-4 space-y-3">
+                  {timeline.length === 0 ? (
+                    <p className="text-sm font-semibold text-slate-400">No audit events yet.</p>
+                  ) : (
+                    timeline.slice(0, 5).map((item) => (
+                      <div key={item.id} className="border-l-2 border-blue-100 pl-3">
+                        <p className="text-sm font-black capitalize text-slate-800">{item.action.replaceAll('_', ' ')}</p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          {item.actor} · {formatDateTime(item.date)}
+                        </p>
+                        {item.comment && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{item.comment}</p>}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:flex-wrap">
-              {isReviewable && (
-                <>
-                  <Button
-                    variant="secondary"
-                    icon={MessageSquareText}
-                    loading={busyAction === 'comment'}
-                    disabled={!hasRemarks || Boolean(busyAction)}
-                    onClick={() => runAction('comment', () => addReviewComment(projectId, remarks.trim()), { requireRemarks: true, closeOnSuccess: false })}
-                  >
-                    Add Comment
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    icon={AlertCircle}
-                    loading={busyAction === 'revision'}
-                    disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
-                    onClick={() => runAction('revision', () => requestProjectRevision(projectId, remarks.trim()), { requireRemarks: true })}
-                  >
-                    Request Revision
-                  </Button>
-                  <Button
-                    icon={Check}
-                    loading={busyAction === 'approve'}
-                    disabled={!isUnderReview || Boolean(busyAction)}
-                    onClick={() => runAction('approve', () => onApprove(currentProject))}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    icon={AlertCircle}
-                    loading={busyAction === 'reject'}
-                    disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
-                    onClick={() => runAction('reject', () => onReject(currentProject, remarks.trim()), { requireRemarks: true })}
-                  >
-                    Reject
-                  </Button>
-                </>
-              )}
+            <div className="shrink-0 border-t border-slate-200 bg-white/95 p-4 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+              <div className="flex flex-col gap-2">
+                {isReviewable && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="secondary"
+                        icon={MessageSquareText}
+                        loading={busyAction === 'comment'}
+                        disabled={!hasRemarks || Boolean(busyAction)}
+                        onClick={() => runAction('comment', () => addReviewComment(projectId, remarks.trim()), { requireRemarks: true, closeOnSuccess: false })}
+                      >
+                        Add Comment
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        icon={AlertCircle}
+                        loading={busyAction === 'revision'}
+                        disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
+                        onClick={() => runAction('revision', () => requestProjectRevision(projectId, remarks.trim()), { requireRemarks: true })}
+                      >
+                        Request Revision
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        icon={Check}
+                        loading={busyAction === 'approve'}
+                        disabled={!isUnderReview || Boolean(busyAction)}
+                        onClick={() => runAction('approve', () => onApprove(currentProject))}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="danger"
+                        icon={AlertCircle}
+                        loading={busyAction === 'reject'}
+                        disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
+                        onClick={() => runAction('reject', () => onReject(currentProject, remarks.trim()), { requireRemarks: true })}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </>
+                )}
 
-              {isApproved && (
-                <Button
-                  icon={Send}
-                  loading={busyAction === 'publish'}
-                  disabled={Boolean(busyAction)}
-                  onClick={() => runAction('publish', () => onPublish(currentProject))}
-                >
-                  Publish
+                {isApproved && (
+                  <Button
+                    icon={Send}
+                    loading={busyAction === 'publish'}
+                    disabled={Boolean(busyAction)}
+                    onClick={() => runAction('publish', () => onPublish(currentProject))}
+                  >
+                    Publish
+                  </Button>
+                )}
+
+                <Button variant="ghost" disabled={Boolean(busyAction)} onClick={onClose}>
+                  Close
                 </Button>
-              )}
-
-              <Button variant="ghost" disabled={Boolean(busyAction)} onClick={onClose}>
-                Close
-              </Button>
+              </div>
             </div>
           </aside>
         </div>
