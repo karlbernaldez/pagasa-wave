@@ -43,26 +43,69 @@ export const useProjectId = () => {
 };
 
 /**
- * Reloads the page after a period of user inactivity
+ * Shows a confirmation prompt after inactivity instead of force-reloading.
+ * This avoids surprise data loss in the map/drawing workspace.
  */
-export const useInactivityReload = (timeout = INACTIVITY_TIMEOUT) => {
+export const useInactivityReload = (
+  timeout = INACTIVITY_TIMEOUT,
+  { disabled = false } = {}
+) => {
+  const [isInactivityPromptVisible, setIsInactivityPromptVisible] = useState(false);
+  const timerRef = useRef(null);
+
+  const clearInactivityTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const scheduleInactivityPrompt = useCallback(() => {
+    clearInactivityTimer();
+    timerRef.current = setTimeout(() => {
+      setIsInactivityPromptVisible(true);
+    }, timeout);
+  }, [clearInactivityTimer, timeout]);
+
   useEffect(() => {
-    let inactivityTimer;
+    if (disabled) {
+      clearInactivityTimer();
+      setIsInactivityPromptVisible(false);
+      return undefined;
+    }
+
+    if (isInactivityPromptVisible) {
+      clearInactivityTimer();
+      return undefined;
+    }
 
     const resetTimer = () => {
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(() => window.location.reload(), timeout);
+      scheduleInactivityPrompt();
     };
 
-    const events = ["mousemove", "keydown", "click", "scroll"];
-    events.forEach((event) => window.addEventListener(event, resetTimer));
-    resetTimer();
+    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, resetTimer, { passive: true }));
+    scheduleInactivityPrompt();
 
     return () => {
-      clearTimeout(inactivityTimer);
+      clearInactivityTimer();
       events.forEach((event) => window.removeEventListener(event, resetTimer));
     };
-  }, [timeout]);
+  }, [clearInactivityTimer, disabled, isInactivityPromptVisible, scheduleInactivityPrompt]);
+
+  const stayActive = useCallback(() => {
+    setIsInactivityPromptVisible(false);
+  }, []);
+
+  const refreshWorkspace = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  return {
+    isInactivityPromptVisible,
+    stayActive,
+    refreshWorkspace,
+  };
 };
 
 /**
