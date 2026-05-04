@@ -1,12 +1,11 @@
-import { Bell, ChevronDown, Menu, Moon, Sun, Waves } from 'lucide-react';
+import { ChevronDown, Menu, Moon, Sun, Waves } from 'lucide-react';
+import NotificationBell from '@/shared/notifications/NotificationBell';
 
 const DashboardHeader = ({
   description,
   eyebrow,
   isDarkMode,
-  notificationBadge,
   onMobileMenuToggle,
-  onNotificationClick,
   onThemeToggle,
   onUserClick,
   title,
@@ -97,19 +96,7 @@ const DashboardHeader = ({
 
             <div className={`w-px h-5 mx-0.5 ${isDarkMode ? 'bg-white/10' : 'bg-black/8'}`} />
 
-            <button
-              type="button"
-              onClick={onNotificationClick}
-              className={`relative ${iconButtonClass}`}
-              aria-label="Notifications"
-            >
-              <Bell size={17} />
-              {notificationBadge ? (
-                <span className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-red-500 px-1 text-[10px] font-bold leading-[18px] text-white">
-                  {notificationBadge}
-                </span>
-              ) : null}
-            </button>
+            <NotificationBell isDarkMode={isDarkMode} />
           </div>
 
           <div className={`w-px h-7 ${isDarkMode ? 'bg-white/10' : 'bg-black/8'}`} />
