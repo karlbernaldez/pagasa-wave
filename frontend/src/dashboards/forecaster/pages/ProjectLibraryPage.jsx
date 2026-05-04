@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, FolderKanban, LayoutGrid, List } from "lucide-react";
+import { AlertCircle, FolderKanban, LayoutGrid, List, Plus } from "lucide-react";
 
 import ProjectStats from "@dashboards/forecaster/components/project-library/ProjectStats";
 import ProjectToolbar from "@dashboards/forecaster/components/project-library/ProjectToolbar";
@@ -8,8 +8,11 @@ import ProjectPagination from "@dashboards/forecaster/components/project-library
 
 import ProjectCard from "@/features/projects/components/ProjectCard";
 import ProjectReviewModal from "@/features/projects/components/ProjectReviewModal";
+import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Button from "@/components/ui/Button";
 
+import { createProject } from "@/api/projectAPI";
+import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@dashboards/forecaster/hooks/useProjectLibraryController";
 
 function ProjectCardSkeleton() {
@@ -69,11 +72,18 @@ function GridState({ type, onRetry }) {
   );
 }
 
+function getCreatedProjectId(project) {
+  return project?._id || project?.id || project?.project?._id || project?.project?.id;
+}
+
 export default function ProjectLibraryPage({ role = "forecaster", title, description }) {
+  const { isDarkMode } = useTheme();
   const controller = useProjectLibraryController({ role, title, description });
   const [view, setView] = useState("grid");
   const [reviewProject, setReviewProject] = useState(null);
   const [isStartingReview, setIsStartingReview] = useState(false);
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const {
     projects,
@@ -107,6 +117,42 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     onOpen(project);
   };
 
+  const handleCreateAndOpenProject = async ({
+    projectName,
+    chartType,
+    description: projectDescription,
+    forecastDate,
+  }) => {
+    const name = projectName?.trim();
+    if (!name || isCreatingProject) return;
+
+    setIsCreatingProject(true);
+
+    try {
+      const createdProject = await createProject({
+        name,
+        chartType,
+        description: projectDescription,
+        forecastDate,
+      });
+      const projectId = getCreatedProjectId(createdProject);
+
+      await onRetry?.();
+      setShowCreateProjectModal(false);
+
+      if (!projectId) {
+        throw new Error("Project was created, but the project ID was missing from the response.");
+      }
+
+      window.location.href = `/studio/${projectId}`;
+    } catch (err) {
+      console.error("Failed to create project:", err);
+      window.alert(err?.message || "Failed to create project.");
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
   const handleReviewActionComplete = async (updatedProject) => {
     if (updatedProject) {
       setReviewProject(updatedProject);
@@ -132,21 +178,34 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
             </p>
           </div>
 
-          <div className="inline-flex w-fit rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-            <Button
-              aria-label="Show project cards"
-              variant={view === "grid" ? "primary" : "ghost"}
-              size="sm"
-              icon={LayoutGrid}
-              onClick={() => setView("grid")}
-            />
-            <Button
-              aria-label="Show project list"
-              variant={view === "list" ? "primary" : "ghost"}
-              size="sm"
-              icon={List}
-              onClick={() => setView("list")}
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            {role !== "admin" && (
+              <Button
+                icon={Plus}
+                loading={isCreatingProject}
+                disabled={isCreatingProject}
+                onClick={() => setShowCreateProjectModal(true)}
+              >
+                New Project
+              </Button>
+            )}
+
+            <div className="inline-flex w-fit rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+              <Button
+                aria-label="Show project cards"
+                variant={view === "grid" ? "primary" : "ghost"}
+                size="sm"
+                icon={LayoutGrid}
+                onClick={() => setView("grid")}
+              />
+              <Button
+                aria-label="Show project list"
+                variant={view === "list" ? "primary" : "ghost"}
+                size="sm"
+                icon={List}
+                onClick={() => setView("list")}
+              />
+            </div>
           </div>
         </div>
 
@@ -191,6 +250,15 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       </div>
 
       {controller.dialogs}
+
+      {role !== "admin" && (
+        <CreateProjectModal
+          visible={showCreateProjectModal}
+          onClose={() => setShowCreateProjectModal(false)}
+          onSubmit={handleCreateAndOpenProject}
+          isDarkMode={isDarkMode}
+        />
+      )}
 
       {isStartingReview && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">
