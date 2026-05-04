@@ -5,8 +5,6 @@ import { AlertTriangle, ArrowLeft, Lock, MessageSquareText, Moon, Send, Sun } fr
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
 import LayerPanel from "@dashboards/forecaster/components/Studio/LayerPanel/LayerPanel";
 import DrawToolBar from "@dashboards/forecaster/components/Studio/Toolbar/Toolbar";
-import LegendBox from "@dashboards/forecaster/components/Studio/Legend";
-import ProjectMenu from "@dashboards/forecaster/components/Studio/Menu/ProjectMenu";
 import MarkerTitleModal from "@/components/ui/modals/MarkerTitleModal";
 import MapLoading from "@/components/ui/modals/MapLoading";
 import NoProjectAlert from "@/components/ui/modals/NoProjectAlert";
@@ -17,7 +15,7 @@ import Canvas from "@dashboards/forecaster/draw/canvas";
 import FlagCanvas from "@dashboards/forecaster/draw/front";
 import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
 
-// NEW: shared normalizers
+// Shared project helpers
 import { getLatestReviewRemarks } from "@/features/projects/projectAdapter";
 import {
   PROJECT_STATUS,
@@ -27,7 +25,6 @@ import {
   getProjectStatusStyle,
   isProjectRevisionRequested,
 } from "@/features/projects/projectStatuses";
-import { normalizeFeatureCollection } from "@/features/projects/utils/normalizeFeatureCollection";
 
 // Custom Hooks
 import {
@@ -62,8 +59,7 @@ function getSubmitLabel(status) {
 // ─── Main Component ──────────────────────────────────
 const Studio = ({ logger }) => {
   const { isDarkMode, setIsDarkMode } = useTheme();
-
-  const [projectId, updateProjectId] = useProjectId();
+  const [projectId] = useProjectId();
 
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
@@ -92,7 +88,6 @@ const Studio = ({ logger }) => {
   };
 
   const {
-    savedFeatures,
     layers,
     setLayers,
     mapRef,
@@ -129,12 +124,10 @@ const Studio = ({ logger }) => {
   } = useMarkerModal();
 
   // Additional state
-  const [mapInstance, setMapInstance] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [showToolbar, setShowToolbar] = useState(false);
-  const [capturedImages, setCapturedImages] = useState({ light: null, dark: null });
-  const [collapsed, setCollapsed] = useState(false);
+  const [, setCapturedImages] = useState({ light: null, dark: null });
 
   // Refs
   const selectedToolRef = useRef(null);
@@ -161,15 +154,6 @@ const Studio = ({ logger }) => {
   } = useInactivityReload(undefined, {
     disabled: isBlockingWorkspaceModalOpen,
   });
-
-  // ─── Project menu callbacks ───────────────────────────
-  const handleNewProject = useCallback((project) => {
-    if (project?._id) updateProjectId(project._id);
-  }, [updateProjectId]);
-
-  const handleSaveProject = useCallback((project) => {
-    if (project?._id) updateProjectId(project._id);
-  }, [updateProjectId]);
 
   const handleBackToLibrary = useCallback(() => {
     window.location.href = "/studio";
@@ -228,6 +212,7 @@ const Studio = ({ logger }) => {
     setSelectedPoint,
     setShowTitleModal,
     markerTitleRef,
+    setCapturedImages,
   ]);
 
   useEffect(() => {
@@ -288,10 +273,6 @@ const Studio = ({ logger }) => {
   );
 
   // ─── Memoized Values ─────────────────────────────────
-
-  const savedFeaturesCollection = useMemo(() => {
-    return normalizeFeatureCollection(savedFeatures);
-  }, [savedFeatures]);
 
   const showMainUI = !isLoadingProject;
   const projectName = currentProject?.name || "No Project Selected";
@@ -418,12 +399,11 @@ const Studio = ({ logger }) => {
 
       <main className="relative flex w-full overflow-hidden" style={{ height: `calc(100vh - ${STUDIO_HEADER_HEIGHT}px)`, marginTop: STUDIO_HEADER_HEIGHT }}>
         {/* Map Wrapper */}
-        <div className={`flex-grow h-full relative transition-[width] duration-300 ease-in-out ${collapsed ? "w-screen" : "w-[calc(100vw-250px)]"}`}>
+        <div className="flex-grow h-full relative transition-[width] duration-300 ease-in-out w-[calc(100vw-250px)]">
           <MapComponent
             key={projectId || "no-project"}
             onMapLoad={handleMapLoad}
             isDarkMode={isDarkMode}
-            setMapInstance={setMapInstance}
           />
         </div>
 
@@ -494,19 +474,6 @@ const Studio = ({ logger }) => {
         {/* Side Panel & UI Elements */}
         {showMainUI && (
           <>
-            <div className="fixed left-3 flex flex-col gap-4 z-[100] animate-[slideInLeft_0.6s_ease-out] max-md:right-4 max-md:left-4 max-md:items-stretch" style={{ top: STUDIO_HEADER_HEIGHT + 16 }}>
-              {/* <ProjectMenu
-                onNew={handleNewProject}
-                onSave={handleSaveProject}
-                onView={() => mapRef.current?.flyTo({ zoom: 5 })}
-                map={mapInstance}
-                features={savedFeaturesCollection}
-                isDarkMode={isDarkMode}
-                setIsDarkMode={setIsDarkMode}
-                setCapturedImages={setCapturedImages}
-              /> */}
-            </div>
-
             <LayerPanel
               layers={layers}
               setLayers={setLayers}
@@ -515,8 +482,6 @@ const Studio = ({ logger }) => {
               draw={drawInstance}
               readOnly={isReadOnlyProject}
             />
-
-            {/* <LegendBox isDarkMode={isDarkMode} /> */}
 
             <NoProjectAlert
               visible={showNoProjectsModal}
