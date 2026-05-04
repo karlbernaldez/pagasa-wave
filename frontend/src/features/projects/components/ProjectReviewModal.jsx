@@ -294,7 +294,9 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
               <div className="relative flex-1">
                 {mapMode === 'preview' ? (
                   <ProjectPreviewMap
+                    projectId={projectId}
                     features={currentFeatureSource}
+                    featureScope="admin"
                     className="h-full min-h-[460px] rounded-none border-0"
                     height="100%"
                     emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
@@ -308,6 +310,7 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
                       </div>
                       <ProjectPreviewMap
                         features={previousFeatureSource}
+                        featureScope="admin"
                         className="h-[410px] rounded-none border-0"
                         height={410}
                         emptyLabel="No previous snapshot"
@@ -319,7 +322,9 @@ export default function ProjectReviewModal({ project, onClose, onApprove, onReje
                         Current Submission
                       </div>
                       <ProjectPreviewMap
+                        projectId={projectId}
                         features={currentFeatureSource}
+                        featureScope="admin"
                         className="h-[410px] rounded-none border-0"
                         height={410}
                         emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
