@@ -303,22 +303,23 @@ const Studio = ({ logger }) => {
   // ─── Render ──────────────────────────────────────────
   return (
     <div className={`relative h-screen w-full overflow-hidden ${isDarkMode ? "bg-slate-950" : "bg-slate-100"}`}>
-      <header className={`absolute inset-x-0 top-0 z-[120] flex h-16 items-center justify-between border-b px-4 shadow-sm backdrop-blur-md ${headerClass}`}>
-        <div className="flex min-w-0 items-center gap-3">
+      <header className={`absolute inset-x-0 top-0 z-[120] flex h-16 items-center justify-between gap-2 border-b px-2 shadow-sm backdrop-blur-md sm:px-4 ${headerClass}`}>
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary}>
-            Project Library
+            <span className="hidden sm:inline">Project Library</span>
+            <span className="sm:hidden">Library</span>
           </Button>
 
-          <div className={`min-w-0 border-l pl-3 ${headerDivider}`}>
-            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${headerMutedText}`}>
+          <div className={`min-w-0 border-l pl-2 sm:pl-3 ${headerDivider}`}>
+            <p className={`hidden text-xs font-semibold uppercase tracking-[0.18em] sm:block ${headerMutedText}`}>
               WaveLab Studio
             </p>
             <div className="flex min-w-0 items-center gap-2">
-              <h1 className={`truncate text-sm font-bold ${headerStrongText}`}>
+              <h1 className={`max-w-[32vw] truncate text-xs font-bold sm:max-w-[42vw] sm:text-sm ${headerStrongText}`}>
                 {projectName}
               </h1>
               {currentProject?.status && (
-                <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black md:inline-flex ${projectStatusStyle}`}>
+                <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black lg:inline-flex ${projectStatusStyle}`}>
                   {projectStatusLabel}
                 </span>
               )}
@@ -326,9 +327,9 @@ const Studio = ({ logger }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {isReadOnlyProject && (
-            <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black md:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
+            <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
               <Lock size={13} />
               Read-only
             </span>
@@ -341,15 +342,15 @@ const Studio = ({ logger }) => {
               disabled={isSubmittingProject}
               onClick={handleSubmitProject}
             >
-              {isSubmittingProject ? "Submitting..." : getSubmitLabel(projectStatus)}
+              <span className="hidden sm:inline">{isSubmittingProject ? "Submitting..." : getSubmitLabel(projectStatus)}</span>
             </Button>
           )}
-          <span className={`hidden rounded-full border px-3 py-1 text-xs font-semibold md:inline-flex ${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+          <span className={`hidden rounded-full border px-3 py-1 text-xs font-semibold xl:inline-flex ${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
             Auto-save active
           </span>
-          <div className={`flex items-center gap-0.5 rounded-2xl border px-1 py-1 ${headerControlGroup}`}>
+          <div className={`flex items-center gap-0.5 rounded-2xl border px-0.5 py-1 sm:px-1 ${headerControlGroup}`}>
             <NotificationBell isDarkMode={isDarkMode} />
-            <div className={`mx-0.5 h-5 w-px ${isDarkMode ? "bg-white/10" : "bg-black/8"}`} />
+            <div className={`mx-0.5 hidden h-5 w-px sm:block ${isDarkMode ? "bg-white/10" : "bg-black/8"}`} />
             <Button
               variant="icon"
               size="sm"
@@ -399,7 +400,7 @@ const Studio = ({ logger }) => {
 
       <main className="relative flex w-full overflow-hidden" style={{ height: `calc(100vh - ${STUDIO_HEADER_HEIGHT}px)`, marginTop: STUDIO_HEADER_HEIGHT }}>
         {/* Map Wrapper */}
-        <div className="flex-grow h-full relative transition-[width] duration-300 ease-in-out w-[calc(100vw-250px)]">
+        <div className="relative h-full w-full flex-grow transition-[width] duration-300 ease-in-out lg:w-[calc(100vw-250px)]">
           <MapComponent
             key={projectId || "no-project"}
             onMapLoad={handleMapLoad}
