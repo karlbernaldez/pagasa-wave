@@ -193,8 +193,12 @@ export default function ProjectCard({
     }
   };
 
+  const cardClass = isDarkMode
+    ? `bg-slate-900/80 ${needsRevision ? 'border-amber-400/50 ring-2 ring-amber-400/15' : 'border-white/10 hover:border-cyan-400/30'}`
+    : `bg-white ${needsRevision ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200 hover:border-blue-200'}`;
+
   return (
-    <article className={`group rounded-2xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${needsRevision ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200 hover:border-blue-200'}`}>
+    <article className={`group rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
       <div className="relative overflow-hidden rounded-t-2xl">
         <ProjectPreviewMap
           projectId={id}
@@ -212,7 +216,7 @@ export default function ProjectCard({
         </div>
 
         <div className="absolute bottom-3 left-3 z-10">
-          <span className="rounded-md border border-white/70 bg-white/85 px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm backdrop-blur">
+          <span className={`rounded-md border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] shadow-sm backdrop-blur ${isDarkMode ? 'border-white/10 bg-slate-950/80 text-slate-300' : 'border-white/70 bg-white/85 text-slate-600'}`}>
             {getProjectType(project)}
           </span>
         </div>
@@ -220,23 +224,23 @@ export default function ProjectCard({
 
       <div className="space-y-4 p-4">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-black text-slate-900" title={name}>
+          <h3 className={`truncate text-base font-black ${isDarkMode ? 'text-slate-50' : 'text-slate-900'}`} title={name}>
             {name}
           </h3>
           {owner && (
-            <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+            <p className={`mt-1 truncate text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               {owner}
             </p>
           )}
         </div>
 
         {needsRevision && latestRemarks?.comment && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
-            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-amber-700">
+          <div className={`rounded-xl border p-3 text-sm ${isDarkMode ? 'border-amber-400/30 bg-amber-950/30' : 'border-amber-200 bg-amber-50'}`}>
+            <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
               <MessageSquareText size={14} />
               Latest admin remarks
             </p>
-            <p className="mt-1 line-clamp-2 font-semibold leading-relaxed text-amber-900">
+            <p className={`mt-1 line-clamp-2 font-semibold leading-relaxed ${isDarkMode ? 'text-amber-100' : 'text-amber-900'}`}>
               {latestRemarks.comment}
             </p>
           </div>
@@ -244,20 +248,20 @@ export default function ProjectCard({
 
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
-            <p className="font-bold text-slate-400">Forecast Date</p>
-            <p className="mt-1 font-semibold text-slate-700">
+            <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Forecast Date</p>
+            <p className={`mt-1 font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
               {formatDate(project?.forecastDate)}
             </p>
           </div>
           <div>
-            <p className="font-bold text-slate-400">Updated</p>
-            <p className="mt-1 font-semibold text-slate-700">
+            <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Updated</p>
+            <p className={`mt-1 font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
               {formatDate(project?.updatedAt || project?.submittedAt || project?.createdAt, 'MMM d, h:mm a')}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
+        <div className={`flex items-center justify-between gap-2 border-t pt-4 ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
           <div className="flex items-center gap-2">
             <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
               {isReviewMode ? 'Review' : needsRevision ? 'Open and Revise' : 'Open'}
@@ -287,7 +291,7 @@ export default function ProjectCard({
               />
 
               {menuOpen && (
-                <div className="absolute right-0 bottom-full mb-2 z-50 w-36 rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg">
+                <div className={`absolute right-0 bottom-full mb-2 z-50 w-36 rounded-lg border py-1 text-sm shadow-lg ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
                   {menuActions.map((action) => {
                     const Icon = action.icon;
                     return (
@@ -298,8 +302,12 @@ export default function ProjectCard({
                           setMenuOpen(false);
                           action.onClick?.(project);
                         }}
-                        className={`flex w-full items-center gap-2 px-3 py-2 text-left font-semibold hover:bg-slate-50 ${
-                          action.danger ? 'text-red-600' : 'text-slate-700'
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-left font-semibold ${
+                          action.danger
+                            ? 'text-red-500 hover:bg-red-500/10'
+                            : isDarkMode
+                              ? 'text-slate-200 hover:bg-white/5'
+                              : 'text-slate-700 hover:bg-slate-50'
                         }`}
                       >
                         {Icon && <Icon size={14} aria-hidden="true" />}
