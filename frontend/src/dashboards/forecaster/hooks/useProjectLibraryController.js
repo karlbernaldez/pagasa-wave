@@ -246,6 +246,7 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
     },
     stats: { stats },
     toolbar: {
+      role,
       search,
       setSearch,
       statusFilter,
