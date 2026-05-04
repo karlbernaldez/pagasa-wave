@@ -71,7 +71,7 @@ const Studio = ({ logger }) => {
     showNoProjectsModal,
     setShowNoProjectsModal,
     message,
-  } = useProjectLoader(projectId, updateProjectId);
+  } = useProjectLoader(projectId);
 
   const [currentProject, setCurrentProject] = useState(null);
   const [isSubmittingProject, setIsSubmittingProject] = useState(false);
@@ -201,9 +201,33 @@ const Studio = ({ logger }) => {
   }, [setLayers]);
 
   useEffect(() => {
+    setIsLoading(true);
+    setMapLoaded(false);
+    setShowToolbar(false);
+    setCapturedImages({ light: null, dark: null });
+    setDrawInstance(null);
+    setLineCount(0);
+    setDrawCounter(0);
+    setClosedMode(false);
+    setSelectedPoint(null);
+    setShowTitleModal(false);
+    markerTitleRef.current = "";
+    selectedToolRef.current = null;
+  }, [
+    projectId,
+    setClosedMode,
+    setDrawCounter,
+    setDrawInstance,
+    setLineCount,
+    setSelectedPoint,
+    setShowTitleModal,
+    markerTitleRef,
+  ]);
+
+  useEffect(() => {
     const timer = setTimeout(() => setShowToolbar(true), TOOLBAR_DELAY);
     return () => clearTimeout(timer);
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -344,6 +368,7 @@ const Studio = ({ logger }) => {
         {/* Map Wrapper */}
         <div className={`flex-grow h-full relative transition-[width] duration-300 ease-in-out ${collapsed ? "w-screen" : "w-[calc(100vw-250px)]"}`}>
           <MapComponent
+            key={projectId || "no-project"}
             onMapLoad={handleMapLoad}
             isDarkMode={isDarkMode}
             setMapInstance={setMapInstance}
@@ -385,6 +410,7 @@ const Studio = ({ logger }) => {
             setLayersRef={setLayersRef}
             closedMode={closedMode}
             lineCount={lineCount}
+            projectId={projectId}
           />
         )}
 
@@ -397,6 +423,7 @@ const Studio = ({ logger }) => {
             isDarkMode={isDarkMode}
             setLayersRef={setLayersRef}
             closedMode={closedMode}
+            projectId={projectId}
           />
         )}
 
