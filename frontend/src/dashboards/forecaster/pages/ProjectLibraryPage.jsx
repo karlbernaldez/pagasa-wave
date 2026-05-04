@@ -76,6 +76,37 @@ function GridState({ type, onRetry, isDarkMode = false }) {
   );
 }
 
+function ViewToggle({ view, setView, isDarkMode }) {
+  const buttonBase = "inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-black transition sm:h-10 sm:flex-none sm:px-3";
+  const activeClass = "bg-cyan-500 text-white shadow-sm";
+  const inactiveClass = isDarkMode ? "text-cyan-300 hover:bg-white/5" : "text-blue-600 hover:bg-blue-50";
+
+  return (
+    <div className={`grid w-full grid-cols-2 rounded-2xl border p-1 shadow-sm sm:inline-grid sm:w-auto ${isDarkMode ? "border-white/10 bg-slate-900" : "border-slate-200 bg-white"}`}>
+      <button
+        type="button"
+        aria-label="Show project cards"
+        aria-pressed={view === "grid"}
+        className={`${buttonBase} ${view === "grid" ? activeClass : inactiveClass}`}
+        onClick={() => setView("grid")}
+      >
+        <LayoutGrid size={16} />
+        <span className="sm:hidden">Cards</span>
+      </button>
+      <button
+        type="button"
+        aria-label="Show project list"
+        aria-pressed={view === "list"}
+        className={`${buttonBase} ${view === "list" ? activeClass : inactiveClass}`}
+        onClick={() => setView("list")}
+      >
+        <List size={16} />
+        <span className="sm:hidden">List</span>
+      </button>
+    </div>
+  );
+}
+
 function getCreatedProjectId(project) {
   return project?._id || project?.id || project?.project?._id || project?.project?.id;
 }
@@ -172,9 +203,9 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
 
   return (
     <div className={`min-h-full transition-colors ${isDarkMode ? "bg-[#0d1117]" : "bg-slate-50"}`}>
-      <div className="mx-auto max-w-[1400px] space-y-6 p-6">
+      <div className="mx-auto max-w-[1400px] space-y-5 p-4 sm:space-y-6 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <h1 className={`text-2xl font-black ${isDarkMode ? "text-slate-50" : "text-slate-900"}`}>
               {controller.header.title}
             </h1>
@@ -183,7 +214,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             {role !== "admin" && (
               <Button
                 icon={Plus}
@@ -195,22 +226,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
               </Button>
             )}
 
-            <div className={`inline-flex w-fit rounded-2xl border p-1 shadow-sm ${isDarkMode ? "border-white/10 bg-slate-900" : "border-slate-200 bg-white"}`}>
-              <Button
-                aria-label="Show project cards"
-                variant={view === "grid" ? "primary" : "ghost"}
-                size="sm"
-                icon={LayoutGrid}
-                onClick={() => setView("grid")}
-              />
-              <Button
-                aria-label="Show project list"
-                variant={view === "list" ? "primary" : "ghost"}
-                size="sm"
-                icon={List}
-                onClick={() => setView("list")}
-              />
-            </div>
+            <ViewToggle view={view} setView={setView} isDarkMode={isDarkMode} />
           </div>
         </div>
 
