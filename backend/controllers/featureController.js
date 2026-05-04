@@ -8,6 +8,21 @@ import {
   buildNewSourceIdAndUpdateData,
 } from '../utils/dbHelpers.js';
 
+const EDITABLE_PROJECT_STATUSES = new Set([
+  'Draft',
+  'Rejected',
+  'Revision Requested',
+]);
+
+function ensureProjectIsEditable(project) {
+  if (!EDITABLE_PROJECT_STATUSES.has(project.status)) {
+    throwError(
+      `Project is ${project.status}. Editing is locked unless the project is Draft, Rejected, or Revision Requested.`,
+      403
+    );
+  }
+}
+
 // CREATE FEATURE
 export const createFeature = asyncHandler(async (req, res) => {
   const { geometry, properties = {}, name = 'Untitled Feature', sourceId } = req.body;
@@ -17,7 +32,8 @@ export const createFeature = asyncHandler(async (req, res) => {
   validateGeometry(geometry);
   if (!sourceId || !owner || !projectId) throwError('Missing required fields: sourceId or properties.project.', 400);
 
-  await ensureProjectExists(projectId, owner);
+  const project = await ensureProjectExists(projectId, owner);
+  ensureProjectIsEditable(project);
 
   const fullProperties = { ...properties, owner };
 
@@ -94,8 +110,12 @@ export const getFeatureBySourceId = asyncHandler(async (req, res) => {
 // DELETE FEATURE
 export const deleteFeature = asyncHandler(async (req, res) => {
   const { sourceId } = req.params;
+  const userId = req.user.id;
+  const feature = await ensureFeatureExists(sourceId, userId);
+  const project = await ensureProjectExists(feature.properties.project, userId);
+  ensureProjectIsEditable(project);
 
-  const result = await Feature.deleteOne({ sourceId });
+  const result = await Feature.deleteOne({ sourceId, 'properties.owner': userId });
   if (result.deletedCount === 0) throwError(`Feature with sourceId "${sourceId}" not found. Nothing deleted.`, 404);
 
   res.status(200).json({
@@ -108,14 +128,18 @@ export const deleteFeature = asyncHandler(async (req, res) => {
 export const updateFeatureName = asyncHandler(async (req, res) => {
   const { sourceId } = req.params;
   const { newName } = req.body;
+  const userId = req.user.id;
 
   if (!newName || typeof newName !== 'string') throwError('Invalid name. Name must be a non-empty string.', 400);
 
-  const feature = await ensureFeatureExists(sourceId);
+  const feature = await ensureFeatureExists(sourceId, userId);
+  const project = await ensureProjectExists(feature.properties.project, userId);
+  ensureProjectIsEditable(project);
+
   const [newSourceId, updateData] = buildNewSourceIdAndUpdateData(feature, newName);
 
   const updatedFeature = await Feature.findOneAndUpdate(
-    { sourceId },
+    { sourceId, 'properties.owner': userId },
     { $set: updateData },
     { new: true }
   );
@@ -130,6 +154,7 @@ export const updateFeatureName = asyncHandler(async (req, res) => {
 export const updateFeatureCoordinates = asyncHandler(async (req, res) => {
   const { sourceId } = req.params;
   const { coordinates } = req.body;
+  const userId = req.user.id;
 
   if (
     !Array.isArray(coordinates) ||
@@ -140,10 +165,12 @@ export const updateFeatureCoordinates = asyncHandler(async (req, res) => {
     throwError('Invalid coordinates. Must be [lng, lat] as numbers.', 400);
   }
 
-  await ensureFeatureExists(sourceId);
+  const feature = await ensureFeatureExists(sourceId, userId);
+  const project = await ensureProjectExists(feature.properties.project, userId);
+  ensureProjectIsEditable(project);
 
-  const updated = await Feature.findOneAndUpdate(
-    { sourceId },
+  await Feature.findOneAndUpdate(
+    { sourceId, 'properties.owner': userId },
     { $set: { 'geometry.coordinates': coordinates } },
     { new: true }
   );
