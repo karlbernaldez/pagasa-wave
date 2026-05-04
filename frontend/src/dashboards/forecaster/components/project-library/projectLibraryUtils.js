@@ -80,3 +80,38 @@ export function getProjectStats(projects, total = projects.length) {
     },
   ];
 }
+
+export function getAdminProjectStats(projects, total = projects.length) {
+  return [
+    {
+      value: total,
+      label: 'Total Projects',
+      helper: 'Matching filters',
+      tone: 'blue',
+    },
+    {
+      value: projects.filter((p) => p.status === 'Submitted').length,
+      label: 'Submitted',
+      helper: 'Visible page',
+      tone: 'slate',
+    },
+    {
+      value: projects.filter((p) => p.status === 'Under Review').length,
+      label: 'Under Review',
+      helper: 'Visible page',
+      tone: 'amber',
+    },
+    {
+      value: projects.filter((p) => p.status === 'Revision Requested').length,
+      label: 'Needs Revision',
+      helper: 'Visible page',
+      tone: 'amber',
+    },
+    {
+      value: projects.filter((p) => p.status === 'Published').length,
+      label: 'Published',
+      helper: 'Visible page',
+      tone: 'emerald',
+    },
+  ];
+}
