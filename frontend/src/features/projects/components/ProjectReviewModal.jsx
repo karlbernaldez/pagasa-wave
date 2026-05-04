@@ -319,7 +319,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                     featureScope="admin"
                     isDarkMode={isDarkMode}
                     className={`h-[310px] rounded-2xl sm:h-[460px] xl:h-full ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
-                    height="100%"
+                    height={null}
                     emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                     lazy={false}
                   />
@@ -334,7 +334,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                         featureScope="admin"
                         isDarkMode={isDarkMode}
                         className="h-[248px] flex-none rounded-none border-0 sm:h-[360px] xl:h-full xl:flex-1"
-                        height="100%"
+                        height={null}
                         emptyLabel="No previous snapshot"
                         lazy={false}
                       />
@@ -349,7 +349,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                         featureScope="admin"
                         isDarkMode={isDarkMode}
                         className="h-[248px] flex-none rounded-none border-0 sm:h-[360px] xl:h-full xl:flex-1"
-                        height="100%"
+                        height={null}
                         emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                         lazy={false}
                       />
