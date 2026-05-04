@@ -7,19 +7,11 @@ import {
   validateGeometry,
   buildNewSourceIdAndUpdateData,
 } from '../utils/dbHelpers.js';
-
-const EDITABLE_PROJECT_STATUSES = new Set([
-  'Draft',
-  'Rejected',
-  'Revision Requested',
-]);
+import { canEditProjectStatus, getProjectEditLockMessage } from '../utils/projectWorkflow.js';
 
 function ensureProjectIsEditable(project) {
-  if (!EDITABLE_PROJECT_STATUSES.has(project.status)) {
-    throwError(
-      `Project is ${project.status}. Editing is locked unless the project is Draft, Rejected, or Revision Requested.`,
-      403
-    );
+  if (!canEditProjectStatus(project.status)) {
+    throwError(getProjectEditLockMessage(project.status), 403);
   }
 }
 
