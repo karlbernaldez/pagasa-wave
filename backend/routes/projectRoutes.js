@@ -5,7 +5,6 @@ import {
   createProject,
   getUserProjects,
   getLatestUserProject,
-  getAllProjectsForAdmin,
   getProjectById,
   updateProject,
   deleteProject,
@@ -19,6 +18,7 @@ import {
   archiveProject,
   renameProject
 } from '../controllers/projectController.js';
+import { getAdminProjects } from '../controllers/adminProjectController.js';
 
 import protect from '../middleware/authMiddleware.js';
 import isOwnerOrAdmin from '../middleware/projectMiddleware.js';
@@ -31,7 +31,7 @@ router.use(protect);
 // ─────────────────────────────────────────────
 // Admin routes - keep before dynamic /:id routes
 // ─────────────────────────────────────────────
-router.get('/admin/all', isAdmin, getAllProjectsForAdmin);
+router.get('/admin/all', isAdmin, getAdminProjects);
 
 router.patch('/:id/start-review', isAdmin, startReviewProject);
 
