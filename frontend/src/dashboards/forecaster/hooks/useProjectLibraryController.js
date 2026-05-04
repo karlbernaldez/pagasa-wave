@@ -16,6 +16,7 @@ import {
 } from "@dashboards/forecaster/hooks/useProjectMutations";
 import ProjectDialogsHost from "@dashboards/forecaster/components/project-library/ProjectDialogsHost";
 import {
+  getAdminProjectStats,
   getProjectStats,
 } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 import { adaptProjects, adaptProject } from "@/features/projects/projectAdapter";
@@ -236,7 +237,11 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
     await refetch();
   };
 
-  const stats = !loading ? getProjectStats(paged, total) : [];
+  const stats = !loading
+    ? isAdmin
+      ? getAdminProjectStats(paged, total)
+      : getProjectStats(paged, total)
+    : [];
 
   return {
     role,
