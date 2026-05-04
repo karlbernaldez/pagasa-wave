@@ -12,6 +12,7 @@ import MapLoading from "@/components/ui/modals/MapLoading";
 import NoProjectAlert from "@/components/ui/modals/NoProjectAlert";
 import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Button from "@/components/ui/Button";
+import NotificationBell from "@/shared/notifications/NotificationBell";
 import Canvas from "@dashboards/forecaster/draw/canvas";
 import FlagCanvas from "@dashboards/forecaster/draw/front";
 import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
@@ -314,6 +315,9 @@ const Studio = ({ logger }) => {
   const headerMutedText = isDarkMode ? "text-slate-400" : "text-slate-500";
   const headerStrongText = isDarkMode ? "text-slate-50" : "text-slate-900";
   const headerDivider = isDarkMode ? "border-white/10" : "border-slate-200";
+  const headerControlGroup = isDarkMode
+    ? "border-white/10 bg-white/[0.05]"
+    : "border-black/6 bg-black/[0.03]";
 
   // ─── Render ──────────────────────────────────────────
   return (
@@ -362,13 +366,17 @@ const Studio = ({ logger }) => {
           <span className={`hidden rounded-full border px-3 py-1 text-xs font-semibold md:inline-flex ${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
             Auto-save active
           </span>
-          <Button
-            variant="icon"
-            size="sm"
-            icon={isDarkMode ? Sun : Moon}
-            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-            onClick={handleToggleTheme}
-          />
+          <div className={`flex items-center gap-0.5 rounded-2xl border px-1 py-1 ${headerControlGroup}`}>
+            <NotificationBell isDarkMode={isDarkMode} />
+            <div className={`mx-0.5 h-5 w-px ${isDarkMode ? "bg-white/10" : "bg-black/8"}`} />
+            <Button
+              variant="icon"
+              size="sm"
+              icon={isDarkMode ? Sun : Moon}
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={handleToggleTheme}
+            />
+          </div>
         </div>
       </header>
 
