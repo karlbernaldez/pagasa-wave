@@ -1,6 +1,6 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fetchFeatures, fetchProjectFeatureCollection } from '@/api/featureServices';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
@@ -13,6 +13,35 @@ const DEFAULT_BOUNDS = [
   [93, 5],
   [153.8595159535438, 25],
 ];
+const FEATURE_CACHE_LIMIT = 80;
+
+const featureCache = new Map();
+const featureRequestCache = new Map();
+
+function getFeatureCacheKey(projectId, scope) {
+  return `${scope || 'user'}:${projectId || 'none'}`;
+}
+
+function setCachedFeatures(key, value) {
+  if (!key) return;
+
+  featureCache.set(key, value);
+
+  if (featureCache.size > FEATURE_CACHE_LIMIT) {
+    const oldestKey = featureCache.keys().next().value;
+    if (oldestKey) featureCache.delete(oldestKey);
+  }
+}
+
+function getCachedFeatures(key) {
+  if (!key || !featureCache.has(key)) return null;
+
+  const value = featureCache.get(key);
+  featureCache.delete(key);
+  featureCache.set(key, value);
+
+  return value;
+}
 
 function extendBoundsFromCoordinates(bounds, coordinates) {
   if (!Array.isArray(coordinates)) return;
@@ -174,7 +203,30 @@ async function loadProjectFeatures(projectId, scope) {
   return fetchFeatures(projectId);
 }
 
-function useNearViewport(rootMargin = '400px', disabled = false) {
+async function loadProjectFeaturesCached(projectId, scope) {
+  const key = getFeatureCacheKey(projectId, scope);
+  const cached = getCachedFeatures(key);
+
+  if (cached) return cached;
+
+  if (featureRequestCache.has(key)) {
+    return featureRequestCache.get(key);
+  }
+
+  const request = loadProjectFeatures(projectId, scope)
+    .then((data) => {
+      setCachedFeatures(key, data);
+      return data;
+    })
+    .finally(() => {
+      featureRequestCache.delete(key);
+    });
+
+  featureRequestCache.set(key, request);
+  return request;
+}
+
+function useNearViewport(rootMargin = '500px', disabled = false) {
   const targetRef = useRef(null);
   const [isNearViewport, setIsNearViewport] = useState(disabled);
 
@@ -210,7 +262,30 @@ function useNearViewport(rootMargin = '400px', disabled = false) {
   return [targetRef, isNearViewport];
 }
 
-export default function ProjectPreviewMap({
+function getFeatureIdentity(feature) {
+  return feature.id || feature._id || feature.properties?.id || feature.properties?.sourceId || feature.properties?.name || '';
+}
+
+function getFeatureRenderKey(featureCollection) {
+  return JSON.stringify(
+    featureCollection.features.map((feature) => ({
+      geometry: feature.geometry,
+      id: getFeatureIdentity(feature),
+    }))
+  );
+}
+
+function PreviewPlaceholder({ isDarkMode, label, loading = false }) {
+  return (
+    <div className={`absolute inset-0 flex items-center justify-center text-xs font-semibold backdrop-blur-[1px] ${
+      isDarkMode ? 'bg-slate-950/55 text-slate-400' : 'bg-white/55 text-slate-500'
+    }`}>
+      {loading ? 'Loading annotations…' : label}
+    </div>
+  );
+}
+
+function ProjectPreviewMap({
   projectId,
   features,
   featureScope = 'user',
@@ -220,12 +295,15 @@ export default function ProjectPreviewMap({
   emptyLabel = 'No annotations yet',
   lazy = true,
 }) {
-  const [viewportRef, isNearViewport] = useNearViewport('400px', !lazy);
+  const [viewportRef, isNearViewport] = useNearViewport('500px', !lazy);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const fittedFeaturesKeyRef = useRef('');
   const [isReady, setIsReady] = useState(false);
-  const [remoteFeatures, setRemoteFeatures] = useState(null);
+  const [remoteFeatures, setRemoteFeatures] = useState(() => {
+    if (!projectId) return null;
+    return getCachedFeatures(getFeatureCacheKey(projectId, featureScope));
+  });
   const [isLoadingFeatures, setIsLoadingFeatures] = useState(false);
 
   const providedFeatureCollection = useMemo(
@@ -233,20 +311,35 @@ export default function ProjectPreviewMap({
     [features]
   );
 
-  const shouldFetchFeatures = isNearViewport && Boolean(projectId) && providedFeatureCollection.features.length === 0;
+  const hasProvidedFeatures = providedFeatureCollection.features.length > 0;
+  const featureCacheKey = useMemo(
+    () => getFeatureCacheKey(projectId, featureScope),
+    [featureScope, projectId]
+  );
+
+  useEffect(() => {
+    if (hasProvidedFeatures || !projectId) {
+      setRemoteFeatures(null);
+      return;
+    }
+
+    const cached = getCachedFeatures(featureCacheKey);
+    if (cached) setRemoteFeatures(cached);
+  }, [featureCacheKey, hasProvidedFeatures, projectId]);
+
+  const shouldFetchFeatures = isNearViewport && Boolean(projectId) && !hasProvidedFeatures && !remoteFeatures;
 
   useEffect(() => {
     let isMounted = true;
 
     if (!shouldFetchFeatures) {
-      if (!isNearViewport) return undefined;
-      setIsLoadingFeatures(false);
+      if (isNearViewport) setIsLoadingFeatures(false);
       return undefined;
     }
 
     setIsLoadingFeatures(true);
 
-    loadProjectFeatures(projectId, featureScope)
+    loadProjectFeaturesCached(projectId, featureScope)
       .then((data) => {
         if (!isMounted) return;
         setRemoteFeatures(data);
@@ -266,21 +359,19 @@ export default function ProjectPreviewMap({
   }, [featureScope, isNearViewport, projectId, shouldFetchFeatures]);
 
   const featureCollection = useMemo(() => {
-    if (providedFeatureCollection.features.length > 0) {
+    if (hasProvidedFeatures) {
       return providedFeatureCollection;
     }
 
     return normalizeFeatureCollection(remoteFeatures);
-  }, [providedFeatureCollection, remoteFeatures]);
+  }, [hasProvidedFeatures, providedFeatureCollection, remoteFeatures]);
 
   const hasFeatures = featureCollection.features.length > 0;
-  const featureKey = useMemo(() => JSON.stringify(featureCollection.features.map((feature) => ({
-    geometry: feature.geometry,
-    id: feature.id || feature._id || feature.properties?.id || feature.properties?.sourceId,
-  }))), [featureCollection]);
+  const featureKey = useMemo(() => getFeatureRenderKey(featureCollection), [featureCollection]);
+  const shouldRenderMap = isNearViewport && hasFeatures;
 
   useEffect(() => {
-    if (!isNearViewport || !containerRef.current || mapRef.current) return undefined;
+    if (!shouldRenderMap || !containerRef.current || mapRef.current) return undefined;
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
@@ -312,18 +403,20 @@ export default function ProjectPreviewMap({
       fittedFeaturesKeyRef.current = '';
       setIsReady(false);
     };
-  }, [isNearViewport]);
+  }, [shouldRenderMap]);
+
+  useEffect(() => {
+    if (shouldRenderMap || !mapRef.current) return;
+
+    mapRef.current.remove();
+    mapRef.current = null;
+    fittedFeaturesKeyRef.current = '';
+    setIsReady(false);
+  }, [shouldRenderMap]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !isReady) return;
-
-    if (!hasFeatures) {
-      removePreviewLayers(map);
-      fittedFeaturesKeyRef.current = '';
-      map.fitBounds(DEFAULT_BOUNDS, { padding: 18, maxZoom: 6, duration: 0 });
-      return;
-    }
+    if (!map || !isReady || !hasFeatures) return;
 
     addPreviewLayers(map, featureCollection);
 
@@ -344,28 +437,32 @@ export default function ProjectPreviewMap({
   return (
     <div
       ref={viewportRef}
-      className={`relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100 ${className}`}
+      className={`relative overflow-hidden rounded-xl border transition-colors ${
+        isDarkMode ? 'border-white/10 bg-slate-900' : 'border-slate-200 bg-slate-100'
+      } ${className}`}
       style={{ height }}
     >
-      {isNearViewport ? (
+      {shouldRenderMap ? (
         <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
       ) : (
-        <div className="h-full w-full animate-pulse bg-slate-200" aria-hidden="true" />
+        <div className={`h-full w-full ${isDarkMode ? 'bg-slate-900' : 'bg-slate-100'}`} aria-hidden="true" />
       )}
 
-      {!hasFeatures && !isLoadingFeatures && isNearViewport && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/50 text-xs font-semibold text-slate-500 backdrop-blur-[1px]">
-          {emptyLabel}
-        </div>
+      {!isNearViewport && (
+        <div className={`h-full w-full animate-pulse ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} aria-hidden="true" />
+      )}
+
+      {isNearViewport && !hasFeatures && !isLoadingFeatures && (
+        <PreviewPlaceholder isDarkMode={isDarkMode} label={emptyLabel} />
       )}
 
       {isLoadingFeatures && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/40 text-xs font-semibold text-slate-500 backdrop-blur-[1px]">
-          Loading annotations…
-        </div>
+        <PreviewPlaceholder isDarkMode={isDarkMode} label={emptyLabel} loading />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white/80 to-transparent" />
+      <div className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t ${isDarkMode ? 'from-slate-950/80' : 'from-white/80'} to-transparent`} />
     </div>
   );
 }
+
+export default memo(ProjectPreviewMap);
