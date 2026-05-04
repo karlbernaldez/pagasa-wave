@@ -360,8 +360,8 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
             </div>
           </section>
 
-          <aside className={`flex min-h-0 flex-col border-t xl:border-l xl:border-t-0 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-visible p-3 sm:space-y-4 sm:p-5 xl:overflow-y-auto">
+          <aside className={`min-h-0 border-t xl:flex xl:flex-col xl:border-l xl:border-t-0 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
+            <div className="space-y-3 p-3 sm:space-y-4 sm:p-5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
               <div className={`rounded-2xl border p-4 sm:rounded-3xl ${softPanel}`}>
                 <p className={`text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>Review Status</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -454,7 +454,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               </div>
             </div>
 
-            <div className={`z-10 shrink-0 border-t p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.12)] backdrop-blur sm:p-4 xl:sticky xl:bottom-0 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
+            <div className={`mx-3 mb-3 mt-1 shrink-0 rounded-2xl border p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] sm:mx-5 sm:mb-5 sm:p-4 xl:sticky xl:bottom-0 xl:mx-0 xl:mb-0 xl:mt-0 xl:rounded-none xl:border-x-0 xl:border-b-0 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
               <div className="flex flex-col gap-2">
                 {isReviewable && (
                   <div className="grid grid-cols-2 gap-2 [&>button]:min-h-10 [&>button]:w-full">
