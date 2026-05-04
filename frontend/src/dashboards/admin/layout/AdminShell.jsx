@@ -36,7 +36,7 @@ const AdminShell = ({
   return (
     <DashboardShell
       activeId={activeTab}
-      isDarkMode={true}
+      isDarkMode={isDarkMode}
       isMobileOpen={isMobileOpen}
       isSidebarCollapsed={isSidebarCollapsed}
       onItemSelect={(item) => setActiveTab(item.id)}
