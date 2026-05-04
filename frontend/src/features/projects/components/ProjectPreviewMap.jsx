@@ -369,6 +369,7 @@ function ProjectPreviewMap({
   const hasFeatures = featureCollection.features.length > 0;
   const featureKey = useMemo(() => getFeatureRenderKey(featureCollection), [featureCollection]);
   const shouldRenderMap = isNearViewport && hasFeatures;
+  const containerStyle = height == null ? undefined : { height };
 
   useEffect(() => {
     if (!shouldRenderMap || !containerRef.current || mapRef.current) return undefined;
@@ -440,7 +441,7 @@ function ProjectPreviewMap({
       className={`relative overflow-hidden rounded-xl border transition-colors ${
         isDarkMode ? 'border-white/10 bg-slate-900' : 'border-slate-200 bg-slate-100'
       } ${className}`}
-      style={{ height }}
+      style={containerStyle}
     >
       {shouldRenderMap ? (
         <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
