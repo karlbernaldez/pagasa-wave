@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   approveProject,
@@ -16,7 +17,6 @@ import {
 import ProjectDialogsHost from "@dashboards/forecaster/components/project-library/ProjectDialogsHost";
 import {
   getProjectStats,
-  sortProjects,
 } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
 import { adaptProjects, adaptProject } from "@/features/projects/projectAdapter";
 import {
@@ -36,21 +36,20 @@ function getProjectFromResponse(data, fallbackProject) {
   return data?.project || data?.data?.project || data?.data || data || fallbackProject;
 }
 
-function getAdminProjectsFromResponse(data) {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.projects)) return data.projects;
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.results)) return data.results;
-  if (Array.isArray(data?.items)) return data.items;
-  return [];
+function useDebouncedValue(value, delay = 350) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timeout);
+  }, [value, delay]);
+
+  return debouncedValue;
 }
 
 function useAdminProjectLibrary() {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isFetching, setIsFetching] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [dateRangeFilter, setDateRangeFilter] = useState("All");
@@ -58,64 +57,33 @@ function useAdminProjectLibrary() {
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
 
-  const load = async () => {
-    setIsFetching(true);
-    setError(null);
-
-    try {
-      const data = await fetchAllProjectsForAdmin();
-      setProjects(adaptProjects(getAdminProjectsFromResponse(data)));
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
-      setIsFetching(false);
-    }
-  };
-
-  const replaceProject = (nextProject) => {
-    const adaptedProject = adaptProject(nextProject);
-    setProjects((currentProjects) =>
-      currentProjects.map((project) =>
-        getProjectId(project) === adaptedProject._id ? adaptedProject : project
-      )
-    );
-    return adaptedProject;
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
-
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, typeFilter, dateRangeFilter, sortBy, sortDir]);
+  }, [debouncedSearch, statusFilter, typeFilter, dateRangeFilter, sortBy, sortDir]);
 
-  const filtered = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+  const queryParams = {
+    page,
+    limit: ADMIN_PAGE_SIZE,
+    search: debouncedSearch,
+    status: statusFilter,
+    type: typeFilter,
+    dateRange: dateRangeFilter,
+    sortBy,
+    sortDir,
+  };
 
-    return projects.filter((project) => {
-      const matchesSearch = !normalizedSearch ||
-        project.name?.toLowerCase().includes(normalizedSearch) ||
-        project.title?.toLowerCase().includes(normalizedSearch) ||
-        project.ownerDisplay?.toLowerCase().includes(normalizedSearch);
+  const query = useQuery({
+    queryKey: ["admin-project-library", queryParams],
+    queryFn: ({ signal }) => fetchAllProjectsForAdmin({ ...queryParams, signal }),
+    staleTime: 30000,
+    keepPreviousData: true,
+  });
 
-      const matchesStatus = statusFilter === "All" || project.status === statusFilter;
-      const projectType = String(project.chartType || "").toLowerCase();
-      const matchesType = typeFilter === "All" || projectType === typeFilter.toLowerCase();
-
-      return matchesSearch && matchesStatus && matchesType;
-    });
-  }, [projects, search, statusFilter, typeFilter]);
-
-  const sorted = useMemo(
-    () => sortProjects(filtered, sortBy, sortDir),
-    [filtered, sortBy, sortDir]
-  );
-
-  const total = sorted.length;
-  const totalPages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
-  const paged = sorted.slice((page - 1) * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE);
+  const response = query.data ?? {};
+  const paged = adaptProjects(response.projects ?? []);
+  const total = response.total ?? 0;
+  const totalPages = Math.max(1, response.totalPages ?? 1);
+  const currentPage = response.page ?? page;
 
   const activeFilterCount = [
     statusFilter !== "All",
@@ -133,15 +101,15 @@ function useAdminProjectLibrary() {
   };
 
   return {
-    loading,
-    error,
-    isFetching,
-    refetch: load,
-    replaceProject,
+    loading: query.isLoading,
+    error: query.error,
+    isFetching: query.isFetching,
+    refetch: query.refetch,
+    replaceProject: undefined,
     paged,
     total,
     totalPages,
-    page,
+    page: currentPage,
     setPage,
     search,
     setSearch,
@@ -249,6 +217,7 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
     });
 
     replaceProject?.(transitionedProject);
+    await refetch?.();
     return transitionedProject;
   };
 
