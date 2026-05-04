@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { AlertTriangle, ArrowLeft, MessageSquareText, Moon, Send, Sun } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Lock, MessageSquareText, Moon, Send, Sun } from "lucide-react";
 
 // Component imports
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
@@ -20,6 +20,7 @@ import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
 import { getLatestReviewRemarks } from "@/features/projects/projectAdapter";
 import {
   PROJECT_STATUS,
+  canEditProjectStatus,
   canSubmitProjectStatus,
   getProjectStatusLabel,
   getProjectStatusStyle,
@@ -141,6 +142,10 @@ const Studio = ({ logger }) => {
   const removeLayerSafe = (map, id) => { if (map.getLayer(id)) map.removeLayer(id); };
   const removeSourceSafe = (map, id) => { if (map.getSource(id)) map.removeSource(id); };
 
+  const projectStatus = currentProject?.status;
+  const canEditProject = currentProject && canEditProjectStatus(projectStatus);
+  const isReadOnlyProject = Boolean(currentProject && !canEditProject);
+
   const isBlockingWorkspaceModalOpen =
     showTitleModal ||
     showCreateProjectModal ||
@@ -225,6 +230,14 @@ const Studio = ({ logger }) => {
   ]);
 
   useEffect(() => {
+    if (!isReadOnlyProject) return;
+    if (isCanvasActive) toggleCanvas();
+    if (isFlagCanvasActive) toggleFlagCanvas();
+    setShowTitleModal(false);
+    selectedToolRef.current = null;
+  }, [isReadOnlyProject, isCanvasActive, isFlagCanvasActive, toggleCanvas, toggleFlagCanvas, setShowTitleModal]);
+
+  useEffect(() => {
     const timer = setTimeout(() => setShowToolbar(true), TOOLBAR_DELAY);
     return () => clearTimeout(timer);
   }, [projectId]);
@@ -249,6 +262,7 @@ const Studio = ({ logger }) => {
   // ─── Handlers ────────────────────────────────────────
 
   const handleSaveTitle = (title) => {
+    if (isReadOnlyProject) return;
     markerTitleRef.current = title;
     saveMarker(selectedPoint, mapRef, setShowTitleModal, type)(title);
     const coords = [selectedPoint.lng, selectedPoint.lat];
@@ -280,7 +294,6 @@ const Studio = ({ logger }) => {
 
   const showMainUI = !isLoadingProject;
   const projectName = currentProject?.name || "No Project Selected";
-  const projectStatus = currentProject?.status;
   const isRevisionRequested = isProjectRevisionRequested(projectStatus);
   const projectStatusLabel = isRevisionRequested
     ? "Needs Revision"
@@ -322,6 +335,12 @@ const Studio = ({ logger }) => {
         </div>
 
         <div className="flex items-center gap-2">
+          {isReadOnlyProject && (
+            <span className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 md:inline-flex dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              <Lock size={13} />
+              Read-only
+            </span>
+          )}
           {canSubmitProject && (
             <Button
               size="sm"
@@ -346,8 +365,26 @@ const Studio = ({ logger }) => {
         </div>
       </header>
 
+      {isReadOnlyProject && (
+        <div className="absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-slate-700 shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 dark:text-slate-200" style={{ top: STUDIO_HEADER_HEIGHT + 12 }}>
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-lg bg-slate-100 p-1.5 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+              <Lock size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                Editing locked
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed">
+                This project is already {projectStatusLabel}. You can view it, but markers, drawings, uploads, deletes, and edits are disabled until Admin requests a revision.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {hasActiveReviewRemarks && (
-        <div className="absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-3 text-amber-950 shadow-lg backdrop-blur-md" style={{ top: STUDIO_HEADER_HEIGHT + 12 }}>
+        <div className="absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-3 text-amber-950 shadow-lg backdrop-blur-md" style={{ top: STUDIO_HEADER_HEIGHT + (isReadOnlyProject ? 104 : 12) }}>
           <div className="flex items-start gap-3">
             <div className="mt-0.5 rounded-lg bg-amber-100 p-1.5 text-amber-700">
               <MessageSquareText size={16} />
@@ -380,7 +417,7 @@ const Studio = ({ logger }) => {
         )}
 
         {/* Toolbar */}
-        {showToolbar && projectId && (
+        {showToolbar && projectId && canEditProject && (
           <DrawToolBar
             draw={drawInstance}
             onToggleCanvas={toggleCanvas}
@@ -401,7 +438,7 @@ const Studio = ({ logger }) => {
         )}
 
         {/* Canvas Overlays */}
-        {isCanvasActive && (
+        {isCanvasActive && canEditProject && (
           <Canvas
             mapRef={mapRef}
             drawRef={drawInstance}
@@ -415,7 +452,7 @@ const Studio = ({ logger }) => {
           />
         )}
 
-        {isFlagCanvasActive && (
+        {isFlagCanvasActive && canEditProject && (
           <FlagCanvas
             mapRef={mapRef}
             drawRef={drawInstance}
@@ -430,7 +467,7 @@ const Studio = ({ logger }) => {
 
         {/* Marker Title Modal — single source of truth, markerType drives accent color */}
         <MarkerTitleModal
-          isOpen={showTitleModal}
+          isOpen={showTitleModal && canEditProject}
           onClose={closeModal}
           onSubmit={handleSaveTitle}
           inputValue={markerTitle}
@@ -461,6 +498,7 @@ const Studio = ({ logger }) => {
               mapRef={mapRef}
               isDarkMode={isDarkMode}
               draw={drawInstance}
+              readOnly={isReadOnlyProject}
             />
 
             {/* <LegendBox isDarkMode={isDarkMode} /> */}
