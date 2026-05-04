@@ -142,7 +142,7 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
 
       {isOpen && (
         <div
-          className={`absolute right-0 top-12 z-50 w-[min(380px,calc(100vw-24px))] overflow-hidden rounded-3xl border shadow-2xl ${
+          className={`fixed left-3 right-3 top-16 z-[220] max-h-[min(520px,calc(100vh-84px))] overflow-hidden rounded-3xl border shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[min(380px,calc(100vw-24px))] ${
             isDarkMode
               ? 'border-white/10 bg-slate-950 text-slate-100'
               : 'border-slate-200 bg-white text-slate-950'
@@ -169,7 +169,7 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
             </button>
           </div>
 
-          <div className="max-h-[420px] overflow-y-auto">
+          <div className="max-h-[min(420px,calc(100vh-150px))] overflow-y-auto">
             {isLoading ? (
               <div className={`p-5 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Loading notifications…
