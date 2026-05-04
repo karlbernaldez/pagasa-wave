@@ -275,6 +275,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       {role === 'admin' && (
         <ProjectReviewModal
           project={reviewProject}
+          isDarkMode={isDarkMode}
           onClose={() => setReviewProject(null)}
           onApprove={onApprove}
           onReject={onReject}
