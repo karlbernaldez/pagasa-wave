@@ -1,14 +1,7 @@
 import { ArrowDown, ArrowUp, Filter, Search, X } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { STATUS_FILTERS } from "./constants";
+import { ADMIN_STATUS_FILTERS, PROJECT_TYPE_FILTERS, STATUS_FILTERS } from "./constants";
 import { SORT_OPTIONS } from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
-
-const TYPE_OPTIONS = [
-  { value: "All", label: "All Types" },
-  { value: "wave", label: "Wave" },
-  { value: "wind", label: "Wind" },
-  { value: "warning", label: "Warning" },
-];
 
 const DATE_OPTIONS = [
   { value: "All", label: "All Time" },
@@ -24,7 +17,7 @@ function SelectControl({ label, value, onChange, options }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 min-w-[150px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+        className="h-10 min-w-[150px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -37,6 +30,7 @@ function SelectControl({ label, value, onChange, options }) {
 }
 
 export default function ProjectToolbar({
+  role = "forecaster",
   search,
   setSearch,
   statusFilter,
@@ -53,7 +47,8 @@ export default function ProjectToolbar({
   onClear,
   isFetching,
 }) {
-  const statusOptions = STATUS_FILTERS.map((status) => ({
+  const statusFilterSource = role === "admin" ? ADMIN_STATUS_FILTERS : STATUS_FILTERS;
+  const statusOptions = statusFilterSource.map((status) => ({
     value: status,
     label: status === "All" ? "All Statuses" : status,
   }));
@@ -63,13 +58,13 @@ export default function ProjectToolbar({
       <div className="grid gap-3 xl:grid-cols-[1.7fr_0.8fr_0.8fr_0.8fr_auto_auto] xl:items-end">
         <label className="space-y-1.5">
           <span className="text-xs font-bold text-slate-600">Search</span>
-          <div className="flex h-10 items-center gap-3 rounded-lg border border-slate-200 px-3 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
+          <div className="flex h-10 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 text-slate-800 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
             <Search size={16} className="text-slate-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by title or description..."
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
+              placeholder={role === "admin" ? "Search projects or forecasters..." : "Search by title or description..."}
+              className="flex-1 bg-white text-sm font-semibold text-slate-900 caret-blue-600 outline-none placeholder:text-slate-400"
             />
             {search && (
               <button type="button" onClick={() => setSearch("")} aria-label="Clear search">
@@ -80,7 +75,7 @@ export default function ProjectToolbar({
         </label>
 
         <SelectControl label="Status" value={statusFilter} onChange={setStatusFilter} options={statusOptions} />
-        <SelectControl label="Type" value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} />
+        <SelectControl label="Type" value={typeFilter} onChange={setTypeFilter} options={PROJECT_TYPE_FILTERS} />
         <SelectControl label="Date Range" value={dateRangeFilter} onChange={setDateRangeFilter} options={DATE_OPTIONS} />
 
         <Button variant="secondary" size="md">
@@ -98,7 +93,7 @@ export default function ProjectToolbar({
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 outline-none focus:ring-4 focus:ring-blue-50"
+          className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-50"
         >
           {SORT_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
