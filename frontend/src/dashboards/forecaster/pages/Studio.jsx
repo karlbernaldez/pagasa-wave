@@ -396,6 +396,7 @@ const Studio = ({ logger }) => {
             setType={setType}
             selectedToolRef={selectedToolRef}
             title={markerTitle}
+            projectId={projectId}
           />
         )}
 
