@@ -7,6 +7,7 @@ import {
 } from '../utils/dbHelpers.js';
 import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
+import { createNotification } from '../services/notification/notificationService.js';
 
 /* =========================================================
    STATUS TRANSITION MAP
@@ -30,6 +31,29 @@ const USER_PROJECT_SORT_FIELDS = {
   lastOpenedAt: 'lastOpenedAt',
   updatedAt: 'updatedAt',
   createdAt: 'createdAt',
+};
+
+const PROJECT_NOTIFICATION_COPY = {
+  comment_added: {
+    title: 'Admin commented on your project',
+    message: (project, comment) => `Admin left a comment on "${project.name}": ${comment}`,
+  },
+  revision_requested: {
+    title: 'Revision requested',
+    message: (project, comment) => `Admin requested revisions on "${project.name}": ${comment}`,
+  },
+  approved: {
+    title: 'Project approved',
+    message: (project) => `"${project.name}" has been approved by Admin.`,
+  },
+  rejected: {
+    title: 'Project rejected',
+    message: (project, comment) => `"${project.name}" was rejected: ${comment}`,
+  },
+  published: {
+    title: 'Project published',
+    message: (project) => `"${project.name}" has been published.`,
+  },
 };
 
 function escapeRegex(value) {
@@ -71,6 +95,27 @@ function toFeatureSnapshot(feature) {
 function getLatestVersionReason(project) {
   if (!project.versions?.length) return null;
   return project.versions[project.versions.length - 1]?.reason || null;
+}
+
+async function notifyProjectOwner(project, actorId, type, comment = '') {
+  const copy = PROJECT_NOTIFICATION_COPY[type];
+  if (!copy || !project?.owner) return;
+
+  try {
+    await createNotification({
+      type,
+      title: copy.title,
+      message: copy.message(project, comment),
+      recipientUser: project.owner,
+      actorUser: actorId,
+      resourceType: 'project',
+      resourceId: project._id,
+      resourcePath: `/studio/${project._id}`,
+      projectName: project.name,
+    });
+  } catch (error) {
+    console.error('[ProjectNotifications] Failed to create notification:', error);
+  }
 }
 
 async function createProjectVersionSnapshot(project, userId, reason = 'submit') {
@@ -482,6 +527,7 @@ export const addReviewComment = asyncHandler(async (req, res) => {
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'comment_added', comment);
   return sendProject(project, res);
 });
 
@@ -521,6 +567,7 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'revision_requested', comment);
   return sendProject(project, res);
 });
 
@@ -557,6 +604,7 @@ export const approveProject = asyncHandler(async (req, res) => {
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'approved');
 
   return sendProject(project, res);
 });
@@ -593,6 +641,7 @@ export const rejectProject = asyncHandler(async (req, res) => {
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'rejected', comment);
 
   return sendProject(project, res);
 });
@@ -625,6 +674,7 @@ export const publishProject = asyncHandler(async (req, res) => {
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'published');
 
   return sendProject(project, res);
 });
