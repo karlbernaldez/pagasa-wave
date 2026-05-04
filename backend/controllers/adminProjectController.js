@@ -13,6 +13,13 @@ const ALLOWED_ADMIN_STATUSES = [
   'Archived',
 ];
 
+const ALLOWED_CHART_TYPES = [
+  'analysis',
+  'forecast_24h',
+  'forecast_36h',
+  'forecast_48h',
+];
+
 const ADMIN_PROJECT_SORT_FIELDS = {
   name: 'name',
   chartType: 'chartType',
@@ -23,16 +30,6 @@ const ADMIN_PROJECT_SORT_FIELDS = {
   submittedAt: 'submittedAt',
   updatedAt: 'updatedAt',
   createdAt: 'createdAt',
-};
-
-const CHART_TYPE_ALIASES = {
-  analysis: 'analysis',
-  forecast_24h: 'forecast_24h',
-  forecast_36h: 'forecast_36h',
-  forecast_48h: 'forecast_48h',
-  wave: 'forecast_24h',
-  wind: 'forecast_36h',
-  warning: 'forecast_48h',
 };
 
 function clampInt(value, min, max, fallback) {
@@ -108,7 +105,10 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
   }
 
   if (type && type !== 'All') {
-    const normalizedType = CHART_TYPE_ALIASES[String(type).trim().toLowerCase()] || type;
+    const normalizedType = String(type).trim();
+    if (!ALLOWED_CHART_TYPES.includes(normalizedType)) {
+      throwError('Invalid project type filter', 400);
+    }
     filters.push({ chartType: normalizedType });
   }
 
