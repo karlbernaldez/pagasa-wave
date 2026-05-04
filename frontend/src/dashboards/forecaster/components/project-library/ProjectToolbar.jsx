@@ -10,14 +10,18 @@ const DATE_OPTIONS = [
   { value: "90d", label: "Last 90 days" },
 ];
 
-function SelectControl({ label, value, onChange, options }) {
+function SelectControl({ label, value, onChange, options, isDarkMode = false }) {
   return (
     <label className="space-y-1.5">
-      <span className="text-xs font-bold text-slate-600">{label}</span>
+      <span className={`text-xs font-bold ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 min-w-[150px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+        className={`h-10 min-w-[150px] rounded-lg border px-3 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 ${
+          isDarkMode
+            ? "border-white/10 bg-slate-950 text-slate-100 focus:ring-blue-500/10"
+            : "border-slate-200 bg-white text-slate-800 focus:ring-blue-50"
+        }`}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -31,6 +35,7 @@ function SelectControl({ label, value, onChange, options }) {
 
 export default function ProjectToolbar({
   role = "forecaster",
+  isDarkMode = false,
   search,
   setSearch,
   statusFilter,
@@ -54,29 +59,35 @@ export default function ProjectToolbar({
   }));
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section className={`rounded-xl border p-4 shadow-sm transition-colors ${isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white"}`}>
       <div className="grid gap-3 xl:grid-cols-[1.7fr_0.8fr_0.8fr_0.8fr_auto_auto] xl:items-end">
         <label className="space-y-1.5">
-          <span className="text-xs font-bold text-slate-600">Search</span>
-          <div className="flex h-10 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 text-slate-800 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
-            <Search size={16} className="text-slate-400" />
+          <span className={`text-xs font-bold ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>Search</span>
+          <div className={`flex h-10 items-center gap-3 rounded-lg border px-3 transition focus-within:border-blue-400 focus-within:ring-4 ${
+            isDarkMode
+              ? "border-white/10 bg-slate-950 text-slate-100 focus-within:ring-blue-500/10"
+              : "border-slate-200 bg-white text-slate-800 focus-within:ring-blue-50"
+          }`}>
+            <Search size={16} className={isDarkMode ? "text-slate-500" : "text-slate-400"} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={role === "admin" ? "Search projects or forecasters..." : "Search by title or description..."}
-              className="flex-1 bg-white text-sm font-semibold text-slate-900 caret-blue-600 outline-none placeholder:text-slate-400"
+              className={`flex-1 bg-transparent text-sm font-semibold caret-blue-500 outline-none ${
+                isDarkMode ? "text-slate-100 placeholder:text-slate-500" : "text-slate-900 placeholder:text-slate-400"
+              }`}
             />
             {search && (
               <button type="button" onClick={() => setSearch("")} aria-label="Clear search">
-                <X size={14} className="text-slate-400" />
+                <X size={14} className={isDarkMode ? "text-slate-500" : "text-slate-400"} />
               </button>
             )}
           </div>
         </label>
 
-        <SelectControl label="Status" value={statusFilter} onChange={setStatusFilter} options={statusOptions} />
-        <SelectControl label="Type" value={typeFilter} onChange={setTypeFilter} options={PROJECT_TYPE_FILTERS} />
-        <SelectControl label="Date Range" value={dateRangeFilter} onChange={setDateRangeFilter} options={DATE_OPTIONS} />
+        <SelectControl label="Status" value={statusFilter} onChange={setStatusFilter} options={statusOptions} isDarkMode={isDarkMode} />
+        <SelectControl label="Type" value={typeFilter} onChange={setTypeFilter} options={PROJECT_TYPE_FILTERS} isDarkMode={isDarkMode} />
+        <SelectControl label="Date Range" value={dateRangeFilter} onChange={setDateRangeFilter} options={DATE_OPTIONS} isDarkMode={isDarkMode} />
 
         <Button variant="secondary" size="md">
           <Filter size={16} />
@@ -88,12 +99,16 @@ export default function ProjectToolbar({
         </Button>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
-        <span className="text-xs font-bold text-slate-500">Sort by</span>
+      <div className={`mt-3 flex flex-wrap items-center gap-3 border-t pt-3 ${isDarkMode ? "border-white/10" : "border-slate-100"}`}>
+        <span className={`text-xs font-bold ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>Sort by</span>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-50"
+          className={`h-9 rounded-lg border px-3 text-xs font-bold outline-none focus:ring-4 ${
+            isDarkMode
+              ? "border-white/10 bg-slate-950 text-slate-100 focus:ring-blue-500/10"
+              : "border-slate-200 bg-white text-slate-700 focus:ring-blue-50"
+          }`}
         >
           {SORT_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -112,7 +127,7 @@ export default function ProjectToolbar({
         </Button>
 
         {isFetching && (
-          <span className="text-xs text-slate-400">Updating…</span>
+          <span className={isDarkMode ? "text-xs text-slate-500" : "text-xs text-slate-400"}>Updating…</span>
         )}
       </div>
     </section>
