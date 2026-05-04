@@ -454,7 +454,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               </div>
             </div>
 
-            <div className={`sticky bottom-0 z-10 shrink-0 border-t p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.16)] backdrop-blur sm:p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
+            <div className={`z-10 shrink-0 border-t p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.12)] backdrop-blur sm:p-4 xl:sticky xl:bottom-0 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
               <div className="flex flex-col gap-2">
                 {isReviewable && (
                   <div className="grid grid-cols-2 gap-2 [&>button]:min-h-10 [&>button]:w-full">
