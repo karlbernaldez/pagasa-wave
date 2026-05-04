@@ -308,21 +308,28 @@ const Studio = ({ logger }) => {
   );
   const hasActiveReviewRemarks = isRevisionRequested && Boolean(latestReviewRemarks?.comment);
 
+  const headerClass = isDarkMode
+    ? "border-white/10 bg-slate-950/95 text-slate-100"
+    : "border-slate-200/70 bg-white/95 text-slate-950";
+  const headerMutedText = isDarkMode ? "text-slate-400" : "text-slate-500";
+  const headerStrongText = isDarkMode ? "text-slate-50" : "text-slate-900";
+  const headerDivider = isDarkMode ? "border-white/10" : "border-slate-200";
+
   // ─── Render ──────────────────────────────────────────
   return (
     <div className={`relative h-screen w-full overflow-hidden ${isDarkMode ? "bg-slate-950" : "bg-slate-100"}`}>
-      <header className="absolute inset-x-0 top-0 z-[120] flex h-16 items-center justify-between border-b border-slate-200/70 bg-white/95 px-4 shadow-sm backdrop-blur-md dark:border-slate-800/70 dark:bg-slate-950/95">
+      <header className={`absolute inset-x-0 top-0 z-[120] flex h-16 items-center justify-between border-b px-4 shadow-sm backdrop-blur-md ${headerClass}`}>
         <div className="flex min-w-0 items-center gap-3">
           <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary}>
             Project Library
           </Button>
 
-          <div className="min-w-0 border-l border-slate-200 pl-3 dark:border-slate-800">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className={`min-w-0 border-l pl-3 ${headerDivider}`}>
+            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${headerMutedText}`}>
               WaveLab Studio
             </p>
             <div className="flex min-w-0 items-center gap-2">
-              <h1 className="truncate text-sm font-bold text-slate-900 dark:text-slate-50">
+              <h1 className={`truncate text-sm font-bold ${headerStrongText}`}>
                 {projectName}
               </h1>
               {currentProject?.status && (
@@ -336,7 +343,7 @@ const Studio = ({ logger }) => {
 
         <div className="flex items-center gap-2">
           {isReadOnlyProject && (
-            <span className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 md:inline-flex dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black md:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
               <Lock size={13} />
               Read-only
             </span>
@@ -352,7 +359,7 @@ const Studio = ({ logger }) => {
               {isSubmittingProject ? "Submitting..." : getSubmitLabel(projectStatus)}
             </Button>
           )}
-          <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 md:inline-flex dark:border-emerald-900/70 dark:bg-emerald-950/60 dark:text-emerald-300">
+          <span className={`hidden rounded-full border px-3 py-1 text-xs font-semibold md:inline-flex ${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
             Auto-save active
           </span>
           <Button
@@ -366,13 +373,13 @@ const Studio = ({ logger }) => {
       </header>
 
       {isReadOnlyProject && (
-        <div className="absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-slate-700 shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 dark:text-slate-200" style={{ top: STUDIO_HEADER_HEIGHT + 12 }}>
+        <div className={`absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-white/10 bg-slate-950/95 text-slate-200" : "border-slate-200 bg-white/95 text-slate-700"}`} style={{ top: STUDIO_HEADER_HEIGHT + 12 }}>
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-lg bg-slate-100 p-1.5 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+            <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-slate-900 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
               <Lock size={16} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              <p className={`text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>
                 Editing locked
               </p>
               <p className="mt-1 text-sm font-semibold leading-relaxed">
@@ -384,13 +391,13 @@ const Studio = ({ logger }) => {
       )}
 
       {hasActiveReviewRemarks && (
-        <div className="absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-3 text-amber-950 shadow-lg backdrop-blur-md" style={{ top: STUDIO_HEADER_HEIGHT + (isReadOnlyProject ? 104 : 12) }}>
+        <div className={`absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-amber-400/30 bg-amber-950/80 text-amber-100" : "border-amber-200 bg-amber-50/95 text-amber-950"}`} style={{ top: STUDIO_HEADER_HEIGHT + (isReadOnlyProject ? 104 : 12) }}>
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-lg bg-amber-100 p-1.5 text-amber-700">
+            <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-amber-500/10 text-amber-300" : "bg-amber-100 text-amber-700"}`}>
               <MessageSquareText size={16} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700">
+              <p className={`text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? "text-amber-300" : "text-amber-700"}`}>
                 Admin remarks
               </p>
               <p className="mt-1 text-sm font-semibold leading-relaxed">
@@ -530,23 +537,23 @@ const Studio = ({ logger }) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="studio-inactivity-title"
-            className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+            className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl ${isDarkMode ? "border-white/10 bg-slate-950 text-slate-100" : "border-slate-200 bg-white text-slate-950"}`}
           >
             <div className="flex items-start gap-4">
-              <div className="rounded-2xl bg-amber-50 p-3 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/70">
+              <div className={`${isDarkMode ? "bg-amber-500/10 text-amber-300 ring-amber-400/20" : "bg-amber-50 text-amber-700 ring-amber-100"} rounded-2xl p-3 ring-1`}>
                 <AlertTriangle size={24} aria-hidden="true" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 id="studio-inactivity-title" className="text-lg font-black text-slate-950 dark:text-slate-50">
+                <h2 id="studio-inactivity-title" className={`text-lg font-black ${isDarkMode ? "text-slate-50" : "text-slate-950"}`}>
                   You’ve been inactive
                 </h2>
-                <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-600 dark:text-slate-300">
+                <p className={`mt-2 text-sm font-semibold leading-relaxed ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
                   Refresh the Studio workspace only if you want to reload the map and project data. You can stay here to continue from your current view.
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-300">
+            <div className={`${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-800"} mt-5 rounded-2xl border px-4 py-3 text-sm font-semibold`}>
               Auto-save is active, but in-progress tool selections or open dialogs may reset after refresh.
             </div>
 
