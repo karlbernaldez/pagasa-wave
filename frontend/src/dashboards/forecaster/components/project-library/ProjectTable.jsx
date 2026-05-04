@@ -32,6 +32,7 @@ export default function ProjectTable({
   onRename,
   onDelete,
   mode = "library",
+  isDarkMode = false,
 }) {
   const [active, setActive] = useState(null);
   const isReviewMode = mode === "review";
@@ -39,7 +40,7 @@ export default function ProjectTable({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+      <div className={`rounded-xl border p-6 text-sm ${isDarkMode ? "border-white/10 bg-slate-900/80 text-slate-400" : "border-slate-200 bg-white text-slate-500"}`}>
         Loading projects...
       </div>
     );
@@ -47,7 +48,7 @@ export default function ProjectTable({
 
   if (error) {
     return (
-      <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-600">
+      <div className={`flex items-center justify-between rounded-xl border p-6 text-sm ${isDarkMode ? "border-red-500/30 bg-red-950/30 text-red-300" : "border-red-200 bg-red-50 text-red-600"}`}>
         Failed to load projects
         <Button variant="ghost" size="sm" onClick={onRetry}>
           Retry
@@ -58,16 +59,16 @@ export default function ProjectTable({
 
   if (!projects || projects.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
+      <div className={`rounded-xl border p-10 text-center text-sm ${isDarkMode ? "border-white/10 bg-slate-900/80 text-slate-400" : "border-slate-200 bg-white text-slate-500"}`}>
         No projects found
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <div className={`overflow-x-auto rounded-xl border ${isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white"}`}>
       <table className="w-full text-sm">
-        <thead className="bg-slate-50 font-semibold text-slate-600">
+        <thead className={isDarkMode ? "bg-slate-950/70 font-semibold text-slate-300" : "bg-slate-50 font-semibold text-slate-600"}>
           <tr>
             <th className="px-4 py-3 text-left">Forecast Project</th>
             {isReviewMode && <th className="px-4 py-3 text-left">Owner</th>}
@@ -89,14 +90,14 @@ export default function ProjectTable({
             const latestRemarks = project.latestReviewRemarks;
 
             return (
-              <tr key={projectId} className={`border-t hover:bg-slate-50 ${needsRevision ? "bg-amber-50/30" : ""}`}>
+              <tr key={projectId} className={`border-t transition ${isDarkMode ? "border-white/10 hover:bg-white/5" : "border-slate-100 hover:bg-slate-50"} ${needsRevision ? (isDarkMode ? "bg-amber-500/5" : "bg-amber-50/30") : ""}`}>
                 <td className="px-4 py-3">
-                  <p className="font-semibold text-slate-900">{project.name}</p>
-                  <p className="mt-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <p className={`font-semibold ${isDarkMode ? "text-slate-100" : "text-slate-900"}`}>{project.name}</p>
+                  <p className={`mt-0.5 text-xs font-semibold uppercase tracking-[0.12em] ${isDarkMode ? "text-slate-500" : "text-slate-400"}`}>
                     {project.chartType || "Forecast"}
                   </p>
                   {needsRevision && latestRemarks?.comment && (
-                    <p className="mt-2 flex max-w-md items-start gap-1.5 text-xs font-semibold leading-relaxed text-amber-800">
+                    <p className={`mt-2 flex max-w-md items-start gap-1.5 text-xs font-semibold leading-relaxed ${isDarkMode ? "text-amber-300" : "text-amber-800"}`}>
                       <MessageSquareText size={13} className="mt-0.5 shrink-0" />
                       <span className="line-clamp-2">{latestRemarks.comment}</span>
                     </p>
@@ -104,12 +105,12 @@ export default function ProjectTable({
                 </td>
 
                 {isReviewMode && (
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className={`px-4 py-3 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
                     {project.ownerDisplay || "Project Owner"}
                   </td>
                 )}
 
-                <td className="px-4 py-3 text-slate-600">
+                <td className={`px-4 py-3 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
                   {formatDate(project.forecastDate)}
                 </td>
 
@@ -119,7 +120,7 @@ export default function ProjectTable({
                   </span>
                 </td>
 
-                <td className="px-4 py-3 text-slate-600">
+                <td className={`px-4 py-3 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
                   {formatDate(project.updatedAt || project.submittedAt || project.createdAt, "MMM d, yyyy hh:mm a")}
                 </td>
 
@@ -141,7 +142,7 @@ export default function ProjectTable({
                   </div>
 
                   {hasMenuActions && active === projectId && (
-                    <div className="absolute right-4 bottom-full z-50 mb-2 w-36 rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg">
+                    <div className={`absolute right-4 bottom-full z-50 mb-2 w-36 rounded-lg border py-1 text-sm shadow-lg ${isDarkMode ? "border-white/10 bg-slate-950" : "border-slate-200 bg-white"}`}>
                       {onRename && (
                         <button
                           type="button"
@@ -149,7 +150,7 @@ export default function ProjectTable({
                             setActive(null);
                             onRename(project);
                           }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left font-semibold text-slate-700 hover:bg-slate-50"
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left font-semibold ${isDarkMode ? "text-slate-200 hover:bg-white/5" : "text-slate-700 hover:bg-slate-50"}`}
                         >
                           <Pencil size={14} aria-hidden="true" />
                           Rename
@@ -162,7 +163,7 @@ export default function ProjectTable({
                             setActive(null);
                             onDelete(project);
                           }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left font-semibold text-red-600 hover:bg-slate-50"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left font-semibold text-red-500 hover:bg-red-500/10"
                         >
                           <Trash2 size={14} aria-hidden="true" />
                           Delete
