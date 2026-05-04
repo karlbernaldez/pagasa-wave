@@ -75,6 +75,7 @@ const DrawToolbar = ({
   setLayersRef, setLayers,
   closedMode, setClosedMode,
   setType, selectedToolRef,
+  projectId,
 }) => {
   const theme = getTheme(isDarkMode);
 
@@ -118,7 +119,7 @@ const DrawToolbar = ({
     handleToggleDrawing, handleToggleFlagDrawing,
     handleSelectLess1, handleToggleCollapse,
     setPendingMapClick,
-  } = useDrawToolbar({ draw, setLayersRef, setLayers, setType, selectedToolRef, onToggleCanvas, onToggleFlagCanvas });
+  } = useDrawToolbar({ draw, setLayersRef, setLayers, setType, selectedToolRef, onToggleCanvas, onToggleFlagCanvas, projectId });
 
   // ── Collapsed pill ────────────────────────────────────────────────────────
   if (isCollapsed) {
