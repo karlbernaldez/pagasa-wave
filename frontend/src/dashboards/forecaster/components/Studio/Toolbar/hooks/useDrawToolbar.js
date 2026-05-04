@@ -21,6 +21,7 @@ export function useDrawToolbar({
   selectedToolRef,
   onToggleCanvas,
   onToggleFlagCanvas,
+  projectId,
 }) {
   // ── State ────────────────────────────────────────────────
   const [isDrawing, setIsDrawing] = useState(false);
@@ -48,6 +49,19 @@ export function useDrawToolbar({
     }
   }, [setLayersRef, setLayers]);
 
+  // Clear transient toolbar marker state when changing projects.
+  useEffect(() => {
+    setPendingMapClick(null);
+    setSelectedToolType(null);
+    setShowTitleModal(false);
+    setOpenModals({
+      featureNotAvailable: false,
+      pointInputChoice: false,
+      manualInput: false,
+      markerTitle: false,
+    });
+  }, [projectId]);
+
   // ── Tool selection ───────────────────────────────────────
   const handleToolClick = useCallback((tool) => {
     selectedToolRef.current = tool.id;
@@ -68,8 +82,8 @@ export function useDrawToolbar({
   // ── Save helpers ─────────────────────────────────────────
   const savePoint = useCallback(({ lat, lng, coords, title, selectedType, map }) => {
     saveMarker({ lat, lng }, map, setShowTitleModal, selectedType)(title);
-    savePointFeature({ coords, title, selectedType, setLayersRef });
-  }, [setLayersRef]);
+    savePointFeature({ coords, title, selectedType, setLayersRef, projectId });
+  }, [setLayersRef, projectId]);
 
   // ── Map click flow ───────────────────────────────────────
   const handlePointInputChoice = useCallback((method) => {
