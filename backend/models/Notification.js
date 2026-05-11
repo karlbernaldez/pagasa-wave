@@ -13,8 +13,13 @@ const notificationSchema = new Schema(
     recipientRole: { type: String,                              default: null, index: true },
     broadcast:     { type: Boolean,                            default: false, index: true },
 
+    actorUser: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+
     resourceType: { type: String },
     resourceId:   { type: Schema.Types.ObjectId },
+    resourcePath: { type: String, trim: true, default: '' },
+
+    projectName: { type: String, trim: true, default: '' },
 
     readBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   },
@@ -34,6 +39,9 @@ notificationSchema.index({ broadcast:     1, createdAt: -1 });
 
 // Unread-count query: filter readBy array efficiently
 notificationSchema.index({ readBy: 1 });
+
+// Useful for project-related notification lookups/deduping later.
+notificationSchema.index({ resourceType: 1, resourceId: 1, createdAt: -1 });
 
 // Optional: auto-delete very old notifications (e.g. after 90 days).
 // Remove or adjust the `expireAfterSeconds` value to suit your retention policy.

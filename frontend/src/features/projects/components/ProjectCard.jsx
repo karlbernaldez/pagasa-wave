@@ -4,6 +4,7 @@ import {
   Check,
   Download,
   ExternalLink,
+  MessageSquareText,
   MoreHorizontal,
   Pencil,
   Send,
@@ -15,12 +16,14 @@ import Button from '@/components/ui/Button';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
 import {
   PROJECT_STATUS,
+  canEditProjectStatus,
   canSubmitProjectStatus,
   getProjectStatusLabel,
   getProjectStatusStyle,
   isProjectApproved,
   isProjectPublished,
   isProjectReviewable,
+  isProjectRevisionRequested,
 } from '@/features/projects/projectStatuses';
 
 function formatDate(value, pattern = 'MMM d, yyyy') {
@@ -35,6 +38,14 @@ function formatDate(value, pattern = 'MMM d, yyyy') {
 
 function getProjectId(project) {
   return project?._id || project?.id;
+}
+
+function getPreviewCacheProjectId(project) {
+  const id = getProjectId(project);
+  if (!id) return id;
+
+  const cacheToken = project?.updatedAt || project?.submittedAt || project?.reviewedAt || project?.publishedAt || project?.version || 'initial';
+  return `${id}:${cacheToken}`;
 }
 
 function getProjectName(project) {
@@ -59,6 +70,8 @@ function getProjectFeatures(project) {
 }
 
 function getDefaultMenuActions({ project, onRename, onDelete }) {
+  if (!canEditProjectStatus(project?.status)) return [];
+
   return [
     onRename && {
       key: 'rename',
@@ -80,10 +93,11 @@ function getSubmitAction({ project, onSubmit, submittingProjectId }) {
   if (!onSubmit || !canSubmitProjectStatus(project?.status)) return null;
 
   const isInitialSubmit = project.status === PROJECT_STATUS.DRAFT;
+  const needsRevision = isProjectRevisionRequested(project.status);
 
   return {
     key: isInitialSubmit ? 'submit' : 'resubmit',
-    label: isInitialSubmit ? 'Submit' : 'Resubmit',
+    label: isInitialSubmit ? 'Submit' : needsRevision ? 'Resubmit Revision' : 'Resubmit',
     icon: Send,
     variant: 'primary',
     loading: submittingProjectId === project._id,
@@ -159,13 +173,18 @@ export default function ProjectCard({
   const [busyAction, setBusyAction] = useState(null);
 
   const id = getProjectId(project);
+  const previewProjectId = getPreviewCacheProjectId(project);
   const name = getProjectName(project);
-  const statusLabel = getProjectStatusLabel(project?.status);
-  const statusClass = getProjectStatusStyle(project?.status);
+  const needsRevision = isProjectRevisionRequested(project?.status);
+  const statusLabel = needsRevision ? 'Needs Revision' : getProjectStatusLabel(project?.status);
+  const statusClass = needsRevision
+    ? 'bg-amber-50 text-amber-800 border-amber-300'
+    : getProjectStatusStyle(project?.status);
   const featureSource = getProjectFeatures(project);
   const owner = getProjectOwner(project);
   const isReviewMode = mode === 'review';
   const featureScope = isReviewMode ? 'admin' : 'user';
+  const latestRemarks = project?.latestReviewRemarks;
 
   const menuActions = actions ?? getDefaultMenuActions({ project, onRename, onDelete });
   const reviewActions = getReviewActions({ project, onApprove, onReject, onPublish, onDownload });
@@ -186,62 +205,79 @@ export default function ProjectCard({
     }
   };
 
+  const cardClass = isDarkMode
+    ? `bg-slate-900/80 ${needsRevision ? 'border-amber-400/50 ring-2 ring-amber-400/15' : 'border-white/10 hover:border-cyan-400/30'}`
+    : `bg-white ${needsRevision ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200 hover:border-blue-200'}`;
+
   return (
-    <article className="group rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
+    <article className={`group min-w-0 overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
       <div className="relative overflow-hidden rounded-t-2xl">
         <ProjectPreviewMap
-          projectId={id}
+          projectId={previewProjectId}
           features={featureSource}
           featureScope={featureScope}
           height={isReviewMode ? 190 : 168}
           isDarkMode={isDarkMode}
           className="rounded-none border-0"
+          showLabels={false}
         />
 
-        <div className="absolute right-3 top-3 z-10">
-          <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur ${statusClass}`}>
+        <div className="absolute right-2 top-2 z-10 max-w-[calc(100%-16px)] sm:right-3 sm:top-3">
+          <span className={`inline-flex max-w-full shrink-0 truncate rounded-full border px-2 py-1 text-[11px] font-bold shadow-sm backdrop-blur sm:px-2.5 sm:text-xs ${statusClass}`}>
             {statusLabel}
           </span>
         </div>
 
-        <div className="absolute bottom-3 left-3 z-10">
-          <span className="rounded-md border border-white/70 bg-white/85 px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm backdrop-blur">
+        <div className="absolute bottom-3 left-3 z-10 max-w-[calc(100%-24px)]">
+          <span className={`inline-flex max-w-full truncate rounded-md border px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] shadow-sm backdrop-blur ${isDarkMode ? 'border-white/10 bg-slate-950/80 text-slate-300' : 'border-white/70 bg-white/85 text-slate-600'}`}>
             {getProjectType(project)}
           </span>
         </div>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="min-w-0 space-y-4 p-4">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-black text-slate-900" title={name}>
+          <h3 className={`truncate text-base font-black ${isDarkMode ? 'text-slate-50' : 'text-slate-900'}`} title={name}>
             {name}
           </h3>
           {owner && (
-            <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+            <p className={`mt-1 truncate text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               {owner}
             </p>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div>
-            <p className="font-bold text-slate-400">Forecast Date</p>
-            <p className="mt-1 font-semibold text-slate-700">
+        {needsRevision && latestRemarks?.comment && (
+          <div className={`min-w-0 rounded-xl border p-3 text-sm ${isDarkMode ? 'border-amber-400/30 bg-amber-950/30' : 'border-amber-200 bg-amber-50'}`}>
+            <p className={`flex min-w-0 items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+              <MessageSquareText size={14} className="shrink-0" />
+              <span className="truncate">Latest admin remarks</span>
+            </p>
+            <p className={`mt-1 line-clamp-2 font-semibold leading-relaxed ${isDarkMode ? 'text-amber-100' : 'text-amber-900'}`}>
+              {latestRemarks.comment}
+            </p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+          <div className="min-w-0">
+            <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Forecast Date</p>
+            <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
               {formatDate(project?.forecastDate)}
             </p>
           </div>
-          <div>
-            <p className="font-bold text-slate-400">Updated</p>
-            <p className="mt-1 font-semibold text-slate-700">
+          <div className="min-w-0">
+            <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Updated</p>
+            <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
               {formatDate(project?.updatedAt || project?.submittedAt || project?.createdAt, 'MMM d, h:mm a')}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
-          <div className="flex items-center gap-2">
+        <div className={`flex min-w-0 flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:flex sm:items-center">
             <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
-              {isReviewMode ? 'Review' : 'Open'}
+              {isReviewMode ? 'Review' : needsRevision ? 'Open and Revise' : 'Open'}
             </Button>
 
             {submitAction && (
@@ -258,7 +294,7 @@ export default function ProjectCard({
           </div>
 
           {!isReviewMode && menuActions.length > 0 && (
-            <div className="relative">
+            <div className="relative self-end sm:self-auto">
               <Button
                 variant="icon"
                 size="sm"
@@ -268,7 +304,7 @@ export default function ProjectCard({
               />
 
               {menuOpen && (
-                <div className="absolute right-0 bottom-full mb-2 z-50 w-36 rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg">
+                <div className={`absolute right-0 bottom-full mb-2 z-50 w-36 rounded-lg border py-1 text-sm shadow-lg ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
                   {menuActions.map((action) => {
                     const Icon = action.icon;
                     return (
@@ -279,8 +315,12 @@ export default function ProjectCard({
                           setMenuOpen(false);
                           action.onClick?.(project);
                         }}
-                        className={`flex w-full items-center gap-2 px-3 py-2 text-left font-semibold hover:bg-slate-50 ${
-                          action.danger ? 'text-red-600' : 'text-slate-700'
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-left font-semibold ${
+                          action.danger
+                            ? 'text-red-500 hover:bg-red-500/10'
+                            : isDarkMode
+                              ? 'text-slate-200 hover:bg-white/5'
+                              : 'text-slate-700 hover:bg-slate-50'
                         }`}
                       >
                         {Icon && <Icon size={14} aria-hidden="true" />}
@@ -294,7 +334,7 @@ export default function ProjectCard({
           )}
 
           {isReviewMode && reviewActions.length > 0 && (
-            <div className="flex flex-1 justify-end gap-2">
+            <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:flex sm:flex-1 sm:flex-wrap sm:justify-end">
               {reviewActions.map((action) => (
                 <Button
                   key={action.key || action.label}

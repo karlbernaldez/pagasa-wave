@@ -155,8 +155,27 @@ export const archiveProject = (id) =>
    ADMIN ROUTES
 ========================================================= */
 
-// Fetch all projects (Admin) with optional status filter
-export const fetchAllProjectsForAdmin = (status = null) => {
-  const query = status ? `?status=${encodeURIComponent(status)}` : '';
-  return request(`${PROJECT_API_BASE_URL}/admin/all${query}`);
+// Fetch admin review projects with server-driven search, filtering, sorting, and pagination.
+export const fetchAllProjectsForAdmin = ({
+  page = 1,
+  limit = 12,
+  search = '',
+  status = '',
+  type = '',
+  dateRange = '',
+  sortBy = 'updatedAt',
+  sortDir = 'desc',
+  signal,
+} = {}) => {
+  const params = new URLSearchParams();
+  appendQueryParam(params, 'page', page);
+  appendQueryParam(params, 'limit', limit);
+  appendQueryParam(params, 'search', search.trim());
+  appendQueryParam(params, 'status', status);
+  appendQueryParam(params, 'type', type);
+  appendQueryParam(params, 'dateRange', dateRange);
+  appendQueryParam(params, 'sortBy', sortBy);
+  appendQueryParam(params, 'sortDir', sortDir);
+
+  return request(`${PROJECT_API_BASE_URL}/admin/all?${params}`, { signal });
 };

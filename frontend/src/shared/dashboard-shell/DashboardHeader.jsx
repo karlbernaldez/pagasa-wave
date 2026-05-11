@@ -1,12 +1,11 @@
-import { Bell, ChevronDown, Menu, Moon, Sun, Waves } from 'lucide-react';
+import { ChevronDown, Menu, Moon, Sun, Waves } from 'lucide-react';
+import NotificationBell from '@/shared/notifications/NotificationBell';
 
 const DashboardHeader = ({
   description,
   eyebrow,
   isDarkMode,
-  notificationBadge,
   onMobileMenuToggle,
-  onNotificationClick,
   onThemeToggle,
   onUserClick,
   title,
@@ -35,12 +34,12 @@ const DashboardHeader = ({
         }}
       />
 
-      <div className="px-4 md:px-6 h-16 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex h-16 items-center justify-between gap-2 px-3 sm:gap-3 sm:px-4 md:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={onMobileMenuToggle}
-            className={`lg:hidden p-2 rounded-xl transition-colors ${
+            className={`shrink-0 rounded-xl p-2 transition-colors lg:hidden ${
               isDarkMode ? 'hover:bg-white/8 text-gray-400' : 'hover:bg-black/5 text-gray-500'
             }`}
             aria-label="Open navigation"
@@ -48,11 +47,11 @@ const DashboardHeader = ({
             <Menu size={20} />
           </button>
 
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <Waves size={11} className={isDarkMode ? 'text-cyan-400' : 'text-cyan-600'} aria-hidden="true" />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 overflow-hidden">
+            <div className="hidden items-center gap-1.5 min-[420px]:flex">
+              <Waves size={11} className={`shrink-0 ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`} aria-hidden="true" />
               <span
-                className={`text-[10px] font-semibold tracking-[0.15em] uppercase ${
+                className={`truncate text-[10px] font-semibold tracking-[0.15em] uppercase ${
                   isDarkMode ? 'text-cyan-400/70' : 'text-cyan-600/80'
                 }`}
               >
@@ -60,15 +59,16 @@ const DashboardHeader = ({
               </span>
             </div>
             <h2
-              className={`text-[1.35rem] font-black leading-none tracking-tight ${
+              className={`max-w-full truncate whitespace-nowrap text-base font-black leading-none tracking-tight sm:text-[1.35rem] ${
                 isDarkMode ? 'text-gray-100' : 'text-slate-900'
               }`}
+              title={title}
             >
               {title}
             </h2>
             {description && (
               <p
-                className={`hidden sm:block text-[11px] leading-none mt-0.5 truncate max-w-xs ${
+                className={`hidden max-w-xs truncate text-[11px] leading-none sm:block ${
                   isDarkMode ? 'text-gray-500' : 'text-gray-400'
                 }`}
               >
@@ -78,9 +78,9 @@ const DashboardHeader = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <div
-            className={`flex items-center gap-0.5 rounded-2xl px-1 py-1 border ${
+            className={`flex items-center gap-0.5 rounded-2xl border px-0.5 py-1 sm:px-1 ${
               isDarkMode
                 ? 'bg-white/[0.05] border-white/[0.08]'
                 : 'bg-black/[0.03] border-black/[0.06]'
@@ -95,36 +95,24 @@ const DashboardHeader = ({
               {isDarkMode ? <Sun size={17} className="text-amber-300" /> : <Moon size={17} />}
             </button>
 
-            <div className={`w-px h-5 mx-0.5 ${isDarkMode ? 'bg-white/10' : 'bg-black/8'}`} />
+            <div className={`hidden h-5 w-px sm:block sm:mx-0.5 ${isDarkMode ? 'bg-white/10' : 'bg-black/8'}`} />
 
-            <button
-              type="button"
-              onClick={onNotificationClick}
-              className={`relative ${iconButtonClass}`}
-              aria-label="Notifications"
-            >
-              <Bell size={17} />
-              {notificationBadge ? (
-                <span className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-red-500 px-1 text-[10px] font-bold leading-[18px] text-white">
-                  {notificationBadge}
-                </span>
-              ) : null}
-            </button>
+            <NotificationBell isDarkMode={isDarkMode} />
           </div>
 
-          <div className={`w-px h-7 ${isDarkMode ? 'bg-white/10' : 'bg-black/8'}`} />
+          <div className={`hidden h-7 w-px sm:block ${isDarkMode ? 'bg-white/10' : 'bg-black/8'}`} />
 
           <button
             type="button"
             onClick={onUserClick}
-            className={`flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-2xl border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+            className={`flex shrink-0 items-center gap-2.5 rounded-2xl border p-1.5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] sm:pl-1.5 sm:pr-3 ${
               isDarkMode
                 ? 'border-white/10 hover:border-white/18 hover:bg-white/[0.05]'
                 : 'border-black/8 hover:border-black/14 hover:bg-black/[0.03]'
             }`}
             aria-haspopup="dialog"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-bold text-white overflow-hidden">
+            <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-bold text-white">
               {user?.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" /> : user?.initials ?? 'WL'}
             </span>
             <span className="hidden text-left leading-none gap-0.5 sm:flex sm:flex-col">

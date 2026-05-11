@@ -8,10 +8,23 @@ export const STATUS_FILTERS = [
   "Draft",
   "Submitted",
   "Under Review",
+  "Revision Requested",
   "Approved",
   "Published",
   "Rejected",
   "Archived",
+];
+
+/** Admin review library excludes Draft because drafts are not reviewable by Admin. */
+export const ADMIN_STATUS_FILTERS = STATUS_FILTERS.filter((status) => status !== "Draft");
+
+/** Must mirror Project.js chartType enum exactly */
+export const PROJECT_TYPE_FILTERS = [
+  { value: "All", label: "All Types" },
+  { value: "analysis", label: "Analysis" },
+  { value: "forecast_24h", label: "24h Forecast" },
+  { value: "forecast_36h", label: "36h Forecast" },
+  { value: "forecast_48h", label: "48h Forecast" },
 ];
 
 /** Card badge colours per status */
@@ -30,6 +43,11 @@ export const STATUS_META = {
     dot:   "bg-amber-500",
     light: "bg-amber-50 text-amber-700 border-amber-100",
     dark:  "bg-amber-900/30 text-amber-300 border-amber-700/50",
+  },
+  "Revision Requested": {
+    dot:   "bg-yellow-500",
+    light: "bg-yellow-50 text-yellow-700 border-yellow-100",
+    dark:  "bg-yellow-900/30 text-yellow-300 border-yellow-700/50",
   },
   Approved: {
     dot:   "bg-emerald-500",

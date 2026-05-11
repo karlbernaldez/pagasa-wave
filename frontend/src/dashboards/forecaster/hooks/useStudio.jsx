@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { setupMap } from "@dashboards/forecaster/utils/mapSetup";
 import { fetchFeatures } from "@/api/featureServices";
-import { fetchLatestUserProject, fetchProjectById } from "@/api/projectAPI";
+import { fetchProjectById } from "@/api/projectAPI";
 
 // ─── Constants ───────────────────────────────────────
 const INACTIVITY_TIMEOUT = 640000; // 10.67 minutes
@@ -11,100 +11,149 @@ const INACTIVITY_TIMEOUT = 640000; // 10.67 minutes
 // ─── Custom Hooks ────────────────────────────────────
 
 /**
- * Manages project ID — URL param takes priority over localStorage.
- * When a project is selected via the UI, also updates the URL.
+ * Manages the active Studio project ID.
+ *
+ * /studio/:projectId is the source of truth. localStorage is only updated as
+ * a legacy compatibility cache for older helpers, and is never used to decide
+ * which project the Studio should load.
  */
 export const useProjectId = () => {
   const { projectId: paramId } = useParams();
   const navigate = useNavigate();
+  const projectId = paramId || null;
 
-  // Param wins; fall back to whatever was last stored
-  const [projectId, setProjectId] = useState(
-    () => paramId ?? localStorage.getItem("projectId")
-  );
-
-  // If the URL param changes (e.g. user navigates directly to /studio/xyz),
-  // sync state without touching localStorage yet
   useEffect(() => {
-    if (paramId && paramId !== projectId) {
-      setProjectId(paramId);
-      localStorage.setItem("projectId", paramId);
-    }
-  }, [paramId]);
+    if (!projectId) return;
+    localStorage.setItem("projectId", projectId);
+  }, [projectId]);
 
-  const updateProjectId = useCallback((id) => {
+  const updateProjectId = useCallback((id, { replace = true } = {}) => {
+    if (!id) return;
     localStorage.setItem("projectId", id);
-    setProjectId(id);
-    // Keep the URL in sync whenever a project is selected programmatically
-    navigate(`/studio/${id}`, { replace: true });
+    navigate(`/studio/${id}`, { replace });
   }, [navigate]);
 
   return [projectId, updateProjectId];
 };
 
 /**
- * Reloads the page after a period of user inactivity
+ * Shows a confirmation prompt after inactivity instead of force-reloading.
+ * This avoids surprise data loss in the map/drawing workspace.
  */
-export const useInactivityReload = (timeout = INACTIVITY_TIMEOUT) => {
+export const useInactivityReload = (
+  timeout = INACTIVITY_TIMEOUT,
+  { disabled = false } = {}
+) => {
+  const [isInactivityPromptVisible, setIsInactivityPromptVisible] = useState(false);
+  const timerRef = useRef(null);
+
+  const clearInactivityTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const scheduleInactivityPrompt = useCallback(() => {
+    clearInactivityTimer();
+    timerRef.current = setTimeout(() => {
+      setIsInactivityPromptVisible(true);
+    }, timeout);
+  }, [clearInactivityTimer, timeout]);
+
   useEffect(() => {
-    let inactivityTimer;
+    if (disabled) {
+      clearInactivityTimer();
+      setIsInactivityPromptVisible(false);
+      return undefined;
+    }
+
+    if (isInactivityPromptVisible) {
+      clearInactivityTimer();
+      return undefined;
+    }
 
     const resetTimer = () => {
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(() => window.location.reload(), timeout);
+      scheduleInactivityPrompt();
     };
 
-    const events = ["mousemove", "keydown", "click", "scroll"];
-    events.forEach((event) => window.addEventListener(event, resetTimer));
-    resetTimer();
+    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, resetTimer, { passive: true }));
+    scheduleInactivityPrompt();
 
     return () => {
-      clearTimeout(inactivityTimer);
+      clearInactivityTimer();
       events.forEach((event) => window.removeEventListener(event, resetTimer));
     };
-  }, [timeout]);
+  }, [clearInactivityTimer, disabled, isInactivityPromptVisible, scheduleInactivityPrompt]);
+
+  const stayActive = useCallback(() => {
+    setIsInactivityPromptVisible(false);
+  }, []);
+
+  const refreshWorkspace = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  return {
+    isInactivityPromptVisible,
+    stayActive,
+    refreshWorkspace,
+  };
 };
 
 /**
- * Handles project loading.
- * - If a projectId is already known (from URL or localStorage), fetch that specific project.
- * - If no projectId exists, fetch the user's latest project.
- * - If no projects exist at all, show the "no projects" modal.
+ * Handles project loading for the active Studio route.
  */
-export const useProjectLoader = (projectId, updateProjectId) => {
+export const useProjectLoader = (projectId) => {
   const [latestProject, setLatestProject] = useState(null);
-  const [isLoadingProject, setIsLoadingProject] = useState(true);
+  const [isLoadingProject, setIsLoadingProject] = useState(Boolean(projectId));
   const [showNoProjectsModal, setShowNoProjectsModal] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchProject = async () => {
+      if (!projectId) {
+        setLatestProject(null);
+        setMessage("No project selected.");
+        setShowNoProjectsModal(true);
+        setIsLoadingProject(false);
+        return;
+      }
+
+      setIsLoadingProject(true);
+      setShowNoProjectsModal(false);
+      setMessage(null);
+
       try {
-        let projectData;
-
-        if (projectId) {
-          // console.log("Fetching project by ID:", projectId);
-          projectData = await fetchProjectById(projectId);
-        } else {
-          // console.log("No project ID found. Fetching latest user project.");
-          projectData = await fetchLatestUserProject();
-
-          updateProjectId(projectData._id);
-        }
+        const projectData = await fetchProjectById(projectId);
+        if (!isMounted) return;
 
         setLatestProject(projectData);
+        localStorage.setItem("projectId", projectId);
+        if (projectData?.name) localStorage.setItem("projectName", projectData.name);
+        if (projectData?.chartType) localStorage.setItem("chartType", projectData.chartType);
+        if (projectData?.forecastDate) localStorage.setItem("forecastDate", projectData.forecastDate);
       } catch (error) {
+        if (!isMounted) return;
+
         console.error("Failed to fetch project:", error);
+        setLatestProject(null);
         setShowNoProjectsModal(true);
-        // console.log("Error message:", error.message);
-        setMessage(error.message);
+        setMessage(error.message || "Failed to load project.");
       } finally {
-        setIsLoadingProject(false);
+        if (isMounted) setIsLoadingProject(false);
       }
     };
 
     fetchProject();
-  }, [projectId, updateProjectId]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
 
   return {
     latestProject,
@@ -123,14 +172,29 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
   const [layers, setLayers] = useState([]);
   const mapRef = useRef(null);
   const cleanupRef = useRef(null);
+  const requestSeqRef = useRef(0);
 
-  const setupFeaturesAndLayers = useCallback(async (map) => {
-    if (!projectId) return [];
+  useEffect(() => {
+    setSavedFeatures([]);
+    setLayers([]);
+  }, [projectId]);
+
+  const setupFeaturesAndLayers = useCallback(async () => {
+    const requestSeq = requestSeqRef.current + 1;
+    requestSeqRef.current = requestSeq;
+
+    if (!projectId) {
+      setSavedFeatures([]);
+      setLayers([]);
+      return [];
+    }
 
     try {
       const features = await fetchFeatures(projectId);
-      const filteredFeatures = features.filter(
-        (f) => f?.properties?.project === projectId
+      if (requestSeqRef.current !== requestSeq) return [];
+
+      const filteredFeatures = (Array.isArray(features) ? features : []).filter(
+        (f) => String(f?.properties?.project || "") === String(projectId)
       );
 
       setSavedFeatures(filteredFeatures);
@@ -140,14 +204,17 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
         name: f.name || "Untitled Feature",
         visible: true,
         locked: false,
-        type: f.properties.type || "Wave Height",
+        type: f.properties?.type || "Wave Height",
       }));
 
       setLayers(initialLayers);
 
       return filteredFeatures;
     } catch (error) {
+      if (requestSeqRef.current !== requestSeq) return [];
       console.error("[MAP LOAD ERROR]", error);
+      setSavedFeatures([]);
+      setLayers([]);
       return [];
     }
   }, [projectId]);
@@ -246,8 +313,9 @@ export const useMapLoader = (
   const handleMapLoad = useCallback(async (map) => {
     mapRef.current = map;
 
-    const filteredFeatures = await setupFeaturesAndLayers(map);
+    const filteredFeatures = await setupFeaturesAndLayers();
 
+    cleanupRef.current?.();
     cleanupRef.current = setupMap({
       map,
       mapRef,
@@ -270,27 +338,26 @@ export const useMapLoader = (
     // Setup style.load listener once
     if (!map._hasStyleLoadListener) {
       map.on("style.load", async () => {
-        const features = await setupFeaturesAndLayers(map);
-        if (cleanupRef.current) {
-          cleanupRef.current = setupMap({
-            map,
-            mapRef,
-            setDrawInstance,
-            setMapLoaded,
-            setSelectedPoint,
-            setShowTitleModal,
-            setLineCount,
-            initialFeatures: {
-              type: "FeatureCollection",
-              features,
-            },
-            logger,
-            setLoading: setIsLoading,
-            selectedToolRef,
-            setCapturedImages,
-            isDarkMode,
-          });
-        }
+        const features = await setupFeaturesAndLayers();
+        cleanupRef.current?.();
+        cleanupRef.current = setupMap({
+          map,
+          mapRef,
+          setDrawInstance,
+          setMapLoaded,
+          setSelectedPoint,
+          setShowTitleModal,
+          setLineCount,
+          initialFeatures: {
+            type: "FeatureCollection",
+            features,
+          },
+          logger,
+          setLoading: setIsLoading,
+          selectedToolRef,
+          setCapturedImages,
+          isDarkMode,
+        });
       });
       map._hasStyleLoadListener = true;
     }

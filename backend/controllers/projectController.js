@@ -6,19 +6,14 @@ import {
   deleteProjectAndFeatures,
 } from '../utils/dbHelpers.js';
 import Project from '../models/Project.js';
-
-/* =========================================================
-   STATUS TRANSITION MAP
-========================================================= */
-const allowedTransitions = {
-  Draft: ['Submitted'],
-  Submitted: ['Under Review'],
-  'Under Review': ['Revision Requested', 'Approved', 'Rejected'],
-  'Revision Requested': ['Submitted'],
-  Approved: ['Published'],
-  Rejected: ['Draft'],
-  Published: ['Archived'],
-};
+import Feature from '../models/Feature.js';
+import { createNotification } from '../services/notification/notificationService.js';
+import {
+  PROJECT_STATUS,
+  canAddReviewCommentStatus,
+  canEditProjectStatus,
+  canTransitionProjectStatus,
+} from '../utils/projectWorkflow.js';
 
 const USER_PROJECT_SORT_FIELDS = {
   name: 'name',
@@ -29,6 +24,29 @@ const USER_PROJECT_SORT_FIELDS = {
   lastOpenedAt: 'lastOpenedAt',
   updatedAt: 'updatedAt',
   createdAt: 'createdAt',
+};
+
+const PROJECT_NOTIFICATION_COPY = {
+  comment_added: {
+    title: 'Admin commented on your project',
+    message: (project, comment) => `Admin left a comment on "${project.name}": ${comment}`,
+  },
+  revision_requested: {
+    title: 'Revision requested',
+    message: (project, comment) => `Admin requested revisions on "${project.name}": ${comment}`,
+  },
+  approved: {
+    title: 'Project approved',
+    message: (project) => `"${project.name}" has been approved by Admin.`,
+  },
+  rejected: {
+    title: 'Project rejected',
+    message: (project, comment) => `"${project.name}" was rejected: ${comment}`,
+  },
+  published: {
+    title: 'Project published',
+    message: (project) => `"${project.name}" has been published.`,
+  },
 };
 
 function escapeRegex(value) {
@@ -48,11 +66,85 @@ function getDateRangeFilter(dateRange) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
+function buildStatusCounts(rows) {
+  return Object.values(PROJECT_STATUS).reduce((counts, status) => {
+    counts[status] = 0;
+    return counts;
+  }, rows.reduce((counts, row) => {
+    if (row?._id) counts[row._id] = row.count;
+    return counts;
+  }, {}));
+}
+
 function getRequiredComment(value, label = 'Comment') {
   const comment = String(value || '').trim();
   if (!comment) throwError(`${label} is required`, 400);
   if (comment.length > 1000) throwError(`${label} must be 1000 characters or less`, 400);
   return comment;
+}
+
+function toFeatureSnapshot(feature) {
+  return {
+    type: 'Feature',
+    geometry: feature.geometry,
+    properties: {
+      ...(feature.properties || {}),
+      name: feature.name,
+      sourceId: feature.sourceId,
+    },
+  };
+}
+
+function getLatestVersionReason(project) {
+  if (!project.versions?.length) return null;
+  return project.versions[project.versions.length - 1]?.reason || null;
+}
+
+async function notifyProjectOwner(project, actorId, type, comment = '') {
+  const copy = PROJECT_NOTIFICATION_COPY[type];
+  if (!copy || !project?.owner) return;
+
+  try {
+    await createNotification({
+      type,
+      title: copy.title,
+      message: copy.message(project, comment),
+      recipientUser: project.owner,
+      actorUser: actorId,
+      resourceType: 'project',
+      resourceId: project._id,
+      resourcePath: `/studio/${project._id}`,
+      projectName: project.name,
+    });
+  } catch (error) {
+    console.error('[ProjectNotifications] Failed to create notification:', error);
+  }
+}
+
+async function createProjectVersionSnapshot(project, userId, reason = 'submit') {
+  const features = await Feature.find({
+    'properties.project': project._id,
+  }).lean();
+
+  const featureCollection = {
+    type: 'FeatureCollection',
+    features: features.map(toFeatureSnapshot),
+  };
+
+  const lastVersion = project.versions?.length
+    ? project.versions[project.versions.length - 1].versionNumber
+    : 0;
+  const nextVersion = lastVersion + 1;
+
+  project.version = nextVersion;
+  project.versions.push({
+    versionNumber: nextVersion,
+    snapshot: featureCollection,
+    features: featureCollection.features,
+    featureCollection,
+    createdBy: userId,
+    reason,
+  });
 }
 
 async function sendProject(project, res) {
@@ -75,13 +167,13 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
   }
 
   const allowedAdminStatuses = [
-    'Submitted',
-    'Under Review',
-    'Revision Requested',
-    'Approved',
-    'Published',
-    'Rejected',
-    'Archived'
+    PROJECT_STATUS.SUBMITTED,
+    PROJECT_STATUS.UNDER_REVIEW,
+    PROJECT_STATUS.REVISION_REQUESTED,
+    PROJECT_STATUS.APPROVED,
+    PROJECT_STATUS.PUBLISHED,
+    PROJECT_STATUS.REJECTED,
+    PROJECT_STATUS.ARCHIVED
   ];
 
   const { status } = req.query;
@@ -133,14 +225,14 @@ export const createProject = asyncHandler(async (req, res) => {
     chartType: chartType.trim(),
     forecastDate,
     owner: req.user.id,
-    status: 'Draft',
+    status: PROJECT_STATUS.DRAFT,
     version: 1,
     auditLogs: [
       {
         action: 'created',
         performedBy: req.user.id,
         previousStatus: null,
-        newStatus: 'Draft',
+        newStatus: PROJECT_STATUS.DRAFT,
         comment: 'Project created',
       },
     ],
@@ -216,13 +308,17 @@ export const getUserProjects = asyncHandler(async (req, res) => {
     _id: -1,
   };
 
-  const [projects, total] = await Promise.all([
+  const [projects, total, statusCountRows] = await Promise.all([
     Project.find(query)
       .sort(sortQuery)
       .skip(skip)
       .limit(limitNumber)
       .lean(),
     Project.countDocuments(query),
+    Project.aggregate([
+      { $match: query },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
   ]);
 
   res.json({
@@ -231,6 +327,7 @@ export const getUserProjects = asyncHandler(async (req, res) => {
     page: pageNumber,
     limit: limitNumber,
     totalPages: Math.max(1, Math.ceil(total / limitNumber)),
+    statusCounts: buildStatusCounts(statusCountRows),
   });
 });
 
@@ -283,6 +380,10 @@ export const renameProject = asyncHandler(async (req, res) => {
 
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
+  if (!canEditProjectStatus(project.status)) {
+    throwError('Only Draft, Rejected, or Revision Requested projects can be renamed', 403);
+  }
+
   if (project.name === name.trim()) {
     return res.json(project);
   }
@@ -313,7 +414,7 @@ export const updateProject = asyncHandler(async (req, res) => {
 
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
-  if (!['Draft', 'Rejected', 'Revision Requested'].includes(project.status)) {
+  if (!canEditProjectStatus(project.status)) {
     throwError('Only Draft, Rejected, or Revision Requested projects can be edited', 400);
   }
 
@@ -347,20 +448,28 @@ export const updateProject = asyncHandler(async (req, res) => {
 export const submitProject = asyncHandler(async (req, res) => {
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
-  if (!allowedTransitions[project.status]?.includes('Submitted')) {
+  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.SUBMITTED)) {
     throwError('Invalid status transition', 400);
   }
 
   const previousStatus = project.status;
-  project.status = 'Submitted';
+  await createProjectVersionSnapshot(
+    project,
+    req.user.id,
+    previousStatus === PROJECT_STATUS.REVISION_REQUESTED ? 'resubmit' : 'submit'
+  );
+
+  project.status = PROJECT_STATUS.SUBMITTED;
   project.submittedAt = new Date();
 
   project.auditLogs.push({
     action: 'submitted',
     performedBy: req.user.id,
     previousStatus,
-    newStatus: 'Submitted',
-    comment: 'Submitted for review',
+    newStatus: PROJECT_STATUS.SUBMITTED,
+    comment: previousStatus === PROJECT_STATUS.REVISION_REQUESTED
+      ? 'Revision resubmitted for review'
+      : 'Submitted for review',
   });
 
   await project.save();
@@ -379,16 +488,16 @@ export const startReviewProject = asyncHandler(async (req, res) => {
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
-  if (project.status === 'Under Review') {
+  if (project.status === PROJECT_STATUS.UNDER_REVIEW) {
     return sendProject(project, res);
   }
 
-  if (!allowedTransitions[project.status]?.includes('Under Review')) {
+  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.UNDER_REVIEW)) {
     throwError('Invalid status transition', 400);
   }
 
   const previousStatus = project.status;
-  project.status = 'Under Review';
+  project.status = PROJECT_STATUS.UNDER_REVIEW;
   project.reviewStartedAt = new Date();
   project.reviewStartedBy = req.user.id;
 
@@ -396,7 +505,7 @@ export const startReviewProject = asyncHandler(async (req, res) => {
     action: 'review_started',
     performedBy: req.user.id,
     previousStatus,
-    newStatus: 'Under Review',
+    newStatus: PROJECT_STATUS.UNDER_REVIEW,
     comment: 'Project review started',
   });
 
@@ -417,7 +526,7 @@ export const addReviewComment = asyncHandler(async (req, res) => {
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
-  if (!['Submitted', 'Under Review'].includes(project.status)) {
+  if (!canAddReviewCommentStatus(project.status)) {
     throwError('Comments can only be added while a project is submitted or under review', 400);
   }
 
@@ -430,6 +539,7 @@ export const addReviewComment = asyncHandler(async (req, res) => {
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'comment_added', comment);
   return sendProject(project, res);
 });
 
@@ -445,12 +555,17 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
-  if (!allowedTransitions[project.status]?.includes('Revision Requested')) {
+  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.REVISION_REQUESTED)) {
     throwError('Invalid status transition', 400);
   }
 
   const previousStatus = project.status;
-  project.status = 'Revision Requested';
+
+  if (getLatestVersionReason(project) !== 'revision_baseline') {
+    await createProjectVersionSnapshot(project, req.user.id, 'revision_baseline');
+  }
+
+  project.status = PROJECT_STATUS.REVISION_REQUESTED;
   project.rejectedBy = undefined;
   project.reviewComment = comment;
   project.reviewedAt = new Date();
@@ -459,11 +574,12 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
     action: 'revision_requested',
     performedBy: req.user.id,
     previousStatus,
-    newStatus: 'Revision Requested',
+    newStatus: PROJECT_STATUS.REVISION_REQUESTED,
     comment,
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'revision_requested', comment);
   return sendProject(project, res);
 });
 
@@ -478,7 +594,7 @@ export const approveProject = asyncHandler(async (req, res) => {
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
-  if (!allowedTransitions[project.status]?.includes('Approved')) {
+  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.APPROVED)) {
     throwError('Invalid status transition', 400);
   }
 
@@ -487,7 +603,7 @@ export const approveProject = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
-  project.status = 'Approved';
+  project.status = PROJECT_STATUS.APPROVED;
   project.reviewedAt = new Date();
   project.approvedBy = req.user.id;
 
@@ -495,11 +611,12 @@ export const approveProject = asyncHandler(async (req, res) => {
     action: 'approved',
     performedBy: req.user.id,
     previousStatus,
-    newStatus: 'Approved',
+    newStatus: PROJECT_STATUS.APPROVED,
     comment: 'Project approved',
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'approved');
 
   return sendProject(project, res);
 });
@@ -517,12 +634,12 @@ export const rejectProject = asyncHandler(async (req, res) => {
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
-  if (!allowedTransitions[project.status]?.includes('Rejected')) {
+  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.REJECTED)) {
     throwError('Invalid status transition', 400);
   }
 
   const previousStatus = project.status;
-  project.status = 'Rejected';
+  project.status = PROJECT_STATUS.REJECTED;
   project.rejectedBy = req.user.id;
   project.reviewComment = comment;
   project.reviewedAt = new Date();
@@ -531,11 +648,12 @@ export const rejectProject = asyncHandler(async (req, res) => {
     action: 'rejected',
     performedBy: req.user.id,
     previousStatus,
-    newStatus: 'Rejected',
+    newStatus: PROJECT_STATUS.REJECTED,
     comment,
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'rejected', comment);
 
   return sendProject(project, res);
 });
@@ -551,23 +669,24 @@ export const publishProject = asyncHandler(async (req, res) => {
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
-  if (!allowedTransitions[project.status]?.includes('Published')) {
+  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.PUBLISHED)) {
     throwError('Invalid status transition', 400);
   }
 
   const previousStatus = project.status;
-  project.status = 'Published';
+  project.status = PROJECT_STATUS.PUBLISHED;
   project.publishedAt = new Date();
 
   project.auditLogs.push({
     action: 'published',
     performedBy: req.user.id,
     previousStatus,
-    newStatus: 'Published',
+    newStatus: PROJECT_STATUS.PUBLISHED,
     comment: 'Project published',
   });
 
   await project.save();
+  await notifyProjectOwner(project, req.user.id, 'published');
 
   return sendProject(project, res);
 });
@@ -598,18 +717,18 @@ export const archiveProject = asyncHandler(async (req, res) => {
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
-  if (project.status !== 'Published') {
+  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.ARCHIVED)) {
     throwError('Only published projects can be archived', 400);
   }
 
   const previousStatus = project.status;
-  project.status = 'Archived';
+  project.status = PROJECT_STATUS.ARCHIVED;
 
   project.auditLogs.push({
     action: 'archived',
     performedBy: req.user.id,
     previousStatus,
-    newStatus: 'Archived',
+    newStatus: PROJECT_STATUS.ARCHIVED,
     comment: 'Project archived',
   });
 

@@ -3,14 +3,53 @@ const EMPTY_FEATURE_COLLECTION = Object.freeze({
   features: [],
 });
 
-function unwrapCoordinates(coords) {
-  if (!Array.isArray(coords)) return coords;
+const PH_LNG_MIN = 93;
+const PH_LNG_MAX = 154;
+const PH_LAT_MIN = 3;
+const PH_LAT_MAX = 26;
 
-  if (coords.length === 1 && Array.isArray(coords[0])) {
-    return unwrapCoordinates(coords[0]);
+function isNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function looksLikePhilippinesLngLat(lng, lat) {
+  return lng >= PH_LNG_MIN && lng <= PH_LNG_MAX && lat >= PH_LAT_MIN && lat <= PH_LAT_MAX;
+}
+
+function shouldSwapLatLng(first, second) {
+  return looksLikePhilippinesLngLat(second, first) && !looksLikePhilippinesLngLat(first, second);
+}
+
+function normalizeCoordinatePair(coords) {
+  if (!Array.isArray(coords) || coords.length < 2) return coords;
+
+  const [first, second, ...rest] = coords;
+
+  if (!isNumber(first) || !isNumber(second)) return coords;
+
+  if (shouldSwapLatLng(first, second)) {
+    return [second, first, ...rest];
   }
 
   return coords;
+}
+
+function normalizeCoordinates(coords) {
+  if (!Array.isArray(coords)) return coords;
+
+  if (coords.length === 1 && Array.isArray(coords[0])) {
+    return normalizeCoordinates(coords[0]);
+  }
+
+  if (
+    coords.length >= 2 &&
+    isNumber(coords[0]) &&
+    isNumber(coords[1])
+  ) {
+    return normalizeCoordinatePair(coords);
+  }
+
+  return coords.map((child) => normalizeCoordinates(child));
 }
 
 function isGeoJsonFeature(value) {
@@ -22,7 +61,17 @@ function normalizeGeometry(geometry) {
 
   return {
     ...geometry,
-    coordinates: unwrapCoordinates(geometry.coordinates),
+    coordinates: normalizeCoordinates(geometry.coordinates),
+  };
+}
+
+function getFeatureProperties(value) {
+  return {
+    ...(value.properties ?? {}),
+    ...(value.name && !value.properties?.name ? { name: value.name } : {}),
+    ...(value.title && !value.properties?.title ? { title: value.title } : {}),
+    ...(value.label && !value.properties?.label ? { label: value.label } : {}),
+    ...(value.sourceId && !value.properties?.sourceId ? { sourceId: value.sourceId } : {}),
   };
 }
 
@@ -33,7 +82,7 @@ function toFeature(value) {
     return {
       ...value,
       geometry: normalizeGeometry(value.geometry),
-      properties: value.properties ?? {},
+      properties: getFeatureProperties(value),
     };
   }
 
@@ -41,7 +90,7 @@ function toFeature(value) {
     return {
       type: 'Feature',
       geometry: normalizeGeometry(value.geometry),
-      properties: value.properties ?? {},
+      properties: getFeatureProperties(value),
       ...Object.fromEntries(
         Object.entries(value).filter(
           ([key]) => !['geometry', 'properties'].includes(key)

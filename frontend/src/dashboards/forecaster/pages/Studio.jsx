@@ -1,23 +1,30 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { ArrowLeft, Moon, Sun } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Lock, MessageSquareText, Moon, Send, Sun } from "lucide-react";
 
 // Component imports
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
 import LayerPanel from "@dashboards/forecaster/components/Studio/LayerPanel/LayerPanel";
 import DrawToolBar from "@dashboards/forecaster/components/Studio/Toolbar/Toolbar";
-import LegendBox from "@dashboards/forecaster/components/Studio/Legend";
-import ProjectMenu from "@dashboards/forecaster/components/Studio/Menu/ProjectMenu";
 import MarkerTitleModal from "@/components/ui/modals/MarkerTitleModal";
 import MapLoading from "@/components/ui/modals/MapLoading";
 import NoProjectAlert from "@/components/ui/modals/NoProjectAlert";
 import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Button from "@/components/ui/Button";
+import NotificationBell from "@/shared/notifications/NotificationBell";
 import Canvas from "@dashboards/forecaster/draw/canvas";
 import FlagCanvas from "@dashboards/forecaster/draw/front";
 import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
 
-// NEW: shared normalizer
-import { normalizeFeatureCollection } from "@/features/projects/utils/normalizeFeatureCollection";
+// Shared project helpers
+import { getLatestReviewRemarks } from "@/features/projects/projectAdapter";
+import {
+  PROJECT_STATUS,
+  canEditProjectStatus,
+  canSubmitProjectStatus,
+  getProjectStatusLabel,
+  getProjectStatusStyle,
+  isProjectRevisionRequested,
+} from "@/features/projects/projectStatuses";
 
 // Custom Hooks
 import {
@@ -31,6 +38,9 @@ import {
 } from "@dashboards/forecaster/hooks/useStudio";
 import { useTheme } from "@/app/providers/ThemeProvider";
 
+// API
+import { submitProject } from "@/api/projectAPI";
+
 // Utils
 import { savePointFeature } from "@dashboards/forecaster/utils/ToolBarUtils";
 import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
@@ -40,11 +50,16 @@ import { saveMarker } from "@dashboards/forecaster/map/layers/markerLayer";
 const TOOLBAR_DELAY = 1000;
 const STUDIO_HEADER_HEIGHT = 64;
 
+function getSubmitLabel(status) {
+  if (status === PROJECT_STATUS.DRAFT) return "Submit";
+  if (isProjectRevisionRequested(status)) return "Resubmit Revision";
+  return "Resubmit";
+}
+
 // ─── Main Component ──────────────────────────────────
 const Studio = ({ logger }) => {
   const { isDarkMode, setIsDarkMode } = useTheme();
-
-  const [projectId, updateProjectId] = useProjectId();
+  const [projectId] = useProjectId();
 
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
@@ -54,7 +69,14 @@ const Studio = ({ logger }) => {
     showNoProjectsModal,
     setShowNoProjectsModal,
     message,
-  } = useProjectLoader(projectId, updateProjectId);
+  } = useProjectLoader(projectId);
+
+  const [currentProject, setCurrentProject] = useState(null);
+  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
+
+  useEffect(() => {
+    setCurrentProject(latestProject || null);
+  }, [latestProject]);
 
   const handleOpenCreateProject = () => {
     setShowNoProjectsModal(false);
@@ -66,7 +88,6 @@ const Studio = ({ logger }) => {
   };
 
   const {
-    savedFeatures,
     layers,
     setLayers,
     mapRef,
@@ -103,12 +124,10 @@ const Studio = ({ logger }) => {
   } = useMarkerModal();
 
   // Additional state
-  const [mapInstance, setMapInstance] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [showToolbar, setShowToolbar] = useState(false);
-  const [capturedImages, setCapturedImages] = useState({ light: null, dark: null });
-  const [collapsed, setCollapsed] = useState(false);
+  const [, setCapturedImages] = useState({ light: null, dark: null });
 
   // Refs
   const selectedToolRef = useRef(null);
@@ -117,14 +136,24 @@ const Studio = ({ logger }) => {
   const removeLayerSafe = (map, id) => { if (map.getLayer(id)) map.removeLayer(id); };
   const removeSourceSafe = (map, id) => { if (map.getSource(id)) map.removeSource(id); };
 
-  // ─── Project menu callbacks ───────────────────────────
-  const handleNewProject = useCallback((project) => {
-    if (project?._id) updateProjectId(project._id);
-  }, [updateProjectId]);
+  const projectStatus = currentProject?.status;
+  const canEditProject = currentProject && canEditProjectStatus(projectStatus);
+  const isReadOnlyProject = Boolean(currentProject && !canEditProject);
 
-  const handleSaveProject = useCallback((project) => {
-    if (project?._id) updateProjectId(project._id);
-  }, [updateProjectId]);
+  const isBlockingWorkspaceModalOpen =
+    showTitleModal ||
+    showCreateProjectModal ||
+    showNoProjectsModal ||
+    isCanvasActive ||
+    isFlagCanvasActive;
+
+  const {
+    isInactivityPromptVisible,
+    stayActive,
+    refreshWorkspace,
+  } = useInactivityReload(undefined, {
+    disabled: isBlockingWorkspaceModalOpen,
+  });
 
   const handleBackToLibrary = useCallback(() => {
     window.location.href = "/studio";
@@ -134,24 +163,70 @@ const Studio = ({ logger }) => {
     setIsDarkMode((value) => !value);
   }, [setIsDarkMode]);
 
+  const handleSubmitProject = useCallback(async () => {
+    const id = currentProject?._id || currentProject?.id || projectId;
+    if (!id || isSubmittingProject || !canSubmitProjectStatus(currentProject?.status)) return;
+
+    setIsSubmittingProject(true);
+    try {
+      const updatedProject = await submitProject(id);
+      setCurrentProject(updatedProject);
+    } catch (error) {
+      window.alert(error?.message || "Failed to submit project for review.");
+    } finally {
+      setIsSubmittingProject(false);
+    }
+  }, [currentProject, isSubmittingProject, projectId]);
+
   // ─── Effects ─────────────────────────────────────────
 
   useEffect(() => {
-    document.title = latestProject?.name
-      ? `${latestProject.name}`
+    document.title = currentProject?.name
+      ? `${currentProject.name}`
       : "WaveLab - Studio";
-  }, [latestProject?.name]);
+  }, [currentProject?.name]);
 
   useEffect(() => {
     setLayersRef.current = setLayers;
   }, [setLayers]);
 
-  useInactivityReload();
+  useEffect(() => {
+    setIsLoading(true);
+    setMapLoaded(false);
+    setShowToolbar(false);
+    setCapturedImages({ light: null, dark: null });
+    setDrawInstance(null);
+    setLineCount(0);
+    setDrawCounter(0);
+    setClosedMode(false);
+    setSelectedPoint(null);
+    setShowTitleModal(false);
+    markerTitleRef.current = "";
+    selectedToolRef.current = null;
+  }, [
+    projectId,
+    setClosedMode,
+    setDrawCounter,
+    setDrawInstance,
+    setLineCount,
+    setSelectedPoint,
+    setShowTitleModal,
+    markerTitleRef,
+    setCapturedImages,
+  ]);
+
+  useEffect(() => {
+    if (!isReadOnlyProject) return;
+    if (isCanvasActive) toggleCanvas();
+    if (isFlagCanvasActive) toggleFlagCanvas();
+    setShowTitleModal(false);
+    selectedToolRef.current = null;
+  }, [isReadOnlyProject, isCanvasActive, isFlagCanvasActive, toggleCanvas, toggleFlagCanvas, setShowTitleModal]);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowToolbar(true), TOOLBAR_DELAY);
     return () => clearTimeout(timer);
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -173,10 +248,11 @@ const Studio = ({ logger }) => {
   // ─── Handlers ────────────────────────────────────────
 
   const handleSaveTitle = (title) => {
+    if (isReadOnlyProject) return;
     markerTitleRef.current = title;
     saveMarker(selectedPoint, mapRef, setShowTitleModal, type)(title);
     const coords = [selectedPoint.lng, selectedPoint.lat];
-    savePointFeature({ coords, title, selectedType: type, setLayersRef });
+    savePointFeature({ coords, title, selectedType: type, setLayersRef, projectId });
   };
 
   const handleMapLoad = useMapLoader(
@@ -198,53 +274,137 @@ const Studio = ({ logger }) => {
 
   // ─── Memoized Values ─────────────────────────────────
 
-  const savedFeaturesCollection = useMemo(() => {
-    return normalizeFeatureCollection(savedFeatures);
-  }, [savedFeatures]);
-
   const showMainUI = !isLoadingProject;
-  const projectName = latestProject?.name || "No Project Selected";
+  const projectName = currentProject?.name || "No Project Selected";
+  const isRevisionRequested = isProjectRevisionRequested(projectStatus);
+  const projectStatusLabel = isRevisionRequested
+    ? "Needs Revision"
+    : getProjectStatusLabel(projectStatus);
+  const projectStatusStyle = isRevisionRequested
+    ? "border-amber-300 bg-amber-50 text-amber-800"
+    : getProjectStatusStyle(projectStatus);
+  const canSubmitProject = currentProject && canSubmitProjectStatus(projectStatus);
+  const latestReviewRemarks = useMemo(
+    () => getLatestReviewRemarks(currentProject),
+    [currentProject]
+  );
+  const hasActiveReviewRemarks = isRevisionRequested && Boolean(latestReviewRemarks?.comment);
+
+  const headerClass = isDarkMode
+    ? "border-white/10 bg-slate-950/95 text-slate-100"
+    : "border-slate-200/70 bg-white/95 text-slate-950";
+  const headerMutedText = isDarkMode ? "text-slate-400" : "text-slate-500";
+  const headerStrongText = isDarkMode ? "text-slate-50" : "text-slate-900";
+  const headerDivider = isDarkMode ? "border-white/10" : "border-slate-200";
+  const headerControlGroup = isDarkMode
+    ? "border-white/10 bg-white/[0.05]"
+    : "border-black/6 bg-black/[0.03]";
 
   // ─── Render ──────────────────────────────────────────
   return (
     <div className={`relative h-screen w-full overflow-hidden ${isDarkMode ? "bg-slate-950" : "bg-slate-100"}`}>
-      <header className="absolute inset-x-0 top-0 z-[120] flex h-16 items-center justify-between border-b border-slate-200/70 bg-white/95 px-4 shadow-sm backdrop-blur-md dark:border-slate-800/70 dark:bg-slate-950/95">
-        <div className="flex min-w-0 items-center gap-3">
+      <header className={`absolute inset-x-0 top-0 z-[120] flex h-16 items-center justify-between gap-2 border-b px-2 shadow-sm backdrop-blur-md sm:px-4 ${headerClass}`}>
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary}>
-            Project Library
+            <span className="hidden sm:inline">Project Library</span>
+            <span className="sm:hidden">Library</span>
           </Button>
 
-          <div className="min-w-0 border-l border-slate-200 pl-3 dark:border-slate-800">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className={`min-w-0 border-l pl-2 sm:pl-3 ${headerDivider}`}>
+            <p className={`hidden text-xs font-semibold uppercase tracking-[0.18em] sm:block ${headerMutedText}`}>
               WaveLab Studio
             </p>
-            <h1 className="truncate text-sm font-bold text-slate-900 dark:text-slate-50">
-              {projectName}
-            </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className={`max-w-[32vw] truncate text-xs font-bold sm:max-w-[42vw] sm:text-sm ${headerStrongText}`}>
+                {projectName}
+              </h1>
+              {currentProject?.status && (
+                <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black lg:inline-flex ${projectStatusStyle}`}>
+                  {projectStatusLabel}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 md:inline-flex dark:border-emerald-900/70 dark:bg-emerald-950/60 dark:text-emerald-300">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          {isReadOnlyProject && (
+            <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
+              <Lock size={13} />
+              Read-only
+            </span>
+          )}
+          {canSubmitProject && (
+            <Button
+              size="sm"
+              icon={Send}
+              loading={isSubmittingProject}
+              disabled={isSubmittingProject}
+              onClick={handleSubmitProject}
+            >
+              <span className="hidden sm:inline">{isSubmittingProject ? "Submitting..." : getSubmitLabel(projectStatus)}</span>
+            </Button>
+          )}
+          <span className={`hidden rounded-full border px-3 py-1 text-xs font-semibold xl:inline-flex ${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
             Auto-save active
           </span>
-          <Button
-            variant="icon"
-            size="sm"
-            icon={isDarkMode ? Sun : Moon}
-            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-            onClick={handleToggleTheme}
-          />
+          <div className={`flex items-center gap-0.5 rounded-2xl border px-0.5 py-1 sm:px-1 ${headerControlGroup}`}>
+            <NotificationBell isDarkMode={isDarkMode} />
+            <div className={`mx-0.5 hidden h-5 w-px sm:block ${isDarkMode ? "bg-white/10" : "bg-black/8"}`} />
+            <Button
+              variant="icon"
+              size="sm"
+              icon={isDarkMode ? Sun : Moon}
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={handleToggleTheme}
+            />
+          </div>
         </div>
       </header>
 
+      {isReadOnlyProject && (
+        <div className={`absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-white/10 bg-slate-950/95 text-slate-200" : "border-slate-200 bg-white/95 text-slate-700"}`} style={{ top: STUDIO_HEADER_HEIGHT + 12 }}>
+          <div className="flex items-start gap-3">
+            <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-slate-900 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
+              <Lock size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={`text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>
+                Editing locked
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed">
+                This project is already {projectStatusLabel}. You can view it, but markers, drawings, uploads, deletes, and edits are disabled until Admin requests a revision.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hasActiveReviewRemarks && (
+        <div className={`absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-amber-400/30 bg-amber-950/80 text-amber-100" : "border-amber-200 bg-amber-50/95 text-amber-950"}`} style={{ top: STUDIO_HEADER_HEIGHT + (isReadOnlyProject ? 104 : 12) }}>
+          <div className="flex items-start gap-3">
+            <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-amber-500/10 text-amber-300" : "bg-amber-100 text-amber-700"}`}>
+              <MessageSquareText size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={`text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? "text-amber-300" : "text-amber-700"}`}>
+                Admin remarks
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed">
+                {latestReviewRemarks.comment}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="relative flex w-full overflow-hidden" style={{ height: `calc(100vh - ${STUDIO_HEADER_HEIGHT}px)`, marginTop: STUDIO_HEADER_HEIGHT }}>
         {/* Map Wrapper */}
-        <div className={`flex-grow h-full relative transition-[width] duration-300 ease-in-out ${collapsed ? "w-screen" : "w-[calc(100vw-250px)]"}`}>
+        <div className="relative h-full w-full flex-grow transition-[width] duration-300 ease-in-out lg:w-[calc(100vw-250px)]">
           <MapComponent
+            key={projectId || "no-project"}
             onMapLoad={handleMapLoad}
             isDarkMode={isDarkMode}
-            setMapInstance={setMapInstance}
           />
         </div>
 
@@ -253,7 +413,7 @@ const Studio = ({ logger }) => {
         )}
 
         {/* Toolbar */}
-        {showToolbar && projectId && (
+        {showToolbar && projectId && canEditProject && (
           <DrawToolBar
             draw={drawInstance}
             onToggleCanvas={toggleCanvas}
@@ -269,11 +429,12 @@ const Studio = ({ logger }) => {
             setType={setType}
             selectedToolRef={selectedToolRef}
             title={markerTitle}
+            projectId={projectId}
           />
         )}
 
         {/* Canvas Overlays */}
-        {isCanvasActive && (
+        {isCanvasActive && canEditProject && (
           <Canvas
             mapRef={mapRef}
             drawRef={drawInstance}
@@ -283,10 +444,11 @@ const Studio = ({ logger }) => {
             setLayersRef={setLayersRef}
             closedMode={closedMode}
             lineCount={lineCount}
+            projectId={projectId}
           />
         )}
 
-        {isFlagCanvasActive && (
+        {isFlagCanvasActive && canEditProject && (
           <FlagCanvas
             mapRef={mapRef}
             drawRef={drawInstance}
@@ -295,12 +457,13 @@ const Studio = ({ logger }) => {
             isDarkMode={isDarkMode}
             setLayersRef={setLayersRef}
             closedMode={closedMode}
+            projectId={projectId}
           />
         )}
 
         {/* Marker Title Modal — single source of truth, markerType drives accent color */}
         <MarkerTitleModal
-          isOpen={showTitleModal}
+          isOpen={showTitleModal && canEditProject}
           onClose={closeModal}
           onSubmit={handleSaveTitle}
           inputValue={markerTitle}
@@ -312,28 +475,14 @@ const Studio = ({ logger }) => {
         {/* Side Panel & UI Elements */}
         {showMainUI && (
           <>
-            <div className="fixed left-3 flex flex-col gap-4 z-[100] animate-[slideInLeft_0.6s_ease-out] max-md:right-4 max-md:left-4 max-md:items-stretch" style={{ top: STUDIO_HEADER_HEIGHT + 16 }}>
-              {/* <ProjectMenu
-                onNew={handleNewProject}
-                onSave={handleSaveProject}
-                onView={() => mapRef.current?.flyTo({ zoom: 5 })}
-                map={mapInstance}
-                features={savedFeaturesCollection}
-                isDarkMode={isDarkMode}
-                setIsDarkMode={setIsDarkMode}
-                setCapturedImages={setCapturedImages}
-              /> */}
-            </div>
-
             <LayerPanel
               layers={layers}
               setLayers={setLayers}
               mapRef={mapRef}
               isDarkMode={isDarkMode}
               draw={drawInstance}
+              readOnly={isReadOnlyProject}
             />
-
-            {/* <LegendBox isDarkMode={isDarkMode} /> */}
 
             <NoProjectAlert
               visible={showNoProjectsModal}
@@ -355,6 +504,44 @@ const Studio = ({ logger }) => {
         {/* Loading Overlay */}
         {isLoading && <MapLoading isDarkMode={isDarkMode} />}
       </main>
+
+      {isInactivityPromptVisible && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="studio-inactivity-title"
+            className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl ${isDarkMode ? "border-white/10 bg-slate-950 text-slate-100" : "border-slate-200 bg-white text-slate-950"}`}
+          >
+            <div className="flex items-start gap-4">
+              <div className={`${isDarkMode ? "bg-amber-500/10 text-amber-300 ring-amber-400/20" : "bg-amber-50 text-amber-700 ring-amber-100"} rounded-2xl p-3 ring-1`}>
+                <AlertTriangle size={24} aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 id="studio-inactivity-title" className={`text-lg font-black ${isDarkMode ? "text-slate-50" : "text-slate-950"}`}>
+                  You’ve been inactive
+                </h2>
+                <p className={`mt-2 text-sm font-semibold leading-relaxed ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
+                  Refresh the Studio workspace only if you want to reload the map and project data. You can stay here to continue from your current view.
+                </p>
+              </div>
+            </div>
+
+            <div className={`${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-800"} mt-5 rounded-2xl border px-4 py-3 text-sm font-semibold`}>
+              Auto-save is active, but in-progress tool selections or open dialogs may reset after refresh.
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="secondary" onClick={stayActive}>
+                Stay here
+              </Button>
+              <Button variant="primary" onClick={refreshWorkspace}>
+                Refresh workspace
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes slideInLeft {

@@ -11,44 +11,115 @@ export const handleDrawModeChange = (mode, draw, setLayersRef) => {
   }
 };
 
-export function savePointFeature({ coords, title, selectedType, setLayersRef }) {
-  if (typeof setLayersRef?.current !== 'function') return;
+const MARKER_TYPE_ALIASES = {
+  typhoon: 'typhoon',
+  hurricane: 'typhoon',
+  storm: 'typhoon',
+  tropical_cyclone: 'typhoon',
+  tropicalcyclone: 'typhoon',
+  low_pressure: 'low_pressure',
+  lowpressure: 'low_pressure',
+  lpa: 'low_pressure',
+  high_pressure: 'high_pressure',
+  highpressure: 'high_pressure',
+  hpa: 'high_pressure',
+  less_1: 'less_1',
+  less1: 'less_1',
+  less_than_1m: 'less_1',
+  lessthan1m: 'less_1',
+  low_waves: 'less_1',
+};
 
-  // ✅ Normalize coords in case an object is passed instead of [lng, lat]
-  let [lng, lat] = coords;
-  if (typeof lng === 'object' && lng !== null) {
-    lng = lng.lng;
-    lat = lng.lat ?? coords[1]?.lat;
+export function normalizeMarkerType(value) {
+  const normalized = String(value || 'typhoon')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  return MARKER_TYPE_ALIASES[normalized] || normalized || 'typhoon';
+}
+
+function getCoordinatePair(coords) {
+  if (!coords) return null;
+
+  if (Array.isArray(coords)) {
+    const [lng, lat] = coords;
+    return typeof lng === 'number' && typeof lat === 'number' ? [lng, lat] : null;
   }
 
-  if (typeof lng !== 'number' || typeof lat !== 'number') {
+  if (typeof coords === 'object') {
+    const lng = coords.lng;
+    const lat = coords.lat;
+    return typeof lng === 'number' && typeof lat === 'number' ? [lng, lat] : null;
+  }
+
+  return null;
+}
+
+function makeSafeSourceId(type, name) {
+  const safeType = String(type || 'marker').trim() || 'marker';
+  const safeName = String(name || 'Untitled Layer')
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9_-]/g, '') || 'Untitled_Layer';
+
+  return `${safeType}_${safeName}_${Date.now()}`;
+}
+
+export function savePointFeature({ coords, title, selectedType, setLayersRef, projectId }) {
+  if (typeof setLayersRef?.current !== 'function') return;
+
+  const normalizedCoords = getCoordinatePair(coords);
+  if (!normalizedCoords) {
     console.error('❌ Invalid coords passed to savePointFeature:', coords);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: 'Invalid marker coordinates.',
+      showConfirmButton: false,
+      timer: 3000,
+    });
     return;
   }
 
-  const normalizedCoords = [lng, lat];
+  const activeProjectId = projectId;
+  if (!activeProjectId) {
+    console.error('❌ Missing projectId when saving marker feature.');
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: 'No active project selected. Please reopen the project and try again.',
+      showConfirmButton: false,
+      timer: 3500,
+    });
+    return;
+  }
+
+  const markerType = normalizeMarkerType(selectedType);
+  const baseName = title?.trim() || 'Untitled Layer';
+  const sourceId = makeSafeSourceId(markerType, baseName);
+  const panelId = sourceId;
+  const closedMode = false;
 
   const feature = {
-    type: "Feature",
+    type: 'Feature',
     geometry: {
-      type: "Point",
-      coordinates: normalizedCoords, // ✅ always [number, number]
+      type: 'Point',
+      coordinates: normalizedCoords,
     },
     properties: {
-      title,
-      type: selectedType,
+      title: baseName,
+      name: baseName,
+      type: markerType,
+      markerType,
+      symbolType: markerType,
     },
   };
 
-  const baseName = title || 'Untitled Layer';
-  const sourceId = `${selectedType}_${baseName}`;
-  const panelId = `${selectedType}_${baseName}`;
-  const closedMode = false;
-
   setLayersRef.current((prevLayers) => {
     const existingNames = prevLayers.map((l) => l.name);
-    const owner = JSON.parse(localStorage.getItem("user"));
-    const projectId = localStorage.getItem("projectId");
 
     // ❌ Block and alert if duplicate layer name exists
     if (existingNames.includes(baseName)) {
@@ -69,9 +140,12 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef }) 
         labelValue: baseName,
         closedMode,
         isFront: false,
-        project: projectId,
-        title,
-        type: selectedType,
+        project: activeProjectId,
+        title: baseName,
+        name: baseName,
+        type: markerType,
+        markerType,
+        symbolType: markerType,
       },
       name: baseName,
       sourceId,
@@ -104,7 +178,8 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef }) 
         name: baseName,
         visible: true,
         locked: false,
-        type: selectedType,
+        type: markerType,
+        markerType,
       },
     ];
   });

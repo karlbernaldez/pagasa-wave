@@ -46,7 +46,15 @@ export function sortProjects(projects, sortBy, sortDir) {
   });
 }
 
-export function getProjectStats(projects, total = projects.length) {
+function getCount(statusCounts, status, projects) {
+  if (statusCounts && Object.prototype.hasOwnProperty.call(statusCounts, status)) {
+    return statusCounts[status] || 0;
+  }
+
+  return projects.filter((p) => p.status === status).length;
+}
+
+export function getProjectStats(projects, total = projects.length, statusCounts = null) {
   return [
     {
       value: total,
@@ -55,27 +63,62 @@ export function getProjectStats(projects, total = projects.length) {
       tone: 'blue',
     },
     {
-      value: projects.filter((p) => p.status === 'Draft').length,
+      value: getCount(statusCounts, 'Draft', projects),
       label: 'Drafts',
-      helper: 'Visible page',
+      helper: 'Matching filters',
       tone: 'blue',
     },
     {
-      value: projects.filter((p) => p.status === 'Under Review').length,
+      value: getCount(statusCounts, 'Under Review', projects),
       label: 'Under Review',
-      helper: 'Visible page',
+      helper: 'Matching filters',
       tone: 'amber',
     },
     {
-      value: projects.filter((p) => p.status === 'Submitted').length,
+      value: getCount(statusCounts, 'Submitted', projects),
       label: 'Submitted',
-      helper: 'Visible page',
+      helper: 'Matching filters',
       tone: 'slate',
     },
     {
-      value: projects.filter((p) => p.status === 'Published').length,
+      value: getCount(statusCounts, 'Published', projects),
       label: 'Published',
-      helper: 'Visible page',
+      helper: 'Matching filters',
+      tone: 'emerald',
+    },
+  ];
+}
+
+export function getAdminProjectStats(projects, total = projects.length, statusCounts = null) {
+  return [
+    {
+      value: total,
+      label: 'Total Projects',
+      helper: 'Matching filters',
+      tone: 'blue',
+    },
+    {
+      value: getCount(statusCounts, 'Submitted', projects),
+      label: 'Submitted',
+      helper: 'Matching filters',
+      tone: 'slate',
+    },
+    {
+      value: getCount(statusCounts, 'Under Review', projects),
+      label: 'Under Review',
+      helper: 'Matching filters',
+      tone: 'amber',
+    },
+    {
+      value: getCount(statusCounts, 'Revision Requested', projects),
+      label: 'Needs Revision',
+      helper: 'Matching filters',
+      tone: 'amber',
+    },
+    {
+      value: getCount(statusCounts, 'Published', projects),
+      label: 'Published',
+      helper: 'Matching filters',
       tone: 'emerald',
     },
   ];
