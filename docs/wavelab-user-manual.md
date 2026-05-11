@@ -4,14 +4,12 @@ Last updated: 2026-05-11
 
 ## Overview
 
-WaveLab is used to create, review, revise, approve, and publish marine forecast chart projects.
+WaveLab is a marine forecast operations platform used to create, review, revise, approve, and publish forecast chart projects. It supports a controlled workflow so forecast outputs can move from initial drafting to final publication with clear ownership, review history, and edit-lock protection.
 
-This manual covers two user roles:
+WaveLab is organized around two main work areas:
 
-- **Forecaster**: creates forecast projects, adds annotations in Studio, submits projects for review, and revises projects when requested.
-- **Admin**: reviews submitted projects, adds comments, requests revisions, approves projects, rejects projects, and publishes approved projects.
-
-> **Screenshot note:** This manual includes image placeholders. Add screenshots to `docs/images/wavelab-user-manual/` using the file names listed in `docs/images/wavelab-user-manual/README.md`.
+- **Project Library and Studio**: used by Forecasters to create projects, open active work, add map annotations, place forecast markers, manage drafts, and submit completed work for review.
+- **Review Charts and Project Review Modal**: used by Admin reviewers to inspect submitted projects, compare changes, add review remarks, request revisions, approve acceptable work, reject unsuitable submissions, and publish approved projects.
 
 ## User roles
 
@@ -67,7 +65,7 @@ WaveLab projects move through a controlled workflow.
 
 ### Open the Project Library
 
-![Forecaster Project Library card view](images/wavelab-user-manual/01-forecaster-project-library-cards.png)
+![Forecaster Project Library card view](images/project-library-cards.png)
 
 **Figure 1.** Forecaster Project Library in card view.
 
@@ -80,7 +78,7 @@ The Project Library shows projects that match the current search, filters, and s
 
 ### Use list view
 
-![Forecaster Project Library list view](images/wavelab-user-manual/02-forecaster-project-library-list.png)
+![Forecaster Project Library list view](images/project-library-list.png)
 
 **Figure 2.** Forecaster Project Library in list view with compact row actions.
 
@@ -98,7 +96,7 @@ The statistic cards show totals for the current search and filter state.
 
 ### Create a new project
 
-![Create project dialog](images/wavelab-user-manual/03-create-project-dialog.png)
+![Create project dialog](images/create-project-dialog.png)
 
 **Figure 3.** New project dialog or form.
 
@@ -112,7 +110,7 @@ A newly created project starts as **Draft**.
 
 ### Open a project in Studio
 
-![Studio editable project](images/wavelab-user-manual/04-studio-editable-project.png)
+![Studio editable project](images/studio-editable-project.png)
 
 **Figure 4.** Studio with an editable project.
 
@@ -125,7 +123,7 @@ If the project is editable, Studio tools are available. If the project is locked
 
 ### Add markers and symbols
 
-![Marker input method modal](images/wavelab-user-manual/05-marker-input-method.png)
+![Marker input method modal](images/marker-input-method.png)
 
 **Figure 5.** Marker input method options.
 
@@ -144,7 +142,7 @@ Common marker types include:
 - High pressure area
 - Less than 1 meter wave condition
 
-![Project preview card marker icons](images/wavelab-user-manual/06-project-preview-card-icons.png)
+![Project preview card marker icons](images/project-preview-card-icons.png)
 
 **Figure 6.** Project Library preview cards show marker icons without labels.
 
@@ -181,7 +179,7 @@ After submission:
 
 ### Understand read-only mode
 
-![Studio read-only project](images/wavelab-user-manual/07-studio-read-only-project.png)
+![Studio read-only project](images/studio-read-only-project.png)
 
 **Figure 7.** Studio read-only state after submission.
 
@@ -204,7 +202,7 @@ In read-only mode:
 
 ### Work with a revision-requested project
 
-![Needs Revision project card](images/wavelab-user-manual/12-needs-revision-card.png)
+![Needs Revision project card](images/needs-revision-card.png)
 
 **Figure 8.** Needs Revision project with latest admin remarks.
 
@@ -224,7 +222,7 @@ After resubmission, the project returns to the review workflow and becomes read-
 
 ### Open Review Charts
 
-![Admin Review Charts](images/wavelab-user-manual/08-admin-review-charts.png)
+![Admin Review Charts](images/admin-review-charts.png)
 
 **Figure 9.** Admin Review Charts page.
 
@@ -246,7 +244,7 @@ The statistic cards show totals for the current search and filter state.
 
 ### Open the Project Review Modal
 
-![Project Review Modal preview mode](images/wavelab-user-manual/09-review-modal-preview.png)
+![Project Review Modal preview mode](images/review-modal-preview.png)
 
 **Figure 10.** Project Review Modal in Preview mode.
 
@@ -278,7 +276,7 @@ Use Preview mode to:
 
 ### Use Diff mode
 
-![Project Review Modal diff mode](images/wavelab-user-manual/10-review-modal-diff.png)
+![Project Review Modal diff mode](images/review-modal-diff.png)
 
 **Figure 11.** Diff mode showing previous and current project versions.
 
@@ -299,7 +297,7 @@ The counters help summarize the comparison:
 
 ### Add a review comment
 
-![Review remarks and action buttons](images/wavelab-user-manual/11-review-remarks-actions.png)
+![Review remarks and action buttons](images/review-remarks-actions.png)
 
 **Figure 12.** Remarks field and review action buttons.
 
@@ -363,7 +361,7 @@ Published projects are final and read-only.
 
 ## Notifications
 
-![Notification bell dropdown](images/wavelab-user-manual/13-notification-bell.png)
+![Notification bell dropdown](images/notification-bell.png)
 
 **Figure 13.** Notification bell with recent project activity.
 
@@ -386,9 +384,9 @@ To check notifications:
 
 ## Theme support
 
-![Dark mode Project Library](images/wavelab-user-manual/14-theme-dark-mode.png)
+![Light mode Project Library](images/theme-light-mode.png)
 
-**Figure 14.** Dark mode view.
+**Figure 14.** Light mode view.
 
 WaveLab supports light and dark themes.
 
