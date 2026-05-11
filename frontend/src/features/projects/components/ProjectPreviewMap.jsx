@@ -15,11 +15,8 @@ const DEFAULT_BOUNDS = [
 ];
 const FEATURE_CACHE_LIMIT = 80;
 const FEATURE_CACHE_TTL_MS = 30_000;
-const PREVIEW_MARKER_ICON_ID = 'project-preview-warning-symbol';
-const PREVIEW_MARKER_SIZE = {
-  width: 72,
-  height: 72,
-};
+const PREVIEW_MARKER_ICON_ID = 'project-preview-hurricane';
+const PREVIEW_MARKER_ICON_PATH = '/hurricane.png';
 
 const featureCache = new Map();
 const featureRequestCache = new Map();
@@ -83,76 +80,26 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
-function createPreviewMarkerImageData() {
-  const canvas = document.createElement('canvas');
-  canvas.width = PREVIEW_MARKER_SIZE.width;
-  canvas.height = PREVIEW_MARKER_SIZE.height;
-
-  const ctx = canvas.getContext('2d');
-  const center = 36;
-
-  ctx.shadowColor = 'rgba(15, 23, 42, 0.35)';
-  ctx.shadowBlur = 8;
-  ctx.shadowOffsetY = 4;
-
-  ctx.beginPath();
-  ctx.moveTo(center, 5);
-  ctx.lineTo(67, center);
-  ctx.lineTo(center, 67);
-  ctx.lineTo(5, center);
-  ctx.closePath();
-  ctx.fillStyle = '#f97316';
-  ctx.fill();
-
-  ctx.shadowColor = 'transparent';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = '#0f172a';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(center, 14);
-  ctx.lineTo(58, center);
-  ctx.lineTo(center, 58);
-  ctx.lineTo(14, center);
-  ctx.closePath();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(center, center, 15, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = '#0284c7';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(center, 22);
-  ctx.lineTo(center, 39);
-  ctx.lineWidth = 5;
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#0f172a';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(center, 47, 3, 0, Math.PI * 2);
-  ctx.fillStyle = '#0f172a';
-  ctx.fill();
-
-  const imageData = ctx.getImageData(0, 0, PREVIEW_MARKER_SIZE.width, PREVIEW_MARKER_SIZE.height);
-
-  return {
-    width: PREVIEW_MARKER_SIZE.width,
-    height: PREVIEW_MARKER_SIZE.height,
-    data: imageData.data,
-  };
-}
-
 function ensurePreviewMarkerIcon(map) {
-  if (map.hasImage(PREVIEW_MARKER_ICON_ID)) return;
-  map.addImage(PREVIEW_MARKER_ICON_ID, createPreviewMarkerImageData(), { pixelRatio: 2 });
+  if (map.hasImage(PREVIEW_MARKER_ICON_ID)) {
+    return Promise.resolve(true);
+  }
+
+  return new Promise((resolve) => {
+    map.loadImage(PREVIEW_MARKER_ICON_PATH, (error, image) => {
+      if (error || !image) {
+        console.error('[ProjectPreviewMap] Failed to load hurricane preview marker:', error);
+        resolve(false);
+        return;
+      }
+
+      if (!map.hasImage(PREVIEW_MARKER_ICON_ID)) {
+        map.addImage(PREVIEW_MARKER_ICON_ID, image);
+      }
+
+      resolve(true);
+    });
+  });
 }
 
 function addPreviewLayers(map, featureCollection) {
@@ -162,8 +109,6 @@ function addPreviewLayers(map, featureCollection) {
     map.getSource(sourceId).setData(featureCollection);
     return;
   }
-
-  ensurePreviewMarkerIcon(map);
 
   map.addSource(sourceId, {
     type: 'geojson',
@@ -217,19 +162,34 @@ function addPreviewLayers(map, featureCollection) {
     },
   });
 
-  map.addLayer({
-    id: 'project-preview-points-symbol',
-    type: 'symbol',
-    source: sourceId,
-    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-    layout: {
-      'icon-image': PREVIEW_MARKER_ICON_ID,
-      'icon-size': 0.46,
-      'icon-anchor': 'center',
-      'icon-allow-overlap': true,
-      'icon-ignore-placement': true,
-    },
-  });
+  if (map.hasImage(PREVIEW_MARKER_ICON_ID)) {
+    map.addLayer({
+      id: 'project-preview-points-symbol',
+      type: 'symbol',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+      layout: {
+        'icon-image': PREVIEW_MARKER_ICON_ID,
+        'icon-size': 0.36,
+        'icon-anchor': 'center',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    });
+  } else {
+    map.addLayer({
+      id: 'project-preview-points-symbol',
+      type: 'circle',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+      paint: {
+        'circle-color': '#f97316',
+        'circle-radius': 8,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 3,
+      },
+    });
+  }
 
   map.addLayer({
     id: 'project-preview-points-label',
@@ -475,23 +435,31 @@ function ProjectPreviewMap({
   }, [shouldRenderMap]);
 
   useEffect(() => {
+    let isMounted = true;
     const map = mapRef.current;
-    if (!map || !isReady || !hasFeatures) return;
+    if (!map || !isReady || !hasFeatures) return undefined;
 
-    addPreviewLayers(map, featureCollection);
+    ensurePreviewMarkerIcon(map).then(() => {
+      if (!isMounted || !mapRef.current) return;
+      addPreviewLayers(map, featureCollection);
 
-    if (fittedFeaturesKeyRef.current === featureKey) return;
+      if (fittedFeaturesKeyRef.current === featureKey) return;
 
-    const bounds = getFeatureBounds(featureCollection);
+      const bounds = getFeatureBounds(featureCollection);
 
-    if (bounds) {
-      map.fitBounds(bounds, {
-        padding: 72,
-        maxZoom: featureCollection.features.length === 1 ? 8 : 10,
-        duration: 0,
-      });
-      fittedFeaturesKeyRef.current = featureKey;
-    }
+      if (bounds) {
+        map.fitBounds(bounds, {
+          padding: 72,
+          maxZoom: featureCollection.features.length === 1 ? 8 : 10,
+          duration: 0,
+        });
+        fittedFeaturesKeyRef.current = featureKey;
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, [featureCollection, featureKey, hasFeatures, isReady]);
 
   return (
