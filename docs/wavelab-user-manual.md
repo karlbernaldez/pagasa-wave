@@ -11,6 +11,8 @@ This manual covers two user roles:
 - **Forecaster**: creates forecast projects, adds annotations in Studio, submits projects for review, and revises projects when requested.
 - **Admin**: reviews submitted projects, adds comments, requests revisions, approves projects, rejects projects, and publishes approved projects.
 
+> **Screenshot note:** This manual includes image placeholders. Add screenshots to `docs/images/wavelab-user-manual/` using the file names listed in `docs/images/wavelab-user-manual/README.md`.
+
 ## User roles
 
 ### Forecaster
@@ -65,12 +67,24 @@ WaveLab projects move through a controlled workflow.
 
 ### Open the Project Library
 
+![Forecaster Project Library card view](images/wavelab-user-manual/01-forecaster-project-library-cards.png)
+
+**Figure 1.** Forecaster Project Library in card view.
+
 1. Log in with a Forecaster account.
 2. Open the Forecaster dashboard.
 3. Go to **Project Library**.
 4. Review the project cards or switch to list view.
 
 The Project Library shows projects that match the current search, filters, and sorting settings.
+
+### Use list view
+
+![Forecaster Project Library list view](images/wavelab-user-manual/02-forecaster-project-library-list.png)
+
+**Figure 2.** Forecaster Project Library in list view with compact row actions.
+
+Use list view when you want to scan project names, statuses, dates, and action buttons in a table-style layout.
 
 ### Search, filter, and sort projects
 
@@ -84,6 +98,10 @@ The statistic cards show totals for the current search and filter state.
 
 ### Create a new project
 
+![Create project dialog](images/wavelab-user-manual/03-create-project-dialog.png)
+
+**Figure 3.** New project dialog or form.
+
 1. Open **Project Library**.
 2. Select the new project action.
 3. Enter the required project details.
@@ -94,6 +112,10 @@ A newly created project starts as **Draft**.
 
 ### Open a project in Studio
 
+![Studio editable project](images/wavelab-user-manual/04-studio-editable-project.png)
+
+**Figure 4.** Studio with an editable project.
+
 1. Open **Project Library**.
 2. Find the project.
 3. Select **Open**.
@@ -102,6 +124,10 @@ A newly created project starts as **Draft**.
 If the project is editable, Studio tools are available. If the project is locked, Studio opens in read-only mode.
 
 ### Add markers and symbols
+
+![Marker input method modal](images/wavelab-user-manual/05-marker-input-method.png)
+
+**Figure 5.** Marker input method options.
 
 1. Open an editable project in Studio.
 2. Select a marker or symbol tool.
@@ -117,6 +143,10 @@ Common marker types include:
 - Low pressure area
 - High pressure area
 - Less than 1 meter wave condition
+
+![Project preview card marker icons](images/wavelab-user-manual/06-project-preview-card-icons.png)
+
+**Figure 6.** Project Library preview cards show marker icons without labels.
 
 Project Library preview cards show marker icons without labels. Larger preview and review maps may show labels when needed.
 
@@ -149,21 +179,11 @@ After submission:
 - The project becomes read-only for the Forecaster.
 - Admin users can review the project.
 
-### Work with a revision-requested project
-
-When an admin requests changes, the project appears as **Needs Revision** or **Revision Requested**.
-
-1. Open **Project Library**.
-2. Find the project with the revision status.
-3. Review the latest admin remarks.
-4. Select **Open and Revise** or **Revise**.
-5. Make the required changes in Studio.
-6. Save the changes.
-7. Resubmit the project.
-
-After resubmission, the project returns to the review workflow and becomes read-only again.
-
 ### Understand read-only mode
+
+![Studio read-only project](images/wavelab-user-manual/07-studio-read-only-project.png)
+
+**Figure 7.** Studio read-only state after submission.
 
 Studio becomes read-only when the project is not editable.
 
@@ -182,9 +202,31 @@ In read-only mode:
 - Existing features cannot be changed.
 - The project can still be viewed.
 
+### Work with a revision-requested project
+
+![Needs Revision project card](images/wavelab-user-manual/12-needs-revision-card.png)
+
+**Figure 8.** Needs Revision project with latest admin remarks.
+
+When an admin requests changes, the project appears as **Needs Revision** or **Revision Requested**.
+
+1. Open **Project Library**.
+2. Find the project with the revision status.
+3. Review the latest admin remarks.
+4. Select **Open and Revise** or **Revise**.
+5. Make the required changes in Studio.
+6. Save the changes.
+7. Resubmit the project.
+
+After resubmission, the project returns to the review workflow and becomes read-only again.
+
 ## Admin review guide
 
 ### Open Review Charts
+
+![Admin Review Charts](images/wavelab-user-manual/08-admin-review-charts.png)
+
+**Figure 9.** Admin Review Charts page.
 
 1. Log in with an Admin account.
 2. Open the admin dashboard.
@@ -203,6 +245,10 @@ Admin views do not show draft-only projects that are not ready for review.
 The statistic cards show totals for the current search and filter state.
 
 ### Open the Project Review Modal
+
+![Project Review Modal preview mode](images/wavelab-user-manual/09-review-modal-preview.png)
+
+**Figure 10.** Project Review Modal in Preview mode.
 
 1. Find a project in Review Charts.
 2. Select **Review**.
@@ -232,6 +278,10 @@ Use Preview mode to:
 
 ### Use Diff mode
 
+![Project Review Modal diff mode](images/wavelab-user-manual/10-review-modal-diff.png)
+
+**Figure 11.** Diff mode showing previous and current project versions.
+
 Diff mode compares a previous project snapshot with the current submission.
 
 Use Diff mode to:
@@ -248,6 +298,10 @@ The counters help summarize the comparison:
 - **Removed**: annotations that existed previously but are no longer in the current submission.
 
 ### Add a review comment
+
+![Review remarks and action buttons](images/wavelab-user-manual/11-review-remarks-actions.png)
+
+**Figure 12.** Remarks field and review action buttons.
 
 1. Open the Project Review Modal.
 2. Type a comment in **Remarks / Comments**.
@@ -309,6 +363,10 @@ Published projects are final and read-only.
 
 ## Notifications
 
+![Notification bell dropdown](images/wavelab-user-manual/13-notification-bell.png)
+
+**Figure 13.** Notification bell with recent project activity.
+
 WaveLab uses notifications to keep users informed about review activity.
 
 Notifications may appear when:
@@ -327,6 +385,10 @@ To check notifications:
 3. Open the related project when needed.
 
 ## Theme support
+
+![Dark mode Project Library](images/wavelab-user-manual/14-theme-dark-mode.png)
+
+**Figure 14.** Dark mode view.
 
 WaveLab supports light and dark themes.
 
