@@ -129,11 +129,16 @@ function ensurePreviewMarkerIcons(map) {
   return Promise.all(PREVIEW_MARKER_IMAGES.map((marker) => loadPreviewMarkerImage(map, marker)));
 }
 
-function addPreviewLayers(map, featureCollection) {
+function addPreviewLayers(map, featureCollection, { showLabels = true } = {}) {
   const sourceId = 'project-preview-features';
 
   if (map.getSource(sourceId)) {
     map.getSource(sourceId).setData(featureCollection);
+
+    if (map.getLayer('project-preview-points-label')) {
+      map.setLayoutProperty('project-preview-points-label', 'visibility', showLabels ? 'visible' : 'none');
+    }
+
     return;
   }
 
@@ -226,25 +231,27 @@ function addPreviewLayers(map, featureCollection) {
     });
   }
 
-  map.addLayer({
-    id: 'project-preview-points-label',
-    type: 'symbol',
-    source: sourceId,
-    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-    layout: {
-      'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], 'Marker'],
-      'text-size': 12,
-      'text-offset': [0, 1.8],
-      'text-anchor': 'top',
-      'text-allow-overlap': true,
-      'text-ignore-placement': true,
-    },
-    paint: {
-      'text-color': '#0f172a',
-      'text-halo-color': '#ffffff',
-      'text-halo-width': 1.5,
-    },
-  });
+  if (showLabels) {
+    map.addLayer({
+      id: 'project-preview-points-label',
+      type: 'symbol',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+      layout: {
+        'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], 'Marker'],
+        'text-size': 12,
+        'text-offset': [0, 1.8],
+        'text-anchor': 'top',
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': '#0f172a',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1.5,
+      },
+    });
+  }
 }
 
 async function loadProjectFeatures(projectId, scope) {
@@ -348,6 +355,7 @@ function ProjectPreviewMap({
   isDarkMode = false,
   emptyLabel = 'No annotations yet',
   lazy = true,
+  showLabels = true,
 }) {
   const [viewportRef, isNearViewport] = useNearViewport('500px', !lazy);
   const containerRef = useRef(null);
@@ -476,7 +484,7 @@ function ProjectPreviewMap({
 
     ensurePreviewMarkerIcons(map).then(() => {
       if (!isMounted || !mapRef.current) return;
-      addPreviewLayers(map, featureCollection);
+      addPreviewLayers(map, featureCollection, { showLabels });
 
       if (fittedFeaturesKeyRef.current === featureKey) return;
 
@@ -495,7 +503,7 @@ function ProjectPreviewMap({
     return () => {
       isMounted = false;
     };
-  }, [featureCollection, featureKey, hasFeatures, isReady]);
+  }, [featureCollection, featureKey, hasFeatures, isReady, showLabels]);
 
   return (
     <div
