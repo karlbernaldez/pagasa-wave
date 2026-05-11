@@ -42,6 +42,19 @@ async function requireEditableProject(req, _res, next) {
   }
 }
 
+async function preventAdminSelfReview(req, _res, next) {
+  try {
+    const project = await Project.findById(req.params.id).select('owner');
+    if (!project) throwError('Project not found', 404);
+    if (String(project.owner) === String(req.user?.id)) {
+      throwError('Admins cannot review their own projects', 403);
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 router.use(protect);
 
 // ─────────────────────────────────────────────
@@ -49,19 +62,19 @@ router.use(protect);
 // ─────────────────────────────────────────────
 router.get('/admin/all', isAdmin, getAdminProjects);
 
-router.patch('/:id/start-review', isAdmin, startReviewProject);
+router.patch('/:id/start-review', isAdmin, preventAdminSelfReview, startReviewProject);
 
-router.post('/:id/review-comment', isAdmin, addReviewComment);
+router.post('/:id/review-comment', isAdmin, preventAdminSelfReview, addReviewComment);
 
-router.patch('/:id/request-revision', isAdmin, requestProjectRevision);
+router.patch('/:id/request-revision', isAdmin, preventAdminSelfReview, requestProjectRevision);
 
-router.patch('/:id/approve', isAdmin, approveProject);
+router.patch('/:id/approve', isAdmin, preventAdminSelfReview, approveProject);
 
-router.patch('/:id/reject', isAdmin, rejectProject);
+router.patch('/:id/reject', isAdmin, preventAdminSelfReview, rejectProject);
 
-router.patch('/:id/publish', isAdmin, publishProject);
+router.patch('/:id/publish', isAdmin, preventAdminSelfReview, publishProject);
 
-router.patch('/:id/archive', isAdmin, archiveProject);
+router.patch('/:id/archive', isAdmin, preventAdminSelfReview, archiveProject);
 
 // ─────────────────────────────────────────────
 // Owner routes
