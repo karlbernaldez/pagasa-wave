@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import Button from "@/components/ui/Button";
 import {
+  canEditProjectStatus,
   getProjectStatusLabel,
   getProjectStatusStyle,
   isProjectRevisionRequested,
@@ -34,11 +35,16 @@ function getStatus(project) {
   };
 }
 
+function getOpenActionLabel({ isReviewMode, needsRevision, compact = false }) {
+  if (isReviewMode) return "Review";
+  if (needsRevision) return compact ? "Revise" : "Open and Revise";
+  return "Open";
+}
+
 function ProjectMobileRow({
   project,
   isDarkMode,
   isReviewMode,
-  hasMenuActions,
   active,
   setActive,
   onOpen,
@@ -48,6 +54,8 @@ function ProjectMobileRow({
   const projectId = getProjectId(project);
   const status = getStatus(project);
   const latestRemarks = project.latestReviewRemarks;
+  const canManageProject = !isReviewMode && canEditProjectStatus(project.status);
+  const hasMenuActions = canManageProject && Boolean(onRename || onDelete);
 
   return (
     <article className={`rounded-2xl border p-4 shadow-sm ${isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white"} ${status.needsRevision ? (isDarkMode ? "ring-1 ring-amber-400/20" : "ring-1 ring-amber-100") : ""}`}>
@@ -89,13 +97,14 @@ function ProjectMobileRow({
         </div>
       </dl>
 
-      <div className={`relative mt-4 flex items-center gap-2 border-t pt-4 ${isDarkMode ? "border-white/10" : "border-slate-100"}`}>
-        <Button size="sm" icon={ExternalLink} onClick={() => onOpen(project)}>
-          {isReviewMode ? "Review" : status.needsRevision ? "Open and Revise" : "Open"}
+      <div className={`relative mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t pt-4 ${isDarkMode ? "border-white/10" : "border-slate-100"}`}>
+        <Button className="w-full min-w-0" size="sm" icon={ExternalLink} onClick={() => onOpen(project)}>
+          {getOpenActionLabel({ isReviewMode, needsRevision: status.needsRevision, compact: true })}
         </Button>
 
         {hasMenuActions && (
           <Button
+            className="shrink-0"
             variant="icon"
             size="sm"
             icon={MoreHorizontal}
@@ -152,7 +161,6 @@ export default function ProjectTable({
 }) {
   const [active, setActive] = useState(null);
   const isReviewMode = mode === "review";
-  const hasMenuActions = Boolean(onRename || onDelete);
 
   if (loading) {
     return (
@@ -190,7 +198,6 @@ export default function ProjectTable({
             project={project}
             isDarkMode={isDarkMode}
             isReviewMode={isReviewMode}
-            hasMenuActions={hasMenuActions}
             active={active}
             setActive={setActive}
             onOpen={onOpen}
@@ -201,15 +208,15 @@ export default function ProjectTable({
       </div>
 
       <div className={`hidden overflow-x-auto rounded-xl border md:block ${isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white"}`}>
-        <table className="w-full text-sm">
+        <table className="w-full table-fixed text-sm">
           <thead className={isDarkMode ? "bg-slate-950/70 font-semibold text-slate-300" : "bg-slate-50 font-semibold text-slate-600"}>
             <tr>
-              <th className="px-4 py-3 text-left">Forecast Project</th>
-              {isReviewMode && <th className="px-4 py-3 text-left">Owner</th>}
-              <th className="px-4 py-3 text-left">Forecast Date</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-left">Last Updated</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th className="w-[34%] px-4 py-3 text-left">Forecast Project</th>
+              {isReviewMode && <th className="w-[16%] px-4 py-3 text-left">Owner</th>}
+              <th className="w-[14%] px-4 py-3 text-left">Forecast Date</th>
+              <th className="w-[14%] px-4 py-3 text-left">Status</th>
+              <th className="w-[16%] px-4 py-3 text-left">Last Updated</th>
+              <th className="w-[120px] px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
 
@@ -218,12 +225,14 @@ export default function ProjectTable({
               const projectId = getProjectId(project);
               const status = getStatus(project);
               const latestRemarks = project.latestReviewRemarks;
+              const canManageProject = !isReviewMode && canEditProjectStatus(project.status);
+              const hasMenuActions = canManageProject && Boolean(onRename || onDelete);
 
               return (
                 <tr key={projectId} className={`border-t transition ${isDarkMode ? "border-white/10 hover:bg-white/5" : "border-slate-100 hover:bg-slate-50"} ${status.needsRevision ? (isDarkMode ? "bg-amber-500/5" : "bg-amber-50/30") : ""}`}>
-                  <td className="px-4 py-3">
-                    <p className={`font-semibold ${isDarkMode ? "text-slate-100" : "text-slate-900"}`}>{project.name}</p>
-                    <p className={`mt-0.5 text-xs font-semibold uppercase tracking-[0.12em] ${isDarkMode ? "text-slate-500" : "text-slate-400"}`}>
+                  <td className="min-w-0 px-4 py-3">
+                    <p className={`truncate font-semibold ${isDarkMode ? "text-slate-100" : "text-slate-900"}`} title={project.name}>{project.name}</p>
+                    <p className={`mt-0.5 truncate text-xs font-semibold uppercase tracking-[0.12em] ${isDarkMode ? "text-slate-500" : "text-slate-400"}`}>
                       {project.chartType || "Forecast"}
                     </p>
                     {status.needsRevision && latestRemarks?.comment && (
@@ -235,33 +244,34 @@ export default function ProjectTable({
                   </td>
 
                   {isReviewMode && (
-                    <td className={`px-4 py-3 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
-                      {project.ownerDisplay || "Project Owner"}
+                    <td className={`min-w-0 px-4 py-3 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
+                      <span className="block truncate">{project.ownerDisplay || "Project Owner"}</span>
                     </td>
                   )}
 
                   <td className={`px-4 py-3 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
-                    {formatDate(project.forecastDate)}
+                    <span className="block truncate">{formatDate(project.forecastDate)}</span>
                   </td>
 
                   <td className="px-4 py-3">
-                    <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${status.className}`}>
+                    <span className={`inline-flex max-w-full truncate rounded-full border px-2.5 py-1 text-xs font-bold ${status.className}`}>
                       {status.label}
                     </span>
                   </td>
 
                   <td className={`px-4 py-3 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
-                    {formatDate(project.updatedAt || project.submittedAt || project.createdAt, "MMM d, yyyy hh:mm a")}
+                    <span className="block truncate">{formatDate(project.updatedAt || project.submittedAt || project.createdAt, "MMM d, yyyy hh:mm a")}</span>
                   </td>
 
                   <td className="relative px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" onClick={() => onOpen(project)} icon={ExternalLink}>
-                        {isReviewMode ? "Review" : status.needsRevision ? "Open and Revise" : "Open"}
+                    <div className="inline-flex max-w-full items-center justify-end gap-2">
+                      <Button className="shrink-0" size="sm" onClick={() => onOpen(project)} icon={ExternalLink}>
+                        {getOpenActionLabel({ isReviewMode, needsRevision: status.needsRevision, compact: true })}
                       </Button>
 
                       {hasMenuActions && (
                         <Button
+                          className="shrink-0"
                           variant="icon"
                           size="sm"
                           icon={MoreHorizontal}
