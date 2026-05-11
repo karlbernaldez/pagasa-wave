@@ -55,6 +55,16 @@ function getDateRangeFilter(dateRange) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
+function buildStatusCounts(rows) {
+  return ALLOWED_ADMIN_STATUSES.reduce((counts, status) => {
+    counts[status] = 0;
+    return counts;
+  }, rows.reduce((counts, row) => {
+    if (row?._id) counts[row._id] = row.count;
+    return counts;
+  }, {}));
+}
+
 async function getOwnerSearchIds(searchRegex) {
   const owners = await User.find({
     $or: [
@@ -154,7 +164,7 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
     _id: -1,
   };
 
-  const [projects, total] = await Promise.all([
+  const [projects, total, statusCountRows] = await Promise.all([
     Project.find(query)
       .populate('owner', 'firstName lastName email username')
       .populate('reviewStartedBy', 'firstName lastName email username')
@@ -166,6 +176,10 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
       .limit(limitNumber)
       .lean(),
     Project.countDocuments(query),
+    Project.aggregate([
+      { $match: query },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
   ]);
 
   res.json({
@@ -174,5 +188,6 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
     page: pageNumber,
     limit: limitNumber,
     totalPages: Math.max(1, Math.ceil(total / limitNumber)),
+    statusCounts: buildStatusCounts(statusCountRows),
   });
 });
