@@ -1,19 +1,32 @@
 import { deleteFeature } from '@/api/featureServices';
 
-export async function removeFeature(draw, layerID) {
-    if (draw?.delete) {
-        draw.trash();
-        draw.delete(layerID);
-    }
+function normalizePersistedSourceId(layerOrId) {
+  const sourceId =
+    layerOrId?.sourceID ||
+    layerOrId?.sourceId ||
+    layerOrId?.source ||
+    layerOrId?.id ||
+    layerOrId;
 
-    const cleanedID = typeof layerID === 'string' && layerID.endsWith('_dash')
-        ? layerID.slice(0, -5)
-        : layerID;
+  if (typeof sourceId === 'string' && sourceId.endsWith('_dash')) {
+    return sourceId.slice(0, -5);
+  }
 
-    try {
-        const token = localStorage.getItem('authToken');
-        await deleteFeature(cleanedID ?? layerID, token);
-    } catch (err) {
-        console.error(`Failed to delete feature "${layerID}" from backend.`, err);
-    }
+  return sourceId;
+}
+
+export async function removeFeature(draw, layerOrId) {
+  const persistedSourceId = normalizePersistedSourceId(layerOrId);
+  const drawLayerId = layerOrId?.id || layerOrId;
+
+  if (draw?.delete) {
+    draw.trash();
+    if (drawLayerId) draw.delete(drawLayerId);
+  }
+
+  try {
+    await deleteFeature(persistedSourceId);
+  } catch (err) {
+    console.error(`Failed to delete feature "${persistedSourceId}" from backend.`, err);
+  }
 }
