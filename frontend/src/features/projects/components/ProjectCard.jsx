@@ -16,6 +16,7 @@ import Button from '@/components/ui/Button';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
 import {
   PROJECT_STATUS,
+  canEditProjectStatus,
   canSubmitProjectStatus,
   getProjectStatusLabel,
   getProjectStatusStyle,
@@ -61,6 +62,8 @@ function getProjectFeatures(project) {
 }
 
 function getDefaultMenuActions({ project, onRename, onDelete }) {
+  if (!canEditProjectStatus(project?.status)) return [];
+
   return [
     onRename && {
       key: 'rename',
