@@ -112,36 +112,36 @@ export const validateGeometry = (geometry) => {
   }
 };
 
+function buildRenamedFeatureProperties(newName) {
+  return {
+    name: newName,
+    'properties.labelValue': newName,
+    'properties.title': newName,
+    'properties.name': newName,
+  };
+}
+
 /**
- * Build new SourceId and update data for feature renaming
+ * Build new SourceId and update data for feature renaming.
+ * Keep all user-visible label fields in sync so Studio, Project Library previews,
+ * review modals, and reload hydration all display the same renamed annotation.
+ *
  * @param {Feature} feature - Existing feature
  * @param {string} newName - New feature name
  * @returns {[string, Object]} - New sourceId and update object
  */
 export const buildNewSourceIdAndUpdateData = (feature, newName) => {
-  const type = feature.properties.type;
-  if (['low_pressure', 'high_pressure', 'typhoon', 'less_1'].includes(type)) {
-    const newSourceId = `${type}_${newName}`;
-    return [
-      newSourceId,
-      {
-        sourceId: newSourceId,
-        name: newName,
-        'properties.labelValue': newName,
-        'properties.title': newName,
-      },
-    ];
-  } else {
-    const newSourceId = newName;
-    return [
-      newSourceId,
-      {
-        sourceId: newSourceId,
-        name: newName,
-        'properties.title': newName,
-      },
-    ];
-  }
+  const type = feature.properties.type || feature.properties.markerType || feature.properties.symbolType;
+  const isMarker = ['low_pressure', 'high_pressure', 'typhoon', 'less_1'].includes(type);
+  const newSourceId = isMarker ? `${type}_${newName}` : newName;
+
+  return [
+    newSourceId,
+    {
+      sourceId: newSourceId,
+      ...buildRenamedFeatureProperties(newName),
+    },
+  ];
 };
 
 /**
