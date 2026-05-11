@@ -23,24 +23,84 @@ const PREVIEW_MARKER_IMAGES = [
   { id: 'preview-marker-less-1', path: '/L1.png' },
 ];
 
+const MARKER_TYPE_TO_ICON = {
+  typhoon: 'preview-marker-typhoon',
+  low_pressure: 'preview-marker-low-pressure',
+  high_pressure: 'preview-marker-high-pressure',
+  less_1: 'preview-marker-less-1',
+};
+
+const MARKER_TYPE_ALIASES = {
+  typhoon: 'typhoon',
+  hurricane: 'typhoon',
+  storm: 'typhoon',
+  tropical_cyclone: 'typhoon',
+  tropicalcyclone: 'typhoon',
+  'tropical cyclone': 'typhoon',
+  low_pressure: 'low_pressure',
+  lowpressure: 'low_pressure',
+  'low pressure': 'low_pressure',
+  lpa: 'low_pressure',
+  high_pressure: 'high_pressure',
+  highpressure: 'high_pressure',
+  'high pressure': 'high_pressure',
+  hpa: 'high_pressure',
+  less_1: 'less_1',
+  less1: 'less_1',
+  less_than_1m: 'less_1',
+  lessthan1m: 'less_1',
+  'less than 1m': 'less_1',
+  'less than 1 meter': 'less_1',
+  low_waves: 'less_1',
+  'low waves': 'less_1',
+};
+
+const MARKER_TYPE_EXPRESSION = [
+  'downcase',
+  [
+    'to-string',
+    [
+      'coalesce',
+      ['get', 'markerType'],
+      ['get', 'symbolType'],
+      ['get', 'type'],
+      ['get', 'icon'],
+      ['get', 'title'],
+      ['get', 'name'],
+      '',
+    ],
+  ],
+];
+
 const PREVIEW_MARKER_ICON_EXPRESSION = [
   'match',
-  ['downcase', ['to-string', ['coalesce', ['get', 'type'], ['get', 'markerType'], ['get', 'symbolType'], ['get', 'icon'], ['get', 'title'], ['get', 'name'], '']]],
-  'low_pressure', 'preview-marker-low-pressure',
-  'low pressure', 'preview-marker-low-pressure',
-  'lpa', 'preview-marker-low-pressure',
-  'high_pressure', 'preview-marker-high-pressure',
-  'high pressure', 'preview-marker-high-pressure',
-  'hpa', 'preview-marker-high-pressure',
-  'less_1', 'preview-marker-less-1',
-  'less than 1m', 'preview-marker-less-1',
-  'less than 1 meter', 'preview-marker-less-1',
-  'low waves', 'preview-marker-less-1',
-  'typhoon', 'preview-marker-typhoon',
-  'tropical cyclone', 'preview-marker-typhoon',
-  'storm', 'preview-marker-typhoon',
-  'hurricane', 'preview-marker-typhoon',
-  'preview-marker-typhoon',
+  MARKER_TYPE_EXPRESSION,
+  'typhoon', MARKER_TYPE_TO_ICON.typhoon,
+  'hurricane', MARKER_TYPE_TO_ICON.typhoon,
+  'storm', MARKER_TYPE_TO_ICON.typhoon,
+  'tropical_cyclone', MARKER_TYPE_TO_ICON.typhoon,
+  'tropical cyclone', MARKER_TYPE_TO_ICON.typhoon,
+  'low_pressure', MARKER_TYPE_TO_ICON.low_pressure,
+  'low pressure', MARKER_TYPE_TO_ICON.low_pressure,
+  'lpa', MARKER_TYPE_TO_ICON.low_pressure,
+  'high_pressure', MARKER_TYPE_TO_ICON.high_pressure,
+  'high pressure', MARKER_TYPE_TO_ICON.high_pressure,
+  'hpa', MARKER_TYPE_TO_ICON.high_pressure,
+  'less_1', MARKER_TYPE_TO_ICON.less_1,
+  'less than 1m', MARKER_TYPE_TO_ICON.less_1,
+  'less than 1 meter', MARKER_TYPE_TO_ICON.less_1,
+  'low waves', MARKER_TYPE_TO_ICON.less_1,
+  MARKER_TYPE_TO_ICON.typhoon,
+];
+
+const PREVIEW_MARKER_SIZE_EXPRESSION = [
+  'match',
+  MARKER_TYPE_EXPRESSION,
+  'less_1', 0.36,
+  'less than 1m', 0.36,
+  'less than 1 meter', 0.36,
+  'low waves', 0.36,
+  0.28,
 ];
 
 const featureCache = new Map();
@@ -78,6 +138,47 @@ function getCachedFeatures(key) {
   featureCache.set(key, entry);
 
   return entry.value;
+}
+
+function normalizeMarkerType(value) {
+  const direct = String(value || '')
+    .trim()
+    .toLowerCase();
+  const normalized = direct.replace(/[\s-]+/g, '_');
+
+  return MARKER_TYPE_ALIASES[direct] || MARKER_TYPE_ALIASES[normalized] || normalized || 'typhoon';
+}
+
+function getFeatureMarkerType(feature) {
+  const properties = feature?.properties || {};
+  return normalizeMarkerType(
+    properties.markerType ||
+    properties.symbolType ||
+    properties.type ||
+    properties.icon ||
+    properties.title ||
+    properties.name
+  );
+}
+
+function withNormalizedMarkerProperties(featureCollection) {
+  return {
+    ...featureCollection,
+    features: featureCollection.features.map((feature) => {
+      if (!['Point', 'MultiPoint'].includes(feature?.geometry?.type)) return feature;
+
+      const markerType = getFeatureMarkerType(feature);
+      return {
+        ...feature,
+        properties: {
+          ...(feature.properties || {}),
+          markerType,
+          symbolType: markerType,
+          previewMarkerIcon: MARKER_TYPE_TO_ICON[markerType] || MARKER_TYPE_TO_ICON.typhoon,
+        },
+      };
+    }),
+  };
 }
 
 function extendBoundsFromCoordinates(bounds, coordinates) {
@@ -201,16 +302,8 @@ function addPreviewLayers(map, featureCollection, { showLabels = true } = {}) {
       source: sourceId,
       filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
       layout: {
-        'icon-image': PREVIEW_MARKER_ICON_EXPRESSION,
-        'icon-size': [
-          'match',
-          ['downcase', ['to-string', ['coalesce', ['get', 'type'], ['get', 'markerType'], ['get', 'symbolType'], ['get', 'icon'], ['get', 'title'], ['get', 'name'], '']]],
-          'less_1', 0.2,
-          'typhoon', 0.025,
-          'low_pressure', 0.012,
-          'high_pressure', 0.012,
-          0.012,
-        ],
+        'icon-image': ['coalesce', ['get', 'previewMarkerIcon'], PREVIEW_MARKER_ICON_EXPRESSION],
+        'icon-size': PREVIEW_MARKER_SIZE_EXPRESSION,
         'icon-anchor': 'center',
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
@@ -332,6 +425,7 @@ function getFeatureRenderKey(featureCollection) {
     featureCollection.features.map((feature) => ({
       geometry: feature.geometry,
       id: getFeatureIdentity(feature),
+      markerType: feature.properties?.markerType,
     }))
   );
 }
@@ -420,11 +514,11 @@ function ProjectPreviewMap({
   }, [featureScope, isNearViewport, projectId, shouldFetchFeatures]);
 
   const featureCollection = useMemo(() => {
-    if (hasProvidedFeatures) {
-      return providedFeatureCollection;
-    }
+    const normalized = hasProvidedFeatures
+      ? providedFeatureCollection
+      : normalizeFeatureCollection(remoteFeatures);
 
-    return normalizeFeatureCollection(remoteFeatures);
+    return withNormalizedMarkerProperties(normalized);
   }, [hasProvidedFeatures, providedFeatureCollection, remoteFeatures]);
 
   const hasFeatures = featureCollection.features.length > 0;
