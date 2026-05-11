@@ -15,10 +15,10 @@ const DEFAULT_BOUNDS = [
 ];
 const FEATURE_CACHE_LIMIT = 80;
 const FEATURE_CACHE_TTL_MS = 30_000;
-const PREVIEW_MARKER_ICON_ID = 'project-preview-marker-pin';
+const PREVIEW_MARKER_ICON_ID = 'project-preview-warning-symbol';
 const PREVIEW_MARKER_SIZE = {
   width: 72,
-  height: 88,
+  height: 72,
 };
 
 const featureCache = new Map();
@@ -89,30 +89,39 @@ function createPreviewMarkerImageData() {
   canvas.height = PREVIEW_MARKER_SIZE.height;
 
   const ctx = canvas.getContext('2d');
-  const x = 36;
-  const y = 32;
+  const center = 36;
 
   ctx.shadowColor = 'rgba(15, 23, 42, 0.35)';
   ctx.shadowBlur = 8;
   ctx.shadowOffsetY = 4;
 
   ctx.beginPath();
-  ctx.moveTo(x, 78);
-  ctx.bezierCurveTo(15, 48, 10, 36, 10, 26);
-  ctx.bezierCurveTo(10, 10, 22, 2, x, 2);
-  ctx.bezierCurveTo(50, 2, 62, 10, 62, 26);
-  ctx.bezierCurveTo(62, 36, 57, 48, x, 78);
+  ctx.moveTo(center, 5);
+  ctx.lineTo(67, center);
+  ctx.lineTo(center, 67);
+  ctx.lineTo(5, center);
   ctx.closePath();
   ctx.fillStyle = '#f97316';
   ctx.fill();
 
   ctx.shadowColor = 'transparent';
+  ctx.lineJoin = 'round';
   ctx.lineWidth = 5;
   ctx.strokeStyle = '#0f172a';
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(x, y, 13, 0, Math.PI * 2);
+  ctx.moveTo(center, 14);
+  ctx.lineTo(58, center);
+  ctx.lineTo(center, 58);
+  ctx.lineTo(14, center);
+  ctx.closePath();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(center, center, 15, 0, Math.PI * 2);
   ctx.fillStyle = '#ffffff';
   ctx.fill();
   ctx.lineWidth = 4;
@@ -120,7 +129,15 @@ function createPreviewMarkerImageData() {
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(x, y, 6, 0, Math.PI * 2);
+  ctx.moveTo(center, 22);
+  ctx.lineTo(center, 39);
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#0f172a';
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(center, 47, 3, 0, Math.PI * 2);
   ctx.fillStyle = '#0f172a';
   ctx.fill();
 
@@ -201,14 +218,14 @@ function addPreviewLayers(map, featureCollection) {
   });
 
   map.addLayer({
-    id: 'project-preview-points-pin',
+    id: 'project-preview-points-symbol',
     type: 'symbol',
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
     layout: {
       'icon-image': PREVIEW_MARKER_ICON_ID,
-      'icon-size': 0.42,
-      'icon-anchor': 'bottom',
+      'icon-size': 0.46,
+      'icon-anchor': 'center',
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
@@ -222,7 +239,7 @@ function addPreviewLayers(map, featureCollection) {
     layout: {
       'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], 'Marker'],
       'text-size': 12,
-      'text-offset': [0, 0.8],
+      'text-offset': [0, 1.8],
       'text-anchor': 'top',
       'text-allow-overlap': true,
       'text-ignore-placement': true,
