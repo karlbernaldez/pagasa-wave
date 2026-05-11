@@ -205,11 +205,11 @@ function addPreviewLayers(map, featureCollection, { showLabels = true } = {}) {
         'icon-size': [
           'match',
           ['downcase', ['to-string', ['coalesce', ['get', 'type'], ['get', 'markerType'], ['get', 'symbolType'], ['get', 'icon'], ['get', 'title'], ['get', 'name'], '']]],
-          'less_1', 0.42,
-          'less than 1m', 0.42,
-          'less than 1 meter', 0.42,
-          'low waves', 0.42,
-          0.36,
+          'less_1', 0.2,
+          'typhoon', 0.025,
+          'low_pressure', 0.012,
+          'high_pressure', 0.012,
+          0.012,
         ],
         'icon-anchor': 'center',
         'icon-allow-overlap': true,
@@ -338,9 +338,8 @@ function getFeatureRenderKey(featureCollection) {
 
 function PreviewPlaceholder({ isDarkMode, label, loading = false }) {
   return (
-    <div className={`absolute inset-0 flex items-center justify-center text-xs font-semibold backdrop-blur-[1px] ${
-      isDarkMode ? 'bg-slate-950/55 text-slate-400' : 'bg-white/55 text-slate-500'
-    }`}>
+    <div className={`absolute inset-0 flex items-center justify-center text-xs font-semibold backdrop-blur-[1px] ${isDarkMode ? 'bg-slate-950/55 text-slate-400' : 'bg-white/55 text-slate-500'
+      }`}>
       {loading ? 'Loading annotations…' : label}
     </div>
   );
@@ -508,9 +507,8 @@ function ProjectPreviewMap({
   return (
     <div
       ref={viewportRef}
-      className={`relative overflow-hidden rounded-xl border transition-colors ${
-        isDarkMode ? 'border-white/10 bg-slate-900' : 'border-slate-200 bg-slate-100'
-      } ${className}`}
+      className={`relative overflow-hidden rounded-xl border transition-colors ${isDarkMode ? 'border-white/10 bg-slate-900' : 'border-slate-200 bg-slate-100'
+        } ${className}`}
       style={containerStyle}
     >
       {shouldRenderMap ? (
