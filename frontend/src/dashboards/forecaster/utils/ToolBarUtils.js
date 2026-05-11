@@ -11,6 +11,34 @@ export const handleDrawModeChange = (mode, draw, setLayersRef) => {
   }
 };
 
+const MARKER_TYPE_ALIASES = {
+  typhoon: 'typhoon',
+  hurricane: 'typhoon',
+  storm: 'typhoon',
+  tropical_cyclone: 'typhoon',
+  tropicalcyclone: 'typhoon',
+  low_pressure: 'low_pressure',
+  lowpressure: 'low_pressure',
+  lpa: 'low_pressure',
+  high_pressure: 'high_pressure',
+  highpressure: 'high_pressure',
+  hpa: 'high_pressure',
+  less_1: 'less_1',
+  less1: 'less_1',
+  less_than_1m: 'less_1',
+  lessthan1m: 'less_1',
+  low_waves: 'less_1',
+};
+
+export function normalizeMarkerType(value) {
+  const normalized = String(value || 'typhoon')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  return MARKER_TYPE_ALIASES[normalized] || normalized || 'typhoon';
+}
+
 function getCoordinatePair(coords) {
   if (!coords) return null;
 
@@ -69,8 +97,9 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     return;
   }
 
+  const markerType = normalizeMarkerType(selectedType);
   const baseName = title?.trim() || 'Untitled Layer';
-  const sourceId = makeSafeSourceId(selectedType, baseName);
+  const sourceId = makeSafeSourceId(markerType, baseName);
   const panelId = sourceId;
   const closedMode = false;
 
@@ -82,7 +111,10 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     },
     properties: {
       title: baseName,
-      type: selectedType,
+      name: baseName,
+      type: markerType,
+      markerType,
+      symbolType: markerType,
     },
   };
 
@@ -110,7 +142,10 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
         isFront: false,
         project: activeProjectId,
         title: baseName,
-        type: selectedType,
+        name: baseName,
+        type: markerType,
+        markerType,
+        symbolType: markerType,
       },
       name: baseName,
       sourceId,
@@ -143,7 +178,8 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
         name: baseName,
         visible: true,
         locked: false,
-        type: selectedType,
+        type: markerType,
+        markerType,
       },
     ];
   });
