@@ -3,6 +3,10 @@ import { showSessionModal } from '@/components/ui/modals/SessionModal';
 
 const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/features`;
 
+function getCanonicalProjectId(projectId) {
+  return String(projectId || '').split(':')[0];
+}
+
 // ── Shared session-expired handler ────────────────────────────────────────────
 
 async function handleSessionExpired() {
@@ -64,12 +68,13 @@ export const createFeature = async (feature) => {
 };
 
 export const fetchFeatures = async (projectId) => {
-  if (!projectId) {
+  const canonicalProjectId = getCanonicalProjectId(projectId);
+  if (!canonicalProjectId) {
     throw new Error('Missing projectId when fetching features');
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/my-projects/${projectId}`, {
+    const response = await fetch(`${API_BASE_URL}/my-projects/${canonicalProjectId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -93,13 +98,14 @@ export const fetchFeatures = async (projectId) => {
 };
 
 export const fetchProjectFeatureCollection = async (projectId) => {
-  if (!projectId) {
+  const canonicalProjectId = getCanonicalProjectId(projectId);
+  if (!canonicalProjectId) {
     throw new Error('Missing projectId when fetching project FeatureCollection');
   }
 
   try {
     const response = await fetch(
-      `${API_BASE_URL}/admin/project/${projectId}/features`,
+      `${API_BASE_URL}/admin/project/${canonicalProjectId}/features`,
       {
         method: 'GET',
         credentials: 'include',
