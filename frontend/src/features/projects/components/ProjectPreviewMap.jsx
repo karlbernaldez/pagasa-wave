@@ -102,20 +102,11 @@ const PREVIEW_MARKER_ICON_EXPRESSION = [
 const PREVIEW_MARKER_SIZE_EXPRESSION = [
   'match',
   MARKER_TYPE_EXPRESSION,
-  'less_1', 0.32,
-  'less than 1m', 0.32,
-  'less-than-1m', 0.32,
-  'less than 1 meter', 0.32,
-  'low waves', 0.32,
-  'low_pressure', 0.24,
-  'low pressure', 0.24,
-  'low-pressure', 0.24,
-  'lpa', 0.24,
-  'high_pressure', 0.24,
-  'high pressure', 0.24,
-  'high-pressure', 0.24,
-  'hpa', 0.24,
-  0.28,
+  'typhoon', 0.02,
+  'less_1', 0.2,
+  'low_pressure', 0.015,
+  'high_pressure', 0.015,
+  0.02,
 ];
 
 const featureCache = new Map();
