@@ -44,6 +44,7 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
     setPage,
     total,
     totalPages,
+    statusCounts,
   } = projectState;
 
   const actions = useProjectLibraryActions({
@@ -60,8 +61,8 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
 
   const stats = !loading
     ? isAdmin
-      ? getAdminProjectStats(paged, total)
-      : getProjectStats(paged, total)
+      ? getAdminProjectStats(paged, total, statusCounts)
+      : getProjectStats(paged, total, statusCounts)
     : [];
 
   return {
