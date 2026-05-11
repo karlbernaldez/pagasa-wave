@@ -219,6 +219,7 @@ export default function ProjectCard({
           height={isReviewMode ? 190 : 168}
           isDarkMode={isDarkMode}
           className="rounded-none border-0"
+          showLabels={false}
         />
 
         <div className="absolute right-2 top-2 z-10 max-w-[calc(100%-16px)] sm:right-3 sm:top-3">
