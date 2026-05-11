@@ -13,37 +13,6 @@ The system is designed around two main work areas:
 - **Project Library and Studio**: used by Forecasters to manage projects, place forecast markers, draw annotations, and submit charts for review.
 - **Review Charts and Project Review Modal**: used by Admin reviewers to inspect submissions, compare changes, provide feedback, and publish approved work.
 
-## Media
-
-### WaveLab dashboard
-
-![WaveLab Dashboard](Wavelab.png)
-
-### Screenshot placeholders
-
-Add future README screenshots to `docs/images/readme/` and reference them here.
-
-| Area | Suggested file | Description |
-|---|---|---|
-| Project Library | `docs/images/readme/project-library.png` | Project card/list view with filters and status counters. |
-| Studio | `docs/images/readme/studio-map-workspace.png` | Map workspace with toolbar, layer panel, and forecast annotations. |
-| Review Charts | `docs/images/readme/admin-review-charts.png` | Admin review queue for submitted projects. |
-| Review Modal | `docs/images/readme/review-modal-preview.png` | Preview/diff review modal with remarks and actions. |
-| Dark Mode | `docs/images/readme/dark-mode.png` | Theme-aware Project Library or Studio view. |
-
-Example:
-
-```md
-![Studio map workspace](docs/images/readme/studio-map-workspace.png)
-```
-
-Guidelines:
-
-- Use PNG screenshots.
-- Keep screenshots focused on the relevant UI area.
-- Use sample data when possible.
-- Keep file names lowercase and descriptive.
-
 ## Key Features
 
 ### Project workflow
