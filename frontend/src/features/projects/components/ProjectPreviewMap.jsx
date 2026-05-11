@@ -14,6 +14,8 @@ const DEFAULT_BOUNDS = [
   [153.8595159535438, 25],
 ];
 const FEATURE_CACHE_LIMIT = 80;
+const FEATURE_CACHE_TTL_MS = 30_000;
+const PREVIEW_MARKER_ICON_ID = 'project-preview-marker-pin';
 
 const featureCache = new Map();
 const featureRequestCache = new Map();
@@ -25,7 +27,10 @@ function getFeatureCacheKey(projectId, scope) {
 function setCachedFeatures(key, value) {
   if (!key) return;
 
-  featureCache.set(key, value);
+  featureCache.set(key, {
+    value,
+    cachedAt: Date.now(),
+  });
 
   if (featureCache.size > FEATURE_CACHE_LIMIT) {
     const oldestKey = featureCache.keys().next().value;
@@ -36,11 +41,17 @@ function setCachedFeatures(key, value) {
 function getCachedFeatures(key) {
   if (!key || !featureCache.has(key)) return null;
 
-  const value = featureCache.get(key);
-  featureCache.delete(key);
-  featureCache.set(key, value);
+  const entry = featureCache.get(key);
 
-  return value;
+  if (!entry || Date.now() - entry.cachedAt > FEATURE_CACHE_TTL_MS) {
+    featureCache.delete(key);
+    return null;
+  }
+
+  featureCache.delete(key);
+  featureCache.set(key, entry);
+
+  return entry.value;
 }
 
 function extendBoundsFromCoordinates(bounds, coordinates) {
@@ -68,11 +79,59 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
+function createPreviewMarkerCanvas() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 72;
+  canvas.height = 88;
+
+  const ctx = canvas.getContext('2d');
+  const x = 36;
+  const y = 32;
+
+  ctx.shadowColor = 'rgba(15, 23, 42, 0.35)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 4;
+
+  ctx.beginPath();
+  ctx.moveTo(x, 78);
+  ctx.bezierCurveTo(15, 48, 10, 36, 10, 26);
+  ctx.bezierCurveTo(10, 10, 22, 2, x, 2);
+  ctx.bezierCurveTo(50, 2, 62, 10, 62, 26);
+  ctx.bezierCurveTo(62, 36, 57, 48, x, 78);
+  ctx.closePath();
+  ctx.fillStyle = '#f97316';
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#0f172a';
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x, y, 13, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = '#0284c7';
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x, y, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#0f172a';
+  ctx.fill();
+
+  return canvas;
+}
+
+function ensurePreviewMarkerIcon(map) {
+  if (map.hasImage(PREVIEW_MARKER_ICON_ID)) return;
+  map.addImage(PREVIEW_MARKER_ICON_ID, createPreviewMarkerCanvas(), { pixelRatio: 2 });
+}
+
 function removePreviewLayers(map) {
   [
     'project-preview-points-label',
-    'project-preview-points-core',
-    'project-preview-points-halo',
+    'project-preview-points-pin',
     'project-preview-lines-casing',
     'project-preview-lines',
     'project-preview-polygons-outline',
@@ -91,6 +150,8 @@ function addPreviewLayers(map, featureCollection) {
     map.getSource(sourceId).setData(featureCollection);
     return;
   }
+
+  ensurePreviewMarkerIcon(map);
 
   map.addSource(sourceId, {
     type: 'geojson',
@@ -145,30 +206,16 @@ function addPreviewLayers(map, featureCollection) {
   });
 
   map.addLayer({
-    id: 'project-preview-points-halo',
-    type: 'circle',
+    id: 'project-preview-points-pin',
+    type: 'symbol',
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-    paint: {
-      'circle-color': '#ffffff',
-      'circle-radius': 13,
-      'circle-opacity': 0.95,
-      'circle-stroke-color': '#0284c7',
-      'circle-stroke-width': 3,
-    },
-  });
-
-  map.addLayer({
-    id: 'project-preview-points-core',
-    type: 'circle',
-    source: sourceId,
-    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-    paint: {
-      'circle-color': '#f97316',
-      'circle-radius': 7,
-      'circle-stroke-color': '#0f172a',
-      'circle-stroke-width': 2,
-      'circle-opacity': 1,
+    layout: {
+      'icon-image': PREVIEW_MARKER_ICON_ID,
+      'icon-size': 0.42,
+      'icon-anchor': 'bottom',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
     },
   });
 
@@ -178,9 +225,9 @@ function addPreviewLayers(map, featureCollection) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
     layout: {
-      'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], 'Annotation'],
+      'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], 'Marker'],
       'text-size': 12,
-      'text-offset': [0, 1.6],
+      'text-offset': [0, 0.8],
       'text-anchor': 'top',
       'text-allow-overlap': true,
       'text-ignore-placement': true,
