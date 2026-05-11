@@ -40,14 +40,17 @@ const MARKER_TYPE_ALIASES = {
   low_pressure: 'low_pressure',
   lowpressure: 'low_pressure',
   'low pressure': 'low_pressure',
+  'low-pressure': 'low_pressure',
   lpa: 'low_pressure',
   high_pressure: 'high_pressure',
   highpressure: 'high_pressure',
   'high pressure': 'high_pressure',
+  'high-pressure': 'high_pressure',
   hpa: 'high_pressure',
   less_1: 'less_1',
   less1: 'less_1',
   less_than_1m: 'less_1',
+  'less-than-1m': 'less_1',
   lessthan1m: 'less_1',
   'less than 1m': 'less_1',
   'less than 1 meter': 'less_1',
@@ -82,12 +85,15 @@ const PREVIEW_MARKER_ICON_EXPRESSION = [
   'tropical cyclone', MARKER_TYPE_TO_ICON.typhoon,
   'low_pressure', MARKER_TYPE_TO_ICON.low_pressure,
   'low pressure', MARKER_TYPE_TO_ICON.low_pressure,
+  'low-pressure', MARKER_TYPE_TO_ICON.low_pressure,
   'lpa', MARKER_TYPE_TO_ICON.low_pressure,
   'high_pressure', MARKER_TYPE_TO_ICON.high_pressure,
   'high pressure', MARKER_TYPE_TO_ICON.high_pressure,
+  'high-pressure', MARKER_TYPE_TO_ICON.high_pressure,
   'hpa', MARKER_TYPE_TO_ICON.high_pressure,
   'less_1', MARKER_TYPE_TO_ICON.less_1,
   'less than 1m', MARKER_TYPE_TO_ICON.less_1,
+  'less-than-1m', MARKER_TYPE_TO_ICON.less_1,
   'less than 1 meter', MARKER_TYPE_TO_ICON.less_1,
   'low waves', MARKER_TYPE_TO_ICON.less_1,
   MARKER_TYPE_TO_ICON.typhoon,
@@ -96,10 +102,19 @@ const PREVIEW_MARKER_ICON_EXPRESSION = [
 const PREVIEW_MARKER_SIZE_EXPRESSION = [
   'match',
   MARKER_TYPE_EXPRESSION,
-  'less_1', 0.36,
-  'less than 1m', 0.36,
-  'less than 1 meter', 0.36,
-  'low waves', 0.36,
+  'less_1', 0.32,
+  'less than 1m', 0.32,
+  'less-than-1m', 0.32,
+  'less than 1 meter', 0.32,
+  'low waves', 0.32,
+  'low_pressure', 0.24,
+  'low pressure', 0.24,
+  'low-pressure', 0.24,
+  'lpa', 0.24,
+  'high_pressure', 0.24,
+  'high pressure', 0.24,
+  'high-pressure', 0.24,
+  'hpa', 0.24,
   0.28,
 ];
 
@@ -432,8 +447,9 @@ function getFeatureRenderKey(featureCollection) {
 
 function PreviewPlaceholder({ isDarkMode, label, loading = false }) {
   return (
-    <div className={`absolute inset-0 flex items-center justify-center text-xs font-semibold backdrop-blur-[1px] ${isDarkMode ? 'bg-slate-950/55 text-slate-400' : 'bg-white/55 text-slate-500'
-      }`}>
+    <div className={`absolute inset-0 flex items-center justify-center text-xs font-semibold backdrop-blur-[1px] ${
+      isDarkMode ? 'bg-slate-950/55 text-slate-400' : 'bg-white/55 text-slate-500'
+    }`}>
       {loading ? 'Loading annotations…' : label}
     </div>
   );
@@ -601,8 +617,9 @@ function ProjectPreviewMap({
   return (
     <div
       ref={viewportRef}
-      className={`relative overflow-hidden rounded-xl border transition-colors ${isDarkMode ? 'border-white/10 bg-slate-900' : 'border-slate-200 bg-slate-100'
-        } ${className}`}
+      className={`relative overflow-hidden rounded-xl border transition-colors ${
+        isDarkMode ? 'border-white/10 bg-slate-900' : 'border-slate-200 bg-slate-100'
+      } ${className}`}
       style={containerStyle}
     >
       {shouldRenderMap ? (
