@@ -40,6 +40,14 @@ function getProjectId(project) {
   return project?._id || project?.id;
 }
 
+function getPreviewCacheProjectId(project) {
+  const id = getProjectId(project);
+  if (!id) return id;
+
+  const cacheToken = project?.updatedAt || project?.submittedAt || project?.reviewedAt || project?.publishedAt || project?.version || 'initial';
+  return `${id}:${cacheToken}`;
+}
+
 function getProjectName(project) {
   return project?.name || project?.title || 'Untitled project';
 }
@@ -165,6 +173,7 @@ export default function ProjectCard({
   const [busyAction, setBusyAction] = useState(null);
 
   const id = getProjectId(project);
+  const previewProjectId = getPreviewCacheProjectId(project);
   const name = getProjectName(project);
   const needsRevision = isProjectRevisionRequested(project?.status);
   const statusLabel = needsRevision ? 'Needs Revision' : getProjectStatusLabel(project?.status);
@@ -204,7 +213,7 @@ export default function ProjectCard({
     <article className={`group min-w-0 overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
       <div className="relative overflow-hidden rounded-t-2xl">
         <ProjectPreviewMap
-          projectId={id}
+          projectId={previewProjectId}
           features={featureSource}
           featureScope={featureScope}
           height={isReviewMode ? 190 : 168}
