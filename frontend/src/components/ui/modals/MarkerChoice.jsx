@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, MapPinned, Navigation, X } from 'lucide-react';
+import { Crosshair, MousePointerClick, Navigation, X } from 'lucide-react';
 
 const animationVariants = {
   hidden: { opacity: 0, y: -20 },
@@ -19,7 +19,7 @@ const PointInputChoiceModal = ({ isOpen, onClose, onSelect, isDarkMode = false }
     },
     {
       id: 'map',
-      icon: MapPinned,
+      icon: MousePointerClick,
       label: 'Click on Map',
       description: 'Point and select',
       color: isDarkMode ? 'purple' : 'indigo'
@@ -66,7 +66,7 @@ const PointInputChoiceModal = ({ isOpen, onClose, onSelect, isDarkMode = false }
                   ? 'bg-cyan-500/20 ring-1 ring-cyan-400/40'
                   : 'bg-blue-500/20 ring-1 ring-blue-500/50'
               }`}>
-                <MapPin 
+                <Crosshair
                   size={28} 
                   className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
                   strokeWidth={2}

@@ -85,6 +85,10 @@ export function isProjectUnderReview(status) {
   return normalizeProjectStatus(status) === PROJECT_STATUS.UNDER_REVIEW;
 }
 
+export function isProjectRevisionRequested(status) {
+  return normalizeProjectStatus(status) === PROJECT_STATUS.REVISION_REQUESTED;
+}
+
 export function isProjectReviewable(status) {
   return [PROJECT_STATUS.SUBMITTED, PROJECT_STATUS.UNDER_REVIEW].includes(
     normalizeProjectStatus(status)
@@ -99,10 +103,14 @@ export function isProjectPublished(status) {
   return normalizeProjectStatus(status) === PROJECT_STATUS.PUBLISHED;
 }
 
-export function canSubmitProjectStatus(status) {
+export function canEditProjectStatus(status) {
   return [
     PROJECT_STATUS.DRAFT,
     PROJECT_STATUS.REJECTED,
     PROJECT_STATUS.REVISION_REQUESTED,
   ].includes(normalizeProjectStatus(status));
+}
+
+export function canSubmitProjectStatus(status) {
+  return canEditProjectStatus(status);
 }

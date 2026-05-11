@@ -1,6 +1,6 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fetchFeatures, fetchProjectFeatureCollection } from '@/api/featureServices';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
@@ -13,6 +13,179 @@ const DEFAULT_BOUNDS = [
   [93, 5],
   [153.8595159535438, 25],
 ];
+const FEATURE_CACHE_LIMIT = 80;
+const FEATURE_CACHE_TTL_MS = 30_000;
+
+const PREVIEW_MARKER_IMAGES = [
+  { id: 'preview-marker-typhoon', path: '/hurricane.png' },
+  { id: 'preview-marker-low-pressure', path: '/LPA.png' },
+  { id: 'preview-marker-high-pressure', path: '/HPA.png' },
+  { id: 'preview-marker-less-1', path: '/L1.png' },
+];
+
+const MARKER_TYPE_TO_ICON = {
+  typhoon: 'preview-marker-typhoon',
+  low_pressure: 'preview-marker-low-pressure',
+  high_pressure: 'preview-marker-high-pressure',
+  less_1: 'preview-marker-less-1',
+};
+
+const MARKER_TYPE_ALIASES = {
+  typhoon: 'typhoon',
+  hurricane: 'typhoon',
+  storm: 'typhoon',
+  tropical_cyclone: 'typhoon',
+  tropicalcyclone: 'typhoon',
+  'tropical cyclone': 'typhoon',
+  low_pressure: 'low_pressure',
+  lowpressure: 'low_pressure',
+  'low pressure': 'low_pressure',
+  'low-pressure': 'low_pressure',
+  lpa: 'low_pressure',
+  high_pressure: 'high_pressure',
+  highpressure: 'high_pressure',
+  'high pressure': 'high_pressure',
+  'high-pressure': 'high_pressure',
+  hpa: 'high_pressure',
+  less_1: 'less_1',
+  less1: 'less_1',
+  less_than_1m: 'less_1',
+  'less-than-1m': 'less_1',
+  lessthan1m: 'less_1',
+  'less than 1m': 'less_1',
+  'less than 1 meter': 'less_1',
+  low_waves: 'less_1',
+  'low waves': 'less_1',
+};
+
+const MARKER_TYPE_EXPRESSION = [
+  'downcase',
+  [
+    'to-string',
+    [
+      'coalesce',
+      ['get', 'markerType'],
+      ['get', 'symbolType'],
+      ['get', 'type'],
+      ['get', 'icon'],
+      ['get', 'title'],
+      ['get', 'name'],
+      '',
+    ],
+  ],
+];
+
+const PREVIEW_MARKER_ICON_EXPRESSION = [
+  'match',
+  MARKER_TYPE_EXPRESSION,
+  'typhoon', MARKER_TYPE_TO_ICON.typhoon,
+  'hurricane', MARKER_TYPE_TO_ICON.typhoon,
+  'storm', MARKER_TYPE_TO_ICON.typhoon,
+  'tropical_cyclone', MARKER_TYPE_TO_ICON.typhoon,
+  'tropical cyclone', MARKER_TYPE_TO_ICON.typhoon,
+  'low_pressure', MARKER_TYPE_TO_ICON.low_pressure,
+  'low pressure', MARKER_TYPE_TO_ICON.low_pressure,
+  'low-pressure', MARKER_TYPE_TO_ICON.low_pressure,
+  'lpa', MARKER_TYPE_TO_ICON.low_pressure,
+  'high_pressure', MARKER_TYPE_TO_ICON.high_pressure,
+  'high pressure', MARKER_TYPE_TO_ICON.high_pressure,
+  'high-pressure', MARKER_TYPE_TO_ICON.high_pressure,
+  'hpa', MARKER_TYPE_TO_ICON.high_pressure,
+  'less_1', MARKER_TYPE_TO_ICON.less_1,
+  'less than 1m', MARKER_TYPE_TO_ICON.less_1,
+  'less-than-1m', MARKER_TYPE_TO_ICON.less_1,
+  'less than 1 meter', MARKER_TYPE_TO_ICON.less_1,
+  'low waves', MARKER_TYPE_TO_ICON.less_1,
+  MARKER_TYPE_TO_ICON.typhoon,
+];
+
+const PREVIEW_MARKER_SIZE_EXPRESSION = [
+  'match',
+  MARKER_TYPE_EXPRESSION,
+  'typhoon', 0.02,
+  'less_1', 0.2,
+  'low_pressure', 0.015,
+  'high_pressure', 0.015,
+  0.02,
+];
+
+const featureCache = new Map();
+const featureRequestCache = new Map();
+
+function getFeatureCacheKey(projectId, scope) {
+  return `${scope || 'user'}:${projectId || 'none'}`;
+}
+
+function setCachedFeatures(key, value) {
+  if (!key) return;
+
+  featureCache.set(key, {
+    value,
+    cachedAt: Date.now(),
+  });
+
+  if (featureCache.size > FEATURE_CACHE_LIMIT) {
+    const oldestKey = featureCache.keys().next().value;
+    if (oldestKey) featureCache.delete(oldestKey);
+  }
+}
+
+function getCachedFeatures(key) {
+  if (!key || !featureCache.has(key)) return null;
+
+  const entry = featureCache.get(key);
+
+  if (!entry || Date.now() - entry.cachedAt > FEATURE_CACHE_TTL_MS) {
+    featureCache.delete(key);
+    return null;
+  }
+
+  featureCache.delete(key);
+  featureCache.set(key, entry);
+
+  return entry.value;
+}
+
+function normalizeMarkerType(value) {
+  const direct = String(value || '')
+    .trim()
+    .toLowerCase();
+  const normalized = direct.replace(/[\s-]+/g, '_');
+
+  return MARKER_TYPE_ALIASES[direct] || MARKER_TYPE_ALIASES[normalized] || normalized || 'typhoon';
+}
+
+function getFeatureMarkerType(feature) {
+  const properties = feature?.properties || {};
+  return normalizeMarkerType(
+    properties.markerType ||
+    properties.symbolType ||
+    properties.type ||
+    properties.icon ||
+    properties.title ||
+    properties.name
+  );
+}
+
+function withNormalizedMarkerProperties(featureCollection) {
+  return {
+    ...featureCollection,
+    features: featureCollection.features.map((feature) => {
+      if (!['Point', 'MultiPoint'].includes(feature?.geometry?.type)) return feature;
+
+      const markerType = getFeatureMarkerType(feature);
+      return {
+        ...feature,
+        properties: {
+          ...(feature.properties || {}),
+          markerType,
+          symbolType: markerType,
+          previewMarkerIcon: MARKER_TYPE_TO_ICON[markerType] || MARKER_TYPE_TO_ICON.typhoon,
+        },
+      };
+    }),
+  };
+}
 
 function extendBoundsFromCoordinates(bounds, coordinates) {
   if (!Array.isArray(coordinates)) return;
@@ -39,17 +212,42 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
-function removePreviewLayers(map) {
-  if (map.getLayer('project-preview-points')) map.removeLayer('project-preview-points');
-  if (map.getLayer('project-preview-lines')) map.removeLayer('project-preview-lines');
-  if (map.getLayer('project-preview-polygons')) map.removeLayer('project-preview-polygons');
-  if (map.getSource('project-preview-features')) map.removeSource('project-preview-features');
+function loadPreviewMarkerImage(map, marker) {
+  if (map.hasImage(marker.id)) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    map.loadImage(marker.path, (error, image) => {
+      if (error || !image) {
+        console.error(`[ProjectPreviewMap] Failed to load ${marker.path}:`, error);
+        resolve(false);
+        return;
+      }
+
+      if (!map.hasImage(marker.id)) {
+        map.addImage(marker.id, image);
+      }
+
+      resolve(true);
+    });
+  });
 }
 
-function addPreviewLayers(map, featureCollection) {
+function ensurePreviewMarkerIcons(map) {
+  return Promise.all(PREVIEW_MARKER_IMAGES.map((marker) => loadPreviewMarkerImage(map, marker)));
+}
+
+function addPreviewLayers(map, featureCollection, { showLabels = true } = {}) {
   const sourceId = 'project-preview-features';
 
-  removePreviewLayers(map);
+  if (map.getSource(sourceId)) {
+    map.getSource(sourceId).setData(featureCollection);
+
+    if (map.getLayer('project-preview-points-label')) {
+      map.setLayoutProperty('project-preview-points-label', 'visibility', showLabels ? 'visible' : 'none');
+    }
+
+    return;
+  }
 
   map.addSource(sourceId, {
     type: 'geojson',
@@ -60,10 +258,34 @@ function addPreviewLayers(map, featureCollection) {
     id: 'project-preview-polygons',
     type: 'fill',
     source: sourceId,
-    filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
+    filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
     paint: {
-      'fill-color': '#0ea5e9',
-      'fill-opacity': 0.22,
+      'fill-color': '#38bdf8',
+      'fill-opacity': 0.36,
+    },
+  });
+
+  map.addLayer({
+    id: 'project-preview-polygons-outline',
+    type: 'line',
+    source: sourceId,
+    filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
+    paint: {
+      'line-color': '#0f172a',
+      'line-width': 2.5,
+      'line-opacity': 0.9,
+    },
+  });
+
+  map.addLayer({
+    id: 'project-preview-lines-casing',
+    type: 'line',
+    source: sourceId,
+    filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
+    paint: {
+      'line-color': '#ffffff',
+      'line-width': 8,
+      'line-opacity': 0.95,
     },
   });
 
@@ -71,27 +293,64 @@ function addPreviewLayers(map, featureCollection) {
     id: 'project-preview-lines',
     type: 'line',
     source: sourceId,
-    filter: ['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]],
+    filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
     paint: {
       'line-color': '#0284c7',
-      'line-width': 2,
-      'line-opacity': 0.9,
+      'line-width': 4,
+      'line-opacity': 1,
     },
   });
 
-  map.addLayer({
-    id: 'project-preview-points',
-    type: 'circle',
-    source: sourceId,
-    filter: ['in', ['geometry-type'], ['literal', ['Point', 'MultiPoint']]],
-    paint: {
-      'circle-color': '#f97316',
-      'circle-radius': 4,
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 1.5,
-      'circle-opacity': 0.95,
-    },
-  });
+  if (map.hasImage('preview-marker-typhoon')) {
+    map.addLayer({
+      id: 'project-preview-points-symbol',
+      type: 'symbol',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+      layout: {
+        'icon-image': ['coalesce', ['get', 'previewMarkerIcon'], PREVIEW_MARKER_ICON_EXPRESSION],
+        'icon-size': PREVIEW_MARKER_SIZE_EXPRESSION,
+        'icon-anchor': 'center',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    });
+  } else {
+    map.addLayer({
+      id: 'project-preview-points-symbol',
+      type: 'circle',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+      paint: {
+        'circle-color': '#f97316',
+        'circle-radius': 8,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 3,
+      },
+    });
+  }
+
+  if (showLabels) {
+    map.addLayer({
+      id: 'project-preview-points-label',
+      type: 'symbol',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+      layout: {
+        'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], 'Marker'],
+        'text-size': 12,
+        'text-offset': [0, 1.8],
+        'text-anchor': 'top',
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': '#0f172a',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1.5,
+      },
+    });
+  }
 }
 
 async function loadProjectFeatures(projectId, scope) {
@@ -104,11 +363,39 @@ async function loadProjectFeatures(projectId, scope) {
   return fetchFeatures(projectId);
 }
 
-function useNearViewport(rootMargin = '400px') {
+async function loadProjectFeaturesCached(projectId, scope) {
+  const key = getFeatureCacheKey(projectId, scope);
+  const cached = getCachedFeatures(key);
+
+  if (cached) return cached;
+
+  if (featureRequestCache.has(key)) {
+    return featureRequestCache.get(key);
+  }
+
+  const request = loadProjectFeatures(projectId, scope)
+    .then((data) => {
+      setCachedFeatures(key, data);
+      return data;
+    })
+    .finally(() => {
+      featureRequestCache.delete(key);
+    });
+
+  featureRequestCache.set(key, request);
+  return request;
+}
+
+function useNearViewport(rootMargin = '500px', disabled = false) {
   const targetRef = useRef(null);
-  const [isNearViewport, setIsNearViewport] = useState(false);
+  const [isNearViewport, setIsNearViewport] = useState(disabled);
 
   useEffect(() => {
+    if (disabled) {
+      setIsNearViewport(true);
+      return undefined;
+    }
+
     const target = targetRef.current;
     if (!target || isNearViewport) return undefined;
 
@@ -130,12 +417,36 @@ function useNearViewport(rootMargin = '400px') {
     observer.observe(target);
 
     return () => observer.disconnect();
-  }, [isNearViewport, rootMargin]);
+  }, [disabled, isNearViewport, rootMargin]);
 
   return [targetRef, isNearViewport];
 }
 
-export default function ProjectPreviewMap({
+function getFeatureIdentity(feature) {
+  return feature.id || feature._id || feature.properties?.id || feature.properties?.sourceId || feature.properties?.name || '';
+}
+
+function getFeatureRenderKey(featureCollection) {
+  return JSON.stringify(
+    featureCollection.features.map((feature) => ({
+      geometry: feature.geometry,
+      id: getFeatureIdentity(feature),
+      markerType: feature.properties?.markerType,
+    }))
+  );
+}
+
+function PreviewPlaceholder({ isDarkMode, label, loading = false }) {
+  return (
+    <div className={`absolute inset-0 flex items-center justify-center text-xs font-semibold backdrop-blur-[1px] ${
+      isDarkMode ? 'bg-slate-950/55 text-slate-400' : 'bg-white/55 text-slate-500'
+    }`}>
+      {loading ? 'Loading annotations…' : label}
+    </div>
+  );
+}
+
+function ProjectPreviewMap({
   projectId,
   features,
   featureScope = 'user',
@@ -143,12 +454,18 @@ export default function ProjectPreviewMap({
   height = 180,
   isDarkMode = false,
   emptyLabel = 'No annotations yet',
+  lazy = true,
+  showLabels = true,
 }) {
-  const [viewportRef, isNearViewport] = useNearViewport();
+  const [viewportRef, isNearViewport] = useNearViewport('500px', !lazy);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  const fittedFeaturesKeyRef = useRef('');
   const [isReady, setIsReady] = useState(false);
-  const [remoteFeatures, setRemoteFeatures] = useState(null);
+  const [remoteFeatures, setRemoteFeatures] = useState(() => {
+    if (!projectId) return null;
+    return getCachedFeatures(getFeatureCacheKey(projectId, featureScope));
+  });
   const [isLoadingFeatures, setIsLoadingFeatures] = useState(false);
 
   const providedFeatureCollection = useMemo(
@@ -156,21 +473,35 @@ export default function ProjectPreviewMap({
     [features]
   );
 
-  const shouldFetchFeatures = isNearViewport && Boolean(projectId) && providedFeatureCollection.features.length === 0;
+  const hasProvidedFeatures = providedFeatureCollection.features.length > 0;
+  const featureCacheKey = useMemo(
+    () => getFeatureCacheKey(projectId, featureScope),
+    [featureScope, projectId]
+  );
+
+  useEffect(() => {
+    if (hasProvidedFeatures || !projectId) {
+      setRemoteFeatures(null);
+      return;
+    }
+
+    const cached = getCachedFeatures(featureCacheKey);
+    if (cached) setRemoteFeatures(cached);
+  }, [featureCacheKey, hasProvidedFeatures, projectId]);
+
+  const shouldFetchFeatures = isNearViewport && Boolean(projectId) && !hasProvidedFeatures && !remoteFeatures;
 
   useEffect(() => {
     let isMounted = true;
 
     if (!shouldFetchFeatures) {
-      if (!isNearViewport) return undefined;
-      setRemoteFeatures(null);
-      setIsLoadingFeatures(false);
+      if (isNearViewport) setIsLoadingFeatures(false);
       return undefined;
     }
 
     setIsLoadingFeatures(true);
 
-    loadProjectFeatures(projectId, featureScope)
+    loadProjectFeaturesCached(projectId, featureScope)
       .then((data) => {
         if (!isMounted) return;
         setRemoteFeatures(data);
@@ -190,17 +521,20 @@ export default function ProjectPreviewMap({
   }, [featureScope, isNearViewport, projectId, shouldFetchFeatures]);
 
   const featureCollection = useMemo(() => {
-    if (providedFeatureCollection.features.length > 0) {
-      return providedFeatureCollection;
-    }
+    const normalized = hasProvidedFeatures
+      ? providedFeatureCollection
+      : normalizeFeatureCollection(remoteFeatures);
 
-    return normalizeFeatureCollection(remoteFeatures);
-  }, [providedFeatureCollection, remoteFeatures]);
+    return withNormalizedMarkerProperties(normalized);
+  }, [hasProvidedFeatures, providedFeatureCollection, remoteFeatures]);
 
   const hasFeatures = featureCollection.features.length > 0;
+  const featureKey = useMemo(() => getFeatureRenderKey(featureCollection), [featureCollection]);
+  const shouldRenderMap = isNearViewport && hasFeatures;
+  const containerStyle = height == null ? undefined : { height };
 
   useEffect(() => {
-    if (!isNearViewport || !containerRef.current || mapRef.current) return undefined;
+    if (!shouldRenderMap || !containerRef.current || mapRef.current) return undefined;
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
@@ -229,57 +563,77 @@ export default function ProjectPreviewMap({
     return () => {
       map.remove();
       mapRef.current = null;
+      fittedFeaturesKeyRef.current = '';
       setIsReady(false);
     };
-  }, [isNearViewport]);
+  }, [shouldRenderMap]);
 
   useEffect(() => {
+    if (shouldRenderMap || !mapRef.current) return;
+
+    mapRef.current.remove();
+    mapRef.current = null;
+    fittedFeaturesKeyRef.current = '';
+    setIsReady(false);
+  }, [shouldRenderMap]);
+
+  useEffect(() => {
+    let isMounted = true;
     const map = mapRef.current;
-    if (!map || !isReady) return;
+    if (!map || !isReady || !hasFeatures) return undefined;
 
-    if (!hasFeatures) {
-      removePreviewLayers(map);
-      map.fitBounds(DEFAULT_BOUNDS, { padding: 18, maxZoom: 6, duration: 0 });
-      return;
-    }
+    ensurePreviewMarkerIcons(map).then(() => {
+      if (!isMounted || !mapRef.current) return;
+      addPreviewLayers(map, featureCollection, { showLabels });
 
-    addPreviewLayers(map, featureCollection);
+      if (fittedFeaturesKeyRef.current === featureKey) return;
 
-    const bounds = getFeatureBounds(featureCollection);
-    if (bounds) {
-      map.fitBounds(bounds, {
-        padding: 28,
-        maxZoom: 10,
-        duration: 0,
-      });
-    }
-  }, [featureCollection, hasFeatures, isReady]);
+      const bounds = getFeatureBounds(featureCollection);
+
+      if (bounds) {
+        map.fitBounds(bounds, {
+          padding: 72,
+          maxZoom: featureCollection.features.length === 1 ? 8 : 10,
+          duration: 0,
+        });
+        fittedFeaturesKeyRef.current = featureKey;
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [featureCollection, featureKey, hasFeatures, isReady, showLabels]);
 
   return (
     <div
       ref={viewportRef}
-      className={`relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100 ${className}`}
-      style={{ height }}
+      className={`relative overflow-hidden rounded-xl border transition-colors ${
+        isDarkMode ? 'border-white/10 bg-slate-900' : 'border-slate-200 bg-slate-100'
+      } ${className}`}
+      style={containerStyle}
     >
-      {isNearViewport ? (
+      {shouldRenderMap ? (
         <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
       ) : (
-        <div className="h-full w-full animate-pulse bg-slate-200" aria-hidden="true" />
+        <div className={`h-full w-full ${isDarkMode ? 'bg-slate-900' : 'bg-slate-100'}`} aria-hidden="true" />
       )}
 
-      {!hasFeatures && !isLoadingFeatures && isNearViewport && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/50 text-xs font-semibold text-slate-500 backdrop-blur-[1px]">
-          {emptyLabel}
-        </div>
+      {!isNearViewport && (
+        <div className={`h-full w-full animate-pulse ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} aria-hidden="true" />
+      )}
+
+      {isNearViewport && !hasFeatures && !isLoadingFeatures && (
+        <PreviewPlaceholder isDarkMode={isDarkMode} label={emptyLabel} />
       )}
 
       {isLoadingFeatures && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/40 text-xs font-semibold text-slate-500 backdrop-blur-[1px]">
-          Loading annotations…
-        </div>
+        <PreviewPlaceholder isDarkMode={isDarkMode} label={emptyLabel} loading />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white/80 to-transparent" />
+      <div className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t ${isDarkMode ? 'from-slate-950/80' : 'from-white/80'} to-transparent`} />
     </div>
   );
 }
+
+export default memo(ProjectPreviewMap);
