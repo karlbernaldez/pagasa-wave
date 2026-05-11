@@ -1,34 +1,63 @@
+function safeSetVisibility(map, id, visibility) {
+  if (id && map.getLayer(id)) {
+    map.setLayoutProperty(id, 'visibility', visibility);
+    return true;
+  }
+
+  return false;
+}
+
+function markerLayerId(layer) {
+  const markerType = layer?.markerType || layer?.type;
+  const name = layer?.name;
+
+  if (!markerType || !name) return null;
+  if (!['typhoon', 'low_pressure', 'high_pressure', 'less_1'].includes(markerType)) return null;
+
+  return `${markerType}_${name}`;
+}
+
+function getCandidateIds(layer) {
+  const id = layer?.id;
+  const cleanedId = typeof id === 'string' && id.endsWith('_dash') ? id.slice(0, -5) : id;
+
+  return Array.from(new Set([
+    layer?.id,
+    layer?.sourceID,
+    layer?.sourceId,
+    layer?.source,
+    layer?.mapLayerId,
+    layer?.name,
+    cleanedId,
+    markerLayerId(layer),
+    layer?.fillId,
+    layer?.lineId,
+  ].filter(Boolean)));
+}
+
+function setCandidateVisibility(map, id, visibility) {
+  safeSetVisibility(map, id, visibility);
+  safeSetVisibility(map, `${id}-0`, visibility);
+  safeSetVisibility(map, `${id}-1`, visibility);
+  safeSetVisibility(map, `${id}_bg`, visibility);
+  safeSetVisibility(map, `${id}_dash`, visibility);
+}
+
+function matchesLayer(target, current) {
+  const targetIds = getCandidateIds(target);
+  const currentIds = getCandidateIds(current);
+  return currentIds.some((id) => targetIds.includes(id));
+}
+
 export function toggleLayerVisibility(map, layer, setLayers) {
-    if (!map || !layer) return;
+  if (!map || !layer) return;
 
-    const { id, fillId, lineId, visible } = layer;
-    const newVisibility = visible ? 'none' : 'visible';
+  const newVisible = !layer.visible;
+  const newVisibility = newVisible ? 'visible' : 'none';
 
-    const cleanedId = id.endsWith('_dash') ? id.slice(0, -5) : id;
-    const bgId   = `${cleanedId}_bg`;
-    const dashId = `${cleanedId}_dash`;
+  getCandidateIds(layer).forEach((id) => setCandidateVisibility(map, id, newVisibility));
 
-    // Named layer (legacy)
-    if (map.getLayer(layer.name)) map.setLayoutProperty(layer.name, 'visibility', newVisibility);
-
-    // Derived variants
-    for (const lid of [bgId, dashId]) {
-        if (map.getLayer(lid)) map.setLayoutProperty(lid, 'visibility', newVisibility);
-    }
-
-    // Draw-mode layers + sub-labels
-    if (id && map.getLayer(id)) {
-        map.setLayoutProperty(id, 'visibility', newVisibility);
-        for (const sub of [`${id}-0`, `${id}-1`]) {
-            if (map.getLayer(sub)) map.setLayoutProperty(sub, 'visibility', newVisibility);
-        }
-    }
-
-    // GeoJSON polygon layers
-    if (fillId && map.getLayer(fillId)) map.setLayoutProperty(fillId, 'visibility', newVisibility);
-    if (lineId && map.getLayer(lineId)) map.setLayoutProperty(lineId, 'visibility', newVisibility);
-
-    setLayers((prev) =>
-        prev.map((l) => (l.id === id ? { ...l, visible: !visible } : l))
-    );
+  setLayers((prev) =>
+    prev.map((l) => (matchesLayer(layer, l) ? { ...l, visible: newVisible } : l))
+  );
 }
