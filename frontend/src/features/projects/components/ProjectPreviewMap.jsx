@@ -15,8 +15,33 @@ const DEFAULT_BOUNDS = [
 ];
 const FEATURE_CACHE_LIMIT = 80;
 const FEATURE_CACHE_TTL_MS = 30_000;
-const PREVIEW_MARKER_ICON_ID = 'project-preview-hurricane';
-const PREVIEW_MARKER_ICON_PATH = '/hurricane.png';
+
+const PREVIEW_MARKER_IMAGES = [
+  { id: 'preview-marker-typhoon', path: '/hurricane.png' },
+  { id: 'preview-marker-low-pressure', path: '/LPA.png' },
+  { id: 'preview-marker-high-pressure', path: '/HPA.png' },
+  { id: 'preview-marker-less-1', path: '/L1.png' },
+];
+
+const PREVIEW_MARKER_ICON_EXPRESSION = [
+  'match',
+  ['downcase', ['to-string', ['coalesce', ['get', 'type'], ['get', 'markerType'], ['get', 'symbolType'], ['get', 'icon'], ['get', 'title'], ['get', 'name'], '']]],
+  'low_pressure', 'preview-marker-low-pressure',
+  'low pressure', 'preview-marker-low-pressure',
+  'lpa', 'preview-marker-low-pressure',
+  'high_pressure', 'preview-marker-high-pressure',
+  'high pressure', 'preview-marker-high-pressure',
+  'hpa', 'preview-marker-high-pressure',
+  'less_1', 'preview-marker-less-1',
+  'less than 1m', 'preview-marker-less-1',
+  'less than 1 meter', 'preview-marker-less-1',
+  'low waves', 'preview-marker-less-1',
+  'typhoon', 'preview-marker-typhoon',
+  'tropical cyclone', 'preview-marker-typhoon',
+  'storm', 'preview-marker-typhoon',
+  'hurricane', 'preview-marker-typhoon',
+  'preview-marker-typhoon',
+];
 
 const featureCache = new Map();
 const featureRequestCache = new Map();
@@ -80,26 +105,28 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
-function ensurePreviewMarkerIcon(map) {
-  if (map.hasImage(PREVIEW_MARKER_ICON_ID)) {
-    return Promise.resolve(true);
-  }
+function loadPreviewMarkerImage(map, marker) {
+  if (map.hasImage(marker.id)) return Promise.resolve(true);
 
   return new Promise((resolve) => {
-    map.loadImage(PREVIEW_MARKER_ICON_PATH, (error, image) => {
+    map.loadImage(marker.path, (error, image) => {
       if (error || !image) {
-        console.error('[ProjectPreviewMap] Failed to load hurricane preview marker:', error);
+        console.error(`[ProjectPreviewMap] Failed to load ${marker.path}:`, error);
         resolve(false);
         return;
       }
 
-      if (!map.hasImage(PREVIEW_MARKER_ICON_ID)) {
-        map.addImage(PREVIEW_MARKER_ICON_ID, image);
+      if (!map.hasImage(marker.id)) {
+        map.addImage(marker.id, image);
       }
 
       resolve(true);
     });
   });
+}
+
+function ensurePreviewMarkerIcons(map) {
+  return Promise.all(PREVIEW_MARKER_IMAGES.map((marker) => loadPreviewMarkerImage(map, marker)));
 }
 
 function addPreviewLayers(map, featureCollection) {
@@ -162,15 +189,23 @@ function addPreviewLayers(map, featureCollection) {
     },
   });
 
-  if (map.hasImage(PREVIEW_MARKER_ICON_ID)) {
+  if (map.hasImage('preview-marker-typhoon')) {
     map.addLayer({
       id: 'project-preview-points-symbol',
       type: 'symbol',
       source: sourceId,
       filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
       layout: {
-        'icon-image': PREVIEW_MARKER_ICON_ID,
-        'icon-size': 0.36,
+        'icon-image': PREVIEW_MARKER_ICON_EXPRESSION,
+        'icon-size': [
+          'match',
+          ['downcase', ['to-string', ['coalesce', ['get', 'type'], ['get', 'markerType'], ['get', 'symbolType'], ['get', 'icon'], ['get', 'title'], ['get', 'name'], '']]],
+          'less_1', 0.42,
+          'less than 1m', 0.42,
+          'less than 1 meter', 0.42,
+          'low waves', 0.42,
+          0.36,
+        ],
         'icon-anchor': 'center',
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
@@ -197,7 +232,7 @@ function addPreviewLayers(map, featureCollection) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
     layout: {
-      'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], 'Marker'],
+      'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], 'Marker'],
       'text-size': 12,
       'text-offset': [0, 1.8],
       'text-anchor': 'top',
@@ -439,7 +474,7 @@ function ProjectPreviewMap({
     const map = mapRef.current;
     if (!map || !isReady || !hasFeatures) return undefined;
 
-    ensurePreviewMarkerIcon(map).then(() => {
+    ensurePreviewMarkerIcons(map).then(() => {
       if (!isMounted || !mapRef.current) return;
       addPreviewLayers(map, featureCollection);
 
