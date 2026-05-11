@@ -66,6 +66,16 @@ function getDateRangeFilter(dateRange) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
+function buildStatusCounts(rows) {
+  return Object.values(PROJECT_STATUS).reduce((counts, status) => {
+    counts[status] = 0;
+    return counts;
+  }, rows.reduce((counts, row) => {
+    if (row?._id) counts[row._id] = row.count;
+    return counts;
+  }, {}));
+}
+
 function getRequiredComment(value, label = 'Comment') {
   const comment = String(value || '').trim();
   if (!comment) throwError(`${label} is required`, 400);
@@ -298,13 +308,17 @@ export const getUserProjects = asyncHandler(async (req, res) => {
     _id: -1,
   };
 
-  const [projects, total] = await Promise.all([
+  const [projects, total, statusCountRows] = await Promise.all([
     Project.find(query)
       .sort(sortQuery)
       .skip(skip)
       .limit(limitNumber)
       .lean(),
     Project.countDocuments(query),
+    Project.aggregate([
+      { $match: query },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
   ]);
 
   res.json({
@@ -313,6 +327,7 @@ export const getUserProjects = asyncHandler(async (req, res) => {
     page: pageNumber,
     limit: limitNumber,
     totalPages: Math.max(1, Math.ceil(total / limitNumber)),
+    statusCounts: buildStatusCounts(statusCountRows),
   });
 });
 
@@ -364,6 +379,10 @@ export const renameProject = asyncHandler(async (req, res) => {
   }
 
   const project = await ensureProjectExists(req.params.id, req.user.id);
+
+  if (!canEditProjectStatus(project.status)) {
+    throwError('Only Draft, Rejected, or Revision Requested projects can be renamed', 403);
+  }
 
   if (project.name === name.trim()) {
     return res.json(project);
