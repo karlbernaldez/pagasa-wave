@@ -16,6 +16,10 @@ const DEFAULT_BOUNDS = [
 const FEATURE_CACHE_LIMIT = 80;
 const FEATURE_CACHE_TTL_MS = 30_000;
 const PREVIEW_MARKER_ICON_ID = 'project-preview-marker-pin';
+const PREVIEW_MARKER_SIZE = {
+  width: 72,
+  height: 88,
+};
 
 const featureCache = new Map();
 const featureRequestCache = new Map();
@@ -79,10 +83,10 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
-function createPreviewMarkerCanvas() {
+function createPreviewMarkerImageData() {
   const canvas = document.createElement('canvas');
-  canvas.width = 72;
-  canvas.height = 88;
+  canvas.width = PREVIEW_MARKER_SIZE.width;
+  canvas.height = PREVIEW_MARKER_SIZE.height;
 
   const ctx = canvas.getContext('2d');
   const x = 36;
@@ -120,27 +124,18 @@ function createPreviewMarkerCanvas() {
   ctx.fillStyle = '#0f172a';
   ctx.fill();
 
-  return canvas;
+  const imageData = ctx.getImageData(0, 0, PREVIEW_MARKER_SIZE.width, PREVIEW_MARKER_SIZE.height);
+
+  return {
+    width: PREVIEW_MARKER_SIZE.width,
+    height: PREVIEW_MARKER_SIZE.height,
+    data: imageData.data,
+  };
 }
 
 function ensurePreviewMarkerIcon(map) {
   if (map.hasImage(PREVIEW_MARKER_ICON_ID)) return;
-  map.addImage(PREVIEW_MARKER_ICON_ID, createPreviewMarkerCanvas(), { pixelRatio: 2 });
-}
-
-function removePreviewLayers(map) {
-  [
-    'project-preview-points-label',
-    'project-preview-points-pin',
-    'project-preview-lines-casing',
-    'project-preview-lines',
-    'project-preview-polygons-outline',
-    'project-preview-polygons',
-  ].forEach((layerId) => {
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
-  });
-
-  if (map.getSource('project-preview-features')) map.removeSource('project-preview-features');
+  map.addImage(PREVIEW_MARKER_ICON_ID, createPreviewMarkerImageData(), { pixelRatio: 2 });
 }
 
 function addPreviewLayers(map, featureCollection) {
