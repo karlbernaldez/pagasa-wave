@@ -46,6 +46,7 @@ export function useProjects() {
   const total = response.total ?? 0;
   const totalPages = Math.max(1, response.totalPages ?? 1);
   const currentPage = response.page ?? page;
+  const statusCounts = response.statusCounts ?? null;
 
   const activeFilterCount = [
     statusFilter !== "All",
@@ -72,6 +73,7 @@ export function useProjects() {
     paged,
     total,
     totalPages,
+    statusCounts,
     page: currentPage,
     setPage,
 
