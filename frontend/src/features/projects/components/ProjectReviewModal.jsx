@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import ReviewActionsFooter from '@/features/projects/components/review/ReviewActionsFooter';
 import ReviewMapWorkspace from '@/features/projects/components/review/ReviewMapWorkspace';
 import ReviewSidebar from '@/features/projects/components/review/ReviewSidebar';
+import useProjectReviewActions from '@/features/projects/hooks/useProjectReviewActions';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 import { buildAnnotationDiff } from '@/features/projects/utils/projectAnnotationDiff';
 import {
@@ -35,7 +36,6 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
   const [isLoadingCurrentFeatures, setIsLoadingCurrentFeatures] = useState(false);
   const [featureLoadError, setFeatureLoadError] = useState('');
   const [remarks, setRemarks] = useState('');
-  const [busyAction, setBusyAction] = useState(null);
   const [mapMode, setMapMode] = useState('preview');
 
   useEffect(() => {
@@ -98,30 +98,15 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
   const currentFeatureSource = currentFeatureCollection;
   const diff = buildAnnotationDiff(previousFeatureSource, currentFeatureSource);
   const hasRemarks = remarks.trim().length > 0;
-
-  const runAction = async (key, action, { requireRemarks = false, closeOnSuccess = true } = {}) => {
-    if (busyAction) return;
-    if (requireRemarks && !hasRemarks) {
-      alert('Remarks are required for this action.');
-      return;
-    }
-
-    try {
-      setBusyAction(key);
-      const updatedProject = await action?.(currentProject, remarks.trim());
-      const nextProject = updatedProject ? mergeProjectState(currentProject, updatedProject) : currentProject;
-
-      setCurrentProject(nextProject);
-      await onActionComplete?.(nextProject);
-      setRemarks('');
-      if (closeOnSuccess) onClose?.();
-    } catch (error) {
-      console.error(error);
-      alert(error.message || 'Action failed. Please try again.');
-    } finally {
-      setBusyAction(null);
-    }
-  };
+  const { busyAction, runAction } = useProjectReviewActions({
+    currentProject,
+    remarks,
+    hasRemarks,
+    setCurrentProject,
+    setRemarks,
+    onActionComplete,
+    onClose,
+  });
 
   const surface = isDarkMode ? 'border-white/10 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-950';
   const mutedText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
