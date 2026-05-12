@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, Check, MessageSquareText, Send, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
-import Button from '@/components/ui/Button';
+import ReviewActionsFooter from '@/features/projects/components/review/ReviewActionsFooter';
 import ReviewMapWorkspace from '@/features/projects/components/review/ReviewMapWorkspace';
 import ReviewSidebar from '@/features/projects/components/review/ReviewSidebar';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
@@ -220,7 +220,6 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
 
   const surface = isDarkMode ? 'border-white/10 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-950';
   const mutedText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
-  const disabledReviewButton = isDarkMode ? 'opacity-45' : 'opacity-50';
 
   return (
     <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-slate-950/80 p-1 backdrop-blur-sm sm:p-4 xl:items-center xl:p-6">
@@ -277,69 +276,20 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               isDarkMode={isDarkMode}
             />
 
-            <div className={`mx-3 mb-3 mt-1 shrink-0 rounded-2xl border p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] sm:mx-5 sm:mb-5 sm:p-4 xl:sticky xl:bottom-0 xl:mx-0 xl:mb-0 xl:mt-0 xl:rounded-none xl:border-x-0 xl:border-b-0 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
-              <div className="flex flex-col gap-2">
-                {isReviewable && (
-                  <div className="grid grid-cols-2 gap-2 [&>button]:min-h-10 [&>button]:w-full">
-                    <Button
-                      variant={hasRemarks ? 'secondary' : 'ghost'}
-                      icon={MessageSquareText}
-                      loading={busyAction === 'comment'}
-                      disabled={!hasRemarks || Boolean(busyAction)}
-                      onClick={() => runAction('comment', () => addReviewComment(projectId, remarks.trim()), { requireRemarks: true, closeOnSuccess: false })}
-                    >
-                      Add Comment
-                    </Button>
-                    <Button
-                      variant={hasRemarks && isUnderReview ? 'secondary' : 'ghost'}
-                      icon={AlertCircle}
-                      loading={busyAction === 'revision'}
-                      disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
-                      onClick={() => runAction('revision', () => requestProjectRevision(projectId, remarks.trim()), { requireRemarks: true })}
-                    >
-                      Request Revision
-                    </Button>
-                    <Button
-                      icon={Check}
-                      loading={busyAction === 'approve'}
-                      disabled={!isUnderReview || Boolean(busyAction)}
-                      onClick={() => runAction('approve', () => onApprove(currentProject))}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      variant={hasRemarks && isUnderReview ? 'danger' : 'ghost'}
-                      icon={AlertCircle}
-                      loading={busyAction === 'reject'}
-                      disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
-                      onClick={() => runAction('reject', () => onReject(currentProject, remarks.trim()), { requireRemarks: true })}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                )}
-
-                {isApproved && (
-                  <Button
-                    icon={Send}
-                    loading={busyAction === 'publish'}
-                    disabled={Boolean(busyAction)}
-                    onClick={() => runAction('publish', () => onPublish(currentProject))}
-                  >
-                    Publish
-                  </Button>
-                )}
-
-                <Button variant="ghost" disabled={Boolean(busyAction)} onClick={onClose}>
-                  Close
-                </Button>
-              </div>
-              {!hasRemarks && isReviewable && (
-                <p className={`mt-2 text-center text-[11px] font-semibold ${isDarkMode ? 'text-slate-600' : 'text-slate-400'} ${disabledReviewButton}`}>
-                  Add remarks to enable comment, revision, or reject actions.
-                </p>
-              )}
-            </div>
+            <ReviewActionsFooter
+              isReviewable={isReviewable}
+              isUnderReview={isUnderReview}
+              isApproved={isApproved}
+              hasRemarks={hasRemarks}
+              busyAction={busyAction}
+              isDarkMode={isDarkMode}
+              onAddComment={() => runAction('comment', () => addReviewComment(projectId, remarks.trim()), { requireRemarks: true, closeOnSuccess: false })}
+              onRequestRevision={() => runAction('revision', () => requestProjectRevision(projectId, remarks.trim()), { requireRemarks: true })}
+              onApprove={() => runAction('approve', () => onApprove(currentProject))}
+              onReject={() => runAction('reject', () => onReject(currentProject, remarks.trim()), { requireRemarks: true })}
+              onPublish={() => runAction('publish', () => onPublish(currentProject))}
+              onClose={onClose}
+            />
           </aside>
         </div>
       </div>
