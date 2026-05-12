@@ -1,8 +1,71 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ThemeProvider } from 'styled-components';
 
 import ReviewActionsFooter from './ReviewActionsFooter';
+
+const testTheme = {
+  tokens: {
+    spacing: {
+      2: '0.5rem',
+      3: '0.75rem',
+      4: '1rem',
+      5: '1.25rem',
+    },
+    radius: {
+      lg: '0.75rem',
+    },
+    typography: {
+      scale: {
+        sm: '0.875rem',
+        md: '1rem',
+      },
+      weight: {
+        bold: 700,
+      },
+    },
+    motion: {
+      duration: {
+        fast: '150ms',
+      },
+      easing: {
+        standard: 'ease',
+      },
+    },
+    shadows: {
+      focus: '0 0 0 3px rgba(59, 130, 246, 0.35)',
+    },
+    colors: {
+      action: {
+        primary: '#2563eb',
+        primaryHover: '#1d4ed8',
+        danger: '#dc2626',
+        dangerHover: '#b91c1c',
+      },
+      text: {
+        dark: {
+          primary: '#ffffff',
+        },
+      },
+      surface: {
+        light: {
+          raised: '#ffffff',
+          muted: '#f8fafc',
+        },
+      },
+      brand: {
+        primary: '#0057b8',
+        secondary: '#0f172a',
+      },
+      border: {
+        light: {
+          default: '#e2e8f0',
+          strong: '#cbd5e1',
+        },
+      },
+    },
+  },
+};
 
 function renderFooter(props = {}) {
   const handlers = {
@@ -15,13 +78,15 @@ function renderFooter(props = {}) {
   };
 
   render(
-    <ReviewActionsFooter
-      isReviewable
-      isUnderReview
-      hasRemarks
-      {...handlers}
-      {...props}
-    />
+    <ThemeProvider theme={testTheme}>
+      <ReviewActionsFooter
+        isReviewable
+        isUnderReview
+        hasRemarks
+        {...handlers}
+        {...props}
+      />
+    </ThemeProvider>
   );
 
   return handlers;
@@ -37,11 +102,10 @@ describe('ReviewActionsFooter', () => {
     expect(screen.getByText(/add remarks to enable comment, revision, or reject actions/i)).toBeInTheDocument();
   });
 
-  it('calls Add Comment when remarks exist', async () => {
-    const user = userEvent.setup();
+  it('calls Add Comment when remarks exist', () => {
     const handlers = renderFooter({ hasRemarks: true });
 
-    await user.click(screen.getByRole('button', { name: /add comment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add comment/i }));
 
     expect(handlers.onAddComment).toHaveBeenCalledTimes(1);
   });
@@ -52,14 +116,13 @@ describe('ReviewActionsFooter', () => {
     expect(screen.getByRole('button', { name: /request revision/i })).toBeDisabled();
   });
 
-  it('enables Request Revision when project is under review and remarks exist', async () => {
-    const user = userEvent.setup();
+  it('enables Request Revision when project is under review and remarks exist', () => {
     const handlers = renderFooter({ isUnderReview: true, hasRemarks: true });
     const requestRevisionButton = screen.getByRole('button', { name: /request revision/i });
 
     expect(requestRevisionButton).toBeEnabled();
 
-    await user.click(requestRevisionButton);
+    fireEvent.click(requestRevisionButton);
 
     expect(handlers.onRequestRevision).toHaveBeenCalledTimes(1);
   });
@@ -70,11 +133,10 @@ describe('ReviewActionsFooter', () => {
     expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
   });
 
-  it('calls Approve when project is under review', async () => {
-    const user = userEvent.setup();
+  it('calls Approve when project is under review', () => {
     const handlers = renderFooter({ isUnderReview: true });
 
-    await user.click(screen.getByRole('button', { name: /approve/i }));
+    fireEvent.click(screen.getByRole('button', { name: /approve/i }));
 
     expect(handlers.onApprove).toHaveBeenCalledTimes(1);
   });
@@ -85,26 +147,24 @@ describe('ReviewActionsFooter', () => {
     expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
   });
 
-  it('calls Reject when project is under review and remarks exist', async () => {
-    const user = userEvent.setup();
+  it('calls Reject when project is under review and remarks exist', () => {
     const handlers = renderFooter({ isUnderReview: true, hasRemarks: true });
     const rejectButton = screen.getByRole('button', { name: /reject/i });
 
     expect(rejectButton).toBeEnabled();
 
-    await user.click(rejectButton);
+    fireEvent.click(rejectButton);
 
     expect(handlers.onReject).toHaveBeenCalledTimes(1);
   });
 
-  it('shows Publish only when project is approved', async () => {
-    const user = userEvent.setup();
+  it('shows Publish only when project is approved', () => {
     const handlers = renderFooter({ isApproved: true });
     const publishButton = screen.getByRole('button', { name: /publish/i });
 
     expect(publishButton).toBeInTheDocument();
 
-    await user.click(publishButton);
+    fireEvent.click(publishButton);
 
     expect(handlers.onPublish).toHaveBeenCalledTimes(1);
   });
@@ -125,11 +185,10 @@ describe('ReviewActionsFooter', () => {
     expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
   });
 
-  it('calls Close handler', async () => {
-    const user = userEvent.setup();
+  it('calls Close handler', () => {
     const handlers = renderFooter();
 
-    await user.click(screen.getByRole('button', { name: /close/i }));
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
 
     expect(handlers.onClose).toHaveBeenCalledTimes(1);
   });
