@@ -16,6 +16,30 @@ const DEFAULT_BOUNDS = [
 const FEATURE_CACHE_LIMIT = 80;
 const FEATURE_CACHE_TTL_MS = 30_000;
 
+const DIFF_COLOR_EXPRESSION = [
+  'match',
+  ['get', 'diffStatus'],
+  'added', '#22c55e',
+  'changed', '#f97316',
+  'removed', '#ef4444',
+  'unchanged', '#64748b',
+  '#0284c7',
+];
+
+const DIFF_FILL_OPACITY_EXPRESSION = [
+  'match',
+  ['get', 'diffStatus'],
+  'unchanged', 0.2,
+  0.42,
+];
+
+const DIFF_LINE_OPACITY_EXPRESSION = [
+  'match',
+  ['get', 'diffStatus'],
+  'unchanged', 0.62,
+  1,
+];
+
 const PREVIEW_MARKER_IMAGES = [
   { id: 'preview-marker-typhoon', path: '/hurricane.png' },
   { id: 'preview-marker-low-pressure', path: '/LPA.png' },
@@ -187,6 +211,10 @@ function withNormalizedMarkerProperties(featureCollection) {
   };
 }
 
+function hasDiffStyles(featureCollection) {
+  return featureCollection.features.some((feature) => Boolean(feature?.properties?.diffStatus));
+}
+
 function extendBoundsFromCoordinates(bounds, coordinates) {
   if (!Array.isArray(coordinates)) return;
 
@@ -236,11 +264,38 @@ function ensurePreviewMarkerIcons(map) {
   return Promise.all(PREVIEW_MARKER_IMAGES.map((marker) => loadPreviewMarkerImage(map, marker)));
 }
 
-function addPreviewLayers(map, featureCollection, { showLabels = true } = {}) {
+function setPreviewLayerPaint(map, useDiffStyles) {
+  const polygonColor = useDiffStyles ? DIFF_COLOR_EXPRESSION : '#38bdf8';
+  const lineColor = useDiffStyles ? DIFF_COLOR_EXPRESSION : '#0284c7';
+  const opacity = useDiffStyles ? DIFF_LINE_OPACITY_EXPRESSION : 1;
+
+  if (map.getLayer('project-preview-polygons')) {
+    map.setPaintProperty('project-preview-polygons', 'fill-color', polygonColor);
+    map.setPaintProperty('project-preview-polygons', 'fill-opacity', useDiffStyles ? DIFF_FILL_OPACITY_EXPRESSION : 0.36);
+  }
+
+  if (map.getLayer('project-preview-polygons-outline')) {
+    map.setPaintProperty('project-preview-polygons-outline', 'line-color', lineColor);
+    map.setPaintProperty('project-preview-polygons-outline', 'line-opacity', opacity);
+  }
+
+  if (map.getLayer('project-preview-lines')) {
+    map.setPaintProperty('project-preview-lines', 'line-color', lineColor);
+    map.setPaintProperty('project-preview-lines', 'line-opacity', opacity);
+  }
+
+  if (map.getLayer('project-preview-points-diff-halo')) {
+    map.setPaintProperty('project-preview-points-diff-halo', 'circle-color', useDiffStyles ? DIFF_COLOR_EXPRESSION : '#f97316');
+    map.setPaintProperty('project-preview-points-diff-halo', 'circle-opacity', useDiffStyles ? DIFF_LINE_OPACITY_EXPRESSION : 0.28);
+  }
+}
+
+function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffStyles = false } = {}) {
   const sourceId = 'project-preview-features';
 
   if (map.getSource(sourceId)) {
     map.getSource(sourceId).setData(featureCollection);
+    setPreviewLayerPaint(map, showDiffStyles);
 
     if (map.getLayer('project-preview-points-label')) {
       map.setLayoutProperty('project-preview-points-label', 'visibility', showLabels ? 'visible' : 'none');
@@ -260,8 +315,8 @@ function addPreviewLayers(map, featureCollection, { showLabels = true } = {}) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
     paint: {
-      'fill-color': '#38bdf8',
-      'fill-opacity': 0.36,
+      'fill-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#38bdf8',
+      'fill-opacity': showDiffStyles ? DIFF_FILL_OPACITY_EXPRESSION : 0.36,
     },
   });
 
@@ -271,9 +326,9 @@ function addPreviewLayers(map, featureCollection, { showLabels = true } = {}) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
     paint: {
-      'line-color': '#0f172a',
+      'line-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#0f172a',
       'line-width': 2.5,
-      'line-opacity': 0.9,
+      'line-opacity': showDiffStyles ? DIFF_LINE_OPACITY_EXPRESSION : 0.9,
     },
   });
 
@@ -295,9 +350,23 @@ function addPreviewLayers(map, featureCollection, { showLabels = true } = {}) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
     paint: {
-      'line-color': '#0284c7',
+      'line-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#0284c7',
       'line-width': 4,
-      'line-opacity': 1,
+      'line-opacity': showDiffStyles ? DIFF_LINE_OPACITY_EXPRESSION : 1,
+    },
+  });
+
+  map.addLayer({
+    id: 'project-preview-points-diff-halo',
+    type: 'circle',
+    source: sourceId,
+    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+    paint: {
+      'circle-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#f97316',
+      'circle-radius': showDiffStyles ? 15 : 11,
+      'circle-opacity': showDiffStyles ? DIFF_LINE_OPACITY_EXPRESSION : 0.28,
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': showDiffStyles ? 2 : 0,
     },
   });
 
@@ -322,7 +391,7 @@ function addPreviewLayers(map, featureCollection, { showLabels = true } = {}) {
       source: sourceId,
       filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
       paint: {
-        'circle-color': '#f97316',
+        'circle-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#f97316',
         'circle-radius': 8,
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 3,
@@ -423,7 +492,7 @@ function useNearViewport(rootMargin = '500px', disabled = false) {
 }
 
 function getFeatureIdentity(feature) {
-  return feature.id || feature._id || feature.properties?.id || feature.properties?.sourceId || feature.properties?.name || '';
+  return feature.id || feature._id || feature.properties?.stableId || feature.properties?.annotationId || feature.properties?.id || feature.properties?.sourceId || feature.properties?.name || '';
 }
 
 function getFeatureRenderKey(featureCollection) {
@@ -432,6 +501,7 @@ function getFeatureRenderKey(featureCollection) {
       geometry: feature.geometry,
       id: getFeatureIdentity(feature),
       markerType: feature.properties?.markerType,
+      diffStatus: feature.properties?.diffStatus,
     }))
   );
 }
@@ -456,6 +526,7 @@ function ProjectPreviewMap({
   emptyLabel = 'No annotations yet',
   lazy = true,
   showLabels = true,
+  showDiffStyles = false,
 }) {
   const [viewportRef, isNearViewport] = useNearViewport('500px', !lazy);
   const containerRef = useRef(null);
@@ -531,6 +602,7 @@ function ProjectPreviewMap({
   const hasFeatures = featureCollection.features.length > 0;
   const featureKey = useMemo(() => getFeatureRenderKey(featureCollection), [featureCollection]);
   const shouldRenderMap = isNearViewport && hasFeatures;
+  const shouldUseDiffStyles = showDiffStyles || hasDiffStyles(featureCollection);
   const containerStyle = height == null ? undefined : { height };
 
   useEffect(() => {
@@ -584,7 +656,7 @@ function ProjectPreviewMap({
 
     ensurePreviewMarkerIcons(map).then(() => {
       if (!isMounted || !mapRef.current) return;
-      addPreviewLayers(map, featureCollection, { showLabels });
+      addPreviewLayers(map, featureCollection, { showLabels, showDiffStyles: shouldUseDiffStyles });
 
       if (fittedFeaturesKeyRef.current === featureKey) return;
 
@@ -603,7 +675,7 @@ function ProjectPreviewMap({
     return () => {
       isMounted = false;
     };
-  }, [featureCollection, featureKey, hasFeatures, isReady, showLabels]);
+  }, [featureCollection, featureKey, hasFeatures, isReady, shouldUseDiffStyles, showLabels]);
 
   return (
     <div

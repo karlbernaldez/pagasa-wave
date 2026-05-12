@@ -156,7 +156,7 @@ export const archiveProject = (id) =>
 ========================================================= */
 
 // Fetch admin review projects with server-driven search, filtering, sorting, and pagination.
-export const fetchAllProjectsForAdmin = ({
+export const fetchAdminProjects = ({
   page = 1,
   limit = 12,
   search = '',
@@ -177,5 +177,5 @@ export const fetchAllProjectsForAdmin = ({
   appendQueryParam(params, 'sortBy', sortBy);
   appendQueryParam(params, 'sortDir', sortDir);
 
-  return request(`${PROJECT_API_BASE_URL}/admin/all?${params}`, { signal });
+  return request(`${PROJECT_API_BASE_URL}/admin/projects?${params}`, { signal });
 };

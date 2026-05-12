@@ -1,0 +1,206 @@
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ThemeProvider } from 'styled-components';
+
+import ReviewActionsFooter from './ReviewActionsFooter';
+
+const testTheme = {
+  tokens: {
+    spacing: {
+      2: '0.5rem',
+      3: '0.75rem',
+      4: '1rem',
+      5: '1.25rem',
+    },
+    radius: {
+      lg: '0.75rem',
+    },
+    typography: {
+      scale: {
+        sm: '0.875rem',
+        md: '1rem',
+      },
+      weight: {
+        bold: 700,
+      },
+    },
+    motion: {
+      duration: {
+        fast: '150ms',
+      },
+      easing: {
+        standard: 'ease',
+      },
+    },
+    shadows: {
+      focus: '0 0 0 3px rgba(59, 130, 246, 0.35)',
+    },
+    colors: {
+      action: {
+        primary: '#2563eb',
+        primaryHover: '#1d4ed8',
+        danger: '#dc2626',
+        dangerHover: '#b91c1c',
+      },
+      text: {
+        dark: {
+          primary: '#ffffff',
+        },
+      },
+      surface: {
+        light: {
+          raised: '#ffffff',
+          muted: '#f8fafc',
+        },
+      },
+      brand: {
+        primary: '#0057b8',
+        secondary: '#0f172a',
+      },
+      border: {
+        light: {
+          default: '#e2e8f0',
+          strong: '#cbd5e1',
+        },
+      },
+    },
+  },
+};
+
+function renderFooter(props = {}) {
+  const handlers = {
+    onAddComment: vi.fn(),
+    onRequestRevision: vi.fn(),
+    onApprove: vi.fn(),
+    onReject: vi.fn(),
+    onPublish: vi.fn(),
+    onClose: vi.fn(),
+  };
+
+  render(
+    <ThemeProvider theme={testTheme}>
+      <ReviewActionsFooter
+        isReviewable
+        isUnderReview
+        hasRemarks
+        {...handlers}
+        {...props}
+      />
+    </ThemeProvider>
+  );
+
+  return handlers;
+}
+
+describe('ReviewActionsFooter', () => {
+  it('disables remark-dependent actions and shows helper text when remarks are empty', () => {
+    renderFooter({ hasRemarks: false });
+
+    expect(screen.getByRole('button', { name: /add comment/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /request revision/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
+    expect(screen.getByText(/add remarks to enable comment, revision, or reject actions/i)).toBeInTheDocument();
+  });
+
+  it('calls Add Comment when remarks exist', () => {
+    const handlers = renderFooter({ hasRemarks: true });
+
+    fireEvent.click(screen.getByRole('button', { name: /add comment/i }));
+
+    expect(handlers.onAddComment).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables Request Revision when project is not under review', () => {
+    renderFooter({ isUnderReview: false, hasRemarks: true });
+
+    expect(screen.getByRole('button', { name: /request revision/i })).toBeDisabled();
+  });
+
+  it('enables Request Revision when project is under review and remarks exist', () => {
+    const handlers = renderFooter({ isUnderReview: true, hasRemarks: true });
+    const requestRevisionButton = screen.getByRole('button', { name: /request revision/i });
+
+    expect(requestRevisionButton).toBeEnabled();
+
+    fireEvent.click(requestRevisionButton);
+
+    expect(handlers.onRequestRevision).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables Approve when project is not under review', () => {
+    renderFooter({ isUnderReview: false, hasRemarks: true });
+
+    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
+  });
+
+  it('calls Approve when project is under review', () => {
+    const handlers = renderFooter({ isUnderReview: true });
+
+    fireEvent.click(screen.getByRole('button', { name: /approve/i }));
+
+    expect(handlers.onApprove).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables Reject when remarks are empty', () => {
+    renderFooter({ hasRemarks: false, isUnderReview: true });
+
+    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
+  });
+
+  it('calls Reject when project is under review and remarks exist', () => {
+    const handlers = renderFooter({ isUnderReview: true, hasRemarks: true });
+    const rejectButton = screen.getByRole('button', { name: /reject/i });
+
+    expect(rejectButton).toBeEnabled();
+
+    fireEvent.click(rejectButton);
+
+    expect(handlers.onReject).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Publish only when project is approved', () => {
+    const handlers = renderFooter({ isApproved: true });
+    const publishButton = screen.getByRole('button', { name: /publish/i });
+
+    expect(publishButton).toBeInTheDocument();
+
+    fireEvent.click(publishButton);
+
+    expect(handlers.onPublish).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not show Publish when project is not approved', () => {
+    renderFooter({ isApproved: false });
+
+    expect(screen.queryByRole('button', { name: /publish/i })).not.toBeInTheDocument();
+  });
+
+  it('hides review-only actions when project is not reviewable', () => {
+    renderFooter({ isReviewable: false, isApproved: false });
+
+    expect(screen.queryByRole('button', { name: /add comment/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /request revision/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reject/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
+  });
+
+  it('calls Close handler', () => {
+    const handlers = renderFooter();
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+
+    expect(handlers.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables all visible buttons while an action is busy', () => {
+    renderFooter({ busyAction: 'approve', isApproved: true });
+
+    expect(screen.getByRole('button', { name: /add comment/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /request revision/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /publish/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /close/i })).toBeDisabled();
+  });
+});

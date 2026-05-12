@@ -2,16 +2,17 @@ import asyncHandler from '../utils/asyncHandler.js';
 import { throwError } from '../utils/errorHelper.js';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
+import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
-const ALLOWED_ADMIN_STATUSES = [
-  'Submitted',
-  'Under Review',
-  'Revision Requested',
-  'Approved',
-  'Published',
-  'Rejected',
-  'Archived',
-];
+const ALLOWED_ADMIN_STATUSES = Object.freeze([
+  PROJECT_STATUS.SUBMITTED,
+  PROJECT_STATUS.UNDER_REVIEW,
+  PROJECT_STATUS.REVISION_REQUESTED,
+  PROJECT_STATUS.APPROVED,
+  PROJECT_STATUS.PUBLISHED,
+  PROJECT_STATUS.REJECTED,
+  PROJECT_STATUS.ARCHIVED,
+]);
 
 const ALLOWED_CHART_TYPES = [
   'analysis',
