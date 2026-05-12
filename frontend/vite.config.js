@@ -5,6 +5,26 @@ import path from 'path';
 function manualChunks(id) {
   if (!id.includes('node_modules')) return undefined;
 
+  if (
+    id.includes('react') ||
+    id.includes('react-dom') ||
+    id.includes('react-router-dom') ||
+    id.includes('styled-components') ||
+    id.includes('@mui') ||
+    id.includes('@emotion') ||
+    id.includes('konva') ||
+    id.includes('react-konva') ||
+    id.includes('perfect-freehand') ||
+    id.includes('lucide-react') ||
+    id.includes('react-icons')
+  ) {
+    return 'vendor-ui';
+  }
+
+  if (id.includes('@tanstack/react-query') || id.includes('axios') || id.includes('socket.io-client')) {
+    return 'vendor-data';
+  }
+
   if (id.includes('mapbox-gl') || id.includes('@mapbox/mapbox-gl-draw')) {
     return 'vendor-mapbox';
   }
