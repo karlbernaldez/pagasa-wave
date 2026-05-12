@@ -150,11 +150,9 @@ function MetadataItem({ label, value, isDarkMode }) {
   );
 }
 
-function RemarksPanel({ visible, remark, needsRevision, isReviewMode, isDarkMode }) {
-  if (!visible) return null;
-
+function RemarksPanel({ remark, needsRevision, isReviewMode, isDarkMode }) {
   const hasRemark = Boolean(remark?.trim());
-  const label = needsRevision ? 'Latest admin remarks' : 'Review remarks';
+  const label = needsRevision || hasRemark ? 'Latest admin remarks' : 'Review remarks';
   const message = hasRemark ? remark : 'No admin remarks yet';
 
   const panelClass = hasRemark
@@ -172,7 +170,7 @@ function RemarksPanel({ visible, remark, needsRevision, isReviewMode, isDarkMode
     : isDarkMode ? 'text-slate-500' : 'text-slate-500';
 
   return (
-    <div className={`min-w-0 rounded-xl border p-3 text-sm ${isReviewMode ? 'min-h-[76px]' : ''} ${panelClass}`}>
+    <div className={`min-h-[76px] min-w-0 rounded-xl border p-3 text-sm ${panelClass}`}>
       <p className={`flex min-w-0 items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${labelClass}`}>
         <MessageSquareText size={14} className="shrink-0" />
         <span className="truncate">{label}</span>
@@ -213,7 +211,6 @@ export default function ProjectCard({
   const isReviewMode = mode === 'review';
   const featureScope = isReviewMode ? 'admin' : 'user';
   const latestRemark = getLatestRemark(project);
-  const showRemarksPanel = isReviewMode || (needsRevision && Boolean(latestRemark));
 
   const menuActions = actions ?? getDefaultMenuActions({ project, onRename, onDelete });
   const reviewActions = getReviewActions({ project, onPublish, onDownload });
@@ -271,12 +268,11 @@ export default function ProjectCard({
               {name}
             </h3>
             <p className={`mt-1 min-h-[1rem] truncate text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} title={owner || undefined}>
-              {owner || (isReviewMode ? '—' : '')}
+              {owner || '—'}
             </p>
           </div>
 
           <RemarksPanel
-            visible={showRemarksPanel}
             remark={latestRemark}
             needsRevision={needsRevision}
             isReviewMode={isReviewMode}
