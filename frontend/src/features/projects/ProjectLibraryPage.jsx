@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle, FolderKanban, LayoutGrid, List, Plus } from "lucide-react";
 
-import ProjectStats from "@dashboards/forecaster/components/project-library/ProjectStats";
-import ProjectToolbar from "@dashboards/forecaster/components/project-library/ProjectToolbar";
-import ProjectTable from "@dashboards/forecaster/components/project-library/ProjectTable";
-import ProjectPagination from "@dashboards/forecaster/components/project-library/ProjectPagination";
+import ProjectStats from "@/features/projects/components/project-library/ProjectStats";
+import ProjectToolbar from "@/features/projects/components/project-library/ProjectToolbar";
+import ProjectTable from "@/features/projects/components/project-library/ProjectTable";
+import ProjectPagination from "@/features/projects/components/project-library/ProjectPagination";
 
 import ProjectCard from "@/features/projects/components/ProjectCard";
 import ProjectReviewModal from "@/features/projects/components/ProjectReviewModal";
