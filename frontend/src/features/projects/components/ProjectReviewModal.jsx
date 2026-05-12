@@ -4,6 +4,7 @@ import { AlertCircle, Check, Clock3, GitCompareArrows, MessageSquareText, Send, 
 import Button from '@/components/ui/Button';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
+import { buildAnnotationDiff } from '@/features/projects/utils/projectAnnotationDiff';
 import { addReviewComment, requestProjectRevision } from '@/api/projectAPI';
 import { fetchProjectFeatureCollection } from '@/api/featureServices';
 import {
@@ -42,6 +43,7 @@ function getOwner(project) {
   if (project?.ownerDisplay) return project.ownerDisplay;
   if (!project?.owner) return 'Project Owner';
   if (typeof project.owner === 'string') return project.owner;
+
   const fullName = `${project.owner.firstName ?? ''} ${project.owner.lastName ?? ''}`.trim();
   return fullName || project.owner.email || 'Project Owner';
 }
@@ -49,12 +51,14 @@ function getOwner(project) {
 function getUserLabel(user) {
   if (!user) return 'System';
   if (typeof user === 'string') return user;
+
   const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
   return fullName || user.username || user.email || 'User';
 }
 
 function formatDate(value) {
   if (!value) return '—';
+
   return new Date(value).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -64,6 +68,7 @@ function formatDate(value) {
 
 function formatDateTime(value) {
   if (!value) return '—';
+
   return new Date(value).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -133,114 +138,6 @@ function mergeProjectState(previousProject, nextProject) {
     featureCollection: nextProject.featureCollection ?? previousProject.featureCollection,
     annotations: nextProject.annotations ?? previousProject.annotations,
     versions: nextProject.versions ?? previousProject.versions,
-  };
-}
-
-function getFeatureKey(feature) {
-  return (
-    feature?.properties?.stableId ||
-    feature?.properties?.annotationId ||
-    feature?.id ||
-    feature?._id ||
-    feature?.properties?.id ||
-    feature?.properties?.sourceId ||
-    JSON.stringify(feature?.geometry || {})
-  );
-}
-
-function sortObject(value) {
-  if (Array.isArray(value)) return value.map(sortObject);
-  if (!value || typeof value !== 'object') return value;
-
-  return Object.keys(value)
-    .sort()
-    .reduce((acc, key) => {
-      if (['owner', 'project', 'sourceId', 'diffStatus'].includes(key)) return acc;
-      acc[key] = sortObject(value[key]);
-      return acc;
-    }, {});
-}
-
-function getComparableFeatureSignature(feature) {
-  return JSON.stringify({
-    geometry: sortObject(feature?.geometry || null),
-    properties: sortObject(feature?.properties || {}),
-  });
-}
-
-function getFeatureMap(features) {
-  return features.reduce((map, feature) => {
-    map.set(getFeatureKey(feature), feature);
-    return map;
-  }, new Map());
-}
-
-function withDiffStatus(feature, diffStatus) {
-  return {
-    ...feature,
-    properties: {
-      ...(feature.properties || {}),
-      diffStatus,
-    },
-  };
-}
-
-function getDiffStatus(previousFeature, currentFeature) {
-  if (!previousFeature && currentFeature) return 'added';
-  if (previousFeature && !currentFeature) return 'removed';
-  if (!previousFeature || !currentFeature) return 'unchanged';
-
-  return getComparableFeatureSignature(previousFeature) === getComparableFeatureSignature(currentFeature)
-    ? 'unchanged'
-    : 'changed';
-}
-
-function buildAnnotationDiff(previousFeatureSource, currentFeatureSource) {
-  const previous = normalizeFeatureCollection(previousFeatureSource).features;
-  const current = normalizeFeatureCollection(currentFeatureSource).features;
-
-  const previousMap = getFeatureMap(previous);
-  const currentMap = getFeatureMap(current);
-  const counts = {
-    previousCount: previous.length,
-    currentCount: current.length,
-    added: 0,
-    changed: 0,
-    removed: 0,
-    unchanged: 0,
-    hasPreviousSnapshot: previous.length > 0,
-  };
-
-  const previousFeatures = previous.map((feature) => {
-    const key = getFeatureKey(feature);
-    const currentFeature = currentMap.get(key);
-    const status = getDiffStatus(feature, currentFeature);
-    if (status === 'removed') counts.removed += 1;
-    return withDiffStatus(feature, status);
-  });
-
-  const currentFeatures = current.map((feature) => {
-    const key = getFeatureKey(feature);
-    const previousFeature = previousMap.get(key);
-    const status = getDiffStatus(previousFeature, feature);
-
-    if (status === 'added') counts.added += 1;
-    if (status === 'changed') counts.changed += 1;
-    if (status === 'unchanged') counts.unchanged += 1;
-
-    return withDiffStatus(feature, status);
-  });
-
-  return {
-    ...counts,
-    previousFeatureCollection: {
-      type: 'FeatureCollection',
-      features: previousFeatures,
-    },
-    currentFeatureCollection: {
-      type: 'FeatureCollection',
-      features: currentFeatures,
-    },
   };
 }
 
