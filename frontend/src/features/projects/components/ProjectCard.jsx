@@ -1,7 +1,5 @@
 import { format } from 'date-fns';
 import {
-  AlertCircle,
-  Check,
   Download,
   ExternalLink,
   MessageSquareText,
@@ -105,25 +103,9 @@ function getSubmitAction({ project, onSubmit, submittingProjectId }) {
   };
 }
 
-function getReviewActions({ project, onApprove, onReject, onPublish, onDownload }) {
+function getReviewActions({ project, onPublish, onDownload }) {
   if (isProjectReviewable(project?.status)) {
-    return [
-      onApprove && {
-        key: 'approve',
-        label: 'Approve',
-        icon: Check,
-        variant: 'primary',
-        onClick: () => onApprove(project),
-      },
-      onReject && {
-        key: 'reject',
-        label: 'Reject',
-        icon: AlertCircle,
-        variant: 'secondary',
-        danger: true,
-        onClick: () => onReject(project),
-      },
-    ].filter(Boolean);
+    return [];
   }
 
   if (isProjectApproved(project?.status)) {
@@ -172,7 +154,6 @@ export default function ProjectCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [busyAction, setBusyAction] = useState(null);
 
-  const id = getProjectId(project);
   const previewProjectId = getPreviewCacheProjectId(project);
   const name = getProjectName(project);
   const needsRevision = isProjectRevisionRequested(project?.status);
@@ -187,7 +168,7 @@ export default function ProjectCard({
   const latestRemarks = project?.latestReviewRemarks;
 
   const menuActions = actions ?? getDefaultMenuActions({ project, onRename, onDelete });
-  const reviewActions = getReviewActions({ project, onApprove, onReject, onPublish, onDownload });
+  const reviewActions = getReviewActions({ project, onPublish, onDownload });
   const submitAction = !isReviewMode
     ? getSubmitAction({ project, onSubmit, submittingProjectId })
     : null;
