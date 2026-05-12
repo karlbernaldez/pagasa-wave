@@ -144,8 +144,6 @@ export default function ProjectCard({
   onDelete,
   onSubmit,
   submittingProjectId,
-  onApprove,
-  onReject,
   onPublish,
   onDownload,
   onActionComplete,
