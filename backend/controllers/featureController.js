@@ -15,6 +15,35 @@ function ensureProjectIsEditable(project) {
   }
 }
 
+function buildFeatureProperties(properties, owner, sourceId) {
+  const stableId = properties.stableId || properties.annotationId || properties.sourceId || sourceId;
+
+  return {
+    ...properties,
+    owner,
+    sourceId,
+    stableId,
+    annotationId: stableId,
+  };
+}
+
+function toGeoJsonFeature(feature) {
+  const stableId = feature.properties?.stableId || feature.properties?.annotationId || feature.properties?.sourceId || feature.sourceId;
+
+  return {
+    type: 'Feature',
+    id: stableId,
+    geometry: feature.geometry,
+    properties: {
+      ...(feature.properties || {}),
+      name: feature.name,
+      sourceId: feature.sourceId,
+      stableId,
+      annotationId: stableId,
+    },
+  };
+}
+
 // CREATE FEATURE
 export const createFeature = asyncHandler(async (req, res) => {
   const { geometry, properties = {}, name = 'Untitled Feature', sourceId } = req.body;
@@ -27,7 +56,7 @@ export const createFeature = asyncHandler(async (req, res) => {
   const project = await ensureProjectExists(projectId, owner);
   ensureProjectIsEditable(project);
 
-  const fullProperties = { ...properties, owner };
+  const fullProperties = buildFeatureProperties(properties, owner, sourceId);
 
   const result = await Feature.updateOne(
     { sourceId, 'properties.owner': owner, 'properties.project': projectId },
@@ -46,6 +75,7 @@ export const createFeature = asyncHandler(async (req, res) => {
   res.status(result.upsertedCount > 0 ? 201 : 200).json({
     message: result.upsertedCount > 0 ? 'Feature saved successfully (new)' : 'Feature already exists. Skipped saving.',
     sourceId,
+    stableId: fullProperties.stableId,
   });
 });
 
@@ -67,11 +97,7 @@ export const getProjectFeatureCollection = asyncHandler(async (req, res) => {
 
   const featureCollection = {
     type: 'FeatureCollection',
-    features: features.map(f => ({
-      type: 'Feature',
-      geometry: f.geometry,
-      properties: f.properties
-    }))
+    features: features.map(toGeoJsonFeature)
   };
 
   res.json(featureCollection);
