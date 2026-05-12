@@ -21,14 +21,14 @@ export const PROJECT_STATUS_LABEL = {
 };
 
 export const PROJECT_STATUS_STYLE = {
-  [PROJECT_STATUS.DRAFT]: 'bg-slate-100 text-slate-700 border-slate-200',
-  [PROJECT_STATUS.SUBMITTED]: 'bg-amber-50 text-amber-700 border-amber-200',
-  [PROJECT_STATUS.UNDER_REVIEW]: 'bg-orange-50 text-orange-700 border-orange-200',
-  [PROJECT_STATUS.REVISION_REQUESTED]: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  [PROJECT_STATUS.APPROVED]: 'bg-blue-50 text-blue-700 border-blue-200',
-  [PROJECT_STATUS.PUBLISHED]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  [PROJECT_STATUS.REJECTED]: 'bg-red-50 text-red-700 border-red-200',
-  [PROJECT_STATUS.ARCHIVED]: 'bg-slate-100 text-slate-500 border-slate-200',
+  [PROJECT_STATUS.DRAFT]: 'bg-slate-100 text-slate-700 border-slate-300',
+  [PROJECT_STATUS.SUBMITTED]: 'bg-sky-100 text-sky-800 border-sky-300',
+  [PROJECT_STATUS.UNDER_REVIEW]: 'bg-violet-100 text-violet-800 border-violet-300',
+  [PROJECT_STATUS.REVISION_REQUESTED]: 'bg-orange-100 text-orange-800 border-orange-300',
+  [PROJECT_STATUS.APPROVED]: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  [PROJECT_STATUS.PUBLISHED]: 'bg-teal-100 text-teal-800 border-teal-300',
+  [PROJECT_STATUS.REJECTED]: 'bg-rose-100 text-rose-800 border-rose-300',
+  [PROJECT_STATUS.ARCHIVED]: 'bg-zinc-100 text-zinc-600 border-zinc-300',
 };
 
 const STATUS_ALIASES = {
@@ -74,7 +74,7 @@ export function getProjectStatusLabel(status) {
 
 export function getProjectStatusStyle(status) {
   const normalizedStatus = normalizeProjectStatus(status);
-  return PROJECT_STATUS_STYLE[normalizedStatus] || 'bg-blue-50 text-blue-700 border-blue-200';
+  return PROJECT_STATUS_STYLE[normalizedStatus] || 'bg-sky-100 text-sky-800 border-sky-300';
 }
 
 export function isProjectSubmitted(status) {
