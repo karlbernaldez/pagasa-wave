@@ -67,6 +67,10 @@ function getProjectFeatures(project) {
   return project?.features || project?.featureCollection || project?.annotations || [];
 }
 
+function getLatestRemark(project) {
+  return project?.latestReviewRemarks?.comment || project?.reviewComment || '';
+}
+
 function getDefaultMenuActions({ project, onRename, onDelete }) {
   if (!canEditProjectStatus(project?.status)) return [];
 
@@ -135,6 +139,51 @@ function getReviewActions({ project, onPublish, onDownload }) {
   return [];
 }
 
+function MetadataItem({ label, value, isDarkMode }) {
+  return (
+    <div className="min-w-0">
+      <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
+      <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`} title={value}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function RemarksPanel({ visible, remark, needsRevision, isReviewMode, isDarkMode }) {
+  if (!visible) return null;
+
+  const hasRemark = Boolean(remark?.trim());
+  const label = needsRevision ? 'Latest admin remarks' : 'Review remarks';
+  const message = hasRemark ? remark : 'No admin remarks yet';
+
+  const panelClass = hasRemark
+    ? isDarkMode
+      ? 'border-amber-400/30 bg-amber-950/30'
+      : 'border-amber-200 bg-amber-50'
+    : isDarkMode
+      ? 'border-white/10 bg-slate-950/45'
+      : 'border-slate-200 bg-slate-50';
+  const labelClass = hasRemark
+    ? isDarkMode ? 'text-amber-300' : 'text-amber-700'
+    : isDarkMode ? 'text-slate-500' : 'text-slate-400';
+  const textClass = hasRemark
+    ? isDarkMode ? 'text-amber-100' : 'text-amber-900'
+    : isDarkMode ? 'text-slate-500' : 'text-slate-500';
+
+  return (
+    <div className={`min-w-0 rounded-xl border p-3 text-sm ${isReviewMode ? 'min-h-[76px]' : ''} ${panelClass}`}>
+      <p className={`flex min-w-0 items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${labelClass}`}>
+        <MessageSquareText size={14} className="shrink-0" />
+        <span className="truncate">{label}</span>
+      </p>
+      <p className={`mt-1 line-clamp-2 font-semibold leading-relaxed ${textClass}`}>
+        {message}
+      </p>
+    </div>
+  );
+}
+
 export default function ProjectCard({
   project,
   mode = 'library',
@@ -163,7 +212,8 @@ export default function ProjectCard({
   const owner = getProjectOwner(project);
   const isReviewMode = mode === 'review';
   const featureScope = isReviewMode ? 'admin' : 'user';
-  const latestRemarks = project?.latestReviewRemarks;
+  const latestRemark = getLatestRemark(project);
+  const showRemarksPanel = isReviewMode || (needsRevision && Boolean(latestRemark));
 
   const menuActions = actions ?? getDefaultMenuActions({ project, onRename, onDelete });
   const reviewActions = getReviewActions({ project, onPublish, onDownload });
@@ -220,38 +270,30 @@ export default function ProjectCard({
             <h3 className={`line-clamp-2 min-h-[2.5rem] text-base font-black leading-tight ${isDarkMode ? 'text-slate-50' : 'text-slate-900'}`} title={name}>
               {name}
             </h3>
-            {owner && (
-              <p className={`mt-1 truncate text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                {owner}
-              </p>
-            )}
+            <p className={`mt-1 min-h-[1rem] truncate text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} title={owner || undefined}>
+              {owner || (isReviewMode ? '—' : '')}
+            </p>
           </div>
 
-          {needsRevision && latestRemarks?.comment && (
-            <div className={`min-w-0 rounded-xl border p-3 text-sm ${isDarkMode ? 'border-amber-400/30 bg-amber-950/30' : 'border-amber-200 bg-amber-50'}`}>
-              <p className={`flex min-w-0 items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
-                <MessageSquareText size={14} className="shrink-0" />
-                <span className="truncate">Latest admin remarks</span>
-              </p>
-              <p className={`mt-1 line-clamp-2 font-semibold leading-relaxed ${isDarkMode ? 'text-amber-100' : 'text-amber-900'}`}>
-                {latestRemarks.comment}
-              </p>
-            </div>
-          )}
+          <RemarksPanel
+            visible={showRemarksPanel}
+            remark={latestRemark}
+            needsRevision={needsRevision}
+            isReviewMode={isReviewMode}
+            isDarkMode={isDarkMode}
+          />
 
-          <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
-            <div className="min-w-0">
-              <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Forecast Date</p>
-              <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                {formatDate(project?.forecastDate)}
-              </p>
-            </div>
-            <div className="min-w-0">
-              <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Updated</p>
-              <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                {formatDate(project?.updatedAt || project?.submittedAt || project?.createdAt, 'MMM d, h:mm a')}
-              </p>
-            </div>
+          <div className="grid min-h-[48px] grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+            <MetadataItem
+              label="Forecast Date"
+              value={formatDate(project?.forecastDate)}
+              isDarkMode={isDarkMode}
+            />
+            <MetadataItem
+              label="Updated"
+              value={formatDate(project?.updatedAt || project?.submittedAt || project?.createdAt, 'MMM d, h:mm a')}
+              isDarkMode={isDarkMode}
+            />
           </div>
         </div>
 
