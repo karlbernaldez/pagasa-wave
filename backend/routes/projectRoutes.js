@@ -60,7 +60,7 @@ router.use(protect);
 // ─────────────────────────────────────────────
 // Admin routes - keep before dynamic /:id routes
 // ─────────────────────────────────────────────
-router.get('/admin/all', isAdmin, getAdminProjects);
+router.get('/admin/projects', isAdmin, getAdminProjects);
 
 router.patch('/:id/start-review', isAdmin, preventAdminSelfReview, startReviewProject);
 
@@ -87,7 +87,7 @@ router.get('/latest', getLatestUserProject);
 
 router.get('/:id', isOwnerOrAdmin, getProjectById);
 
-router.put('/:id', isOwnerOrAdmin, updateProject); 
+router.put('/:id', isOwnerOrAdmin, updateProject);
 
 router.patch('/:id/rename', isOwnerOrAdmin, requireEditableProject, renameProject); // IMPORTANT: updateProject must NOT allow status changes
 
