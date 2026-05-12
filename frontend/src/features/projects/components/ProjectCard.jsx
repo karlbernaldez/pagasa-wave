@@ -203,9 +203,7 @@ export default function ProjectCard({
   const name = getProjectName(project);
   const needsRevision = isProjectRevisionRequested(project?.status);
   const statusLabel = needsRevision ? 'Needs Revision' : getProjectStatusLabel(project?.status);
-  const statusClass = needsRevision
-    ? 'bg-amber-50 text-amber-800 border-amber-300'
-    : getProjectStatusStyle(project?.status);
+  const statusClass = getProjectStatusStyle(project?.status);
   const featureSource = getProjectFeatures(project);
   const owner = getProjectOwner(project);
   const isReviewMode = mode === 'review';
@@ -232,8 +230,8 @@ export default function ProjectCard({
   };
 
   const cardClass = isDarkMode
-    ? `bg-slate-900/80 ${needsRevision ? 'border-amber-400/50 ring-2 ring-amber-400/15' : 'border-white/10 hover:border-cyan-400/30'}`
-    : `bg-white ${needsRevision ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200 hover:border-blue-200'}`;
+    ? `bg-slate-900/80 ${needsRevision ? 'border-orange-400/50 ring-2 ring-orange-400/15' : 'border-white/10 hover:border-cyan-400/30'}`
+    : `bg-white ${needsRevision ? 'border-orange-300 ring-2 ring-orange-100' : 'border-slate-200 hover:border-blue-200'}`;
 
   return (
     <article className={`group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
