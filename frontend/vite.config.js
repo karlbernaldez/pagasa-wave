@@ -20,6 +20,10 @@ export default defineConfig({
       "dev.wavelab.adovelopers.com"
     ]
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setupTests.js'],
+  },
 })
 
 
