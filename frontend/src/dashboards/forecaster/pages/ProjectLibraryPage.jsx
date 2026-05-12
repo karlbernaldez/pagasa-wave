@@ -111,6 +111,17 @@ function getCreatedProjectId(project) {
   return project?._id || project?.id || project?.project?._id || project?.project?.id;
 }
 
+function getReviewModalProject(project) {
+  if (!project) return project;
+
+  return {
+    ...project,
+    // Previous Remarks should come from timestamped audit comments so the modal
+    // can show the three most recent comments, not a stale denormalized field.
+    reviewComment: undefined,
+  };
+}
+
 export default function ProjectLibraryPage({ role = "forecaster", title, description }) {
   const { isDarkMode } = useTheme();
   const controller = useProjectLibraryController({ role, title, description });
@@ -290,7 +301,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
 
       {role === 'admin' && (
         <ProjectReviewModal
-          project={reviewProject}
+          project={getReviewModalProject(reviewProject)}
           isDarkMode={isDarkMode}
           onClose={() => setReviewProject(null)}
           onApprove={onApprove}
