@@ -19,6 +19,13 @@ const SYSTEM_REMARKS = new Set([
   'Project review started',
 ]);
 
+const DIFF_LEGEND_ITEMS = [
+  { key: 'added', label: 'Added', className: 'bg-emerald-500' },
+  { key: 'changed', label: 'Changed', className: 'bg-orange-500' },
+  { key: 'removed', label: 'Removed', className: 'bg-red-500' },
+  { key: 'unchanged', label: 'Unchanged', className: 'bg-slate-500' },
+];
+
 function getProjectName(project) {
   return project?.name || project?.title || 'Untitled project';
 }
@@ -148,7 +155,7 @@ function sortObject(value) {
   return Object.keys(value)
     .sort()
     .reduce((acc, key) => {
-      if (['owner', 'project', 'sourceId'].includes(key)) return acc;
+      if (['owner', 'project', 'sourceId', 'diffStatus'].includes(key)) return acc;
       acc[key] = sortObject(value[key]);
       return acc;
     }, {});
@@ -168,34 +175,72 @@ function getFeatureMap(features) {
   }, new Map());
 }
 
-function getAnnotationDiff(previousFeatureSource, currentFeatureSource) {
+function withDiffStatus(feature, diffStatus) {
+  return {
+    ...feature,
+    properties: {
+      ...(feature.properties || {}),
+      diffStatus,
+    },
+  };
+}
+
+function getDiffStatus(previousFeature, currentFeature) {
+  if (!previousFeature && currentFeature) return 'added';
+  if (previousFeature && !currentFeature) return 'removed';
+  if (!previousFeature || !currentFeature) return 'unchanged';
+
+  return getComparableFeatureSignature(previousFeature) === getComparableFeatureSignature(currentFeature)
+    ? 'unchanged'
+    : 'changed';
+}
+
+function buildAnnotationDiff(previousFeatureSource, currentFeatureSource) {
   const previous = normalizeFeatureCollection(previousFeatureSource).features;
   const current = normalizeFeatureCollection(currentFeatureSource).features;
 
   const previousMap = getFeatureMap(previous);
   const currentMap = getFeatureMap(current);
-  const changed = [];
-  const unchanged = [];
+  const counts = {
+    previousCount: previous.length,
+    currentCount: current.length,
+    added: 0,
+    changed: 0,
+    removed: 0,
+    unchanged: 0,
+    hasPreviousSnapshot: previous.length > 0,
+  };
 
-  currentMap.forEach((currentFeature, key) => {
+  const previousFeatures = previous.map((feature) => {
+    const key = getFeatureKey(feature);
+    const currentFeature = currentMap.get(key);
+    const status = getDiffStatus(feature, currentFeature);
+    if (status === 'removed') counts.removed += 1;
+    return withDiffStatus(feature, status);
+  });
+
+  const currentFeatures = current.map((feature) => {
+    const key = getFeatureKey(feature);
     const previousFeature = previousMap.get(key);
-    if (!previousFeature) return;
+    const status = getDiffStatus(previousFeature, feature);
 
-    if (getComparableFeatureSignature(previousFeature) === getComparableFeatureSignature(currentFeature)) {
-      unchanged.push(currentFeature);
-    } else {
-      changed.push(currentFeature);
-    }
+    if (status === 'added') counts.added += 1;
+    if (status === 'changed') counts.changed += 1;
+    if (status === 'unchanged') counts.unchanged += 1;
+
+    return withDiffStatus(feature, status);
   });
 
   return {
-    previousCount: previous.length,
-    currentCount: current.length,
-    added: current.filter((feature) => !previousMap.has(getFeatureKey(feature))).length,
-    changed: changed.length,
-    removed: previous.filter((feature) => !currentMap.has(getFeatureKey(feature))).length,
-    unchanged: unchanged.length,
-    hasPreviousSnapshot: previous.length > 0,
+    ...counts,
+    previousFeatureCollection: {
+      type: 'FeatureCollection',
+      features: previousFeatures,
+    },
+    currentFeatureCollection: {
+      type: 'FeatureCollection',
+      features: currentFeatures,
+    },
   };
 }
 
@@ -220,6 +265,19 @@ function DiffMetric({ label, value, tone = 'slate', isDarkMode = false }) {
     <div className={`rounded-2xl border p-3 ring-1 sm:p-4 ${toneClass}`}>
       <p className="text-[10px] font-black uppercase tracking-[0.14em] opacity-70 sm:text-[11px]">{label}</p>
       <p className="mt-1 text-xl font-black leading-none sm:text-2xl">{value}</p>
+    </div>
+  );
+}
+
+function DiffLegend({ isDarkMode = false }) {
+  return (
+    <div className={`flex flex-wrap items-center gap-2 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'border-white/10 bg-slate-950/80 text-slate-300' : 'border-slate-200 bg-white/90 text-slate-600'}`}>
+      {DIFF_LEGEND_ITEMS.map((item) => (
+        <span key={item.key} className="inline-flex items-center gap-1.5">
+          <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} />
+          {item.label}
+        </span>
+      ))}
     </div>
   );
 }
@@ -292,7 +350,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
   const reviewer = getReviewer(currentProject);
   const previousFeatureSource = getPreviousFeatureSource(currentProject);
   const currentFeatureSource = currentFeatureCollection;
-  const diff = getAnnotationDiff(previousFeatureSource, currentFeatureSource);
+  const diff = buildAnnotationDiff(previousFeatureSource, currentFeatureSource);
   const hasRemarks = remarks.trim().length > 0;
 
   const runAction = async (key, action, { requireRemarks = false, closeOnSuccess = true } = {}) => {
@@ -365,21 +423,24 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                     {isLoadingCurrentFeatures ? 'Loading current annotations…' : mapMode === 'diff' ? 'Compare previous snapshot against current submission' : 'Large map review workspace'}
                   </p>
                 </div>
-                <div className={`grid grid-cols-2 rounded-2xl border p-1 shadow-inner sm:flex sm:shrink-0 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
-                  <button
-                    type="button"
-                    onClick={() => setMapMode('preview')}
-                    className={`rounded-xl px-4 py-2 text-xs font-black transition ${mapMode === 'preview' ? (isDarkMode ? 'bg-slate-800 text-blue-300 shadow-sm ring-1 ring-white/10' : 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200') : (isDarkMode ? 'text-slate-400 hover:text-slate-100' : 'text-slate-500 hover:text-slate-800')}`}
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMapMode('diff')}
-                    className={`rounded-xl px-4 py-2 text-xs font-black transition ${mapMode === 'diff' ? (isDarkMode ? 'bg-slate-800 text-blue-300 shadow-sm ring-1 ring-white/10' : 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200') : (isDarkMode ? 'text-slate-400 hover:text-slate-100' : 'text-slate-500 hover:text-slate-800')}`}
-                  >
-                    Diff
-                  </button>
+                <div className="flex flex-col gap-2 sm:items-end">
+                  <div className={`grid grid-cols-2 rounded-2xl border p-1 shadow-inner sm:flex sm:shrink-0 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                    <button
+                      type="button"
+                      onClick={() => setMapMode('preview')}
+                      className={`rounded-xl px-4 py-2 text-xs font-black transition ${mapMode === 'preview' ? (isDarkMode ? 'bg-slate-800 text-blue-300 shadow-sm ring-1 ring-white/10' : 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200') : (isDarkMode ? 'text-slate-400 hover:text-slate-100' : 'text-slate-500 hover:text-slate-800')}`}
+                    >
+                      Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMapMode('diff')}
+                      className={`rounded-xl px-4 py-2 text-xs font-black transition ${mapMode === 'diff' ? (isDarkMode ? 'bg-slate-800 text-blue-300 shadow-sm ring-1 ring-white/10' : 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200') : (isDarkMode ? 'text-slate-400 hover:text-slate-100' : 'text-slate-500 hover:text-slate-800')}`}
+                    >
+                      Diff
+                    </button>
+                  </div>
+                  {mapMode === 'diff' && <DiffLegend isDarkMode={isDarkMode} />}
                 </div>
               </div>
 
@@ -408,13 +469,14 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                         Previous Snapshot
                       </div>
                       <ProjectPreviewMap
-                        features={previousFeatureSource}
+                        features={diff.previousFeatureCollection}
                         featureScope="admin"
                         isDarkMode={isDarkMode}
                         className="h-[248px] flex-none rounded-none border-0 sm:h-[360px] xl:h-full xl:flex-1"
                         height={null}
                         emptyLabel="No previous snapshot"
                         lazy={false}
+                        showDiffStyles
                       />
                     </div>
                     <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${isDarkMode ? 'border-blue-400/20 bg-blue-500/5' : 'border-blue-100 bg-blue-50/40'}`}>
@@ -423,13 +485,14 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                       </div>
                       <ProjectPreviewMap
                         projectId={projectId}
-                        features={currentFeatureSource}
+                        features={diff.currentFeatureCollection}
                         featureScope="admin"
                         isDarkMode={isDarkMode}
                         className="h-[248px] flex-none rounded-none border-0 sm:h-[360px] xl:h-full xl:flex-1"
                         height={null}
                         emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                         lazy={false}
+                        showDiffStyles
                       />
                     </div>
                   </div>
