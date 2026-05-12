@@ -62,7 +62,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:diff": "vitest run src/features/projects/utils/projectAnnotationDiff.test.js",
-    "test:review-actions": "vitest run src/features/projects/components/review/ReviewActionsFooter.test.jsx"
+    "test:review-actions": "vitest run src/features/projects/components/review/ReviewActionsFooter.test.jsx",
+    "test:review-view-model": "vitest run src/features/projects/utils/projectReviewViewModel.test.js"
   },
   "browserslist": {
     "production": [
