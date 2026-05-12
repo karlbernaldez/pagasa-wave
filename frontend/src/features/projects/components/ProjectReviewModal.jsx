@@ -13,6 +13,12 @@ import {
   isProjectUnderReview,
 } from '@/features/projects/projectStatuses';
 
+const SYSTEM_REMARKS = new Set([
+  'Project created',
+  'Submitted for review',
+  'Project review started',
+]);
+
 function getProjectName(project) {
   return project?.name || project?.title || 'Untitled project';
 }
@@ -79,27 +85,20 @@ function getTimeline(project) {
 function getPreviousRemarks(project) {
   const remarks = [];
 
-  if (project?.reviewComment) {
-    remarks.push({
-      id: 'review-comment',
-      comment: project.reviewComment,
-      actor: getUserLabel(project.rejectedBy || project.approvedBy || project.reviewStartedBy),
-      date: project.reviewedAt || project.updatedAt,
-      action: 'review_comment',
-    });
-  }
-
   getTimeline(project)
-    .filter((item) => item.comment && !['Project created', 'Submitted for review', 'Project review started'].includes(item.comment))
+    .filter((item) => item.comment && !SYSTEM_REMARKS.has(item.comment))
     .forEach((item) => remarks.push(item));
 
   const seen = new Set();
-  return remarks.filter((item) => {
-    const key = `${item.comment}-${item.date}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+
+  return remarks
+    .filter((item) => {
+      const key = `${item.comment}-${item.date}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
 }
 
 function getReviewer(project) {
@@ -131,22 +130,71 @@ function mergeProjectState(previousProject, nextProject) {
 }
 
 function getFeatureKey(feature) {
-  return feature?._id || feature?.id || feature?.properties?.id || feature?.properties?.sourceId || JSON.stringify(feature?.geometry || {});
+  return (
+    feature?.properties?.stableId ||
+    feature?.properties?.annotationId ||
+    feature?.id ||
+    feature?._id ||
+    feature?.properties?.id ||
+    feature?.properties?.sourceId ||
+    JSON.stringify(feature?.geometry || {})
+  );
+}
+
+function sortObject(value) {
+  if (Array.isArray(value)) return value.map(sortObject);
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.keys(value)
+    .sort()
+    .reduce((acc, key) => {
+      if (['owner', 'project', 'sourceId'].includes(key)) return acc;
+      acc[key] = sortObject(value[key]);
+      return acc;
+    }, {});
+}
+
+function getComparableFeatureSignature(feature) {
+  return JSON.stringify({
+    geometry: sortObject(feature?.geometry || null),
+    properties: sortObject(feature?.properties || {}),
+  });
+}
+
+function getFeatureMap(features) {
+  return features.reduce((map, feature) => {
+    map.set(getFeatureKey(feature), feature);
+    return map;
+  }, new Map());
 }
 
 function getAnnotationDiff(previousFeatureSource, currentFeatureSource) {
   const previous = normalizeFeatureCollection(previousFeatureSource).features;
   const current = normalizeFeatureCollection(currentFeatureSource).features;
 
-  const previousKeys = new Set(previous.map(getFeatureKey));
-  const currentKeys = new Set(current.map(getFeatureKey));
+  const previousMap = getFeatureMap(previous);
+  const currentMap = getFeatureMap(current);
+  const changed = [];
+  const unchanged = [];
+
+  currentMap.forEach((currentFeature, key) => {
+    const previousFeature = previousMap.get(key);
+    if (!previousFeature) return;
+
+    if (getComparableFeatureSignature(previousFeature) === getComparableFeatureSignature(currentFeature)) {
+      unchanged.push(currentFeature);
+    } else {
+      changed.push(currentFeature);
+    }
+  });
 
   return {
     previousCount: previous.length,
     currentCount: current.length,
-    added: current.filter((feature) => !previousKeys.has(getFeatureKey(feature))).length,
-    removed: previous.filter((feature) => !currentKeys.has(getFeatureKey(feature))).length,
-    unchanged: current.filter((feature) => previousKeys.has(getFeatureKey(feature))).length,
+    added: current.filter((feature) => !previousMap.has(getFeatureKey(feature))).length,
+    changed: changed.length,
+    removed: previous.filter((feature) => !currentMap.has(getFeatureKey(feature))).length,
+    unchanged: unchanged.length,
     hasPreviousSnapshot: previous.length > 0,
   };
 }
@@ -156,12 +204,14 @@ function DiffMetric({ label, value, tone = 'slate', isDarkMode = false }) {
     ? {
         blue: 'border-blue-400/20 bg-blue-500/10 text-blue-300 ring-blue-400/10',
         green: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300 ring-emerald-400/10',
+        orange: 'border-orange-400/20 bg-orange-500/10 text-orange-300 ring-orange-400/10',
         red: 'border-red-400/20 bg-red-500/10 text-red-300 ring-red-400/10',
         slate: 'border-white/10 bg-slate-950/70 text-slate-300 ring-white/10',
       }[tone]
     : {
         blue: 'border-blue-100 bg-blue-50 text-blue-700 ring-blue-100',
         green: 'border-emerald-100 bg-emerald-50 text-emerald-700 ring-emerald-100',
+        orange: 'border-orange-100 bg-orange-50 text-orange-700 ring-orange-100',
         red: 'border-red-100 bg-red-50 text-red-700 ring-red-100',
         slate: 'border-slate-100 bg-slate-50 text-slate-700 ring-slate-100',
       }[tone];
@@ -402,10 +452,11 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 xl:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3 xl:grid-cols-2">
                 <DiffMetric label="Previous" value={diff.previousCount} isDarkMode={isDarkMode} />
                 <DiffMetric label="Current" value={diff.currentCount} tone="blue" isDarkMode={isDarkMode} />
                 <DiffMetric label="Added" value={diff.added} tone="green" isDarkMode={isDarkMode} />
+                <DiffMetric label="Changed" value={diff.changed} tone="orange" isDarkMode={isDarkMode} />
                 <DiffMetric label="Removed" value={diff.removed} tone="red" isDarkMode={isDarkMode} />
               </div>
 
