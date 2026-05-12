@@ -1,17 +1,26 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 
-import { startReviewProject, submitProject } from '@/api/projectAPI';
+import {
+  approveProject,
+  publishProject,
+  rejectProject,
+  startReviewProject,
+  submitProject,
+} from '@/api/projectAPI';
 import { ROLES } from '@/core/auth/roles';
 import { useDeleteProjectMutation, useRenameProjectMutation } from '@dashboards/forecaster/hooks/useProjectMutations';
 import ProjectDialogsHost from '@dashboards/forecaster/components/project-library/ProjectDialogsHost';
-import ChartDetailModal from '@dashboards/admin/sections/chart-review/components/ChartDetailModal';
+import ProjectReviewModal from '@/features/projects/components/ProjectReviewModal';
 import ProjectsFeatureLayout from './components/ProjectsFeatureLayout';
 import ProjectsHeader from './components/ProjectsHeader';
 import ProjectsStatusTabs from './components/ProjectsStatusTabs';
 import ProjectsList from './components/ProjectsList';
 import { getProjectActions, getProjectsCopy } from './projectRoleConfig';
 import { useProjectsData } from './hooks/useProjectsData';
+
+function getProjectId(project) {
+  return project?._id || project?.id;
+}
 
 const ProjectsPage = ({ role, isDarkMode }) => {
   const copy = getProjectsCopy(role);
@@ -26,14 +35,14 @@ const ProjectsPage = ({ role, isDarkMode }) => {
   const renameProjectMutation = useRenameProjectMutation();
 
   const forecasterDialogs = ProjectDialogsHost({
-    onDeleteConfirm: (project) => deleteProjectMutation.mutate(project._id),
-    onRenameConfirm: (project, name) => renameProjectMutation.mutate({ id: project._id, name }),
+    onDeleteConfirm: (project) => deleteProjectMutation.mutate(getProjectId(project)),
+    onRenameConfirm: (project, name) => renameProjectMutation.mutate({ id: getProjectId(project), name }),
   });
 
   const isAdmin = role === ROLES.ADMIN;
 
   const handleSubmitProject = async (project) => {
-    const projectId = project?._id || project?.id;
+    const projectId = getProjectId(project);
     if (!projectId || submittingProjectId) return;
 
     setSubmittingProjectId(projectId);
@@ -48,7 +57,7 @@ const ProjectsPage = ({ role, isDarkMode }) => {
   };
 
   const handleReviewProject = async (project) => {
-    const projectId = project?._id || project?.id;
+    const projectId = getProjectId(project);
     if (!projectId || reviewingProjectId) return;
 
     setReviewingProjectId(projectId);
@@ -66,6 +75,24 @@ const ProjectsPage = ({ role, isDarkMode }) => {
     }
   };
 
+  const handleApproveProject = async (project) => {
+    const updatedProject = await approveProject(getProjectId(project));
+    await data.refetch?.();
+    return updatedProject;
+  };
+
+  const handleRejectProject = async (project, comment) => {
+    const updatedProject = await rejectProject(getProjectId(project), comment);
+    await data.refetch?.();
+    return updatedProject;
+  };
+
+  const handlePublishProject = async (project) => {
+    const updatedProject = await publishProject(getProjectId(project));
+    await data.refetch?.();
+    return updatedProject;
+  };
+
   const handleAdminActionComplete = async (updatedProject) => {
     if (updatedProject) {
       setSelectedAdminProject(updatedProject);
@@ -75,14 +102,16 @@ const ProjectsPage = ({ role, isDarkMode }) => {
 
   const dialogs = isAdmin
     ? selectedAdminProject
-      ? createPortal(
-          <ChartDetailModal
-            chart={selectedAdminProject}
+      ? (
+          <ProjectReviewModal
+            project={selectedAdminProject}
             isDarkMode={isDarkMode}
             onClose={() => setSelectedAdminProject(null)}
+            onApprove={handleApproveProject}
+            onReject={handleRejectProject}
+            onPublish={handlePublishProject}
             onActionComplete={handleAdminActionComplete}
-          />,
-          document.body,
+          />
         )
       : null
     : forecasterDialogs.dialogs;
@@ -109,7 +138,7 @@ const ProjectsPage = ({ role, isDarkMode }) => {
         loading={data.loading}
         error={data.error}
         onRetry={data.refetch}
-        onOpen={isAdmin ? handleReviewProject : (project) => window.open(`/studio/${project._id}`, '_blank')}
+        onOpen={isAdmin ? handleReviewProject : (project) => window.open(`/studio/${getProjectId(project)}`, '_blank')}
         onApprove={isAdmin ? handleReviewProject : undefined}
         onSubmit={!isAdmin ? handleSubmitProject : undefined}
         submittingProjectId={submittingProjectId}
