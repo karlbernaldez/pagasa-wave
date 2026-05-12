@@ -4,12 +4,18 @@ import { useNavigate } from "react-router-dom";
 import {
   getAdminProjectStats,
   getProjectStats,
-} from "@dashboards/forecaster/components/project-library/projectLibraryUtils";
-import { ADMIN_PAGE_SIZE, useAdminProjectLibrary } from "@dashboards/forecaster/hooks/project-library/useAdminProjectLibrary";
-import { FORECASTER_PAGE_SIZE, useForecasterProjectLibrary } from "@dashboards/forecaster/hooks/project-library/useForecasterProjectLibrary";
-import { useProjectLibraryActions } from "@dashboards/forecaster/hooks/project-library/useProjectLibraryActions";
-import { useProjectLibraryDialogs } from "@dashboards/forecaster/hooks/project-library/useProjectLibraryDialogs";
-import { getProjectId } from "@dashboards/forecaster/hooks/project-library/projectLibraryHelpers";
+} from "@/features/projects/components/project-library/projectLibraryUtils";
+import {
+  ADMIN_PAGE_SIZE,
+  useAdminProjectLibrary,
+} from "@/features/projects/hooks/project-library/useAdminProjectLibrary";
+import {
+  FORECASTER_PAGE_SIZE,
+  useForecasterProjectLibrary,
+} from "@/features/projects/hooks/project-library/useForecasterProjectLibrary";
+import { useProjectLibraryActions } from "@/features/projects/hooks/project-library/useProjectLibraryActions";
+import { useProjectLibraryDialogs } from "@/features/projects/hooks/project-library/useProjectLibraryDialogs";
+import { getProjectId } from "@/features/projects/hooks/project-library/projectLibraryHelpers";
 
 export function useProjectLibraryController({ role = "forecaster", title, description } = {}) {
   const navigate = useNavigate();
