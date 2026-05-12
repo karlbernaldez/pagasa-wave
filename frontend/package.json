@@ -60,9 +60,9 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run --environment jsdom --setupFiles src/test/setupTests.js",
+    "test": "vitest run",
     "test:diff": "vitest run src/features/projects/utils/projectAnnotationDiff.test.js",
-    "test:review-actions": "vitest run --environment jsdom --setupFiles src/test/setupTests.js src/features/projects/components/review/ReviewActionsFooter.test.jsx"
+    "test:review-actions": "vitest run src/features/projects/components/review/ReviewActionsFooter.test.jsx"
   },
   "browserslist": {
     "production": [
