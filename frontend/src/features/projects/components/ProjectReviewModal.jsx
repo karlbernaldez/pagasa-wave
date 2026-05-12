@@ -85,6 +85,17 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
     };
   }, [projectId]);
 
+  const hasRemarks = remarks.trim().length > 0;
+  const { busyAction, runAction } = useProjectReviewActions({
+    currentProject,
+    remarks,
+    hasRemarks,
+    setCurrentProject,
+    setRemarks,
+    onActionComplete,
+    onClose,
+  });
+
   if (!currentProject) return null;
 
   const statusLabel = getProjectStatusLabel(currentProject?.status);
@@ -97,16 +108,6 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
   const previousFeatureSource = getPreviousFeatureSource(currentProject);
   const currentFeatureSource = currentFeatureCollection;
   const diff = buildAnnotationDiff(previousFeatureSource, currentFeatureSource);
-  const hasRemarks = remarks.trim().length > 0;
-  const { busyAction, runAction } = useProjectReviewActions({
-    currentProject,
-    remarks,
-    hasRemarks,
-    setCurrentProject,
-    setRemarks,
-    onActionComplete,
-    onClose,
-  });
 
   const surface = isDarkMode ? 'border-white/10 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-950';
   const mutedText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
