@@ -210,8 +210,8 @@ export default function ProjectCard({
     : `bg-white ${needsRevision ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200 hover:border-blue-200'}`;
 
   return (
-    <article className={`group min-w-0 overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
-      <div className="relative overflow-hidden rounded-t-2xl">
+    <article className={`group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
+      <div className="relative shrink-0 overflow-hidden rounded-t-2xl">
         <ProjectPreviewMap
           projectId={previewProjectId}
           features={featureSource}
@@ -235,46 +235,48 @@ export default function ProjectCard({
         </div>
       </div>
 
-      <div className="min-w-0 space-y-4 p-4">
-        <div className="min-w-0">
-          <h3 className={`truncate text-base font-black ${isDarkMode ? 'text-slate-50' : 'text-slate-900'}`} title={name}>
-            {name}
-          </h3>
-          {owner && (
-            <p className={`mt-1 truncate text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              {owner}
-            </p>
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <div className="min-w-0 space-y-4">
+          <div className="min-w-0">
+            <h3 className={`line-clamp-2 min-h-[2.5rem] text-base font-black leading-tight ${isDarkMode ? 'text-slate-50' : 'text-slate-900'}`} title={name}>
+              {name}
+            </h3>
+            {owner && (
+              <p className={`mt-1 truncate text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                {owner}
+              </p>
+            )}
+          </div>
+
+          {needsRevision && latestRemarks?.comment && (
+            <div className={`min-w-0 rounded-xl border p-3 text-sm ${isDarkMode ? 'border-amber-400/30 bg-amber-950/30' : 'border-amber-200 bg-amber-50'}`}>
+              <p className={`flex min-w-0 items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+                <MessageSquareText size={14} className="shrink-0" />
+                <span className="truncate">Latest admin remarks</span>
+              </p>
+              <p className={`mt-1 line-clamp-2 font-semibold leading-relaxed ${isDarkMode ? 'text-amber-100' : 'text-amber-900'}`}>
+                {latestRemarks.comment}
+              </p>
+            </div>
           )}
-        </div>
 
-        {needsRevision && latestRemarks?.comment && (
-          <div className={`min-w-0 rounded-xl border p-3 text-sm ${isDarkMode ? 'border-amber-400/30 bg-amber-950/30' : 'border-amber-200 bg-amber-50'}`}>
-            <p className={`flex min-w-0 items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
-              <MessageSquareText size={14} className="shrink-0" />
-              <span className="truncate">Latest admin remarks</span>
-            </p>
-            <p className={`mt-1 line-clamp-2 font-semibold leading-relaxed ${isDarkMode ? 'text-amber-100' : 'text-amber-900'}`}>
-              {latestRemarks.comment}
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
-          <div className="min-w-0">
-            <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Forecast Date</p>
-            <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-              {formatDate(project?.forecastDate)}
-            </p>
-          </div>
-          <div className="min-w-0">
-            <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Updated</p>
-            <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-              {formatDate(project?.updatedAt || project?.submittedAt || project?.createdAt, 'MMM d, h:mm a')}
-            </p>
+          <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+            <div className="min-w-0">
+              <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Forecast Date</p>
+              <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                {formatDate(project?.forecastDate)}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className={`font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Updated</p>
+              <p className={`mt-1 truncate font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                {formatDate(project?.updatedAt || project?.submittedAt || project?.createdAt, 'MMM d, h:mm a')}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className={`flex min-w-0 flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
+        <div className={`mt-auto flex min-w-0 flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
           <div className="grid min-w-0 grid-cols-1 gap-2 sm:flex sm:items-center">
             <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
               {isReviewMode ? 'Review' : needsRevision ? 'Open and Revise' : 'Open'}
