@@ -177,5 +177,5 @@ export const fetchAdminProjects = ({
   appendQueryParam(params, 'sortBy', sortBy);
   appendQueryParam(params, 'sortDir', sortDir);
 
-  return request(`${PROJECT_API_BASE_URL}/admin/all?${params}`, { signal });
+  return request(`${PROJECT_API_BASE_URL}/admin/projects?${params}`, { signal });
 };
