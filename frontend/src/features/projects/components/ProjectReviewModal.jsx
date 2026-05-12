@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import ReviewActionsFooter from '@/features/projects/components/review/ReviewActionsFooter';
 import ReviewMapWorkspace from '@/features/projects/components/review/ReviewMapWorkspace';
 import ReviewSidebar from '@/features/projects/components/review/ReviewSidebar';
+import useProjectReviewActionHandlers from '@/features/projects/hooks/useProjectReviewActionHandlers';
 import useProjectReviewActions from '@/features/projects/hooks/useProjectReviewActions';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 import { buildAnnotationDiff } from '@/features/projects/utils/projectAnnotationDiff';
@@ -20,7 +21,6 @@ import {
   getTimeline,
   mergeProjectState,
 } from '@/features/projects/utils/projectReviewViewModel';
-import { addReviewComment, requestProjectRevision } from '@/api/projectAPI';
 import { fetchProjectFeatureCollection } from '@/api/featureServices';
 import {
   getProjectStatusLabel,
@@ -94,6 +94,15 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
     setRemarks,
     onActionComplete,
     onClose,
+  });
+  const reviewActionHandlers = useProjectReviewActionHandlers({
+    projectId,
+    currentProject,
+    remarks,
+    runAction,
+    onApprove,
+    onReject,
+    onPublish,
   });
 
   if (!currentProject) return null;
@@ -174,11 +183,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               hasRemarks={hasRemarks}
               busyAction={busyAction}
               isDarkMode={isDarkMode}
-              onAddComment={() => runAction('comment', () => addReviewComment(projectId, remarks.trim()), { requireRemarks: true, closeOnSuccess: false })}
-              onRequestRevision={() => runAction('revision', () => requestProjectRevision(projectId, remarks.trim()), { requireRemarks: true })}
-              onApprove={() => runAction('approve', () => onApprove(currentProject))}
-              onReject={() => runAction('reject', () => onReject(currentProject, remarks.trim()), { requireRemarks: true })}
-              onPublish={() => runAction('publish', () => onPublish(currentProject))}
+              {...reviewActionHandlers}
               onClose={onClose}
             />
           </aside>
