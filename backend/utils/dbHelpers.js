@@ -112,12 +112,20 @@ export const validateGeometry = (geometry) => {
   }
 };
 
-function buildRenamedFeatureProperties(newName) {
+function getStableFeatureId(feature) {
+  return feature?.properties?.stableId || feature?.properties?.annotationId || feature?.properties?.sourceId || feature?.sourceId;
+}
+
+function buildRenamedFeatureProperties(feature, newName) {
+  const stableId = getStableFeatureId(feature);
+
   return {
     name: newName,
     'properties.labelValue': newName,
     'properties.title': newName,
     'properties.name': newName,
+    'properties.stableId': stableId,
+    'properties.annotationId': stableId,
   };
 }
 
@@ -125,6 +133,8 @@ function buildRenamedFeatureProperties(newName) {
  * Build new SourceId and update data for feature renaming.
  * Keep all user-visible label fields in sync so Studio, Project Library previews,
  * review modals, and reload hydration all display the same renamed annotation.
+ * Preserve stable annotation identity separately from sourceId so review diffs can
+ * classify renames and geometry edits as changed instead of removed + added.
  *
  * @param {Feature} feature - Existing feature
  * @param {string} newName - New feature name
@@ -139,7 +149,7 @@ export const buildNewSourceIdAndUpdateData = (feature, newName) => {
     newSourceId,
     {
       sourceId: newSourceId,
-      ...buildRenamedFeatureProperties(newName),
+      ...buildRenamedFeatureProperties(feature, newName),
     },
   ];
 };
