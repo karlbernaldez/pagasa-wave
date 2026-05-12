@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { fetchAllProjectsForAdmin } from '@/api/projectAPI';
+import { fetchAdminProjects } from '@/api/projectAPI';
 import { adaptProjects } from '@/features/projects/projectAdapter';
 import { useDebouncedValue } from './useDebouncedValue';
 
@@ -34,7 +34,7 @@ export function useAdminProjectLibrary() {
 
   const query = useQuery({
     queryKey: ['admin-project-library', queryParams],
-    queryFn: ({ signal }) => fetchAllProjectsForAdmin({ ...queryParams, signal }),
+    queryFn: ({ signal }) => fetchAdminProjects({ ...queryParams, signal }),
     staleTime: 30000,
     keepPreviousData: true,
   });

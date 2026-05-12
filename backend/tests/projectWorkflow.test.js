@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { buildNewSourceIdAndUpdateData } from '../utils/dbHelpers.js';
 import {
   PROJECT_STATUS,
   ALLOWED_PROJECT_TRANSITIONS,
@@ -101,4 +102,39 @@ test('review comments can be added only while submitted or under review', () => 
   assert.equal(canAddReviewCommentStatus(PROJECT_STATUS.PUBLISHED), false);
   assert.equal(canAddReviewCommentStatus(PROJECT_STATUS.REJECTED), false);
   assert.equal(canAddReviewCommentStatus(PROJECT_STATUS.ARCHIVED), false);
+});
+
+test('feature rename changes mutable sourceId but preserves stable annotation identity', () => {
+  const feature = {
+    sourceId: 'low_pressure_OLD',
+    properties: {
+      type: 'low_pressure',
+      stableId: 'annotation-123',
+      annotationId: 'annotation-123',
+    },
+  };
+
+  const [newSourceId, updateData] = buildNewSourceIdAndUpdateData(feature, 'NEW');
+
+  assert.equal(newSourceId, 'low_pressure_NEW');
+  assert.equal(updateData.sourceId, 'low_pressure_NEW');
+  assert.equal(updateData['properties.labelValue'], 'NEW');
+  assert.equal(updateData['properties.title'], 'NEW');
+  assert.equal(updateData['properties.name'], 'NEW');
+  assert.equal(updateData['properties.stableId'], 'annotation-123');
+  assert.equal(updateData['properties.annotationId'], 'annotation-123');
+});
+
+test('feature rename backfills stable annotation identity for legacy features', () => {
+  const feature = {
+    sourceId: 'legacy_line',
+    properties: {},
+  };
+
+  const [newSourceId, updateData] = buildNewSourceIdAndUpdateData(feature, 'renamed_line');
+
+  assert.equal(newSourceId, 'renamed_line');
+  assert.equal(updateData.sourceId, 'renamed_line');
+  assert.equal(updateData['properties.stableId'], 'legacy_line');
+  assert.equal(updateData['properties.annotationId'], 'legacy_line');
 });

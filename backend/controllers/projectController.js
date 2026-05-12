@@ -83,14 +83,23 @@ function getRequiredComment(value, label = 'Comment') {
   return comment;
 }
 
+function getStableFeatureId(feature) {
+  return feature.properties?.stableId || feature.properties?.annotationId || feature.properties?.sourceId || feature.sourceId;
+}
+
 function toFeatureSnapshot(feature) {
+  const stableId = getStableFeatureId(feature);
+
   return {
     type: 'Feature',
+    id: stableId,
     geometry: feature.geometry,
     properties: {
       ...(feature.properties || {}),
       name: feature.name,
       sourceId: feature.sourceId,
+      stableId,
+      annotationId: stableId,
     },
   };
 }
