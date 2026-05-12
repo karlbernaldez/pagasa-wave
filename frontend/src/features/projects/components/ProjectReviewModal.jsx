@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Clock3, GitCompareArrows, MessageSquareText, Send, UserRound, X } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
@@ -117,6 +117,19 @@ function getPreviousFeatureSource(project) {
   return previousVersion?.features || previousVersion?.featureCollection || previousVersion?.annotations || [];
 }
 
+function mergeProjectState(previousProject, nextProject) {
+  if (!previousProject || !nextProject) return nextProject || previousProject;
+
+  return {
+    ...previousProject,
+    ...nextProject,
+    features: nextProject.features ?? previousProject.features,
+    featureCollection: nextProject.featureCollection ?? previousProject.featureCollection,
+    annotations: nextProject.annotations ?? previousProject.annotations,
+    versions: nextProject.versions ?? previousProject.versions,
+  };
+}
+
 function getFeatureKey(feature) {
   return feature?._id || feature?.id || feature?.properties?.id || feature?.properties?.sourceId || JSON.stringify(feature?.geometry || {});
 }
@@ -162,6 +175,7 @@ function DiffMetric({ label, value, tone = 'slate', isDarkMode = false }) {
 }
 
 export default function ProjectReviewModal({ project, isDarkMode = false, onClose, onApprove, onReject, onPublish, onActionComplete }) {
+  const lastProjectIdRef = useRef(getProjectId(project));
   const [currentProject, setCurrentProject] = useState(project);
   const [currentFeatureCollection, setCurrentFeatureCollection] = useState(() => normalizeFeatureCollection(getEmbeddedCurrentFeatureSource(project)));
   const [isLoadingCurrentFeatures, setIsLoadingCurrentFeatures] = useState(false);
@@ -171,8 +185,20 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
   const [mapMode, setMapMode] = useState('preview');
 
   useEffect(() => {
-    setCurrentProject(project);
-    setCurrentFeatureCollection(normalizeFeatureCollection(getEmbeddedCurrentFeatureSource(project)));
+    const incomingProjectId = getProjectId(project);
+    const isSameProject = lastProjectIdRef.current === incomingProjectId;
+    const embeddedFeatureCollection = normalizeFeatureCollection(getEmbeddedCurrentFeatureSource(project));
+    const hasEmbeddedFeatures = embeddedFeatureCollection.features.length > 0;
+
+    setCurrentProject((previousProject) => (
+      isSameProject ? mergeProjectState(previousProject, project) : project
+    ));
+
+    if (!isSameProject || hasEmbeddedFeatures) {
+      setCurrentFeatureCollection(embeddedFeatureCollection);
+    }
+
+    lastProjectIdRef.current = incomingProjectId;
     setFeatureLoadError('');
   }, [project]);
 
@@ -229,8 +255,10 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
     try {
       setBusyAction(key);
       const updatedProject = await action?.(currentProject, remarks.trim());
-      if (updatedProject) setCurrentProject(updatedProject);
-      await onActionComplete?.(updatedProject);
+      const nextProject = updatedProject ? mergeProjectState(currentProject, updatedProject) : currentProject;
+
+      setCurrentProject(nextProject);
+      await onActionComplete?.(nextProject);
       setRemarks('');
       if (closeOnSuccess) onClose?.();
     } catch (error) {
