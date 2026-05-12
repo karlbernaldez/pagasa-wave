@@ -44,8 +44,8 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "test": "node --test",
-    "test:workflow": "node --test tests/projectWorkflow.test.js",
+    "test": "node --test tests/*.test.js",
+    "test:workflow": "node --test tests/projectWorkflow.test.js tests/projectWorkflow.controller.test.js",
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
