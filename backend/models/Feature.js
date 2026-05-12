@@ -26,12 +26,19 @@ const FeatureSchema = new mongoose.Schema({
       ref: 'Project',
       required: true // optional, depending on your logic
     },
+    sourceId: { type: String },
+    stableId: { type: String },
+    annotationId: { type: String },
     title: { type: String },
+    name: { type: String },
     type: { type: String, enum: ['high_pressure', 'low_pressure', 'typhoon'] },
   },
   name: { type: String, required: true },
   sourceId: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
 });
+
+FeatureSchema.index({ sourceId: 1, 'properties.owner': 1, 'properties.project': 1 }, { unique: true });
+FeatureSchema.index({ 'properties.stableId': 1, 'properties.project': 1 });
 
 export default mongoose.models.Feature || mongoose.model('Feature', FeatureSchema);
