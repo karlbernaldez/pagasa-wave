@@ -96,6 +96,7 @@ async function withMockedProject(project, fn) {
 
 async function withMockedNotifications(fn) {
   const originalCreate = Notification.create;
+  const originalWarn = console.warn;
   const created = [];
 
   Notification.create = async (payload) => {
@@ -106,10 +107,16 @@ async function withMockedNotifications(fn) {
     };
   };
 
+  console.warn = (...args) => {
+    if (String(args[0] || '').startsWith('[socketEmitter] _io is null')) return;
+    originalWarn(...args);
+  };
+
   try {
     await fn(created);
   } finally {
     Notification.create = originalCreate;
+    console.warn = originalWarn;
   }
 }
 
