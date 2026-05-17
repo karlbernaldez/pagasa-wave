@@ -1,7 +1,4 @@
-export function getProjectId(project) {
-  return project?._id || project?.id;
-}
-
-export function getProjectFromResponse(data, fallbackProject) {
-  return data?.project || data?.data?.project || data?.data || data || fallbackProject;
-}
+export {
+  getProjectFromResponse,
+  getProjectId,
+} from '@/features/projects/hooks/project-library/projectLibraryHelpers';
