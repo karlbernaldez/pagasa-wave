@@ -34,7 +34,7 @@ const UserDropdown = ({ isOpen, onClose, isDarkMode, dropdownCls, user, onLogout
       <div
         role="dialog"
         aria-label="User menu"
-        className={`absolute right-0 mt-3 w-64 rounded-2xl shadow-2xl backdrop-blur-2xl z-20 overflow-hidden ${dropdownCls}`}
+        className={`absolute right-0 mt-3 w-64 rounded-2xl shadow-2xl backdrop-blur-2xl z-50 overflow-hidden ${dropdownCls}`}
       >
         {/* ── Identity card ── */}
         <div className="relative px-5 py-5 overflow-hidden">
