@@ -400,7 +400,7 @@ const ForecastChartsPage = () => {
 
   const openChart = useCallback((chart) => {
     if (!chart?._id) return;
-    navigate(`/wave-charts/${chart._id}`);
+    navigate(`/charts/${chart._id}`);
   }, [navigate]);
 
   return (
