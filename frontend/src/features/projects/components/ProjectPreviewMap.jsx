@@ -3,6 +3,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fetchFeatures, fetchProjectFeatureCollection } from '@/api/featureServices';
+import { getChartStyleModePaint, normalizeChartStyleMode } from '@/features/projects/utils/chartStyleModes';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -87,37 +88,79 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
-function setPreviewLayerPaint(map, useDiffStyles) {
-  const polygonColor = useDiffStyles ? DIFF_COLOR_EXPRESSION : '#38bdf8';
-  const lineColor = useDiffStyles ? DIFF_COLOR_EXPRESSION : '#0284c7';
+function setLayerVisibility(map, layerId, isVisible) {
+  if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', isVisible ? 'visible' : 'none');
+}
+
+function setPreviewLayerPaint(map, { showDiffStyles, styleMode }) {
+  const paint = getChartStyleModePaint(styleMode);
+  const polygonColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : paint.polygonFill;
+  const lineColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : paint.lineColor;
+  const pointColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : paint.pointColor;
 
   if (map.getLayer('project-preview-polygons')) {
     map.setPaintProperty('project-preview-polygons', 'fill-color', polygonColor);
-    map.setPaintProperty('project-preview-polygons', 'fill-opacity', useDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.2, 0.42] : 0.36);
+    map.setPaintProperty('project-preview-polygons', 'fill-opacity', showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.2, 0.42] : paint.polygonOpacity);
   }
 
   if (map.getLayer('project-preview-polygons-outline')) {
-    map.setPaintProperty('project-preview-polygons-outline', 'line-color', lineColor);
-    map.setPaintProperty('project-preview-polygons-outline', 'line-opacity', useDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : 0.9);
+    map.setPaintProperty('project-preview-polygons-outline', 'line-color', showDiffStyles ? lineColor : paint.polygonOutline);
+    map.setPaintProperty('project-preview-polygons-outline', 'line-width', paint.polygonOutlineWidth);
+    map.setPaintProperty('project-preview-polygons-outline', 'line-opacity', showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : 0.9);
+  }
+
+  if (map.getLayer('project-preview-lines-casing')) {
+    map.setPaintProperty('project-preview-lines-casing', 'line-color', paint.lineCasing);
+    map.setPaintProperty('project-preview-lines-casing', 'line-width', paint.lineCasingWidth);
   }
 
   if (map.getLayer('project-preview-lines')) {
     map.setPaintProperty('project-preview-lines', 'line-color', lineColor);
-    map.setPaintProperty('project-preview-lines', 'line-opacity', useDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : 1);
+    map.setPaintProperty('project-preview-lines', 'line-width', paint.lineWidth);
+    map.setPaintProperty('project-preview-lines', 'line-opacity', showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : 1);
+  }
+
+  if (map.getLayer('project-preview-line-labels')) {
+    map.setLayoutProperty('project-preview-line-labels', 'text-size', paint.lineLabelSize);
+    map.setPaintProperty('project-preview-line-labels', 'text-color', paint.labelColor);
+    map.setPaintProperty('project-preview-line-labels', 'text-halo-color', paint.labelHaloColor);
+    map.setPaintProperty('project-preview-line-labels', 'text-halo-width', paint.labelHaloWidth);
+  }
+
+  if (map.getLayer('project-preview-points-halo')) {
+    map.setPaintProperty('project-preview-points-halo', 'circle-color', pointColor);
+    map.setPaintProperty('project-preview-points-halo', 'circle-radius', paint.pointRadius + 3);
+    map.setPaintProperty('project-preview-points-halo', 'circle-opacity', paint.showPoints ? 0.28 : 0);
+  }
+
+  if (map.getLayer('project-preview-points-symbol')) {
+    map.setPaintProperty('project-preview-points-symbol', 'circle-color', pointColor);
+    map.setPaintProperty('project-preview-points-symbol', 'circle-radius', paint.pointRadius);
+    map.setPaintProperty('project-preview-points-symbol', 'circle-stroke-color', paint.pointStroke);
+    map.setPaintProperty('project-preview-points-symbol', 'circle-stroke-width', paint.pointStrokeWidth);
+    map.setPaintProperty('project-preview-points-symbol', 'circle-opacity', paint.showPoints ? 1 : 0);
+  }
+
+  if (map.getLayer('project-preview-points-label')) {
+    map.setLayoutProperty('project-preview-points-label', 'text-size', paint.pointLabelSize);
+    map.setPaintProperty('project-preview-points-label', 'text-color', paint.labelColor);
+    map.setPaintProperty('project-preview-points-label', 'text-halo-color', paint.labelHaloColor);
+    map.setPaintProperty('project-preview-points-label', 'text-halo-width', paint.labelHaloWidth);
   }
 }
 
-function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffStyles = false } = {}) {
+function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffStyles = false, styleMode } = {}) {
   const sourceId = 'project-preview-features';
+  const paint = getChartStyleModePaint(styleMode);
+  const polygonColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : paint.polygonFill;
+  const lineColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : paint.lineColor;
+  const pointColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : paint.pointColor;
 
   if (map.getSource(sourceId)) {
     map.getSource(sourceId).setData(featureCollection);
-    setPreviewLayerPaint(map, showDiffStyles);
-    ['project-preview-line-labels', 'project-preview-points-label'].forEach((layerId) => {
-      if (map.getLayer(layerId)) {
-        map.setLayoutProperty(layerId, 'visibility', showLabels ? 'visible' : 'none');
-      }
-    });
+    setPreviewLayerPaint(map, { showDiffStyles, styleMode });
+    setLayerVisibility(map, 'project-preview-line-labels', showLabels);
+    setLayerVisibility(map, 'project-preview-points-label', showLabels && paint.showPointLabels);
     return;
   }
 
@@ -128,7 +171,7 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
     type: 'fill',
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
-    paint: { 'fill-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#38bdf8', 'fill-opacity': showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.2, 0.42] : 0.36 },
+    paint: { 'fill-color': polygonColor, 'fill-opacity': showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.2, 0.42] : paint.polygonOpacity },
   });
 
   map.addLayer({
@@ -136,7 +179,7 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
     type: 'line',
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
-    paint: { 'line-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#0f172a', 'line-width': 2.5, 'line-opacity': showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : 0.9 },
+    paint: { 'line-color': showDiffStyles ? lineColor : paint.polygonOutline, 'line-width': paint.polygonOutlineWidth, 'line-opacity': showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : 0.9 },
   });
 
   map.addLayer({
@@ -144,7 +187,7 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
     type: 'line',
     source: sourceId,
     filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
-    paint: { 'line-color': '#ffffff', 'line-width': 8, 'line-opacity': 0.95 },
+    paint: { 'line-color': paint.lineCasing, 'line-width': paint.lineCasingWidth, 'line-opacity': 0.95 },
   });
 
   map.addLayer({
@@ -152,7 +195,7 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
     type: 'line',
     source: sourceId,
     filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
-    paint: { 'line-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#0284c7', 'line-width': 4, 'line-opacity': showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : 1 },
+    paint: { 'line-color': lineColor, 'line-width': paint.lineWidth, 'line-opacity': showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : 1 },
   });
 
   if (showLabels) {
@@ -164,12 +207,12 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
       layout: {
         'symbol-placement': 'line-center',
         'text-field': LINE_LABEL_TEXT,
-        'text-size': 18,
+        'text-size': paint.lineLabelSize,
         'text-anchor': 'center',
         'text-allow-overlap': true,
         'text-ignore-placement': true,
       },
-      paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
+      paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth },
     });
   }
 
@@ -178,7 +221,7 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
     type: 'circle',
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-    paint: { 'circle-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#f97316', 'circle-radius': 11, 'circle-opacity': 0.28, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1 },
+    paint: { 'circle-color': pointColor, 'circle-radius': paint.pointRadius + 3, 'circle-opacity': paint.showPoints ? 0.28 : 0, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1 },
   });
 
   map.addLayer({
@@ -186,7 +229,7 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
     type: 'circle',
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-    paint: { 'circle-color': showDiffStyles ? DIFF_COLOR_EXPRESSION : '#f97316', 'circle-radius': 8, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 },
+    paint: { 'circle-color': pointColor, 'circle-radius': paint.pointRadius, 'circle-opacity': paint.showPoints ? 1 : 0, 'circle-stroke-color': paint.pointStroke, 'circle-stroke-width': paint.pointStrokeWidth },
   });
 
   if (showLabels) {
@@ -197,13 +240,14 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
       filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
       layout: {
         'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], 'Marker'],
-        'text-size': 12,
+        'text-size': paint.pointLabelSize,
         'text-offset': [0, 1.8],
         'text-anchor': 'top',
         'text-allow-overlap': true,
         'text-ignore-placement': true,
+        'visibility': paint.showPointLabels ? 'visible' : 'none',
       },
-      paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+      paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth },
     });
   }
 }
@@ -299,6 +343,7 @@ function ProjectPreviewMap({
   lazy = true,
   showLabels = true,
   showDiffStyles = false,
+  chartStyleMode,
 }) {
   const [viewportRef, isNearViewport] = useNearViewport('500px', !lazy);
   const containerRef = useRef(null);
@@ -311,6 +356,7 @@ function ProjectPreviewMap({
   });
   const [isLoadingFeatures, setIsLoadingFeatures] = useState(false);
 
+  const normalizedStyleMode = normalizeChartStyleMode(chartStyleMode);
   const providedFeatureCollection = useMemo(() => normalizeFeatureCollection(features), [features]);
   const hasProvidedFeatures = providedFeatureCollection.features.length > 0;
   const featureCacheKey = useMemo(() => getFeatureCacheKey(projectId, featureScope), [featureScope, projectId]);
@@ -405,7 +451,7 @@ function ProjectPreviewMap({
     const map = mapRef.current;
     if (!map || !isReady || !hasFeatures) return;
 
-    addPreviewLayers(map, featureCollection, { showLabels, showDiffStyles: shouldUseDiffStyles });
+    addPreviewLayers(map, featureCollection, { showLabels, showDiffStyles: shouldUseDiffStyles, styleMode: normalizedStyleMode });
     if (fittedFeaturesKeyRef.current === featureKey) return;
 
     const bounds = getFeatureBounds(featureCollection);
@@ -413,7 +459,7 @@ function ProjectPreviewMap({
       map.fitBounds(bounds, { padding: 72, maxZoom: featureCollection.features.length === 1 ? 8 : 10, duration: 0 });
       fittedFeaturesKeyRef.current = featureKey;
     }
-  }, [featureCollection, featureKey, hasFeatures, isReady, shouldUseDiffStyles, showLabels]);
+  }, [featureCollection, featureKey, hasFeatures, isReady, normalizedStyleMode, shouldUseDiffStyles, showLabels]);
 
   return (
     <div
