@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CalendarDays, Eye, FileText, Filter, History, Layers, Search, Waves, Wind } from 'lucide-react';
+import { ArrowRight, CalendarDays, Eye, FileText, History, Layers, Search, Waves, Wind } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,18 +8,14 @@ import { fetchPublicPublishedForecasts } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
 import {
-  PUBLIC_CHART_TYPE_FILTER_ALL,
-  PUBLIC_CHART_TYPE_FILTERS,
+  PUBLIC_CHART_SLOTS,
   filterProjectsToPublicChartWindow,
-  getBestPublicChartDateForFilter,
-  getFilteredPublicChartSlots,
   getPublicChartAvailableCount,
   getPublicChartCardDescription,
   getPublicChartCompleteness,
   getPublicChartTenDayWindow,
   groupPublicChartHistory,
   groupPublicChartsByTypeForDate,
-  isPublicChartDateAvailable,
 } from '@/dashboards/public/utils/publicChartGroups';
 
 const CHART_STYLES = [
@@ -115,55 +111,29 @@ const PageHeader = memo(function PageHeader({ activeStyle, currentDate, isDark }
       </motion.h1>
 
       <motion.p variants={fadeUp} custom={0.08} className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-        Browse the latest public WaveLab chart set, filter by chart type, and review recent published dates.
+        Browse the latest public WaveLab chart set and review recent published chart dates.
       </motion.p>
     </motion.section>
   );
 });
 
-function ChartControls({ activeStyle, onChange, query, onQueryChange, chartTypeFilter, onChartTypeFilterChange, isDark }) {
+function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) {
   return (
     <motion.section
       variants={fadeUp}
       custom={0.12}
-      className={`mx-auto grid w-full max-w-6xl gap-4 rounded-3xl border p-3 shadow-2xl shadow-black/5 backdrop-blur-xl xl:grid-cols-[minmax(0,1fr)_360px] ${
+      className={`mx-auto grid w-full max-w-5xl gap-4 rounded-3xl border p-3 shadow-2xl shadow-black/5 backdrop-blur-xl lg:grid-cols-[minmax(0,1fr)_360px] ${
         isDark ? 'border-white/10 bg-slate-900/75' : 'border-slate-200 bg-white/85'
       }`}
     >
-      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-        <div className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`}>
-          <Search size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-          <input
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Search wave charts, date, or description"
-            className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'text-white placeholder:text-slate-600' : 'text-slate-950 placeholder:text-slate-400'}`}
-          />
-        </div>
-
-        <div className={`flex items-center gap-1 overflow-x-auto rounded-2xl border p-1 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`} aria-label="Chart type filter">
-          <span className={`hidden items-center gap-1 px-2 text-xs font-black uppercase tracking-[0.14em] lg:flex ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            <Filter size={13} /> Type
-          </span>
-          {PUBLIC_CHART_TYPE_FILTERS.map((filter) => {
-            const active = filter.id === chartTypeFilter;
-            return (
-              <button
-                key={filter.id}
-                type="button"
-                onClick={() => onChartTypeFilterChange(filter.id)}
-                aria-pressed={active}
-                className={`shrink-0 rounded-xl px-3 py-2 text-xs font-black transition-all ${
-                  active
-                    ? isDark ? 'bg-cyan-400/15 text-cyan-100 shadow-sm' : 'bg-white text-blue-700 shadow-sm'
-                    : isDark ? 'text-slate-400 hover:bg-white/5 hover:text-slate-100' : 'text-slate-500 hover:bg-white/70 hover:text-slate-900'
-                }`}
-              >
-                {filter.shortLabel}
-              </button>
-            );
-          })}
-        </div>
+      <div className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`}>
+        <Search size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+        <input
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Search wave charts, date, or description"
+          className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'text-white placeholder:text-slate-600' : 'text-slate-950 placeholder:text-slate-400'}`}
+        />
       </div>
 
       <div className={`grid grid-cols-3 rounded-2xl border p-1 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`} aria-label="Chart display style">
@@ -285,8 +255,8 @@ function CompletenessBadge({ completeness, isDark }) {
   return <span className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'}`}>Incomplete</span>;
 }
 
-function RecentHistory({ projects, selectedDate, onSelectDate, isDark, slots }) {
-  const grouped = useMemo(() => groupPublicChartHistory(projects, slots), [projects, slots]);
+function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
+  const grouped = useMemo(() => groupPublicChartHistory(projects), [projects]);
 
   if (grouped.length === 0) return null;
 
@@ -331,7 +301,7 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark, slots }) 
                 {item.availableCount}/{item.totalCount} available
               </span>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {slots.map((slot) => {
+                {PUBLIC_CHART_SLOTS.map((slot) => {
                   const hasType = item.availableChartTypes.includes(slot.chartType);
                   return (
                     <span
@@ -362,7 +332,6 @@ export default function ForecastChartsPage() {
   const [state, setState] = useState({ loading: true, error: '', data: null });
   const [query, setQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
-  const [chartTypeFilter, setChartTypeFilter] = useState(PUBLIC_CHART_TYPE_FILTER_ALL);
 
   useEffect(() => {
     document.title = 'Wave Charts — WaveLab';
@@ -398,21 +367,9 @@ export default function ForecastChartsPage() {
     [chartWindow, projects]
   );
 
-  const visibleSlots = useMemo(() => getFilteredPublicChartSlots(chartTypeFilter), [chartTypeFilter]);
-
   useEffect(() => {
-    if (!recentProjects.length) return;
-
-    const bestDateForFilter = getBestPublicChartDateForFilter(recentProjects, chartTypeFilter);
-    if (!selectedDate) {
-      setSelectedDate(bestDateForFilter || latestDate);
-      return;
-    }
-
-    if (!isPublicChartDateAvailable(recentProjects, selectedDate, chartTypeFilter)) {
-      setSelectedDate(bestDateForFilter || latestDate);
-    }
-  }, [chartTypeFilter, latestDate, recentProjects, selectedDate]);
+    if (!selectedDate && latestDate) setSelectedDate(latestDate);
+  }, [latestDate, selectedDate]);
 
   const activeDate = selectedDate || latestDate;
   const chartByType = useMemo(
@@ -420,8 +377,8 @@ export default function ForecastChartsPage() {
     [activeDate, recentProjects]
   );
   const activeStyle = CHART_STYLES.some((style) => style.id === activeChartType) ? activeChartType : 'wave-wind';
-  const availableCount = getPublicChartAvailableCount(chartByType, visibleSlots);
-  const completeness = getPublicChartCompleteness(chartByType, visibleSlots);
+  const availableCount = getPublicChartAvailableCount(chartByType);
+  const completeness = getPublicChartCompleteness(chartByType);
 
   const openChart = useCallback((chart) => {
     if (!chart?._id) return;
@@ -455,14 +412,12 @@ export default function ForecastChartsPage() {
           onChange={setActiveChartType}
           query={query}
           onQueryChange={setQuery}
-          chartTypeFilter={chartTypeFilter}
-          onChartTypeFilterChange={setChartTypeFilter}
           isDark={isDark}
         />
 
         {state.loading && (
           <div className="grid gap-5 lg:grid-cols-2">
-            {visibleSlots.map((slot) => (
+            {PUBLIC_CHART_SLOTS.map((slot) => (
               <div key={slot.chartType} className={`h-[430px] animate-pulse rounded-3xl border ${isDark ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white/90'}`} />
             ))}
           </div>
@@ -494,13 +449,13 @@ export default function ForecastChartsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <CompletenessBadge completeness={completeness} isDark={isDark} />
                   <div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-slate-900/70 text-slate-300' : 'border-slate-200 bg-white/90 text-slate-600'}`}>
-                    {availableCount}/{visibleSlots.length} published charts available
+                    {availableCount}/4 published charts available
                   </div>
                 </div>
               </div>
 
               <motion.div className="grid gap-5 lg:grid-cols-2" variants={stagger} initial="hidden" animate="show">
-                {visibleSlots.map((slot) => (
+                {PUBLIC_CHART_SLOTS.map((slot) => (
                   <ChartSlotCard
                     key={`${activeDate}-${slot.chartType}`}
                     slot={slot}
@@ -513,7 +468,7 @@ export default function ForecastChartsPage() {
               </motion.div>
             </section>
 
-            <RecentHistory projects={recentProjects} selectedDate={activeDate} onSelectDate={setSelectedDate} isDark={isDark} slots={visibleSlots} />
+            <RecentHistory projects={recentProjects} selectedDate={activeDate} onSelectDate={setSelectedDate} isDark={isDark} />
           </>
         )}
 
