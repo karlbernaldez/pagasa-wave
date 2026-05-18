@@ -19,6 +19,7 @@ import {
   renameProject
 } from '../controllers/projectController.js';
 import { getAdminProjects } from '../controllers/adminProjectController.js';
+import { getPublishedForecastOutput } from '../controllers/publishedForecastController.js';
 import Project from '../models/Project.js';
 
 import protect from '../middleware/authMiddleware.js';
@@ -75,6 +76,11 @@ router.patch('/:id/reject', isAdmin, preventAdminSelfReview, rejectProject);
 router.patch('/:id/publish', isAdmin, preventAdminSelfReview, publishProject);
 
 router.patch('/:id/archive', isAdmin, preventAdminSelfReview, archiveProject);
+
+// ─────────────────────────────────────────────
+// Published output routes - keep before dynamic /:id routes
+// ─────────────────────────────────────────────
+router.get('/:id/published-output', getPublishedForecastOutput);
 
 // ─────────────────────────────────────────────
 // Owner routes
