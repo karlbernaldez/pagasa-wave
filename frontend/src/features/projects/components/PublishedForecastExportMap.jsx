@@ -51,8 +51,23 @@ function getFeatureBounds(featureCollection) {
   return bounds.isEmpty() ? null : bounds;
 }
 
+function isMapStyleReady(map) {
+  return Boolean(map && map.isStyleLoaded && map.isStyleLoaded());
+}
+
 function setLayerVisibility(map, layerId, isVisible) {
   if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', isVisible ? 'visible' : 'none');
+}
+
+function fitExportBounds(map, featureCollection) {
+  const bounds = getFeatureBounds(featureCollection);
+  if (!bounds) return;
+
+  map.fitBounds(bounds, {
+    padding: 72,
+    maxZoom: featureCollection.features.length === 1 ? 8 : 10,
+    duration: 0,
+  });
 }
 
 function applyExportLayerPaint(map, chartStyleMode) {
@@ -103,13 +118,15 @@ function applyExportLayerPaint(map, chartStyleMode) {
 }
 
 function addExportLayers(map, featureCollection, chartStyleMode) {
+  if (!isMapStyleReady(map)) return false;
+
   const sourceId = 'published-forecast-export-features';
   const paint = getChartStyleModePaint(chartStyleMode);
 
   if (map.getSource(sourceId)) {
     map.getSource(sourceId).setData(featureCollection);
     applyExportLayerPaint(map, chartStyleMode);
-    return;
+    return true;
   }
 
   map.addSource(sourceId, {
@@ -222,6 +239,8 @@ function addExportLayers(map, featureCollection, chartStyleMode) {
       'text-halo-width': paint.labelHaloWidth,
     },
   });
+
+  return true;
 }
 
 const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap({ features, chartStyleMode }, ref) {
@@ -234,13 +253,13 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
   useImperativeHandle(ref, () => ({
     getDataUrl() {
-      if (!mapRef.current || !isReady || !hasFeatures) {
+      if (!mapRef.current || !isReady || !hasFeatures || !isMapStyleReady(mapRef.current)) {
         throw new Error('Map is still preparing for export. Please try again in a moment.');
       }
 
       return mapRef.current.getCanvas().toDataURL('image/png');
     },
-    isReady: Boolean(mapRef.current && isReady && hasFeatures),
+    isReady: Boolean(mapRef.current && isReady && hasFeatures && isMapStyleReady(mapRef.current)),
   }), [hasFeatures, isReady]);
 
   useEffect(() => {
@@ -260,6 +279,11 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
     mapRef.current = map;
 
+    const renderExportLayers = () => {
+      if (!addExportLayers(map, featureCollection, normalizedStyleMode)) return;
+      fitExportBounds(map, featureCollection);
+    };
+
     map.on('load', () => {
       map.resize();
       map.fitBounds(DEFAULT_BOUNDS, {
@@ -267,20 +291,11 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
         maxZoom: 6,
         duration: 0,
       });
-      addExportLayers(map, featureCollection, normalizedStyleMode);
-
-      const bounds = getFeatureBounds(featureCollection);
-      if (bounds) {
-        map.fitBounds(bounds, {
-          padding: 72,
-          maxZoom: featureCollection.features.length === 1 ? 8 : 10,
-          duration: 0,
-        });
-      }
+      renderExportLayers();
     });
 
     map.on('idle', () => {
-      setIsReady(true);
+      if (isMapStyleReady(map)) setIsReady(true);
     });
 
     return () => {
@@ -292,18 +307,29 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !isReady || !hasFeatures) return;
+    if (!map || !hasFeatures) return undefined;
 
-    addExportLayers(map, featureCollection, normalizedStyleMode);
-    const bounds = getFeatureBounds(featureCollection);
-    if (bounds) {
-      map.fitBounds(bounds, {
-        padding: 72,
-        maxZoom: featureCollection.features.length === 1 ? 8 : 10,
-        duration: 0,
-      });
+    let cancelled = false;
+
+    const renderExportLayers = () => {
+      if (cancelled || !mapRef.current) return;
+      if (!addExportLayers(map, featureCollection, normalizedStyleMode)) return;
+      fitExportBounds(map, featureCollection);
+      if (isMapStyleReady(map)) setIsReady(true);
+    };
+
+    if (isMapStyleReady(map)) {
+      renderExportLayers();
+      return undefined;
     }
-  }, [featureCollection, hasFeatures, isReady, normalizedStyleMode]);
+
+    setIsReady(false);
+    map.once('idle', renderExportLayers);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [featureCollection, hasFeatures, normalizedStyleMode]);
 
   if (!hasFeatures) return null;
 
