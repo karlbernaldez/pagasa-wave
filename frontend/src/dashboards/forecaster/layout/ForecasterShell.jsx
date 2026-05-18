@@ -12,6 +12,7 @@ import {
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
+import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const NAV_ITEMS = [
   { id: 'project-library', label: 'Project Library', path: '/studio', icon: FolderKanban },
@@ -24,14 +25,9 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings', path: '/profile', icon: Settings },
 ];
 
-const DEFAULT_USER = {
-  name: 'WaveLab User',
-  role: 'Forecaster',
-  initials: 'WU',
-};
-
-export default function ForecasterShell({ children, user = DEFAULT_USER }) {
+export default function ForecasterShell({ children, user: fallbackUser = null }) {
   const { isDarkMode, setIsDarkMode } = useTheme();
+  const { user } = useCurrentDashboardUser(fallbackUser);
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
