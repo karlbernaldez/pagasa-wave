@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 import asyncHandler from '../utils/asyncHandler.js';
 import { throwError } from '../utils/errorHelper.js';
 import {
@@ -136,9 +138,12 @@ async function notifyProjectOwner(project, actorId, type, comment = '') {
 }
 
 async function createProjectVersionSnapshot(project, userId, reason = 'submit') {
-  const features = await Feature.find({
-    'properties.project': project._id,
-  }).lean();
+  const projectId = project?._id;
+  const features = mongoose.isValidObjectId(projectId)
+    ? await Feature.find({
+      'properties.project': projectId,
+    }).lean()
+    : [];
 
   const featureCollection = {
     type: 'FeatureCollection',
