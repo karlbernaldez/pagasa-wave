@@ -72,6 +72,13 @@ function getLatestRemark(project) {
   return project?.latestReviewRemarks?.comment || project?.reviewComment || '';
 }
 
+function getPrimaryOpenLabel({ project, isReviewMode, needsRevision }) {
+  if (isProjectPublished(project?.status)) return 'View Forecast';
+  if (isReviewMode) return 'Review';
+  if (needsRevision) return 'Open and Revise';
+  return 'Open';
+}
+
 function getDefaultMenuActions({ project, onRename, onDelete }) {
   if (!canEditProjectStatus(project?.status)) return [];
 
@@ -313,7 +320,7 @@ export default function ProjectCard({
         <div className={`mt-auto flex min-w-0 flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
           <div className="grid min-w-0 grid-cols-1 gap-2 sm:flex sm:items-center">
             <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
-              {isReviewMode ? 'Review' : needsRevision ? 'Open and Revise' : 'Open'}
+              {getPrimaryOpenLabel({ project, isReviewMode, needsRevision })}
             </Button>
 
             {submitAction && (
