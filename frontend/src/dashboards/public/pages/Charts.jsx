@@ -20,7 +20,8 @@ import {
   groupPublicChartsByTypeForDate,
 } from '@/dashboards/public/utils/publicChartGroups';
 
-const ARCHIVE_PAGE_SIZE = 6;
+const ARCHIVE_PAGE_SIZE = 24;
+const RECENT_FETCH_LIMIT = 80;
 
 const CHART_STYLES = [
   {
@@ -329,7 +330,17 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
   );
 }
 
-function ArchiveCharts({ archiveDates, archiveProjects, visibleCount, onLoadMore, isDark, onOpenChart }) {
+function ArchiveCharts({ archiveDates, archiveProjects, loading, error, hasMore, onLoadMore, isDark, onOpenChart }) {
+  if (loading && archiveDates.length === 0) {
+    return (
+      <section className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, index) => (
+          <div key={index} className={`h-56 animate-pulse rounded-3xl border ${isDark ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white/90'}`} />
+        ))}
+      </section>
+    );
+  }
+
   if (archiveDates.length === 0) {
     return (
       <section className={`rounded-3xl border p-8 text-center ${isDark ? 'border-white/10 bg-slate-900/70 text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
@@ -339,9 +350,6 @@ function ArchiveCharts({ archiveDates, archiveProjects, visibleCount, onLoadMore
       </section>
     );
   }
-
-  const visibleArchiveDates = archiveDates.slice(0, visibleCount);
-  const hasMore = visibleCount < archiveDates.length;
 
   return (
     <section className="space-y-4">
@@ -355,8 +363,14 @@ function ArchiveCharts({ archiveDates, archiveProjects, visibleCount, onLoadMore
         <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Open older published charts by date and chart type.</p>
       </div>
 
+      {error && (
+        <div className={`rounded-2xl border p-4 text-sm font-bold ${isDark ? 'border-red-400/20 bg-red-400/10 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
+          {error}
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
-        {visibleArchiveDates.map((item) => {
+        {archiveDates.map((item) => {
           const completeness = {
             availableCount: item.availableCount,
             totalCount: item.totalCount,
@@ -407,7 +421,7 @@ function ArchiveCharts({ archiveDates, archiveProjects, visibleCount, onLoadMore
 
       {hasMore && (
         <div className="flex justify-center pt-2">
-          <Button variant="secondary" icon={Archive} onClick={onLoadMore}>
+          <Button variant="secondary" icon={Archive} loading={loading} onClick={onLoadMore}>
             Load more archives
           </Button>
         </div>
@@ -421,17 +435,13 @@ export default function ForecastChartsPage() {
   const { activeChartType, setActiveChartType } = useChartType();
   const { isDarkMode: isDark } = useTheme();
   const [state, setState] = useState({ loading: true, error: '', data: null });
+  const [archiveState, setArchiveState] = useState({ loading: false, error: '', projects: [], page: 1, hasMore: false });
   const [query, setQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
-  const [archiveVisibleCount, setArchiveVisibleCount] = useState(ARCHIVE_PAGE_SIZE);
 
   useEffect(() => {
     document.title = 'Wave Charts — WaveLab';
   }, []);
-
-  useEffect(() => {
-    setArchiveVisibleCount(ARCHIVE_PAGE_SIZE);
-  }, [query]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -439,7 +449,7 @@ export default function ForecastChartsPage() {
     async function loadCharts() {
       setState((current) => ({ ...current, loading: true, error: '' }));
       try {
-        const data = await fetchPublicPublishedForecasts({ limit: 160, search: query, signal: controller.signal });
+        const data = await fetchPublicPublishedForecasts({ limit: RECENT_FETCH_LIMIT, search: query, mode: 'active', signal: controller.signal });
         setState({ loading: false, error: '', data });
       } catch (error) {
         if (error.name === 'AbortError') return;
@@ -456,14 +466,80 @@ export default function ForecastChartsPage() {
 
   const projects = state.data?.projects || [];
   const chartWindow = useMemo(() => getPublicChartTenDayWindow(projects), [projects]);
-  const { latestDate } = chartWindow;
+  const { latestDate, startDate } = chartWindow;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadArchive() {
+      setArchiveState((current) => ({ ...current, loading: true, error: '', projects: [], page: 1, hasMore: false }));
+      try {
+        const data = await fetchPublicPublishedForecasts({
+          page: 1,
+          limit: ARCHIVE_PAGE_SIZE,
+          search: query,
+          mode: 'archive',
+          before: startDate,
+          signal: controller.signal,
+        });
+
+        setArchiveState({
+          loading: false,
+          error: '',
+          projects: data.projects || [],
+          page: data.page || 1,
+          hasMore: Boolean(data.hasMore),
+        });
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+        setArchiveState({ loading: false, error: error?.message || 'Failed to load older chart archives.', projects: [], page: 1, hasMore: false });
+      }
+    }
+
+    if (!startDate) {
+      setArchiveState({ loading: false, error: '', projects: [], page: 1, hasMore: false });
+      return () => controller.abort();
+    }
+
+    const timer = setTimeout(loadArchive, 180);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, startDate]);
+
+  const loadMoreArchives = useCallback(async () => {
+    if (archiveState.loading || !archiveState.hasMore || !startDate) return;
+
+    const nextPage = archiveState.page + 1;
+    setArchiveState((current) => ({ ...current, loading: true, error: '' }));
+
+    try {
+      const data = await fetchPublicPublishedForecasts({
+        page: nextPage,
+        limit: ARCHIVE_PAGE_SIZE,
+        search: query,
+        mode: 'archive',
+        before: startDate,
+      });
+
+      setArchiveState((current) => ({
+        loading: false,
+        error: '',
+        projects: [...current.projects, ...(data.projects || [])],
+        page: data.page || nextPage,
+        hasMore: Boolean(data.hasMore),
+      }));
+    } catch (error) {
+      setArchiveState((current) => ({ ...current, loading: false, error: error?.message || 'Failed to load more chart archives.' }));
+    }
+  }, [archiveState.hasMore, archiveState.loading, archiveState.page, query, startDate]);
 
   const recentProjects = useMemo(
     () => filterProjectsToPublicChartWindow(projects, chartWindow),
     [chartWindow, projects]
   );
-  const archiveDates = useMemo(() => getPublicChartArchiveHistory(projects, chartWindow), [chartWindow, projects]);
-  const archiveProjects = useMemo(() => projects.filter((project) => archiveDates.some((item) => item.dateKey === String(project.forecastDate || '').slice(0, 10) || item.dateKey === new Date(project.forecastDate).toISOString().slice(0, 10))), [archiveDates, projects]);
+  const archiveDates = useMemo(() => getPublicChartArchiveHistory(archiveState.projects, chartWindow), [archiveState.projects, chartWindow]);
 
   useEffect(() => {
     if (!selectedDate && latestDate) setSelectedDate(latestDate);
@@ -527,7 +603,7 @@ export default function ForecastChartsPage() {
           </div>
         )}
 
-        {!state.loading && !state.error && recentProjects.length === 0 && archiveDates.length === 0 && (
+        {!state.loading && !state.error && recentProjects.length === 0 && archiveDates.length === 0 && !archiveState.loading && (
           <div className={`mx-auto max-w-2xl rounded-3xl border p-10 text-center ${isDark ? 'border-white/10 bg-slate-900 text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
             <p className="text-lg font-black">No published wave charts found</p>
             <p className="mt-2 text-sm font-semibold">Published charts will appear here once Admin publishes approved outputs.</p>
@@ -573,9 +649,11 @@ export default function ForecastChartsPage() {
         {!state.loading && !state.error && (
           <ArchiveCharts
             archiveDates={archiveDates}
-            archiveProjects={archiveProjects}
-            visibleCount={archiveVisibleCount}
-            onLoadMore={() => setArchiveVisibleCount((count) => count + ARCHIVE_PAGE_SIZE)}
+            archiveProjects={archiveState.projects}
+            loading={archiveState.loading}
+            error={archiveState.error}
+            hasMore={archiveState.hasMore}
+            onLoadMore={loadMoreArchives}
             isDark={isDark}
             onOpenChart={openChart}
           />
