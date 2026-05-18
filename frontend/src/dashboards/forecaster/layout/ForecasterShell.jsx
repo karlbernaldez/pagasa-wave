@@ -24,7 +24,13 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings', path: '/profile', icon: Settings },
 ];
 
-export default function ForecasterShell({ children }) {
+const DEFAULT_USER = {
+  name: 'WaveLab User',
+  role: 'Forecaster',
+  initials: 'WU',
+};
+
+export default function ForecasterShell({ children, user = DEFAULT_USER }) {
   const { isDarkMode, setIsDarkMode } = useTheme();
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -50,7 +56,7 @@ export default function ForecasterShell({ children }) {
         eyebrow: 'Forecaster Studio',
         title: 'WaveLab Operations',
         description: 'Track, manage, and continue active marine forecast projects',
-        user: { name: 'Juan Dela Cruz', role: 'Forecaster', initials: 'JD' },
+        user,
       }}
     >
       {children}

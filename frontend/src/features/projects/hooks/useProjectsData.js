@@ -1,6 +1,6 @@
 import { ROLES } from '@/core/auth/roles';
-import { useProjects } from '@dashboards/forecaster/hooks/useProjects';
-import { useAdminProjectLibrary } from '@dashboards/forecaster/hooks/project-library/useAdminProjectLibrary';
+import { useProjects } from '@/features/projects/hooks/useProjects';
+import { useAdminProjectLibrary } from '@/features/projects/hooks/project-library/useAdminProjectLibrary';
 
 export function useProjectsData({ role }) {
   if (role === ROLES.ADMIN) {
