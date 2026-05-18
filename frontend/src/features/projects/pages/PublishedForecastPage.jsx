@@ -16,7 +16,7 @@ import {
 
 import Button from '@/components/ui/Button';
 import { archiveProject } from '@/api/projectAPI';
-import { fetchPublishedForecastOutput } from '@/api/publishedForecastAPI';
+import { fetchPublicPublishedForecastOutput } from '@/api/publishedForecastAPI';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
 import PublishedForecastExportMap from '@/features/projects/components/PublishedForecastExportMap';
 import { getProjectStatusLabel, getProjectStatusStyle } from '@/features/projects/projectStatuses';
@@ -435,7 +435,7 @@ export default function PublishedForecastPage() {
     async function loadForecast() {
       setState({ loading: true, error: '', data: null });
       try {
-        const data = await fetchPublishedForecastOutput(projectId, { signal: controller.signal });
+        const data = await fetchPublicPublishedForecastOutput(projectId, { signal: controller.signal });
         setState({ loading: false, error: '', data });
       } catch (error) {
         if (error.name === 'AbortError') return;
@@ -546,10 +546,10 @@ export default function PublishedForecastPage() {
             <p className="text-sm font-black uppercase tracking-[0.22em] text-red-500">Forecast unavailable</p>
             <h1 className="mt-3 text-2xl font-black">Published output cannot be opened</h1>
             <p className={`mt-3 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              {state.error || 'This project may not be published yet, or you may not have access to view it.'}
+              {state.error || 'This published forecast may have been archived or is no longer available.'}
             </p>
             <div className="mt-6 flex justify-center">
-              <Button variant="secondary" icon={ArrowLeft} onClick={() => navigate(-1)}>Go back</Button>
+              <Button variant="secondary" icon={ArrowLeft} onClick={() => navigate('/forecasts')}>View forecasts</Button>
             </div>
           </div>
         </div>
@@ -566,11 +566,11 @@ export default function PublishedForecastPage() {
           <div>
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/forecasts')}
               className={`mb-4 inline-flex items-center gap-2 text-sm font-black transition ${isDarkMode ? 'text-slate-400 hover:text-slate-100' : 'text-slate-500 hover:text-slate-900'}`}
             >
               <ArrowLeft size={16} aria-hidden="true" />
-              Back
+              Published forecasts
             </button>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -659,7 +659,7 @@ export default function PublishedForecastPage() {
             <article className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
               <h2 className="text-sm font-black">Output link</h2>
               <p className={`mt-2 text-xs font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                Share this link with authenticated WaveLab users who have access to this forecast.
+                Share this public link with anyone who needs to view this published forecast.
               </p>
               <div className={`mt-4 flex items-center gap-2 rounded-2xl border px-3 py-2 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
                 <span className="min-w-0 flex-1 truncate text-xs font-mono">{shareUrl}</span>
