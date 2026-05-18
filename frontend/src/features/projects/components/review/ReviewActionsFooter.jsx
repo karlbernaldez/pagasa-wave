@@ -8,6 +8,8 @@ export default function ReviewActionsFooter({
   isApproved = false,
   hasRemarks = false,
   busyAction = null,
+  actionError = '',
+  onClearActionError,
   isDarkMode = false,
   onAddComment,
   onRequestRevision,
@@ -21,6 +23,22 @@ export default function ReviewActionsFooter({
   return (
     <div className={`mx-3 mb-3 mt-1 shrink-0 rounded-2xl border p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] sm:mx-5 sm:mb-5 sm:p-4 xl:sticky xl:bottom-0 xl:mx-0 xl:mb-0 xl:mt-0 xl:rounded-none xl:border-x-0 xl:border-b-0 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
       <div className="flex flex-col gap-2">
+        {actionError && (
+          <div className={`flex items-start justify-between gap-3 rounded-2xl border px-3 py-2 text-xs font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`} role="alert">
+            <span className="inline-flex items-start gap-2">
+              <AlertCircle className="mt-0.5 shrink-0" size={14} />
+              {actionError}
+            </span>
+            <button
+              type="button"
+              className={`shrink-0 font-black uppercase tracking-wide ${isDarkMode ? 'text-red-200 hover:text-white' : 'text-red-700 hover:text-red-900'}`}
+              onClick={onClearActionError}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {isReviewable && (
           <div className="grid grid-cols-2 gap-2 [&>button]:min-h-10 [&>button]:w-full">
             <Button

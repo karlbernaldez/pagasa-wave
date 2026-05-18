@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import useProjectReviewActions from './useProjectReviewActions';
 
@@ -24,7 +24,7 @@ function HookHarness({
   const [currentProject, setCurrentProject] = useState(initialProject);
   const [remarks, setRemarks] = useState(initialRemarks);
   const hasRemarks = remarks.trim().length > 0;
-  const { busyAction, runAction } = useProjectReviewActions({
+  const { busyAction, actionError, runAction } = useProjectReviewActions({
     currentProject,
     remarks,
     hasRemarks,
@@ -37,6 +37,7 @@ function HookHarness({
   return (
     <div>
       <p data-testid="busy-action">{busyAction || 'idle'}</p>
+      <p data-testid="action-error">{actionError}</p>
       <p data-testid="project-status">{currentProject.status}</p>
       <p data-testid="project-name">{currentProject.name}</p>
       <p data-testid="feature-count">{currentProject.features?.length ?? 0}</p>
@@ -52,11 +53,9 @@ function HookHarness({
 }
 
 describe('useProjectReviewActions', () => {
-  let alertSpy;
   let consoleErrorSpy;
 
   beforeEach(() => {
-    alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
@@ -81,7 +80,7 @@ describe('useProjectReviewActions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /run action/i }));
 
-    expect(alertSpy).toHaveBeenCalledWith('Remarks are required for this action.');
+    expect(screen.getByTestId('action-error')).toHaveTextContent('Remarks are required for this action.');
     expect(action).not.toHaveBeenCalled();
     expect(onActionComplete).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
@@ -108,6 +107,7 @@ describe('useProjectReviewActions', () => {
     expect(screen.getByTestId('project-name')).toHaveTextContent('Reviewed Project');
     expect(screen.getByTestId('feature-count')).toHaveTextContent('1');
     expect(screen.getByTestId('remarks')).toHaveTextContent('');
+    expect(screen.getByTestId('action-error')).toHaveTextContent('');
     expect(onActionComplete).toHaveBeenCalledWith(expect.objectContaining({ status: 'approved' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -167,7 +167,7 @@ describe('useProjectReviewActions', () => {
     });
   });
 
-  it('alerts on action failure and resets busy state', async () => {
+  it('surfaces action failure and resets busy state', async () => {
     const action = vi.fn().mockRejectedValue(new Error('Review failed'));
     const onActionComplete = vi.fn();
     const onClose = vi.fn();
@@ -177,7 +177,7 @@ describe('useProjectReviewActions', () => {
     fireEvent.click(screen.getByRole('button', { name: /run action/i }));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('Review failed');
+      expect(screen.getByTestId('action-error')).toHaveTextContent('Review failed');
     });
 
     expect(consoleErrorSpy).toHaveBeenCalled();
