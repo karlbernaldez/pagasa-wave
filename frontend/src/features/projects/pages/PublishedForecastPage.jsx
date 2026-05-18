@@ -50,11 +50,11 @@ function getPersonName(person, fallback = '—') {
 function getChartTypeLabel(value) {
   const labels = {
     analysis: 'Analysis',
-    forecast_24h: '24-Hour Forecast',
-    forecast_36h: '36-Hour Forecast',
-    forecast_48h: '48-Hour Forecast',
+    forecast_24h: '24-Hour Chart',
+    forecast_36h: '36-Hour Chart',
+    forecast_48h: '48-Hour Chart',
   };
-  return labels[value] || value || 'Forecast';
+  return labels[value] || value || 'Wave Chart';
 }
 
 function getLatestReviewSummary(project) {
@@ -65,11 +65,11 @@ function getLatestReviewSummary(project) {
 }
 
 function getExportFilename(project, extension) {
-  const safeName = String(project?.name || 'published-forecast')
+  const safeName = String(project?.name || 'published-chart')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '') || 'published-forecast';
+    .replace(/(^-|-$)/g, '') || 'published-chart';
   return `${safeName}.${extension}`;
 }
 
@@ -128,8 +128,8 @@ function drawRoundedCard(ctx, x, y, width, height, radius = 22) {
 
 function getExportMetadata(project, latestReviewSummary) {
   return {
-    title: project?.name || 'Published Forecast',
-    subtitle: project?.description || 'A finalized, read-only published forecast chart.',
+    title: project?.name || 'Published Wave Chart',
+    subtitle: project?.description || 'A finalized, read-only published wave chart.',
     status: getProjectStatusLabel(project?.status),
     forecastDate: formatDate(project?.forecastDate),
     chartType: getChartTypeLabel(project?.chartType),
@@ -164,14 +164,14 @@ async function composeLandscapeExportImage({ project, latestReviewSummary, mapDa
 
   ctx.fillStyle = '#0369a1';
   ctx.font = '800 20px Arial, sans-serif';
-  ctx.fillText('FINAL FORECAST OUTPUT', 72, 224);
+  ctx.fillText('FINAL WAVE CHART', 72, 224);
 
   const cardY = 258;
   const cardWidth = 344;
   const cardHeight = 94;
   const gap = 24;
   const cards = [
-    ['FORECAST DATE', metadata.forecastDate],
+    ['VALID DATE', metadata.forecastDate],
     ['CHART TYPE', metadata.chartType],
     ['PUBLISHED', metadata.publishedAt],
     ['FORECASTER', metadata.forecaster],
@@ -213,7 +213,7 @@ async function composeLandscapeExportImage({ project, latestReviewSummary, mapDa
 
   ctx.fillStyle = '#64748b';
   ctx.font = '600 15px Arial, sans-serif';
-  ctx.fillText('Generated from WaveLab published forecast output', 72, 1252);
+  ctx.fillText('Generated from WaveLab published wave chart', 72, 1252);
 
   return canvas.toDataURL('image/png');
 }
@@ -241,10 +241,10 @@ async function composePortraitA4ExportImage({ project, latestReviewSummary, mapD
 
   ctx.fillStyle = '#0369a1';
   ctx.font = '800 18px Arial, sans-serif';
-  ctx.fillText('FINAL FORECAST OUTPUT', 72, 270);
+  ctx.fillText('FINAL WAVE CHART', 72, 270);
 
   const cards = [
-    ['FORECAST DATE', metadata.forecastDate],
+    ['VALID DATE', metadata.forecastDate],
     ['CHART TYPE', metadata.chartType],
     ['PUBLISHED', metadata.publishedAt],
     ['FORECASTER', metadata.forecaster],
@@ -304,7 +304,7 @@ async function composePortraitA4ExportImage({ project, latestReviewSummary, mapD
 
   ctx.fillStyle = '#64748b';
   ctx.font = '600 15px Arial, sans-serif';
-  ctx.fillText('Generated from WaveLab published forecast output', 72, 1668);
+  ctx.fillText('Generated from WaveLab published wave chart', 72, 1668);
 
   return canvas.toDataURL('image/png');
 }
@@ -331,7 +331,7 @@ function writeLoadingPdfWindow(printWindow) {
           p { margin: 0; color: #475569; font-weight: 600; line-height: 1.5; }
         </style>
       </head>
-      <body><div class="card"><h1>Preparing PDF export…</h1><p>Please wait while WaveLab prepares the published forecast output.</p></div></body>
+      <body><div class="card"><h1>Preparing PDF export…</h1><p>Please wait while WaveLab prepares the published wave chart.</p></div></body>
     </html>
   `);
   printWindow.document.close();
@@ -366,7 +366,7 @@ function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageD
     <!doctype html>
     <html>
       <head>
-        <title>${escapeHtml(metadata.title)} - Published Forecast</title>
+        <title>${escapeHtml(metadata.title)} - Published Wave Chart</title>
         <style>
           @page { size: A4 portrait; margin: 0; }
           html, body { margin: 0; width: 210mm; min-height: 297mm; background: white; overflow: hidden; }
@@ -381,7 +381,7 @@ function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageD
       </head>
       <body>
         <main class="page">
-          <img src="${imageDataUrl}" alt="${escapeHtml(metadata.title)} published forecast export" />
+          <img src="${imageDataUrl}" alt="${escapeHtml(metadata.title)} published wave chart export" />
         </main>
         <script>
           window.onload = () => {
@@ -414,7 +414,7 @@ function StatCard({ icon: Icon, label, value, isDarkMode }) {
 function OutputActionNotice({ isDarkMode }) {
   return (
     <div className={`rounded-2xl border p-4 text-sm font-semibold leading-relaxed ${isDarkMode ? 'border-blue-400/20 bg-blue-400/10 text-blue-100' : 'border-blue-200 bg-blue-50 text-blue-900'}`}>
-      Export uses the final read-only forecast snapshot shown on this page.
+      Export uses the final read-only chart snapshot shown on this page.
     </div>
   );
 }
@@ -439,7 +439,7 @@ export default function PublishedForecastPage() {
         setState({ loading: false, error: '', data });
       } catch (error) {
         if (error.name === 'AbortError') return;
-        setState({ loading: false, error: error?.message || 'Failed to load published forecast.', data: null });
+        setState({ loading: false, error: error?.message || 'Failed to load published chart.', data: null });
       }
     }
 
@@ -511,7 +511,7 @@ export default function PublishedForecastPage() {
 
   const handleArchive = async () => {
     if (!project?._id) return;
-    const confirmed = window.confirm('Archive this published forecast? It will be removed from active published outputs.');
+    const confirmed = window.confirm('Archive this published chart? It will be removed from active published outputs.');
     if (!confirmed) return;
 
     setArchiveState({ loading: true, error: '' });
@@ -519,7 +519,7 @@ export default function PublishedForecastPage() {
       await archiveProject(project._id);
       navigate('/dashboard?tab=charts', { replace: true });
     } catch (error) {
-      setArchiveState({ loading: false, error: error?.message || 'Failed to archive forecast.' });
+      setArchiveState({ loading: false, error: error?.message || 'Failed to archive chart.' });
     }
   };
 
@@ -530,8 +530,8 @@ export default function PublishedForecastPage() {
       <main className={pageClass}>
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4">
           <div className={`rounded-3xl border p-8 text-center shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900' : 'border-slate-200 bg-white'}`}>
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-blue-500">Loading forecast output</p>
-            <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Preparing the read-only published forecast…</p>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-blue-500">Loading chart output</p>
+            <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Preparing the read-only published chart…</p>
           </div>
         </div>
       </main>
@@ -543,13 +543,13 @@ export default function PublishedForecastPage() {
       <main className={pageClass}>
         <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
           <div className={`rounded-3xl border p-8 text-center shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900' : 'border-slate-200 bg-white'}`}>
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-red-500">Forecast unavailable</p>
-            <h1 className="mt-3 text-2xl font-black">Published output cannot be opened</h1>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-red-500">Chart unavailable</p>
+            <h1 className="mt-3 text-2xl font-black">Published chart cannot be opened</h1>
             <p className={`mt-3 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              {state.error || 'This published forecast may have been archived or is no longer available.'}
+              {state.error || 'This published chart may have been archived or is no longer available.'}
             </p>
             <div className="mt-6 flex justify-center">
-              <Button variant="secondary" icon={ArrowLeft} onClick={() => navigate('/forecasts')}>View forecasts</Button>
+              <Button variant="secondary" icon={ArrowLeft} onClick={() => navigate('/charts')}>View charts</Button>
             </div>
           </div>
         </div>
@@ -566,11 +566,11 @@ export default function PublishedForecastPage() {
           <div>
             <button
               type="button"
-              onClick={() => navigate('/forecasts')}
+              onClick={() => navigate('/charts')}
               className={`mb-4 inline-flex items-center gap-2 text-sm font-black transition ${isDarkMode ? 'text-slate-400 hover:text-slate-100' : 'text-slate-500 hover:text-slate-900'}`}
             >
               <ArrowLeft size={16} aria-hidden="true" />
-              Published forecasts
+              Wave Charts
             </button>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -578,13 +578,13 @@ export default function PublishedForecastPage() {
                 {getProjectStatusLabel(project.status)}
               </span>
               <span className={`rounded-full border px-3 py-1 text-xs font-black ${isDarkMode ? 'border-cyan-400/20 bg-cyan-400/10 text-cyan-200' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
-                Final Forecast Output
+                Final Wave Chart
               </span>
             </div>
 
             <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">{project.name}</h1>
             <p className={`mt-2 max-w-3xl text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              {project.description || 'A finalized, read-only published forecast chart for viewing, sharing, downloading, and archiving.'}
+              {project.description || 'A finalized, read-only published wave chart for viewing, sharing, downloading, and archiving.'}
             </p>
           </div>
 
@@ -603,7 +603,7 @@ export default function PublishedForecastPage() {
         )}
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard icon={CalendarDays} label="Forecast Date" value={formatDate(project.forecastDate)} isDarkMode={isDarkMode} />
+          <StatCard icon={CalendarDays} label="Valid Date" value={formatDate(project.forecastDate)} isDarkMode={isDarkMode} />
           <StatCard icon={FileText} label="Chart Type" value={getChartTypeLabel(project.chartType)} isDarkMode={isDarkMode} />
           <StatCard icon={CheckCircle2} label="Published" value={formatDateTime(project.publishedAt)} isDarkMode={isDarkMode} />
           <StatCard icon={UserRound} label="Forecaster" value={getPersonName(project.owner, 'Forecaster')} isDarkMode={isDarkMode} />
@@ -613,7 +613,7 @@ export default function PublishedForecastPage() {
           <article className={`overflow-hidden rounded-3xl border shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
             <div className={`flex items-center justify-between border-b px-5 py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
               <div>
-                <p className="text-sm font-black">Final forecast chart</p>
+                <p className="text-sm font-black">Final wave chart</p>
                 <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Read-only map output from the published project snapshot.</p>
               </div>
               <MapPinned size={20} className={isDarkMode ? 'text-cyan-300' : 'text-blue-700'} aria-hidden="true" />
@@ -659,7 +659,7 @@ export default function PublishedForecastPage() {
             <article className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
               <h2 className="text-sm font-black">Output link</h2>
               <p className={`mt-2 text-xs font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                Share this public link with anyone who needs to view this published forecast.
+                Share this public link with anyone who needs to view this published chart.
               </p>
               <div className={`mt-4 flex items-center gap-2 rounded-2xl border px-3 py-2 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
                 <span className="min-w-0 flex-1 truncate text-xs font-mono">{shareUrl}</span>
