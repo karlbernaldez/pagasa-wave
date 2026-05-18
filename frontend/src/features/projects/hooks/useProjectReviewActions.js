@@ -12,11 +12,15 @@ export default function useProjectReviewActions({
   onClose,
 }) {
   const [busyAction, setBusyAction] = useState(null);
+  const [actionError, setActionError] = useState('');
 
   const runAction = async (key, action, { requireRemarks = false, closeOnSuccess = true } = {}) => {
     if (busyAction) return;
+
+    setActionError('');
+
     if (requireRemarks && !hasRemarks) {
-      alert('Remarks are required for this action.');
+      setActionError('Remarks are required for this action.');
       return;
     }
 
@@ -31,7 +35,7 @@ export default function useProjectReviewActions({
       if (closeOnSuccess) onClose?.();
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Action failed. Please try again.');
+      setActionError(error.message || 'Action failed. Please try again.');
     } finally {
       setBusyAction(null);
     }
@@ -39,6 +43,8 @@ export default function useProjectReviewActions({
 
   return {
     busyAction,
+    actionError,
+    clearActionError: () => setActionError(''),
     runAction,
   };
 }
