@@ -4,6 +4,12 @@ import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
+const PUBLIC_LIST_STATUS = Object.freeze({
+  ACTIVE: 'active',
+  ARCHIVE: 'archive',
+  ALL: 'all',
+});
+
 function getProjectOwnerId(project) {
   return String(project?.owner?._id || project?.owner || '');
 }
@@ -89,27 +95,55 @@ async function buildPublishedForecastPayload(project, { canArchive = false } = {
 }
 
 async function findPublishedProject(projectId) {
-  const project = await Project.findById(projectId)
+  const project = await Project.findOne({
+    _id: projectId,
+    status: { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] },
+  })
     .populate('owner', 'firstName lastName email username position')
     .populate('reviewStartedBy', 'firstName lastName email username')
     .populate('approvedBy', 'firstName lastName email username')
     .populate('rejectedBy', 'firstName lastName email username')
     .populate('auditLogs.performedBy', 'firstName lastName email username');
 
-  if (!project || project.status !== PROJECT_STATUS.PUBLISHED) {
+  if (!project) {
     throwError('Published forecast not found', 404);
   }
 
   return project;
 }
 
-export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
-  const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 50);
-  const page = Math.max(Number(req.query.page) || 1, 1);
-  const skip = (page - 1) * limit;
-  const search = String(req.query.search || '').trim();
+function getDateBoundary(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
 
-  const query = { status: PROJECT_STATUS.PUBLISHED };
+function getListMode(value) {
+  const mode = String(value || PUBLIC_LIST_STATUS.ACTIVE).toLowerCase();
+  return Object.values(PUBLIC_LIST_STATUS).includes(mode) ? mode : PUBLIC_LIST_STATUS.ACTIVE;
+}
+
+function buildPublicListQuery(req) {
+  const mode = getListMode(req.query.mode);
+  const search = String(req.query.search || '').trim();
+  const before = getDateBoundary(req.query.before);
+  const after = getDateBoundary(req.query.after);
+  const query = {};
+
+  if (mode === PUBLIC_LIST_STATUS.ARCHIVE) {
+    query.status = { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] };
+  } else if (mode === PUBLIC_LIST_STATUS.ALL) {
+    query.status = { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] };
+  } else {
+    query.status = PROJECT_STATUS.PUBLISHED;
+  }
+
+  if (before || after) {
+    query.forecastDate = {};
+    if (before) query.forecastDate.$lt = before;
+    if (after) query.forecastDate.$gte = after;
+  }
 
   if (search) {
     const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').slice(0, 80);
@@ -120,12 +154,21 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
     ];
   }
 
+  return { mode, query };
+}
+
+export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 50);
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const skip = (page - 1) * limit;
+  const { mode, query } = buildPublicListQuery(req);
+
   const [projects, total] = await Promise.all([
     Project.find(query)
       .select('name description chartType forecastDate status publishedAt owner approvedBy reviewComment')
       .populate('owner', 'firstName lastName username')
       .populate('approvedBy', 'firstName lastName username')
-      .sort({ publishedAt: -1, updatedAt: -1, _id: -1 })
+      .sort({ forecastDate: -1, publishedAt: -1, updatedAt: -1, _id: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),
@@ -137,13 +180,15 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
     total,
     page,
     limit,
+    mode,
     totalPages: Math.max(1, Math.ceil(total / limit)),
+    hasMore: page < Math.max(1, Math.ceil(total / limit)),
   });
 });
 
 export const getPublicPublishedForecastOutput = asyncHandler(async (req, res) => {
   const project = await findPublishedProject(req.params.id);
-  const canArchive = req.user?.role === 'admin';
+  const canArchive = req.user?.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED;
   res.json(await buildPublishedForecastPayload(project, { canArchive }));
 });
 
@@ -156,5 +201,5 @@ export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
     throwError('You do not have access to this published forecast', 403);
   }
 
-  res.json(await buildPublishedForecastPayload(project, { canArchive: req.user.role === 'admin' }));
+  res.json(await buildPublishedForecastPayload(project, { canArchive: req.user.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED }));
 });
