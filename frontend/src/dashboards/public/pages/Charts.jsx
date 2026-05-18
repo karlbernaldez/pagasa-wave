@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 import Button from '@/components/ui/Button';
-import { fetchPublicPublishedForecasts } from '@/api/publishedForecastAPI';
+import { fetchPublicPublishedCharts } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
 import {
@@ -367,7 +367,7 @@ export default function ForecastChartsPage() {
     async function loadCharts() {
       setState((current) => ({ ...current, loading: true, error: '' }));
       try {
-        const data = await fetchPublicPublishedForecasts({ limit: RECENT_FETCH_LIMIT, search: query, signal: controller.signal });
+        const data = await fetchPublicPublishedCharts({ limit: RECENT_FETCH_LIMIT, search: query, signal: controller.signal });
         setState({ loading: false, error: '', data });
       } catch (error) {
         if (error.name === 'AbortError') return;
