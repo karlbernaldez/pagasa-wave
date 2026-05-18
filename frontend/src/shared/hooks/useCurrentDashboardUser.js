@@ -6,42 +6,57 @@ import { fetchUserDetails } from '@/api/userAPI';
 let userCache = null;
 let userRequest = null;
 
-function getInitials(user) {
-  const firstName = String(user?.firstName || '').trim();
-  const lastName = String(user?.lastName || '').trim();
-  const username = String(user?.username || '').trim();
-  const email = String(user?.email || '').trim();
+function clean(value) {
+  return String(value || '').trim();
+}
 
+function getInitials(user) {
+  const username = clean(user?.username);
+  const firstName = clean(user?.firstName);
+  const lastName = clean(user?.lastName);
+  const email = clean(user?.email);
+
+  if (username) return username.slice(0, 2).toUpperCase();
   if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
   if (firstName) return firstName.slice(0, 2).toUpperCase();
-  if (username) return username.slice(0, 2).toUpperCase();
   if (email) return email.slice(0, 2).toUpperCase();
   return 'WL';
 }
 
-function getDisplayName(user) {
-  const firstName = String(user?.firstName || '').trim();
-  const lastName = String(user?.lastName || '').trim();
-  const username = String(user?.username || '').trim();
-  const email = String(user?.email || '').trim();
-
-  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
-  return fullName || username || email || 'WaveLab User';
+function getFullName(user) {
+  return [clean(user?.firstName), clean(user?.lastName)].filter(Boolean).join(' ').trim();
 }
 
-function getRoleLabel(role) {
+function getPrimaryName(user) {
+  const username = clean(user?.username);
+  const fullName = getFullName(user);
+  const email = clean(user?.email);
+
+  return username || fullName || email || 'WaveLab User';
+}
+
+function getSecondaryLabel(user, roleOverride) {
+  if (roleOverride) return roleOverride;
+
+  const role = clean(user?.role);
+  const position = clean(user?.position);
+  const fullName = getFullName(user);
+
   if (role === 'admin') return 'Administrator';
   if (role === 'forecaster') return 'Forecaster';
-  return role ? String(role).replace(/_/g, ' ') : 'User';
+  if (position) return position;
+  if (fullName) return fullName;
+  if (role && role !== 'user') return role.replace(/_/g, ' ');
+  return 'User';
 }
 
-function normalizeUser(user) {
+function normalizeUser(user, options = {}) {
   if (!user) {
     return {
       raw: null,
       initials: 'WL',
       name: 'Loading…',
-      role: 'User',
+      role: options.roleOverride || 'User',
       email: '',
       avatarUrl: null,
     };
@@ -50,8 +65,8 @@ function normalizeUser(user) {
   return {
     raw: user,
     initials: getInitials(user),
-    name: getDisplayName(user),
-    role: getRoleLabel(user.role),
+    name: getPrimaryName(user),
+    role: getSecondaryLabel(user, options.roleOverride),
     email: user.email || '',
     avatarUrl: user.avatarUrl || null,
   };
@@ -94,7 +109,7 @@ async function loadCurrentUser() {
   return userRequest;
 }
 
-export default function useCurrentDashboardUser(fallbackUser = null) {
+export default function useCurrentDashboardUser(fallbackUser = null, options = {}) {
   const [rawUser, setRawUser] = useState(() => userCache || fallbackUser);
 
   useEffect(() => {
@@ -120,7 +135,7 @@ export default function useCurrentDashboardUser(fallbackUser = null) {
     await logoutUser();
   }, []);
 
-  const user = useMemo(() => normalizeUser(rawUser), [rawUser]);
+  const user = useMemo(() => normalizeUser(rawUser, options), [options, rawUser]);
 
   return { user, rawUser, logout };
 }
