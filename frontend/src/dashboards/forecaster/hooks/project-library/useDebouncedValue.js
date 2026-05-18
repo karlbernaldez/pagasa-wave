@@ -1,12 +1,1 @@
-import { useEffect, useState } from 'react';
-
-export function useDebouncedValue(value, delay = 350) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timeout);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
+export { useDebouncedValue } from '@/features/projects/hooks/project-library/useDebouncedValue';

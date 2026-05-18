@@ -1,4 +1,4 @@
-import ProjectLibraryPage from '@/dashboards/forecaster/pages/ProjectLibraryPage';
+import ProjectLibraryPage from '@/features/projects/ProjectLibraryPage';
 
 const ChartReviewSection = () => {
   return (
