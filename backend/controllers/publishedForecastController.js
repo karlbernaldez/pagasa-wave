@@ -4,12 +4,6 @@ import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
-const PUBLIC_LIST_STATUS = Object.freeze({
-  ACTIVE: 'active',
-  ARCHIVE: 'archive',
-  ALL: 'all',
-});
-
 function getProjectOwnerId(project) {
   return String(project?.owner?._id || project?.owner || '');
 }
@@ -94,16 +88,33 @@ async function buildPublishedForecastPayload(project, { canArchive = false } = {
   };
 }
 
-async function findPublishedProject(projectId) {
-  const project = await Project.findOne({
-    _id: projectId,
-    status: { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] },
-  })
+function populatePublishedProject(query) {
+  return query
     .populate('owner', 'firstName lastName email username position')
     .populate('reviewStartedBy', 'firstName lastName email username')
     .populate('approvedBy', 'firstName lastName email username')
     .populate('rejectedBy', 'firstName lastName email username')
     .populate('auditLogs.performedBy', 'firstName lastName email username');
+}
+
+async function findPublicPublishedProject(projectId) {
+  const project = await populatePublishedProject(Project.findOne({
+    _id: projectId,
+    status: PROJECT_STATUS.PUBLISHED,
+  }));
+
+  if (!project) {
+    throwError('Published chart not found. Archived charts require an access request.', 404);
+  }
+
+  return project;
+}
+
+async function findPublishedProject(projectId) {
+  const project = await populatePublishedProject(Project.findOne({
+    _id: projectId,
+    status: { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] },
+  }));
 
   if (!project) {
     throwError('Published forecast not found', 404);
@@ -119,25 +130,11 @@ function getDateBoundary(value) {
   return date;
 }
 
-function getListMode(value) {
-  const mode = String(value || PUBLIC_LIST_STATUS.ACTIVE).toLowerCase();
-  return Object.values(PUBLIC_LIST_STATUS).includes(mode) ? mode : PUBLIC_LIST_STATUS.ACTIVE;
-}
-
 function buildPublicListQuery(req) {
-  const mode = getListMode(req.query.mode);
   const search = String(req.query.search || '').trim();
   const before = getDateBoundary(req.query.before);
   const after = getDateBoundary(req.query.after);
-  const query = {};
-
-  if (mode === PUBLIC_LIST_STATUS.ARCHIVE) {
-    query.status = { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] };
-  } else if (mode === PUBLIC_LIST_STATUS.ALL) {
-    query.status = { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] };
-  } else {
-    query.status = PROJECT_STATUS.PUBLISHED;
-  }
+  const query = { status: PROJECT_STATUS.PUBLISHED };
 
   if (before || after) {
     query.forecastDate = {};
@@ -154,14 +151,14 @@ function buildPublicListQuery(req) {
     ];
   }
 
-  return { mode, query };
+  return query;
 }
 
 export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 50);
   const page = Math.max(Number(req.query.page) || 1, 1);
   const skip = (page - 1) * limit;
-  const { mode, query } = buildPublicListQuery(req);
+  const query = buildPublicListQuery(req);
 
   const [projects, total] = await Promise.all([
     Project.find(query)
@@ -180,14 +177,14 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
     total,
     page,
     limit,
-    mode,
+    mode: 'active',
     totalPages: Math.max(1, Math.ceil(total / limit)),
     hasMore: page < Math.max(1, Math.ceil(total / limit)),
   });
 });
 
 export const getPublicPublishedForecastOutput = asyncHandler(async (req, res) => {
-  const project = await findPublishedProject(req.params.id);
+  const project = await findPublicPublishedProject(req.params.id);
   const canArchive = req.user?.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED;
   res.json(await buildPublishedForecastPayload(project, { canArchive }));
 });
