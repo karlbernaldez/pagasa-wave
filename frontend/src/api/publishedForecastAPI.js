@@ -38,13 +38,16 @@ export const fetchPublicPublishedForecastOutput = (projectId, { signal } = {}) =
   return request(`${PROJECT_API_BASE_URL}/public/published/${projectId}`, { signal });
 };
 
-export const fetchPublicPublishedForecasts = ({ page = 1, limit = 12, search = '', signal } = {}) => {
+export const fetchPublicPublishedForecasts = ({ page = 1, limit = 12, search = '', mode = 'active', before = '', after = '', signal } = {}) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
+    mode,
   });
 
   if (search.trim()) params.set('search', search.trim());
+  if (before) params.set('before', before);
+  if (after) params.set('after', after);
 
   return request(`${PROJECT_API_BASE_URL}/public/published?${params.toString()}`, { signal });
 };
