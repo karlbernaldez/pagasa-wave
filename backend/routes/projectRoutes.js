@@ -19,7 +19,11 @@ import {
   renameProject
 } from '../controllers/projectController.js';
 import { getAdminProjects } from '../controllers/adminProjectController.js';
-import { getPublishedForecastOutput } from '../controllers/publishedForecastController.js';
+import {
+  getPublishedForecastOutput,
+  getPublicPublishedForecastOutput,
+  listPublicPublishedForecasts,
+} from '../controllers/publishedForecastController.js';
 import Project from '../models/Project.js';
 
 import protect from '../middleware/authMiddleware.js';
@@ -55,6 +59,12 @@ async function preventAdminSelfReview(req, _res, next) {
     next(error);
   }
 }
+
+// ─────────────────────────────────────────────
+// Public published output routes
+// ─────────────────────────────────────────────
+router.get('/public/published', listPublicPublishedForecasts);
+router.get('/public/published/:id', getPublicPublishedForecastOutput);
 
 router.use(protect);
 
