@@ -19,7 +19,8 @@ export default [
     children: [
       { path: '/', element: <Home /> },
       { path: '/charts', element: <Charts /> },
-      { path: '/wave-charts', element: <PublicForecastsPage /> },
+      { path: '/charts/:projectId', element: <PublishedForecastPage /> },
+      { path: '/wave-charts', element: <Charts /> },
       { path: '/wave-charts/:projectId', element: <PublishedForecastPage /> },
       { path: '/forecasts', element: <PublicForecastsPage /> },
       { path: '/forecasts/:projectId', element: <PublishedForecastPage /> },
