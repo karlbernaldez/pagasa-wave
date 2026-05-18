@@ -79,6 +79,15 @@ function getExportFilename(project, extension) {
   return `${safeName}.${extension}`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -237,16 +246,55 @@ function downloadDataUrl(dataUrl, filename) {
   link.remove();
 }
 
-function openPdfPrintWindow({ project, latestReviewSummary, imageDataUrl }) {
-  const metadata = getExportMetadata(project, latestReviewSummary);
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-  if (!printWindow) throw new Error('Pop-up was blocked. Please allow pop-ups to export PDF.');
-
+function writeLoadingPdfWindow(printWindow) {
   printWindow.document.write(`
     <!doctype html>
     <html>
       <head>
-        <title>${metadata.title} - Published Forecast</title>
+        <title>Preparing PDF Export</title>
+        <style>
+          body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Arial, sans-serif; background: #f8fafc; color: #0f172a; }
+          .card { max-width: 420px; padding: 28px; border: 1px solid #dbeafe; border-radius: 20px; background: white; box-shadow: 0 20px 45px rgba(15, 23, 42, .08); }
+          h1 { margin: 0 0 8px; font-size: 22px; }
+          p { margin: 0; color: #475569; font-weight: 600; line-height: 1.5; }
+        </style>
+      </head>
+      <body><div class="card"><h1>Preparing PDF export…</h1><p>Please wait while WaveLab prepares the published forecast output.</p></div></body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
+function writePdfErrorWindow(printWindow, message) {
+  if (!printWindow || printWindow.closed) return;
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <title>PDF Export Failed</title>
+        <style>
+          body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Arial, sans-serif; background: #fef2f2; color: #991b1b; }
+          .card { max-width: 460px; padding: 28px; border: 1px solid #fecaca; border-radius: 20px; background: white; box-shadow: 0 20px 45px rgba(127, 29, 29, .10); }
+          h1 { margin: 0 0 8px; font-size: 22px; }
+          p { margin: 0; color: #7f1d1d; font-weight: 600; line-height: 1.5; }
+        </style>
+      </head>
+      <body><div class="card"><h1>PDF export failed</h1><p>${escapeHtml(message)}</p></div></body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
+function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl }) {
+  const metadata = getExportMetadata(project, latestReviewSummary);
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <title>${escapeHtml(metadata.title)} - Published Forecast</title>
         <style>
           @page { size: A4 landscape; margin: 12mm; }
           body { margin: 0; font-family: Arial, sans-serif; color: #0f172a; background: #f8fafc; }
@@ -268,21 +316,21 @@ function openPdfPrintWindow({ project, latestReviewSummary, imageDataUrl }) {
       </head>
       <body>
         <div class="page">
-          <div class="badge">${metadata.status} · Final Forecast Output</div>
-          <h1>${metadata.title}</h1>
-          <p class="subtitle">${metadata.subtitle}</p>
+          <div class="badge">${escapeHtml(metadata.status)} · Final Forecast Output</div>
+          <h1>${escapeHtml(metadata.title)}</h1>
+          <p class="subtitle">${escapeHtml(metadata.subtitle)}</p>
           <section class="stats">
-            <div class="stat"><div class="label">Forecast Date</div><div class="value">${metadata.forecastDate}</div></div>
-            <div class="stat"><div class="label">Chart Type</div><div class="value">${metadata.chartType}</div></div>
-            <div class="stat"><div class="label">Published</div><div class="value">${metadata.publishedAt}</div></div>
-            <div class="stat"><div class="label">Forecaster</div><div class="value">${metadata.forecaster}</div></div>
+            <div class="stat"><div class="label">Forecast Date</div><div class="value">${escapeHtml(metadata.forecastDate)}</div></div>
+            <div class="stat"><div class="label">Chart Type</div><div class="value">${escapeHtml(metadata.chartType)}</div></div>
+            <div class="stat"><div class="label">Published</div><div class="value">${escapeHtml(metadata.publishedAt)}</div></div>
+            <div class="stat"><div class="label">Forecaster</div><div class="value">${escapeHtml(metadata.forecaster)}</div></div>
           </section>
           <img src="${imageDataUrl}" alt="Published forecast chart" />
           <section class="summary">
             <h2>Review summary</h2>
-            <p><strong>Approved by:</strong> ${metadata.approvedBy}</p>
-            <p><strong>Last review action:</strong> ${metadata.reviewAction}</p>
-            <p><strong>Remarks:</strong> ${metadata.remarks}</p>
+            <p><strong>Approved by:</strong> ${escapeHtml(metadata.approvedBy)}</p>
+            <p><strong>Last review action:</strong> ${escapeHtml(metadata.reviewAction)}</p>
+            <p><strong>Remarks:</strong> ${escapeHtml(metadata.remarks)}</p>
           </section>
           <p class="actions no-print">Use your browser print dialog to save this output as PDF.</p>
         </div>
@@ -377,14 +425,24 @@ export default function PublishedForecastPage() {
   };
 
   const handleDownloadPdf = async () => {
+    const printWindow = window.open('', '_blank');
+
+    if (!printWindow) {
+      setExportState({ loading: '', error: 'Pop-up was blocked. Please allow pop-ups to export PDF.' });
+      return;
+    }
+
+    writeLoadingPdfWindow(printWindow);
     setExportState({ loading: 'pdf', error: '' });
 
     try {
       const imageDataUrl = await createExportImage();
-      openPdfPrintWindow({ project, latestReviewSummary, imageDataUrl });
+      writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl });
       setExportState({ loading: '', error: '' });
     } catch (error) {
-      setExportState({ loading: '', error: error?.message || 'Failed to export PDF.' });
+      const message = error?.message || 'Failed to export PDF.';
+      writePdfErrorWindow(printWindow, message);
+      setExportState({ loading: '', error: message });
     }
   };
 
