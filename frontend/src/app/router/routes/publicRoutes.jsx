@@ -19,6 +19,8 @@ export default [
     children: [
       { path: '/', element: <Home /> },
       { path: '/charts', element: <Charts /> },
+      { path: '/wave-charts', element: <PublicForecastsPage /> },
+      { path: '/wave-charts/:projectId', element: <PublishedForecastPage /> },
       { path: '/forecasts', element: <PublicForecastsPage /> },
       { path: '/forecasts/:projectId', element: <PublishedForecastPage /> },
       { path: '/about-us', element: <AboutUs /> },
