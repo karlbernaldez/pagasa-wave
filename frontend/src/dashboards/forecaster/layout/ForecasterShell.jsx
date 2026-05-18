@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   BarChart3,
   Box,
@@ -27,7 +27,8 @@ const NAV_ITEMS = [
 
 export default function ForecasterShell({ children, user: fallbackUser = null }) {
   const { isDarkMode, setIsDarkMode } = useTheme();
-  const { user } = useCurrentDashboardUser(fallbackUser);
+  const userOptions = useMemo(() => ({ roleOverride: 'Forecaster' }), []);
+  const { user } = useCurrentDashboardUser(fallbackUser, userOptions);
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
