@@ -15,6 +15,8 @@ const DEFAULT_BOUNDS = [
 ];
 const FEATURE_CACHE_LIMIT = 80;
 const FEATURE_CACHE_TTL_MS = 30_000;
+const FORECAST_OVERLAY_SOURCE_ID = 'project-preview-forecast-overlay-source';
+const FORECAST_OVERLAY_LAYER_ID = 'project-preview-forecast-overlay-layer';
 
 const DIFF_COLOR_EXPRESSION = [
   'match',
@@ -168,6 +170,60 @@ function getCachedFeatures(key) {
   featureCache.set(key, entry);
 
   return entry.value;
+}
+
+function getForecastOverlayTiles(forecastOverlay) {
+  if (!forecastOverlay) return [];
+  if (Array.isArray(forecastOverlay.tiles)) return forecastOverlay.tiles.filter(Boolean);
+  if (forecastOverlay.tileUrl) return [forecastOverlay.tileUrl];
+  if (forecastOverlay.url) return [forecastOverlay.url];
+  return [];
+}
+
+function getForecastOverlayKey(forecastOverlay) {
+  return JSON.stringify({
+    tiles: getForecastOverlayTiles(forecastOverlay),
+    opacity: forecastOverlay?.opacity,
+    tileSize: forecastOverlay?.tileSize,
+    bounds: forecastOverlay?.bounds,
+    scheme: forecastOverlay?.scheme,
+  });
+}
+
+function removeForecastOverlay(map) {
+  if (!map) return;
+  if (map.getLayer(FORECAST_OVERLAY_LAYER_ID)) map.removeLayer(FORECAST_OVERLAY_LAYER_ID);
+  if (map.getSource(FORECAST_OVERLAY_SOURCE_ID)) map.removeSource(FORECAST_OVERLAY_SOURCE_ID);
+}
+
+function syncForecastOverlay(map, forecastOverlay) {
+  const tiles = getForecastOverlayTiles(forecastOverlay);
+
+  removeForecastOverlay(map);
+
+  if (tiles.length === 0) return;
+
+  map.addSource(FORECAST_OVERLAY_SOURCE_ID, {
+    type: 'raster',
+    tiles,
+    tileSize: forecastOverlay?.tileSize || 256,
+    scheme: forecastOverlay?.scheme || 'xyz',
+    ...(forecastOverlay?.bounds ? { bounds: forecastOverlay.bounds } : {}),
+  });
+
+  const beforeLayerId = map.getLayer('project-preview-polygons')
+    ? 'project-preview-polygons'
+    : undefined;
+
+  map.addLayer({
+    id: FORECAST_OVERLAY_LAYER_ID,
+    type: 'raster',
+    source: FORECAST_OVERLAY_SOURCE_ID,
+    paint: {
+      'raster-opacity': forecastOverlay?.opacity ?? 0.78,
+      'raster-fade-duration': 0,
+    },
+  }, beforeLayerId);
 }
 
 function normalizeMarkerType(value) {
@@ -527,11 +583,13 @@ function ProjectPreviewMap({
   lazy = true,
   showLabels = true,
   showDiffStyles = false,
+  forecastOverlay = null,
 }) {
   const [viewportRef, isNearViewport] = useNearViewport('500px', !lazy);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const fittedFeaturesKeyRef = useRef('');
+  const overlayKeyRef = useRef('');
   const [isReady, setIsReady] = useState(false);
   const [remoteFeatures, setRemoteFeatures] = useState(() => {
     if (!projectId) return null;
@@ -545,6 +603,9 @@ function ProjectPreviewMap({
   );
 
   const hasProvidedFeatures = providedFeatureCollection.features.length > 0;
+  const overlayTiles = useMemo(() => getForecastOverlayTiles(forecastOverlay), [forecastOverlay]);
+  const hasForecastOverlay = overlayTiles.length > 0;
+  const forecastOverlayKey = useMemo(() => getForecastOverlayKey(forecastOverlay), [forecastOverlay]);
   const featureCacheKey = useMemo(
     () => getFeatureCacheKey(projectId, featureScope),
     [featureScope, projectId]
@@ -601,7 +662,7 @@ function ProjectPreviewMap({
 
   const hasFeatures = featureCollection.features.length > 0;
   const featureKey = useMemo(() => getFeatureRenderKey(featureCollection), [featureCollection]);
-  const shouldRenderMap = isNearViewport && hasFeatures;
+  const shouldRenderMap = isNearViewport && (hasFeatures || hasForecastOverlay);
   const shouldUseDiffStyles = showDiffStyles || hasDiffStyles(featureCollection);
   const containerStyle = height == null ? undefined : { height };
 
@@ -636,6 +697,7 @@ function ProjectPreviewMap({
       map.remove();
       mapRef.current = null;
       fittedFeaturesKeyRef.current = '';
+      overlayKeyRef.current = '';
       setIsReady(false);
     };
   }, [shouldRenderMap]);
@@ -646,8 +708,25 @@ function ProjectPreviewMap({
     mapRef.current.remove();
     mapRef.current = null;
     fittedFeaturesKeyRef.current = '';
+    overlayKeyRef.current = '';
     setIsReady(false);
   }, [shouldRenderMap]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isReady) return;
+
+    if (!hasForecastOverlay) {
+      removeForecastOverlay(map);
+      overlayKeyRef.current = '';
+      return;
+    }
+
+    if (overlayKeyRef.current === forecastOverlayKey) return;
+
+    syncForecastOverlay(map, forecastOverlay);
+    overlayKeyRef.current = forecastOverlayKey;
+  }, [forecastOverlay, forecastOverlayKey, hasForecastOverlay, isReady]);
 
   useEffect(() => {
     let isMounted = true;
@@ -657,6 +736,11 @@ function ProjectPreviewMap({
     ensurePreviewMarkerIcons(map).then(() => {
       if (!isMounted || !mapRef.current) return;
       addPreviewLayers(map, featureCollection, { showLabels, showDiffStyles: shouldUseDiffStyles });
+
+      if (hasForecastOverlay && overlayKeyRef.current !== forecastOverlayKey) {
+        syncForecastOverlay(map, forecastOverlay);
+        overlayKeyRef.current = forecastOverlayKey;
+      }
 
       if (fittedFeaturesKeyRef.current === featureKey) return;
 
@@ -675,7 +759,7 @@ function ProjectPreviewMap({
     return () => {
       isMounted = false;
     };
-  }, [featureCollection, featureKey, hasFeatures, isReady, shouldUseDiffStyles, showLabels]);
+  }, [featureCollection, featureKey, forecastOverlay, forecastOverlayKey, hasFeatures, hasForecastOverlay, isReady, shouldUseDiffStyles, showLabels]);
 
   return (
     <div
@@ -695,7 +779,7 @@ function ProjectPreviewMap({
         <div className={`h-full w-full animate-pulse ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} aria-hidden="true" />
       )}
 
-      {isNearViewport && !hasFeatures && !isLoadingFeatures && (
+      {isNearViewport && !hasFeatures && !hasForecastOverlay && !isLoadingFeatures && (
         <PreviewPlaceholder isDarkMode={isDarkMode} label={emptyLabel} />
       )}
 
