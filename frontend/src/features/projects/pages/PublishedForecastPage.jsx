@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileText,
   MapPinned,
+  Palette,
   Share2,
   UserRound,
 } from 'lucide-react';
@@ -17,10 +18,16 @@ import {
 import Button from '@/components/ui/Button';
 import { archiveProject } from '@/api/projectAPI';
 import { fetchPublicPublishedForecastOutput } from '@/api/publishedForecastAPI';
+import { useChartType } from '@/app/providers/ChartTypeProvider';
+import { useTheme } from '@/app/providers/ThemeProvider';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
 import PublishedForecastExportMap from '@/features/projects/components/PublishedForecastExportMap';
 import { getProjectStatusLabel, getProjectStatusStyle } from '@/features/projects/projectStatuses';
-import { useTheme } from '@/app/providers/ThemeProvider';
+import {
+  CHART_STYLE_MODES,
+  getChartStyleMode,
+  normalizeChartStyleMode,
+} from '@/features/projects/utils/chartStyleModes';
 
 function formatDate(value, options = {}) {
   if (!value) return '—';
@@ -82,233 +89,6 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('Failed to prepare map image for export.'));
-    image.src = src;
-  });
-}
-
-function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 4) {
-  const words = String(text || '').split(/\s+/).filter(Boolean);
-  const lines = [];
-  let currentLine = '';
-
-  words.forEach((word) => {
-    const nextLine = currentLine ? `${currentLine} ${word}` : word;
-    if (ctx.measureText(nextLine).width <= maxWidth) {
-      currentLine = nextLine;
-      return;
-    }
-    if (currentLine) lines.push(currentLine);
-    currentLine = word;
-  });
-
-  if (currentLine) lines.push(currentLine);
-
-  lines.slice(0, maxLines).forEach((line, index) => {
-    const suffix = index === maxLines - 1 && lines.length > maxLines ? '…' : '';
-    ctx.fillText(`${line}${suffix}`, x, y + index * lineHeight);
-  });
-
-  return y + Math.min(lines.length, maxLines) * lineHeight;
-}
-
-function drawRoundedCard(ctx, x, y, width, height, radius = 22) {
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#dbeafe';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(x, y, width, height, radius);
-  ctx.fill();
-  ctx.stroke();
-}
-
-function getExportMetadata(project, latestReviewSummary) {
-  return {
-    title: project?.name || 'Published Wave Chart',
-    subtitle: project?.description || 'A finalized, read-only published wave chart.',
-    status: getProjectStatusLabel(project?.status),
-    forecastDate: formatDate(project?.forecastDate),
-    chartType: getChartTypeLabel(project?.chartType),
-    publishedAt: formatDateTime(project?.publishedAt),
-    forecaster: getPersonName(project?.owner, 'Forecaster'),
-    approvedBy: getPersonName(project?.approvedBy, '—'),
-    reviewAction: latestReviewSummary?.action?.replaceAll('_', ' ') || '—',
-    remarks: latestReviewSummary?.comment || project?.reviewComment || 'No review remarks recorded.',
-  };
-}
-
-async function composeLandscapeExportImage({ project, latestReviewSummary, mapDataUrl }) {
-  const metadata = getExportMetadata(project, latestReviewSummary);
-  const mapImage = await loadImage(mapDataUrl);
-  const canvas = document.createElement('canvas');
-  const width = 1600;
-  const height = 1280;
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(0, 0, width, height);
-
-  ctx.fillStyle = '#0f172a';
-  ctx.font = '800 52px Arial, sans-serif';
-  ctx.fillText(metadata.title, 72, 104);
-
-  ctx.fillStyle = '#475569';
-  ctx.font = '600 22px Arial, sans-serif';
-  drawWrappedText(ctx, metadata.subtitle, 72, 146, 980, 30, 2);
-
-  ctx.fillStyle = '#0369a1';
-  ctx.font = '800 20px Arial, sans-serif';
-  ctx.fillText('FINAL WAVE CHART', 72, 224);
-
-  const cardY = 258;
-  const cardWidth = 344;
-  const cardHeight = 94;
-  const gap = 24;
-  const cards = [
-    ['VALID DATE', metadata.forecastDate],
-    ['CHART TYPE', metadata.chartType],
-    ['PUBLISHED', metadata.publishedAt],
-    ['FORECASTER', metadata.forecaster],
-  ];
-
-  cards.forEach(([label, value], index) => {
-    const x = 72 + index * (cardWidth + gap);
-    drawRoundedCard(ctx, x, cardY, cardWidth, cardHeight, 22);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '800 16px Arial, sans-serif';
-    ctx.fillText(label, x + 28, cardY + 34);
-    ctx.fillStyle = '#0f172a';
-    ctx.font = '800 22px Arial, sans-serif';
-    drawWrappedText(ctx, value, x + 28, cardY + 66, cardWidth - 56, 26, 1);
-  });
-
-  const mapX = 72;
-  const mapY = 402;
-  const mapW = 1456;
-  const mapH = 650;
-  drawRoundedCard(ctx, mapX, mapY, mapW, mapH, 28);
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(mapX + 24, mapY + 24, mapW - 48, mapH - 48, 20);
-  ctx.clip();
-  ctx.drawImage(mapImage, mapX + 24, mapY + 24, mapW - 48, mapH - 48);
-  ctx.restore();
-
-  const summaryY = 1094;
-  drawRoundedCard(ctx, 72, summaryY, 1456, 124, 24);
-  ctx.fillStyle = '#0f172a';
-  ctx.font = '800 24px Arial, sans-serif';
-  ctx.fillText('Review summary', 104, summaryY + 42);
-  ctx.fillStyle = '#475569';
-  ctx.font = '700 18px Arial, sans-serif';
-  ctx.fillText(`Approved by: ${metadata.approvedBy}`, 104, summaryY + 78);
-  ctx.fillText(`Last action: ${metadata.reviewAction}`, 520, summaryY + 78);
-  ctx.fillText(`Remarks: ${metadata.remarks}`, 104, summaryY + 108);
-
-  ctx.fillStyle = '#64748b';
-  ctx.font = '600 15px Arial, sans-serif';
-  ctx.fillText('Generated from WaveLab published wave chart', 72, 1252);
-
-  return canvas.toDataURL('image/png');
-}
-
-async function composePortraitA4ExportImage({ project, latestReviewSummary, mapDataUrl }) {
-  const metadata = getExportMetadata(project, latestReviewSummary);
-  const mapImage = await loadImage(mapDataUrl);
-  const canvas = document.createElement('canvas');
-  const width = 1240;
-  const height = 1754;
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(0, 0, width, height);
-
-  ctx.fillStyle = '#0f172a';
-  ctx.font = '800 46px Arial, sans-serif';
-  drawWrappedText(ctx, metadata.title, 72, 96, 900, 52, 2);
-
-  ctx.fillStyle = '#475569';
-  ctx.font = '600 20px Arial, sans-serif';
-  drawWrappedText(ctx, metadata.subtitle, 72, 188, 900, 28, 2);
-
-  ctx.fillStyle = '#0369a1';
-  ctx.font = '800 18px Arial, sans-serif';
-  ctx.fillText('FINAL WAVE CHART', 72, 270);
-
-  const cards = [
-    ['VALID DATE', metadata.forecastDate],
-    ['CHART TYPE', metadata.chartType],
-    ['PUBLISHED', metadata.publishedAt],
-    ['FORECASTER', metadata.forecaster],
-  ];
-  const cardW = 522;
-  const cardH = 92;
-  const cardGapX = 28;
-  const cardGapY = 22;
-  cards.forEach(([label, value], index) => {
-    const row = Math.floor(index / 2);
-    const col = index % 2;
-    const x = 72 + col * (cardW + cardGapX);
-    const y = 304 + row * (cardH + cardGapY);
-    drawRoundedCard(ctx, x, y, cardW, cardH, 20);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '800 15px Arial, sans-serif';
-    ctx.fillText(label, x + 26, y + 34);
-    ctx.fillStyle = '#0f172a';
-    ctx.font = '800 22px Arial, sans-serif';
-    drawWrappedText(ctx, value, x + 26, y + 66, cardW - 52, 26, 1);
-  });
-
-  const mapX = 72;
-  const mapY = 560;
-  const mapW = 1096;
-  const mapH = 650;
-  drawRoundedCard(ctx, mapX, mapY, mapW, mapH, 28);
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(mapX + 22, mapY + 22, mapW - 44, mapH - 44, 20);
-  ctx.clip();
-  ctx.drawImage(mapImage, mapX + 22, mapY + 22, mapW - 44, mapH - 44);
-  ctx.restore();
-
-  const summaryY = 1256;
-  drawRoundedCard(ctx, 72, summaryY, 1096, 238, 24);
-  ctx.fillStyle = '#0f172a';
-  ctx.font = '800 26px Arial, sans-serif';
-  ctx.fillText('Review summary', 104, summaryY + 46);
-
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '800 15px Arial, sans-serif';
-  ctx.fillText('APPROVED BY', 104, summaryY + 88);
-  ctx.fillText('LAST REVIEW ACTION', 520, summaryY + 88);
-
-  ctx.fillStyle = '#0f172a';
-  ctx.font = '800 20px Arial, sans-serif';
-  ctx.fillText(metadata.approvedBy, 104, summaryY + 120);
-  ctx.fillText(metadata.reviewAction, 520, summaryY + 120);
-
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '800 15px Arial, sans-serif';
-  ctx.fillText('REMARKS', 104, summaryY + 164);
-  ctx.fillStyle = '#334155';
-  ctx.font = '700 20px Arial, sans-serif';
-  drawWrappedText(ctx, metadata.remarks, 104, summaryY + 196, 1000, 28, 2);
-
-  ctx.fillStyle = '#64748b';
-  ctx.font = '600 15px Arial, sans-serif';
-  ctx.fillText('Generated from WaveLab published wave chart', 72, 1668);
-
-  return canvas.toDataURL('image/png');
-}
-
 function downloadDataUrl(dataUrl, filename) {
   const link = document.createElement('a');
   link.href = dataUrl;
@@ -358,30 +138,39 @@ function writePdfErrorWindow(printWindow, message) {
   printWindow.document.close();
 }
 
-function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl }) {
-  const metadata = getExportMetadata(project, latestReviewSummary);
+function writePdfPrintWindow({ printWindow, project, imageDataUrl, chartStyleLabel }) {
+  const title = project?.name || 'Published Wave Chart';
 
   printWindow.document.open();
   printWindow.document.write(`
     <!doctype html>
     <html>
       <head>
-        <title>${escapeHtml(metadata.title)} - Published Wave Chart</title>
+        <title>${escapeHtml(title)} - Published Wave Chart</title>
         <style>
-          @page { size: A4 portrait; margin: 0; }
-          html, body { margin: 0; width: 210mm; min-height: 297mm; background: white; overflow: hidden; }
-          body { display: grid; place-items: center; }
-          .page { box-sizing: border-box; width: 210mm; height: 297mm; padding: 0; display: grid; place-items: center; background: white; overflow: hidden; page-break-after: avoid; page-break-inside: avoid; }
-          img { display: block; width: 210mm; height: 297mm; object-fit: contain; }
-          @media print {
-            html, body { width: 210mm; height: 297mm; overflow: hidden; }
-            .page { width: 210mm; height: 297mm; overflow: hidden; }
-          }
+          @page { size: A4 portrait; margin: 12mm; }
+          * { box-sizing: border-box; }
+          body { margin: 0; font-family: Arial, sans-serif; color: #0f172a; background: #fff; }
+          .page { width: 100%; min-height: 273mm; display: flex; flex-direction: column; gap: 10mm; }
+          h1 { margin: 0; font-size: 22pt; line-height: 1.1; }
+          .meta { margin-top: 3mm; display: flex; gap: 4mm; flex-wrap: wrap; color: #475569; font-size: 9pt; font-weight: 700; }
+          .map { width: 100%; border: 1px solid #dbeafe; border-radius: 10px; overflow: hidden; }
+          .map img { display: block; width: 100%; height: auto; }
+          .footer { margin-top: auto; color: #64748b; font-size: 8pt; font-weight: 700; }
         </style>
       </head>
       <body>
         <main class="page">
-          <img src="${imageDataUrl}" alt="${escapeHtml(metadata.title)} published wave chart export" />
+          <header>
+            <h1>${escapeHtml(title)}</h1>
+            <div class="meta">
+              <span>Final Wave Chart</span>
+              <span>${escapeHtml(chartStyleLabel)}</span>
+              <span>${escapeHtml(formatDate(project?.forecastDate))}</span>
+            </div>
+          </header>
+          <section class="map"><img src="${imageDataUrl}" alt="${escapeHtml(title)} published wave chart export" /></section>
+          <div class="footer">Generated from WaveLab published wave chart</div>
         </main>
         <script>
           window.onload = () => {
@@ -411,10 +200,52 @@ function StatCard({ icon: Icon, label, value, isDarkMode }) {
   );
 }
 
-function OutputActionNotice({ isDarkMode }) {
+function ChartStyleSelector({ activeStyleMode, onChange, isDarkMode }) {
+  return (
+    <article className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
+      <div className="flex items-start gap-3">
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDarkMode ? 'bg-cyan-500/10 text-cyan-300' : 'bg-blue-50 text-blue-700'}`}>
+          <Palette size={18} aria-hidden="true" />
+        </span>
+        <div>
+          <h2 className="text-sm font-black">Chart style</h2>
+          <p className={`mt-1 text-xs font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Change the public viewing style without modifying the published chart.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {CHART_STYLE_MODES.map((mode) => {
+          const active = mode.id === activeStyleMode;
+          return (
+            <button
+              key={mode.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(mode.id)}
+              className={`rounded-2xl border px-4 py-3 text-left transition ${
+                active
+                  ? isDarkMode ? 'border-cyan-400/50 bg-cyan-400/10 text-cyan-100' : 'border-blue-300 bg-blue-50 text-blue-900'
+                  : isDarkMode ? 'border-white/10 bg-slate-950 text-slate-300 hover:border-white/20' : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <span className="block text-sm font-black">{mode.label}</span>
+              <span className={`mt-1 block text-xs font-semibold leading-relaxed ${active ? '' : isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                {mode.description}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
+function OutputActionNotice({ isDarkMode, chartStyleLabel }) {
   return (
     <div className={`rounded-2xl border p-4 text-sm font-semibold leading-relaxed ${isDarkMode ? 'border-blue-400/20 bg-blue-400/10 text-blue-100' : 'border-blue-200 bg-blue-50 text-blue-900'}`}>
-      Export uses the final read-only chart snapshot shown on this page.
+      Export uses the final read-only chart snapshot shown on this page using the current <strong>{chartStyleLabel}</strong> style.
     </div>
   );
 }
@@ -423,11 +254,15 @@ export default function PublishedForecastPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  const { activeChartType, setActiveChartType } = useChartType();
   const exportMapRef = useRef(null);
   const [state, setState] = useState({ loading: true, error: '', data: null });
   const [copied, setCopied] = useState(false);
   const [archiveState, setArchiveState] = useState({ loading: false, error: '' });
   const [exportState, setExportState] = useState({ loading: '', error: '' });
+
+  const activeStyleMode = normalizeChartStyleMode(activeChartType);
+  const activeStyle = getChartStyleMode(activeStyleMode);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -462,12 +297,7 @@ export default function PublishedForecastPage() {
   const handleExportImage = async () => {
     setExportState({ loading: 'image', error: '' });
     try {
-      const imageDataUrl = await composeLandscapeExportImage({
-        project,
-        latestReviewSummary,
-        mapDataUrl: getExportMapDataUrl(),
-      });
-      downloadDataUrl(imageDataUrl, getExportFilename(project, 'png'));
+      downloadDataUrl(getExportMapDataUrl(), getExportFilename(project, 'png'));
       setExportState({ loading: '', error: '' });
     } catch (error) {
       setExportState({ loading: '', error: error?.message || 'Failed to export image.' });
@@ -485,12 +315,12 @@ export default function PublishedForecastPage() {
     setExportState({ loading: 'pdf', error: '' });
 
     try {
-      const imageDataUrl = await composePortraitA4ExportImage({
+      writePdfPrintWindow({
+        printWindow,
         project,
-        latestReviewSummary,
-        mapDataUrl: getExportMapDataUrl(),
+        imageDataUrl: getExportMapDataUrl(),
+        chartStyleLabel: activeStyle.label,
       });
-      writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl });
       setExportState({ loading: '', error: '' });
     } catch (error) {
       const message = error?.message || 'Failed to export PDF.';
@@ -559,7 +389,7 @@ export default function PublishedForecastPage() {
 
   return (
     <main className={pageClass}>
-      <PublishedForecastExportMap ref={exportMapRef} features={featureCollection} />
+      <PublishedForecastExportMap ref={exportMapRef} features={featureCollection} chartStyleMode={activeStyleMode} />
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -579,6 +409,9 @@ export default function PublishedForecastPage() {
               </span>
               <span className={`rounded-full border px-3 py-1 text-xs font-black ${isDarkMode ? 'border-cyan-400/20 bg-cyan-400/10 text-cyan-200' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
                 Final Wave Chart
+              </span>
+              <span className={`rounded-full border px-3 py-1 text-xs font-black ${isDarkMode ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                {activeStyle.label}
               </span>
             </div>
 
@@ -614,7 +447,7 @@ export default function PublishedForecastPage() {
             <div className={`flex items-center justify-between border-b px-5 py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
               <div>
                 <p className="text-sm font-black">Final wave chart</p>
-                <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Read-only map output from the published project snapshot.</p>
+                <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Read-only map output using {activeStyle.label} style.</p>
               </div>
               <MapPinned size={20} className={isDarkMode ? 'text-cyan-300' : 'text-blue-700'} aria-hidden="true" />
             </div>
@@ -628,13 +461,15 @@ export default function PublishedForecastPage() {
                 isDarkMode={isDarkMode}
                 lazy={false}
                 showLabels
+                chartStyleMode={activeStyleMode}
                 emptyLabel="No published annotations available"
               />
             </div>
           </article>
 
           <aside className="space-y-4">
-            <OutputActionNotice isDarkMode={isDarkMode} />
+            <ChartStyleSelector activeStyleMode={activeStyleMode} onChange={setActiveChartType} isDarkMode={isDarkMode} />
+            <OutputActionNotice isDarkMode={isDarkMode} chartStyleLabel={activeStyle.label} />
 
             <article className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
               <h2 className="text-sm font-black">Review summary</h2>
