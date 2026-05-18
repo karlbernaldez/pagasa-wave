@@ -7,7 +7,7 @@ import { Wind, Activity, Eye } from 'lucide-react';
 export const NAV_ITEMS = [
   { name: 'Home', href: '/' },
   { name: 'Charts', href: '/charts', hasDropdown: true },
-  { name: 'Published Forecasts', href: '/forecasts' },
+  { name: 'Wave Charts', href: '/wave-charts' },
   { name: 'About', href: '/about-us' },
   { name: 'Contact', href: '/contact' },
 ];
