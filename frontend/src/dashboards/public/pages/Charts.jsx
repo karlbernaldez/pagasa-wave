@@ -8,12 +8,69 @@ import { fetchPublicPublishedForecasts } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
 
+const CHART_STYLES = [
+  {
+    id: 'wave-wind',
+    label: 'Wave & Wind',
+    shortLabel: 'Wave + Wind',
+    icon: Wind,
+    description: 'Combined wave height and wind context.',
+    image: '/charts/wave-wind/WaveXWind.png',
+    color: '#2563eb',
+  },
+  {
+    id: 'wave-only',
+    label: 'Wave Only',
+    shortLabel: 'Wave Only',
+    icon: Waves,
+    description: 'Clean wave-height focused chart style.',
+    image: '/charts/wave/Wave.png',
+    color: '#0891b2',
+  },
+  {
+    id: 'visually-impaired',
+    label: 'Accessible',
+    shortLabel: 'Accessible',
+    icon: Eye,
+    description: 'High-contrast chart style for easier reading.',
+    image: '/charts/wind-barbs/barbs.png',
+    color: '#059669',
+  },
+];
+
+const CHART_SLOTS = [
+  {
+    chartType: 'analysis',
+    badge: 'Analysis',
+    title: 'Analysis Chart',
+    fallbackTitle: 'Current Analysis',
+  },
+  {
+    chartType: 'forecast_24h',
+    badge: '24h',
+    title: '24-Hour Chart',
+    fallbackTitle: '24-Hour Wave Chart',
+  },
+  {
+    chartType: 'forecast_36h',
+    badge: '36h',
+    title: '36-Hour Chart',
+    fallbackTitle: '36-Hour Wave Chart',
+  },
+  {
+    chartType: 'forecast_48h',
+    badge: '48h',
+    title: '48-Hour Chart',
+    fallbackTitle: '48-Hour Wave Chart',
+  },
+];
+
 const fadeUp = {
   hidden: { opacity: 0, y: 18 },
-  show: (d = 0) => ({
+  show: (delay = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94], delay: d },
+    transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94], delay },
   }),
 };
 
@@ -25,70 +82,6 @@ const stagger = {
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.96 },
   show: { opacity: 1, scale: 1, transition: { duration: 0.35, ease: 'easeOut' } },
-};
-
-const CHART_STYLES = [
-  {
-    id: 'wave-wind',
-    label: 'Wave & Wind',
-    shortLabel: 'Wave + Wind',
-    icon: Wind,
-    description: 'Combined wave height and wind context.',
-    image: '/charts/wave-wind/WaveXWind.png',
-  },
-  {
-    id: 'wave-only',
-    label: 'Wave Only',
-    shortLabel: 'Wave Only',
-    icon: Waves,
-    description: 'Clean wave-height focused chart style.',
-    image: '/charts/wave/Wave.png',
-  },
-  {
-    id: 'visually-impaired',
-    label: 'Accessible',
-    shortLabel: 'Accessible',
-    icon: Eye,
-    description: 'High-contrast chart style for easier reading.',
-    image: '/charts/wind-barbs/barbs.png',
-  },
-];
-
-const CHART_SLOTS = [
-  {
-    chartType: 'analysis',
-    tag: 'ANALYSIS',
-    hour: 'Now',
-    title: 'Analysis Chart',
-    fallbackTitle: 'Current Analysis',
-  },
-  {
-    chartType: 'forecast_24h',
-    tag: '+24H',
-    hour: '+24h',
-    title: '24-Hour Chart',
-    fallbackTitle: '24-Hour Wave Chart',
-  },
-  {
-    chartType: 'forecast_36h',
-    tag: '+36H',
-    hour: '+36h',
-    title: '36-Hour Chart',
-    fallbackTitle: '36-Hour Wave Chart',
-  },
-  {
-    chartType: 'forecast_48h',
-    tag: '+48H',
-    hour: '+48h',
-    title: '48-Hour Chart',
-    fallbackTitle: '48-Hour Wave Chart',
-  },
-];
-
-const STYLE_SEVERITY = {
-  'wave-wind': { color: '#2563eb', bg: 'bg-blue-50', text: 'text-blue-700' },
-  'wave-only': { color: '#0891b2', bg: 'bg-cyan-50', text: 'text-cyan-700' },
-  'visually-impaired': { color: '#059669', bg: 'bg-emerald-50', text: 'text-emerald-700' },
 };
 
 function formatDate(value, options = {}) {
@@ -116,19 +109,9 @@ function toDateKey(value) {
 function getPersonName(person, fallback = 'DOST PAGASA') {
   if (!person) return fallback;
   if (typeof person === 'string') return person;
+
   const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ').trim();
   return fullName || person.username || fallback;
-}
-
-function getChartTypeLabel(value) {
-  const labels = {
-    analysis: 'Analysis',
-    forecast_24h: '24-Hour',
-    forecast_36h: '36-Hour',
-    forecast_48h: '48-Hour',
-  };
-
-  return labels[value] || value || 'Wave Chart';
 }
 
 function isEmptyStateDescription(value) {
@@ -176,9 +159,7 @@ function getProjectsForDate(projects, dateKey) {
 }
 
 const PageHeader = memo(function PageHeader({ activeStyle, currentDate, isDark }) {
-  const match = CHART_STYLES.find((style) => style.id === activeStyle) || CHART_STYLES[0];
-  const headText = isDark ? 'text-white' : 'text-slate-900';
-  const muteText = isDark ? 'text-slate-300' : 'text-slate-600';
+  const style = CHART_STYLES.find((item) => item.id === activeStyle) || CHART_STYLES[0];
 
   return (
     <motion.section className="mx-auto max-w-4xl text-center" variants={stagger} initial="hidden" animate="show">
@@ -189,15 +170,15 @@ const PageHeader = memo(function PageHeader({ activeStyle, currentDate, isDark }
             : 'border border-blue-200 bg-blue-100/80 text-blue-700'
         }`}>
           <Layers size={15} aria-hidden="true" />
-          {match.label} · {currentDate ? formatDate(currentDate) : 'Latest available'}
+          {style.label} · {currentDate ? formatDate(currentDate) : 'Latest available'}
         </div>
       </motion.div>
 
-      <motion.h1 variants={fadeUp} custom={0.04} className={`text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl ${headText}`}>
+      <motion.h1 variants={fadeUp} custom={0.04} className={`text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl ${isDark ? 'text-white' : 'text-slate-900'}`}>
         Wave Charts
       </motion.h1>
 
-      <motion.p variants={fadeUp} custom={0.08} className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${muteText}`}>
+      <motion.p variants={fadeUp} custom={0.08} className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
         Latest published DOST-PAGASA WaveLab chart set, with style modes and recent charts from the past 10 days.
       </motion.p>
     </motion.section>
@@ -253,7 +234,6 @@ function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) 
 
 const ChartSlotCard = memo(function ChartSlotCard({ slot, chart, activeStyle, isDark, onOpen }) {
   const style = CHART_STYLES.find((item) => item.id === activeStyle) || CHART_STYLES[0];
-  const severity = STYLE_SEVERITY[activeStyle] || STYLE_SEVERITY['wave-wind'];
   const hasChart = Boolean(chart?._id);
   const title = chart?.name || slot.fallbackTitle;
   const description = getChartCardDescription(chart, slot, hasChart);
@@ -269,7 +249,7 @@ const ChartSlotCard = memo(function ChartSlotCard({ slot, chart, activeStyle, is
           : 'border-slate-200 bg-white/95 backdrop-blur-sm hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-100/80'
       }`}
     >
-      <div className="absolute inset-y-0 left-0 w-1.5 rounded-l-3xl" style={{ background: severity.color }} aria-hidden="true" />
+      <div className="absolute inset-y-0 left-0 w-1.5 rounded-l-3xl" style={{ background: style.color }} aria-hidden="true" />
 
       <button
         type="button"
@@ -284,12 +264,9 @@ const ChartSlotCard = memo(function ChartSlotCard({ slot, chart, activeStyle, is
           className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.03] ${!hasChart ? 'opacity-45 grayscale' : ''}`}
         />
 
-        <div className="absolute left-4 top-4 flex items-center gap-2">
-          <span className="rounded-xl px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20" style={{ background: severity.color }}>
-            {slot.tag}
-          </span>
-          <span className={`rounded-xl px-3 py-1.5 text-xs font-black shadow-lg shadow-black/10 ${isDark ? 'bg-slate-950/80 text-slate-100' : 'bg-white/90 text-slate-900'}`}>
-            {slot.hour}
+        <div className="absolute left-4 top-4">
+          <span className="rounded-xl px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20" style={{ background: style.color }}>
+            {slot.badge}
           </span>
         </div>
 
@@ -308,13 +285,8 @@ const ChartSlotCard = memo(function ChartSlotCard({ slot, chart, activeStyle, is
 
       <div className="flex flex-1 flex-col justify-between p-5 pl-7">
         <div>
-          <div className="mb-2 flex items-start justify-between gap-3">
-            <h2 className={`text-2xl font-black leading-tight tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h2>
-            <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black tracking-wide ${severity.bg} ${severity.text}`}>
-              {getChartTypeLabel(slot.chartType)}
-            </span>
-          </div>
-          <p className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <h2 className={`text-2xl font-black leading-tight tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h2>
+          <p className={`mt-2 text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             {hasChart ? `Published ${formatDate(chart.publishedAt)} · ${getPersonName(chart.owner)}` : 'This slot is empty for the selected date'}
           </p>
           <p className={`mt-4 line-clamp-2 text-sm font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
@@ -385,7 +357,7 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
   );
 }
 
-const ForecastChartsPage = () => {
+export default function ForecastChartsPage() {
   const navigate = useNavigate();
   const { activeChartType, setActiveChartType } = useChartType();
   const { isDarkMode: isDark } = useTheme();
@@ -533,6 +505,4 @@ const ForecastChartsPage = () => {
       </div>
     </div>
   );
-};
-
-export default ForecastChartsPage;
+}
