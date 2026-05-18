@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, Lock, MessageSquareText, Moon, Send, Sun } from "lucide-react";
 
 // Component imports
@@ -58,6 +59,7 @@ function getSubmitLabel(status) {
 
 // ─── Main Component ──────────────────────────────────
 const Studio = ({ logger }) => {
+  const navigate = useNavigate();
   const { isDarkMode, setIsDarkMode } = useTheme();
   const [projectId] = useProjectId();
 
@@ -73,12 +75,14 @@ const Studio = ({ logger }) => {
 
   const [currentProject, setCurrentProject] = useState(null);
   const [isSubmittingProject, setIsSubmittingProject] = useState(false);
+  const [studioError, setStudioError] = useState("");
 
   useEffect(() => {
     setCurrentProject(latestProject || null);
   }, [latestProject]);
 
   const handleOpenCreateProject = () => {
+    setStudioError("");
     setShowNoProjectsModal(false);
     setShowCreateProjectModal(true);
   };
@@ -156,8 +160,8 @@ const Studio = ({ logger }) => {
   });
 
   const handleBackToLibrary = useCallback(() => {
-    window.location.href = "/studio";
-  }, []);
+    navigate("/studio");
+  }, [navigate]);
 
   const handleToggleTheme = useCallback(() => {
     setIsDarkMode((value) => !value);
@@ -168,11 +172,12 @@ const Studio = ({ logger }) => {
     if (!id || isSubmittingProject || !canSubmitProjectStatus(currentProject?.status)) return;
 
     setIsSubmittingProject(true);
+    setStudioError("");
     try {
       const updatedProject = await submitProject(id);
       setCurrentProject(updatedProject);
     } catch (error) {
-      window.alert(error?.message || "Failed to submit project for review.");
+      setStudioError(error?.message || "Failed to submit project for review.");
     } finally {
       setIsSubmittingProject(false);
     }
@@ -203,6 +208,7 @@ const Studio = ({ logger }) => {
     setShowTitleModal(false);
     markerTitleRef.current = "";
     selectedToolRef.current = null;
+    setStudioError("");
   }, [
     projectId,
     setClosedMode,
@@ -362,8 +368,28 @@ const Studio = ({ logger }) => {
         </div>
       </header>
 
+      {studioError && (
+        <div className={`absolute left-1/2 z-[117] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-red-500/30 bg-red-950/90 text-red-200" : "border-red-200 bg-red-50/95 text-red-800"}`} style={{ top: STUDIO_HEADER_HEIGHT + 12 }} role="alert">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-red-500/10 text-red-300" : "bg-red-100 text-red-700"}`}>
+                <AlertTriangle size={16} />
+              </div>
+              <p className="text-sm font-semibold leading-relaxed">{studioError}</p>
+            </div>
+            <button
+              type="button"
+              className={`shrink-0 text-xs font-black uppercase tracking-wide ${isDarkMode ? "text-red-200 hover:text-white" : "text-red-700 hover:text-red-900"}`}
+              onClick={() => setStudioError("")}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {isReadOnlyProject && (
-        <div className={`absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-white/10 bg-slate-950/95 text-slate-200" : "border-slate-200 bg-white/95 text-slate-700"}`} style={{ top: STUDIO_HEADER_HEIGHT + 12 }}>
+        <div className={`absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-white/10 bg-slate-950/95 text-slate-200" : "border-slate-200 bg-white/95 text-slate-700"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 12) }}>
           <div className="flex items-start gap-3">
             <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-slate-900 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
               <Lock size={16} />
@@ -381,7 +407,7 @@ const Studio = ({ logger }) => {
       )}
 
       {hasActiveReviewRemarks && (
-        <div className={`absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-amber-400/30 bg-amber-950/80 text-amber-100" : "border-amber-200 bg-amber-50/95 text-amber-950"}`} style={{ top: STUDIO_HEADER_HEIGHT + (isReadOnlyProject ? 104 : 12) }}>
+        <div className={`absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-amber-400/30 bg-amber-950/80 text-amber-100" : "border-amber-200 bg-amber-50/95 text-amber-950"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 0) + (isReadOnlyProject ? 104 : 12) }}>
           <div className="flex items-start gap-3">
             <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-amber-500/10 text-amber-300" : "bg-amber-100 text-amber-700"}`}>
               <MessageSquareText size={16} />
