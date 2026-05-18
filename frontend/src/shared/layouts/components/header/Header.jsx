@@ -26,7 +26,9 @@ const Header = ({ isStudioProjectPage, showAccountControls = false }) => {
 
     const isActiveRoute = useCallback((href) => {
         if (href.startsWith('#')) return location.pathname === '/' && location.hash === href;
-        return location.pathname === href || (href === '/forecasts' && location.pathname.startsWith('/forecasts/'));
+        return location.pathname === href ||
+            (href === '/wave-charts' && location.pathname.startsWith('/wave-charts/')) ||
+            (href === '/wave-charts' && location.pathname.startsWith('/forecasts'));
     }, [location]);
 
     const handleNavigate = useCallback((href) => {
