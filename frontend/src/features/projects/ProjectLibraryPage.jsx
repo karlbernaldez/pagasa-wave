@@ -15,6 +15,7 @@ import Button from "@/components/ui/Button";
 import { createProject } from "@/api/projectAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
+import { isProjectPublished } from "@/features/projects/projectStatuses";
 
 function ProjectCardSkeleton({ isDarkMode = false }) {
   const border = isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white";
@@ -112,6 +113,10 @@ function getCreatedProjectId(project) {
   return project?._id || project?.id || project?.project?._id || project?.project?.id;
 }
 
+function getProjectId(project) {
+  return project?._id || project?.id;
+}
+
 function getReviewModalProject(project) {
   if (!project) return project;
 
@@ -151,6 +156,14 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
 
   const handleOpen = async (project) => {
     setFeedbackError("");
+
+    const projectId = getProjectId(project);
+    if (!projectId) return;
+
+    if (isProjectPublished(project?.status)) {
+      navigate(`/forecasts/${projectId}`);
+      return;
+    }
 
     if (role === "admin") {
       setIsStartingReview(true);
