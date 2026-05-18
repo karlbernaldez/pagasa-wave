@@ -19,6 +19,11 @@ import {
   renameProject
 } from '../controllers/projectController.js';
 import { getAdminProjects } from '../controllers/adminProjectController.js';
+import {
+  getPublishedForecastOutput,
+  getPublicPublishedForecastOutput,
+  listPublicPublishedForecasts,
+} from '../controllers/publishedForecastController.js';
 import Project from '../models/Project.js';
 
 import protect from '../middleware/authMiddleware.js';
@@ -55,6 +60,12 @@ async function preventAdminSelfReview(req, _res, next) {
   }
 }
 
+// ─────────────────────────────────────────────
+// Public published output routes
+// ─────────────────────────────────────────────
+router.get('/public/published', listPublicPublishedForecasts);
+router.get('/public/published/:id', getPublicPublishedForecastOutput);
+
 router.use(protect);
 
 // ─────────────────────────────────────────────
@@ -75,6 +86,11 @@ router.patch('/:id/reject', isAdmin, preventAdminSelfReview, rejectProject);
 router.patch('/:id/publish', isAdmin, preventAdminSelfReview, publishProject);
 
 router.patch('/:id/archive', isAdmin, preventAdminSelfReview, archiveProject);
+
+// ─────────────────────────────────────────────
+// Published output routes - keep before dynamic /:id routes
+// ─────────────────────────────────────────────
+router.get('/:id/published-output', getPublishedForecastOutput);
 
 // ─────────────────────────────────────────────
 // Owner routes

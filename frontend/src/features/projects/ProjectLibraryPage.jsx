@@ -15,6 +15,7 @@ import Button from "@/components/ui/Button";
 import { createProject } from "@/api/projectAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
+import { isProjectPublished } from "@/features/projects/projectStatuses";
 
 function ProjectCardSkeleton({ isDarkMode = false }) {
   const border = isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white";
@@ -112,6 +113,10 @@ function getCreatedProjectId(project) {
   return project?._id || project?.id || project?.project?._id || project?.project?.id;
 }
 
+function getProjectId(project) {
+  return project?._id || project?.id;
+}
+
 function getReviewModalProject(project) {
   if (!project) return project;
 
@@ -132,6 +137,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
   const [isStartingReview, setIsStartingReview] = useState(false);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
 
   const {
     projects,
@@ -149,6 +155,16 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
   } = controller.table;
 
   const handleOpen = async (project) => {
+    setFeedbackError("");
+
+    const projectId = getProjectId(project);
+    if (!projectId) return;
+
+    if (isProjectPublished(project?.status)) {
+      navigate(`/forecasts/${projectId}`);
+      return;
+    }
+
     if (role === "admin") {
       setIsStartingReview(true);
       try {
@@ -156,7 +172,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
         setReviewProject(updatedProject || project);
       } catch (err) {
         console.error("Failed to start review:", err);
-        window.alert(err?.message || "Failed to start project review.");
+        setFeedbackError(err?.message || "Failed to start project review.");
       } finally {
         setIsStartingReview(false);
       }
@@ -175,6 +191,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     if (!name || isCreatingProject) return;
 
     setIsCreatingProject(true);
+    setFeedbackError("");
 
     try {
       const createdProject = await createProject({
@@ -195,7 +212,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       navigate(`/studio/${projectId}`);
     } catch (err) {
       console.error("Failed to create project:", err);
-      window.alert(err?.message || "Failed to create project.");
+      setFeedbackError(err?.message || "Failed to create project.");
     } finally {
       setIsCreatingProject(false);
     }
@@ -242,6 +259,22 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
             <ViewToggle view={view} setView={setView} isDarkMode={isDarkMode} />
           </div>
         </div>
+
+        {feedbackError && (
+          <div className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? "border-red-500/30 bg-red-950/30 text-red-300" : "border-red-200 bg-red-50 text-red-700"}`} role="alert">
+            <span className="inline-flex items-start gap-2">
+              <AlertCircle className="mt-0.5 shrink-0" size={17} />
+              {feedbackError}
+            </span>
+            <button
+              type="button"
+              className={`shrink-0 text-xs font-black uppercase tracking-wide ${isDarkMode ? "text-red-200 hover:text-white" : "text-red-700 hover:text-red-900"}`}
+              onClick={() => setFeedbackError("")}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         <ProjectStats {...controller.stats} isDarkMode={isDarkMode} />
 

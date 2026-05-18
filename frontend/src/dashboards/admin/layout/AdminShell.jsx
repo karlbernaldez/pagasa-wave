@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 import { ADMIN_TABS, MENU_ITEMS } from '@dashboards/admin/constants/navigation';
 import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
+import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
 
@@ -20,6 +21,8 @@ const adminSidebarItems = MENU_ITEMS.map((item) => {
   };
 });
 
+const ADMIN_USER_OPTIONS = { roleOverride: 'Administrator' };
+
 const AdminShell = ({
   activeMeta,
   activeTab,
@@ -33,6 +36,8 @@ const AdminShell = ({
   setIsMobileOpen,
   setIsSidebarCollapsed,
 }) => {
+  const { user } = useCurrentDashboardUser(null, ADMIN_USER_OPTIONS);
+
   return (
     <DashboardShell
       activeId={activeTab}
@@ -52,7 +57,7 @@ const AdminShell = ({
         description: activeMeta?.description,
         eyebrow: 'Admin Dashboard',
         title: activeMeta?.title ?? 'Dashboard Overview',
-        user: { name: 'Admin User', role: 'Administrator', initials: 'AU' },
+        user,
       }}
     >
       {children}

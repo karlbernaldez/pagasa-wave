@@ -86,7 +86,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
   }, [projectId]);
 
   const hasRemarks = remarks.trim().length > 0;
-  const { busyAction, runAction } = useProjectReviewActions({
+  const { busyAction, actionError, clearActionError, runAction } = useProjectReviewActions({
     currentProject,
     remarks,
     hasRemarks,
@@ -182,6 +182,8 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
               isApproved={isApproved}
               hasRemarks={hasRemarks}
               busyAction={busyAction}
+              actionError={actionError}
+              onClearActionError={clearActionError}
               isDarkMode={isDarkMode}
               {...reviewActionHandlers}
               onClose={onClose}
