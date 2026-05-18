@@ -10,6 +10,7 @@ const VerifyEmail = lazy(() => import('@/pages/VerifyEmail'));
 const Charts = lazy(() => import('@/dashboards/public/pages/Charts'));
 const AboutUs = lazy(() => import('@/dashboards/public/pages/AboutUs'));
 const Contact = lazy(() => import('@/dashboards/public/pages/Contact'));
+const PublishedForecastPage = lazy(() => import('@/features/projects/pages/PublishedForecastPage'));
 
 export default [
   {
@@ -17,6 +18,7 @@ export default [
     children: [
       { path: '/', element: <Home /> },
       { path: '/charts', element: <Charts /> },
+      { path: '/forecasts/:projectId', element: <PublishedForecastPage /> },
       { path: '/about-us', element: <AboutUs /> },
       { path: '/contact', element: <Contact /> },
     ],
