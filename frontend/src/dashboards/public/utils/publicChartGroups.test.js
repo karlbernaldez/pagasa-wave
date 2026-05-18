@@ -2,13 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PUBLIC_CHART_SLOTS,
+  PUBLIC_CHART_TYPE_FILTER_ALL,
+  filterProjectsByPublicChartType,
   filterProjectsToPublicChartWindow,
+  getBestPublicChartDateForFilter,
+  getFilteredPublicChartSlots,
   getPublicChartAvailableCount,
   getPublicChartCardDescription,
+  getPublicChartCompleteness,
   getPublicChartTenDayWindow,
   groupPublicChartHistory,
   groupPublicChartsByTypeForDate,
   isEmptyPublicChartDescription,
+  isPublicChartDateAvailable,
+  normalizePublicChartTypeFilter,
   toPublicChartDateKey,
 } from './publicChartGroups';
 
@@ -55,6 +62,20 @@ describe('publicChartGroups', () => {
     expect(filterProjectsToPublicChartWindow(projects).map((item) => item._id)).toEqual(['inside', 'latest']);
   });
 
+  it('normalizes and applies chart type filters', () => {
+    const projects = [
+      project({ _id: 'analysis', chartType: 'analysis' }),
+      project({ _id: 'twenty-four', chartType: 'forecast_24h' }),
+    ];
+
+    expect(normalizePublicChartTypeFilter('unknown')).toBe(PUBLIC_CHART_TYPE_FILTER_ALL);
+    expect(normalizePublicChartTypeFilter('forecast_24h')).toBe('forecast_24h');
+    expect(filterProjectsByPublicChartType(projects, 'forecast_24h').map((item) => item._id)).toEqual(['twenty-four']);
+    expect(filterProjectsByPublicChartType(projects, PUBLIC_CHART_TYPE_FILTER_ALL).map((item) => item._id)).toEqual(['analysis', 'twenty-four']);
+    expect(getFilteredPublicChartSlots('forecast_24h')).toEqual([PUBLIC_CHART_SLOTS[1]]);
+    expect(getFilteredPublicChartSlots('unknown')).toEqual(PUBLIC_CHART_SLOTS);
+  });
+
   it('groups charts by type for a selected date and keeps the latest published chart per type', () => {
     const grouped = groupPublicChartsByTypeForDate([
       project({ _id: 'older-analysis', chartType: 'analysis', publishedAt: '2026-05-18T08:00:00.000Z' }),
@@ -69,15 +90,61 @@ describe('publicChartGroups', () => {
     expect(getPublicChartAvailableCount(grouped)).toBe(2);
   });
 
-  it('groups recent history by date in newest-first order', () => {
+  it('computes completeness for full, partial, and empty chart sets', () => {
+    const complete = groupPublicChartsByTypeForDate([
+      project({ chartType: 'analysis' }),
+      project({ chartType: 'forecast_24h' }),
+      project({ chartType: 'forecast_36h' }),
+      project({ chartType: 'forecast_48h' }),
+    ], '2026-05-18');
+    const partial = groupPublicChartsByTypeForDate([
+      project({ chartType: 'analysis' }),
+    ], '2026-05-18');
+    const empty = groupPublicChartsByTypeForDate([], '2026-05-18');
+
+    expect(getPublicChartCompleteness(complete)).toMatchObject({ availableCount: 4, totalCount: 4, isComplete: true, isEmpty: false });
+    expect(getPublicChartCompleteness(partial)).toMatchObject({ availableCount: 1, totalCount: 4, isComplete: false, isEmpty: false });
+    expect(getPublicChartCompleteness(empty)).toMatchObject({ availableCount: 0, totalCount: 4, isComplete: false, isEmpty: true });
+    expect(getPublicChartCompleteness(partial, [PUBLIC_CHART_SLOTS[0]])).toMatchObject({ availableCount: 1, totalCount: 1, isComplete: true });
+  });
+
+  it('groups recent history by date with completeness metadata in newest-first order', () => {
     expect(groupPublicChartHistory([
-      project({ forecastDate: '2026-05-17T00:00:00.000Z' }),
-      project({ forecastDate: '2026-05-18T00:00:00.000Z' }),
-      project({ forecastDate: '2026-05-18T00:00:00.000Z' }),
+      project({ forecastDate: '2026-05-17T00:00:00.000Z', chartType: 'analysis' }),
+      project({ forecastDate: '2026-05-18T00:00:00.000Z', chartType: 'analysis' }),
+      project({ forecastDate: '2026-05-18T00:00:00.000Z', chartType: 'forecast_24h' }),
     ])).toEqual([
-      { dateKey: '2026-05-18', count: 2 },
-      { dateKey: '2026-05-17', count: 1 },
+      {
+        dateKey: '2026-05-18',
+        count: 2,
+        availableCount: 2,
+        totalCount: 4,
+        isComplete: false,
+        availableChartTypes: ['analysis', 'forecast_24h'],
+      },
+      {
+        dateKey: '2026-05-17',
+        count: 1,
+        availableCount: 1,
+        totalCount: 4,
+        isComplete: false,
+        availableChartTypes: ['analysis'],
+      },
     ]);
+  });
+
+  it('finds the best date for a chart type filter and checks selected-date availability', () => {
+    const projects = [
+      project({ chartType: 'analysis', forecastDate: '2026-05-18T00:00:00.000Z' }),
+      project({ chartType: 'forecast_48h', forecastDate: '2026-05-15T00:00:00.000Z' }),
+      project({ chartType: 'forecast_48h', forecastDate: '2026-05-17T00:00:00.000Z' }),
+    ];
+
+    expect(getBestPublicChartDateForFilter(projects, 'forecast_48h')).toBe('2026-05-17');
+    expect(getBestPublicChartDateForFilter(projects, 'analysis')).toBe('2026-05-18');
+    expect(isPublicChartDateAvailable(projects, '2026-05-18', 'forecast_48h')).toBe(false);
+    expect(isPublicChartDateAvailable(projects, '2026-05-17', 'forecast_48h')).toBe(true);
+    expect(isPublicChartDateAvailable(projects, '2026-05-18', PUBLIC_CHART_TYPE_FILTER_ALL)).toBe(true);
   });
 
   it('detects stale empty-state descriptions and replaces them for published charts', () => {
