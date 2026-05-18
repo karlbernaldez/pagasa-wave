@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CalendarDays, Eye, FileText, History, Layers, Search, Waves, Wind } from 'lucide-react';
+import { Archive, ArrowRight, CalendarDays, Eye, FileText, History, Layers, Search, Waves, Wind } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,13 +10,17 @@ import { useChartType } from '@/app/providers/ChartTypeProvider';
 import {
   PUBLIC_CHART_SLOTS,
   filterProjectsToPublicChartWindow,
+  getPublicChartArchiveHistory,
   getPublicChartAvailableCount,
   getPublicChartCardDescription,
   getPublicChartCompleteness,
+  getPublicChartForSlot,
   getPublicChartTenDayWindow,
   groupPublicChartHistory,
   groupPublicChartsByTypeForDate,
 } from '@/dashboards/public/utils/publicChartGroups';
+
+const ARCHIVE_PAGE_SIZE = 6;
 
 const CHART_STYLES = [
   {
@@ -111,7 +115,7 @@ const PageHeader = memo(function PageHeader({ activeStyle, currentDate, isDark }
       </motion.h1>
 
       <motion.p variants={fadeUp} custom={0.08} className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-        Browse the latest public WaveLab chart set and review recent published chart dates.
+        Browse the latest public WaveLab chart set, review recent dates, and open older published chart archives.
       </motion.p>
     </motion.section>
   );
@@ -325,6 +329,93 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
   );
 }
 
+function ArchiveCharts({ archiveDates, archiveProjects, visibleCount, onLoadMore, isDark, onOpenChart }) {
+  if (archiveDates.length === 0) {
+    return (
+      <section className={`rounded-3xl border p-8 text-center ${isDark ? 'border-white/10 bg-slate-900/70 text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
+        <p className="text-sm font-black uppercase tracking-[0.2em]">Archive</p>
+        <h2 className={`mt-2 text-2xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>No older chart archives yet</h2>
+        <p className="mt-2 text-sm font-semibold">Older published charts will appear here when they fall outside the latest 10-day window.</p>
+      </section>
+    );
+  }
+
+  const visibleArchiveDates = archiveDates.slice(0, visibleCount);
+  const hasMore = visibleCount < archiveDates.length;
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <Archive size={15} /> Older charts
+          </p>
+          <h2 className={`mt-2 text-2xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Archive browsing</h2>
+        </div>
+        <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Open older published charts by date and chart type.</p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {visibleArchiveDates.map((item) => {
+          const completeness = {
+            availableCount: item.availableCount,
+            totalCount: item.totalCount,
+            isComplete: item.isComplete,
+            isEmpty: item.availableCount === 0,
+          };
+
+          return (
+            <article key={item.dateKey} className={`rounded-3xl border p-5 shadow-sm ${isDark ? 'border-white/10 bg-slate-900/75' : 'border-slate-200 bg-white'}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(item.dateKey)}</h3>
+                  <p className={`mt-1 text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.availableCount}/{item.totalCount} charts available</p>
+                </div>
+                <CompletenessBadge completeness={completeness} isDark={isDark} />
+              </div>
+
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                {PUBLIC_CHART_SLOTS.map((slot) => {
+                  const chart = getPublicChartForSlot(archiveProjects, item.dateKey, slot.chartType);
+                  const hasChart = Boolean(chart?._id);
+
+                  return (
+                    <button
+                      key={slot.chartType}
+                      type="button"
+                      disabled={!hasChart}
+                      onClick={() => onOpenChart(chart)}
+                      className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${
+                        hasChart
+                          ? isDark ? 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100 hover:border-cyan-300/40' : 'border-blue-200 bg-blue-50 text-blue-900 hover:border-blue-300'
+                          : isDark ? 'cursor-not-allowed border-white/8 bg-slate-950/70 text-slate-600' : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                      }`}
+                    >
+                      <span>
+                        <span className="block text-sm font-black">{slot.badge}</span>
+                        <span className="mt-0.5 block text-[11px] font-semibold opacity-75">{hasChart ? 'Published chart' : 'Not available'}</span>
+                      </span>
+                      {hasChart && <ArrowRight size={15} aria-hidden="true" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button variant="secondary" icon={Archive} onClick={onLoadMore}>
+            Load more archives
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function ForecastChartsPage() {
   const navigate = useNavigate();
   const { activeChartType, setActiveChartType } = useChartType();
@@ -332,10 +423,15 @@ export default function ForecastChartsPage() {
   const [state, setState] = useState({ loading: true, error: '', data: null });
   const [query, setQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const [archiveVisibleCount, setArchiveVisibleCount] = useState(ARCHIVE_PAGE_SIZE);
 
   useEffect(() => {
     document.title = 'Wave Charts — WaveLab';
   }, []);
+
+  useEffect(() => {
+    setArchiveVisibleCount(ARCHIVE_PAGE_SIZE);
+  }, [query]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -343,7 +439,7 @@ export default function ForecastChartsPage() {
     async function loadCharts() {
       setState((current) => ({ ...current, loading: true, error: '' }));
       try {
-        const data = await fetchPublicPublishedForecasts({ limit: 80, search: query, signal: controller.signal });
+        const data = await fetchPublicPublishedForecasts({ limit: 160, search: query, signal: controller.signal });
         setState({ loading: false, error: '', data });
       } catch (error) {
         if (error.name === 'AbortError') return;
@@ -366,6 +462,8 @@ export default function ForecastChartsPage() {
     () => filterProjectsToPublicChartWindow(projects, chartWindow),
     [chartWindow, projects]
   );
+  const archiveDates = useMemo(() => getPublicChartArchiveHistory(projects, chartWindow), [chartWindow, projects]);
+  const archiveProjects = useMemo(() => projects.filter((project) => archiveDates.some((item) => item.dateKey === String(project.forecastDate || '').slice(0, 10) || item.dateKey === new Date(project.forecastDate).toISOString().slice(0, 10))), [archiveDates, projects]);
 
   useEffect(() => {
     if (!selectedDate && latestDate) setSelectedDate(latestDate);
@@ -429,7 +527,7 @@ export default function ForecastChartsPage() {
           </div>
         )}
 
-        {!state.loading && !state.error && recentProjects.length === 0 && (
+        {!state.loading && !state.error && recentProjects.length === 0 && archiveDates.length === 0 && (
           <div className={`mx-auto max-w-2xl rounded-3xl border p-10 text-center ${isDark ? 'border-white/10 bg-slate-900 text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
             <p className="text-lg font-black">No published wave charts found</p>
             <p className="mt-2 text-sm font-semibold">Published charts will appear here once Admin publishes approved outputs.</p>
@@ -470,6 +568,17 @@ export default function ForecastChartsPage() {
 
             <RecentHistory projects={recentProjects} selectedDate={activeDate} onSelectDate={setSelectedDate} isDark={isDark} />
           </>
+        )}
+
+        {!state.loading && !state.error && (
+          <ArchiveCharts
+            archiveDates={archiveDates}
+            archiveProjects={archiveProjects}
+            visibleCount={archiveVisibleCount}
+            onLoadMore={() => setArchiveVisibleCount((count) => count + ARCHIVE_PAGE_SIZE)}
+            isDark={isDark}
+            onOpenChart={openChart}
+          />
         )}
 
         <p className={`text-center text-xs font-semibold tabular-nums ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
