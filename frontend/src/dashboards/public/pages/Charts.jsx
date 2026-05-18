@@ -131,6 +131,19 @@ function getChartTypeLabel(value) {
   return labels[value] || value || 'Wave Chart';
 }
 
+function isEmptyStateDescription(value) {
+  return /^no published .+ chart is available for this date yet\.?$/i.test(String(value || '').trim());
+}
+
+function getChartCardDescription(chart, slot, hasChart) {
+  if (!hasChart) return `No published ${slot.title.toLowerCase()} is available for this date yet.`;
+
+  const description = String(chart?.description || '').trim();
+  if (description && !isEmptyStateDescription(description)) return description;
+
+  return `${slot.title} for ${formatDate(chart?.forecastDate)} published by ${getPersonName(chart?.owner)}.`;
+}
+
 function getTenDayWindow(projects) {
   const latestDate = projects.reduce((latest, project) => {
     const key = toDateKey(project.forecastDate);
@@ -243,7 +256,7 @@ const ChartSlotCard = memo(function ChartSlotCard({ slot, chart, activeStyle, is
   const severity = STYLE_SEVERITY[activeStyle] || STYLE_SEVERITY['wave-wind'];
   const hasChart = Boolean(chart?._id);
   const title = chart?.name || slot.fallbackTitle;
-  const description = chart?.description || `No published ${slot.title.toLowerCase()} is available for this date yet.`;
+  const description = getChartCardDescription(chart, slot, hasChart);
 
   return (
     <motion.article
