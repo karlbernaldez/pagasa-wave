@@ -9,28 +9,29 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 18 },
   show: (d = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94], delay: d },
+    transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94], delay: d },
   }),
 };
 
 const stagger = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } },
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
 };
 
 const scaleIn = {
-  hidden: { opacity: 0, scale: 0.92 },
-  show: { opacity: 1, scale: 1, transition: { duration: 0.45, ease: 'backOut' } },
+  hidden: { opacity: 0, scale: 0.96 },
+  show: { opacity: 1, scale: 1, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
 const CHART_STYLES = [
   {
     id: 'wave-wind',
     label: 'Wave & Wind',
+    shortLabel: 'Wave + Wind',
     icon: Wind,
     description: 'Combined wave height and wind context.',
     image: '/charts/wave-wind/WaveXWind.png',
@@ -38,6 +39,7 @@ const CHART_STYLES = [
   {
     id: 'wave-only',
     label: 'Wave Only',
+    shortLabel: 'Wave Only',
     icon: Waves,
     description: 'Clean wave-height focused chart style.',
     image: '/charts/wave/Wave.png',
@@ -45,6 +47,7 @@ const CHART_STYLES = [
   {
     id: 'visually-impaired',
     label: 'Accessible',
+    shortLabel: 'Accessible',
     icon: Eye,
     description: 'High-contrast chart style for easier reading.',
     image: '/charts/wind-barbs/barbs.png',
@@ -83,9 +86,9 @@ const CHART_SLOTS = [
 ];
 
 const STYLE_SEVERITY = {
-  'wave-wind': { color: '#2563eb', bg: 'bg-blue-50', text: 'text-blue-700', dark: 'dark:bg-blue-500/10 dark:text-blue-300' },
-  'wave-only': { color: '#0891b2', bg: 'bg-cyan-50', text: 'text-cyan-700', dark: 'dark:bg-cyan-500/10 dark:text-cyan-300' },
-  'visually-impaired': { color: '#059669', bg: 'bg-emerald-50', text: 'text-emerald-700', dark: 'dark:bg-emerald-500/10 dark:text-emerald-300' },
+  'wave-wind': { color: '#2563eb', bg: 'bg-blue-50', text: 'text-blue-700' },
+  'wave-only': { color: '#0891b2', bg: 'bg-cyan-50', text: 'text-cyan-700' },
+  'visually-impaired': { color: '#059669', bg: 'bg-emerald-50', text: 'text-emerald-700' },
 };
 
 function formatDate(value, options = {}) {
@@ -165,63 +168,73 @@ const PageHeader = memo(function PageHeader({ activeStyle, currentDate, isDark }
   const muteText = isDark ? 'text-slate-300' : 'text-slate-600';
 
   return (
-    <motion.section className="text-center" variants={stagger} initial="hidden" animate="show">
-      <motion.div variants={scaleIn} className="mb-6">
-        <div className={`inline-flex items-center gap-2.5 rounded-full px-5 py-2.5 text-sm font-semibold backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] ${
+    <motion.section className="mx-auto max-w-4xl text-center" variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={scaleIn} className="mb-4">
+        <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.14em] backdrop-blur-sm ${
           isDark
-            ? 'border border-blue-400/20 bg-blue-500/10 text-blue-300 hover:border-blue-400/40'
-            : 'border border-blue-200 bg-blue-100/80 text-blue-700 hover:border-blue-300'
+            ? 'border border-blue-400/20 bg-blue-500/10 text-blue-300'
+            : 'border border-blue-200 bg-blue-100/80 text-blue-700'
         }`}>
-          <Layers size={16} className="animate-pulse" aria-hidden="true" />
+          <Layers size={15} aria-hidden="true" />
           {match.label} · {currentDate ? formatDate(currentDate) : 'Latest available'}
         </div>
       </motion.div>
 
-      <motion.h1 variants={fadeUp} custom={0.08} className={`mb-4 text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl ${headText}`}>
-        Public{' '}
-        <span className={`bg-gradient-to-r bg-clip-text text-transparent ${
-          isDark ? 'from-blue-400 via-cyan-400 to-emerald-400' : 'from-blue-600 via-cyan-600 to-emerald-600'
-        }`}>
-          Wave Charts
-        </span>
+      <motion.h1 variants={fadeUp} custom={0.04} className={`text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl ${headText}`}>
+        Wave Charts
       </motion.h1>
 
-      <motion.p variants={fadeUp} custom={0.16} className={`mx-auto mb-3 max-w-2xl text-base leading-relaxed sm:text-lg ${muteText}`}>
-        View the latest published DOST-PAGASA WaveLab charts in multiple public-friendly styles, with recent charts available for the past 10 days.
+      <motion.p variants={fadeUp} custom={0.08} className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${muteText}`}>
+        Latest published DOST-PAGASA WaveLab chart set, with style modes and recent charts from the past 10 days.
       </motion.p>
     </motion.section>
   );
 });
 
-function ChartStyleTabs({ activeStyle, onChange, isDark }) {
+function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) {
   return (
-    <motion.div variants={fadeUp} custom={0.2} className="mx-auto grid max-w-4xl gap-3 md:grid-cols-3">
-      {CHART_STYLES.map((style) => {
-        const Icon = style.icon;
-        const active = style.id === activeStyle;
+    <motion.section
+      variants={fadeUp}
+      custom={0.12}
+      className={`mx-auto grid w-full max-w-5xl gap-4 rounded-3xl border p-3 shadow-2xl shadow-black/5 backdrop-blur-xl lg:grid-cols-[minmax(0,1fr)_360px] ${
+        isDark ? 'border-white/10 bg-slate-900/75' : 'border-slate-200 bg-white/85'
+      }`}
+    >
+      <div className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`}>
+        <Search size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+        <input
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Search wave charts, date, or description"
+          className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'text-white placeholder:text-slate-600' : 'text-slate-950 placeholder:text-slate-400'}`}
+        />
+      </div>
 
-        return (
-          <button
-            key={style.id}
-            type="button"
-            onClick={() => onChange(style.id)}
-            className={`rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 ${
-              active
-                ? isDark ? 'border-cyan-400/50 bg-cyan-400/10 shadow-lg shadow-cyan-950/20' : 'border-blue-300 bg-blue-50 shadow-lg shadow-blue-100'
-                : isDark ? 'border-white/10 bg-slate-900/70 hover:border-white/20' : 'border-slate-200 bg-white/90 hover:border-slate-300'
-            }`}
-          >
-            <span className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${
-              active ? isDark ? 'bg-cyan-400/15 text-cyan-200' : 'bg-blue-100 text-blue-700' : isDark ? 'bg-slate-950 text-slate-300' : 'bg-slate-100 text-slate-600'
-            }`}>
-              <Icon size={18} />
-            </span>
-            <span className={`block text-sm font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{style.label}</span>
-            <span className={`mt-1 block text-xs font-semibold leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{style.description}</span>
-          </button>
-        );
-      })}
-    </motion.div>
+      <div className={`grid grid-cols-3 rounded-2xl border p-1 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`} aria-label="Chart display style">
+        {CHART_STYLES.map((style) => {
+          const Icon = style.icon;
+          const active = style.id === activeStyle;
+
+          return (
+            <button
+              key={style.id}
+              type="button"
+              onClick={() => onChange(style.id)}
+              aria-pressed={active}
+              title={style.description}
+              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black transition-all ${
+                active
+                  ? isDark ? 'bg-cyan-400/15 text-cyan-100 shadow-sm' : 'bg-white text-blue-700 shadow-sm'
+                  : isDark ? 'text-slate-400 hover:bg-white/5 hover:text-slate-100' : 'text-slate-500 hover:bg-white/70 hover:text-slate-900'
+              }`}
+            >
+              <Icon size={15} />
+              <span className="hidden sm:inline">{style.shortLabel}</span>
+            </button>
+          );
+        })}
+      </div>
+    </motion.section>
   );
 }
 
@@ -235,54 +248,67 @@ const ChartSlotCard = memo(function ChartSlotCard({ slot, chart, activeStyle, is
   return (
     <motion.article
       variants={scaleIn}
-      whileHover={{ scale: 1.01, y: -3 }}
-      transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-      className={`group relative flex min-h-[260px] flex-col overflow-hidden rounded-2xl border transition-all duration-300 ${
+      whileHover={{ y: -4 }}
+      transition={{ type: 'spring', stiffness: 230, damping: 24 }}
+      className={`group relative flex min-h-[430px] flex-col overflow-hidden rounded-3xl border transition-all duration-300 ${
         isDark
-          ? 'border-slate-700/60 bg-slate-900/70 backdrop-blur-sm hover:border-slate-600 hover:bg-slate-900/90 hover:shadow-2xl'
-          : 'border-slate-200 bg-white/90 backdrop-blur-sm hover:border-slate-300 hover:bg-white hover:shadow-2xl'
+          ? 'border-slate-700/70 bg-slate-900/80 backdrop-blur-sm hover:border-cyan-400/30 hover:shadow-2xl hover:shadow-cyan-950/20'
+          : 'border-slate-200 bg-white/95 backdrop-blur-sm hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-100/80'
       }`}
     >
-      <div className="absolute inset-y-0 left-0 w-1 rounded-l-2xl" style={{ background: severity.color }} aria-hidden="true" />
+      <div className="absolute inset-y-0 left-0 w-1.5 rounded-l-3xl" style={{ background: severity.color }} aria-hidden="true" />
 
-      <div className="relative h-44 overflow-hidden ml-1">
-        <div className={`absolute inset-0 ${isDark ? 'bg-slate-900/30' : 'bg-slate-900/10'}`} />
-        <img src={style.image} alt={`${style.label} preview`} className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.04] ${!hasChart ? 'opacity-45 grayscale' : ''}`} />
+      <button
+        type="button"
+        disabled={!hasChart}
+        onClick={() => onOpen(chart)}
+        className="relative ml-1 h-64 cursor-pointer overflow-hidden text-left disabled:cursor-default md:h-72"
+      >
+        <div className={`absolute inset-0 ${isDark ? 'bg-slate-900/20' : 'bg-slate-900/5'}`} />
+        <img
+          src={style.image}
+          alt={`${style.label} preview`}
+          className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.03] ${!hasChart ? 'opacity-45 grayscale' : ''}`}
+        />
 
-        <div className="absolute left-3 top-3 flex items-center gap-2">
-          <span className="rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white" style={{ background: severity.color }}>
+        <div className="absolute left-4 top-4 flex items-center gap-2">
+          <span className="rounded-xl px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20" style={{ background: severity.color }}>
             {slot.tag}
           </span>
-          <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${isDark ? 'bg-slate-900/80 text-slate-200' : 'bg-white/85 text-slate-800'}`}>
+          <span className={`rounded-xl px-3 py-1.5 text-xs font-black shadow-lg shadow-black/10 ${isDark ? 'bg-slate-950/80 text-slate-100' : 'bg-white/90 text-slate-900'}`}>
             {slot.hour}
           </span>
         </div>
 
-        {hasChart && (
+        {hasChart ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-            <span className="flex items-center gap-2 rounded-full bg-black/50 px-4 py-2 text-sm font-semibold text-white">
-              <ArrowRight size={13} aria-hidden="true" /> View chart
+            <span className="flex items-center gap-2 rounded-full bg-black/55 px-5 py-3 text-sm font-black text-white backdrop-blur-sm">
+              <ArrowRight size={15} aria-hidden="true" /> Open chart
             </span>
           </div>
+        ) : (
+          <div className="absolute inset-x-4 bottom-4 rounded-2xl bg-black/50 px-4 py-3 text-xs font-bold text-white backdrop-blur-sm">
+            Awaiting publication
+          </div>
         )}
-      </div>
+      </button>
 
-      <div className="flex flex-1 flex-col justify-between p-5 pl-6">
+      <div className="flex flex-1 flex-col justify-between p-5 pl-7">
         <div>
           <div className="mb-2 flex items-start justify-between gap-3">
-            <h2 className={`text-xl font-black leading-tight tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h2>
-            <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold tracking-wide ${severity.bg} ${severity.text}`}>
+            <h2 className={`text-2xl font-black leading-tight tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h2>
+            <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black tracking-wide ${severity.bg} ${severity.text}`}>
               {getChartTypeLabel(slot.chartType)}
             </span>
           </div>
           <p className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            {hasChart ? `Published ${formatDate(chart.publishedAt)} · ${getPersonName(chart.owner)}` : 'Awaiting publication'}
+            {hasChart ? `Published ${formatDate(chart.publishedAt)} · ${getPersonName(chart.owner)}` : 'This slot is empty for the selected date'}
           </p>
-          <p className={`mt-4 line-clamp-2 text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
+          <p className={`mt-4 line-clamp-2 text-sm font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
         </div>
 
         <div className={`mt-5 flex items-center justify-between border-t pt-4 ${isDark ? 'border-slate-700/60' : 'border-slate-100'}`}>
-          <span className={`flex items-center gap-2 text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+          <span className={`flex items-center gap-2 text-xs font-black ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
             <FileText size={14} /> {style.label}
           </span>
           <Button size="sm" icon={ArrowRight} disabled={!hasChart} onClick={() => onOpen(chart)}>
@@ -397,6 +423,7 @@ const ForecastChartsPage = () => {
   const activeDate = selectedDate || latestDate;
   const chartByType = useMemo(() => getProjectsForDate(recentProjects, activeDate), [activeDate, recentProjects]);
   const activeStyle = CHART_STYLES.some((style) => style.id === activeChartType) ? activeChartType : 'wave-wind';
+  const availableCount = CHART_SLOTS.filter((slot) => chartByType.has(slot.chartType)).length;
 
   const openChart = useCallback((chart) => {
     if (!chart?._id) return;
@@ -404,7 +431,7 @@ const ForecastChartsPage = () => {
   }, [navigate]);
 
   return (
-    <div className={`relative min-h-screen overflow-hidden px-4 pb-20 pt-32 transition-all duration-700 md:px-6 ${
+    <div className={`relative min-h-screen overflow-hidden px-4 pb-20 pt-24 transition-all duration-700 md:px-6 ${
       isDark
         ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
         : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'
@@ -418,31 +445,25 @@ const ForecastChartsPage = () => {
       </div>
 
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <div className={`absolute -left-32 -top-32 h-[600px] w-[600px] rounded-full blur-3xl ${isDark ? 'bg-blue-600/10' : 'bg-blue-400/15'}`} />
-        <div className={`absolute -bottom-24 -right-24 h-[450px] w-[450px] rounded-full blur-3xl ${isDark ? 'bg-cyan-600/10' : 'bg-cyan-400/12'}`} />
+        <div className={`absolute -left-32 -top-32 h-[520px] w-[520px] rounded-full blur-3xl ${isDark ? 'bg-blue-600/10' : 'bg-blue-400/15'}`} />
+        <div className={`absolute -bottom-24 -right-24 h-[420px] w-[420px] rounded-full blur-3xl ${isDark ? 'bg-cyan-600/10' : 'bg-cyan-400/12'}`} />
       </div>
 
-      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-12">
+      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-8">
         <PageHeader activeStyle={activeStyle} currentDate={activeDate} isDark={isDark} />
 
-        <ChartStyleTabs activeStyle={activeStyle} onChange={setActiveChartType} isDark={isDark} />
-
-        <section className="mx-auto flex w-full max-w-2xl flex-col gap-3 sm:flex-row">
-          <div className={`flex min-w-0 flex-1 items-center gap-3 rounded-2xl border px-4 py-3 shadow-sm ${isDark ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white/90'}`}>
-            <Search size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search wave charts, date, or description"
-              className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'text-white placeholder:text-slate-600' : 'text-slate-950 placeholder:text-slate-400'}`}
-            />
-          </div>
-        </section>
+        <ChartControls
+          activeStyle={activeStyle}
+          onChange={setActiveChartType}
+          query={query}
+          onQueryChange={setQuery}
+          isDark={isDark}
+        />
 
         {state.loading && (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-5 lg:grid-cols-2">
             {CHART_SLOTS.map((slot) => (
-              <div key={slot.chartType} className={`h-[390px] animate-pulse rounded-2xl border ${isDark ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white/90'}`} />
+              <div key={slot.chartType} className={`h-[430px] animate-pulse rounded-3xl border ${isDark ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white/90'}`} />
             ))}
           </div>
         )}
@@ -462,20 +483,20 @@ const ForecastChartsPage = () => {
 
         {!state.loading && !state.error && recentProjects.length > 0 && (
           <>
-            <section className="space-y-4">
+            <section className="space-y-5">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                     <CalendarDays size={15} /> Current chart set
                   </p>
-                  <h2 className={`mt-2 text-2xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(activeDate)}</h2>
+                  <h2 className={`mt-2 text-3xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(activeDate)}</h2>
                 </div>
-                <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Four chart slots: Analysis, 24h, 36h, and 48h.
-                </p>
+                <div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-slate-900/70 text-slate-300' : 'border-slate-200 bg-white/90 text-slate-600'}`}>
+                  {availableCount}/4 published charts available
+                </div>
               </div>
 
-              <motion.div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4" variants={stagger} initial="hidden" animate="show">
+              <motion.div className="grid gap-5 lg:grid-cols-2" variants={stagger} initial="hidden" animate="show">
                 {CHART_SLOTS.map((slot) => (
                   <ChartSlotCard
                     key={`${activeDate}-${slot.chartType}`}
