@@ -109,6 +109,11 @@ function getLatestVersionReason(project) {
   return project.versions[project.versions.length - 1]?.reason || null;
 }
 
+function getProjectNotificationResourcePath(project, type) {
+  if (type === 'published') return `/forecasts/${project._id}`;
+  return `/studio/${project._id}`;
+}
+
 async function notifyProjectOwner(project, actorId, type, comment = '') {
   const copy = PROJECT_NOTIFICATION_COPY[type];
   if (!copy || !project?.owner) return;
@@ -122,7 +127,7 @@ async function notifyProjectOwner(project, actorId, type, comment = '') {
       actorUser: actorId,
       resourceType: 'project',
       resourceId: project._id,
-      resourcePath: `/studio/${project._id}`,
+      resourcePath: getProjectNotificationResourcePath(project, type),
       projectName: project.name,
     });
   } catch (error) {
@@ -683,6 +688,11 @@ export const publishProject = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+
+  if (getLatestVersionReason(project) !== 'publish') {
+    await createProjectVersionSnapshot(project, req.user.id, 'publish');
+  }
+
   project.status = PROJECT_STATUS.PUBLISHED;
   project.publishedAt = new Date();
 
