@@ -7,6 +7,16 @@ import Button from '@/components/ui/Button';
 import { fetchPublicPublishedForecasts } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
+import {
+  PUBLIC_CHART_SLOTS,
+  filterProjectsToPublicChartWindow,
+  getPublicChartAvailableCount,
+  getPublicChartCardDescription,
+  getPublicChartTenDayWindow,
+  groupPublicChartHistory,
+  groupPublicChartsByTypeForDate,
+  toPublicChartDateKey,
+} from '@/dashboards/public/utils/publicChartGroups';
 
 const CHART_STYLES = [
   {
@@ -35,33 +45,6 @@ const CHART_STYLES = [
     description: 'High-contrast chart style for easier reading.',
     image: '/charts/wind-barbs/barbs.png',
     color: '#059669',
-  },
-];
-
-const CHART_SLOTS = [
-  {
-    chartType: 'analysis',
-    badge: 'Analysis',
-    title: 'Analysis Chart',
-    fallbackTitle: 'Current Analysis',
-  },
-  {
-    chartType: 'forecast_24h',
-    badge: '24h',
-    title: '24-Hour Chart',
-    fallbackTitle: '24-Hour Wave Chart',
-  },
-  {
-    chartType: 'forecast_36h',
-    badge: '36h',
-    title: '36-Hour Chart',
-    fallbackTitle: '36-Hour Wave Chart',
-  },
-  {
-    chartType: 'forecast_48h',
-    badge: '48h',
-    title: '48-Hour Chart',
-    fallbackTitle: '48-Hour Wave Chart',
   },
 ];
 
@@ -99,63 +82,12 @@ function formatDate(value, options = {}) {
   }
 }
 
-function toDateKey(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
-}
-
 function getPersonName(person, fallback = 'DOST PAGASA') {
   if (!person) return fallback;
   if (typeof person === 'string') return person;
 
   const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ').trim();
   return fullName || person.username || fallback;
-}
-
-function isEmptyStateDescription(value) {
-  return /^no published .+ chart is available for this date yet\.?$/i.test(String(value || '').trim());
-}
-
-function getChartCardDescription(chart, slot, hasChart) {
-  if (!hasChart) return `No published ${slot.title.toLowerCase()} is available for this date yet.`;
-
-  const description = String(chart?.description || '').trim();
-  if (description && !isEmptyStateDescription(description)) return description;
-
-  return `${slot.title} for ${formatDate(chart?.forecastDate)} published by ${getPersonName(chart?.owner)}.`;
-}
-
-function getTenDayWindow(projects) {
-  const latestDate = projects.reduce((latest, project) => {
-    const key = toDateKey(project.forecastDate);
-    if (!key) return latest;
-    return !latest || key > latest ? key : latest;
-  }, '');
-
-  if (!latestDate) return { latestDate: '', startDate: '' };
-
-  const start = new Date(`${latestDate}T00:00:00.000Z`);
-  start.setUTCDate(start.getUTCDate() - 10);
-
-  return {
-    latestDate,
-    startDate: start.toISOString().slice(0, 10),
-  };
-}
-
-function getProjectsForDate(projects, dateKey) {
-  const byType = new Map();
-
-  projects
-    .filter((project) => toDateKey(project.forecastDate) === dateKey)
-    .sort((a, b) => new Date(b.publishedAt || b.updatedAt || 0) - new Date(a.publishedAt || a.updatedAt || 0))
-    .forEach((project) => {
-      if (!byType.has(project.chartType)) byType.set(project.chartType, project);
-    });
-
-  return byType;
 }
 
 const PageHeader = memo(function PageHeader({ activeStyle, currentDate, isDark }) {
@@ -236,7 +168,13 @@ const ChartSlotCard = memo(function ChartSlotCard({ slot, chart, activeStyle, is
   const style = CHART_STYLES.find((item) => item.id === activeStyle) || CHART_STYLES[0];
   const hasChart = Boolean(chart?._id);
   const title = chart?.name || slot.fallbackTitle;
-  const description = getChartCardDescription(chart, slot, hasChart);
+  const description = getPublicChartCardDescription({
+    chart,
+    slot,
+    hasChart,
+    formatDate,
+    getPersonName,
+  });
 
   return (
     <motion.article
@@ -306,18 +244,7 @@ const ChartSlotCard = memo(function ChartSlotCard({ slot, chart, activeStyle, is
 });
 
 function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
-  const grouped = useMemo(() => {
-    const map = new Map();
-    projects.forEach((project) => {
-      const key = toDateKey(project.forecastDate);
-      if (!key) return;
-      const entry = map.get(key) || { dateKey: key, count: 0 };
-      entry.count += 1;
-      map.set(key, entry);
-    });
-
-    return [...map.values()].sort((a, b) => b.dateKey.localeCompare(a.dateKey));
-  }, [projects]);
+  const grouped = useMemo(() => groupPublicChartHistory(projects), [projects]);
 
   if (grouped.length === 0) return null;
 
@@ -391,24 +318,25 @@ export default function ForecastChartsPage() {
   }, [query]);
 
   const projects = state.data?.projects || [];
-  const { latestDate, startDate } = useMemo(() => getTenDayWindow(projects), [projects]);
+  const chartWindow = useMemo(() => getPublicChartTenDayWindow(projects), [projects]);
+  const { latestDate } = chartWindow;
 
-  const recentProjects = useMemo(() => {
-    if (!startDate || !latestDate) return projects;
-    return projects.filter((project) => {
-      const key = toDateKey(project.forecastDate);
-      return key && key >= startDate && key <= latestDate;
-    });
-  }, [latestDate, projects, startDate]);
+  const recentProjects = useMemo(
+    () => filterProjectsToPublicChartWindow(projects, chartWindow),
+    [chartWindow, projects]
+  );
 
   useEffect(() => {
     if (!selectedDate && latestDate) setSelectedDate(latestDate);
   }, [latestDate, selectedDate]);
 
   const activeDate = selectedDate || latestDate;
-  const chartByType = useMemo(() => getProjectsForDate(recentProjects, activeDate), [activeDate, recentProjects]);
+  const chartByType = useMemo(
+    () => groupPublicChartsByTypeForDate(recentProjects, activeDate),
+    [activeDate, recentProjects]
+  );
   const activeStyle = CHART_STYLES.some((style) => style.id === activeChartType) ? activeChartType : 'wave-wind';
-  const availableCount = CHART_SLOTS.filter((slot) => chartByType.has(slot.chartType)).length;
+  const availableCount = getPublicChartAvailableCount(chartByType);
 
   const openChart = useCallback((chart) => {
     if (!chart?._id) return;
@@ -447,7 +375,7 @@ export default function ForecastChartsPage() {
 
         {state.loading && (
           <div className="grid gap-5 lg:grid-cols-2">
-            {CHART_SLOTS.map((slot) => (
+            {PUBLIC_CHART_SLOTS.map((slot) => (
               <div key={slot.chartType} className={`h-[430px] animate-pulse rounded-3xl border ${isDark ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white/90'}`} />
             ))}
           </div>
@@ -482,7 +410,7 @@ export default function ForecastChartsPage() {
               </div>
 
               <motion.div className="grid gap-5 lg:grid-cols-2" variants={stagger} initial="hidden" animate="show">
-                {CHART_SLOTS.map((slot) => (
+                {PUBLIC_CHART_SLOTS.map((slot) => (
                   <ChartSlotCard
                     key={`${activeDate}-${slot.chartType}`}
                     slot={slot}
