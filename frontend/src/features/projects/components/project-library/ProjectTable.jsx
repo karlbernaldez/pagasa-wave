@@ -7,6 +7,7 @@ import {
   canEditProjectStatus,
   getProjectStatusLabel,
   getProjectStatusStyle,
+  isProjectPublished,
   isProjectRevisionRequested,
 } from "@/features/projects/projectStatuses";
 
@@ -35,7 +36,8 @@ function getStatus(project) {
   };
 }
 
-function getOpenActionLabel({ isReviewMode, needsRevision, compact = false }) {
+function getOpenActionLabel({ project, isReviewMode, needsRevision, compact = false }) {
+  if (isProjectPublished(project?.status)) return compact ? "View" : "View Forecast";
   if (isReviewMode) return "Review";
   if (needsRevision) return compact ? "Revise" : "Open and Revise";
   return "Open";
@@ -86,7 +88,7 @@ function ProjectMobileRow({ project, isDarkMode, isReviewMode, active, setActive
 
       <div className={`relative mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t pt-4 ${isDarkMode ? "border-white/10" : "border-slate-100"}`}>
         <Button className="w-full min-w-0" size="sm" icon={ExternalLink} onClick={() => onOpen(project)}>
-          {getOpenActionLabel({ isReviewMode, needsRevision: status.needsRevision, compact: true })}
+          {getOpenActionLabel({ project, isReviewMode, needsRevision: status.needsRevision, compact: true })}
         </Button>
 
         {hasMenuActions && (
@@ -182,7 +184,7 @@ export default function ProjectTable({ projects, loading, error, onRetry, onOpen
 
                   <td className="relative px-4 py-3 text-right">
                     <div className="inline-flex max-w-full items-center justify-end gap-2">
-                      <Button className="shrink-0" size="sm" onClick={() => onOpen(project)} icon={ExternalLink}>{getOpenActionLabel({ isReviewMode, needsRevision: status.needsRevision, compact: true })}</Button>
+                      <Button className="shrink-0" size="sm" onClick={() => onOpen(project)} icon={ExternalLink}>{getOpenActionLabel({ project, isReviewMode, needsRevision: status.needsRevision, compact: true })}</Button>
                       {hasMenuActions && <Button className="shrink-0" variant="icon" size="sm" icon={MoreHorizontal} aria-label={`More actions for ${project.name}`} onClick={() => setActive(active === projectId ? null : projectId)} />}
                     </div>
 
