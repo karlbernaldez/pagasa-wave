@@ -17,7 +17,7 @@ import {
 
 import Button from '@/components/ui/Button';
 import { archiveProject } from '@/api/projectAPI';
-import { fetchPublicPublishedForecastOutput } from '@/api/publishedForecastAPI';
+import { fetchPublicPublishedChartOutput } from '@/api/publishedForecastAPI';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
@@ -334,10 +334,10 @@ export default function PublishedForecastPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadForecast() {
+    async function loadChart() {
       setState({ loading: true, error: '', data: null });
       try {
-        const data = await fetchPublicPublishedForecastOutput(projectId, { signal: controller.signal });
+        const data = await fetchPublicPublishedChartOutput(projectId, { signal: controller.signal });
         setState({ loading: false, error: '', data });
       } catch (error) {
         if (error.name === 'AbortError') return;
@@ -345,7 +345,7 @@ export default function PublishedForecastPage() {
       }
     }
 
-    loadForecast();
+    loadChart();
     return () => controller.abort();
   }, [projectId]);
 
