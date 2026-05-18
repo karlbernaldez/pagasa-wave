@@ -29,3 +29,22 @@ export const fetchPublishedForecastOutput = (projectId, { signal } = {}) => {
 
   return request(`${PROJECT_API_BASE_URL}/${projectId}/published-output`, { signal });
 };
+
+export const fetchPublicPublishedForecastOutput = (projectId, { signal } = {}) => {
+  if (!projectId) {
+    return Promise.reject(new Error('Missing projectId when fetching public published forecast'));
+  }
+
+  return request(`${PROJECT_API_BASE_URL}/public/published/${projectId}`, { signal });
+};
+
+export const fetchPublicPublishedForecasts = ({ page = 1, limit = 12, search = '', signal } = {}) => {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+
+  if (search.trim()) params.set('search', search.trim());
+
+  return request(`${PROJECT_API_BASE_URL}/public/published?${params.toString()}`, { signal });
+};
