@@ -60,6 +60,16 @@ export function filterProjectsToPublicChartWindow(projects = [], window = getPub
   });
 }
 
+export function filterProjectsToPublicChartArchive(projects = [], window = getPublicChartTenDayWindow(projects)) {
+  const { startDate } = window;
+  if (!startDate) return [];
+
+  return projects.filter((project) => {
+    const key = toPublicChartDateKey(project?.forecastDate);
+    return key && key < startDate;
+  });
+}
+
 export function groupPublicChartsByTypeForDate(projects = [], dateKey = '') {
   const byType = new Map();
 
@@ -118,6 +128,14 @@ export function groupPublicChartHistory(projects = [], slots = PUBLIC_CHART_SLOT
       availableChartTypes: [...entry.availableTypes],
     }))
     .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+}
+
+export function getPublicChartArchiveHistory(projects = [], window = getPublicChartTenDayWindow(projects), slots = PUBLIC_CHART_SLOTS) {
+  return groupPublicChartHistory(filterProjectsToPublicChartArchive(projects, window), slots);
+}
+
+export function getPublicChartForSlot(projects = [], dateKey = '', chartType = '') {
+  return groupPublicChartsByTypeForDate(projects, dateKey).get(chartType) || null;
 }
 
 export function isEmptyPublicChartDescription(value) {
