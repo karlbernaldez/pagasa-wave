@@ -13,6 +13,18 @@ const DEFAULT_BOUNDS = [
   [153.8595159535438, 25],
 ];
 
+const LINE_LABEL_TEXT = [
+  'coalesce',
+  ['to-string', ['get', 'labelValue']],
+  ['to-string', ['get', 'waveHeight']],
+  ['to-string', ['get', 'heightValue']],
+  ['to-string', ['get', 'value']],
+  ['to-string', ['get', 'name']],
+  ['to-string', ['get', 'title']],
+  ['to-string', ['get', 'label']],
+  '',
+];
+
 function extendBoundsFromCoordinates(bounds, coordinates) {
   if (!Array.isArray(coordinates)) return;
 
@@ -95,6 +107,30 @@ function addExportLayers(map, featureCollection) {
       'line-color': '#0284c7',
       'line-width': 4,
       'line-opacity': 1,
+    },
+  });
+
+  map.addLayer({
+    id: 'published-forecast-export-line-labels',
+    type: 'symbol',
+    source: sourceId,
+    filter: [
+      'all',
+      ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
+      ['has', 'labelValue'],
+    ],
+    layout: {
+      'symbol-placement': 'line-center',
+      'text-field': LINE_LABEL_TEXT,
+      'text-size': 18,
+      'text-anchor': 'center',
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+    },
+    paint: {
+      'text-color': '#0f172a',
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 2,
     },
   });
 
