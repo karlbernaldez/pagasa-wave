@@ -16,29 +16,29 @@ const request = async (url, options = {}) => {
   }
 
   if (!response.ok) {
-    throw new Error(data?.message || 'Published forecast request failed');
+    throw new Error(data?.message || 'Published chart request failed');
   }
 
   return data;
 };
 
-export const fetchPublishedForecastOutput = (projectId, { signal } = {}) => {
+export const fetchPublishedChartOutput = (projectId, { signal } = {}) => {
   if (!projectId) {
-    return Promise.reject(new Error('Missing projectId when fetching published forecast'));
+    return Promise.reject(new Error('Missing projectId when fetching published chart'));
   }
 
   return request(`${PROJECT_API_BASE_URL}/${projectId}/published-output`, { signal });
 };
 
-export const fetchPublicPublishedForecastOutput = (projectId, { signal } = {}) => {
+export const fetchPublicPublishedChartOutput = (projectId, { signal } = {}) => {
   if (!projectId) {
-    return Promise.reject(new Error('Missing projectId when fetching public published forecast'));
+    return Promise.reject(new Error('Missing projectId when fetching public published chart'));
   }
 
   return request(`${PROJECT_API_BASE_URL}/public/published/${projectId}`, { signal });
 };
 
-export const fetchPublicPublishedForecasts = ({ page = 1, limit = 12, search = '', mode = 'active', before = '', after = '', signal } = {}) => {
+export const fetchPublicPublishedCharts = ({ page = 1, limit = 12, search = '', mode = 'active', before = '', after = '', signal } = {}) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
@@ -51,3 +51,7 @@ export const fetchPublicPublishedForecasts = ({ page = 1, limit = 12, search = '
 
   return request(`${PROJECT_API_BASE_URL}/public/published?${params.toString()}`, { signal });
 };
+
+export const fetchPublishedForecastOutput = fetchPublishedChartOutput;
+export const fetchPublicPublishedForecastOutput = fetchPublicPublishedChartOutput;
+export const fetchPublicPublishedForecasts = fetchPublicPublishedCharts;
