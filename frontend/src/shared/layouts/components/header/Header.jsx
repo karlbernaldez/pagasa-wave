@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, User } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
@@ -14,23 +14,19 @@ import { ChartDropdown } from './ChartDropdown';
 import { UserDropdown } from './UserDropdown';
 import { MobileMenu } from './MobileMenu';
 
-const Header = ({ isStudioProjectPage }) => {
+const Header = ({ isStudioProjectPage, showAccountControls = false }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
     const { isDarkMode, setIsDarkMode } = useTheme();
     const { activeChartType, setActiveChartType } = useChartType();
-    const { currentUser, isLoggedIn, isLoading } = useHeaderUser();
+    const { currentUser, isLoggedIn } = useHeaderUser();
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
     const isActiveRoute = useCallback((href) => {
         if (href.startsWith('#')) return location.pathname === '/' && location.hash === href;
-        return location.pathname === href;
+        return location.pathname === href || (href === '/forecasts' && location.pathname.startsWith('/forecasts/'));
     }, [location]);
 
     const handleNavigate = useCallback((href) => {
@@ -52,18 +48,11 @@ const Header = ({ isStudioProjectPage }) => {
         logoutUser();
         invalidateHeaderUserCache();
         setIsMobileMenuOpen(false);
-        // useHeaderUser will reflect the cleared cache on next render cycle.
-        // A full page redirect is the cleanest approach after logout.
         navigate('/');
     }, [navigate]);
 
-    // -------------------------------------------------------------------------
-    // Render
-    // -------------------------------------------------------------------------
-
     return (
         <>
-            {/* ── Top bar ─────────────────────────────────────────────────────── */}
             <header
                 className={`
                 fixed top-0 left-0 right-0 z-[1000]
@@ -74,7 +63,6 @@ const Header = ({ isStudioProjectPage }) => {
                     }
             `}
             >
-
                 <nav
                     className={`
                         flex items-center justify-between h-16
@@ -83,11 +71,8 @@ const Header = ({ isStudioProjectPage }) => {
                             : 'max-w-[1400px] mx-auto px-4 md:px-6'}
                     `}
                 >
-
-                    {/* Logo */}
                     <Logo isDarkMode={isDarkMode} onClick={() => handleNavigate('/')} />
 
-                    {/* Desktop nav links */}
                     {!isStudioProjectPage && (
                         <div className="hidden md:flex items-center gap-8">
                             {NAV_ITEMS.map((item) =>
@@ -113,29 +98,18 @@ const Header = ({ isStudioProjectPage }) => {
                         </div>
                     )}
 
-                    {/* Right-side actions */}
                     <div className="flex items-center gap-3">
                         <ThemeToggle isDarkMode={isDarkMode} onToggle={() => setIsDarkMode((prev) => !prev)} />
 
-                        {/* Authenticated — user menu | Unauthenticated — sign-in CTA */}
-                        {isLoggedIn ? (
+                        {showAccountControls && isLoggedIn && (
                             <UserDropdown
                                 currentUser={currentUser}
                                 isDarkMode={isDarkMode}
                                 onNavigate={handleNavigate}
                                 onSignOut={handleSignOut}
                             />
-                        ) : !isLoading && (
-                            <button
-                                onClick={() => handleNavigate('/login')}
-                                className="hidden md:flex bg-gradient-to-br from-sky-500 to-blue-600 border-none rounded-xl px-6 py-3 text-white font-semibold text-sm cursor-pointer transition-all duration-300 items-center gap-2 shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-xl active:translate-y-0 active:scale-[0.98]"
-                            >
-                                <User size={16} />
-                                Sign In
-                            </button>
                         )}
 
-                        {/* Hamburger */}
                         <button
                             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
                             onClick={() => setIsMobileMenuOpen((prev) => !prev)}
@@ -154,11 +128,10 @@ const Header = ({ isStudioProjectPage }) => {
                 </nav>
             </header>
 
-            {/* ── Mobile overlay ──────────────────────────────────────────────── */}
             {isMobileMenuOpen && (
                 <MobileMenu
                     isDarkMode={isDarkMode}
-                    isLoggedIn={isLoggedIn}
+                    isLoggedIn={showAccountControls && isLoggedIn}
                     currentUser={currentUser}
                     activeChartType={activeChartType}
                     isActiveRoute={isActiveRoute}
@@ -173,9 +146,6 @@ const Header = ({ isStudioProjectPage }) => {
 };
 
 export default Header;
-
-// ─── File-private presentational components ──────────────────────────────────
-// Small enough to not warrant their own file, but extracted for readability.
 
 function Logo({ isDarkMode, onClick }) {
     return (
@@ -201,7 +171,6 @@ function Logo({ isDarkMode, onClick }) {
                 />
             </div>
 
-            {/* Wordmark */}
             <div className="flex flex-col leading-none gap-[3px]">
                 <span className={`
           text-[1.3rem] font-black tracking-tight leading-none
