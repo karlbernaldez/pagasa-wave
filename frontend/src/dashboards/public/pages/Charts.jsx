@@ -10,17 +10,14 @@ import { useChartType } from '@/app/providers/ChartTypeProvider';
 import {
   PUBLIC_CHART_SLOTS,
   filterProjectsToPublicChartWindow,
-  getPublicChartArchiveHistory,
   getPublicChartAvailableCount,
   getPublicChartCardDescription,
   getPublicChartCompleteness,
-  getPublicChartForSlot,
   getPublicChartTenDayWindow,
   groupPublicChartHistory,
   groupPublicChartsByTypeForDate,
 } from '@/dashboards/public/utils/publicChartGroups';
 
-const ARCHIVE_PAGE_SIZE = 24;
 const RECENT_FETCH_LIMIT = 80;
 
 const CHART_STYLES = [
@@ -116,7 +113,7 @@ const PageHeader = memo(function PageHeader({ activeStyle, currentDate, isDark }
       </motion.h1>
 
       <motion.p variants={fadeUp} custom={0.08} className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-        Browse the latest public WaveLab chart set, review recent dates, and open older published chart archives.
+        Browse the latest public WaveLab chart set and review recent published chart dates.
       </motion.p>
     </motion.section>
   );
@@ -330,102 +327,24 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
   );
 }
 
-function ArchiveCharts({ archiveDates, archiveProjects, loading, error, hasMore, onLoadMore, isDark, onOpenChart }) {
-  if (loading && archiveDates.length === 0) {
-    return (
-      <section className="grid gap-4 lg:grid-cols-2">
-        {Array.from({ length: 2 }).map((_, index) => (
-          <div key={index} className={`h-56 animate-pulse rounded-3xl border ${isDark ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white/90'}`} />
-        ))}
-      </section>
-    );
-  }
-
-  if (archiveDates.length === 0) {
-    return (
-      <section className={`rounded-3xl border p-8 text-center ${isDark ? 'border-white/10 bg-slate-900/70 text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
-        <p className="text-sm font-black uppercase tracking-[0.2em]">Archive</p>
-        <h2 className={`mt-2 text-2xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>No older chart archives yet</h2>
-        <p className="mt-2 text-sm font-semibold">Older published charts will appear here when they fall outside the latest 10-day window.</p>
-      </section>
-    );
-  }
-
+function ArchiveRequestPlaceholder({ isDark }) {
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+    <section className={`relative overflow-hidden rounded-3xl border p-8 shadow-sm ${isDark ? 'border-white/10 bg-slate-900/75 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}>
+      <div className={`absolute -right-16 -top-16 h-48 w-48 rounded-full blur-3xl ${isDark ? 'bg-cyan-500/10' : 'bg-blue-200/50'}`} aria-hidden="true" />
+      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="max-w-2xl">
           <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            <Archive size={15} /> Older charts
+            <Archive size={15} /> Archived charts
           </p>
-          <h2 className={`mt-2 text-2xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Archive browsing</h2>
+          <h2 className={`mt-2 text-2xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Need older wave charts?</h2>
+          <p className={`mt-3 text-sm font-semibold leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            Archived charts are not listed publicly. A request form for archived chart access will be available soon.
+          </p>
         </div>
-        <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Open older published charts by date and chart type.</p>
+        <Button variant="secondary" icon={Archive} disabled>
+          Request Archived Chart · Coming Soon
+        </Button>
       </div>
-
-      {error && (
-        <div className={`rounded-2xl border p-4 text-sm font-bold ${isDark ? 'border-red-400/20 bg-red-400/10 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
-          {error}
-        </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        {archiveDates.map((item) => {
-          const completeness = {
-            availableCount: item.availableCount,
-            totalCount: item.totalCount,
-            isComplete: item.isComplete,
-            isEmpty: item.availableCount === 0,
-          };
-
-          return (
-            <article key={item.dateKey} className={`rounded-3xl border p-5 shadow-sm ${isDark ? 'border-white/10 bg-slate-900/75' : 'border-slate-200 bg-white'}`}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(item.dateKey)}</h3>
-                  <p className={`mt-1 text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.availableCount}/{item.totalCount} charts available</p>
-                </div>
-                <CompletenessBadge completeness={completeness} isDark={isDark} />
-              </div>
-
-              <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                {PUBLIC_CHART_SLOTS.map((slot) => {
-                  const chart = getPublicChartForSlot(archiveProjects, item.dateKey, slot.chartType);
-                  const hasChart = Boolean(chart?._id);
-
-                  return (
-                    <button
-                      key={slot.chartType}
-                      type="button"
-                      disabled={!hasChart}
-                      onClick={() => onOpenChart(chart)}
-                      className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${
-                        hasChart
-                          ? isDark ? 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100 hover:border-cyan-300/40' : 'border-blue-200 bg-blue-50 text-blue-900 hover:border-blue-300'
-                          : isDark ? 'cursor-not-allowed border-white/8 bg-slate-950/70 text-slate-600' : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
-                      }`}
-                    >
-                      <span>
-                        <span className="block text-sm font-black">{slot.badge}</span>
-                        <span className="mt-0.5 block text-[11px] font-semibold opacity-75">{hasChart ? 'Published chart' : 'Not available'}</span>
-                      </span>
-                      {hasChart && <ArrowRight size={15} aria-hidden="true" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-
-      {hasMore && (
-        <div className="flex justify-center pt-2">
-          <Button variant="secondary" icon={Archive} loading={loading} onClick={onLoadMore}>
-            Load more archives
-          </Button>
-        </div>
-      )}
     </section>
   );
 }
@@ -435,7 +354,6 @@ export default function ForecastChartsPage() {
   const { activeChartType, setActiveChartType } = useChartType();
   const { isDarkMode: isDark } = useTheme();
   const [state, setState] = useState({ loading: true, error: '', data: null });
-  const [archiveState, setArchiveState] = useState({ loading: false, error: '', projects: [], page: 1, hasMore: false });
   const [query, setQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
 
@@ -449,7 +367,7 @@ export default function ForecastChartsPage() {
     async function loadCharts() {
       setState((current) => ({ ...current, loading: true, error: '' }));
       try {
-        const data = await fetchPublicPublishedForecasts({ limit: RECENT_FETCH_LIMIT, search: query, mode: 'active', signal: controller.signal });
+        const data = await fetchPublicPublishedForecasts({ limit: RECENT_FETCH_LIMIT, search: query, signal: controller.signal });
         setState({ loading: false, error: '', data });
       } catch (error) {
         if (error.name === 'AbortError') return;
@@ -466,80 +384,12 @@ export default function ForecastChartsPage() {
 
   const projects = state.data?.projects || [];
   const chartWindow = useMemo(() => getPublicChartTenDayWindow(projects), [projects]);
-  const { latestDate, startDate } = chartWindow;
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadArchive() {
-      setArchiveState((current) => ({ ...current, loading: true, error: '', projects: [], page: 1, hasMore: false }));
-      try {
-        const data = await fetchPublicPublishedForecasts({
-          page: 1,
-          limit: ARCHIVE_PAGE_SIZE,
-          search: query,
-          mode: 'archive',
-          before: startDate,
-          signal: controller.signal,
-        });
-
-        setArchiveState({
-          loading: false,
-          error: '',
-          projects: data.projects || [],
-          page: data.page || 1,
-          hasMore: Boolean(data.hasMore),
-        });
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-        setArchiveState({ loading: false, error: error?.message || 'Failed to load older chart archives.', projects: [], page: 1, hasMore: false });
-      }
-    }
-
-    if (!startDate) {
-      setArchiveState({ loading: false, error: '', projects: [], page: 1, hasMore: false });
-      return () => controller.abort();
-    }
-
-    const timer = setTimeout(loadArchive, 180);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query, startDate]);
-
-  const loadMoreArchives = useCallback(async () => {
-    if (archiveState.loading || !archiveState.hasMore || !startDate) return;
-
-    const nextPage = archiveState.page + 1;
-    setArchiveState((current) => ({ ...current, loading: true, error: '' }));
-
-    try {
-      const data = await fetchPublicPublishedForecasts({
-        page: nextPage,
-        limit: ARCHIVE_PAGE_SIZE,
-        search: query,
-        mode: 'archive',
-        before: startDate,
-      });
-
-      setArchiveState((current) => ({
-        loading: false,
-        error: '',
-        projects: [...current.projects, ...(data.projects || [])],
-        page: data.page || nextPage,
-        hasMore: Boolean(data.hasMore),
-      }));
-    } catch (error) {
-      setArchiveState((current) => ({ ...current, loading: false, error: error?.message || 'Failed to load more chart archives.' }));
-    }
-  }, [archiveState.hasMore, archiveState.loading, archiveState.page, query, startDate]);
+  const { latestDate } = chartWindow;
 
   const recentProjects = useMemo(
     () => filterProjectsToPublicChartWindow(projects, chartWindow),
     [chartWindow, projects]
   );
-  const archiveDates = useMemo(() => getPublicChartArchiveHistory(archiveState.projects, chartWindow), [archiveState.projects, chartWindow]);
 
   useEffect(() => {
     if (!selectedDate && latestDate) setSelectedDate(latestDate);
@@ -603,7 +453,7 @@ export default function ForecastChartsPage() {
           </div>
         )}
 
-        {!state.loading && !state.error && recentProjects.length === 0 && archiveDates.length === 0 && !archiveState.loading && (
+        {!state.loading && !state.error && recentProjects.length === 0 && (
           <div className={`mx-auto max-w-2xl rounded-3xl border p-10 text-center ${isDark ? 'border-white/10 bg-slate-900 text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
             <p className="text-lg font-black">No published wave charts found</p>
             <p className="mt-2 text-sm font-semibold">Published charts will appear here once Admin publishes approved outputs.</p>
@@ -646,18 +496,7 @@ export default function ForecastChartsPage() {
           </>
         )}
 
-        {!state.loading && !state.error && (
-          <ArchiveCharts
-            archiveDates={archiveDates}
-            archiveProjects={archiveState.projects}
-            loading={archiveState.loading}
-            error={archiveState.error}
-            hasMore={archiveState.hasMore}
-            onLoadMore={loadMoreArchives}
-            isDark={isDark}
-            onOpenChart={openChart}
-          />
-        )}
+        {!state.loading && !state.error && <ArchiveRequestPlaceholder isDark={isDark} />}
 
         <p className={`text-center text-xs font-semibold tabular-nums ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
           Data: DOST-PAGASA · WaveLab · Published charts only
