@@ -61,32 +61,100 @@ async function getCurrentFeatureCollection(projectId) {
   };
 }
 
-export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
-  if (!req.user) throwError('Unauthorized', 401);
+function getPublicProjectPayload(project) {
+  return {
+    _id: project._id,
+    name: project.name,
+    description: project.description,
+    chartType: project.chartType,
+    forecastDate: project.forecastDate,
+    status: project.status,
+    publishedAt: project.publishedAt,
+    owner: project.owner,
+    approvedBy: project.approvedBy,
+    auditLogs: project.auditLogs,
+    reviewComment: project.reviewComment,
+  };
+}
 
-  const project = await Project.findById(req.params.id)
+async function buildPublishedForecastPayload(project, { canArchive = false } = {}) {
+  const versionFeatureCollection = getPublishedFeatureCollectionFromVersions(project);
+  const featureCollection = versionFeatureCollection || await getCurrentFeatureCollection(project._id);
+
+  return {
+    project: getPublicProjectPayload(project),
+    featureCollection,
+    canArchive,
+  };
+}
+
+async function findPublishedProject(projectId) {
+  const project = await Project.findById(projectId)
     .populate('owner', 'firstName lastName email username position')
     .populate('reviewStartedBy', 'firstName lastName email username')
     .populate('approvedBy', 'firstName lastName email username')
     .populate('rejectedBy', 'firstName lastName email username')
     .populate('auditLogs.performedBy', 'firstName lastName email username');
 
-  if (!project) throwError('Published forecast not found', 404);
-
-  if (project.status !== PROJECT_STATUS.PUBLISHED) {
-    throwError('This project is not published yet', 404);
+  if (!project || project.status !== PROJECT_STATUS.PUBLISHED) {
+    throwError('Published forecast not found', 404);
   }
+
+  return project;
+}
+
+export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 50);
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const skip = (page - 1) * limit;
+  const search = String(req.query.search || '').trim();
+
+  const query = { status: PROJECT_STATUS.PUBLISHED };
+
+  if (search) {
+    const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').slice(0, 80);
+    query.$or = [
+      { name: { $regex: safeSearch, $options: 'i' } },
+      { description: { $regex: safeSearch, $options: 'i' } },
+      { chartType: { $regex: safeSearch, $options: 'i' } },
+    ];
+  }
+
+  const [projects, total] = await Promise.all([
+    Project.find(query)
+      .select('name description chartType forecastDate status publishedAt owner approvedBy reviewComment')
+      .populate('owner', 'firstName lastName username')
+      .populate('approvedBy', 'firstName lastName username')
+      .sort({ publishedAt: -1, updatedAt: -1, _id: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Project.countDocuments(query),
+  ]);
+
+  res.json({
+    projects,
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  });
+});
+
+export const getPublicPublishedForecastOutput = asyncHandler(async (req, res) => {
+  const project = await findPublishedProject(req.params.id);
+  const canArchive = req.user?.role === 'admin';
+  res.json(await buildPublishedForecastPayload(project, { canArchive }));
+});
+
+export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
+  if (!req.user) throwError('Unauthorized', 401);
+
+  const project = await findPublishedProject(req.params.id);
 
   if (!canViewPublishedForecast(project, req.user)) {
     throwError('You do not have access to this published forecast', 403);
   }
 
-  const versionFeatureCollection = getPublishedFeatureCollectionFromVersions(project);
-  const featureCollection = versionFeatureCollection || await getCurrentFeatureCollection(project._id);
-
-  res.json({
-    project,
-    featureCollection,
-    canArchive: req.user.role === 'admin',
-  });
+  res.json(await buildPublishedForecastPayload(project, { canArchive: req.user.role === 'admin' }));
 });
