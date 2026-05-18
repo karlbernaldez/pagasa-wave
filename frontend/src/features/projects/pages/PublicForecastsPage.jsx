@@ -31,15 +31,15 @@ function getPersonName(person, fallback = 'DOST PAGASA') {
 function getChartTypeLabel(value) {
   const labels = {
     analysis: 'Analysis',
-    forecast_24h: '24-Hour Forecast',
-    forecast_36h: '36-Hour Forecast',
-    forecast_48h: '48-Hour Forecast',
+    forecast_24h: '24-Hour Chart',
+    forecast_36h: '36-Hour Chart',
+    forecast_48h: '48-Hour Chart',
   };
 
-  return labels[value] || value || 'Forecast';
+  return labels[value] || value || 'Wave Chart';
 }
 
-function ForecastCard({ forecast, isDarkMode, onOpen }) {
+function ChartCard({ chart, isDarkMode, onOpen }) {
   return (
     <article className={`group rounded-3xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${isDarkMode ? 'border-white/10 bg-slate-900/80 hover:border-cyan-400/30' : 'border-slate-200 bg-white hover:border-blue-200'}`}>
       <div className="flex items-start justify-between gap-3">
@@ -47,38 +47,38 @@ function ForecastCard({ forecast, isDarkMode, onOpen }) {
           Published
         </span>
         <span className={`rounded-full px-3 py-1 text-xs font-black ${isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
-          {getChartTypeLabel(forecast.chartType)}
+          {getChartTypeLabel(chart.chartType)}
         </span>
       </div>
 
       <h2 className={`mt-4 line-clamp-2 text-xl font-black leading-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
-        {forecast.name}
+        {chart.name}
       </h2>
       <p className={`mt-2 line-clamp-2 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-        {forecast.description || 'Published marine forecast output from WaveLab.'}
+        {chart.description || 'Published marine wave chart from WaveLab.'}
       </p>
 
       <dl className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
         <div className={`rounded-2xl p-3 ${isDarkMode ? 'bg-slate-950/70' : 'bg-slate-50'}`}>
           <dt className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-            <CalendarDays size={13} /> Forecast
+            <CalendarDays size={13} /> Valid Date
           </dt>
-          <dd className={`mt-1 font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{formatDate(forecast.forecastDate)}</dd>
+          <dd className={`mt-1 font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{formatDate(chart.forecastDate)}</dd>
         </div>
         <div className={`rounded-2xl p-3 ${isDarkMode ? 'bg-slate-950/70' : 'bg-slate-50'}`}>
           <dt className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
             <FileText size={13} /> Published
           </dt>
-          <dd className={`mt-1 font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{formatDate(forecast.publishedAt)}</dd>
+          <dd className={`mt-1 font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{formatDate(chart.publishedAt)}</dd>
         </div>
       </dl>
 
       <div className={`mt-5 flex items-center justify-between border-t pt-4 ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
         <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-          By {getPersonName(forecast.owner)}
+          By {getPersonName(chart.owner)}
         </p>
-        <Button size="sm" icon={ExternalLink} onClick={() => onOpen(forecast)}>
-          View Forecast
+        <Button size="sm" icon={ExternalLink} onClick={() => onOpen(chart)}>
+          View Chart
         </Button>
       </div>
     </article>
@@ -95,22 +95,22 @@ export default function PublicForecastsPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadForecasts() {
+    async function loadCharts() {
       setState((current) => ({ ...current, loading: true, error: '' }));
       try {
         const data = await fetchPublicPublishedForecasts({ search: submittedQuery, limit: 24, signal: controller.signal });
         setState({ loading: false, error: '', data });
       } catch (error) {
         if (error.name === 'AbortError') return;
-        setState({ loading: false, error: error?.message || 'Failed to load published forecasts.', data: null });
+        setState({ loading: false, error: error?.message || 'Failed to load wave charts.', data: null });
       }
     }
 
-    loadForecasts();
+    loadCharts();
     return () => controller.abort();
   }, [submittedQuery]);
 
-  const forecasts = useMemo(() => state.data?.projects || [], [state.data]);
+  const charts = useMemo(() => state.data?.projects || [], [state.data]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -126,11 +126,11 @@ export default function PublicForecastsPage() {
       <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <div className={`mx-auto mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black ${isDarkMode ? 'border-cyan-400/20 bg-cyan-400/10 text-cyan-200' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
-            <Waves size={16} /> Published Marine Forecasts
+            <Waves size={16} /> Published Wave Charts
           </div>
-          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Public forecast outputs</h1>
+          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Wave Charts</h1>
           <p className={`mt-4 text-base font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-            View finalized WaveLab forecast charts published by DOST-PAGASA forecasters.
+            View finalized WaveLab marine charts published by DOST-PAGASA forecasters.
           </p>
         </div>
 
@@ -140,7 +140,7 @@ export default function PublicForecastsPage() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search forecasts, chart type, or description"
+              placeholder="Search wave charts, chart type, or description"
               className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}
             />
           </div>
@@ -161,21 +161,21 @@ export default function PublicForecastsPage() {
           </div>
         )}
 
-        {!state.loading && !state.error && forecasts.length === 0 && (
+        {!state.loading && !state.error && charts.length === 0 && (
           <div className={`mx-auto mt-10 max-w-2xl rounded-3xl border p-10 text-center ${isDarkMode ? 'border-white/10 bg-slate-900 text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
-            <p className="text-lg font-black">No published forecasts found</p>
-            <p className="mt-2 text-sm font-semibold">Published forecasts will appear here after Admin publishes approved outputs.</p>
+            <p className="text-lg font-black">No wave charts found</p>
+            <p className="mt-2 text-sm font-semibold">Published wave charts will appear here after Admin publishes approved outputs.</p>
           </div>
         )}
 
-        {!state.loading && !state.error && forecasts.length > 0 && (
+        {!state.loading && !state.error && charts.length > 0 && (
           <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {forecasts.map((forecast) => (
-              <ForecastCard
-                key={forecast._id}
-                forecast={forecast}
+            {charts.map((chart) => (
+              <ChartCard
+                key={chart._id}
+                chart={chart}
                 isDarkMode={isDarkMode}
-                onOpen={(item) => navigate(`/forecasts/${item._id}`)}
+                onOpen={(item) => navigate(`/wave-charts/${item._id}`)}
               />
             ))}
           </div>
