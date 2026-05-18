@@ -9,7 +9,9 @@ import {
   Download,
   ExternalLink,
   FileText,
+  Layers,
   MapPinned,
+  PencilLine,
   Share2,
   UserRound,
 } from 'lucide-react';
@@ -20,6 +22,17 @@ import { fetchPublishedForecastOutput } from '@/api/publishedForecastAPI';
 import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
 import { getProjectStatusLabel, getProjectStatusStyle } from '@/features/projects/projectStatuses';
 import { useTheme } from '@/app/providers/ThemeProvider';
+
+const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
+const MRI3_TIMESTEP = '012';
+const DEFAULT_FORECAST_MODEL = 'WW3';
+const DEFAULT_FORECAST_DATE = '2026011200';
+const FORECAST_OVERLAY_BOUNDS = [100, -5, 180, 50];
+
+const OUTPUT_VIEW_MODES = {
+  ANNOTATIONS: 'annotations',
+  FORECAST_OVERLAY: 'forecast_overlay',
+};
 
 function formatDate(value, options = {}) {
   if (!value) return '—';
@@ -69,6 +82,53 @@ function getLatestReviewSummary(project) {
     .find((log) => ['approved', 'published', 'revision_requested', 'comment_added', 'rejected'].includes(log?.action));
 }
 
+function getForecastOverlayModel(project) {
+  return String(
+    project?.forecastModel ||
+    project?.waveModel ||
+    project?.model ||
+    project?.metadata?.forecastModel ||
+    DEFAULT_FORECAST_MODEL
+  ).trim().toUpperCase();
+}
+
+function getForecastOverlayTheme(isDarkMode) {
+  return isDarkMode ? 'dark' : 'light';
+}
+
+function getForecastOverlayDate(project) {
+  return String(
+    project?.forecastRun ||
+    project?.forecastRunDate ||
+    project?.tilesetDate ||
+    project?.metadata?.forecastRun ||
+    DEFAULT_FORECAST_DATE
+  );
+}
+
+function buildForecastTileUrl({ project, isDarkMode }) {
+  const model = getForecastOverlayModel(project);
+  const theme = getForecastOverlayTheme(isDarkMode);
+  const date = getForecastOverlayDate(project);
+  const base = `${WAVE_BUCKET_BASE}/${model}/${theme}/${date}`;
+
+  return model === 'MRI3'
+    ? `${base}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`
+    : `${base}/{z}/{x}/{y}.png`;
+}
+
+function buildForecastOverlayConfig({ project, isDarkMode, enabled }) {
+  if (!enabled || !project) return null;
+
+  return {
+    tileUrl: buildForecastTileUrl({ project, isDarkMode }),
+    opacity: 0.82,
+    tileSize: 256,
+    scheme: 'xyz',
+    bounds: FORECAST_OVERLAY_BOUNDS,
+  };
+}
+
 function StatCard({ icon: Icon, label, value, isDarkMode }) {
   return (
     <article className={`rounded-2xl border p-4 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
@@ -85,10 +145,44 @@ function StatCard({ icon: Icon, label, value, isDarkMode }) {
   );
 }
 
+function OutputModeToggle({ mode, onChange, isDarkMode }) {
+  const buttonBase = 'inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition sm:flex-none';
+
+  const getButtonClass = (value) => {
+    if (mode === value) return 'bg-blue-600 text-white shadow-sm';
+    return isDarkMode
+      ? 'text-slate-300 hover:bg-white/5'
+      : 'text-slate-600 hover:bg-slate-100';
+  };
+
+  return (
+    <div className={`grid grid-cols-2 rounded-2xl border p-1 ${isDarkMode ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`}>
+      <button
+        type="button"
+        className={`${buttonBase} ${getButtonClass(OUTPUT_VIEW_MODES.ANNOTATIONS)}`}
+        onClick={() => onChange(OUTPUT_VIEW_MODES.ANNOTATIONS)}
+        aria-pressed={mode === OUTPUT_VIEW_MODES.ANNOTATIONS}
+      >
+        <PencilLine size={14} aria-hidden="true" />
+        Annotations only
+      </button>
+      <button
+        type="button"
+        className={`${buttonBase} ${getButtonClass(OUTPUT_VIEW_MODES.FORECAST_OVERLAY)}`}
+        onClick={() => onChange(OUTPUT_VIEW_MODES.FORECAST_OVERLAY)}
+        aria-pressed={mode === OUTPUT_VIEW_MODES.FORECAST_OVERLAY}
+      >
+        <Layers size={14} aria-hidden="true" />
+        Forecast overlay
+      </button>
+    </div>
+  );
+}
+
 function OutputActionNotice({ isDarkMode }) {
   return (
     <div className={`rounded-2xl border p-4 text-sm font-semibold leading-relaxed ${isDarkMode ? 'border-amber-400/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
-      PDF and image export will be added in the next publishing slice. This page is the canonical read-only output that those exports should use.
+      PDF and image export will be added in the next publishing slice. The selected output mode should be used for export.
     </div>
   );
 }
@@ -100,6 +194,7 @@ export default function PublishedForecastPage() {
   const [state, setState] = useState({ loading: true, error: '', data: null });
   const [copied, setCopied] = useState(false);
   const [archiveState, setArchiveState] = useState({ loading: false, error: '' });
+  const [outputMode, setOutputMode] = useState(OUTPUT_VIEW_MODES.FORECAST_OVERLAY);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -124,6 +219,11 @@ export default function PublishedForecastPage() {
   const featureCollection = state.data?.featureCollection;
   const canArchive = Boolean(state.data?.canArchive);
   const latestReviewSummary = useMemo(() => getLatestReviewSummary(project), [project]);
+  const showForecastOverlay = outputMode === OUTPUT_VIEW_MODES.FORECAST_OVERLAY;
+  const forecastOverlay = useMemo(
+    () => buildForecastOverlayConfig({ project, isDarkMode, enabled: showForecastOverlay }),
+    [isDarkMode, project, showForecastOverlay]
+  );
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   const handleCopyLink = async () => {
@@ -249,12 +349,19 @@ export default function PublishedForecastPage() {
 
         <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <article className={`overflow-hidden rounded-3xl border shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-            <div className={`flex items-center justify-between border-b px-5 py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
+            <div className={`flex flex-col gap-4 border-b px-5 py-4 lg:flex-row lg:items-center lg:justify-between ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
               <div>
                 <p className="text-sm font-black">Final forecast chart</p>
-                <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Read-only map output from the published project snapshot.</p>
+                <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                  {showForecastOverlay
+                    ? 'Read-only annotations over the covered forecast XYZ tileset.'
+                    : 'Read-only annotations without the forecast raster overlay.'}
+                </p>
               </div>
-              <MapPinned size={20} className={isDarkMode ? 'text-cyan-300' : 'text-blue-700'} aria-hidden="true" />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <OutputModeToggle mode={outputMode} onChange={setOutputMode} isDarkMode={isDarkMode} />
+                <MapPinned size={20} className={isDarkMode ? 'text-cyan-300' : 'text-blue-700'} aria-hidden="true" />
+              </div>
             </div>
 
             <div className="p-4 sm:p-5">
@@ -266,13 +373,24 @@ export default function PublishedForecastPage() {
                 isDarkMode={isDarkMode}
                 lazy={false}
                 showLabels
-                emptyLabel="No published annotations available"
+                forecastOverlay={forecastOverlay}
+                emptyLabel={showForecastOverlay ? 'No annotations available for this forecast overlay' : 'No published annotations available'}
               />
             </div>
           </article>
 
           <aside className="space-y-4">
             <OutputActionNotice isDarkMode={isDarkMode} />
+
+            <article className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
+              <h2 className="text-sm font-black">Output mode</h2>
+              <p className={`mt-2 text-xs font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Choose whether this output shows only forecaster annotations or the annotations over the selected forecast XYZ tileset.
+              </p>
+              <div className={`mt-4 rounded-2xl border p-3 text-xs font-bold ${isDarkMode ? 'border-white/10 bg-slate-950 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+                Current mode: {showForecastOverlay ? 'Forecast overlay + annotations' : 'Annotations only'}
+              </div>
+            </article>
 
             <article className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
               <h2 className="text-sm font-black">Review summary</h2>
