@@ -5,10 +5,10 @@ import { Wind, Activity, Eye } from 'lucide-react';
  * `hasDropdown` signals that this item renders a submenu (e.g. chart-type picker).
  */
 export const NAV_ITEMS = [
-  { name: 'Home',    href: '/' },
-  { name: 'Charts',  href: '/charts', hasDropdown: true },
-  { name: 'Studio',  href: '/studio' },
-  { name: 'About',   href: '/about-us' },
+  { name: 'Home', href: '/' },
+  { name: 'Charts', href: '/charts', hasDropdown: true },
+  { name: 'Published Forecasts', href: '/forecasts' },
+  { name: 'About', href: '/about-us' },
   { name: 'Contact', href: '/contact' },
 ];
 
@@ -18,24 +18,24 @@ export const NAV_ITEMS = [
  */
 export const CHART_TYPES = [
   {
-    id:          'wave-wind',
-    name:        'Wave & Wind',
-    icon:        Wind,
+    id: 'wave-wind',
+    name: 'Wave & Wind',
+    icon: Wind,
     description: 'Combined wave and wind analysis',
-    color:       'text-blue-400',
+    color: 'text-blue-400',
   },
   {
-    id:          'wave-only',
-    name:        'Wave Only',
-    icon:        Activity,
+    id: 'wave-only',
+    name: 'Wave Only',
+    icon: Activity,
     description: 'Pure wave height analysis',
-    color:       'text-cyan-400',
+    color: 'text-cyan-400',
   },
   {
-    id:          'visually-impaired',
-    name:        'Accessible',
-    icon:        Eye,
+    id: 'visually-impaired',
+    name: 'Accessible',
+    icon: Eye,
     description: 'High contrast charts for accessibility',
-    color:       'text-emerald-400',
+    color: 'text-emerald-400',
   },
 ];
