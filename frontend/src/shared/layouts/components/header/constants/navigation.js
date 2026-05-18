@@ -2,18 +2,17 @@ import { Wind, Activity, Eye } from 'lucide-react';
 
 /**
  * Primary navigation items.
- * `hasDropdown` signals that this item renders a submenu (e.g. chart-type picker).
+ * `hasDropdown` signals that this item renders a submenu (e.g. chart-style picker).
  */
 export const NAV_ITEMS = [
   { name: 'Home', href: '/' },
-  { name: 'Charts', href: '/charts', hasDropdown: true },
-  { name: 'Wave Charts', href: '/wave-charts' },
+  { name: 'Wave Charts', href: '/charts', hasDropdown: true },
   { name: 'About', href: '/about-us' },
   { name: 'Contact', href: '/contact' },
 ];
 
 /**
- * Chart-type options rendered inside the Charts dropdown.
+ * Chart-style options rendered inside the Wave Charts dropdown.
  * Keep icon references here so the dropdown component stays declarative.
  */
 export const CHART_TYPES = [
