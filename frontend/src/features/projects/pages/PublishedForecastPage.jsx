@@ -89,6 +89,22 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function getPdfMetadata(project, latestReviewSummary, chartStyleLabel) {
+  return {
+    title: project?.name || 'Published Wave Chart',
+    description: project?.description || 'Final read-only published wave chart generated from WaveLab.',
+    status: getProjectStatusLabel(project?.status),
+    chartType: getChartTypeLabel(project?.chartType),
+    chartStyle: chartStyleLabel || 'Wave & Wind',
+    validDate: formatDate(project?.forecastDate),
+    publishedAt: formatDateTime(project?.publishedAt),
+    forecaster: getPersonName(project?.owner, 'Forecaster'),
+    approvedBy: getPersonName(project?.approvedBy, '—'),
+    reviewAction: latestReviewSummary?.action?.replaceAll('_', ' ') || '—',
+    remarks: latestReviewSummary?.comment || project?.reviewComment || 'No review remarks recorded.',
+  };
+}
+
 function downloadDataUrl(dataUrl, filename) {
   const link = document.createElement('a');
   link.href = dataUrl;
@@ -138,39 +154,90 @@ function writePdfErrorWindow(printWindow, message) {
   printWindow.document.close();
 }
 
-function writePdfPrintWindow({ printWindow, project, imageDataUrl, chartStyleLabel }) {
-  const title = project?.name || 'Published Wave Chart';
+function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl, chartStyleLabel }) {
+  const metadata = getPdfMetadata(project, latestReviewSummary, chartStyleLabel);
 
   printWindow.document.open();
   printWindow.document.write(`
     <!doctype html>
     <html>
       <head>
-        <title>${escapeHtml(title)} - Published Wave Chart</title>
+        <title>${escapeHtml(metadata.title)} - Published Wave Chart</title>
         <style>
-          @page { size: A4 portrait; margin: 12mm; }
+          @page { size: A4 portrait; margin: 0; }
           * { box-sizing: border-box; }
-          body { margin: 0; font-family: Arial, sans-serif; color: #0f172a; background: #fff; }
-          .page { width: 100%; min-height: 273mm; display: flex; flex-direction: column; gap: 10mm; }
-          h1 { margin: 0; font-size: 22pt; line-height: 1.1; }
-          .meta { margin-top: 3mm; display: flex; gap: 4mm; flex-wrap: wrap; color: #475569; font-size: 9pt; font-weight: 700; }
-          .map { width: 100%; border: 1px solid #dbeafe; border-radius: 10px; overflow: hidden; }
-          .map img { display: block; width: 100%; height: auto; }
-          .footer { margin-top: auto; color: #64748b; font-size: 8pt; font-weight: 700; }
+          html, body { margin: 0; width: 210mm; min-height: 297mm; background: #e2e8f0; }
+          body { font-family: Arial, Helvetica, sans-serif; color: #0f172a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .page {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto;
+            padding: 11mm;
+            display: flex;
+            flex-direction: column;
+            gap: 6mm;
+            overflow: hidden;
+            background: #ffffff;
+            page-break-after: avoid;
+            page-break-inside: avoid;
+          }
+          .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8mm; }
+          .brand { display: flex; align-items: center; gap: 3mm; color: #0369a1; font-size: 9pt; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+          .brand-mark { width: 8mm; height: 8mm; border-radius: 999px; background: linear-gradient(135deg, #2563eb, #06b6d4); }
+          .status { border: 1px solid #bbf7d0; background: #f0fdf4; color: #047857; border-radius: 999px; padding: 2mm 3.5mm; font-size: 8pt; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+          h1 { margin: 0; max-height: 18mm; overflow: hidden; font-size: 20pt; line-height: 1.08; letter-spacing: -0.02em; }
+          .description { margin: 2mm 0 0; max-height: 12mm; overflow: hidden; color: #475569; font-size: 9pt; font-weight: 600; line-height: 1.4; }
+          .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; }
+          .meta-card { border: 1px solid #dbeafe; background: #f8fafc; border-radius: 4mm; padding: 3mm; min-width: 0; }
+          .meta-card dt { margin: 0 0 1.5mm; color: #64748b; font-size: 6.8pt; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+          .meta-card dd { margin: 0; color: #0f172a; font-size: 9pt; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .map-card { flex: 1 1 auto; min-height: 0; border: 1px solid #bfdbfe; border-radius: 5mm; overflow: hidden; background: #f8fafc; display: flex; align-items: center; justify-content: center; }
+          .map-card img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+          .review { display: grid; grid-template-columns: 44mm 44mm minmax(0, 1fr); gap: 3mm; border: 1px solid #e2e8f0; border-radius: 4mm; padding: 3mm; background: #f8fafc; }
+          .review dt { margin: 0 0 1.2mm; color: #64748b; font-size: 6.8pt; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+          .review dd { margin: 0; color: #0f172a; font-size: 8.5pt; font-weight: 800; line-height: 1.35; }
+          .review .remarks { max-height: 12mm; overflow: hidden; }
+          .footer { display: flex; align-items: center; justify-content: space-between; gap: 5mm; color: #64748b; font-size: 7.5pt; font-weight: 800; }
+          .footer strong { color: #0369a1; }
+          @media print {
+            html, body { width: 210mm; height: 297mm; overflow: hidden; background: #ffffff; }
+            .page { width: 210mm; height: 297mm; box-shadow: none; }
+          }
         </style>
       </head>
       <body>
         <main class="page">
+          <section class="topbar">
+            <div class="brand"><span class="brand-mark"></span><span>DOST-PAGASA · WaveLab</span></div>
+            <div class="status">${escapeHtml(metadata.status)}</div>
+          </section>
+
           <header>
-            <h1>${escapeHtml(title)}</h1>
-            <div class="meta">
-              <span>Final Wave Chart</span>
-              <span>${escapeHtml(chartStyleLabel)}</span>
-              <span>${escapeHtml(formatDate(project?.forecastDate))}</span>
-            </div>
+            <h1>${escapeHtml(metadata.title)}</h1>
+            <p class="description">${escapeHtml(metadata.description)}</p>
           </header>
-          <section class="map"><img src="${imageDataUrl}" alt="${escapeHtml(title)} published wave chart export" /></section>
-          <div class="footer">Generated from WaveLab published wave chart</div>
+
+          <dl class="meta-grid">
+            <div class="meta-card"><dt>Valid Date</dt><dd>${escapeHtml(metadata.validDate)}</dd></div>
+            <div class="meta-card"><dt>Chart Type</dt><dd>${escapeHtml(metadata.chartType)}</dd></div>
+            <div class="meta-card"><dt>Style</dt><dd>${escapeHtml(metadata.chartStyle)}</dd></div>
+            <div class="meta-card"><dt>Published</dt><dd>${escapeHtml(metadata.publishedAt)}</dd></div>
+          </dl>
+
+          <section class="map-card">
+            <img src="${imageDataUrl}" alt="${escapeHtml(metadata.title)} published wave chart export" />
+          </section>
+
+          <dl class="review">
+            <div><dt>Forecaster</dt><dd>${escapeHtml(metadata.forecaster)}</dd></div>
+            <div><dt>Approved By</dt><dd>${escapeHtml(metadata.approvedBy)}</dd></div>
+            <div><dt>Review Remarks</dt><dd class="remarks">${escapeHtml(metadata.remarks)}</dd></div>
+          </dl>
+
+          <footer class="footer">
+            <span><strong>Final Wave Chart</strong> · Read-only published output</span>
+            <span>Generated from WaveLab for sharing and archiving</span>
+          </footer>
         </main>
         <script>
           window.onload = () => {
@@ -318,6 +385,7 @@ export default function PublishedForecastPage() {
       writePdfPrintWindow({
         printWindow,
         project,
+        latestReviewSummary,
         imageDataUrl: getExportMapDataUrl(),
         chartStyleLabel: activeStyle.label,
       });
