@@ -24,7 +24,6 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 
 function formatDate(value, options = {}) {
   if (!value) return '—';
-
   try {
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
@@ -38,16 +37,12 @@ function formatDate(value, options = {}) {
 }
 
 function formatDateTime(value) {
-  return formatDate(value, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  return formatDate(value, { hour: 'numeric', minute: '2-digit' });
 }
 
 function getPersonName(person, fallback = '—') {
   if (!person) return fallback;
   if (typeof person === 'string') return person;
-
   const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ').trim();
   return fullName || person.username || person.email || fallback;
 }
@@ -59,7 +54,6 @@ function getChartTypeLabel(value) {
     forecast_36h: '36-Hour Forecast',
     forecast_48h: '48-Hour Forecast',
   };
-
   return labels[value] || value || 'Forecast';
 }
 
@@ -108,7 +102,6 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 4) {
       currentLine = nextLine;
       return;
     }
-
     if (currentLine) lines.push(currentLine);
     currentLine = word;
   });
@@ -121,6 +114,16 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 4) {
   });
 
   return y + Math.min(lines.length, maxLines) * lineHeight;
+}
+
+function drawRoundedCard(ctx, x, y, width, height, radius = 22) {
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#dbeafe';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, radius);
+  ctx.fill();
+  ctx.stroke();
 }
 
 function getExportMetadata(project, latestReviewSummary) {
@@ -138,7 +141,7 @@ function getExportMetadata(project, latestReviewSummary) {
   };
 }
 
-async function composeForecastExportImage({ project, latestReviewSummary, mapDataUrl }) {
+async function composeLandscapeExportImage({ project, latestReviewSummary, mapDataUrl }) {
   const metadata = getExportMetadata(project, latestReviewSummary);
   const mapImage = await loadImage(mapDataUrl);
   const canvas = document.createElement('canvas');
@@ -176,14 +179,7 @@ async function composeForecastExportImage({ project, latestReviewSummary, mapDat
 
   cards.forEach(([label, value], index) => {
     const x = 72 + index * (cardWidth + gap);
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#dbeafe';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(x, cardY, cardWidth, cardHeight, 22);
-    ctx.fill();
-    ctx.stroke();
-
+    drawRoundedCard(ctx, x, cardY, cardWidth, cardHeight, 22);
     ctx.fillStyle = '#94a3b8';
     ctx.font = '800 16px Arial, sans-serif';
     ctx.fillText(label, x + 28, cardY + 34);
@@ -196,14 +192,7 @@ async function composeForecastExportImage({ project, latestReviewSummary, mapDat
   const mapY = 402;
   const mapW = 1456;
   const mapH = 650;
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(mapX, mapY, mapW, mapH, 28);
-  ctx.fill();
-  ctx.stroke();
-
+  drawRoundedCard(ctx, mapX, mapY, mapW, mapH, 28);
   ctx.save();
   ctx.beginPath();
   ctx.roundRect(mapX + 24, mapY + 24, mapW - 48, mapH - 48, 20);
@@ -212,18 +201,10 @@ async function composeForecastExportImage({ project, latestReviewSummary, mapDat
   ctx.restore();
 
   const summaryY = 1094;
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#dbeafe';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(72, summaryY, 1456, 124, 24);
-  ctx.fill();
-  ctx.stroke();
-
+  drawRoundedCard(ctx, 72, summaryY, 1456, 124, 24);
   ctx.fillStyle = '#0f172a';
   ctx.font = '800 24px Arial, sans-serif';
   ctx.fillText('Review summary', 104, summaryY + 42);
-
   ctx.fillStyle = '#475569';
   ctx.font = '700 18px Arial, sans-serif';
   ctx.fillText(`Approved by: ${metadata.approvedBy}`, 104, summaryY + 78);
@@ -233,6 +214,97 @@ async function composeForecastExportImage({ project, latestReviewSummary, mapDat
   ctx.fillStyle = '#64748b';
   ctx.font = '600 15px Arial, sans-serif';
   ctx.fillText('Generated from WaveLab published forecast output', 72, 1252);
+
+  return canvas.toDataURL('image/png');
+}
+
+async function composePortraitA4ExportImage({ project, latestReviewSummary, mapDataUrl }) {
+  const metadata = getExportMetadata(project, latestReviewSummary);
+  const mapImage = await loadImage(mapDataUrl);
+  const canvas = document.createElement('canvas');
+  const width = 1240;
+  const height = 1754;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '800 46px Arial, sans-serif';
+  drawWrappedText(ctx, metadata.title, 72, 96, 900, 52, 2);
+
+  ctx.fillStyle = '#475569';
+  ctx.font = '600 20px Arial, sans-serif';
+  drawWrappedText(ctx, metadata.subtitle, 72, 188, 900, 28, 2);
+
+  ctx.fillStyle = '#0369a1';
+  ctx.font = '800 18px Arial, sans-serif';
+  ctx.fillText('FINAL FORECAST OUTPUT', 72, 270);
+
+  const cards = [
+    ['FORECAST DATE', metadata.forecastDate],
+    ['CHART TYPE', metadata.chartType],
+    ['PUBLISHED', metadata.publishedAt],
+    ['FORECASTER', metadata.forecaster],
+  ];
+  const cardW = 522;
+  const cardH = 92;
+  const cardGapX = 28;
+  const cardGapY = 22;
+  cards.forEach(([label, value], index) => {
+    const row = Math.floor(index / 2);
+    const col = index % 2;
+    const x = 72 + col * (cardW + cardGapX);
+    const y = 304 + row * (cardH + cardGapY);
+    drawRoundedCard(ctx, x, y, cardW, cardH, 20);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '800 15px Arial, sans-serif';
+    ctx.fillText(label, x + 26, y + 34);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '800 22px Arial, sans-serif';
+    drawWrappedText(ctx, value, x + 26, y + 66, cardW - 52, 26, 1);
+  });
+
+  const mapX = 72;
+  const mapY = 560;
+  const mapW = 1096;
+  const mapH = 650;
+  drawRoundedCard(ctx, mapX, mapY, mapW, mapH, 28);
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(mapX + 22, mapY + 22, mapW - 44, mapH - 44, 20);
+  ctx.clip();
+  ctx.drawImage(mapImage, mapX + 22, mapY + 22, mapW - 44, mapH - 44);
+  ctx.restore();
+
+  const summaryY = 1256;
+  drawRoundedCard(ctx, 72, summaryY, 1096, 238, 24);
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '800 26px Arial, sans-serif';
+  ctx.fillText('Review summary', 104, summaryY + 46);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '800 15px Arial, sans-serif';
+  ctx.fillText('APPROVED BY', 104, summaryY + 88);
+  ctx.fillText('LAST REVIEW ACTION', 520, summaryY + 88);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '800 20px Arial, sans-serif';
+  ctx.fillText(metadata.approvedBy, 104, summaryY + 120);
+  ctx.fillText(metadata.reviewAction, 520, summaryY + 120);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '800 15px Arial, sans-serif';
+  ctx.fillText('REMARKS', 104, summaryY + 164);
+  ctx.fillStyle = '#334155';
+  ctx.font = '700 20px Arial, sans-serif';
+  drawWrappedText(ctx, metadata.remarks, 104, summaryY + 196, 1000, 28, 2);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '600 15px Arial, sans-serif';
+  ctx.fillText('Generated from WaveLab published forecast output', 72, 1668);
 
   return canvas.toDataURL('image/png');
 }
@@ -296,14 +368,14 @@ function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageD
       <head>
         <title>${escapeHtml(metadata.title)} - Published Forecast</title>
         <style>
-          @page { size: A4 landscape; margin: 0; }
-          html, body { margin: 0; width: 100%; height: 100%; background: white; overflow: hidden; }
+          @page { size: A4 portrait; margin: 0; }
+          html, body { margin: 0; width: 210mm; min-height: 297mm; background: white; overflow: hidden; }
           body { display: grid; place-items: center; }
-          .page { box-sizing: border-box; width: 100vw; height: 100vh; padding: 8mm; display: grid; place-items: center; background: white; page-break-after: avoid; page-break-inside: avoid; }
-          img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+          .page { box-sizing: border-box; width: 210mm; height: 297mm; padding: 0; display: grid; place-items: center; background: white; overflow: hidden; page-break-after: avoid; page-break-inside: avoid; }
+          img { display: block; width: 210mm; height: 297mm; object-fit: contain; }
           @media print {
-            html, body { width: 297mm; height: 210mm; overflow: hidden; }
-            .page { width: 297mm; height: 210mm; padding: 8mm; overflow: hidden; }
+            html, body { width: 210mm; height: 297mm; overflow: hidden; }
+            .page { width: 210mm; height: 297mm; overflow: hidden; }
           }
         </style>
       </head>
@@ -362,7 +434,6 @@ export default function PublishedForecastPage() {
 
     async function loadForecast() {
       setState({ loading: true, error: '', data: null });
-
       try {
         const data = await fetchPublishedForecastOutput(projectId, { signal: controller.signal });
         setState({ loading: false, error: '', data });
@@ -382,18 +453,20 @@ export default function PublishedForecastPage() {
   const latestReviewSummary = useMemo(() => getLatestReviewSummary(project), [project]);
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
-  const createExportImage = async () => {
+  const getExportMapDataUrl = () => {
     const mapDataUrl = exportMapRef.current?.getDataUrl();
     if (!mapDataUrl) throw new Error('Map is still preparing for export. Please try again in a moment.');
-
-    return composeForecastExportImage({ project, latestReviewSummary, mapDataUrl });
+    return mapDataUrl;
   };
 
   const handleExportImage = async () => {
     setExportState({ loading: 'image', error: '' });
-
     try {
-      const imageDataUrl = await createExportImage();
+      const imageDataUrl = await composeLandscapeExportImage({
+        project,
+        latestReviewSummary,
+        mapDataUrl: getExportMapDataUrl(),
+      });
       downloadDataUrl(imageDataUrl, getExportFilename(project, 'png'));
       setExportState({ loading: '', error: '' });
     } catch (error) {
@@ -403,7 +476,6 @@ export default function PublishedForecastPage() {
 
   const handleDownloadPdf = async () => {
     const printWindow = window.open('', '_blank');
-
     if (!printWindow) {
       setExportState({ loading: '', error: 'Pop-up was blocked. Please allow pop-ups to export PDF.' });
       return;
@@ -413,7 +485,11 @@ export default function PublishedForecastPage() {
     setExportState({ loading: 'pdf', error: '' });
 
     try {
-      const imageDataUrl = await createExportImage();
+      const imageDataUrl = await composePortraitA4ExportImage({
+        project,
+        latestReviewSummary,
+        mapDataUrl: getExportMapDataUrl(),
+      });
       writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl });
       setExportState({ loading: '', error: '' });
     } catch (error) {
@@ -439,7 +515,6 @@ export default function PublishedForecastPage() {
     if (!confirmed) return;
 
     setArchiveState({ loading: true, error: '' });
-
     try {
       await archiveProject(project._id);
       navigate('/dashboard?tab=charts', { replace: true });
@@ -448,9 +523,7 @@ export default function PublishedForecastPage() {
     }
   };
 
-  const pageClass = isDarkMode
-    ? 'min-h-screen bg-slate-950 text-slate-100'
-    : 'min-h-screen bg-slate-50 text-slate-950';
+  const pageClass = isDarkMode ? 'min-h-screen bg-slate-950 text-slate-100' : 'min-h-screen bg-slate-50 text-slate-950';
 
   if (state.loading) {
     return (
@@ -516,20 +589,10 @@ export default function PublishedForecastPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" icon={Clipboard} onClick={handleCopyLink}>
-              {copied ? 'Copied' : 'Copy link'}
-            </Button>
-            <Button variant="secondary" icon={Download} loading={exportState.loading === 'pdf'} disabled={Boolean(exportState.loading)} onClick={handleDownloadPdf}>
-              Download PDF
-            </Button>
-            <Button variant="secondary" icon={Share2} loading={exportState.loading === 'image'} disabled={Boolean(exportState.loading)} onClick={handleExportImage}>
-              Export Image
-            </Button>
-            {canArchive && (
-              <Button variant="danger" icon={Archive} loading={archiveState.loading} onClick={handleArchive}>
-                Archive
-              </Button>
-            )}
+            <Button variant="secondary" icon={Clipboard} onClick={handleCopyLink}>{copied ? 'Copied' : 'Copy link'}</Button>
+            <Button variant="secondary" icon={Download} loading={exportState.loading === 'pdf'} disabled={Boolean(exportState.loading)} onClick={handleDownloadPdf}>Download PDF</Button>
+            <Button variant="secondary" icon={Share2} loading={exportState.loading === 'image'} disabled={Boolean(exportState.loading)} onClick={handleExportImage}>Export Image</Button>
+            {canArchive && <Button variant="danger" icon={Archive} loading={archiveState.loading} onClick={handleArchive}>Archive</Button>}
           </div>
         </div>
 
