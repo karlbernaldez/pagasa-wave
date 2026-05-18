@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CalendarDays, Eye, FileText, History, Layers, Search, Waves, Wind } from 'lucide-react';
+import { ArrowRight, CalendarDays, Eye, FileText, Filter, History, Layers, Search, Waves, Wind } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,14 +8,18 @@ import { fetchPublicPublishedForecasts } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
 import {
-  PUBLIC_CHART_SLOTS,
+  PUBLIC_CHART_TYPE_FILTER_ALL,
+  PUBLIC_CHART_TYPE_FILTERS,
   filterProjectsToPublicChartWindow,
+  getBestPublicChartDateForFilter,
+  getFilteredPublicChartSlots,
   getPublicChartAvailableCount,
   getPublicChartCardDescription,
+  getPublicChartCompleteness,
   getPublicChartTenDayWindow,
   groupPublicChartHistory,
   groupPublicChartsByTypeForDate,
-  toPublicChartDateKey,
+  isPublicChartDateAvailable,
 } from '@/dashboards/public/utils/publicChartGroups';
 
 const CHART_STYLES = [
@@ -111,29 +115,55 @@ const PageHeader = memo(function PageHeader({ activeStyle, currentDate, isDark }
       </motion.h1>
 
       <motion.p variants={fadeUp} custom={0.08} className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-        Latest published DOST-PAGASA WaveLab chart set, with style modes and recent charts from the past 10 days.
+        Browse the latest public WaveLab chart set, filter by chart type, and review recent published dates.
       </motion.p>
     </motion.section>
   );
 });
 
-function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) {
+function ChartControls({ activeStyle, onChange, query, onQueryChange, chartTypeFilter, onChartTypeFilterChange, isDark }) {
   return (
     <motion.section
       variants={fadeUp}
       custom={0.12}
-      className={`mx-auto grid w-full max-w-5xl gap-4 rounded-3xl border p-3 shadow-2xl shadow-black/5 backdrop-blur-xl lg:grid-cols-[minmax(0,1fr)_360px] ${
+      className={`mx-auto grid w-full max-w-6xl gap-4 rounded-3xl border p-3 shadow-2xl shadow-black/5 backdrop-blur-xl xl:grid-cols-[minmax(0,1fr)_360px] ${
         isDark ? 'border-white/10 bg-slate-900/75' : 'border-slate-200 bg-white/85'
       }`}
     >
-      <div className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`}>
-        <Search size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-        <input
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Search wave charts, date, or description"
-          className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'text-white placeholder:text-slate-600' : 'text-slate-950 placeholder:text-slate-400'}`}
-        />
+      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`}>
+          <Search size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+          <input
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder="Search wave charts, date, or description"
+            className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'text-white placeholder:text-slate-600' : 'text-slate-950 placeholder:text-slate-400'}`}
+          />
+        </div>
+
+        <div className={`flex items-center gap-1 overflow-x-auto rounded-2xl border p-1 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`} aria-label="Chart type filter">
+          <span className={`hidden items-center gap-1 px-2 text-xs font-black uppercase tracking-[0.14em] lg:flex ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <Filter size={13} /> Type
+          </span>
+          {PUBLIC_CHART_TYPE_FILTERS.map((filter) => {
+            const active = filter.id === chartTypeFilter;
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => onChartTypeFilterChange(filter.id)}
+                aria-pressed={active}
+                className={`shrink-0 rounded-xl px-3 py-2 text-xs font-black transition-all ${
+                  active
+                    ? isDark ? 'bg-cyan-400/15 text-cyan-100 shadow-sm' : 'bg-white text-blue-700 shadow-sm'
+                    : isDark ? 'text-slate-400 hover:bg-white/5 hover:text-slate-100' : 'text-slate-500 hover:bg-white/70 hover:text-slate-900'
+                }`}
+              >
+                {filter.shortLabel}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className={`grid grid-cols-3 rounded-2xl border p-1 ${isDark ? 'border-white/10 bg-slate-950/70' : 'border-slate-200 bg-slate-50'}`} aria-label="Chart display style">
@@ -243,8 +273,20 @@ const ChartSlotCard = memo(function ChartSlotCard({ slot, chart, activeStyle, is
   );
 });
 
-function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
-  const grouped = useMemo(() => groupPublicChartHistory(projects), [projects]);
+function CompletenessBadge({ completeness, isDark }) {
+  if (completeness.isComplete) {
+    return <span className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700'}`}>Complete</span>;
+  }
+
+  if (completeness.isEmpty) {
+    return <span className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>No charts</span>;
+  }
+
+  return <span className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'}`}>Incomplete</span>;
+}
+
+function RecentHistory({ projects, selectedDate, onSelectDate, isDark, slots }) {
+  const grouped = useMemo(() => groupPublicChartHistory(projects, slots), [projects, slots]);
 
   if (grouped.length === 0) return null;
 
@@ -260,22 +302,51 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
         <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Select a date to preview its available chart set.</p>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-2">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {grouped.map((item) => {
           const active = item.dateKey === selectedDate;
+          const completeness = {
+            availableCount: item.availableCount,
+            totalCount: item.totalCount,
+            isComplete: item.isComplete,
+            isEmpty: item.availableCount === 0,
+          };
+
           return (
             <button
               key={item.dateKey}
               type="button"
               onClick={() => onSelectDate(item.dateKey)}
-              className={`min-w-[150px] rounded-2xl border px-4 py-3 text-left transition-all ${
+              className={`rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 ${
                 active
-                  ? isDark ? 'border-cyan-400/50 bg-cyan-400/10 text-cyan-100' : 'border-blue-300 bg-blue-50 text-blue-900'
+                  ? isDark ? 'border-cyan-400/50 bg-cyan-400/10 text-cyan-100 shadow-lg shadow-cyan-950/20' : 'border-blue-300 bg-blue-50 text-blue-900 shadow-lg shadow-blue-100'
                   : isDark ? 'border-white/10 bg-slate-900/70 text-slate-300 hover:border-white/20' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <span className="block text-sm font-black">{formatDate(item.dateKey)}</span>
-              <span className={`mt-1 block text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.count} chart{item.count === 1 ? '' : 's'}</span>
+              <div className="flex items-start justify-between gap-2">
+                <span className="block text-sm font-black">{formatDate(item.dateKey)}</span>
+                <CompletenessBadge completeness={completeness} isDark={isDark} />
+              </div>
+              <span className={`mt-3 block text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                {item.availableCount}/{item.totalCount} available
+              </span>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {slots.map((slot) => {
+                  const hasType = item.availableChartTypes.includes(slot.chartType);
+                  return (
+                    <span
+                      key={slot.chartType}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                        hasType
+                          ? isDark ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-100 text-blue-700'
+                          : isDark ? 'bg-slate-800 text-slate-600' : 'bg-slate-100 text-slate-400'
+                      }`}
+                    >
+                      {slot.badge}
+                    </span>
+                  );
+                })}
+              </div>
             </button>
           );
         })}
@@ -291,6 +362,7 @@ export default function ForecastChartsPage() {
   const [state, setState] = useState({ loading: true, error: '', data: null });
   const [query, setQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const [chartTypeFilter, setChartTypeFilter] = useState(PUBLIC_CHART_TYPE_FILTER_ALL);
 
   useEffect(() => {
     document.title = 'Wave Charts — WaveLab';
@@ -326,9 +398,21 @@ export default function ForecastChartsPage() {
     [chartWindow, projects]
   );
 
+  const visibleSlots = useMemo(() => getFilteredPublicChartSlots(chartTypeFilter), [chartTypeFilter]);
+
   useEffect(() => {
-    if (!selectedDate && latestDate) setSelectedDate(latestDate);
-  }, [latestDate, selectedDate]);
+    if (!recentProjects.length) return;
+
+    const bestDateForFilter = getBestPublicChartDateForFilter(recentProjects, chartTypeFilter);
+    if (!selectedDate) {
+      setSelectedDate(bestDateForFilter || latestDate);
+      return;
+    }
+
+    if (!isPublicChartDateAvailable(recentProjects, selectedDate, chartTypeFilter)) {
+      setSelectedDate(bestDateForFilter || latestDate);
+    }
+  }, [chartTypeFilter, latestDate, recentProjects, selectedDate]);
 
   const activeDate = selectedDate || latestDate;
   const chartByType = useMemo(
@@ -336,7 +420,8 @@ export default function ForecastChartsPage() {
     [activeDate, recentProjects]
   );
   const activeStyle = CHART_STYLES.some((style) => style.id === activeChartType) ? activeChartType : 'wave-wind';
-  const availableCount = getPublicChartAvailableCount(chartByType);
+  const availableCount = getPublicChartAvailableCount(chartByType, visibleSlots);
+  const completeness = getPublicChartCompleteness(chartByType, visibleSlots);
 
   const openChart = useCallback((chart) => {
     if (!chart?._id) return;
@@ -370,12 +455,14 @@ export default function ForecastChartsPage() {
           onChange={setActiveChartType}
           query={query}
           onQueryChange={setQuery}
+          chartTypeFilter={chartTypeFilter}
+          onChartTypeFilterChange={setChartTypeFilter}
           isDark={isDark}
         />
 
         {state.loading && (
           <div className="grid gap-5 lg:grid-cols-2">
-            {PUBLIC_CHART_SLOTS.map((slot) => (
+            {visibleSlots.map((slot) => (
               <div key={slot.chartType} className={`h-[430px] animate-pulse rounded-3xl border ${isDark ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white/90'}`} />
             ))}
           </div>
@@ -404,13 +491,16 @@ export default function ForecastChartsPage() {
                   </p>
                   <h2 className={`mt-2 text-3xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(activeDate)}</h2>
                 </div>
-                <div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-slate-900/70 text-slate-300' : 'border-slate-200 bg-white/90 text-slate-600'}`}>
-                  {availableCount}/4 published charts available
+                <div className="flex flex-wrap items-center gap-2">
+                  <CompletenessBadge completeness={completeness} isDark={isDark} />
+                  <div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-slate-900/70 text-slate-300' : 'border-slate-200 bg-white/90 text-slate-600'}`}>
+                    {availableCount}/{visibleSlots.length} published charts available
+                  </div>
                 </div>
               </div>
 
               <motion.div className="grid gap-5 lg:grid-cols-2" variants={stagger} initial="hidden" animate="show">
-                {PUBLIC_CHART_SLOTS.map((slot) => (
+                {visibleSlots.map((slot) => (
                   <ChartSlotCard
                     key={`${activeDate}-${slot.chartType}`}
                     slot={slot}
@@ -423,7 +513,7 @@ export default function ForecastChartsPage() {
               </motion.div>
             </section>
 
-            <RecentHistory projects={recentProjects} selectedDate={activeDate} onSelectDate={setSelectedDate} isDark={isDark} />
+            <RecentHistory projects={recentProjects} selectedDate={activeDate} onSelectDate={setSelectedDate} isDark={isDark} slots={visibleSlots} />
           </>
         )}
 
