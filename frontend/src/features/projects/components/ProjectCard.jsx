@@ -7,6 +7,7 @@ import {
   Pencil,
   Send,
   Trash2,
+  AlertCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -150,7 +151,7 @@ function MetadataItem({ label, value, isDarkMode }) {
   );
 }
 
-function RemarksPanel({ remark, needsRevision, isReviewMode, isDarkMode }) {
+function RemarksPanel({ remark, needsRevision, isDarkMode }) {
   const hasRemark = Boolean(remark?.trim());
   const label = needsRevision || hasRemark ? 'Latest admin remarks' : 'Review remarks';
   const message = hasRemark ? remark : 'No admin remarks yet';
@@ -198,6 +199,7 @@ export default function ProjectCard({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [busyAction, setBusyAction] = useState(null);
+  const [actionError, setActionError] = useState('');
 
   const previewProjectId = getPreviewCacheProjectId(project);
   const name = getProjectName(project);
@@ -217,13 +219,15 @@ export default function ProjectCard({
     : null;
 
   const runAction = async (action) => {
+    setActionError('');
+
     try {
       setBusyAction(action.key || action.label);
       await action.onClick?.(project);
       onActionComplete?.();
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Action failed. Please try again.');
+      setActionError(error.message || 'Action failed. Please try again.');
     } finally {
       setBusyAction(null);
     }
@@ -273,9 +277,24 @@ export default function ProjectCard({
           <RemarksPanel
             remark={latestRemark}
             needsRevision={needsRevision}
-            isReviewMode={isReviewMode}
             isDarkMode={isDarkMode}
           />
+
+          {actionError && (
+            <div className={`flex items-start justify-between gap-3 rounded-xl border px-3 py-2 text-xs font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`} role="alert">
+              <span className="inline-flex items-start gap-2">
+                <AlertCircle className="mt-0.5 shrink-0" size={14} />
+                {actionError}
+              </span>
+              <button
+                type="button"
+                className={`shrink-0 font-black uppercase tracking-wide ${isDarkMode ? 'text-red-200 hover:text-white' : 'text-red-700 hover:text-red-900'}`}
+                onClick={() => setActionError('')}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           <div className="grid min-h-[48px] grid-cols-1 gap-3 text-xs sm:grid-cols-2">
             <MetadataItem
