@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, CheckCheck, ExternalLink } from 'lucide-react';
 
 import {
@@ -32,7 +33,12 @@ function getNotificationId(notification) {
   return notification?._id || notification?.id;
 }
 
+function isInternalPath(path) {
+  return typeof path === 'string' && path.startsWith('/');
+}
+
 export default function NotificationBell({ isDarkMode = false, className = '' }) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -107,8 +113,12 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
       console.error('[NotificationBell] Failed to mark notification read:', err);
     } finally {
       await loadNotifications({ silent: true });
-      if (resourcePath) {
-        window.location.href = resourcePath;
+      setIsOpen(false);
+
+      if (resourcePath && isInternalPath(resourcePath)) {
+        navigate(resourcePath);
+      } else if (resourcePath) {
+        window.open(resourcePath, '_blank', 'noopener,noreferrer');
       }
     }
   };
