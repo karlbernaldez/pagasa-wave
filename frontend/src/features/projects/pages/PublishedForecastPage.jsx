@@ -296,44 +296,21 @@ function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageD
       <head>
         <title>${escapeHtml(metadata.title)} - Published Forecast</title>
         <style>
-          @page { size: A4 landscape; margin: 12mm; }
-          body { margin: 0; font-family: Arial, sans-serif; color: #0f172a; background: #f8fafc; }
-          .page { padding: 24px; }
-          h1 { margin: 0; font-size: 28px; line-height: 1.1; }
-          .subtitle { margin: 8px 0 18px; color: #475569; font-weight: 600; }
-          .badge { display: inline-block; margin-bottom: 10px; padding: 6px 10px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-          .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0; }
-          .stat { border: 1px solid #dbeafe; border-radius: 14px; background: white; padding: 12px; }
-          .label { color: #94a3b8; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
-          .value { margin-top: 5px; font-weight: 800; font-size: 13px; }
-          img { width: 100%; border-radius: 18px; border: 1px solid #cbd5e1; display: block; }
-          .summary { margin-top: 14px; border: 1px solid #dbeafe; border-radius: 16px; background: white; padding: 14px; }
-          .summary h2 { margin: 0 0 8px; font-size: 16px; }
-          .summary p { margin: 4px 0; font-size: 12px; font-weight: 600; color: #334155; }
-          .actions { margin-top: 12px; font-size: 11px; color: #64748b; }
-          @media print { .no-print { display: none; } body { background: white; } }
+          @page { size: A4 landscape; margin: 0; }
+          html, body { margin: 0; width: 100%; height: 100%; background: white; overflow: hidden; }
+          body { display: grid; place-items: center; }
+          .page { box-sizing: border-box; width: 100vw; height: 100vh; padding: 8mm; display: grid; place-items: center; background: white; page-break-after: avoid; page-break-inside: avoid; }
+          img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+          @media print {
+            html, body { width: 297mm; height: 210mm; overflow: hidden; }
+            .page { width: 297mm; height: 210mm; padding: 8mm; overflow: hidden; }
+          }
         </style>
       </head>
       <body>
-        <div class="page">
-          <div class="badge">${escapeHtml(metadata.status)} · Final Forecast Output</div>
-          <h1>${escapeHtml(metadata.title)}</h1>
-          <p class="subtitle">${escapeHtml(metadata.subtitle)}</p>
-          <section class="stats">
-            <div class="stat"><div class="label">Forecast Date</div><div class="value">${escapeHtml(metadata.forecastDate)}</div></div>
-            <div class="stat"><div class="label">Chart Type</div><div class="value">${escapeHtml(metadata.chartType)}</div></div>
-            <div class="stat"><div class="label">Published</div><div class="value">${escapeHtml(metadata.publishedAt)}</div></div>
-            <div class="stat"><div class="label">Forecaster</div><div class="value">${escapeHtml(metadata.forecaster)}</div></div>
-          </section>
-          <img src="${imageDataUrl}" alt="Published forecast chart" />
-          <section class="summary">
-            <h2>Review summary</h2>
-            <p><strong>Approved by:</strong> ${escapeHtml(metadata.approvedBy)}</p>
-            <p><strong>Last review action:</strong> ${escapeHtml(metadata.reviewAction)}</p>
-            <p><strong>Remarks:</strong> ${escapeHtml(metadata.remarks)}</p>
-          </section>
-          <p class="actions no-print">Use your browser print dialog to save this output as PDF.</p>
-        </div>
+        <main class="page">
+          <img src="${imageDataUrl}" alt="${escapeHtml(metadata.title)} published forecast export" />
+        </main>
         <script>
           window.onload = () => {
             window.focus();
