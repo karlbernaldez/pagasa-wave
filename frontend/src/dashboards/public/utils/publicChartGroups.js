@@ -1,5 +1,3 @@
-export const PUBLIC_CHART_TYPE_FILTER_ALL = 'all';
-
 export const PUBLIC_CHART_SLOTS = [
   {
     chartType: 'analysis',
@@ -26,21 +24,6 @@ export const PUBLIC_CHART_SLOTS = [
     fallbackTitle: '48-Hour Wave Chart',
   },
 ];
-
-export const PUBLIC_CHART_TYPE_FILTERS = [
-  { id: PUBLIC_CHART_TYPE_FILTER_ALL, label: 'All charts', shortLabel: 'All' },
-  ...PUBLIC_CHART_SLOTS.map((slot) => ({
-    id: slot.chartType,
-    label: slot.title,
-    shortLabel: slot.badge,
-  })),
-];
-
-export function normalizePublicChartTypeFilter(value) {
-  return PUBLIC_CHART_TYPE_FILTERS.some((filter) => filter.id === value)
-    ? value
-    : PUBLIC_CHART_TYPE_FILTER_ALL;
-}
 
 export function toPublicChartDateKey(value) {
   if (!value) return '';
@@ -75,18 +58,6 @@ export function filterProjectsToPublicChartWindow(projects = [], window = getPub
     const key = toPublicChartDateKey(project?.forecastDate);
     return key && key >= startDate && key <= latestDate;
   });
-}
-
-export function filterProjectsByPublicChartType(projects = [], chartTypeFilter = PUBLIC_CHART_TYPE_FILTER_ALL) {
-  const normalizedFilter = normalizePublicChartTypeFilter(chartTypeFilter);
-  if (normalizedFilter === PUBLIC_CHART_TYPE_FILTER_ALL) return projects;
-  return projects.filter((project) => project?.chartType === normalizedFilter);
-}
-
-export function getFilteredPublicChartSlots(chartTypeFilter = PUBLIC_CHART_TYPE_FILTER_ALL) {
-  const normalizedFilter = normalizePublicChartTypeFilter(chartTypeFilter);
-  if (normalizedFilter === PUBLIC_CHART_TYPE_FILTER_ALL) return PUBLIC_CHART_SLOTS;
-  return PUBLIC_CHART_SLOTS.filter((slot) => slot.chartType === normalizedFilter);
 }
 
 export function groupPublicChartsByTypeForDate(projects = [], dateKey = '') {
@@ -147,20 +118,6 @@ export function groupPublicChartHistory(projects = [], slots = PUBLIC_CHART_SLOT
       availableChartTypes: [...entry.availableTypes],
     }))
     .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
-}
-
-export function getBestPublicChartDateForFilter(projects = [], chartTypeFilter = PUBLIC_CHART_TYPE_FILTER_ALL) {
-  const filteredProjects = filterProjectsByPublicChartType(projects, chartTypeFilter);
-  return filteredProjects.reduce((latest, project) => {
-    const key = toPublicChartDateKey(project?.forecastDate);
-    if (!key) return latest;
-    return !latest || key > latest ? key : latest;
-  }, '');
-}
-
-export function isPublicChartDateAvailable(projects = [], dateKey = '', chartTypeFilter = PUBLIC_CHART_TYPE_FILTER_ALL) {
-  if (!dateKey) return false;
-  return filterProjectsByPublicChartType(projects, chartTypeFilter).some((project) => toPublicChartDateKey(project?.forecastDate) === dateKey);
 }
 
 export function isEmptyPublicChartDescription(value) {
