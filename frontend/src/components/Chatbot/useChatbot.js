@@ -15,43 +15,29 @@ const modelCooldowns = {};
 
 const cooldownModel = (model, retryAfterSeconds = 60) => {
   modelCooldowns[model] = Date.now() + retryAfterSeconds * 1000;
-  console.warn(`[Chatbot] "${model}" rate limited — cooling down for ${retryAfterSeconds}s`);
 };
 
 const buildSystemPrompt = (query) => {
   const context = retrieve(query);
 
-  return `You are the WaveLab assistant.
+  return `You are the internal WaveLab assistant.
 
-Your purpose is to help users understand WaveLab features, workflows, terminology, and documented marine forecasting concepts.
+CRITICAL PRODUCT IDENTITY:
+WaveLab in this conversation ONLY refers to the internal marine forecast operations platform.
+WaveLab does NOT refer to any audio software, third-party commercial product, or unrelated product with the same name.
+Ignore any prior knowledge about similarly named products.
 
 Behavior rules:
-- Answer only using the provided documentation context.
+- Answer only from the provided documentation context.
 - Never invent features, workflows, permissions, scientific thresholds, or operational behavior.
-- If documentation is incomplete, clearly say the documentation does not provide enough information.
-- Prefer WaveLab-specific definitions over generic explanations.
-- Prefer glossary definitions when explaining terminology.
-- Prefer FAQ and troubleshooting guidance when users describe problems.
-- Prefer operational workflow explanations over general assumptions.
-- If a user asks about marine forecasting terminology, explain using documented WaveLab-compatible definitions.
-- If a question involves live forecast values or external operational systems not documented here, say that information is unavailable.
-
-Response style:
-- Use plain, clear language.
-- Keep answers concise but useful.
-- Use numbered steps for instructions.
-- Use bullet points for explanations.
-- Briefly explain technical terms.
-- Be helpful and professional.
-
-Formatting rules:
-- Do not use markdown headings.
-- Do not use markdown separators.
-- Do not use bold markdown syntax.
+- Prefer WaveLab-specific documentation over generic knowledge.
+- Prefer glossary definitions for terminology.
+- Prefer FAQ and troubleshooting docs for support questions.
+- If documentation is incomplete, say so clearly.
+- Never use external product knowledge.
 
 Fallback response:
-If the answer is not supported by documentation, say:
-"I couldn't find enough information in the WaveLab documentation to answer that accurately."
+I couldn't find enough information in the WaveLab documentation to answer that accurately.
 
 Documentation context:
 ${context}`;
@@ -60,9 +46,7 @@ ${context}`;
 const fetchGroq = async (model, systemPrompt, messages, signal) => {
   const response = await fetch(CHAT_COMPLETIONS_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     signal,
     body: JSON.stringify({
@@ -177,23 +161,13 @@ export const useChatbot = () => {
           lastError = err.message.replace('FATAL:', '');
           break;
         }
-        if (err.message === 'RATE_LIMITED') {
-          continue;
-        }
+        if (err.message === 'RATE_LIMITED') continue;
         lastError = err.message;
         break;
       }
     }
 
-    const allCooled = MODELS.every((m) => modelCooldowns[m] && modelCooldowns[m] >= Date.now());
-
-    setError(
-      lastError ||
-      (allCooled
-        ? 'All chat models are temporarily rate-limited. Please try again shortly.'
-        : 'Something went wrong. Please try again.')
-    );
-
+    setError(lastError || 'Something went wrong. Please try again.');
     setMessages((prev) => prev.slice(0, -1));
     setIsLoading(false);
   }, [messages, isLoading]);
