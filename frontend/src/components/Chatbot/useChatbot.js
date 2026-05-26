@@ -1,42 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { retrieve } from './ragSearch';
 
 const API_BASE = `${import.meta.env.VITE_API_URL || ''}`;
 const PUBLIC_URL = `${API_BASE}/api/chat/public`;
 const INTERNAL_URL = `${API_BASE}/api/chat/internal`;
 const AUTH_CHECK_URL = `${API_BASE}/api/auth/check`;
+const MEMORY_WINDOW = 10;
 
 const PUBLIC_MODELS = ['llama-3.1-8b-instant'];
-const FORECASTER_MODELS = ['llama-3.1-8b-instant', 'mixtral-8x7b-32768'];
-const ADMIN_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'];
+const FORECASTER_MODELS = ['mixtral-8x7b-32768', 'llama-3.1-8b-instant'];
+const ADMIN_MODELS = ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768', 'llama-3.1-8b-instant'];
 
-const normalizeResponse = (text) => {
-  if (!text) return text;
-  return text.trim();
-};
-
-const buildSystemPrompt = (label, role, query) => {
-  const context = retrieve(query);
-
-  const roleInstruction = role === 'admin'
-    ? 'You are a WaveLab administrative assistant. Provide operationally useful, concise, structured answers for administrators.'
-    : role === 'forecaster'
-      ? 'You are a WaveLab forecaster assistant. Provide forecasting guidance, interpretation help, and concise operational responses.'
-      : 'You are a WaveLab public assistant. Provide clear, beginner-friendly public information.';
-
-  return `${roleInstruction}
-
-Rules:
-- Do not repeat points.
-- Avoid duplicate sections.
-- Be concise and structured.
-- Prefer bullet points over long repetition.
-- If context is insufficient, say so.
-- Ground answers in provided context when relevant.
-
-Retrieved context:
-${context}`;
-};
+const normalizeResponse = (text) => text ? text.trim() : text;
 
 const readStream = async (response, onToken) => {
   const reader = response.body.getReader();
@@ -55,7 +29,6 @@ const readStream = async (response, onToken) => {
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed.startsWith('data: ')) continue;
-
       const data = trimmed.slice(6);
       if (data === '[DONE]') return accumulated;
 
@@ -63,7 +36,6 @@ const readStream = async (response, onToken) => {
         const parsed = JSON.parse(data);
         const token = parsed?.choices?.[0]?.delta?.content ?? '';
         if (!token) continue;
-
         accumulated += token;
         onToken(accumulated);
       } catch {}
@@ -103,13 +75,11 @@ export const useChatbot = () => {
         setActiveModel(ADMIN_MODELS[0]);
         return;
       }
-
       if (role === 'forecaster') {
         setAssistantLabel('WaveLab Forecaster Assistant');
         setActiveModel(FORECASTER_MODELS[0]);
         return;
       }
-
       setAssistantLabel('WaveLab Public Assistant');
       setActiveModel(PUBLIC_MODELS[0]);
     };
@@ -131,7 +101,6 @@ export const useChatbot = () => {
       models = FORECASTER_MODELS;
       label = 'WaveLab Forecaster Assistant';
     }
-
     if (role === 'admin') {
       models = ADMIN_MODELS;
       label = 'WaveLab Admin Assistant';
@@ -139,11 +108,13 @@ export const useChatbot = () => {
 
     const endpoint = isInternal ? INTERNAL_URL : PUBLIC_URL;
     const model = models[0];
+    const userMessage = { role: 'user', content: text.trim() };
+    const conversationHistory = [...messages, userMessage]
+      .filter((m) => m.content && !m.isStreaming)
+      .slice(-MEMORY_WINDOW);
 
     setActiveModel(model);
     setAssistantLabel(label);
-
-    const userMessage = { role: 'user', content: text.trim() };
     setMessages((prev) => [...prev, userMessage, { role: 'assistant', content: '', isStreaming: true }]);
     setInput('');
     setIsLoading(true);
@@ -158,8 +129,7 @@ export const useChatbot = () => {
         signal: abortRef.current.signal,
         body: JSON.stringify({
           model,
-          systemPrompt: buildSystemPrompt(label, role, text.trim()),
-          messages: [userMessage],
+          messages: conversationHistory,
         }),
       });
 
@@ -196,7 +166,7 @@ export const useChatbot = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, messages]);
 
   const clearChat = useCallback(() => {
     abortRef.current?.abort();
