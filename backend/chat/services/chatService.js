@@ -10,6 +10,7 @@ export const buildChatRequest = async ({ user, model, messages }) => {
   if (!tier) throw new Error('Unauthorized chat tier');
   const policy = CHAT_POLICIES[tier];
   const retrieval = await retrieveContext(messages[messages.length - 1]?.content || '', policy);
-  const systemPrompt = `${PROMPTS[tier]} ${retrieval.context}`.trim();
-  return { tier, policy, systemPrompt, model, messages };
+  const sourceLabel = retrieval.sources?.length ? ` Sources: ${retrieval.sources.join(', ')}.` : '';
+  const systemPrompt = `${PROMPTS[tier]} ${retrieval.context}${sourceLabel}`.trim();
+  return { tier, policy, systemPrompt, model, messages, sources: retrieval.sources || [] };
 };
