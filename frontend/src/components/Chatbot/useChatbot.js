@@ -17,6 +17,24 @@ const cooldownModel = (model, retryAfterSeconds = 60) => {
   modelCooldowns[model] = Date.now() + retryAfterSeconds * 1000;
 };
 
+const normalizeResponse = (text) => {
+  if (!text) return text;
+
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const deduped = [];
+  for (const line of lines) {
+    if (deduped[deduped.length - 1] !== line) {
+      deduped.push(line);
+    }
+  }
+
+  return deduped.join('\n');
+};
+
 const buildSystemPrompt = (query) => {
   const context = retrieve(query);
 
@@ -35,6 +53,7 @@ Behavior rules:
 - Prefer FAQ and troubleshooting docs for support questions.
 - If documentation is incomplete, say so clearly.
 - Never use external product knowledge.
+- Do not repeat identical lines, bullet points, or instructions.
 
 Fallback response:
 I couldn't find enough information in the WaveLab documentation to answer that accurately.
@@ -58,8 +77,7 @@ const fetchGroq = async (model, systemPrompt, messages, signal) => {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    if (response.status === 503)
-      throw new Error('FATAL:Chat service is not configured. Check GROQ_API_KEY on the backend.');
+    if (response.status === 503) throw new Error('FATAL:Chat service is not configured. Check GROQ_API_KEY on the backend.');
     if (response.status === 429) {
       const retryAfter = parseInt(response.headers.get('retry-after') ?? '60', 10);
       cooldownModel(model, retryAfter);
@@ -90,6 +108,7 @@ const readStream = async (response, onToken) => {
       if (!trimmed || !trimmed.startsWith('data: ')) continue;
       const data = trimmed.slice(6);
       if (data === '[DONE]') return accumulated;
+
       try {
         const parsed = JSON.parse(data);
         const token = parsed?.choices?.[0]?.delta?.content ?? '';
@@ -116,13 +135,13 @@ export const useChatbot = () => {
     if (!text.trim() || isLoading) return;
 
     const userMessage = { role: 'user', content: text.trim() };
-    const updatedMessages = [...messages, userMessage];
+    const assistantPlaceholder = { role: 'assistant', content: '', isStreaming: true };
+    const updatedMessages = [...messages, userMessage, assistantPlaceholder];
 
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
     setError(null);
-    setMessages((prev) => [...prev, { role: 'assistant', content: '', isStreaming: true }]);
 
     abortRef.current = new AbortController();
     const systemPrompt = buildSystemPrompt(text.trim());
@@ -134,19 +153,26 @@ export const useChatbot = () => {
 
       try {
         setActiveModel(model);
-        const response = await fetchGroq(model, systemPrompt, updatedMessages, abortRef.current.signal);
+        const response = await fetchGroq(model, systemPrompt, [userMessage], abortRef.current.signal);
 
         const accumulated = await readStream(response, (partial) => {
           setMessages((prev) => {
             const updated = [...prev];
-            updated[updated.length - 1] = { role: 'assistant', content: partial, isStreaming: true };
+            updated[updated.length - 1] = {
+              role: 'assistant',
+              content: normalizeResponse(partial),
+              isStreaming: true,
+            };
             return updated;
           });
         });
 
         setMessages((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', content: accumulated };
+          updated[updated.length - 1] = {
+            role: 'assistant',
+            content: normalizeResponse(accumulated),
+          };
           return updated;
         });
 
@@ -157,11 +183,14 @@ export const useChatbot = () => {
           setIsLoading(false);
           return;
         }
+
         if (err.message.startsWith('FATAL:')) {
           lastError = err.message.replace('FATAL:', '');
           break;
         }
+
         if (err.message === 'RATE_LIMITED') continue;
+
         lastError = err.message;
         break;
       }
