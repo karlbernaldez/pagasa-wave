@@ -1,25 +1,25 @@
-import OpenAI from 'openai';
+import { pipeline } from '@xenova/transformers';
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let extractorPromise;
 
-const MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
+const getExtractor = async () => {
+  if (!extractorPromise) {
+    extractorPromise = pipeline('feature-extraction', 'Xenova/bge-small-en-v1.5');
+  }
+  return extractorPromise;
+};
 
 export const embedText = async (text) => {
   const input = String(text || '').trim();
   if (!input) return [];
 
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not configured');
-  }
-
-  const response = await client.embeddings.create({
-    model: MODEL,
-    input,
+  const extractor = await getExtractor();
+  const output = await extractor(input, {
+    pooling: 'mean',
+    normalize: true,
   });
 
-  return response.data?.[0]?.embedding || [];
+  return Array.from(output.data || []);
 };
 
 export const cosineSimilarity = (a = [], b = []) => {
@@ -33,7 +33,7 @@ export const cosineSimilarity = (a = [], b = []) => {
   for (let i = 0; i < len; i += 1) {
     dot += a[i] * b[i];
     magA += a[i] * a[i];
-    magB += b[i] * b[i];
+    magB += b[i] * b[i();
   }
 
   if (!magA || !magB) return 0;
