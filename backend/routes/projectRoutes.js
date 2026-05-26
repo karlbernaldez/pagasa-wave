@@ -1,5 +1,4 @@
 // backend/routes/projectRoutes.js
-
 import express from 'express';
 import {
   createProject,
@@ -25,12 +24,12 @@ import {
   listPublicPublishedForecasts,
 } from '../controllers/publishedForecastController.js';
 import Project from '../models/Project.js';
-
 import protect from '../middleware/authMiddleware.js';
 import isOwnerOrAdmin from '../middleware/projectMiddleware.js';
 import { isAdmin } from '../middleware/adminMiddleware.js';
 import { throwError } from '../utils/errorHelper.js';
 import { canEditProjectStatus, getProjectEditLockMessage } from '../utils/projectWorkflow.js';
+import { requireExpectedVersion } from '../middleware/optimisticConcurrency.js';
 
 const router = express.Router();
 
@@ -60,56 +59,25 @@ async function preventAdminSelfReview(req, _res, next) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Public published output routes
-// ─────────────────────────────────────────────
 router.get('/public/published', listPublicPublishedForecasts);
 router.get('/public/published/:id', getPublicPublishedForecastOutput);
-
 router.use(protect);
-
-// ─────────────────────────────────────────────
-// Admin routes - keep before dynamic /:id routes
-// ─────────────────────────────────────────────
 router.get('/admin/projects', isAdmin, getAdminProjects);
-
-router.patch('/:id/start-review', isAdmin, preventAdminSelfReview, startReviewProject);
-
-router.post('/:id/review-comment', isAdmin, preventAdminSelfReview, addReviewComment);
-
-router.patch('/:id/request-revision', isAdmin, preventAdminSelfReview, requestProjectRevision);
-
-router.patch('/:id/approve', isAdmin, preventAdminSelfReview, approveProject);
-
-router.patch('/:id/reject', isAdmin, preventAdminSelfReview, rejectProject);
-
-router.patch('/:id/publish', isAdmin, preventAdminSelfReview, publishProject);
-
-router.patch('/:id/archive', isAdmin, preventAdminSelfReview, archiveProject);
-
-// ─────────────────────────────────────────────
-// Published output routes - keep before dynamic /:id routes
-// ─────────────────────────────────────────────
+router.patch('/:id/start-review', requireExpectedVersion, isAdmin, preventAdminSelfReview, startReviewProject);
+router.post('/:id/review-comment', requireExpectedVersion, isAdmin, preventAdminSelfReview, addReviewComment);
+router.patch('/:id/request-revision', requireExpectedVersion, isAdmin, preventAdminSelfReview, requestProjectRevision);
+router.patch('/:id/approve', requireExpectedVersion, isAdmin, preventAdminSelfReview, approveProject);
+router.patch('/:id/reject', requireExpectedVersion, isAdmin, preventAdminSelfReview, rejectProject);
+router.patch('/:id/publish', requireExpectedVersion, isAdmin, preventAdminSelfReview, publishProject);
+router.patch('/:id/archive', requireExpectedVersion, isAdmin, preventAdminSelfReview, archiveProject);
 router.get('/:id/published-output', getPublishedForecastOutput);
-
-// ─────────────────────────────────────────────
-// Owner routes
-// ─────────────────────────────────────────────
 router.post('/', createProject);
-
 router.get('/', getUserProjects);
-
 router.get('/latest', getLatestUserProject);
-
 router.get('/:id', isOwnerOrAdmin, getProjectById);
-
-router.put('/:id', isOwnerOrAdmin, updateProject);
-
-router.patch('/:id/rename', isOwnerOrAdmin, requireEditableProject, renameProject); // IMPORTANT: updateProject must NOT allow status changes
-
-router.delete('/:id', isOwnerOrAdmin, requireEditableProject, deleteProject);
-
-// Workflow - owner action
-router.patch('/:id/submit', submitProject);
+router.put('/:id', requireExpectedVersion, isOwnerOrAdmin, updateProject);
+router.patch('/:id/rename', requireExpectedVersion, isOwnerOrAdmin, requireEditableProject, renameProject);
+router.delete('/:id', requireExpectedVersion, isOwnerOrAdmin, requireEditableProject, deleteProject);
+router.patch('/:id/submit', requireExpectedVersion, submitProject);
 
 export default router;
