@@ -23,6 +23,7 @@ import userRoutes         from './routes/userRoutes.js';
 import projectRoutes      from './routes/projectRoutes.js';
 import chartRoutes        from './routes/chartRoutes.js';
 import pdfRoutes          from './routes/pdfRoutes.js';
+import chatRoutes         from './routes/chatRoutes.js';
 
 import { fileURLToPath } from 'url';
 import 'module-alias/register';
@@ -150,6 +151,7 @@ app.use('/api/projects',       projectRoutes);
 app.use('/api/users',          userRoutes);
 app.use('/api/charts',         chartRoutes);
 app.use('/api/pdf',            pdfRoutes);
+app.use('/api/chat',           chatRoutes);
 
 /* ======================================================
    STATIC FILES
