@@ -7,12 +7,19 @@ const ACCESS = {
   admin: ['public', 'forecaster', 'admin'],
 };
 
+const SCORE_THRESHOLDS = {
+  public: 0.32,
+  forecaster: 0.24,
+  admin: 0.2,
+};
+
 const normalizeContent = (text = '') =>
   text.replace(/\s+/g, ' ').trim().toLowerCase();
 
 export const retrieveContext = async (query, policy) => {
   const corpora = policy?.corpora || ['public'];
   const allowed = [...new Set(corpora.flatMap((tier) => ACCESS[tier] || [tier]))];
+  const threshold = SCORE_THRESHOLDS[policy?.tier] ?? 0.28;
 
   const queryEmbedding = await embedText(query);
   const docs = await KnowledgeChunk.find({ tier: { $in: allowed } }).lean();
@@ -22,7 +29,7 @@ export const retrieveContext = async (query, policy) => {
       ...doc,
       score: cosineSimilarity(queryEmbedding, doc.embedding),
     }))
-    .filter((doc) => doc.score > 0)
+    .filter((doc) => doc.score >= threshold)
     .sort((a, b) => b.score - a.score);
 
   const seenContent = new Set();
@@ -40,11 +47,13 @@ export const retrieveContext = async (query, policy) => {
     if (sourceKey) seenSources.add(sourceKey);
     deduped.push(doc);
 
-    if (deduped.length >= 3) break;
+    if (deduped.length >= 4) break;
   }
 
   return {
     corpora,
+    threshold,
+    hasContext: deduped.length > 0,
     context: deduped.map((doc) => doc.content).join('\n\n'),
     sources: deduped.map((doc) => doc.source).filter(Boolean),
   };
