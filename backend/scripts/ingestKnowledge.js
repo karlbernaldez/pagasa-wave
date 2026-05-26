@@ -1,11 +1,13 @@
 import fs from 'fs';
 import path from 'path';
+import connectDB from '../config/db.js';
+import KnowledgeChunk from '../models/KnowledgeChunk.js';
 import { chunkText } from '../chat/services/chunkService.js';
 import { embedText } from '../chat/services/embeddingService.js';
-import { KNOWLEDGE_STORE } from '../chat/services/knowledgeStore.js';
 const tiers = ['public', 'forecaster', 'admin'];
 const baseDir = path.resolve('backend/knowledge');
 const ingest = async () => {
+  await connectDB();
   for (const tier of tiers) {
     const dir = path.join(baseDir, tier);
     if (!fs.existsSync(dir)) continue;
@@ -14,10 +16,16 @@ const ingest = async () => {
       const content = fs.readFileSync(path.join(dir, file), 'utf8');
       const chunks = chunkText(content);
       for (const chunk of chunks) {
-        KNOWLEDGE_STORE.push({ tier, source: file, content: chunk, embedding: await embedText(chunk) });
+        const embedding = await embedText(chunk);
+        await KnowledgeChunk.updateOne(
+          { tier, source: file, content: chunk },
+          { $set: { embedding, metadata: { sourceType: 'file' } } },
+          { upsert: true }
+        );
       }
     }
   }
-  console.log(`Ingested ${KNOWLEDGE_STORE.length} chunks`);
+  console.log('Knowledge ingestion complete');
+  process.exit(0);
 };
 ingest();
