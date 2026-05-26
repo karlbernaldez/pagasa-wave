@@ -1,59 +1,61 @@
 import { useState, useCallback, useRef } from 'react';
 import { retrieve } from './ragSearch';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
 const CHAT_COMPLETIONS_URL = `${import.meta.env.VITE_API_URL || ''}/api/chat/completions`;
 
 const MODELS = [
   'meta-llama/llama-4-scout-17b-16e-instruct',
   'groq/compound',
-  'llama-3.3-70b-versatile', // best quality — tried first
-  'llama-3.1-8b-instant',    // fastest — fallback #1
-  'mixtral-8x7b-32768',      // long context — fallback #2
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'mixtral-8x7b-32768',
 ];
 
 const modelCooldowns = {};
-
-const getAvailableModel = () => {
-  const now = Date.now();
-  return MODELS.find((m) => !modelCooldowns[m] || modelCooldowns[m] < now) ?? null;
-};
 
 const cooldownModel = (model, retryAfterSeconds = 60) => {
   modelCooldowns[model] = Date.now() + retryAfterSeconds * 1000;
   console.warn(`[Chatbot] "${model}" rate limited — cooling down for ${retryAfterSeconds}s`);
 };
 
-// ─── Dynamic system prompt (only relevant chunks) ─────────────────────────────
-
 const buildSystemPrompt = (query) => {
   const context = retrieve(query);
-  return `You are a friendly and approachable assistant for WaveLab. Your job is to help users understand how to use the platform in a simple, clear, and welcoming way.
 
-When answering:
-- Use plain, everyday language. Avoid jargon and technical terms unless necessary — and if you must use one, briefly explain what it means.
-- Be warm and conversational, like a helpful teammate — not a manual.
-- Keep answers short and easy to follow. Use bullet points or numbered steps when walking through how to do something.
-- If the user seems confused, reassure them and break things down further.
+  return `You are the WaveLab assistant.
 
-FORMATTING RULES — follow these strictly:
-- Never use markdown symbols like #, ##, ###, ####, ---, or **** in your response.
-- For bullet points, use a dash and space: "- item"
-- For numbered steps, use "1. step"
-- For bold/emphasis, just write the word normally — do not wrap in asterisks.
-- Do not add section headers or dividers.
+Your purpose is to help users understand WaveLab features, workflows, terminology, and documented marine forecasting concepts.
 
-If the answer is not in the documentation, say: "Hmm, I'm not sure about that one! It might be best to reach out to the support team for help."
+Behavior rules:
+- Answer only using the provided documentation context.
+- Never invent features, workflows, permissions, scientific thresholds, or operational behavior.
+- If documentation is incomplete, clearly say the documentation does not provide enough information.
+- Prefer WaveLab-specific definitions over generic explanations.
+- Prefer glossary definitions when explaining terminology.
+- Prefer FAQ and troubleshooting guidance when users describe problems.
+- Prefer operational workflow explanations over general assumptions.
+- If a user asks about marine forecasting terminology, explain using documented WaveLab-compatible definitions.
+- If a question involves live forecast values or external operational systems not documented here, say that information is unavailable.
 
-Only answer based on the documentation below. Do not make anything up.
+Response style:
+- Use plain, clear language.
+- Keep answers concise but useful.
+- Use numbered steps for instructions.
+- Use bullet points for explanations.
+- Briefly explain technical terms.
+- Be helpful and professional.
 
----
-${context}
----`;
+Formatting rules:
+- Do not use markdown headings.
+- Do not use markdown separators.
+- Do not use bold markdown syntax.
+
+Fallback response:
+If the answer is not supported by documentation, say:
+"I couldn't find enough information in the WaveLab documentation to answer that accurately."
+
+Documentation context:
+${context}`;
 };
-
-
-// ─── Core fetch (single model attempt) ───────────────────────────────────────
 
 const fetchGroq = async (model, systemPrompt, messages, signal) => {
   const response = await fetch(CHAT_COMPLETIONS_URL, {
@@ -85,8 +87,6 @@ const fetchGroq = async (model, systemPrompt, messages, signal) => {
   return response;
 };
 
-// ─── SSE stream reader ────────────────────────────────────────────────────────
-
 const readStream = async (response, onToken) => {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -113,16 +113,12 @@ const readStream = async (response, onToken) => {
           accumulated += token;
           onToken(accumulated);
         }
-      } catch {
-        // skip malformed chunks
-      }
+      } catch {}
     }
   }
 
   return accumulated;
 };
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export const useChatbot = () => {
   const [messages, setMessages] = useState([]);
@@ -142,23 +138,18 @@ export const useChatbot = () => {
     setInput('');
     setIsLoading(true);
     setError(null);
-
     setMessages((prev) => [...prev, { role: 'assistant', content: '', isStreaming: true }]);
 
     abortRef.current = new AbortController();
-
-    // Build a focused system prompt using only relevant doc chunks for this query
     const systemPrompt = buildSystemPrompt(text.trim());
 
     let lastError = null;
 
     for (const model of MODELS) {
-      const now = Date.now();
-      if (modelCooldowns[model] && modelCooldowns[model] >= now) continue;
+      if (modelCooldowns[model] && modelCooldowns[model] >= Date.now()) continue;
 
       try {
         setActiveModel(model);
-
         const response = await fetchGroq(model, systemPrompt, updatedMessages, abortRef.current.signal);
 
         const accumulated = await readStream(response, (partial) => {
@@ -178,21 +169,31 @@ export const useChatbot = () => {
         setIsLoading(false);
         return;
       } catch (err) {
-        if (err.name === 'AbortError') { setIsLoading(false); return; }
-        if (err.message.startsWith('FATAL:')) { lastError = err.message.replace('FATAL:', ''); break; }
-        if (err.message === 'RATE_LIMITED') { lastError = null; continue; }
+        if (err.name === 'AbortError') {
+          setIsLoading(false);
+          return;
+        }
+        if (err.message.startsWith('FATAL:')) {
+          lastError = err.message.replace('FATAL:', '');
+          break;
+        }
+        if (err.message === 'RATE_LIMITED') {
+          continue;
+        }
         lastError = err.message;
         break;
       }
     }
 
     const allCooled = MODELS.every((m) => modelCooldowns[m] && modelCooldowns[m] >= Date.now());
+
     setError(
       lastError ||
       (allCooled
-        ? 'All models are rate-limited. Please wait a minute and try again.'
+        ? 'All chat models are temporarily rate-limited. Please try again shortly.'
         : 'Something went wrong. Please try again.')
     );
+
     setMessages((prev) => prev.slice(0, -1));
     setIsLoading(false);
   }, [messages, isLoading]);
