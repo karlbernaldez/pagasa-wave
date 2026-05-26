@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { retrieve } from './ragSearch';
 
 const API_BASE = `${import.meta.env.VITE_API_URL || ''}`;
@@ -70,6 +70,30 @@ export const useChatbot = () => {
   const [activeModel, setActiveModel] = useState(PUBLIC_MODELS[0]);
   const [assistantLabel, setAssistantLabel] = useState('WaveLab Public Assistant');
   const abortRef = useRef(null);
+
+  useEffect(() => {
+    const initAssistant = async () => {
+      const user = await getAuthProfile();
+      const role = user?.role || null;
+
+      if (role === 'admin') {
+        setAssistantLabel('WaveLab Admin Assistant');
+        setActiveModel(ADMIN_MODELS[0]);
+        return;
+      }
+
+      if (role === 'forecaster') {
+        setAssistantLabel('WaveLab Forecaster Assistant');
+        setActiveModel(FORECASTER_MODELS[0]);
+        return;
+      }
+
+      setAssistantLabel('WaveLab Public Assistant');
+      setActiveModel(PUBLIC_MODELS[0]);
+    };
+
+    initAssistant();
+  }, []);
 
   const sendMessage = useCallback(async (text) => {
     if (!text.trim() || isLoading) return;
