@@ -4,14 +4,15 @@ import { retrieve } from './ragSearch';
 const API_BASE = `${import.meta.env.VITE_API_URL || ''}`;
 const PUBLIC_URL = `${API_BASE}/api/chat/public`;
 const INTERNAL_URL = `${API_BASE}/api/chat/internal`;
+const AUTH_CHECK_URL = `${API_BASE}/api/auth/check`;
 
 const PUBLIC_MODELS = ['llama-3.1-8b-instant'];
-const INTERNAL_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'];
+const FORECASTER_MODELS = ['llama-3.1-8b-instant', 'mixtral-8x7b-32768'];
+const ADMIN_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'];
 
 const normalizeResponse = (text) => {
   if (!text) return text;
-  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
-  return [...new Set(lines)].join('\n');
+  return [...new Set(text.split('\n').map((line) => line.trim()).filter(Boolean))].join('\n');
 };
 
 const mergeStreamingText = (existing, incoming) => {
@@ -20,13 +21,6 @@ const mergeStreamingText = (existing, incoming) => {
   if (incoming.startsWith(existing)) return incoming;
   if (existing.startsWith(incoming)) return existing;
   return existing + incoming;
-};
-
-const buildSystemPrompt = (query, isInternal) => {
-  const context = retrieve(query);
-  return isInternal
-    ? `Internal operational assistant context:\n${context}`
-    : `Public marine assistant context:\n${context}`;
 };
 
 const readStream = async (response, onToken) => {
@@ -57,6 +51,17 @@ const readStream = async (response, onToken) => {
   return accumulated;
 };
 
+const getAuthProfile = async () => {
+  try {
+    const response = await fetch(AUTH_CHECK_URL, { credentials: 'include' });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.user || null;
+  } catch {
+    return null;
+  }
+};
+
 export const useChatbot = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -68,12 +73,29 @@ export const useChatbot = () => {
 
   const sendMessage = useCallback(async (text) => {
     if (!text.trim() || isLoading) return;
-    const isAuthenticated = document.cookie.includes('token=');
-    const isInternal = isAuthenticated;
+
+    const user = await getAuthProfile();
+    const role = user?.role || null;
+    const isInternal = !!role;
+
+    let models = PUBLIC_MODELS;
+    let label = 'WaveLab Public Assistant';
+
+    if (role === 'forecaster') {
+      models = FORECASTER_MODELS;
+      label = 'WaveLab Forecaster Assistant';
+    }
+
+    if (role === 'admin') {
+      models = ADMIN_MODELS;
+      label = 'WaveLab Admin Assistant';
+    }
+
     const endpoint = isInternal ? INTERNAL_URL : PUBLIC_URL;
-    const model = isInternal ? INTERNAL_MODELS[0] : PUBLIC_MODELS[0];
+    const model = models[0];
+
     setActiveModel(model);
-    setAssistantLabel(isInternal ? 'WaveLab Internal Assistant' : 'WaveLab Public Assistant');
+    setAssistantLabel(label);
 
     const userMessage = { role: 'user', content: text.trim() };
     setMessages((prev) => [...prev, userMessage, { role: 'assistant', content: '', isStreaming: true }]);
@@ -90,7 +112,7 @@ export const useChatbot = () => {
         signal: abortRef.current.signal,
         body: JSON.stringify({
           model,
-          systemPrompt: buildSystemPrompt(text.trim(), isInternal),
+          systemPrompt: `${label} context:\n${retrieve(text.trim())}`,
           messages: [userMessage],
         }),
       });
@@ -130,5 +152,5 @@ export const useChatbot = () => {
     setInput('');
   }, []);
 
-  return { messages, input, setInput, isLoading, error, activeModel, assistantLabel, sendMessage, clearChat, setActiveModel, availableModels: INTERNAL_MODELS };
+  return { messages, input, setInput, isLoading, error, activeModel, assistantLabel, sendMessage, clearChat, setActiveModel };
 };
