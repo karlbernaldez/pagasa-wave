@@ -22,6 +22,7 @@ const SYNONYMS = {
   publish: ['published', 'finalized'],
   locked: ['read only', 'readonly', 'restricted'],
   chatbot: ['assistant', 'help bot'],
+  wavelab: ['marine forecast platform', 'forecast workflow', 'forecast operations'],
 };
 
 let _chunks = null;
@@ -65,9 +66,7 @@ const buildChunks = () => {
   };
 
   for (const line of lines) {
-    if (line.startsWith('# Source:')) {
-      source = line.toLowerCase();
-    }
+    if (line.startsWith('# Source:')) source = line.toLowerCase();
 
     if (/^#{1,4}\s+.+$/.test(line)) {
       flush();
@@ -106,25 +105,26 @@ const fuzzyMatch = (term, candidate) => {
   return false;
 };
 
-const scoreChunk = (chunk, queryTerms, idf) => {
+const scoreChunk = (chunk, queryTerms, idf, rawQuery) => {
   const chunkTerms = tokenize(chunk.text + ' ' + chunk.title);
   let score = 0;
 
   for (const qt of queryTerms) {
     for (const ct of chunkTerms) {
-      if (fuzzyMatch(qt, ct)) {
-        score += idf[qt] || 1;
-      }
+      if (fuzzyMatch(qt, ct)) score += idf[qt] || 1;
     }
 
-    if (chunk.title.toLowerCase().includes(qt)) {
-      score += 3;
-    }
+    if (chunk.title.toLowerCase().includes(qt)) score += 3;
   }
 
   if (chunk.source.includes('faq')) score += 2;
   if (chunk.source.includes('glossary')) score += 2;
   if (chunk.source.includes('troubleshooting')) score += 2;
+
+  if (rawQuery.includes('wavelab')) {
+    if (chunk.source.includes('identity')) score += 50;
+    if (chunk.source.includes('overview')) score += 25;
+  }
 
   return score;
 };
@@ -133,10 +133,11 @@ export const retrieve = (query, k = TOP_K) => {
   const chunks = buildChunks();
   if (!_idf) _idf = buildIDF(chunks);
 
+  const rawQuery = query.toLowerCase();
   const queryTerms = expandQueryTerms(tokenize(query));
 
   const scored = chunks
-    .map((chunk) => ({ chunk, score: scoreChunk(chunk, queryTerms, _idf) }))
+    .map((chunk) => ({ chunk, score: scoreChunk(chunk, queryTerms, _idf, rawQuery) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, k);
 
