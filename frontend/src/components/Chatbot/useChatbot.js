@@ -12,15 +12,7 @@ const ADMIN_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtra
 
 const normalizeResponse = (text) => {
   if (!text) return text;
-  return [...new Set(text.split('\n').map((line) => line.trim()).filter(Boolean))].join('\n');
-};
-
-const mergeStreamingText = (existing, incoming) => {
-  if (!existing) return incoming;
-  if (!incoming) return existing;
-  if (incoming.startsWith(existing)) return incoming;
-  if (existing.startsWith(incoming)) return existing;
-  return existing + incoming;
+  return text.trim();
 };
 
 const readStream = async (response, onToken) => {
@@ -28,26 +20,33 @@ const readStream = async (response, onToken) => {
   const decoder = new TextDecoder();
   let accumulated = '';
   let buffer = '';
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
+
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed.startsWith('data: ')) continue;
+
       const data = trimmed.slice(6);
       if (data === '[DONE]') return accumulated;
+
       try {
         const parsed = JSON.parse(data);
         const token = parsed?.choices?.[0]?.delta?.content ?? '';
         if (!token) continue;
-        accumulated = mergeStreamingText(accumulated, token);
+
+        accumulated += token;
         onToken(accumulated);
       } catch {}
     }
   }
+
   return accumulated;
 };
 
@@ -149,14 +148,21 @@ export const useChatbot = () => {
       const accumulated = await readStream(response, (partial) => {
         setMessages((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', content: normalizeResponse(partial), isStreaming: true };
+          updated[updated.length - 1] = {
+            role: 'assistant',
+            content: normalizeResponse(partial),
+            isStreaming: true,
+          };
           return updated;
         });
       });
 
       setMessages((prev) => {
         const updated = [...prev];
-        updated[updated.length - 1] = { role: 'assistant', content: normalizeResponse(accumulated) };
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          content: normalizeResponse(accumulated),
+        };
         return updated;
       });
     } catch (err) {
@@ -176,5 +182,16 @@ export const useChatbot = () => {
     setInput('');
   }, []);
 
-  return { messages, input, setInput, isLoading, error, activeModel, assistantLabel, sendMessage, clearChat, setActiveModel };
+  return {
+    messages,
+    input,
+    setInput,
+    isLoading,
+    error,
+    activeModel,
+    assistantLabel,
+    sendMessage,
+    clearChat,
+    setActiveModel,
+  };
 };
