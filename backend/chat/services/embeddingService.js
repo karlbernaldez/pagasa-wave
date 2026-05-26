@@ -33,7 +33,7 @@ export const cosineSimilarity = (a = [], b = []) => {
   for (let i = 0; i < len; i += 1) {
     dot += a[i] * b[i];
     magA += a[i] * a[i];
-    magB += b[i] * b[i();
+    magB += b[i] * b[i];
   }
 
   if (!magA || !magB) return 0;
