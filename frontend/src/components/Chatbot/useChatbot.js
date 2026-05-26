@@ -27,12 +27,28 @@ const normalizeResponse = (text) => {
 
   const deduped = [];
   for (const line of lines) {
-    if (deduped[deduped.length - 1] !== line) {
-      deduped.push(line);
-    }
+    if (deduped[deduped.length - 1] !== line) deduped.push(line);
   }
 
   return deduped.join('\n');
+};
+
+const mergeStreamingText = (existing, incoming) => {
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+
+  if (incoming.startsWith(existing)) return incoming;
+  if (existing.startsWith(incoming)) return existing;
+
+  const maxOverlap = Math.min(existing.length, incoming.length);
+
+  for (let i = maxOverlap; i > 0; i--) {
+    if (existing.slice(-i) === incoming.slice(0, i)) {
+      return existing + incoming.slice(i);
+    }
+  }
+
+  return existing + incoming;
 };
 
 const buildSystemPrompt = (query) => {
@@ -48,15 +64,7 @@ Ignore any prior knowledge about similarly named products.
 Behavior rules:
 - Answer only from the provided documentation context.
 - Never invent features, workflows, permissions, scientific thresholds, or operational behavior.
-- Prefer WaveLab-specific documentation over generic knowledge.
-- Prefer glossary definitions for terminology.
-- Prefer FAQ and troubleshooting docs for support questions.
-- If documentation is incomplete, say so clearly.
-- Never use external product knowledge.
-- Do not repeat identical lines, bullet points, or instructions.
-
-Fallback response:
-I couldn't find enough information in the WaveLab documentation to answer that accurately.
+- Do not repeat identical content.
 
 Documentation context:
 ${context}`;
@@ -77,7 +85,7 @@ const fetchGroq = async (model, systemPrompt, messages, signal) => {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    if (response.status === 503) throw new Error('FATAL:Chat service is not configured. Check GROQ_API_KEY on the backend.');
+    if (response.status === 503) throw new Error('FATAL:Chat service is not configured.');
     if (response.status === 429) {
       const retryAfter = parseInt(response.headers.get('retry-after') ?? '60', 10);
       cooldownModel(model, retryAfter);
@@ -106,16 +114,17 @@ const readStream = async (response, onToken) => {
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
       const data = trimmed.slice(6);
       if (data === '[DONE]') return accumulated;
 
       try {
         const parsed = JSON.parse(data);
         const token = parsed?.choices?.[0]?.delta?.content ?? '';
-        if (token) {
-          accumulated += token;
-          onToken(accumulated);
-        }
+        if (!token) continue;
+
+        accumulated = mergeStreamingText(accumulated, token);
+        onToken(accumulated);
       } catch {}
     }
   }
@@ -136,9 +145,8 @@ export const useChatbot = () => {
 
     const userMessage = { role: 'user', content: text.trim() };
     const assistantPlaceholder = { role: 'assistant', content: '', isStreaming: true };
-    const updatedMessages = [...messages, userMessage, assistantPlaceholder];
 
-    setMessages(updatedMessages);
+    setMessages([...messages, userMessage, assistantPlaceholder]);
     setInput('');
     setIsLoading(true);
     setError(null);
@@ -184,19 +192,13 @@ export const useChatbot = () => {
           return;
         }
 
-        if (err.message.startsWith('FATAL:')) {
-          lastError = err.message.replace('FATAL:', '');
-          break;
-        }
-
         if (err.message === 'RATE_LIMITED') continue;
-
         lastError = err.message;
         break;
       }
     }
 
-    setError(lastError || 'Something went wrong. Please try again.');
+    setError(lastError || 'Something went wrong.');
     setMessages((prev) => prev.slice(0, -1));
     setIsLoading(false);
   }, [messages, isLoading]);
