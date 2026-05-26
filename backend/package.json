@@ -19,6 +19,7 @@
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^8.0.1",
+    "openai": "^4.104.0",
     "puppeteer": "^24.37.2",
     "redis": "^5.11.0",
     "sharp": "^0.34.5",
