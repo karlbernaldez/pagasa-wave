@@ -15,6 +15,29 @@ const normalizeResponse = (text) => {
   return text.trim();
 };
 
+const buildSystemPrompt = (label, role, query) => {
+  const context = retrieve(query);
+
+  const roleInstruction = role === 'admin'
+    ? 'You are a WaveLab administrative assistant. Provide operationally useful, concise, structured answers for administrators.'
+    : role === 'forecaster'
+      ? 'You are a WaveLab forecaster assistant. Provide forecasting guidance, interpretation help, and concise operational responses.'
+      : 'You are a WaveLab public assistant. Provide clear, beginner-friendly public information.';
+
+  return `${roleInstruction}
+
+Rules:
+- Do not repeat points.
+- Avoid duplicate sections.
+- Be concise and structured.
+- Prefer bullet points over long repetition.
+- If context is insufficient, say so.
+- Ground answers in provided context when relevant.
+
+Retrieved context:
+${context}`;
+};
+
 const readStream = async (response, onToken) => {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -135,7 +158,7 @@ export const useChatbot = () => {
         signal: abortRef.current.signal,
         body: JSON.stringify({
           model,
-          systemPrompt: `${label} context:\n${retrieve(text.trim())}`,
+          systemPrompt: buildSystemPrompt(label, role, text.trim()),
           messages: [userMessage],
         }),
       });
