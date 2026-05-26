@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { retrieve } from './ragSearch';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const CHAT_COMPLETIONS_URL = `${import.meta.env.VITE_API_URL || ''}/api/chat/completions`;
 
 const MODELS = [
   'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -56,28 +56,24 @@ ${context}
 // ─── Core fetch (single model attempt) ───────────────────────────────────────
 
 const fetchGroq = async (model, systemPrompt, messages, signal) => {
-  const response = await fetch(GROQ_URL, {
+  const response = await fetch(CHAT_COMPLETIONS_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
     },
+    credentials: 'include',
     signal,
     body: JSON.stringify({
       model,
-      stream: true,
-      max_tokens: 1024,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages.map(({ role, content }) => ({ role, content })),
-      ],
+      systemPrompt,
+      messages: messages.map(({ role, content }) => ({ role, content })),
     }),
   });
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    if (response.status === 401)
-      throw new Error('FATAL:Invalid Groq API key. Check VITE_GROQ_API_KEY in your .env');
+    if (response.status === 503)
+      throw new Error('FATAL:Chat service is not configured. Check GROQ_API_KEY on the backend.');
     if (response.status === 429) {
       const retryAfter = parseInt(response.headers.get('retry-after') ?? '60', 10);
       cooldownModel(model, retryAfter);

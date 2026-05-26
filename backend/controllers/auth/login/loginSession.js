@@ -59,7 +59,11 @@ export const handleOtpChallenge = async (user, emailNorm, req, res, geoMeta) => 
   const otp = await generateAndStoreOtp(emailNorm);
   await sendOtpEmail(emailNorm, otp, user.firstName ?? user.username);
 
-  logger.info('OTP sent after credential verification', { userId: user._id, ip, otp });
+  if (process.env.NODE_ENV !== 'production' && process.env.LOG_OTP === 'true') {
+    logger.info('[DEV ONLY] OTP sent after credential verification', { userId: user._id, ip, otp });
+  } else {
+    logger.info('OTP sent after credential verification', { userId: user._id, ip });
+  }
 
   await createAuditLog({
     user: user._id, action: 'login_otp_sent', resourceType: 'User', resourceId: user._id,
