@@ -1,10 +1,10 @@
-const markdownModules = import.meta.glob('../../../docs/**/*.md', {
+const markdownModules = import.meta.glob('../../../../docs/**/*.md', {
   query: '?raw',
   import: 'default',
   eager: true,
 });
 
-const staticFallback = `# WaveLab\nWaveLab is a marine forecast operations platform.`;
+const staticFallback = `# WaveLab\nWaveLab is a web-based marine forecast operations platform.`;
 
 const docsCorpus = Object.entries(markdownModules)
   .sort(([a], [b]) => a.localeCompare(b))
