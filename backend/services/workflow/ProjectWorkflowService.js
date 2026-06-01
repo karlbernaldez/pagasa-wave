@@ -10,38 +10,75 @@ export default class ProjectWorkflowService {
     }
   }
 
-  static submit(project) {
-    this.assertTransition(project.status, PROJECT_STATUS.SUBMITTED);
-    return PROJECT_STATUS.SUBMITTED;
+  static transition(project, nextStatus, { action, actorId, comment = '' } = {}) {
+    const previousStatus = project.status;
+
+    this.assertTransition(previousStatus, nextStatus);
+
+    project.status = nextStatus;
+
+    if (Array.isArray(project.auditLogs)) {
+      project.auditLogs.push({
+        action,
+        performedBy: actorId,
+        previousStatus,
+        newStatus: nextStatus,
+        comment,
+        timestamp: new Date(),
+      });
+    }
+
+    return project;
   }
 
-  static startReview(project) {
-    this.assertTransition(project.status, PROJECT_STATUS.UNDER_REVIEW);
-    return PROJECT_STATUS.UNDER_REVIEW;
+  static submit(project, actorId) {
+    return this.transition(project, PROJECT_STATUS.SUBMITTED, {
+      action: 'submitted',
+      actorId,
+    });
   }
 
-  static requestRevision(project) {
-    this.assertTransition(project.status, PROJECT_STATUS.REVISION_REQUESTED);
-    return PROJECT_STATUS.REVISION_REQUESTED;
+  static startReview(project, actorId) {
+    return this.transition(project, PROJECT_STATUS.UNDER_REVIEW, {
+      action: 'review_started',
+      actorId,
+    });
   }
 
-  static approve(project) {
-    this.assertTransition(project.status, PROJECT_STATUS.APPROVED);
-    return PROJECT_STATUS.APPROVED;
+  static requestRevision(project, actorId, comment = '') {
+    return this.transition(project, PROJECT_STATUS.REVISION_REQUESTED, {
+      action: 'revision_requested',
+      actorId,
+      comment,
+    });
   }
 
-  static reject(project) {
-    this.assertTransition(project.status, PROJECT_STATUS.REJECTED);
-    return PROJECT_STATUS.REJECTED;
+  static approve(project, actorId) {
+    return this.transition(project, PROJECT_STATUS.APPROVED, {
+      action: 'approved',
+      actorId,
+    });
   }
 
-  static publish(project) {
-    this.assertTransition(project.status, PROJECT_STATUS.PUBLISHED);
-    return PROJECT_STATUS.PUBLISHED;
+  static reject(project, actorId, comment = '') {
+    return this.transition(project, PROJECT_STATUS.REJECTED, {
+      action: 'rejected',
+      actorId,
+      comment,
+    });
   }
 
-  static archive(project) {
-    this.assertTransition(project.status, PROJECT_STATUS.ARCHIVED);
-    return PROJECT_STATUS.ARCHIVED;
+  static publish(project, actorId) {
+    return this.transition(project, PROJECT_STATUS.PUBLISHED, {
+      action: 'published',
+      actorId,
+    });
+  }
+
+  static archive(project, actorId) {
+    return this.transition(project, PROJECT_STATUS.ARCHIVED, {
+      action: 'archived',
+      actorId,
+    });
   }
 }
