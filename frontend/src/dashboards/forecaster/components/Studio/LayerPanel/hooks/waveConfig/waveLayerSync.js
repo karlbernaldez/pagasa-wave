@@ -46,6 +46,7 @@ const upsertRasterLayer = (map, { model, theme, opacity, showRaster, themeChange
   const sourceId = `${WAVE_RASTER_SOURCE_PREFIX}${model}`;
   const layerId  = `${WAVE_RASTER_LAYER_PREFIX}${model}`;
   const tileUrl  = buildWaveTileUrl({ model, theme, date: WAVE_RASTER_DATE });
+  console.log(tileUrl)
   let srcExists  = Boolean(map.getSource(sourceId));
 
   if (srcExists && themeChanged) {

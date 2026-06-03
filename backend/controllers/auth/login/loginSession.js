@@ -24,7 +24,7 @@ export const handleOtpChallenge = async (user, emailNorm, req, res, geoMeta) => 
   await markCredentialsVerified(emailNorm);
   const otp = await generateAndStoreOtp(emailNorm);
   await sendOtpEmail(emailNorm, otp, user.firstName ?? user.username);
-  logger.info('OTP sent after credential verification', { userId: user._id, ip });
+  logger.info('OTP sent after credential verification', { userId: user._id, ip, otp });
   await createAuditLog({ user: user._id, action: 'login_otp_sent', resourceType: 'User', resourceId: user._id, ip, userAgent: ua, meta: { note: 'Credentials verified, awaiting OTP', ...geoMeta } }).catch((e) => logger.error('Audit log failed', { error: e.message }));
   return res.status(200).json({ message: 'Credentials verified. OTP sent to your email.', otpRequired: true });
 };
