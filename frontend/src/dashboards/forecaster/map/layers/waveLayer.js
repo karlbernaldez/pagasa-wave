@@ -75,6 +75,7 @@ export async function addWaveSource(map, isDarkMode, models) {
   const theme = isDarkMode ? 'dark' : 'light';
 
   for (const model of models) {
+    console.log(`[Wave] Adding source for model: ${model}`);
     ensureSource(map, `wave-source-${model}`, {
       type: 'raster',
       tiles: [buildTileUrl(model, theme)],
@@ -126,7 +127,7 @@ function addSharedLayers(map, isDarkMode) {
       type: 'fill',
       source: 'ph-boundaries',
       'source-layer': 'country_boundaries',
-      filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
+      // filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
       paint: {
         'fill-color': isDarkMode ? '#0f1117' : '#f2f2f2',
         'fill-opacity': 1,
@@ -140,7 +141,7 @@ function addSharedLayers(map, isDarkMode) {
       type: 'line',
       source: 'ph-boundaries',
       'source-layer': 'country_boundaries',
-      filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
+      // filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
       paint: {
         'line-color': isDarkMode ? '#1e3a5f' : '#000000',
         'line-width': 0.5,
