@@ -14,6 +14,8 @@ const TILE_URL_BUILDERS = {
     `${WAVE_BUCKET_BASE}/MRI3/${theme}/${date}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`,
   WW3: ({ theme }) =>
     `${WAVE_BUCKET_BASE}/WW3/${theme}/2026011200/{z}/{x}/{y}.png`,
+  BMKG: () =>
+    "https://peta-maritim.bmkg.go.id/api21/tile_req/w3g_hires/dir/0/202606020000/202606030300/{z}/{x}/{y}.png",
 };
 
 export const buildWaveTileUrl = ({ model, theme, date }) => {

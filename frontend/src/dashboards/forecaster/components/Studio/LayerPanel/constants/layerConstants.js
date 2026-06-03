@@ -24,6 +24,8 @@ export const WAVE_MODELS = [
   { id: 'WW3', label: 'WW3' },
   { id: 'ECWAM', label: 'ECWAM' },
   { id: 'MRI3', label: 'MRI3' },
+  { id: 'BMKG', label: 'BMKG' },
+
 ];
 
 // ── Element options ───────────────────────────────────────────────────────────
