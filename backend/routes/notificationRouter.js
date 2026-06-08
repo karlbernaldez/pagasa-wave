@@ -5,7 +5,7 @@ import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-} from '#controllers/notification/notification';
+} from '#controllers/notifications/notification';
 
 const router = Router();
 

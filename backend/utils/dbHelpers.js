@@ -1,13 +1,9 @@
 import Project from '../models/Project.js';
+import Chart from '../models/Chart.js';
 import Feature from '../models/Feature.js';
+
 import { throwError } from './errorHelper.js';
 
-/**
- * Ensure project exists, optionally validate owner
- * @param {string} projectId - Project ID
- * @param {string} [owner] - Optional owner ID
- * @returns {Promise<Project>}
- */
 export const ensureProjectExists = async (projectId, owner = null) => {
   const project = await Project.findById(projectId);
   if (!project) throwError('Project not found.', 404);
@@ -19,17 +15,11 @@ export const ensureProjectExists = async (projectId, owner = null) => {
   return project;
 };
 
-/**
- * Ensure feature exists, optionally validate owner and project
- * @param {string} sourceId - Feature source ID
- * @param {string} [owner] - Optional owner ID
- * @param {string} [projectId] - Optional project ID
- * @returns {Promise<Feature>}
- */
 export const ensureFeatureExists = async (sourceId, owner = null, projectId = null) => {
   const query = { sourceId };
-  if (owner) query['properties.owner'] = owner;
-  if (projectId) query['properties.project'] = projectId;
+
+  if (owner) query.owner = owner;
+  if (projectId) query.project = projectId;
 
   const feature = await Feature.findOne(query);
   if (!feature) throwError('Feature not found.', 404);
@@ -37,10 +27,6 @@ export const ensureFeatureExists = async (sourceId, owner = null, projectId = nu
   return feature;
 };
 
-/**
- * Validate geometry object
- * @param {Object} geometry
- */
 export const validateGeometry = (geometry) => {
   if (!geometry || typeof geometry !== 'object') {
     throwError('Geometry must be an object.', 400);
@@ -113,36 +99,33 @@ export const validateGeometry = (geometry) => {
 };
 
 function getStableFeatureId(feature) {
-  return feature?.properties?.stableId || feature?.properties?.annotationId || feature?.properties?.sourceId || feature?.sourceId;
+  return (
+    feature?.stableId ||
+    feature?.annotationId ||
+    feature?.sourceId
+  );
 }
 
 function buildRenamedFeatureProperties(feature, newName) {
   const stableId = getStableFeatureId(feature);
 
   return {
-    name: newName,
-    'properties.labelValue': newName,
-    'properties.title': newName,
-    'properties.name': newName,
-    'properties.stableId': stableId,
-    'properties.annotationId': stableId,
+    annotationId: stableId,
+    stableId,
+    'properties.label': newName,
   };
 }
 
-/**
- * Build new SourceId and update data for feature renaming.
- * Keep all user-visible label fields in sync so Studio, Project Library previews,
- * review modals, and reload hydration all display the same renamed annotation.
- * Preserve stable annotation identity separately from sourceId so review diffs can
- * classify renames and geometry edits as changed instead of removed + added.
- *
- * @param {Feature} feature - Existing feature
- * @param {string} newName - New feature name
- * @returns {[string, Object]} - New sourceId and update object
- */
 export const buildNewSourceIdAndUpdateData = (feature, newName) => {
-  const type = feature.properties.type || feature.properties.markerType || feature.properties.symbolType;
-  const isMarker = ['low_pressure', 'high_pressure', 'typhoon', 'less_1'].includes(type);
+  const type =
+    feature.properties?.featureType;
+  const isMarker = [
+    'high_pressure',
+    'low_pressure',
+    'typhoon',
+    'wave_height',
+    'front',
+  ].includes(type);
   const newSourceId = isMarker ? `${type}_${newName}` : newName;
 
   return [
@@ -154,12 +137,6 @@ export const buildNewSourceIdAndUpdateData = (feature, newName) => {
   ];
 };
 
-/**
- * Ensure project name is unique for a user (optionally exclude a project ID)
- * @param {string} name
- * @param {string} owner
- * @param {string} [excludeId]
- */
 export const ensureUniqueProjectName = async (name, owner, excludeId = null) => {
   const existing = await Project.findOne({ name, owner });
   if (existing && existing._id.toString() !== excludeId) {
@@ -168,24 +145,52 @@ export const ensureUniqueProjectName = async (name, owner, excludeId = null) => 
   return existing;
 };
 
-/**
- * Delete a project and all related features
- * @param {string} projectId
- * @param {string} owner
- * @returns {Promise<number>} - Number of deleted features
- */
-export const deleteProjectAndFeatures = async (projectId, owner) => {
-  // Delete related features
-  const deleteResult = await Feature.deleteMany({
-    'properties.project': projectId,
-    'properties.owner': owner,
-  });
-
-  // Delete the project
+export const deleteProjectHierarchy = async (
+  projectId,
+  owner
+) => {
   const project = await Project.findById(projectId);
-  if (!project) throwError('Project not found.', 404);
-  if (project.owner.toString() !== owner.toString()) throwError('Unauthorized: cannot delete this project.', 403);
+
+  if (!project) {
+    throwError('Project not found.', 404);
+  }
+
+  if (
+    project.owner.toString() !== owner.toString()
+  ) {
+    throwError(
+      'Unauthorized: cannot delete this project.',
+      403
+    );
+  }
+
+  const charts = await Chart.find(
+    { project: projectId },
+    { _id: 1 }
+  ).lean();
+
+  const chartIds = charts.map(
+    chart => chart._id
+  );
+
+  const featureResult =
+    await Feature.deleteMany({
+      chart: {
+        $in: chartIds,
+      },
+    });
+
+  const chartResult =
+    await Chart.deleteMany({
+      project: projectId,
+    });
 
   await project.deleteOne();
-  return deleteResult.deletedCount;
+
+  return {
+    deletedFeatures:
+      featureResult.deletedCount,
+    deletedCharts:
+      chartResult.deletedCount,
+  };
 };

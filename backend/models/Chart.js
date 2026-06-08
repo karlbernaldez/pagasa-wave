@@ -1,42 +1,64 @@
-// models/Chart.js
 import mongoose from 'mongoose';
 
-const ChartSchema = new mongoose.Schema({
-    title: {
-        type: String,
-        required: true,
-        unique: true,
-    },
-    description: {
-        type: String,
-        default: '',
+const { Schema } = mongoose;
+
+const CHART_TYPES = [
+  'analysis',
+  'forecast_24h',
+  'forecast_36h',
+  'forecast_48h',
+];
+
+const ChartSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
     },
     chartType: {
-        type: String,
-        enum: ['Wave Analysis', '24', '36', '48'],
-        required: true,
+      type: String,
+      required: true,
+      enum: CHART_TYPES,
     },
-    forecastDate: {
-        type: Date,
-        required: true,
-        default: Date.now,
+    project: {
+      type: Schema.Types.ObjectId,
+      ref: 'Project',
+      required: true,
     },
     owner: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-    },
-    approver: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-    },
-    dateApproved: {
-        type: Date,
-    },
-    image: {
-        type: String,
-        required: true,
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
     }
+  },
+  {
+    timestamps: true,
+  }
+);
+
+ChartSchema.index({
+  owner: 1
 });
 
-export default mongoose.models.Chart || mongoose.model('Chart', ChartSchema);
+ChartSchema.index({
+  owner: 1,
+  project: 1
+});
+
+ChartSchema.index(
+  {
+    project: 1,
+    name: 1
+  },
+  {
+    unique: true
+  }
+);
+
+ChartSchema.index({
+  project: 1,
+  chartType: 1
+});
+
+export default mongoose.model('Chart', ChartSchema);

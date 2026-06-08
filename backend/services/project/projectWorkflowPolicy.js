@@ -3,6 +3,17 @@ import {
   canTransitionProjectStatus,
 } from '../../utils/projectWorkflow.js';
 
+const allowedFields = [
+  'submittedAt',
+  'reviewStartedAt',
+  'reviewStartedBy',
+  'reviewedAt',
+  'approvedBy',
+  'rejectedBy',
+  'publishedAt',
+  'reviewComment',
+];
+
 export default class ProjectWorkflowService {
   static assertTransition(currentStatus, nextStatus) {
     if (!canTransitionProjectStatus(currentStatus, nextStatus)) {
@@ -24,9 +35,23 @@ export default class ProjectWorkflowService {
 
     project.status = nextStatus;
 
-    Object.entries(metadata).forEach(([key, value]) => {
-      project[key] = value;
-    });
+    const allowedFields = [
+      'submittedAt',
+      'reviewStartedAt',
+      'reviewStartedBy',
+      'reviewedAt',
+      'approvedBy',
+      'rejectedBy',
+      'publishedAt',
+      'reviewComment',
+    ];
+
+    for (const field of allowedFields) {
+      if (field in metadata) {
+        project[field] =
+          metadata[field];
+      }
+    }
 
     if (Array.isArray(project.auditLogs)) {
       project.auditLogs.push({

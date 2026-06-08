@@ -1,113 +1,118 @@
-// models/Project.js
 import mongoose from 'mongoose';
+
+import { PROJECT_STATUS } from '../constants/projectWorkflowConstants.js';
+import { AUDIT_ACTIONS } from '../constants/projectAuditConstants.js';
+import { VERSION_REASONS } from '../constants/projectVersionConstants.js';
 
 const { Schema } = mongoose;
 
-const AuditLogSchema = new Schema({
-  action: {
-    type: String,
-    enum: [
-      'created',
-      'edited',
-      'renamed',
-      'submitted',
-      'review_started',
-      'moved_to_review',
-      'comment_added',
-      'revision_requested',
-      'approved',
-      'rejected',
-      'published',
-      'archived'
-    ],
-    required: true
+// ─── Sub-schemas ──────────────────────────────────────────────────────────────
+
+const AuditLogSchema = new Schema(
+  {
+    action: { type: String, required: true, enum: AUDIT_ACTIONS },
+    performedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    previousStatus: {
+      type: String,
+      enum: PROJECT_STATUS,
+      default: null
+    },
+    newStatus: {
+      type: String,
+      enum: PROJECT_STATUS,
+      required: true
+    },
+    comment: { type: String, default: '' },
   },
-  performedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  { timestamps: true, _id: true }
+);
+
+const VersionSchema = new Schema(
+  {
+    versionNumber: { type: Number, required: true },
+    reason: {
+      type: String,
+      enum: VERSION_REASONS,
+      default: 'submit'
+    },
+    featureCollection: Schema.Types.Mixed,
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now },
   },
-  previousStatus: String,
-  newStatus: String,
-  comment: String,
-  timestamp: { type: Date, default: Date.now }
-}, { _id: false });
+  { _id: false }
+);
 
-const VersionSchema = new Schema({
-  versionNumber: { type: Number, required: true },
-  snapshot: { type: Schema.Types.Mixed, required: true },
-  features: { type: [Schema.Types.Mixed], default: [] },
-  featureCollection: { type: Schema.Types.Mixed, default: null },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  createdAt: { type: Date, default: Date.now },
-  reason: { type: String, default: 'snapshot' }
-}, { _id: false });
+// ─── Project (forecast project / parent) ─────────────────────────────────────
 
-const ProjectSchema = new Schema({
-  name: { type: String, required: true, trim: true },
-  description: { type: String, default: '' },
-  forecastProjectId: {
-    type: Schema.Types.ObjectId,
-    index: true,
-    default: null
+const ProjectSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    forecastDate: {
+      type: Date,
+      required: true,
+    },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
+
+    // ── Workflow ──────────────────────────────────────────────────────────────
+    status: {
+      type: String,
+      enum: PROJECT_STATUS,
+      default: 'draft',
+      required: true
+    },
+    version: {
+      type: Number,
+      default: 1,
+    },
+    versions: [VersionSchema],
+    auditLogs: [AuditLogSchema],
+    reviewComment: { type: String, default: '' },
+
+    // ── Review actors ─────────────────────────────────────────────────────────
+    reviewStartedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+
+    // ── Timestamps (workflow) ─────────────────────────────────────────────────
+    submittedAt: { type: Date, default: null },
+    reviewStartedAt: { type: Date, default: null },
+    reviewedAt: { type: Date, default: null },
+    publishedAt: { type: Date, default: null },
+
+    // ── Usage tracking ────────────────────────────────────────────────────────
+    lastOpenedAt: { type: Date, default: null },
+    lastOpenedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    openCount: { type: Number, default: 0 },
   },
-  forecastProjectName: {
-    type: String,
-    trim: true,
-    default: ''
-  },
-  chartType: {
-    type: String,
-    enum: ['analysis','forecast_24h','forecast_36h','forecast_48h'],
-    required: true
-  },
-  forecastDate: { type: Date, required: true },
+  {
+    timestamps: true,
+  }
+);
 
-  status: {
-    type: String,
-    enum: [
-      'Draft',
-      'Submitted',
-      'Under Review',
-      'Revision Requested',
-      'Approved',
-      'Published',
-      'Rejected',
-      'Archived'
-    ],
-    default: 'Draft'
-  },
+ProjectSchema.index({ owner: 1, name: 1 }, { unique: true });
+ProjectSchema.index({
+  owner: 1,
+  forecastDate: -1
+});
+ProjectSchema.index({ status: 1 });
+ProjectSchema.index({ owner: 1, status: 1 });
+ProjectSchema.index({
+  owner: 1,
+  version: -1
+});
 
-  version: { type: Number, default: 1 },
-
-  owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-
-  submittedAt: Date,
-  reviewedAt: Date,
-  reviewStartedAt: Date,
-  reviewStartedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  reviewComment: String,
-  publishedAt: Date,
-
-  lastOpenedAt: { type: Date, default: null },
-  lastOpenedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
-  openCount: { type: Number, default: 0 },
-
-  versions: [VersionSchema],
-  auditLogs: [AuditLogSchema]
-
-}, { timestamps: true });
-
-ProjectSchema.index({ name: 1, owner: 1 }, { unique: true });
-
-// NEW PERFORMANCE INDEXES
-ProjectSchema.index({ owner: 1, updatedAt: -1 });
-ProjectSchema.index({ owner: 1, status: 1, updatedAt: -1 });
-ProjectSchema.index({ owner: 1, chartType: 1, updatedAt: -1 });
-ProjectSchema.index({ owner: 1, forecastProjectId: 1, updatedAt: -1 });
-ProjectSchema.index({ owner: 1, forecastDate: -1 });
-ProjectSchema.index({ status: 1, updatedAt: -1 });
-
-export default mongoose.models.Project || mongoose.model('Project', ProjectSchema);
+export default mongoose.model('Project', ProjectSchema);

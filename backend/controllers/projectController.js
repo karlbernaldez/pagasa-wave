@@ -5,7 +5,6 @@ import { throwError } from '../utils/errorHelper.js';
 import {
   ensureProjectExists,
   ensureUniqueProjectName,
-  deleteProjectAndFeatures,
 } from '../utils/dbHelpers.js';
 import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';

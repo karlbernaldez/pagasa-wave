@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
-import Swal from 'sweetalert2';
 import { X, FolderOpen, FileText, Calendar, Layers } from 'lucide-react';
 
 const KEYBOARD_SHORTCUTS = {
@@ -23,10 +19,18 @@ const CreateProjectModal = ({
   isDarkMode = false,
 }) => {
   const modalRef = useRef(null);
-  const projectNameInputRef = useRef(null);
 
   // Local state for form fields
-  const [projectName, setProjectName] = useState('');
+  const initializationDate = useMemo(() => dayjs(), []);
+
+  const generatedProjectName = useMemo(
+    () => initializationDate.format('DDMMMYYYY').toUpperCase(),
+    [initializationDate]
+  );
+  
+  const [projectName, setProjectName] = useState(
+    () => dayjs().format('DDMMMYYYY').toUpperCase()
+  );
   const [description, setDescription] = useState('');
   const [forecastDate, setForecastDate] = useState(dayjs());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,40 +71,28 @@ const CreateProjectModal = ({
 
   // Reset form when modal closes
   const resetForm = useCallback(() => {
-    setProjectName('');
+    setProjectName(dayjs().format('DDMMMYYYY').toUpperCase());
     setDescription('');
     setForecastDate(dayjs());
   }, []);
 
   // Validation and submit handler
   const handleSubmit = useCallback(() => {
-    const trimmedProjectName = projectName.trim();
-
-    if (!trimmedProjectName) {
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'error',
-        title: 'Forecast Project Name is required!',
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-        background: isDarkMode ? '#374151' : '#fff',
-        color: isDarkMode ? '#f3f4f6' : '#111827',
-      });
-      return;
-    }
-
-    // Pass form data to parent's onSubmit
     const formData = {
-      projectName: trimmedProjectName,
+      projectName: generatedProjectName,
       description: description.trim(),
-      forecastDate: forecastDate.format('YYYY-MM-DD'),
+      forecastDate: initializationDate.format('YYYY-MM-DD'),
     };
 
     onSubmit(formData);
     resetForm();
-  }, [projectName, description, forecastDate, isDarkMode, onSubmit, resetForm]);
+  }, [
+    generatedProjectName,
+    description,
+    initializationDate,
+    onSubmit,
+    resetForm,
+  ]);
 
   // Backdrop click handler
   const handleBackdropClick = useCallback(
@@ -138,17 +130,6 @@ const CreateProjectModal = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [visible, handleClose, handleSubmit]);
-
-  // Auto-focus on project name input when modal opens
-  useEffect(() => {
-    if (visible && projectNameInputRef.current) {
-      // Delay to ensure modal animation completes
-      const timeoutId = setTimeout(() => {
-        projectNameInputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [visible]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -218,16 +199,13 @@ const CreateProjectModal = ({
               <FolderOpen size={12} strokeWidth={2.5} />
               Forecast Project Name
             </label>
+
             <input
               id="project-name"
-              ref={projectNameInputRef}
               type="text"
               value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="Enter a descriptive forecast project name"
+              readOnly
               className={themeClasses.input}
-              required
-              aria-required="true"
             />
           </div>
 
@@ -274,7 +252,7 @@ const CreateProjectModal = ({
             </div>
           </div>
 
-          {/* Forecast Date */}
+          {/* Initialization Date */}
           <div>
             <label
               htmlFor="forecast-date"
@@ -284,49 +262,21 @@ const CreateProjectModal = ({
               )}
             >
               <Calendar size={12} strokeWidth={2.5} />
-              Forecast Date
+              Initialization Date
             </label>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                value={forecastDate}
-                onChange={(newDate) => setForecastDate(newDate || dayjs())}
-                slotProps={{
-                  textField: {
-                    id: 'forecast-date',
-                    fullWidth: true,
-                    variant: 'standard',
-                    InputProps: {
-                      disableUnderline: true,
-                      sx: {
-                        backgroundColor: isDarkMode
-                          ? 'rgba(255, 255, 255, 0.1)'
-                          : 'rgba(0, 0, 0, 0.05)',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                        color: isDarkMode ? '#f1f5f9' : '#1f2937',
-                        height: '42px',
-                        paddingLeft: '0.75rem',
-                        border: isDarkMode
-                          ? '1px solid rgba(255, 255, 255, 0.1)'
-                          : '1px solid rgba(0, 0, 0, 0.1)',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          borderColor: isDarkMode
-                            ? 'rgba(255, 255, 255, 0.2)'
-                            : 'rgba(0, 0, 0, 0.2)',
-                        },
-                        '&.Mui-focused': {
-                          borderColor: isDarkMode ? '#06b6d4' : '#3b82f6',
-                          boxShadow: isDarkMode
-                            ? '0 0 0 3px rgba(6, 182, 212, 0.1)'
-                            : '0 0 0 3px rgba(59, 130, 246, 0.1)',
-                        },
-                      },
-                    },
-                  },
-                }}
-              />
-            </LocalizationProvider>
+
+            <input
+              id="forecast-date"
+              type="text"
+              value={initializationDate.format('YYYY-MM-DD')}
+              readOnly
+              className={cn(
+                'w-full h-[42px] rounded-lg px-3 text-sm cursor-not-allowed',
+                isDarkMode
+                  ? 'bg-white/10 border border-white/10 text-slate-100'
+                  : 'bg-black/5 border border-black/10 text-gray-800'
+              )}
+            />
           </div>
         </div>
 
