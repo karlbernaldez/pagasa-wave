@@ -1,2 +1,17 @@
-export * from './projectController.js';
-export * from './adminProjectController.js';
+export {
+  getUserProjects,
+  getLatestUserProject,
+  getProjectById,
+  createProject,
+  renameProject,
+  updateProject,
+  deleteProject,
+  submitProject,
+  startReviewProject,
+  addReviewComment,
+  requestProjectRevision,
+  approveProject,
+  rejectProject,
+  publishProject,
+  archiveProject,
+} from './projectController.js';

@@ -39,7 +39,7 @@ export class ProjectWorkflowService {
   }
 
   /* =====================================================
-     EXECUTE WORKFLOW ACTION
+     EXECUTE TRANSACTIONAL ACTION
   ===================================================== */
 
   static async execute(
@@ -74,7 +74,14 @@ export class ProjectWorkflowService {
       await session.commitTransaction();
 
       for (const task of afterCommit) {
-        await task();
+        try {
+          await task();
+        } catch (error) {
+          console.error(
+            '[ProjectWorkflowService afterCommit]',
+            error
+          );
+        }
       }
 
       return project._id;
@@ -144,30 +151,38 @@ export class ProjectWorkflowService {
     projectId,
     reviewerId
   ) {
-    return this.execute(
-      projectId,
+    const project =
+      await Project.findById(projectId);
+
+    if (!project) {
+      throwError(
+        'Project not found',
+        404
+      );
+    }
+
+    if (
+      project.status ===
+      PROJECT_STATUS.UNDER_REVIEW
+    ) {
+      return project._id;
+    }
+
+    ProjectWorkflowPolicy.startReview(
+      project,
       reviewerId,
-      async project => {
-        if (
-          project.status ===
-          PROJECT_STATUS.UNDER_REVIEW
-        ) {
-          return;
-        }
-
-        ProjectWorkflowPolicy.startReview(
-          project,
+      {
+        reviewStartedBy:
           reviewerId,
-          {
-            reviewStartedBy:
-              reviewerId,
 
-            reviewStartedAt:
-              new Date(),
-          }
-        );
+        reviewStartedAt:
+          new Date(),
       }
     );
+
+    await project.save();
+
+    return project._id;
   }
 
   /* =====================================================
@@ -179,31 +194,39 @@ export class ProjectWorkflowService {
     reviewerId,
     comment = ''
   ) {
-    return this.execute(
-      projectId,
-      reviewerId,
-      async (
-        project,
-        session,
-        afterCommit
-      ) => {
-        ProjectWorkflowPolicy.addComment(
-          project,
-          reviewerId,
-          comment
-        );
+    const project =
+      await Project.findById(projectId);
 
-        afterCommit.push(
-          () =>
-            ProjectNotificationService.notifyOwner(
-              project,
-              reviewerId,
-              'comment_added',
-              comment
-            )
-        );
-      }
+    if (!project) {
+      throwError(
+        'Project not found',
+        404
+      );
+    }
+
+    ProjectWorkflowPolicy.addComment(
+      project,
+      reviewerId,
+      comment
     );
+
+    await project.save();
+
+    try {
+      await ProjectNotificationService.notifyOwner(
+        project,
+        reviewerId,
+        'comment_added',
+        comment
+      );
+    } catch (error) {
+      console.error(
+        '[ProjectWorkflowService comment notification]',
+        error
+      );
+    }
+
+    return project._id;
   }
 
   /* =====================================================
@@ -215,38 +238,53 @@ export class ProjectWorkflowService {
     reviewerId,
     comment = ''
   ) {
-    return this.execute(
-      projectId,
+    if (!comment?.trim()) {
+      throwError(
+        'Revision comment is required',
+        400
+      );
+    }
+
+    const project =
+      await Project.findById(projectId);
+
+    if (!project) {
+      throwError(
+        'Project not found',
+        404
+      );
+    }
+
+    ProjectWorkflowPolicy.requestRevision(
+      project,
       reviewerId,
-      async (
-        project,
-        session,
-        afterCommit
-      ) => {
-        ProjectWorkflowPolicy.requestRevision(
-          project,
-          reviewerId,
+      comment,
+      {
+        reviewComment:
           comment,
-          {
-            reviewComment:
-              comment,
 
-            reviewedAt:
-              new Date(),
-          }
-        );
-
-        afterCommit.push(
-          () =>
-            ProjectNotificationService.notifyOwner(
-              project,
-              reviewerId,
-              'revision_requested',
-              comment
-            )
-        );
+        reviewedAt:
+          new Date(),
       }
     );
+
+    await project.save();
+
+    try {
+      await ProjectNotificationService.notifyOwner(
+        project,
+        reviewerId,
+        'revision_requested',
+        comment
+      );
+    } catch (error) {
+      console.error(
+        '[ProjectWorkflowService revision notification]',
+        error
+      );
+    }
+
+    return project._id;
   }
 
   /* =====================================================
@@ -315,41 +353,56 @@ export class ProjectWorkflowService {
     reviewerId,
     comment = ''
   ) {
-    return this.execute(
-      projectId,
+    if (!comment?.trim()) {
+      throwError(
+        'Rejection comment is required',
+        400
+      );
+    }
+
+    const project =
+      await Project.findById(projectId);
+
+    if (!project) {
+      throwError(
+        'Project not found',
+        404
+      );
+    }
+
+    ProjectWorkflowPolicy.reject(
+      project,
       reviewerId,
-      async (
-        project,
-        session,
-        afterCommit
-      ) => {
-        ProjectWorkflowPolicy.reject(
-          project,
+      comment,
+      {
+        rejectedBy:
           reviewerId,
+
+        reviewComment:
           comment,
-          {
-            rejectedBy:
-              reviewerId,
 
-            reviewComment:
-              comment,
-
-            reviewedAt:
-              new Date(),
-          }
-        );
-
-        afterCommit.push(
-          () =>
-            ProjectNotificationService.notifyOwner(
-              project,
-              reviewerId,
-              'rejected',
-              comment
-            )
-        );
+        reviewedAt:
+          new Date(),
       }
     );
+
+    await project.save();
+
+    try {
+      await ProjectNotificationService.notifyOwner(
+        project,
+        reviewerId,
+        'rejected',
+        comment
+      );
+    } catch (error) {
+      console.error(
+        '[ProjectWorkflowService reject notification]',
+        error
+      );
+    }
+
+    return project._id;
   }
 
   /* =====================================================
@@ -404,15 +457,23 @@ export class ProjectWorkflowService {
     projectId,
     actorId
   ) {
-    return this.execute(
-      projectId,
-      actorId,
-      async project => {
-        ProjectWorkflowPolicy.archive(
-          project,
-          actorId
-        );
-      }
+    const project =
+      await Project.findById(projectId);
+
+    if (!project) {
+      throwError(
+        'Project not found',
+        404
+      );
+    }
+
+    ProjectWorkflowPolicy.archive(
+      project,
+      actorId
     );
+
+    await project.save();
+
+    return project._id;
   }
 }

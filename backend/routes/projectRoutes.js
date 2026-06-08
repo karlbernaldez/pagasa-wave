@@ -1,41 +1,49 @@
 // backend/routes/projectRoutes.js
 
 import express from 'express';
+
+// ── New modular controllers (single-project operations) ───────────────────────
 import {
-  createProject,
-  createForecastProject,
   getUserProjects,
   getLatestUserProject,
   getProjectById,
+  createProject,
+  renameProject,
   updateProject,
   deleteProject,
-  deleteForecastProject,
   submitProject,
-  submitForecastProject,
   startReviewProject,
-  startReviewForecastProject,
   addReviewComment,
-  addForecastReviewComment,
   requestProjectRevision,
-  requestForecastProjectRevision,
   approveProject,
-  approveForecastProject,
   rejectProject,
-  rejectForecastProject,
   publishProject,
-  publishForecastProject,
   archiveProject,
-  renameProject,
-  renameForecastProject
+} from '../controllers/projects/index.js';
+
+// ── Old controller — forecast-package (bulk) operations only ─────────────────
+import {
+  createForecastProject,
+  renameForecastProject,
+  deleteForecastProject,
+  submitForecastProject,
+  startReviewForecastProject,
+  addForecastReviewComment,
+  requestForecastProjectRevision,
+  approveForecastProject,
+  rejectForecastProject,
+  publishForecastProject,
 } from '../controllers/projectController.js';
+
+// ── Other controllers ─────────────────────────────────────────────────────────
 import { getAdminProjects } from '../controllers/adminProjectController.js';
 import {
   getPublishedForecastOutput,
   getPublicPublishedForecastOutput,
   listPublicPublishedForecasts,
 } from '../controllers/publishedForecastController.js';
-import Project from '../models/Project.js';
 
+import Project from '../models/Project.js';
 import protect from '../middleware/authMiddleware.js';
 import isOwnerOrAdmin from '../middleware/projectMiddleware.js';
 import { isAdmin } from '../middleware/adminMiddleware.js';
@@ -43,6 +51,8 @@ import { throwError } from '../utils/errorHelper.js';
 import { canEditProjectStatus, getProjectEditLockMessage } from '../utils/projectWorkflow.js';
 
 const router = express.Router();
+
+// ── Route guards ──────────────────────────────────────────────────────────────
 
 async function requireEditableProject(req, _res, next) {
   try {
@@ -70,76 +80,60 @@ async function preventAdminSelfReview(req, _res, next) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Public published output routes
-// ─────────────────────────────────────────────
+// ── Public routes (no auth) ───────────────────────────────────────────────────
+
 router.get('/public/published', listPublicPublishedForecasts);
 router.get('/public/published/:id', getPublicPublishedForecastOutput);
 
+// ── All routes below require authentication ───────────────────────────────────
+
 router.use(protect);
 
-// ─────────────────────────────────────────────
-// Admin routes - keep before dynamic /:id routes
-// ─────────────────────────────────────────────
+// ── Admin — single project ────────────────────────────────────────────────────
+
 router.get('/admin/projects', isAdmin, getAdminProjects);
 
-router.patch('/:id/start-review', isAdmin, preventAdminSelfReview, startReviewProject);
+router.patch('/:id/start-review',      isAdmin, preventAdminSelfReview, startReviewProject);
+router.patch('/:id/request-revision',  isAdmin, preventAdminSelfReview, requestProjectRevision);
+router.patch('/:id/approve',           isAdmin, preventAdminSelfReview, approveProject);
+router.patch('/:id/reject',            isAdmin, preventAdminSelfReview, rejectProject);
+router.patch('/:id/publish',           isAdmin, preventAdminSelfReview, publishProject);
+router.patch('/:id/archive',           isAdmin, preventAdminSelfReview, archiveProject);
 
-router.patch('/forecast-projects/:forecastProjectId/start-review', isAdmin, startReviewForecastProject);
+router.post('/:id/review-comment',     isAdmin, preventAdminSelfReview, addReviewComment);
 
-router.post('/:id/review-comment', isAdmin, preventAdminSelfReview, addReviewComment);
+// ── Admin — forecast package (bulk, old controller) ───────────────────────────
 
-router.post('/forecast-projects/:forecastProjectId/review-comment', isAdmin, addForecastReviewComment);
-
-router.patch('/:id/request-revision', isAdmin, preventAdminSelfReview, requestProjectRevision);
-
+router.patch('/forecast-projects/:forecastProjectId/start-review',     isAdmin, startReviewForecastProject);
 router.patch('/forecast-projects/:forecastProjectId/request-revision', isAdmin, requestForecastProjectRevision);
+router.patch('/forecast-projects/:forecastProjectId/approve',          isAdmin, approveForecastProject);
+router.patch('/forecast-projects/:forecastProjectId/reject',           isAdmin, rejectForecastProject);
+router.patch('/forecast-projects/:forecastProjectId/publish',          isAdmin, publishForecastProject);
 
-router.patch('/:id/approve', isAdmin, preventAdminSelfReview, approveProject);
+router.post('/forecast-projects/:forecastProjectId/review-comment',    isAdmin, addForecastReviewComment);
 
-router.patch('/forecast-projects/:forecastProjectId/approve', isAdmin, approveForecastProject);
+// ── Published output (authenticated) ─────────────────────────────────────────
 
-router.patch('/:id/reject', isAdmin, preventAdminSelfReview, rejectProject);
-
-router.patch('/forecast-projects/:forecastProjectId/reject', isAdmin, rejectForecastProject);
-
-router.patch('/:id/publish', isAdmin, preventAdminSelfReview, publishProject);
-
-router.patch('/forecast-projects/:forecastProjectId/publish', isAdmin, publishForecastProject);
-
-router.patch('/:id/archive', isAdmin, preventAdminSelfReview, archiveProject);
-
-// ─────────────────────────────────────────────
-// Published output routes - keep before dynamic /:id routes
-// ─────────────────────────────────────────────
 router.get('/:id/published-output', getPublishedForecastOutput);
 
-// ─────────────────────────────────────────────
-// Owner routes
-// ─────────────────────────────────────────────
-router.post('/', createProject);
+// ── Owner — forecast package (bulk, old controller) ───────────────────────────
 
-router.post('/forecast-projects', createForecastProject);
+router.post('/forecast-projects',                              createForecastProject);
+router.patch('/forecast-projects/:forecastProjectId/rename',  renameForecastProject);
+router.patch('/forecast-projects/:forecastProjectId/submit',  submitForecastProject);
+router.delete('/forecast-projects/:forecastProjectId',        deleteForecastProject);
 
-router.get('/', getUserProjects);
+// ── Owner — single project (new controller) ───────────────────────────────────
 
+router.get('/',       getUserProjects);
 router.get('/latest', getLatestUserProject);
+router.post('/',      createProject);
 
-router.patch('/forecast-projects/:forecastProjectId/rename', renameForecastProject);
+router.get('/:id',    isOwnerOrAdmin, getProjectById);
+router.put('/:id',    isOwnerOrAdmin, updateProject);
 
-router.patch('/forecast-projects/:forecastProjectId/submit', submitForecastProject);
-
-router.delete('/forecast-projects/:forecastProjectId', deleteForecastProject);
-
-router.get('/:id', isOwnerOrAdmin, getProjectById);
-
-router.put('/:id', isOwnerOrAdmin, updateProject);
-
-router.patch('/:id/rename', isOwnerOrAdmin, requireEditableProject, renameProject); // IMPORTANT: updateProject must NOT allow status changes
-
-router.delete('/:id', isOwnerOrAdmin, requireEditableProject, deleteProject);
-
-// Workflow - owner action
-router.patch('/:id/submit', submitProject);
+router.patch('/:id/rename',  isOwnerOrAdmin, requireEditableProject, renameProject);
+router.patch('/:id/submit',  isOwnerOrAdmin, requireEditableProject, submitProject);
+router.delete('/:id',        isOwnerOrAdmin, requireEditableProject, deleteProject);
 
 export default router;
