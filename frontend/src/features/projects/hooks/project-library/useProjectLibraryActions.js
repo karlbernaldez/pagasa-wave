@@ -2,9 +2,14 @@ import { useState } from "react";
 
 import {
   approveProject,
+  approveForecastProject,
   publishProject,
+  publishForecastProject,
   rejectProject,
+  rejectForecastProject,
   startReviewProject,
+  startReviewForecastProject,
+  submitForecastProject,
   submitProject,
 } from "@/api/projectAPI";
 import { adaptProject } from "@/features/projects/projectAdapter";
@@ -24,7 +29,11 @@ export function useProjectLibraryActions({ isAdmin, refetch, replaceProject }) {
 
     setSubmittingProjectId(projectId);
     try {
-      await submitProject(projectId);
+      if (project?.isForecastPackage && project?.forecastProjectId) {
+        await submitForecastProject(project.forecastProjectId);
+      } else {
+        await submitProject(projectId);
+      }
       await refetch();
     } finally {
       setSubmittingProjectId(null);
@@ -38,7 +47,9 @@ export function useProjectLibraryActions({ isAdmin, refetch, replaceProject }) {
     if (isProjectUnderReview(project.status)) return project;
     if (!isProjectSubmitted(project.status)) return project;
 
-    const response = await startReviewProject(projectId);
+    const response = project?.isForecastPackage && project?.forecastProjectId
+      ? await startReviewForecastProject(project.forecastProjectId)
+      : await startReviewProject(projectId);
     const transitionedProject = adaptProject({
       ...project,
       ...getProjectFromResponse(response, project),
@@ -51,17 +62,29 @@ export function useProjectLibraryActions({ isAdmin, refetch, replaceProject }) {
   };
 
   const handleApprove = async (project) => {
-    await approveProject(getProjectId(project));
+    if (project?.isForecastPackage && project?.forecastProjectId) {
+      await approveForecastProject(project.forecastProjectId);
+    } else {
+      await approveProject(getProjectId(project));
+    }
     await refetch();
   };
 
   const handleReject = async (project, comment = "Needs revision") => {
-    await rejectProject(getProjectId(project), comment);
+    if (project?.isForecastPackage && project?.forecastProjectId) {
+      await rejectForecastProject(project.forecastProjectId, comment);
+    } else {
+      await rejectProject(getProjectId(project), comment);
+    }
     await refetch();
   };
 
   const handlePublish = async (project) => {
-    await publishProject(getProjectId(project));
+    if (project?.isForecastPackage && project?.forecastProjectId) {
+      await publishForecastProject(project.forecastProjectId);
+    } else {
+      await publishProject(getProjectId(project));
+    }
     await refetch();
   };
 

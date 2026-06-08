@@ -17,7 +17,7 @@ import FlagCanvas from "@dashboards/forecaster/draw/front";
 import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
 
 // Shared project helpers
-import { getLatestReviewRemarks } from "@/features/projects/projectAdapter";
+import { FORECAST_CHART_LABELS, getLatestReviewRemarks } from "@/features/projects/projectAdapter";
 import {
   PROJECT_STATUS,
   canEditProjectStatus,
@@ -167,6 +167,12 @@ const Studio = ({ logger }) => {
     setIsDarkMode((value) => !value);
   }, [setIsDarkMode]);
 
+  const handleChartChange = useCallback((event) => {
+    const nextChartId = event.target.value;
+    if (!nextChartId || nextChartId === projectId) return;
+    navigate(`/studio/${nextChartId}`);
+  }, [navigate, projectId]);
+
   const handleSubmitProject = useCallback(async () => {
     const id = currentProject?._id || currentProject?.id || projectId;
     if (!id || isSubmittingProject || !canSubmitProjectStatus(currentProject?.status)) return;
@@ -281,7 +287,12 @@ const Studio = ({ logger }) => {
   // ─── Memoized Values ─────────────────────────────────
 
   const showMainUI = !isLoadingProject;
-  const projectName = currentProject?.name || "No Project Selected";
+  const projectName = currentProject?.forecastProjectName || currentProject?.name || "No Project Selected";
+  const activeChartLabel = FORECAST_CHART_LABELS[currentProject?.chartType] || currentProject?.chartType || "Forecast Chart";
+  const forecastCharts = useMemo(
+    () => (Array.isArray(currentProject?.forecastCharts) ? currentProject.forecastCharts : []),
+    [currentProject?.forecastCharts]
+  );
   const isRevisionRequested = isProjectRevisionRequested(projectStatus);
   const projectStatusLabel = isRevisionRequested
     ? "Needs Revision"
@@ -324,6 +335,9 @@ const Studio = ({ logger }) => {
               <h1 className={`max-w-[32vw] truncate text-xs font-bold sm:max-w-[42vw] sm:text-sm ${headerStrongText}`}>
                 {projectName}
               </h1>
+              <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black lg:inline-flex ${isDarkMode ? "border-cyan-400/20 bg-cyan-500/10 text-cyan-300" : "border-blue-200 bg-blue-50 text-blue-700"}`}>
+                {activeChartLabel}
+              </span>
               {currentProject?.status && (
                 <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black lg:inline-flex ${projectStatusStyle}`}>
                   {projectStatusLabel}
@@ -334,6 +348,22 @@ const Studio = ({ logger }) => {
         </div>
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          {forecastCharts.length > 1 && (
+            <label className="hidden min-w-0 items-center gap-2 md:flex">
+              <span className={`text-xs font-black uppercase tracking-[0.12em] ${headerMutedText}`}>Chart</span>
+              <select
+                value={projectId || ""}
+                onChange={handleChartChange}
+                className={`h-9 max-w-[190px] rounded-xl border px-3 text-xs font-bold outline-none ${isDarkMode ? "border-white/10 bg-slate-950 text-slate-100" : "border-slate-200 bg-white text-slate-800"}`}
+              >
+                {forecastCharts.map((chart) => (
+                  <option key={chart._id || chart.id} value={chart._id || chart.id}>
+                    {FORECAST_CHART_LABELS[chart.chartType] || chart.name || chart.chartType}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {isReadOnlyProject && (
             <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
               <Lock size={13} />

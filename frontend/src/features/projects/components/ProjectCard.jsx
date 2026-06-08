@@ -36,7 +36,7 @@ function formatDate(value, pattern = 'MMM d, yyyy') {
 }
 
 function getProjectId(project) {
-  return project?._id || project?.id;
+  return project?.primaryChartId || project?._id || project?.id;
 }
 
 function getPreviewCacheProjectId(project) {

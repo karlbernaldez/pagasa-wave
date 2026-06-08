@@ -15,6 +15,7 @@ import {
   canAddReviewCommentStatus,
   canEditProjectStatus,
   canTransitionProjectStatus,
+  getProjectEditLockMessage,
 } from '../utils/projectWorkflow.js';
 
 const USER_PROJECT_SORT_FIELDS = {
@@ -27,6 +28,13 @@ const USER_PROJECT_SORT_FIELDS = {
   updatedAt: 'updatedAt',
   createdAt: 'createdAt',
 };
+
+const FORECAST_PROJECT_CHARTS = Object.freeze([
+  { chartType: 'analysis', label: 'Wave Analysis' },
+  { chartType: 'forecast_24h', label: '24h Wave Forecast' },
+  { chartType: 'forecast_36h', label: '36h Wave Forecast' },
+  { chartType: 'forecast_48h', label: '48h Wave Forecast' },
+]);
 
 const PROJECT_NOTIFICATION_COPY = {
   comment_added: {
@@ -116,6 +124,37 @@ function getProjectNotificationResourcePath(project, type) {
   return `/studio/${project._id}`;
 }
 
+function getForecastProjectName(project) {
+  return project?.forecastProjectName || project?.name || 'Untitled Forecast Project';
+}
+
+function getForecastProjectId(project) {
+  return project?.forecastProjectId || project?._id;
+}
+
+async function ensureUniqueForecastProjectName(name, owner, excludeForecastProjectId = null) {
+  const existing = await Project.findOne({
+    owner,
+    $or: [
+      { forecastProjectName: name },
+      { name },
+    ],
+  }).select('_id forecastProjectId');
+
+  if (!existing) return null;
+
+  const existingGroupId = String(getForecastProjectId(existing));
+  if (excludeForecastProjectId && existingGroupId === String(excludeForecastProjectId)) {
+    return existing;
+  }
+
+  throwError('A forecast project with this name already exists.', 409);
+}
+
+function buildChartName(forecastProjectName, label) {
+  return `${forecastProjectName} - ${label}`;
+}
+
 async function notifyProjectOwner(project, actorId, type, comment = '') {
   const copy = PROJECT_NOTIFICATION_COPY[type];
   if (!copy || !project?.owner) return;
@@ -135,6 +174,30 @@ async function notifyProjectOwner(project, actorId, type, comment = '') {
   } catch (error) {
     console.error('[ProjectNotifications] Failed to create notification:', error);
   }
+}
+
+async function getForecastProjectChartsForAdmin(forecastProjectId, adminId) {
+  const charts = await Project.find({ forecastProjectId });
+  if (!charts.length) throwError('Forecast project not found', 404);
+
+  if (charts.some((chart) => String(chart.owner) === String(adminId))) {
+    throwError('Admins cannot review their own projects', 403);
+  }
+
+  return charts;
+}
+
+async function sendForecastProject(charts, res) {
+  const leanCharts = charts.map((chart) => (
+    typeof chart.toObject === 'function' ? chart.toObject() : chart
+  ));
+
+  res.json({
+    forecastProjectId: getForecastProjectId(leanCharts[0]),
+    forecastProjectName: getForecastProjectName(leanCharts[0]),
+    charts: leanCharts,
+    project: leanCharts[0] || null,
+  });
 }
 
 async function createProjectVersionSnapshot(project, userId, reason = 'submit') {
@@ -261,6 +324,52 @@ export const createProject = asyncHandler(async (req, res) => {
 });
 
 /* =========================================================
+   CREATE FORECAST PROJECT PACKAGE
+========================================================= */
+export const createForecastProject = asyncHandler(async (req, res) => {
+  const { name, description, forecastDate } = req.body;
+
+  if (!req.user) throwError('Unauthorized', 401);
+  if (!name || !forecastDate) {
+    throwError('name and forecastDate are required', 400);
+  }
+
+  const forecastProjectName = name.trim();
+  await ensureUniqueForecastProjectName(forecastProjectName, req.user.id);
+
+  const forecastProjectId = new mongoose.Types.ObjectId();
+  const chartDocs = FORECAST_PROJECT_CHARTS.map(({ chartType, label }) => ({
+    name: buildChartName(forecastProjectName, label),
+    forecastProjectId,
+    forecastProjectName,
+    description: description?.trim() || '',
+    chartType,
+    forecastDate,
+    owner: req.user.id,
+    status: PROJECT_STATUS.DRAFT,
+    version: 1,
+    auditLogs: [
+      {
+        action: 'created',
+        performedBy: req.user.id,
+        previousStatus: null,
+        newStatus: PROJECT_STATUS.DRAFT,
+        comment: 'Forecast project created',
+      },
+    ],
+  }));
+
+  const charts = await Project.insertMany(chartDocs);
+
+  res.status(201).json({
+    forecastProjectId,
+    forecastProjectName,
+    charts,
+    project: charts[0] || null,
+  });
+});
+
+/* =========================================================
    GET USER PROJECTS
 ========================================================= */
 export const getUserProjects = asyncHandler(async (req, res) => {
@@ -384,7 +493,28 @@ export const getProjectById = asyncHandler(async (req, res) => {
 
   await project.save();
 
-  res.json(project);
+  const responseProject = project.toObject();
+
+  if (project.forecastProjectId) {
+    responseProject.forecastCharts = await Project.find({
+      owner: project.owner,
+      forecastProjectId: project.forecastProjectId,
+    })
+      .select('_id name chartType status forecastDate updatedAt forecastProjectId forecastProjectName')
+      .sort({ chartType: 1 })
+      .lean();
+  } else {
+    responseProject.forecastCharts = [{
+      _id: project._id,
+      name: project.name,
+      chartType: project.chartType,
+      status: project.status,
+      forecastDate: project.forecastDate,
+      updatedAt: project.updatedAt,
+    }];
+  }
+
+  res.json(responseProject);
 });
 
 /* =========================================================
@@ -423,6 +553,60 @@ export const renameProject = asyncHandler(async (req, res) => {
   await project.save();
 
   res.json(project);
+});
+
+/* =========================================================
+   RENAME FORECAST PROJECT PACKAGE
+========================================================= */
+export const renameForecastProject = asyncHandler(async (req, res) => {
+  const { name } = req.body;
+
+  if (!name || !name.trim()) {
+    throwError('name is required', 400);
+  }
+
+  const forecastProjectId = req.params.forecastProjectId;
+  const charts = await Project.find({
+    owner: req.user.id,
+    forecastProjectId,
+  });
+
+  if (!charts.length) throwError('Forecast project not found.', 404);
+
+  const lockedChart = charts.find((chart) => !canEditProjectStatus(chart.status));
+  if (lockedChart) {
+    throwError('Only Draft, Rejected, or Revision Requested forecast projects can be renamed', 403);
+  }
+
+  const forecastProjectName = name.trim();
+  await ensureUniqueForecastProjectName(forecastProjectName, req.user.id, forecastProjectId);
+
+  await Promise.all(charts.map(async (chart) => {
+    const chartConfig = FORECAST_PROJECT_CHARTS.find((item) => item.chartType === chart.chartType);
+    const previousName = chart.forecastProjectName || chart.name;
+    chart.forecastProjectName = forecastProjectName;
+    chart.name = buildChartName(forecastProjectName, chartConfig?.label || chart.chartType);
+    chart.auditLogs.push({
+      action: 'renamed',
+      performedBy: req.user.id,
+      previousStatus: chart.status,
+      newStatus: chart.status,
+      comment: `Forecast project renamed from "${previousName}" to "${forecastProjectName}"`,
+    });
+    await chart.save();
+  }));
+
+  const updatedCharts = await Project.find({
+    owner: req.user.id,
+    forecastProjectId,
+  }).lean();
+
+  res.json({
+    forecastProjectId,
+    forecastProjectName,
+    charts: updatedCharts,
+    project: updatedCharts[0] || null,
+  });
 });
 
 /* =========================================================
@@ -497,6 +681,63 @@ export const submitProject = asyncHandler(async (req, res) => {
 });
 
 /* =========================================================
+   SUBMIT FORECAST PROJECT PACKAGE (OWNER)
+========================================================= */
+export const submitForecastProject = asyncHandler(async (req, res) => {
+  const forecastProjectId = req.params.forecastProjectId;
+  const charts = await Project.find({
+    owner: req.user.id,
+    forecastProjectId,
+  });
+
+  if (!charts.length) throwError('Forecast project not found.', 404);
+
+  const blockedChart = charts.find((chart) => (
+    !canTransitionProjectStatus(chart.status, PROJECT_STATUS.SUBMITTED)
+  ));
+
+  if (blockedChart) {
+    throwError(`Cannot submit forecast project while "${blockedChart.name}" is ${blockedChart.status}.`, 400);
+  }
+
+  await Promise.all(charts.map(async (chart) => {
+    const previousStatus = chart.status;
+    await createProjectVersionSnapshot(
+      chart,
+      req.user.id,
+      previousStatus === PROJECT_STATUS.REVISION_REQUESTED ? 'resubmit' : 'submit'
+    );
+
+    chart.status = PROJECT_STATUS.SUBMITTED;
+    chart.submittedAt = new Date();
+
+    chart.auditLogs.push({
+      action: 'submitted',
+      performedBy: req.user.id,
+      previousStatus,
+      newStatus: PROJECT_STATUS.SUBMITTED,
+      comment: previousStatus === PROJECT_STATUS.REVISION_REQUESTED
+        ? 'Forecast project revision resubmitted for review'
+        : 'Forecast project submitted for review',
+    });
+
+    await chart.save();
+  }));
+
+  const updatedCharts = await Project.find({
+    owner: req.user.id,
+    forecastProjectId,
+  }).lean();
+
+  res.json({
+    forecastProjectId,
+    forecastProjectName: getForecastProjectName(updatedCharts[0]),
+    charts: updatedCharts,
+    project: updatedCharts[0] || null,
+  });
+});
+
+/* =========================================================
    START PROJECT REVIEW (ADMIN)
 ========================================================= */
 export const startReviewProject = asyncHandler(async (req, res) => {
@@ -533,6 +774,37 @@ export const startReviewProject = asyncHandler(async (req, res) => {
   return sendProject(project, res);
 });
 
+export const startReviewForecastProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const charts = await getForecastProjectChartsForAdmin(req.params.forecastProjectId, req.user.id);
+  const mutableCharts = charts.filter((chart) => chart.status !== PROJECT_STATUS.UNDER_REVIEW);
+  const blockedChart = mutableCharts.find((chart) => (
+    !canTransitionProjectStatus(chart.status, PROJECT_STATUS.UNDER_REVIEW)
+  ));
+
+  if (blockedChart) throwError('Invalid status transition', 400);
+
+  await Promise.all(mutableCharts.map(async (chart) => {
+    const previousStatus = chart.status;
+    chart.status = PROJECT_STATUS.UNDER_REVIEW;
+    chart.reviewStartedAt = new Date();
+    chart.reviewStartedBy = req.user.id;
+    chart.auditLogs.push({
+      action: 'review_started',
+      performedBy: req.user.id,
+      previousStatus,
+      newStatus: PROJECT_STATUS.UNDER_REVIEW,
+      comment: 'Forecast project review started',
+    });
+    await chart.save();
+  }));
+
+  return sendForecastProject(charts, res);
+});
+
 /* =========================================================
    ADD REVIEW COMMENT (ADMIN)
 ========================================================= */
@@ -560,6 +832,34 @@ export const addReviewComment = asyncHandler(async (req, res) => {
   await project.save();
   await notifyProjectOwner(project, req.user.id, 'comment_added', comment);
   return sendProject(project, res);
+});
+
+export const addForecastReviewComment = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const comment = getRequiredComment(req.body?.comment);
+  const charts = await getForecastProjectChartsForAdmin(req.params.forecastProjectId, req.user.id);
+  const blockedChart = charts.find((chart) => !canAddReviewCommentStatus(chart.status));
+
+  if (blockedChart) {
+    throwError('Comments can only be added while a project is submitted or under review', 400);
+  }
+
+  await Promise.all(charts.map(async (chart) => {
+    chart.auditLogs.push({
+      action: 'comment_added',
+      performedBy: req.user.id,
+      previousStatus: chart.status,
+      newStatus: chart.status,
+      comment,
+    });
+    await chart.save();
+  }));
+
+  await notifyProjectOwner(charts[0], req.user.id, 'comment_added', comment);
+  return sendForecastProject(charts, res);
 });
 
 /* =========================================================
@@ -602,6 +902,42 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
   return sendProject(project, res);
 });
 
+export const requestForecastProjectRevision = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const comment = getRequiredComment(req.body?.comment, 'Revision comment');
+  const charts = await getForecastProjectChartsForAdmin(req.params.forecastProjectId, req.user.id);
+  const blockedChart = charts.find((chart) => (
+    !canTransitionProjectStatus(chart.status, PROJECT_STATUS.REVISION_REQUESTED)
+  ));
+
+  if (blockedChart) throwError('Invalid status transition', 400);
+
+  await Promise.all(charts.map(async (chart) => {
+    const previousStatus = chart.status;
+    if (getLatestVersionReason(chart) !== 'revision_baseline') {
+      await createProjectVersionSnapshot(chart, req.user.id, 'revision_baseline');
+    }
+    chart.status = PROJECT_STATUS.REVISION_REQUESTED;
+    chart.rejectedBy = undefined;
+    chart.reviewComment = comment;
+    chart.reviewedAt = new Date();
+    chart.auditLogs.push({
+      action: 'revision_requested',
+      performedBy: req.user.id,
+      previousStatus,
+      newStatus: PROJECT_STATUS.REVISION_REQUESTED,
+      comment,
+    });
+    await chart.save();
+  }));
+
+  await notifyProjectOwner(charts[0], req.user.id, 'revision_requested', comment);
+  return sendForecastProject(charts, res);
+});
+
 /* =========================================================
    APPROVE PROJECT (ADMIN)
 ========================================================= */
@@ -640,6 +976,37 @@ export const approveProject = asyncHandler(async (req, res) => {
   return sendProject(project, res);
 });
 
+export const approveForecastProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const charts = await getForecastProjectChartsForAdmin(req.params.forecastProjectId, req.user.id);
+  const blockedChart = charts.find((chart) => (
+    !canTransitionProjectStatus(chart.status, PROJECT_STATUS.APPROVED)
+  ));
+
+  if (blockedChart) throwError('Invalid status transition', 400);
+
+  await Promise.all(charts.map(async (chart) => {
+    const previousStatus = chart.status;
+    chart.status = PROJECT_STATUS.APPROVED;
+    chart.reviewedAt = new Date();
+    chart.approvedBy = req.user.id;
+    chart.auditLogs.push({
+      action: 'approved',
+      performedBy: req.user.id,
+      previousStatus,
+      newStatus: PROJECT_STATUS.APPROVED,
+      comment: 'Forecast project approved',
+    });
+    await chart.save();
+  }));
+
+  await notifyProjectOwner(charts[0], req.user.id, 'approved');
+  return sendForecastProject(charts, res);
+});
+
 /* =========================================================
    REJECT PROJECT (ADMIN)
 ========================================================= */
@@ -675,6 +1042,39 @@ export const rejectProject = asyncHandler(async (req, res) => {
   await notifyProjectOwner(project, req.user.id, 'rejected', comment);
 
   return sendProject(project, res);
+});
+
+export const rejectForecastProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const comment = getRequiredComment(req.body?.comment, 'Rejection comment');
+  const charts = await getForecastProjectChartsForAdmin(req.params.forecastProjectId, req.user.id);
+  const blockedChart = charts.find((chart) => (
+    !canTransitionProjectStatus(chart.status, PROJECT_STATUS.REJECTED)
+  ));
+
+  if (blockedChart) throwError('Invalid status transition', 400);
+
+  await Promise.all(charts.map(async (chart) => {
+    const previousStatus = chart.status;
+    chart.status = PROJECT_STATUS.REJECTED;
+    chart.rejectedBy = req.user.id;
+    chart.reviewComment = comment;
+    chart.reviewedAt = new Date();
+    chart.auditLogs.push({
+      action: 'rejected',
+      performedBy: req.user.id,
+      previousStatus,
+      newStatus: PROJECT_STATUS.REJECTED,
+      comment,
+    });
+    await chart.save();
+  }));
+
+  await notifyProjectOwner(charts[0], req.user.id, 'rejected', comment);
+  return sendForecastProject(charts, res);
 });
 
 /* =========================================================
@@ -715,6 +1115,39 @@ export const publishProject = asyncHandler(async (req, res) => {
   return sendProject(project, res);
 });
 
+export const publishForecastProject = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const charts = await getForecastProjectChartsForAdmin(req.params.forecastProjectId, req.user.id);
+  const blockedChart = charts.find((chart) => (
+    !canTransitionProjectStatus(chart.status, PROJECT_STATUS.PUBLISHED)
+  ));
+
+  if (blockedChart) throwError('Invalid status transition', 400);
+
+  await Promise.all(charts.map(async (chart) => {
+    const previousStatus = chart.status;
+    if (getLatestVersionReason(chart) !== 'publish') {
+      await createProjectVersionSnapshot(chart, req.user.id, 'publish');
+    }
+    chart.status = PROJECT_STATUS.PUBLISHED;
+    chart.publishedAt = new Date();
+    chart.auditLogs.push({
+      action: 'published',
+      performedBy: req.user.id,
+      previousStatus,
+      newStatus: PROJECT_STATUS.PUBLISHED,
+      comment: 'Forecast project published',
+    });
+    await chart.save();
+  }));
+
+  await notifyProjectOwner(charts[0], req.user.id, 'published');
+  return sendForecastProject(charts, res);
+});
+
 /* =========================================================
    DELETE PROJECT
 ========================================================= */
@@ -727,6 +1160,40 @@ export const deleteProject = asyncHandler(async (req, res) => {
   res.json({
     message: 'Project and related features deleted successfully',
     deletedFeatures: deletedFeaturesCount,
+  });
+});
+
+/* =========================================================
+   DELETE FORECAST PROJECT PACKAGE
+========================================================= */
+export const deleteForecastProject = asyncHandler(async (req, res) => {
+  const forecastProjectId = req.params.forecastProjectId;
+  const charts = await Project.find({
+    owner: req.user.id,
+    forecastProjectId,
+  }).select('_id status');
+
+  if (!charts.length) throwError('Forecast project not found.', 404);
+
+  const lockedChart = charts.find((chart) => !canEditProjectStatus(chart.status));
+  if (lockedChart) {
+    throwError(getProjectEditLockMessage(lockedChart.status), 403);
+  }
+
+  const chartIds = charts.map((chart) => chart._id);
+  const deleteFeaturesResult = await Feature.deleteMany({
+    'properties.project': { $in: chartIds },
+    'properties.owner': req.user.id,
+  });
+  const deleteProjectsResult = await Project.deleteMany({
+    _id: { $in: chartIds },
+    owner: req.user.id,
+  });
+
+  res.json({
+    message: 'Forecast project and related chart features deleted successfully',
+    deletedProjects: deleteProjectsResult.deletedCount,
+    deletedFeatures: deleteFeaturesResult.deletedCount,
   });
 });
 

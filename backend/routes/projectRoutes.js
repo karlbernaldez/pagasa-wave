@@ -3,20 +3,30 @@
 import express from 'express';
 import {
   createProject,
+  createForecastProject,
   getUserProjects,
   getLatestUserProject,
   getProjectById,
   updateProject,
   deleteProject,
+  deleteForecastProject,
   submitProject,
+  submitForecastProject,
   startReviewProject,
+  startReviewForecastProject,
   addReviewComment,
+  addForecastReviewComment,
   requestProjectRevision,
+  requestForecastProjectRevision,
   approveProject,
+  approveForecastProject,
   rejectProject,
+  rejectForecastProject,
   publishProject,
+  publishForecastProject,
   archiveProject,
-  renameProject
+  renameProject,
+  renameForecastProject
 } from '../controllers/projectController.js';
 import { getAdminProjects } from '../controllers/adminProjectController.js';
 import {
@@ -75,15 +85,27 @@ router.get('/admin/projects', isAdmin, getAdminProjects);
 
 router.patch('/:id/start-review', isAdmin, preventAdminSelfReview, startReviewProject);
 
+router.patch('/forecast-projects/:forecastProjectId/start-review', isAdmin, startReviewForecastProject);
+
 router.post('/:id/review-comment', isAdmin, preventAdminSelfReview, addReviewComment);
+
+router.post('/forecast-projects/:forecastProjectId/review-comment', isAdmin, addForecastReviewComment);
 
 router.patch('/:id/request-revision', isAdmin, preventAdminSelfReview, requestProjectRevision);
 
+router.patch('/forecast-projects/:forecastProjectId/request-revision', isAdmin, requestForecastProjectRevision);
+
 router.patch('/:id/approve', isAdmin, preventAdminSelfReview, approveProject);
+
+router.patch('/forecast-projects/:forecastProjectId/approve', isAdmin, approveForecastProject);
 
 router.patch('/:id/reject', isAdmin, preventAdminSelfReview, rejectProject);
 
+router.patch('/forecast-projects/:forecastProjectId/reject', isAdmin, rejectForecastProject);
+
 router.patch('/:id/publish', isAdmin, preventAdminSelfReview, publishProject);
+
+router.patch('/forecast-projects/:forecastProjectId/publish', isAdmin, publishForecastProject);
 
 router.patch('/:id/archive', isAdmin, preventAdminSelfReview, archiveProject);
 
@@ -97,9 +119,17 @@ router.get('/:id/published-output', getPublishedForecastOutput);
 // ─────────────────────────────────────────────
 router.post('/', createProject);
 
+router.post('/forecast-projects', createForecastProject);
+
 router.get('/', getUserProjects);
 
 router.get('/latest', getLatestUserProject);
+
+router.patch('/forecast-projects/:forecastProjectId/rename', renameForecastProject);
+
+router.patch('/forecast-projects/:forecastProjectId/submit', submitForecastProject);
+
+router.delete('/forecast-projects/:forecastProjectId', deleteForecastProject);
 
 router.get('/:id', isOwnerOrAdmin, getProjectById);
 

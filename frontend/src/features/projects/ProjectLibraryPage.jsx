@@ -12,7 +12,7 @@ import ProjectReviewModal from "@/features/projects/components/ProjectReviewModa
 import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Button from "@/components/ui/Button";
 
-import { createProject } from "@/api/projectAPI";
+import { createForecastProject } from "@/api/projectAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
 import { isProjectPublished } from "@/features/projects/projectStatuses";
@@ -114,7 +114,7 @@ function getCreatedProjectId(project) {
 }
 
 function getProjectId(project) {
-  return project?._id || project?.id;
+  return project?.primaryChartId || project?._id || project?.id;
 }
 
 function getReviewModalProject(project) {
@@ -183,7 +183,6 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
 
   const handleCreateAndOpenProject = async ({
     projectName,
-    chartType,
     description: projectDescription,
     forecastDate,
   }) => {
@@ -194,13 +193,12 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     setFeedbackError("");
 
     try {
-      const createdProject = await createProject({
+      const createdProject = await createForecastProject({
         name,
-        chartType,
         description: projectDescription,
         forecastDate,
       });
-      const projectId = getCreatedProjectId(createdProject);
+      const projectId = getCreatedProjectId(createdProject?.project || createdProject);
 
       await onRetry?.();
       setShowCreateProjectModal(false);

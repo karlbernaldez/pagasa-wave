@@ -5,15 +5,15 @@ const SYSTEM_REMARKS = new Set([
 ]);
 
 export function getProjectName(project) {
-  return project?.name || project?.title || 'Untitled project';
+  return project?.forecastProjectName || project?.name || project?.title || 'Untitled project';
 }
 
 export function getProjectId(project) {
-  return project?._id || project?.id;
+  return project?.primaryChartId || project?._id || project?.id;
 }
 
 export function getProjectType(project) {
-  return project?.chartType || project?.type || 'Forecast';
+  return project?.chartSummary || project?.chartType || project?.type || 'Forecast';
 }
 
 export function getOwner(project) {

@@ -46,6 +46,16 @@ const VersionSchema = new Schema({
 const ProjectSchema = new Schema({
   name: { type: String, required: true, trim: true },
   description: { type: String, default: '' },
+  forecastProjectId: {
+    type: Schema.Types.ObjectId,
+    index: true,
+    default: null
+  },
+  forecastProjectName: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   chartType: {
     type: String,
     enum: ['analysis','forecast_24h','forecast_36h','forecast_48h'],
@@ -96,6 +106,7 @@ ProjectSchema.index({ name: 1, owner: 1 }, { unique: true });
 ProjectSchema.index({ owner: 1, updatedAt: -1 });
 ProjectSchema.index({ owner: 1, status: 1, updatedAt: -1 });
 ProjectSchema.index({ owner: 1, chartType: 1, updatedAt: -1 });
+ProjectSchema.index({ owner: 1, forecastProjectId: 1, updatedAt: -1 });
 ProjectSchema.index({ owner: 1, forecastDate: -1 });
 ProjectSchema.index({ status: 1, updatedAt: -1 });
 

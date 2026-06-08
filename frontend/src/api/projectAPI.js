@@ -41,6 +41,12 @@ export const createProject = (projectData) =>
     body: JSON.stringify(projectData),
   });
 
+export const createForecastProject = (projectData) =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects`, {
+    method: 'POST',
+    body: JSON.stringify(projectData),
+  });
+
 // Get projects for current user. Supports server-driven search, filtering, sorting, and pagination.
 export const fetchUserProjects = ({
   page = 1,
@@ -83,6 +89,12 @@ export const renameProject = (id, name) =>
     body: JSON.stringify({ name }),
   });
 
+export const renameForecastProject = (forecastProjectId, name) =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects/${forecastProjectId}/rename`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+
 // Update project (Draft, Rejected, or Revision Requested only)
 export const updateProjectById = (id, projectData) =>
   request(`${PROJECT_API_BASE_URL}/${id}`, {
@@ -96,6 +108,11 @@ export const deleteProjectById = (id) =>
     method: 'DELETE',
   });
 
+export const deleteForecastProjectById = (forecastProjectId) =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects/${forecastProjectId}`, {
+    method: 'DELETE',
+  });
+
 /* =========================================================
    WORKFLOW ROUTES
 ========================================================= */
@@ -106,15 +123,31 @@ export const submitProject = (id) =>
     method: 'PATCH',
   });
 
+export const submitForecastProject = (forecastProjectId) =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects/${forecastProjectId}/submit`, {
+    method: 'PATCH',
+  });
+
 // Start review (Admin)
 export const startReviewProject = (id) =>
   request(`${PROJECT_API_BASE_URL}/${id}/start-review`, {
     method: 'PATCH',
   });
 
+export const startReviewForecastProject = (forecastProjectId) =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects/${forecastProjectId}/start-review`, {
+    method: 'PATCH',
+  });
+
 // Add review comment without changing status (Admin)
 export const addReviewComment = (id, comment) =>
   request(`${PROJECT_API_BASE_URL}/${id}/review-comment`, {
+    method: 'POST',
+    body: JSON.stringify({ comment }),
+  });
+
+export const addForecastReviewComment = (forecastProjectId, comment) =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects/${forecastProjectId}/review-comment`, {
     method: 'POST',
     body: JSON.stringify({ comment }),
   });
@@ -126,9 +159,20 @@ export const requestProjectRevision = (id, comment) =>
     body: JSON.stringify({ comment }),
   });
 
+export const requestForecastProjectRevision = (forecastProjectId, comment) =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects/${forecastProjectId}/request-revision`, {
+    method: 'PATCH',
+    body: JSON.stringify({ comment }),
+  });
+
 // Approve project (Admin)
 export const approveProject = (id) =>
   request(`${PROJECT_API_BASE_URL}/${id}/approve`, {
+    method: 'PATCH',
+  });
+
+export const approveForecastProject = (forecastProjectId) =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects/${forecastProjectId}/approve`, {
     method: 'PATCH',
   });
 
@@ -139,9 +183,20 @@ export const rejectProject = (id, comment = '') =>
     body: JSON.stringify({ comment }),
   });
 
+export const rejectForecastProject = (forecastProjectId, comment = '') =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects/${forecastProjectId}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify({ comment }),
+  });
+
 // Publish project (Admin)
 export const publishProject = (id) =>
   request(`${PROJECT_API_BASE_URL}/${id}/publish`, {
+    method: 'PATCH',
+  });
+
+export const publishForecastProject = (forecastProjectId) =>
+  request(`${PROJECT_API_BASE_URL}/forecast-projects/${forecastProjectId}/publish`, {
     method: 'PATCH',
   });
 

@@ -1,6 +1,11 @@
 import { useMemo } from 'react';
 
-import { addReviewComment, requestProjectRevision } from '@/api/projectAPI';
+import {
+  addForecastReviewComment,
+  addReviewComment,
+  requestForecastProjectRevision,
+  requestProjectRevision,
+} from '@/api/projectAPI';
 
 export default function useProjectReviewActionHandlers({
   projectId,
@@ -11,15 +16,22 @@ export default function useProjectReviewActionHandlers({
   onReject,
   onPublish,
 }) {
+  const useForecastProjectRoute = currentProject?.isForecastPackage && currentProject?.forecastProjectId;
+  const reviewTargetId = useForecastProjectRoute ? currentProject.forecastProjectId : projectId;
+
   return useMemo(() => ({
     onAddComment: () => runAction(
       'comment',
-      () => addReviewComment(projectId, remarks.trim()),
+      () => useForecastProjectRoute
+        ? addForecastReviewComment(reviewTargetId, remarks.trim())
+        : addReviewComment(reviewTargetId, remarks.trim()),
       { requireRemarks: true, closeOnSuccess: false },
     ),
     onRequestRevision: () => runAction(
       'revision',
-      () => requestProjectRevision(projectId, remarks.trim()),
+      () => useForecastProjectRoute
+        ? requestForecastProjectRevision(reviewTargetId, remarks.trim())
+        : requestProjectRevision(reviewTargetId, remarks.trim()),
       { requireRemarks: true },
     ),
     onApprove: () => runAction('approve', () => onApprove(currentProject)),
@@ -29,5 +41,5 @@ export default function useProjectReviewActionHandlers({
       { requireRemarks: true },
     ),
     onPublish: () => runAction('publish', () => onPublish(currentProject)),
-  }), [currentProject, onApprove, onPublish, onReject, projectId, remarks, runAction]);
+  }), [currentProject, onApprove, onPublish, onReject, remarks, reviewTargetId, runAction, useForecastProjectRoute]);
 }

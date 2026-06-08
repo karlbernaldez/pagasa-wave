@@ -4,15 +4,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import Swal from 'sweetalert2';
-import { X, FolderOpen, FileText, BarChart3, Calendar } from 'lucide-react';
-
-// Constants
-const CHART_TYPES = [
-  { value: 'analysis', label: 'Wave Analysis' },
-  { value: 'forecast_24h', label: '24 Hour Forecast' },
-  { value: 'forecast_36h', label: '36 Hour Forecast' },
-  { value: 'forecast_48h', label: '48 Hour Forecast' },
-];
+import { X, FolderOpen, FileText, Calendar, Layers } from 'lucide-react';
 
 const KEYBOARD_SHORTCUTS = {
   ESCAPE: 'Escape',
@@ -36,7 +28,6 @@ const CreateProjectModal = ({
   // Local state for form fields
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
-  const [chartType, setChartType] = useState('analysis');
   const [forecastDate, setForecastDate] = useState(dayjs());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,7 +69,6 @@ const CreateProjectModal = ({
   const resetForm = useCallback(() => {
     setProjectName('');
     setDescription('');
-    setChartType('analysis'); // FIXED
     setForecastDate(dayjs());
   }, []);
 
@@ -91,7 +81,7 @@ const CreateProjectModal = ({
         toast: true,
         position: 'top-end',
         icon: 'error',
-        title: 'Project Name is required!',
+        title: 'Forecast Project Name is required!',
         showConfirmButton: false,
         timer: 3000,
         timerProgressBar: true,
@@ -105,13 +95,12 @@ const CreateProjectModal = ({
     const formData = {
       projectName: trimmedProjectName,
       description: description.trim(),
-      chartType,
       forecastDate: forecastDate.format('YYYY-MM-DD'),
     };
 
     onSubmit(formData);
     resetForm();
-  }, [projectName, description, chartType, forecastDate, isDarkMode, onSubmit, resetForm]);
+  }, [projectName, description, forecastDate, isDarkMode, onSubmit, resetForm]);
 
   // Backdrop click handler
   const handleBackdropClick = useCallback(
@@ -197,10 +186,10 @@ const CreateProjectModal = ({
                 id="modal-title"
                 className={cn('text-base font-semibold tracking-wide', themeClasses.text.primary)}
               >
-                Create New Project
+                Create Forecast Project
               </h2>
               <p className={cn('text-xs mt-0.5', themeClasses.text.secondary)}>
-                Set up your project with all the details
+                Set up the forecast package and its standard charts
               </p>
             </div>
           </div>
@@ -227,7 +216,7 @@ const CreateProjectModal = ({
               )}
             >
               <FolderOpen size={12} strokeWidth={2.5} />
-              Project Name
+              Forecast Project Name
             </label>
             <input
               id="project-name"
@@ -235,7 +224,7 @@ const CreateProjectModal = ({
               type="text"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              placeholder="Enter a descriptive project name"
+              placeholder="Enter a descriptive forecast project name"
               className={themeClasses.input}
               required
               aria-required="true"
@@ -265,40 +254,24 @@ const CreateProjectModal = ({
             />
           </div>
 
-          {/* Chart Type */}
-          <div>
-            <label
-              htmlFor="chart-type"
-              className={cn(
-                'flex items-center gap-2 mb-2 font-semibold text-xs uppercase tracking-wide',
-                themeClasses.text.label
-              )}
-            >
-              <BarChart3 size={12} strokeWidth={2.5} />
-              Chart Type
-            </label>
-            <select
-              id="chart-type"
-              value={chartType}
-              onChange={(e) => setChartType(e.target.value)}
-              className={cn(themeClasses.input, 'cursor-pointer')}
-              style={{
-                colorScheme: isDarkMode ? 'dark' : 'light'
-              }}
-            >
-              {CHART_TYPES.map(({ value, label }) => (
-                <option
-                  key={value}
-                  value={value}
-                  style={{
-                    backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
-                    color: isDarkMode ? '#f3f4f6' : '#111827'
-                  }}
+          <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50')}>
+            <p className={cn('flex items-center gap-2 text-xs font-semibold uppercase tracking-wide', themeClasses.text.label)}>
+              <Layers size={12} strokeWidth={2.5} />
+              Charts
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {['Wave Analysis', '24h Wave Forecast', '36h Wave Forecast', '48h Wave Forecast'].map((label) => (
+                <span
+                  key={label}
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-xs font-semibold',
+                    isDarkMode ? 'border-white/10 bg-slate-950/40 text-slate-200' : 'border-slate-200 bg-white text-slate-700'
+                  )}
                 >
                   {label}
-                </option>
+                </span>
               ))}
-            </select>
+            </div>
           </div>
 
           {/* Forecast Date */}
@@ -385,7 +358,7 @@ const CreateProjectModal = ({
             )}
           >
             <span className="flex items-center justify-center gap-2">
-              Create Project
+              Create Forecast Project
             </span>
           </button>
         </footer>
