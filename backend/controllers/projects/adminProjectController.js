@@ -1,19 +1,9 @@
 import asyncHandler from '../../utils/asyncHandler.js';
+import { ProjectWorkflowService } from '../../services/project/projectWorkflowService.js';
+import { ProjectQueryService } from '../../services/project/projectQueryService.js';
 import { throwError } from '../../utils/errorHelper.js';
 import Project from '../../models/Project.js';
-import {
-  PROJECT_STATUS,
-  canAddReviewCommentStatus,
-  canTransitionProjectStatus,
-} from '../../utils/projectWorkflow.js';
-import {
-  getRequiredComment,
-  getLatestVersionReason,
-  createProjectVersionSnapshot,
-  getProjectForAdmin,
-  sendProject,
-  notifyProjectOwner,
-} from './projectHelpers.js';
+import { PROJECT_STATUS } from '../../constants/projectWorkflowConstants.js';
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
 
@@ -33,231 +23,169 @@ const ALLOWED_ADMIN_STATUSES = [
   PROJECT_STATUS.ARCHIVED,
 ];
 
-export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
-  requireAdmin(req.user);
+export const getAllProjectsForAdmin =
+  asyncHandler(async (req, res) => {
+    requireAdmin(req.user);
 
-  const { status } = req.query;
-  const filter = { status: { $in: ALLOWED_ADMIN_STATUSES } };
+    const { status } = req.query;
+    const filter = { status: { $in: ALLOWED_ADMIN_STATUSES } };
 
-  if (status) {
-    if (!ALLOWED_ADMIN_STATUSES.includes(status)) {
-      throwError('Invalid or unauthorized status filter', 400);
+    if (status) {
+      if (!ALLOWED_ADMIN_STATUSES.includes(status)) {
+        throwError('Invalid or unauthorized status filter', 400);
+      }
+      filter.status = status;
     }
-    filter.status = status;
-  }
 
-  const projects = await Project.find(filter)
-    .populate('owner', 'firstName lastName email username')
-    .populate('charts')
-    .populate('reviewStartedBy', 'firstName lastName email username')
-    .populate('approvedBy', 'firstName lastName email username')
-    .populate('rejectedBy', 'firstName lastName email username')
-    .populate('auditLogs.performedBy', 'firstName lastName email username')
-    .sort({ lastOpenedAt: -1, updatedAt: -1, submittedAt: -1, createdAt: -1 })
-    .lean();
+    const projects = await Project.find(filter)
+      .populate('owner', 'firstName lastName email username')
+      .populate('reviewStartedBy', 'firstName lastName email username')
+      .populate('approvedBy', 'firstName lastName email username')
+      .populate('rejectedBy', 'firstName lastName email username')
+      .populate('auditLogs.performedBy', 'firstName lastName email username')
+      .sort({
+        lastOpenedAt: -1,
+        updatedAt: -1,
+        submittedAt: -1,
+        createdAt: -1,
+      })
+      .lean();
 
-  res.json(projects);
-});
+    res.json(projects);
+  });
 
 // ─── START REVIEW ─────────────────────────────────────────────────────────────
 
-export const startReviewProject = asyncHandler(async (req, res) => {
-  requireAdmin(req.user);
+export const startReviewProject =
+  asyncHandler(async (req, res) => {
+    requireAdmin(req.user);
 
-  const project = await getProjectForAdmin(req.params.id, req.user.id);
+    await ProjectWorkflowService.startReview(
+      req.params.id,
+      req.user.id
+    );
 
-  // Idempotent — already under review
-  if (project.status === PROJECT_STATUS.UNDER_REVIEW) return sendProject(project, res);
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
 
-  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.UNDER_REVIEW)) {
-    throwError('Invalid status transition', 400);
-  }
-
-  const previousStatus = project.status;
-  project.status = PROJECT_STATUS.UNDER_REVIEW;
-  project.reviewStartedAt = new Date();
-  project.reviewStartedBy = req.user.id;
-  project.auditLogs.push({
-    action: 'review_started',
-    performedBy: req.user.id,
-    previousStatus,
-    newStatus: PROJECT_STATUS.UNDER_REVIEW,
-    comment: 'Project review started',
+    res.json(response);
   });
-
-  await project.save();
-  return sendProject(project, res);
-});
 
 // ─── ADD REVIEW COMMENT ───────────────────────────────────────────────────────
 
-export const addReviewComment = asyncHandler(async (req, res) => {
-  requireAdmin(req.user);
+export const addReviewComment =
+  asyncHandler(async (req, res) => {
+    requireAdmin(req.user);
 
-  const comment = getRequiredComment(req.body?.comment);
-  const project = await getProjectForAdmin(req.params.id, req.user.id);
+    await ProjectWorkflowService.addComment(
+      req.params.id,
+      req.user.id,
+      req.body.comment
+    );
 
-  if (!canAddReviewCommentStatus(project.status)) {
-    throwError('Comments can only be added while a project is submitted or under review', 400);
-  }
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
 
-  project.auditLogs.push({
-    action: 'comment_added',
-    performedBy: req.user.id,
-    previousStatus: project.status,
-    newStatus: project.status,
-    comment,
+    res.json(response);
   });
-
-  await project.save();
-  await notifyProjectOwner(project, req.user.id, 'comment_added', comment);
-  return sendProject(project, res);
-});
 
 // ─── REQUEST REVISION ─────────────────────────────────────────────────────────
 
-export const requestProjectRevision = asyncHandler(async (req, res) => {
-  requireAdmin(req.user);
+export const requestProjectRevision =
+  asyncHandler(async (req, res) => {
+    requireAdmin(req.user);
 
-  const comment = getRequiredComment(req.body?.comment, 'Revision comment');
-  const project = await getProjectForAdmin(req.params.id, req.user.id);
+    await ProjectWorkflowService.requestRevision(
+      req.params.id,
+      req.user.id,
+      req.body.comment
+    );
 
-  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.REVISION_REQUESTED)) {
-    throwError('Invalid status transition', 400);
-  }
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
 
-  const previousStatus = project.status;
-  if (getLatestVersionReason(project) !== 'revision_baseline') {
-    await createProjectVersionSnapshot(project, req.user.id, 'revision_baseline');
-  }
-
-  project.status = PROJECT_STATUS.REVISION_REQUESTED;
-  project.rejectedBy = undefined;
-  project.reviewComment = comment;
-  project.reviewedAt = new Date();
-  project.auditLogs.push({
-    action: 'revision_requested',
-    performedBy: req.user.id,
-    previousStatus,
-    newStatus: PROJECT_STATUS.REVISION_REQUESTED,
-    comment,
+    res.json(response);
   });
-
-  await project.save();
-  await notifyProjectOwner(project, req.user.id, 'revision_requested', comment);
-  return sendProject(project, res);
-});
 
 // ─── APPROVE ──────────────────────────────────────────────────────────────────
 
-export const approveProject = asyncHandler(async (req, res) => {
-  requireAdmin(req.user);
+export const approveProject =
+  asyncHandler(async (req, res) => {
+    requireAdmin(req.user);
 
-  const project = await getProjectForAdmin(req.params.id, req.user.id);
+    await ProjectWorkflowService.approve(
+      req.params.id,
+      req.user.id
+    );
 
-  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.APPROVED)) {
-    throwError('Invalid status transition', 400);
-  }
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
 
-  const previousStatus = project.status;
-  project.status = PROJECT_STATUS.APPROVED;
-  project.reviewedAt = new Date();
-  project.approvedBy = req.user.id;
-  project.auditLogs.push({
-    action: 'approved',
-    performedBy: req.user.id,
-    previousStatus,
-    newStatus: PROJECT_STATUS.APPROVED,
-    comment: 'Project approved',
+    res.json(response);
   });
-
-  await project.save();
-  await notifyProjectOwner(project, req.user.id, 'approved');
-  return sendProject(project, res);
-});
 
 // ─── REJECT ───────────────────────────────────────────────────────────────────
 
-export const rejectProject = asyncHandler(async (req, res) => {
-  requireAdmin(req.user);
+export const rejectProject =
+  asyncHandler(async (req, res) => {
+    requireAdmin(req.user);
 
-  const comment = getRequiredComment(req.body?.comment, 'Rejection comment');
-  const project = await getProjectForAdmin(req.params.id, req.user.id);
+    await ProjectWorkflowService.reject(
+      req.params.id,
+      req.user.id,
+      req.body.comment
+    );
 
-  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.REJECTED)) {
-    throwError('Invalid status transition', 400);
-  }
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
 
-  const previousStatus = project.status;
-  project.status = PROJECT_STATUS.REJECTED;
-  project.rejectedBy = req.user.id;
-  project.reviewComment = comment;
-  project.reviewedAt = new Date();
-  project.auditLogs.push({
-    action: 'rejected',
-    performedBy: req.user.id,
-    previousStatus,
-    newStatus: PROJECT_STATUS.REJECTED,
-    comment,
+    res.json(response);
   });
-
-  await project.save();
-  await notifyProjectOwner(project, req.user.id, 'rejected', comment);
-  return sendProject(project, res);
-});
 
 // ─── PUBLISH ──────────────────────────────────────────────────────────────────
 
-export const publishProject = asyncHandler(async (req, res) => {
-  requireAdmin(req.user);
+export const publishProject =
+  asyncHandler(async (req, res) => {
+    requireAdmin(req.user);
 
-  const project = await getProjectForAdmin(req.params.id, req.user.id);
+    await ProjectWorkflowService.publish(
+      req.params.id,
+      req.user.id
+    );
 
-  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.PUBLISHED)) {
-    throwError('Invalid status transition', 400);
-  }
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
 
-  const previousStatus = project.status;
-  if (getLatestVersionReason(project) !== 'publish') {
-    await createProjectVersionSnapshot(project, req.user.id, 'publish');
-  }
-
-  project.status = PROJECT_STATUS.PUBLISHED;
-  project.publishedAt = new Date();
-  project.auditLogs.push({
-    action: 'published',
-    performedBy: req.user.id,
-    previousStatus,
-    newStatus: PROJECT_STATUS.PUBLISHED,
-    comment: 'Project published',
+    res.json(response);
   });
-
-  await project.save();
-  await notifyProjectOwner(project, req.user.id, 'published');
-  return sendProject(project, res);
-});
 
 // ─── ARCHIVE ──────────────────────────────────────────────────────────────────
 
-export const archiveProject = asyncHandler(async (req, res) => {
-  requireAdmin(req.user);
+export const archiveProject =
+  asyncHandler(async (req, res) => {
+    requireAdmin(req.user);
 
-  const project = await getProjectForAdmin(req.params.id, req.user.id);
+    await ProjectWorkflowService.archive(
+      req.params.id,
+      req.user.id
+    );
 
-  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.ARCHIVED)) {
-    throwError('Only published projects can be archived', 400);
-  }
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
 
-  const previousStatus = project.status;
-  project.status = PROJECT_STATUS.ARCHIVED;
-  project.auditLogs.push({
-    action: 'archived',
-    performedBy: req.user.id,
-    previousStatus,
-    newStatus: PROJECT_STATUS.ARCHIVED,
-    comment: 'Project archived',
+    res.json(response);
   });
-
-  await project.save();
-  return sendProject(project, res);
-});

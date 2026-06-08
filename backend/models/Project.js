@@ -14,12 +14,12 @@ const AuditLogSchema = new Schema(
     performedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     previousStatus: {
       type: String,
-      enum: PROJECT_STATUS,
-      default: null
+      enum: Object.values(PROJECT_STATUS),
+      default: null,
     },
     newStatus: {
       type: String,
-      enum: PROJECT_STATUS,
+      enum: Object.values(PROJECT_STATUS),
       required: true
     },
     comment: { type: String, default: '' },
@@ -70,7 +70,7 @@ const ProjectSchema = new Schema(
     // ── Workflow ──────────────────────────────────────────────────────────────
     status: {
       type: String,
-      enum: PROJECT_STATUS,
+      enum: Object.values(PROJECT_STATUS),
       default: 'draft',
       required: true
     },

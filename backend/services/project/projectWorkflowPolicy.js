@@ -3,21 +3,12 @@ import {
   canTransitionProjectStatus,
 } from '../../utils/projectWorkflow.js';
 
-const allowedFields = [
-  'submittedAt',
-  'reviewStartedAt',
-  'reviewStartedBy',
-  'reviewedAt',
-  'approvedBy',
-  'rejectedBy',
-  'publishedAt',
-  'reviewComment',
-];
-
-export default class ProjectWorkflowService {
+export default class ProjectWorkflowPolicy {
   static assertTransition(currentStatus, nextStatus) {
     if (!canTransitionProjectStatus(currentStatus, nextStatus)) {
-      throw new Error(`Invalid workflow transition: ${currentStatus} -> ${nextStatus}`);
+      throw new Error(
+        `Invalid workflow transition: ${currentStatus} -> ${nextStatus}`
+      );
     }
   }
 
@@ -48,8 +39,7 @@ export default class ProjectWorkflowService {
 
     for (const field of allowedFields) {
       if (field in metadata) {
-        project[field] =
-          metadata[field];
+        project[field] = metadata[field];
       }
     }
 
@@ -60,12 +50,15 @@ export default class ProjectWorkflowService {
         previousStatus,
         newStatus: nextStatus,
         comment,
-        timestamp: new Date(),
       });
     }
 
     return project;
   }
+
+  /* =====================================================
+     WORKFLOW TRANSITIONS
+  ===================================================== */
 
   static submit(project, actorId, metadata = {}) {
     return this.transition(project, PROJECT_STATUS.SUBMITTED, {
@@ -123,5 +116,23 @@ export default class ProjectWorkflowService {
       actorId,
       metadata,
     });
+  }
+
+  /* =====================================================
+     NON-TRANSITION ACTIONS
+  ===================================================== */
+
+  static addComment(project, actorId, comment = '') {
+    if (Array.isArray(project.auditLogs)) {
+      project.auditLogs.push({
+        action: 'comment_added',
+        performedBy: actorId,
+        previousStatus: project.status,
+        newStatus: project.status,
+        comment,
+      });
+    }
+
+    return project;
   }
 }

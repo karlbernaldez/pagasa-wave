@@ -31,33 +31,26 @@ export const getLatestUserProject =
         req.user.id
       );
 
-    res.json({
-      project,
-    });
+    res.json({ project });
   });
 
 /* =========================================================
-   GET PROJECT
+   GET PROJECT BY ID
 ========================================================= */
 
 export const getProjectById =
   asyncHandler(async (req, res) => {
-    await ProjectQueryService.trackOpen(
-      req.params.id,
-      req.user.id
-    );
-
     const project =
       await ProjectQueryService.getProjectWithCharts(
         req.params.id
       );
 
-    if (!project) {
-      throwError(
-        'Project not found',
-        404
-      );
-    }
+    if (!project) throwError('Project not found', 404);
+
+    await ProjectQueryService.trackOpen(
+      req.params.id,
+      req.user.id
+    );
 
     res.json(project);
   });
@@ -75,25 +68,19 @@ export const createProject =
     } = req.body;
 
     const project =
-      await ProjectService.createProject(
-        {
-          name,
-          description,
-          forecastDate,
-
-          ownerId:
-            req.user.id,
-        }
-      );
+      await ProjectService.createProject({
+        name,
+        description,
+        forecastDate,
+        ownerId: req.user.id,
+      });
 
     const response =
       await ProjectQueryService.getProjectWithCharts(
         project._id
       );
 
-    res
-      .status(201)
-      .json(response);
+    res.status(201).json(response);
   });
 
 /* =========================================================
@@ -137,6 +124,24 @@ export const updateProject =
   });
 
 /* =========================================================
+   DELETE PROJECT
+========================================================= */
+
+export const deleteProject =
+  asyncHandler(async (req, res) => {
+    const result =
+      await ProjectService.deleteProject(
+        req.params.id,
+        req.user.id
+      );
+
+    res.json({
+      message: 'Project deleted successfully',
+      ...result,
+    });
+  });
+
+/* =========================================================
    SUBMIT
 ========================================================= */
 
@@ -145,6 +150,65 @@ export const submitProject =
     await ProjectWorkflowService.submit(
       req.params.id,
       req.user.id
+    );
+
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
+
+    res.json(response);
+  });
+
+/* =========================================================
+   START REVIEW
+========================================================= */
+
+export const startReviewProject =
+  asyncHandler(async (req, res) => {
+    await ProjectWorkflowService.startReview(
+      req.params.id,
+      req.user.id
+    );
+
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
+
+    res.json(response);
+  });
+
+/* =========================================================
+   ADD REVIEW COMMENT
+========================================================= */
+
+export const addReviewComment =
+  asyncHandler(async (req, res) => {
+    await ProjectWorkflowService.addComment(
+      req.params.id,
+      req.user.id,
+      req.body.comment
+    );
+
+    const response =
+      await ProjectQueryService.getProjectWithCharts(
+        req.params.id
+      );
+
+    res.json(response);
+  });
+
+/* =========================================================
+   REQUEST REVISION
+========================================================= */
+
+export const requestProjectRevision =
+  asyncHandler(async (req, res) => {
+    await ProjectWorkflowService.requestRevision(
+      req.params.id,
+      req.user.id,
+      req.body.comment
     );
 
     const response =
@@ -195,26 +259,6 @@ export const rejectProject =
   });
 
 /* =========================================================
-   REQUEST REVISION
-========================================================= */
-
-export const requestRevision =
-  asyncHandler(async (req, res) => {
-    await ProjectWorkflowService.requestRevision(
-      req.params.id,
-      req.user.id,
-      req.body.comment
-    );
-
-    const response =
-      await ProjectQueryService.getProjectWithCharts(
-        req.params.id
-      );
-
-    res.json(response);
-  });
-
-/* =========================================================
    PUBLISH
 ========================================================= */
 
@@ -250,24 +294,4 @@ export const archiveProject =
       );
 
     res.json(response);
-  });
-
-/* =========================================================
-   DELETE PROJECT
-========================================================= */
-
-export const deleteProject =
-  asyncHandler(async (req, res) => {
-    const result =
-      await ProjectService.deleteProject(
-        req.params.id,
-        req.user.id
-      );
-
-    res.json({
-      message:
-        'Project deleted successfully',
-
-      ...result,
-    });
   });

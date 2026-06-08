@@ -104,7 +104,7 @@ export class ProjectWorkflowService {
       ) => {
         const reason =
           project.status ===
-          PROJECT_STATUS.REVISION_REQUESTED
+            PROJECT_STATUS.REVISION_REQUESTED
             ? VERSION_REASONS.REVISION
             : VERSION_REASONS.SUBMIT;
 
@@ -148,6 +148,13 @@ export class ProjectWorkflowService {
       projectId,
       reviewerId,
       async project => {
+        if (
+          project.status ===
+          PROJECT_STATUS.UNDER_REVIEW
+        ) {
+          return;
+        }
+
         ProjectWorkflowPolicy.startReview(
           project,
           reviewerId,
@@ -158,6 +165,42 @@ export class ProjectWorkflowService {
             reviewStartedAt:
               new Date(),
           }
+        );
+      }
+    );
+  }
+
+  /* =====================================================
+     ADD COMMENT
+  ===================================================== */
+
+  static async addComment(
+    projectId,
+    reviewerId,
+    comment = ''
+  ) {
+    return this.execute(
+      projectId,
+      reviewerId,
+      async (
+        project,
+        session,
+        afterCommit
+      ) => {
+        ProjectWorkflowPolicy.addComment(
+          project,
+          reviewerId,
+          comment
+        );
+
+        afterCommit.push(
+          () =>
+            ProjectNotificationService.notifyOwner(
+              project,
+              reviewerId,
+              'comment_added',
+              comment
+            )
         );
       }
     );
@@ -222,6 +265,16 @@ export class ProjectWorkflowService {
         session,
         afterCommit
       ) => {
+        if (
+          String(project.owner) ===
+          String(reviewerId)
+        ) {
+          throwError(
+            'You cannot approve your own project',
+            400
+          );
+        }
+
         await ProjectVersionService.createSnapshot(
           project._id,
           reviewerId,

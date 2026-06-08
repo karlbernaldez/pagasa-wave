@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+import { PROJECT_STATUS } from '../../constants/projectWorkflowConstants.js';
+
 import Project from '../../models/Project.js';
 import Feature from '../../models/Feature.js';
 import Chart from '../../models/Chart.js';
@@ -86,29 +88,17 @@ export class ProjectService {
                   owner:
                     ownerId,
 
-                  status:
-                    'draft',
+                  status: PROJECT_STATUS.DRAFT,
 
                   version: 1,
 
-                  auditLogs: [
-                    {
-                      action:
-                        'created',
-
-                      performedBy:
-                        ownerId,
-
-                      previousStatus:
-                        null,
-
-                      newStatus:
-                        'draft',
-
-                      comment:
-                        'Project created',
-                    },
-                  ],
+                  auditLogs: [{
+                    action: 'created',
+                    performedBy: ownerId,
+                    previousStatus: null,
+                    newStatus: PROJECT_STATUS.DRAFT,
+                    comment: 'Project created',
+                  }],
                 },
               ],
               {
@@ -237,7 +227,7 @@ export class ProjectService {
           if (
             payload.name &&
             payload.name.trim() !==
-              project.name
+            project.name
           ) {
             project.name =
               payload.name.trim();
