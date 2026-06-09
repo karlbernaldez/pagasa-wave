@@ -1,8 +1,12 @@
 import Project from '../../models/Project.js';
 import Chart from '../../models/Chart.js';
 import Feature from '../../models/Feature.js';
+import ProjectVersion from '../../models/ProjectVersion.js';
 
 import { throwError } from '../../utils/errorHelper.js';
+
+const VERSION_POPULATE =
+  'firstName lastName email';
 
 export class ProjectVersionService {
   static async generateFeatureCollection(
@@ -33,13 +37,12 @@ export class ProjectVersionService {
         .session(session)
         .lean();
 
-    const chartMap =
-      new Map(
-        charts.map(chart => [
-          chart._id.toString(),
-          chart,
-        ])
-      );
+    const chartMap = new Map(
+      charts.map(chart => [
+        chart._id.toString(),
+        chart,
+      ])
+    );
 
     const features =
       await Feature.find({
@@ -68,62 +71,74 @@ export class ProjectVersionService {
           new Date(),
       },
 
-      features:
-        features.map(
-          feature => {
-            const chart =
-              chartMap.get(
-                feature.chart?.toString()
-              );
+      features: features.map(
+        feature => {
+          const chart =
+            feature.chart
+              ? chartMap.get(
+                  feature.chart.toString()
+                )
+              : null;
 
-            const featureId =
-              feature.stableId ||
-              feature.annotationId ||
-              feature.sourceId ||
-              feature._id;
+          const featureId =
+            feature.stableId ||
+            feature.annotationId ||
+            feature.sourceId ||
+            feature._id;
 
-            return {
-              type: 'Feature',
+          return {
+            type: 'Feature',
 
-              id: featureId,
+            id: featureId,
 
-              geometry:
-                feature.geometry,
+            geometry:
+              feature.geometry,
 
-              properties: {
-                ...feature.properties,
+            properties: {
+              ...feature.properties,
 
-                sourceId:
-                  feature.sourceId,
+              sourceId:
+                feature.sourceId,
 
-                stableId:
-                  feature.stableId,
+              stableId:
+                feature.stableId,
 
-                annotationId:
-                  feature.annotationId,
+              annotationId:
+                feature.annotationId,
 
-                chartId:
-                  feature.chart,
+              chartId:
+                feature.chart,
 
-                chartType:
-                  chart?.chartType ??
-                  null,
+              chartType:
+                chart?.chartType ??
+                null,
 
-                chartName:
-                  chart?.name ??
-                  null,
-              },
-            };
-          }
-        ),
+              chartName:
+                chart?.name ??
+                null,
+            },
+          };
+        }
+      ),
     };
   }
 
-  static getNextVersionNumber(
-    project
+  static async getNextVersionNumber(
+    projectId,
+    session = null
   ) {
     const latestVersion =
-      project.versions?.at(-1);
+      await ProjectVersion.findOne({
+        project: projectId,
+      })
+        .sort({
+          versionNumber: -1,
+        })
+        .select(
+          'versionNumber'
+        )
+        .session(session)
+        .lean();
 
     return latestVersion
       ? latestVersion.versionNumber + 1
@@ -139,7 +154,9 @@ export class ProjectVersionService {
     const project =
       await Project.findById(
         projectId
-      ).session(session);
+      )
+        .select('_id version')
+        .session(session);
 
     if (!project) {
       throwError(
@@ -155,24 +172,34 @@ export class ProjectVersionService {
       );
 
     const nextVersion =
-      this.getNextVersionNumber(
-        project
+      await this.getNextVersionNumber(
+        projectId,
+        session
       );
+
+    await ProjectVersion.create(
+      [
+        {
+          project: projectId,
+
+          versionNumber:
+            nextVersion,
+
+          reason,
+
+          featureCollection,
+
+          createdBy:
+            userId,
+        },
+      ],
+      {
+        session,
+      }
+    );
 
     project.version =
       nextVersion;
-
-    project.versions.push({
-      versionNumber:
-        nextVersion,
-
-      reason,
-
-      featureCollection,
-
-      createdBy:
-        userId,
-    });
 
     await project.save({
       session,
@@ -189,25 +216,18 @@ export class ProjectVersionService {
   static async getLatestSnapshot(
     projectId
   ) {
-    const project =
-      await Project.findById(
-        projectId
-      )
-        .select(
-          'versions version'
-        )
-        .lean();
-
-    if (!project) {
-      throwError(
-        'Project not found',
-        404
-      );
-    }
-
     return (
-      project.versions?.at(-1) ??
-      null
+      (await ProjectVersion.findOne({
+        project: projectId,
+      })
+        .populate(
+          'createdBy',
+          VERSION_POPULATE
+        )
+        .sort({
+          versionNumber: -1,
+        })
+        .lean()) ?? null
     );
   }
 
@@ -215,28 +235,33 @@ export class ProjectVersionService {
     projectId,
     versionNumber
   ) {
-    const project =
-      await Project.findById(
-        projectId
-      )
-        .select(
-          'versions'
-        )
-        .lean();
+    const parsedVersion =
+      Number(versionNumber);
 
-    if (!project) {
+    if (
+      !Number.isInteger(
+        parsedVersion
+      ) ||
+      parsedVersion < 1
+    ) {
       throwError(
-        'Project not found',
-        404
+        'Invalid version number',
+        400
       );
     }
 
     const snapshot =
-      project.versions.find(
-        version =>
-          version.versionNumber ===
-          Number(versionNumber)
-      );
+      await ProjectVersion.findOne({
+        project: projectId,
+
+        versionNumber:
+          parsedVersion,
+      })
+        .populate(
+          'createdBy',
+          VERSION_POPULATE
+        )
+        .lean();
 
     if (!snapshot) {
       throwError(
@@ -251,33 +276,29 @@ export class ProjectVersionService {
   static async getVersionHistory(
     projectId
   ) {
-    const project =
-      await Project.findById(
-        projectId
-      )
-        .populate(
-          'versions.createdBy',
-          'firstName lastName email'
-        )
-        .select(
-          'versions version'
-        )
-        .lean();
+    const projectExists =
+      await Project.exists({
+        _id: projectId,
+      });
 
-    if (!project) {
+    if (!projectExists) {
       throwError(
         'Project not found',
         404
       );
     }
 
-    return project.versions
-      .slice()
-      .sort(
-        (a, b) =>
-          b.versionNumber -
-          a.versionNumber
-      );
+    return ProjectVersion.find({
+      project: projectId,
+    })
+      .populate(
+        'createdBy',
+        VERSION_POPULATE
+      )
+      .sort({
+        versionNumber: -1,
+      })
+      .lean();
   }
 
   static async createManualSnapshot(

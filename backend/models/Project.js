@@ -49,6 +49,12 @@ const ProjectSchema = new Schema(
       type: Number,
       default: 1,
     },
+    
+      /**
+   * @deprecated
+   * Scheduled for removal after
+   * ProjectVersion migration.
+   */
     versions: [VersionSchema],
     auditLogs: [AuditLogSchema],
     reviewComment: { type: String, default: '' },
