@@ -1,8 +1,5 @@
-// backend/routes/projectRoutes.js
-
 import express from 'express';
 
-// ── New modular controllers (single-project operations) ───────────────────────
 import {
   getUserProjects,
   getLatestUserProject,
@@ -20,20 +17,6 @@ import {
   publishProject,
   archiveProject,
 } from '../controllers/projects/index.js';
-
-// ── Old controller — forecast-package (bulk) operations only ─────────────────
-import {
-  createForecastProject,
-  renameForecastProject,
-  deleteForecastProject,
-  submitForecastProject,
-  startReviewForecastProject,
-  addForecastReviewComment,
-  requestForecastProjectRevision,
-  approveForecastProject,
-  rejectForecastProject,
-  publishForecastProject,
-} from '../controllers/projectController.js';
 
 // ── Other controllers ─────────────────────────────────────────────────────────
 import { getAdminProjects } from '../controllers/adminProjectController.js';
@@ -89,7 +72,7 @@ router.get('/public/published/:id', getPublicPublishedForecastOutput);
 
 router.use(protect);
 
-// ── Admin — single project ────────────────────────────────────────────────────
+// ── Admin project ────────────────────────────────────────────────────
 
 router.get('/admin/projects', isAdmin, getAdminProjects);
 
@@ -102,28 +85,11 @@ router.patch('/:id/archive',           isAdmin, preventAdminSelfReview, archiveP
 
 router.post('/:id/review-comment',     isAdmin, preventAdminSelfReview, addReviewComment);
 
-// ── Admin — forecast package (bulk, old controller) ───────────────────────────
-
-router.patch('/forecast-projects/:forecastProjectId/start-review',     isAdmin, startReviewForecastProject);
-router.patch('/forecast-projects/:forecastProjectId/request-revision', isAdmin, requestForecastProjectRevision);
-router.patch('/forecast-projects/:forecastProjectId/approve',          isAdmin, approveForecastProject);
-router.patch('/forecast-projects/:forecastProjectId/reject',           isAdmin, rejectForecastProject);
-router.patch('/forecast-projects/:forecastProjectId/publish',          isAdmin, publishForecastProject);
-
-router.post('/forecast-projects/:forecastProjectId/review-comment',    isAdmin, addForecastReviewComment);
-
 // ── Published output (authenticated) ─────────────────────────────────────────
 
 router.get('/:id/published-output', getPublishedForecastOutput);
 
-// ── Owner — forecast package (bulk, old controller) ───────────────────────────
-
-router.post('/forecast-projects',                              createForecastProject);
-router.patch('/forecast-projects/:forecastProjectId/rename',  renameForecastProject);
-router.patch('/forecast-projects/:forecastProjectId/submit',  submitForecastProject);
-router.delete('/forecast-projects/:forecastProjectId',        deleteForecastProject);
-
-// ── Owner — single project (new controller) ───────────────────────────────────
+// ── Owner project (new controller) ───────────────────────────────────
 
 router.get('/',       getUserProjects);
 router.get('/latest', getLatestUserProject);
