@@ -6,58 +6,197 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
+
 import connectDB from './config/db.js';
+
 import { checkRedisHealth } from '#lib/redis';
 import { RedisPendingAuthStore, RedisOtpStore } from '#lib/redisOtpStore';
 import { setStore } from '#controllers/auth/otp';
+
 import { initSocket } from './socket/index.js';
 import { setIo } from './socket/socketEmitter.js';
+
 import { csrfProtection } from './middleware/csrfMiddleware.js';
+
 import settingsRoutes from './routes/settingsRoutes.js';
 import notificationRoutes from './routes/notificationRouter.js';
 import featureRoutes from './routes/featureRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
+import collaboratorRoutes from './routes/collaboratorRoutes.js';
 import chartRoutes from './routes/chartRoutes.js';
 import pdfRoutes from './routes/pdfRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+
 import { fileURLToPath } from 'url';
+
 import 'module-alias/register';
+
 const app = express();
-try { await connectDB(); } catch (err) { console.error('DB connection failed:', err); process.exit(1); }
-setStore(new RedisPendingAuthStore(), new RedisOtpStore());
+
+try {
+    await connectDB();
+} catch (err) {
+    console.error('DB connection failed:', err);
+    process.exit(1);
+}
+
+setStore(
+    new RedisPendingAuthStore(),
+    new RedisOtpStore(),
+);
+
 await checkRedisHealth();
+
 app.set('trust proxy', 1);
+
 app.use(helmet());
-const globalLimiter = rateLimit({ windowMs: 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { message: 'Too many requests, slow down.' } });
+
+const globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        message: 'Too many requests, slow down.',
+    },
+});
+
 app.use(globalLimiter);
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false, message: { message: 'Too many login attempts. Try again later.' } });
-const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean) : [];
-const corsOptions = { origin: (origin, callback) => { if (!origin) return callback(null, true); if (allowedOrigins.length === 0) { if (process.env.NODE_ENV === 'production') return callback(null, false); return callback(null, true); } if (allowedOrigins.includes(origin)) return callback(null, true); return callback(null, false); }, credentials: true };
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        message: 'Too many login attempts. Try again later.',
+    },
+});
+
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
+    ? process.env.CORS_ALLOWED_ORIGINS
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.length === 0) {
+            if (process.env.NODE_ENV === 'production') {
+                return callback(null, false);
+            }
+
+            return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(null, false);
+    },
+    credentials: true,
+};
+
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ limit: '5mb', extended: true }));
+
+app.use(
+    express.json({
+        limit: '5mb',
+    }),
+);
+
+app.use(
+    express.urlencoded({
+        limit: '5mb',
+        extended: true,
+    }),
+);
+
 app.use(cookieParser());
+
 app.use(csrfProtection);
-app.use((req, res, next) => { mongoSanitize.sanitize(req.body, { replaceWith: '_' }); mongoSanitize.sanitize(req.params, { replaceWith: '_' }); next(); });
+
+app.use((req, res, next) => {
+    mongoSanitize.sanitize(req.body, {
+        replaceWith: '_',
+    });
+
+    mongoSanitize.sanitize(req.params, {
+        replaceWith: '_',
+    });
+
+    next();
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.get('/status', (req, res) => { res.status(200).json({ status: 'OK', timestamp: new Date().toISOString(), uptime: process.uptime(), message: 'Votewave API is running' }); });
+
+app.get('/status', (req, res) => {
+    res.status(200).json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        message: 'Votewave API is running',
+    });
+});
+
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/features', featureRoutes);
+
 app.use('/api/auth', authLimiter, authRoutes);
+
 app.use('/api/projects', projectRoutes);
+app.use('/api/projects/:id/collaborators', collaboratorRoutes);
+
 app.use('/api/users', userRoutes);
 app.use('/api/charts', chartRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/chat', chatRoutes);
-app.use('/api/public', express.static(path.join(__dirname, 'public')));
-app.use('/api/frames', express.static(path.join(__dirname, 'frames')));
-app.use((req, res) => { res.status(404).json({ success: false, message: 'Route not found' }); });
-app.use((err, req, res, next) => { const isProd = process.env.NODE_ENV === 'production'; res.status(err.status || 500).json({ success: false, message: err.message || 'Internal Server Error', ...(isProd ? {} : { stack: err.stack }) }); });
+
+app.use(
+    '/api/public',
+    express.static(path.join(__dirname, 'public')),
+);
+
+app.use(
+    '/api/frames',
+    express.static(path.join(__dirname, 'frames')),
+);
+
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        message: 'Route not found',
+    });
+});
+
+app.use((err, req, res, next) => {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Internal Server Error',
+        ...(isProd ? {} : { stack: err.stack }),
+    });
+});
+
 const httpServer = http.createServer(app);
-initSocket(httpServer).then((io) => { setIo(io); }).catch(() => {});
+
+initSocket(httpServer)
+    .then((io) => {
+        setIo(io);
+    })
+    .catch(() => { });
+
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT);
+
+httpServer.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
