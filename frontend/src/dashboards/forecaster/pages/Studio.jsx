@@ -160,7 +160,7 @@ const Studio = ({ logger }) => {
   });
 
   const handleBackToLibrary = useCallback(() => {
-    navigate("/studio");
+    navigate("/projects");
   }, [navigate]);
 
   const handleToggleTheme = useCallback(() => {

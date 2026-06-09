@@ -4,7 +4,6 @@ import { PROJECT_STATUS } from '../../constants/projectWorkflowConstants.js';
 
 import Project from '../../models/Project.js';
 import Feature from '../../models/Feature.js';
-import Chart from '../../models/Chart.js';
 
 import { throwError } from '../../utils/errorHelper.js';
 
@@ -112,7 +111,6 @@ export class ProjectService {
           await ChartService.createDefaultCharts(
             createdProject._id,
             ownerId,
-            createdProject.name,
             session
           );
         }
@@ -175,12 +173,6 @@ export class ProjectService {
               `Renamed from "${oldName}" to "${newName}"`,
           });
 
-          await ChartService.renameProjectCharts(
-            projectId,
-            newName,
-            session
-          );
-
           await project.save({
             session,
           });
@@ -231,12 +223,6 @@ export class ProjectService {
           ) {
             project.name =
               payload.name.trim();
-
-            await ChartService.renameProjectCharts(
-              projectId,
-              payload.name,
-              session
-            );
 
             project.auditLogs.push({
               action:
@@ -342,14 +328,9 @@ export class ProjectService {
             );
 
           const chartResult =
-            await Chart.deleteMany(
-              {
-                project:
-                  projectId,
-              },
-              {
-                session,
-              }
+            await ChartService.deleteProjectCharts(
+              projectId,
+              session
             );
 
           const projectResult =

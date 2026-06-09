@@ -1,273 +1,65 @@
 import Chart from '../../models/Chart.js';
 import { throwError } from '../../utils/errorHelper.js';
-
-const DEFAULT_CHARTS = [
-  {
-    chartType: 'analysis',
-    label: 'Analysis',
-  },
-  {
-    chartType: 'forecast_24h',
-    label: 'Forecast 24H',
-  },
-  {
-    chartType: 'forecast_36h',
-    label: 'Forecast 36H',
-  },
-  {
-    chartType: 'forecast_48h',
-    label: 'Forecast 48H',
-  },
-];
-
-const buildChartName = (projectName, label) =>
-  `${projectName} - ${label}`;
+import {
+  CHART_TYPES as DEFAULT_CHARTS,
+} from '../../constants/chartConstants.js';
 
 export class ChartService {
-  /**
-   * Create default charts for a project
-   */
+  /* =====================================================
+     HELPERS
+  ===================================================== */
+
+  static getChartOrder() {
+    return DEFAULT_CHARTS.map(
+      ({ chartType }) => chartType
+    );
+  }
+
+  static sortCharts(charts) {
+    const order =
+      this.getChartOrder();
+
+    return charts.sort(
+      (a, b) =>
+        order.indexOf(
+          a.chartType
+        ) -
+        order.indexOf(
+          b.chartType
+        )
+    );
+  }
+
+  /* =====================================================
+     CREATE
+  ===================================================== */
+
   static async createDefaultCharts(
     projectId,
     ownerId,
-    projectName,
     session = null
   ) {
-    const charts = DEFAULT_CHARTS.map(
-      ({ chartType, label }) => ({
-        owner: ownerId,
-        project: projectId,
-        chartType,
-        name: buildChartName(
-          projectName,
-          label
-        ),
-      })
-    );
+    const charts =
+      DEFAULT_CHARTS.map(
+        ({ chartType }) => ({
+          owner: ownerId,
+          project: projectId,
+          chartType,
+        })
+      );
 
     return Chart.insertMany(
       charts,
       {
         session,
+        ordered: true,
       }
     );
   }
 
-  /**
-   * Get all charts belonging to a project
-   */
-  static async getChartsByProject(
-    projectId,
-    options = {}
-  ) {
-    const {
-      lean = true,
-      sort = {
-        createdAt: 1,
-      },
-    } = options;
-
-    let query =
-      Chart.find({
-        project: projectId,
-      }).sort(sort);
-
-    if (lean) {
-      query = query.lean();
-    }
-
-    return query;
-  }
-
-  /**
-   * Get charts for many projects
-   * Used for paginated project listing
-   */
-  static async getChartsByProjects(
-    projectIds
-  ) {
-    const charts =
-      await Chart.find({
-        project: {
-          $in: projectIds,
-        },
-      }).lean();
-
-    const map = new Map();
-
-    for (const chart of charts) {
-      const key =
-        chart.project.toString();
-
-      if (!map.has(key)) {
-        map.set(key, []);
-      }
-
-      map.get(key).push(chart);
-    }
-
-    return map;
-  }
-
-  /**
-   * Get chart by id
-   */
-  static async getChartById(
-    chartId
-  ) {
-    const chart =
-      await Chart.findById(
-        chartId
-      );
-
-    if (!chart) {
-      throwError(
-        'Chart not found',
-        404
-      );
-    }
-
-    return chart;
-  }
-
-  /**
-   * Get chart by project and type
-   */
-  static async getChartByType(
-    projectId,
-    chartType
-  ) {
-    return Chart.findOne({
-      project: projectId,
-      chartType,
-    });
-  }
-
-  /**
-   * Rename all charts when project name changes
-   */
-  static async renameProjectCharts(
-    projectId,
-    projectName,
-    session = null
-  ) {
-    const charts =
-      await Chart.find({
-        project: projectId,
-      }).session(session);
-
-    if (
-      !charts ||
-      charts.length === 0
-    ) {
-      return [];
-    }
-
-    const operations =
-      charts.map(chart => {
-        const config =
-          DEFAULT_CHARTS.find(
-            c =>
-              c.chartType ===
-              chart.chartType
-          );
-
-        const label =
-          config?.label ??
-          chart.chartType;
-
-        return {
-          updateOne: {
-            filter: {
-              _id: chart._id,
-            },
-            update: {
-              $set: {
-                name: buildChartName(
-                  projectName,
-                  label
-                ),
-              },
-            },
-          },
-        };
-      });
-
-    await Chart.bulkWrite(
-      operations,
-      {
-        session,
-      }
-    );
-
-    return Chart.find({
-      project: projectId,
-    }).session(session);
-  }
-
-  /**
-   * Delete all charts belonging to a project
-   */
-  static async deleteProjectCharts(
-    projectId,
-    session = null
-  ) {
-    return Chart.deleteMany(
-      {
-        project: projectId,
-      },
-      {
-        session,
-      }
-    );
-  }
-
-  /**
-   * Verify project owns expected chart set
-   * Useful for migration validation
-   */
-  static async validateProjectCharts(
-    projectId
-  ) {
-    const charts =
-      await Chart.find({
-        project: projectId,
-      })
-        .select(
-          'chartType'
-        )
-        .lean();
-
-    const existing =
-      new Set(
-        charts.map(
-          c => c.chartType
-        )
-      );
-
-    const missing =
-      DEFAULT_CHARTS.filter(
-        c =>
-          !existing.has(
-            c.chartType
-          )
-      );
-
-    return {
-      valid:
-        missing.length === 0,
-      missing,
-    };
-  }
-
-  /**
-   * Ensure project contains all default charts
-   * Useful after migrations
-   */
   static async ensureDefaultCharts(
     projectId,
     ownerId,
-    projectName,
     session = null
   ) {
     const validation =
@@ -285,20 +77,311 @@ export class ChartService {
       validation.missing.map(
         ({
           chartType,
-          label,
         }) => ({
           owner: ownerId,
           project: projectId,
           chartType,
-          name: buildChartName(
-            projectName,
-            label
-          ),
         })
       );
 
     await Chart.insertMany(
       missingCharts,
+      {
+        session,
+        ordered: true,
+      }
+    );
+  }
+
+  /* =====================================================
+     READ
+  ===================================================== */
+
+  static async getChartById(
+    chartId,
+    options = {}
+  ) {
+    const {
+      lean = false,
+    } = options;
+
+    let query =
+      Chart.findById(
+        chartId
+      );
+
+    if (lean) {
+      query =
+        query.lean();
+    }
+
+    const chart =
+      await query;
+
+    if (!chart) {
+      throwError(
+        'Chart not found',
+        404
+      );
+    }
+
+    return chart;
+  }
+
+  static async getChartByType(
+    projectId,
+    chartType,
+    options = {}
+  ) {
+    const {
+      lean = false,
+    } = options;
+
+    let query =
+      Chart.findOne({
+        project: projectId,
+        chartType,
+      });
+
+    if (lean) {
+      query =
+        query.lean();
+    }
+
+    return query;
+  }
+
+  static async getChartsByProject(
+    projectId,
+    options = {}
+  ) {
+    const {
+      lean = true,
+    } = options;
+
+    let query =
+      Chart.find({
+        project: projectId,
+      });
+
+    if (lean) {
+      query =
+        query.lean();
+    }
+
+    const charts =
+      await query;
+
+    return this.sortCharts(
+      charts
+    );
+  }
+
+  static async getChartsByProjects(
+    projectIds
+  ) {
+    const charts =
+      await Chart.find({
+        project: {
+          $in: projectIds,
+        },
+      }).lean();
+
+    const map =
+      new Map();
+
+    for (const chart of charts) {
+      const key =
+        chart.project.toString();
+
+      if (
+        !map.has(key)
+      ) {
+        map.set(
+          key,
+          []
+        );
+      }
+
+      map
+        .get(key)
+        .push(chart);
+    }
+
+    for (const value of map.values()) {
+      this.sortCharts(
+        value
+      );
+    }
+
+    return map;
+  }
+
+  /* =====================================================
+     VALIDATION
+  ===================================================== */
+
+  static async validateProjectCharts(
+    projectId
+  ) {
+    const charts =
+      await Chart.find({
+        project: projectId,
+      })
+        .select(
+          'chartType'
+        )
+        .lean();
+
+    const existing =
+      new Set(
+        charts.map(
+          chart =>
+            chart.chartType
+        )
+      );
+
+    const missing =
+      DEFAULT_CHARTS.filter(
+        ({
+          chartType,
+        }) =>
+          !existing.has(
+            chartType
+          )
+      );
+
+    return {
+      valid:
+        missing.length === 0,
+      missing,
+    };
+  }
+
+  /* =====================================================
+     COMPLETION
+  ===================================================== */
+
+  static async markCompleted(
+    chartId,
+    session = null
+  ) {
+    const chart =
+      await this.getChartById(
+        chartId
+      );
+
+    chart.completed =
+      true;
+
+    chart.completedAt =
+      new Date();
+
+    await chart.save({
+      session,
+    });
+
+    return chart;
+  }
+
+  static async markIncomplete(
+    chartId,
+    session = null
+  ) {
+    const chart =
+      await this.getChartById(
+        chartId
+      );
+
+    chart.completed =
+      false;
+
+    chart.completedAt =
+      null;
+
+    await chart.save({
+      session,
+    });
+
+    return chart;
+  }
+
+  /* =====================================================
+     PROGRESS
+  ===================================================== */
+
+  static async getProjectProgress(
+    projectId
+  ) {
+    const charts =
+      await Chart.find({
+        project: projectId,
+      })
+        .select(
+          'completed'
+        )
+        .lean();
+
+    const total =
+      charts.length;
+
+    const completed =
+      charts.filter(
+        chart =>
+          chart.completed
+      ).length;
+
+    return {
+      total,
+      completed,
+
+      percentage:
+        total === 0
+          ? 0
+          : Math.round(
+              (
+                completed /
+                total
+              ) *
+                100
+            ),
+    };
+  }
+
+  static async getProjectSummary(
+    projectId
+  ) {
+    const [
+      charts,
+      progress,
+    ] = await Promise.all([
+      this.getChartsByProject(
+        projectId
+      ),
+
+      this.getProjectProgress(
+        projectId
+      ),
+    ]);
+
+    return {
+      charts,
+      progress,
+    };
+  }
+
+  /* =====================================================
+     DELETE
+  ===================================================== */
+
+  static async deleteProjectCharts(
+    projectId,
+    session = null
+  ) {
+    return Chart.deleteMany(
+      {
+        project: projectId,
+      },
       {
         session,
       }

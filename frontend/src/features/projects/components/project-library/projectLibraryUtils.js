@@ -46,9 +46,25 @@ export function sortProjects(projects, sortBy, sortDir) {
   });
 }
 
+const STATUS_COUNT_KEYS = {
+  Draft: 'draft',
+  Submitted: 'submitted',
+  'Under Review': 'under_review',
+  'Revision Requested': 'revision_requested',
+  Approved: 'approved',
+  Published: 'published',
+  Rejected: 'rejected',
+  Archived: 'archived',
+};
+
 function getCount(statusCounts, status, projects) {
   if (statusCounts && Object.prototype.hasOwnProperty.call(statusCounts, status)) {
     return statusCounts[status] || 0;
+  }
+
+  const apiStatus = STATUS_COUNT_KEYS[status];
+  if (apiStatus && statusCounts && Object.prototype.hasOwnProperty.call(statusCounts, apiStatus)) {
+    return statusCounts[apiStatus] || 0;
   }
 
   return projects.filter((project) => project.status === status).length;

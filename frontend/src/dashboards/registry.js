@@ -15,7 +15,7 @@ export const DASHBOARD_REGISTRY = Object.freeze({
   [DASHBOARD_IDS.FORECASTER]: {
     id: DASHBOARD_IDS.FORECASTER,
     name: 'Forecaster Workspace',
-    basePath: '/studio',
+    basePath: '/projects',
     owner: 'forecasting',
     appBoundary: 'dashboards/forecaster',
   },

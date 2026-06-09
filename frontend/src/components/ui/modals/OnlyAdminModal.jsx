@@ -234,8 +234,8 @@ const overlayVariants = {
 
 const AccessDeniedModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
-  const handleGoToStudio = () => {
-    navigate('/studio');
+  const handleGoToProjects = () => {
+    navigate('/projects');
   };
   const handleProceedWithSignOut = () => {
     onClose();
@@ -278,8 +278,8 @@ const AccessDeniedModal = ({ isOpen, onClose }) => {
                   <MdLockOutline size={16} />
                   Login as Admin
                 </ActionButton>
-                <SecondaryButton onClick={handleGoToStudio}>
-                  Go to Dashboard
+                <SecondaryButton onClick={handleGoToProjects}>
+                  Go to Projects
                 </SecondaryButton>
               </ButtonGroup>
             </ModalContainer>

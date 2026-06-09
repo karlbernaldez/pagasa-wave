@@ -167,7 +167,7 @@ export const refreshAccessToken = async () => {
 
       const data = await response.json();
       authCache = { value: null, ts: 0 };
-      return data.accessToken;
+      return data;
     } catch (err) {
       console.error('Error refreshing access token:', err);
       return null;
@@ -220,33 +220,21 @@ export const checkAuthSession = async ({ force = false } = {}) => {
 };
 
 export const fetchWithAuth = async (url, options = {}) => {
-  let accessToken = localStorage.getItem('authToken');
-  if (!accessToken) {
-    throw new Error('No access token found.');
-  }
-
   const response = await fetch(url, {
     ...options,
     headers: {
       ...options.headers,
-      Authorization: `Bearer ${accessToken}`,
     },
     credentials: 'include',
   });
 
   if (response.status === 401) {
-    accessToken = await refreshAccessToken();
-    if (!accessToken) {
+    const refreshed = await refreshAccessToken();
+    if (!refreshed) {
       throw new Error('Unable to refresh token. Please log in again.');
     }
 
-    return fetchWithAuth(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    return fetchWithAuth(url, options);
   }
 
   return response;

@@ -496,7 +496,6 @@ export const handlePointerUp = async (
   isDrawing.current = false;
 
   const owner = JSON.parse(localStorage.getItem('user'));
-  const token = localStorage.getItem('authToken');
 
   // Guard early — no point continuing without a valid project
   if (!projectId) {

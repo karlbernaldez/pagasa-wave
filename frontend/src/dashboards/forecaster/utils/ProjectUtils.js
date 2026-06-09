@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import Swal from 'sweetalert2';
 import { captureMapSnapshot } from '@/utils/mapUtils';
-import { createForecastProject, deleteProjectById } from '@/api/projectAPI';
+import { createProject, deleteProjectById } from '@/api/projectAPI';
 
 import { isMapLoaded, mapSourceIds } from '@dashboards/forecaster/map/helpers/mapGlobalState';
 
@@ -217,13 +217,14 @@ export const handleCreateProject = async ({
       forecastDate,
     };
 
-    const created = await createForecastProject(payload);
-    const firstChart = created?.project || created?.charts?.[0] || created;
+    const created = await createProject(payload);
+    const createdProject = created?.project || created;
+    const primaryChart = createdProject?.charts?.[0];
 
     const storageValues = {
-      projectId: firstChart?._id,
+      projectId: createdProject?._id || createdProject?.id,
       projectName,
-      chartType: firstChart?.chartType,
+      chartType: createdProject?.chartType || primaryChart?.chartType,
       forecastDate,
     };
 
@@ -236,7 +237,7 @@ export const handleCreateProject = async ({
     if (onNew) {
       onNew({
         name: projectName,
-        chartType: firstChart?.chartType,
+        chartType: createdProject?.chartType || primaryChart?.chartType,
         description,
         forecastDate,
       });
@@ -253,8 +254,9 @@ export const handleCreateProject = async ({
 
     setShowModal?.(false);
 
-    if (firstChart?._id) {
-      setTimeout(() => window.location.assign(`/studio/${firstChart._id}`), 700);
+    const projectId = createdProject?._id || createdProject?.id;
+    if (projectId) {
+      setTimeout(() => window.location.assign(`/studio/${projectId}`), 700);
     } else {
       setTimeout(() => window.location.reload(), 1200);
     }

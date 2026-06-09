@@ -21,8 +21,8 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
   const navigate = useNavigate();
   const isAdmin = role === "admin";
 
-  const forecasterProjects = useForecasterProjectLibrary();
-  const adminProjects = useAdminProjectLibrary();
+  const forecasterProjects = useForecasterProjectLibrary({ enabled: !isAdmin });
+  const adminProjects = useAdminProjectLibrary({ enabled: isAdmin });
   const dialogs = useProjectLibraryDialogs();
 
   const projectState = isAdmin ? adminProjects : forecasterProjects;

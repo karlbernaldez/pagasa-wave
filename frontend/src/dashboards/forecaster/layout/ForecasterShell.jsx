@@ -15,7 +15,7 @@ import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const NAV_ITEMS = [
-  { id: 'project-library', label: 'Project Library', path: '/studio', icon: FolderKanban },
+  { id: 'project-library', label: 'Project Library', path: '/projects', icon: FolderKanban },
   { id: 'models', label: 'Models', path: '/studio?section=models', icon: Box, disabled: true },
   { id: 'observations', label: 'Observations', path: '/studio?section=observations', icon: CloudSun, disabled: true },
   { id: 'nowcast', label: 'Nowcast', path: '/studio?section=nowcast', icon: RadioTower, disabled: true },

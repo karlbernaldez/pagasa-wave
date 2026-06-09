@@ -12,7 +12,7 @@ import ProjectReviewModal from "@/features/projects/components/ProjectReviewModa
 import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Button from "@/components/ui/Button";
 
-import { createForecastProject } from "@/api/projectAPI";
+import { createProject } from "@/api/projectAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
 import { isProjectPublished } from "@/features/projects/projectStatuses";
@@ -193,7 +193,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     setFeedbackError("");
 
     try {
-      const createdProject = await createForecastProject({
+      const createdProject = await createProject({
         name,
         description: projectDescription,
         forecastDate,

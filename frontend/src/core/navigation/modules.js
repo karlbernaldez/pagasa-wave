@@ -78,7 +78,7 @@ export const DASHBOARD_MODULES = [
     feature: 'projects',
     action: 'viewOwn',
     roles: ['forecaster'],
-    path: '/studio',
+    path: '/projects',
   },
   {
     id: 'observations',

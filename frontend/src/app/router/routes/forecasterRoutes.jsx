@@ -13,7 +13,7 @@ export default [
   {
     element: <ForecasterRouteLayout />,
     children: [
-      { path: '/studio', element: <ProjectLibraryPage /> },
+      { path: '/projects', element: <ProjectLibraryPage /> },
       { path: '/profile', element: <Profile /> },
       { path: '/edit-profile', element: <EditProfile /> },
       { path: '/pdf', element: <PdfGenerator /> },

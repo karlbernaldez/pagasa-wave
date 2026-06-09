@@ -21,7 +21,7 @@ const NoProjectsModal = ({
   let description = message || "An unexpected error occurred.";
   let showCreateButton = false;
   let secondaryLabel = "Select Another Project";
-  let secondaryAction = () => { onClose?.(); navigate("/studio"); };
+  let secondaryAction = () => { onClose?.(); navigate("/projects"); };
 
   if (msg.includes("no projects")) {
     title = "No Projects Found";

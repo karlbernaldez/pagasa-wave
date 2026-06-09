@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { label: 'Project Library', path: '/studio', icon: FolderKanban },
+  { label: 'Project Library', path: '/projects', icon: FolderKanban },
   { label: 'Models', path: '/studio?section=models', icon: Box, disabled: true },
   { label: 'Observations', path: '/studio?section=observations', icon: CloudSun, disabled: true },
   { label: 'Nowcast', path: '/studio?section=nowcast', icon: RadioTower, disabled: true },

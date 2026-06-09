@@ -3,8 +3,8 @@ import { useProjects } from "@/features/projects/hooks/useProjects";
 
 export const FORECASTER_PAGE_SIZE = 10;
 
-export function useForecasterProjectLibrary() {
-  const projects = useProjects();
+export function useForecasterProjectLibrary({ enabled = true } = {}) {
+  const projects = useProjects({ enabled });
 
   return {
     ...projects,

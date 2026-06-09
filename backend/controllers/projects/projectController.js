@@ -16,7 +16,6 @@ export const getUserProjects =
         req.user.id,
         req.query
       );
-
     res.json(result);
   });
 

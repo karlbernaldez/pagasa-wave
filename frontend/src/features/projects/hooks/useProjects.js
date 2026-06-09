@@ -4,7 +4,7 @@ import { fetchUserProjects } from "@/api/projectAPI";
 import { PAGE_LIMIT } from "@/features/projects/constants/projectLibrary";
 import { projectLibraryQueryKeys } from "@/features/projects/services/projectLibraryQueryKeys";
 
-export function useProjects() {
+export function useProjects({ enabled = true } = {}) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -37,6 +37,7 @@ export function useProjects() {
   const query = useQuery({
     queryKey: projectLibraryQueryKeys.list(queryParams),
     queryFn: ({ signal }) => fetchUserProjects({ ...queryParams, signal }),
+    enabled,
     staleTime: 30000,
     keepPreviousData: true,
   });

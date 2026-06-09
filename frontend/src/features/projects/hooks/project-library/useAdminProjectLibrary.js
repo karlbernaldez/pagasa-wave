@@ -7,7 +7,7 @@ import { useDebouncedValue } from "./useDebouncedValue";
 
 export const ADMIN_PAGE_SIZE = 12;
 
-export function useAdminProjectLibrary() {
+export function useAdminProjectLibrary({ enabled = true } = {}) {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
@@ -35,6 +35,7 @@ export function useAdminProjectLibrary() {
   const query = useQuery({
     queryKey: ["admin-project-library", queryParams],
     queryFn: ({ signal }) => fetchAdminProjects({ ...queryParams, signal }),
+    enabled,
     staleTime: 30000,
     keepPreviousData: true,
   });

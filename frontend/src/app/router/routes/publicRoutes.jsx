@@ -40,7 +40,7 @@ export default [
       {
         path: '/login',
         element: (
-          <ProtectedRoute requireAuth={false} authenticatedRedirect="/studio">
+          <ProtectedRoute requireAuth={false} authenticatedRedirect="/projects">
             <Login />
           </ProtectedRoute>
         ),
