@@ -1,10 +1,7 @@
-import {
-  PROJECT_STATUS,
-  canTransitionProjectStatus,
-} from '../../utils/projectWorkflow.js';
+import { PROJECT_STATUS, canTransitionProjectStatus, } from '../../utils/projectWorkflow.js';
 
-import { throwError }
-  from '../../utils/errorHelper.js';
+import { throwError } from '../../utils/errorHelper.js';
+import { ProjectAuditService } from './projectAuditService.js';
 
 export default class ProjectWorkflowPolicy {
   static assertTransition(
@@ -64,19 +61,21 @@ export default class ProjectWorkflowPolicy {
       }
     }
 
-    if (
-      Array.isArray(
-        project.auditLogs
-      )
-    ) {
-      project.auditLogs.push({
+    ProjectAuditService.statusChange(
+      project,
+      {
         action,
-        performedBy: actorId,
+        performedBy:
+          actorId,
+
         previousStatus,
-        newStatus: nextStatus,
+
+        newStatus:
+          nextStatus,
+
         comment,
-      });
-    }
+      }
+    );
 
     return project;
   }
@@ -227,15 +226,24 @@ export default class ProjectWorkflowPolicy {
       );
     }
 
-    if (Array.isArray(project.auditLogs)) {
-      project.auditLogs.push({
-        action: 'comment_added',
-        performedBy: actorId,
-        previousStatus: project.status,
-        newStatus: project.status,
+    ProjectAuditService.log(
+      project,
+      {
+        action:
+          'comment_added',
+
+        performedBy:
+          actorId,
+
+        previousStatus:
+          project.status,
+
+        newStatus:
+          project.status,
+
         comment,
-      });
-    }
+      }
+    );
 
     return project;
   }

@@ -1,49 +1,8 @@
-/**
- * backend/services/project/collaboratorService.js
- *
- * All collaborator business logic lives here.
- * Controllers stay thin; they just call into this service.
- *
- * Design notes:
- *  - Owner is never in the collaborators array; ownership is project.owner.
- *  - A user may only appear once per project (enforced in addCollaborator).
- *  - Admins bypass all ownership checks (consistent with rest of codebase).
- *  - Notification emails are fire-and-forget so they never block the response.
- */
-
-import User    from '../../models/User.js';
+import User from '../../models/User.js';
 import Project from '../../models/Project.js';
 import { throwError } from '../../utils/errorHelper.js';
-
-// ─── tiny helpers ─────────────────────────────────────────────────────────────
-
-const isOwner   = (project, userId) => String(project.owner) === String(userId);
-const isAdmin   = (user)            => user?.role === 'admin';
-
-/**
- * Verify the acting user can manage collaborators on this project.
- * Only the project owner or a platform admin may do so.
- */
-function assertCanManage(project, actorUser) {
-  if (isAdmin(actorUser)) return;
-  if (isOwner(project, actorUser._id || actorUser.id)) return;
-  throwError('Only the project owner can manage collaborators.', 403);
-}
-
-/**
- * Verify the acting user can at least read collaborators.
- * Owner, admin, or any existing collaborator may list them.
- */
-function assertCanRead(project, actorUser) {
-  if (isAdmin(actorUser)) return;
-  const actorId = String(actorUser._id || actorUser.id);
-  if (isOwner(project, actorId)) return;
-  const isCollab = project.collaborators.some(
-    c => String(c.user) === actorId || String(c.user?._id) === actorId
-  );
-  if (isCollab) return;
-  throwError('Access denied.', 403);
-}
+import { ProjectPermissionService } from './projectPermissionService.js';
+import { ProjectAuthorization } from './projectAuthorization.js';
 
 // ─── public API ───────────────────────────────────────────────────────────────
 
@@ -58,21 +17,17 @@ export async function listCollaborators(projectId, actorUser) {
 
   if (!project) throwError('Project not found.', 404);
 
-  assertCanRead(project, actorUser);
+  ProjectAuthorization.require(
+    ProjectPermissionService.canRead(
+      project,
+      actorUser
+    ),
+    'Access denied.'
+  );
 
   return project.collaborators ?? [];
 }
 
-/**
- * Add a collaborator to a project by email address.
- *
- * Rules:
- *  - Actor must be owner or admin.
- *  - Target user must exist and be active.
- *  - Owner cannot be added as a collaborator (they already own it).
- *  - No duplicates.
- *  - Max 20 collaborators per project (sensible default; adjust freely).
- */
 export async function addCollaborator(projectId, actorUser, { email, role }) {
   const MAX_COLLABORATORS = 20;
 
@@ -82,7 +37,13 @@ export async function addCollaborator(projectId, actorUser, { email, role }) {
   const project = await Project.findById(projectId);
   if (!project) throwError('Project not found.', 404);
 
-  assertCanManage(project, actorUser);
+  ProjectAuthorization.require(
+    ProjectPermissionService.canManageCollaborators(
+      project,
+      actorUser
+    ),
+    'Only the project owner can manage collaborators.'
+  );
 
   // Resolve the invitee
   const invitee = await User.findOne({
@@ -112,10 +73,10 @@ export async function addCollaborator(projectId, actorUser, { email, role }) {
   const actorId = actorUser._id || actorUser.id;
 
   project.collaborators.push({
-    user:      invitee._id,
+    user: invitee._id,
     role,
     invitedBy: actorId,
-    pending:   true,
+    pending: true,
     invitedAt: new Date(),
   });
 
@@ -143,7 +104,13 @@ export async function updateCollaboratorRole(projectId, actorUser, targetUserId,
   const project = await Project.findById(projectId);
   if (!project) throwError('Project not found.', 404);
 
-  assertCanManage(project, actorUser);
+  ProjectAuthorization.require(
+    ProjectPermissionService.canManageCollaborators(
+      project,
+      actorUser
+    ),
+    'Only the project owner can manage collaborators.'
+  );
 
   const entry = project.collaborators.find(
     c => String(c.user) === String(targetUserId)
@@ -167,10 +134,18 @@ export async function removeCollaborator(projectId, actorUser, targetUserId) {
   if (!project) throwError('Project not found.', 404);
 
   const actorId = String(actorUser._id || actorUser.id);
-  const isSelf  = actorId === String(targetUserId);
+  const isSelf = actorId === String(targetUserId);
 
   // Allow self-removal; otherwise require owner/admin
-  if (!isSelf) assertCanManage(project, actorUser);
+  if (!isSelf) {
+    ProjectAuthorization.require(
+      ProjectPermissionService.canManageCollaborators(
+        project,
+        actorUser
+      ),
+      'Only the project owner can manage collaborators.'
+    );
+  }
 
   const before = project.collaborators.length;
   project.collaborators = project.collaborators.filter(
@@ -191,18 +166,12 @@ export async function removeCollaborator(projectId, actorUser, targetUserId) {
  *
  * Used by the authMiddleware-style guard `requireProjectAccess`.
  */
-export function resolveProjectRole(project, actorUser) {
-  if (!actorUser) return null;
-
-  if (isAdmin(actorUser)) return 'admin';
-
-  const actorId = String(actorUser._id || actorUser.id);
-
-  if (isOwner(project, actorId)) return 'owner';
-
-  const entry = project.collaborators?.find(
-    c => String(c.user?._id ?? c.user) === actorId
+export function resolveProjectRole(
+  project,
+  actorUser
+) {
+  return ProjectPermissionService.resolveRole(
+    project,
+    actorUser
   );
-
-  return entry?.role ?? null;
 }

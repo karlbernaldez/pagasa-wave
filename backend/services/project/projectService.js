@@ -8,6 +8,9 @@ import Feature from '../../models/Feature.js';
 import { throwError } from '../../utils/errorHelper.js';
 
 import { ChartService } from './chartService.js';
+import { ProjectPermissionService } from './projectPermissionService.js';
+import { ProjectAuthorization } from './projectAuthorization.js';
+import { ProjectAuditService } from './projectAuditService.js';
 
 export class ProjectService {
   /* =====================================================
@@ -37,21 +40,6 @@ export class ProjectService {
     }
 
     return project;
-  }
-
-  static assertOwnership(
-    project,
-    ownerId
-  ) {
-    if (
-      String(project.owner) !==
-      String(ownerId)
-    ) {
-      throwError(
-        'Unauthorized.',
-        403
-      );
-    }
   }
 
   /* =====================================================
@@ -91,13 +79,9 @@ export class ProjectService {
 
                   version: 1,
 
-                  auditLogs: [{
-                    action: 'created',
-                    performedBy: ownerId,
-                    previousStatus: null,
-                    newStatus: PROJECT_STATUS.DRAFT,
-                    comment: 'Project created',
-                  }],
+                  auditLogs: [
+                    ProjectAuditService.projectCreated(ownerId)
+                  ],
                 },
               ],
               {
@@ -145,33 +129,44 @@ export class ProjectService {
               session
             );
 
-          this.assertOwnership(
-            project,
-            ownerId
+          ProjectAuthorization.require(
+            ProjectPermissionService.canEdit(
+              project,
+              ownerId
+            ),
+            'You do not have permission to modify this project'
           );
+
+          const trimmedName =
+            newName?.trim();
+
+          if (!trimmedName) {
+            throwError(
+              'Project name is required.',
+              400
+            );
+          }
+
+          // Nothing changed
+          if (
+            trimmedName ===
+            project.name
+          ) {
+            return;
+          }
 
           const oldName =
             project.name;
 
           project.name =
-            newName.trim();
+            trimmedName;
 
-          project.auditLogs.push({
-            action:
-              'renamed',
-
-            performedBy:
-              ownerId,
-
-            previousStatus:
-              project.status,
-
-            newStatus:
-              project.status,
-
-            comment:
-              `Renamed from "${oldName}" to "${newName}"`,
-          });
+          ProjectAuditService.projectRenamed(
+            project,
+            ownerId,
+            oldName,
+            trimmedName
+          );
 
           await project.save({
             session,
@@ -208,71 +203,111 @@ export class ProjectService {
               session
             );
 
-          this.assertOwnership(
-            project,
-            ownerId
+          ProjectAuthorization.require(
+            ProjectPermissionService.canEdit(
+              project,
+              ownerId
+            ),
+            'You do not have permission to modify this project'
           );
 
-          const oldName =
-            project.name;
+          let hasChanges = false;
+
+          /* ============================================
+             NAME
+          ============================================ */
 
           if (
-            payload.name &&
-            payload.name.trim() !==
-            project.name
+            payload.name !== undefined
           ) {
-            project.name =
+            const trimmedName =
               payload.name.trim();
 
-            project.auditLogs.push({
-              action:
-                'renamed',
+            if (!trimmedName) {
+              throwError(
+                'Project name is required.',
+                400
+              );
+            }
 
-              performedBy:
+            if (
+              trimmedName !==
+              project.name
+            ) {
+              const oldName =
+                project.name;
+
+              project.name =
+                trimmedName;
+
+              ProjectAuditService.projectRenamed(
+                project,
                 ownerId,
+                oldName,
+                trimmedName
+              );
 
-              previousStatus:
-                project.status,
-
-              newStatus:
-                project.status,
-
-              comment:
-                `Renamed from "${oldName}" to "${payload.name}"`,
-            });
+              hasChanges = true;
+            }
           }
+
+          /* ============================================
+             DESCRIPTION
+          ============================================ */
 
           if (
             payload.description !==
             undefined
           ) {
-            project.description =
+            const trimmedDescription =
               payload.description.trim();
+
+            if (
+              trimmedDescription !==
+              project.description
+            ) {
+              project.description =
+                trimmedDescription;
+
+              hasChanges = true;
+            }
           }
 
+          /* ============================================
+             FORECAST DATE
+          ============================================ */
+
           if (
-            payload.forecastDate
+            payload.forecastDate &&
+            String(
+              payload.forecastDate
+            ) !==
+            String(
+              project.forecastDate
+            )
           ) {
             project.forecastDate =
               payload.forecastDate;
+
+            hasChanges = true;
           }
 
-          project.auditLogs.push({
-            action:
-              'edited',
+          /* ============================================
+             NO CHANGES
+          ============================================ */
 
-            performedBy:
-              ownerId,
+          if (!hasChanges) {
+            return;
+          }
 
-            previousStatus:
-              project.status,
+          /* ============================================
+             AUDIT
+          ============================================ */
 
-            newStatus:
-              project.status,
-
-            comment:
-              'Project edited',
-          });
+          ProjectAuditService.projectEdited(
+            project,
+            ownerId
+          );
 
           await project.save({
             session,
@@ -308,19 +343,18 @@ export class ProjectService {
               session
             );
 
-          this.assertOwnership(
-            project,
-            ownerId
+          ProjectAuthorization.require(
+            ProjectPermissionService.canDelete(
+              project,
+              ownerId
+            ),
+            'Only the project owner can delete a project'
           );
 
           const featureResult =
             await Feature.deleteMany(
               {
-                project:
-                  projectId,
-
-                owner:
-                  ownerId,
+                project: projectId,
               },
               {
                 session,
