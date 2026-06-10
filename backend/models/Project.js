@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { CollaboratorSchema } from './project/CollaboratorSchema.js';
 import { AuditLogSchema } from './project/AuditLogSchema.js';
-import { VersionSchema } from './project/VersionSchema.js';
 
 import { PROJECT_STATUS } from '../constants/projectWorkflowConstants.js';
 
@@ -47,15 +46,8 @@ const ProjectSchema = new Schema(
     },
     version: {
       type: Number,
-      default: 1,
+      default: 0,
     },
-    
-      /**
-   * @deprecated
-   * Scheduled for removal after
-   * ProjectVersion migration.
-   */
-    versions: [VersionSchema],
     auditLogs: [AuditLogSchema],
     reviewComment: { type: String, default: '' },
 
