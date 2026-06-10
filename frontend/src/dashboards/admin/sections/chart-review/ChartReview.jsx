@@ -1,4 +1,4 @@
-import ProjectLibraryPage from '@/features/projects/ProjectLibraryPage';
+import ProjectLibraryPage from '@/features/projects/pages/ProjectLibraryPage';
 
 const ChartReviewSection = () => {
   return (

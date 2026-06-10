@@ -203,6 +203,8 @@ export default function ProjectCard({
   onDownload,
   onActionComplete,
   actions,
+  onSelect,
+  isSelected,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [busyAction, setBusyAction] = useState(null);
@@ -245,7 +247,13 @@ export default function ProjectCard({
     : `bg-white ${needsRevision ? 'border-orange-300 ring-2 ring-orange-100' : 'border-slate-200 hover:border-blue-200'}`;
 
   return (
-    <article className={`group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
+    <article
+      onClick={() => onSelect?.(project)}
+      className={`group cursor-pointer flex h-full flex-col overflow-hidden rounded-2xl border shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl
+        ${isSelected ? "ring-2 ring-cyan-500 border-cyan-500" : ""}
+        ${cardClass}
+      `}
+    >
       <div className="relative shrink-0 overflow-hidden rounded-t-2xl">
         <ProjectPreviewMap
           projectId={previewProjectId}
@@ -319,7 +327,11 @@ export default function ProjectCard({
 
         <div className={`mt-auto flex min-w-0 flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
           <div className="grid min-w-0 grid-cols-1 gap-2 sm:flex sm:items-center">
-            <Button size="sm" icon={ExternalLink} onClick={() => onOpen?.(project)}>
+            <Button size="sm" icon={ExternalLink}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen?.(project);
+              }}>
               {getPrimaryOpenLabel({ project, isReviewMode, needsRevision })}
             </Button>
 
@@ -329,7 +341,10 @@ export default function ProjectCard({
                 variant="primary"
                 icon={submitAction.icon}
                 loading={submitAction.loading}
-                onClick={() => runAction(submitAction)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  runAction(submitAction);
+                }}
               >
                 {submitAction.label}
               </Button>
@@ -343,7 +358,10 @@ export default function ProjectCard({
                 size="sm"
                 icon={MoreHorizontal}
                 aria-label={`More actions for ${name}`}
-                onClick={() => setMenuOpen((value) => !value)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen((value) => !value);
+                }}
               />
 
               {menuOpen && (
@@ -354,17 +372,17 @@ export default function ProjectCard({
                       <button
                         key={action.key || action.label}
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setMenuOpen(false);
                           action.onClick?.(project);
                         }}
-                        className={`flex w-full items-center gap-2 px-3 py-2 text-left font-semibold ${
-                          action.danger
-                            ? 'text-red-500 hover:bg-red-500/10'
-                            : isDarkMode
-                              ? 'text-slate-200 hover:bg-white/5'
-                              : 'text-slate-700 hover:bg-slate-50'
-                        }`}
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-left font-semibold ${action.danger
+                          ? 'text-red-500 hover:bg-red-500/10'
+                          : isDarkMode
+                            ? 'text-slate-200 hover:bg-white/5'
+                            : 'text-slate-700 hover:bg-slate-50'
+                          }`}
                       >
                         {Icon && <Icon size={14} aria-hidden="true" />}
                         {action.label}
@@ -381,11 +399,21 @@ export default function ProjectCard({
               {reviewActions.map((action) => (
                 <Button
                   key={action.key || action.label}
-                  variant={action.danger ? 'secondary' : action.variant || 'secondary'}
+                  variant={
+                    action.danger
+                      ? "secondary"
+                      : action.variant || "secondary"
+                  }
                   size="sm"
                   icon={action.icon}
-                  loading={busyAction === (action.key || action.label)}
-                  onClick={() => runAction(action)}
+                  loading={
+                    busyAction ===
+                    (action.key || action.label)
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    runAction(action);
+                  }}
                 >
                   {action.label}
                 </Button>

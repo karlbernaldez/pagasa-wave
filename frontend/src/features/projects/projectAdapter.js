@@ -95,8 +95,8 @@ export function adaptProject(project) {
       typeof project?.owner === 'string'
         ? project.owner
         : `${project?.owner?.firstName ?? ''} ${project?.owner?.lastName ?? ''}`.trim() ||
-          project?.owner?.email ||
-          'Project Owner',
+        project?.owner?.email ||
+        'Project Owner',
   };
 }
 
