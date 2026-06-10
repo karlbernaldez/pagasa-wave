@@ -16,10 +16,10 @@ import {
   rejectProject,
   publishProject,
   archiveProject,
-} from '../controllers/projects/index.js';
+} from '../controllers/projects/projectController.js';
 
 // ── Other controllers ─────────────────────────────────────────────────────────
-import { getAdminProjects } from '../controllers/adminProjectController.js';
+import { getAllProjectsForAdmin as getAdminProjects } from '../controllers/projects/adminProjectController.js';
 import {
   getPublishedForecastOutput,
   getPublicPublishedForecastOutput,
