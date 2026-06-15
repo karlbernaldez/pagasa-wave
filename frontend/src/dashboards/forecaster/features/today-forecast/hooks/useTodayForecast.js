@@ -23,6 +23,15 @@ export function useTodayForecast() {
         status: 'Completed',
         time: '05:42 AM',
         icon: 'Waves',
+        /**
+         * lastOpenedBy — the most recent user who opened this chart.
+         * In production, fetch this from your API (e.g. chart_sessions table).
+         * Shape: { name: string, openedAt: string }
+         */
+        lastOpenedBy: {
+          name: 'Juan Dela Cruz',
+          openedAt: '05:38 AM',
+        },
       },
       {
         title: '24-Hour Forecast',
@@ -31,6 +40,10 @@ export function useTodayForecast() {
         status: 'Completed',
         time: '08:35 AM',
         icon: 'Wind',
+        lastOpenedBy: {
+          name: 'Maria Santos',
+          openedAt: '08:20 AM',
+        },
       },
       {
         title: '36-Hour Forecast',
@@ -39,14 +52,22 @@ export function useTodayForecast() {
         status: 'Completed',
         time: '11:20 AM',
         icon: 'CloudRain',
+        lastOpenedBy: {
+          name: 'Juan Dela Cruz',
+          openedAt: '11:05 AM',
+        },
       },
       {
         title: '48-Hour Forecast',
         description: 'Prepare 48-hour forecast',
         deadline: '03:00 PM',
-        status: 'In Progress',
+        status: 'In progress',
         time: null,
         icon: 'Waves',
+        lastOpenedBy: {
+          name: 'Juan Dela Cruz',
+          openedAt: '09:41 AM',
+        },
       },
     ],
   };

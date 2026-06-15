@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useOutletContext } from 'react-router-dom';
 import { useTodayForecast } from '../features/today-forecast/hooks/useTodayForecast';
 
@@ -10,60 +11,58 @@ import Reminders from '../features/today-forecast/components/Reminders';
 import TipBar from '../features/today-forecast/components/TipBar';
 
 export default function TodayForecastPage() {
-  const { isDarkMode } =
-    useOutletContext();
+  const { isDarkMode } = useOutletContext();
+  const forecast = useTodayForecast();
+  const navigate = useNavigate();
 
-  const forecast =
-    useTodayForecast();
+  /**
+   * Called when the user clicks a checklist row or the "Continue" CTA.
+   * Navigates to that chart's workspace page.
+   * Adjust the route pattern to match your router setup.
+   */
+  function handleChartClick(chart) {
+    const slug = chart.title.toLowerCase().replace(/\s+/g, '-');
+    navigate(slug);
+  }
+
+  /**
+   * Called when the user clicks "Submit Forecast Package for Review".
+   * Replace the console.log with your real API call.
+   */
+  function handleSubmitPackage() {
+    // TODO: call your API, e.g.:
+    // await api.submitForecastPackage({ date: forecast.publicationDeadline.date });
+    console.log('Forecast package submitted for review.');
+  }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      {/* Header */}
-      <PageHeader
-        isDarkMode={isDarkMode}
-      />
+    <div className="flex h-full flex-col overflow-hidden">
+      <PageHeader isDarkMode={isDarkMode} publicationDeadline={forecast.publicationDeadline} />
 
-      {/* Content */}
-      <div className="flex-1 min-h-0 overflow-hidden px-5 py-4">
-        <div className="grid grid-cols-[1fr_270px] gap-4 items-start">
-          {/* Left */}
-          <div className="flex flex-col gap-4">
-            <ForecastProgressCard
-              charts={forecast.charts}
-              isDarkMode={isDarkMode}
-            />
-
+      {/* Content — no scroll, fixed height fills remaining space */}
+      <div className="flex-1 min-h-0 px-5 py-3">
+        <div className="grid h-full grid-cols-[1fr_380px] gap-4">
+          {/* Left column */}
+          <div className="flex flex-col gap-3 min-h-0">
+            <ForecastProgressCard charts={forecast.charts} isDarkMode={isDarkMode} />
             <ForecastChecklist
               charts={forecast.charts}
               isDarkMode={isDarkMode}
+              onChartClick={handleChartClick}
+              onSubmit={handleSubmitPackage}
             />
           </div>
 
-          {/* Right */}
-          <div className="flex flex-col gap-4">
-            <DeadlineCard
-              deadline={
-                forecast.publicationDeadline
-              }
-              charts={forecast.charts}
-              isDarkMode={isDarkMode}
-            />
-
-            <ActivityFeed
-              isDarkMode={isDarkMode}
-            />
-
-            <Reminders
-              isDarkMode={isDarkMode}
-            />
+          {/* Right column */}
+          <div className="flex flex-col gap-3 min-h-0">
+            <DeadlineCard charts={forecast.charts} isDarkMode={isDarkMode} />
+            <ActivityFeed isDarkMode={isDarkMode} />
+            <Reminders isDarkMode={isDarkMode} />
           </div>
         </div>
       </div>
 
-      {/* Bottom Bar */}
-      <TipBar
-        isDarkMode={isDarkMode}
-      />
+      <TipBar isDarkMode={isDarkMode} />
     </div>
   );
 }
