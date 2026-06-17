@@ -10,6 +10,10 @@ const PUBLIC_MODELS = ['llama-3.1-8b-instant'];
 const FORECASTER_MODELS = ['mixtral-8x7b-32768', 'llama-3.1-8b-instant'];
 const ADMIN_MODELS = ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768', 'llama-3.1-8b-instant'];
 
+const PUBLIC_ASSISTANT_LABEL = 'WaveLab Public Assistant (Experimental)';
+const FORECASTER_ASSISTANT_LABEL = 'WaveLab Forecaster Assistant (Experimental)';
+const ADMIN_ASSISTANT_LABEL = 'WaveLab Admin Assistant (Experimental)';
+
 const normalizeResponse = (text) => text ? text.trim() : text;
 
 const readStream = async (response, onToken) => {
@@ -62,7 +66,7 @@ export const useChatbot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeModel, setActiveModel] = useState(PUBLIC_MODELS[0]);
-  const [assistantLabel, setAssistantLabel] = useState('WaveLab Public Assistant');
+  const [assistantLabel, setAssistantLabel] = useState(PUBLIC_ASSISTANT_LABEL);
   const abortRef = useRef(null);
 
   useEffect(() => {
@@ -71,16 +75,16 @@ export const useChatbot = () => {
       const role = user?.role || null;
 
       if (role === 'admin') {
-        setAssistantLabel('WaveLab Admin Assistant');
+        setAssistantLabel(ADMIN_ASSISTANT_LABEL);
         setActiveModel(ADMIN_MODELS[0]);
         return;
       }
       if (role === 'forecaster') {
-        setAssistantLabel('WaveLab Forecaster Assistant');
+        setAssistantLabel(FORECASTER_ASSISTANT_LABEL);
         setActiveModel(FORECASTER_MODELS[0]);
         return;
       }
-      setAssistantLabel('WaveLab Public Assistant');
+      setAssistantLabel(PUBLIC_ASSISTANT_LABEL);
       setActiveModel(PUBLIC_MODELS[0]);
     };
 
@@ -95,15 +99,15 @@ export const useChatbot = () => {
     const isInternal = !!role;
 
     let models = PUBLIC_MODELS;
-    let label = 'WaveLab Public Assistant';
+    let label = PUBLIC_ASSISTANT_LABEL;
 
     if (role === 'forecaster') {
       models = FORECASTER_MODELS;
-      label = 'WaveLab Forecaster Assistant';
+      label = FORECASTER_ASSISTANT_LABEL;
     }
     if (role === 'admin') {
       models = ADMIN_MODELS;
-      label = 'WaveLab Admin Assistant';
+      label = ADMIN_ASSISTANT_LABEL;
     }
 
     const endpoint = isInternal ? INTERNAL_URL : PUBLIC_URL;
