@@ -424,9 +424,9 @@ const Studio = ({ logger }) => {
         </div>
       )}
 
-      <main className="relative flex w-full overflow-hidden" style={{ height: `calc(100vh - ${STUDIO_HEADER_HEIGHT}px)`, marginTop: STUDIO_HEADER_HEIGHT }}>
+      <main className="absolute inset-0 w-full overflow-hidden">
         {/* Map Wrapper */}
-        <div className="relative h-full w-full flex-grow transition-[width] duration-300 ease-in-out lg:w-[calc(100vw-250px)]">
+        <div className="absolute inset-0 h-full w-full">
           <MapComponent
             key={projectId || "no-project"}
             onMapLoad={handleMapLoad}

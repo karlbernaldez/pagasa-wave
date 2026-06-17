@@ -25,6 +25,99 @@ import { LayerStylePanel } from '@dashboards/forecaster/components/Studio/LayerS
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
+const PANEL_CHROME =
+  'studio-liquid-panel rounded-2xl transition-all duration-300 shadow-2xl flex flex-col overflow-hidden';
+const PANEL_SURFACE = (isDarkMode) =>
+  isDarkMode
+    ? 'studio-liquid-dark border text-white'
+    : 'studio-liquid-light border text-slate-900';
+const INNER_SURFACE = (isDarkMode) =>
+  isDarkMode
+    ? 'border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+    : 'border-white/80 bg-white/[0.52] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]';
+const DOCK_WIDTH = 'w-[min(23rem,calc(100vw-1rem))]';
+const FLOATING_PANEL_WIDTH = 'min(23rem, calc(100vw - 1rem))';
+const STYLE_PANEL_MAX_HEIGHT = 'clamp(16rem, calc(56vh - 3rem), 25rem)';
+const ANNOTATION_LAYERS_MAX_HEIGHT = 'calc(100vh - 5.75rem)';
+const STYLE_PANEL_RESET_KEY = 'annotation-style-right-default-v2';
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+function useFloatingPanelDrag(resetKey) {
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const dragStateRef = useRef(null);
+
+  const resetPosition = useCallback(() => {
+    setOffset({ x: 0, y: 0 });
+  }, []);
+
+  useEffect(() => {
+    resetPosition();
+  }, [resetKey, resetPosition]);
+
+  const startDrag = useCallback((event) => {
+    if (event.button !== 0 && event.pointerType === 'mouse') return;
+
+    const panel = event.currentTarget.closest('[data-floating-panel]');
+    if (!panel) return;
+
+    const rect = panel.getBoundingClientRect();
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startOffset: offset,
+      rect,
+    };
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+
+    const handleMove = (moveEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== moveEvent.pointerId) return;
+
+      const deltaX = moveEvent.clientX - dragState.startX;
+      const deltaY = moveEvent.clientY - dragState.startY;
+      const margin = 8;
+
+      setOffset({
+        x: clamp(
+          dragState.startOffset.x + deltaX,
+          dragState.startOffset.x + margin - dragState.rect.left,
+          dragState.startOffset.x + window.innerWidth - margin - dragState.rect.right
+        ),
+        y: clamp(
+          dragState.startOffset.y + deltaY,
+          dragState.startOffset.y + margin - dragState.rect.top,
+          dragState.startOffset.y + window.innerHeight - margin - dragState.rect.bottom
+        ),
+      });
+    };
+
+    const stopDrag = () => {
+      dragStateRef.current = null;
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', stopDrag);
+      window.removeEventListener('pointercancel', stopDrag);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', stopDrag);
+    window.addEventListener('pointercancel', stopDrag);
+  }, [offset]);
+
+  return {
+    panelStyle: { transform: `translate3d(${offset.x}px, ${offset.y}px, 0)` },
+    resetPosition,
+    handleProps: {
+      onPointerDown: startDrag,
+      onDoubleClick: resetPosition,
+      title: 'Drag to reposition. Double-click to reset.',
+    },
+  };
+}
+
 const StudioPanel = ({
   mapRef,
   isDarkMode,
@@ -34,6 +127,7 @@ const StudioPanel = ({
   onNew,
   onSave,
   onView,
+  readOnly = false,
 }) => {
 
   // ── Panel & menu state ───────────────────────────────────────────────────────
@@ -53,7 +147,6 @@ const StudioPanel = ({
   const [mapNotReady, setMapNotReady] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
   const fileInputRef = useRef();
-  const [activeLayerStyles, setActiveLayerStyles] = useState(null);
 
   // ── Project / modal state ────────────────────────────────────────────────────
   const [activeMenu, setActiveMenu] = useState(null);
@@ -108,6 +201,7 @@ const StudioPanel = ({
   };
 
   const addLayer = () => {
+    if (readOnly) return;
     if (!mapRef.current) { setMapNotReady(true); return; }
     fileInputRef.current.value = null;
     fileInputRef.current.click();
@@ -123,6 +217,48 @@ const StudioPanel = ({
       setActiveMapboxLayerId: setActiveMapboxLayerIds,
     });
   }, [mapRef, draw, layers, activeLayerId]);
+
+  const hasSelectedAnnotationLayer = useMemo(
+    () => Boolean(activeLayerId && layers.some((layer) => layer.id === activeLayerId)),
+    [activeLayerId, layers]
+  );
+  const annotationStyleDrag = useFloatingPanelDrag(
+    hasSelectedAnnotationLayer ? `${STYLE_PANEL_RESET_KEY}-${activeLayerId}` : STYLE_PANEL_RESET_KEY
+  );
+  const annotationLayersDrag = useFloatingPanelDrag('annotation-layers-right-default-v1');
+  const annotationStylePanelStyle = useMemo(
+    () => ({
+      ...annotationStyleDrag.panelStyle,
+      position: 'fixed',
+      top: '4.75rem',
+      right: '0.75rem',
+      left: 'auto',
+      width: FLOATING_PANEL_WIDTH,
+      maxHeight: STYLE_PANEL_MAX_HEIGHT,
+      zIndex: 45,
+    }),
+    [annotationStyleDrag.panelStyle]
+  );
+  const annotationLayersPanelStyle = useMemo(
+    () => ({
+      ...annotationLayersDrag.panelStyle,
+      position: 'fixed',
+      right: '0.75rem',
+      bottom: '0.75rem',
+      left: 'auto',
+      width: FLOATING_PANEL_WIDTH,
+      maxHeight: ANNOTATION_LAYERS_MAX_HEIGHT,
+      overflow: 'hidden',
+      zIndex: 40,
+    }),
+    [annotationLayersDrag.panelStyle]
+  );
+
+  useEffect(() => {
+    if (hasSelectedAnnotationLayer) {
+      annotationStyleDrag.resetPosition();
+    }
+  }, [activeLayerId, hasSelectedAnnotationLayer, annotationStyleDrag.resetPosition]);
 
   // ── Project handlers ─────────────────────────────────────────────────────────
   const handleSubmitFile = useCallback(async (file) => {
@@ -198,19 +334,19 @@ const StudioPanel = ({
   if (!isExpanded) {
     return (
       <>
-        <div className="fixed top-20 left-4 z-40">
+        <div className="fixed left-4 top-20 z-40">
           <button
             onClick={() => setIsExpanded(true)}
             className={cn(
-              'group flex items-center gap-1.5 px-2.5 py-2 rounded-full transition-all duration-300 hover:scale-105 backdrop-blur-xl shadow-lg',
+              'studio-liquid-panel group flex min-h-12 items-center gap-2 rounded-full border px-3 py-2 transition-all duration-300 hover:scale-105',
               isDarkMode
-                ? 'bg-black/40 hover:bg-black/50 border border-white/20'
-                : 'bg-white/60 hover:bg-white/70 border border-black/10'
+                ? 'studio-liquid-dark hover:bg-slate-950/80'
+                : 'studio-liquid-light hover:bg-white'
             )}
           >
-            <Menu size={14} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
-            <span className={cn('text-[11px] font-semibold', isDarkMode ? 'text-white/90' : 'text-slate-800')}>Studio</span>
-            <div className={cn('px-1.5 py-0.5 rounded-full text-[9px] font-bold', isDarkMode ? 'bg-cyan-400/20 text-cyan-300' : 'bg-blue-500/20 text-blue-700')}>
+            <Menu size={16} className={isDarkMode ? 'text-cyan-300' : 'text-blue-600'} strokeWidth={2.5} />
+            <span className={cn('text-sm font-black', isDarkMode ? 'text-white/90' : 'text-slate-800')}>Studio</span>
+            <div className={cn('rounded-full px-2 py-1 text-[10px] font-black', isDarkMode ? 'bg-cyan-400/15 text-cyan-200' : 'bg-blue-500/10 text-blue-700')}>
               {visibleCount}
             </div>
           </button>
@@ -224,33 +360,30 @@ const StudioPanel = ({
   // ── Expanded panel ───────────────────────────────────────────────────────────
   return (
     <>
-      <div ref={panelRef} className="fixed top-16 left-2 z-40 w-64 mt-1">
-        <div className={cn(
-          'rounded-xl transition-all duration-300 backdrop-blur-xl shadow-xl flex flex-col',
-          isDarkMode ? 'bg-black/40 border border-white/20' : 'bg-white/60 border border-white/40'
-        )}>
+      <div ref={panelRef} className={cn('fixed left-3 top-[4.75rem] z-40', DOCK_WIDTH)}>
+        <div className={cn(PANEL_CHROME, 'max-h-[calc(100vh-5.75rem)]', PANEL_SURFACE(isDarkMode))}>
 
           {/* ── SECTION 1: Menu Button (top) ─────────────────────────────────── */}
-          <div className={cn('p-2 border-b relative', isDarkMode ? 'border-white/10' : 'border-black/10')} ref={menuRef}>
-            <div className="flex items-center gap-1.5">
+          <div className={cn('relative border-b p-3', isDarkMode ? 'border-white/10' : 'border-slate-200/70')} ref={menuRef}>
+            <div className="flex items-center gap-2">
               {/* Menu toggle button */}
               <button
                 onClick={() => setMenuOpen((v) => !v)}
                 className={cn(
-                  'flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200',
+                  'flex min-h-11 flex-1 items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-black transition-all duration-200',
                   menuOpen
                     ? isDarkMode
-                      ? 'bg-white/10 text-white'
-                      : 'bg-black/10 text-slate-900'
+                      ? 'bg-cyan-400/10 text-cyan-100'
+                      : 'bg-blue-500/10 text-blue-900'
                     : isDarkMode
-                      ? 'hover:bg-white/8 text-white/80 hover:text-white'
-                      : 'hover:bg-black/5 text-slate-700 hover:text-slate-900'
+                      ? 'hover:bg-white/[0.06] text-white/85 hover:text-white'
+                      : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
                 )}
               >
-                <Menu size={13} strokeWidth={2.5} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} />
-                <span>Project Menu</span>
+                <Menu size={15} strokeWidth={2.5} className={isDarkMode ? 'text-cyan-300' : 'text-blue-600'} />
+                <span>Forecaster Studio</span>
                 <ChevronDown
-                  size={11}
+                  size={14}
                   strokeWidth={2.5}
                   className={cn('ml-auto transition-transform duration-200', menuOpen ? 'rotate-180' : '')}
                 />
@@ -259,24 +392,25 @@ const StudioPanel = ({
               {/* Collapse panel button */}
               <button
                 onClick={() => setIsExpanded(false)}
+                title="Collapse studio panel"
                 className={cn(
-                  'p-1.5 rounded-lg transition-all duration-200 hover:scale-110',
-                  isDarkMode ? 'hover:bg-white/10 text-white/50 hover:text-white/90' : 'hover:bg-black/8 text-slate-400 hover:text-slate-700'
+                  'flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 hover:scale-105',
+                  isDarkMode ? 'hover:bg-white/10 text-white/50 hover:text-white/90' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'
                 )}
               >
-                <X size={12} strokeWidth={2.5} />
+                <X size={15} strokeWidth={2.5} />
               </button>
             </div>
 
             {/* ── Menu dropdown ─────────────────────────────────────────────── */}
             {menuOpen && (
               <div className={cn(
-                'absolute top-full mt-1 rounded-xl shadow-2xl z-50 overflow-hidden min-w-[200px]',
+                'studio-liquid-panel absolute left-3 right-3 top-full z-50 mt-2 overflow-hidden rounded-xl border shadow-2xl',
                 isDarkMode
-                  ? 'bg-[#0f1117] border border-white/20'
-                  : 'bg-white border border-black/10'
+                  ? 'studio-liquid-dark'
+                  : 'studio-liquid-light'
               )}>
-                <div className="p-2 space-y-0.5">
+                <div className="space-y-1 p-2">
                   {menuSections.map((section) => (
                     <div key={section.id}>
                       {/* Section header */}
@@ -284,7 +418,7 @@ const StudioPanel = ({
                         onClick={() => toggleSubmenu(section.id)}
                         className={cn(
                           'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors',
-                          isDarkMode ? 'text-white/40 hover:text-white/60 hover:bg-white/5' : 'text-slate-400 hover:text-slate-600 hover:bg-black/4'
+                          isDarkMode ? 'text-white/40 hover:text-white/60 hover:bg-white/[0.06]' : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
                         )}
                       >
                         {section.icon && <section.icon size={10} strokeWidth={2.5} />}
@@ -306,8 +440,8 @@ const StudioPanel = ({
                               className={cn(
                                 'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-150 text-left',
                                 isDarkMode
-                                  ? 'text-white/70 hover:text-white hover:bg-white/8'
-                                  : 'text-slate-600 hover:text-slate-900 hover:bg-black/5'
+                                  ? 'text-white/70 hover:text-white hover:bg-white/[0.08]'
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                               )}
                             >
                               {item.icon && <item.icon size={11} strokeWidth={2} className={isDarkMode ? 'text-cyan-400' : 'text-blue-500'} />}
@@ -324,21 +458,24 @@ const StudioPanel = ({
           </div>
 
           {/* ── SECTION 2: Project Info ──────────────────────────────────────── */}
-          <div className={cn('px-3 py-2.5 border-b', isDarkMode ? 'border-white/10' : 'border-black/10')}>
-            <div className="flex items-start justify-between gap-2">
+          <div className={cn('border-b px-3 py-3', isDarkMode ? 'border-white/10' : 'border-slate-200/70')}>
+            <div className={cn(
+              'flex items-start justify-between gap-3 rounded-xl border px-3 py-3',
+              INNER_SURFACE(isDarkMode)
+            )}>
               <div className="flex-1 min-w-0">
                 {/* Label */}
-                <p className={cn('text-[9px] font-semibold uppercase tracking-widest mb-0.5', isDarkMode ? 'text-white/30' : 'text-slate-400')}>
+                <p className={cn('mb-1 text-[10px] font-black uppercase tracking-wide', isDarkMode ? 'text-white/35' : 'text-slate-400')}>
                   Active Project
                 </p>
                 {/* Title */}
-                <p className={cn('text-[12px] font-bold truncate leading-tight', isDarkMode ? 'text-white' : 'text-slate-900')}>
+                <p className={cn('truncate text-sm font-black leading-tight', isDarkMode ? 'text-white' : 'text-slate-900')}>
                   {projectName}
                 </p>
                 {/* Chart type badge */}
                 <span className={cn(
-                  'inline-block mt-1 px-1.5 py-0.5 rounded-md text-[9px] font-semibold uppercase tracking-wide',
-                  isDarkMode ? 'bg-cyan-400/15 text-cyan-300' : 'bg-blue-500/10 text-blue-700'
+                  'mt-2 inline-block rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide',
+                  isDarkMode ? 'bg-cyan-400/[0.12] text-cyan-200' : 'bg-blue-500/10 text-blue-700'
                 )}>
                   {chartType}
                 </span>
@@ -349,46 +486,35 @@ const StudioPanel = ({
                 onClick={() => setShowProjectInfo((v) => !v)}
                 title="Project Info"
                 className={cn(
-                  'p-1 rounded-md transition-all duration-200 hover:scale-110 mt-0.5 shrink-0',
+                  'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 hover:scale-105',
                   showProjectInfo
-                    ? isDarkMode ? 'bg-white/10 text-white' : 'bg-black/10 text-slate-900'
-                    : isDarkMode ? 'hover:bg-white/10 text-white/40 hover:text-white/80' : 'hover:bg-black/8 text-slate-400 hover:text-slate-700'
+                    ? isDarkMode ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm'
+                    : isDarkMode ? 'hover:bg-white/10 text-white/40 hover:text-white/80' : 'hover:bg-white text-slate-400 hover:text-slate-700'
                 )}
               >
-                <Info size={13} strokeWidth={2.5} />
+                <Info size={15} strokeWidth={2.5} />
               </button>
             </div>
           </div>
 
           {/* ── SECTION 3: Layers Panel ──────────────────────────────────────── */}
           {/* Header row */}
-          <div className={cn('flex items-center justify-between px-3 py-2', isDarkMode ? 'border-b border-white/10' : 'border-b border-black/10')}>
-            <div className="flex items-center gap-1.5">
-              <Layers size={11} strokeWidth={2.5} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} />
-              <span className={cn('text-[10px] font-bold uppercase tracking-wider', isDarkMode ? 'text-white/60' : 'text-slate-500')}>
-                Layers
+          <div className={cn('flex items-center justify-between border-b px-3 py-3', isDarkMode ? 'border-white/10' : 'border-slate-200/70')}>
+            <div className="flex items-center gap-2">
+              <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg', isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
+                <Layers size={15} strokeWidth={2.5} />
+              </span>
+              <span className={cn('text-[12px] font-black uppercase tracking-wide', isDarkMode ? 'text-white/70' : 'text-slate-600')}>
+                Data Layers
               </span>
             </div>
-            <span className={cn('px-1.5 py-0.5 rounded-full text-[9px] font-bold', isDarkMode ? 'bg-cyan-400/20 text-cyan-300' : 'bg-blue-500/15 text-blue-700')}>
-              {visibleCount} active
+            <span className={cn('rounded-full px-2.5 py-1 text-[10px] font-black', isDarkMode ? 'bg-cyan-400/15 text-cyan-200' : 'bg-blue-500/10 text-blue-700')}>
+              {activeSystemLayersCount} active
             </span>
           </div>
 
           {/* Scrollable layers content */}
-          <div className="max-h-[calc(100vh-320px)] overflow-y-auto hide-scrollbar">
-            <CustomLayersSection
-              layers={layers}
-              setLayers={setLayers}
-              mapRef={mapRef}
-              draw={draw}
-              expanded={customLayersExpanded}
-              onToggleExpand={() => setCustomLayersExpanded((v) => !v)}
-              activeLayerId={activeLayerId}
-              onSetActiveLayer={setActiveLayer}
-              onRequestDelete={(layer) => setConfirmDialog({ isOpen: true, layer })}
-              isDarkMode={isDarkMode}
-              {...editState}
-            />
+          <div className="min-h-0 flex-1 overflow-y-auto hide-scrollbar">
             <SystemLayersSection
               expanded={systemLayersExpanded}
               onToggleExpand={() => setSystemLayersExpanded((v) => !v)}
@@ -416,17 +542,22 @@ const StudioPanel = ({
           </div>
 
           {/* ── Footer: Add Layer button ─────────────────────────────────────── */}
-          <div className={cn('p-2.5 border-t', isDarkMode ? 'border-white/10' : 'border-black/10')}>
+          <div className={cn('border-t p-3', isDarkMode ? 'border-white/10' : 'border-slate-200/70')}>
             <button
               onClick={addLayer}
+              disabled={readOnly}
               className={cn(
-                'w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-[11px] transition-all duration-200 hover:scale-[1.02]',
-                isDarkMode
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white shadow-lg shadow-cyan-500/20'
-                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/20'
+                'flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-[12px] font-black transition-all duration-200 hover:scale-[1.01]',
+                readOnly
+                  ? isDarkMode
+                    ? 'cursor-not-allowed bg-white/10 text-white/35'
+                    : 'cursor-not-allowed bg-slate-100 text-slate-400'
+                  : isDarkMode
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white shadow-lg shadow-cyan-500/20'
+                    : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/20'
               )}
             >
-              <Plus size={12} strokeWidth={3} />
+              <Plus size={15} strokeWidth={3} />
               Add GeoJSON Layer
             </button>
             <input
@@ -440,7 +571,74 @@ const StudioPanel = ({
         </div>
       </div>
 
-      {/* ── Project info panel ──────────────────────────────────────────────────── */}
+      {/* ── Annotation layers dock ─────────────────────────────────────────────── */}
+      {hasSelectedAnnotationLayer && (
+        <LayerStylePanel
+          mapRef={mapRef}
+          layers={layers}
+          setLayers={setLayers}
+          activeLayerId={activeLayerId}
+          activeMapboxLayerIds={activeMapboxLayerIds}
+          isDarkMode={isDarkMode}
+          onToggleVisibility={(layer) => toggleLayerVisibility(mapRef.current, layer, setLayers)}
+          panelClassName="min-h-0"
+          controlsClassName="max-h-none"
+          panelStyle={annotationStylePanelStyle}
+          dragHandleProps={annotationStyleDrag.handleProps}
+        />
+      )}
+
+      <div
+        className="z-40 flex flex-col overflow-hidden"
+        style={annotationLayersPanelStyle}
+        data-floating-panel
+      >
+        <div className={cn(PANEL_CHROME, 'relative min-h-0 max-h-[inherit]', PANEL_SURFACE(isDarkMode))}>
+          <div
+            className={cn(
+              'flex cursor-grab touch-none select-none items-center justify-between gap-2 border-b px-2.5 py-2 active:cursor-grabbing',
+              isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-slate-200/70 bg-white/[0.28]'
+            )}
+            {...annotationLayersDrag.handleProps}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
+                <Layers size={14} strokeWidth={2.5} />
+              </span>
+              <div className="min-w-0">
+                <span className={cn('block truncate text-[11px] font-black uppercase tracking-wide', isDarkMode ? 'text-white/75' : 'text-slate-700')}>
+                  Annotation Layers
+                </span>
+                <span className={cn('block truncate text-[9px] font-bold uppercase tracking-wide', isDarkMode ? 'text-white/35' : 'text-slate-400')}>
+                  {layers.length} layers / {layers.filter((layer) => layer.visible).length} visible
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={cn('rounded-full px-2 py-0.5 text-[9px] font-black', isDarkMode ? 'bg-cyan-400/15 text-cyan-200' : 'bg-blue-500/10 text-blue-700')}>
+                {layers.filter((layer) => layer.visible).length}/{layers.length}
+              </span>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain hide-scrollbar">
+            <CustomLayersSection
+              layers={layers}
+              setLayers={setLayers}
+              mapRef={mapRef}
+              draw={draw}
+              expanded={customLayersExpanded}
+              onToggleExpand={() => setCustomLayersExpanded((v) => !v)}
+              activeLayerId={activeLayerId}
+              onSetActiveLayer={setActiveLayer}
+              onRequestDelete={(layer) => !readOnly && setConfirmDialog({ isOpen: true, layer })}
+              isDarkMode={isDarkMode}
+              {...editState}
+            />
+          </div>
+        </div>
+      </div>
+
       {showProjectInfo && (
         <ProjectInfo isDarkMode={isDarkMode} setShowModal={setShowModal} onView={onView} menuOpen={isExpanded} />
       )}
@@ -466,19 +664,14 @@ const StudioPanel = ({
       <ShareProjectModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} onShare={handleShareProject} projectName={projectName} isDarkMode={isDarkMode} />
 
       {/* ── Wave legend ──────────────────────────────────────────────────────────── */}
-      {waveConfig.enabled && waveConfig.elements?.raster && <WaveLegend isDarkMode={isDarkMode} />}
+      {waveConfig.enabled && waveConfig.elements?.raster && (
+        <WaveLegend
+          isDarkMode={isDarkMode}
+          className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 select-none"
+        />
+      )}
 
       {/* ── Layer style panel ─────────────────────────────────────────────────────── */}
-      <LayerStylePanel
-        mapRef={mapRef}
-        layers={layers}
-        setLayers={setLayers}
-        activeLayerId={activeLayerId}
-        activeMapboxLayerIds={activeMapboxLayerIds}
-        isDarkMode={isDarkMode}
-        onToggleVisibility={(layer) => toggleLayerVisibility(mapRef.current, layer, setLayers)}
-      />
-
     </>
   );
 };

@@ -100,6 +100,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
   const markerType = normalizeMarkerType(selectedType);
   const baseName = title?.trim() || 'Untitled Layer';
   const sourceId = makeSafeSourceId(markerType, baseName);
+  const mapLayerId = `${markerType}_${baseName}`;
   const panelId = sourceId;
   const closedMode = false;
 
@@ -115,6 +116,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
       type: markerType,
       markerType,
       symbolType: markerType,
+      mapLayerId,
     },
   };
 
@@ -146,6 +148,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
         type: markerType,
         markerType,
         symbolType: markerType,
+        mapLayerId,
       },
       name: baseName,
       sourceId,
@@ -180,6 +183,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
         locked: false,
         type: markerType,
         markerType,
+        mapLayerId,
       },
     ];
   });

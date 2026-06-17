@@ -16,7 +16,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
  *  - children     : expanded content
  */
 const LayerGroupCard = ({
-  emoji,
+  icon,
   title,
   badge,
   expanded,
@@ -25,23 +25,32 @@ const LayerGroupCard = ({
   headerRight,
   children,
 }) => (
-  <div className={`rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
-    <div className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg">
+  <div className={`overflow-hidden rounded-xl border ${isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'}`}>
+    <div className="flex min-h-12 w-full items-center justify-between px-3 py-2">
       {/* Clickable header area */}
       <button
         onClick={onToggle}
-        className="flex-1 flex items-center gap-2 text-left"
+        className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
       >
-        {emoji && <span className="text-base">{emoji}</span>}
-        <span className={`text-xs font-semibold ${isDarkMode ? 'text-white/90' : 'text-slate-800'}`}>
-          {title}
+        {icon && (
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isDarkMode ? 'bg-white/8 text-white/65' : 'bg-slate-100 text-slate-600'}`}>
+            {icon}
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className={`block truncate text-[13px] font-black ${isDarkMode ? 'text-white/85' : 'text-slate-800'}`}>
+            {title}
+          </span>
+          <span className={`block truncate text-[10px] font-semibold ${isDarkMode ? 'text-white/35' : 'text-slate-400'}`}>
+            Reference overlay
+          </span>
         </span>
         {badge != null && (
-          <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-            isDarkMode ? 'bg-white/10 text-white/60' : 'bg-black/10 text-slate-600'
+          <span className={`rounded-full px-2 py-1 text-[10px] font-black ${
+            isDarkMode ? 'bg-white/10 text-white/55' : 'bg-slate-100 text-slate-500'
           }`}>
             {badge}
-          </div>
+          </span>
         )}
       </button>
 
@@ -50,13 +59,13 @@ const LayerGroupCard = ({
 
       {/* Chevron */}
       {expanded
-        ? <ChevronDown  size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
-        : <ChevronRight size={12} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} strokeWidth={2.5} />
+        ? <ChevronDown size={15} className={isDarkMode ? 'text-white/50' : 'text-slate-500'} strokeWidth={2.5} />
+        : <ChevronRight size={15} className={isDarkMode ? 'text-white/50' : 'text-slate-500'} strokeWidth={2.5} />
       }
     </div>
 
     {expanded && (
-      <div className="px-2 pb-2 space-y-1">
+      <div className={`space-y-1.5 border-t px-2.5 py-2.5 ${isDarkMode ? 'border-white/8' : 'border-slate-100'}`}>
         {children}
       </div>
     )}

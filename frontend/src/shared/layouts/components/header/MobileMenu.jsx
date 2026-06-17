@@ -119,7 +119,14 @@ export function MobileMenu({ isDarkMode, isLoggedIn, currentUser, activeChartTyp
           </div>
         </div>
       ) : (
-        <MobileActionButton icon={User} label="Sign In" onClick={() => onNavigate('/login')} className="mt-4" />
+        <MobileActionButton
+          icon={User}
+          label="Staff Login"
+          onClick={() => onNavigate('/login')}
+          className="mt-4"
+          quiet
+          isDarkMode={isDarkMode}
+        />
       )}
     </div>
   );
@@ -129,15 +136,19 @@ export function MobileMenu({ isDarkMode, isLoggedIn, currentUser, activeChartTyp
 // Private helpers
 // ---------------------------------------------------------------------------
 
-function MobileActionButton({ icon: Icon, label, onClick, className = '' }) {
+function MobileActionButton({ icon: Icon, label, onClick, className = '', quiet = false, isDarkMode = false }) {
   return (
     <button
       onClick={onClick}
       className={`
-        bg-gradient-to-br from-sky-500 to-blue-600 border-none rounded-xl px-6 py-3
-        text-white font-semibold text-sm cursor-pointer transition-all duration-300
+        rounded-xl px-6 py-3 font-semibold text-sm cursor-pointer transition-all duration-300
         flex items-center justify-center gap-2 shadow-lg w-full
-        hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-xl
+        hover:-translate-y-0.5 hover:scale-[1.02]
+        ${quiet
+          ? isDarkMode
+            ? 'border border-slate-700 bg-slate-800/40 text-slate-300 shadow-none hover:bg-slate-800 hover:text-white'
+            : 'border border-slate-200 bg-white text-slate-600 shadow-none hover:bg-slate-50 hover:text-slate-900'
+          : 'border-none bg-gradient-to-br from-sky-500 to-blue-600 text-white hover:shadow-xl'}
         ${className}
       `}
     >
