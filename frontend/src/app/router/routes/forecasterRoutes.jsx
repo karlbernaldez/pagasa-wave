@@ -4,6 +4,7 @@ import ProtectedRoute from '@/middleware/ProtectedRoute';
 import StudioLayout from '@/app/layout/StudioLayout';
 
 const TodayForecast = lazy(() => import('@/dashboards/forecaster/pages/TodayForecastPage'));
+const ForecastChartPage = lazy(() => import('@/dashboards/forecaster/pages/ForecastChartPage'));
 const Studio = lazy(() => import('@/dashboards/forecaster/pages/Studio'));
 const Profile = lazy(() => import('@/dashboards/forecaster/pages/Profile'));
 const EditProfile = lazy(() => import('@/dashboards/forecaster/pages/EditProfile'));
@@ -17,6 +18,12 @@ export default [
       { path: '/edit-profile', element: <EditProfile /> },
       { path: '/pdf', element: <PdfGenerator /> },
       { path: '/today-forecast', element: <TodayForecast /> },
+
+      // NEW
+      {
+        path: '/today-forecast/:slug',
+        element: <ForecastChartPage />,
+      },
     ],
   },
   {

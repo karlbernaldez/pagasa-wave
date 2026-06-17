@@ -15,20 +15,14 @@ export default function TodayForecastPage() {
   const forecast = useTodayForecast();
   const navigate = useNavigate();
 
-  /**
-   * Called when the user clicks a checklist row or the "Continue" CTA.
-   * Navigates to that chart's workspace page.
-   * Adjust the route pattern to match your router setup.
-   */
   function handleChartClick(chart) {
     const slug = chart.title.toLowerCase().replace(/\s+/g, '-');
-    navigate(slug);
+
+    navigate(`/today-forecast/${slug}`, {
+      state: { chart },
+    });
   }
 
-  /**
-   * Called when the user clicks "Submit Forecast Package for Review".
-   * Replace the console.log with your real API call.
-   */
   function handleSubmitPackage() {
     // TODO: call your API, e.g.:
     // await api.submitForecastPackage({ date: forecast.publicationDeadline.date });
