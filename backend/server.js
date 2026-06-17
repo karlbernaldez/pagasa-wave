@@ -58,6 +58,8 @@ app.use('/api/frames', express.static(path.join(__dirname, 'frames')));
 app.use((req, res) => { res.status(404).json({ success: false, message: 'Route not found' }); });
 app.use((err, req, res, next) => { const isProd = process.env.NODE_ENV === 'production'; res.status(err.status || 500).json({ success: false, message: err.message || 'Internal Server Error', ...(isProd ? {} : { stack: err.stack }) }); });
 const httpServer = http.createServer(app);
-initSocket(httpServer).then((io) => { setIo(io); }).catch(() => {});
+initSocket(httpServer)
+  .then((io) => { setIo(io); })
+  .catch((err) => { console.error('Socket initialization failed:', err); });
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT);
