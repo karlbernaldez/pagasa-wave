@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   BarChart3,
   Box,
@@ -27,8 +28,19 @@ const NAV_ITEMS = [
 
 export default function ForecasterShell({ children, user: fallbackUser = null }) {
   const { isDarkMode, setIsDarkMode } = useTheme();
+  const location = useLocation();
   const userOptions = useMemo(() => ({ roleOverride: 'Forecaster' }), []);
   const { user } = useCurrentDashboardUser(fallbackUser, userOptions);
+  const activeId = useMemo(() => {
+    const activeItem = NAV_ITEMS.find((item) => {
+      if (item.disabled || !item.path) return false;
+
+      const [pathname] = item.path.split('?');
+      return pathname === location.pathname;
+    });
+
+    return activeItem?.id;
+  }, [location.pathname]);
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -38,6 +50,7 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
 
   return (
     <DashboardShell
+      activeId={activeId}
       isDarkMode={isDarkMode}
       isMobileOpen={isMobileOpen}
       isSidebarCollapsed={isSidebarCollapsed}

@@ -1,4 +1,3 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { AlertCircle, UserPlus } from 'lucide-react';
 import { tokens } from '@/styles/tokens';
 
@@ -7,30 +6,17 @@ import AuthInput from '@/features/auth/shared/AuthInput.jsx';
 import AuthPasswordField from '@/features/auth/shared/AuthPasswordField.jsx';
 import AuthFooter from '@/features/auth/shared/AuthFooter.jsx';
 
-import CaptchaSection from './CaptchaSection.jsx';
-
 const { colors } = tokens;
 
-const LoginForm = forwardRef(function LoginForm(
+function LoginForm(
   {
     formState,
     auth,
     visibility,
-    captchaVerified,
-    onCaptchaVerify,
     onSubmit,
     onNavigate,
-  },
-  ref
+  }
 ) {
-  const captchaRef = useRef(null);
-
-  useImperativeHandle(ref, () => ({
-    resetCaptcha() {
-      captchaRef.current?.reset?.();
-    },
-  }));
-
   const {
     email,
     password,
@@ -86,14 +72,12 @@ const LoginForm = forwardRef(function LoginForm(
         onToggleVisibility={togglePasswordVisibility}
       />
 
-      <CaptchaSection ref={captchaRef} onVerify={onCaptchaVerify} />
-
       <AuthButton
         type="submit"
         variant="primary"
         size="lg"
         isLoading={isLoading}
-        disabled={isLoading || !captchaVerified}
+        disabled={isLoading}
         className="w-full"
       >
         Sign In
@@ -123,6 +107,6 @@ const LoginForm = forwardRef(function LoginForm(
       />
     </form>
   );
-});
+}
 
 export default LoginForm;

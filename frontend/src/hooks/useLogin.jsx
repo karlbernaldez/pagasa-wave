@@ -119,7 +119,7 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
     setTouched,
     options = {},
   ) => {
-    const { captchaToken, coordinates, onCredentialsValid } = options;
+    const { coordinates, onCredentialsValid } = options;
 
     setTouched({ email: true, password: true });
 
@@ -140,7 +140,7 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
     clearInterval(cooldownRef.current);
 
     try {
-      const res = await loginUser({ email, password, captchaToken, coordinates: coordinates ?? null });
+      const res = await loginUser({ email, password, coordinates: coordinates ?? null });
 
       if (res.trustedDevice) {
         // ── Trusted device: server already issued tokens, skip OTP entirely ──

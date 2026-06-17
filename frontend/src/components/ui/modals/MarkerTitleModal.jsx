@@ -13,14 +13,15 @@ const typeConfig = {
   low_pressure: { label: 'Low Pressure Area', accent: { dark: 'cyan', light: 'blue' } },
   high_pressure: { label: 'High Pressure Area', accent: { dark: 'orange', light: 'orange' } },
   less_1: { label: 'Low Waves', accent: { dark: 'green', light: 'green' } },
+  text_note: { label: 'Text Label', accent: { dark: 'cyan', light: 'blue' } },
 };
 
-const MarkerTitleModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, markerType = 'typhoon', source }) => {
+const MarkerTitleModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, markerType = 'text_note', source }) => {
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef(null);
 
-  const config = typeConfig[markerType] || typeConfig.typhoon;
+  const config = typeConfig[markerType] || typeConfig.text_note;
   const accentKey = isDarkMode ? config.accent.dark : config.accent.light;
   
   const accentClasses = {

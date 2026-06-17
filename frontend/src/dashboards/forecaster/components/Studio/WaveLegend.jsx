@@ -1,3 +1,8 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GripHorizontal, Minus, RotateCcw, Waves } from "lucide-react";
+
+const cn = (...classes) => classes.filter(Boolean).join(" ");
+
 // =====================================================
 // Wave Height Color Bar
 // One qualitative label per visible number
@@ -50,59 +55,222 @@ const labelForTick = (value) =>
 // COMPONENT
 // =====================================================
 
-export default function WaveHeightColorBar({ isDarkMode = false }) {
+export default function WaveHeightColorBar({
+  isDarkMode = false,
+  className = "fixed bottom-6 right-2 z-40 select-none",
+  storageKey = "pagasa-wave-legend-position",
+}) {
   const colors = isDarkMode ? COLORS_DARK : COLORS_LIGHT;
+  const legendRef = useRef(null);
+  const dragRef = useRef({ dragging: false, offsetX: 0, offsetY: 0, last: null });
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [position, setPosition] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const clampPosition = useCallback((next) => {
+    if (typeof window === "undefined") return next;
+
+    const margin = 8;
+    const width = legendRef.current?.offsetWidth || 384;
+    const height = legendRef.current?.offsetHeight || 116;
+
+    return {
+      x: Math.min(Math.max(margin, next.x), Math.max(margin, window.innerWidth - width - margin)),
+      y: Math.min(Math.max(margin, next.y), Math.max(margin, window.innerHeight - height - margin)),
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!position) return undefined;
+
+    const onResize = () => {
+      setPosition((current) => (current ? clampPosition(current) : current));
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [clampPosition, position]);
+
+  useEffect(() => {
+    if (!position || typeof window === "undefined") return;
+
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(position));
+    } catch {
+      // localStorage may be unavailable in private or restricted contexts.
+    }
+  }, [position, storageKey]);
+
+  const handlePointerDown = useCallback((event) => {
+    if (event.button !== 0) return;
+
+    const rect = legendRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    dragRef.current = {
+      dragging: true,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      last: { x: rect.left, y: rect.top },
+    };
+    setPosition({ x: rect.left, y: rect.top });
+  }, []);
+
+  const handlePointerMove = useCallback((event) => {
+    const drag = dragRef.current;
+    if (!drag.dragging) return;
+
+    const next = clampPosition({
+      x: event.clientX - drag.offsetX,
+      y: event.clientY - drag.offsetY,
+    });
+
+    dragRef.current.last = next;
+    setPosition(next);
+  }, [clampPosition]);
+
+  const handlePointerUp = useCallback((event) => {
+    const drag = dragRef.current;
+    if (!drag.dragging) return;
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    dragRef.current = { dragging: false, offsetX: 0, offsetY: 0, last: null };
+    if (drag.last) setPosition(clampPosition(drag.last));
+  }, [clampPosition]);
+
+  const resetPosition = useCallback(() => {
+    setPosition(null);
+    try {
+      window.localStorage.removeItem(storageKey);
+    } catch {
+      // localStorage may be unavailable in private or restricted contexts.
+    }
+  }, [storageKey]);
+
+  const wrapperProps = useMemo(() => {
+    if (!position) return { className };
+    return {
+      className: "fixed z-40 select-none",
+      style: { left: position.x, top: position.y },
+    };
+  }, [className, position]);
+
+  const panelTone = isDarkMode
+    ? "studio-liquid-dark border border-white/[0.18] text-white"
+    : "studio-liquid-light border border-white/80 text-slate-900";
+  const iconButtonTone = isDarkMode
+    ? "border-white/10 text-white/55 hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+    : "border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900";
 
   return (
-    <div className="fixed bottom-6 right-2 z-40 select-none">
+    <div ref={legendRef} {...wrapperProps}>
       <div
-        className={`rounded-xl px-3 py-2 backdrop-blur-xl shadow-xl
-          ${
-            isDarkMode
-              ? "bg-black/40 border border-white/20"
-              : "bg-white/60 border border-white/40"
-          }`}
+        className={cn(
+          "studio-liquid-panel w-[min(25rem,calc(100vw-2rem))] overflow-hidden rounded-2xl transition-all",
+          panelTone,
+          isCollapsed && "w-auto min-w-56"
+        )}
       >
-        {/* COLOR BAR */}
-        <div className="flex overflow-hidden rounded-md border border-black/20">
-          {colors.map((c, i) => (
+        <div
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          className={cn(
+            "flex min-h-12 cursor-grab touch-none items-center gap-2.5 border-b px-3 active:cursor-grabbing",
+            isDarkMode ? "border-white/10" : "border-slate-200/70"
+          )}
+        >
+          <GripHorizontal size={14} className={isDarkMode ? "text-white/35" : "text-slate-400"} />
+          <span className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+            isDarkMode ? "bg-cyan-400/10 text-cyan-300" : "bg-blue-500/10 text-blue-600"
+          )}>
+            <Waves size={16} strokeWidth={2.4} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12px] font-black uppercase tracking-wide">
+              Wave Height
+            </div>
+            {!isCollapsed && (
+              <div className={cn("text-[10px] font-semibold", isDarkMode ? "text-white/45" : "text-slate-500")}>
+                Significant wave height, meters
+              </div>
+            )}
+          </div>
+          {position && (
+            <button
+              type="button"
+              onClick={resetPosition}
+              onPointerDown={(event) => event.stopPropagation()}
+              title="Reset legend position"
+              className={cn("flex h-9 w-9 items-center justify-center rounded-lg border transition-colors", iconButtonTone)}
+            >
+              <RotateCcw size={14} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsCollapsed((current) => !current)}
+            onPointerDown={(event) => event.stopPropagation()}
+            title={isCollapsed ? "Expand legend" : "Collapse legend"}
+            className={cn("flex h-9 w-9 items-center justify-center rounded-lg border transition-colors", iconButtonTone)}
+          >
+            {isCollapsed ? <Waves size={14} /> : <Minus size={15} />}
+          </button>
+        </div>
+
+        {!isCollapsed && (
+          <div className="px-3 pb-3 pt-3">
+            {/* COLOR BAR */}
+            <div className={cn(
+              "flex overflow-hidden rounded-lg border shadow-inner",
+              isDarkMode ? "border-white/15" : "border-slate-300"
+            )}>
+              {colors.map((c, i) => (
+                <div key={i} className="h-4 flex-1" style={{ backgroundColor: c }} />
+              ))}
+            </div>
+
+            {/* NUMERIC SCALE */}
             <div
-              key={i}
-              className="h-3 w-4"
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
+              className={`mt-2 flex justify-between text-[10px] font-black tabular-nums
+                ${isDarkMode ? "text-slate-300" : "text-slate-800"}`}
+            >
+              {MAJOR_TICKS.map((v) => (
+                <span key={v}>{v}</span>
+              ))}
+            </div>
 
-        {/* NUMERIC SCALE */}
-        <div
-          className={`mt-1 flex justify-between text-[9px] tabular-nums
-            ${isDarkMode ? "text-slate-300" : "text-slate-800"}`}
-        >
-          {MAJOR_TICKS.map((v) => (
-            <span key={v}>{v}</span>
-          ))}
-        </div>
+            {/* QUALITATIVE LABELS (1:1 WITH NUMBERS) */}
+            <div
+              className={`mt-1 flex justify-between text-[9px] font-bold
+                ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}
+            >
+              {MAJOR_TICKS.map((v) => (
+                <span key={v} className="max-w-12 text-center leading-tight">
+                  {labelForTick(v)}
+                </span>
+              ))}
+            </div>
 
-        {/* QUALITATIVE LABELS (1:1 WITH NUMBERS) */}
-        <div
-          className={`mt-1 flex justify-between text-[9px] font-medium
-            ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}
-        >
-          {MAJOR_TICKS.map((v) => (
-            <span key={v} className="text-center">
-              {labelForTick(v)}
-            </span>
-          ))}
-        </div>
-
-        {/* UNITS */}
-        <div
-          className={`mt-0.5 text-center text-[9px]
-            ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}
-        >
-          Significant Wave Height (m)
-        </div>
+            {/* UNITS */}
+            <div
+              className={`mt-2 rounded-lg px-2 py-1.5 text-center text-[10px] font-black uppercase tracking-wide
+                ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}
+            >
+              Significant Wave Height (m)
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -45,7 +45,7 @@ export const themeStyles = {
         ? "bg-white/10 text-white"
         : "bg-black/10 text-slate-900"
       : dark
-      ? "hover:bg-white/8 text-white/80 hover:text-white"
+      ? "hover:bg-white/[0.08] text-white/80 hover:text-white"
       : "hover:bg-black/5 text-slate-700 hover:text-slate-900",
 
   addLayerButton: (dark) =>

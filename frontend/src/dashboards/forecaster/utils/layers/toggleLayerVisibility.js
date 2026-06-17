@@ -12,7 +12,7 @@ function markerLayerId(layer) {
   const name = layer?.name;
 
   if (!markerType || !name) return null;
-  if (!['typhoon', 'low_pressure', 'high_pressure', 'less_1'].includes(markerType)) return null;
+  if (!['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note'].includes(markerType)) return null;
 
   return `${markerType}_${name}`;
 }

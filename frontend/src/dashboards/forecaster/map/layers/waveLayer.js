@@ -23,7 +23,7 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MRI3_TIMESTEP    = '012';
+const MRI3_TIMESTEP = '012';
 const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
 
 // ── Module-level singletons ───────────────────────────────────────────────────
@@ -45,18 +45,19 @@ const normalizeModel = (model = '') => model.trim().toUpperCase();
 const resolveDate = (model) => {
   switch (model) {
     case 'WW3': return '2026011200';
-    default:    return '2026011200';
+    default: return '2026011200';
   }
 };
 
 const buildTileUrl = (model, theme) => {
-  const m    = normalizeModel(model);
+  const m = normalizeModel(model);
   const date = resolveDate(m);
   const base = `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}`;
   return m === 'MRI3'
     ? `${base}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`
     : `${base}/{z}/{x}/{y}.png`;
 };
+
 
 const ensureSource = (map, id, config) => {
   if (!map.getSource(id)) map.addSource(id, config);
@@ -74,6 +75,7 @@ export async function addWaveSource(map, isDarkMode, models) {
   const theme = isDarkMode ? 'dark' : 'light';
 
   for (const model of models) {
+    console.log(`[Wave] Adding source for model: ${model}`);
     ensureSource(map, `wave-source-${model}`, {
       type: 'raster',
       tiles: [buildTileUrl(model, theme)],
@@ -119,18 +121,26 @@ export async function addWaveLayer(map, isDarkMode, models) {
 // ── Shared (non-per-model) layers ─────────────────────────────────────────────
 
 function addSharedLayers(map, isDarkMode) {
+  const fillColor = isDarkMode ? '#0f2132' : '#f8fbf3';
+  const outlineColor = isDarkMode ? '#67e8f9' : '#08799b';
+  const outlineOpacity = isDarkMode ? 0.58 : 0.62;
+  const fillOpacity = 0.94;
+
   if (!map.getLayer('ph-overlay')) {
     map.addLayer({
       id: 'ph-overlay',
       type: 'fill',
       source: 'ph-boundaries',
       'source-layer': 'country_boundaries',
-      filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
+      // filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
       paint: {
-        'fill-color': isDarkMode ? '#0f1117' : '#f2f2f2',
-        'fill-opacity': 1,
+        'fill-color': fillColor,
+        'fill-opacity': fillOpacity,
       },
     });
+  } else {
+    map.setPaintProperty('ph-overlay', 'fill-color', fillColor);
+    map.setPaintProperty('ph-overlay', 'fill-opacity', fillOpacity);
   }
 
   if (!map.getLayer('ph-overlay-outline')) {
@@ -139,13 +149,17 @@ function addSharedLayers(map, isDarkMode) {
       type: 'line',
       source: 'ph-boundaries',
       'source-layer': 'country_boundaries',
-      filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
+      // filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
       paint: {
-        'line-color': isDarkMode ? '#1e3a5f' : '#000000',
-        'line-width': 0.5,
-        'line-opacity': 0.8,
+        'line-color': outlineColor,
+        'line-width': isDarkMode ? 0.75 : 0.65,
+        'line-opacity': outlineOpacity,
       },
     });
+  } else {
+    map.setPaintProperty('ph-overlay-outline', 'line-color', outlineColor);
+    map.setPaintProperty('ph-overlay-outline', 'line-width', isDarkMode ? 0.75 : 0.65);
+    map.setPaintProperty('ph-overlay-outline', 'line-opacity', outlineOpacity);
   }
 }
 
@@ -163,23 +177,23 @@ function addWaveDirectionLayers(map, models = []) {
   }
 
   const iconColor = savedStyle.theme === 'black' ? BLACK_ICON_COLOR : COLORED_ICON_COLOR;
-  const iconSize  = [
+  const iconSize = [
     'interpolate', ['linear'], ['get', 'waveHeight'],
     ...BASE_SIZE_STOPS.flatMap(([waveH, baseSize]) => [waveH, baseSize * (savedStyle.size ?? 1.0)]),
   ];
 
   models.forEach((model) => {
-    const layerId  = `wave-direction-${model}`;
+    const layerId = `wave-direction-${model}`;
     const sourceId = `wave-points-${model}`;
 
-    if (map.getLayer(layerId))    return;
+    if (map.getLayer(layerId)) return;
     if (!map.getSource(sourceId)) return;
 
     map.addLayer({
-      id:     layerId,
-      type:   'symbol',
+      id: layerId,
+      type: 'symbol',
       source: sourceId,
-      slot:   'middle',
+      slot: 'middle',
 
       filter: [
         'all',
@@ -188,18 +202,18 @@ function addWaveDirectionLayers(map, models = []) {
       ],
 
       layout: {
-        visibility:                'visible',
-        'icon-image':              'wave-arrow',
-        'icon-size':               iconSize,
-        'icon-rotate':             ['to-number', ['get', 'waveDirection'], 0],
+        visibility: 'visible',
+        'icon-image': 'wave-arrow',
+        'icon-size': iconSize,
+        'icon-rotate': ['to-number', ['get', 'waveDirection'], 0],
         'icon-rotation-alignment': 'map',
-        'icon-pitch-alignment':    'map',
-        'icon-allow-overlap':      true,
-        'icon-ignore-placement':   true,
+        'icon-pitch-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
       },
 
       paint: {
-        'icon-color':   iconColor,
+        'icon-color': iconColor,
         'icon-opacity': savedStyle.opacity ?? 1.0,
       },
     });
@@ -209,16 +223,16 @@ function addWaveDirectionLayers(map, models = []) {
 // ── Canvas arrow SDF image ────────────────────────────────────────────────────
 
 function loadWaveArrowImage(map) {
-  const SIZE   = 64;
+  const SIZE = 64;
   const canvas = document.createElement('canvas');
-  canvas.width  = SIZE;
+  canvas.width = SIZE;
   canvas.height = SIZE;
   const ctx = canvas.getContext('2d');
-  const cx  = SIZE / 2;
+  const cx = SIZE / 2;
 
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth   = 6;
-  ctx.lineCap     = 'round';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(cx, SIZE * 0.80);
   ctx.lineTo(cx, SIZE * 0.18);
@@ -226,7 +240,7 @@ function loadWaveArrowImage(map) {
 
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.moveTo(cx,               SIZE * 0.08);
+  ctx.moveTo(cx, SIZE * 0.08);
   ctx.lineTo(cx - SIZE * 0.18, SIZE * 0.32);
   ctx.lineTo(cx + SIZE * 0.18, SIZE * 0.32);
   ctx.closePath();

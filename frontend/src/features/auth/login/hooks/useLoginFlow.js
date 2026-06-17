@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -61,43 +61,31 @@ export function useLoginFlow() {
     resendVerification,
   } = useLoginAuth(setIsLoggedIn, setRole);
 
-  const captchaRef = useRef(null);
-  const [captchaToken, setCaptchaToken] = useState(null);
   const [otpState, dispatchOtp] = useReducer(otpReducer, OTP_INITIAL);
 
   useEffect(() => {
     document.title = 'WaveLab — Sign in';
   }, []);
 
-  const resetCaptcha = useCallback(() => {
-    setCaptchaToken(null);
-    captchaRef.current?.resetCaptcha?.();
-  }, []);
-
   const handleSubmit = useCallback(
     async (event) => {
       event.preventDefault();
 
-      try {
-        await handleLogin(
-          form.email,
-          form.password,
-          form.validateEmail,
-          form.validatePassword,
-          form.setTouched,
-          {
-            captchaToken,
-            coordinates: position,
-            onCredentialsValid: () => {
-              dispatchOtp({ type: OTP_ACTION.OPEN });
-            },
-          }
-        );
-      } catch {
-        resetCaptcha();
-      }
+      await handleLogin(
+        form.email,
+        form.password,
+        form.validateEmail,
+        form.validatePassword,
+        form.setTouched,
+        {
+          coordinates: position,
+          onCredentialsValid: () => {
+            dispatchOtp({ type: OTP_ACTION.OPEN });
+          },
+        }
+      );
     },
-    [form, handleLogin, captchaToken, position, resetCaptcha]
+    [form, handleLogin, position]
   );
 
   const handleOtpVerify = useCallback(
@@ -131,12 +119,9 @@ export function useLoginFlow() {
 
   return {
     form: {
-      ref: captchaRef,
       formState: form,
       auth: { error, isLoading },
       visibility: passwordVisibility,
-      captchaVerified: Boolean(captchaToken),
-      onCaptchaVerify: setCaptchaToken,
       onSubmit: handleSubmit,
       onNavigate: navigate,
     },

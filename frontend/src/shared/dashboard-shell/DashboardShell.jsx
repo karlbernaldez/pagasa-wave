@@ -19,7 +19,9 @@ const DashboardShell = ({
   return (
     <div
       className={`min-h-screen flex transition-colors duration-500 ${
-        isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
+        isDarkMode
+          ? 'bg-[linear-gradient(135deg,#020617_0%,#0f172a_48%,#082f49_100%)]'
+          : 'bg-[linear-gradient(135deg,#e0f2fe_0%,#f8fafc_42%,#eef2ff_100%)]'
       }`}
     >
       <DashboardSidebar
@@ -33,7 +35,11 @@ const DashboardShell = ({
         {...sidebar}
       />
 
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+      <div
+        className={`flex min-h-screen min-w-0 flex-1 flex-col transition-[margin] duration-300 ${
+          isSidebarCollapsed ? 'lg:ml-[86px]' : 'lg:ml-[292px]'
+        }`}
+      >
         <DashboardHeader
           isDarkMode={isDarkMode}
           onMobileMenuToggle={onMobileMenuToggle}
