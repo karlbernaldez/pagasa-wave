@@ -3,6 +3,20 @@ import Swal from 'sweetalert2';
 import { useProjectId } from "@dashboards/forecaster/hooks/useStudio";
 import { fetchProjectById } from '@/api/projectAPI';
 
+const PREVIEW_SMOOTHING_FACTOR = 0.34;
+const MIN_DRAW_POINT_DISTANCE = 3.5;
+const PREVIEW_SIMPLIFY_TOLERANCE = 1.6;
+const PREVIEW_SPLINE_TENSION = 0.46;
+const PREVIEW_MIN_CURVE_SEGMENTS = 4;
+const PREVIEW_MAX_CURVE_SEGMENTS = 14;
+const PREVIEW_SEGMENT_LENGTH = 8;
+const FINAL_SIMPLIFY_TOLERANCE = 0.75;
+const FINAL_SPLINE_TENSION = 0.5;
+const FINAL_MIN_CURVE_SEGMENTS = 10;
+const FINAL_MAX_CURVE_SEGMENTS = 36;
+const FINAL_SEGMENT_LENGTH = 3;
+const PREVIEW_MOVE_THROTTLE = 24;
+
 /**
  * Get stroke outline points using perfect-freehand style algorithm
  * Creates a smooth, pressure-sensitive stroke outline
@@ -172,11 +186,19 @@ export const lightSmoothPoints = (points, factor = 0.3) => {
  * Bezier-based smoothing for final output
  * Creates smooth curves through points
  */
-export const smoothPoints = (points, tension = 0.5) => {
+export const smoothPoints = (points, tension = FINAL_SPLINE_TENSION, options = {}) => {
   if (points.length < 4) return points;
 
-  // First reduce points
-  const reducedPoints = reducePoints(points, 3);
+  const {
+    simplifyTolerance = FINAL_SIMPLIFY_TOLERANCE,
+    minSegments = FINAL_MIN_CURVE_SEGMENTS,
+    maxSegments = FINAL_MAX_CURVE_SEGMENTS,
+    segmentLength = FINAL_SEGMENT_LENGTH,
+    duplicateEpsilon = 0.35,
+  } = options;
+
+  // First reduce only tiny pen jitter; keep enough anchors for natural forecast curves.
+  const reducedPoints = reducePoints(points, simplifyTolerance);
   if (reducedPoints.length < 4) return reducedPoints;
 
   const result = [];
@@ -203,7 +225,10 @@ export const smoothPoints = (points, tension = 0.5) => {
 
     // Number of segments based on distance
     const distance = Math.sqrt((p2x - p1x) ** 2 + (p2y - p1y) ** 2);
-    const segments = Math.max(4, Math.min(12, Math.floor(distance / 8)));
+    const segments = Math.max(
+      minSegments,
+      Math.min(maxSegments, Math.ceil(distance / segmentLength))
+    );
 
     // Generate curve points
     for (let t = 0; t <= segments; t++) {
@@ -228,7 +253,31 @@ export const smoothPoints = (points, tension = 0.5) => {
   result.push(reducedPoints[reducedPoints.length - 2], reducedPoints[reducedPoints.length - 1]);
 
   // Final pass to remove duplicate consecutive points
-  return removeDuplicates(result);
+  return removeDuplicates(result, duplicateEpsilon);
+};
+
+export const getPreviewCurvePoints = (rawPoints) => {
+  if (rawPoints.length < 8) {
+    return lightSmoothPoints(rawPoints, PREVIEW_SMOOTHING_FACTOR);
+  }
+
+  return smoothPoints(rawPoints, PREVIEW_SPLINE_TENSION, {
+    simplifyTolerance: PREVIEW_SIMPLIFY_TOLERANCE,
+    minSegments: PREVIEW_MIN_CURVE_SEGMENTS,
+    maxSegments: PREVIEW_MAX_CURVE_SEGMENTS,
+    segmentLength: PREVIEW_SEGMENT_LENGTH,
+    duplicateEpsilon: 0.7,
+  });
+};
+
+const getFinalCurvePoints = (rawPoints) => {
+  return smoothPoints(rawPoints, FINAL_SPLINE_TENSION, {
+    simplifyTolerance: FINAL_SIMPLIFY_TOLERANCE,
+    minSegments: FINAL_MIN_CURVE_SEGMENTS,
+    maxSegments: FINAL_MAX_CURVE_SEGMENTS,
+    segmentLength: FINAL_SEGMENT_LENGTH,
+    duplicateEpsilon: 0.35,
+  });
 };
 
 /**
@@ -327,14 +376,13 @@ export const handlePointerDown = (e, lines, setLines, isDrawing) => {
  * Optimized with throttling and efficient smoothing
  */
 let lastMoveTime = 0;
-const MOVE_THROTTLE = 16; // ~60fps
 
 export const handlePointerMove = (e, lines, setLines, isDrawing) => {
   if (!isDrawing.current) return;
 
   // Throttle move events
   const now = Date.now();
-  if (now - lastMoveTime < MOVE_THROTTLE) return;
+  if (now - lastMoveTime < PREVIEW_MOVE_THROTTLE) return;
   lastMoveTime = now;
 
   const stage = e.target.getStage();
@@ -353,14 +401,14 @@ export const handlePointerMove = (e, lines, setLines, isDrawing) => {
     const dist = Math.sqrt((point.x - lastX) ** 2 + (point.y - lastY) ** 2);
 
     // Only add point if it's far enough from last point
-    if (dist < 2) return;
+    if (dist < MIN_DRAW_POINT_DISTANCE) return;
   }
 
   // Add to raw points
   const newRawPoints = rawPoints.concat([point.x, point.y]);
 
-  // Apply exponential moving average for smooth preview
-  const smoothedPoints = lightSmoothPoints(newRawPoints, 0.4);
+  // Preview uses a lighter version of the same spline pipeline as the saved Mapbox geometry.
+  const smoothedPoints = getPreviewCurvePoints(newRawPoints);
 
   const updatedLine = {
     ...lastLine,
@@ -518,7 +566,7 @@ export const handlePointerUp = async (
     const lastLine = { ...lines[lastIndex] };
 
     if (lastLine.rawPoints?.length >= 4) {
-      lastLine.points = smoothPoints(lastLine.rawPoints, 0.5);
+      lastLine.points = getFinalCurvePoints(lastLine.rawPoints);
     }
 
     const updatedLines = [...lines];

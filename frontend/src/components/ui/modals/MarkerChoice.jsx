@@ -20,8 +20,8 @@ const PointInputChoiceModal = ({ isOpen, onClose, onSelect, isDarkMode = false }
     {
       id: 'map',
       icon: MousePointerClick,
-      label: 'Click on Map',
-      description: 'Point and select',
+      label: 'Place on Map',
+      description: 'Click the forecast position',
       color: isDarkMode ? 'purple' : 'indigo'
     }
   ];
@@ -77,7 +77,7 @@ const PointInputChoiceModal = ({ isOpen, onClose, onSelect, isDarkMode = false }
               <h2 className={`text-xl font-bold text-center mb-6 ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
               }`}>
-                Select Marker Input Method
+                Select Point Input Method
               </h2>
 
               {/* Option Cards */}

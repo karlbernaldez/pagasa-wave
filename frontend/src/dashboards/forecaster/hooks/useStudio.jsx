@@ -202,7 +202,7 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
       const initialLayers = filteredFeatures.map((f) => {
         const type = f.properties?.type || "Wave Height";
         const name = f.name || "Untitled Feature";
-        const isMarker = ["typhoon", "low_pressure", "high_pressure", "less_1"].includes(type);
+        const isMarker = ["typhoon", "low_pressure", "high_pressure", "less_1", "text_note"].includes(type);
 
         return {
           id: f.sourceId,

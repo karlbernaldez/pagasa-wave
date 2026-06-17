@@ -14,7 +14,7 @@ export const safeGet = (fn) => {
     catch { return undefined; }
 };
 
-const SYMBOL_LAYER_TYPES = new Set(['symbol', 'typhoon', 'low_pressure', 'high_pressure', 'less_1']);
+const SYMBOL_LAYER_TYPES = new Set(['symbol', 'typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note']);
 const PANEL_SURFACE = (isDarkMode) =>
     isDarkMode
         ? 'studio-liquid-dark border border-white/[0.18]'
@@ -78,6 +78,7 @@ const TYPE_META = {
     low_pressure: { label: 'Low Pressure', color: 'from-red-500 to-rose-600' },
     high_pressure: { label: 'High Pressure', color: 'from-blue-500 to-sky-600' },
     less_1: { label: 'Less Than 1m', color: 'from-emerald-500 to-teal-600' },
+    text_note: { label: 'Text Label', color: 'from-amber-500 to-yellow-600' },
     'Wave Height': { label: 'Wave Height', color: 'from-teal-500 to-cyan-600' },
 };
 
@@ -332,7 +333,7 @@ export function LayerStylePanel({
     const layerInfo = layers.find((l) => l.id === activeLayerId) ?? null;
 
     useEffect(() => {
-        setStyleTab('symbol');
+        setStyleTab(layerInfo?.type === 'text_note' ? 'label' : 'symbol');
         if (!layerInfo || !activeMapboxLayerIds?.length) { setStyle({}); return; }
         setStyle(readCurrentStyle(map, layerInfo, activeMapboxLayerIds));
         setIsEditingName(false);
@@ -348,6 +349,11 @@ export function LayerStylePanel({
             { key: 'label', label: 'Label' },
             { key: 'layer', label: 'Layer' },
         ]
+        : layerInfo.type === 'text_note'
+            ? [
+                { key: 'label', label: 'Text' },
+                { key: 'layer', label: 'Layer' },
+            ]
         : [
             { key: 'symbol', label: 'Symbol' },
             { key: 'label', label: 'Label' },

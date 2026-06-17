@@ -79,6 +79,33 @@ export function useDrawToolbar({
     handleDrawModeChange(tool.id, draw, setLayersRef);
   }, [isDrawing, isFlagDrawing, draw, setLayersRef, selectedToolRef, setType, onToggleCanvas, onToggleFlagCanvas, toggleModal]);
 
+  const handleSelectMode = useCallback(() => {
+    if (isDrawing) stopDrawing(setIsDrawing, onToggleCanvas);
+    if (isFlagDrawing) stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
+
+    selectedToolRef.current = null;
+    setSelectedToolType(null);
+    setType?.(null);
+    draw?.changeMode?.('simple_select');
+  }, [draw, isDrawing, isFlagDrawing, onToggleCanvas, onToggleFlagCanvas, selectedToolRef, setType]);
+
+  const handleResetView = useCallback(() => {
+    const map = getLatestMapInstance();
+    if (!map) return;
+
+    map.fitBounds(
+      [
+        [93, 5],
+        [153.8595159535438, 25],
+      ],
+      {
+        padding: { top: 50, bottom: 50, left: 200, right: 200 },
+        maxZoom: 8,
+        duration: 650,
+      }
+    );
+  }, []);
+
   // ── Save helpers ─────────────────────────────────────────
   const savePoint = useCallback(({ lat, lng, coords, title, selectedType, map }) => {
     saveMarker({ lat, lng }, map, setShowTitleModal, selectedType)(title);
@@ -88,7 +115,7 @@ export function useDrawToolbar({
   // ── Map click flow ───────────────────────────────────────
   const handlePointInputChoice = useCallback((method) => {
     toggleModal('pointInputChoice', false);
-    const selectedType = selectedToolRef.current || TOOL_IDS.TYPHOON;
+    const selectedType = selectedToolRef.current || TOOL_IDS.LESS_1;
 
     if (method === 'manual') {
       toggleModal('manualInput', true);
@@ -140,7 +167,7 @@ export function useDrawToolbar({
 
   // ── ManualInputModal submit ──────────────────────────────
   const handleManualInputSubmit = useCallback(async (data) => {
-    const selectedType = selectedToolRef.current || TOOL_IDS.TYPHOON;
+    const selectedType = selectedToolRef.current || TOOL_IDS.LESS_1;
     setType?.(selectedType);
 
     const lat = parseFloat(data.lat);
@@ -172,6 +199,14 @@ export function useDrawToolbar({
     toggleModal('pointInputChoice', true);
   }, [isDrawing, isFlagDrawing, onToggleCanvas, onToggleFlagCanvas, selectedToolRef, toggleModal]);
 
+  const handleSelectTextNote = useCallback(() => {
+    selectedToolRef.current = TOOL_IDS.TEXT_NOTE;
+    setSelectedToolType(TOOL_IDS.TEXT_NOTE);
+    if (isDrawing) stopDrawing(setIsDrawing, onToggleCanvas);
+    if (isFlagDrawing) stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
+    toggleModal('pointInputChoice', true);
+  }, [isDrawing, isFlagDrawing, onToggleCanvas, onToggleFlagCanvas, selectedToolRef, toggleModal]);
+
   const handleToggleCollapse = useCallback(() => {
     toggleCollapse(setIsCollapsed);
   }, []);
@@ -188,12 +223,15 @@ export function useDrawToolbar({
     // Handlers
     toggleModal,
     handleToolClick,
+    handleSelectMode,
+    handleResetView,
     handlePointInputChoice,
     handleMarkerTitleSubmit,
     handleManualInputSubmit,
     handleToggleDrawing,
     handleToggleFlagDrawing,
     handleSelectLess1,
+    handleSelectTextNote,
     handleToggleCollapse,
     setPendingMapClick,
   };
