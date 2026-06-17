@@ -297,21 +297,27 @@ const Studio = ({ logger }) => {
   const hasActiveReviewRemarks = isRevisionRequested && Boolean(latestReviewRemarks?.comment);
 
   const headerClass = isDarkMode
-    ? "border-white/10 bg-slate-950/95 text-slate-100"
-    : "border-slate-200/70 bg-white/95 text-slate-950";
-  const headerMutedText = isDarkMode ? "text-slate-400" : "text-slate-500";
-  const headerStrongText = isDarkMode ? "text-slate-50" : "text-slate-900";
-  const headerDivider = isDarkMode ? "border-white/10" : "border-slate-200";
+    ? "studio-liquid-dark border-white/[0.18] text-slate-100 shadow-black/35"
+    : "studio-liquid-light border-white/80 text-slate-950 shadow-slate-400/25";
+  const headerMutedText = isDarkMode ? "text-white/45" : "text-slate-500";
+  const headerStrongText = isDarkMode ? "text-white" : "text-slate-950";
+  const headerDivider = isDarkMode ? "border-white/10" : "border-white/70";
   const headerControlGroup = isDarkMode
-    ? "border-white/10 bg-white/[0.05]"
-    : "border-black/6 bg-black/[0.03]";
+    ? "border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+    : "border-white/80 bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.95)]";
+  const headerGhostButton = isDarkMode
+    ? "!border-white/10 !bg-white/[0.055] !text-cyan-100 hover:!bg-white/[0.09] hover:!text-white"
+    : "!border-white/80 !bg-white/65 !text-blue-700 hover:!bg-white hover:!text-blue-800";
+  const headerPrimaryButton = isDarkMode
+    ? "!border-cyan-300/25 !bg-cyan-400/15 !text-cyan-100 hover:!bg-cyan-400/22"
+    : "!border-blue-200 !bg-blue-600 !text-white hover:!bg-blue-500";
 
   // ─── Render ──────────────────────────────────────────
   return (
     <div className={`relative h-screen w-full overflow-hidden ${isDarkMode ? "bg-slate-950" : "bg-slate-100"}`}>
-      <header className={`absolute inset-x-0 top-0 z-[120] flex h-16 items-center justify-between gap-2 border-b px-2 shadow-sm backdrop-blur-md sm:px-4 ${headerClass}`}>
+      <header className={`studio-liquid-panel absolute left-2 right-2 top-2 z-[120] flex h-14 items-center justify-between gap-2 rounded-2xl border px-2 shadow-2xl backdrop-blur-2xl sm:left-3 sm:right-3 sm:px-3 ${headerClass}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary}>
+          <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary} className={`!rounded-xl ${headerGhostButton}`}>
             <span className="hidden sm:inline">Project Library</span>
             <span className="sm:hidden">Library</span>
           </Button>
@@ -347,14 +353,15 @@ const Studio = ({ logger }) => {
               loading={isSubmittingProject}
               disabled={isSubmittingProject}
               onClick={handleSubmitProject}
+              className={`!rounded-xl ${headerPrimaryButton}`}
             >
               <span className="hidden sm:inline">{isSubmittingProject ? "Submitting..." : getSubmitLabel(projectStatus)}</span>
             </Button>
           )}
-          <span className={`hidden rounded-full border px-3 py-1 text-xs font-semibold xl:inline-flex ${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+          <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-semibold xl:inline-flex ${isDarkMode ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200" : "border-emerald-200/80 bg-emerald-50/80 text-emerald-700"}`}>
             Auto-save active
           </span>
-          <div className={`flex items-center gap-0.5 rounded-2xl border px-0.5 py-1 sm:px-1 ${headerControlGroup}`}>
+          <div className={`studio-liquid-control flex items-center gap-0.5 rounded-2xl border px-0.5 py-1 sm:px-1 ${headerControlGroup}`}>
             <NotificationBell isDarkMode={isDarkMode} />
             <div className={`mx-0.5 hidden h-5 w-px sm:block ${isDarkMode ? "bg-white/10" : "bg-black/8"}`} />
             <Button
@@ -363,13 +370,14 @@ const Studio = ({ logger }) => {
               icon={isDarkMode ? Sun : Moon}
               aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
               onClick={handleToggleTheme}
+              className={`!rounded-xl ${headerGhostButton}`}
             />
           </div>
         </div>
       </header>
 
       {studioError && (
-        <div className={`absolute left-1/2 z-[117] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-red-500/30 bg-red-950/90 text-red-200" : "border-red-200 bg-red-50/95 text-red-800"}`} style={{ top: STUDIO_HEADER_HEIGHT + 12 }} role="alert">
+        <div className={`studio-liquid-panel absolute left-1/2 z-[117] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-2xl ${isDarkMode ? "border-red-400/25 bg-red-950/70 text-red-100" : "border-red-200/80 bg-red-50/85 text-red-800"}`} style={{ top: STUDIO_HEADER_HEIGHT + 12 }} role="alert">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-red-500/10 text-red-300" : "bg-red-100 text-red-700"}`}>
@@ -389,7 +397,7 @@ const Studio = ({ logger }) => {
       )}
 
       {isReadOnlyProject && (
-        <div className={`absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-white/10 bg-slate-950/95 text-slate-200" : "border-slate-200 bg-white/95 text-slate-700"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 12) }}>
+        <div className={`studio-liquid-panel absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-2xl ${isDarkMode ? "studio-liquid-dark border-white/[0.18] text-slate-100" : "studio-liquid-light border-white/80 text-slate-800"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 12) }}>
           <div className="flex items-start gap-3">
             <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-slate-900 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
               <Lock size={16} />
@@ -407,7 +415,7 @@ const Studio = ({ logger }) => {
       )}
 
       {hasActiveReviewRemarks && (
-        <div className={`absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md ${isDarkMode ? "border-amber-400/30 bg-amber-950/80 text-amber-100" : "border-amber-200 bg-amber-50/95 text-amber-950"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 0) + (isReadOnlyProject ? 104 : 12) }}>
+        <div className={`studio-liquid-panel absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-2xl ${isDarkMode ? "border-amber-300/25 bg-amber-950/65 text-amber-100" : "border-amber-200/80 bg-amber-50/85 text-amber-950"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 0) + (isReadOnlyProject ? 104 : 12) }}>
           <div className="flex items-start gap-3">
             <div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-amber-500/10 text-amber-300" : "bg-amber-100 text-amber-700"}`}>
               <MessageSquareText size={16} />
@@ -424,9 +432,9 @@ const Studio = ({ logger }) => {
         </div>
       )}
 
-      <main className="relative flex w-full overflow-hidden" style={{ height: `calc(100vh - ${STUDIO_HEADER_HEIGHT}px)`, marginTop: STUDIO_HEADER_HEIGHT }}>
+      <main className="absolute inset-0 w-full overflow-hidden">
         {/* Map Wrapper */}
-        <div className="relative h-full w-full flex-grow transition-[width] duration-300 ease-in-out lg:w-[calc(100vw-250px)]">
+        <div className="absolute inset-0 h-full w-full">
           <MapComponent
             key={projectId || "no-project"}
             onMapLoad={handleMapLoad}
@@ -537,7 +545,7 @@ const Studio = ({ logger }) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="studio-inactivity-title"
-            className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl ${isDarkMode ? "border-white/10 bg-slate-950 text-slate-100" : "border-slate-200 bg-white text-slate-950"}`}
+            className={`studio-liquid-panel w-full max-w-md rounded-3xl border p-6 shadow-2xl ${isDarkMode ? "studio-liquid-dark border-white/[0.18] text-slate-100" : "studio-liquid-light border-white/80 text-slate-950"}`}
           >
             <div className="flex items-start gap-4">
               <div className={`${isDarkMode ? "bg-amber-500/10 text-amber-300 ring-amber-400/20" : "bg-amber-50 text-amber-700 ring-amber-100"} rounded-2xl p-3 ring-1`}>

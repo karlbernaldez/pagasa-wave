@@ -79,3 +79,71 @@ body,
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.studio-liquid-panel {
+  position: relative;
+  isolation: isolate;
+  backdrop-filter: blur(24px) saturate(165%);
+  -webkit-backdrop-filter: blur(24px) saturate(165%);
+}
+
+.studio-liquid-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 34%, rgba(255, 255, 255, 0.02) 68%),
+    radial-gradient(circle at 18% 0%, rgba(125, 211, 252, 0.18), transparent 38%),
+    radial-gradient(circle at 100% 12%, rgba(45, 212, 191, 0.12), transparent 34%);
+  opacity: 0.9;
+}
+
+.studio-liquid-panel::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.12);
+}
+
+.studio-liquid-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.studio-liquid-dark {
+  background:
+    linear-gradient(145deg, rgba(2, 6, 23, 0.78), rgba(8, 27, 47, 0.62) 55%, rgba(6, 78, 96, 0.44));
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 24px 70px rgba(2, 6, 23, 0.42),
+    0 8px 22px rgba(6, 182, 212, 0.08);
+}
+
+.studio-liquid-light {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(239, 249, 255, 0.74) 52%, rgba(224, 242, 254, 0.62));
+  border-color: rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 22px 55px rgba(15, 23, 42, 0.14),
+    0 6px 20px rgba(14, 165, 233, 0.08);
+}
+
+.studio-liquid-control {
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+
+.studio-map-glass-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: soft-light;
+}

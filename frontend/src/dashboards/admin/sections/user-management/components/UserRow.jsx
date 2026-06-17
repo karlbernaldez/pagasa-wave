@@ -20,7 +20,7 @@ function UserRowComponent({
 
   const metaClass = isDarkMode ? 'text-slate-500' : 'text-slate-400';
   const dataClass = isDarkMode ? 'text-slate-300' : 'text-slate-600';
-  const rowBorder = isDarkMode ? 'border-slate-800/80' : 'border-slate-100';
+  const rowBorder = isDarkMode ? 'border-white/10' : 'border-white/70';
 
   const avatarSrc = user?.photo || user?.avatarUrl || null;
 
@@ -42,7 +42,7 @@ function UserRowComponent({
   return (
     <tr
       className={`border-t align-middle transition-colors duration-150 group ${rowBorder}
-      ${isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50/80'}`}
+      ${isDarkMode ? 'hover:bg-white/[0.05]' : 'hover:bg-white/60'}`}
     >
       {/* Select */}
       <td className="py-3 pr-3">
@@ -157,7 +157,7 @@ function UserRowComponent({
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
           ${isDarkMode
               ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25'
-              : 'bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-500 hover:text-white'
+              : 'bg-cyan-50/80 text-cyan-700 border border-cyan-200 hover:bg-cyan-600 hover:text-white'
             }`}
         >
           <UserCog size={13} />

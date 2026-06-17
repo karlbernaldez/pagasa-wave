@@ -136,6 +136,7 @@ export async function addWindLayer(map, isDarkMode, model) {
   if (localStorage.getItem('WIND_ENABLED') !== 'true') return;
 
   await addWindSource(map, isDarkMode, model);
+  syncWindGlassOverlay(map, isDarkMode);
   addWindParticlesLayer(map);
   addWindArrowsLayer(map);
   setupPopup(map, isDarkMode);
@@ -143,8 +144,16 @@ export async function addWindLayer(map, isDarkMode, model) {
 
 // ── Shared (non-per-model) layers ─────────────────────────────────────────────
 
-function addSharedLayers(map) {
+export function syncWindGlassOverlay(map, isDarkMode) {
   const isRasterVisible = localStorage.getItem('WIND_RASTER') === 'true';
+  ensureSource(map, 'glass-layer', {
+    type: 'vector',
+    url: 'mapbox://votewave.a1s6vck4',
+  });
+  const fillColor = isDarkMode ? 'rgba(103, 232, 249, 0.12)' : 'rgba(255, 255, 255, 0.22)';
+  const fillOutline = isDarkMode ? 'rgba(103, 232, 249, 0.36)' : 'rgba(8, 121, 155, 0.28)';
+  const depthStart = isDarkMode ? 'rgba(14,165,233,0.05)' : 'rgba(255,255,255,0.10)';
+  const depthEnd = isDarkMode ? 'rgba(103,232,249,0.18)' : 'rgba(14,165,233,0.16)';
 
   if (!map.getLayer('wind-glass-fill')) {
     map.addLayer({
@@ -154,12 +163,16 @@ function addSharedLayers(map) {
       'source-layer': 'ph-bum99e',
       slot: 'top',
       paint: {
-        'fill-color': 'rgba(255, 255, 255, 0.15)',
-        'fill-opacity': 0.4,
-        'fill-outline-color': 'rgba(255, 255, 255, 0.35)',
+        'fill-color': fillColor,
+        'fill-opacity': isDarkMode ? 0.48 : 0.38,
+        'fill-outline-color': fillOutline,
       },
       layout: { visibility: isRasterVisible ? 'visible' : 'none' },
     });
+  } else {
+    map.setPaintProperty('wind-glass-fill', 'fill-color', fillColor);
+    map.setPaintProperty('wind-glass-fill', 'fill-opacity', isDarkMode ? 0.48 : 0.38);
+    map.setPaintProperty('wind-glass-fill', 'fill-outline-color', fillOutline);
   }
 
   if (!map.getLayer('wind-glass-depth')) {
@@ -171,13 +184,19 @@ function addSharedLayers(map) {
       slot: 'top',
       paint: {
         'fill-color': ['interpolate', ['linear'], ['zoom'],
-          5, 'rgba(255,255,255,0.05)',
-          10, 'rgba(255,255,255,0.25)',
+          5, depthStart,
+          10, depthEnd,
         ],
-        'fill-opacity': 0.3,
+        'fill-opacity': isDarkMode ? 0.34 : 0.28,
       },
       layout: { visibility: isRasterVisible ? 'visible' : 'none' },
     });
+  } else {
+    map.setPaintProperty('wind-glass-depth', 'fill-color', ['interpolate', ['linear'], ['zoom'],
+      5, depthStart,
+      10, depthEnd,
+    ]);
+    map.setPaintProperty('wind-glass-depth', 'fill-opacity', isDarkMode ? 0.34 : 0.28);
   }
 }
 

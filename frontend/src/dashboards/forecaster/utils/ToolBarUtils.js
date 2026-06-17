@@ -28,6 +28,10 @@ const MARKER_TYPE_ALIASES = {
   less_than_1m: 'less_1',
   lessthan1m: 'less_1',
   low_waves: 'less_1',
+  text: 'text_note',
+  text_note: 'text_note',
+  label: 'text_note',
+  map_label: 'text_note',
 };
 
 export function normalizeMarkerType(value) {
@@ -100,6 +104,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
   const markerType = normalizeMarkerType(selectedType);
   const baseName = title?.trim() || 'Untitled Layer';
   const sourceId = makeSafeSourceId(markerType, baseName);
+  const mapLayerId = `${markerType}_${baseName}`;
   const panelId = sourceId;
   const closedMode = false;
 
@@ -115,6 +120,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
       type: markerType,
       markerType,
       symbolType: markerType,
+      mapLayerId,
     },
   };
 
@@ -146,6 +152,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
         type: markerType,
         markerType,
         symbolType: markerType,
+        mapLayerId,
       },
       name: baseName,
       sourceId,
@@ -180,6 +187,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
         locked: false,
         type: markerType,
         markerType,
+        mapLayerId,
       },
     ];
   });

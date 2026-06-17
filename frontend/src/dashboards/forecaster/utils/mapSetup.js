@@ -245,11 +245,16 @@ class LineRenderer {
       type: 'line',
       source: sourceId,
       slot: 'top',
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round',
+      },
       paint: {
         'line-color': this.lineColor,
-        'line-opacity': 0.5,
+        'line-opacity': 0.6,
         'line-width': 3,
         'line-dasharray': isDashed ? [0.5, 0.5] : [],
+        'line-blur': 0.3,
       },
       filter: ['==', '$type', 'LineString'],
     });
@@ -477,7 +482,7 @@ export async function setupMap({
 
       const selectedType = selectedToolRef?.current || '';
 
-      if (selectedType.toLowerCase() !== 'less_1') {
+      if (!['less_1', 'text_note'].includes(selectedType.toLowerCase())) {
         setShowTitleModal(true);
       }
 

@@ -64,6 +64,7 @@ export default function ReviewMapWorkspace({
               height={null}
               emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
               lazy={false}
+              fixedBounds
             />
           ) : (
             <div className="grid gap-3 xl:h-full xl:min-h-0 xl:grid-cols-2 xl:gap-4">
@@ -80,6 +81,7 @@ export default function ReviewMapWorkspace({
                   emptyLabel="No previous snapshot"
                   lazy={false}
                   showDiffStyles
+                  fixedBounds
                 />
               </div>
               <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${isDarkMode ? 'border-blue-400/20 bg-blue-500/5' : 'border-blue-100 bg-blue-50/40'}`}>
@@ -96,6 +98,7 @@ export default function ReviewMapWorkspace({
                   emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
                   lazy={false}
                   showDiffStyles
+                  fixedBounds
                 />
               </div>
             </div>

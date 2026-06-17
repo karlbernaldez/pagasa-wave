@@ -1,95 +1,20 @@
-import { useState, useCallback, useRef } from 'react';
-import { retrieve } from './ragSearch';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}`;
+const PUBLIC_URL = `${API_BASE}/api/chat/public`;
+const INTERNAL_URL = `${API_BASE}/api/chat/internal`;
+const AUTH_CHECK_URL = `${API_BASE}/api/auth/check`;
+const MEMORY_WINDOW = 10;
 
-const MODELS = [
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'groq/compound',
-  'llama-3.3-70b-versatile', // best quality — tried first
-  'llama-3.1-8b-instant',    // fastest — fallback #1
-  'mixtral-8x7b-32768',      // long context — fallback #2
-];
+const PUBLIC_MODELS = ['llama-3.1-8b-instant'];
+const FORECASTER_MODELS = ['mixtral-8x7b-32768', 'llama-3.1-8b-instant'];
+const ADMIN_MODELS = ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768', 'llama-3.1-8b-instant'];
 
-const modelCooldowns = {};
+const PUBLIC_ASSISTANT_LABEL = 'WaveLab Public Assistant (Experimental)';
+const FORECASTER_ASSISTANT_LABEL = 'WaveLab Forecaster Assistant (Experimental)';
+const ADMIN_ASSISTANT_LABEL = 'WaveLab Admin Assistant (Experimental)';
 
-const getAvailableModel = () => {
-  const now = Date.now();
-  return MODELS.find((m) => !modelCooldowns[m] || modelCooldowns[m] < now) ?? null;
-};
-
-const cooldownModel = (model, retryAfterSeconds = 60) => {
-  modelCooldowns[model] = Date.now() + retryAfterSeconds * 1000;
-  console.warn(`[Chatbot] "${model}" rate limited — cooling down for ${retryAfterSeconds}s`);
-};
-
-// ─── Dynamic system prompt (only relevant chunks) ─────────────────────────────
-
-const buildSystemPrompt = (query) => {
-  const context = retrieve(query);
-  return `You are a friendly and approachable assistant for WaveLab. Your job is to help users understand how to use the platform in a simple, clear, and welcoming way.
-
-When answering:
-- Use plain, everyday language. Avoid jargon and technical terms unless necessary — and if you must use one, briefly explain what it means.
-- Be warm and conversational, like a helpful teammate — not a manual.
-- Keep answers short and easy to follow. Use bullet points or numbered steps when walking through how to do something.
-- If the user seems confused, reassure them and break things down further.
-
-FORMATTING RULES — follow these strictly:
-- Never use markdown symbols like #, ##, ###, ####, ---, or **** in your response.
-- For bullet points, use a dash and space: "- item"
-- For numbered steps, use "1. step"
-- For bold/emphasis, just write the word normally — do not wrap in asterisks.
-- Do not add section headers or dividers.
-
-If the answer is not in the documentation, say: "Hmm, I'm not sure about that one! It might be best to reach out to the support team for help."
-
-Only answer based on the documentation below. Do not make anything up.
-
----
-${context}
----`;
-};
-
-
-// ─── Core fetch (single model attempt) ───────────────────────────────────────
-
-const fetchGroq = async (model, systemPrompt, messages, signal) => {
-  const response = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-    },
-    signal,
-    body: JSON.stringify({
-      model,
-      stream: true,
-      max_tokens: 1024,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages.map(({ role, content }) => ({ role, content })),
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    if (response.status === 401)
-      throw new Error('FATAL:Invalid Groq API key. Check VITE_GROQ_API_KEY in your .env');
-    if (response.status === 429) {
-      const retryAfter = parseInt(response.headers.get('retry-after') ?? '60', 10);
-      cooldownModel(model, retryAfter);
-      throw new Error('RATE_LIMITED');
-    }
-    throw new Error(body?.error?.message || `Groq error: ${response.status}`);
-  }
-
-  return response;
-};
-
-// ─── SSE stream reader ────────────────────────────────────────────────────────
+const normalizeResponse = (text) => text ? text.trim() : text;
 
 const readStream = async (response, onToken) => {
   const reader = response.body.getReader();
@@ -107,99 +32,145 @@ const readStream = async (response, onToken) => {
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith('data: ')) continue;
+      if (!trimmed.startsWith('data: ')) continue;
       const data = trimmed.slice(6);
       if (data === '[DONE]') return accumulated;
+
       try {
         const parsed = JSON.parse(data);
         const token = parsed?.choices?.[0]?.delta?.content ?? '';
-        if (token) {
-          accumulated += token;
-          onToken(accumulated);
-        }
-      } catch {
-        // skip malformed chunks
-      }
+        if (!token) continue;
+        accumulated += token;
+        onToken(accumulated);
+      } catch {}
     }
   }
 
   return accumulated;
 };
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+const getAuthProfile = async () => {
+  try {
+    const response = await fetch(AUTH_CHECK_URL, { credentials: 'include' });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.user || null;
+  } catch {
+    return null;
+  }
+};
 
 export const useChatbot = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeModel, setActiveModel] = useState(MODELS[0]);
   const [error, setError] = useState(null);
+  const [activeModel, setActiveModel] = useState(PUBLIC_MODELS[0]);
+  const [assistantLabel, setAssistantLabel] = useState(PUBLIC_ASSISTANT_LABEL);
   const abortRef = useRef(null);
+
+  useEffect(() => {
+    const initAssistant = async () => {
+      const user = await getAuthProfile();
+      const role = user?.role || null;
+
+      if (role === 'admin') {
+        setAssistantLabel(ADMIN_ASSISTANT_LABEL);
+        setActiveModel(ADMIN_MODELS[0]);
+        return;
+      }
+      if (role === 'forecaster') {
+        setAssistantLabel(FORECASTER_ASSISTANT_LABEL);
+        setActiveModel(FORECASTER_MODELS[0]);
+        return;
+      }
+      setAssistantLabel(PUBLIC_ASSISTANT_LABEL);
+      setActiveModel(PUBLIC_MODELS[0]);
+    };
+
+    initAssistant();
+  }, []);
 
   const sendMessage = useCallback(async (text) => {
     if (!text.trim() || isLoading) return;
 
-    const userMessage = { role: 'user', content: text.trim() };
-    const updatedMessages = [...messages, userMessage];
+    const user = await getAuthProfile();
+    const role = user?.role || null;
+    const isInternal = !!role;
 
-    setMessages(updatedMessages);
+    let models = PUBLIC_MODELS;
+    let label = PUBLIC_ASSISTANT_LABEL;
+
+    if (role === 'forecaster') {
+      models = FORECASTER_MODELS;
+      label = FORECASTER_ASSISTANT_LABEL;
+    }
+    if (role === 'admin') {
+      models = ADMIN_MODELS;
+      label = ADMIN_ASSISTANT_LABEL;
+    }
+
+    const endpoint = isInternal ? INTERNAL_URL : PUBLIC_URL;
+    const model = models[0];
+    const userMessage = { role: 'user', content: text.trim() };
+    const conversationHistory = [...messages, userMessage]
+      .filter((m) => m.content && !m.isStreaming)
+      .slice(-MEMORY_WINDOW);
+
+    setActiveModel(model);
+    setAssistantLabel(label);
+    setMessages((prev) => [...prev, userMessage, { role: 'assistant', content: '', isStreaming: true }]);
     setInput('');
     setIsLoading(true);
     setError(null);
-
-    setMessages((prev) => [...prev, { role: 'assistant', content: '', isStreaming: true }]);
-
     abortRef.current = new AbortController();
 
-    // Build a focused system prompt using only relevant doc chunks for this query
-    const systemPrompt = buildSystemPrompt(text.trim());
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        signal: abortRef.current.signal,
+        body: JSON.stringify({
+          model,
+          messages: conversationHistory,
+        }),
+      });
 
-    let lastError = null;
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || `Chat error: ${response.status}`);
+      }
 
-    for (const model of MODELS) {
-      const now = Date.now();
-      if (modelCooldowns[model] && modelCooldowns[model] >= now) continue;
-
-      try {
-        setActiveModel(model);
-
-        const response = await fetchGroq(model, systemPrompt, updatedMessages, abortRef.current.signal);
-
-        const accumulated = await readStream(response, (partial) => {
-          setMessages((prev) => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { role: 'assistant', content: partial, isStreaming: true };
-            return updated;
-          });
-        });
-
+      const accumulated = await readStream(response, (partial) => {
         setMessages((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', content: accumulated };
+          updated[updated.length - 1] = {
+            role: 'assistant',
+            content: normalizeResponse(partial),
+            isStreaming: true,
+          };
           return updated;
         });
+      });
 
-        setIsLoading(false);
-        return;
-      } catch (err) {
-        if (err.name === 'AbortError') { setIsLoading(false); return; }
-        if (err.message.startsWith('FATAL:')) { lastError = err.message.replace('FATAL:', ''); break; }
-        if (err.message === 'RATE_LIMITED') { lastError = null; continue; }
-        lastError = err.message;
-        break;
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          content: normalizeResponse(accumulated),
+        };
+        return updated;
+      });
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setError(err.message || 'Something went wrong.');
+        setMessages((prev) => prev.slice(0, -1));
       }
+    } finally {
+      setIsLoading(false);
     }
-
-    const allCooled = MODELS.every((m) => modelCooldowns[m] && modelCooldowns[m] >= Date.now());
-    setError(
-      lastError ||
-      (allCooled
-        ? 'All models are rate-limited. Please wait a minute and try again.'
-        : 'Something went wrong. Please try again.')
-    );
-    setMessages((prev) => prev.slice(0, -1));
-    setIsLoading(false);
-  }, [messages, isLoading]);
+  }, [isLoading, messages]);
 
   const clearChat = useCallback(() => {
     abortRef.current?.abort();
@@ -208,5 +179,16 @@ export const useChatbot = () => {
     setInput('');
   }, []);
 
-  return { messages, input, setInput, isLoading, error, activeModel, sendMessage, clearChat };
+  return {
+    messages,
+    input,
+    setInput,
+    isLoading,
+    error,
+    activeModel,
+    assistantLabel,
+    sendMessage,
+    clearChat,
+    setActiveModel,
+  };
 };

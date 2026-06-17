@@ -49,8 +49,8 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
   const iconButtonClass = useMemo(() => {
     return `relative h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${
       isDarkMode
-        ? 'text-gray-300 hover:bg-white/[0.06]'
-        : 'text-slate-500 hover:bg-black/[0.04]'
+        ? 'text-gray-300 hover:bg-white/[0.08]'
+        : 'text-slate-500 hover:bg-white/75'
     } ${className}`;
   }, [className, isDarkMode]);
 
@@ -152,13 +152,13 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
 
       {isOpen && (
         <div
-          className={`fixed left-3 right-3 top-16 z-[220] max-h-[min(520px,calc(100vh-84px))] overflow-hidden rounded-3xl border shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[min(380px,calc(100vw-24px))] ${
+          className={`studio-liquid-panel fixed left-3 right-3 top-16 z-[220] max-h-[min(520px,calc(100vh-84px))] overflow-hidden rounded-3xl border shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[min(380px,calc(100vw-24px))] ${
             isDarkMode
-              ? 'border-white/10 bg-slate-950 text-slate-100'
-              : 'border-slate-200 bg-white text-slate-950'
+              ? 'studio-liquid-dark border-white/[0.18] text-slate-100'
+              : 'studio-liquid-light border-white/80 text-slate-950'
           }`}
         >
-          <div className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
+          <div className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
             <div>
               <p className="text-sm font-black">Notifications</p>
               <p className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -171,7 +171,7 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
               onClick={handleMarkAllRead}
               disabled={unreadCount === 0}
               className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                isDarkMode ? 'hover:bg-white/8 text-cyan-300' : 'hover:bg-slate-100 text-blue-600'
+                isDarkMode ? 'hover:bg-white/[0.08] text-cyan-300' : 'hover:bg-slate-100 text-blue-600'
               }`}
             >
               <CheckCheck size={14} />

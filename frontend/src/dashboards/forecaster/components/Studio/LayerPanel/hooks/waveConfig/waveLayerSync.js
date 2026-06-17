@@ -7,27 +7,80 @@ import {
   COLORED_ICON_COLOR,
   BLACK_ICON_COLOR,
 } from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
-import { getSelectedModels, buildWaveTileUrl, buildIconSize } from './waveHelpers';
 
-// ── Element → layer-prefix registry ──────────────────────────────────────────
-//
-// Add a row here whenever a new renderable element is introduced in waveLayer.js.
-// The sync logic is fully data-driven — no further changes needed in this file.
-//
-//  elementId           layer prefix              needs direction-style applied?
+import {
+  getSelectedModels,
+  buildWaveTileUrl,
+  buildIconSize,
+} from './waveHelpers';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model-specific raster settings
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MODEL_RASTER_CONFIG = {
+  BMKG: {
+    scheme: 'tms',
+    bounds: [100, -5, 180, 50],
+  },
+
+  MRI3: {
+    scheme: 'xyz',
+    bounds: [100, -5, 180, 50],
+  },
+
+  WW3: {
+    scheme: 'xyz',
+    bounds: [100, -5, 180, 50],
+  },
+};
+
+const getRasterConfig = (model) =>
+  MODEL_RASTER_CONFIG[model] ?? {
+    scheme: 'xyz',
+    bounds: [100, -5, 180, 50],
+  };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Element → layer-prefix registry
+// ─────────────────────────────────────────────────────────────────────────────
+
 const SYMBOL_LAYER_MAP = [
-  { id: 'waveDirection',  prefix: 'wave-direction-',       applyDirectionStyle: true  },
-  { id: 'wavePeriod',     prefix: 'wave-period-',           applyDirectionStyle: false },
-  { id: 'waveHeight',     prefix: 'wave-height-',           applyDirectionStyle: false },
-  { id: 'windDirection',  prefix: 'wave-wind-direction-',   applyDirectionStyle: false },
+  {
+    id: 'waveDirection',
+    prefix: 'wave-direction-',
+    applyDirectionStyle: true,
+  },
+  {
+    id: 'wavePeriod',
+    prefix: 'wave-period-',
+    applyDirectionStyle: false,
+  },
+  {
+    id: 'waveHeight',
+    prefix: 'wave-height-',
+    applyDirectionStyle: false,
+  },
+  {
+    id: 'windDirection',
+    prefix: 'wave-wind-direction-',
+    applyDirectionStyle: false,
+  },
 ];
 
-// ── Raster layers ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Raster Layers
+// ─────────────────────────────────────────────────────────────────────────────
 
 const removeLegacyLayers = (map) => {
-  if (map.getLayer('wave-raster')) map.removeLayer('wave-raster');
+  if (map.getLayer('wave-raster')) {
+    map.removeLayer('wave-raster');
+  }
+
   ['wave-dark', 'wave-light'].forEach((id) => {
-    if (map.getSource(id)) map.removeSource(id);
+    if (map.getSource(id)) {
+      map.removeSource(id);
+    }
   });
 };
 
@@ -36,76 +89,144 @@ const removeStaleRasterSources = (map, targetSourceIds) => {
     .filter((id) => id.startsWith(WAVE_RASTER_SOURCE_PREFIX))
     .forEach((sourceId) => {
       if (targetSourceIds.has(sourceId)) return;
-      const layerId = sourceId.replace(WAVE_RASTER_SOURCE_PREFIX, WAVE_RASTER_LAYER_PREFIX);
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+      const layerId = sourceId.replace(
+        WAVE_RASTER_SOURCE_PREFIX,
+        WAVE_RASTER_LAYER_PREFIX,
+      );
+
+      if (map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+
+      if (map.getSource(sourceId)) {
+        map.removeSource(sourceId);
+      }
     });
 };
 
-const upsertRasterLayer = (map, { model, theme, opacity, showRaster, themeChanged }) => {
+const upsertRasterLayer = (
+  map,
+  {
+    model,
+    theme,
+    opacity,
+    showRaster,
+    themeChanged,
+  },
+) => {
   const sourceId = `${WAVE_RASTER_SOURCE_PREFIX}${model}`;
-  const layerId  = `${WAVE_RASTER_LAYER_PREFIX}${model}`;
-  const tileUrl  = buildWaveTileUrl({ model, theme, date: WAVE_RASTER_DATE });
-  let srcExists  = Boolean(map.getSource(sourceId));
+  const layerId = `${WAVE_RASTER_LAYER_PREFIX}${model}`;
+  const tileUrl = buildWaveTileUrl({
+    model,
+    theme,
+    date: WAVE_RASTER_DATE,
+  });
 
-  if (srcExists && themeChanged) {
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
+  const { scheme, bounds } = getRasterConfig(model);
+
+  let sourceExists = Boolean(map.getSource(sourceId));
+
+  if (sourceExists && themeChanged) {
+    if (map.getLayer(layerId)) {
+      map.removeLayer(layerId);
+    }
+
     map.removeSource(sourceId);
-    srcExists = false;
+    sourceExists = false;
   }
 
-  if (!srcExists) {
+  if (!sourceExists) {
     map.addSource(sourceId, {
-      type: 'raster', tiles: [tileUrl], tileSize: 256,
-      bounds: [100, -5, 180, 50], scheme: 'xyz',
+      type: 'raster',
+      tiles: [tileUrl],
+      tileSize: 256,
+      scheme,
+      bounds,
     });
   }
 
   if (!map.getLayer(layerId)) {
     map.addLayer(
       {
-        id: layerId, type: 'raster', source: sourceId,
-        paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0 },
-        layout: { visibility: showRaster ? 'visible' : 'none' },
+        id: layerId,
+        type: 'raster',
+        source: sourceId,
+
+        paint: {
+          'raster-opacity': opacity,
+          'raster-fade-duration': 0,
+
+          // smoother BMKG rendering
+          'raster-resampling': 'linear',
+        },
+
+        layout: {
+          visibility: showRaster ? 'visible' : 'none',
+        },
       },
       'graticules',
     );
   } else {
     map.setPaintProperty(layerId, 'raster-opacity', opacity);
-    map.setLayoutProperty(layerId, 'visibility', showRaster ? 'visible' : 'none');
+
+    map.setLayoutProperty(
+      layerId,
+      'visibility',
+      showRaster ? 'visible' : 'none',
+    );
   }
 };
 
 export const syncWaveRasterLayers = (
   map,
-  models       = [],
-  showRaster   = false,
-  isDarkMode   = false,
+  models = [],
+  showRaster = false,
+  isDarkMode = false,
   themeChanged = false,
 ) => {
   if (!map) return;
 
-  const theme          = isDarkMode ? 'dark' : 'light';
+  const theme = isDarkMode ? 'dark' : 'light';
+
   const selectedModels = getSelectedModels(models);
-  const opacity        = selectedModels.length > 0
-    ? Math.max(0.25, 1 / selectedModels.length)
-    : 0;
+
+  const opacity =
+    selectedModels.length > 0
+      ? Math.max(0.25, 1 / selectedModels.length)
+      : 0;
 
   removeLegacyLayers(map);
+
   removeStaleRasterSources(
     map,
-    new Set(selectedModels.map((m) => `${WAVE_RASTER_SOURCE_PREFIX}${m}`)),
+    new Set(
+      selectedModels.map(
+        (model) => `${WAVE_RASTER_SOURCE_PREFIX}${model}`,
+      ),
+    ),
   );
 
   selectedModels.forEach((model) =>
-    upsertRasterLayer(map, { model, theme, opacity, showRaster, themeChanged }),
+    upsertRasterLayer(map, {
+      model,
+      theme,
+      opacity,
+      showRaster,
+      themeChanged,
+    }),
   );
 
   ['wave-glass-fill', 'wave-glass-depth'].forEach((id) => {
-    if (map.getLayer(id)) {
-      map.setLayoutProperty(id, 'visibility',
-        showRaster && selectedModels.length > 0 ? 'visible' : 'none');
-    }
+    if (!map.getLayer(id)) return;
+
+    map.setLayoutProperty(
+      id,
+      'visibility',
+      showRaster && selectedModels.length > 0
+        ? 'visible'
+        : 'none',
+    );
   });
 };
 
@@ -122,14 +243,14 @@ export const syncWaveSymbolLayers = (map, config) => {
   if (!map) return;
 
   const {
-    enabled        = false,
-    models         = [],
-    elements       = {},
+    enabled = false,
+    models = [],
+    elements = {},
     directionStyle = DEFAULT_DIRECTION_STYLE,
   } = config;
 
   const selectedModels = getSelectedModels(models);
-  const canShow        = enabled && selectedModels.length > 0;
+  const canShow = enabled && selectedModels.length > 0;
 
   // Determine the single active element (first truthy key in SYMBOL_LAYER_MAP wins)
   const activeElement = SYMBOL_LAYER_MAP.find(({ id }) => Boolean(elements[id]))?.id ?? null;
@@ -145,12 +266,12 @@ export const syncWaveSymbolLayers = (map, config) => {
 
       // Apply direction-style props even when hidden so they're ready on reveal
       if (applyDirectionStyle) {
-        const iconColor   = directionStyle.theme === 'black' ? BLACK_ICON_COLOR : COLORED_ICON_COLOR;
-        const iconSize    = buildIconSize(directionStyle.size ?? 1.0);
+        const iconColor = directionStyle.theme === 'black' ? BLACK_ICON_COLOR : COLORED_ICON_COLOR;
+        const iconSize = buildIconSize(directionStyle.size ?? 1.0);
         const iconOpacity = directionStyle.opacity ?? 1.0;
 
-        map.setPaintProperty(layerId, 'icon-color',   iconColor);
-        map.setLayoutProperty(layerId, 'icon-size',   iconSize);
+        map.setPaintProperty(layerId, 'icon-color', iconColor);
+        map.setLayoutProperty(layerId, 'icon-size', iconSize);
         map.setPaintProperty(layerId, 'icon-opacity', iconOpacity);   // ← new
       }
     });
@@ -177,7 +298,7 @@ export const syncWaveSymbolLayers = (map, config) => {
 export const syncAllWaveLayers = (map, config, isDarkMode, prevThemeRef) => {
   if (!map) return;
 
-  const nextTheme    = isDarkMode ? 'dark' : 'light';
+  const nextTheme = isDarkMode ? 'dark' : 'light';
   const themeChanged = prevThemeRef.current !== nextTheme;
 
   const { elements = OFF_ELEMENTS, enabled = false, models = [] } = config;

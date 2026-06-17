@@ -3,16 +3,12 @@
 // ============================================================
 // Icons are passed in from the parent since they use asset imports
 export const TOOL_IDS = {
-  LOW_PRESSURE: 'low_pressure',
-  HIGH_PRESSURE: 'high_pressure',
-  TYPHOON: 'typhoon',
+  TEXT_NOTE: 'text_note',
   LESS_1: 'less_1',
 };
 
 export const MAP_CLICK_TYPES = [
-  TOOL_IDS.TYPHOON,
-  TOOL_IDS.LOW_PRESSURE,
-  TOOL_IDS.HIGH_PRESSURE,
+  TOOL_IDS.TEXT_NOTE,
   TOOL_IDS.LESS_1,
 ];
 
@@ -50,8 +46,6 @@ export const getThemeStyles = (isDarkMode) => {
 // LABEL MAP FOR AUTO-GENERATED TITLES
 // ============================================================
 export const MARKER_LABEL_MAP = {
-  typhoon: 'Storm',
-  low_pressure: 'LPA',
-  high_pressure: 'HPA',
-  less_1: 'Low Waves',
+  text_note: 'Text',
+  less_1: 'Less 1',
 };

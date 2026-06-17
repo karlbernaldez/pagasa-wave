@@ -4,7 +4,7 @@ import { ModelSelector, ElementSelector, WaveDirectionStylePanel, WindBarbStyleP
 import { getSelectedElement, getModelSummary } from '../../utils/layerPanelUtils';
 
 const ConfigurableLayerGroup = ({
-  icon,           // JSX — e.g. <Wind size={13} strokeWidth={1.8} />
+  icon,
   title,
   config,
   models,
@@ -16,112 +16,117 @@ const ConfigurableLayerGroup = ({
   onToggleModel,
   onSetDirectionStyle,
   onSetBarbStyle,
-  modelCols = 3,
   isDarkMode,
 }) => {
   const { enabled } = config;
 
-  const selectedElement   = getSelectedElement(config.elements, elements);
+  const selectedElement = getSelectedElement(config.elements, elements);
   const showDirectionStyle = enabled && expanded && selectedElement === 'waveDirection';
-  const showWindBarbStyle  = enabled && expanded && selectedElement === 'barbs';
+  const showWindBarbStyle = enabled && expanded && selectedElement === 'barbs';
 
-  const border  = isDarkMode ? 'border-white/10'  : 'border-black/8';
-  const textSec = isDarkMode ? 'text-white/40'    : 'text-slate-400';
-  const textTer = isDarkMode ? 'text-white/25'    : 'text-slate-300';
-  const surface = isDarkMode ? 'bg-white/5'       : 'bg-white';
+  const border = isDarkMode ? 'border-white/10' : 'border-white/80';
+  const textSec = isDarkMode ? 'text-white/50' : 'text-slate-500';
+  const textTer = isDarkMode ? 'text-white/25' : 'text-slate-300';
+  const surface = isDarkMode
+    ? 'bg-white/[0.045] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+    : 'bg-white/[0.58] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]';
 
   return (
-    <div className={`rounded-lg border ${border} ${surface} overflow-hidden`}>
-
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="flex items-center">
-
-        {/* Expand / title area */}
+    <div className={`studio-liquid-control overflow-hidden rounded-xl border ${border} ${surface}`}>
+      <div className="flex min-h-16 items-center">
         <button
+          type="button"
           onClick={enabled ? onToggleExpand : undefined}
           className={`
-            flex-1 flex items-center gap-2 px-2.5 py-2 text-left min-w-0
-            transition-colors
+            flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors
             ${enabled
-              ? isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/4'
-              : 'opacity-40 cursor-default'}
+              ? isDarkMode ? 'hover:bg-white/[0.05]' : 'hover:bg-slate-50'
+              : 'cursor-default opacity-45'}
           `}
         >
-          <span className={`flex-shrink-0 ${textSec}`}>
+          <span
+            className={`
+              flex h-10 w-10 shrink-0 items-center justify-center rounded-xl
+              ${enabled
+                ? isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600'
+              : isDarkMode ? 'bg-white/[0.06] text-white/25' : 'bg-white/70 text-slate-400'}
+            `}
+          >
             {icon}
           </span>
-          <div className="flex-1 min-w-0">
-            <div className={`text-[11px] font-medium truncate ${
-              isDarkMode ? 'text-white/85' : 'text-slate-700'
-            }`}>
+
+          <span className="min-w-0 flex-1">
+            <span className={`block truncate text-[14px] font-black ${isDarkMode ? 'text-white/85' : 'text-slate-800'}`}>
               {title}
-            </div>
-            <div className={`text-[10px] truncate ${textSec}`}>
+            </span>
+            <span className={`block truncate text-[11px] font-semibold ${textSec}`}>
               {enabled ? getModelSummary(config.models) : 'Disabled'}
-            </div>
-          </div>
+            </span>
+          </span>
         </button>
 
-        {/* Toggle dot + chevron */}
-        <div className="flex items-center gap-1.5 pr-2.5 flex-shrink-0">
+        <div className="flex shrink-0 items-center gap-2 pr-3">
           <button
+            type="button"
             onClick={onToggleEnabled}
+            aria-pressed={enabled}
+            aria-label={`${enabled ? 'Disable' : 'Enable'} ${title}`}
             className={`
-              w-1.5 h-1.5 rounded-full transition-colors
+              relative flex h-10 w-[4.4rem] items-center rounded-full border px-1 transition-all duration-200
               ${enabled
-                ? isDarkMode ? 'bg-white/70' : 'bg-slate-600'
-                : isDarkMode ? 'bg-white/18' : 'bg-slate-300'}
+                ? isDarkMode
+                  ? 'border-cyan-400/40 bg-cyan-400/20 shadow-[0_0_18px_rgba(34,211,238,0.18)]'
+                  : 'border-blue-400/45 bg-blue-500/15'
+                : isDarkMode
+                  ? 'border-white/10 bg-white/[0.08] hover:bg-white/[0.12]'
+                  : 'border-white/80 bg-white/65 hover:bg-white/90'}
             `}
-          />
+          >
+            <span
+              className={`
+                flex h-8 w-8 items-center justify-center rounded-full text-[9px] font-black shadow-sm transition-all duration-200
+                ${enabled
+                  ? 'translate-x-[1.9rem] bg-white text-slate-900'
+                  : isDarkMode
+                    ? 'translate-x-0 bg-slate-800 text-white/50'
+                    : 'translate-x-0 bg-white text-slate-400'}
+              `}
+            >
+              {enabled ? 'ON' : 'OFF'}
+            </span>
+          </button>
+
           {enabled ? (
             expanded
-              ? <ChevronDown size={11} strokeWidth={2.5} className={textSec} />
-              : <ChevronRight size={11} strokeWidth={2.5} className={textSec} />
+              ? <ChevronDown size={16} strokeWidth={2.5} className={textSec} />
+              : <ChevronRight size={16} strokeWidth={2.5} className={textSec} />
           ) : (
-            <ChevronRight size={11} strokeWidth={2.5} className={textTer} />
+            <ChevronRight size={16} strokeWidth={2.5} className={textTer} />
           )}
         </div>
       </div>
 
-      {/* ── Expanded config panel ─────────────────────────────────────────── */}
       {expanded && enabled && (
-        <div className={`
-          border-t px-2 pb-2 pt-2 space-y-2 ${border}
-        `}>
+        <div className={`space-y-3 border-t px-3 pb-3 pt-3 ${border}`}>
+          <ModelSelector
+            models={models}
+            selected={config.models}
+            onToggle={onToggleModel}
+            isDarkMode={isDarkMode}
+          />
 
-          {/* Model selector */}
-          <div>
-            <p className={`text-[10px] font-medium tracking-widest uppercase mb-1.5 ${textSec}`}>
-              Model
-            </p>
-            <ModelSelector
-              models={models}
-              selected={config.models}
-              onToggle={onToggleModel}
-              isDarkMode={isDarkMode}
-              cols={modelCols}
-            />
-          </div>
+          <div className={`h-px ${isDarkMode ? 'bg-white/[0.08]' : 'bg-white/70'}`} />
 
-          <div className={`h-px ${isDarkMode ? 'bg-white/8' : 'bg-black/6'}`} />
+          <ElementSelector
+            elements={elements}
+            value={selectedElement}
+            onChange={onSetElement}
+            isDarkMode={isDarkMode}
+          />
 
-          {/* Element selector */}
-          <div>
-            <p className={`text-[10px] font-medium tracking-widest uppercase mb-1.5 ${textSec}`}>
-              Element
-            </p>
-            <ElementSelector
-              elements={elements}
-              value={selectedElement}
-              onChange={onSetElement}
-              isDarkMode={isDarkMode}
-            />
-          </div>
-
-          {/* Wave direction style */}
           {showDirectionStyle && (
             <>
-              <div className={`h-px ${isDarkMode ? 'bg-white/8' : 'bg-black/6'}`} />
+              <div className={`h-px ${isDarkMode ? 'bg-white/[0.08]' : 'bg-white/70'}`} />
               <WaveDirectionStylePanel
                 style={config.directionStyle}
                 onChange={onSetDirectionStyle}
@@ -130,10 +135,9 @@ const ConfigurableLayerGroup = ({
             </>
           )}
 
-          {/* Wind barb style */}
           {showWindBarbStyle && (
             <>
-              <div className={`h-px ${isDarkMode ? 'bg-white/8' : 'bg-black/6'}`} />
+              <div className={`h-px ${isDarkMode ? 'bg-white/[0.08]' : 'bg-white/70'}`} />
               <WindBarbStylePanel
                 style={config.barbStyle}
                 onChange={onSetBarbStyle}

@@ -37,34 +37,24 @@ const LegendBox = ({ isDarkMode = false }) => {
   ];
 
   return (
-    <div
-      className={`
-        fixed bottom-8 right-2 z-30 w-52
-        group
-        opacity-80 hover:opacity-100
-        scale-[0.97] hover:scale-100
-        transition-all duration-300 ease-out
-      `}
-    >
+    <div className="fixed bottom-8 right-2 z-30 w-52 group transition-all duration-300 ease-out">
       <div
         className={`
-          rounded-xl transition-all duration-300
+          studio-liquid-panel rounded-2xl border transition-all duration-300
           ${isDarkMode
-            ? 'bg-black/30 border border-white/10'
-            : 'bg-white/50 border border-white/30'
+            ? 'studio-liquid-dark border-white/[0.18] text-white'
+            : 'studio-liquid-light border-white/80 text-slate-900'
           }
-          backdrop-blur-xl
-          shadow-md hover:shadow-lg
-          transition-shadow duration-300
+          shadow-2xl
         `}
       >
         {/* ── Header ── */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={`
-            w-full flex items-center justify-between px-3 py-2 rounded-t-xl
+            w-full flex items-center justify-between px-3 py-2.5 rounded-t-2xl
             transition-colors
-            ${isDarkMode ? 'hover:bg-slate-700/20' : 'hover:bg-slate-100/40'}
+            ${isDarkMode ? 'hover:bg-white/[0.06]' : 'hover:bg-white/65'}
           `}
         >
           <div className="flex items-center gap-2">
@@ -75,7 +65,7 @@ const LegendBox = ({ isDarkMode = false }) => {
                 strokeWidth={2.5}
               />
             </div>
-            <span className={`text-[11px] font-medium tracking-wide ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>
+            <span className={`text-[11px] font-black uppercase tracking-wide ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>
               Map Legend
             </span>
           </div>
@@ -88,25 +78,25 @@ const LegendBox = ({ isDarkMode = false }) => {
 
         {/* ── Divider ── */}
         {isExpanded && (
-          <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-slate-200/40'}`} />
+          <div className={`h-px ${isDarkMode ? 'bg-white/10' : 'bg-white/70'}`} />
         )}
 
         {/* ── Items ── */}
         {isExpanded && (
-          <div className="p-2 space-y-0.5">
+            <div className="space-y-1 p-2">
             {legendItems.map((item, index) => (
               <div
                 key={index}
                 className={`
-                  flex items-center gap-2 px-2 py-1.5 rounded-lg
+                  studio-liquid-control flex items-center gap-2 px-2 py-1.5 rounded-lg border
                   transition-colors duration-150
-                  ${isDarkMode ? 'hover:bg-slate-700/20' : 'hover:bg-slate-100/40'}
+                  ${isDarkMode ? 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]' : 'border-white/75 bg-white/45 hover:bg-white/75'}
                 `}
               >
                 {/* Symbol */}
                 <div className={`
                   flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center
-                  ${item.bgColor || (isDarkMode ? 'bg-slate-700/40' : 'bg-slate-200/40')}
+                  ${item.bgColor || (isDarkMode ? 'bg-white/[0.06]' : 'bg-white/65')}
                 `}>
                   {item.icon && (
                     <img src={item.icon} alt={item.label} className="w-3.5 h-3.5 object-contain opacity-90" />
@@ -138,7 +128,7 @@ const LegendBox = ({ isDarkMode = false }) => {
         {/* ── Footer ── */}
         {isExpanded && (
           <>
-            <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-slate-200/40'}`} />
+            <div className={`h-px ${isDarkMode ? 'bg-white/10' : 'bg-white/70'}`} />
             <div className="px-3 py-1.5">
               <div className="flex items-center justify-between">
                 <span className={`text-[9px] ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle, FolderKanban, LayoutGrid, List, Plus } from "lucide-react";
 
@@ -16,6 +16,7 @@ import { createProject } from "@/api/projectAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
 import { isProjectPublished } from "@/features/projects/projectStatuses";
+import useCurrentDashboardUser from "@/shared/hooks/useCurrentDashboardUser";
 
 function ProjectCardSkeleton({ isDarkMode = false }) {
   const border = isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white";
@@ -79,12 +80,12 @@ function GridState({ type, onRetry, isDarkMode = false }) {
 }
 
 function ViewToggle({ view, setView, isDarkMode }) {
-  const buttonBase = "inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-black transition sm:h-10 sm:flex-none sm:px-3";
+  const buttonBase = "inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-black transition sm:flex-none";
   const activeClass = "bg-cyan-500 text-white shadow-sm";
-  const inactiveClass = isDarkMode ? "text-cyan-300 hover:bg-white/5" : "text-blue-600 hover:bg-blue-50";
+  const inactiveClass = isDarkMode ? "text-slate-300 hover:bg-white/5" : "text-slate-600 hover:bg-slate-100";
 
   return (
-    <div className={`grid w-full grid-cols-2 rounded-2xl border p-1 shadow-sm sm:inline-grid sm:w-auto ${isDarkMode ? "border-white/10 bg-slate-900" : "border-slate-200 bg-white"}`}>
+    <div className={`grid w-full grid-cols-2 rounded-2xl border p-1 shadow-sm sm:inline-grid sm:w-auto ${isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white"}`}>
       <button
         type="button"
         aria-label="Show project cards"
@@ -93,7 +94,7 @@ function ViewToggle({ view, setView, isDarkMode }) {
         onClick={() => setView("grid")}
       >
         <LayoutGrid size={16} />
-        <span className="sm:hidden">Cards</span>
+        <span>Cards</span>
       </button>
       <button
         type="button"
@@ -103,8 +104,46 @@ function ViewToggle({ view, setView, isDarkMode }) {
         onClick={() => setView("list")}
       >
         <List size={16} />
-        <span className="sm:hidden">List</span>
+        <span>List</span>
       </button>
+    </div>
+  );
+}
+
+function ProjectViewControls({
+  isCreatingProject,
+  isDarkMode,
+  onCreateProject,
+  role,
+  setView,
+  userName,
+  view,
+}) {
+  const isAdmin = role === "admin";
+  const message = `Welcome back, ${userName}.`;
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className={`text-sm font-black ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
+          {message}
+        </p>
+      </div>
+
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        {!isAdmin && (
+          <Button
+            icon={Plus}
+            loading={isCreatingProject}
+            disabled={isCreatingProject}
+            onClick={onCreateProject}
+          >
+            New Project
+          </Button>
+        )}
+
+        <ViewToggle view={view} setView={setView} isDarkMode={isDarkMode} />
+      </div>
     </div>
   );
 }
@@ -128,10 +167,24 @@ function getReviewModalProject(project) {
   };
 }
 
+function getWelcomeName(user, fallbackRole) {
+  const name = String(user?.name || "").trim();
+
+  if (!name || name.toLowerCase().startsWith("loading")) return fallbackRole;
+  if (name.includes("@")) return name.split("@")[0];
+
+  return name.split(" ")[0] || fallbackRole;
+}
+
 export default function ProjectLibraryPage({ role = "forecaster", title, description }) {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const controller = useProjectLibraryController({ role, title, description });
+  const userOptions = useMemo(
+    () => ({ roleOverride: role === "admin" ? "Administrator" : "Forecaster" }),
+    [role],
+  );
+  const { user } = useCurrentDashboardUser(null, userOptions);
   const [view, setView] = useState("grid");
   const [reviewProject, setReviewProject] = useState(null);
   const [isStartingReview, setIsStartingReview] = useState(false);
@@ -234,31 +287,15 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
   return (
     <div className={`min-h-full transition-colors ${isDarkMode ? "bg-[#0d1117]" : "bg-slate-50"}`}>
       <div className="mx-auto max-w-[1400px] space-y-5 p-4 sm:space-y-6 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className={`text-2xl font-black ${isDarkMode ? "text-slate-50" : "text-slate-900"}`}>
-              {controller.header.title}
-            </h1>
-            <p className={`text-sm ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>
-              {controller.header.description}
-            </p>
-          </div>
-
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-            {role !== "admin" && (
-              <Button
-                icon={Plus}
-                loading={isCreatingProject}
-                disabled={isCreatingProject}
-                onClick={() => setShowCreateProjectModal(true)}
-              >
-                New Project
-              </Button>
-            )}
-
-            <ViewToggle view={view} setView={setView} isDarkMode={isDarkMode} />
-          </div>
-        </div>
+        <ProjectViewControls
+          isCreatingProject={isCreatingProject}
+          isDarkMode={isDarkMode}
+          onCreateProject={() => setShowCreateProjectModal(true)}
+          role={role}
+          setView={setView}
+          userName={getWelcomeName(user, role === "admin" ? "Admin" : "Forecaster")}
+          view={view}
+        />
 
         {feedbackError && (
           <div className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? "border-red-500/30 bg-red-950/30 text-red-300" : "border-red-200 bg-red-50 text-red-700"}`} role="alert">

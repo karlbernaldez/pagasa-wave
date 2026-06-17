@@ -41,6 +41,39 @@ const LINE_LABEL_FILTER = [
   ['any', ['has', 'labelValue'], ['has', 'waveHeight'], ['has', 'heightValue'], ['has', 'value'], ['has', 'label']],
 ];
 
+const POINT_MARKER_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'type'], ''];
+const POINT_FILTER = ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false];
+const POINT_SYMBOL_FILTER = [
+  'all',
+  POINT_FILTER,
+  ['!=', POINT_MARKER_TYPE, 'text_note'],
+  ['!=', POINT_MARKER_TYPE, 'less_1'],
+];
+const LESS_ONE_FILTER = [
+  'all',
+  POINT_FILTER,
+  ['==', POINT_MARKER_TYPE, 'less_1'],
+];
+const POINT_LABEL_FILTER = [
+  'all',
+  POINT_FILTER,
+  ['!=', POINT_MARKER_TYPE, 'less_1'],
+];
+
+const POINT_LABEL_OFFSET = [
+  'case',
+  ['==', POINT_MARKER_TYPE, 'text_note'],
+  [0, 0],
+  [0, 1.8],
+];
+
+const POINT_LABEL_ANCHOR = [
+  'case',
+  ['==', POINT_MARKER_TYPE, 'text_note'],
+  'center',
+  'top',
+];
+
 const featureCache = new Map();
 const featureRequestCache = new Map();
 
@@ -90,6 +123,16 @@ function getFeatureBounds(featureCollection) {
 
 function setLayerVisibility(map, layerId, isVisible) {
   if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', isVisible ? 'visible' : 'none');
+}
+
+function ensurePreviewImages(map) {
+  const imageId = 'preview-less-1';
+  if (!map || map.hasImage(imageId)) return;
+
+  map.loadImage('/L1.png', (error, image) => {
+    if (error || !image || map.hasImage(imageId)) return;
+    map.addImage(imageId, image);
+  });
 }
 
 function setPreviewLayerPaint(map, { showDiffStyles, styleMode }) {
@@ -156,6 +199,8 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
   const lineColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : paint.lineColor;
   const pointColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : paint.pointColor;
 
+  ensurePreviewImages(map);
+
   if (map.getSource(sourceId)) {
     map.getSource(sourceId).setData(featureCollection);
     setPreviewLayerPaint(map, { showDiffStyles, styleMode });
@@ -220,7 +265,7 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
     id: 'project-preview-points-halo',
     type: 'circle',
     source: sourceId,
-    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+    filter: POINT_SYMBOL_FILTER,
     paint: { 'circle-color': pointColor, 'circle-radius': paint.pointRadius + 3, 'circle-opacity': paint.showPoints ? 0.28 : 0, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1 },
   });
 
@@ -228,8 +273,21 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
     id: 'project-preview-points-symbol',
     type: 'circle',
     source: sourceId,
-    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+    filter: POINT_SYMBOL_FILTER,
     paint: { 'circle-color': pointColor, 'circle-radius': paint.pointRadius, 'circle-opacity': paint.showPoints ? 1 : 0, 'circle-stroke-color': paint.pointStroke, 'circle-stroke-width': paint.pointStrokeWidth },
+  });
+
+  map.addLayer({
+    id: 'project-preview-less-one-symbol',
+    type: 'symbol',
+    source: sourceId,
+    filter: LESS_ONE_FILTER,
+    layout: {
+      'icon-image': 'preview-less-1',
+      'icon-size': 0.28,
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
   });
 
   if (showLabels) {
@@ -237,12 +295,12 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
       id: 'project-preview-points-label',
       type: 'symbol',
       source: sourceId,
-      filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+      filter: POINT_LABEL_FILTER,
       layout: {
         'text-field': ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], 'Marker'],
         'text-size': paint.pointLabelSize,
-        'text-offset': [0, 1.8],
-        'text-anchor': 'top',
+        'text-offset': POINT_LABEL_OFFSET,
+        'text-anchor': POINT_LABEL_ANCHOR,
         'text-allow-overlap': true,
         'text-ignore-placement': true,
         'visibility': paint.showPointLabels ? 'visible' : 'none',
@@ -344,6 +402,7 @@ function ProjectPreviewMap({
   showLabels = true,
   showDiffStyles = false,
   chartStyleMode,
+  fixedBounds = false,
 }) {
   const [viewportRef, isNearViewport] = useNearViewport('500px', !lazy);
   const containerRef = useRef(null);
@@ -454,12 +513,18 @@ function ProjectPreviewMap({
     addPreviewLayers(map, featureCollection, { showLabels, showDiffStyles: shouldUseDiffStyles, styleMode: normalizedStyleMode });
     if (fittedFeaturesKeyRef.current === featureKey) return;
 
+    if (fixedBounds) {
+      map.fitBounds(DEFAULT_BOUNDS, { padding: 18, maxZoom: 6, duration: 0 });
+      fittedFeaturesKeyRef.current = featureKey;
+      return;
+    }
+
     const bounds = getFeatureBounds(featureCollection);
     if (bounds) {
       map.fitBounds(bounds, { padding: 72, maxZoom: featureCollection.features.length === 1 ? 8 : 10, duration: 0 });
       fittedFeaturesKeyRef.current = featureKey;
     }
-  }, [featureCollection, featureKey, hasFeatures, isReady, normalizedStyleMode, shouldUseDiffStyles, showLabels]);
+  }, [featureCollection, featureKey, fixedBounds, hasFeatures, isReady, normalizedStyleMode, shouldUseDiffStyles, showLabels]);
 
   return (
     <div

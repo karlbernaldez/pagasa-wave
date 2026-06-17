@@ -164,11 +164,10 @@ const SUGGESTIONS = [
 
 const EmptyState = ({ onSuggest, isDarkMode }) => (
   <div className="flex flex-col items-center justify-center h-full gap-5 px-3 text-center">
-    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl ${
-      isDarkMode
-        ? 'bg-gradient-to-br from-blue-600/30 to-cyan-600/20 border border-blue-500/30'
-        : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200'
-    }`}>
+    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl ${isDarkMode
+      ? 'bg-gradient-to-br from-blue-600/30 to-cyan-600/20 border border-blue-500/30'
+      : 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200'
+      }`}>
       <span className="text-3xl">🌊</span>
     </div>
 
@@ -207,7 +206,17 @@ const EmptyState = ({ onSuggest, isDarkMode }) => (
 const Chatbot = () => {
   const { isDarkMode } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
-  const { messages, input, setInput, isLoading, error, activeModel, sendMessage, clearChat } = useChatbot();
+  const {
+    messages,
+    input,
+    setInput,
+    isLoading,
+    error,
+    activeModel,
+    assistantLabel,
+    sendMessage,
+    clearChat
+  } = useChatbot();
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -268,11 +277,10 @@ const Chatbot = () => {
         <div className="h-[3px] w-full bg-gradient-to-r from-blue-600 via-cyan-400 to-emerald-400 flex-shrink-0" />
 
         {/* ── Header ── */}
-        <div className={`flex items-center justify-between px-4 py-3 flex-shrink-0 ${
-          isDarkMode
-            ? 'bg-[#0d1a2b] border-b border-blue-900/40'
-            : 'bg-white border-b border-blue-100'
-        }`}>
+        <div className={`flex items-center justify-between px-4 py-3 flex-shrink-0 ${isDarkMode
+          ? 'bg-[#0d1a2b] border-b border-blue-900/40'
+          : 'bg-white border-b border-blue-100'
+          }`}>
           <div className="flex items-center gap-3">
             <div className="relative flex-shrink-0">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/40">
@@ -282,7 +290,7 @@ const Chatbot = () => {
             </div>
             <div className="min-w-0">
               <p className={`text-sm font-bold tracking-tight leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                WaveLab Assistant
+                {assistantLabel}
               </p>
               <p className={`text-[10px] font-mono mt-0.5 truncate max-w-[170px] ${isDarkMode ? 'text-blue-400/70' : 'text-blue-500/70'}`}>
                 {activeModel}
@@ -295,22 +303,20 @@ const Chatbot = () => {
               <button
                 onClick={clearChat}
                 title="Clear chat"
-                className={`p-2 rounded-lg transition-all duration-200 hover:scale-105 ${
-                  isDarkMode
-                    ? 'text-slate-500 hover:text-red-400 hover:bg-red-400/10'
-                    : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
-                }`}
+                className={`p-2 rounded-lg transition-all duration-200 hover:scale-105 ${isDarkMode
+                  ? 'text-slate-500 hover:text-red-400 hover:bg-red-400/10'
+                  : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
+                  }`}
               >
                 <IconTrash />
               </button>
             )}
             <button
               onClick={() => setIsOpen(false)}
-              className={`p-2 rounded-lg transition-all duration-200 hover:scale-105 ${
-                isDarkMode
-                  ? 'text-slate-500 hover:text-slate-200 hover:bg-white/5'
-                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-              }`}
+              className={`p-2 rounded-lg transition-all duration-200 hover:scale-105 ${isDarkMode
+                ? 'text-slate-500 hover:text-slate-200 hover:bg-white/5'
+                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                }`}
             >
               <IconClose />
             </button>
@@ -318,9 +324,8 @@ const Chatbot = () => {
         </div>
 
         {/* ── Messages ── */}
-        <div className={`flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0 chatbot-scrollbar ${
-          isDarkMode ? 'bg-[#0f1c2e]' : 'bg-[#f0f6ff]'
-        }`}>
+        <div className={`flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0 chatbot-scrollbar ${isDarkMode ? 'bg-[#0f1c2e]' : 'bg-[#f0f6ff]'
+          }`}>
           {messages.length === 0 ? (
             <EmptyState onSuggest={(t) => sendMessage(t)} isDarkMode={isDarkMode} />
           ) : (
@@ -330,11 +335,10 @@ const Chatbot = () => {
           )}
 
           {error && (
-            <div className={`text-xs text-center rounded-xl px-3 py-2.5 border ${
-              isDarkMode
-                ? 'bg-red-900/20 text-red-400 border-red-800/40'
-                : 'bg-red-50 text-red-500 border-red-100'
-            }`}>
+            <div className={`text-xs text-center rounded-xl px-3 py-2.5 border ${isDarkMode
+              ? 'bg-red-900/20 text-red-400 border-red-800/40'
+              : 'bg-red-50 text-red-500 border-red-100'
+              }`}>
               ⚠️ {error}
             </div>
           )}
@@ -343,22 +347,20 @@ const Chatbot = () => {
         </div>
 
         {/* ── Input ── */}
-        <div className={`px-3 pt-3 pb-3 flex-shrink-0 ${
-          isDarkMode
-            ? 'bg-[#0d1a2b] border-t border-blue-900/40'
-            : 'bg-white border-t border-blue-100'
-        }`}>
+        <div className={`px-3 pt-3 pb-3 flex-shrink-0 ${isDarkMode
+          ? 'bg-[#0d1a2b] border-t border-blue-900/40'
+          : 'bg-white border-t border-blue-100'
+          }`}>
 
           {/* Hint row */}
           <div className="flex items-center justify-between mb-2 px-1">
             <span className={`text-[10px] font-medium ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>
               ↵ to send · shift+↵ for new line
             </span>
-            <span className={`text-[10px] font-mono ${
-              input.length > 400
-                ? 'text-amber-400'
-                : isDarkMode ? 'text-slate-700' : 'text-slate-300'
-            }`}>
+            <span className={`text-[10px] font-mono ${input.length > 400
+              ? 'text-amber-400'
+              : isDarkMode ? 'text-slate-700' : 'text-slate-300'
+              }`}>
               {input.length}/500
             </span>
           </div>
@@ -421,9 +423,8 @@ const Chatbot = () => {
           </div>
 
           {/* Footer */}
-          <p className={`text-center text-[10px] mt-2 tracking-wide ${
-            isDarkMode ? 'text-slate-700' : 'text-slate-400'
-          }`}>
+          <p className={`text-center text-[10px] mt-2 tracking-wide ${isDarkMode ? 'text-slate-700' : 'text-slate-400'
+            }`}>
             Answers grounded in WaveLab documentation
           </p>
         </div>

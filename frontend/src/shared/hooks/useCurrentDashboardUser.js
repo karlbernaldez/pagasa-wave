@@ -35,6 +35,13 @@ function getPrimaryName(user) {
   return username || fullName || email || 'WaveLab User';
 }
 
+function capitalizeDisplayName(value) {
+  const name = clean(value);
+  if (!name) return name;
+
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 function getSecondaryLabel(user, roleOverride) {
   if (roleOverride) return roleOverride;
 
@@ -65,7 +72,7 @@ function normalizeUser(user, options = {}) {
   return {
     raw: user,
     initials: getInitials(user),
-    name: getPrimaryName(user),
+    name: capitalizeDisplayName(getPrimaryName(user)),
     role: getSecondaryLabel(user, options.roleOverride),
     email: user.email || '',
     avatarUrl: user.avatarUrl || null,
