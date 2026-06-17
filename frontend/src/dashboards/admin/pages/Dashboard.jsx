@@ -25,8 +25,13 @@ const SECTION_MAP = {
   [ADMIN_TABS.SETTINGS]: (dark) => <SettingsSection isDarkMode={dark} />,
 };
 
-const renderSection = (tab, isDarkMode) =>
-  (SECTION_MAP[tab]?.(isDarkMode)) ?? <DashboardOverview isDarkMode={isDarkMode} />;
+const renderSection = (tab, isDarkMode, setActiveTab) =>
+  (SECTION_MAP[tab]?.(isDarkMode)) ?? (
+    <DashboardOverview
+      isDarkMode={isDarkMode}
+      onSelectTab={setActiveTab}
+    />
+  );
 
 const AdminDashboard = () => {
   const { isDarkMode, setIsDarkMode } = useTheme();
@@ -68,8 +73,8 @@ const AdminDashboard = () => {
   const toggleDarkMode = useCallback(() => setIsDarkMode((p) => !p), [setIsDarkMode]);
 
   const activeSection = useMemo(
-    () => renderSection(activeTab, isDarkMode),
-    [activeTab, isDarkMode],
+    () => renderSection(activeTab, isDarkMode, setActiveTab),
+    [activeTab, isDarkMode, setActiveTab],
   );
 
   return (

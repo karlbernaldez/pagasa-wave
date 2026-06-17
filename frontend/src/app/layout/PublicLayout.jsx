@@ -9,7 +9,7 @@ const PublicLayout = () => {
   return (
     <>
       <Suspense fallback={<div style={{ height: 60 }} />}>
-        <HeaderNavbar />
+        <HeaderNavbar showAccountControls />
       </Suspense>
 
       <Outlet />

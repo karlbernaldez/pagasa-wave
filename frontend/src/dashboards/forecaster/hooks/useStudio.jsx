@@ -199,13 +199,21 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
 
       setSavedFeatures(filteredFeatures);
 
-      const initialLayers = filteredFeatures.map((f) => ({
-        id: f.sourceId,
-        name: f.name || "Untitled Feature",
-        visible: true,
-        locked: false,
-        type: f.properties?.type || "Wave Height",
-      }));
+      const initialLayers = filteredFeatures.map((f) => {
+        const type = f.properties?.type || "Wave Height";
+        const name = f.name || "Untitled Feature";
+        const isMarker = ["typhoon", "low_pressure", "high_pressure", "less_1"].includes(type);
+
+        return {
+          id: f.sourceId,
+          name,
+          visible: true,
+          locked: false,
+          type,
+          markerType: f.properties?.markerType || (isMarker ? type : undefined),
+          mapLayerId: f.properties?.mapLayerId || (isMarker ? `${type}_${name}` : undefined),
+        };
+      });
 
       setLayers(initialLayers);
 

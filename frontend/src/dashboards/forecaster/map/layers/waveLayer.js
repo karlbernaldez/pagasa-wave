@@ -121,6 +121,11 @@ export async function addWaveLayer(map, isDarkMode, models) {
 // ── Shared (non-per-model) layers ─────────────────────────────────────────────
 
 function addSharedLayers(map, isDarkMode) {
+  const fillColor = isDarkMode ? '#0f2132' : '#f8fbf3';
+  const outlineColor = isDarkMode ? '#67e8f9' : '#08799b';
+  const outlineOpacity = isDarkMode ? 0.58 : 0.62;
+  const fillOpacity = 0.94;
+
   if (!map.getLayer('ph-overlay')) {
     map.addLayer({
       id: 'ph-overlay',
@@ -129,10 +134,13 @@ function addSharedLayers(map, isDarkMode) {
       'source-layer': 'country_boundaries',
       // filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
       paint: {
-        'fill-color': isDarkMode ? '#0f1117' : '#f2f2f2',
-        'fill-opacity': 1,
+        'fill-color': fillColor,
+        'fill-opacity': fillOpacity,
       },
     });
+  } else {
+    map.setPaintProperty('ph-overlay', 'fill-color', fillColor);
+    map.setPaintProperty('ph-overlay', 'fill-opacity', fillOpacity);
   }
 
   if (!map.getLayer('ph-overlay-outline')) {
@@ -143,11 +151,15 @@ function addSharedLayers(map, isDarkMode) {
       'source-layer': 'country_boundaries',
       // filter: ['all', ['match', ['get', 'iso_3166_1_alpha_3'], ['PHL'], true, false]],
       paint: {
-        'line-color': isDarkMode ? '#1e3a5f' : '#000000',
-        'line-width': 0.5,
-        'line-opacity': 0.8,
+        'line-color': outlineColor,
+        'line-width': isDarkMode ? 0.75 : 0.65,
+        'line-opacity': outlineOpacity,
       },
     });
+  } else {
+    map.setPaintProperty('ph-overlay-outline', 'line-color', outlineColor);
+    map.setPaintProperty('ph-overlay-outline', 'line-width', isDarkMode ? 0.75 : 0.65);
+    map.setPaintProperty('ph-overlay-outline', 'line-opacity', outlineOpacity);
   }
 }
 

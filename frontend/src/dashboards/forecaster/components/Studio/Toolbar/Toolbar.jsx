@@ -1,74 +1,101 @@
 import { useMemo } from 'react';
 import { TbTools } from 'react-icons/tb';
-import { ChevronRight, X, Circle, Waves, Wind, TrendingDown, TrendingUp, Flag, Ruler } from 'lucide-react';
+import { ChevronRight, Circle, Flag, Waves, X } from 'lucide-react';
 
-import wave  from '@/assets/draw_icons/wave.png';
-import l1    from '@/assets/draw_icons/L1.png';
-import lpa   from '@/assets/draw_icons/LPA.png';
-import hpa   from '@/assets/draw_icons/HPA.png';
+import l1 from '@/assets/draw_icons/L1.png';
+import lpa from '@/assets/draw_icons/LPA.png';
+import hpa from '@/assets/draw_icons/HPA.png';
 import storm from '@/assets/draw_icons/hurricane.png';
 
-import PointInputChoiceModal    from '@/components/ui/modals/MarkerChoice';
-import MarkerTitleModal         from '@/components/ui/modals/MarkerTitleModal';
-import ManualInputModal         from '@/components/ui/modals/ManualInputModal';
+import PointInputChoiceModal from '@/components/ui/modals/MarkerChoice';
+import MarkerTitleModal from '@/components/ui/modals/MarkerTitleModal';
+import ManualInputModal from '@/components/ui/modals/ManualInputModal';
 import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable';
 
 import { useDrawToolbar } from './hooks/useDrawToolbar';
 
-// ─── Theme tokens ─────────────────────────────────────────────────────────────
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
 const getTheme = (isDarkMode) => ({
-  bg:          isDarkMode ? 'bg-black/40'     : 'bg-white/60',
-  border:      isDarkMode ? 'border-white/10' : 'border-white/40',
-  text:        isDarkMode ? 'text-white/80'   : 'text-slate-700',
-  textMuted:   isDarkMode ? 'text-white/30'   : 'text-slate-400',
-  divider:     isDarkMode ? 'bg-white/8'      : 'bg-slate-200/60',
-  btnBase:     isDarkMode ? 'border-white/0 hover:bg-white/8 hover:border-white/10'
-                          : 'border-transparent hover:bg-black/6 hover:border-black/8',
-  btnActive:   isDarkMode ? 'bg-cyan-500/15 border-cyan-400/30 text-cyan-300'
-                          : 'bg-blue-500/10 border-blue-400/30 text-blue-600',
-  accent:      isDarkMode ? 'text-cyan-400'  : 'text-blue-500',
-  accentBg:    isDarkMode ? 'bg-cyan-400'    : 'bg-blue-500',
-  tooltip:     isDarkMode ? 'bg-slate-900/90 border-white/10' : 'bg-white/90 border-slate-200',
+  panel: isDarkMode
+    ? 'studio-liquid-dark border-white/[0.18] text-white'
+    : 'studio-liquid-light border-white/80 text-slate-900',
+  group: isDarkMode
+    ? 'border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+    : 'border-white/80 bg-white/[0.46] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]',
+  text: isDarkMode ? 'text-white/80' : 'text-slate-700',
+  textStrong: isDarkMode ? 'text-white' : 'text-slate-950',
+  textMuted: isDarkMode ? 'text-white/45' : 'text-slate-500',
+  btnBase: isDarkMode
+    ? 'border-transparent text-white/45 hover:border-white/10 hover:bg-white/[0.08] hover:text-white'
+    : 'border-transparent text-slate-500 hover:border-slate-200 hover:bg-white hover:text-slate-900',
+  btnActive: isDarkMode
+    ? 'border-cyan-300/30 bg-cyan-400/[0.12] text-cyan-200 shadow-[0_0_0_1px_rgba(103,232,249,0.08)]'
+    : 'border-blue-300 bg-blue-50 text-blue-700 shadow-[0_0_0_1px_rgba(96,165,250,0.15)]',
+  accent: isDarkMode ? 'text-cyan-300' : 'text-blue-600',
+  accentBg: isDarkMode ? 'bg-cyan-400' : 'bg-blue-500',
+  tooltip: isDarkMode
+    ? 'bg-slate-950/95 border-white/10 text-white'
+    : 'bg-white/95 border-slate-200 text-slate-900',
 });
 
-// ─── Single tool button ───────────────────────────────────────────────────────
-const Btn = ({ onClick, active, theme, title, hotkey, children }) => (
+const ToolButton = ({ onClick, active, theme, title, hotkey, children }) => (
   <button
+    type="button"
     onClick={onClick}
     title={title}
-    className={`
-      group relative w-9 h-9
-      flex items-center justify-center
-      rounded-lg border transition-all duration-150
-      ${active ? theme.btnActive : theme.btnBase}
-    `}
+    className={cn(
+      'group relative flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-150',
+      'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45',
+      active ? theme.btnActive : theme.btnBase
+    )}
   >
-    {children}
+    <span className="relative flex items-center justify-center">
+      {children}
+      {active && (
+        <span className={cn('absolute -bottom-2 h-1 w-5 rounded-full', theme.accentBg)} />
+      )}
+    </span>
 
-    {/* Tooltip */}
-    <div className={`
-      absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2
-      px-2.5 py-1.5 rounded-lg border backdrop-blur-xl
-      opacity-0 group-hover:opacity-100 pointer-events-none
-      transition-opacity duration-150 whitespace-nowrap z-50
-      ${theme.tooltip}
-    `}>
-      <span className={`text-[11px] font-semibold ${theme.text}`}>{title}</span>
+    <div
+      className={cn(
+        'pointer-events-none absolute bottom-full left-1/2 z-50 mb-3 -translate-x-1/2 whitespace-nowrap',
+        'rounded-lg border px-3 py-2 opacity-0 shadow-xl backdrop-blur-xl transition-opacity duration-150 group-hover:opacity-100',
+        theme.tooltip
+      )}
+    >
+      <span className="text-[11px] font-black">{title}</span>
       {hotkey && (
-        <div className={`flex items-center gap-1 mt-0.5 ${theme.textMuted}`}>
-          <span className="text-[9px]">Press</span>
-          <kbd className={`px-1 py-px rounded-sm text-[9px] font-bold ${theme.btnActive}`}>{hotkey}</kbd>
+        <div className="mt-1 flex items-center justify-center gap-1.5 text-[9px] font-bold opacity-60">
+          <span>Key</span>
+          <kbd className="rounded bg-black/10 px-1.5 py-0.5 dark:bg-white/10">{hotkey}</kbd>
         </div>
       )}
     </div>
   </button>
 );
 
-const Divider = ({ theme }) => (
-  <div className={`w-px self-stretch my-1.5 ${theme.divider}`} />
+const ToolGroup = ({ theme, children }) => (
+  <div className={cn('flex items-center gap-1 rounded-2xl border p-1', theme.group)}>
+    {children}
+  </div>
 );
 
-// ─── DrawToolbar ──────────────────────────────────────────────────────────────
+const ActiveToolBadge = ({ label, theme, isDarkMode }) => (
+  <div
+    className={cn(
+      'mx-auto mb-2 flex min-h-9 w-fit items-center justify-center gap-2 rounded-full border px-3 py-1.5 backdrop-blur-xl',
+      isDarkMode ? 'border-cyan-300/15 bg-slate-950/55 shadow-[0_10px_28px_rgba(8,145,178,0.12)]' : 'border-blue-300/30 bg-white/75 shadow-[0_10px_28px_rgba(37,99,235,0.1)]'
+    )}
+  >
+    <span className="relative flex h-2 w-2">
+      <span className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-40', theme.accentBg)} style={{ animationDuration: '2s' }} />
+      <span className={cn('relative inline-flex h-2 w-2 rounded-full', theme.accentBg)} />
+    </span>
+    <span className={cn('text-[11px] font-black', theme.text)}>{label}</span>
+  </div>
+);
+
 const DrawToolbar = ({
   draw, onToggleCanvas, onToggleFlagCanvas,
   isCanvasActive, isDarkMode,
@@ -85,31 +112,23 @@ const DrawToolbar = ({
       label: 'Low Pressure',
       hotkey: 'A',
       modal: 'pointInputChoice',
-      icon: (
-        <span className={`text-xs font-black leading-none ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-          L
-        </span>
-      ),
+      icon: <img src={lpa} alt="Low pressure" className="h-7 w-7 object-contain drop-shadow-sm" />,
     },
     {
       id: 'high_pressure',
       label: 'High Pressure',
       hotkey: 'H',
       modal: 'pointInputChoice',
-      icon: (
-        <span className={`text-xs font-black leading-none ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-          H
-        </span>
-      ),
+      icon: <img src={hpa} alt="High pressure" className="h-7 w-7 object-contain drop-shadow-sm" />,
     },
     {
       id: 'typhoon',
       label: 'Tropical Cyclone',
       hotkey: 'M',
       modal: 'pointInputChoice',
-      icon: <img src={storm} alt="Cyclone" className="w-5 h-5 object-contain opacity-85" />,
+      icon: <img src={storm} alt="Tropical cyclone" className="h-7 w-7 object-contain drop-shadow-sm" />,
     },
-  ], [isDarkMode]);
+  ], []);
 
   const {
     isDrawing, isFlagDrawing, isCollapsed, selectedToolType,
@@ -121,163 +140,145 @@ const DrawToolbar = ({
     setPendingMapClick,
   } = useDrawToolbar({ draw, setLayersRef, setLayers, setType, selectedToolRef, onToggleCanvas, onToggleFlagCanvas, projectId });
 
-  // ── Collapsed pill ────────────────────────────────────────────────────────
   if (isCollapsed) {
     return (
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+      <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
         <button
+          type="button"
           onClick={handleToggleCollapse}
-          className={`
-            flex items-center gap-2 px-3 py-2 rounded-xl
-            backdrop-blur-xl border shadow-lg
-            transition-all duration-200
-            ${isDarkMode
-              ? 'bg-black/40 border-white/10 hover:bg-black/50'
-              : 'bg-white/60 border-white/40 hover:bg-white/70'
-            }
-          `}
+          className={cn(
+      'studio-liquid-panel flex min-h-12 items-center gap-2.5 rounded-2xl border px-3.5 py-2 transition-all duration-200',
+            theme.panel,
+            isDarkMode ? 'hover:bg-slate-950/85' : 'hover:bg-white'
+          )}
         >
-          <TbTools size={15} className={isDarkMode ? 'text-cyan-400/70' : 'text-blue-500/70'} />
-          <span className={`text-[11px] font-medium ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>
-            Drawing Tools
+          <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg', isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
+            <TbTools size={17} />
           </span>
-          <ChevronRight size={11} className={isDarkMode ? 'text-white/25' : 'text-slate-300'} strokeWidth={2.5} />
+          <span className={cn('text-[12px] font-black', theme.text)}>Drawing Tools</span>
+          <ChevronRight size={14} className={theme.textMuted} strokeWidth={2.5} />
         </button>
       </div>
     );
   }
 
+  const selectedLabel =
+    tools.find((tool) => tool.id === selectedToolType)?.label ||
+    (selectedToolType === 'less_1' ? 'Less than 1 Meter' : selectedToolType);
+
   return (
     <>
-      {/* Modals */}
-      <PointInputChoiceModal  isOpen={openModals.pointInputChoice}  onClose={() => toggleModal('pointInputChoice', false)}  onSelect={handlePointInputChoice}  isDarkMode={isDarkMode} />
-      <MarkerTitleModal       isOpen={openModals.markerTitle}       onClose={() => { toggleModal('markerTitle', false); setPendingMapClick(null); }} onSubmit={handleMarkerTitleSubmit}  isDarkMode={isDarkMode} markerType={selectedToolType} />
-      <ManualInputModal       isOpen={openModals.manualInput}       onClose={() => toggleModal('manualInput', false)}       onSubmit={handleManualInputSubmit} isDarkMode={isDarkMode} />
+      <PointInputChoiceModal isOpen={openModals.pointInputChoice} onClose={() => toggleModal('pointInputChoice', false)} onSelect={handlePointInputChoice} isDarkMode={isDarkMode} />
+      <MarkerTitleModal isOpen={openModals.markerTitle} onClose={() => { toggleModal('markerTitle', false); setPendingMapClick(null); }} onSubmit={handleMarkerTitleSubmit} isDarkMode={isDarkMode} markerType={selectedToolType} />
+      <ManualInputModal isOpen={openModals.manualInput} onClose={() => toggleModal('manualInput', false)} onSubmit={handleManualInputSubmit} isDarkMode={isDarkMode} />
       <FeatureNotAvailableModal isOpen={openModals.featureNotAvailable} onClose={() => toggleModal('featureNotAvailable', false)} />
 
-      {/* Toolbar */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+      <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 px-2">
+        {selectedToolType && <ActiveToolBadge label={selectedLabel} theme={theme} isDarkMode={isDarkMode} />}
 
-        {/* Active tool label — floats above */}
-        {selectedToolType && (() => {
-          const label =
-            tools.find((t) => t.id === selectedToolType)?.label ||
-            (selectedToolType === 'less_1' ? 'Less than 1 Meter' : selectedToolType);
-          return (
-            <div className={`
-              flex items-center justify-center gap-1.5 mb-1.5
-              px-2.5 py-1 rounded-lg border mx-auto w-fit
-              backdrop-blur-xl
-              ${isDarkMode
-                ? 'bg-black/30 border-cyan-400/15'
-                : 'bg-white/50 border-blue-400/15'
-              }
-            `}>
-              <span className={`relative flex w-1.5 h-1.5`}>
-                <span className={`absolute inline-flex h-full w-full rounded-full opacity-50 animate-ping ${theme.accentBg}`} style={{ animationDuration: '2s' }} />
-                <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${theme.accentBg}`} />
-              </span>
-              <span className={`text-[10px] font-medium ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>{label}</span>
-            </div>
-          );
-        })()}
+        <div
+          className={cn(
+            'studio-liquid-panel relative flex max-w-[calc(100vw-1rem)] items-center gap-2 overflow-x-auto rounded-2xl border px-2.5 py-2.5',
+            '[&::-webkit-scrollbar]:hidden',
+            theme.panel
+          )}
+        >
+          <div className={cn('absolute left-8 right-8 top-0 h-px', isDarkMode ? 'bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-400/30 to-transparent')} />
 
-        <div className={`
-          flex items-center gap-1.5 px-3 py-2.5 rounded-2xl
-          backdrop-blur-xl border shadow-xl relative
-          ${theme.bg} ${theme.border}
-        `}>
-          {/* Top accent — Tier 1 */}
-          <div className={`absolute top-0 left-6 right-6 h-px ${
-            isDarkMode
-              ? 'bg-gradient-to-r from-transparent via-cyan-500/35 to-transparent'
-              : 'bg-gradient-to-r from-transparent via-blue-400/25 to-transparent'
-          }`} />
+          <button
+            type="button"
+            onClick={handleToggleCollapse}
+            title="Collapse drawing tools"
+            className={cn(
+              'flex h-11 shrink-0 items-center gap-2 rounded-xl border px-2.5 transition-all',
+              theme.group,
+              isDarkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-white'
+            )}
+          >
+            <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
+              <TbTools size={16} />
+            </span>
+            <span className={cn('hidden text-[11px] font-black uppercase tracking-wide sm:inline', theme.textMuted)}>
+              Tools
+            </span>
+          </button>
 
-          {/* Collapse */}
-          <Btn onClick={handleToggleCollapse} active={false} theme={theme} title="Collapse">
-            <TbTools size={15} className={theme.textMuted} />
-          </Btn>
+          <ToolGroup theme={theme}>
+            {tools.map((tool) => (
+              <ToolButton
+                key={tool.id}
+                onClick={() => handleToolClick(tool)}
+                active={selectedToolType === tool.id}
+                theme={theme}
+                title={tool.label}
+                hotkey={tool.hotkey}
+              >
+                {tool.icon}
+              </ToolButton>
+            ))}
+          </ToolGroup>
 
-          <Divider theme={theme} />
-
-          {/* Weather tools */}
-          {tools.map((tool) => (
-            <Btn
-              key={tool.id}
-              onClick={() => handleToolClick(tool)}
-              active={selectedToolType === tool.id}
+          <ToolGroup theme={theme}>
+            <ToolButton
+              onClick={handleToggleFlagDrawing}
+              active={isFlagDrawing}
               theme={theme}
-              title={tool.label}
-              hotkey={tool.hotkey}
+              title={isFlagDrawing ? 'Stop Flag Drawing' : 'Flag Drawing'}
             >
-              {tool.icon}
-            </Btn>
-          ))}
+              <Flag size={19} className={isFlagDrawing ? theme.accent : theme.textMuted} strokeWidth={2.2} />
+            </ToolButton>
 
-          <Divider theme={theme} />
+            <ToolButton
+              onClick={handleSelectLess1}
+              active={selectedToolType === 'less_1'}
+              theme={theme}
+              title="Less than 1 Meter"
+              hotkey="1"
+            >
+              <img src={l1} alt="Less than 1 meter" className="h-7 w-7 object-contain drop-shadow-sm" />
+            </ToolButton>
 
-          {/* Flag */}
-          <Btn onClick={handleToggleFlagDrawing} active={isFlagDrawing} theme={theme} title={isFlagDrawing ? 'Stop Flag Drawing' : 'Flag Drawing'}>
-            <Flag size={15} className={isFlagDrawing ? (isDarkMode ? 'text-cyan-400' : 'text-blue-600') : theme.textMuted} strokeWidth={2} />
-          </Btn>
+            <ToolButton
+              onClick={handleToggleDrawing}
+              active={isCanvasActive}
+              theme={theme}
+              title={isDrawing ? 'Stop Wave Drawing' : 'Wave Height Drawing'}
+            >
+              {isDrawing
+                ? <X size={20} className={theme.accent} strokeWidth={2.6} />
+                : <Waves size={20} className={isCanvasActive ? theme.accent : theme.textMuted} strokeWidth={2.3} />
+              }
+            </ToolButton>
+          </ToolGroup>
 
-          {/* Less than 1m */}
-          <Btn onClick={handleSelectLess1} active={selectedToolType === 'less_1'} theme={theme} title="Less than 1 Meter" hotkey="1">
-            <img src={l1} alt="<1m" className="w-5 h-5 object-contain opacity-80" />
-          </Btn>
-
-          {/* Wave height */}
-          <Btn onClick={handleToggleDrawing} active={isCanvasActive} theme={theme} title={isDrawing ? 'Stop Wave Drawing' : 'Wave Height Drawing'}>
-            {isDrawing
-              ? <X size={15} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} strokeWidth={2.5} />
-              : <Waves size={15} className={isCanvasActive ? (isDarkMode ? 'text-cyan-400' : 'text-blue-600') : theme.textMuted} strokeWidth={2} />
-            }
-          </Btn>
-
-          {/* Closed/open shape — canvas only */}
           {isCanvasActive && (
-            <>
-              <Divider theme={theme} />
+            <ToolGroup theme={theme}>
               <button
-                onClick={() => setClosedMode((p) => !p)}
+                type="button"
+                onClick={() => setClosedMode((previous) => !previous)}
                 title={closedMode ? 'Closed shape' : 'Open shape'}
-                className={`
-                  group relative w-9 h-9
-                  flex items-center justify-center
-                  rounded-lg border transition-all duration-150
-                  ${closedMode
-                    ? 'bg-emerald-500/12 border-emerald-400/25'
-                    : 'bg-rose-500/12 border-rose-400/25'
-                  }
-                `}
+                className={cn(
+                  'group relative flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-150',
+                  closedMode
+                    ? 'border-emerald-300/30 bg-emerald-400/[0.12] text-emerald-300'
+                    : 'border-rose-300/30 bg-rose-400/[0.12] text-rose-300'
+                )}
               >
                 <Circle
-                  size={15}
-                  className={closedMode ? 'text-emerald-400' : 'text-rose-400'}
+                  size={18}
                   strokeWidth={2.5}
                   fill={closedMode ? 'currentColor' : 'none'}
                 />
-                <span className={`
-                  absolute -top-1 -right-1 w-3 h-3 rounded-full
-                  flex items-center justify-center text-[7px] font-black
-                  ${closedMode ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'}
-                `}>
+                <span
+                  className={cn(
+                    'absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[9px] font-black',
+                    closedMode ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'
+                  )}
+                >
                   {closedMode ? 'C' : 'O'}
                 </span>
-                <div className={`
-                  absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2
-                  px-2.5 py-1.5 rounded-lg border backdrop-blur-xl
-                  opacity-0 group-hover:opacity-100 pointer-events-none
-                  transition-opacity duration-150 whitespace-nowrap z-50
-                  ${theme.tooltip}
-                `}>
-                  <span className={`text-[11px] font-semibold ${theme.text}`}>
-                    {closedMode ? 'Closed shape' : 'Open shape'}
-                  </span>
-                </div>
               </button>
-            </>
+            </ToolGroup>
           )}
         </div>
       </div>

@@ -2,6 +2,7 @@ import {
   addWindSource,
   addWindLayer,
   buildIconSizeExpression,
+  syncWindGlassOverlay,
   WIND_RASTER_LAYER_PREFIX,
   WIND_RASTER_SOURCE_PREFIX,
 } from '@dashboards/forecaster/map/layers/windLayer';
@@ -96,6 +97,8 @@ export const syncWindRasterLayers = (
     upsertWindRasterLayer(map, { model, isDarkMode, opacity, showRaster, themeChanged })
   );
 
+  syncWindGlassOverlay(map, isDarkMode);
+
   ['wind-glass-fill', 'wind-glass-depth'].forEach((id) => {
     if (map.getLayer(id)) {
       map.setLayoutProperty(id, 'visibility',
@@ -128,7 +131,7 @@ const hideNonRasterLayers = (map) => {
   );
 };
 
-export const syncWindNonRasterLayers = async (map, config, prevModelRef) => {
+export const syncWindNonRasterLayers = async (map, config, prevModelRef, isDarkMode) => {
   if (!map) return;
 
   const { enabled, models = [], elements, barbStyle } = config;
@@ -152,8 +155,8 @@ export const syncWindNonRasterLayers = async (map, config, prevModelRef) => {
   const layerGone    = !map.getLayer('wind-particles');
 
   if (modelChanged || sourceGone || layerGone) {
-    await addWindSource(map, false, primaryModel);
-    await addWindLayer(map, false);
+    await addWindSource(map, isDarkMode, primaryModel);
+    await addWindLayer(map, isDarkMode);
     prevModelRef.current = primaryModel;
   }
 
@@ -179,7 +182,7 @@ export const syncAllWindLayers = (map, config, isDarkMode, prevThemeRef, prevMod
   const showRaster = enabled && models.length > 0 && Boolean(elements.raster);
 
   syncWindRasterLayers(map, models, showRaster, isDarkMode, themeChanged);
-  syncWindNonRasterLayers(map, config, prevModelRef);   // async, fire-and-forget intentional
+  syncWindNonRasterLayers(map, config, prevModelRef, isDarkMode);   // async, fire-and-forget intentional
 
   prevThemeRef.current = nextTheme;
 };
