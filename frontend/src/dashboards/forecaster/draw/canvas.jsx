@@ -1,134 +1,194 @@
 import { useRef, useState, useEffect, useCallback, memo } from 'react';
-import { Stage, Layer, Line } from 'react-konva';
 import { createFeature } from '@/api/featureServices';
-import { smoothPoints, handlePointerDown, handlePointerMove, handlePointerUp } from './canvasUtils';
+import { getPreviewCurvePoints, handlePointerUp } from './canvasUtils';
 import { useProjectId } from "@dashboards/forecaster/hooks/useStudio";
-import CreateProjectModal from '@/components/ui/modals/CreateProjectModal';
 
-import { Waves } from 'lucide-react';
+import { CheckCircle2, Minus, Plus, Waves } from 'lucide-react';
 
-// Memoized slider component to prevent unnecessary re-renders
+const MIN_POINT_DISTANCE = 3.5;
+const PREVIEW_FRAME_MS = 24;
 
-const WaveHeightSlider = memo(({ value, onChange, isDarkMode }) => {
+const getPointerPoint = (event, canvas) => {
+  const rect = canvas.getBoundingClientRect();
+  return [event.clientX - rect.left, event.clientY - rect.top];
+};
+
+const distanceFromLastPoint = (points, x, y) => {
+  if (points.length < 2) return Infinity;
+
+  const lastX = points[points.length - 2];
+  const lastY = points[points.length - 1];
+  return Math.hypot(x - lastX, y - lastY);
+};
+
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+const clampWaveValue = (nextValue) => Math.max(1, Math.min(15, nextValue));
+
+// Memoized value dock to prevent unnecessary canvas re-renders while drawing.
+const WaveHeightSlider = memo(({ value, onChange, isDarkMode, closedMode }) => {
   const marks = [1, 3, 5, 8, 10, 12, 15];
   const pct = ((value - 1) / 14) * 100;
+  const setWaveValue = (nextValue) => onChange(clampWaveValue(nextValue));
+  const modeLabel = closedMode ? 'Closed contour' : 'Open line';
 
   return (
-    <div className={`
-      fixed bottom-24 left-1/2 -translate-x-1/2 z-[100]
-      w-64 px-3 py-2.5 rounded-2xl
-      backdrop-blur-xl border shadow-lg
-      transition-all duration-300
-      ${isDarkMode
-        ? 'bg-black/40 border-white/10'
-        : 'bg-white/60 border-white/40'
-      }
-    `}>
+    <div
+      className={cn(
+        'studio-liquid-panel fixed bottom-[7.25rem] left-1/2 z-[100] w-[min(30rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-2xl border px-3 py-3 shadow-2xl transition-all duration-200',
+        isDarkMode
+          ? 'studio-liquid-dark border-white/[0.18] text-white shadow-cyan-950/20'
+          : 'studio-liquid-light border-white/80 text-slate-950 shadow-blue-950/10'
+      )}
+    >
+      <div
+        className={cn(
+          'absolute left-8 right-8 top-0 h-px',
+          isDarkMode
+            ? 'bg-gradient-to-r from-transparent via-cyan-400/35 to-transparent'
+            : 'bg-gradient-to-r from-transparent via-blue-400/35 to-transparent'
+        )}
+      />
 
-      {/* Top accent — Tier 1 */}
-      <div className={`absolute top-0 left-6 right-6 h-px ${isDarkMode
-          ? 'bg-gradient-to-r from-transparent via-cyan-500/35 to-transparent'
-          : 'bg-gradient-to-r from-transparent via-blue-400/25 to-transparent'
-        }`} />
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-1.5">
-          <Waves size={13} className={isDarkMode ? 'text-cyan-400/70' : 'text-blue-500/70'} strokeWidth={2} />
-          <span className={`text-[11px] font-medium ${isDarkMode ? 'text-white/70' : 'text-slate-600'}`}>
-            Wave Height
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
+              isDarkMode ? 'bg-cyan-400/12 text-cyan-300' : 'bg-blue-500/10 text-blue-600'
+            )}
+          >
+            <Waves size={18} strokeWidth={2.4} />
           </span>
+          <div className="min-w-0">
+            <div className={cn('text-[11px] font-black uppercase tracking-wide', isDarkMode ? 'text-white/80' : 'text-slate-700')}>
+              Wave Height
+            </div>
+            <div className={cn('mt-0.5 flex items-center gap-1.5 text-[10px] font-bold', isDarkMode ? 'text-white/45' : 'text-slate-500')}>
+              <CheckCircle2 size={12} strokeWidth={2.5} />
+              <span className="truncate">{modeLabel}</span>
+            </div>
+          </div>
         </div>
 
-        {/* Value badge — same style as layer count badges */}
-        <div className={`
-          flex items-center gap-0.5 px-2 py-0.5 rounded-md
-          ${isDarkMode ? 'bg-cyan-500/15 border border-cyan-400/20' : 'bg-blue-500/10 border border-blue-400/20'}
-        `}>
-          <span className={`text-xs font-bold tabular-nums ${isDarkMode ? 'text-cyan-300' : 'text-blue-600'}`}>
+        <div
+          className={cn(
+            'flex h-10 min-w-20 items-baseline justify-center rounded-xl border px-3',
+            isDarkMode ? 'border-cyan-300/20 bg-cyan-400/12' : 'border-blue-300/40 bg-blue-50'
+          )}
+        >
+          <span className={cn('text-2xl font-black leading-10 tabular-nums', isDarkMode ? 'text-cyan-200' : 'text-blue-700')}>
             {value}
           </span>
-          <span className={`text-[9px] font-medium ${isDarkMode ? 'text-cyan-400/60' : 'text-blue-500/60'}`}>m</span>
+          <span className={cn('ml-1 text-[10px] font-black', isDarkMode ? 'text-cyan-300/70' : 'text-blue-500/70')}>
+            m
+          </span>
         </div>
       </div>
 
-      {/* Slider */}
-      <div className="relative">
-        <input
-          type="range"
-          min="1"
-          max="15"
-          step="1"
-          value={value}
-          onChange={(e) => onChange(parseInt(e.target.value))}
-          className={`
-            w-full h-1 appearance-none cursor-pointer rounded-full
-            [&::-webkit-slider-thumb]:appearance-none
-            [&::-webkit-slider-thumb]:w-3.5
-            [&::-webkit-slider-thumb]:h-3.5
-            [&::-webkit-slider-thumb]:rounded-full
-            [&::-webkit-slider-thumb]:bg-white
-            [&::-webkit-slider-thumb]:border-2
-            [&::-webkit-slider-thumb]:shadow-sm
-            [&::-webkit-slider-thumb]:cursor-grab
-            [&::-webkit-slider-thumb]:active:cursor-grabbing
-            [&::-webkit-slider-thumb]:transition-transform
-            [&::-webkit-slider-thumb]:duration-100
-            [&::-webkit-slider-thumb]:hover:scale-110
-            [&::-moz-range-thumb]:w-3.5
-            [&::-moz-range-thumb]:h-3.5
-            [&::-moz-range-thumb]:rounded-full
-            [&::-moz-range-thumb]:bg-white
-            [&::-moz-range-thumb]:border-2
-            [&::-moz-range-thumb]:shadow-sm
-            [&::-moz-range-thumb]:border-none
-          `}
-          style={{
-            background: `linear-gradient(to right,
-              ${isDarkMode ? '#22d3ee' : '#3b82f6'} 0%,
-              ${isDarkMode ? '#22d3ee' : '#3b82f6'} ${pct}%,
-              ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} ${pct}%,
-              ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} 100%)`,
-            '--thumb-border': isDarkMode ? '#22d3ee' : '#3b82f6',
-          }}
-        />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setWaveValue(value - 1)}
+          className={cn(
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45',
+            isDarkMode
+              ? 'border-white/10 bg-white/[0.055] text-white/70 hover:bg-white/[0.09] hover:text-white'
+              : 'border-white/80 bg-white/60 text-slate-600 hover:bg-white hover:text-slate-950'
+          )}
+          title="Decrease wave height"
+        >
+          <Minus size={17} strokeWidth={2.6} />
+        </button>
 
-        {/* Marks */}
-        <div className="flex justify-between mt-1.5 px-0.5">
-          {marks.map((mark) => (
-            <span key={mark} className={`
-              text-[9px] font-medium tabular-nums transition-colors duration-150
-              ${value >= mark
-                ? isDarkMode ? 'text-cyan-400/70' : 'text-blue-500/70'
-                : isDarkMode ? 'text-white/20' : 'text-slate-300'
-              }
-            `}>
-              {mark}
-            </span>
-          ))}
+        <div className="min-w-0 flex-1">
+          <div className="relative">
+            <input
+              type="range"
+              min="1"
+              max="15"
+              step="1"
+              value={value}
+              onChange={(e) => setWaveValue(parseInt(e.target.value, 10))}
+              className={cn(
+                'h-2 w-full appearance-none rounded-full',
+                'cursor-pointer touch-pan-x',
+                '[&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5',
+                '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
+                '[&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-white',
+                '[&::-webkit-slider-thumb]:shadow-[0_4px_14px_rgba(0,0,0,0.22)]',
+                '[&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:duration-100',
+                '[&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:active:scale-110',
+                isDarkMode
+                  ? '[&::-webkit-slider-thumb]:bg-cyan-300'
+                  : '[&::-webkit-slider-thumb]:bg-blue-600',
+                '[&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5',
+                '[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[3px]',
+                '[&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-[0_4px_14px_rgba(0,0,0,0.22)]'
+              )}
+              style={{
+                background: `linear-gradient(to right,
+                  ${isDarkMode ? '#22d3ee' : '#2563eb'} 0%,
+                  ${isDarkMode ? '#22d3ee' : '#2563eb'} ${pct}%,
+                  ${isDarkMode ? 'rgba(255,255,255,0.13)' : 'rgba(15,23,42,0.1)'} ${pct}%,
+                  ${isDarkMode ? 'rgba(255,255,255,0.13)' : 'rgba(15,23,42,0.1)'} 100%)`,
+              }}
+            />
+          </div>
+
+          <div className="mt-2 grid grid-cols-7 gap-1">
+            {marks.map((mark) => {
+              const active = value === mark;
+
+              return (
+                <button
+                  key={mark}
+                  type="button"
+                  onClick={() => setWaveValue(mark)}
+                  className={cn(
+                    'h-7 rounded-lg border text-[10px] font-black tabular-nums transition-all',
+                    active
+                      ? isDarkMode
+                        ? 'border-cyan-300/35 bg-cyan-400/18 text-cyan-100'
+                        : 'border-blue-300 bg-blue-50 text-blue-700'
+                      : isDarkMode
+                        ? 'border-white/8 bg-white/[0.04] text-white/45 hover:bg-white/[0.08] hover:text-white/80'
+                        : 'border-white/70 bg-white/45 text-slate-500 hover:bg-white hover:text-slate-800'
+                  )}
+                  title={`Set wave height to ${mark} meters`}
+                >
+                  {mark}
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setWaveValue(value + 1)}
+          className={cn(
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45',
+            isDarkMode
+              ? 'border-white/10 bg-white/[0.055] text-white/70 hover:bg-white/[0.09] hover:text-white'
+              : 'border-white/80 bg-white/60 text-slate-600 hover:bg-white hover:text-slate-950'
+          )}
+          title="Increase wave height"
+        >
+          <Plus size={17} strokeWidth={2.6} />
+        </button>
+      </div>
+
+      <div className={cn('mt-2.5 flex items-center justify-between px-1 text-[9px] font-bold uppercase tracking-wide', isDarkMode ? 'text-white/35' : 'text-slate-400')}>
+        <span>Calm</span>
+        <span>Moderate</span>
+        <span>High sea</span>
       </div>
     </div>
   );
 });
 
 WaveHeightSlider.displayName = 'WaveHeightSlider';
-
-// Memoized Line component to prevent unnecessary re-renders
-const DrawingLine = memo(({ line, isDarkMode }) => (
-  <Line
-    points={line.points}
-    stroke={isDarkMode ? '#ffffff' : '#000000'}
-    strokeWidth={2.5}
-    tension={0.3}
-    lineCap="round"
-    lineJoin="round"
-    bezier={false}
-    opacity={0.9}
-  />
-));
-
-DrawingLine.displayName = 'DrawingLine';
 
 const DrawingCanvas = ({
   mapRef,
@@ -139,19 +199,92 @@ const DrawingCanvas = ({
   closedMode,
   lineCount,
 }) => {
-  const [lines, setLines] = useState([]);
+  const canvasRef = useRef(null);
+  const activeLineRef = useRef(null);
+  const rafRef = useRef(null);
+  const lastPreviewTimeRef = useRef(0);
+  const pointerIdRef = useRef(null);
   const isDrawing = useRef(false);
-  const [labelValue, setLabelValue] = useState(3);
-  const [showProjectModal, setShowProjectModal] = useState(false);
-  const stageRef = useRef(null);
   const drawLock = useRef(false);
+  const [labelValue, setLabelValue] = useState(3);
   const [projectId] = useProjectId();
 
-  // Prevent body scroll during drawing
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.ceil(window.innerWidth * dpr);
+    canvas.height = Math.ceil(window.innerHeight * dpr);
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }, []);
+
+  const clearPreview = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  }, []);
+
+  const drawPreview = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    const line = activeLineRef.current;
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    if (!line?.points || line.points.length < 4) return;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(line.points[0], line.points[1]);
+
+    for (let i = 2; i < line.points.length; i += 2) {
+      ctx.lineTo(line.points[i], line.points[i + 1]);
+    }
+
+    ctx.strokeStyle = isDarkMode ? '#19b8b7' : '#000000';
+    ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash(Number(labelValue) < 2 ? [3, 3] : []);
+    ctx.stroke();
+    ctx.restore();
+  }, [isDarkMode, labelValue]);
+
+  const schedulePreviewDraw = useCallback(() => {
+    if (rafRef.current) return;
+
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = null;
+      drawPreview();
+    });
+  }, [drawPreview]);
+
+  const setSaveLines = useCallback((nextLines) => {
+    const next = typeof nextLines === 'function'
+      ? nextLines(activeLineRef.current ? [activeLineRef.current] : [])
+      : nextLines;
+
+    activeLineRef.current = Array.isArray(next) && next.length ? next[next.length - 1] : null;
+
+    if (activeLineRef.current) {
+      schedulePreviewDraw();
+    } else {
+      clearPreview();
+    }
+  }, [clearPreview, schedulePreviewDraw]);
+
   useEffect(() => {
-    const preventScroll = (e) => {
+    const preventScroll = (event) => {
       if (isDrawing.current) {
-        e.preventDefault();
+        event.preventDefault();
       }
     };
 
@@ -161,25 +294,77 @@ const DrawingCanvas = ({
     };
   }, []);
 
-  // Optimized pointer handlers with useCallback
-  const onPointerDown = useCallback((e) => {
-    if (drawLock.current) return;
-    handlePointerDown(e, lines, setLines, isDrawing);
-  }, [lines]);
+  useEffect(() => {
+    resizeCanvas();
 
-  const onPointerMove = useCallback((e) => {
-    if (drawLock.current) return;
-    handlePointerMove(e, lines, setLines, isDrawing);
-  }, [lines]);
+    window.addEventListener('resize', resizeCanvas);
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
+    };
+  }, [resizeCanvas]);
 
-  const onPointerUp = useCallback(async () => {
-    if (drawLock.current) return; // prevent double trigger
-    drawLock.current = true;       // 🔒 lock drawing
+  const onPointerDown = useCallback((event) => {
+    if (drawLock.current) return;
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+
+    const [x, y] = getPointerPoint(event, event.currentTarget);
+    pointerIdRef.current = event.pointerId;
+    isDrawing.current = true;
+    lastPreviewTimeRef.current = 0;
+    activeLineRef.current = {
+      points: [x, y],
+      rawPoints: [x, y],
+    };
+
+    clearPreview();
+  }, [clearPreview]);
+
+  const onPointerMove = useCallback((event) => {
+    if (drawLock.current) return;
+    if (!isDrawing.current || pointerIdRef.current !== event.pointerId) return;
+
+    event.preventDefault();
+
+    const line = activeLineRef.current;
+    if (!line) return;
+
+    const now = performance.now();
+    if (now - lastPreviewTimeRef.current < PREVIEW_FRAME_MS) return;
+
+    const [x, y] = getPointerPoint(event, event.currentTarget);
+    if (distanceFromLastPoint(line.rawPoints, x, y) < MIN_POINT_DISTANCE) return;
+
+    line.rawPoints = line.rawPoints.concat([x, y]);
+    line.points = getPreviewCurvePoints(line.rawPoints);
+    lastPreviewTimeRef.current = now;
+    schedulePreviewDraw();
+  }, [schedulePreviewDraw]);
+
+  const finishDrawing = useCallback(async (event) => {
+    if (drawLock.current) return;
+
+    event?.preventDefault();
+    event?.currentTarget?.releasePointerCapture?.(event.pointerId);
+
+    const line = activeLineRef.current;
+    pointerIdRef.current = null;
+
+    if (!line?.rawPoints || line.rawPoints.length < 4) {
+      isDrawing.current = false;
+      activeLineRef.current = null;
+      clearPreview();
+      return;
+    }
+
+    drawLock.current = true;
 
     await handlePointerUp(
       mapRef,
-      lines,
-      setLines,
+      [line],
+      setSaveLines,
       isDrawing,
       drawCounter,
       setDrawCounter,
@@ -189,57 +374,46 @@ const DrawingCanvas = ({
       lineCount,
       labelValue,
       isDarkMode,
-      projectId,
-      () => setShowProjectModal(true)
+      projectId
     );
 
-    // small cooldown to prevent instant re-click
-    setTimeout(() => {
-      drawLock.current = false;   // 🔓 unlock drawing
-    }, 50); // adjust cooldown ms if needed
+    activeLineRef.current = null;
+    clearPreview();
 
+    setTimeout(() => {
+      drawLock.current = false;
+    }, 50);
   }, [
-    mapRef,
-    lines,
+    clearPreview,
+    closedMode,
     drawCounter,
+    isDarkMode,
+    labelValue,
+    lineCount,
+    mapRef,
+    projectId,
     setDrawCounter,
     setLayersRef,
-    closedMode,
-    lineCount,
-    labelValue,
-    isDarkMode,
+    setSaveLines,
   ]);
 
   return (
     <>
-      {/* Wave Height Slider */}
       <WaveHeightSlider
         value={labelValue}
         onChange={setLabelValue}
         isDarkMode={isDarkMode}
+        closedMode={closedMode}
       />
 
-      {/* Drawing Stage */}
-      <Stage
-        ref={stageRef}
-        width={window.innerWidth}
-        height={window.innerHeight}
+      <canvas
+        ref={canvasRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        className="absolute top-0 left-0 z-10 pointer-events-auto"
-      >
-        <Layer>
-          {lines.map((line, i) => (
-            <DrawingLine key={i} line={line} isDarkMode={isDarkMode} />
-          ))}
-        </Layer>
-      </Stage>
-
-      {/* Project Modal */}
-      {showProjectModal && (
-        <createImageBitmapProjectModal onClose={() => setShowProjectModal(false)} />
-      )}
+        onPointerUp={finishDrawing}
+        onPointerCancel={finishDrawing}
+        className="absolute left-0 top-0 z-10 touch-none pointer-events-auto"
+      />
     </>
   );
 };

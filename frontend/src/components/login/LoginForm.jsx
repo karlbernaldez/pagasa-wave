@@ -1,7 +1,5 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { AlertCircle, Check, Eye, EyeOff, Lock, Loader2, Mail } from 'lucide-react';
 import { tokens } from '@/styles/tokens';
-import CaptchaWidget from './CaptchaWidget.jsx';
 
 const { colors, gradients, shadows } = tokens;
 
@@ -41,35 +39,18 @@ const InputIcon = ({ children }) => (
  *   handlers        — { handleEmailChange, handlePasswordChange, handleBlur }
  *   auth            — { error, isLoading }
  *   visibility      — { showPassword, togglePasswordVisibility }
- *   captchaVerified boolean
- *   onCaptchaVerify (token: string | null) => void
  *   onSubmit        (e: FormEvent) => void
  *   onNavigate      (path: string) => void
- *
- * Ref handle:
- *   resetCaptcha()  — delegate to CaptchaWidget.reset()
  */
-const LoginForm = forwardRef(function LoginForm({
+function LoginForm({
   formId,
   formState,
   handlers,
   auth,
   visibility,
-  captchaVerified,
-  onCaptchaVerify,
   onSubmit,
   onNavigate,
-}, ref) {
-
-  const captchaRef = useRef(null);
-
-  // Expose resetCaptcha() to Login so it can invalidate the token after
-  // a failed attempt — without knowing anything about how CaptchaWidget works.
-  useImperativeHandle(ref, () => ({
-    resetCaptcha() {
-      captchaRef.current?.reset();
-    },
-  }), []);
+}) {
 
   const { email, password, emailError, passwordError, hasEmailSuccess } = formState;
   const { handleEmailChange, handlePasswordChange, handleBlur }         = handlers;
@@ -214,16 +195,11 @@ const LoginForm = forwardRef(function LoginForm({
       </div>
 
       {/* CAPTCHA ─────────────────────────────────────────────────────────── */}
-      <CaptchaWidget
-        ref={captchaRef}
-        onVerify={onCaptchaVerify}
-      />
-
       {/* Submit ──────────────────────────────────────────────────────────── */}
       <button
         type="submit"
-        disabled={isLoading || !captchaVerified}
-        aria-disabled={isLoading || !captchaVerified}
+        disabled={isLoading}
+        aria-disabled={isLoading}
         className="
           w-full py-3.5 mt-2
           text-black font-semibold rounded-xl

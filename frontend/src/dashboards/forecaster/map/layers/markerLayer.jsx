@@ -14,11 +14,14 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
     low_pressure: 'low_pressure',
     high_pressure: 'high_pressure',
     less_1: 'less_1',
+    text_note: null,
   };
 
   const defaultTitles = {
     typhoon: 'Typhoon',
     low_pressure: 'LPA',
+    less_1: 'Less 1',
+    text_note: 'Text Label',
   };
 
   const markerType = type;
@@ -52,19 +55,27 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
   }
 
   // ── Build layout ──────────────────────────────────────────
-  const layout = {
-    'icon-image': ['get', 'icon'],
-    'icon-size': [
-      'case',
-      ['==', ['get', 'markerType'], 'low_pressure'], 0.015,
-      ['==', ['get', 'markerType'], 'high_pressure'], 0.015,
-      ['==', ['get', 'markerType'], 'less_1'], 0.28,
-      0.03,
-    ],
-    'icon-allow-overlap': true,
-  };
+  const layout = markerType === 'text_note'
+    ? {
+        'text-field': ['get', 'title'],
+        'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+        'text-anchor': 'center',
+        'text-allow-overlap': true,
+        'text-size': 16,
+      }
+    : {
+        'icon-image': ['get', 'icon'],
+        'icon-size': [
+          'case',
+          ['==', ['get', 'markerType'], 'low_pressure'], 0.015,
+          ['==', ['get', 'markerType'], 'high_pressure'], 0.015,
+          ['==', ['get', 'markerType'], 'less_1'], 0.28,
+          0.03,
+        ],
+        'icon-allow-overlap': true,
+      };
 
-  if (markerType !== 'less_1') {
+  if (markerType !== 'less_1' && markerType !== 'text_note') {
     layout['text-field'] = ['get', 'title'];
     layout['text-font'] = ['Open Sans Semibold', 'Arial Unicode MS Bold'];
     layout['text-offset'] = [
@@ -84,7 +95,11 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
 
   // ── Build paint ───────────────────────────────────────────
   const paint = {};
-  if (markerType !== 'less_1') {
+  if (markerType === 'text_note') {
+    paint['text-color'] = '#0f172a';
+    paint['text-halo-color'] = '#ffffff';
+    paint['text-halo-width'] = 1.5;
+  } else if (markerType !== 'less_1') {
     paint['text-color'] = [
       'case',
       ['==', ['get', 'markerType'], 'low_pressure'], 'red',

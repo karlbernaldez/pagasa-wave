@@ -28,6 +28,10 @@ const MARKER_TYPE_ALIASES = {
   less_than_1m: 'less_1',
   lessthan1m: 'less_1',
   low_waves: 'less_1',
+  text: 'text_note',
+  text_note: 'text_note',
+  label: 'text_note',
+  map_label: 'text_note',
 };
 
 export function normalizeMarkerType(value) {
