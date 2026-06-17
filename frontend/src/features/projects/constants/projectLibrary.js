@@ -1,4 +1,4 @@
-export const PAGE_LIMIT = 10;
+export const PAGE_LIMIT = 12;
 
 /** Must mirror Project.js status enum exactly. */
 export const STATUS_FILTERS = [

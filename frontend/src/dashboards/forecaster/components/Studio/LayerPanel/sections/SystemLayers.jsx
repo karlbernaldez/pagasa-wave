@@ -26,7 +26,7 @@ const SectionLabel = ({ label, count, isDarkMode, accent = false }) => (
       'rounded-full px-2 py-0.5 text-[9px] font-black',
       accent
         ? isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-500/10 text-blue-700'
-        : isDarkMode ? 'bg-white/8 text-white/35' : 'bg-slate-100 text-slate-500'
+        : isDarkMode ? 'bg-white/[0.08] text-white/35' : 'bg-slate-100 text-slate-500'
     )}>
       {count}
     </span>
@@ -126,7 +126,7 @@ const SystemLayersSection = ({
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
                 satelliteLayer
                   ? isDarkMode ? 'bg-cyan-300/15 text-cyan-200' : 'bg-blue-500/10 text-blue-700'
-                  : isDarkMode ? 'bg-white/8 text-white/45' : 'bg-slate-100 text-slate-500'
+                  : isDarkMode ? 'bg-white/[0.08] text-white/45' : 'bg-slate-100 text-slate-500'
               )}>
                 <Satellite size={15} strokeWidth={2} />
               </span>

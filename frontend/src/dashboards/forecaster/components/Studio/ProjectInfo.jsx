@@ -10,7 +10,7 @@ import NoProjectsModal from '@/components/ui/modals/NoProjectAlert.jsx';
 
 const projectCache = {};
 
-const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading, menuOpen }) => {
+const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading = () => {}, menuOpen }) => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedChart, setEditedChart] = useState('');
@@ -94,11 +94,11 @@ const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading, menuOpen }) => {
 
   // ── Info row ────────────────────────────────────────────────────────────────
   const InfoItem = ({ icon: Icon, label, value }) => (
-    <div className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors duration-150 ${
-      isDarkMode ? 'hover:bg-slate-700/20' : 'hover:bg-slate-100/40'
+    <div className={`studio-liquid-control flex items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors duration-150 ${
+      isDarkMode ? 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]' : 'border-white/75 bg-white/45 hover:bg-white/75'
     }`}>
       <div className={`flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center ${
-        isDarkMode ? 'bg-slate-700/40' : 'bg-slate-200/40'
+        isDarkMode ? 'bg-white/[0.06]' : 'bg-white/65'
       }`}>
         <Icon size={12} strokeWidth={2.5} className={isDarkMode ? 'text-cyan-400/80' : 'text-blue-500/80'} />
       </div>
@@ -121,34 +121,29 @@ const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading, menuOpen }) => {
           ref={menuRef}
           className={`
             fixed z-30 w-64
-            group
-            opacity-80 hover:opacity-100
-            scale-[0.97] hover:scale-100
             transition-all duration-300 ease-out
             ${menuOpen ? 'top-16 left-80' : 'mt-2 top-24 left-4'}
           `}
         >
           <div className={`
-            rounded-xl
+            studio-liquid-panel rounded-2xl border shadow-2xl
             ${isDarkMode
-              ? 'bg-black/30 border border-white/10'
-              : 'bg-white/50 border border-white/30'
+              ? 'studio-liquid-dark border-white/[0.18] text-white'
+              : 'studio-liquid-light border-white/80 text-slate-900'
             }
-            backdrop-blur-xl
-            shadow-md hover:shadow-lg
             transition-shadow duration-300
           `}>
 
             {/* Header */}
-            <div className={`flex items-center justify-between px-3 py-2 border-b ${
-              isDarkMode ? 'border-slate-700/30' : 'border-slate-200/40'
+            <div className={`flex items-center justify-between border-b px-3 py-2.5 ${
+              isDarkMode ? 'border-white/10' : 'border-white/70'
             }`}>
               <div className="flex items-center gap-2">
                 <div className={`p-1 rounded-md ${isDarkMode ? 'bg-cyan-500/15' : 'bg-blue-500/15'}`}>
                   <FolderOpen size={12} strokeWidth={2.5} className={isDarkMode ? 'text-cyan-400/80' : 'text-blue-500/80'} />
                 </div>
                 <div>
-                  <div className={`text-[11px] font-medium tracking-wide ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>
+                  <div className={`text-[11px] font-black uppercase tracking-wide ${isDarkMode ? 'text-white/80' : 'text-slate-700'}`}>
                     Project Details
                   </div>
                   <div className={`text-[9px] ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -167,14 +162,14 @@ const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading, menuOpen }) => {
             </div>
 
             {/* Items */}
-            <div className="p-2 space-y-0.5">
+            <div className="space-y-1 p-2">
               <InfoItem icon={FolderOpen} label="Name"          value={projectName} />
               <InfoItem icon={BarChart3}  label="Chart Type"    value={chartType || 'Not specified'} />
               <InfoItem icon={Calendar}   label="Forecast Date" value={formatDateDisplay(forecastDate) || 'Not set'} />
             </div>
 
             {/* Footer — mirrors LegendBox footer */}
-            <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-slate-200/40'}`} />
+            <div className={`h-px ${isDarkMode ? 'bg-white/10' : 'bg-white/70'}`} />
             <div className="px-3 py-1.5">
               <div className={`text-[9px] ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>
                 Active session
@@ -198,10 +193,10 @@ const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading, menuOpen }) => {
             className={`absolute inset-0 ${isDarkMode ? 'bg-black/70' : 'bg-black/50'} backdrop-blur-md`}
             onClick={() => setEditModalOpen(false)}
           />
-          <div className={`relative w-full max-w-md rounded-2xl backdrop-blur-xl shadow-2xl ${
-            isDarkMode ? 'bg-[#0b1220]/60 border border-white/10' : 'bg-white/70 border border-black/10'
+          <div className={`studio-liquid-panel relative w-full max-w-md rounded-2xl border shadow-2xl ${
+            isDarkMode ? 'studio-liquid-dark border-white/[0.18] text-white' : 'studio-liquid-light border-white/80 text-slate-900'
           }`}>
-            <div className={`flex items-center justify-between px-5 py-4 border-b ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
+            <div className={`flex items-center justify-between border-b px-5 py-4 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-cyan-500/20' : 'bg-blue-500/20'}`}>
                   <Edit2 size={20} strokeWidth={2.5} className={isDarkMode ? 'text-cyan-400' : 'text-blue-600'} />
@@ -256,7 +251,7 @@ const ProjectInfo = ({ setShowModal, isDarkMode, setIsLoading, menuOpen }) => {
               </div>
             </div>
 
-            <div className={`flex items-center gap-2 px-5 py-4 border-t ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
+            <div className={`flex items-center gap-2 border-t px-5 py-4 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
               <button onClick={() => setEditModalOpen(false)} className={`flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02] ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-white/80 border border-white/10' : 'bg-black/5 hover:bg-black/10 text-slate-700 border border-black/10'}`}>
                 Cancel
               </button>
