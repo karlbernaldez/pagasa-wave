@@ -3,16 +3,14 @@ import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { STATUS_OPTIONS } from '../constants';
 
 function SearchBarComponent({
-  query        = '',
+  query = '',
   onQueryChange,
   statusFilter = 'all',
   onStatusChange,
-  isDarkMode   = true,
+  isDarkMode = true,
 }) {
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
   const handleQueryChange = useCallback(
-    (e) => onQueryChange?.(e.target.value),
+    (event) => onQueryChange?.(event.target.value),
     [onQueryChange],
   );
 
@@ -22,49 +20,40 @@ function SearchBarComponent({
   );
 
   const handleStatusClick = useCallback(
-    // Clicking the active pill resets to 'all' (toggle-off); otherwise sets normally
     (value) => onStatusChange?.(value === statusFilter ? 'all' : value),
     [onStatusChange, statusFilter],
   );
 
-  // ── Styles ────────────────────────────────────────────────────────────────
-
   const inputWrapCls = isDarkMode
-    ? 'bg-slate-900/70 border-slate-700/60 text-slate-100 placeholder:text-slate-500 focus-within:border-cyan-500/60 focus-within:shadow-cyan-500/10'
-    : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus-within:border-cyan-400 focus-within:shadow-cyan-100';
+    ? 'border-white/10 bg-white/[0.04] text-slate-100 focus-within:border-cyan-300/30 focus-within:bg-white/[0.07]'
+    : 'border-white/80 bg-white/65 text-slate-800 focus-within:border-cyan-200 focus-within:bg-white';
 
   const pillWrapCls = isDarkMode
-    ? 'bg-slate-900/70 border-slate-700/60'
-    : 'bg-slate-50 border-slate-200';
+    ? 'border-white/10 bg-white/[0.04]'
+    : 'border-white/80 bg-white/65';
 
   const pillCls = (active) =>
     active
       ? isDarkMode
-        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-inner'
-        : 'bg-cyan-500 text-white shadow-sm'
+        ? 'border border-cyan-300/20 bg-cyan-400/10 text-cyan-200 shadow-inner shadow-cyan-300/10'
+        : 'bg-cyan-600 text-white shadow-sm'
       : isDarkMode
-        ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-        : 'text-slate-500 hover:text-slate-700 hover:bg-white';
-
-  // ── Render ────────────────────────────────────────────────────────────────
+        ? 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
+        : 'text-slate-500 hover:bg-white/80 hover:text-slate-800';
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 mb-6">
-
-      {/* Search input */}
+    <div className="flex flex-col gap-3 lg:flex-row">
       <label
-        className={`flex items-center gap-3 flex-1 px-4 py-2.5 rounded-xl border
-          transition-all duration-200 shadow-sm focus-within:shadow-lg cursor-text
-          ${inputWrapCls}`}
+        className={`flex min-h-11 flex-1 cursor-text items-center gap-3 rounded-xl border px-4 py-2.5 shadow-sm backdrop-blur-xl transition-all ${inputWrapCls}`}
       >
         <Search size={15} aria-hidden="true" className={isDarkMode ? 'text-slate-500' : 'text-slate-400'} />
 
         <input
           value={query}
           onChange={handleQueryChange}
-          placeholder="Search by name, email, agency, role…"
+          placeholder="Search by name, email, agency, role..."
           aria-label="Search users"
-          className="w-full bg-transparent text-sm outline-none"
+          className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-slate-500"
         />
 
         {query && (
@@ -72,8 +61,8 @@ function SearchBarComponent({
             type="button"
             onClick={clearQuery}
             aria-label="Clear search"
-            className={`inline-flex items-center justify-center rounded transition-colors ${
-              isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-400 hover:text-slate-600'
+            className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-colors ${
+              isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200' : 'text-slate-400 hover:bg-white hover:text-slate-700'
             }`}
           >
             <X size={14} />
@@ -81,11 +70,10 @@ function SearchBarComponent({
         )}
       </label>
 
-      {/* Status filter pills */}
       <div
         role="group"
         aria-label="Filter users by status"
-        className={`flex items-center gap-1 px-1.5 py-1.5 rounded-xl border ${pillWrapCls}`}
+        className={`flex min-h-11 items-center gap-1 overflow-x-auto rounded-xl border px-1.5 py-1.5 shadow-sm backdrop-blur-xl ${pillWrapCls}`}
       >
         <SlidersHorizontal
           size={14}
@@ -102,14 +90,13 @@ function SearchBarComponent({
               type="button"
               aria-pressed={active}
               onClick={() => handleStatusClick(value)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all duration-150 ${pillCls(active)}`}
+              className={`whitespace-nowrap rounded-lg px-3 py-1 text-xs font-black transition-all ${pillCls(active)}`}
             >
               {label}
             </button>
           );
         })}
       </div>
-
     </div>
   );
 }

@@ -3,7 +3,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  Clock,
+  Clock3,
   FileCheck2,
   Loader2,
   RefreshCw,
@@ -22,27 +22,34 @@ import { PROJECT_STATUS } from '@/features/projects/projectStatuses';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-const STATUS_TONE = {
-  [PROJECT_STATUS.SUBMITTED]: 'bg-sky-500/10 text-sky-600 border-sky-500/20',
-  [PROJECT_STATUS.UNDER_REVIEW]: 'bg-violet-500/10 text-violet-600 border-violet-500/20',
-  [PROJECT_STATUS.REVISION_REQUESTED]: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-  [PROJECT_STATUS.APPROVED]: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-  [PROJECT_STATUS.PUBLISHED]: 'bg-teal-500/10 text-teal-600 border-teal-500/20',
-  [PROJECT_STATUS.REJECTED]: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
-  [PROJECT_STATUS.ARCHIVED]: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
-  [PROJECT_STATUS.DRAFT]: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
-};
-
 const REVIEW_STATUSES = new Set([
   PROJECT_STATUS.SUBMITTED,
   PROJECT_STATUS.UNDER_REVIEW,
 ]);
 
-const ATTENTION_STATUSES = new Set([
-  PROJECT_STATUS.SUBMITTED,
-  PROJECT_STATUS.UNDER_REVIEW,
-  PROJECT_STATUS.REVISION_REQUESTED,
-]);
+const STATUS_TONE = {
+  [PROJECT_STATUS.SUBMITTED]: 'border-sky-400/20 bg-sky-400/10 text-sky-600',
+  [PROJECT_STATUS.UNDER_REVIEW]: 'border-violet-400/20 bg-violet-400/10 text-violet-600',
+  [PROJECT_STATUS.REVISION_REQUESTED]: 'border-amber-400/20 bg-amber-400/10 text-amber-600',
+  [PROJECT_STATUS.APPROVED]: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-600',
+  [PROJECT_STATUS.PUBLISHED]: 'border-teal-400/20 bg-teal-400/10 text-teal-600',
+  [PROJECT_STATUS.REJECTED]: 'border-rose-400/20 bg-rose-400/10 text-rose-600',
+  [PROJECT_STATUS.ARCHIVED]: 'border-slate-400/20 bg-slate-400/10 text-slate-500',
+  [PROJECT_STATUS.DRAFT]: 'border-slate-400/20 bg-slate-400/10 text-slate-500',
+};
+
+function normalizeUser(user) {
+  const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
+
+  return {
+    id: user?._id || user?.id || user?.email,
+    name: fullName || user?.username || user?.email || 'User account',
+    email: user?.email || '',
+    role: user?.role || 'user',
+    status: String(user?.status || 'pending').toLowerCase(),
+    position: user?.position || user?.agency || 'No position set',
+  };
+}
 
 function getCount(statusCounts, status, projects) {
   if (statusCounts && Object.prototype.hasOwnProperty.call(statusCounts, status)) {
@@ -66,13 +73,12 @@ function formatDate(value) {
 }
 
 function formatRelative(value) {
-  if (!value) return 'No activity recorded';
+  if (!value) return 'No refresh yet';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'No activity recorded';
+  if (Number.isNaN(date.getTime())) return 'No refresh yet';
 
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
-  if (diffMinutes < 1) return 'Just now';
+  const diffMinutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
+  if (diffMinutes < 1) return 'just now';
   if (diffMinutes < 60) return `${diffMinutes} min ago`;
 
   const diffHours = Math.round(diffMinutes / 60);
@@ -82,52 +88,19 @@ function formatRelative(value) {
   return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
 }
 
-function userDisplayName(user) {
-  const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
-  return fullName || user?.username || user?.email || 'User account';
-}
-
-function normalizeUser(user) {
-  return {
-    id: user?._id || user?.id || user?.email,
-    name: userDisplayName(user),
-    email: user?.email || '',
-    role: user?.role || 'user',
-    status: String(user?.status || 'pending').toLowerCase(),
-    position: user?.position || user?.agency || 'No position set',
-    lastLogin: user?.lastLogin,
-  };
-}
-
 function buildProjectEvent(project) {
-  const status = project.status;
   const owner = project.ownerDisplay || 'Forecaster';
-  const date = project.updatedAt || project.submittedAt || project.createdAt;
 
-  if (status === PROJECT_STATUS.PUBLISHED) {
-    return `${project.title} was published for public viewing`;
-  }
-
-  if (status === PROJECT_STATUS.APPROVED) {
-    return `${project.title} is approved and ready to publish`;
-  }
-
-  if (status === PROJECT_STATUS.REVISION_REQUESTED) {
-    return `${project.title} was returned to ${owner} for revision`;
-  }
-
-  if (status === PROJECT_STATUS.UNDER_REVIEW) {
-    return `${project.title} is under admin review`;
-  }
-
-  if (status === PROJECT_STATUS.SUBMITTED) {
-    return `${owner} submitted ${project.title}`;
-  }
+  if (project.status === PROJECT_STATUS.PUBLISHED) return `${project.title} was published`;
+  if (project.status === PROJECT_STATUS.APPROVED) return `${project.title} is ready to publish`;
+  if (project.status === PROJECT_STATUS.REVISION_REQUESTED) return `${project.title} was returned to ${owner}`;
+  if (project.status === PROJECT_STATUS.UNDER_REVIEW) return `${project.title} is under review`;
+  if (project.status === PROJECT_STATUS.SUBMITTED) return `${owner} submitted ${project.title}`;
 
   return `${project.title} was updated`;
 }
 
-const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
+export default function DashboardOverview({ isDarkMode, onSelectTab }) {
   const [state, setState] = useState({
     loading: true,
     refreshing: false,
@@ -139,6 +112,12 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
     totalUsers: 0,
     loadedAt: null,
   });
+
+  const surface = isDarkMode
+    ? 'border-white/10 bg-slate-950/50 shadow-black/20'
+    : 'border-white/70 bg-white/70 shadow-slate-300/40';
+  const text = isDarkMode ? 'text-white' : 'text-slate-950';
+  const muted = isDarkMode ? 'text-slate-400' : 'text-slate-500';
 
   const loadDashboard = useCallback(async ({ silent = false } = {}) => {
     setState((current) => ({
@@ -152,7 +131,7 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
       const [projectResponse, userResponse] = await Promise.all([
         fetchAdminProjects({
           page: 1,
-          limit: 8,
+          limit: 10,
           sortBy: 'updatedAt',
           sortDir: 'desc',
         }),
@@ -195,13 +174,11 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
   }, [loadDashboard]);
 
   const metrics = useMemo(() => {
-    const projects = state.projects;
-    const statusCounts = state.statusCounts;
-    const submitted = getCount(statusCounts, PROJECT_STATUS.SUBMITTED, projects);
-    const underReview = getCount(statusCounts, PROJECT_STATUS.UNDER_REVIEW, projects);
-    const revision = getCount(statusCounts, PROJECT_STATUS.REVISION_REQUESTED, projects);
-    const approved = getCount(statusCounts, PROJECT_STATUS.APPROVED, projects);
-    const published = getCount(statusCounts, PROJECT_STATUS.PUBLISHED, projects);
+    const submitted = getCount(state.statusCounts, PROJECT_STATUS.SUBMITTED, state.projects);
+    const underReview = getCount(state.statusCounts, PROJECT_STATUS.UNDER_REVIEW, state.projects);
+    const revision = getCount(state.statusCounts, PROJECT_STATUS.REVISION_REQUESTED, state.projects);
+    const approved = getCount(state.statusCounts, PROJECT_STATUS.APPROVED, state.projects);
+    const published = getCount(state.statusCounts, PROJECT_STATUS.PUBLISHED, state.projects);
     const pendingUsers = state.users.filter((user) => user.status === 'pending').length;
     const activeUsers = state.users.filter((user) => user.status === 'active').length;
 
@@ -223,98 +200,79 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
     [state.projects],
   );
 
-  const operationalQueue = useMemo(
-    () => state.projects.filter((project) => ATTENTION_STATUSES.has(project.status)).slice(0, 5),
-    [state.projects],
-  );
-
   const recentActivity = useMemo(
-    () => state.projects
-      .slice(0, 6)
-      .map((project) => ({
-        id: project.id,
-        text: buildProjectEvent(project),
-        status: project.status,
-        date: project.updatedAt || project.submittedAt || project.createdAt,
-      })),
+    () => state.projects.slice(0, 5).map((project) => ({
+      id: project.id,
+      text: buildProjectEvent(project),
+      status: project.status,
+      date: project.updatedAt || project.submittedAt || project.createdAt,
+    })),
     [state.projects],
   );
-
-  const text = isDarkMode ? 'text-slate-100' : 'text-slate-950';
-  const muted = isDarkMode ? 'text-slate-400' : 'text-slate-500';
-  const panel = isDarkMode
-    ? 'border-white/10 bg-slate-900/70'
-    : 'border-slate-200 bg-white';
-  const healthy = !state.error;
 
   if (state.loading) {
     return (
-      <div className={cn('flex min-h-[420px] items-center justify-center rounded-2xl border', panel)}>
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Loader2 className={cn('h-8 w-8 animate-spin', isDarkMode ? 'text-cyan-300' : 'text-blue-600')} />
-          <p className={cn('text-sm font-bold', text)}>Loading operational dashboard</p>
-          <p className={cn('text-xs font-semibold', muted)}>Fetching project queues and account status.</p>
+      <div className="mx-auto max-w-[1500px] p-4 sm:p-6">
+        <div className={cn('flex min-h-[440px] items-center justify-center rounded-2xl border shadow-xl backdrop-blur-xl', surface)}>
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Loader2 className={cn('h-8 w-8 animate-spin', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
+            <p className={cn('text-sm font-black', text)}>Loading admin operations</p>
+            <p className={cn('text-xs font-semibold', muted)}>Fetching review queues, publication state, and user access.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <section className={cn('rounded-2xl border p-5 shadow-sm', panel)}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className={cn('text-xs font-black uppercase tracking-[0.22em]', muted)}>
-              Operational Command
-            </p>
-            <h1 className={cn('mt-2 text-2xl font-black tracking-tight md:text-3xl', text)}>
-              Marine Forecast Administration
-            </h1>
-            <p className={cn('mt-2 max-w-3xl text-sm font-medium leading-6', muted)}>
-              Monitor submitted wave forecast charts, keep user access healthy, and move approved guidance toward publication.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill
-              icon={healthy ? CheckCircle2 : AlertTriangle}
-              label={healthy ? 'Operational' : 'Needs Attention'}
-              isDarkMode={isDarkMode}
-              tone={healthy ? 'emerald' : 'amber'}
-            />
-            <button
-              type="button"
-              onClick={() => loadDashboard({ silent: true })}
-              className={cn(
-                'flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black transition-colors',
-                isDarkMode
-                  ? 'border-white/10 text-slate-300 hover:bg-white/[0.06] hover:text-white'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-950',
-              )}
-            >
-              <RefreshCw size={15} className={state.refreshing ? 'animate-spin' : ''} />
-              Refresh
-            </button>
-          </div>
+    <div className="mx-auto max-w-[1500px] space-y-5 p-4 sm:p-6">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className={cn('text-sm font-black', text)}>Welcome back, Admin.</p>
+          <p className={cn('mt-1 text-xs font-semibold', muted)}>
+            Last refreshed {formatRelative(state.loadedAt)}
+          </p>
         </div>
 
-        {state.error && (
-          <div className={cn(
-            'mt-4 rounded-xl border px-4 py-3 text-sm font-semibold',
-            isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800',
-          )}>
-            {state.error}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill
+            icon={state.error ? AlertTriangle : CheckCircle2}
+            label={state.error ? 'Needs attention' : 'Operational'}
+            isDarkMode={isDarkMode}
+            tone={state.error ? 'amber' : 'emerald'}
+          />
+          <button
+            type="button"
+            onClick={() => loadDashboard({ silent: true })}
+            className={cn(
+              'flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm backdrop-blur-xl transition-colors',
+              isDarkMode
+                ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
+                : 'border-white/80 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-950',
+            )}
+          >
+            <RefreshCw size={15} className={state.refreshing ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </section>
+
+      {state.error && (
+        <section className={cn(
+          'rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm backdrop-blur-xl',
+          isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50/80 text-amber-800',
+        )}>
+          {state.error}
+        </section>
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={Waves}
-          label="Charts Awaiting Review"
+          label="Review Queue"
           value={metrics.reviewQueue}
           helper={`${metrics.submitted} submitted, ${metrics.underReview} in review`}
-          tone="blue"
+          tone="cyan"
           isDarkMode={isDarkMode}
         />
         <MetricCard
@@ -329,13 +287,13 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
           icon={Users}
           label="User Accounts"
           value={state.totalUsers}
-          helper={`${metrics.pendingUsers} pending on current page`}
-          tone="cyan"
+          helper={`${metrics.pendingUsers} pending approval`}
+          tone="blue"
           isDarkMode={isDarkMode}
         />
         <MetricCard
           icon={AlertTriangle}
-          label="Operational Attention"
+          label="Needs Attention"
           value={metrics.attentionQueue}
           helper={`${metrics.revision} returned for revision`}
           tone={metrics.attentionQueue > 0 ? 'amber' : 'emerald'}
@@ -343,10 +301,10 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
         />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.85fr)]">
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.85fr)]">
         <Panel
           title="Review Queue"
-          description="Submitted charts that need admin triage or approval."
+          description="Submitted forecast charts that need admin triage."
           actionLabel="Open Review Charts"
           onAction={() => onSelectTab?.(ADMIN_TABS.CHARTS)}
           isDarkMode={isDarkMode}
@@ -355,7 +313,7 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
             {reviewQueue.length === 0 ? (
               <EmptyState
                 title="No charts waiting for review"
-                description="Submitted forecast charts will appear here when forecasters send them for admin review."
+                description="Submitted forecast charts will appear here when forecasters send them for review."
                 isDarkMode={isDarkMode}
               />
             ) : reviewQueue.map((project) => (
@@ -366,28 +324,28 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
 
         <Panel
           title="Operational Checklist"
-          description="Daily admin checks aligned with the forecast workflow."
+          description="Daily checks for a clean review workflow."
           isDarkMode={isDarkMode}
         >
           <div className="space-y-3">
             <ChecklistItem
               done={metrics.reviewQueue === 0}
-              title="Review incoming forecast charts"
-              detail={`${metrics.reviewQueue} chart${metrics.reviewQueue === 1 ? '' : 's'} in review queue`}
+              title="Clear review queue"
+              detail={`${metrics.reviewQueue} chart${metrics.reviewQueue === 1 ? '' : 's'} waiting`}
               isDarkMode={isDarkMode}
               onClick={() => onSelectTab?.(ADMIN_TABS.CHARTS)}
             />
             <ChecklistItem
               done={metrics.pendingUsers === 0}
-              title="Verify pending staff accounts"
-              detail={`${metrics.pendingUsers} pending account${metrics.pendingUsers === 1 ? '' : 's'} on current page`}
+              title="Verify pending users"
+              detail={`${metrics.pendingUsers} pending account${metrics.pendingUsers === 1 ? '' : 's'}`}
               isDarkMode={isDarkMode}
               onClick={() => onSelectTab?.(ADMIN_TABS.USERS_LIST)}
             />
             <ChecklistItem
               done={!state.error}
-              title="Confirm dashboard data availability"
-              detail={state.error || `Last refreshed ${formatRelative(state.loadedAt)}`}
+              title="Confirm data health"
+              detail={state.error || `Dashboard refreshed ${formatRelative(state.loadedAt)}`}
               isDarkMode={isDarkMode}
               onClick={() => loadDashboard({ silent: true })}
             />
@@ -395,10 +353,10 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
         </Panel>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-3">
+      <section className="grid gap-5 xl:grid-cols-3">
         <Panel
           title="Publication Pipeline"
-          description="Current distribution of forecast project states."
+          description="Current project state distribution."
           isDarkMode={isDarkMode}
         >
           <div className="space-y-3">
@@ -412,14 +370,14 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
 
         <Panel
           title="Recent Activity"
-          description="Latest project updates from the review workflow."
+          description="Latest project updates."
           isDarkMode={isDarkMode}
         >
           <div className="space-y-3">
             {recentActivity.length === 0 ? (
               <EmptyState
-                title="No project activity yet"
-                description="Project updates will appear here after forecasters begin submitting charts."
+                title="No activity yet"
+                description="Project updates will appear here after forecasters submit charts."
                 isDarkMode={isDarkMode}
               />
             ) : recentActivity.map((item) => (
@@ -430,27 +388,25 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
 
         <Panel
           title="Access Health"
-          description="Staff account visibility for operational readiness."
+          description="Staff account readiness."
           actionLabel="Manage Users"
           onAction={() => onSelectTab?.(ADMIN_TABS.USERS_LIST)}
           isDarkMode={isDarkMode}
         >
           <div className="mb-4 grid grid-cols-2 gap-3">
             <MiniStat label="Active" value={metrics.activeUsers} icon={UserCheck} isDarkMode={isDarkMode} />
-            <MiniStat label="Pending" value={metrics.pendingUsers} icon={Clock} isDarkMode={isDarkMode} />
+            <MiniStat label="Pending" value={metrics.pendingUsers} icon={Clock3} isDarkMode={isDarkMode} />
           </div>
-
           <div className="space-y-2">
-            {state.users.slice(0, 4).map((user) => (
-              <UserRow key={user.id} user={user} isDarkMode={isDarkMode} />
-            ))}
-            {state.users.length === 0 && (
+            {state.users.length === 0 ? (
               <EmptyState
                 title="No users loaded"
                 description="User accounts will appear here once the admin user endpoint responds."
                 isDarkMode={isDarkMode}
               />
-            )}
+            ) : state.users.slice(0, 4).map((user) => (
+              <UserRow key={user.id} user={user} isDarkMode={isDarkMode} />
+            ))}
           </div>
         </Panel>
       </section>
@@ -459,36 +415,36 @@ const DashboardOverview = ({ isDarkMode, onSelectTab }) => {
         <QuickAction
           icon={Waves}
           title="Review forecast charts"
-          description="Open submitted charts, inspect annotations, and approve or request revisions."
+          description="Inspect submitted map outputs and approve or request revisions."
           onClick={() => onSelectTab?.(ADMIN_TABS.CHARTS)}
           isDarkMode={isDarkMode}
         />
         <QuickAction
           icon={ShieldCheck}
-          title="Manage operational access"
-          description="Approve, suspend, or update accounts for forecasters and admins."
+          title="Manage access"
+          description="Approve, suspend, or update operational user accounts."
           onClick={() => onSelectTab?.(ADMIN_TABS.USERS_LIST)}
           isDarkMode={isDarkMode}
         />
         <QuickAction
           icon={Settings}
-          title="Maintain public content"
-          description="Update public dashboard copy, contact details, and site information."
+          title="Update configuration"
+          description="Maintain public content and system settings."
           onClick={() => onSelectTab?.(ADMIN_TABS.SETTINGS)}
           isDarkMode={isDarkMode}
         />
       </section>
     </div>
   );
-};
+}
 
 function StatusPill({ icon: Icon, label, tone, isDarkMode }) {
   const toneClass = tone === 'emerald'
-    ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    : isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-700';
+    ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
+    : isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50/80 text-amber-700';
 
   return (
-    <span className={cn('inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black', toneClass)}>
+    <span className={cn('inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm backdrop-blur-xl', toneClass)}>
       <Icon size={15} />
       {label}
     </span>
@@ -497,54 +453,41 @@ function StatusPill({ icon: Icon, label, tone, isDarkMode }) {
 
 function MetricCard({ icon: Icon, label, value, helper, tone, isDarkMode }) {
   const toneClass = {
-    blue: isDarkMode ? 'bg-blue-400/10 text-blue-200' : 'bg-blue-50 text-blue-700',
-    emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700',
-    cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700',
-    amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700',
-  }[tone] || (isDarkMode ? 'bg-slate-400/10 text-slate-200' : 'bg-slate-100 text-slate-700');
+    blue: isDarkMode ? 'bg-blue-400/10 text-blue-200' : 'bg-blue-50/80 text-blue-700',
+    cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50/80 text-cyan-700',
+    emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50/80 text-emerald-700',
+    amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50/80 text-amber-700',
+  }[tone];
 
   return (
-    <div className={cn('rounded-2xl border p-4 shadow-sm', isDarkMode ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white')}>
+    <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}>
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-            {label}
-          </p>
-          <p className={cn('mt-2 text-3xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-            {value}
-          </p>
+        <div className="min-w-0">
+          <p className={cn('truncate text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p>
+          <p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p>
         </div>
-        <span className={cn('flex h-11 w-11 items-center justify-center rounded-xl', toneClass)}>
+        <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', toneClass)}>
           <Icon size={21} />
         </span>
       </div>
-      <p className={cn('mt-3 text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-        {helper}
-      </p>
+      <p className={cn('mt-3 text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{helper}</p>
     </div>
   );
 }
 
 function Panel({ title, description, actionLabel, onAction, isDarkMode, children }) {
   return (
-    <div className={cn('rounded-2xl border p-4 shadow-sm', isDarkMode ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white')}>
+    <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}>
       <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-            {title}
-          </h2>
-          <p className={cn('mt-1 text-sm font-medium leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-            {description}
-          </p>
+        <div className="min-w-0">
+          <h2 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h2>
+          <p className={cn('mt-1 text-sm font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p>
         </div>
         {actionLabel && (
           <button
             type="button"
             onClick={onAction}
-            className={cn(
-              'shrink-0 rounded-lg px-3 py-2 text-xs font-black transition-colors',
-              isDarkMode ? 'bg-white/[0.06] text-slate-200 hover:bg-white/[0.1]' : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-            )}
+            className={cn('shrink-0 rounded-lg px-3 py-2 text-xs font-black transition-colors', isDarkMode ? 'bg-white/[0.06] text-slate-200 hover:bg-white/[0.1]' : 'bg-white/75 text-slate-700 hover:bg-white')}
           >
             {actionLabel}
           </button>
@@ -559,13 +502,11 @@ function ProjectRow({ project, isDarkMode }) {
   const tone = STATUS_TONE[project.status] || STATUS_TONE[PROJECT_STATUS.DRAFT];
 
   return (
-    <div className={cn('flex items-center justify-between gap-3 rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-slate-50')}>
+    <div className={cn('flex items-center justify-between gap-3 rounded-xl border p-3 backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
       <div className="min-w-0">
-        <p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-          {project.title}
-        </p>
+        <p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{project.title}</p>
         <p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-          {project.ownerDisplay} - {project.chartType} - {formatDate(project.updatedAt || project.submittedAt)}
+          {project.ownerDisplay || 'Forecaster'} - {project.chartType || 'Forecast'} - {formatDate(project.updatedAt || project.submittedAt)}
         </p>
       </div>
       <span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black', tone)}>
@@ -580,26 +521,14 @@ function ChecklistItem({ done, title, detail, isDarkMode, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors',
-        isDarkMode ? 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]' : 'border-slate-200 bg-slate-50 hover:bg-slate-100',
-      )}
+      className={cn('flex w-full items-start gap-3 rounded-xl border p-3 text-left backdrop-blur-xl transition-colors', isDarkMode ? 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]' : 'border-white/80 bg-white/65 hover:bg-white')}
     >
-      <span className={cn(
-        'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
-        done
-          ? isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-100 text-emerald-700'
-          : isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-100 text-amber-700',
-      )}>
-        {done ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+      <span className={cn('mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg', done ? 'bg-emerald-400/10 text-emerald-500' : 'bg-amber-400/10 text-amber-500')}>
+        {done ? <CheckCircle2 size={17} /> : <Clock3 size={17} />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={cn('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-          {title}
-        </span>
-        <span className={cn('mt-1 block text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-          {detail}
-        </span>
+        <span className={cn('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</span>
+        <span className={cn('mt-1 block text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{detail}</span>
       </span>
       <ArrowRight size={15} className={cn('mt-1 shrink-0', isDarkMode ? 'text-slate-500' : 'text-slate-400')} />
     </button>
@@ -615,7 +544,7 @@ function PipelineBar({ label, value, total, color, isDarkMode }) {
         <span className={cn('font-bold', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{label}</span>
         <span className={cn('font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</span>
       </div>
-      <div className={cn('h-2.5 overflow-hidden rounded-full', isDarkMode ? 'bg-white/10' : 'bg-slate-200')}>
+      <div className={cn('h-2.5 overflow-hidden rounded-full', isDarkMode ? 'bg-white/10' : 'bg-white/80')}>
         <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${percent}%` }} />
       </div>
     </div>
@@ -627,12 +556,8 @@ function ActivityRow({ item, isDarkMode }) {
     <div className="flex gap-3">
       <span className={cn('mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', item.status === PROJECT_STATUS.PUBLISHED ? 'bg-emerald-500' : 'bg-cyan-500')} />
       <div className="min-w-0">
-        <p className={cn('text-sm font-bold leading-5', isDarkMode ? 'text-slate-200' : 'text-slate-800')}>
-          {item.text}
-        </p>
-        <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
-          {formatRelative(item.date)}
-        </p>
+        <p className={cn('text-sm font-bold leading-5', isDarkMode ? 'text-slate-200' : 'text-slate-800')}>{item.text}</p>
+        <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>{formatRelative(item.date)}</p>
       </div>
     </div>
   );
@@ -640,9 +565,9 @@ function ActivityRow({ item, isDarkMode }) {
 
 function MiniStat({ icon: Icon, label, value, isDarkMode }) {
   return (
-    <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-slate-50')}>
+    <div className={cn('rounded-xl border p-3 backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
       <div className="flex items-center gap-2">
-        <Icon size={15} className={isDarkMode ? 'text-cyan-300' : 'text-blue-600'} />
+        <Icon size={15} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} />
         <span className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</span>
       </div>
       <p className={cn('mt-2 text-2xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p>
@@ -652,20 +577,16 @@ function MiniStat({ icon: Icon, label, value, isDarkMode }) {
 
 function UserRow({ user, isDarkMode }) {
   const active = user.status === 'active';
+
   return (
-    <div className={cn('flex items-center justify-between gap-3 rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-slate-50')}>
+    <div className={cn('flex items-center justify-between gap-3 rounded-xl border p-3 backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
       <div className="min-w-0">
         <p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{user.name}</p>
-        <p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+        <p className={cn('mt-1 truncate text-xs font-semibold capitalize', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
           {user.role} - {user.position}
         </p>
       </div>
-      <span className={cn(
-        'shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black capitalize',
-        active
-          ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-          : isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-700',
-      )}>
+      <span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black capitalize', active ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-600' : 'border-amber-400/20 bg-amber-400/10 text-amber-600')}>
         {user.status}
       </span>
     </div>
@@ -674,11 +595,9 @@ function UserRow({ user, isDarkMode }) {
 
 function EmptyState({ title, description, isDarkMode }) {
   return (
-    <div className={cn('rounded-xl border px-4 py-6 text-center', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-slate-50')}>
+    <div className={cn('rounded-xl border px-4 py-6 text-center backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
       <p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</p>
-      <p className={cn('mx-auto mt-1 max-w-sm text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-        {description}
-      </p>
+      <p className={cn('mx-auto mt-1 max-w-sm text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p>
     </div>
   );
 }
@@ -688,23 +607,16 @@ function QuickAction({ icon: Icon, title, description, onClick, isDarkMode }) {
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        'group flex min-h-32 items-start gap-3 rounded-2xl border p-4 text-left shadow-sm transition-all',
-        isDarkMode ? 'border-white/10 bg-slate-900/70 hover:bg-slate-900' : 'border-slate-200 bg-white hover:bg-slate-50',
-      )}
+      className={cn('group flex min-h-32 items-start gap-3 rounded-2xl border p-4 text-left shadow-xl backdrop-blur-xl transition-all', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20 hover:bg-slate-900/70' : 'border-white/70 bg-white/70 shadow-slate-300/40 hover:bg-white')}
     >
-      <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700')}>
+      <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-xl', isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700')}>
         <Icon size={19} />
       </span>
       <span className="min-w-0 flex-1">
         <span className={cn('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</span>
-        <span className={cn('mt-1 block text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-          {description}
-        </span>
+        <span className={cn('mt-1 block text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</span>
       </span>
       <ArrowRight size={16} className={cn('mt-1 shrink-0 transition-transform group-hover:translate-x-0.5', isDarkMode ? 'text-slate-500' : 'text-slate-400')} />
     </button>
   );
 }
-
-export default DashboardOverview;

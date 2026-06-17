@@ -3,24 +3,24 @@ import { useTheme } from "@/app/providers/ThemeProvider";
 
 const formatCoord = (value, type) => {
   const abs = Math.abs(value).toFixed(4);
-  if (type === "lat") return `${abs}° ${value >= 0 ? "N" : "S"}`;
-  if (type === "lon") return `${abs}° ${value >= 0 ? "E" : "W"}`;
+  if (type === "lat") return `${abs} deg ${value >= 0 ? "N" : "S"}`;
+  if (type === "lon") return `${abs} deg ${value >= 0 ? "E" : "W"}`;
+  return `${abs} deg`;
 };
 
 const MapStatusBar = ({ mapRef }) => {
   const { isDarkMode } = useTheme();
-
   const [status, setStatus] = useState({ lat: null, lon: null, zoom: null });
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map) return undefined;
 
-    const handleMove = (e) => {
+    const handleMove = (event) => {
       setStatus((prev) => ({
         ...prev,
-        lat: formatCoord(e.lngLat.lat, "lat"),
-        lon: formatCoord(e.lngLat.lng, "lon"),
+        lat: formatCoord(event.lngLat.lat, "lat"),
+        lon: formatCoord(event.lngLat.lng, "lon"),
       }));
     };
 
@@ -38,36 +38,40 @@ const MapStatusBar = ({ mapRef }) => {
     };
   }, [mapRef]);
 
-  const latVal  = status.lat  ?? "––.––––°";
-  const lonVal  = status.lon  ?? "––.––––°";
-  const zoomVal = status.zoom ?? "–.–";
+  const latVal = status.lat ?? "--.---- deg";
+  const lonVal = status.lon ?? "--.---- deg";
+  const zoomVal = status.zoom ?? "-.-";
 
-  const textColor = isDarkMode ? "text-slate-200" : "text-slate-700";
-  const labelColor = isDarkMode ? "text-slate-500" : "text-slate-400";
+  const panelTone = isDarkMode
+    ? "studio-liquid-dark border-white/[0.18] text-white"
+    : "studio-liquid-light border-white/80 text-slate-900";
+  const textColor = isDarkMode ? "text-white/80" : "text-slate-700";
+  const labelColor = isDarkMode ? "text-white/35" : "text-slate-400";
 
   return (
     <div
       className={`
-        fixed bottom-4 right-4
+        studio-liquid-panel fixed bottom-4 right-4
         z-[90] pointer-events-none
         flex items-center gap-3
+        rounded-full border px-3 py-2 shadow-2xl
         font-mono text-[10px] tabular-nums
-        opacity-80 hover:opacity-100
         transition-opacity duration-300
+        ${panelTone}
       `}
     >
       <span>
-        <span className={`${labelColor} mr-1 tracking-widest uppercase text-[8px]`}>Lat</span>
+        <span className={`${labelColor} mr-1 text-[8px] uppercase tracking-widest`}>Lat</span>
         <span className={textColor}>{latVal}</span>
       </span>
-      <span className={labelColor}>·</span>
+      <span className={labelColor}>/</span>
       <span>
-        <span className={`${labelColor} mr-1 tracking-widest uppercase text-[8px]`}>Lon</span>
+        <span className={`${labelColor} mr-1 text-[8px] uppercase tracking-widest`}>Lon</span>
         <span className={textColor}>{lonVal}</span>
       </span>
-      <span className={labelColor}>·</span>
+      <span className={labelColor}>/</span>
       <span>
-        <span className={`${labelColor} mr-1 tracking-widest uppercase text-[8px]`}>Zoom</span>
+        <span className={`${labelColor} mr-1 text-[8px] uppercase tracking-widest`}>Zoom</span>
         <span className={textColor}>{zoomVal}</span>
       </span>
     </div>

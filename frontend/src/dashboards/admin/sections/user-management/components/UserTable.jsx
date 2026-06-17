@@ -42,16 +42,16 @@ const snapToPageOption = (limit) =>
 const inputCls = (isDarkMode) =>
   `px-2 py-1 rounded-lg border text-xs ${
     isDarkMode
-      ? 'bg-slate-900 border-slate-700 text-slate-300'
-      : 'bg-white border-slate-200 text-slate-600'
+      ? 'border-white/10 bg-white/[0.04] text-slate-300'
+      : 'border-white/80 bg-white/70 text-slate-600'
   }`;
 
 const navBtnCls = (disabled, isDarkMode) =>
   `px-2 py-1 rounded-lg border ${
     disabled
       ? 'opacity-40 cursor-not-allowed'
-      : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-  } ${isDarkMode ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'}`;
+      : isDarkMode ? 'hover:bg-white/[0.07]' : 'hover:bg-white'
+  } ${isDarkMode ? 'border-white/10 text-slate-300' : 'border-white/80 text-slate-600'}`;
 
 // ─── Sub-components (memo to skip re-renders when props haven't changed) ──────
 
@@ -61,7 +61,7 @@ const EmptyState = memo(({ isDarkMode, colSpan }) => (
       <div className="flex flex-col items-center gap-3">
         <div
           className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-            isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
+            isDarkMode ? 'bg-white/[0.06]' : 'bg-white/70'
           }`}
         >
           <Users size={22} className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} />
@@ -81,7 +81,7 @@ const BulkActionsBar = memo(({ count, isDarkMode, onBulkAction, onClearSelection
   return (
     <div
       className={`flex items-center justify-between px-3 py-2 rounded-xl mb-3 border ${
-        isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'
+        isDarkMode ? 'border-white/10 bg-white/[0.06]' : 'border-white/80 bg-white/70'
       }`}
     >
       <span className="text-sm font-medium">{count} selected</span>

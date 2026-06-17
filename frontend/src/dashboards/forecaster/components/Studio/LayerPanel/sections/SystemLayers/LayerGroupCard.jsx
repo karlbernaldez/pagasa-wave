@@ -33,7 +33,7 @@ const LayerGroupCard = ({
         className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
       >
         {icon && (
-          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isDarkMode ? 'bg-white/8 text-white/65' : 'bg-slate-100 text-slate-600'}`}>
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isDarkMode ? 'bg-white/[0.08] text-white/65' : 'bg-slate-100 text-slate-600'}`}>
             {icon}
           </span>
         )}

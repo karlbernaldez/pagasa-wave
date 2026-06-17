@@ -38,8 +38,8 @@ const getTheme = (isDarkMode) => ({
   accent: isDarkMode ? 'text-cyan-300' : 'text-blue-600',
   accentBg: isDarkMode ? 'bg-cyan-400' : 'bg-blue-500',
   tooltip: isDarkMode
-    ? 'bg-slate-950/95 border-white/10 text-white'
-    : 'bg-white/95 border-slate-200 text-slate-900',
+    ? 'studio-liquid-dark border-white/[0.18] text-white'
+    : 'studio-liquid-light border-white/80 text-slate-900',
 });
 
 const SectionLabel = ({ icon: Icon, label, theme }) => (
@@ -75,7 +75,7 @@ const ToolButton = ({ onClick, active, theme, title, hotkey, children, wide = fa
     <div
       className={cn(
         'pointer-events-none absolute bottom-full left-1/2 z-50 mb-2.5 -translate-x-1/2 whitespace-nowrap',
-        'rounded-lg border px-2.5 py-1.5 opacity-0 shadow-xl backdrop-blur-xl transition-opacity duration-150 group-hover:opacity-100',
+        'studio-liquid-panel rounded-lg border px-2.5 py-1.5 opacity-0 shadow-xl backdrop-blur-xl transition-opacity duration-150 group-hover:opacity-100',
         theme.tooltip
       )}
     >
