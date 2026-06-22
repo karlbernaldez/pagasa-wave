@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const USER_ID = 'user-1';
+const ADMIN_ID = 'admin-1';
 
 async function loadModules() {
   const workflow = await import('../utils/' + 'forecast' + 'Package.js');
@@ -27,11 +28,11 @@ function createQuery(result) {
   };
 }
 
-function createPkg(workflow, ready) {
+function createPkg(workflow, ready, status = workflow.FORECAST_PACKAGE_STATUS.DRAFT) {
   return {
     _id: 'package-1',
     owner: ownerId(),
-    status: workflow.FORECAST_PACKAGE_STATUS.DRAFT,
+    status,
     charts: workflow.REQUIRED_FORECAST_CHART_TYPES.map((chartType, index) => ({
       chartType,
       project: `project-${index + 1}`,
@@ -49,6 +50,8 @@ function createPkg(workflow, ready) {
         chartCompletion: this.chartCompletion,
         auditLogs: this.auditLogs,
         submittedAt: this.submittedAt,
+        reviewedAt: this.reviewedAt,
+        reviewComment: this.reviewComment,
       };
     },
   };
@@ -69,12 +72,13 @@ async function run(handler, req) {
   });
 }
 
-function req() {
+function req(overrides = {}) {
   return {
     params: { id: 'package-1' },
     body: {},
     query: {},
     user: { id: USER_ID, role: 'forecaster' },
+    ...overrides,
   };
 }
 
@@ -129,8 +133,54 @@ test('package submit action submits and locks linked chart projects when every r
     assert.equal(pkg.auditLogs.at(-1).action, 'submitted');
     assert.deepEqual(updateManyPayload.filter._id.$in, ['project-1', 'project-2', 'project-3', 'project-4']);
     assert.equal(updateManyPayload.update.$set.status, 'Submitted');
+    assert.equal(updateManyPayload.update.$push.auditLogs.action, 'submitted');
     assert.equal(res.body.completion.completed, 4);
     assert.equal(res.body.completion.isComplete, true);
+  } finally {
+    PackageModel.findById = originalFindById;
+    Project.updateMany = originalUpdateMany;
+  }
+});
+
+test('package revision request unlocks linked chart projects for forecaster edits', async () => {
+  const { workflow, controller, PackageModel, Project } = await loadModules();
+  const originalFindById = PackageModel.findById;
+  const originalUpdateMany = Project.updateMany;
+  const pkg = createPkg(workflow, true, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
+  const comment = 'Please update the wave-height annotation on the 24h chart.';
+  let calls = 0;
+  let updateManyPayload;
+
+  try {
+    PackageModel.findById = () => {
+      calls += 1;
+      return calls === 1 ? pkg : createQuery(pkg);
+    };
+    Project.updateMany = async (filter, update) => {
+      updateManyPayload = { filter, update };
+      return { modifiedCount: 4 };
+    };
+
+    const res = await run(
+      controller.requestForecastPackageRevision,
+      req({
+        body: { comment },
+        user: { id: ADMIN_ID, role: 'admin' },
+      })
+    );
+
+    assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
+    assert.ok(pkg.reviewedAt instanceof Date);
+    assert.equal(pkg.reviewComment, comment);
+    assert.equal(pkg.saveCalls, 1);
+    assert.equal(pkg.auditLogs.at(-1).action, 'revision_requested');
+    assert.deepEqual(updateManyPayload.filter._id.$in, ['project-1', 'project-2', 'project-3', 'project-4']);
+    assert.deepEqual(updateManyPayload.filter.status.$in, ['Submitted', 'Under Review']);
+    assert.equal(updateManyPayload.update.$set.status, 'Revision Requested');
+    assert.equal(updateManyPayload.update.$set.reviewComment, comment);
+    assert.equal(updateManyPayload.update.$push.auditLogs.action, 'revision_requested');
+    assert.equal(updateManyPayload.update.$push.auditLogs.comment, comment);
+    assert.equal(res.body.status, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
   } finally {
     PackageModel.findById = originalFindById;
     Project.updateMany = originalUpdateMany;
