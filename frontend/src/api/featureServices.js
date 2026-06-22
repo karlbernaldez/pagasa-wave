@@ -7,19 +7,33 @@ function getCanonicalProjectId(projectId) {
   return String(projectId || '').split(':')[0];
 }
 
-// ── Shared session-expired handler ────────────────────────────────────────────
+async function getErrorMessage(response, fallback) {
+  try {
+    const errorData = await response.json();
+    return errorData?.message || errorData?.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 async function handleSessionExpired() {
   await showSessionModal({
-    variant:      'warning',
-    title:        'Session Expired',
-    message:      'Your session has timed out. Please log in again to continue.',
+    variant: 'warning',
+    title: 'Session Expired',
+    message: 'Your session has timed out. Please log in again to continue.',
     confirmLabel: 'Go to Login',
   });
   window.location.href = '/login';
 }
 
-// ── Feature API ───────────────────────────────────────────────────────────────
+async function throwFeatureRequestError(response, fallbackMessage) {
+  if (response.status === 401) {
+    await handleSessionExpired();
+    throw new Error('Session expired');
+  }
+
+  throw new Error(await getErrorMessage(response, fallbackMessage));
+}
 
 export const deleteFeature = async (sourceId) => {
   try {
@@ -80,14 +94,7 @@ export const fetchFeatures = async (projectId) => {
     });
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        await handleSessionExpired(); // ← styled modal, then redirect
-        return;
-      }
-
-      const errorData = await response.json();
-      console.error('[ERROR] Failed to fetch features:', response.status, errorData);
-      throw new Error('Failed to fetch features');
+      await throwFeatureRequestError(response, 'Failed to fetch features');
     }
 
     return await response.json();
@@ -113,18 +120,7 @@ export const fetchProjectFeatureCollection = async (projectId) => {
     );
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        await handleSessionExpired(); // ← styled modal, then redirect
-        return;
-      }
-
-      const errorData = await response.json();
-      console.error(
-        '[ERROR] Failed to fetch project FeatureCollection:',
-        response.status,
-        errorData
-      );
-      throw new Error(errorData.error || 'Failed to fetch project features');
+      await throwFeatureRequestError(response, 'Failed to fetch project features');
     }
 
     return await response.json();
