@@ -2,16 +2,20 @@ import express from 'express';
 
 import {
   approveForecastPackage,
+  claimForecastPackageChartByProject,
   createForecastPackage,
   getAdminForecastPackages,
   getCurrentForecastPackage,
   getForecastPackageById,
+  getForecastPackageChartContextByProject,
   getUserForecastPackages,
   publishForecastPackage,
+  releaseForecastPackageChartByProject,
   requestForecastPackageRevision,
   startForecastPackageReview,
   submitForecastPackage,
   updateForecastChartCompletion,
+  updateForecastChartCompletionByProject,
 } from '../controllers/forecastPackageController.js';
 import protect from '../middleware/authMiddleware.js';
 import { isAdmin } from '../middleware/adminMiddleware.js';
@@ -29,6 +33,10 @@ router.patch('/:id/publish', isAdmin, publishForecastPackage);
 router.post('/', createForecastPackage);
 router.get('/', getUserForecastPackages);
 router.get('/current', getCurrentForecastPackage);
+router.get('/charts/project/:projectId/context', getForecastPackageChartContextByProject);
+router.patch('/charts/project/:projectId/claim', claimForecastPackageChartByProject);
+router.patch('/charts/project/:projectId/release', releaseForecastPackageChartByProject);
+router.patch('/charts/project/:projectId/completion', updateForecastChartCompletionByProject);
 router.get('/:id', getForecastPackageById);
 router.patch('/:id/charts/:chartType/completion', updateForecastChartCompletion);
 router.patch('/:id/submit', submitForecastPackage);
