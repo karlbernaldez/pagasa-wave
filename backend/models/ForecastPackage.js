@@ -22,6 +22,24 @@ const ForecastPackageChartSchema = new Schema({
     type: Number,
     required: true,
   },
+  claimedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  claimedAt: {
+    type: Date,
+    default: null,
+  },
+  readyBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  readyAt: {
+    type: Date,
+    default: null,
+  },
 }, { _id: false });
 
 const ForecastPackageCompletionSchema = new Schema({
@@ -50,6 +68,8 @@ const ForecastPackageAuditLogSchema = new Schema({
     type: String,
     enum: [
       'created',
+      'chart_claimed',
+      'chart_released',
       'chart_completion_updated',
       'submitted',
       'review_started',
@@ -122,5 +142,6 @@ ForecastPackageSchema.index({ owner: 1, forecastDate: 1 }, { unique: true });
 ForecastPackageSchema.index({ owner: 1, status: 1, updatedAt: -1 });
 ForecastPackageSchema.index({ status: 1, updatedAt: -1 });
 ForecastPackageSchema.index({ forecastDate: -1, updatedAt: -1 });
+ForecastPackageSchema.index({ 'charts.project': 1 });
 
 export default mongoose.models.ForecastPackage || mongoose.model('ForecastPackage', ForecastPackageSchema);
