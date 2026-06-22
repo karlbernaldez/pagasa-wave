@@ -71,6 +71,34 @@ export const requestFeatureChange = async (sourceId, payload) => {
   return response.json();
 };
 
+export const approveFeatureChangeRequest = async (notificationId) => {
+  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    await throwFeatureRequestError(response, 'Failed to approve annotation request');
+  }
+
+  return response.json();
+};
+
+export const declineFeatureChangeRequest = async (notificationId) => {
+  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/decline`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    await throwFeatureRequestError(response, 'Failed to decline annotation request');
+  }
+
+  return response.json();
+};
+
 export const createFeature = async (feature) => {
   try {
     const response = await fetch(`${API_BASE_URL}`, {
