@@ -32,6 +32,22 @@ function assertOwnerOrAdmin(req, forecastPackage) {
   if (!isOwner && !isAdmin) throwError('Forecast Package not found', 404);
 }
 
+function isPackageOwnerOrAdmin(user, forecastPackage) {
+  const isOwner = String(forecastPackage.owner?._id || forecastPackage.owner) === String(user?.id);
+  return isOwner || user?.role === 'admin';
+}
+
+function isSameId(left, right) {
+  return String(left?._id || left || '') === String(right?._id || right || '');
+}
+
+function getDisplayName(user) {
+  if (!user) return '';
+  if (typeof user === 'string') return '';
+  const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  return name || user.username || user.email || '';
+}
+
 function getRequiredComment(value, label = 'Comment') {
   const comment = String(value || '').trim();
   if (!comment) throwError(`${label} is required`, 400);
@@ -41,6 +57,12 @@ function getRequiredComment(value, label = 'Comment') {
 
 function canSubmitPackage(status) {
   return EDITABLE_PACKAGE_STATUSES.includes(status);
+}
+
+function assertEditablePackage(forecastPackage) {
+  if (!EDITABLE_PACKAGE_STATUSES.includes(forecastPackage.status)) {
+    throwError('Chart workflow can only be changed while the package is Draft or Revision Requested', 403);
+  }
 }
 
 function getChartSequenceIndex(chartType) {
@@ -58,14 +80,14 @@ function getPreviousIncompleteChartType(chartCompletion = [], chartType) {
   }) || null;
 }
 
-function resetChartAndDependents(chartCompletion = [], chartType) {
+function resetChartAndDependents(forecastPackage, chartType) {
   const chartIndex = getChartSequenceIndex(chartType);
   if (chartIndex < 0) return 0;
 
   let resetCount = 0;
   const resetChartTypes = new Set(REQUIRED_FORECAST_CHART_TYPES.slice(chartIndex));
 
-  chartCompletion.forEach((row) => {
+  forecastPackage.chartCompletion?.forEach((row) => {
     if (!resetChartTypes.has(row.chartType) || !row.isComplete) return;
     row.isComplete = false;
     row.completedAt = null;
@@ -73,7 +95,25 @@ function resetChartAndDependents(chartCompletion = [], chartType) {
     resetCount += 1;
   });
 
+  forecastPackage.charts?.forEach((chart) => {
+    if (!resetChartTypes.has(chart.chartType)) return;
+    chart.readyAt = null;
+    chart.readyBy = null;
+  });
+
   return resetCount;
+}
+
+function getChartRowByType(forecastPackage, chartType) {
+  return forecastPackage.charts?.find((chart) => chart.chartType === chartType);
+}
+
+function getChartRowByProjectId(forecastPackage, projectId) {
+  return forecastPackage.charts?.find((chart) => isSameId(chart.project, projectId));
+}
+
+function getCompletionRow(forecastPackage, chartType) {
+  return forecastPackage.chartCompletion?.find((item) => item.chartType === chartType);
 }
 
 function serializePackage(forecastPackage) {
@@ -87,10 +127,42 @@ function serializePackage(forecastPackage) {
   };
 }
 
+function serializeChartContext(forecastPackage, chart, user) {
+  const serializedPackage = serializePackage(forecastPackage);
+  const plainChart = typeof chart?.toObject === 'function' ? chart.toObject() : chart;
+  const completionRow = serializedPackage.chartCompletion?.find((item) => item.chartType === plainChart?.chartType);
+  const blockingChartType = completionRow?.isComplete
+    ? null
+    : getPreviousIncompleteChartType(serializedPackage.chartCompletion || [], plainChart?.chartType);
+  const editable = EDITABLE_PACKAGE_STATUSES.includes(serializedPackage.status);
+  const ownerOrAdmin = isPackageOwnerOrAdmin(user, serializedPackage);
+  const claimedByCurrentUser = isSameId(plainChart?.claimedBy, user?.id);
+  const claimedByOtherUser = Boolean(plainChart?.claimedBy && !claimedByCurrentUser && !ownerOrAdmin);
+  const isReady = Boolean(completionRow?.isComplete);
+
+  return {
+    package: serializedPackage,
+    chart: plainChart,
+    chartType: plainChart?.chartType,
+    completion: completionRow || null,
+    blockingChartType,
+    claim: {
+      claimedByCurrentUser,
+      claimedByOtherUser,
+      claimedByLabel: getDisplayName(plainChart?.claimedBy),
+      canClaim: editable && !isReady && !blockingChartType && !claimedByOtherUser,
+      canRelease: editable && Boolean(plainChart?.claimedBy) && (claimedByCurrentUser || ownerOrAdmin),
+      canCertify: editable && !isReady && !blockingChartType && (claimedByCurrentUser || ownerOrAdmin),
+    },
+  };
+}
+
 async function populateForecastPackage(query) {
   return query
     .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
+    .populate('charts.claimedBy', 'firstName lastName email username')
+    .populate('charts.readyBy', 'firstName lastName email username')
     .populate('chartCompletion.completedBy', 'firstName lastName email username')
     .populate('reviewStartedBy', 'firstName lastName email username')
     .populate('approvedBy', 'firstName lastName email username')
@@ -111,6 +183,14 @@ function getLinkedProjectIds(forecastPackage) {
   return (forecastPackage.charts || [])
     .map((chart) => chart.project?._id || chart.project)
     .filter(Boolean);
+}
+
+async function findForecastPackageByChartProjectId(projectId) {
+  return ForecastPackage.findOne({ 'charts.project': projectId });
+}
+
+async function populateForecastPackageById(id) {
+  return populateForecastPackage(ForecastPackage.findById(id));
 }
 
 async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) {
@@ -170,6 +250,65 @@ async function requestLinkedChartProjectRevisions(forecastPackage, userId, comme
       },
     }
   );
+}
+
+function updateForecastChartCompletionState(forecastPackage, chartType, isComplete, user) {
+  assertEditablePackage(forecastPackage);
+
+  const completionRow = getCompletionRow(forecastPackage, chartType);
+  if (!completionRow) {
+    throwError(`Unknown or unsupported chart type: ${chartType}`, 400);
+  }
+
+  const chartRow = getChartRowByType(forecastPackage, chartType);
+  if (!chartRow) {
+    throwError(`Forecast Package chart not found for type: ${chartType}`, 404);
+  }
+
+  const ownerOrAdmin = isPackageOwnerOrAdmin(user, forecastPackage);
+  const claimedByCurrentUser = isSameId(chartRow.claimedBy, user?.id);
+  const claimedByOtherUser = Boolean(chartRow.claimedBy && !claimedByCurrentUser && !ownerOrAdmin);
+  if (claimedByOtherUser) {
+    throwError(`${getForecastChartLabel(chartType)} is currently claimed by another forecaster`, 409);
+  }
+
+  const blockingChartType = isComplete
+    ? getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chartType)
+    : null;
+
+  if (blockingChartType) {
+    throwError(
+      `${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chartType)}`,
+      400
+    );
+  }
+
+  if (isComplete && !claimedByCurrentUser && !ownerOrAdmin) {
+    throwError(`${getForecastChartLabel(chartType)} must be claimed before it can be certified ready`, 409);
+  }
+
+  let comment;
+  if (isComplete) {
+    completionRow.isComplete = true;
+    completionRow.completedAt = new Date();
+    completionRow.completedBy = user.id;
+    chartRow.readyAt = completionRow.completedAt;
+    chartRow.readyBy = user.id;
+    comment = `${getForecastChartLabel(chartType)} marked complete`;
+  } else {
+    const resetCount = resetChartAndDependents(forecastPackage, chartType);
+    comment = resetCount > 1
+      ? `${getForecastChartLabel(chartType)} and downstream charts marked incomplete`
+      : `${getForecastChartLabel(chartType)} marked incomplete`;
+  }
+
+  forecastPackage.auditLogs.push({
+    action: 'chart_completion_updated',
+    performedBy: user.id,
+    previousStatus: forecastPackage.status,
+    newStatus: forecastPackage.status,
+    comment,
+  });
 }
 
 export const createForecastPackage = asyncHandler(async (req, res) => {
@@ -248,7 +387,7 @@ export const createForecastPackage = asyncHandler(async (req, res) => {
       ],
     });
 
-    const populated = await populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
+    const populated = await populateForecastPackageById(forecastPackage._id);
     return res.status(201).json(serializePackage(populated));
   } catch (error) {
     await cleanupCreatedProjects(createdProjectIds);
@@ -333,6 +472,99 @@ export const getForecastPackageById = asyncHandler(async (req, res) => {
   res.json(serializePackage(forecastPackage));
 });
 
+export const getForecastPackageChartContextByProject = asyncHandler(async (req, res) => {
+  assertAuthenticated(req);
+
+  const forecastPackage = await populateForecastPackage(findForecastPackageByChartProjectId(req.params.projectId));
+  if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
+
+  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
+  if (!chart) throwError('Forecast Package chart context not found', 404);
+
+  res.json(serializeChartContext(forecastPackage, chart, req.user));
+});
+
+export const claimForecastPackageChartByProject = asyncHandler(async (req, res) => {
+  assertAuthenticated(req);
+
+  const forecastPackage = await findForecastPackageByChartProjectId(req.params.projectId);
+  if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
+  assertEditablePackage(forecastPackage);
+
+  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
+  if (!chart) throwError('Forecast Package chart context not found', 404);
+
+  const completionRow = getCompletionRow(forecastPackage, chart.chartType);
+  if (completionRow?.isComplete) throwError(`${getForecastChartLabel(chart.chartType)} is already certified ready`, 400);
+
+  const blockingChartType = getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chart.chartType);
+  if (blockingChartType) {
+    throwError(
+      `${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chart.chartType)} can be claimed`,
+      400
+    );
+  }
+
+  const ownerOrAdmin = isPackageOwnerOrAdmin(req.user, forecastPackage);
+  const claimedByCurrentUser = isSameId(chart.claimedBy, req.user.id);
+  const claimedByOtherUser = Boolean(chart.claimedBy && !claimedByCurrentUser && !ownerOrAdmin);
+  if (claimedByOtherUser) {
+    throwError(`${getForecastChartLabel(chart.chartType)} is currently claimed by another forecaster`, 409);
+  }
+
+  chart.claimedBy = req.user.id;
+  chart.claimedAt = new Date();
+  forecastPackage.auditLogs.push({
+    action: 'chart_claimed',
+    performedBy: req.user.id,
+    previousStatus: forecastPackage.status,
+    newStatus: forecastPackage.status,
+    comment: `${getForecastChartLabel(chart.chartType)} claimed for editing`,
+  });
+
+  await forecastPackage.save();
+  const populated = await populateForecastPackageById(forecastPackage._id);
+  const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
+  res.json(serializeChartContext(populated, populatedChart, req.user));
+});
+
+export const releaseForecastPackageChartByProject = asyncHandler(async (req, res) => {
+  assertAuthenticated(req);
+
+  const forecastPackage = await findForecastPackageByChartProjectId(req.params.projectId);
+  if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
+  assertEditablePackage(forecastPackage);
+
+  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
+  if (!chart) throwError('Forecast Package chart context not found', 404);
+
+  if (!chart.claimedBy) {
+    const populated = await populateForecastPackageById(forecastPackage._id);
+    const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
+    return res.json(serializeChartContext(populated, populatedChart, req.user));
+  }
+
+  const ownerOrAdmin = isPackageOwnerOrAdmin(req.user, forecastPackage);
+  if (!isSameId(chart.claimedBy, req.user.id) && !ownerOrAdmin) {
+    throwError(`${getForecastChartLabel(chart.chartType)} can only be released by its active editor`, 409);
+  }
+
+  chart.claimedBy = null;
+  chart.claimedAt = null;
+  forecastPackage.auditLogs.push({
+    action: 'chart_released',
+    performedBy: req.user.id,
+    previousStatus: forecastPackage.status,
+    newStatus: forecastPackage.status,
+    comment: `${getForecastChartLabel(chart.chartType)} editing claim released`,
+  });
+
+  await forecastPackage.save();
+  const populated = await populateForecastPackageById(forecastPackage._id);
+  const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
+  res.json(serializeChartContext(populated, populatedChart, req.user));
+});
+
 export const updateForecastChartCompletion = asyncHandler(async (req, res) => {
   assertAuthenticated(req);
 
@@ -343,51 +575,30 @@ export const updateForecastChartCompletion = asyncHandler(async (req, res) => {
   if (!forecastPackage) throwError('Forecast Package not found', 404);
   assertOwnerOrAdmin(req, forecastPackage);
 
-  if (!EDITABLE_PACKAGE_STATUSES.includes(forecastPackage.status)) {
-    throwError('Chart completion can only be changed while the package is Draft or Revision Requested', 403);
-  }
-
-  const completionRow = forecastPackage.chartCompletion.find((item) => item.chartType === chartType);
-  if (!completionRow) {
-    throwError(`Unknown or unsupported chart type: ${chartType}`, 400);
-  }
-
-  const blockingChartType = isComplete
-    ? getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chartType)
-    : null;
-
-  if (blockingChartType) {
-    throwError(
-      `${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chartType)}`,
-      400
-    );
-  }
-
-  let comment;
-  if (isComplete) {
-    completionRow.isComplete = true;
-    completionRow.completedAt = new Date();
-    completionRow.completedBy = req.user.id;
-    comment = `${getForecastChartLabel(chartType)} marked complete`;
-  } else {
-    const resetCount = resetChartAndDependents(forecastPackage.chartCompletion || [], chartType);
-    comment = resetCount > 1
-      ? `${getForecastChartLabel(chartType)} and downstream charts marked incomplete`
-      : `${getForecastChartLabel(chartType)} marked incomplete`;
-  }
-
-  forecastPackage.auditLogs.push({
-    action: 'chart_completion_updated',
-    performedBy: req.user.id,
-    previousStatus: forecastPackage.status,
-    newStatus: forecastPackage.status,
-    comment,
-  });
+  updateForecastChartCompletionState(forecastPackage, chartType, isComplete, req.user);
 
   await forecastPackage.save();
 
-  const populated = await populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
+  const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
+});
+
+export const updateForecastChartCompletionByProject = asyncHandler(async (req, res) => {
+  assertAuthenticated(req);
+
+  const isComplete = Boolean(req.body?.isComplete);
+  const forecastPackage = await findForecastPackageByChartProjectId(req.params.projectId);
+  if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
+
+  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
+  if (!chart) throwError('Forecast Package chart context not found', 404);
+
+  updateForecastChartCompletionState(forecastPackage, chart.chartType, isComplete, req.user);
+
+  await forecastPackage.save();
+  const populated = await populateForecastPackageById(forecastPackage._id);
+  const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
+  res.json(serializeChartContext(populated, populatedChart, req.user));
 });
 
 export const submitForecastPackage = asyncHandler(async (req, res) => {
@@ -425,7 +636,7 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
 
   await forecastPackage.save();
 
-  const populated = await populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
+  const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
 
@@ -455,7 +666,7 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
   }
 
   if (forecastPackage.status === FORECAST_PACKAGE_STATUS.UNDER_REVIEW) {
-    const populated = await populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
+    const populated = await populateForecastPackageById(forecastPackage._id);
     return res.json(serializePackage(populated));
   }
 
@@ -476,7 +687,7 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
   });
 
   await forecastPackage.save();
-  const populated = await populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
+  const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
 
@@ -507,7 +718,7 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
   });
 
   await forecastPackage.save();
-  const populated = await populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
+  const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
 
@@ -539,7 +750,7 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
   });
 
   await forecastPackage.save();
-  const populated = await populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
+  const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
 
@@ -566,6 +777,6 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
   });
 
   await forecastPackage.save();
-  const populated = await populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
+  const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
