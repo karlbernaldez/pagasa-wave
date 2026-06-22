@@ -7,6 +7,7 @@ import {
   validateGeometry,
   buildNewSourceIdAndUpdateData,
 } from '../utils/dbHelpers.js';
+import { isForecastPackageChartProject } from '../utils/forecastPackageAccess.js';
 import { canEditProjectStatus, getProjectEditLockMessage } from '../utils/projectWorkflow.js';
 
 function ensureProjectIsEditable(project) {
@@ -85,19 +86,19 @@ export const getAllFeatures = asyncHandler(async (req, res) => {
   res.json(features);
 });
 
-// GET FEATURES AS FEATURECOLLECTION (ADMIN)
+// GET FEATURES AS FEATURECOLLECTION
 export const getProjectFeatureCollection = asyncHandler(async (req, res) => {
   const { projectId } = req.params;
 
   if (!projectId) throwError('Missing projectId.', 400);
 
   const features = await Feature.find({
-    'properties.project': projectId
+    'properties.project': projectId,
   });
 
   const featureCollection = {
     type: 'FeatureCollection',
-    features: features.map(toGeoJsonFeature)
+    features: features.map(toGeoJsonFeature),
   };
 
   res.json(featureCollection);
@@ -110,10 +111,12 @@ export const getFeaturesByUserAndProject = asyncHandler(async (req, res) => {
 
   if (!projectId) throwError('Missing projectId in route.', 400);
 
-  const features = await Feature.find({
-    'properties.owner': userId,
-    'properties.project': projectId,
-  }).sort({ createdAt: -1 });
+  const sharedForecastChart = await isForecastPackageChartProject(projectId);
+  const query = sharedForecastChart
+    ? { 'properties.project': projectId }
+    : { 'properties.owner': userId, 'properties.project': projectId };
+
+  const features = await Feature.find(query).sort({ createdAt: -1 });
 
   res.json(features);
 });
