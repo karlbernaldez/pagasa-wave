@@ -1,9 +1,14 @@
 import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 import { throwError } from './errorHelper.js';
+import { isForecastPackageChartProject } from './forecastPackageAccess.js';
 
 /**
- * Ensure project exists, optionally validate owner
+ * Ensure project exists, optionally validate owner.
+ * Forecast Package chart projects are shared across forecasters, so owner-scoped
+ * reads must allow those linked chart projects even when the current forecaster
+ * is not the original project owner.
+ *
  * @param {string} projectId - Project ID
  * @param {string} [owner] - Optional owner ID
  * @returns {Promise<Project>}
@@ -13,7 +18,10 @@ export const ensureProjectExists = async (projectId, owner = null) => {
   if (!project) throwError('Project not found.', 404);
 
   if (owner && project.owner.toString() !== owner.toString()) {
-    throwError('Unauthorized: you do not own this project.', 403);
+    const sharedForecastChart = await isForecastPackageChartProject(project._id || projectId);
+    if (!sharedForecastChart) {
+      throwError('Unauthorized: you do not own this project.', 403);
+    }
   }
 
   return project;
@@ -97,7 +105,6 @@ export const validateGeometry = (geometry) => {
         throwError('Invalid Polygon ring. Must contain at least 4 [lng, lat] points.', 400);
       }
 
-      // Check if polygon is closed
       const first = ring[0];
       const last = ring[ring.length - 1];
 
@@ -175,13 +182,11 @@ export const ensureUniqueProjectName = async (name, owner, excludeId = null) => 
  * @returns {Promise<number>} - Number of deleted features
  */
 export const deleteProjectAndFeatures = async (projectId, owner) => {
-  // Delete related features
   const deleteResult = await Feature.deleteMany({
     'properties.project': projectId,
     'properties.owner': owner,
   });
 
-  // Delete the project
   const project = await Project.findById(projectId);
   if (!project) throwError('Project not found.', 404);
   if (project.owner.toString() !== owner.toString()) throwError('Unauthorized: cannot delete this project.', 403);
