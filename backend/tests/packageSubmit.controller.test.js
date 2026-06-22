@@ -7,7 +7,13 @@ async function loadModules() {
   const workflow = await import('../utils/' + 'forecast' + 'Package.js');
   const controller = await import('../controllers/' + 'forecast' + 'PackageController.js');
   const packageModel = await import('../models/' + 'Forecast' + 'Package.js');
-  return { workflow, controller, PackageModel: packageModel.default };
+  const projectModel = await import('../models/Project.js');
+  return {
+    workflow,
+    controller,
+    PackageModel: packageModel.default,
+    Project: projectModel.default,
+  };
 }
 
 function ownerId(value = USER_ID) {
@@ -26,6 +32,10 @@ function createPkg(workflow, ready) {
     _id: 'package-1',
     owner: ownerId(),
     status: workflow.FORECAST_PACKAGE_STATUS.DRAFT,
+    charts: workflow.REQUIRED_FORECAST_CHART_TYPES.map((chartType, index) => ({
+      chartType,
+      project: `project-${index + 1}`,
+    })),
     chartCompletion: workflow.REQUIRED_FORECAST_CHART_TYPES.map((chartType) => ({ chartType, isComplete: ready })),
     auditLogs: [],
     saveCalls: 0,
@@ -35,6 +45,7 @@ function createPkg(workflow, ready) {
         _id: this._id,
         owner: this.owner,
         status: this.status,
+        charts: this.charts,
         chartCompletion: this.chartCompletion,
         auditLogs: this.auditLogs,
         submittedAt: this.submittedAt,
@@ -68,12 +79,15 @@ function req() {
 }
 
 test('package submit action rejects an unfinished package', async () => {
-  const { workflow, controller, PackageModel } = await loadModules();
+  const { workflow, controller, PackageModel, Project } = await loadModules();
   const originalFindById = PackageModel.findById;
+  const originalUpdateMany = Project.updateMany;
   const pkg = createPkg(workflow, false);
+  let updateManyCalls = 0;
 
   try {
     PackageModel.findById = () => pkg;
+    Project.updateMany = async () => { updateManyCalls += 1; };
 
     await assert.rejects(
       () => run(controller.submitForecastPackage, req()),
@@ -82,21 +96,29 @@ test('package submit action rejects an unfinished package', async () => {
 
     assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
     assert.equal(pkg.saveCalls, 0);
+    assert.equal(updateManyCalls, 0);
   } finally {
     PackageModel.findById = originalFindById;
+    Project.updateMany = originalUpdateMany;
   }
 });
 
-test('package submit action submits when every required chart is ready', async () => {
-  const { workflow, controller, PackageModel } = await loadModules();
+test('package submit action submits and locks linked chart projects when every required chart is ready', async () => {
+  const { workflow, controller, PackageModel, Project } = await loadModules();
   const originalFindById = PackageModel.findById;
+  const originalUpdateMany = Project.updateMany;
   const pkg = createPkg(workflow, true);
   let calls = 0;
+  let updateManyPayload;
 
   try {
     PackageModel.findById = () => {
       calls += 1;
       return calls === 1 ? pkg : createQuery(pkg);
+    };
+    Project.updateMany = async (filter, update) => {
+      updateManyPayload = { filter, update };
+      return { modifiedCount: 4 };
     };
 
     const res = await run(controller.submitForecastPackage, req());
@@ -105,9 +127,12 @@ test('package submit action submits when every required chart is ready', async (
     assert.ok(pkg.submittedAt instanceof Date);
     assert.equal(pkg.saveCalls, 1);
     assert.equal(pkg.auditLogs.at(-1).action, 'submitted');
+    assert.deepEqual(updateManyPayload.filter._id.$in, ['project-1', 'project-2', 'project-3', 'project-4']);
+    assert.equal(updateManyPayload.update.$set.status, 'Submitted');
     assert.equal(res.body.completion.completed, 4);
     assert.equal(res.body.completion.isComplete, true);
   } finally {
     PackageModel.findById = originalFindById;
+    Project.updateMany = originalUpdateMany;
   }
 });
