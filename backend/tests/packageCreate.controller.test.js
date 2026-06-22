@@ -21,6 +21,9 @@ async function loadModules() {
 function createQuery(result) {
   return {
     populate() { return this; },
+    sort() { return this; },
+    skip() { return this; },
+    limit() { return this; },
     lean() { return Promise.resolve(result); },
     then(resolve, reject) { return Promise.resolve(result).then(resolve, reject); },
   };
@@ -59,9 +62,13 @@ test('package create action writes one project for each required chart', async (
   const originalProjectCreate = Project.create;
   const createdProjects = [];
   let packagePayload;
+  let duplicateQuery;
 
   try {
-    PackageModel.findOne = () => createQuery(null);
+    PackageModel.findOne = (query) => {
+      duplicateQuery = query;
+      return createQuery(null);
+    };
     Project.create = async (payload) => {
       const project = { _id: `project-${createdProjects.length + 1}`, ...payload };
       createdProjects.push(project);
@@ -86,6 +93,7 @@ test('package create action writes one project for each required chart', async (
     });
 
     assert.equal(res.statusCode, 201);
+    assert.deepEqual(Object.keys(duplicateQuery), ['forecastDate']);
     assert.equal(createdProjects.length, workflow.REQUIRED_FORECAST_CHART_TYPES.length);
     assert.equal(createdProjects[0].status, PROJECT_STATUS.DRAFT);
     assert.deepEqual(
@@ -101,5 +109,38 @@ test('package create action writes one project for each required chart', async (
     PackageModel.create = originalPackageCreate;
     PackageModel.findById = originalFindById;
     Project.create = originalProjectCreate;
+  }
+});
+
+test('current package lookup is shared across forecasters for the forecast date', async () => {
+  const { workflow, controller, PackageModel } = await loadModules();
+  const originalFindOne = PackageModel.findOne;
+  const pkg = {
+    _id: 'package-1',
+    owner: 'creator-user',
+    status: workflow.FORECAST_PACKAGE_STATUS.DRAFT,
+    forecastDate: new Date('2026-06-22'),
+    chartCompletion: [],
+    toObject() { return this; },
+  };
+  let lookupQuery;
+
+  try {
+    PackageModel.findOne = (query) => {
+      lookupQuery = query;
+      return createQuery(pkg);
+    };
+
+    const res = await run(controller.getCurrentForecastPackage, {
+      params: {},
+      query: { forecastDate: '2026-06-22' },
+      body: {},
+      user: { id: 'different-forecaster', role: 'forecaster' },
+    });
+
+    assert.equal(res.body.package._id, 'package-1');
+    assert.deepEqual(Object.keys(lookupQuery), ['forecastDate']);
+  } finally {
+    PackageModel.findOne = originalFindOne;
   }
 });
