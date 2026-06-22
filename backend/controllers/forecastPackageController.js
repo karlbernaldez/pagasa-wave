@@ -1,5 +1,3 @@
-import mongoose from 'mongoose';
-
 import asyncHandler from '../utils/asyncHandler.js';
 import { throwError } from '../utils/errorHelper.js';
 import Project from '../models/Project.js';
@@ -73,6 +71,41 @@ async function cleanupCreatedProjects(projectIds) {
   } catch (error) {
     console.error('[ForecastPackage] Failed to cleanup partially-created chart projects:', error);
   }
+}
+
+function getLinkedProjectIds(forecastPackage) {
+  return (forecastPackage.charts || [])
+    .map((chart) => chart.project?._id || chart.project)
+    .filter(Boolean);
+}
+
+async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) {
+  const projectIds = getLinkedProjectIds(forecastPackage);
+  if (!projectIds.length) return;
+
+  await Project.updateMany(
+    {
+      _id: { $in: projectIds },
+      status: { $in: [PROJECT_STATUS.DRAFT, PROJECT_STATUS.REVISION_REQUESTED, PROJECT_STATUS.REJECTED] },
+    },
+    {
+      $set: {
+        status: PROJECT_STATUS.SUBMITTED,
+        submittedAt: new Date(),
+      },
+      $push: {
+        auditLogs: {
+          action: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED ? 'resubmitted' : 'submitted',
+          performedBy: userId,
+          previousStatus: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
+            ? PROJECT_STATUS.REVISION_REQUESTED
+            : PROJECT_STATUS.DRAFT,
+          newStatus: PROJECT_STATUS.SUBMITTED,
+          comment: 'Submitted as part of Forecast Package submission',
+        },
+      },
+    }
+  );
 }
 
 export const createForecastPackage = asyncHandler(async (req, res) => {
@@ -292,6 +325,8 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  await lockLinkedChartProjects(forecastPackage, req.user.id, previousStatus);
+
   forecastPackage.status = FORECAST_PACKAGE_STATUS.SUBMITTED;
   forecastPackage.submittedAt = new Date();
   forecastPackage.auditLogs.push({
