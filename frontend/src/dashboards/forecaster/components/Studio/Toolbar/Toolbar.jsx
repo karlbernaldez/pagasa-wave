@@ -13,7 +13,7 @@ import { useDrawToolbar } from './hooks/useDrawToolbar';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-const EXPANDED_WIDTH = 640;
+const EXPANDED_WIDTH = 760;
 const COLLAPSED_WIDTH = 176;
 const DOCK_HEIGHT = 74;
 const STORAGE_KEY = 'wavelab-draw-tools-position';
@@ -41,6 +41,9 @@ const getTheme = (isDarkMode) => ({
   button: isDarkMode
     ? 'border-white/8 bg-white/[0.045] text-cyan-100/78 hover:border-cyan-200/24 hover:bg-cyan-300/10 hover:text-cyan-50'
     : 'border-white/70 bg-white/48 text-slate-700 hover:border-blue-200 hover:bg-blue-50/75 hover:text-blue-800',
+  disabled: isDarkMode
+    ? 'border-white/5 bg-white/[0.025] text-cyan-100/28 opacity-60'
+    : 'border-white/50 bg-white/30 text-slate-400 opacity-70',
   active: isDarkMode
     ? 'border-cyan-200/36 bg-cyan-300/18 text-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.18),inset_0_1px_0_rgba(255,255,255,0.18)]'
     : 'border-blue-300/80 bg-blue-100/80 text-blue-800 shadow-[0_0_22px_rgba(59,130,246,0.16),inset_0_1px_0_rgba(255,255,255,0.9)]',
@@ -67,16 +70,17 @@ const Divider = ({ theme }) => (
   <div className={cn('h-9 w-px shrink-0', theme.divider)} aria-hidden="true" />
 );
 
-const TrayButton = ({ active, activeClassName, icon, label, onClick, theme }) => (
+const TrayButton = ({ active, activeClassName, disabled = false, icon, label, onClick, theme }) => (
   <button
     type="button"
     aria-label={label}
     title={label}
-    onClick={onClick}
+    onClick={disabled ? undefined : onClick}
+    disabled={disabled}
     className={cn(
       'flex h-12 min-w-[76px] shrink-0 items-center justify-center gap-2 rounded-2xl border px-2.5 transition-all duration-150',
       'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/80',
-      active ? activeClassName || theme.active : theme.button
+      disabled ? theme.disabled : active ? activeClassName || theme.active : theme.button
     )}
   >
     <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-xl', theme.iconRail)}>
@@ -302,26 +306,25 @@ const DrawToolbar = ({
               icon={<Flag size={16} aria-hidden="true" />}
             />
 
-            {waveActive && (
-              <>
-                <Divider theme={theme} />
-                <TrayButton
-                  label="Open"
-                  active={!closedMode}
-                  onClick={() => setClosedMode(false)}
-                  theme={theme}
-                  icon={<Waves size={16} aria-hidden="true" />}
-                />
-                <TrayButton
-                  label="Loop"
-                  active={closedMode}
-                  activeClassName={theme.activeClosed}
-                  onClick={() => setClosedMode(true)}
-                  theme={theme}
-                  icon={<CheckCircle2 size={16} aria-hidden="true" />}
-                />
-              </>
-            )}
+            <Divider theme={theme} />
+
+            <TrayButton
+              label="Open"
+              active={waveActive && !closedMode}
+              disabled={!waveActive}
+              onClick={() => setClosedMode(false)}
+              theme={theme}
+              icon={<Waves size={16} aria-hidden="true" />}
+            />
+            <TrayButton
+              label="Loop"
+              active={waveActive && closedMode}
+              activeClassName={theme.activeClosed}
+              disabled={!waveActive}
+              onClick={() => setClosedMode(true)}
+              theme={theme}
+              icon={<CheckCircle2 size={16} aria-hidden="true" />}
+            />
 
             <Divider theme={theme} />
 
