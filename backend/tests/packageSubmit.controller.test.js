@@ -57,6 +57,13 @@ function createPkg(workflow, ready, status = workflow.FORECAST_PACKAGE_STATUS.DR
   };
 }
 
+function setChartCompletion(pkg, chartType, isComplete) {
+  const row = pkg.chartCompletion.find((item) => item.chartType === chartType);
+  row.isComplete = isComplete;
+  row.completedAt = isComplete ? new Date() : null;
+  row.completedBy = isComplete ? USER_ID : null;
+}
+
 async function run(handler, req) {
   return new Promise((resolve, reject) => {
     const res = {
@@ -104,6 +111,67 @@ test('package submit action rejects an unfinished package', async () => {
   } finally {
     PackageModel.findById = originalFindById;
     Project.updateMany = originalUpdateMany;
+  }
+});
+
+test('package chart completion enforces the operational chart sequence', async () => {
+  const { workflow, controller, PackageModel } = await loadModules();
+  const originalFindById = PackageModel.findById;
+  const pkg = createPkg(workflow, false);
+
+  try {
+    PackageModel.findById = () => pkg;
+
+    await assert.rejects(
+      () => run(
+        controller.updateForecastChartCompletion,
+        req({
+          params: { id: 'package-1', chartType: 'forecast_24h' },
+          body: { isComplete: true },
+        })
+      ),
+      {
+        status: 400,
+        message: 'Wave Analysis must be certified before 24h Wave Forecast',
+      }
+    );
+
+    assert.equal(pkg.saveCalls, 0);
+    assert.equal(pkg.chartCompletion.find((row) => row.chartType === 'forecast_24h').isComplete, false);
+  } finally {
+    PackageModel.findById = originalFindById;
+  }
+});
+
+test('marking an earlier chart incomplete clears downstream certifications', async () => {
+  const { workflow, controller, PackageModel } = await loadModules();
+  const originalFindById = PackageModel.findById;
+  const pkg = createPkg(workflow, true);
+  let calls = 0;
+
+  try {
+    PackageModel.findById = () => {
+      calls += 1;
+      return calls === 1 ? pkg : createQuery(pkg);
+    };
+
+    const res = await run(
+      controller.updateForecastChartCompletion,
+      req({
+        params: { id: 'package-1', chartType: 'forecast_24h' },
+        body: { isComplete: false },
+      })
+    );
+
+    assert.equal(pkg.saveCalls, 1);
+    assert.equal(pkg.chartCompletion.find((row) => row.chartType === 'analysis').isComplete, true);
+    assert.equal(pkg.chartCompletion.find((row) => row.chartType === 'forecast_24h').isComplete, false);
+    assert.equal(pkg.chartCompletion.find((row) => row.chartType === 'forecast_36h').isComplete, false);
+    assert.equal(pkg.chartCompletion.find((row) => row.chartType === 'forecast_48h').isComplete, false);
+    assert.equal(pkg.auditLogs.at(-1).comment, '24h Wave Forecast and downstream charts marked incomplete');
+    assert.equal(res.body.completion.completed, 1);
+  } finally {
+    PackageModel.findById = originalFindById;
   }
 });
 
