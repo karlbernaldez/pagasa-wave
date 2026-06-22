@@ -16,7 +16,7 @@ import FlagCanvas from "@dashboards/forecaster/draw/front";
 import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
 import { getLatestReviewRemarks } from "@/features/projects/projectAdapter";
 import { canEditProjectStatus, getProjectStatusLabel, getProjectStatusStyle, isProjectRevisionRequested } from "@/features/projects/projectStatuses";
-import { useProjectId, useInactivityReload, useProjectLoader, useMapSetup, useDrawingState, useMarkerModal, useMapLoader } from "@dashboards/forecaster/hooks/useStudio";
+import { FORECAST_CHART_BROWSER_EVENT, useProjectId, useInactivityReload, useProjectLoader, useMapSetup, useDrawingState, useMarkerModal, useMapLoader } from "@dashboards/forecaster/hooks/useStudio";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { claimForecastPackageChartByProject, fetchForecastPackageChartContextByProject, releaseForecastPackageChartByProject, updateForecastChartCompletionByProject } from "@/api/forecastPackageAPI";
 import { savePointFeature } from "@dashboards/forecaster/utils/ToolBarUtils";
@@ -26,15 +26,9 @@ import { saveMarker } from "@dashboards/forecaster/map/layers/markerLayer";
 const TOOLBAR_DELAY = 1000;
 const STUDIO_HEADER_HEIGHT = 64;
 const FORECAST_CHART_LABELS = { analysis: "Wave Analysis", forecast_24h: "24h Wave Forecast", forecast_36h: "36h Wave Forecast", forecast_48h: "48h Wave Forecast" };
-
 function getChartLabel(chartType) { return FORECAST_CHART_LABELS[chartType] || "Forecast chart"; }
 function isContextNotFound(error) { return /context not found|not found/i.test(error?.message || ""); }
-function formatNameList(names = []) {
-  if (!names.length) return "";
-  if (names.length === 1) return names[0];
-  if (names.length === 2) return `${names[0]} and ${names[1]}`;
-  return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
-}
+function formatNameList(names = []) { if (!names.length) return ""; if (names.length === 1) return names[0]; if (names.length === 2) return `${names[0]} and ${names[1]}`; return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`; }
 
 const Studio = ({ logger }) => {
   const navigate = useNavigate();
@@ -53,11 +47,9 @@ const Studio = ({ logger }) => {
   useEffect(() => { setCurrentProject(latestProject || null); }, [latestProject]);
   const handleOpenCreateProject = () => { setStudioError(""); setShowNoProjectsModal(false); setShowCreateProjectModal(true); };
   const handleMaybeLater = () => setShowNoProjectsModal(false);
-
   const { layers, setLayers, mapRef, cleanupRef, setupFeaturesAndLayers } = useMapSetup(projectId, logger, isDarkMode);
   const { drawInstance, setDrawInstance, isCanvasActive, isFlagCanvasActive, lineCount, setLineCount, drawCounter, setDrawCounter, closedMode, setClosedMode, toggleCanvas, toggleFlagCanvas } = useDrawingState();
   const { selectedPoint, setSelectedPoint, showTitleModal, setShowTitleModal, markerTitle, type, setType, markerTitleRef, handleTitleChange, closeModal } = useMarkerModal();
-
   const [isLoading, setIsLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [showToolbar, setShowToolbar] = useState(false);
@@ -66,7 +58,6 @@ const Studio = ({ logger }) => {
   const setLayersRef = useRef();
   const removeLayerSafe = (map, id) => { if (map.getLayer(id)) map.removeLayer(id); };
   const removeSourceSafe = (map, id) => { if (map.getSource(id)) map.removeSource(id); };
-
   const projectStatus = currentProject?.status;
   const isPackageChartReady = Boolean(chartContext?.completion?.isComplete);
   const canEditProject = Boolean(currentProject && canEditProjectStatus(projectStatus) && !isPackageChartReady);
@@ -77,78 +68,27 @@ const Studio = ({ logger }) => {
   const handleBackToLibrary = useCallback(() => { navigate("/studio"); }, [navigate]);
   const handleToggleTheme = useCallback(() => { setIsDarkMode((value) => !value); }, [setIsDarkMode]);
 
-  useEffect(() => { document.title = currentProject?.name ? `${currentProject.name}` : "WaveLab - Studio"; }, [currentProject?.name]);
-  useEffect(() => { setLayersRef.current = setLayers; }, [setLayers]);
-  useEffect(() => {
-    setIsLoading(true); setMapLoaded(false); setShowToolbar(false); setCapturedImages({ light: null, dark: null }); setDrawInstance(null); setLineCount(0); setDrawCounter(0); setClosedMode(false); setSelectedPoint(null); setShowTitleModal(false); markerTitleRef.current = ""; selectedToolRef.current = null; setStudioError("");
-  }, [projectId, setClosedMode, setDrawCounter, setDrawInstance, setLineCount, setSelectedPoint, setShowTitleModal, markerTitleRef, setCapturedImages]);
-
-  useEffect(() => {
-    if (!projectId) { setChartContext(null); setIsLoadingChartContext(false); return undefined; }
-    const controller = new AbortController();
-    setIsLoadingChartContext(true);
-    fetchForecastPackageChartContextByProject(projectId, { signal: controller.signal })
-      .then((context) => setChartContext(context))
-      .catch((error) => {
-        if (error?.name === "AbortError") return;
-        if (isContextNotFound(error)) { setChartContext(null); return; }
-        setStudioError(error?.message || "Failed to load forecast package chart workflow.");
-      })
-      .finally(() => setIsLoadingChartContext(false));
-    return () => controller.abort();
+  const loadChartContext = useCallback(async ({ signal, silent = false } = {}) => {
+    if (!projectId) { setChartContext(null); setIsLoadingChartContext(false); return; }
+    if (!silent) setIsLoadingChartContext(true);
+    try { setChartContext(await fetchForecastPackageChartContextByProject(projectId, { signal })); }
+    catch (error) { if (error?.name === "AbortError") return; if (isContextNotFound(error)) { setChartContext(null); return; } setStudioError(error?.message || "Failed to load forecast package chart workflow."); }
+    finally { if (!silent) setIsLoadingChartContext(false); }
   }, [projectId]);
 
-  useEffect(() => {
-    if (!isReadOnlyProject) return;
-    if (isCanvasActive) toggleCanvas();
-    if (isFlagCanvasActive) toggleFlagCanvas();
-    setShowTitleModal(false);
-    selectedToolRef.current = null;
-  }, [isReadOnlyProject, isCanvasActive, isFlagCanvasActive, toggleCanvas, toggleFlagCanvas, setShowTitleModal]);
-
+  useEffect(() => { document.title = currentProject?.name ? `${currentProject.name}` : "WaveLab - Studio"; }, [currentProject?.name]);
+  useEffect(() => { setLayersRef.current = setLayers; }, [setLayers]);
+  useEffect(() => { setIsLoading(true); setMapLoaded(false); setShowToolbar(false); setCapturedImages({ light: null, dark: null }); setDrawInstance(null); setLineCount(0); setDrawCounter(0); setClosedMode(false); setSelectedPoint(null); setShowTitleModal(false); markerTitleRef.current = ""; selectedToolRef.current = null; setStudioError(""); }, [projectId, setClosedMode, setDrawCounter, setDrawInstance, setLineCount, setSelectedPoint, setShowTitleModal, markerTitleRef, setCapturedImages]);
+  useEffect(() => { const controller = new AbortController(); loadChartContext({ signal: controller.signal }); return () => controller.abort(); }, [loadChartContext]);
+  useEffect(() => { const handler = (event) => { if (String(event.detail?.projectId || "") === String(projectId)) loadChartContext({ silent: true }); }; window.addEventListener(FORECAST_CHART_BROWSER_EVENT, handler); return () => window.removeEventListener(FORECAST_CHART_BROWSER_EVENT, handler); }, [loadChartContext, projectId]);
+  useEffect(() => { if (!isReadOnlyProject) return; if (isCanvasActive) toggleCanvas(); if (isFlagCanvasActive) toggleFlagCanvas(); setShowTitleModal(false); selectedToolRef.current = null; }, [isReadOnlyProject, isCanvasActive, isFlagCanvasActive, toggleCanvas, toggleFlagCanvas, setShowTitleModal]);
   useEffect(() => { const timer = setTimeout(() => setShowToolbar(true), TOOLBAR_DELAY); return () => clearTimeout(timer); }, [projectId]);
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
-    ["wave-raster", "wave-glass-fill", "wave-glass-depth", "wave-arrows", "wind-raster", "wind-particles", "wind-arrows", "wind-glass-fill", "wind-glass-depth"].forEach((id) => removeLayerSafe(map, id));
-    ["wave-dark", "wave-light", "wind-darkstorm", "wind-solarstorm"].forEach((id) => removeSourceSafe(map, id));
-  }, [isDarkMode]);
-
-  const handleSaveTitle = (title) => {
-    if (isReadOnlyProject) return;
-    markerTitleRef.current = title;
-    saveMarker(selectedPoint, mapRef, setShowTitleModal, type)(title);
-    savePointFeature({ coords: [selectedPoint.lng, selectedPoint.lat], title, selectedType: type, setLayersRef, projectId });
-  };
-
-  const handleClaimChart = async () => {
-    if (!projectId || isClaimingChart) return;
-    setIsClaimingChart(true); setStudioError("");
-    try { setChartContext(await claimForecastPackageChartByProject(projectId)); }
-    catch (error) { setStudioError(error?.message || "Failed to join chart editing."); }
-    finally { setIsClaimingChart(false); }
-  };
-  const handleReleaseChart = async () => {
-    if (!projectId || isReleasingChart) return;
-    setIsReleasingChart(true); setStudioError("");
-    try { setChartContext(await releaseForecastPackageChartByProject(projectId)); }
-    catch (error) { setStudioError(error?.message || "Failed to release chart editing session."); }
-    finally { setIsReleasingChart(false); }
-  };
-  const handleCertifyChartReady = async () => {
-    if (!projectId || isCertifyingChart) return;
-    setIsCertifyingChart(true); setStudioError("");
-    try { setChartContext(await updateForecastChartCompletionByProject(projectId, true)); }
-    catch (error) { setStudioError(error?.message || "Failed to certify chart readiness."); }
-    finally { setIsCertifyingChart(false); }
-  };
-  const handleReopenChartEdits = async () => {
-    if (!projectId || isCertifyingChart) return;
-    setIsCertifyingChart(true); setStudioError("");
-    try { setChartContext(await updateForecastChartCompletionByProject(projectId, false)); }
-    catch (error) { setStudioError(error?.message || "Failed to reopen chart editing."); }
-    finally { setIsCertifyingChart(false); }
-  };
+  useEffect(() => { const map = mapRef.current; if (!map || !map.isStyleLoaded()) return; ["wave-raster", "wave-glass-fill", "wave-glass-depth", "wave-arrows", "wind-raster", "wind-particles", "wind-arrows", "wind-glass-fill", "wind-glass-depth"].forEach((id) => removeLayerSafe(map, id)); ["wave-dark", "wave-light", "wind-darkstorm", "wind-solarstorm"].forEach((id) => removeSourceSafe(map, id)); }, [isDarkMode]);
+  const handleSaveTitle = (title) => { if (isReadOnlyProject) return; markerTitleRef.current = title; saveMarker(selectedPoint, mapRef, setShowTitleModal, type)(title); savePointFeature({ coords: [selectedPoint.lng, selectedPoint.lat], title, selectedType: type, setLayersRef, projectId }); };
+  const handleClaimChart = async () => { if (!projectId || isClaimingChart) return; setIsClaimingChart(true); setStudioError(""); try { setChartContext(await claimForecastPackageChartByProject(projectId)); } catch (error) { setStudioError(error?.message || "Failed to join chart editing."); } finally { setIsClaimingChart(false); } };
+  const handleReleaseChart = async () => { if (!projectId || isReleasingChart) return; setIsReleasingChart(true); setStudioError(""); try { setChartContext(await releaseForecastPackageChartByProject(projectId)); } catch (error) { setStudioError(error?.message || "Failed to release chart editing session."); } finally { setIsReleasingChart(false); } };
+  const handleCertifyChartReady = async () => { if (!projectId || isCertifyingChart) return; setIsCertifyingChart(true); setStudioError(""); try { setChartContext(await updateForecastChartCompletionByProject(projectId, true)); } catch (error) { setStudioError(error?.message || "Failed to certify chart readiness."); } finally { setIsCertifyingChart(false); } };
+  const handleReopenChartEdits = async () => { if (!projectId || isCertifyingChart) return; setIsCertifyingChart(true); setStudioError(""); try { setChartContext(await updateForecastChartCompletionByProject(projectId, false)); } catch (error) { setStudioError(error?.message || "Failed to reopen chart editing."); } finally { setIsCertifyingChart(false); } };
 
   const handleMapLoad = useMapLoader(projectId, logger, isDarkMode, setupFeaturesAndLayers, mapRef, cleanupRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, selectedToolRef, setCapturedImages, setIsLoading);
   const showMainUI = !isLoadingProject;
@@ -163,7 +103,6 @@ const Studio = ({ logger }) => {
   const chartLabel = getChartLabel(chartType);
   const blockingChartLabel = getChartLabel(chartContext?.blockingChartType);
   const activeEditorLabels = chartClaim?.activeEditorLabels || [];
-  const otherEditorLabels = chartClaim?.claimedByCurrentUser ? activeEditorLabels.filter((name) => name !== chartClaim?.currentUserLabel) : activeEditorLabels;
   const activeEditorText = formatNameList(activeEditorLabels);
   const isChartActionBusy = isLoadingChartContext || isClaimingChart || isReleasingChart || isCertifyingChart;
   const headerClass = isDarkMode ? "studio-liquid-dark border-white/[0.18] text-slate-100 shadow-black/35" : "studio-liquid-light border-white/80 text-slate-950 shadow-slate-400/25";
@@ -174,48 +113,6 @@ const Studio = ({ logger }) => {
   const headerGhostButton = isDarkMode ? "!border-white/10 !bg-white/[0.055] !text-cyan-100 hover:!bg-white/[0.09] hover:!text-white" : "!border-white/80 !bg-white/65 !text-blue-700 hover:!bg-white hover:!text-blue-800";
   const headerPrimaryButton = isDarkMode ? "!border-cyan-300/25 !bg-cyan-400/15 !text-cyan-100 hover:!bg-cyan-400/22" : "!border-blue-200 !bg-blue-600 !text-white hover:!bg-blue-500";
 
-  return (
-    <div className={`relative h-screen w-full overflow-hidden ${isDarkMode ? "bg-slate-950" : "bg-slate-100"}`}>
-      <header className={`studio-liquid-panel absolute left-2 right-2 top-2 z-[120] flex h-14 items-center justify-between gap-2 rounded-2xl border px-2 shadow-2xl backdrop-blur-2xl sm:left-3 sm:right-3 sm:px-3 ${headerClass}`}>
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary} className={`!rounded-xl ${headerGhostButton}`}><span className="hidden sm:inline">Forecast Package</span><span className="sm:hidden">Package</span></Button>
-          <div className={`min-w-0 border-l pl-2 sm:pl-3 ${headerDivider}`}><p className={`hidden text-xs font-semibold uppercase tracking-[0.18em] sm:block ${headerMutedText}`}>WaveLab Studio</p><div className="flex min-w-0 items-center gap-2"><h1 className={`max-w-[32vw] truncate text-xs font-bold sm:max-w-[42vw] sm:text-sm ${headerStrongText}`}>{projectName}</h1>{currentProject?.status && <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black lg:inline-flex ${projectStatusStyle}`}>{projectStatusLabel}</span>}</div></div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-          {isReadOnlyProject && <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-600"}`}><Lock size={13} />{isPackageReadyReadOnly ? "Chart ready" : "Read-only"}</span>}
-          {chartContext && !isLoadingChartContext && !chartContext.blockingChartType && isPackageChartReady && <span className={`studio-liquid-control hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200" : "border-emerald-200/80 bg-emerald-50/80 text-emerald-700"}`}><CheckCircle2 size={13} />Certified ready</span>}
-          {chartContext && !isPackageChartReady && chartContext.blockingChartType && <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-slate-700 bg-slate-900 text-slate-400" : "border-slate-200 bg-slate-100 text-slate-600"}`}>Queued: {blockingChartLabel}</span>}
-          {chartContext && !isPackageChartReady && chartClaim?.claimedByCurrentUser && <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" : "border-blue-200 bg-blue-50 text-blue-800"}`}>{activeEditorLabels.length > 1 ? `Editing with ${activeEditorText}` : "You are editing"}</span>}
-          {chartContext && !isPackageChartReady && !chartClaim?.claimedByCurrentUser && chartClaim?.claimedByOtherUser && <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-amber-300/20 bg-amber-400/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800"}`}>Editing by {activeEditorText || "another forecaster"}</span>}
-          {chartContext && !isPackageChartReady && !chartContext.blockingChartType && chartClaim?.canClaim && !chartClaim?.claimedByCurrentUser && <Button size="sm" loading={isClaimingChart} disabled={isChartActionBusy} onClick={handleClaimChart} className={`!rounded-xl ${headerPrimaryButton}`}><span className="hidden sm:inline">Join editing</span></Button>}
-          {chartContext && !isPackageChartReady && chartClaim?.canCertify && <Button size="sm" icon={Send} loading={isCertifyingChart} disabled={isChartActionBusy} onClick={handleCertifyChartReady} className={`!rounded-xl ${headerPrimaryButton}`}><span className="hidden sm:inline">Certify ready</span></Button>}
-          {chartContext && !isPackageChartReady && chartClaim?.claimedByCurrentUser && !chartClaim?.canCertify && activeEditorLabels.length > 1 && <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-amber-300/20 bg-amber-400/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800"}`}>Ready blocked: active co-editors</span>}
-          {chartContext && isPackageChartReady && <Button size="sm" loading={isCertifyingChart} disabled={isChartActionBusy} onClick={handleReopenChartEdits} className={`!rounded-xl ${headerGhostButton}`}><span className="hidden sm:inline">Reopen edits</span></Button>}
-          {chartContext && chartClaim?.canRelease && !isPackageChartReady && <Button size="sm" variant="secondary" loading={isReleasingChart} disabled={isChartActionBusy} onClick={handleReleaseChart} className={`!rounded-xl ${headerGhostButton}`}><span className="hidden sm:inline">Release</span></Button>}
-          <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-semibold xl:inline-flex ${isDarkMode ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200" : "border-emerald-200/80 bg-emerald-50/80 text-emerald-700"}`}>Auto-save active</span>
-          <div className={`studio-liquid-control flex items-center gap-0.5 rounded-2xl border px-0.5 py-1 sm:px-1 ${headerControlGroup}`}><NotificationBell isDarkMode={isDarkMode} /><div className={`mx-0.5 hidden h-5 w-px sm:block ${isDarkMode ? "bg-white/10" : "bg-black/8"}`} /><Button variant="icon" size="sm" icon={isDarkMode ? Sun : Moon} aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"} onClick={handleToggleTheme} className={`!rounded-xl ${headerGhostButton}`} /></div>
-        </div>
-      </header>
-
-      {studioError && <div className={`studio-liquid-panel absolute left-1/2 z-[117] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-2xl ${isDarkMode ? "border-red-400/25 bg-red-950/70 text-red-100" : "border-red-200/80 bg-red-50/85 text-red-800"}`} style={{ top: STUDIO_HEADER_HEIGHT + 12 }} role="alert"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-red-500/10 text-red-300" : "bg-red-100 text-red-700"}`}><AlertTriangle size={16} /></div><p className="text-sm font-semibold leading-relaxed">{studioError}</p></div><button type="button" className={`shrink-0 text-xs font-black uppercase tracking-wide ${isDarkMode ? "text-red-200 hover:text-white" : "text-red-700 hover:text-red-900"}`} onClick={() => setStudioError("")}>Dismiss</button></div></div>}
-      {isReadOnlyProject && <div className={`studio-liquid-panel absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-2xl ${isDarkMode ? "studio-liquid-dark border-white/[0.18] text-slate-100" : "studio-liquid-light border-white/80 text-slate-800"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 12) }}><div className="flex items-start gap-3"><div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-slate-900 text-slate-300" : "bg-slate-100 text-slate-600"}`}><Lock size={16} /></div><div className="min-w-0 flex-1"><p className={`text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>{isPackageReadyReadOnly ? "Chart certified" : "Editing locked"}</p><p className="mt-1 text-sm font-semibold leading-relaxed">{isPackageReadyReadOnly ? `${chartLabel} is certified ready. Reopen edits before making additional annotations.` : `This project is already ${projectStatusLabel}. You can view it, but markers, drawings, uploads, deletes, and edits are disabled until Admin requests a revision.`}</p></div></div></div>}
-      {hasActiveReviewRemarks && <div className={`studio-liquid-panel absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-2xl ${isDarkMode ? "border-amber-300/25 bg-amber-950/65 text-amber-100" : "border-amber-200/80 bg-amber-50/85 text-amber-950"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 0) + (isReadOnlyProject ? 104 : 12) }}><div className="flex items-start gap-3"><div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-amber-500/10 text-amber-300" : "bg-amber-100 text-amber-700"}`}><MessageSquareText size={16} /></div><div className="min-w-0 flex-1"><p className={`text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? "text-amber-300" : "text-amber-700"}`}>Admin remarks</p><p className="mt-1 text-sm font-semibold leading-relaxed">{latestReviewRemarks.comment}</p></div></div></div>}
-
-      <main className="absolute inset-0 w-full overflow-hidden">
-        <div className="absolute inset-0 h-full w-full"><MapComponent key={projectId || "no-project"} onMapLoad={handleMapLoad} isDarkMode={isDarkMode} /></div>
-        {mapRef.current && <MapStatusBar mapRef={mapRef} />}
-        {showToolbar && projectId && canEditProject && <DrawToolBar draw={drawInstance} onToggleCanvas={toggleCanvas} onToggleFlagCanvas={toggleFlagCanvas} isCanvasActive={isCanvasActive} isFlagCanvasActive={isFlagCanvasActive} isDarkMode={isDarkMode} layers={layers} setLayers={setLayers} setLayersRef={setLayersRef} closedMode={closedMode} setClosedMode={setClosedMode} setType={setType} selectedToolRef={selectedToolRef} title={markerTitle} projectId={projectId} />}
-        {isCanvasActive && canEditProject && <Canvas mapRef={mapRef} drawRef={drawInstance} drawCounter={drawCounter} setDrawCounter={setDrawCounter} isDarkMode={isDarkMode} setLayersRef={setLayersRef} closedMode={closedMode} lineCount={lineCount} projectId={projectId} />}
-        {isFlagCanvasActive && canEditProject && <FlagCanvas mapRef={mapRef} drawRef={drawInstance} drawCounter={drawCounter} setDrawCounter={setDrawCounter} isDarkMode={isDarkMode} setLayersRef={setLayersRef} closedMode={closedMode} projectId={projectId} />}
-        <MarkerTitleModal isOpen={showTitleModal && canEditProject} onClose={closeModal} onSubmit={handleSaveTitle} inputValue={markerTitle} onInputChange={handleTitleChange} isDarkMode={isDarkMode} markerType={type} />
-        {showMainUI && <><LayerPanel layers={layers} setLayers={setLayers} mapRef={mapRef} isDarkMode={isDarkMode} draw={drawInstance} readOnly={isReadOnlyProject} /><NoProjectAlert visible={showNoProjectsModal} onCreateProject={handleOpenCreateProject} onClose={handleMaybeLater} isDarkMode={isDarkMode} message={message} /><CreateProjectModal visible={showCreateProjectModal} onClose={() => setShowCreateProjectModal(false)} onSubmit={handleCreateProject} isDarkMode={isDarkMode} /></>}
-        {isLoading && <MapLoading isDarkMode={isDarkMode} />}
-      </main>
-
-      {isInactivityPromptVisible && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"><div role="dialog" aria-modal="true" aria-labelledby="studio-inactivity-title" className={`studio-liquid-panel w-full max-w-md rounded-3xl border p-6 shadow-2xl ${isDarkMode ? "studio-liquid-dark border-white/[0.18] text-slate-100" : "studio-liquid-light border-white/80 text-slate-950"}`}><div className="flex items-start gap-4"><div className={`${isDarkMode ? "bg-amber-500/10 text-amber-300 ring-amber-400/20" : "bg-amber-50 text-amber-700 ring-amber-100"} rounded-2xl p-3 ring-1`}><AlertTriangle size={24} aria-hidden="true" /></div><div className="min-w-0 flex-1"><h2 id="studio-inactivity-title" className={`text-lg font-black ${isDarkMode ? "text-slate-50" : "text-slate-950"}`}>You’ve been inactive</h2><p className={`mt-2 text-sm font-semibold leading-relaxed ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>Refresh the Studio workspace only if you want to reload the map and project data. You can stay here to continue from your current view.</p></div></div><div className={`${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-800"} mt-5 rounded-2xl border px-4 py-3 text-sm font-semibold`}>Auto-save is active, but in-progress tool selections or open dialogs may reset after refresh.</div><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={stayActive}>Stay here</Button><Button variant="primary" onClick={refreshWorkspace}>Refresh workspace</Button></div></div></div>}
-      <style>{`@keyframes slideInLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }`}</style>
-    </div>
-  );
+  return <div className={`relative h-screen w-full overflow-hidden ${isDarkMode ? "bg-slate-950" : "bg-slate-100"}`}><header className={`studio-liquid-panel absolute left-2 right-2 top-2 z-[120] flex h-14 items-center justify-between gap-2 rounded-2xl border px-2 shadow-2xl backdrop-blur-2xl sm:left-3 sm:right-3 sm:px-3 ${headerClass}`}><div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"><Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary} className={`!rounded-xl ${headerGhostButton}`}><span className="hidden sm:inline">Forecast Package</span><span className="sm:hidden">Package</span></Button><div className={`min-w-0 border-l pl-2 sm:pl-3 ${headerDivider}`}><p className={`hidden text-xs font-semibold uppercase tracking-[0.18em] sm:block ${headerMutedText}`}>WaveLab Studio</p><div className="flex min-w-0 items-center gap-2"><h1 className={`max-w-[32vw] truncate text-xs font-bold sm:max-w-[42vw] sm:text-sm ${headerStrongText}`}>{projectName}</h1>{currentProject?.status && <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black lg:inline-flex ${projectStatusStyle}`}>{projectStatusLabel}</span>}</div></div></div><div className="flex shrink-0 items-center gap-1 sm:gap-2">{isReadOnlyProject && <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-600"}`}><Lock size={13} />{isPackageReadyReadOnly ? "Chart ready" : "Read-only"}</span>}{chartContext && !isLoadingChartContext && !chartContext.blockingChartType && isPackageChartReady && <span className={`studio-liquid-control hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200" : "border-emerald-200/80 bg-emerald-50/80 text-emerald-700"}`}><CheckCircle2 size={13} />Certified ready</span>}{chartContext && !isPackageChartReady && chartContext.blockingChartType && <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-slate-700 bg-slate-900 text-slate-400" : "border-slate-200 bg-slate-100 text-slate-600"}`}>Queued: {blockingChartLabel}</span>}{chartContext && !isPackageChartReady && chartClaim?.claimedByCurrentUser && <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" : "border-blue-200 bg-blue-50 text-blue-800"}`}>{activeEditorLabels.length > 1 ? `Editing with ${activeEditorText}` : "You are editing"}</span>}{chartContext && !isPackageChartReady && !chartClaim?.claimedByCurrentUser && chartClaim?.claimedByOtherUser && <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-amber-300/20 bg-amber-400/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800"}`}>Editing by {activeEditorText || "another forecaster"}</span>}{chartContext && !isPackageChartReady && !chartContext.blockingChartType && chartClaim?.canClaim && !chartClaim?.claimedByCurrentUser && <Button size="sm" loading={isClaimingChart} disabled={isChartActionBusy} onClick={handleClaimChart} className={`!rounded-xl ${headerPrimaryButton}`}><span className="hidden sm:inline">Join editing</span></Button>}{chartContext && !isPackageChartReady && chartClaim?.canCertify && <Button size="sm" icon={Send} loading={isCertifyingChart} disabled={isChartActionBusy} onClick={handleCertifyChartReady} className={`!rounded-xl ${headerPrimaryButton}`}><span className="hidden sm:inline">Certify ready</span></Button>}{chartContext && !isPackageChartReady && chartClaim?.claimedByCurrentUser && !chartClaim?.canCertify && activeEditorLabels.length > 1 && <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-amber-300/20 bg-amber-400/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800"}`}>Ready blocked: active co-editors</span>}{chartContext && isPackageChartReady && <Button size="sm" loading={isCertifyingChart} disabled={isChartActionBusy} onClick={handleReopenChartEdits} className={`!rounded-xl ${headerGhostButton}`}><span className="hidden sm:inline">Reopen edits</span></Button>}{chartContext && chartClaim?.canRelease && !isPackageChartReady && <Button size="sm" variant="secondary" loading={isReleasingChart} disabled={isChartActionBusy} onClick={handleReleaseChart} className={`!rounded-xl ${headerGhostButton}`}><span className="hidden sm:inline">Release</span></Button>}<span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-semibold xl:inline-flex ${isDarkMode ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200" : "border-emerald-200/80 bg-emerald-50/80 text-emerald-700"}`}>Auto-save active</span><div className={`studio-liquid-control flex items-center gap-0.5 rounded-2xl border px-0.5 py-1 sm:px-1 ${headerControlGroup}`}><NotificationBell isDarkMode={isDarkMode} /><div className={`mx-0.5 hidden h-5 w-px sm:block ${isDarkMode ? "bg-white/10" : "bg-black/8"}`} /><Button variant="icon" size="sm" icon={isDarkMode ? Sun : Moon} aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"} onClick={handleToggleTheme} className={`!rounded-xl ${headerGhostButton}`} /></div></div></header>{studioError && <div className={`studio-liquid-panel absolute left-1/2 z-[117] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-2xl ${isDarkMode ? "border-red-400/25 bg-red-950/70 text-red-100" : "border-red-200/80 bg-red-50/85 text-red-800"}`} style={{ top: STUDIO_HEADER_HEIGHT + 12 }} role="alert"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-red-500/10 text-red-300" : "bg-red-100 text-red-700"}`}><AlertTriangle size={16} /></div><p className="text-sm font-semibold leading-relaxed">{studioError}</p></div><button type="button" className={`shrink-0 text-xs font-black uppercase tracking-wide ${isDarkMode ? "text-red-200 hover:text-white" : "text-red-700 hover:text-red-900"}`} onClick={() => setStudioError("")}>Dismiss</button></div></div>}{isReadOnlyProject && <div className={`studio-liquid-panel absolute left-1/2 z-[116] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-2xl ${isDarkMode ? "studio-liquid-dark border-white/[0.18] text-slate-100" : "studio-liquid-light border-white/80 text-slate-800"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 12) }}><div className="flex items-start gap-3"><div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-slate-900 text-slate-300" : "bg-slate-100 text-slate-600"}`}><Lock size={16} /></div><div className="min-w-0 flex-1"><p className={`text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>{isPackageReadyReadOnly ? "Chart certified" : "Editing locked"}</p><p className="mt-1 text-sm font-semibold leading-relaxed">{isPackageReadyReadOnly ? `${chartLabel} is certified ready. Reopen edits before making additional annotations.` : `This project is already ${projectStatusLabel}. You can view it, but markers, drawings, uploads, deletes, and edits are disabled until Admin requests a revision.`}</p></div></div></div>}{hasActiveReviewRemarks && <div className={`studio-liquid-panel absolute left-1/2 z-[115] w-[min(760px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-2xl ${isDarkMode ? "border-amber-300/25 bg-amber-950/65 text-amber-100" : "border-amber-200/80 bg-amber-50/85 text-amber-950"}`} style={{ top: STUDIO_HEADER_HEIGHT + (studioError ? 92 : 0) + (isReadOnlyProject ? 104 : 12) }}><div className="flex items-start gap-3"><div className={`mt-0.5 rounded-lg p-1.5 ${isDarkMode ? "bg-amber-500/10 text-amber-300" : "bg-amber-100 text-amber-700"}`}><MessageSquareText size={16} /></div><div className="min-w-0 flex-1"><p className={`text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? "text-amber-300" : "text-amber-700"}`}>Admin remarks</p><p className="mt-1 text-sm font-semibold leading-relaxed">{latestReviewRemarks.comment}</p></div></div></div>}<main className="absolute inset-0 w-full overflow-hidden"><div className="absolute inset-0 h-full w-full"><MapComponent key={projectId || "no-project"} onMapLoad={handleMapLoad} isDarkMode={isDarkMode} /></div>{mapRef.current && <MapStatusBar mapRef={mapRef} />}{showToolbar && projectId && canEditProject && <DrawToolBar draw={drawInstance} onToggleCanvas={toggleCanvas} onToggleFlagCanvas={toggleFlagCanvas} isCanvasActive={isCanvasActive} isFlagCanvasActive={isFlagCanvasActive} isDarkMode={isDarkMode} layers={layers} setLayers={setLayers} setLayersRef={setLayersRef} closedMode={closedMode} setClosedMode={setClosedMode} setType={setType} selectedToolRef={selectedToolRef} title={markerTitle} projectId={projectId} />}{isCanvasActive && canEditProject && <Canvas mapRef={mapRef} drawRef={drawInstance} drawCounter={drawCounter} setDrawCounter={setDrawCounter} isDarkMode={isDarkMode} setLayersRef={setLayersRef} closedMode={closedMode} lineCount={lineCount} projectId={projectId} />}{isFlagCanvasActive && canEditProject && <FlagCanvas mapRef={mapRef} drawRef={drawInstance} drawCounter={drawCounter} setDrawCounter={setDrawCounter} isDarkMode={isDarkMode} setLayersRef={setLayersRef} closedMode={closedMode} projectId={projectId} />}<MarkerTitleModal isOpen={showTitleModal && canEditProject} onClose={closeModal} onSubmit={handleSaveTitle} inputValue={markerTitle} onInputChange={handleTitleChange} isDarkMode={isDarkMode} markerType={type} />{showMainUI && <><LayerPanel layers={layers} setLayers={setLayers} mapRef={mapRef} isDarkMode={isDarkMode} draw={drawInstance} readOnly={isReadOnlyProject} /><NoProjectAlert visible={showNoProjectsModal} onCreateProject={handleOpenCreateProject} onClose={handleMaybeLater} isDarkMode={isDarkMode} message={message} /><CreateProjectModal visible={showCreateProjectModal} onClose={() => setShowCreateProjectModal(false)} onSubmit={handleCreateProject} isDarkMode={isDarkMode} /></>}{isLoading && <MapLoading isDarkMode={isDarkMode} />}</main>{isInactivityPromptVisible && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"><div role="dialog" aria-modal="true" aria-labelledby="studio-inactivity-title" className={`studio-liquid-panel w-full max-w-md rounded-3xl border p-6 shadow-2xl ${isDarkMode ? "studio-liquid-dark border-white/[0.18] text-slate-100" : "studio-liquid-light border-white/80 text-slate-950"}`}><div className="flex items-start gap-4"><div className={`${isDarkMode ? "bg-amber-500/10 text-amber-300 ring-amber-400/20" : "bg-amber-50 text-amber-700 ring-amber-100"} rounded-2xl p-3 ring-1`}><AlertTriangle size={24} aria-hidden="true" /></div><div className="min-w-0 flex-1"><h2 id="studio-inactivity-title" className={`text-lg font-black ${isDarkMode ? "text-slate-50" : "text-slate-950"}`}>You’ve been inactive</h2><p className={`mt-2 text-sm font-semibold leading-relaxed ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>Refresh the Studio workspace only if you want to reload the map and project data. You can stay here to continue from your current view.</p></div></div><div className={`${isDarkMode ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-emerald-200 bg-emerald-50 text-emerald-800"} mt-5 rounded-2xl border px-4 py-3 text-sm font-semibold`}>Auto-save is active, but in-progress tool selections or open dialogs may reset after refresh.</div><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={stayActive}>Stay here</Button><Button variant="primary" onClick={refreshWorkspace}>Refresh workspace</Button></div></div></div>}<style>{`@keyframes slideInLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }`}</style></div>;
 };
-
 export default Studio;
