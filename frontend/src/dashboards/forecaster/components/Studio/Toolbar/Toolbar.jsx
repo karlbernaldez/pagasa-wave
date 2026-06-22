@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { TbTools } from 'react-icons/tb';
 import { CheckCircle2, ChevronDown, ChevronUp, Flag, Type, Waves, X } from 'lucide-react';
 
@@ -79,10 +78,6 @@ const DrawToolbar = ({
   projectId,
 }) => {
   const theme = getTheme(isDarkMode);
-  useMemo(() => ({
-    text_note: 'Text label',
-    less_1: 'Low wave marker',
-  }), []);
 
   const {
     isDrawing, isFlagDrawing, isCollapsed, selectedToolType,
@@ -112,7 +107,7 @@ const DrawToolbar = ({
           role="toolbar"
           aria-label="Drawing tools"
           className={cn(
-            'flex h-13 items-center justify-center gap-1 rounded-2xl border px-2 py-1.5 shadow-2xl backdrop-blur-xl',
+            'flex h-14 items-center justify-center gap-1 rounded-2xl border px-2 py-1.5 shadow-2xl backdrop-blur-xl',
             theme.dock
           )}
         >
