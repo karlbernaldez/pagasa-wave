@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Bell, CheckCheck, ExternalLink } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 import {
   fetchNotifications,
@@ -37,8 +38,26 @@ function isInternalPath(path) {
   return typeof path === 'string' && path.startsWith('/');
 }
 
+function isAnnotationRequest(notification) {
+  return notification?.type === 'annotation_change_request';
+}
+
+async function showAnnotationRequestDialog(notification) {
+  const result = await Swal.fire({
+    icon: 'info',
+    title: notification?.title || 'Annotation request',
+    html: `<div style="text-align:left;line-height:1.5">${notification?.message || 'A forecaster sent an annotation request.'}</div>`,
+    showCancelButton: Boolean(notification?.resourcePath),
+    confirmButtonText: notification?.resourcePath ? 'Open Studio' : 'OK',
+    cancelButtonText: 'Close',
+  });
+
+  return result.isConfirmed;
+}
+
 export default function NotificationBell({ isDarkMode = false, className = '' }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -96,6 +115,20 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [isOpen]);
 
+  const openResourcePath = useCallback((resourcePath) => {
+    if (!resourcePath) return;
+
+    if (isInternalPath(resourcePath)) {
+      const currentPath = `${location.pathname}${location.search}`;
+      if (currentPath !== resourcePath) {
+        navigate(resourcePath);
+      }
+      return;
+    }
+
+    window.open(resourcePath, '_blank', 'noopener,noreferrer');
+  }, [location.pathname, location.search, navigate]);
+
   const handleToggle = async () => {
     setIsOpen((value) => !value);
     if (!isOpen) await loadNotifications({ silent: true });
@@ -104,6 +137,7 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
   const handleNotificationClick = async (notification) => {
     const id = getNotificationId(notification);
     const resourcePath = notification?.resourcePath;
+    let shouldOpenResource = true;
 
     try {
       if (id && notification?.unread) {
@@ -114,12 +148,14 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
     } finally {
       await loadNotifications({ silent: true });
       setIsOpen(false);
+    }
 
-      if (resourcePath && isInternalPath(resourcePath)) {
-        navigate(resourcePath);
-      } else if (resourcePath) {
-        window.open(resourcePath, '_blank', 'noopener,noreferrer');
-      }
+    if (isAnnotationRequest(notification)) {
+      shouldOpenResource = await showAnnotationRequestDialog(notification);
+    }
+
+    if (shouldOpenResource) {
+      openResourcePath(resourcePath);
     }
   };
 
@@ -194,7 +230,7 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
               notifications.map((notification) => {
                 const id = getNotificationId(notification);
                 const unread = Boolean(notification.unread);
-                const canOpen = Boolean(notification.resourcePath);
+                const canOpen = Boolean(notification.resourcePath) || isAnnotationRequest(notification);
 
                 return (
                   <button
