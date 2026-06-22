@@ -90,6 +90,23 @@ function getUserDisplayName(user) {
     || '';
 }
 
+function getActiveEditorNames(chart) {
+  const activeEditors = Array.isArray(chart?.activeEditors) ? chart.activeEditors : [];
+  const names = activeEditors
+    .map((editor) => getUserDisplayName(editor?.user))
+    .filter(Boolean);
+  const legacyName = getUserDisplayName(chart?.claimedBy);
+  if (legacyName && !names.includes(legacyName)) names.push(legacyName);
+  return names;
+}
+
+function formatNameList(names) {
+  if (!names.length) return '';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}`;
+}
+
 function getPackageTitle(packageData) {
   const dateKey = formatForecastDateKey(packageData?.forecastDate);
   const name = packageData?.name || '';
@@ -241,30 +258,9 @@ function OperationsPanel({ packageData, completion, isEditable, isDarkMode }) {
           Workflow
         </p>
         <div className="mt-4 space-y-5">
-          <WorkflowStep
-            number="1"
-            title="Analyze current seas"
-            description="Finish Wave Analysis before opening the forecast horizons."
-            active={isEditable && getNextIncompleteChartType(packageData) === 'analysis'}
-            done={isChartComplete(packageData, 'analysis') || isSubmittedOrLater}
-            isDarkMode={isDarkMode}
-          />
-          <WorkflowStep
-            number="2"
-            title="Build forecast sequence"
-            description="Certify 24h, then 36h, then 48h so each frame has a verified baseline."
-            active={isEditable && !completion.isComplete && getNextIncompleteChartType(packageData) !== 'analysis'}
-            done={completion.isComplete || isSubmittedOrLater}
-            isDarkMode={isDarkMode}
-          />
-          <WorkflowStep
-            number="3"
-            title="Submit package"
-            description="Submit once all four charts are complete. Linked charts become read-only."
-            active={isEditable && completion.isComplete}
-            done={isSubmittedOrLater}
-            isDarkMode={isDarkMode}
-          />
+          <WorkflowStep number="1" title="Analyze current seas" description="Finish Wave Analysis before opening the forecast horizons." active={isEditable && getNextIncompleteChartType(packageData) === 'analysis'} done={isChartComplete(packageData, 'analysis') || isSubmittedOrLater} isDarkMode={isDarkMode} />
+          <WorkflowStep number="2" title="Build forecast sequence" description="Certify 24h, then 36h, then 48h so each frame has a verified baseline." active={isEditable && !completion.isComplete && getNextIncompleteChartType(packageData) !== 'analysis'} done={completion.isComplete || isSubmittedOrLater} isDarkMode={isDarkMode} />
+          <WorkflowStep number="3" title="Submit package" description="Submit once all four charts are complete and no forecaster is still editing." active={isEditable && completion.isComplete} done={isSubmittedOrLater} isDarkMode={isDarkMode} />
         </div>
       </section>
     </aside>
@@ -278,104 +274,65 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const isComplete = Boolean(completion?.isComplete);
   const blockingChartType = getFirstIncompletePrerequisite(packageData, chartType);
   const isQueued = Boolean(blockingChartType) && !isComplete;
-  const claimedByName = getUserDisplayName(chart?.claimedBy);
+  const activeEditorNames = getActiveEditorNames(chart);
+  const activeEditorText = formatNameList(activeEditorNames);
   const readyByName = getUserDisplayName(chart?.readyBy || completion?.completedBy);
-  const metadata = CHART_METADATA[chartType] || {
-    code: 'CHT',
-    horizon: 'Forecast chart',
-    mandate: 'Prepare and verify this forecast chart.',
-    checkpoint: 'Confirm readiness before package submission.',
-  };
+  const metadata = CHART_METADATA[chartType] || { code: 'CHT', horizon: 'Forecast chart', mandate: 'Prepare and verify this forecast chart.', checkpoint: 'Confirm readiness before package submission.' };
   const statusLabel = isComplete ? 'Ready for review' : isQueued ? 'Queued' : 'In production';
+  const hasActiveEditors = activeEditorNames.length > 0;
   const canToggle = isEditable && !isQueued && !isUpdating;
   const canOpen = Boolean(projectId && !isQueued);
-  const accentClass = isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : claimedByName ? 'bg-amber-400' : 'bg-cyan-400';
+  const accentClass = isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : hasActiveEditors ? 'bg-amber-400' : 'bg-cyan-400';
   const statusClass = isComplete
     ? 'bg-emerald-500/10 text-emerald-500'
     : isQueued
       ? isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
-      : claimedByName
+      : hasActiveEditors
         ? isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'
         : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700';
   const collaborationLabel = isComplete
     ? readyByName ? `Certified by ${readyByName}` : 'Certified ready'
-    : claimedByName ? `Editing by ${claimedByName}` : 'Unclaimed';
+    : hasActiveEditors ? `Editing by ${activeEditorText}` : 'No active editors';
   const collaborationClass = isComplete
     ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    : claimedByName
+    : hasActiveEditors
       ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
       : isDarkMode ? 'border-white/10 bg-slate-950/50 text-slate-400' : 'border-slate-200 bg-white text-slate-600';
 
   return (
     <article className={`group relative overflow-hidden rounded-3xl border shadow-sm transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-white/10 bg-slate-900/85 hover:border-cyan-300/30' : 'border-slate-200 bg-white hover:border-blue-200'}`}>
       <div className={`h-1 w-full ${accentClass}`} />
-
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black tracking-[0.14em] ${isDarkMode ? 'bg-slate-950 text-cyan-200 ring-1 ring-white/10' : 'bg-slate-100 text-blue-700'}`}>
-                {metadata.code}
-              </span>
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${statusClass}`}>
-                {statusLabel}
-              </span>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black tracking-[0.14em] ${isDarkMode ? 'bg-slate-950 text-cyan-200 ring-1 ring-white/10' : 'bg-slate-100 text-blue-700'}`}>{metadata.code}</span>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${statusClass}`}>{statusLabel}</span>
             </div>
-
-            <h4 className={`mt-4 text-lg font-black tracking-tight ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>
-              {REQUIRED_CHART_LABELS[chartType] || chartType}
-            </h4>
-            <p className={`mt-1 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-              {metadata.horizon}
-            </p>
+            <h4 className={`mt-4 text-lg font-black tracking-tight ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>{REQUIRED_CHART_LABELS[chartType] || chartType}</h4>
+            <p className={`mt-1 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{metadata.horizon}</p>
           </div>
-
           <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isComplete ? 'bg-emerald-500/10 text-emerald-500' : isQueued ? isDarkMode ? 'bg-slate-800 text-slate-500' : 'bg-slate-100 text-slate-500' : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
             {isComplete ? <CheckCircle2 size={22} /> : <ClipboardList size={22} />}
           </div>
         </div>
-
         <div className={`mt-5 rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/55' : 'border-slate-100 bg-slate-50'}`}>
-          <div className={`mb-4 inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-black ${collaborationClass}`}>
-            <span className="truncate">{collaborationLabel}</span>
-          </div>
-          <p className={`text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-            {metadata.mandate}
-          </p>
+          <div className={`mb-4 inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-black ${collaborationClass}`}><span className="truncate">{collaborationLabel}</span></div>
+          <p className={`text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{metadata.mandate}</p>
           <div className={`mt-4 border-t pt-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-              {isQueued ? 'Prerequisite required' : claimedByName && !isComplete ? 'Active editor' : 'Readiness checkpoint'}
-            </p>
+            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{isQueued ? 'Prerequisite required' : hasActiveEditors && !isComplete ? 'Active editors' : 'Readiness checkpoint'}</p>
             <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              {isQueued
-                ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.`
-                : claimedByName && !isComplete
-                  ? `${claimedByName} has the editing claim for this chart.`
-                  : metadata.checkpoint}
+              {isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : metadata.checkpoint}
             </p>
           </div>
         </div>
-
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Button
-            className="w-full sm:w-auto"
-            size="sm"
-            variant={isQueued ? 'secondary' : 'primary'}
-            disabled={!canOpen}
-            onClick={() => canOpen && onOpen(projectId)}
-          >
+          <Button className="w-full sm:w-auto" size="sm" variant={isQueued ? 'secondary' : 'primary'} disabled={!canOpen} onClick={() => canOpen && onOpen(projectId)}>
             {isQueued ? `Waiting for ${REQUIRED_CHART_LABELS[blockingChartType]}` : isComplete ? 'Review chart' : 'Open chart'}
           </Button>
-
-          <button
-            type="button"
-            className={`inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-black transition ${isComplete ? 'text-emerald-500 hover:bg-emerald-500/10' : isQueued ? isDarkMode ? 'text-slate-500' : 'text-slate-500' : isDarkMode ? 'text-cyan-200 hover:bg-cyan-400/10' : 'text-blue-700 hover:bg-blue-50'} disabled:cursor-not-allowed disabled:opacity-50`}
-            disabled={!canToggle}
-            onClick={() => onToggleComplete(chartType, !isComplete)}
-            aria-pressed={isComplete}
-          >
+          <button type="button" className={`inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-black transition ${isComplete ? 'text-emerald-500 hover:bg-emerald-500/10' : isQueued ? isDarkMode ? 'text-slate-500' : 'text-slate-500' : isDarkMode ? 'text-cyan-200 hover:bg-cyan-400/10' : 'text-blue-700 hover:bg-blue-50'} disabled:cursor-not-allowed disabled:opacity-50`} disabled={!canToggle} onClick={() => onToggleComplete(chartType, !isComplete)} aria-pressed={isComplete}>
             {isUpdating ? <Loader2 className="animate-spin" size={15} /> : <CheckCircle2 size={15} />}
-            {isQueued ? 'Locked by sequence' : isComplete ? 'Ready' : claimedByName ? 'Claimed in Studio' : 'Certify ready'}
+            {isQueued ? 'Locked by sequence' : isComplete ? 'Ready' : hasActiveEditors ? 'Finish in Studio' : 'Certify ready'}
           </button>
         </div>
       </div>
@@ -386,20 +343,10 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
 function EmptyPackageState({ isCreating, isDarkMode, onCreate }) {
   return (
     <div className={`rounded-3xl border p-8 text-center shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-      <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
-        <CalendarDays size={30} />
-      </div>
-      <h2 className={`mt-5 text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-        Create today&apos;s forecast package
-      </h2>
-      <p className={`mx-auto mt-2 max-w-2xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-        A forecast package creates the four required charts for the daily marine forecast and keeps the forecaster workflow focused on the current forecast.
-      </p>
-      <div className="mt-6 flex justify-center">
-        <Button icon={Plus} loading={isCreating} disabled={isCreating} onClick={onCreate}>
-          Create Forecast Package
-        </Button>
-      </div>
+      <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}><CalendarDays size={30} /></div>
+      <h2 className={`mt-5 text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Create today&apos;s forecast package</h2>
+      <p className={`mx-auto mt-2 max-w-2xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>A forecast package creates the four required charts for the daily marine forecast and keeps the forecaster workflow focused on the current forecast.</p>
+      <div className="mt-6 flex justify-center"><Button icon={Plus} loading={isCreating} disabled={isCreating} onClick={onCreate}>Create Forecast Package</Button></div>
     </div>
   );
 }
@@ -425,7 +372,6 @@ export default function ForecasterProjectLibraryPage() {
   const loadCurrentPackage = useCallback(async ({ signal } = {}) => {
     setLoading(true);
     setError('');
-
     try {
       const response = await fetchCurrentForecastPackage({ signal });
       setPackageData(getPackagePayload(response));
@@ -448,7 +394,6 @@ export default function ForecasterProjectLibraryPage() {
     if (creating) return;
     setCreating(true);
     setError('');
-
     try {
       const response = await createForecastPackage();
       setPackageData(getPackagePayload(response));
@@ -460,22 +405,17 @@ export default function ForecasterProjectLibraryPage() {
     }
   };
 
-  const handleOpenChart = (projectId) => {
-    navigate(`/studio/${projectId}`);
-  };
+  const handleOpenChart = (projectId) => navigate(`/studio/${projectId}`);
 
   const handleToggleChartComplete = async (chartType, isComplete) => {
     if (!packageId || !chartType || updatingChartType) return;
-
     const blockingChartType = isComplete ? getFirstIncompletePrerequisite(packageData, chartType) : null;
     if (blockingChartType) {
       setError(`${REQUIRED_CHART_LABELS[blockingChartType]} must be certified before ${REQUIRED_CHART_LABELS[chartType]}.`);
       return;
     }
-
     setUpdatingChartType(chartType);
     setError('');
-
     try {
       const updatedPackage = await updateForecastChartCompletion(packageId, chartType, isComplete);
       setPackageData(getPackagePayload(updatedPackage));
@@ -489,10 +429,8 @@ export default function ForecasterProjectLibraryPage() {
 
   const handleSubmitPackage = async () => {
     if (!canSubmit) return;
-
     setSubmitting(true);
     setError('');
-
     try {
       const updatedPackage = await submitForecastPackage(packageId);
       setPackageData(getPackagePayload(updatedPackage));
@@ -509,175 +447,55 @@ export default function ForecasterProjectLibraryPage() {
       <div className="mx-auto max-w-[1440px] space-y-5 p-4 sm:space-y-6 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>
-              Forecaster Workspace
-            </p>
-            <h1 className={`mt-2 text-2xl font-black sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-              Current Forecast Package
-            </h1>
-            <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              Complete the daily forecast sequence from analysis through the 48-hour outlook.
-            </p>
+            <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>Forecaster Workspace</p>
+            <h1 className={`mt-2 text-2xl font-black sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Current Forecast Package</h1>
+            <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Complete the daily forecast sequence from analysis through the 48-hour outlook.</p>
           </div>
-
           <div className="flex flex-col gap-2 sm:flex-row">
-            {packageData && (
-              <Button
-                icon={Send}
-                loading={submitting}
-                disabled={!canSubmit}
-                onClick={handleSubmitPackage}
-              >
-                Submit Forecast Package
-              </Button>
-            )}
-            <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>
-              Refresh
-            </Button>
+            {packageData && <Button icon={Send} loading={submitting} disabled={!canSubmit} onClick={handleSubmitPackage}>Submit Forecast Package</Button>}
+            <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>Refresh</Button>
           </div>
         </div>
-
         {error && (
           <div className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`} role="alert">
-            <span className="inline-flex items-start gap-2">
-              <AlertCircle className="mt-0.5 shrink-0" size={17} />
-              {error}
-            </span>
-            <button
-              type="button"
-              className={`shrink-0 text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-red-200 hover:text-white' : 'text-red-700 hover:text-red-900'}`}
-              onClick={() => setError('')}
-            >
-              Dismiss
-            </button>
+            <span className="inline-flex items-start gap-2"><AlertCircle className="mt-0.5 shrink-0" size={17} />{error}</span>
+            <button type="button" className={`shrink-0 text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-red-200 hover:text-white' : 'text-red-700 hover:text-red-900'}`} onClick={() => setError('')}>Dismiss</button>
           </div>
         )}
-
         {loading ? (
-          <div className={`flex min-h-[320px] items-center justify-center rounded-3xl border ${isDarkMode ? 'border-white/10 bg-slate-900/80 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}>
-            <span className="inline-flex items-center gap-2 text-sm font-bold">
-              <Loader2 className="animate-spin" size={18} />
-              Loading current forecast package...
-            </span>
-          </div>
+          <div className={`flex min-h-[320px] items-center justify-center rounded-3xl border ${isDarkMode ? 'border-white/10 bg-slate-900/80 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}><span className="inline-flex items-center gap-2 text-sm font-bold"><Loader2 className="animate-spin" size={18} />Loading current forecast package...</span></div>
         ) : !packageData ? (
-          <EmptyPackageState
-            isCreating={creating}
-            isDarkMode={isDarkMode}
-            onCreate={handleCreatePackage}
-          />
+          <EmptyPackageState isCreating={creating} isDarkMode={isDarkMode} onCreate={handleCreatePackage} />
         ) : (
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="space-y-5">
               <section className={`rounded-3xl border p-5 shadow-sm sm:p-6 ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusPill status={packageData.status} isDarkMode={isDarkMode} />
-                      <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {formatForecastDate(packageData.forecastDate)}
-                      </span>
-                    </div>
-                    <h2 className={`mt-3 text-xl font-black sm:text-2xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                      {packageTitle}
-                    </h2>
-                    <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                      {completion.isComplete
-                        ? 'All required charts are complete. Submit the package for admin review when ready.'
-                        : 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Each chart unlocks after the previous one is certified.'}
-                    </p>
-                    {!isEditable && (
-                      <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>
-                        This package is locked while it is {packageData.status}.
-                      </p>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2"><StatusPill status={packageData.status} isDarkMode={isDarkMode} /><span className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{formatForecastDate(packageData.forecastDate)}</span></div>
+                    <h2 className={`mt-3 text-xl font-black sm:text-2xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{packageTitle}</h2>
+                    <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{completion.isComplete ? 'All required charts are complete. Submit the package for admin review when no forecasters are still editing.' : 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Forecasters can co-edit; readiness waits until active editors release.'}</p>
+                    {!isEditable && <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>This package is locked while it is {packageData.status}.</p>}
                   </div>
-
                   <div className={`w-full rounded-2xl border p-4 lg:max-w-[240px] ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
-                    <p className={`text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      Completion
-                    </p>
-                    <div className="mt-2 flex items-end gap-2">
-                      <span className={`text-3xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                        {completion.percentage}%
-                      </span>
-                      <span className={`pb-1 text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {completion.completed}/{completion.required} charts
-                      </span>
-                    </div>
-                    <div className={`mt-3 h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}>
-                      <div className="h-full rounded-full bg-cyan-500" style={{ width: `${completion.percentage}%` }} />
-                    </div>
+                    <p className={`text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Completion</p>
+                    <div className="mt-2 flex items-end gap-2"><span className={`text-3xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{completion.percentage}%</span><span className={`pb-1 text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{completion.completed}/{completion.required} charts</span></div>
+                    <div className={`mt-3 h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}><div className="h-full rounded-full bg-cyan-500" style={{ width: `${completion.percentage}%` }} /></div>
                   </div>
                 </div>
               </section>
-
               <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <MetricCard
-                  label="Forecast date"
-                  value={formatForecastDateKey(packageData.forecastDate) || 'Today'}
-                  detail="Philippines operational day"
-                  icon={CalendarDays}
-                  isDarkMode={isDarkMode}
-                />
-                <MetricCard
-                  label="Current step"
-                  value={REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || 'Submit'}
-                  detail={completion.isComplete ? 'Ready for admin review' : 'Next chart in sequence'}
-                  icon={CheckCircle2}
-                  isDarkMode={isDarkMode}
-                />
-                <MetricCard
-                  label="Package state"
-                  value={packageData.status || 'Draft'}
-                  detail={isEditable ? 'Editable by forecaster' : 'Read-only until revision'}
-                  icon={ClipboardList}
-                  isDarkMode={isDarkMode}
-                />
-                <MetricCard
-                  label="Review gate"
-                  value={completion.isComplete ? 'Open' : 'Blocked'}
-                  detail={completion.isComplete ? 'Submission enabled' : 'Complete sequence first'}
-                  icon={Send}
-                  isDarkMode={isDarkMode}
-                />
+                <MetricCard label="Forecast date" value={formatForecastDateKey(packageData.forecastDate) || 'Today'} detail="Philippines operational day" icon={CalendarDays} isDarkMode={isDarkMode} />
+                <MetricCard label="Current step" value={REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || 'Submit'} detail={completion.isComplete ? 'Ready for admin review' : 'Next chart in sequence'} icon={CheckCircle2} isDarkMode={isDarkMode} />
+                <MetricCard label="Package state" value={packageData.status || 'Draft'} detail={isEditable ? 'Editable by forecaster' : 'Read-only until revision'} icon={ClipboardList} isDarkMode={isDarkMode} />
+                <MetricCard label="Review gate" value={completion.isComplete ? 'Open' : 'Blocked'} detail={completion.isComplete ? 'Submission enabled after editors release' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
               </section>
-
               <section>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                      Required Charts
-                    </p>
-                    <h3 className={`mt-1 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                      Sequential forecast production board
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  {orderedCharts.map((chart) => (
-                    <ChartCard
-                      key={chart.chartType}
-                      chart={chart}
-                      packageData={packageData}
-                      isDarkMode={isDarkMode}
-                      isEditable={isEditable}
-                      isUpdating={updatingChartType === chart.chartType}
-                      onOpen={handleOpenChart}
-                      onToggleComplete={handleToggleChartComplete}
-                    />
-                  ))}
-                </div>
+                <div className="mb-3 flex items-center justify-between gap-3"><div><p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Required Charts</p><h3 className={`mt-1 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Sequential forecast production board</h3></div></div>
+                <div className="grid gap-4 md:grid-cols-2">{orderedCharts.map((chart) => <ChartCard key={chart.chartType} chart={chart} packageData={packageData} isDarkMode={isDarkMode} isEditable={isEditable} isUpdating={updatingChartType === chart.chartType} onOpen={handleOpenChart} onToggleComplete={handleToggleChartComplete} />)}</div>
               </section>
             </div>
-
-            <OperationsPanel
-              packageData={packageData}
-              completion={completion}
-              isEditable={isEditable}
-              isDarkMode={isDarkMode}
-            />
+            <OperationsPanel packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} />
           </div>
         )}
       </div>
