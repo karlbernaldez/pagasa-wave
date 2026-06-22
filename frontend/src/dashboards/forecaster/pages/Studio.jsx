@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Lock, MessageSquareText, Moon, Send, Sun } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Lock, MessageSquareText, Moon, Send, Sun } from "lucide-react";
 
 // Component imports
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
@@ -19,9 +19,7 @@ import MapStatusBar from "@dashboards/forecaster/map/MapStatusBar";
 // Shared project helpers
 import { getLatestReviewRemarks } from "@/features/projects/projectAdapter";
 import {
-  PROJECT_STATUS,
   canEditProjectStatus,
-  canSubmitProjectStatus,
   getProjectStatusLabel,
   getProjectStatusStyle,
   isProjectRevisionRequested,
@@ -40,7 +38,12 @@ import {
 import { useTheme } from "@/app/providers/ThemeProvider";
 
 // API
-import { submitProject } from "@/api/projectAPI";
+import {
+  claimForecastPackageChartByProject,
+  fetchForecastPackageChartContextByProject,
+  releaseForecastPackageChartByProject,
+  updateForecastChartCompletionByProject,
+} from "@/api/forecastPackageAPI";
 
 // Utils
 import { savePointFeature } from "@dashboards/forecaster/utils/ToolBarUtils";
@@ -51,10 +54,19 @@ import { saveMarker } from "@dashboards/forecaster/map/layers/markerLayer";
 const TOOLBAR_DELAY = 1000;
 const STUDIO_HEADER_HEIGHT = 64;
 
-function getSubmitLabel(status) {
-  if (status === PROJECT_STATUS.DRAFT) return "Submit";
-  if (isProjectRevisionRequested(status)) return "Resubmit Revision";
-  return "Resubmit";
+const FORECAST_CHART_LABELS = {
+  analysis: "Wave Analysis",
+  forecast_24h: "24h Wave Forecast",
+  forecast_36h: "36h Wave Forecast",
+  forecast_48h: "48h Wave Forecast",
+};
+
+function getChartLabel(chartType) {
+  return FORECAST_CHART_LABELS[chartType] || "Forecast chart";
+}
+
+function isContextNotFound(error) {
+  return /context not found|not found/i.test(error?.message || "");
 }
 
 // ─── Main Component ──────────────────────────────────
@@ -74,7 +86,11 @@ const Studio = ({ logger }) => {
   } = useProjectLoader(projectId);
 
   const [currentProject, setCurrentProject] = useState(null);
-  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
+  const [chartContext, setChartContext] = useState(null);
+  const [isLoadingChartContext, setIsLoadingChartContext] = useState(false);
+  const [isClaimingChart, setIsClaimingChart] = useState(false);
+  const [isReleasingChart, setIsReleasingChart] = useState(false);
+  const [isCertifyingChart, setIsCertifyingChart] = useState(false);
   const [studioError, setStudioError] = useState("");
 
   useEffect(() => {
@@ -141,8 +157,10 @@ const Studio = ({ logger }) => {
   const removeSourceSafe = (map, id) => { if (map.getSource(id)) map.removeSource(id); };
 
   const projectStatus = currentProject?.status;
-  const canEditProject = currentProject && canEditProjectStatus(projectStatus);
+  const isPackageChartReady = Boolean(chartContext?.completion?.isComplete);
+  const canEditProject = Boolean(currentProject && canEditProjectStatus(projectStatus) && !isPackageChartReady);
   const isReadOnlyProject = Boolean(currentProject && !canEditProject);
+  const isPackageReadyReadOnly = Boolean(currentProject && isPackageChartReady);
 
   const isBlockingWorkspaceModalOpen =
     showTitleModal ||
@@ -166,22 +184,6 @@ const Studio = ({ logger }) => {
   const handleToggleTheme = useCallback(() => {
     setIsDarkMode((value) => !value);
   }, [setIsDarkMode]);
-
-  const handleSubmitProject = useCallback(async () => {
-    const id = currentProject?._id || currentProject?.id || projectId;
-    if (!id || isSubmittingProject || !canSubmitProjectStatus(currentProject?.status)) return;
-
-    setIsSubmittingProject(true);
-    setStudioError("");
-    try {
-      const updatedProject = await submitProject(id);
-      setCurrentProject(updatedProject);
-    } catch (error) {
-      setStudioError(error?.message || "Failed to submit project for review.");
-    } finally {
-      setIsSubmittingProject(false);
-    }
-  }, [currentProject, isSubmittingProject, projectId]);
 
   // ─── Effects ─────────────────────────────────────────
 
@@ -220,6 +222,31 @@ const Studio = ({ logger }) => {
     markerTitleRef,
     setCapturedImages,
   ]);
+
+  useEffect(() => {
+    if (!projectId) {
+      setChartContext(null);
+      setIsLoadingChartContext(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setIsLoadingChartContext(true);
+
+    fetchForecastPackageChartContextByProject(projectId, { signal: controller.signal })
+      .then((context) => setChartContext(context))
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+        if (isContextNotFound(error)) {
+          setChartContext(null);
+          return;
+        }
+        setStudioError(error?.message || "Failed to load forecast package chart workflow.");
+      })
+      .finally(() => setIsLoadingChartContext(false));
+
+    return () => controller.abort();
+  }, [projectId]);
 
   useEffect(() => {
     if (!isReadOnlyProject) return;
@@ -261,6 +288,62 @@ const Studio = ({ logger }) => {
     savePointFeature({ coords, title, selectedType: type, setLayersRef, projectId });
   };
 
+  const handleClaimChart = async () => {
+    if (!projectId || isClaimingChart) return;
+    setIsClaimingChart(true);
+    setStudioError("");
+    try {
+      const context = await claimForecastPackageChartByProject(projectId);
+      setChartContext(context);
+    } catch (error) {
+      setStudioError(error?.message || "Failed to claim chart editing.");
+    } finally {
+      setIsClaimingChart(false);
+    }
+  };
+
+  const handleReleaseChart = async () => {
+    if (!projectId || isReleasingChart) return;
+    setIsReleasingChart(true);
+    setStudioError("");
+    try {
+      const context = await releaseForecastPackageChartByProject(projectId);
+      setChartContext(context);
+    } catch (error) {
+      setStudioError(error?.message || "Failed to release chart editing.");
+    } finally {
+      setIsReleasingChart(false);
+    }
+  };
+
+  const handleCertifyChartReady = async () => {
+    if (!projectId || isCertifyingChart) return;
+    setIsCertifyingChart(true);
+    setStudioError("");
+    try {
+      const context = await updateForecastChartCompletionByProject(projectId, true);
+      setChartContext(context);
+    } catch (error) {
+      setStudioError(error?.message || "Failed to certify chart readiness.");
+    } finally {
+      setIsCertifyingChart(false);
+    }
+  };
+
+  const handleReopenChartEdits = async () => {
+    if (!projectId || isCertifyingChart) return;
+    setIsCertifyingChart(true);
+    setStudioError("");
+    try {
+      const context = await updateForecastChartCompletionByProject(projectId, false);
+      setChartContext(context);
+    } catch (error) {
+      setStudioError(error?.message || "Failed to reopen chart editing.");
+    } finally {
+      setIsCertifyingChart(false);
+    }
+  };
+
   const handleMapLoad = useMapLoader(
     projectId,
     logger,
@@ -289,12 +372,16 @@ const Studio = ({ logger }) => {
   const projectStatusStyle = isRevisionRequested
     ? "border-amber-300 bg-amber-50 text-amber-800"
     : getProjectStatusStyle(projectStatus);
-  const canSubmitProject = false;
   const latestReviewRemarks = useMemo(
     () => getLatestReviewRemarks(currentProject),
     [currentProject]
   );
   const hasActiveReviewRemarks = isRevisionRequested && Boolean(latestReviewRemarks?.comment);
+  const chartClaim = chartContext?.claim;
+  const chartType = chartContext?.chartType;
+  const chartLabel = getChartLabel(chartType);
+  const blockingChartLabel = getChartLabel(chartContext?.blockingChartType);
+  const isChartActionBusy = isLoadingChartContext || isClaimingChart || isReleasingChart || isCertifyingChart;
 
   const headerClass = isDarkMode
     ? "studio-liquid-dark border-white/[0.18] text-slate-100 shadow-black/35"
@@ -343,21 +430,79 @@ const Studio = ({ logger }) => {
           {isReadOnlyProject && (
             <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
               <Lock size={13} />
-              Read-only
+              {isPackageReadyReadOnly ? "Chart ready" : "Read-only"}
             </span>
           )}
-          {canSubmitProject && (
+
+          {chartContext && !isLoadingChartContext && !chartContext.blockingChartType && isPackageChartReady && (
+            <span className={`studio-liquid-control hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200" : "border-emerald-200/80 bg-emerald-50/80 text-emerald-700"}`}>
+              <CheckCircle2 size={13} />
+              Certified ready
+            </span>
+          )}
+
+          {chartContext && !isPackageChartReady && chartContext.blockingChartType && (
+            <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-slate-700 bg-slate-900 text-slate-400" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
+              Queued: {blockingChartLabel}
+            </span>
+          )}
+
+          {chartContext && !isPackageChartReady && chartClaim?.claimedByOtherUser && (
+            <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-amber-300/20 bg-amber-400/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+              Claimed by {chartClaim.claimedByLabel || "another forecaster"}
+            </span>
+          )}
+
+          {chartContext && !isPackageChartReady && !chartContext.blockingChartType && !chartClaim?.claimedByOtherUser && chartClaim?.canClaim && !chartClaim?.claimedByCurrentUser && (
+            <Button
+              size="sm"
+              loading={isClaimingChart}
+              disabled={isChartActionBusy}
+              onClick={handleClaimChart}
+              className={`!rounded-xl ${headerPrimaryButton}`}
+            >
+              <span className="hidden sm:inline">Claim editing</span>
+            </Button>
+          )}
+
+          {chartContext && !isPackageChartReady && chartClaim?.canCertify && (
             <Button
               size="sm"
               icon={Send}
-              loading={isSubmittingProject}
-              disabled={isSubmittingProject}
-              onClick={handleSubmitProject}
+              loading={isCertifyingChart}
+              disabled={isChartActionBusy}
+              onClick={handleCertifyChartReady}
               className={`!rounded-xl ${headerPrimaryButton}`}
             >
-              <span className="hidden sm:inline">{isSubmittingProject ? "Submitting..." : getSubmitLabel(projectStatus)}</span>
+              <span className="hidden sm:inline">Certify ready</span>
             </Button>
           )}
+
+          {chartContext && isPackageChartReady && (
+            <Button
+              size="sm"
+              loading={isCertifyingChart}
+              disabled={isChartActionBusy}
+              onClick={handleReopenChartEdits}
+              className={`!rounded-xl ${headerGhostButton}`}
+            >
+              <span className="hidden sm:inline">Reopen edits</span>
+            </Button>
+          )}
+
+          {chartContext && chartClaim?.canRelease && !isPackageChartReady && (
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={isReleasingChart}
+              disabled={isChartActionBusy}
+              onClick={handleReleaseChart}
+              className={`!rounded-xl ${headerGhostButton}`}
+            >
+              <span className="hidden sm:inline">Release</span>
+            </Button>
+          )}
+
           <span className={`studio-liquid-control hidden rounded-full border px-3 py-1 text-xs font-semibold xl:inline-flex ${isDarkMode ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200" : "border-emerald-200/80 bg-emerald-50/80 text-emerald-700"}`}>
             Auto-save active
           </span>
@@ -404,10 +549,12 @@ const Studio = ({ logger }) => {
             </div>
             <div className="min-w-0 flex-1">
               <p className={`text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>
-                Editing locked
+                {isPackageReadyReadOnly ? "Chart certified" : "Editing locked"}
               </p>
               <p className="mt-1 text-sm font-semibold leading-relaxed">
-                This project is already {projectStatusLabel}. You can view it, but markers, drawings, uploads, deletes, and edits are disabled until Admin requests a revision.
+                {isPackageReadyReadOnly
+                  ? `${chartLabel} is certified ready. Reopen edits before making additional annotations.`
+                  : `This project is already ${projectStatusLabel}. You can view it, but markers, drawings, uploads, deletes, and edits are disabled until Admin requests a revision.`}
               </p>
             </div>
           </div>
