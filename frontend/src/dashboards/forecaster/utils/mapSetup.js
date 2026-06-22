@@ -33,6 +33,13 @@ const getValidCoordinates = (geometry) => {
   return coords;
 };
 
+function finishMapSetup({ setLoading, setMapLoaded, logger }) {
+  setLoading?.(false);
+  setMapLoaded?.(true);
+  setGlobalMapLoaded(true);
+  logger?.info('Map setup complete with initial features.');
+}
+
 class LayerVisibilityManager {
   constructor(map) { this.map = map; }
   applyFromLocalStorage(config = LAYER_VISIBILITY_CONFIG) {
@@ -172,53 +179,63 @@ export async function setupMap({
 }) {
   if (!map) {
     console.warn('No map instance provided');
+    setLoading?.(false);
     return () => { };
   }
 
   setLoading?.(true);
-  const theme = { lineColor: isDarkMode ? '#ffffff' : '#000000', textColor: isDarkMode ? '#ffffff' : '#000000', isDarkMode };
-  const draw = initDrawControl(map);
-  window.drawInstance = draw;
-  setDrawInstance(draw);
-  addHimawariLayer(map);
-  loadCustomImages(map);
-  initTyphoonLayer(map);
-  await addWindSource(map, isDarkMode);
-  await addWindLayer(map, isDarkMode);
-  const imageLoader = new ImageLoader(map);
-  imageLoader.loadAll();
-  const featuresArray = Array.isArray(initialFeatures) ? initialFeatures : initialFeatures?.features || [];
-  const sourceIds = featuresArray.map(f => f.sourceId || f.properties?.sourceId).filter(Boolean);
-  setGlobalSourceIds(sourceIds);
-  const classifier = new FeatureClassifier();
-  const { markerPoints, frontLines, nonFrontLines, totalLineCount } = classifier.classify(featuresArray);
-  setLineCount?.(totalLineCount);
-  const markerRenderer = new MarkerRenderer(mapRef);
-  markerRenderer.renderAll(markerPoints);
-  const lineRenderer = new LineRenderer(map, theme);
-  lineRenderer.renderNonFrontLines(nonFrontLines);
-  lineRenderer.renderFrontLines(frontLines);
-  const visibilityManager = new LayerVisibilityManager(map);
-  visibilityManager.applyFromLocalStorage();
-  const handleDrawCreate = (e) => {
-    const feature = e.features[0];
-    if (feature?.geometry.type === 'Point') {
-      const [lng, lat] = feature.geometry.coordinates;
-      setSelectedPoint({ lng, lat });
-      const selectedType = selectedToolRef?.current || '';
-      if (!['less_1', 'text_note'].includes(selectedType.toLowerCase())) setShowTitleModal(true);
-      draw.delete(feature.id);
-    }
+  let setupFinished = false;
+  const completeSetupOnce = () => {
+    if (setupFinished) return;
+    setupFinished = true;
+    finishMapSetup({ setLoading, setMapLoaded, logger });
   };
-  map.on('draw.create', handleDrawCreate);
-  map.once('render', () => {
-    setLoading?.(false);
-    setMapLoaded(true);
-    setGlobalMapLoaded(true);
-    logger?.info('Map setup complete with initial features.');
-  });
-  return function cleanup() {
-    map.off('draw.create', handleDrawCreate);
-    delete window.drawInstance;
-  };
+
+  try {
+    const theme = { lineColor: isDarkMode ? '#ffffff' : '#000000', textColor: isDarkMode ? '#ffffff' : '#000000', isDarkMode };
+    const draw = initDrawControl(map);
+    window.drawInstance = draw;
+    setDrawInstance(draw);
+    addHimawariLayer(map);
+    loadCustomImages(map);
+    initTyphoonLayer(map);
+    await addWindSource(map, isDarkMode);
+    await addWindLayer(map, isDarkMode);
+    const imageLoader = new ImageLoader(map);
+    imageLoader.loadAll();
+    const featuresArray = Array.isArray(initialFeatures) ? initialFeatures : initialFeatures?.features || [];
+    const sourceIds = featuresArray.map(f => f.sourceId || f.properties?.sourceId).filter(Boolean);
+    setGlobalSourceIds(sourceIds);
+    const classifier = new FeatureClassifier();
+    const { markerPoints, frontLines, nonFrontLines, totalLineCount } = classifier.classify(featuresArray);
+    setLineCount?.(totalLineCount);
+    const markerRenderer = new MarkerRenderer(mapRef);
+    markerRenderer.renderAll(markerPoints);
+    const lineRenderer = new LineRenderer(map, theme);
+    lineRenderer.renderNonFrontLines(nonFrontLines);
+    lineRenderer.renderFrontLines(frontLines);
+    const visibilityManager = new LayerVisibilityManager(map);
+    visibilityManager.applyFromLocalStorage();
+    const handleDrawCreate = (e) => {
+      const feature = e.features[0];
+      if (feature?.geometry.type === 'Point') {
+        const [lng, lat] = feature.geometry.coordinates;
+        setSelectedPoint({ lng, lat });
+        const selectedType = selectedToolRef?.current || '';
+        if (!['less_1', 'text_note'].includes(selectedType.toLowerCase())) setShowTitleModal(true);
+        draw.delete(feature.id);
+      }
+    };
+    map.on('draw.create', handleDrawCreate);
+    map.once('render', completeSetupOnce);
+    window.setTimeout(completeSetupOnce, 250);
+    return function cleanup() {
+      map.off('draw.create', handleDrawCreate);
+      delete window.drawInstance;
+    };
+  } catch (error) {
+    console.error('[mapSetup] Failed to setup map:', error);
+    completeSetupOnce();
+    return () => { };
+  }
 }
