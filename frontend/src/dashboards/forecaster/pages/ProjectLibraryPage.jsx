@@ -82,6 +82,14 @@ function formatForecastDateKey(value) {
   return year && month && day ? `${year}-${month}-${day}` : '';
 }
 
+function getUserDisplayName(user) {
+  if (!user || typeof user === 'string') return '';
+  return [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
+    || user.username
+    || user.email
+    || '';
+}
+
 function getPackageTitle(packageData) {
   const dateKey = formatForecastDateKey(packageData?.forecastDate);
   const name = packageData?.name || '';
@@ -270,6 +278,8 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const isComplete = Boolean(completion?.isComplete);
   const blockingChartType = getFirstIncompletePrerequisite(packageData, chartType);
   const isQueued = Boolean(blockingChartType) && !isComplete;
+  const claimedByName = getUserDisplayName(chart?.claimedBy);
+  const readyByName = getUserDisplayName(chart?.readyBy || completion?.completedBy);
   const metadata = CHART_METADATA[chartType] || {
     code: 'CHT',
     horizon: 'Forecast chart',
@@ -279,12 +289,22 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const statusLabel = isComplete ? 'Ready for review' : isQueued ? 'Queued' : 'In production';
   const canToggle = isEditable && !isQueued && !isUpdating;
   const canOpen = Boolean(projectId && !isQueued);
-  const accentClass = isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : 'bg-cyan-400';
+  const accentClass = isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : claimedByName ? 'bg-amber-400' : 'bg-cyan-400';
   const statusClass = isComplete
     ? 'bg-emerald-500/10 text-emerald-500'
     : isQueued
       ? isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
-      : isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700';
+      : claimedByName
+        ? isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'
+        : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700';
+  const collaborationLabel = isComplete
+    ? readyByName ? `Certified by ${readyByName}` : 'Certified ready'
+    : claimedByName ? `Editing by ${claimedByName}` : 'Unclaimed';
+  const collaborationClass = isComplete
+    ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    : claimedByName
+      ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
+      : isDarkMode ? 'border-white/10 bg-slate-950/50 text-slate-400' : 'border-slate-200 bg-white text-slate-600';
 
   return (
     <article className={`group relative overflow-hidden rounded-3xl border shadow-sm transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-white/10 bg-slate-900/85 hover:border-cyan-300/30' : 'border-slate-200 bg-white hover:border-blue-200'}`}>
@@ -316,17 +336,22 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
         </div>
 
         <div className={`mt-5 rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/55' : 'border-slate-100 bg-slate-50'}`}>
+          <div className={`mb-4 inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-black ${collaborationClass}`}>
+            <span className="truncate">{collaborationLabel}</span>
+          </div>
           <p className={`text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
             {metadata.mandate}
           </p>
           <div className={`mt-4 border-t pt-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
             <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-              {isQueued ? 'Prerequisite required' : 'Readiness checkpoint'}
+              {isQueued ? 'Prerequisite required' : claimedByName && !isComplete ? 'Active editor' : 'Readiness checkpoint'}
             </p>
             <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               {isQueued
                 ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.`
-                : metadata.checkpoint}
+                : claimedByName && !isComplete
+                  ? `${claimedByName} has the editing claim for this chart.`
+                  : metadata.checkpoint}
             </p>
           </div>
         </div>
@@ -350,7 +375,7 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
             aria-pressed={isComplete}
           >
             {isUpdating ? <Loader2 className="animate-spin" size={15} /> : <CheckCircle2 size={15} />}
-            {isQueued ? 'Locked by sequence' : isComplete ? 'Ready' : 'Certify ready'}
+            {isQueued ? 'Locked by sequence' : isComplete ? 'Ready' : claimedByName ? 'Claimed in Studio' : 'Certify ready'}
           </button>
         </div>
       </div>
