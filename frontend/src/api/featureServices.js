@@ -46,8 +46,7 @@ export const deleteFeature = async (sourceId) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to delete feature');
+      await throwFeatureRequestError(response, 'Failed to delete feature');
     }
 
     return response.json();
@@ -55,6 +54,21 @@ export const deleteFeature = async (sourceId) => {
     console.error('[ERROR] Failed to delete feature:', error);
     throw error;
   }
+};
+
+export const requestFeatureChange = async (sourceId, payload) => {
+  const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/request-change`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    await throwFeatureRequestError(response, 'Failed to send annotation request');
+  }
+
+  return response.json();
 };
 
 export const createFeature = async (feature) => {
@@ -71,7 +85,7 @@ export const createFeature = async (feature) => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to save feature');
+      throw new Error(data.error || data.message || 'Failed to save feature');
     }
 
     return data;
@@ -152,7 +166,7 @@ export async function updateFeatureNameAPI(layerId, newName) {
     } else {
       console.error('Error:', err.message);
     }
-    throw new Error('Failed to update feature name');
+    throw new Error(err.response?.data?.message || 'Failed to update feature name');
   }
 }
 
@@ -165,8 +179,7 @@ export async function updateFeatureCoordinates(sourceId, coordinates) {
   });
 
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || 'Failed to update coordinates');
+    await throwFeatureRequestError(response, 'Failed to update coordinates');
   }
 
   return response.json();
