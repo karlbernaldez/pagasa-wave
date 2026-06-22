@@ -13,6 +13,8 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 
 const FORECAST_TIME_ZONE = 'Asia/Manila';
 
+const REQUIRED_CHART_SEQUENCE = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
+
 const REQUIRED_CHART_LABELS = {
   analysis: 'Wave Analysis',
   forecast_24h: '24h Wave Forecast',
@@ -111,6 +113,27 @@ function getChartCompletion(packageData, chartType) {
   return packageData?.chartCompletion?.find((row) => row.chartType === chartType);
 }
 
+function isChartComplete(packageData, chartType) {
+  return Boolean(getChartCompletion(packageData, chartType)?.isComplete);
+}
+
+function getFirstIncompletePrerequisite(packageData, chartType) {
+  const chartIndex = REQUIRED_CHART_SEQUENCE.indexOf(chartType);
+  if (chartIndex <= 0) return null;
+
+  return REQUIRED_CHART_SEQUENCE.slice(0, chartIndex).find((previousChartType) => (
+    !isChartComplete(packageData, previousChartType)
+  )) || null;
+}
+
+function sortChartsBySequence(charts = []) {
+  return [...charts].sort((left, right) => {
+    const leftIndex = REQUIRED_CHART_SEQUENCE.indexOf(left.chartType);
+    const rightIndex = REQUIRED_CHART_SEQUENCE.indexOf(right.chartType);
+    return (leftIndex === -1 ? 999 : leftIndex) - (rightIndex === -1 ? 999 : rightIndex);
+  });
+}
+
 function getCompletion(packageData) {
   const completion = packageData?.completion;
   if (completion) return completion;
@@ -127,6 +150,10 @@ function getCompletion(packageData) {
   };
 }
 
+function getNextIncompleteChartType(packageData) {
+  return REQUIRED_CHART_SEQUENCE.find((chartType) => !isChartComplete(packageData, chartType)) || null;
+}
+
 function getNextAction(packageData, completion, isEditable) {
   if (!packageData) {
     return 'Create today\'s package to generate the four required forecast charts.';
@@ -137,7 +164,10 @@ function getNextAction(packageData, completion, isEditable) {
   }
 
   if (!completion.isComplete) {
-    return `${completion.required - completion.completed} chart${completion.required - completion.completed === 1 ? '' : 's'} still need forecast work.`;
+    const nextChartType = getNextIncompleteChartType(packageData);
+    return nextChartType
+      ? `Continue with ${REQUIRED_CHART_LABELS[nextChartType]}. Later charts remain queued until prerequisites are certified.`
+      : `${completion.required - completion.completed} chart${completion.required - completion.completed === 1 ? '' : 's'} still need forecast work.`;
   }
 
   return 'All charts are complete. Submit the package for admin review.';
@@ -205,17 +235,17 @@ function OperationsPanel({ packageData, completion, isEditable, isDarkMode }) {
         <div className="mt-4 space-y-5">
           <WorkflowStep
             number="1"
-            title="Prepare charts"
-            description="Open each required chart in Studio and finish the forecast work."
-            active={isEditable && !completion.isComplete}
-            done={completion.isComplete || isSubmittedOrLater}
+            title="Analyze current seas"
+            description="Finish Wave Analysis before opening the forecast horizons."
+            active={isEditable && getNextIncompleteChartType(packageData) === 'analysis'}
+            done={isChartComplete(packageData, 'analysis') || isSubmittedOrLater}
             isDarkMode={isDarkMode}
           />
           <WorkflowStep
             number="2"
-            title="Certify readiness"
-            description="Mark only charts that are ready for the daily forecast package."
-            active={isEditable && completion.completed > 0 && !completion.isComplete}
+            title="Build forecast sequence"
+            description="Certify 24h, then 36h, then 48h so each frame has a verified baseline."
+            active={isEditable && !completion.isComplete && getNextIncompleteChartType(packageData) !== 'analysis'}
             done={completion.isComplete || isSubmittedOrLater}
             isDarkMode={isDarkMode}
           />
@@ -238,18 +268,27 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const completion = getChartCompletion(packageData, chartType);
   const projectId = getChartProjectId(chart);
   const isComplete = Boolean(completion?.isComplete);
+  const blockingChartType = getFirstIncompletePrerequisite(packageData, chartType);
+  const isQueued = Boolean(blockingChartType) && !isComplete;
   const metadata = CHART_METADATA[chartType] || {
     code: 'CHT',
     horizon: 'Forecast chart',
     mandate: 'Prepare and verify this forecast chart.',
     checkpoint: 'Confirm readiness before package submission.',
   };
-  const statusLabel = isComplete ? 'Ready for review' : 'In production';
-  const canToggle = isEditable && !isUpdating;
+  const statusLabel = isComplete ? 'Ready for review' : isQueued ? 'Queued' : 'In production';
+  const canToggle = isEditable && !isQueued && !isUpdating;
+  const canOpen = Boolean(projectId && !isQueued);
+  const accentClass = isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : 'bg-cyan-400';
+  const statusClass = isComplete
+    ? 'bg-emerald-500/10 text-emerald-500'
+    : isQueued
+      ? isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
+      : isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700';
 
   return (
-    <article className={`group relative overflow-hidden rounded-3xl border shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-xl ${isDarkMode ? 'border-white/10 bg-slate-900/85 hover:border-cyan-300/30' : 'border-slate-200 bg-white hover:border-blue-200'}`}>
-      <div className={`h-1 w-full ${isComplete ? 'bg-emerald-400' : 'bg-cyan-400'}`} />
+    <article className={`group relative overflow-hidden rounded-3xl border shadow-sm transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-white/10 bg-slate-900/85 hover:border-cyan-300/30' : 'border-slate-200 bg-white hover:border-blue-200'}`}>
+      <div className={`h-1 w-full ${accentClass}`} />
 
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
@@ -258,7 +297,7 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
               <span className={`rounded-full px-2.5 py-1 text-[11px] font-black tracking-[0.14em] ${isDarkMode ? 'bg-slate-950 text-cyan-200 ring-1 ring-white/10' : 'bg-slate-100 text-blue-700'}`}>
                 {metadata.code}
               </span>
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${isComplete ? 'bg-emerald-500/10 text-emerald-500' : isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'}`}>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${statusClass}`}>
                 {statusLabel}
               </span>
             </div>
@@ -271,7 +310,7 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
             </p>
           </div>
 
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isComplete ? 'bg-emerald-500/10 text-emerald-500' : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isComplete ? 'bg-emerald-500/10 text-emerald-500' : isQueued ? isDarkMode ? 'bg-slate-800 text-slate-500' : 'bg-slate-100 text-slate-500' : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
             {isComplete ? <CheckCircle2 size={22} /> : <ClipboardList size={22} />}
           </div>
         </div>
@@ -282,10 +321,12 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
           </p>
           <div className={`mt-4 border-t pt-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
             <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-              Readiness checkpoint
+              {isQueued ? 'Prerequisite required' : 'Readiness checkpoint'}
             </p>
             <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              {metadata.checkpoint}
+              {isQueued
+                ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.`
+                : metadata.checkpoint}
             </p>
           </div>
         </div>
@@ -294,22 +335,22 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
           <Button
             className="w-full sm:w-auto"
             size="sm"
-            variant="primary"
-            disabled={!projectId}
-            onClick={() => projectId && onOpen(projectId)}
+            variant={isQueued ? 'secondary' : 'primary'}
+            disabled={!canOpen}
+            onClick={() => canOpen && onOpen(projectId)}
           >
-            {isComplete ? 'Review chart' : 'Open chart'}
+            {isQueued ? `Waiting for ${REQUIRED_CHART_LABELS[blockingChartType]}` : isComplete ? 'Review chart' : 'Open chart'}
           </Button>
 
           <button
             type="button"
-            className={`inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-black transition ${isComplete ? 'text-emerald-500 hover:bg-emerald-500/10' : isDarkMode ? 'text-cyan-200 hover:bg-cyan-400/10' : 'text-blue-700 hover:bg-blue-50'} disabled:cursor-not-allowed disabled:opacity-50`}
+            className={`inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-black transition ${isComplete ? 'text-emerald-500 hover:bg-emerald-500/10' : isQueued ? isDarkMode ? 'text-slate-500' : 'text-slate-500' : isDarkMode ? 'text-cyan-200 hover:bg-cyan-400/10' : 'text-blue-700 hover:bg-blue-50'} disabled:cursor-not-allowed disabled:opacity-50`}
             disabled={!canToggle}
             onClick={() => onToggleComplete(chartType, !isComplete)}
             aria-pressed={isComplete}
           >
             {isUpdating ? <Loader2 className="animate-spin" size={15} /> : <CheckCircle2 size={15} />}
-            {isComplete ? 'Ready' : 'Certify ready'}
+            {isQueued ? 'Locked by sequence' : isComplete ? 'Ready' : 'Certify ready'}
           </button>
         </div>
       </div>
@@ -351,6 +392,7 @@ export default function ForecasterProjectLibraryPage() {
   const completion = useMemo(() => getCompletion(packageData), [packageData]);
   const packageId = getPackageId(packageData);
   const charts = packageData?.charts || [];
+  const orderedCharts = useMemo(() => sortChartsBySequence(charts), [charts]);
   const isEditable = EDITABLE_PACKAGE_STATUSES.has(packageData?.status || 'Draft');
   const canSubmit = Boolean(packageId && isEditable && completion.isComplete && !submitting);
   const packageTitle = getPackageTitle(packageData);
@@ -400,6 +442,12 @@ export default function ForecasterProjectLibraryPage() {
   const handleToggleChartComplete = async (chartType, isComplete) => {
     if (!packageId || !chartType || updatingChartType) return;
 
+    const blockingChartType = isComplete ? getFirstIncompletePrerequisite(packageData, chartType) : null;
+    if (blockingChartType) {
+      setError(`${REQUIRED_CHART_LABELS[blockingChartType]} must be certified before ${REQUIRED_CHART_LABELS[chartType]}.`);
+      return;
+    }
+
     setUpdatingChartType(chartType);
     setError('');
 
@@ -443,7 +491,7 @@ export default function ForecasterProjectLibraryPage() {
               Current Forecast Package
             </h1>
             <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              Complete, verify, and submit the four required charts for the current daily marine forecast.
+              Complete the daily forecast sequence from analysis through the 48-hour outlook.
             </p>
           </div>
 
@@ -511,7 +559,7 @@ export default function ForecasterProjectLibraryPage() {
                     <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                       {completion.isComplete
                         ? 'All required charts are complete. Submit the package for admin review when ready.'
-                        : 'Open each chart in Studio, complete the forecast work, then certify the chart when it is ready for review.'}
+                        : 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Each chart unlocks after the previous one is certified.'}
                     </p>
                     {!isEditable && (
                       <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>
@@ -548,9 +596,9 @@ export default function ForecasterProjectLibraryPage() {
                   isDarkMode={isDarkMode}
                 />
                 <MetricCard
-                  label="Charts ready"
-                  value={`${completion.completed}/${completion.required}`}
-                  detail={completion.isComplete ? 'Ready to submit' : 'Still in preparation'}
+                  label="Current step"
+                  value={REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || 'Submit'}
+                  detail={completion.isComplete ? 'Ready for admin review' : 'Next chart in sequence'}
                   icon={CheckCircle2}
                   isDarkMode={isDarkMode}
                 />
@@ -564,7 +612,7 @@ export default function ForecasterProjectLibraryPage() {
                 <MetricCard
                   label="Review gate"
                   value={completion.isComplete ? 'Open' : 'Blocked'}
-                  detail={completion.isComplete ? 'Submission enabled' : 'Complete all charts first'}
+                  detail={completion.isComplete ? 'Submission enabled' : 'Complete sequence first'}
                   icon={Send}
                   isDarkMode={isDarkMode}
                 />
@@ -577,13 +625,13 @@ export default function ForecasterProjectLibraryPage() {
                       Required Charts
                     </p>
                     <h3 className={`mt-1 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                      Daily forecast production board
+                      Sequential forecast production board
                     </h3>
                   </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  {charts.map((chart) => (
+                  {orderedCharts.map((chart) => (
                     <ChartCard
                       key={chart.chartType}
                       chart={chart}
