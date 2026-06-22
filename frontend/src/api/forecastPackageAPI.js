@@ -42,8 +42,27 @@ export const createForecastPackage = (packageData = {}) =>
 export const fetchForecastPackageById = (id, { signal } = {}) =>
   request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}`, { signal });
 
+export const fetchForecastPackageChartContextByProject = (projectId, { signal } = {}) =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/charts/project/${projectId}/context`, { signal });
+
+export const claimForecastPackageChartByProject = (projectId) =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/charts/project/${projectId}/claim`, {
+    method: 'PATCH',
+  });
+
+export const releaseForecastPackageChartByProject = (projectId) =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/charts/project/${projectId}/release`, {
+    method: 'PATCH',
+  });
+
 export const updateForecastChartCompletion = (id, chartType, isComplete) =>
   request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/charts/${chartType}/completion`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isComplete }),
+  });
+
+export const updateForecastChartCompletionByProject = (projectId, isComplete) =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/charts/project/${projectId}/completion`, {
     method: 'PATCH',
     body: JSON.stringify({ isComplete }),
   });
