@@ -27,7 +27,11 @@ function formatForecastDate(value) {
 }
 
 function getPackagePayload(response) {
-  return response?.package || response;
+  if (!response) return null;
+  if (Object.prototype.hasOwnProperty.call(response, 'package')) {
+    return response.package || null;
+  }
+  return response;
 }
 
 function getChartProjectId(chart) {
