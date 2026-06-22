@@ -21,7 +21,6 @@ const getTheme = (isDarkMode) => ({
     ? 'border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
     : 'border-white/80 bg-white/[0.5] shadow-[inset_0_1px_0_rgba(255,255,255,0.95)]',
   text: isDarkMode ? 'text-white/80' : 'text-slate-700',
-  textStrong: isDarkMode ? 'text-white' : 'text-slate-950',
   textMuted: isDarkMode ? 'text-white/45' : 'text-slate-500',
   btnBase: isDarkMode
     ? 'border-transparent text-white/50 hover:border-white/10 hover:bg-white/[0.08] hover:text-white'
@@ -42,24 +41,19 @@ const getTheme = (isDarkMode) => ({
     : 'studio-liquid-light border-white/80 text-slate-900',
 });
 
-const SectionLabel = ({ icon: Icon, label, theme }) => (
-  <div className="flex shrink-0 items-center gap-1 px-0.5">
-    {Icon && <Icon size={12} className={theme.textMuted} strokeWidth={2.4} />}
-    <span className={cn('hidden text-[9px] font-black uppercase tracking-wide xl:inline', theme.textMuted)}>
-      {label}
-    </span>
-  </div>
+const ToolbarDivider = ({ isDarkMode }) => (
+  <div className={cn('mx-0.5 h-8 w-px shrink-0', isDarkMode ? 'bg-white/10' : 'bg-slate-200/80')} />
 );
 
-const ToolButton = ({ onClick, active, theme, title, hotkey, children, wide = false, disabled = false }) => (
+const ToolButton = ({ onClick, active, theme, title, hotkey, children, disabled = false }) => (
   <button
     type="button"
     onClick={onClick}
     title={title}
+    aria-label={title}
     disabled={disabled}
     className={cn(
-      'group relative flex h-10 items-center justify-center rounded-xl border transition-all duration-150',
-      wide ? 'min-w-[4.75rem] gap-1.5 px-2.5' : 'w-10',
+      'group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all duration-150',
       'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45',
       disabled && 'cursor-not-allowed opacity-45',
       active ? theme.btnActive : theme.btnBase
@@ -67,7 +61,7 @@ const ToolButton = ({ onClick, active, theme, title, hotkey, children, wide = fa
   >
     <span className="relative flex items-center justify-center">
       {children}
-      {active && !wide && (
+      {active && (
         <span className={cn('absolute -bottom-2 h-1 w-5 rounded-full', theme.accentBg)} />
       )}
     </span>
@@ -90,19 +84,14 @@ const ToolButton = ({ onClick, active, theme, title, hotkey, children, wide = fa
   </button>
 );
 
-const ToolGroup = ({ theme, children, className }) => (
-  <div className={cn('flex items-center gap-1 rounded-xl border p-1', theme.group, className)}>
-    {children}
-  </div>
-);
-
-const ModeSegment = ({ active, onClick, theme, title, description, icon: Icon, tone }) => (
+const ModeButton = ({ active, onClick, theme, title, icon: Icon, tone }) => (
   <button
     type="button"
     onClick={onClick}
-    title={description}
+    title={title}
+    aria-label={title}
     className={cn(
-      'flex h-10 min-w-[4.65rem] items-center justify-center gap-1.5 rounded-lg border px-2 transition-all',
+      'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all',
       active
         ? tone === 'closed'
           ? theme.modeClosedActive
@@ -110,8 +99,7 @@ const ModeSegment = ({ active, onClick, theme, title, description, icon: Icon, t
         : theme.btnBase
     )}
   >
-    <Icon size={15} strokeWidth={2.5} />
-    <span className="text-[10px] font-black leading-none">{title}</span>
+    <Icon size={16} strokeWidth={2.5} />
   </button>
 );
 
@@ -197,63 +185,46 @@ const DrawToolbar = ({
 
         <div
           className={cn(
-            'studio-liquid-panel relative flex max-w-[calc(100vw-1rem)] items-center gap-1 overflow-x-auto rounded-2xl border px-2 py-1.5 shadow-2xl',
-            'scrollbar-none [&::-webkit-scrollbar]:hidden',
+            'studio-liquid-panel relative flex w-fit max-w-[calc(100vw-1rem)] items-center gap-1 overflow-x-auto rounded-2xl border px-2 py-1.5 shadow-2xl',
+            '[&::-webkit-scrollbar]:hidden',
             theme.panel
           )}
         >
           <div className={cn('absolute left-8 right-8 top-0 h-px', isDarkMode ? 'bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-400/30 to-transparent')} />
 
-          <button
-            type="button"
-            onClick={handleToggleCollapse}
-            title="Collapse drawing tools"
-            className={cn(
-              'flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-2 transition-all',
-              theme.group,
-              isDarkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-white'
-            )}
-          >
-            <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
-              <TbTools size={15} />
-            </span>
-            <span className={cn('hidden text-[10px] font-black uppercase tracking-wide lg:inline', theme.textMuted)}>
-              Draw
-            </span>
-            <ChevronDown size={13} className={theme.textMuted} strokeWidth={2.5} />
-          </button>
+          <ToolButton onClick={handleToggleCollapse} active={false} theme={theme} title="Collapse drawing tools">
+            <ChevronDown size={16} className={theme.textMuted} strokeWidth={2.5} />
+          </ToolButton>
 
-          <ToolGroup theme={theme}>
-            <SectionLabel icon={Type} label="Annotate" theme={theme} />
-            <ToolButton onClick={handleSelectTextNote} active={selectedToolType === 'text_note'} theme={theme} title="Text Label" hotkey="T">
-              <Type size={17} className={selectedToolType === 'text_note' ? theme.accent : theme.textMuted} strokeWidth={2.4} />
-            </ToolButton>
-            <ToolButton onClick={handleSelectLess1} active={selectedToolType === 'less_1'} theme={theme} title="Low Wave Marker" hotkey="1">
-              <img src={l1} alt="Low wave marker" className="h-6 w-6 object-contain drop-shadow-sm" />
-            </ToolButton>
-          </ToolGroup>
+          <ToolbarDivider isDarkMode={isDarkMode} />
 
-          <ToolGroup theme={theme} className="shrink-0">
-            <SectionLabel icon={PencilLine} label="Draw" theme={theme} />
-            <ToolButton onClick={handleToggleDrawing} active={waveActive} theme={theme} title={waveActive ? 'Stop Wave Height Drawing' : 'Wave Height Drawing'} wide>
-              {waveActive
-                ? <X size={17} className={theme.accent} strokeWidth={2.6} />
-                : <Waves size={17} className={theme.textMuted} strokeWidth={2.3} />
-              }
-              <span className="hidden text-[10px] font-black sm:inline">
-                {waveActive ? 'Stop' : 'Wave'}
-              </span>
-            </ToolButton>
-            <ToolButton onClick={handleToggleFlagDrawing} active={isFlagDrawing} theme={theme} title={isFlagDrawing ? 'Stop Flag Drawing' : 'Flag Drawing'}>
-              <Flag size={17} className={isFlagDrawing ? theme.accent : theme.textMuted} strokeWidth={2.2} />
-            </ToolButton>
-          </ToolGroup>
+          <ToolButton onClick={handleSelectTextNote} active={selectedToolType === 'text_note'} theme={theme} title="Text Label" hotkey="T">
+            <Type size={17} className={selectedToolType === 'text_note' ? theme.accent : theme.textMuted} strokeWidth={2.4} />
+          </ToolButton>
+
+          <ToolButton onClick={handleSelectLess1} active={selectedToolType === 'less_1'} theme={theme} title="Low Wave Marker" hotkey="1">
+            <img src={l1} alt="Low wave marker" className="h-6 w-6 object-contain drop-shadow-sm" />
+          </ToolButton>
+
+          <ToolbarDivider isDarkMode={isDarkMode} />
+
+          <ToolButton onClick={handleToggleDrawing} active={waveActive} theme={theme} title={waveActive ? 'Stop Wave Height Drawing' : 'Wave Height Drawing'}>
+            {waveActive
+              ? <X size={17} className={theme.accent} strokeWidth={2.6} />
+              : <Waves size={17} className={theme.textMuted} strokeWidth={2.3} />
+            }
+          </ToolButton>
+
+          <ToolButton onClick={handleToggleFlagDrawing} active={isFlagDrawing} theme={theme} title={isFlagDrawing ? 'Stop Flag Drawing' : 'Flag Drawing'}>
+            <Flag size={17} className={isFlagDrawing ? theme.accent : theme.textMuted} strokeWidth={2.2} />
+          </ToolButton>
 
           {waveActive && (
-            <ToolGroup theme={theme} className="shrink-0">
-              <ModeSegment active={!closedMode} onClick={() => setClosedMode(false)} theme={theme} title="Open" description="Label both ends" icon={Waves} tone="open" />
-              <ModeSegment active={closedMode} onClick={() => setClosedMode(true)} theme={theme} title="Loop" description="Loop with one label" icon={CheckCircle2} tone="closed" />
-            </ToolGroup>
+            <>
+              <ToolbarDivider isDarkMode={isDarkMode} />
+              <ModeButton active={!closedMode} onClick={() => setClosedMode(false)} theme={theme} title="Open line" icon={Waves} tone="open" />
+              <ModeButton active={closedMode} onClick={() => setClosedMode(true)} theme={theme} title="Closed contour" icon={CheckCircle2} tone="closed" />
+            </>
           )}
         </div>
       </div>
