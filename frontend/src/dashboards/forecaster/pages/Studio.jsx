@@ -289,7 +289,7 @@ const Studio = ({ logger }) => {
   const projectStatusStyle = isRevisionRequested
     ? "border-amber-300 bg-amber-50 text-amber-800"
     : getProjectStatusStyle(projectStatus);
-  const canSubmitProject = currentProject && canSubmitProjectStatus(projectStatus);
+  const canSubmitProject = false;
   const latestReviewRemarks = useMemo(
     () => getLatestReviewRemarks(currentProject),
     [currentProject]
@@ -318,8 +318,8 @@ const Studio = ({ logger }) => {
       <header className={`studio-liquid-panel absolute left-2 right-2 top-2 z-[120] flex h-14 items-center justify-between gap-2 rounded-2xl border px-2 shadow-2xl backdrop-blur-2xl sm:left-3 sm:right-3 sm:px-3 ${headerClass}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary} className={`!rounded-xl ${headerGhostButton}`}>
-            <span className="hidden sm:inline">Project Library</span>
-            <span className="sm:hidden">Library</span>
+            <span className="hidden sm:inline">Forecast Package</span>
+            <span className="sm:hidden">Package</span>
           </Button>
 
           <div className={`min-w-0 border-l pl-2 sm:pl-3 ${headerDivider}`}>
