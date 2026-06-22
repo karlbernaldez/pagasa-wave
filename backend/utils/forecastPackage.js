@@ -54,10 +54,20 @@ export function normalizeForecastDate(value) {
   return date;
 }
 
-export function buildForecastPackageName(forecastDate) {
-  const date = normalizeForecastDate(forecastDate);
+export function formatLocalDateKey(value) {
+  const date = normalizeForecastDate(value);
   if (!date) return null;
-  return `Marine Forecast ${date.toISOString().slice(0, 10)}`;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function buildForecastPackageName(forecastDate) {
+  const dateKey = formatLocalDateKey(forecastDate);
+  if (!dateKey) return null;
+  return `Marine Forecast ${dateKey}`;
 }
 
 export function getPackageCompletion(chartCompletion = []) {
@@ -79,6 +89,5 @@ export function getMissingRequiredChartTypes(chartIds = [], chartCompletion = []
   const chartIdTypes = chartIds.map((item) => item.chartType);
   const completionTypes = chartCompletion.map((item) => item.chartType);
   const presentTypes = new Set([...chartIdTypes, ...completionTypes]);
-
   return REQUIRED_FORECAST_CHART_TYPES.filter((chartType) => !presentTypes.has(chartType));
 }
