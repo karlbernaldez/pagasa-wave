@@ -7,6 +7,7 @@ import {
   getPackageCompletion,
   REQUIRED_FORECAST_CHART_TYPES,
 } from '../utils/forecastPackage.js';
+import { emitForecastChartUpdated } from '../socket/socketEmitter.js';
 
 const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.DRAFT,
@@ -151,6 +152,11 @@ export const releaseForecastPackageChartEditingByProject = asyncHandler(async (r
       },
     }
   );
+
+  emitForecastChartUpdated(req.params.projectId, {
+    action: 'chart_released',
+    resourceType: 'forecast_chart',
+  });
 
   const populated = await populateForecastPackageById(forecastPackage._id);
   const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
