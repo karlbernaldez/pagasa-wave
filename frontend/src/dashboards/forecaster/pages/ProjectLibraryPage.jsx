@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, FolderKanban, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import {
@@ -99,7 +99,7 @@ function ChartCard({ chart, packageData, isDarkMode, onOpen }) {
   );
 }
 
-function EmptyPackageState({ isCreating, isDarkMode, onCreate, onOpenLibrary }) {
+function EmptyPackageState({ isCreating, isDarkMode, onCreate }) {
   return (
     <div className={`rounded-3xl border p-8 text-center shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
       <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
@@ -111,12 +111,9 @@ function EmptyPackageState({ isCreating, isDarkMode, onCreate, onOpenLibrary }) 
       <p className={`mx-auto mt-2 max-w-2xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
         A forecast package creates the four required charts for the daily marine forecast and keeps the forecaster workflow focused on the current forecast.
       </p>
-      <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+      <div className="mt-6 flex justify-center">
         <Button icon={Plus} loading={isCreating} disabled={isCreating} onClick={onCreate}>
           Create Forecast Package
-        </Button>
-        <Button variant="secondary" icon={FolderKanban} onClick={onOpenLibrary}>
-          View Previous Projects
         </Button>
       </div>
     </div>
@@ -192,14 +189,9 @@ export default function ForecasterProjectLibraryPage() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>
-              Refresh
-            </Button>
-            <Button variant="secondary" icon={FolderKanban} onClick={() => navigate('/studio/library')}>
-              Previous Projects
-            </Button>
-          </div>
+          <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>
+            Refresh
+          </Button>
         </div>
 
         {error && (
@@ -230,7 +222,6 @@ export default function ForecasterProjectLibraryPage() {
             isCreating={creating}
             isDarkMode={isDarkMode}
             onCreate={handleCreatePackage}
-            onOpenLibrary={() => navigate('/studio/library')}
           />
         ) : (
           <div className="space-y-5">
