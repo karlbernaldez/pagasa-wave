@@ -5,6 +5,7 @@ import ForecastPackage from '../models/ForecastPackage.js';
 import {
   FORECAST_PACKAGE_STATUS,
   REQUIRED_FORECAST_CHARTS,
+  REQUIRED_FORECAST_CHART_TYPES,
   buildForecastPackageName,
   getForecastChartLabel,
   getPackageCompletion,
@@ -40,6 +41,39 @@ function getRequiredComment(value, label = 'Comment') {
 
 function canSubmitPackage(status) {
   return EDITABLE_PACKAGE_STATUSES.includes(status);
+}
+
+function getChartSequenceIndex(chartType) {
+  return REQUIRED_FORECAST_CHART_TYPES.indexOf(chartType);
+}
+
+function getPreviousIncompleteChartType(chartCompletion = [], chartType) {
+  const chartIndex = getChartSequenceIndex(chartType);
+  if (chartIndex <= 0) return null;
+
+  const previousChartTypes = REQUIRED_FORECAST_CHART_TYPES.slice(0, chartIndex);
+  return previousChartTypes.find((previousChartType) => {
+    const row = chartCompletion.find((item) => item.chartType === previousChartType);
+    return !row?.isComplete;
+  }) || null;
+}
+
+function resetChartAndDependents(chartCompletion = [], chartType) {
+  const chartIndex = getChartSequenceIndex(chartType);
+  if (chartIndex < 0) return 0;
+
+  let resetCount = 0;
+  const resetChartTypes = new Set(REQUIRED_FORECAST_CHART_TYPES.slice(chartIndex));
+
+  chartCompletion.forEach((row) => {
+    if (!resetChartTypes.has(row.chartType) || !row.isComplete) return;
+    row.isComplete = false;
+    row.completedAt = null;
+    row.completedBy = null;
+    resetCount += 1;
+  });
+
+  return resetCount;
 }
 
 function serializePackage(forecastPackage) {
@@ -318,16 +352,36 @@ export const updateForecastChartCompletion = asyncHandler(async (req, res) => {
     throwError(`Unknown or unsupported chart type: ${chartType}`, 400);
   }
 
-  completionRow.isComplete = isComplete;
-  completionRow.completedAt = isComplete ? new Date() : null;
-  completionRow.completedBy = isComplete ? req.user.id : null;
+  const blockingChartType = isComplete
+    ? getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chartType)
+    : null;
+
+  if (blockingChartType) {
+    throwError(
+      `${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chartType)}`,
+      400
+    );
+  }
+
+  let comment;
+  if (isComplete) {
+    completionRow.isComplete = true;
+    completionRow.completedAt = new Date();
+    completionRow.completedBy = req.user.id;
+    comment = `${getForecastChartLabel(chartType)} marked complete`;
+  } else {
+    const resetCount = resetChartAndDependents(forecastPackage.chartCompletion || [], chartType);
+    comment = resetCount > 1
+      ? `${getForecastChartLabel(chartType)} and downstream charts marked incomplete`
+      : `${getForecastChartLabel(chartType)} marked incomplete`;
+  }
 
   forecastPackage.auditLogs.push({
     action: 'chart_completion_updated',
     performedBy: req.user.id,
     previousStatus: forecastPackage.status,
     newStatus: forecastPackage.status,
-    comment: `${getForecastChartLabel(chartType)} marked ${isComplete ? 'complete' : 'incomplete'}`,
+    comment,
   });
 
   await forecastPackage.save();
