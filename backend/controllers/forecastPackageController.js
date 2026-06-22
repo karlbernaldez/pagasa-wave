@@ -95,13 +95,43 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) 
       },
       $push: {
         auditLogs: {
-          action: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED ? 'resubmitted' : 'submitted',
+          action: 'submitted',
           performedBy: userId,
           previousStatus: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
             ? PROJECT_STATUS.REVISION_REQUESTED
             : PROJECT_STATUS.DRAFT,
           newStatus: PROJECT_STATUS.SUBMITTED,
-          comment: 'Submitted as part of Forecast Package submission',
+          comment: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
+            ? 'Revision resubmitted as part of Forecast Package submission'
+            : 'Submitted as part of Forecast Package submission',
+        },
+      },
+    }
+  );
+}
+
+async function requestLinkedChartProjectRevisions(forecastPackage, userId, comment) {
+  const projectIds = getLinkedProjectIds(forecastPackage);
+  if (!projectIds.length) return;
+
+  await Project.updateMany(
+    {
+      _id: { $in: projectIds },
+      status: { $in: [PROJECT_STATUS.SUBMITTED, PROJECT_STATUS.UNDER_REVIEW] },
+    },
+    {
+      $set: {
+        status: PROJECT_STATUS.REVISION_REQUESTED,
+        reviewedAt: new Date(),
+        reviewComment: comment,
+      },
+      $push: {
+        auditLogs: {
+          action: 'revision_requested',
+          performedBy: userId,
+          previousStatus: PROJECT_STATUS.SUBMITTED,
+          newStatus: PROJECT_STATUS.REVISION_REQUESTED,
+          comment,
         },
       },
     }
@@ -409,6 +439,8 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  await requestLinkedChartProjectRevisions(forecastPackage, req.user.id, comment);
+
   forecastPackage.status = FORECAST_PACKAGE_STATUS.REVISION_REQUESTED;
   forecastPackage.reviewedAt = new Date();
   forecastPackage.reviewComment = comment;
