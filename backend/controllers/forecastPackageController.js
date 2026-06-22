@@ -26,12 +26,6 @@ function assertAdmin(req) {
   if (req.user?.role !== 'admin') throwError('Admin access required', 403);
 }
 
-function assertOwnerOrAdmin(req, forecastPackage) {
-  const isOwner = String(forecastPackage.owner?._id || forecastPackage.owner) === String(req.user?.id);
-  const isAdmin = req.user?.role === 'admin';
-  if (!isOwner && !isAdmin) throwError('Forecast Package not found', 404);
-}
-
 function isPackageOwnerOrAdmin(user, forecastPackage) {
   const isOwner = String(forecastPackage.owner?._id || forecastPackage.owner) === String(user?.id);
   return isOwner || user?.role === 'admin';
@@ -320,10 +314,7 @@ export const createForecastPackage = asyncHandler(async (req, res) => {
   const name = String(req.body?.name || buildForecastPackageName(forecastDate) || '').trim();
   if (!name) throwError('name is required', 400);
 
-  const existingPackage = await ForecastPackage.findOne({
-    owner: req.user.id,
-    forecastDate,
-  }).lean();
+  const existingPackage = await ForecastPackage.findOne({ forecastDate }).lean();
 
   if (existingPackage) {
     throwError('A Forecast Package already exists for this forecast date', 409);
@@ -410,7 +401,7 @@ export const getUserForecastPackages = asyncHandler(async (req, res) => {
   const pageNumber = Math.max(Number(page) || 1, 1);
   const limitNumber = Math.min(Math.max(Number(limit) || 10, 1), 100);
   const skip = (pageNumber - 1) * limitNumber;
-  const query = { owner: req.user.id };
+  const query = {};
 
   if (status && status !== 'All') {
     query.status = status;
@@ -445,18 +436,18 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
   if (!requestedDate) throwError('forecastDate must be a valid date', 400);
 
   let forecastPackage = await populateForecastPackage(
-    ForecastPackage.findOne({ owner: req.user.id, forecastDate: requestedDate })
+    ForecastPackage.findOne({ forecastDate: requestedDate })
   );
 
   if (!forecastPackage) {
     forecastPackage = await populateForecastPackage(
-      ForecastPackage.findOne({ owner: req.user.id })
+      ForecastPackage.findOne({})
         .sort({ forecastDate: -1, updatedAt: -1 })
     );
   }
 
   if (!forecastPackage) {
-    return res.json({ package: null, message: 'No Forecast Packages found for this user' });
+    return res.json({ package: null, message: 'No Forecast Packages found' });
   }
 
   res.json({ package: serializePackage(forecastPackage) });
@@ -468,7 +459,6 @@ export const getForecastPackageById = asyncHandler(async (req, res) => {
   const forecastPackage = await populateForecastPackage(ForecastPackage.findById(req.params.id));
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-  assertOwnerOrAdmin(req, forecastPackage);
   res.json(serializePackage(forecastPackage));
 });
 
@@ -573,7 +563,6 @@ export const updateForecastChartCompletion = asyncHandler(async (req, res) => {
   const forecastPackage = await ForecastPackage.findById(req.params.id);
 
   if (!forecastPackage) throwError('Forecast Package not found', 404);
-  assertOwnerOrAdmin(req, forecastPackage);
 
   updateForecastChartCompletionState(forecastPackage, chartType, isComplete, req.user);
 
@@ -606,9 +595,6 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
 
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
-
-  const isOwner = String(forecastPackage.owner) === String(req.user.id);
-  if (!isOwner) throwError('Forecast Package not found', 404);
 
   if (!canSubmitPackage(forecastPackage.status)) {
     throwError('Only Draft or Revision Requested Forecast Packages can be submitted', 400);
