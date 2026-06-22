@@ -156,30 +156,27 @@ const DrawToolbar = ({
 
   if (isCollapsed) {
     return (
-      <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
+      <div className="fixed bottom-4 left-1/2 z-[55] -translate-x-1/2 sm:bottom-5">
         <button
           type="button"
           onClick={handleToggleCollapse}
           className={cn(
-            'studio-liquid-panel flex min-h-10 items-center gap-2 rounded-2xl border px-3 py-1.5 transition-all duration-200',
+            'studio-liquid-panel flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 transition-all duration-200',
             theme.panel,
             isDarkMode ? 'hover:bg-slate-950/85' : 'hover:bg-white'
           )}
         >
-          <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
-            <TbTools size={15} />
+          <span className={cn('flex h-6 w-6 items-center justify-center rounded-full', isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
+            <TbTools size={14} />
           </span>
-          <span className={cn('text-[11px] font-black', theme.text)}>Draw Tools</span>
-          <ChevronUp size={14} className={theme.textMuted} strokeWidth={2.5} />
+          <span className={cn('text-[10px] font-black', theme.text)}>Tools</span>
+          <ChevronUp size={13} className={theme.textMuted} strokeWidth={2.5} />
         </button>
       </div>
     );
   }
 
-  const selectedLabel =
-    selectedToolLabels[selectedToolType] ||
-    selectedToolType;
-
+  const selectedLabel = selectedToolLabels[selectedToolType] || selectedToolType;
   const waveActive = isCanvasActive || isDrawing;
 
   return (
@@ -189,7 +186,7 @@ const DrawToolbar = ({
       <ManualInputModal isOpen={openModals.manualInput} onClose={() => toggleModal('manualInput', false)} onSubmit={handleManualInputSubmit} isDarkMode={isDarkMode} />
       <FeatureNotAvailableModal isOpen={openModals.featureNotAvailable} onClose={() => toggleModal('featureNotAvailable', false)} />
 
-      <div className="fixed bottom-4 left-1/2 z-40 w-fit max-w-[calc(100vw-1rem)] -translate-x-1/2 px-2">
+      <div className="fixed bottom-3 left-1/2 z-[55] w-fit max-w-[calc(100vw-1rem)] -translate-x-1/2 px-2 sm:bottom-4">
         {(selectedToolType || waveActive || isFlagDrawing) && (
           <ActiveToolBadge
             label={waveActive ? `Wave Height - ${closedMode ? 'Closed contour' : 'Open line'}` : selectedLabel}
@@ -200,8 +197,8 @@ const DrawToolbar = ({
 
         <div
           className={cn(
-            'studio-liquid-panel relative flex w-fit max-w-[calc(100vw-1rem)] items-center gap-1.5 overflow-x-auto rounded-2xl border px-2 py-2',
-            '[&::-webkit-scrollbar]:hidden',
+            'studio-liquid-panel relative flex max-w-[calc(100vw-1rem)] items-center gap-1 overflow-x-auto rounded-2xl border px-2 py-1.5 shadow-2xl',
+            'scrollbar-none [&::-webkit-scrollbar]:hidden',
             theme.panel
           )}
         >
@@ -228,37 +225,17 @@ const DrawToolbar = ({
 
           <ToolGroup theme={theme}>
             <SectionLabel icon={Type} label="Annotate" theme={theme} />
-            <ToolButton
-              onClick={handleSelectTextNote}
-              active={selectedToolType === 'text_note'}
-              theme={theme}
-              title="Text Label"
-              hotkey="T"
-            >
+            <ToolButton onClick={handleSelectTextNote} active={selectedToolType === 'text_note'} theme={theme} title="Text Label" hotkey="T">
               <Type size={17} className={selectedToolType === 'text_note' ? theme.accent : theme.textMuted} strokeWidth={2.4} />
             </ToolButton>
-
-            <ToolButton
-              onClick={handleSelectLess1}
-              active={selectedToolType === 'less_1'}
-              theme={theme}
-              title="Low Wave Marker"
-              hotkey="1"
-            >
+            <ToolButton onClick={handleSelectLess1} active={selectedToolType === 'less_1'} theme={theme} title="Low Wave Marker" hotkey="1">
               <img src={l1} alt="Low wave marker" className="h-6 w-6 object-contain drop-shadow-sm" />
             </ToolButton>
           </ToolGroup>
 
           <ToolGroup theme={theme} className="shrink-0">
             <SectionLabel icon={PencilLine} label="Draw" theme={theme} />
-
-            <ToolButton
-              onClick={handleToggleDrawing}
-              active={waveActive}
-              theme={theme}
-              title={waveActive ? 'Stop Wave Height Drawing' : 'Wave Height Drawing'}
-              wide
-            >
+            <ToolButton onClick={handleToggleDrawing} active={waveActive} theme={theme} title={waveActive ? 'Stop Wave Height Drawing' : 'Wave Height Drawing'} wide>
               {waveActive
                 ? <X size={17} className={theme.accent} strokeWidth={2.6} />
                 : <Waves size={17} className={theme.textMuted} strokeWidth={2.3} />
@@ -267,37 +244,15 @@ const DrawToolbar = ({
                 {waveActive ? 'Stop' : 'Wave'}
               </span>
             </ToolButton>
-
-            <ToolButton
-              onClick={handleToggleFlagDrawing}
-              active={isFlagDrawing}
-              theme={theme}
-              title={isFlagDrawing ? 'Stop Flag Drawing' : 'Flag Drawing'}
-            >
+            <ToolButton onClick={handleToggleFlagDrawing} active={isFlagDrawing} theme={theme} title={isFlagDrawing ? 'Stop Flag Drawing' : 'Flag Drawing'}>
               <Flag size={17} className={isFlagDrawing ? theme.accent : theme.textMuted} strokeWidth={2.2} />
             </ToolButton>
           </ToolGroup>
 
           {waveActive && (
             <ToolGroup theme={theme} className="shrink-0">
-              <ModeSegment
-                active={!closedMode}
-                onClick={() => setClosedMode(false)}
-                theme={theme}
-                title="Open"
-                description="Label both ends"
-                icon={Waves}
-                tone="open"
-              />
-              <ModeSegment
-                active={closedMode}
-                onClick={() => setClosedMode(true)}
-                theme={theme}
-                title="Loop"
-                description="Loop with one label"
-                icon={CheckCircle2}
-                tone="closed"
-              />
+              <ModeSegment active={!closedMode} onClick={() => setClosedMode(false)} theme={theme} title="Open" description="Label both ends" icon={Waves} tone="open" />
+              <ModeSegment active={closedMode} onClick={() => setClosedMode(true)} theme={theme} title="Loop" description="Loop with one label" icon={CheckCircle2} tone="closed" />
             </ToolGroup>
           )}
         </div>
