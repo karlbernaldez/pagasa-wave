@@ -6,7 +6,6 @@ import {
   getAdminForecastPackages,
   getCurrentForecastPackage,
   getForecastPackageById,
-  getForecastPackageChartContextByProject,
   getUserForecastPackages,
   publishForecastPackage,
   requestForecastPackageRevision,
@@ -16,6 +15,7 @@ import {
   updateForecastChartCompletionByProject,
 } from '../controllers/forecastPackageController.js';
 import {
+  getForecastPackageChartContextByProject,
   joinForecastPackageChartEditingByProject,
   releaseForecastPackageChartEditingByProject,
 } from '../controllers/forecastPackageEditingController.js';
