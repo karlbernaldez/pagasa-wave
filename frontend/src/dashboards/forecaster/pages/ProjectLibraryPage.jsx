@@ -20,6 +20,33 @@ const REQUIRED_CHART_LABELS = {
   forecast_48h: '48h Wave Forecast',
 };
 
+const CHART_METADATA = {
+  analysis: {
+    code: 'ANL',
+    horizon: 'Current state',
+    mandate: 'Establish observed sea-state baseline and active wave systems.',
+    checkpoint: 'Validate latest analysis before forecast progression.',
+  },
+  forecast_24h: {
+    code: '+24H',
+    horizon: 'Day 1 outlook',
+    mandate: 'Prepare near-term operational guidance for the next 24 hours.',
+    checkpoint: 'Confirm timing, extent, and intensity of expected wave conditions.',
+  },
+  forecast_36h: {
+    code: '+36H',
+    horizon: 'Extended outlook',
+    mandate: 'Extend the forecast package through the intermediate marine window.',
+    checkpoint: 'Check continuity against the 24h and 48h forecast frames.',
+  },
+  forecast_48h: {
+    code: '+48H',
+    horizon: 'Day 2 outlook',
+    mandate: 'Finalize the two-day operational forecast horizon.',
+    checkpoint: 'Confirm downstream hazards and publication readiness.',
+  },
+};
+
 const EDITABLE_PACKAGE_STATUSES = new Set(['Draft', 'Revision Requested']);
 const AUTO_PACKAGE_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2}$/;
 
@@ -186,8 +213,8 @@ function OperationsPanel({ packageData, completion, isEditable, isDarkMode }) {
           />
           <WorkflowStep
             number="2"
-            title="Mark completion"
-            description="Use the chart cards to confirm each chart is ready for review."
+            title="Certify readiness"
+            description="Mark only charts that are ready for the daily forecast package."
             active={isEditable && completion.completed > 0 && !completion.isComplete}
             done={completion.isComplete || isSubmittedOrLater}
             isDarkMode={isDarkMode}
@@ -211,47 +238,82 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const completion = getChartCompletion(packageData, chartType);
   const projectId = getChartProjectId(chart);
   const isComplete = Boolean(completion?.isComplete);
+  const metadata = CHART_METADATA[chartType] || {
+    code: 'CHT',
+    horizon: 'Forecast chart',
+    mandate: 'Prepare and verify this forecast chart.',
+    checkpoint: 'Confirm readiness before package submission.',
+  };
+  const statusLabel = isComplete ? 'Ready for review' : 'In production';
+  const canToggle = isEditable && !isUpdating;
 
   return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className={`text-sm font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-            {REQUIRED_CHART_LABELS[chartType] || chartType}
-          </p>
-          <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            {isComplete ? 'Marked complete' : 'Needs forecast work'}
-          </p>
-        </div>
-        {isComplete ? (
-          <CheckCircle2 className="shrink-0 text-emerald-500" size={20} />
-        ) : (
-          <ClipboardList className={isDarkMode ? 'shrink-0 text-slate-500' : 'shrink-0 text-slate-400'} size={20} />
-        )}
-      </div>
+    <article className={`group relative overflow-hidden rounded-3xl border shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-xl ${isDarkMode ? 'border-white/10 bg-slate-900/85 hover:border-cyan-300/30' : 'border-slate-200 bg-white hover:border-blue-200'}`}>
+      <div className={`h-1 w-full ${isComplete ? 'bg-emerald-400' : 'bg-cyan-400'}`} />
 
-      <div className="mt-4 grid gap-2">
-        <Button
-          className="w-full"
-          size="sm"
-          variant={isComplete ? 'secondary' : 'primary'}
-          disabled={!projectId}
-          onClick={() => projectId && onOpen(projectId)}
-        >
-          Open in Studio
-        </Button>
-        <Button
-          className="w-full"
-          size="sm"
-          variant={isComplete ? 'secondary' : 'primary'}
-          loading={isUpdating}
-          disabled={!isEditable || isUpdating}
-          onClick={() => onToggleComplete(chartType, !isComplete)}
-        >
-          {isComplete ? 'Mark Incomplete' : 'Mark Complete'}
-        </Button>
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black tracking-[0.14em] ${isDarkMode ? 'bg-slate-950 text-cyan-200 ring-1 ring-white/10' : 'bg-slate-100 text-blue-700'}`}>
+                {metadata.code}
+              </span>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${isComplete ? 'bg-emerald-500/10 text-emerald-500' : isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'}`}>
+                {statusLabel}
+              </span>
+            </div>
+
+            <h4 className={`mt-4 text-lg font-black tracking-tight ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>
+              {REQUIRED_CHART_LABELS[chartType] || chartType}
+            </h4>
+            <p className={`mt-1 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+              {metadata.horizon}
+            </p>
+          </div>
+
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isComplete ? 'bg-emerald-500/10 text-emerald-500' : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
+            {isComplete ? <CheckCircle2 size={22} /> : <ClipboardList size={22} />}
+          </div>
+        </div>
+
+        <div className={`mt-5 rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/55' : 'border-slate-100 bg-slate-50'}`}>
+          <p className={`text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+            {metadata.mandate}
+          </p>
+          <div className={`mt-4 border-t pt-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+              Readiness checkpoint
+            </p>
+            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+              {metadata.checkpoint}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            className="w-full sm:w-auto"
+            size="sm"
+            variant="primary"
+            disabled={!projectId}
+            onClick={() => projectId && onOpen(projectId)}
+          >
+            {isComplete ? 'Review chart' : 'Open chart'}
+          </Button>
+
+          <button
+            type="button"
+            className={`inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-black transition ${isComplete ? 'text-emerald-500 hover:bg-emerald-500/10' : isDarkMode ? 'text-cyan-200 hover:bg-cyan-400/10' : 'text-blue-700 hover:bg-blue-50'} disabled:cursor-not-allowed disabled:opacity-50`}
+            disabled={!canToggle}
+            onClick={() => onToggleComplete(chartType, !isComplete)}
+            aria-pressed={isComplete}
+          >
+            {isUpdating ? <Loader2 className="animate-spin" size={15} /> : <CheckCircle2 size={15} />}
+            {isComplete ? 'Ready' : 'Certify ready'}
+          </button>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -449,7 +511,7 @@ export default function ForecasterProjectLibraryPage() {
                     <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                       {completion.isComplete
                         ? 'All required charts are complete. Submit the package for admin review when ready.'
-                        : 'Open each chart in Studio, complete the forecast work, then mark the chart complete before submission.'}
+                        : 'Open each chart in Studio, complete the forecast work, then certify the chart when it is ready for review.'}
                     </p>
                     {!isEditable && (
                       <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>
@@ -515,7 +577,7 @@ export default function ForecasterProjectLibraryPage() {
                       Required Charts
                     </p>
                     <h3 className={`mt-1 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                      Forecast production board
+                      Daily forecast production board
                     </h3>
                   </div>
                 </div>
