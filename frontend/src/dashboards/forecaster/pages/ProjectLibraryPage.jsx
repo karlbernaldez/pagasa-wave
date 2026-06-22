@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw, Send } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import {
   createForecastPackage,
   fetchCurrentForecastPackage,
+  submitForecastPackage,
+  updateForecastChartCompletion,
 } from '@/api/forecastPackageAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 
@@ -15,6 +17,8 @@ const REQUIRED_CHART_LABELS = {
   forecast_36h: '36h Wave Forecast',
   forecast_48h: '48h Wave Forecast',
 };
+
+const EDITABLE_PACKAGE_STATUSES = new Set(['Draft', 'Revision Requested']);
 
 function formatForecastDate(value) {
   if (!value) return 'Today';
@@ -32,6 +36,10 @@ function getPackagePayload(response) {
     return response.package || null;
   }
   return response;
+}
+
+function getPackageId(packageData) {
+  return packageData?._id || packageData?.id;
 }
 
 function getChartProjectId(chart) {
@@ -66,7 +74,7 @@ function StatusPill({ status, isDarkMode }) {
   );
 }
 
-function ChartCard({ chart, packageData, isDarkMode, onOpen }) {
+function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onOpen, onToggleComplete }) {
   const chartType = chart?.chartType;
   const completion = getChartCompletion(packageData, chartType);
   const projectId = getChartProjectId(chart);
@@ -90,15 +98,27 @@ function ChartCard({ chart, packageData, isDarkMode, onOpen }) {
         )}
       </div>
 
-      <Button
-        className="mt-4 w-full"
-        size="sm"
-        variant={isComplete ? 'secondary' : 'primary'}
-        disabled={!projectId}
-        onClick={() => projectId && onOpen(projectId)}
-      >
-        Open in Studio
-      </Button>
+      <div className="mt-4 grid gap-2">
+        <Button
+          className="w-full"
+          size="sm"
+          variant={isComplete ? 'secondary' : 'primary'}
+          disabled={!projectId}
+          onClick={() => projectId && onOpen(projectId)}
+        >
+          Open in Studio
+        </Button>
+        <Button
+          className="w-full"
+          size="sm"
+          variant={isComplete ? 'secondary' : 'primary'}
+          loading={isUpdating}
+          disabled={!isEditable || isUpdating}
+          onClick={() => onToggleComplete(chartType, !isComplete)}
+        >
+          {isComplete ? 'Mark Incomplete' : 'Mark Complete'}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -130,10 +150,15 @@ export default function ForecasterProjectLibraryPage() {
   const [packageData, setPackageData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [updatingChartType, setUpdatingChartType] = useState(null);
   const [error, setError] = useState('');
 
   const completion = useMemo(() => getCompletion(packageData), [packageData]);
+  const packageId = getPackageId(packageData);
   const charts = packageData?.charts || [];
+  const isEditable = EDITABLE_PACKAGE_STATUSES.has(packageData?.status || 'Draft');
+  const canSubmit = Boolean(packageId && isEditable && completion.isComplete && !submitting);
 
   const loadCurrentPackage = useCallback(async ({ signal } = {}) => {
     setLoading(true);
@@ -177,6 +202,40 @@ export default function ForecasterProjectLibraryPage() {
     navigate(`/studio/${projectId}`);
   };
 
+  const handleToggleChartComplete = async (chartType, isComplete) => {
+    if (!packageId || !chartType || updatingChartType) return;
+
+    setUpdatingChartType(chartType);
+    setError('');
+
+    try {
+      const updatedPackage = await updateForecastChartCompletion(packageId, chartType, isComplete);
+      setPackageData(getPackagePayload(updatedPackage));
+    } catch (err) {
+      console.error('Failed to update chart completion:', err);
+      setError(err?.message || 'Failed to update chart completion.');
+    } finally {
+      setUpdatingChartType(null);
+    }
+  };
+
+  const handleSubmitPackage = async () => {
+    if (!canSubmit) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const updatedPackage = await submitForecastPackage(packageId);
+      setPackageData(getPackagePayload(updatedPackage));
+    } catch (err) {
+      console.error('Failed to submit forecast package:', err);
+      setError(err?.message || 'Failed to submit forecast package.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className={`min-h-full transition-colors ${isDarkMode ? 'bg-[#0d1117]' : 'bg-slate-50'}`}>
       <div className="mx-auto max-w-[1200px] space-y-5 p-4 sm:space-y-6 sm:p-6">
@@ -193,9 +252,21 @@ export default function ForecasterProjectLibraryPage() {
             </p>
           </div>
 
-          <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>
-            Refresh
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {packageData && (
+              <Button
+                icon={Send}
+                loading={submitting}
+                disabled={!canSubmit}
+                onClick={handleSubmitPackage}
+              >
+                Submit Forecast Package
+              </Button>
+            )}
+            <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -242,8 +313,15 @@ export default function ForecasterProjectLibraryPage() {
                     {packageData.name || 'Marine Forecast Package'}
                   </h2>
                   <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Work through each chart, then submit the complete package for admin review.
+                    {completion.isComplete
+                      ? 'All required charts are complete. Submit the package for admin review when ready.'
+                      : 'Open each chart in Studio, then mark it complete here before submission.'}
                   </p>
+                  {!isEditable && (
+                    <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>
+                      This package is locked while it is {packageData.status}.
+                    </p>
+                  )}
                 </div>
 
                 <div className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
@@ -272,7 +350,10 @@ export default function ForecasterProjectLibraryPage() {
                   chart={chart}
                   packageData={packageData}
                   isDarkMode={isDarkMode}
+                  isEditable={isEditable}
+                  isUpdating={updatingChartType === chart.chartType}
                   onOpen={handleOpenChart}
+                  onToggleComplete={handleToggleChartComplete}
                 />
               ))}
             </section>
