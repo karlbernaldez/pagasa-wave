@@ -1,5 +1,6 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TbTools } from 'react-icons/tb';
-import { CheckCircle2, ChevronDown, ChevronUp, Flag, Type, Waves, X } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, Flag, GripHorizontal, Type, Waves, X } from 'lucide-react';
 
 import l1 from '@/assets/draw_icons/L1.png';
 
@@ -11,6 +12,10 @@ import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable
 import { useDrawToolbar } from './hooks/useDrawToolbar';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+const PALETTE_WIDTH = 264;
+const DEFAULT_POSITION = { x: 360, y: 96 };
+const STORAGE_KEY = 'wavelab-draw-tools-position';
 
 const getTheme = (isDarkMode) => ({
   panel: isDarkMode
@@ -31,58 +36,60 @@ const getTheme = (isDarkMode) => ({
   subtle: isDarkMode ? 'text-cyan-100/58' : 'text-slate-500',
 });
 
-const ToolRow = ({ active, activeClassName, description, icon, label, onClick, theme }) => (
+const getSafePosition = (position) => {
+  if (typeof window === 'undefined') return position;
+
+  const margin = 12;
+  const maxX = Math.max(margin, window.innerWidth - PALETTE_WIDTH - margin);
+  const maxY = Math.max(margin, window.innerHeight - 160);
+
+  return {
+    x: Math.min(Math.max(position.x, margin), maxX),
+    y: Math.min(Math.max(position.y, 72), maxY),
+  };
+};
+
+const ToolButton = ({ active, activeClassName, icon, label, onClick, theme }) => (
   <button
     type="button"
     aria-label={label}
     title={label}
     onClick={onClick}
     className={cn(
-      'flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all duration-150',
+      'flex min-h-10 items-center gap-2 rounded-2xl border px-2.5 py-2 text-left transition-all duration-150',
       'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/80',
       active ? activeClassName || theme.active : theme.row
     )}
   >
-    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', theme.iconRail)}>
+    <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-xl', theme.iconRail)}>
       {icon}
     </span>
-    <span className="min-w-0 flex-1">
-      <span className="block truncate text-xs font-black leading-tight">{label}</span>
-      {description && (
-        <span className={cn('mt-0.5 block truncate text-[10px] font-semibold leading-tight', theme.subtle)}>
-          {description}
-        </span>
-      )}
-    </span>
+    <span className="min-w-0 truncate text-[11px] font-black leading-tight">{label}</span>
   </button>
 );
 
 const SectionTitle = ({ children, theme }) => (
-  <p className={cn('px-1 text-[10px] font-black uppercase tracking-[0.16em]', theme.section)}>
+  <p className={cn('px-1 text-[9px] font-black uppercase tracking-[0.16em]', theme.section)}>
     {children}
   </p>
 );
 
-const CollapsedDock = ({ isDarkMode, onOpen, theme }) => (
-  <div className="fixed bottom-5 left-1/2 z-[55] -translate-x-1/2">
-    <button
-      type="button"
-      aria-label="Open drawing tools"
-      title="Open drawing tools"
-      onClick={onOpen}
+const FloatingShell = ({ children, isDragging, position, styleWidth, theme }) => (
+  <div
+    className={cn('fixed z-[65]', isDragging && 'select-none')}
+    style={{ left: position.x, top: position.y, width: styleWidth }}
+  >
+    <div
       className={cn(
-        'relative flex h-12 items-center gap-2 rounded-[22px] border px-4 text-xs font-black backdrop-blur-2xl transition-all',
-        'before:pointer-events-none before:absolute before:inset-x-4 before:top-1.5 before:h-px before:rounded-full before:bg-white/35',
-        theme.panel,
-        isDarkMode ? 'hover:bg-[#0f3045]/82' : 'hover:bg-white/86'
+        'relative rounded-[24px] border p-2.5 shadow-2xl backdrop-blur-2xl transition-shadow',
+        'before:pointer-events-none before:absolute before:inset-x-8 before:top-1.5 before:h-px before:rounded-full before:bg-white/35',
+        'after:pointer-events-none after:absolute after:inset-1 after:rounded-[20px] after:ring-1 after:ring-white/10',
+        isDragging && 'shadow-[0_24px_70px_rgba(34,211,238,0.2)]',
+        theme.panel
       )}
     >
-      <span className={cn('flex h-7 w-7 items-center justify-center rounded-2xl', theme.iconRail)}>
-        <TbTools size={16} aria-hidden="true" />
-      </span>
-      <span>Draw Tools</span>
-      <ChevronUp size={14} className={theme.subtle} aria-hidden="true" />
-    </button>
+      {children}
+    </div>
   </div>
 );
 
@@ -95,6 +102,10 @@ const DrawToolbar = ({
   projectId,
 }) => {
   const theme = getTheme(isDarkMode);
+  const dragRef = useRef(null);
+  const positionRef = useRef(DEFAULT_POSITION);
+  const [position, setPosition] = useState(DEFAULT_POSITION);
+  const [isDragging, setIsDragging] = useState(false);
 
   const {
     isDrawing, isFlagDrawing, isCollapsed, selectedToolType,
@@ -108,9 +119,90 @@ const DrawToolbar = ({
 
   const waveActive = isCanvasActive || isDrawing;
 
-  if (isCollapsed) {
-    return <CollapsedDock isDarkMode={isDarkMode} onOpen={handleToggleCollapse} theme={theme} />;
-  }
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y)) {
+        const safe = getSafePosition(parsed);
+        positionRef.current = safe;
+        setPosition(safe);
+      }
+    } catch {
+      // Ignore invalid stored toolbar positions.
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const safe = getSafePosition(positionRef.current);
+      positionRef.current = safe;
+      setPosition(safe);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const persistPosition = useCallback((nextPosition) => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextPosition));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, []);
+
+  const handleDragStart = useCallback((event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+
+    event.preventDefault();
+    setIsDragging(true);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: positionRef.current.x,
+      originY: positionRef.current.y,
+    };
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }, []);
+
+  const handleDragMove = useCallback((event) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+
+    const next = getSafePosition({
+      x: drag.originX + event.clientX - drag.startX,
+      y: drag.originY + event.clientY - drag.startY,
+    });
+
+    positionRef.current = next;
+    setPosition(next);
+  }, []);
+
+  const handleDragEnd = useCallback((event) => {
+    if (!dragRef.current) return;
+    event.currentTarget.releasePointerCapture?.(dragRef.current.pointerId);
+    dragRef.current = null;
+    setIsDragging(false);
+    persistPosition(positionRef.current);
+  }, [persistPosition]);
+
+  const handleResetPosition = useCallback(() => {
+    const safe = getSafePosition(DEFAULT_POSITION);
+    positionRef.current = safe;
+    setPosition(safe);
+    persistPosition(safe);
+  }, [persistPosition]);
+
+  const headerDragProps = {
+    onPointerDown: handleDragStart,
+    onPointerMove: handleDragMove,
+    onPointerUp: handleDragEnd,
+    onPointerCancel: handleDragEnd,
+  };
 
   return (
     <>
@@ -119,104 +211,124 @@ const DrawToolbar = ({
       <ManualInputModal isOpen={openModals.manualInput} onClose={() => toggleModal('manualInput', false)} onSubmit={handleManualInputSubmit} isDarkMode={isDarkMode} />
       <FeatureNotAvailableModal isOpen={openModals.featureNotAvailable} onClose={() => toggleModal('featureNotAvailable', false)} />
 
-      <aside className="fixed bottom-5 left-5 z-[55] w-[min(320px,calc(100vw-24px))]">
-        <div
-          role="toolbar"
-          aria-label="Drawing tools"
-          className={cn(
-            'relative space-y-3 rounded-[26px] border p-3 shadow-2xl backdrop-blur-2xl',
-            'before:pointer-events-none before:absolute before:inset-x-8 before:top-1.5 before:h-px before:rounded-full before:bg-white/35',
-            'after:pointer-events-none after:absolute after:inset-1 after:rounded-[22px] after:ring-1 after:ring-white/10',
-            theme.panel
-          )}
-        >
-          <div className="relative z-10 flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl', theme.iconRail)}>
-                <TbTools size={16} aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-black leading-tight">Draw Tools</p>
-                <p className={cn('truncate text-[10px] font-semibold', theme.subtle)}>Add labels and forecast drawings</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              aria-label="Collapse drawing tools"
-              title="Collapse drawing tools"
-              onClick={handleToggleCollapse}
-              className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border', theme.row)}
+      <FloatingShell isDragging={isDragging} position={position} styleWidth={isCollapsed ? 180 : PALETTE_WIDTH} theme={theme}>
+        {isCollapsed ? (
+          <button
+            type="button"
+            aria-label="Open drawing tools"
+            title="Open drawing tools"
+            onClick={handleToggleCollapse}
+            className="relative z-10 flex w-full items-center gap-2 rounded-[18px] px-1.5 py-1 text-xs font-black"
+          >
+            <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl', theme.iconRail)}>
+              <TbTools size={16} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1 text-left">Draw Tools</span>
+            <ChevronUp size={14} className={theme.subtle} aria-hidden="true" />
+          </button>
+        ) : (
+          <div className="relative z-10 space-y-2.5">
+            <div
+              className="flex cursor-grab touch-none items-center justify-between gap-2 active:cursor-grabbing"
+              title="Drag to move Draw Tools"
+              {...headerDragProps}
             >
-              <ChevronDown size={16} aria-hidden="true" />
-            </button>
-          </div>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl', theme.iconRail)}>
+                  <TbTools size={16} aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-black leading-tight">Draw Tools</p>
+                  <p className={cn('truncate text-[9px] font-semibold', theme.subtle)}>Drag to reposition</p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="Reset draw tools position"
+                  title="Reset position"
+                  onClick={handleResetPosition}
+                  className={cn('flex h-8 w-8 items-center justify-center rounded-xl border', theme.row)}
+                >
+                  <GripHorizontal size={15} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Collapse drawing tools"
+                  title="Collapse drawing tools"
+                  onClick={handleToggleCollapse}
+                  className={cn('flex h-8 w-8 items-center justify-center rounded-xl border', theme.row)}
+                >
+                  <ChevronDown size={16} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
 
-          <div className={cn('relative z-10 space-y-2 border-t pt-3', theme.divider)}>
-            <SectionTitle theme={theme}>Annotate</SectionTitle>
-            <ToolRow
-              label="Text Label"
-              description="Place a named map note"
-              active={selectedToolType === 'text_note'}
-              onClick={handleSelectTextNote}
-              theme={theme}
-              icon={<Type size={18} aria-hidden="true" />}
-            />
-            <ToolRow
-              label="Low Wave Marker"
-              description="Add a low-wave marker"
-              active={selectedToolType === 'less_1'}
-              onClick={handleSelectLess1}
-              theme={theme}
-              icon={<img src={l1} alt="" className="h-6 w-6 object-contain" aria-hidden="true" />}
-            />
-          </div>
-
-          <div className={cn('relative z-10 space-y-2 border-t pt-3', theme.divider)}>
-            <SectionTitle theme={theme}>Draw</SectionTitle>
-            <ToolRow
-              label={waveActive ? 'Stop Wave Drawing' : 'Wave Drawing'}
-              description="Draw wave height contours"
-              active={waveActive}
-              onClick={handleToggleDrawing}
-              theme={theme}
-              icon={waveActive ? <X size={18} aria-hidden="true" /> : <Waves size={18} aria-hidden="true" />}
-            />
-            <ToolRow
-              label={isFlagDrawing ? 'Stop Flag Drawing' : 'Flag Drawing'}
-              description="Draw forecast front flags"
-              active={isFlagDrawing}
-              onClick={handleToggleFlagDrawing}
-              theme={theme}
-              icon={<Flag size={18} aria-hidden="true" />}
-            />
-          </div>
-
-          {waveActive && (
-            <div className={cn('relative z-10 space-y-2 border-t pt-3', theme.divider)}>
-              <SectionTitle theme={theme}>Wave Mode</SectionTitle>
-              <div className="grid grid-cols-2 gap-2">
-                <ToolRow
-                  label="Open Line"
-                  description="Label both ends"
-                  active={!closedMode}
-                  onClick={() => setClosedMode(false)}
+            <div className={cn('space-y-1.5 border-t pt-2.5', theme.divider)}>
+              <SectionTitle theme={theme}>Annotate</SectionTitle>
+              <div className="grid grid-cols-2 gap-1.5">
+                <ToolButton
+                  label="Text"
+                  active={selectedToolType === 'text_note'}
+                  onClick={handleSelectTextNote}
                   theme={theme}
-                  icon={<Waves size={18} aria-hidden="true" />}
+                  icon={<Type size={16} aria-hidden="true" />}
                 />
-                <ToolRow
-                  label="Closed Loop"
-                  description="One contour label"
-                  active={closedMode}
-                  activeClassName={theme.activeClosed}
-                  onClick={() => setClosedMode(true)}
+                <ToolButton
+                  label="Low Wave"
+                  active={selectedToolType === 'less_1'}
+                  onClick={handleSelectLess1}
                   theme={theme}
-                  icon={<CheckCircle2 size={18} aria-hidden="true" />}
+                  icon={<img src={l1} alt="" className="h-5 w-5 object-contain" aria-hidden="true" />}
                 />
               </div>
             </div>
-          )}
-        </div>
-      </aside>
+
+            <div className={cn('space-y-1.5 border-t pt-2.5', theme.divider)}>
+              <SectionTitle theme={theme}>Draw</SectionTitle>
+              <div className="grid grid-cols-2 gap-1.5">
+                <ToolButton
+                  label={waveActive ? 'Stop Wave' : 'Wave'}
+                  active={waveActive}
+                  onClick={handleToggleDrawing}
+                  theme={theme}
+                  icon={waveActive ? <X size={16} aria-hidden="true" /> : <Waves size={16} aria-hidden="true" />}
+                />
+                <ToolButton
+                  label={isFlagDrawing ? 'Stop Flag' : 'Flag'}
+                  active={isFlagDrawing}
+                  onClick={handleToggleFlagDrawing}
+                  theme={theme}
+                  icon={<Flag size={16} aria-hidden="true" />}
+                />
+              </div>
+            </div>
+
+            {waveActive && (
+              <div className={cn('space-y-1.5 border-t pt-2.5', theme.divider)}>
+                <SectionTitle theme={theme}>Wave Mode</SectionTitle>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <ToolButton
+                    label="Open"
+                    active={!closedMode}
+                    onClick={() => setClosedMode(false)}
+                    theme={theme}
+                    icon={<Waves size={16} aria-hidden="true" />}
+                  />
+                  <ToolButton
+                    label="Loop"
+                    active={closedMode}
+                    activeClassName={theme.activeClosed}
+                    onClick={() => setClosedMode(true)}
+                    theme={theme}
+                    icon={<CheckCircle2 size={16} aria-hidden="true" />}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </FloatingShell>
     </>
   );
 };
