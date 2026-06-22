@@ -42,10 +42,6 @@ function getChartRowByProjectId(forecastPackage, projectId) {
   return forecastPackage.charts?.find((chart) => isSameId(chart.project, projectId));
 }
 
-function getCompletionRow(forecastPackage, chartType) {
-  return forecastPackage.chartCompletion?.find((item) => item.chartType === chartType);
-}
-
 function getActiveEditors(chart = {}) {
   const activeEditors = Array.isArray(chart.activeEditors) ? [...chart.activeEditors] : [];
 
@@ -54,14 +50,6 @@ function getActiveEditors(chart = {}) {
   }
 
   return activeEditors;
-}
-
-function syncLegacyClaimFields(chart) {
-  const activeEditors = getActiveEditors(chart);
-  const firstEditor = activeEditors[0];
-  chart.activeEditors = activeEditors;
-  chart.claimedBy = firstEditor?.user || null;
-  chart.claimedAt = firstEditor?.startedAt || null;
 }
 
 async function populateForecastPackageById(id) {
@@ -123,6 +111,14 @@ function serializeChartContext(forecastPackage, chart, user) {
   };
 }
 
+function getLegacyClaimPatch(activeEditors) {
+  const firstEditor = activeEditors[0];
+  return {
+    'charts.$.claimedBy': firstEditor?.user || null,
+    'charts.$.claimedAt': firstEditor?.startedAt || null,
+  };
+}
+
 export const releaseForecastPackageChartEditingByProject = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
@@ -136,25 +132,25 @@ export const releaseForecastPackageChartEditingByProject = asyncHandler(async (r
   const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
   if (!chart) throwError('Forecast Package chart context not found', 404);
 
-  syncLegacyClaimFields(chart);
-  const beforeCount = getActiveEditors(chart).length;
-  chart.activeEditors = getActiveEditors(chart).filter((editor) => !isSameId(editor.user, req.user.id));
-  syncLegacyClaimFields(chart);
-  const afterCount = getActiveEditors(chart).length;
-
-  if (beforeCount !== afterCount) {
-    forecastPackage.auditLogs.push({
-      action: 'chart_released',
-      performedBy: req.user.id,
-      previousStatus: forecastPackage.status,
-      newStatus: forecastPackage.status,
-      comment: `${getForecastChartLabel(chart.chartType)} editing session released`,
-    });
-  }
-
-  forecastPackage.markModified('charts');
-  forecastPackage.markModified('auditLogs');
-  await forecastPackage.save();
+  const remainingEditors = getActiveEditors(chart).filter((editor) => !isSameId(editor.user, req.user.id));
+  await ForecastPackage.updateOne(
+    { _id: forecastPackage._id, 'charts.project': req.params.projectId },
+    {
+      $set: {
+        'charts.$.activeEditors': remainingEditors,
+        ...getLegacyClaimPatch(remainingEditors),
+      },
+      $push: {
+        auditLogs: {
+          action: 'chart_released',
+          performedBy: req.user.id,
+          previousStatus: forecastPackage.status,
+          newStatus: forecastPackage.status,
+          comment: `${getForecastChartLabel(chart.chartType)} editing session released`,
+        },
+      },
+    }
+  );
 
   const populated = await populateForecastPackageById(forecastPackage._id);
   const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
