@@ -2,7 +2,6 @@ import express from 'express';
 
 import {
   approveForecastPackage,
-  claimForecastPackageChartByProject,
   createForecastPackage,
   getAdminForecastPackages,
   getCurrentForecastPackage,
@@ -16,7 +15,10 @@ import {
   updateForecastChartCompletion,
   updateForecastChartCompletionByProject,
 } from '../controllers/forecastPackageController.js';
-import { releaseForecastPackageChartEditingByProject } from '../controllers/forecastPackageEditingController.js';
+import {
+  joinForecastPackageChartEditingByProject,
+  releaseForecastPackageChartEditingByProject,
+} from '../controllers/forecastPackageEditingController.js';
 import protect from '../middleware/authMiddleware.js';
 import { isAdmin } from '../middleware/adminMiddleware.js';
 
@@ -34,7 +36,7 @@ router.post('/', createForecastPackage);
 router.get('/', getUserForecastPackages);
 router.get('/current', getCurrentForecastPackage);
 router.get('/charts/project/:projectId/context', getForecastPackageChartContextByProject);
-router.patch('/charts/project/:projectId/claim', claimForecastPackageChartByProject);
+router.patch('/charts/project/:projectId/claim', joinForecastPackageChartEditingByProject);
 router.patch('/charts/project/:projectId/release', releaseForecastPackageChartEditingByProject);
 router.patch('/charts/project/:projectId/completion', updateForecastChartCompletionByProject);
 router.get('/:id', getForecastPackageById);
