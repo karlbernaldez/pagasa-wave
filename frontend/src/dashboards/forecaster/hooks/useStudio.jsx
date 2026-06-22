@@ -4,19 +4,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { setupMap } from "@dashboards/forecaster/utils/mapSetup";
 import { fetchFeatures } from "@/api/featureServices";
 import { fetchProjectById } from "@/api/projectAPI";
+import socket from "@/socket/socketClient";
 
-// ─── Constants ───────────────────────────────────────
-const INACTIVITY_TIMEOUT = 640000; // 10.67 minutes
+const INACTIVITY_TIMEOUT = 640000;
+const FORECAST_CHART_UPDATED_EVENT = "forecast-chart:updated";
 
-// ─── Custom Hooks ────────────────────────────────────
-
-/**
- * Manages the active Studio project ID.
- *
- * /studio/:projectId is the source of truth. localStorage is only updated as
- * a legacy compatibility cache for older helpers, and is never used to decide
- * which project the Studio should load.
- */
 export const useProjectId = () => {
   const { projectId: paramId } = useParams();
   const navigate = useNavigate();
@@ -36,10 +28,6 @@ export const useProjectId = () => {
   return [projectId, updateProjectId];
 };
 
-/**
- * Shows a confirmation prompt after inactivity instead of force-reloading.
- * This avoids surprise data loss in the map/drawing workspace.
- */
 export const useInactivityReload = (
   timeout = INACTIVITY_TIMEOUT,
   { disabled = false } = {}
@@ -102,9 +90,6 @@ export const useInactivityReload = (
   };
 };
 
-/**
- * Handles project loading for the active Studio route.
- */
 export const useProjectLoader = (projectId) => {
   const [latestProject, setLatestProject] = useState(null);
   const [isLoadingProject, setIsLoadingProject] = useState(Boolean(projectId));
@@ -164,9 +149,6 @@ export const useProjectLoader = (projectId) => {
   };
 };
 
-/**
- * Manages map initialization and feature loading
- */
 export const useMapSetup = (projectId, logger, isDarkMode) => {
   const [savedFeatures, setSavedFeatures] = useState([]);
   const [layers, setLayers] = useState([]);
@@ -212,6 +194,7 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
           type,
           markerType: f.properties?.markerType || (isMarker ? type : undefined),
           mapLayerId: f.properties?.mapLayerId || (isMarker ? `${type}_${name}` : undefined),
+          owner: f.properties?.owner,
         };
       });
 
@@ -237,9 +220,6 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
   };
 };
 
-/**
- * Manages drawing state and canvas toggles
- */
 export const useDrawingState = () => {
   const [drawInstance, setDrawInstance] = useState(null);
   const [isCanvasActive, setIsCanvasActive] = useState(false);
@@ -267,9 +247,6 @@ export const useDrawingState = () => {
   };
 };
 
-/**
- * Manages marker creation modal state
- */
 export const useMarkerModal = () => {
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [showTitleModal, setShowTitleModal] = useState(false);
@@ -299,9 +276,6 @@ export const useMarkerModal = () => {
   };
 };
 
-/**
- * Manages map loading and setup with feature initialization
- */
 export const useMapLoader = (
   projectId,
   logger,
@@ -318,6 +292,67 @@ export const useMapLoader = (
   setCapturedImages,
   setIsLoading
 ) => {
+  const applyFeaturesToMap = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map || !projectId) return;
+
+    const filteredFeatures = await setupFeaturesAndLayers();
+
+    cleanupRef.current?.();
+    cleanupRef.current = setupMap({
+      map,
+      mapRef,
+      setDrawInstance,
+      setMapLoaded,
+      setSelectedPoint,
+      setShowTitleModal,
+      setLineCount,
+      initialFeatures: {
+        type: "FeatureCollection",
+        features: filteredFeatures,
+      },
+      logger,
+      setLoading: setIsLoading,
+      selectedToolRef,
+      setCapturedImages,
+      isDarkMode,
+    });
+  }, [
+    cleanupRef,
+    isDarkMode,
+    logger,
+    mapRef,
+    projectId,
+    selectedToolRef,
+    setCapturedImages,
+    setDrawInstance,
+    setIsLoading,
+    setLineCount,
+    setMapLoaded,
+    setSelectedPoint,
+    setShowTitleModal,
+    setupFeaturesAndLayers,
+  ]);
+
+  useEffect(() => {
+    if (!projectId) return undefined;
+
+    if (!socket.connected) socket.connect();
+    socket.emit("forecast:join_project", projectId);
+
+    const handleForecastChartUpdate = (payload = {}) => {
+      if (String(payload.projectId || "") !== String(projectId)) return;
+      applyFeaturesToMap();
+    };
+
+    socket.on(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate);
+
+    return () => {
+      socket.emit("forecast:leave_project", projectId);
+      socket.off(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate);
+    };
+  }, [applyFeaturesToMap, projectId]);
+
   const handleMapLoad = useCallback(async (map) => {
     mapRef.current = map;
 
@@ -343,7 +378,6 @@ export const useMapLoader = (
       isDarkMode,
     });
 
-    // Setup style.load listener once
     if (!map._hasStyleLoadListener) {
       map.on("style.load", async () => {
         const features = await setupFeaturesAndLayers();
