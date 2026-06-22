@@ -1,10 +1,4 @@
 import { roomFor } from './index.js';
-import { logger }  from '#utils/logger';
-
-// ── Use globalThis to guarantee ONE shared io instance ────────────────────────
-// Node may load this module twice under different import paths (alias vs relative).
-// globalThis survives that and ensures setIo() and the emit helpers always
-// read/write the same reference.
 
 export const setIo = (io) => {
   globalThis.__socketIo = io;
@@ -12,29 +6,16 @@ export const setIo = (io) => {
 
 const getIo = () => globalThis.__socketIo ?? null;
 
-// ─── Event names ──────────────────────────────────────────────────────────────
 export const SOCKET_EVENTS = {
-  NOTIFICATION_NEW:      'notification:new',
-  NOTIFICATION_READ:     'notification:read',
+  NOTIFICATION_NEW: 'notification:new',
+  NOTIFICATION_READ: 'notification:read',
   NOTIFICATION_ALL_READ: 'notification:all_read',
+  FORECAST_CHART_UPDATED: 'forecast-chart:updated',
 };
 
-// ─── Emit helpers ─────────────────────────────────────────────────────────────
 export const emitNewNotification = (notification) => {
   const _io = getIo();
-
-  if (!_io) {
-    console.warn('[socketEmitter] _io is null — setIo() not yet called');
-    return;
-  }
-
-  // Debug — remove after confirmed working
-  const roleRoom = _io.sockets.adapter.rooms.get(roomFor.role(notification.recipientRole));
-  console.log('[socketEmitter] emitNewNotification', {
-    recipientRole:    notification.recipientRole,
-    roleRoomSize:     roleRoom?.size ?? 0,
-    totalConnections: _io.sockets.sockets.size,
-  });
+  if (!_io) return;
 
   const payload = { ...notification, unread: true };
 
@@ -60,4 +41,15 @@ export const emitAllNotificationsRead = (userId) => {
   const _io = getIo();
   if (!_io) return;
   _io.to(roomFor.user(String(userId))).emit(SOCKET_EVENTS.NOTIFICATION_ALL_READ);
+};
+
+export const emitForecastChartUpdated = (projectId, payload = {}) => {
+  const _io = getIo();
+  if (!_io || !projectId) return;
+
+  _io.to(roomFor.forecastChartProject(String(projectId))).emit(SOCKET_EVENTS.FORECAST_CHART_UPDATED, {
+    projectId: String(projectId),
+    updatedAt: new Date().toISOString(),
+    ...payload,
+  });
 };
