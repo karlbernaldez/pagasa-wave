@@ -138,8 +138,7 @@ const ForecastPackageSchema = new Schema({
   auditLogs: [ForecastPackageAuditLogSchema],
 }, { timestamps: true });
 
-ForecastPackageSchema.index({ owner: 1, forecastDate: 1 }, { unique: true });
-ForecastPackageSchema.index({ owner: 1, status: 1, updatedAt: -1 });
+ForecastPackageSchema.index({ forecastDate: 1 }, { unique: true });
 ForecastPackageSchema.index({ status: 1, updatedAt: -1 });
 ForecastPackageSchema.index({ forecastDate: -1, updatedAt: -1 });
 ForecastPackageSchema.index({ 'charts.project': 1 });
