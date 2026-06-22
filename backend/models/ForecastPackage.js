@@ -7,6 +7,18 @@ import {
 
 const { Schema } = mongoose;
 
+const ForecastPackageChartEditorSchema = new Schema({
+  user: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  startedAt: {
+    type: Date,
+    default: Date.now,
+  },
+}, { _id: false });
+
 const ForecastPackageChartSchema = new Schema({
   chartType: {
     type: String,
@@ -21,6 +33,10 @@ const ForecastPackageChartSchema = new Schema({
   sortOrder: {
     type: Number,
     required: true,
+  },
+  activeEditors: {
+    type: [ForecastPackageChartEditorSchema],
+    default: [],
   },
   claimedBy: {
     type: Schema.Types.ObjectId,
