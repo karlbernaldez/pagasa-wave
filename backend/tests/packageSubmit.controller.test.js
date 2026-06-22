@@ -36,6 +36,10 @@ function createPkg(workflow, ready, status = workflow.FORECAST_PACKAGE_STATUS.DR
     charts: workflow.REQUIRED_FORECAST_CHART_TYPES.map((chartType, index) => ({
       chartType,
       project: `project-${index + 1}`,
+      claimedBy: null,
+      claimedAt: null,
+      readyBy: null,
+      readyAt: null,
     })),
     chartCompletion: workflow.REQUIRED_FORECAST_CHART_TYPES.map((chartType) => ({ chartType, isComplete: ready })),
     auditLogs: [],
@@ -140,6 +144,66 @@ test('package chart completion enforces the operational chart sequence', async (
     assert.equal(pkg.chartCompletion.find((row) => row.chartType === 'forecast_24h').isComplete, false);
   } finally {
     PackageModel.findById = originalFindById;
+  }
+});
+
+test('forecaster can claim the active unlocked chart for editing', async () => {
+  const { workflow, controller, PackageModel } = await loadModules();
+  const originalFindOne = PackageModel.findOne;
+  const originalFindById = PackageModel.findById;
+  const pkg = createPkg(workflow, false);
+  const forecasterId = 'forecaster-2';
+
+  try {
+    PackageModel.findOne = () => pkg;
+    PackageModel.findById = () => createQuery(pkg);
+
+    const res = await run(
+      controller.claimForecastPackageChartByProject,
+      req({
+        params: { projectId: 'project-1' },
+        user: { id: forecasterId, role: 'forecaster' },
+      })
+    );
+
+    assert.equal(pkg.charts[0].claimedBy, forecasterId);
+    assert.ok(pkg.charts[0].claimedAt instanceof Date);
+    assert.equal(pkg.saveCalls, 1);
+    assert.equal(pkg.auditLogs.at(-1).action, 'chart_claimed');
+    assert.equal(res.body.claim.claimedByCurrentUser, true);
+  } finally {
+    PackageModel.findOne = originalFindOne;
+    PackageModel.findById = originalFindById;
+  }
+});
+
+test('claimed chart rejects another forecaster trying to claim it', async () => {
+  const { workflow, controller, PackageModel } = await loadModules();
+  const originalFindOne = PackageModel.findOne;
+  const pkg = createPkg(workflow, false);
+  pkg.charts[0].claimedBy = ownerId('forecaster-2');
+  pkg.charts[0].claimedAt = new Date();
+
+  try {
+    PackageModel.findOne = () => pkg;
+
+    await assert.rejects(
+      () => run(
+        controller.claimForecastPackageChartByProject,
+        req({
+          params: { projectId: 'project-1' },
+          user: { id: 'forecaster-3', role: 'forecaster' },
+        })
+      ),
+      {
+        status: 409,
+        message: 'Wave Analysis is currently claimed by another forecaster',
+      }
+    );
+
+    assert.equal(pkg.saveCalls, 0);
+  } finally {
+    PackageModel.findOne = originalFindOne;
   }
 });
 
