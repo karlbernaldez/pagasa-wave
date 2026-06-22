@@ -185,7 +185,7 @@ function getLinkedProjectIds(forecastPackage) {
     .filter(Boolean);
 }
 
-async function findForecastPackageByChartProjectId(projectId) {
+function findForecastPackageByChartProjectId(projectId) {
   return ForecastPackage.findOne({ 'charts.project': projectId });
 }
 
