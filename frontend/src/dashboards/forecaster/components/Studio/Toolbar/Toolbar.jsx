@@ -38,8 +38,7 @@ const getTheme = (isDarkMode) => ({
   dock: isDarkMode
     ? 'border-cyan-200/20 bg-[#0b2638]/78 text-cyan-50 shadow-[0_18px_60px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.16)]'
     : 'border-white/80 bg-white/74 text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.95)]',
-  group: isDarkMode ? 'border-cyan-100/12 bg-white/[0.04]' : 'border-white/70 bg-white/45',
-  row: isDarkMode
+  button: isDarkMode
     ? 'border-white/8 bg-white/[0.045] text-cyan-100/78 hover:border-cyan-200/24 hover:bg-cyan-300/10 hover:text-cyan-50'
     : 'border-white/70 bg-white/48 text-slate-700 hover:border-blue-200 hover:bg-blue-50/75 hover:text-blue-800',
   active: isDarkMode
@@ -68,16 +67,16 @@ const Divider = ({ theme }) => (
   <div className={cn('h-9 w-px shrink-0', theme.divider)} aria-hidden="true" />
 );
 
-const DockButton = ({ active, activeClassName, icon, label, onClick, theme }) => (
+const TrayButton = ({ active, activeClassName, icon, label, onClick, theme }) => (
   <button
     type="button"
     aria-label={label}
     title={label}
     onClick={onClick}
     className={cn(
-      'flex h-12 min-w-[74px] shrink-0 items-center justify-center gap-2 rounded-2xl border px-2.5 transition-all duration-150',
+      'flex h-12 min-w-[76px] shrink-0 items-center justify-center gap-2 rounded-2xl border px-2.5 transition-all duration-150',
       'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/80',
-      active ? activeClassName || theme.active : theme.row
+      active ? activeClassName || theme.active : theme.button
     )}
   >
     <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-xl', theme.iconRail)}>
@@ -87,14 +86,14 @@ const DockButton = ({ active, activeClassName, icon, label, onClick, theme }) =>
   </button>
 );
 
-const HeaderIconButton = ({ children, label, onClick, theme }) => (
+const IconButton = ({ children, label, onClick, theme }) => (
   <button
     type="button"
     aria-label={label}
     title={label}
     onPointerDown={(event) => event.stopPropagation()}
     onClick={onClick}
-    className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-colors', theme.row)}
+    className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-colors', theme.button)}
   >
     {children}
   </button>
@@ -258,82 +257,80 @@ const DrawToolbar = ({
             </button>
           </div>
         ) : (
-          <div className="relative z-10 flex h-14 min-w-0 items-center gap-2">
+          <div className="relative z-10 flex h-14 min-w-0 items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
             <button
               type="button"
               aria-label="Drag draw tools"
               title="Drag to move"
-              className={cn('flex h-10 w-10 shrink-0 cursor-grab touch-none items-center justify-center rounded-2xl border active:cursor-grabbing', theme.row)}
+              className={cn('flex h-12 w-12 shrink-0 cursor-grab touch-none items-center justify-center rounded-2xl border active:cursor-grabbing', theme.button)}
               {...dragHandleProps}
             >
-              <GripHorizontal size={15} aria-hidden="true" />
+              <GripHorizontal size={16} aria-hidden="true" />
             </button>
 
             <Divider theme={theme} />
 
-            <div className={cn('flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto rounded-2xl border p-1 [&::-webkit-scrollbar]:hidden', theme.group)}>
-              <DockButton
-                label="Text"
-                active={selectedToolType === 'text_note'}
-                onClick={handleSelectTextNote}
-                theme={theme}
-                icon={<Type size={16} aria-hidden="true" />}
-              />
-              <DockButton
-                label="Low Wave"
-                active={selectedToolType === 'less_1'}
-                onClick={handleSelectLess1}
-                theme={theme}
-                icon={<img src={l1} alt="" className="h-5 w-5 object-contain" aria-hidden="true" />}
-              />
+            <TrayButton
+              label="Text"
+              active={selectedToolType === 'text_note'}
+              onClick={handleSelectTextNote}
+              theme={theme}
+              icon={<Type size={16} aria-hidden="true" />}
+            />
+            <TrayButton
+              label="Low Wave"
+              active={selectedToolType === 'less_1'}
+              onClick={handleSelectLess1}
+              theme={theme}
+              icon={<img src={l1} alt="" className="h-5 w-5 object-contain" aria-hidden="true" />}
+            />
 
-              <Divider theme={theme} />
+            <Divider theme={theme} />
 
-              <DockButton
-                label={waveActive ? 'Stop Wave' : 'Wave'}
-                active={waveActive}
-                onClick={handleToggleDrawing}
-                theme={theme}
-                icon={waveActive ? <X size={16} aria-hidden="true" /> : <Waves size={16} aria-hidden="true" />}
-              />
-              <DockButton
-                label={isFlagDrawing ? 'Stop Flag' : 'Flag'}
-                active={isFlagDrawing}
-                onClick={handleToggleFlagDrawing}
-                theme={theme}
-                icon={<Flag size={16} aria-hidden="true" />}
-              />
+            <TrayButton
+              label={waveActive ? 'Stop Wave' : 'Wave'}
+              active={waveActive}
+              onClick={handleToggleDrawing}
+              theme={theme}
+              icon={waveActive ? <X size={16} aria-hidden="true" /> : <Waves size={16} aria-hidden="true" />}
+            />
+            <TrayButton
+              label={isFlagDrawing ? 'Stop Flag' : 'Flag'}
+              active={isFlagDrawing}
+              onClick={handleToggleFlagDrawing}
+              theme={theme}
+              icon={<Flag size={16} aria-hidden="true" />}
+            />
 
-              {waveActive && (
-                <>
-                  <Divider theme={theme} />
-                  <DockButton
-                    label="Open"
-                    active={!closedMode}
-                    onClick={() => setClosedMode(false)}
-                    theme={theme}
-                    icon={<Waves size={16} aria-hidden="true" />}
-                  />
-                  <DockButton
-                    label="Loop"
-                    active={closedMode}
-                    activeClassName={theme.activeClosed}
-                    onClick={() => setClosedMode(true)}
-                    theme={theme}
-                    icon={<CheckCircle2 size={16} aria-hidden="true" />}
-                  />
-                </>
-              )}
-            </div>
+            {waveActive && (
+              <>
+                <Divider theme={theme} />
+                <TrayButton
+                  label="Open"
+                  active={!closedMode}
+                  onClick={() => setClosedMode(false)}
+                  theme={theme}
+                  icon={<Waves size={16} aria-hidden="true" />}
+                />
+                <TrayButton
+                  label="Loop"
+                  active={closedMode}
+                  activeClassName={theme.activeClosed}
+                  onClick={() => setClosedMode(true)}
+                  theme={theme}
+                  icon={<CheckCircle2 size={16} aria-hidden="true" />}
+                />
+              </>
+            )}
 
-            <div className="flex shrink-0 items-center gap-1">
-              <HeaderIconButton label="Reset draw tools position" onClick={handleResetPosition} theme={theme}>
-                <RotateCcw size={14} aria-hidden="true" />
-              </HeaderIconButton>
-              <HeaderIconButton label="Collapse drawing tools" onClick={handleToggleCollapse} theme={theme}>
-                <ChevronDown size={16} aria-hidden="true" />
-              </HeaderIconButton>
-            </div>
+            <Divider theme={theme} />
+
+            <IconButton label="Reset draw tools position" onClick={handleResetPosition} theme={theme}>
+              <RotateCcw size={15} aria-hidden="true" />
+            </IconButton>
+            <IconButton label="Collapse drawing tools" onClick={handleToggleCollapse} theme={theme}>
+              <ChevronDown size={17} aria-hidden="true" />
+            </IconButton>
           </div>
         )}
       </FloatingShell>
