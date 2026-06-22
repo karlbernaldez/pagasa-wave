@@ -74,6 +74,29 @@ function getPreviousIncompleteChartType(chartCompletion = [], chartType) {
   }) || null;
 }
 
+function getActiveEditors(chart = {}) {
+  const activeEditors = Array.isArray(chart.activeEditors) ? chart.activeEditors : [];
+  const normalized = [...activeEditors];
+
+  if (chart.claimedBy && !normalized.some((editor) => isSameId(editor.user, chart.claimedBy))) {
+    normalized.push({ user: chart.claimedBy, startedAt: chart.claimedAt || null });
+  }
+
+  return normalized;
+}
+
+function isUserActiveEditor(chart, userId) {
+  return getActiveEditors(chart).some((editor) => isSameId(editor.user, userId));
+}
+
+function syncLegacyClaimFields(chart) {
+  const activeEditors = getActiveEditors(chart);
+  const firstEditor = activeEditors[0];
+  chart.activeEditors = activeEditors;
+  chart.claimedBy = firstEditor?.user || null;
+  chart.claimedAt = firstEditor?.startedAt || null;
+}
+
 function resetChartAndDependents(forecastPackage, chartType) {
   const chartIndex = getChartSequenceIndex(chartType);
   if (chartIndex < 0) return 0;
@@ -110,6 +133,17 @@ function getCompletionRow(forecastPackage, chartType) {
   return forecastPackage.chartCompletion?.find((item) => item.chartType === chartType);
 }
 
+function getActiveEditorLabels(chart) {
+  return getActiveEditors(chart)
+    .map((editor) => getDisplayName(editor.user))
+    .filter(Boolean);
+}
+
+function getActiveEditingChartLabel(forecastPackage) {
+  const chart = forecastPackage.charts?.find((item) => getActiveEditors(item).length > 0);
+  return chart ? getForecastChartLabel(chart.chartType) : null;
+}
+
 function serializePackage(forecastPackage) {
   const plain = typeof forecastPackage.toObject === 'function'
     ? forecastPackage.toObject()
@@ -125,13 +159,15 @@ function serializeChartContext(forecastPackage, chart, user) {
   const serializedPackage = serializePackage(forecastPackage);
   const plainChart = typeof chart?.toObject === 'function' ? chart.toObject() : chart;
   const completionRow = serializedPackage.chartCompletion?.find((item) => item.chartType === plainChart?.chartType);
+  const activeEditors = getActiveEditors(plainChart);
+  const activeEditorLabels = getActiveEditorLabels(plainChart);
   const blockingChartType = completionRow?.isComplete
     ? null
     : getPreviousIncompleteChartType(serializedPackage.chartCompletion || [], plainChart?.chartType);
   const editable = EDITABLE_PACKAGE_STATUSES.includes(serializedPackage.status);
   const ownerOrAdmin = isPackageOwnerOrAdmin(user, serializedPackage);
-  const claimedByCurrentUser = isSameId(plainChart?.claimedBy, user?.id);
-  const claimedByOtherUser = Boolean(plainChart?.claimedBy && !claimedByCurrentUser && !ownerOrAdmin);
+  const activeEditorCurrentUser = activeEditors.some((editor) => isSameId(editor.user, user?.id));
+  const hasOtherActiveEditors = activeEditors.some((editor) => !isSameId(editor.user, user?.id));
   const isReady = Boolean(completionRow?.isComplete);
 
   return {
@@ -141,12 +177,14 @@ function serializeChartContext(forecastPackage, chart, user) {
     completion: completionRow || null,
     blockingChartType,
     claim: {
-      claimedByCurrentUser,
-      claimedByOtherUser,
-      claimedByLabel: getDisplayName(plainChart?.claimedBy),
-      canClaim: editable && !isReady && !blockingChartType && !claimedByOtherUser,
-      canRelease: editable && Boolean(plainChart?.claimedBy) && (claimedByCurrentUser || ownerOrAdmin),
-      canCertify: editable && !isReady && !blockingChartType && (claimedByCurrentUser || ownerOrAdmin),
+      claimedByCurrentUser: activeEditorCurrentUser,
+      claimedByOtherUser: hasOtherActiveEditors,
+      claimedByLabel: activeEditorLabels.join(', '),
+      activeEditorCount: activeEditors.length,
+      activeEditorLabels,
+      canClaim: editable && !isReady && !blockingChartType && !activeEditorCurrentUser,
+      canRelease: editable && activeEditorCurrentUser,
+      canCertify: editable && !isReady && !blockingChartType && (activeEditorCurrentUser || ownerOrAdmin) && activeEditors.length <= 1,
     },
   };
 }
@@ -155,6 +193,7 @@ async function populateForecastPackage(query) {
   return query
     .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
+    .populate('charts.activeEditors.user', 'firstName lastName email username')
     .populate('charts.claimedBy', 'firstName lastName email username')
     .populate('charts.readyBy', 'firstName lastName email username')
     .populate('chartCompletion.completedBy', 'firstName lastName email username')
@@ -259,12 +298,11 @@ function updateForecastChartCompletionState(forecastPackage, chartType, isComple
     throwError(`Forecast Package chart not found for type: ${chartType}`, 404);
   }
 
+  syncLegacyClaimFields(chartRow);
+
   const ownerOrAdmin = isPackageOwnerOrAdmin(user, forecastPackage);
-  const claimedByCurrentUser = isSameId(chartRow.claimedBy, user?.id);
-  const claimedByOtherUser = Boolean(chartRow.claimedBy && !claimedByCurrentUser && !ownerOrAdmin);
-  if (claimedByOtherUser) {
-    throwError(`${getForecastChartLabel(chartType)} is currently claimed by another forecaster`, 409);
-  }
+  const activeEditors = getActiveEditors(chartRow);
+  const activeEditorCurrentUser = activeEditors.some((editor) => isSameId(editor.user, user?.id));
 
   const blockingChartType = isComplete
     ? getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chartType)
@@ -277,8 +315,12 @@ function updateForecastChartCompletionState(forecastPackage, chartType, isComple
     );
   }
 
-  if (isComplete && !claimedByCurrentUser && !ownerOrAdmin) {
-    throwError(`${getForecastChartLabel(chartType)} must be claimed before it can be certified ready`, 409);
+  if (isComplete && !activeEditorCurrentUser && !ownerOrAdmin) {
+    throwError(`${getForecastChartLabel(chartType)} must be joined for editing before it can be certified ready`, 409);
+  }
+
+  if (isComplete && activeEditors.length > 1) {
+    throwError(`${getForecastChartLabel(chartType)} still has ${activeEditors.length} active editors. Ask other forecasters to release before certifying ready`, 409);
   }
 
   let comment;
@@ -288,6 +330,9 @@ function updateForecastChartCompletionState(forecastPackage, chartType, isComple
     completionRow.completedBy = user.id;
     chartRow.readyAt = completionRow.completedAt;
     chartRow.readyBy = user.id;
+    chartRow.activeEditors = [];
+    chartRow.claimedBy = null;
+    chartRow.claimedAt = null;
     comment = `${getForecastChartLabel(chartType)} marked complete`;
   } else {
     const resetCount = resetChartAndDependents(forecastPackage, chartType);
@@ -350,6 +395,7 @@ export const createForecastPackage = asyncHandler(async (req, res) => {
         chartType: requiredChart.chartType,
         project: project._id,
         sortOrder: requiredChart.sortOrder,
+        activeEditors: [],
       });
     }
 
@@ -490,26 +536,23 @@ export const claimForecastPackageChartByProject = asyncHandler(async (req, res) 
   const blockingChartType = getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chart.chartType);
   if (blockingChartType) {
     throwError(
-      `${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chart.chartType)} can be claimed`,
+      `${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chart.chartType)} can be joined for editing`,
       400
     );
   }
 
-  const ownerOrAdmin = isPackageOwnerOrAdmin(req.user, forecastPackage);
-  const claimedByCurrentUser = isSameId(chart.claimedBy, req.user.id);
-  const claimedByOtherUser = Boolean(chart.claimedBy && !claimedByCurrentUser && !ownerOrAdmin);
-  if (claimedByOtherUser) {
-    throwError(`${getForecastChartLabel(chart.chartType)} is currently claimed by another forecaster`, 409);
+  syncLegacyClaimFields(chart);
+  if (!isUserActiveEditor(chart, req.user.id)) {
+    chart.activeEditors.push({ user: req.user.id, startedAt: new Date() });
   }
+  syncLegacyClaimFields(chart);
 
-  chart.claimedBy = req.user.id;
-  chart.claimedAt = new Date();
   forecastPackage.auditLogs.push({
     action: 'chart_claimed',
     performedBy: req.user.id,
     previousStatus: forecastPackage.status,
     newStatus: forecastPackage.status,
-    comment: `${getForecastChartLabel(chart.chartType)} claimed for editing`,
+    comment: `${getForecastChartLabel(chart.chartType)} joined for editing`,
   });
 
   await forecastPackage.save();
@@ -528,25 +571,16 @@ export const releaseForecastPackageChartByProject = asyncHandler(async (req, res
   const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
   if (!chart) throwError('Forecast Package chart context not found', 404);
 
-  if (!chart.claimedBy) {
-    const populated = await populateForecastPackageById(forecastPackage._id);
-    const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
-    return res.json(serializeChartContext(populated, populatedChart, req.user));
-  }
+  syncLegacyClaimFields(chart);
+  chart.activeEditors = getActiveEditors(chart).filter((editor) => !isSameId(editor.user, req.user.id));
+  syncLegacyClaimFields(chart);
 
-  const ownerOrAdmin = isPackageOwnerOrAdmin(req.user, forecastPackage);
-  if (!isSameId(chart.claimedBy, req.user.id) && !ownerOrAdmin) {
-    throwError(`${getForecastChartLabel(chart.chartType)} can only be released by its active editor`, 409);
-  }
-
-  chart.claimedBy = null;
-  chart.claimedAt = null;
   forecastPackage.auditLogs.push({
     action: 'chart_released',
     performedBy: req.user.id,
     previousStatus: forecastPackage.status,
     newStatus: forecastPackage.status,
-    comment: `${getForecastChartLabel(chart.chartType)} editing claim released`,
+    comment: `${getForecastChartLabel(chart.chartType)} editing session released`,
   });
 
   await forecastPackage.save();
@@ -598,6 +632,11 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
 
   if (!canSubmitPackage(forecastPackage.status)) {
     throwError('Only Draft or Revision Requested Forecast Packages can be submitted', 400);
+  }
+
+  const activeEditingChartLabel = getActiveEditingChartLabel(forecastPackage);
+  if (activeEditingChartLabel) {
+    throwError(`${activeEditingChartLabel} still has active editors. Ask forecasters to release before submitting`, 409);
   }
 
   const completion = getPackageCompletion(forecastPackage.chartCompletion || []);
