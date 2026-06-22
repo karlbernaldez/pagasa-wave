@@ -8,11 +8,13 @@ const formatCoord = (value, type) => {
   return `${abs} deg`;
 };
 
-const MapStatusBar = ({ mapRef }) => {
+const MapStatusBar = ({ mapRef, visible = false }) => {
   const { isDarkMode } = useTheme();
   const [status, setStatus] = useState({ lat: null, lon: null, zoom: null });
 
   useEffect(() => {
+    if (!visible) return undefined;
+
     const map = mapRef.current;
     if (!map) return undefined;
 
@@ -36,7 +38,9 @@ const MapStatusBar = ({ mapRef }) => {
       map.off("mousemove", handleMove);
       map.off("zoom", handleZoom);
     };
-  }, [mapRef]);
+  }, [mapRef, visible]);
+
+  if (!visible) return null;
 
   const latVal = status.lat ?? "--.---- deg";
   const lonVal = status.lon ?? "--.---- deg";
