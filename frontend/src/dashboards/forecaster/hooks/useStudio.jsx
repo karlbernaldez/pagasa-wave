@@ -146,8 +146,13 @@ export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLaye
       applyFeaturesToMap();
       window.dispatchEvent(new CustomEvent(FORECAST_CHART_BROWSER_EVENT, { detail: payload }));
     };
+    const handleBrowserChartUpdate = (event) => {
+      if (String(event.detail?.projectId || "") !== String(projectId)) return;
+      applyFeaturesToMap();
+    };
     socket.on(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate);
-    return () => { socket.emit("forecast:leave_project", projectId); socket.off(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate); };
+    window.addEventListener(FORECAST_CHART_BROWSER_EVENT, handleBrowserChartUpdate);
+    return () => { socket.emit("forecast:leave_project", projectId); socket.off(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate); window.removeEventListener(FORECAST_CHART_BROWSER_EVENT, handleBrowserChartUpdate); };
   }, [applyFeaturesToMap, projectId]);
 
   const handleMapLoad = useCallback(async (map) => {
