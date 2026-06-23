@@ -1,31 +1,43 @@
-import { useState, useEffect } from 'react';
-import { ChevronDown, Layers, Check, Pencil, X, SlidersHorizontal, Lock } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, ChevronDown, Eye, EyeOff, Layers, Lock, Pencil, SlidersHorizontal, X } from 'lucide-react';
 import { useLayerStyle } from './hooks/useLayerStyle';
 import { updateLayerName } from '@dashboards/forecaster/utils/layers';
+import { queuePersistAnnotationStyle } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
 import { SymbolStyleControls } from './StylePanel/SymbolStyleControls';
 import { WaveHeightStyleControls } from './StylePanel/WaveHeightStyleControls';
 import { FrontStyleControls } from './StylePanel/FrontStyleControls';
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
 export const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 export const safeGet = (fn) => {
-    try { const v = fn(); return v ?? undefined; }
+    try { const value = fn(); return value ?? undefined; }
     catch { return undefined; }
 };
 
 const SYMBOL_LAYER_TYPES = new Set(['symbol', 'typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note']);
-const PANEL_SURFACE = (isDarkMode) =>
-    isDarkMode
-        ? 'studio-liquid-dark border border-white/[0.18]'
-        : 'studio-liquid-light border border-white/80';
-const INNER_SURFACE = (isDarkMode) =>
-    isDarkMode
-        ? 'border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
-        : 'border-white/80 bg-white/[0.52] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]';
+
+const PANEL_SURFACE = (isDarkMode) => isDarkMode
+    ? 'studio-liquid-dark border border-white/[0.18]'
+    : 'studio-liquid-light border border-white/80';
+
+const INNER_SURFACE = (isDarkMode) => isDarkMode
+    ? 'border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+    : 'border-white/80 bg-white/[0.52] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]';
+
+const TYPE_META = {
+    symbol: { label: 'Symbol', color: 'from-violet-500 to-purple-600' },
+    typhoon: { label: 'Tropical Cyclone', color: 'from-rose-500 to-pink-600' },
+    low_pressure: { label: 'Low Pressure', color: 'from-red-500 to-rose-600' },
+    high_pressure: { label: 'High Pressure', color: 'from-blue-500 to-sky-600' },
+    less_1: { label: 'Less Than 1m', color: 'from-emerald-500 to-teal-600' },
+    text_note: { label: 'Text Label', color: 'from-amber-500 to-yellow-600' },
+    'Wave Height': { label: 'Wave Height', color: 'from-teal-500 to-cyan-600' },
+};
 
 const getSourceId = (layerInfo) => layerInfo?.sourceID || layerInfo?.sourceId || layerInfo?.source || layerInfo?.id;
 const getGeoJsonSourceData = (source) => source?._data || source?.serialize?.()?.data || null;
+const getSavedStyle = (layerInfo) => layerInfo?.properties?.style || layerInfo?.style || {};
+
 const isFrontLayer = (layerInfo) => {
     const sourceId = getSourceId(layerInfo);
     const label = `${layerInfo?.type || ''} ${layerInfo?.name || ''}`.toLowerCase();
@@ -33,19 +45,16 @@ const isFrontLayer = (layerInfo) => {
 };
 
 function findLayerIdByType(map, ids, type) {
-    return ids.find((id) => map?.getLayer(id)?.type === type);
+    return ids?.find((id) => map?.getLayer(id)?.type === type);
 }
 
-// ── Read live style from Mapbox ───────────────────────────────────────────────
 function readCurrentStyle(map, layerInfo, mapboxLayerIds) {
     if (!map || !layerInfo || !mapboxLayerIds?.length) return {};
 
-    const lid = mapboxLayerIds[0];
-    if (!lid || !map.getLayer(lid)) return {};
-
     const paint = (id, prop) => safeGet(() => map.getPaintProperty(id, prop));
     const layout = (id, prop) => safeGet(() => map.getLayoutProperty(id, prop));
-    const { type } = layerInfo;
+    const firstLayerId = mapboxLayerIds.find((id) => map.getLayer(id));
+    const type = layerInfo.type;
 
     if (isFrontLayer(layerInfo)) {
         const lineId = findLayerIdByType(map, mapboxLayerIds, 'line');
@@ -64,112 +73,78 @@ function readCurrentStyle(map, layerInfo, mapboxLayerIds) {
         };
     }
 
-    switch (true) {
-        case SYMBOL_LAYER_TYPES.has(type):
-            return {
-                iconSize: layout(lid, 'icon-size') ?? 0.07,
-                iconOpacity: paint(lid, 'icon-opacity') ?? 1,
-                iconRotate: layout(lid, 'icon-rotate') ?? 0,
-                textSize: layout(lid, 'text-size') ?? 12,
-                textColor: paint(lid, 'text-color') ?? '#ffffff',
-                textHaloColor: paint(lid, 'text-halo-color') ?? '#000000',
-                textHaloWidth: paint(lid, 'text-halo-width') ?? 1,
-                textLetterSpacing: layout(lid, 'text-letter-spacing') ?? 0,
-                textTransform: layout(lid, 'text-transform') ?? 'none',
-            };
+    if (!firstLayerId || !map.getLayer(firstLayerId)) return {};
 
-        case type === 'Wave Height': {
-            const labelId = mapboxLayerIds[1];
-
-            const lp = (prop, def) =>
-                labelId ? (paint(labelId, prop) ?? def) : def;
-
-            const ll = (prop, def) =>
-                labelId ? (layout(labelId, prop) ?? def) : def;
-
-            return {
-                textSize: ll('text-size', 18),
-                textColor: lp('text-color', '#ffffff'),
-                textHaloColor: lp('text-halo-color', '#000000'),
-                textHaloWidth: lp('text-halo-width', 2),
-            };
-        }
-
-        default: {
-            const mapLayer = map.getLayer(lid);
-            if (mapLayer?.type === 'line') {
-                return {
-                    lineColor: paint(lid, 'line-color') ?? '#2563eb',
-                    lineWidth: paint(lid, 'line-width') ?? 3,
-                    lineOpacity: paint(lid, 'line-opacity') ?? 1,
-                };
-            }
-
-            if (mapLayer?.type === 'fill') {
-                return {
-                    fillColor: paint(lid, 'fill-color') ?? '#2563eb',
-                    fillOpacity: paint(lid, 'fill-opacity') ?? 0.25,
-                };
-            }
-
-            return {};
-        }
+    if (SYMBOL_LAYER_TYPES.has(type)) {
+        return {
+            iconSize: layout(firstLayerId, 'icon-size') ?? 0.07,
+            iconOpacity: paint(firstLayerId, 'icon-opacity') ?? 1,
+            iconRotate: layout(firstLayerId, 'icon-rotate') ?? 0,
+            textSize: layout(firstLayerId, 'text-size') ?? 12,
+            textColor: paint(firstLayerId, 'text-color') ?? '#ffffff',
+            textHaloColor: paint(firstLayerId, 'text-halo-color') ?? '#000000',
+            textHaloWidth: paint(firstLayerId, 'text-halo-width') ?? 1,
+            textLetterSpacing: layout(firstLayerId, 'text-letter-spacing') ?? 0,
+            textTransform: layout(firstLayerId, 'text-transform') ?? 'none',
+        };
     }
+
+    if (type === 'Wave Height') {
+        const lineId = findLayerIdByType(map, mapboxLayerIds, 'line') || firstLayerId;
+        const labelId = findLayerIdByType(map, mapboxLayerIds, 'symbol') || mapboxLayerIds[1];
+        return {
+            lineColor: paint(lineId, 'line-color') ?? '#ffffff',
+            lineWidth: paint(lineId, 'line-width') ?? 3,
+            lineOpacity: paint(lineId, 'line-opacity') ?? 0.6,
+            textSize: labelId ? (layout(labelId, 'text-size') ?? 18) : 18,
+            textColor: labelId ? (paint(labelId, 'text-color') ?? '#ffffff') : '#ffffff',
+            textHaloColor: labelId ? (paint(labelId, 'text-halo-color') ?? '#000000') : '#000000',
+            textHaloWidth: labelId ? (paint(labelId, 'text-halo-width') ?? 2) : 2,
+        };
+    }
+
+    const mapLayer = map.getLayer(firstLayerId);
+    if (mapLayer?.type === 'line') {
+        return {
+            lineColor: paint(firstLayerId, 'line-color') ?? '#2563eb',
+            lineWidth: paint(firstLayerId, 'line-width') ?? 3,
+            lineOpacity: paint(firstLayerId, 'line-opacity') ?? 1,
+        };
+    }
+
+    if (mapLayer?.type === 'fill') {
+        return {
+            fillColor: paint(firstLayerId, 'fill-color') ?? '#2563eb',
+            fillOpacity: paint(firstLayerId, 'fill-opacity') ?? 0.25,
+        };
+    }
+
+    return {};
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const TYPE_META = {
-    symbol: { label: 'Symbol', color: 'from-violet-500 to-purple-600' },
-    typhoon: { label: 'Tropical Cyclone', color: 'from-rose-500 to-pink-600' },
-    low_pressure: { label: 'Low Pressure', color: 'from-red-500 to-rose-600' },
-    high_pressure: { label: 'High Pressure', color: 'from-blue-500 to-sky-600' },
-    less_1: { label: 'Less Than 1m', color: 'from-emerald-500 to-teal-600' },
-    text_note: { label: 'Text Label', color: 'from-amber-500 to-yellow-600' },
-    'Wave Height': { label: 'Wave Height', color: 'from-teal-500 to-cyan-600' },
-    'Cold Front': { label: 'Surface Front', color: 'from-blue-500 to-cyan-600' },
-    'Warm Front': { label: 'Surface Front', color: 'from-red-500 to-rose-600' },
-    'Stationary Front': { label: 'Surface Front', color: 'from-indigo-500 to-red-500' },
-    'Occluded Front': { label: 'Surface Front', color: 'from-violet-500 to-purple-600' },
-};
+function getLatestPanelStyle(map, layerInfo, mapboxLayerIds) {
+    const liveStyle = readCurrentStyle(map, layerInfo, mapboxLayerIds);
+    const savedStyle = getSavedStyle(layerInfo);
+    const sideStyle = layerInfo?.frontSymbolSide || layerInfo?.properties?.frontSymbolSide
+        ? { frontSymbolSide: layerInfo.frontSymbolSide || layerInfo.properties?.frontSymbolSide }
+        : {};
 
-// ── Primitive components ──────────────────────────────────────────────────────
+    return { ...liveStyle, ...savedStyle, ...sideStyle };
+}
+
 export function Section({ title, defaultOpen = true, isDarkMode, children, compact = false }) {
     const [open, setOpen] = useState(defaultOpen);
 
-    if (compact) {
-        return (
-            <div className="space-y-2 px-2.5 py-2.5">
-                {children}
-            </div>
-        );
-    }
+    if (compact) return <div className="space-y-2 px-2.5 py-2.5">{children}</div>;
 
     return (
-        <div className={cn(
-            'mx-2 mt-2 overflow-hidden rounded-lg border',
-            INNER_SURFACE(isDarkMode)
-        )}>
+        <div className={cn('mx-2 mt-2 overflow-hidden rounded-lg border', INNER_SURFACE(isDarkMode))}>
             <button
-                onClick={() => setOpen(v => !v)}
-                className={cn(
-                    'w-full flex min-h-10 items-center justify-between px-2.5 py-2 transition-colors duration-150',
-                    isDarkMode ? 'hover:bg-white/[0.05]' : 'hover:bg-slate-50'
-                )}
+                onClick={() => setOpen((value) => !value)}
+                className={cn('flex min-h-10 w-full items-center justify-between px-2.5 py-2 transition-colors duration-150', isDarkMode ? 'hover:bg-white/[0.05]' : 'hover:bg-slate-50')}
             >
-                <span className={cn(
-                    'text-[10px] font-black uppercase tracking-wide',
-                    isDarkMode ? 'text-white/55' : 'text-slate-500'
-                )}>
-                    {title}
-                </span>
-                <ChevronDown
-                    size={14} strokeWidth={2.5}
-                    className={cn(
-                        'transition-transform duration-200',
-                        isDarkMode ? 'text-white/20' : 'text-slate-300',
-                        open ? 'rotate-0' : '-rotate-90'
-                    )}
-                />
+                <span className={cn('text-[10px] font-black uppercase tracking-wide', isDarkMode ? 'text-white/55' : 'text-slate-500')}>{title}</span>
+                <ChevronDown size={14} strokeWidth={2.5} className={cn('transition-transform duration-200', isDarkMode ? 'text-white/20' : 'text-slate-300', open ? 'rotate-0' : '-rotate-90')} />
             </button>
             {open && <div className={cn('space-y-3 border-t px-2.5 pb-2.5 pt-2.5', isDarkMode ? 'border-white/[0.08]' : 'border-slate-100')}>{children}</div>}
         </div>
@@ -178,65 +153,33 @@ export function Section({ title, defaultOpen = true, isDarkMode, children, compa
 
 export function PropSlider({ label, min, max, step, value, display, onChange, isDarkMode, accent = 'cyan' }) {
     const accentColor = accent === 'cyan' ? '#22d3ee' : '#818cf8';
-    const pct = `${((value - min) / (max - min)) * 100}%`;
+    const numericValue = Number.isFinite(Number(value)) ? Number(value) : min;
+    const pct = `${Math.min(100, Math.max(0, ((numericValue - min) / (max - min)) * 100))}%`;
+
     return (
         <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-                <span className={cn('text-[11px] font-semibold', isDarkMode ? 'text-white/55' : 'text-slate-600')}>
-                    {label}
-                </span>
-                <span className={cn(
-                    'rounded-full px-2 py-0.5 text-[10px] font-black tabular-nums',
-                    isDarkMode ? 'text-cyan-200 bg-cyan-400/10' : 'text-blue-700 bg-blue-500/10'
-                )}>
-                    {display}
-                </span>
+                <span className={cn('text-[11px] font-semibold', isDarkMode ? 'text-white/55' : 'text-slate-600')}>{label}</span>
+                <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-black tabular-nums', isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-500/10 text-blue-700')}>{display}</span>
             </div>
             <div className="relative flex h-7 items-center">
                 <div className={cn('absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full', isDarkMode ? 'bg-white/10' : 'bg-black/10')} />
-                <div
-                    className="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full transition-all duration-75"
-                    style={{ width: pct, background: `linear-gradient(to right, ${accentColor}99, ${accentColor})` }}
-                />
-                <input
-                    type="range" min={min} max={max} step={step} value={value}
-                    onChange={(e) => onChange(+e.target.value)}
-                    className="absolute inset-0 h-7 w-full cursor-pointer opacity-0"
-                />
-                <div
-                    className="pointer-events-none absolute top-1/2 h-[18px] w-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-lg"
-                    style={{
-                        left: pct,
-                        borderColor: accentColor,
-                        background: isDarkMode ? '#0f1117' : '#fff',
-                        boxShadow: `0 0 6px ${accentColor}66`,
-                    }}
-                />
+                <div className="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full transition-all duration-75" style={{ width: pct, background: `linear-gradient(to right, ${accentColor}99, ${accentColor})` }} />
+                <input type="range" min={min} max={max} step={step} value={numericValue} onChange={(event) => onChange(+event.target.value)} className="absolute inset-0 h-7 w-full cursor-pointer opacity-0" />
+                <div className="pointer-events-none absolute top-1/2 h-[18px] w-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-lg" style={{ left: pct, borderColor: accentColor, background: isDarkMode ? '#0f1117' : '#fff', boxShadow: `0 0 6px ${accentColor}66` }} />
             </div>
         </div>
     );
 }
 
 export function PropColor({ label, value, onChange, isDarkMode }) {
+    const color = typeof value === 'string' && value.startsWith('#') ? value : '#2563eb';
     return (
         <div className="flex min-h-10 items-center justify-between gap-3 rounded-lg">
-            <span className={cn('text-[11px] font-bold', isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                {label}
-            </span>
-            <label className="relative cursor-pointer group">
-                <div
-                    className="h-8 w-12 rounded-lg border transition-all duration-150 group-hover:scale-105"
-                    style={{
-                        background: value,
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
-                        boxShadow: `0 2px 8px ${value}55`,
-                    }}
-                />
-                <input
-                    type="color" value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                />
+            <span className={cn('text-[11px] font-bold', isDarkMode ? 'text-white/60' : 'text-slate-600')}>{label}</span>
+            <label className="group relative cursor-pointer">
+                <div className="h-8 w-12 rounded-lg border transition-all duration-150 group-hover:scale-105" style={{ background: color, borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)', boxShadow: `0 2px 8px ${color}55` }} />
+                <input type="color" value={color} onChange={(event) => onChange(event.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
             </label>
         </div>
     );
@@ -245,21 +188,13 @@ export function PropColor({ label, value, onChange, isDarkMode }) {
 export function PropSelect({ label, value, options, onChange, isDarkMode }) {
     return (
         <div className="flex min-h-10 items-center justify-between gap-3">
-            <span className={cn('shrink-0 text-[11px] font-bold', isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                {label}
-            </span>
+            <span className={cn('shrink-0 text-[11px] font-bold', isDarkMode ? 'text-white/60' : 'text-slate-600')}>{label}</span>
             <select
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className={cn(
-                    'min-h-10 flex-1 rounded-lg border px-3 py-1.5 text-[12px] font-bold outline-none',
-                    'appearance-none cursor-pointer transition-colors duration-150',
-                    isDarkMode
-                        ? 'bg-white/[0.06] border-white/10 text-white/70 hover:bg-white/[0.09]'
-                        : 'bg-black/[0.04] border-black/10 text-slate-600 hover:bg-black/[0.07]'
-                )}
+                onChange={(event) => onChange(event.target.value)}
+                className={cn('min-h-10 flex-1 cursor-pointer appearance-none rounded-lg border px-3 py-1.5 text-[12px] font-bold outline-none transition-colors duration-150', isDarkMode ? 'border-white/10 bg-white/[0.06] text-white/70 hover:bg-white/[0.09]' : 'border-black/10 bg-black/[0.04] text-slate-600 hover:bg-black/[0.07]')}
             >
-                {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
         </div>
     );
@@ -268,40 +203,36 @@ export function PropSelect({ label, value, options, onChange, isDarkMode }) {
 export function PropToggle({ label, value, onChange, isDarkMode }) {
     return (
         <div className="flex min-h-10 items-center justify-between gap-3">
-            <span className={cn('text-[11px] font-bold', isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                {label}
-            </span>
+            <span className={cn('text-[11px] font-bold', isDarkMode ? 'text-white/60' : 'text-slate-600')}>{label}</span>
             <button
+                type="button"
                 onClick={onChange}
-                className={cn(
-                    'relative h-6 w-11 rounded-full transition-all duration-200 focus:outline-none',
-                    value
-                        ? isDarkMode ? 'bg-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.4)]' : 'bg-blue-500'
-                        : isDarkMode ? 'bg-white/15' : 'bg-black/15'
-                )}
+                className={cn('relative h-6 w-11 rounded-full transition-all duration-200 focus:outline-none', value ? (isDarkMode ? 'bg-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.4)]' : 'bg-blue-500') : (isDarkMode ? 'bg-white/15' : 'bg-black/15'))}
             >
-                <span className={cn(
-                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-200',
-                    value ? 'left-[22px]' : 'left-0.5'
-                )} />
+                <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-200', value ? 'left-[22px]' : 'left-0.5')} />
             </button>
         </div>
     );
 }
 
-function GenericMapboxStyleControls({ layerIds, style, onChange, setPaint, isDarkMode, tab = 'symbol', mapRef }) {
+function GenericMapboxStyleControls({ layerIds, layerInfo, style, onChange, setPaint, isDarkMode, tab = 'symbol', mapRef }) {
     const map = mapRef?.current;
     const lineId = layerIds.find((id) => map?.getLayer(id)?.type === 'line');
     const fillId = layerIds.find((id) => map?.getLayer(id)?.type === 'fill');
-    const p = (ids, key, prop, val) => { onChange({ ...style, [key]: val }); setPaint(ids.filter(Boolean), prop, val); };
+    const p = (ids, key, prop, val) => {
+        const nextStyle = { ...style, [key]: val };
+        onChange(nextStyle);
+        queuePersistAnnotationStyle(layerInfo, nextStyle);
+        setPaint(ids.filter(Boolean), prop, val);
+    };
 
     if (tab === 'label') return null;
 
     if (fillId) {
         return (
             <Section title="Fill" isDarkMode={isDarkMode} compact>
-                <PropColor label="Fill color" value={style.fillColor ?? '#2563eb'} onChange={(v) => p([fillId], 'fillColor', 'fill-color', v)} isDarkMode={isDarkMode} />
-                <PropSlider label="Fill opacity" min={0} max={1} step={0.01} value={style.fillOpacity ?? 0.25} display={`${Math.round((style.fillOpacity ?? 0.25) * 100)}%`} onChange={(v) => p([fillId], 'fillOpacity', 'fill-opacity', v)} isDarkMode={isDarkMode} />
+                <PropColor label="Fill color" value={style.fillColor ?? '#2563eb'} onChange={(value) => p([fillId], 'fillColor', 'fill-color', value)} isDarkMode={isDarkMode} />
+                <PropSlider label="Fill opacity" min={0} max={1} step={0.01} value={style.fillOpacity ?? 0.25} display={`${Math.round((style.fillOpacity ?? 0.25) * 100)}%`} onChange={(value) => p([fillId], 'fillOpacity', 'fill-opacity', value)} isDarkMode={isDarkMode} />
             </Section>
         );
     }
@@ -309,9 +240,9 @@ function GenericMapboxStyleControls({ layerIds, style, onChange, setPaint, isDar
     if (lineId) {
         return (
             <Section title="Line" isDarkMode={isDarkMode} compact>
-                <PropColor label="Line color" value={style.lineColor ?? '#2563eb'} onChange={(v) => p([lineId], 'lineColor', 'line-color', v)} isDarkMode={isDarkMode} />
-                <PropSlider label="Line width" min={0.5} max={12} step={0.25} value={style.lineWidth ?? 3} display={`${style.lineWidth ?? 3}px`} onChange={(v) => p([lineId], 'lineWidth', 'line-width', v)} isDarkMode={isDarkMode} />
-                <PropSlider label="Line opacity" min={0} max={1} step={0.01} value={style.lineOpacity ?? 1} display={`${Math.round((style.lineOpacity ?? 1) * 100)}%`} onChange={(v) => p([lineId], 'lineOpacity', 'line-opacity', v)} isDarkMode={isDarkMode} />
+                <PropColor label="Line color" value={style.lineColor ?? '#2563eb'} onChange={(value) => p([lineId], 'lineColor', 'line-color', value)} isDarkMode={isDarkMode} />
+                <PropSlider label="Line width" min={0.5} max={12} step={0.25} value={style.lineWidth ?? 3} display={`${style.lineWidth ?? 3}px`} onChange={(value) => p([lineId], 'lineWidth', 'line-width', value)} isDarkMode={isDarkMode} />
+                <PropSlider label="Line opacity" min={0} max={1} step={0.01} value={style.lineOpacity ?? 1} display={`${Math.round((style.lineOpacity ?? 1) * 100)}%`} onChange={(value) => p([lineId], 'lineOpacity', 'line-opacity', value)} isDarkMode={isDarkMode} />
             </Section>
         );
     }
@@ -319,27 +250,15 @@ function GenericMapboxStyleControls({ layerIds, style, onChange, setPaint, isDar
     return null;
 }
 
-// ── Internal layout components ────────────────────────────────────────────────
 function PanelHeader({ isDarkMode, dragHandleProps }) {
     return (
-        <div className={cn(
-            'flex min-h-11 flex-shrink-0 items-center gap-2.5 border-b px-2.5 py-2',
-            dragHandleProps && 'cursor-grab select-none touch-none active:cursor-grabbing',
-            isDarkMode ? 'border-white/10' : 'border-slate-200/70'
-        )} {...dragHandleProps}>
+        <div className={cn('flex min-h-11 flex-shrink-0 items-center gap-2.5 border-b px-2.5 py-2', dragHandleProps && 'cursor-grab touch-none select-none active:cursor-grabbing', isDarkMode ? 'border-white/10' : 'border-slate-200/70')} {...dragHandleProps}>
             <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
                 <SlidersHorizontal size={14} strokeWidth={2.5} />
             </span>
             <div className="min-w-0 flex-1">
-                <span className={cn(
-                    'block truncate text-[11px] font-black uppercase tracking-wide',
-                    isDarkMode ? 'text-white/75' : 'text-slate-700'
-                )}>
-                    Annotation Style
-                </span>
-                <span className={cn('block truncate text-[9px] font-bold uppercase tracking-wide', isDarkMode ? 'text-white/35' : 'text-slate-400')}>
-                    Selected layer controls
-                </span>
+                <span className={cn('block truncate text-[11px] font-black uppercase tracking-wide', isDarkMode ? 'text-white/75' : 'text-slate-700')}>Annotation Style</span>
+                <span className={cn('block truncate text-[9px] font-bold uppercase tracking-wide', isDarkMode ? 'text-white/35' : 'text-slate-400')}>Selected layer controls</span>
             </div>
         </div>
     );
@@ -347,52 +266,26 @@ function PanelHeader({ isDarkMode, dragHandleProps }) {
 
 function EmptyPanel({ isDarkMode, panelClassName, panelStyle, dragHandleProps }) {
     return (
-        <aside className={cn(
-            panelClassName,
-            'studio-liquid-panel relative overflow-hidden rounded-2xl shadow-2xl',
-            PANEL_SURFACE(isDarkMode)
-        )} style={panelStyle} data-floating-panel>
+        <aside className={cn(panelClassName, 'studio-liquid-panel relative overflow-hidden rounded-2xl shadow-2xl', PANEL_SURFACE(isDarkMode))} style={panelStyle} data-floating-panel>
             <PanelHeader isDarkMode={isDarkMode} dragHandleProps={dragHandleProps} />
             <div className="flex flex-col items-center justify-center gap-2 px-5 py-7 text-center">
-                <div className={cn(
-                    'flex h-11 w-11 items-center justify-center rounded-xl',
-                    isDarkMode ? 'bg-white/[0.06]' : 'bg-slate-100'
-                )}>
+                <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl', isDarkMode ? 'bg-white/[0.06]' : 'bg-slate-100')}>
                     <Layers size={18} strokeWidth={1.8} className={isDarkMode ? 'text-white/30' : 'text-slate-400'} />
                 </div>
-                <p className={cn('text-sm font-black leading-relaxed', isDarkMode ? 'text-white/45' : 'text-slate-600')}>
-                    No annotation selected
-                </p>
-                <p className={cn('max-w-[15rem] text-xs font-semibold leading-relaxed', isDarkMode ? 'text-white/30' : 'text-slate-400')}>
-                    Choose a layer from the Annotation Layers stack to edit its symbol, label, visibility, and opacity.
-                </p>
+                <p className={cn('text-sm font-black leading-relaxed', isDarkMode ? 'text-white/45' : 'text-slate-600')}>No annotation selected</p>
+                <p className={cn('max-w-[15rem] text-xs font-semibold leading-relaxed', isDarkMode ? 'text-white/30' : 'text-slate-400')}>Choose a layer from the Annotation Layers stack to edit its style.</p>
             </div>
         </aside>
     );
 }
 
-// ── Control renderer ──────────────────────────────────────────────────────────
 function renderControls(layerInfo, sharedProps, styleTab) {
-    const { type } = layerInfo;
-
-    if (isFrontLayer(layerInfo)) {
-        return <FrontStyleControls {...sharedProps} tab={styleTab} />;
-    }
-
-    if (SYMBOL_LAYER_TYPES.has(type)) {
-        return <SymbolStyleControls {...sharedProps} tab={styleTab} />;
-    }
-
-    if (type === 'Wave Height') {
-        return <WaveHeightStyleControls {...sharedProps} tab={styleTab} />;
-    }
-
+    if (isFrontLayer(layerInfo)) return <FrontStyleControls {...sharedProps} tab={styleTab} />;
+    if (SYMBOL_LAYER_TYPES.has(layerInfo.type)) return <SymbolStyleControls {...sharedProps} tab={styleTab} />;
+    if (layerInfo.type === 'Wave Height') return <WaveHeightStyleControls {...sharedProps} tab={styleTab} />;
     return <GenericMapboxStyleControls {...sharedProps} tab={styleTab} />;
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// MAIN PANEL
-// ════════════════════════════════════════════════════════════════════════════
 export function LayerStylePanel({
     mapRef,
     layers,
@@ -413,61 +306,48 @@ export function LayerStylePanel({
     const { setPaint, setLayout } = useLayerStyle(mapRef);
 
     const map = mapRef?.current ?? null;
-    const layerInfo = layers.find((l) => l.id === activeLayerId) ?? null;
+    const layerInfo = layers.find((layer) => layer.id === activeLayerId) ?? null;
+    const layerStyleSignature = useMemo(() => JSON.stringify(getSavedStyle(layerInfo)), [layerInfo]);
+    const activeMapboxLayerSignature = useMemo(() => (activeMapboxLayerIds || []).join('|'), [activeMapboxLayerIds]);
 
     useEffect(() => {
         if (isFrontLayer(layerInfo)) setStyleTab('symbol');
         else setStyleTab(layerInfo?.type === 'text_note' ? 'label' : 'symbol');
-        if (!layerInfo || !activeMapboxLayerIds?.length) { setStyle({}); return; }
-        setStyle(readCurrentStyle(map, layerInfo, activeMapboxLayerIds));
+
+        if (!layerInfo || !activeMapboxLayerIds?.length) {
+            setStyle({});
+            return;
+        }
+
+        setStyle(getLatestPanelStyle(map, layerInfo, activeMapboxLayerIds));
         setIsEditingName(false);
         setEditingName('');
-    }, [activeLayerId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [activeLayerId, activeMapboxLayerSignature, layerStyleSignature]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!layerInfo) return <EmptyPanel isDarkMode={isDarkMode} panelClassName={panelClassName} panelStyle={panelStyle} dragHandleProps={dragHandleProps} />;
 
-    const meta = isFrontLayer(layerInfo) ? { label: 'Surface Front', color: 'from-blue-500 to-cyan-600' } : TYPE_META[layerInfo.type] ?? TYPE_META.symbol;
-    const styleTabs = layerInfo.type === 'Wave Height'
-        ? [
-            { key: 'symbol', label: 'Line' },
-            { key: 'label', label: 'Label' },
-            { key: 'layer', label: 'Layer' },
-        ]
-        : layerInfo.type === 'text_note'
-            ? [
-                { key: 'label', label: 'Text' },
-                { key: 'layer', label: 'Layer' },
-            ]
-            : isFrontLayer(layerInfo)
-                ? [
-                    { key: 'symbol', label: 'Front' },
-                    { key: 'label', label: 'Glyphs' },
-                    { key: 'layer', label: 'Layer' },
-                ]
-                : [
-                    { key: 'symbol', label: 'Symbol' },
-                    { key: 'label', label: 'Label' },
-                    { key: 'layer', label: 'Layer' },
-                ];
-
-    const sharedProps = {
-        layerIds: activeMapboxLayerIds,
-        layerInfo,
-        style,
-        onChange: setStyle,
-        setPaint,
-        setLayout,
-        setLayers,
-        mapRef,
-        isDarkMode,
+    const handleStyleChange = (nextStyle) => {
+        setStyle(nextStyle);
+        setLayers?.((previousLayers) => previousLayers.map((layer) => {
+            const matches = layer.id === layerInfo.id || layer.sourceID === getSourceId(layerInfo) || layer.sourceId === getSourceId(layerInfo);
+            if (!matches) return layer;
+            return {
+                ...layer,
+                style: nextStyle,
+                frontSymbolSide: nextStyle.frontSymbolSide || layer.frontSymbolSide,
+                properties: {
+                    ...(layer.properties || {}),
+                    style: nextStyle,
+                    ...(nextStyle.frontSymbolSide ? { frontSymbolSide: nextStyle.frontSymbolSide } : {}),
+                },
+            };
+        }));
     };
 
     const handleSaveName = () => {
         const newName = editingName.trim();
         if (!newName || !activeLayerId) return;
-        if (newName !== layerInfo.name) {
-            updateLayerName(activeLayerId, newName, setLayers, mapRef.current);
-        }
+        if (newName !== layerInfo.name) updateLayerName(activeLayerId, newName, setLayers, mapRef.current);
         setIsEditingName(false);
     };
 
@@ -481,145 +361,99 @@ export function LayerStylePanel({
         setIsEditingName(true);
     };
 
+    const meta = isFrontLayer(layerInfo) ? { label: 'Surface Front', color: 'from-blue-500 to-cyan-600' } : TYPE_META[layerInfo.type] ?? TYPE_META.symbol;
+    const styleTabs = layerInfo.type === 'Wave Height'
+        ? [{ key: 'symbol', label: 'Line' }, { key: 'label', label: 'Label' }, { key: 'layer', label: 'Layer' }]
+        : layerInfo.type === 'text_note'
+            ? [{ key: 'label', label: 'Text' }, { key: 'layer', label: 'Layer' }]
+            : isFrontLayer(layerInfo)
+                ? [{ key: 'symbol', label: 'Front' }, { key: 'label', label: 'Glyphs' }, { key: 'layer', label: 'Layer' }]
+                : [{ key: 'symbol', label: 'Symbol' }, { key: 'label', label: 'Label' }, { key: 'layer', label: 'Layer' }];
+
+    const sharedProps = {
+        layerIds: activeMapboxLayerIds || [],
+        layerInfo,
+        style,
+        onChange: handleStyleChange,
+        setPaint,
+        setLayout,
+        setLayers,
+        mapRef,
+        isDarkMode,
+    };
+
     return (
-        <aside className={cn(
-            panelClassName,
-            'studio-liquid-panel rounded-2xl shadow-2xl',
-            'relative flex flex-col overflow-hidden',
-            PANEL_SURFACE(isDarkMode)
-        )} style={panelStyle} data-floating-panel>
+        <aside className={cn(panelClassName, 'studio-liquid-panel relative flex flex-col overflow-hidden rounded-2xl shadow-2xl', PANEL_SURFACE(isDarkMode))} style={panelStyle} data-floating-panel>
             <PanelHeader isDarkMode={isDarkMode} dragHandleProps={dragHandleProps} />
 
-            {/* Layer identity */}
-            <div className={cn('border-b px-2.5 py-1.5 flex-shrink-0', isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-slate-200/70 bg-white/[0.28]')}>
+            <div className={cn('flex-shrink-0 border-b px-2.5 py-1.5', isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-slate-200/70 bg-white/[0.28]')}>
                 {isEditingName ? (
                     <div className="flex items-center gap-1.5">
                         <input
                             autoFocus
                             value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveName();
-                                if (e.key === 'Escape') handleCancelName();
+                            onChange={(event) => setEditingName(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') handleSaveName();
+                                if (event.key === 'Escape') handleCancelName();
                             }}
-                            className={cn(
-                                'min-h-9 flex-1 min-w-0 rounded-lg border px-3 py-1.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-cyan-400/35',
-                                isDarkMode
-                                    ? 'bg-white/[0.08] border-white/15 text-white/90'
-                                    : 'bg-black/[0.04] border-black/10 text-slate-900'
-                            )}
+                            className={cn('min-h-9 min-w-0 flex-1 rounded-lg border px-3 py-1.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-cyan-400/35', isDarkMode ? 'border-white/15 bg-white/[0.08] text-white/90' : 'border-black/10 bg-black/[0.04] text-slate-900')}
                         />
-                        <button
-                            onClick={handleSaveName}
-                            className={cn(
-                                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors',
-                                isDarkMode ? 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400' : 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-600'
-                            )}
-                        >
+                        <button type="button" onClick={handleSaveName} className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors', isDarkMode ? 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30' : 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20')}>
                             <Check size={15} strokeWidth={2.5} />
                         </button>
-                        <button
-                            onClick={handleCancelName}
-                            className={cn(
-                                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors',
-                                isDarkMode ? 'bg-white/10 hover:bg-white/15 text-white/60' : 'bg-black/10 hover:bg-black/15 text-slate-500'
-                            )}
-                        >
+                        <button type="button" onClick={handleCancelName} className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors', isDarkMode ? 'bg-white/10 text-white/60 hover:bg-white/15' : 'bg-black/10 text-slate-500 hover:bg-black/15')}>
                             <X size={15} strokeWidth={2.5} />
                         </button>
                     </div>
                 ) : (
-                    <div className="flex min-h-9 items-center gap-2">
-                        <span className={cn(
-                            `bg-gradient-to-r ${meta.color}`,
-                            'hidden shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase text-white shadow-sm sm:inline-flex'
-                        )}>
-                            {meta.label}
+                    <div className="flex items-center gap-2">
+                        <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-lg', meta.color)}>
+                            <Layers size={13} strokeWidth={2.5} />
                         </span>
-                        <button type="button" onClick={handleStartEditing} className={cn('group flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 text-left transition-colors', isDarkMode ? 'hover:bg-white/[0.05]' : 'hover:bg-white/70')}>
-                            <p className={cn(
-                                'flex-1 truncate text-sm font-bold leading-tight',
-                                isDarkMode ? 'text-white/90' : 'text-slate-900'
-                            )}>
-                                {layerInfo.name}
-                            </p>
-                            <Pencil
-                                size={12} strokeWidth={2.5}
-                                className={cn(
-                                    'flex-shrink-0 opacity-40 transition-opacity group-hover:opacity-90',
-                                    isDarkMode ? 'text-white/60' : 'text-slate-400'
-                                )}
-                            />
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                                <p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white/90' : 'text-slate-800')}>{layerInfo.name}</p>
+                                {layerInfo.locked && <Lock size={11} className={isDarkMode ? 'text-white/35' : 'text-slate-400'} />}
+                            </div>
+                            <p className={cn('truncate text-[9px] font-bold uppercase tracking-wide', isDarkMode ? 'text-white/35' : 'text-slate-400')}>{meta.label}</p>
+                        </div>
+                        <button type="button" onClick={handleStartEditing} className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors', isDarkMode ? 'text-white/45 hover:bg-white/10 hover:text-white/75' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700')}>
+                            <Pencil size={13} strokeWidth={2.4} />
                         </button>
-                        {layerInfo.locked && (
-                            <span className={cn(
-                                'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide',
-                                isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-100 text-amber-800'
-                            )}>
-                                <Lock size={10} strokeWidth={2.5} />
-                                Locked
-                            </span>
-                        )}
                     </div>
                 )}
             </div>
 
-            <div className={cn('grid grid-cols-3 gap-1 border-b p-1.5 flex-shrink-0', isDarkMode ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200/70 bg-white/[0.24]')}>
+            <div className={cn('grid flex-shrink-0 gap-1 border-b p-1.5', isDarkMode ? 'border-white/10' : 'border-slate-200/70')} style={{ gridTemplateColumns: `repeat(${styleTabs.length}, minmax(0, 1fr))` }}>
                 {styleTabs.map((tab) => (
                     <button
                         key={tab.key}
                         type="button"
                         onClick={() => setStyleTab(tab.key)}
-                        className={cn(
-                            'min-h-9 rounded-lg border px-2 text-[10px] font-black uppercase tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/35',
-                            styleTab === tab.key
-                                ? isDarkMode
-                                    ? 'border-cyan-300/25 bg-cyan-400/15 text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
-                                    : 'border-blue-200 bg-blue-100 text-blue-800 shadow-sm'
-                                : isDarkMode
-                                    ? 'border-white/10 bg-white/[0.035] text-white/45 hover:bg-white/[0.07] hover:text-white/75'
-                                    : 'border-white/80 bg-white/55 text-slate-500 hover:bg-white/80 hover:text-slate-800'
-                        )}
+                        className={cn('rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-wide transition-all duration-150', styleTab === tab.key ? (isDarkMode ? 'bg-cyan-400/15 text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)]' : 'bg-blue-500/10 text-blue-700 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.22)]') : (isDarkMode ? 'text-white/35 hover:bg-white/[0.05] hover:text-white/60' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'))}
                     >
                         {tab.label}
                     </button>
                 ))}
             </div>
 
-            {/* Scrollable controls */}
-            <div className={cn(
-                'min-h-0 overflow-y-auto overscroll-contain flex-1',
-                controlsClassName,
-                '[&::-webkit-scrollbar]:w-[3px]',
-                isDarkMode
-                    ? '[&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10'
-                    : '[&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-black/10'
-            )}>
+            <div className={cn('min-h-0 flex-1 overflow-y-auto py-1', controlsClassName)}>
                 {styleTab === 'layer' ? (
-                    <Section title="Layer" isDarkMode={isDarkMode}>
-                        <PropToggle
-                            label="Show layer"
-                            value={layerInfo.visible}
-                            isDarkMode={isDarkMode}
-                            onChange={() => onToggleVisibility?.(layerInfo)}
-                        />
+                    <Section title="Layer" isDarkMode={isDarkMode} compact>
+                        <button
+                            type="button"
+                            onClick={() => onToggleVisibility?.(layerInfo.id)}
+                            className={cn('flex min-h-10 w-full items-center justify-between gap-3 rounded-lg px-2 text-[11px] font-bold transition-colors', isDarkMode ? 'text-white/65 hover:bg-white/[0.06]' : 'text-slate-600 hover:bg-black/[0.04]')}
+                        >
+                            <span>Visibility</span>
+                            <span className="flex items-center gap-1.5">
+                                {layerInfo.visible === false ? <EyeOff size={14} /> : <Eye size={14} />}
+                                {layerInfo.visible === false ? 'Hidden' : 'Visible'}
+                            </span>
+                        </button>
                     </Section>
-                ) : (
-                    renderControls(layerInfo, sharedProps, styleTab)
-                )}
-
-                {styleTab !== 'layer' && (
-                    <Section title="Visibility" isDarkMode={isDarkMode} defaultOpen={false}>
-                        <PropToggle
-                            label="Show layer"
-                            value={layerInfo.visible}
-                            isDarkMode={isDarkMode}
-                            onChange={() => onToggleVisibility?.(layerInfo)}
-                        />
-                    </Section>
-                )}
-
-                <div className="h-2" />
+                ) : renderControls(layerInfo, sharedProps, styleTab)}
             </div>
         </aside>
     );
