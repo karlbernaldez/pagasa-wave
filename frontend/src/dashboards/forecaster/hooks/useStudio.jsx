@@ -1,7 +1,7 @@
 // hooks/useStudio.js
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { setupMap } from "@dashboards/forecaster/utils/mapSetup";
+import { setupMap, syncAnnotationFeaturesToMap } from "@dashboards/forecaster/utils/mapSetup";
 import { fetchFeatures } from "@/api/featureServices";
 import { fetchProjectById } from "@/api/projectAPI";
 import socket from "@/socket/socketClient";
@@ -84,7 +84,7 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
   const cleanupRef = useRef(null);
   const requestSeqRef = useRef(0);
   useEffect(() => { setSavedFeatures([]); setLayers([]); }, [projectId]);
-  const setupFeaturesAndLayers = useCallback(async () => {
+  const setupFeaturesAndLayers = useCallback(async ({ syncMap = true } = {}) => {
     const requestSeq = requestSeqRef.current + 1;
     requestSeqRef.current = requestSeq;
     if (!projectId) { setSavedFeatures([]); setLayers([]); return []; }
@@ -97,15 +97,18 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
         const type = f.properties?.type || "Wave Height";
         const name = f.name || "Untitled Feature";
         const isMarker = ["typhoon", "low_pressure", "high_pressure", "less_1", "text_note"].includes(type);
-        return { id: f.sourceId, name, visible: true, locked: false, type, markerType: f.properties?.markerType || (isMarker ? type : undefined), mapLayerId: f.properties?.mapLayerId || (isMarker ? `${type}_${name}` : undefined), owner: f.properties?.owner, canEdit: Boolean(f.properties?.canEdit) };
+        return { id: f.sourceId, sourceID: f.sourceId, name, visible: true, locked: false, type, markerType: f.properties?.markerType || (isMarker ? type : undefined), mapLayerId: f.properties?.mapLayerId || (isMarker ? `${type}_${name}` : undefined), owner: f.properties?.owner, canEdit: Boolean(f.properties?.canEdit) };
       });
       setLayers(initialLayers);
+      if (syncMap && mapRef.current) {
+        await syncAnnotationFeaturesToMap(mapRef.current, filteredFeatures, { mapRef, isDarkMode });
+      }
       return filteredFeatures;
     } catch (error) {
       if (requestSeqRef.current !== requestSeq) return [];
       console.error("[MAP LOAD ERROR]", error); setSavedFeatures([]); setLayers([]); return [];
     }
-  }, [projectId]);
+  }, [isDarkMode, projectId]);
   return { savedFeatures, layers, setLayers, mapRef, cleanupRef, setupFeaturesAndLayers };
 };
 
@@ -144,9 +147,7 @@ export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLaye
 
     refreshInFlightRef.current = true;
     try {
-      const filteredFeatures = await setupFeaturesAndLayers();
-      cleanupRef.current?.();
-      cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features: filteredFeatures }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
+      await setupFeaturesAndLayers({ syncMap: true });
     } finally {
       refreshInFlightRef.current = false;
       if (queuedRefreshRef.current) {
@@ -154,7 +155,7 @@ export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLaye
         window.setTimeout(applyFeaturesToMap, FORECAST_REFRESH_DEBOUNCE_MS);
       }
     }
-  }, [cleanupRef, isDarkMode, logger, mapRef, projectId, selectedToolRef, setCapturedImages, setDrawInstance, setIsLoading, setLineCount, setMapLoaded, setSelectedPoint, setShowTitleModal, setupFeaturesAndLayers]);
+  }, [mapRef, projectId, setupFeaturesAndLayers]);
 
   const scheduleFeatureRefresh = useCallback(() => {
     if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
@@ -183,12 +184,12 @@ export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLaye
 
   const handleMapLoad = useCallback(async (map) => {
     mapRef.current = map;
-    const filteredFeatures = await setupFeaturesAndLayers();
+    const filteredFeatures = await setupFeaturesAndLayers({ syncMap: false });
     cleanupRef.current?.();
     cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features: filteredFeatures }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
     if (!map._hasStyleLoadListener) {
       map.on("style.load", async () => {
-        const features = await setupFeaturesAndLayers();
+        const features = await setupFeaturesAndLayers({ syncMap: false });
         cleanupRef.current?.();
         cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
       });
