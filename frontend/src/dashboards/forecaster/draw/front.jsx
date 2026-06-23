@@ -16,6 +16,9 @@ const FRONT_TYPES = {
 const PANEL_WIDTH = 430;
 const PANEL_HEIGHT = 146;
 const STORAGE_KEY = 'wavelab-surface-front-panel-position-v1';
+const MIN_POINT_DISTANCE = 3.5;
+const FRONT_ICON_WIDTH = 80;
+const FRONT_ICON_HEIGHT = 32;
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 const normalizeFrontType = (frontType) => (FRONT_TYPES[frontType] ? frontType : 'cold');
 const getViewportWidth = () => (typeof window === 'undefined' ? 1440 : window.innerWidth);
@@ -25,23 +28,29 @@ const getSafePosition = (position) => ({ x: Math.min(Math.max(position.x, 16), M
 const getMapContainerRect = (mapRef) => mapRef?.current?.getContainer?.()?.getBoundingClientRect?.() || { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
 const getPointerPosition = (event) => event.target.getStage().getPointerPosition();
 const buildFrontName = (frontType) => FRONT_TYPES[normalizeFrontType(frontType)]?.fullLabel || 'Surface Front';
+const getDistanceFromLastPoint = (points, x, y) => {
+  if (!Array.isArray(points) || points.length < 2) return Infinity;
+  const lastX = points[points.length - 2];
+  const lastY = points[points.length - 1];
+  return Math.hypot(x - lastX, y - lastY);
+};
 
 const drawTriangle = (ctx, x, y, size, color, side = -1) => { ctx.beginPath(); ctx.moveTo(x - size / 2, y); ctx.lineTo(x + size / 2, y); ctx.lineTo(x, y + side * size); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); };
 const drawSemiCircle = (ctx, x, y, radius, color, side = -1) => { ctx.beginPath(); ctx.moveTo(x - radius, y); ctx.arc(x, y, radius, Math.PI, 0, side > 0); ctx.lineTo(x - radius, y); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); };
 const createFrontIconCanvas = (frontType) => {
   const pixelRatio = 2;
-  const width = 96;
-  const height = 32;
   const canvas = document.createElement('canvas');
-  canvas.width = width * pixelRatio;
-  canvas.height = height * pixelRatio;
+  canvas.width = FRONT_ICON_WIDTH * pixelRatio;
+  canvas.height = FRONT_ICON_HEIGHT * pixelRatio;
+  canvas.style.width = `${FRONT_ICON_WIDTH}px`;
+  canvas.style.height = `${FRONT_ICON_HEIGHT}px`;
   const ctx = canvas.getContext('2d');
   ctx.scale(pixelRatio, pixelRatio);
-  const baseline = height / 2;
-  if (frontType === 'cold') drawTriangle(ctx, 48, baseline, 12, '#1d4ed8', -1);
-  if (frontType === 'warm') drawSemiCircle(ctx, 48, baseline, 9, '#ef4444', -1);
-  if (frontType === 'stationary') { drawSemiCircle(ctx, 30, baseline, 8, '#ef4444', -1); drawTriangle(ctx, 66, baseline, 11, '#1d4ed8', 1); }
-  if (frontType === 'occluded') { drawSemiCircle(ctx, 24, baseline, 8, '#7c3aed', -1); drawTriangle(ctx, 72, baseline, 11, '#7c3aed', -1); }
+  const baseline = FRONT_ICON_HEIGHT / 2;
+  if (frontType === 'cold') drawTriangle(ctx, 40, baseline, 12, '#1d4ed8', -1);
+  if (frontType === 'warm') drawSemiCircle(ctx, 40, baseline, 9, '#ef4444', -1);
+  if (frontType === 'stationary') { drawSemiCircle(ctx, 26, baseline, 8, '#ef4444', -1); drawTriangle(ctx, 54, baseline, 11, '#1d4ed8', 1); }
+  if (frontType === 'occluded') { drawSemiCircle(ctx, 24, baseline, 8, '#7c3aed', -1); drawTriangle(ctx, 56, baseline, 11, '#7c3aed', -1); }
   return canvas;
 };
 function ensureSurfaceFrontImages(map) { if (typeof document === 'undefined' || !map?.addImage) return; Object.entries(FRONT_TYPES).forEach(([type, style]) => { if (map.hasImage?.(style.imageId)) return; map.addImage(style.imageId, createFrontIconCanvas(type), { pixelRatio: 2 }); }); }
@@ -49,11 +58,14 @@ function addFrontLineLayer(map, layerId, sourceId, style, beforeLayer, secondary
   const dash = secondary ? style.secondaryDash : style.dash;
   map.addLayer({ id: layerId, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': secondary ? style.secondaryColor : style.color, 'line-width': style.lineWidth, 'line-opacity': 0.9, ...(dash ? { 'line-dasharray': dash } : {}) } }, beforeLayer);
 }
+function removeFrontLayers(map, sourceId) {
+  [`${sourceId}_bg`, `${sourceId}_secondary`, `${sourceId}_frontSymbols`, `${sourceId}_triangles`, `${sourceId}_circles`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
+}
 function renderFrontLayers(map, sourceId, geojson, frontType) {
   const frozenFrontType = normalizeFrontType(frontType);
   const style = FRONT_TYPES[frozenFrontType];
   const beforeLayer = map.getLayer('custom-points-layer') ? 'custom-points-layer' : undefined;
-  [`${sourceId}_bg`, `${sourceId}_secondary`, `${sourceId}_frontSymbols`, `${sourceId}_triangles`, `${sourceId}_circles`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
+  removeFrontLayers(map, sourceId);
   if (map.getSource(sourceId)) map.getSource(sourceId).setData(geojson); else map.addSource(sourceId, { type: 'geojson', data: geojson });
   ensureSurfaceFrontImages(map);
   addFrontLineLayer(map, `${sourceId}_bg`, sourceId, style, beforeLayer, false);
@@ -108,18 +120,26 @@ const FlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
   const [projectId] = useProjectId();
   const [lines, setLines] = useState([]);
   const [frontType, setFrontType] = useState('cold');
+  const activeLineRef = useRef(null);
   const isFlagDrawing = useRef(false);
   const mapBoundsRef = useRef(null);
   useEffect(() => { const preventScroll = (event) => { if (isFlagDrawing.current) event.preventDefault(); }; document.body.addEventListener('touchmove', preventScroll, { passive: false }); return () => document.body.removeEventListener('touchmove', preventScroll); }, []);
   const getAdjustedPoint = useCallback((event) => { const pos = getPointerPosition(event); const rect = mapBoundsRef.current || getMapContainerRect(mapRef); return { x: pos.x - rect.left, y: pos.y - rect.top }; }, [mapRef]);
-  const handleDown = useCallback((event) => { const frozenFrontType = normalizeFrontType(frontType); mapBoundsRef.current = getMapContainerRect(mapRef); isFlagDrawing.current = true; const pos = getAdjustedPoint(event); setLines([{ points: [pos.x, pos.y], frontType: frozenFrontType }]); }, [frontType, getAdjustedPoint, mapRef]);
-  const handleMove = useCallback((event) => { if (!isFlagDrawing.current) return; const pos = getAdjustedPoint(event); setLines((prev) => { if (!prev.length) return prev; const lastLine = prev[prev.length - 1]; return [...prev.slice(0, -1), { ...lastLine, points: [...lastLine.points, pos.x, pos.y] }]; }); }, [getAdjustedPoint]);
+  const clearActiveLine = useCallback(() => { activeLineRef.current = null; setLines([]); }, []);
+  const handleDown = useCallback((event) => { const frozenFrontType = normalizeFrontType(frontType); mapBoundsRef.current = getMapContainerRect(mapRef); isFlagDrawing.current = true; const pos = getAdjustedPoint(event); const nextLine = { points: [pos.x, pos.y], frontType: frozenFrontType }; activeLineRef.current = nextLine; setLines([nextLine]); }, [frontType, getAdjustedPoint, mapRef]);
+  const handleMove = useCallback((event) => { if (!isFlagDrawing.current) return; const pos = getAdjustedPoint(event); const currentLine = activeLineRef.current; if (!currentLine) return; if (getDistanceFromLastPoint(currentLine.points, pos.x, pos.y) < MIN_POINT_DISTANCE) return; const nextLine = { ...currentLine, points: [...currentLine.points, pos.x, pos.y] }; activeLineRef.current = nextLine; setLines([nextLine]); }, [getAdjustedPoint]);
   const handleUp = useCallback(async () => {
     const map = mapRef.current;
-    const line = lines[lines.length - 1];
+    const line = activeLineRef.current;
     const frozenFrontType = normalizeFrontType(line?.frontType || frontType);
     isFlagDrawing.current = false;
-    if (!map || !line?.points || line.points.length < 4) { setLines([]); return; }
+    mapBoundsRef.current = null;
+    if (!map || !line?.points || line.points.length < 4) { clearActiveLine(); return; }
+    if (!projectId) {
+      clearActiveLine();
+      await Swal.fire({ icon: 'warning', title: 'No Project Selected', text: 'Please create or select a valid project before saving surface fronts.', confirmButtonColor: isDarkMode ? '#6366f1' : '#3b82f6' });
+      return;
+    }
     const coords = [];
     for (let i = 0; i < line.points.length; i += 2) { const lngLat = map.unproject([line.points[i], line.points[i + 1]]); coords.push([lngLat.lng, lngLat.lat]); }
     const owner = JSON.parse(localStorage.getItem('user') || 'null');
@@ -127,21 +147,25 @@ const FlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
     const name = buildFrontName(frozenFrontType);
     const feature = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { isFront: true, frontType: frozenFrontType, owner: owner?.id, project: projectId, sourceId } };
     const geojson = { type: 'FeatureCollection', features: [feature] };
-    renderFrontLayers(map, sourceId, geojson, frozenFrontType);
     try {
       await createFeature({ geometry: feature.geometry, properties: feature.properties, name, sourceId });
       if (typeof setLayersRef?.current === 'function') {
         setLayersRef.current((prevLayers) => [{ id: sourceId, sourceID: sourceId, name, visible: true, locked: false, type: name }, ...prevLayers.filter((layer) => layer.id !== sourceId && layer.sourceID !== sourceId)]);
       }
+      try {
+        renderFrontLayers(map, sourceId, geojson, frozenFrontType);
+      } catch (renderError) {
+        console.warn('Surface front saved but could not be rendered locally:', renderError);
+      }
     } catch (err) {
       console.error('Error saving surface front:', err);
       await Swal.fire({ icon: 'error', title: 'Save Failed', text: err?.message || 'Could not save surface front.', confirmButtonColor: isDarkMode ? '#6366f1' : '#3b82f6' });
-      [`${sourceId}_frontSymbols`, `${sourceId}_secondary`, `${sourceId}_bg`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
+      removeFrontLayers(map, sourceId);
       if (map.getSource(sourceId)) map.removeSource(sourceId);
     } finally {
-      setLines([]);
+      clearActiveLine();
     }
-  }, [frontType, isDarkMode, lines, mapRef, projectId, setLayersRef]);
+  }, [clearActiveLine, frontType, isDarkMode, mapRef, projectId, setLayersRef]);
   const previewLine = lines[lines.length - 1];
   const previewFrontType = normalizeFrontType(previewLine?.frontType || frontType);
   const previewSymbols = previewLine ? makePreviewSymbols(previewLine.points, previewFrontType) : [];
