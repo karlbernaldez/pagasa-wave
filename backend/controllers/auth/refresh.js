@@ -2,9 +2,11 @@ import jwt from 'jsonwebtoken';
 
 import User    from '../../models/User.js';
 import Session from '../../models/Session.js';
-import { clearAuthCookies }                from '#controllers/auth/utils/cookies';
+import { clearAuthCookies, setAccessCookie } from '#controllers/auth/utils/cookies';
 import { hashToken, revokeSession }        from '#controllers/auth/utils/session';
-import { getStatusError, issueTokens }     from './_helpers.js';
+import { getStatusError }                  from './_helpers.js';
+import { buildAuthPayload }                from '#controllers/auth/utils/session';
+import { generateAccessToken }             from '#controllers/auth/utils/jwtUtils';
 
 export const refreshAccessToken = async (req, res) => {
   const { refreshToken } = req.cookies;
@@ -30,11 +32,13 @@ export const refreshAccessToken = async (req, res) => {
     // Token-binding check — revoke immediately on mismatch (token theft signal)
     if (session.tokenHash !== hashToken(refreshToken)) {
       await revokeSession(session);
+      clearAuthCookies(res);
       return res.status(403).json({ message: 'Refresh token mismatch. Session revoked.' });
     }
 
     if (session.expiresAt && session.expiresAt <= new Date()) {
       await revokeSession(session);
+      clearAuthCookies(res);
       return res.status(403).json({ message: 'Refresh session expired.' });
     }
 
@@ -42,6 +46,7 @@ export const refreshAccessToken = async (req, res) => {
 
     if (!user) {
       await revokeSession(session);
+      clearAuthCookies(res);
       return res.status(403).json({ message: 'User not found.' });
     }
 
@@ -52,14 +57,17 @@ export const refreshAccessToken = async (req, res) => {
       return res.status(403).json({ message: statusError });
     }
 
-    // Rotate: revoke old session, issue new tokens
-    await revokeSession(session);
-    const { accessToken } = await issueTokens(user, req, res);
+    // Keep the refresh session stable and only renew the short-lived access token.
+    // Rotating the refresh token during ordinary /check retries can make concurrent
+    // tabs/browsers invalidate each other while forecasters are smoke-testing charts.
+    const accessToken = generateAccessToken(buildAuthPayload(user));
+    setAccessCookie(res, accessToken);
 
     return res.status(200).json({ accessToken });
 
   } catch (err) {
     console.error('[refreshAccessToken]', err);
+    clearAuthCookies(res);
     return res.status(403).json({ message: 'Failed to refresh token.' });
   }
 };
