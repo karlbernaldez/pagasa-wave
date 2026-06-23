@@ -76,6 +76,25 @@ async function ensureFeatureMutationAllowed(sourceId, user) {
   return { feature, project, projectId };
 }
 
+function sanitizeStyle(style) {
+  if (!style || typeof style !== 'object' || Array.isArray(style)) return {};
+
+  const allowedKeys = new Set([
+    'iconSize', 'iconOpacity', 'iconRotate',
+    'textSize', 'textColor', 'textHaloColor', 'textHaloWidth', 'textLetterSpacing', 'textTransform',
+    'lineColor', 'lineWidth', 'lineOpacity',
+    'fillColor', 'fillOpacity',
+    'symbolOpacity', 'frontSymbolSide',
+  ]);
+
+  return Object.entries(style).reduce((acc, [key, value]) => {
+    if (!allowedKeys.has(key)) return acc;
+    if (value === undefined) return acc;
+    acc[key] = value;
+    return acc;
+  }, {});
+}
+
 export const createFeature = asyncHandler(async (req, res) => {
   const { geometry, properties = {}, name = 'Untitled Feature', sourceId } = req.body;
   const owner = req.user.id;
@@ -172,6 +191,24 @@ export const updateFeatureCoordinates = asyncHandler(async (req, res) => {
 
   emitAnnotationUpdate(projectId, 'annotation_updated', sourceId);
   res.json({ message: 'Coordinates updated.', sourceId, coordinates });
+});
+
+export const updateFeatureStyle = asyncHandler(async (req, res) => {
+  const { sourceId } = req.params;
+  const style = sanitizeStyle(req.body?.style);
+  const { projectId } = await ensureFeatureMutationAllowed(sourceId, req.user);
+
+  const setPayload = { 'properties.style': style };
+  if (style.frontSymbolSide) setPayload['properties.frontSymbolSide'] = style.frontSymbolSide;
+
+  const updatedFeature = await Feature.findOneAndUpdate(
+    { sourceId, 'properties.project': projectId },
+    { $set: setPayload },
+    { new: true }
+  );
+
+  emitAnnotationUpdate(projectId, 'annotation_updated', sourceId);
+  res.json({ message: 'Feature style updated.', feature: normalizeFeatureForClient(updatedFeature, req.user) });
 });
 
 export const requestFeatureChange = asyncHandler(async (req, res) => {
