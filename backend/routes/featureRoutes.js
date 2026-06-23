@@ -9,6 +9,7 @@ import {
   updateFeatureName,
   getProjectFeatureCollection,
   updateFeatureCoordinates,
+  updateFeatureStyle,
   requestFeatureChange,
   approveFeatureChangeRequest,
   declineFeatureChangeRequest,
@@ -30,6 +31,7 @@ router.post('/:sourceId/request-change', requestFeatureChange);
 router.get('/:sourceId', isFeatureOwnerOrAdmin, getFeatureBySourceId); // checked
 router.delete('/:sourceId', isFeatureOwnerOrAdmin, deleteFeature); // checked
 router.patch('/:sourceId/coordinates', isFeatureOwnerOrAdmin, updateFeatureCoordinates);
+router.patch('/:sourceId/style', isFeatureOwnerOrAdmin, updateFeatureStyle);
 router.patch('/:sourceId', isFeatureOwnerOrAdmin, updateFeatureName); //checked
 
 export default router;
