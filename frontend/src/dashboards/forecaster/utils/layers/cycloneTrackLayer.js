@@ -28,6 +28,9 @@ const TYPE_COLORS = {
   AA: '#2563eb',
 };
 
+const popupListeners = new Set();
+let cycloneTrackPopup = null;
+
 const toNumber = (value) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
@@ -43,6 +46,15 @@ const safeSetVisibility = (map, layerId, visible) => {
 
 const sortEntries = (info = {}) => Object.entries(info)
   .sort(([a], [b]) => new Date(a.replace(' ', 'T')) - new Date(b.replace(' ', 'T')));
+
+function escapeHtml(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 function getCompactTrackLabel(cycloneType) {
   if (cycloneType === 'LPA') return 'L';
@@ -66,30 +78,66 @@ function offsetCoordinate([lng, lat], nx, ny, radiusKm) {
   ];
 }
 
+function buildConePoint(point, previous, next) {
+  const dx = next.longitude - previous.longitude;
+  const dy = next.latitude - previous.latitude;
+  const length = Math.hypot(dx, dy) || 1;
+  const ux = dx / length;
+  const uy = dy / length;
+  const nx = -uy;
+  const ny = ux;
+  const coordinate = [point.longitude, point.latitude];
+
+  return {
+    coordinate,
+    radius: point.radius,
+    ux,
+    uy,
+    nx,
+    ny,
+    left: offsetCoordinate(coordinate, nx, ny, point.radius),
+    right: offsetCoordinate(coordinate, -nx, -ny, point.radius),
+  };
+}
+
+function buildCap(center, radiusKm, startAngle, endAngle, steps = 18) {
+  const coordinates = [];
+  let delta = endAngle - startAngle;
+  if (delta < 0) delta += Math.PI * 2;
+
+  for (let i = 0; i <= steps; i += 1) {
+    const angle = startAngle + (delta * i) / steps;
+    coordinates.push(offsetCoordinate(center, Math.cos(angle), Math.sin(angle), radiusKm));
+  }
+
+  return coordinates;
+}
+
 function buildForecastConePolygon(points) {
   const forecastPoints = points.filter((point) => point.radius > 0);
   if (forecastPoints.length < 2) return null;
 
-  const left = [];
-  const right = [];
+  const conePoints = forecastPoints.map((point, index) => buildConePoint(
+    point,
+    forecastPoints[Math.max(0, index - 1)],
+    forecastPoints[Math.min(forecastPoints.length - 1, index + 1)],
+  ));
 
-  forecastPoints.forEach((point, index) => {
-    const previous = forecastPoints[Math.max(0, index - 1)];
-    const next = forecastPoints[Math.min(forecastPoints.length - 1, index + 1)];
-    const dx = next.longitude - previous.longitude;
-    const dy = next.latitude - previous.latitude;
-    const length = Math.hypot(dx, dy) || 1;
-    const ux = dx / length;
-    const uy = dy / length;
-    const nx = -uy;
-    const ny = ux;
-    const coordinate = [point.longitude, point.latitude];
+  const first = conePoints[0];
+  const last = conePoints[conePoints.length - 1];
+  const left = conePoints.map((point) => point.left);
+  const right = conePoints.map((point) => point.right);
 
-    left.push(offsetCoordinate(coordinate, nx, ny, point.radius));
-    right.push(offsetCoordinate(coordinate, -nx, -ny, point.radius));
-  });
+  const lastLeftAngle = Math.atan2(last.ny, last.nx);
+  const lastRightAngle = Math.atan2(-last.ny, -last.nx);
+  const firstRightAngle = Math.atan2(-first.ny, -first.nx);
+  const firstLeftAngle = Math.atan2(first.ny, first.nx);
 
-  return [left.concat(right.reverse(), [left[0]])];
+  const endCap = buildCap(last.coordinate, last.radius, lastLeftAngle, lastRightAngle);
+  const startCap = buildCap(first.coordinate, first.radius, firstRightAngle, firstLeftAngle);
+  const ring = left.concat(endCap.slice(1), right.reverse().slice(1), startCap.slice(1), [left[0]]);
+
+  return [ring];
 }
 
 function normalizeCycloneTrack(payload) {
@@ -149,6 +197,10 @@ function normalizeCycloneTrack(payload) {
           timeLabel: isLatest ? `${cyclone?.cyclone_name || 'Cyclone'}\n${point.date} ${point.time}`.trim() : '',
           latest: isLatest,
           forecast: point.radius > 0,
+          latitude: point.latitude,
+          longitude: point.longitude,
+          radius: point.radius,
+          pointLabel: `${point.date} ${point.time}`.trim(),
         },
       });
     });
@@ -177,6 +229,46 @@ async function fetchCycloneTrackData() {
 
 function addLayerIfMissing(map, layer) {
   if (!map.getLayer(layer.id)) map.addLayer(layer);
+}
+
+function createCyclonePointPopup(feature) {
+  const properties = feature?.properties || {};
+  const longitude = toNumber(properties.longitude);
+  const latitude = toNumber(properties.latitude);
+  const radius = toNumber(properties.radius) || 0;
+
+  return `
+    <div style="min-width: 210px; padding: 10px 12px; border: 1px solid rgba(148,163,184,0.35); border-radius: 14px; background: rgba(15,23,42,0.94); color: #f8fafc; box-shadow: 0 18px 45px rgba(0,0,0,0.35); font-family: Inter, system-ui, sans-serif;">
+      <div style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #67e8f9; font-weight: 800; margin-bottom: 4px;">Cyclone Track</div>
+      <div style="font-size: 13px; line-height: 1.25; font-weight: 800; margin-bottom: 8px;">${escapeHtml(properties.cycloneName || 'Cyclone')}</div>
+      <div style="display: grid; grid-template-columns: 72px 1fr; row-gap: 5px; column-gap: 8px; font-size: 11px; line-height: 1.25;">
+        <span style="color:#94a3b8;">Type</span><strong>${escapeHtml(properties.cycloneType || 'TC')}</strong>
+        <span style="color:#94a3b8;">Date</span><strong>${escapeHtml(properties.date || '-')}</strong>
+        <span style="color:#94a3b8;">Time</span><strong>${escapeHtml(properties.time || '-')}</strong>
+        <span style="color:#94a3b8;">Position</span><strong>${latitude?.toFixed?.(1) || '-'}°N, ${longitude?.toFixed?.(1) || '-'}°E</strong>
+        <span style="color:#94a3b8;">Radius</span><strong>${radius > 0 ? `${radius} km` : 'Observed point'}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function setupCycloneTrackPopup(map) {
+  if (!map || popupListeners.has(POINT_LAYER_ID)) return;
+
+  const showPopup = (event) => {
+    if (!event.features?.length) return;
+    cycloneTrackPopup?.remove();
+    cycloneTrackPopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: true, maxWidth: '260px' })
+      .setLngLat(event.lngLat)
+      .setHTML(createCyclonePointPopup(event.features[0]))
+      .setOffset([0, -8])
+      .addTo(map);
+  };
+
+  map.on('click', POINT_LAYER_ID, showPopup);
+  map.on('mouseenter', POINT_LAYER_ID, () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', POINT_LAYER_ID, () => { map.getCanvas().style.cursor = ''; });
+  popupListeners.add(POINT_LAYER_ID);
 }
 
 function addCycloneTrackLayers(map, visible) {
@@ -276,6 +368,8 @@ function addCycloneTrackLayers(map, visible) {
       'text-halo-width': 1.1,
     },
   });
+
+  setupCycloneTrackPopup(map);
 }
 
 export async function ensureCycloneTrackLayer(map, visible = true) {
@@ -294,4 +388,5 @@ export async function ensureCycloneTrackLayer(map, visible = true) {
 
 export function setCycloneTrackVisibility(map, visible) {
   LAYER_IDS.forEach((layerId) => safeSetVisibility(map, layerId, visible));
+  if (!visible) cycloneTrackPopup?.remove();
 }
