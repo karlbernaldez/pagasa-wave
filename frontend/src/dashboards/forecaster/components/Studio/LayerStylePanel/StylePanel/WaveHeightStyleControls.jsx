@@ -1,6 +1,7 @@
 import { Section, PropColor, PropSlider, PropSelect } from '../LayerStylePanel';
+import { queuePersistAnnotationStyle } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
 
-export function WaveHeightStyleControls({ layerIds, style, onChange, setPaint, setLayout, isDarkMode, tab = 'symbol' }) {
+export function WaveHeightStyleControls({ layerIds, layerInfo, style, onChange, setPaint, setLayout, isDarkMode, tab = 'symbol' }) {
     const lineId = layerIds?.[0];
     const labelIds = layerIds?.slice(1).filter(Boolean) ?? [];
 
@@ -10,16 +11,23 @@ export function WaveHeightStyleControls({ layerIds, style, onChange, setPaint, s
         dotted: [1, 2],
     };
 
+    const update = (patch) => {
+        const nextStyle = { ...style, ...patch };
+        onChange(nextStyle);
+        queuePersistAnnotationStyle(layerInfo, nextStyle);
+        return nextStyle;
+    };
+
     const lp = (key, prop, val) => {
-        onChange({ ...style, [key]: val });
+        update({ [key]: val });
         if (lineId) setPaint([lineId], prop, val);
     };
     const tp = (key, prop, val) => {
-        onChange({ ...style, [key]: val });
+        update({ [key]: val });
         if (labelIds.length) setPaint(labelIds, prop, val);
     };
     const tl = (key, prop, val) => {
-        onChange({ ...style, [key]: val });
+        update({ [key]: val });
         if (labelIds.length) setLayout(labelIds, prop, val);
     };
 
@@ -51,7 +59,7 @@ export function WaveHeightStyleControls({ layerIds, style, onChange, setPaint, s
                     { value: 'dotted', label: 'Dotted' },
                 ]}
                 onChange={(v) => {
-                    onChange({ ...style, lineDash: v });
+                    update({ lineDash: v });
                     if (lineId) setPaint([lineId], 'line-dasharray', DASH_PATTERNS[v]);
                 }}
             />
