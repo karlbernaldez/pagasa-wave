@@ -212,3 +212,18 @@ export async function updateFeatureCoordinates(sourceId, coordinates) {
 
   return response.json();
 }
+
+export async function updateFeatureStyle(sourceId, style) {
+  const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/style`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ style }),
+  });
+
+  if (!response.ok) {
+    await throwFeatureRequestError(response, 'Failed to update annotation style');
+  }
+
+  return response.json();
+}
