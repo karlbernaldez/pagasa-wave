@@ -12,12 +12,12 @@ import {
   startForecastPackageReview,
   submitForecastPackage,
   updateForecastChartCompletion,
-  updateForecastChartCompletionByProject,
 } from '../controllers/forecastPackageController.js';
 import {
   getForecastPackageChartContextByProject,
   joinForecastPackageChartEditingByProject,
   releaseForecastPackageChartEditingByProject,
+  updateForecastChartCompletionByProject,
 } from '../controllers/forecastPackageEditingController.js';
 import protect from '../middleware/authMiddleware.js';
 import { isAdmin } from '../middleware/adminMiddleware.js';
