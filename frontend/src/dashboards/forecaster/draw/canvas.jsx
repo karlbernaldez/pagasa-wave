@@ -8,6 +8,15 @@ import { CheckCircle2, Minus, Plus, Waves } from 'lucide-react';
 const MIN_POINT_DISTANCE = 3.5;
 const PREVIEW_FRAME_MS = 24;
 
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+const clampWaveValue = (nextValue) => Math.max(1, Math.min(15, nextValue));
+
+const getMapContainerRect = (mapRef) => {
+  const container = mapRef?.current?.getContainer?.();
+  return container?.getBoundingClientRect?.() || null;
+};
+
 const getPointerPoint = (event, canvas) => {
   const rect = canvas.getBoundingClientRect();
   return [event.clientX - rect.left, event.clientY - rect.top];
@@ -21,25 +30,23 @@ const distanceFromLastPoint = (points, x, y) => {
   return Math.hypot(x - lastX, y - lastY);
 };
 
-const cn = (...classes) => classes.filter(Boolean).join(' ');
-
-const clampWaveValue = (nextValue) => Math.max(1, Math.min(15, nextValue));
-
 // Memoized value dock to prevent unnecessary canvas re-renders while drawing.
-const WaveHeightSlider = memo(({ value, onChange, isDarkMode, closedMode }) => {
+const WaveHeightSlider = memo(({ value, onChange, isDarkMode, closedMode, mapBounds }) => {
   const marks = [1, 3, 5, 8, 10, 12, 15];
   const pct = ((value - 1) / 14) * 100;
   const setWaveValue = (nextValue) => onChange(clampWaveValue(nextValue));
   const modeLabel = closedMode ? 'Closed contour' : 'Open line';
+  const bottomOffset = mapBounds ? Math.max(24, window.innerHeight - mapBounds.bottom + 112) : 112;
 
   return (
     <div
       className={cn(
-        'studio-liquid-panel fixed bottom-[7.25rem] left-1/2 z-[100] w-[min(30rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-2xl border px-3 py-3 shadow-2xl transition-all duration-200',
+        'studio-liquid-panel fixed left-1/2 z-[100] w-[min(30rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-2xl border px-3 py-3 shadow-2xl transition-all duration-200',
         isDarkMode
           ? 'studio-liquid-dark border-white/[0.18] text-white shadow-cyan-950/20'
           : 'studio-liquid-light border-white/80 text-slate-950 shadow-blue-950/10'
       )}
+      style={{ bottom: bottomOffset }}
     >
       <div
         className={cn(
@@ -192,12 +199,12 @@ WaveHeightSlider.displayName = 'WaveHeightSlider';
 
 const DrawingCanvas = ({
   mapRef,
-  drawCounter,
+  drawCounter = 0,
   setDrawCounter,
   isDarkMode,
   setLayersRef,
-  closedMode,
-  lineCount,
+  closedMode = false,
+  lineCount = 0,
 }) => {
   const canvasRef = useRef(null);
   const activeLineRef = useRef(null);
@@ -208,27 +215,39 @@ const DrawingCanvas = ({
   const drawLock = useRef(false);
   const [labelValue, setLabelValue] = useState(3);
   const [projectId] = useProjectId();
+  const [mapBounds, setMapBounds] = useState(null);
 
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const rect = getMapContainerRect(mapRef) || {
+      left: 0,
+      top: 0,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      bottom: window.innerHeight,
+    };
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.ceil(window.innerWidth * dpr);
-    canvas.height = Math.ceil(window.innerHeight * dpr);
-    canvas.style.width = `${window.innerWidth}px`;
-    canvas.style.height = `${window.innerHeight}px`;
+
+    canvas.width = Math.ceil(rect.width * dpr);
+    canvas.height = Math.ceil(rect.height * dpr);
+    canvas.style.left = `${rect.left}px`;
+    canvas.style.top = `${rect.top}px`;
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
 
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }, []);
+    setMapBounds({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, bottom: rect.bottom });
+  }, [mapRef]);
 
   const clearPreview = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    ctx.clearRect(0, 0, canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight);
   }, []);
 
   const drawPreview = useCallback(() => {
@@ -237,7 +256,7 @@ const DrawingCanvas = ({
     const line = activeLineRef.current;
     if (!canvas || !ctx) return;
 
-    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    ctx.clearRect(0, 0, canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight);
     if (!line?.points || line.points.length < 4) return;
 
     ctx.save();
@@ -298,15 +317,22 @@ const DrawingCanvas = ({
     resizeCanvas();
 
     window.addEventListener('resize', resizeCanvas);
+    const map = mapRef?.current;
+    map?.on?.('resize', resizeCanvas);
+    map?.on?.('move', resizeCanvas);
+
     return () => {
       window.removeEventListener('resize', resizeCanvas);
+      map?.off?.('resize', resizeCanvas);
+      map?.off?.('move', resizeCanvas);
       if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
     };
-  }, [resizeCanvas]);
+  }, [mapRef, resizeCanvas]);
 
   const onPointerDown = useCallback((event) => {
     if (drawLock.current) return;
 
+    resizeCanvas();
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
 
@@ -320,7 +346,7 @@ const DrawingCanvas = ({
     };
 
     clearPreview();
-  }, [clearPreview]);
+  }, [clearPreview, resizeCanvas]);
 
   const onPointerMove = useCallback((event) => {
     if (drawLock.current) return;
@@ -404,6 +430,7 @@ const DrawingCanvas = ({
         onChange={setLabelValue}
         isDarkMode={isDarkMode}
         closedMode={closedMode}
+        mapBounds={mapBounds}
       />
 
       <canvas
@@ -412,7 +439,7 @@ const DrawingCanvas = ({
         onPointerMove={onPointerMove}
         onPointerUp={finishDrawing}
         onPointerCancel={finishDrawing}
-        className="absolute left-0 top-0 z-10 touch-none pointer-events-auto"
+        className="fixed z-10 touch-none pointer-events-auto"
       />
     </>
   );
