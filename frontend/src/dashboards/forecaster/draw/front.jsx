@@ -7,6 +7,7 @@ import { createFeature } from '@/api/featureServices';
 import { useProjectId } from '@dashboards/forecaster/hooks/useStudio';
 
 const FRONT_ICON_VERSION = 'v3';
+const FRONT_CASING_COLOR = '#f8fafc';
 const FRONT_TYPES = {
   cold: { label: 'Cold', fullLabel: 'Cold Front', color: '#1d4ed8', lineWidth: 4, icon: Snowflake, imageId: `surface-front-cold-${FRONT_ICON_VERSION}`, symbols: [{ kind: 'triangle', color: '#1d4ed8', side: -1 }] },
   warm: { label: 'Warm', fullLabel: 'Warm Front', color: '#ef4444', lineWidth: 4, icon: CloudSun, imageId: `surface-front-warm-${FRONT_ICON_VERSION}`, symbols: [{ kind: 'semicircle', color: '#ef4444', side: -1 }] },
@@ -55,24 +56,28 @@ const createFrontIconCanvas = (frontType) => {
   return canvas;
 };
 function ensureSurfaceFrontImages(map) { if (typeof document === 'undefined' || !map?.addImage) return; Object.entries(FRONT_TYPES).forEach(([type, style]) => { if (map.hasImage?.(style.imageId)) return; map.addImage(style.imageId, createFrontIconCanvas(type), { pixelRatio: 2 }); }); }
-function addFrontLineLayer(map, layerId, sourceId, style, secondary = false) {
-  const dash = secondary ? style.secondaryDash : style.dash;
+function addFrontLineLayer(map, layerId, sourceId, paint) {
   if (map.getLayer(layerId)) return;
-  map.addLayer({ id: layerId, type: 'line', source: sourceId, layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': secondary ? style.secondaryColor : style.color, 'line-width': style.lineWidth, 'line-opacity': 0.95, ...(dash ? { 'line-dasharray': dash } : {}) } });
+  map.addLayer({ id: layerId, type: 'line', source: sourceId, layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint });
 }
 function removeFrontLayers(map, sourceId) {
-  [`${sourceId}_bg`, `${sourceId}_secondary`, `${sourceId}_frontSymbols`, `${sourceId}_triangles`, `${sourceId}_circles`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
+  [`${sourceId}_bg`, `${sourceId}_dash`, `${sourceId}_secondary`, `${sourceId}_frontSymbols`, `${sourceId}_triangles`, `${sourceId}_circles`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
 }
 function renderFrontLayers(map, sourceId, geojson, frontType) {
   const frozenFrontType = normalizeFrontType(frontType);
   const style = FRONT_TYPES[frozenFrontType];
   removeFrontLayers(map, sourceId);
   if (map.getSource(sourceId)) map.getSource(sourceId).setData(geojson); else map.addSource(sourceId, { type: 'geojson', data: geojson });
-  ensureSurfaceFrontImages(map);
-  addFrontLineLayer(map, `${sourceId}_bg`, sourceId, style, false);
-  if (style.secondaryColor) addFrontLineLayer(map, `${sourceId}_secondary`, sourceId, style, true);
-  if (map.hasImage?.(style.imageId) && !map.getLayer(`${sourceId}_frontSymbols`)) {
-    map.addLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, layout: { 'symbol-placement': 'line', 'symbol-spacing': frozenFrontType === 'occluded' ? 58 : 34, 'icon-image': style.imageId, 'icon-size': 0.88, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
+  addFrontLineLayer(map, `${sourceId}_bg`, sourceId, { 'line-color': FRONT_CASING_COLOR, 'line-width': style.lineWidth + 4, 'line-opacity': 0.95 });
+  addFrontLineLayer(map, `${sourceId}_dash`, sourceId, { 'line-color': style.color, 'line-width': style.lineWidth, 'line-opacity': 1, ...(style.dash ? { 'line-dasharray': style.dash } : {}) });
+  if (style.secondaryColor) addFrontLineLayer(map, `${sourceId}_secondary`, sourceId, { 'line-color': style.secondaryColor, 'line-width': style.lineWidth, 'line-opacity': 1, ...(style.secondaryDash ? { 'line-dasharray': style.secondaryDash } : {}) });
+  try {
+    ensureSurfaceFrontImages(map);
+    if (map.hasImage?.(style.imageId) && !map.getLayer(`${sourceId}_frontSymbols`)) {
+      map.addLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, layout: { 'symbol-placement': 'line', 'symbol-spacing': frozenFrontType === 'occluded' ? 58 : 34, 'icon-image': style.imageId, 'icon-size': 0.88, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
+    }
+  } catch (symbolError) {
+    console.warn('Surface front line rendered without symbols:', symbolError);
   }
 }
 function makePreviewSymbols(points, frontType) {
