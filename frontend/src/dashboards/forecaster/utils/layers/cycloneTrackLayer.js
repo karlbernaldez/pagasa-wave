@@ -3,15 +3,15 @@ const CYCLONE_TRACK_API = 'https://www.panahon.gov.ph/api/v1/cyclone-track?';
 export const CYCLONE_TRACK_STORAGE_KEY = 'CYCLONE_TRACK';
 
 const SOURCE_ID = 'cyclone-track-source';
-const RADIUS_FILL_LAYER_ID = 'cyclone-track-radius-fill';
-const RADIUS_OUTLINE_LAYER_ID = 'cyclone-track-radius-outline';
+const CONE_FILL_LAYER_ID = 'cyclone-track-cone-fill';
+const CONE_OUTLINE_LAYER_ID = 'cyclone-track-cone-outline';
 const LINE_LAYER_ID = 'cyclone-track-line';
 const POINT_LAYER_ID = 'cyclone-track-points';
 const TYPE_LABEL_LAYER_ID = 'cyclone-track-type-labels';
 const TIME_LABEL_LAYER_ID = 'cyclone-track-time-labels';
 const LAYER_IDS = [
-  RADIUS_FILL_LAYER_ID,
-  RADIUS_OUTLINE_LAYER_ID,
+  CONE_FILL_LAYER_ID,
+  CONE_OUTLINE_LAYER_ID,
   LINE_LAYER_ID,
   POINT_LAYER_ID,
   TYPE_LABEL_LAYER_ID,
@@ -23,9 +23,9 @@ const TYPE_COLORS = {
   TD: '#2563eb',
   TS: '#1d4ed8',
   STS: '#1e40af',
-  TY: '#4338ca',
-  STY: '#7c3aed',
-  AA: '#0891b2',
+  TY: '#1d4ed8',
+  STY: '#1d4ed8',
+  AA: '#2563eb',
 };
 
 const toNumber = (value) => {
@@ -44,21 +44,52 @@ const safeSetVisibility = (map, layerId, visible) => {
 const sortEntries = (info = {}) => Object.entries(info)
   .sort(([a], [b]) => new Date(a.replace(' ', 'T')) - new Date(b.replace(' ', 'T')));
 
-function buildCirclePolygon([centerLng, centerLat], radiusKm, steps = 72) {
-  const coordinates = [];
+function getCompactTrackLabel(cycloneType) {
+  if (cycloneType === 'LPA') return 'L';
+  if (cycloneType === 'AA') return 'A';
+  return 'T';
+}
+
+function getKmPerDegree(centerLat) {
   const latRadians = centerLat * Math.PI / 180;
-  const kmPerDegreeLat = 110.574;
-  const kmPerDegreeLng = Math.max(1, 111.320 * Math.cos(latRadians));
+  return {
+    lat: 110.574,
+    lng: Math.max(1, 111.320 * Math.cos(latRadians)),
+  };
+}
 
-  for (let i = 0; i <= steps; i += 1) {
-    const angle = (i / steps) * Math.PI * 2;
-    coordinates.push([
-      centerLng + (Math.cos(angle) * radiusKm) / kmPerDegreeLng,
-      centerLat + (Math.sin(angle) * radiusKm) / kmPerDegreeLat,
-    ]);
-  }
+function offsetCoordinate([lng, lat], nx, ny, radiusKm) {
+  const kmPerDegree = getKmPerDegree(lat);
+  return [
+    lng + (nx * radiusKm) / kmPerDegree.lng,
+    lat + (ny * radiusKm) / kmPerDegree.lat,
+  ];
+}
 
-  return coordinates;
+function buildForecastConePolygon(points) {
+  const forecastPoints = points.filter((point) => point.radius > 0);
+  if (forecastPoints.length < 2) return null;
+
+  const left = [];
+  const right = [];
+
+  forecastPoints.forEach((point, index) => {
+    const previous = forecastPoints[Math.max(0, index - 1)];
+    const next = forecastPoints[Math.min(forecastPoints.length - 1, index + 1)];
+    const dx = next.longitude - previous.longitude;
+    const dy = next.latitude - previous.latitude;
+    const length = Math.hypot(dx, dy) || 1;
+    const ux = dx / length;
+    const uy = dy / length;
+    const nx = -uy;
+    const ny = ux;
+    const coordinate = [point.longitude, point.latitude];
+
+    left.push(offsetCoordinate(coordinate, nx, ny, point.radius));
+    right.push(offsetCoordinate(coordinate, -nx, -ny, point.radius));
+  });
+
+  return [left.concat(right.reverse(), [left[0]])];
 }
 
 function normalizeCycloneTrack(payload) {
@@ -67,33 +98,41 @@ function normalizeCycloneTrack(payload) {
 
   cyclones.forEach((cyclone, cycloneIndex) => {
     const entries = sortEntries(cyclone?.info);
-    const trackCoordinates = [];
+    const validPoints = [];
 
-    entries.forEach(([timestamp, point], pointIndex) => {
+    entries.forEach(([timestamp, point]) => {
       const latitude = toNumber(point?.latitude);
       const longitude = toNumber(point?.longitude);
       if (latitude === null || longitude === null) return;
 
-      const cycloneType = String(point?.cyclone_type || '').trim() || 'TC';
-      const radius = Math.max(0, toNumber(point?.radius) || 0);
-      const isLatest = pointIndex === entries.length - 1;
-      const coordinate = [longitude, latitude];
-      trackCoordinates.push(coordinate);
+      validPoints.push({
+        timestamp,
+        date: point?.date || '',
+        time: point?.time || '',
+        latitude,
+        longitude,
+        cycloneType: String(point?.cyclone_type || '').trim() || 'TC',
+        radius: Math.max(0, toNumber(point?.radius) || 0),
+      });
+    });
 
-      if (radius > 0) {
-        features.push({
-          type: 'Feature',
-          geometry: { type: 'Polygon', coordinates: [buildCirclePolygon(coordinate, radius)] },
-          properties: {
-            kind: 'radius',
-            cycloneName: cyclone?.cyclone_name || 'Cyclone',
-            cycloneType,
-            color: TYPE_COLORS[cycloneType] || '#2563eb',
-            radius,
-            timestamp,
-          },
-        });
-      }
+    const trackCoordinates = validPoints.map((point) => [point.longitude, point.latitude]);
+    const coneCoordinates = buildForecastConePolygon(validPoints);
+
+    if (coneCoordinates) {
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Polygon', coordinates: coneCoordinates },
+        properties: {
+          kind: 'forecastCone',
+          cycloneName: cyclone?.cyclone_name || 'Cyclone',
+        },
+      });
+    }
+
+    validPoints.forEach((point, pointIndex) => {
+      const isLatest = pointIndex === validPoints.length - 1;
+      const coordinate = [point.longitude, point.latitude];
 
       features.push({
         type: 'Feature',
@@ -101,14 +140,15 @@ function normalizeCycloneTrack(payload) {
         properties: {
           kind: 'point',
           cycloneName: cyclone?.cyclone_name || 'Cyclone',
-          cycloneType,
-          color: TYPE_COLORS[cycloneType] || '#2563eb',
-          date: point?.date || '',
-          time: point?.time || '',
-          timestamp,
-          label: cycloneType,
-          timeLabel: isLatest ? `${cyclone?.cyclone_name || 'Cyclone'} ${point?.date || ''} ${point?.time || ''}`.trim() : '',
+          cycloneType: point.cycloneType,
+          color: TYPE_COLORS[point.cycloneType] || '#2563eb',
+          date: point.date,
+          time: point.time,
+          timestamp: point.timestamp,
+          label: getCompactTrackLabel(point.cycloneType),
+          timeLabel: isLatest ? `${cyclone?.cyclone_name || 'Cyclone'}\n${point.date} ${point.time}`.trim() : '',
           latest: isLatest,
+          forecast: point.radius > 0,
         },
       });
     });
@@ -120,7 +160,7 @@ function normalizeCycloneTrack(payload) {
         properties: {
           kind: 'track',
           cycloneName: cyclone?.cyclone_name || `Cyclone ${cycloneIndex + 1}`,
-          color: '#1f2937',
+          color: '#111827',
         },
       });
     }
@@ -143,28 +183,28 @@ function addCycloneTrackLayers(map, visible) {
   const visibility = getVisibility(visible);
 
   addLayerIfMissing(map, {
-    id: RADIUS_FILL_LAYER_ID,
+    id: CONE_FILL_LAYER_ID,
     type: 'fill',
     source: SOURCE_ID,
-    filter: ['==', ['get', 'kind'], 'radius'],
+    filter: ['==', ['get', 'kind'], 'forecastCone'],
     layout: { visibility },
     paint: {
-      'fill-color': '#94a3b8',
+      'fill-color': '#cbd5e1',
       'fill-opacity': 0.18,
     },
   });
 
   addLayerIfMissing(map, {
-    id: RADIUS_OUTLINE_LAYER_ID,
+    id: CONE_OUTLINE_LAYER_ID,
     type: 'line',
     source: SOURCE_ID,
-    filter: ['==', ['get', 'kind'], 'radius'],
+    filter: ['==', ['get', 'kind'], 'forecastCone'],
     layout: { visibility, 'line-cap': 'round', 'line-join': 'round' },
     paint: {
-      'line-color': '#cbd5e1',
+      'line-color': '#e2e8f0',
       'line-width': 1,
-      'line-dasharray': [3, 3],
-      'line-opacity': 0.85,
+      'line-dasharray': [4, 4],
+      'line-opacity': 0.72,
     },
   });
 
@@ -176,8 +216,8 @@ function addCycloneTrackLayers(map, visible) {
     layout: { visibility, 'line-cap': 'round', 'line-join': 'round' },
     paint: {
       'line-color': '#111827',
-      'line-width': 1.5,
-      'line-opacity': 0.82,
+      'line-width': 1.25,
+      'line-opacity': 0.78,
     },
   });
 
@@ -188,11 +228,11 @@ function addCycloneTrackLayers(map, visible) {
     filter: ['==', ['get', 'kind'], 'point'],
     layout: { visibility },
     paint: {
-      'circle-radius': ['case', ['get', 'latest'], 6.5, 7.5],
+      'circle-radius': ['case', ['get', 'latest'], 6, 5.5],
       'circle-color': ['get', 'color'],
       'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 1.5,
-      'circle-opacity': 1,
+      'circle-stroke-width': 1.35,
+      'circle-opacity': 0.98,
     },
   });
 
@@ -204,15 +244,15 @@ function addCycloneTrackLayers(map, visible) {
     layout: {
       visibility,
       'text-field': ['get', 'label'],
-      'text-size': 10,
+      'text-size': 9,
       'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
       'text-allow-overlap': true,
       'text-ignore-placement': true,
     },
     paint: {
       'text-color': '#ffffff',
-      'text-halo-color': '#1d4ed8',
-      'text-halo-width': 0.4,
+      'text-halo-color': '#1e3a8a',
+      'text-halo-width': 0.35,
     },
   });
 
@@ -220,19 +260,19 @@ function addCycloneTrackLayers(map, visible) {
     id: TIME_LABEL_LAYER_ID,
     type: 'symbol',
     source: SOURCE_ID,
-    filter: ['all', ['==', ['get', 'kind'], 'point'], ['!=', ['get', 'timeLabel'], '']],
+    filter: ['all', ['==', ['get', 'kind'], 'point'], ['==', ['get', 'latest'], true]],
     layout: {
       visibility,
       'text-field': ['get', 'timeLabel'],
-      'text-size': 10,
+      'text-size': 9,
       'text-anchor': 'left',
-      'text-offset': [1.1, 0.8],
+      'text-offset': [0.95, 0.75],
       'text-font': ['Open Sans Semibold', 'Arial Unicode MS Regular'],
       'text-allow-overlap': false,
     },
     paint: {
-      'text-color': '#0f172a',
-      'text-halo-color': '#ffffff',
+      'text-color': '#f8fafc',
+      'text-halo-color': '#0f172a',
       'text-halo-width': 1.1,
     },
   });
