@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { readBoolStorage } from '../utils/layerPanelUtils';
+import {
+  CYCLONE_TRACK_STORAGE_KEY,
+  ensureCycloneTrackLayer,
+  setCycloneTrackVisibility,
+} from '@dashboards/forecaster/utils/layers/cycloneTrackLayer';
+
+const safeSetLayoutVisibility = (map, layerId, visible) => {
+  if (map?.getLayer?.(layerId)) {
+    map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+  }
+};
 
 /**
  * Manages domain, utility, and satellite layer state.
@@ -12,7 +23,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
   });
 
   const [utilitiesLayers, setUtilitiesLayers] = useState({
-    GRATICULES: false, SHIPPING_ZONE: false,
+    GRATICULES: false, SHIPPING_ZONE: false, CYCLONE_TRACK: false,
   });
 
   const [satelliteLayer, setSatelliteLayer] = useState(false);
@@ -30,6 +41,20 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
     return false;
   };
 
+  const showCycloneTrackError = (message = 'Unable to load PAGASA cyclone track.') => {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: message,
+      showConfirmButton: false,
+      timer: 2600,
+      timerProgressBar: true,
+      background: isDarkMode ? '#374151' : '#fff',
+      color: isDarkMode ? '#f3f4f6' : '#111827',
+    });
+  };
+
   // ── Hydrate from localStorage + apply to map ────────────────────────────────
   useEffect(() => {
     const saved = {
@@ -41,6 +66,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
       utilities: {
         GRATICULES:    readBoolStorage('GRATICULES'),
         SHIPPING_ZONE: readBoolStorage('SHIPPING_ZONE'),
+        CYCLONE_TRACK: readBoolStorage(CYCLONE_TRACK_STORAGE_KEY),
       },
       satellite: readBoolStorage('SATELLITE'),
     };
@@ -54,20 +80,27 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
 
     const apply = () => {
       // Domains
-      const vis = (v) => (v ? 'visible' : 'none');
-      map.setLayoutProperty('PAR',      'visibility', vis(saved.domains.PAR));
-      map.setLayoutProperty('PAR_dash', 'visibility', vis(saved.domains.PAR));
-      map.setLayoutProperty('TCID',     'visibility', vis(saved.domains.TCID));
-      map.setLayoutProperty('TCAD',     'visibility', vis(saved.domains.TCAD));
+      safeSetLayoutVisibility(map, 'PAR', saved.domains.PAR);
+      safeSetLayoutVisibility(map, 'PAR_dash', saved.domains.PAR);
+      safeSetLayoutVisibility(map, 'TCID', saved.domains.TCID);
+      safeSetLayoutVisibility(map, 'TCAD', saved.domains.TCAD);
 
       // Utilities
-      map.setLayoutProperty('graticules',        'visibility', vis(saved.utilities.GRATICULES));
-      map.setLayoutProperty('graticules_blur',   'visibility', vis(saved.utilities.GRATICULES));
-      map.setLayoutProperty('SHIPPING_ZONE_LABELS',  'visibility', vis(saved.utilities.SHIPPING_ZONE));
-      map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', vis(saved.utilities.SHIPPING_ZONE));
+      safeSetLayoutVisibility(map, 'graticules', saved.utilities.GRATICULES);
+      safeSetLayoutVisibility(map, 'graticules_blur', saved.utilities.GRATICULES);
+      safeSetLayoutVisibility(map, 'SHIPPING_ZONE_LABELS', saved.utilities.SHIPPING_ZONE);
+      safeSetLayoutVisibility(map, 'SHIPPING_ZONE_OUTLINE', saved.utilities.SHIPPING_ZONE);
+      if (saved.utilities.CYCLONE_TRACK) {
+        ensureCycloneTrackLayer(map, true).catch(() => {
+          localStorage.setItem(CYCLONE_TRACK_STORAGE_KEY, 'false');
+          setUtilitiesLayers((prev) => ({ ...prev, CYCLONE_TRACK: false }));
+        });
+      } else {
+        setCycloneTrackVisibility(map, false);
+      }
 
       // Satellite
-      map.setLayoutProperty('Satellite', 'visibility', vis(saved.satellite));
+      safeSetLayoutVisibility(map, 'Satellite', saved.satellite);
     };
 
     map.isStyleLoaded() ? apply() : map.once('load', apply);
@@ -82,32 +115,58 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
 
       const map = mapRef.current;
       if (!map) return next;
-      const vis = next[layerId] ? 'visible' : 'none';
       if (layerId === 'PAR') {
-        map.setLayoutProperty('PAR',      'visibility', vis);
-        map.setLayoutProperty('PAR_dash', 'visibility', vis);
+        safeSetLayoutVisibility(map, 'PAR', next[layerId]);
+        safeSetLayoutVisibility(map, 'PAR_dash', next[layerId]);
       } else {
-        map.setLayoutProperty(layerId, 'visibility', vis);
+        safeSetLayoutVisibility(map, layerId, next[layerId]);
       }
       return next;
     });
   };
 
+  const toggleCycloneTrackLayer = async () => {
+    const nextEnabled = !utilitiesLayers.CYCLONE_TRACK;
+    localStorage.setItem(CYCLONE_TRACK_STORAGE_KEY, String(nextEnabled));
+    setUtilitiesLayers((prev) => ({ ...prev, CYCLONE_TRACK: nextEnabled }));
+
+    const map = mapRef.current;
+    if (!map) return;
+
+    try {
+      if (nextEnabled) {
+        await ensureCycloneTrackLayer(map, true);
+      } else {
+        setCycloneTrackVisibility(map, false);
+      }
+    } catch (error) {
+      console.error('[cyclone-track-layer-error]', error);
+      localStorage.setItem(CYCLONE_TRACK_STORAGE_KEY, 'false');
+      setUtilitiesLayers((prev) => ({ ...prev, CYCLONE_TRACK: false }));
+      setCycloneTrackVisibility(map, false);
+      showCycloneTrackError(error?.message || 'Unable to load PAGASA cyclone track.');
+    }
+  };
+
   const toggleUtilityLayer = (layerId) => {
     if (!checkProjectId()) return;
+    if (layerId === CYCLONE_TRACK_STORAGE_KEY) {
+      toggleCycloneTrackLayer();
+      return;
+    }
+
     setUtilitiesLayers((prev) => {
       const next = { ...prev, [layerId]: !prev[layerId] };
       localStorage.setItem(layerId, String(next[layerId]));
 
       const map = mapRef.current;
       if (!map) return next;
-      const vis = next[layerId] ? 'visible' : 'none';
       if (layerId === 'GRATICULES') {
-        map.setLayoutProperty('graticules',      'visibility', vis);
-        map.setLayoutProperty('graticules_blur', 'visibility', vis);
+        safeSetLayoutVisibility(map, 'graticules', next[layerId]);
+        safeSetLayoutVisibility(map, 'graticules_blur', next[layerId]);
       } else if (layerId === 'SHIPPING_ZONE') {
-        map.setLayoutProperty('SHIPPING_ZONE_LABELS',  'visibility', vis);
-        map.setLayoutProperty('SHIPPING_ZONE_OUTLINE', 'visibility', vis);
+        safeSetLayoutVisibility(map, 'SHIPPING_ZONE_LABELS', next[layerId]);
+        safeSetLayoutVisibility(map, 'SHIPPING_ZONE_OUTLINE', next[layerId]);
       }
       return next;
     });
@@ -118,7 +177,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
     setSatelliteLayer((prev) => {
       const next = !prev;
       localStorage.setItem('SATELLITE', String(next));
-      mapRef.current?.setLayoutProperty('Satellite', 'visibility', next ? 'visible' : 'none');
+      safeSetLayoutVisibility(mapRef.current, 'Satellite', next);
       return next;
     });
   };
