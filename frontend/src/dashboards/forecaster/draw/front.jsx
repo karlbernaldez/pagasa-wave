@@ -8,19 +8,19 @@ import { useProjectId } from '@dashboards/forecaster/hooks/useStudio';
 
 const COLORS = { cold: '#1d4ed8', warm: '#ef4444', occluded: '#7c3aed' };
 const FRONT_TYPES = {
-  cold: { label: 'Cold', fullLabel: 'Cold Front', color: COLORS.cold, lineWidth: 4, spacing: 46, icon: Snowflake, symbols: [{ kind: 'triangle', color: COLORS.cold, side: -1 }] },
-  warm: { label: 'Warm', fullLabel: 'Warm Front', color: COLORS.warm, lineWidth: 4, spacing: 46, icon: CloudSun, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }] },
-  stationary: { label: 'Stationary', fullLabel: 'Stationary Front', color: COLORS.cold, lineWidth: 3, spacing: 42, icon: Waves, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }] },
-  occluded: { label: 'Occluded', fullLabel: 'Occluded Front', color: COLORS.occluded, lineWidth: 4, spacing: 42, icon: CheckCircle2, symbols: [{ kind: 'semicircle', color: COLORS.occluded, side: -1 }, { kind: 'triangle', color: COLORS.occluded, side: -1 }] },
+  cold: { label: 'Cold', fullLabel: 'Cold Front', color: COLORS.cold, lineWidth: 2.75, spacing: 40, icon: Snowflake, symbols: [{ kind: 'triangle', color: COLORS.cold, side: -1 }] },
+  warm: { label: 'Warm', fullLabel: 'Warm Front', color: COLORS.warm, lineWidth: 2.75, spacing: 40, icon: CloudSun, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }] },
+  stationary: { label: 'Stationary', fullLabel: 'Stationary Front', color: COLORS.cold, lineWidth: 2.5, spacing: 38, icon: Waves, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }] },
+  occluded: { label: 'Occluded', fullLabel: 'Occluded Front', color: COLORS.occluded, lineWidth: 2.75, spacing: 38, icon: CheckCircle2, symbols: [{ kind: 'semicircle', color: COLORS.occluded, side: -1 }, { kind: 'triangle', color: COLORS.occluded, side: -1 }] },
 };
 
 const PANEL_WIDTH = 430;
 const PANEL_HEIGHT = 146;
 const STORAGE_KEY = 'wavelab-surface-front-panel-position-v1';
 const MIN_POINT_DISTANCE = 3.5;
-const FRONT_SYMBOL_RADIUS = 9;
-const FRONT_TRIANGLE_SIZE = 10;
-const STATIONARY_SEGMENT_LENGTH = 30;
+const FRONT_SYMBOL_RADIUS = 6;
+const FRONT_TRIANGLE_SIZE = 7;
+const STATIONARY_SEGMENT_LENGTH = 26;
 const STATIONARY_SEGMENT_COLORS = [COLORS.warm, COLORS.cold];
 const STATIONARY_SEGMENT_SYMBOLS = [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }];
 
@@ -257,7 +257,7 @@ const FlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
   const previewStyle = FRONT_TYPES[previewFrontType];
   const previewSymbols = previewLine ? (previewFrontType === 'stationary' ? makeStationaryPreviewSymbols(previewLine.points) : makePreviewSymbols(previewLine.points, previewFrontType)) : [];
   const stationarySegments = previewFrontType === 'stationary' && previewLine ? makeStationaryPreviewSegments(previewLine.points) : [];
-  return <><SurfaceFrontPanel frontType={frontType} setFrontType={setFrontType} isDarkMode={isDarkMode} /><Stage width={stageBounds.width} height={stageBounds.height} onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} style={{ position: 'fixed', top: stageBounds.top, left: stageBounds.left, width: stageBounds.width, height: stageBounds.height, zIndex: 10, pointerEvents: 'auto' }}><Layer>{previewFrontType === 'stationary' ? stationarySegments.map((segment) => <Line key={segment.id} points={segment.points} stroke={segment.color} strokeWidth={previewStyle.lineWidth} tension={0.45} lineCap="butt" lineJoin="round" />) : lines.map((line, i) => { const style = FRONT_TYPES[normalizeFrontType(line.frontType)]; return <Line key={i} points={line.points} stroke={style.color} strokeWidth={style.lineWidth} dash={style.dash || []} tension={0.45} lineCap="round" lineJoin="round" />; })}{previewSymbols.map((symbol) => symbol.kind === 'triangle' ? <RegularPolygon key={symbol.id} x={symbol.x} y={symbol.y} sides={3} radius={10} fill={symbol.color} rotation={symbol.rotation} /> : <Wedge key={symbol.id} x={symbol.x} y={symbol.y} radius={9} angle={180} fill={symbol.color} rotation={symbol.rotation + (symbol.side < 0 ? 180 : 0)} />)}</Layer></Stage></>;
+  return <><SurfaceFrontPanel frontType={frontType} setFrontType={setFrontType} isDarkMode={isDarkMode} /><Stage width={stageBounds.width} height={stageBounds.height} onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} style={{ position: 'fixed', top: stageBounds.top, left: stageBounds.left, width: stageBounds.width, height: stageBounds.height, zIndex: 10, pointerEvents: 'auto' }}><Layer>{previewFrontType === 'stationary' ? stationarySegments.map((segment) => <Line key={segment.id} points={segment.points} stroke={segment.color} strokeWidth={previewStyle.lineWidth} tension={0.45} lineCap="butt" lineJoin="round" />) : lines.map((line, i) => { const style = FRONT_TYPES[normalizeFrontType(line.frontType)]; return <Line key={i} points={line.points} stroke={style.color} strokeWidth={style.lineWidth} dash={style.dash || []} tension={0.45} lineCap="round" lineJoin="round" />; })}{previewSymbols.map((symbol) => symbol.kind === 'triangle' ? <RegularPolygon key={symbol.id} x={symbol.x} y={symbol.y} sides={3} radius={7} fill={symbol.color} rotation={symbol.rotation} /> : <Wedge key={symbol.id} x={symbol.x} y={symbol.y} radius={6} angle={180} fill={symbol.color} rotation={symbol.rotation + (symbol.side < 0 ? 180 : 0)} />)}</Layer></Stage></>;
 };
 
 export default FlagCanvas;
