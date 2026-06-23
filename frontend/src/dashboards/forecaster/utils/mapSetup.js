@@ -11,18 +11,18 @@ const MARKER_TYPES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'tex
 const WIND_BARB_IMAGES = ['0kts', '5kts', '10kts', '15kts', '20kts', '25kts', '30kts'];
 const WAVE_HEIGHT_THRESHOLD = 2;
 const COLORS = { cold: '#1d4ed8', warm: '#ef4444', occluded: '#7c3aed' };
-const FRONT_SYMBOL_RADIUS = 9;
-const FRONT_TRIANGLE_SIZE = 10;
-const STATIONARY_SEGMENT_LENGTH = 30;
+const FRONT_SYMBOL_RADIUS = 6;
+const FRONT_TRIANGLE_SIZE = 7;
+const STATIONARY_SEGMENT_LENGTH = 26;
 const STATIONARY_SEGMENT_COLORS = [COLORS.warm, COLORS.cold];
 const STATIONARY_SEGMENT_SYMBOLS = [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }];
 const renderedAnnotationIds = new Set();
 const LAYER_VISIBILITY_CONFIG = [{ key: 'PAR', ids: ['PAR', 'PAR_dash'] }, { key: 'SATELLITE', ids: ['Satellite'] }, { key: 'TCID', ids: ['TCID'] }, { key: 'TCAD', ids: ['TCAD'] }, { key: 'SHIPPING_ZONE', ids: ['SHIPPING_ZONE_OUTLINE', 'SHIPPING_ZONE_LABELS'] }, { key: 'GRATICULES', ids: ['graticules', 'graticules_blur'] }];
 const FRONT_STYLES = {
-  cold: { color: COLORS.cold, lineWidth: 3.5, spacing: 46, symbols: [{ kind: 'triangle', color: COLORS.cold, side: -1 }] },
-  warm: { color: COLORS.warm, lineWidth: 3.5, spacing: 46, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }] },
-  stationary: { color: COLORS.cold, lineWidth: 3, spacing: 42, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }] },
-  occluded: { color: COLORS.occluded, lineWidth: 3.5, spacing: 42, symbols: [{ kind: 'semicircle', color: COLORS.occluded, side: -1 }, { kind: 'triangle', color: COLORS.occluded, side: -1 }] },
+  cold: { color: COLORS.cold, lineWidth: 2.5, spacing: 40, symbols: [{ kind: 'triangle', color: COLORS.cold, side: -1 }] },
+  warm: { color: COLORS.warm, lineWidth: 2.5, spacing: 40, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }] },
+  stationary: { color: COLORS.cold, lineWidth: 2.25, spacing: 38, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }] },
+  occluded: { color: COLORS.occluded, lineWidth: 2.5, spacing: 38, symbols: [{ kind: 'semicircle', color: COLORS.occluded, side: -1 }, { kind: 'triangle', color: COLORS.occluded, side: -1 }] },
 };
 function getIdString(value) { if (!value) return ''; if (typeof value === 'string') return value; if (typeof value === 'number') return String(value); if (value._id) return String(value._id); if (value.id) return String(value.id); if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString()); return ''; }
 function getAnnotationSourceId(feature) { const props = feature?.properties || {}; return getIdString(feature?.sourceId || props.sourceId || props.stableId || props.annotationId || feature?._id); }
