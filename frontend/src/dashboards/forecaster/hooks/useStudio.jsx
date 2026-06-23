@@ -7,6 +7,7 @@ import { fetchProjectById } from "@/api/projectAPI";
 import socket from "@/socket/socketClient";
 
 const INACTIVITY_TIMEOUT = 640000;
+const FORECAST_REFRESH_DEBOUNCE_MS = 350;
 const FORECAST_CHART_UPDATED_EVENT = "forecast-chart:updated";
 export const FORECAST_CHART_BROWSER_EVENT = "wavelab:forecast-chart-updated";
 
@@ -129,13 +130,39 @@ export const useMarkerModal = () => {
 };
 
 export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLayers, mapRef, cleanupRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, selectedToolRef, setCapturedImages, setIsLoading) => {
+  const refreshTimerRef = useRef(null);
+  const refreshInFlightRef = useRef(false);
+  const queuedRefreshRef = useRef(false);
+
   const applyFeaturesToMap = useCallback(async () => {
     const map = mapRef.current;
     if (!map || !projectId) return;
-    const filteredFeatures = await setupFeaturesAndLayers();
-    cleanupRef.current?.();
-    cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features: filteredFeatures }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
+    if (refreshInFlightRef.current) {
+      queuedRefreshRef.current = true;
+      return;
+    }
+
+    refreshInFlightRef.current = true;
+    try {
+      const filteredFeatures = await setupFeaturesAndLayers();
+      cleanupRef.current?.();
+      cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features: filteredFeatures }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
+    } finally {
+      refreshInFlightRef.current = false;
+      if (queuedRefreshRef.current) {
+        queuedRefreshRef.current = false;
+        window.setTimeout(applyFeaturesToMap, FORECAST_REFRESH_DEBOUNCE_MS);
+      }
+    }
   }, [cleanupRef, isDarkMode, logger, mapRef, projectId, selectedToolRef, setCapturedImages, setDrawInstance, setIsLoading, setLineCount, setMapLoaded, setSelectedPoint, setShowTitleModal, setupFeaturesAndLayers]);
+
+  const scheduleFeatureRefresh = useCallback(() => {
+    if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = window.setTimeout(() => {
+      refreshTimerRef.current = null;
+      applyFeaturesToMap();
+    }, FORECAST_REFRESH_DEBOUNCE_MS);
+  }, [applyFeaturesToMap]);
 
   useEffect(() => {
     if (!projectId) return undefined;
@@ -143,17 +170,16 @@ export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLaye
     socket.emit("forecast:join_project", projectId);
     const handleForecastChartUpdate = (payload = {}) => {
       if (String(payload.projectId || "") !== String(projectId)) return;
-      applyFeaturesToMap();
-      window.dispatchEvent(new CustomEvent(FORECAST_CHART_BROWSER_EVENT, { detail: payload }));
-    };
-    const handleBrowserChartUpdate = (event) => {
-      if (String(event.detail?.projectId || "") !== String(projectId)) return;
-      applyFeaturesToMap();
+      scheduleFeatureRefresh();
+      window.dispatchEvent(new CustomEvent(FORECAST_CHART_BROWSER_EVENT, { detail: { ...payload, source: "socket" } }));
     };
     socket.on(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate);
-    window.addEventListener(FORECAST_CHART_BROWSER_EVENT, handleBrowserChartUpdate);
-    return () => { socket.emit("forecast:leave_project", projectId); socket.off(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate); window.removeEventListener(FORECAST_CHART_BROWSER_EVENT, handleBrowserChartUpdate); };
-  }, [applyFeaturesToMap, projectId]);
+    return () => {
+      if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
+      socket.emit("forecast:leave_project", projectId);
+      socket.off(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate);
+    };
+  }, [projectId, scheduleFeatureRefresh]);
 
   const handleMapLoad = useCallback(async (map) => {
     mapRef.current = map;
