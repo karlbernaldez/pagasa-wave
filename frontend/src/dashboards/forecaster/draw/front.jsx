@@ -55,10 +55,10 @@ const createFrontIconCanvas = (frontType) => {
   return canvas;
 };
 function ensureSurfaceFrontImages(map) { if (typeof document === 'undefined' || !map?.addImage) return; Object.entries(FRONT_TYPES).forEach(([type, style]) => { if (map.hasImage?.(style.imageId)) return; map.addImage(style.imageId, createFrontIconCanvas(type), { pixelRatio: 2 }); }); }
-function addFrontLineLayer(map, layerId, sourceId, style, beforeLayer, secondary = false) {
+function addFrontLineLayer(map, layerId, sourceId, style, secondary = false) {
   const dash = secondary ? style.secondaryDash : style.dash;
   if (map.getLayer(layerId)) return;
-  map.addLayer({ id: layerId, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': secondary ? style.secondaryColor : style.color, 'line-width': style.lineWidth, 'line-opacity': 0.9, ...(dash ? { 'line-dasharray': dash } : {}) } }, beforeLayer);
+  map.addLayer({ id: layerId, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': secondary ? style.secondaryColor : style.color, 'line-width': style.lineWidth, 'line-opacity': 0.9, ...(dash ? { 'line-dasharray': dash } : {}) } });
 }
 function removeFrontLayers(map, sourceId) {
   [`${sourceId}_bg`, `${sourceId}_secondary`, `${sourceId}_frontSymbols`, `${sourceId}_triangles`, `${sourceId}_circles`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
@@ -66,14 +66,13 @@ function removeFrontLayers(map, sourceId) {
 function renderFrontLayers(map, sourceId, geojson, frontType) {
   const frozenFrontType = normalizeFrontType(frontType);
   const style = FRONT_TYPES[frozenFrontType];
-  const beforeLayer = map.getLayer('custom-points-layer') ? 'custom-points-layer' : undefined;
   removeFrontLayers(map, sourceId);
   if (map.getSource(sourceId)) map.getSource(sourceId).setData(geojson); else map.addSource(sourceId, { type: 'geojson', data: geojson });
   ensureSurfaceFrontImages(map);
-  addFrontLineLayer(map, `${sourceId}_bg`, sourceId, style, beforeLayer, false);
-  if (style.secondaryColor) addFrontLineLayer(map, `${sourceId}_secondary`, sourceId, style, beforeLayer, true);
+  addFrontLineLayer(map, `${sourceId}_bg`, sourceId, style, false);
+  if (style.secondaryColor) addFrontLineLayer(map, `${sourceId}_secondary`, sourceId, style, true);
   if (map.hasImage?.(style.imageId) && !map.getLayer(`${sourceId}_frontSymbols`)) {
-    map.addLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, slot: 'top', layout: { 'symbol-placement': 'line', 'symbol-spacing': frozenFrontType === 'occluded' ? 58 : 34, 'icon-image': style.imageId, 'icon-size': 0.88, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } }, beforeLayer);
+    map.addLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, slot: 'top', layout: { 'symbol-placement': 'line', 'symbol-spacing': frozenFrontType === 'occluded' ? 58 : 34, 'icon-image': style.imageId, 'icon-size': 0.88, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
   }
 }
 function makePreviewSymbols(points, frontType) {
