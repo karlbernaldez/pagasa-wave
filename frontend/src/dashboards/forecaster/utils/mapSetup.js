@@ -102,7 +102,10 @@ class LineRenderer {
         if (this.map.getSource(id)) this.map.getSource(id).setData(data.data || data);
         else this.map.addSource(id, data);
       });
-      layers.forEach(layer => { if (!this.map.getLayer(layer.id)) this.map.addLayer(layer); });
+      layers.forEach(layer => {
+        if (!this.map.getLayer(layer.id)) this.map.addLayer(layer);
+        if (this.map.getLayer(layer.id)) this.map.setLayoutProperty(layer.id, 'visibility', 'visible');
+      });
     });
   }
   prepareNonFrontLine(feature) {
@@ -110,10 +113,12 @@ class LineRenderer {
     const sources = [];
     const layers = [];
     const geojsonFeature = { type: 'Feature', geometry: feature.geometry, properties: feature.properties || {}, id: feature._id };
-    const waveHeight = feature.properties?.labelValue || 0;
+    const waveHeight = Number(feature.properties?.labelValue || 0);
     const isDashed = waveHeight < WAVE_HEIGHT_THRESHOLD;
+    const linePaint = { 'line-color': this.lineColor, 'line-opacity': 0.6, 'line-width': 3, 'line-blur': 0.3 };
+    if (isDashed) linePaint['line-dasharray'] = [0.5, 0.5];
     sources.push({ id: sourceId, data: { type: 'geojson', data: geojsonFeature } });
-    layers.push({ id: sourceId, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': this.lineColor, 'line-opacity': 0.6, 'line-width': 3, 'line-dasharray': isDashed ? [0.5, 0.5] : [], 'line-blur': 0.3 }, filter: ['==', '$type', 'LineString'] });
+    layers.push({ id: sourceId, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: linePaint, filter: ['==', '$type', 'LineString'] });
     const labelData = this.prepareLabelData(feature, sourceId);
     sources.push(...labelData.sources);
     layers.push(...labelData.layers);
@@ -132,7 +137,7 @@ class LineRenderer {
       const labelSourceId = `${sourceId}-${i}`;
       const labelLayerId = `${sourceId}-${i}`;
       sources.push({ id: labelSourceId, data: { type: 'geojson', data: { type: 'FeatureCollection', features: [{ type: 'Feature', id: `${feature._id}-${i}`, geometry: { type: 'Point', coordinates: coord }, properties: { text: labelValue } }] } } });
-      layers.push({ id: labelLayerId, type: 'symbol', source: labelSourceId, slot: 'top', layout: { 'text-field': ['get', 'text'], 'text-size': 18, 'text-anchor': 'bottom', 'text-offset': [0, 0.5] }, paint: { 'text-color': this.textColor, 'text-halo-width': 2, 'text-halo-color': this.isDarkMode ? '#19b8b7' : '#ffffff' } });
+      layers.push({ id: labelLayerId, type: 'symbol', source: labelSourceId, slot: 'top', layout: { 'text-field': ['get', 'text'], 'text-size': 18, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], visibility: 'visible' }, paint: { 'text-color': this.textColor, 'text-halo-width': 2, 'text-halo-color': this.isDarkMode ? '#19b8b7' : '#ffffff' } });
     });
     return { sources, layers };
   }
@@ -144,8 +149,10 @@ class LineRenderer {
       const data = { type: 'FeatureCollection', features: [feature] };
       if (this.map.getSource(sourceId)) this.map.getSource(sourceId).setData(data);
       else this.map.addSource(sourceId, { type: 'geojson', data });
-      if (!this.map.getLayer(bgLayerId)) this.map.addLayer({ id: bgLayerId, type: 'line', source: sourceId, slot: 'top', paint: { 'line-color': '#0000FF', 'line-width': 6, 'line-opacity': 0.8 } });
-      if (!this.map.getLayer(dashLayerId)) this.map.addLayer({ id: dashLayerId, type: 'line', source: sourceId, slot: 'top', paint: { 'line-color': '#FF0000', 'line-width': 6, 'line-dasharray': [0, 4, 3] } });
+      if (!this.map.getLayer(bgLayerId)) this.map.addLayer({ id: bgLayerId, type: 'line', source: sourceId, slot: 'top', layout: { visibility: 'visible' }, paint: { 'line-color': '#0000FF', 'line-width': 6, 'line-opacity': 0.8 } });
+      if (!this.map.getLayer(dashLayerId)) this.map.addLayer({ id: dashLayerId, type: 'line', source: sourceId, slot: 'top', layout: { visibility: 'visible' }, paint: { 'line-color': '#FF0000', 'line-width': 6, 'line-dasharray': [0, 4, 3] } });
+      if (this.map.getLayer(bgLayerId)) this.map.setLayoutProperty(bgLayerId, 'visibility', 'visible');
+      if (this.map.getLayer(dashLayerId)) this.map.setLayoutProperty(dashLayerId, 'visibility', 'visible');
     });
   }
 }
