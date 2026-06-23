@@ -90,14 +90,15 @@ const TrayButton = ({ active, activeClassName, disabled = false, icon, label, on
   </button>
 );
 
-const IconButton = ({ children, label, onClick, theme }) => (
+const IconButton = ({ children, disabled = false, label, onClick, theme }) => (
   <button
     type="button"
     aria-label={label}
     title={label}
     onPointerDown={(event) => event.stopPropagation()}
-    onClick={onClick}
-    className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-colors', theme.button)}
+    onClick={disabled ? undefined : onClick}
+    disabled={disabled}
+    className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-colors', disabled ? theme.disabled : theme.button)}
   >
     {children}
   </button>
@@ -123,18 +124,31 @@ const FloatingShell = ({ children, isDragging, position, width, theme }) => (
 );
 
 const DrawToolbar = ({
-  draw, onToggleCanvas, onToggleFlagCanvas,
-  isCanvasActive, isDarkMode,
-  setLayersRef, setLayers,
-  closedMode, setClosedMode,
-  setType, selectedToolRef,
+  draw,
+  drawInstance,
+  onToggleCanvas,
+  onToggleFlagCanvas,
+  toggleCanvas,
+  toggleFlagCanvas,
+  isCanvasActive,
+  isDarkMode,
+  setLayersRef,
+  setLayers,
+  closedMode,
+  setClosedMode,
+  setType,
+  selectedToolRef,
   projectId,
+  disabled = false,
 }) => {
   const theme = getTheme(isDarkMode);
   const dragRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState(() => getDefaultPosition(false));
   const positionRef = useRef(position);
+  const effectiveDraw = draw || drawInstance;
+  const effectiveToggleCanvas = onToggleCanvas || toggleCanvas;
+  const effectiveToggleFlagCanvas = onToggleFlagCanvas || toggleFlagCanvas;
 
   const {
     isDrawing, isFlagDrawing, isCollapsed, selectedToolType,
@@ -144,7 +158,16 @@ const DrawToolbar = ({
     handleToggleDrawing, handleToggleFlagDrawing,
     handleSelectLess1, handleSelectTextNote, handleToggleCollapse,
     setPendingMapClick,
-  } = useDrawToolbar({ draw, setLayersRef, setLayers, setType, selectedToolRef, onToggleCanvas, onToggleFlagCanvas, projectId });
+  } = useDrawToolbar({
+    draw: effectiveDraw,
+    setLayersRef,
+    setLayers,
+    setType,
+    selectedToolRef,
+    onToggleCanvas: effectiveToggleCanvas,
+    onToggleFlagCanvas: effectiveToggleFlagCanvas,
+    projectId,
+  });
 
   const waveActive = isCanvasActive || isDrawing;
   const dockWidth = getDockWidth(isCollapsed);
@@ -277,6 +300,7 @@ const DrawToolbar = ({
             <TrayButton
               label="Text"
               active={selectedToolType === 'text_note'}
+              disabled={disabled}
               onClick={handleSelectTextNote}
               theme={theme}
               icon={<Type size={16} aria-hidden="true" />}
@@ -284,6 +308,7 @@ const DrawToolbar = ({
             <TrayButton
               label="Low Wave"
               active={selectedToolType === 'less_1'}
+              disabled={disabled}
               onClick={handleSelectLess1}
               theme={theme}
               icon={<img src={l1} alt="" className="h-5 w-5 object-contain" aria-hidden="true" />}
@@ -294,6 +319,7 @@ const DrawToolbar = ({
             <TrayButton
               label={waveActive ? 'Stop Wave' : 'Wave'}
               active={waveActive}
+              disabled={disabled}
               onClick={handleToggleDrawing}
               theme={theme}
               icon={waveActive ? <X size={16} aria-hidden="true" /> : <Waves size={16} aria-hidden="true" />}
@@ -301,6 +327,7 @@ const DrawToolbar = ({
             <TrayButton
               label={isFlagDrawing ? 'Stop Flag' : 'Flag'}
               active={isFlagDrawing}
+              disabled={disabled}
               onClick={handleToggleFlagDrawing}
               theme={theme}
               icon={<Flag size={16} aria-hidden="true" />}
@@ -311,7 +338,7 @@ const DrawToolbar = ({
             <TrayButton
               label="Open"
               active={waveActive && !closedMode}
-              disabled={!waveActive}
+              disabled={disabled || !waveActive}
               onClick={() => setClosedMode(false)}
               theme={theme}
               icon={<Waves size={16} aria-hidden="true" />}
@@ -320,7 +347,7 @@ const DrawToolbar = ({
               label="Loop"
               active={waveActive && closedMode}
               activeClassName={theme.activeClosed}
-              disabled={!waveActive}
+              disabled={disabled || !waveActive}
               onClick={() => setClosedMode(true)}
               theme={theme}
               icon={<CheckCircle2 size={16} aria-hidden="true" />}
