@@ -33,6 +33,18 @@ const getValidCoordinates = (geometry) => {
   return coords;
 };
 
+const waitForMapStyle = (map) => new Promise((resolve) => {
+  if (!map || map.isStyleLoaded?.()) {
+    resolve();
+    return;
+  }
+
+  const done = () => resolve();
+  map.once?.('style.load', done);
+  map.once?.('load', done);
+  window.setTimeout(done, 750);
+});
+
 function finishMapSetup({ setLoading, setMapLoaded, logger }) {
   setLoading?.(false);
   setMapLoaded?.(true);
@@ -157,6 +169,27 @@ class LineRenderer {
   }
 }
 
+export async function syncAnnotationFeaturesToMap(map, features = [], { mapRef, isDarkMode = false } = {}) {
+  if (!map) return;
+  await waitForMapStyle(map);
+
+  const featuresArray = Array.isArray(features) ? features : features?.features || [];
+  if (!featuresArray.length) return;
+
+  const theme = { lineColor: isDarkMode ? '#ffffff' : '#000000', textColor: isDarkMode ? '#ffffff' : '#000000', isDarkMode };
+  const classifier = new FeatureClassifier();
+  const { markerPoints, frontLines, nonFrontLines } = classifier.classify(featuresArray);
+
+  if (mapRef) {
+    const markerRenderer = new MarkerRenderer(mapRef);
+    markerRenderer.renderAll(markerPoints);
+  }
+
+  const lineRenderer = new LineRenderer(map, theme);
+  lineRenderer.renderNonFrontLines(nonFrontLines);
+  lineRenderer.renderFrontLines(frontLines);
+}
+
 class ImageLoader {
   constructor(map) { this.map = map; this.loadedImages = new Set(); }
   async loadAll() {
@@ -199,7 +232,6 @@ export async function setupMap({
   };
 
   try {
-    const theme = { lineColor: isDarkMode ? '#ffffff' : '#000000', textColor: isDarkMode ? '#ffffff' : '#000000', isDarkMode };
     const draw = initDrawControl(map);
     window.drawInstance = draw;
     setDrawInstance(draw);
@@ -214,13 +246,9 @@ export async function setupMap({
     const sourceIds = featuresArray.map(f => f.sourceId || f.properties?.sourceId).filter(Boolean);
     setGlobalSourceIds(sourceIds);
     const classifier = new FeatureClassifier();
-    const { markerPoints, frontLines, nonFrontLines, totalLineCount } = classifier.classify(featuresArray);
+    const { totalLineCount } = classifier.classify(featuresArray);
     setLineCount?.(totalLineCount);
-    const markerRenderer = new MarkerRenderer(mapRef);
-    markerRenderer.renderAll(markerPoints);
-    const lineRenderer = new LineRenderer(map, theme);
-    lineRenderer.renderNonFrontLines(nonFrontLines);
-    lineRenderer.renderFrontLines(frontLines);
+    await syncAnnotationFeaturesToMap(map, featuresArray, { mapRef, isDarkMode });
     const visibilityManager = new LayerVisibilityManager(map);
     visibilityManager.applyFromLocalStorage();
     const handleDrawCreate = (e) => {
