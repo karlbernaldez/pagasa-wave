@@ -4,7 +4,7 @@ import { useLayerStyle } from './hooks/useLayerStyle';
 import { updateLayerName } from '@dashboards/forecaster/utils/layers';
 import { SymbolStyleControls } from './StylePanel/SymbolStyleControls';
 import { WaveHeightStyleControls } from './StylePanel/WaveHeightStyleControls';
-
+import { FrontStyleControls } from './StylePanel/FrontStyleControls';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 export const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -24,6 +24,18 @@ const INNER_SURFACE = (isDarkMode) =>
         ? 'border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
         : 'border-white/80 bg-white/[0.52] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]';
 
+const getSourceId = (layerInfo) => layerInfo?.sourceID || layerInfo?.sourceId || layerInfo?.source || layerInfo?.id;
+const getGeoJsonSourceData = (source) => source?._data || source?.serialize?.()?.data || null;
+const isFrontLayer = (layerInfo) => {
+    const sourceId = getSourceId(layerInfo);
+    const label = `${layerInfo?.type || ''} ${layerInfo?.name || ''}`.toLowerCase();
+    return Boolean(layerInfo?.properties?.isFront || layerInfo?.isFront || sourceId?.startsWith?.('SF_') || label.includes('front'));
+};
+
+function findLayerIdByType(map, ids, type) {
+    return ids.find((id) => map?.getLayer(id)?.type === type);
+}
+
 // ── Read live style from Mapbox ───────────────────────────────────────────────
 function readCurrentStyle(map, layerInfo, mapboxLayerIds) {
     if (!map || !layerInfo || !mapboxLayerIds?.length) return {};
@@ -34,6 +46,23 @@ function readCurrentStyle(map, layerInfo, mapboxLayerIds) {
     const paint = (id, prop) => safeGet(() => map.getPaintProperty(id, prop));
     const layout = (id, prop) => safeGet(() => map.getLayoutProperty(id, prop));
     const { type } = layerInfo;
+
+    if (isFrontLayer(layerInfo)) {
+        const lineId = findLayerIdByType(map, mapboxLayerIds, 'line');
+        const symbolId = findLayerIdByType(map, mapboxLayerIds, 'fill');
+        const sourceData = getGeoJsonSourceData(map.getSource(getSourceId(layerInfo)));
+
+        return {
+            lineWidth: lineId ? (paint(lineId, 'line-width') ?? 2.75) : 2.75,
+            lineOpacity: lineId ? (paint(lineId, 'line-opacity') ?? 1) : 1,
+            symbolOpacity: symbolId ? (paint(symbolId, 'fill-opacity') ?? 1) : 1,
+            frontSymbolSide:
+                layerInfo.frontSymbolSide ||
+                layerInfo.properties?.frontSymbolSide ||
+                sourceData?.features?.[0]?.properties?.frontSymbolSide ||
+                'normal',
+        };
+    }
 
     switch (true) {
         case SYMBOL_LAYER_TYPES.has(type):
@@ -66,8 +95,25 @@ function readCurrentStyle(map, layerInfo, mapboxLayerIds) {
             };
         }
 
-        default:
+        default: {
+            const mapLayer = map.getLayer(lid);
+            if (mapLayer?.type === 'line') {
+                return {
+                    lineColor: paint(lid, 'line-color') ?? '#2563eb',
+                    lineWidth: paint(lid, 'line-width') ?? 3,
+                    lineOpacity: paint(lid, 'line-opacity') ?? 1,
+                };
+            }
+
+            if (mapLayer?.type === 'fill') {
+                return {
+                    fillColor: paint(lid, 'fill-color') ?? '#2563eb',
+                    fillOpacity: paint(lid, 'fill-opacity') ?? 0.25,
+                };
+            }
+
             return {};
+        }
     }
 }
 
@@ -80,6 +126,10 @@ const TYPE_META = {
     less_1: { label: 'Less Than 1m', color: 'from-emerald-500 to-teal-600' },
     text_note: { label: 'Text Label', color: 'from-amber-500 to-yellow-600' },
     'Wave Height': { label: 'Wave Height', color: 'from-teal-500 to-cyan-600' },
+    'Cold Front': { label: 'Surface Front', color: 'from-blue-500 to-cyan-600' },
+    'Warm Front': { label: 'Surface Front', color: 'from-red-500 to-rose-600' },
+    'Stationary Front': { label: 'Surface Front', color: 'from-indigo-500 to-red-500' },
+    'Occluded Front': { label: 'Surface Front', color: 'from-violet-500 to-purple-600' },
 };
 
 // ── Primitive components ──────────────────────────────────────────────────────
@@ -239,6 +289,36 @@ export function PropToggle({ label, value, onChange, isDarkMode }) {
     );
 }
 
+function GenericMapboxStyleControls({ layerIds, style, onChange, setPaint, isDarkMode, tab = 'symbol', mapRef }) {
+    const map = mapRef?.current;
+    const lineId = layerIds.find((id) => map?.getLayer(id)?.type === 'line');
+    const fillId = layerIds.find((id) => map?.getLayer(id)?.type === 'fill');
+    const p = (ids, key, prop, val) => { onChange({ ...style, [key]: val }); setPaint(ids.filter(Boolean), prop, val); };
+
+    if (tab === 'label') return null;
+
+    if (fillId) {
+        return (
+            <Section title="Fill" isDarkMode={isDarkMode} compact>
+                <PropColor label="Fill color" value={style.fillColor ?? '#2563eb'} onChange={(v) => p([fillId], 'fillColor', 'fill-color', v)} isDarkMode={isDarkMode} />
+                <PropSlider label="Fill opacity" min={0} max={1} step={0.01} value={style.fillOpacity ?? 0.25} display={`${Math.round((style.fillOpacity ?? 0.25) * 100)}%`} onChange={(v) => p([fillId], 'fillOpacity', 'fill-opacity', v)} isDarkMode={isDarkMode} />
+            </Section>
+        );
+    }
+
+    if (lineId) {
+        return (
+            <Section title="Line" isDarkMode={isDarkMode} compact>
+                <PropColor label="Line color" value={style.lineColor ?? '#2563eb'} onChange={(v) => p([lineId], 'lineColor', 'line-color', v)} isDarkMode={isDarkMode} />
+                <PropSlider label="Line width" min={0.5} max={12} step={0.25} value={style.lineWidth ?? 3} display={`${style.lineWidth ?? 3}px`} onChange={(v) => p([lineId], 'lineWidth', 'line-width', v)} isDarkMode={isDarkMode} />
+                <PropSlider label="Line opacity" min={0} max={1} step={0.01} value={style.lineOpacity ?? 1} display={`${Math.round((style.lineOpacity ?? 1) * 100)}%`} onChange={(v) => p([lineId], 'lineOpacity', 'line-opacity', v)} isDarkMode={isDarkMode} />
+            </Section>
+        );
+    }
+
+    return null;
+}
+
 // ── Internal layout components ────────────────────────────────────────────────
 function PanelHeader({ isDarkMode, dragHandleProps }) {
     return (
@@ -291,10 +371,13 @@ function EmptyPanel({ isDarkMode, panelClassName, panelStyle, dragHandleProps })
     );
 }
 
-
 // ── Control renderer ──────────────────────────────────────────────────────────
 function renderControls(layerInfo, sharedProps, styleTab) {
     const { type } = layerInfo;
+
+    if (isFrontLayer(layerInfo)) {
+        return <FrontStyleControls {...sharedProps} tab={styleTab} />;
+    }
 
     if (SYMBOL_LAYER_TYPES.has(type)) {
         return <SymbolStyleControls {...sharedProps} tab={styleTab} />;
@@ -304,7 +387,7 @@ function renderControls(layerInfo, sharedProps, styleTab) {
         return <WaveHeightStyleControls {...sharedProps} tab={styleTab} />;
     }
 
-    return null;
+    return <GenericMapboxStyleControls {...sharedProps} tab={styleTab} />;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -333,7 +416,8 @@ export function LayerStylePanel({
     const layerInfo = layers.find((l) => l.id === activeLayerId) ?? null;
 
     useEffect(() => {
-        setStyleTab(layerInfo?.type === 'text_note' ? 'label' : 'symbol');
+        if (isFrontLayer(layerInfo)) setStyleTab('symbol');
+        else setStyleTab(layerInfo?.type === 'text_note' ? 'label' : 'symbol');
         if (!layerInfo || !activeMapboxLayerIds?.length) { setStyle({}); return; }
         setStyle(readCurrentStyle(map, layerInfo, activeMapboxLayerIds));
         setIsEditingName(false);
@@ -342,7 +426,7 @@ export function LayerStylePanel({
 
     if (!layerInfo) return <EmptyPanel isDarkMode={isDarkMode} panelClassName={panelClassName} panelStyle={panelStyle} dragHandleProps={dragHandleProps} />;
 
-    const meta = TYPE_META[layerInfo.type] ?? TYPE_META.symbol;
+    const meta = isFrontLayer(layerInfo) ? { label: 'Surface Front', color: 'from-blue-500 to-cyan-600' } : TYPE_META[layerInfo.type] ?? TYPE_META.symbol;
     const styleTabs = layerInfo.type === 'Wave Height'
         ? [
             { key: 'symbol', label: 'Line' },
@@ -354,18 +438,27 @@ export function LayerStylePanel({
                 { key: 'label', label: 'Text' },
                 { key: 'layer', label: 'Layer' },
             ]
-        : [
-            { key: 'symbol', label: 'Symbol' },
-            { key: 'label', label: 'Label' },
-            { key: 'layer', label: 'Layer' },
-        ];
+            : isFrontLayer(layerInfo)
+                ? [
+                    { key: 'symbol', label: 'Front' },
+                    { key: 'label', label: 'Glyphs' },
+                    { key: 'layer', label: 'Layer' },
+                ]
+                : [
+                    { key: 'symbol', label: 'Symbol' },
+                    { key: 'label', label: 'Label' },
+                    { key: 'layer', label: 'Layer' },
+                ];
 
     const sharedProps = {
         layerIds: activeMapboxLayerIds,
+        layerInfo,
         style,
         onChange: setStyle,
         setPaint,
         setLayout,
+        setLayers,
+        mapRef,
         isDarkMode,
     };
 
