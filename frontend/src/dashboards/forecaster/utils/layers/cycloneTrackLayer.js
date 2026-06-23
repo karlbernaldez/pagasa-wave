@@ -62,6 +62,11 @@ function getCompactTrackLabel(cycloneType) {
   return 'T';
 }
 
+function getPointTimeLabel(date = '', time = '') {
+  const monthDay = String(date).length >= 10 ? String(date).slice(5) : String(date);
+  return `${monthDay}\n${time}`.trim();
+}
+
 function getKmPerDegree(centerLat) {
   const latRadians = centerLat * Math.PI / 180;
   return {
@@ -100,19 +105,6 @@ function buildConePoint(point, previous, next) {
   };
 }
 
-function buildCap(center, radiusKm, startAngle, endAngle, steps = 18) {
-  const coordinates = [];
-  let delta = endAngle - startAngle;
-  if (delta < 0) delta += Math.PI * 2;
-
-  for (let i = 0; i <= steps; i += 1) {
-    const angle = startAngle + (delta * i) / steps;
-    coordinates.push(offsetCoordinate(center, Math.cos(angle), Math.sin(angle), radiusKm));
-  }
-
-  return coordinates;
-}
-
 function buildForecastConePolygon(points) {
   const forecastPoints = points.filter((point) => point.radius > 0);
   if (forecastPoints.length < 2) return null;
@@ -127,15 +119,9 @@ function buildForecastConePolygon(points) {
   const last = conePoints[conePoints.length - 1];
   const left = conePoints.map((point) => point.left);
   const right = conePoints.map((point) => point.right);
-
-  const lastLeftAngle = Math.atan2(last.ny, last.nx);
-  const lastRightAngle = Math.atan2(-last.ny, -last.nx);
-  const firstRightAngle = Math.atan2(-first.ny, -first.nx);
-  const firstLeftAngle = Math.atan2(first.ny, first.nx);
-
-  const endCap = buildCap(last.coordinate, last.radius, lastLeftAngle, lastRightAngle);
-  const startCap = buildCap(first.coordinate, first.radius, firstRightAngle, firstLeftAngle);
-  const ring = left.concat(endCap.slice(1), right.reverse().slice(1), startCap.slice(1), [left[0]]);
+  const startTip = offsetCoordinate(first.coordinate, -first.ux, -first.uy, Math.max(18, first.radius * 0.9));
+  const endTip = offsetCoordinate(last.coordinate, last.ux, last.uy, Math.max(18, last.radius * 0.9));
+  const ring = left.concat([endTip], right.reverse(), [startTip], [left[0]]);
 
   return [ring];
 }
@@ -194,13 +180,13 @@ function normalizeCycloneTrack(payload) {
           time: point.time,
           timestamp: point.timestamp,
           label: getCompactTrackLabel(point.cycloneType),
-          timeLabel: isLatest ? `${cyclone?.cyclone_name || 'Cyclone'}\n${point.date} ${point.time}`.trim() : '',
+          timeLabel: `${cyclone?.cyclone_name || 'Cyclone'}\n${point.date} ${point.time}`.trim(),
           latest: isLatest,
           forecast: point.radius > 0,
           latitude: point.latitude,
           longitude: point.longitude,
           radius: point.radius,
-          pointLabel: `${point.date} ${point.time}`.trim(),
+          pointLabel: getPointTimeLabel(point.date, point.time),
         },
       });
     });
@@ -352,20 +338,21 @@ function addCycloneTrackLayers(map, visible) {
     id: TIME_LABEL_LAYER_ID,
     type: 'symbol',
     source: SOURCE_ID,
-    filter: ['all', ['==', ['get', 'kind'], 'point'], ['==', ['get', 'latest'], true]],
+    filter: ['==', ['get', 'kind'], 'point'],
     layout: {
       visibility,
-      'text-field': ['get', 'timeLabel'],
-      'text-size': 9,
+      'text-field': ['get', 'pointLabel'],
+      'text-size': 8,
       'text-anchor': 'left',
-      'text-offset': [0.95, 0.75],
+      'text-offset': [0.85, 0.65],
       'text-font': ['Open Sans Semibold', 'Arial Unicode MS Regular'],
-      'text-allow-overlap': false,
+      'text-allow-overlap': true,
+      'text-ignore-placement': false,
     },
     paint: {
       'text-color': '#f8fafc',
       'text-halo-color': '#0f172a',
-      'text-halo-width': 1.1,
+      'text-halo-width': 1.05,
     },
   });
 
