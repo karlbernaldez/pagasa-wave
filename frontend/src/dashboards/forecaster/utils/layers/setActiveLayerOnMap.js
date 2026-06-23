@@ -26,7 +26,36 @@ const resolveMarkerLayerId = (layerInfo) => {
     return `${markerType}_${name}`;
 };
 
+const resolveSourceId = (layerInfo) => layerInfo?.sourceID || layerInfo?.sourceId || layerInfo?.source || layerInfo?.id;
+
+const isFrontLayer = (layerInfo) => {
+    const sourceId = resolveSourceId(layerInfo);
+    const label = `${layerInfo?.type || ''} ${layerInfo?.name || ''}`.toLowerCase();
+
+    return Boolean(
+        layerInfo?.properties?.isFront ||
+        layerInfo?.isFront ||
+        sourceId?.startsWith?.('SF_') ||
+        label.includes('front')
+    );
+};
+
+const resolveFrontLayerIds = (layerInfo) => {
+    const sourceId = resolveSourceId(layerInfo);
+    if (!sourceId) return [];
+
+    return [
+        `${sourceId}_dash`,
+        `${sourceId}_secondary`,
+        `${sourceId}_frontSymbols`,
+        `${sourceId}_frontSymbolOutline`,
+        sourceId,
+    ];
+};
+
 const resolveMapboxLayerIds = (layerInfo) => {
+    if (isFrontLayer(layerInfo)) return resolveFrontLayerIds(layerInfo);
+
     if (layerInfo.type === 'Wave Height') {
         return [layerInfo.id, `${layerInfo.id}-0`, `${layerInfo.id}-1`];
     }
@@ -38,7 +67,9 @@ const resolveMapboxLayerIds = (layerInfo) => {
     ].filter(Boolean);
 };
 
-const setLayerStyles = (map, mapboxLayerIds, markerType, isActive) => {
+const setLayerStyles = (map, mapboxLayerIds, markerType, isActive, layerInfo) => {
+    if (isFrontLayer(layerInfo)) return;
+
     for (const lid of mapboxLayerIds) {
         const mapLayer = map.getLayer(lid);
         if (!mapLayer) continue;
@@ -75,7 +106,7 @@ export const setActiveLayerOnMap = ({
 
     // Toggle off same layer
     if (activeLayerId === layerInfo.id) {
-        setLayerStyles(map, mapboxLayerIds, layerInfo.type, false);
+        setLayerStyles(map, mapboxLayerIds, layerInfo.type, false, layerInfo);
         setActiveLayerId(null);
         setActiveMapboxLayerId?.([]);
         return;
@@ -86,12 +117,12 @@ export const setActiveLayerOnMap = ({
         const prev = layers.find((l) => l.id === activeLayerId);
         if (prev) {
             const prevIds = resolveMapboxLayerIds(prev).filter((lid) => map.getLayer(lid));
-            setLayerStyles(map, prevIds, prev.type, false);
+            setLayerStyles(map, prevIds, prev.type, false, prev);
         }
     }
 
     // Activate new
-    setLayerStyles(map, mapboxLayerIds, layerInfo.type, true);
+    setLayerStyles(map, mapboxLayerIds, layerInfo.type, true, layerInfo);
 
     if (draw?.get && draw?.changeMode) {
         for (const lid of mapboxLayerIds) {
