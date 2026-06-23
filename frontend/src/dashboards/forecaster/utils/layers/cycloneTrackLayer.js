@@ -105,6 +105,21 @@ function buildConePoint(point, previous, next) {
   };
 }
 
+function buildDirectionalCap(center, radiusKm, directionX, directionY, steps = 24) {
+  const nx = -directionY;
+  const ny = directionX;
+  const coordinates = [];
+
+  for (let i = 0; i <= steps; i += 1) {
+    const theta = (Math.PI * i) / steps;
+    const vx = nx * Math.cos(theta) + directionX * Math.sin(theta);
+    const vy = ny * Math.cos(theta) + directionY * Math.sin(theta);
+    coordinates.push(offsetCoordinate(center, vx, vy, radiusKm));
+  }
+
+  return coordinates;
+}
+
 function buildForecastConePolygon(points) {
   const forecastPoints = points.filter((point) => point.radius > 0);
   if (forecastPoints.length < 2) return null;
@@ -119,9 +134,9 @@ function buildForecastConePolygon(points) {
   const last = conePoints[conePoints.length - 1];
   const left = conePoints.map((point) => point.left);
   const right = conePoints.map((point) => point.right);
-  const startTip = offsetCoordinate(first.coordinate, -first.ux, -first.uy, Math.max(18, first.radius * 0.9));
-  const endTip = offsetCoordinate(last.coordinate, last.ux, last.uy, Math.max(18, last.radius * 0.9));
-  const ring = left.concat([endTip], right.reverse(), [startTip], [left[0]]);
+  const endCap = buildDirectionalCap(last.coordinate, last.radius, last.ux, last.uy);
+  const startCap = buildDirectionalCap(first.coordinate, first.radius, -first.ux, -first.uy);
+  const ring = left.concat(endCap.slice(1), right.reverse().slice(1), startCap.slice(1), [left[0]]);
 
   return [ring];
 }
@@ -344,10 +359,10 @@ function addCycloneTrackLayers(map, visible) {
       'text-field': ['get', 'pointLabel'],
       'text-size': 8,
       'text-anchor': 'left',
-      'text-offset': [0.85, 0.65],
+      'text-offset': [1.15, 0.15],
       'text-font': ['Open Sans Semibold', 'Arial Unicode MS Regular'],
       'text-allow-overlap': true,
-      'text-ignore-placement': false,
+      'text-ignore-placement': true,
     },
     paint: {
       'text-color': '#f8fafc',
