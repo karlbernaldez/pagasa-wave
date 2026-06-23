@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import OnlyUserModal from '@/components/ui/modals/OnlyUserModal';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
-const ALLOWED_ROLES = ['user'];
+const ALLOWED_ROLES = ['user', 'forecaster'];
 const ADMIN_ROLES = ['admin'];
 
 const resolveAuthenticatedRedirect = (role, fallback = '/studio') => {
@@ -43,12 +43,14 @@ const ProtectedRoute = ({
           setApiState({ phase: 'resolved', isAuthenticated: true, role: user.role });
         } else {
           setIsLoggedIn(false);
+          setRole(null);
           setApiState({ phase: 'resolved', isAuthenticated: false, role: null });
         }
       } catch (err) {
         console.error('[ProtectedRoute] Auth check failed:', err);
         if (!cancelled) {
           setIsLoggedIn(false);
+          setRole(null);
           setApiState({ phase: 'resolved', isAuthenticated: false, role: null });
         }
       }
