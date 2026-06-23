@@ -2,13 +2,31 @@ import { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { createFeature } from '@/api/featureServices';
 import { getPreviewCurvePoints, handlePointerUp } from './canvasUtils';
 import { useProjectId } from '@dashboards/forecaster/hooks/useStudio';
-import { CheckCircle2, Minus, Plus, Waves } from 'lucide-react';
+import { CheckCircle2, GripHorizontal, Minus, Plus, RotateCcw, Waves } from 'lucide-react';
 
 const MIN_POINT_DISTANCE = 3.5;
 const PREVIEW_FRAME_MS = 24;
+const SLIDER_WIDTH = 420;
+const SLIDER_HEIGHT = 154;
+const SLIDER_STORAGE_KEY = 'wavelab-wave-height-panel-position-v1';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 const clampWaveValue = (nextValue) => Math.max(1, Math.min(15, nextValue));
+const getViewportWidth = () => (typeof window === 'undefined' ? 1440 : window.innerWidth);
+const getViewportHeight = () => (typeof window === 'undefined' ? 900 : window.innerHeight);
+
+const getDefaultPanelPosition = () => ({
+  x: Math.min(Math.max(360, Math.round((getViewportWidth() - SLIDER_WIDTH) / 2)), Math.max(16, getViewportWidth() - SLIDER_WIDTH - 380)),
+  y: 88,
+});
+
+const getSafePanelPosition = (position) => {
+  const margin = 16;
+  return {
+    x: Math.min(Math.max(position.x, margin), Math.max(margin, getViewportWidth() - SLIDER_WIDTH - margin)),
+    y: Math.min(Math.max(position.y, 72), Math.max(72, getViewportHeight() - SLIDER_HEIGHT - margin)),
+  };
+};
 
 const getMapContainerRect = (mapRef) => {
   const container = mapRef?.current?.getContainer?.();
@@ -27,43 +45,166 @@ const distanceFromLastPoint = (points, x, y) => {
   return Math.hypot(x - lastX, y - lastY);
 };
 
-const WaveHeightSlider = memo(({ value, onChange, isDarkMode, closedMode, mapBounds }) => {
+const WaveHeightSlider = memo(({ value, onChange, isDarkMode, closedMode, onClosedModeChange }) => {
   const marks = [1, 3, 5, 8, 10, 12, 15];
   const pct = ((value - 1) / 14) * 100;
   const setWaveValue = (nextValue) => onChange(clampWaveValue(nextValue));
-  const modeLabel = closedMode ? 'Closed contour' : 'Open line';
-  const bottomOffset = mapBounds ? Math.max(16, window.innerHeight - mapBounds.bottom + 24) : 24;
+  const dragRef = useRef(null);
+  const [isDraggingPanel, setIsDraggingPanel] = useState(false);
+  const [position, setPosition] = useState(() => getDefaultPanelPosition());
+  const positionRef = useRef(position);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(SLIDER_STORAGE_KEY);
+      const parsed = saved ? JSON.parse(saved) : null;
+      const next = Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y) ? parsed : getDefaultPanelPosition();
+      const safe = getSafePanelPosition(next);
+      positionRef.current = safe;
+      setPosition(safe);
+    } catch {
+      const safe = getSafePanelPosition(getDefaultPanelPosition());
+      positionRef.current = safe;
+      setPosition(safe);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const safe = getSafePanelPosition(positionRef.current);
+      positionRef.current = safe;
+      setPosition(safe);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const persistPosition = useCallback((next) => {
+    try {
+      window.localStorage.setItem(SLIDER_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, []);
+
+  const handleDragStart = useCallback((event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingPanel(true);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: positionRef.current.x,
+      originY: positionRef.current.y,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }, []);
+
+  const handleDragMove = useCallback((event) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const next = getSafePanelPosition({
+      x: drag.originX + event.clientX - drag.startX,
+      y: drag.originY + event.clientY - drag.startY,
+    });
+    positionRef.current = next;
+    setPosition(next);
+  }, []);
+
+  const handleDragEnd = useCallback((event) => {
+    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    dragRef.current = null;
+    setIsDraggingPanel(false);
+    persistPosition(positionRef.current);
+  }, [persistPosition]);
+
+  const handleResetPosition = useCallback((event) => {
+    event.stopPropagation();
+    const safe = getSafePanelPosition(getDefaultPanelPosition());
+    positionRef.current = safe;
+    setPosition(safe);
+    persistPosition(safe);
+  }, [persistPosition]);
 
   return (
     <div
       className={cn(
-        'studio-liquid-panel fixed left-1/2 z-[100] w-[min(28rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-2xl border px-3 py-3 shadow-2xl transition-all duration-200',
+        'studio-liquid-panel fixed z-[110] rounded-2xl border px-3 py-3 shadow-2xl transition-shadow duration-200',
+        isDraggingPanel && 'select-none shadow-[0_26px_70px_rgba(34,211,238,0.22)]',
         isDarkMode
           ? 'studio-liquid-dark border-white/[0.18] text-white shadow-cyan-950/20'
           : 'studio-liquid-light border-white/80 text-slate-950 shadow-blue-950/10'
       )}
-      style={{ bottom: bottomOffset }}
+      style={{ left: position.x, top: position.y, width: `min(${SLIDER_WIDTH}px, calc(100vw - 2rem))` }}
     >
       <div className={cn('absolute left-8 right-8 top-0 h-px', isDarkMode ? 'bg-gradient-to-r from-transparent via-cyan-400/35 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-400/35 to-transparent')} />
 
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <button
+          type="button"
+          className={cn('flex min-w-0 flex-1 cursor-grab touch-none items-center gap-2.5 rounded-xl text-left active:cursor-grabbing', isDarkMode ? 'text-white' : 'text-slate-950')}
+          title="Drag wave height panel"
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
+        >
           <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', isDarkMode ? 'bg-cyan-400/12 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
-            <Waves size={18} strokeWidth={2.4} />
+            <GripHorizontal size={16} strokeWidth={2.4} />
           </span>
           <div className="min-w-0">
             <div className={cn('text-[11px] font-black uppercase tracking-wide', isDarkMode ? 'text-white/80' : 'text-slate-700')}>Wave Height</div>
             <div className={cn('mt-0.5 flex items-center gap-1.5 text-[10px] font-bold', isDarkMode ? 'text-white/45' : 'text-slate-500')}>
               <CheckCircle2 size={12} strokeWidth={2.5} />
-              <span className="truncate">{modeLabel}</span>
+              <span className="truncate">{closedMode ? 'Loop / closed contour' : 'Open line'}</span>
             </div>
           </div>
-        </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleResetPosition}
+          className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all', isDarkMode ? 'border-white/10 bg-white/[0.055] text-white/70 hover:bg-white/[0.09] hover:text-white' : 'border-white/80 bg-white/60 text-slate-600 hover:bg-white hover:text-slate-950')}
+          title="Reset panel position"
+        >
+          <RotateCcw size={14} strokeWidth={2.5} />
+        </button>
 
         <div className={cn('flex h-10 min-w-20 items-baseline justify-center rounded-xl border px-3', isDarkMode ? 'border-cyan-300/20 bg-cyan-400/12' : 'border-blue-300/40 bg-blue-50')}>
           <span className={cn('text-2xl font-black leading-10 tabular-nums', isDarkMode ? 'text-cyan-200' : 'text-blue-700')}>{value}</span>
           <span className={cn('ml-1 text-[10px] font-black', isDarkMode ? 'text-cyan-300/70' : 'text-blue-500/70')}>m</span>
         </div>
+      </div>
+
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => onClosedModeChange?.(false)}
+          className={cn(
+            'flex h-9 items-center justify-center gap-2 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all',
+            !closedMode
+              ? isDarkMode ? 'border-cyan-300/35 bg-cyan-400/18 text-cyan-100' : 'border-blue-300 bg-blue-50 text-blue-700'
+              : isDarkMode ? 'border-white/8 bg-white/[0.04] text-white/45 hover:bg-white/[0.08] hover:text-white/80' : 'border-white/70 bg-white/45 text-slate-500 hover:bg-white hover:text-slate-800'
+          )}
+        >
+          <Waves size={14} />Open
+        </button>
+        <button
+          type="button"
+          onClick={() => onClosedModeChange?.(true)}
+          className={cn(
+            'flex h-9 items-center justify-center gap-2 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all',
+            closedMode
+              ? isDarkMode ? 'border-emerald-300/35 bg-emerald-400/18 text-emerald-100' : 'border-emerald-300 bg-emerald-50 text-emerald-700'
+              : isDarkMode ? 'border-white/8 bg-white/[0.04] text-white/45 hover:bg-white/[0.08] hover:text-white/80' : 'border-white/70 bg-white/45 text-slate-500 hover:bg-white hover:text-slate-800'
+          )}
+        >
+          <CheckCircle2 size={14} />Loop
+        </button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -157,6 +298,7 @@ const DrawingCanvas = ({
   isDarkMode,
   setLayersRef,
   closedMode = false,
+  setClosedMode,
   lineCount = 0,
 }) => {
   const canvasRef = useRef(null);
@@ -168,7 +310,6 @@ const DrawingCanvas = ({
   const drawLock = useRef(false);
   const [labelValue, setLabelValue] = useState(3);
   const [projectId] = useProjectId();
-  const [mapBounds, setMapBounds] = useState(null);
 
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -192,7 +333,6 @@ const DrawingCanvas = ({
 
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    setMapBounds({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, bottom: rect.bottom });
   }, [mapRef]);
 
   const clearPreview = useCallback(() => {
@@ -342,7 +482,7 @@ const DrawingCanvas = ({
 
   return (
     <>
-      <WaveHeightSlider value={labelValue} onChange={setLabelValue} isDarkMode={isDarkMode} closedMode={closedMode} mapBounds={mapBounds} />
+      <WaveHeightSlider value={labelValue} onChange={setLabelValue} isDarkMode={isDarkMode} closedMode={closedMode} onClosedModeChange={setClosedMode} />
       <canvas
         ref={canvasRef}
         onPointerDown={onPointerDown}
