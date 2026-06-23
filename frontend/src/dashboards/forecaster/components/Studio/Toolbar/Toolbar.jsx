@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { TbTools } from 'react-icons/tb';
-import { CheckCircle2, ChevronDown, ChevronUp, Flag, GripHorizontal, RotateCcw, Type, Waves, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Flag, GripHorizontal, RotateCcw, Type, Waves, X } from 'lucide-react';
 
 import l1 from '@/assets/draw_icons/L1.png';
 
@@ -13,7 +13,7 @@ import { useDrawToolbar } from './hooks/useDrawToolbar';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-const EXPANDED_WIDTH = 760;
+const EXPANDED_WIDTH = 620;
 const COLLAPSED_WIDTH = 176;
 const DOCK_HEIGHT = 74;
 const STORAGE_KEY = 'wavelab-draw-tools-position';
@@ -47,9 +47,6 @@ const getTheme = (isDarkMode) => ({
   active: isDarkMode
     ? 'border-cyan-200/36 bg-cyan-300/18 text-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.18),inset_0_1px_0_rgba(255,255,255,0.18)]'
     : 'border-blue-300/80 bg-blue-100/80 text-blue-800 shadow-[0_0_22px_rgba(59,130,246,0.16),inset_0_1px_0_rgba(255,255,255,0.9)]',
-  activeClosed: isDarkMode
-    ? 'border-emerald-200/38 bg-emerald-300/18 text-emerald-50 shadow-[0_0_24px_rgba(52,211,153,0.18),inset_0_1px_0_rgba(255,255,255,0.18)]'
-    : 'border-emerald-300/80 bg-emerald-100/80 text-emerald-800 shadow-[0_0_22px_rgba(16,185,129,0.14),inset_0_1px_0_rgba(255,255,255,0.9)]',
   iconRail: isDarkMode ? 'bg-white/[0.07] ring-1 ring-white/10' : 'bg-white/55 ring-1 ring-white/80',
   divider: isDarkMode ? 'bg-cyan-100/12' : 'bg-slate-200/80',
   subtle: isDarkMode ? 'text-cyan-100/58' : 'text-slate-500',
@@ -134,8 +131,6 @@ const DrawToolbar = ({
   isDarkMode,
   setLayersRef,
   setLayers,
-  closedMode,
-  setClosedMode,
   setType,
   selectedToolRef,
   projectId,
@@ -331,26 +326,6 @@ const DrawToolbar = ({
               onClick={handleToggleFlagDrawing}
               theme={theme}
               icon={<Flag size={16} aria-hidden="true" />}
-            />
-
-            <Divider theme={theme} />
-
-            <TrayButton
-              label="Open"
-              active={waveActive && !closedMode}
-              disabled={disabled || !waveActive}
-              onClick={() => setClosedMode(false)}
-              theme={theme}
-              icon={<Waves size={16} aria-hidden="true" />}
-            />
-            <TrayButton
-              label="Loop"
-              active={waveActive && closedMode}
-              activeClassName={theme.activeClosed}
-              disabled={disabled || !waveActive}
-              onClick={() => setClosedMode(true)}
-              theme={theme}
-              icon={<CheckCircle2 size={16} aria-hidden="true" />}
             />
 
             <Divider theme={theme} />
