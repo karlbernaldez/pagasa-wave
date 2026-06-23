@@ -6,6 +6,12 @@ import {
   ensureCycloneTrackLayer,
   setCycloneTrackVisibility,
 } from '@dashboards/forecaster/utils/layers/cycloneTrackLayer';
+import {
+  PAGASA_NWP_RASTER_STORAGE_KEY,
+  ensurePagasaPanahonNwpRasterLayer,
+  setPagasaPanahonNwpRasterVisibility,
+  updatePagasaPanahonNwpRasterImage,
+} from '@dashboards/forecaster/utils/layers/pagasaPanahonNwpRasterLayer';
 
 const safeSetLayoutVisibility = (map, layerId, visible) => {
   if (map?.getLayer?.(layerId)) {
@@ -17,13 +23,16 @@ const safeSetLayoutVisibility = (map, layerId, visible) => {
  * Manages domain, utility, and satellite layer state.
  * Reads initial values from localStorage, then applies them to the map once loaded.
  */
-export const useSystemLayers = ({ mapRef, isDarkMode }) => {
+export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
   const [domainLayers, setDomainLayers] = useState({
     PAR: false, TCID: false, TCAD: false,
   });
 
   const [utilitiesLayers, setUtilitiesLayers] = useState({
-    GRATICULES: false, SHIPPING_ZONE: false, CYCLONE_TRACK: false,
+    GRATICULES: false,
+    SHIPPING_ZONE: false,
+    PAGASA_NWP_RASTER: false,
+    CYCLONE_TRACK: false,
   });
 
   const [satelliteLayer, setSatelliteLayer] = useState(false);
@@ -55,6 +64,20 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
     });
   };
 
+  const showPagasaNwpRasterError = (message = 'Unable to load PAGASA NWP raster.') => {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: message,
+      showConfirmButton: false,
+      timer: 2600,
+      timerProgressBar: true,
+      background: isDarkMode ? '#374151' : '#fff',
+      color: isDarkMode ? '#f3f4f6' : '#111827',
+    });
+  };
+
   // ── Hydrate from localStorage + apply to map ────────────────────────────────
   useEffect(() => {
     const saved = {
@@ -64,9 +87,10 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
         TCAD: readBoolStorage('TCAD'),
       },
       utilities: {
-        GRATICULES:    readBoolStorage('GRATICULES'),
-        SHIPPING_ZONE: readBoolStorage('SHIPPING_ZONE'),
-        CYCLONE_TRACK: readBoolStorage(CYCLONE_TRACK_STORAGE_KEY),
+        GRATICULES:         readBoolStorage('GRATICULES'),
+        SHIPPING_ZONE:      readBoolStorage('SHIPPING_ZONE'),
+        PAGASA_NWP_RASTER:  readBoolStorage(PAGASA_NWP_RASTER_STORAGE_KEY),
+        CYCLONE_TRACK:      readBoolStorage(CYCLONE_TRACK_STORAGE_KEY),
       },
       satellite: readBoolStorage('SATELLITE'),
     };
@@ -90,6 +114,20 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
       safeSetLayoutVisibility(map, 'graticules_blur', saved.utilities.GRATICULES);
       safeSetLayoutVisibility(map, 'SHIPPING_ZONE_LABELS', saved.utilities.SHIPPING_ZONE);
       safeSetLayoutVisibility(map, 'SHIPPING_ZONE_OUTLINE', saved.utilities.SHIPPING_ZONE);
+
+      if (saved.utilities.PAGASA_NWP_RASTER) {
+        try {
+          ensurePagasaPanahonNwpRasterLayer(map, { visible: true, forecastDate });
+        } catch (error) {
+          console.error('[pagasa-nwp-raster-layer-error]', error);
+          localStorage.setItem(PAGASA_NWP_RASTER_STORAGE_KEY, 'false');
+          setUtilitiesLayers((prev) => ({ ...prev, PAGASA_NWP_RASTER: false }));
+          setPagasaPanahonNwpRasterVisibility(map, false);
+        }
+      } else {
+        setPagasaPanahonNwpRasterVisibility(map, false);
+      }
+
       if (saved.utilities.CYCLONE_TRACK) {
         ensureCycloneTrackLayer(map, true).catch(() => {
           localStorage.setItem(CYCLONE_TRACK_STORAGE_KEY, 'false');
@@ -105,6 +143,19 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
 
     map.isStyleLoaded() ? apply() : map.once('load', apply);
   }, [mapRef]);
+
+  useEffect(() => {
+    if (!utilitiesLayers.PAGASA_NWP_RASTER) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    try {
+      updatePagasaPanahonNwpRasterImage(map, forecastDate);
+    } catch (error) {
+      console.error('[pagasa-nwp-raster-update-error]', error);
+      showPagasaNwpRasterError(error?.message || 'Unable to update PAGASA NWP raster.');
+    }
+  }, [forecastDate, mapRef, utilitiesLayers.PAGASA_NWP_RASTER]);
 
   // ── Toggle handlers ─────────────────────────────────────────────────────────
   const toggleDomainLayer = (layerId) => {
@@ -148,8 +199,35 @@ export const useSystemLayers = ({ mapRef, isDarkMode }) => {
     }
   };
 
+  const togglePagasaNwpRasterLayer = () => {
+    const nextEnabled = !utilitiesLayers.PAGASA_NWP_RASTER;
+    localStorage.setItem(PAGASA_NWP_RASTER_STORAGE_KEY, String(nextEnabled));
+    setUtilitiesLayers((prev) => ({ ...prev, PAGASA_NWP_RASTER: nextEnabled }));
+
+    const map = mapRef.current;
+    if (!map) return;
+
+    try {
+      if (nextEnabled) {
+        ensurePagasaPanahonNwpRasterLayer(map, { visible: true, forecastDate });
+      } else {
+        setPagasaPanahonNwpRasterVisibility(map, false);
+      }
+    } catch (error) {
+      console.error('[pagasa-nwp-raster-layer-error]', error);
+      localStorage.setItem(PAGASA_NWP_RASTER_STORAGE_KEY, 'false');
+      setUtilitiesLayers((prev) => ({ ...prev, PAGASA_NWP_RASTER: false }));
+      setPagasaPanahonNwpRasterVisibility(map, false);
+      showPagasaNwpRasterError(error?.message || 'Unable to load PAGASA NWP raster.');
+    }
+  };
+
   const toggleUtilityLayer = (layerId) => {
     if (!checkProjectId()) return;
+    if (layerId === PAGASA_NWP_RASTER_STORAGE_KEY) {
+      togglePagasaNwpRasterLayer();
+      return;
+    }
     if (layerId === CYCLONE_TRACK_STORAGE_KEY) {
       toggleCycloneTrackLayer();
       return;
