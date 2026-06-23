@@ -11,7 +11,9 @@ const MARKER_TYPES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'tex
 const WIND_BARB_IMAGES = ['0kts', '5kts', '10kts', '15kts', '20kts', '25kts', '30kts'];
 const WAVE_HEIGHT_THRESHOLD = 2;
 const FRONT_CASING_COLOR = '#f8fafc';
-const FRONT_ICON_VERSION = 'v3';
+const FRONT_ICON_VERSION = 'v4';
+const FRONT_ICON_WIDTH = 72;
+const FRONT_ICON_HEIGHT = 40;
 const renderedAnnotationIds = new Set();
 
 const LAYER_VISIBILITY_CONFIG = [
@@ -24,10 +26,10 @@ const LAYER_VISIBILITY_CONFIG = [
 ];
 
 const FRONT_STYLES = {
-  cold: { color: '#1d4ed8', lineWidth: 3.5, imageId: `surface-front-cold-${FRONT_ICON_VERSION}`, spacing: 34, iconSize: 0.88 },
-  warm: { color: '#ef4444', lineWidth: 3.5, imageId: `surface-front-warm-${FRONT_ICON_VERSION}`, spacing: 34, iconSize: 0.88 },
-  stationary: { color: '#1d4ed8', secondaryColor: '#ef4444', lineWidth: 3, dash: [2, 2], secondaryDash: [0, 2, 2], imageId: `surface-front-stationary-${FRONT_ICON_VERSION}`, spacing: 34, iconSize: 0.88 },
-  occluded: { color: '#7c3aed', lineWidth: 3.5, imageId: `surface-front-occluded-${FRONT_ICON_VERSION}`, spacing: 58, iconSize: 0.88 },
+  cold: { color: '#1d4ed8', lineWidth: 3.5, imageId: `surface-front-cold-${FRONT_ICON_VERSION}`, spacing: 44, iconSize: 1 },
+  warm: { color: '#ef4444', lineWidth: 3.5, imageId: `surface-front-warm-${FRONT_ICON_VERSION}`, spacing: 44, iconSize: 1 },
+  stationary: { color: '#1d4ed8', secondaryColor: '#ef4444', lineWidth: 3, dash: [2, 2], secondaryDash: [0, 2, 2], imageId: `surface-front-stationary-${FRONT_ICON_VERSION}`, spacing: 72, iconSize: 1 },
+  occluded: { color: '#7c3aed', lineWidth: 3.5, imageId: `surface-front-occluded-${FRONT_ICON_VERSION}`, spacing: 72, iconSize: 1 },
 };
 
 function getIdString(value) { if (!value) return ''; if (typeof value === 'string') return value; if (typeof value === 'number') return String(value); if (value._id) return String(value._id); if (value.id) return String(value.id); if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString()); return ''; }
@@ -44,9 +46,9 @@ function pruneStaleAnnotationArtifacts(map, currentFeatures) { const currentIds 
 function finishMapSetup({ setLoading, setMapLoaded, logger }) { setLoading?.(false); setMapLoaded?.(true); setGlobalMapLoaded(true); logger?.info('Map setup complete with initial features.'); }
 const waitForMapStyle = (map) => new Promise((resolve) => { if (!map || map.isStyleLoaded?.()) return resolve(); let resolved = false; const done = () => { if (resolved) return; resolved = true; resolve(); }; map.once?.('style.load', done); map.once?.('load', done); window.setTimeout(done, 750); });
 
-function drawTriangle(ctx, x, y, size, color, side = -1) { ctx.beginPath(); ctx.moveTo(x - size / 2, y); ctx.lineTo(x + size / 2, y); ctx.lineTo(x, y + side * size); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); }
+function drawTriangle(ctx, x, y, size, color, side = -1) { ctx.beginPath(); ctx.moveTo(x - size, y); ctx.lineTo(x + size, y); ctx.lineTo(x, y + side * size * 1.25); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); }
 function drawSemiCircle(ctx, x, y, radius, color, side = -1) { ctx.beginPath(); ctx.moveTo(x - radius, y); ctx.arc(x, y, radius, Math.PI, 0, side > 0); ctx.lineTo(x - radius, y); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); }
-function createFrontIconCanvas(frontType) { const pixelRatio = 2; const width = 80; const height = 32; const canvas = document.createElement('canvas'); canvas.width = width * pixelRatio; canvas.height = height * pixelRatio; canvas.style.width = `${width}px`; canvas.style.height = `${height}px`; const ctx = canvas.getContext('2d'); ctx.scale(pixelRatio, pixelRatio); const baseline = height / 2; if (frontType === 'cold') drawTriangle(ctx, 40, baseline, 12, '#1d4ed8', -1); else if (frontType === 'warm') drawSemiCircle(ctx, 40, baseline, 9, '#ef4444', -1); else if (frontType === 'stationary') { drawSemiCircle(ctx, 26, baseline, 8, '#ef4444', -1); drawTriangle(ctx, 54, baseline, 11, '#1d4ed8', 1); } else if (frontType === 'occluded') { drawSemiCircle(ctx, 24, baseline, 8, '#7c3aed', -1); drawTriangle(ctx, 56, baseline, 11, '#7c3aed', -1); } return canvas; }
+function createFrontIconCanvas(frontType) { const pixelRatio = 2; const canvas = document.createElement('canvas'); canvas.width = FRONT_ICON_WIDTH * pixelRatio; canvas.height = FRONT_ICON_HEIGHT * pixelRatio; canvas.style.width = `${FRONT_ICON_WIDTH}px`; canvas.style.height = `${FRONT_ICON_HEIGHT}px`; const ctx = canvas.getContext('2d'); ctx.scale(pixelRatio, pixelRatio); const baseline = FRONT_ICON_HEIGHT / 2; if (frontType === 'cold') drawTriangle(ctx, FRONT_ICON_WIDTH / 2, baseline, 11, '#1d4ed8', -1); else if (frontType === 'warm') drawSemiCircle(ctx, FRONT_ICON_WIDTH / 2, baseline, 11, '#ef4444', -1); else if (frontType === 'stationary') { drawSemiCircle(ctx, 23, baseline, 10, '#ef4444', -1); drawTriangle(ctx, 49, baseline, 10, '#1d4ed8', 1); } else if (frontType === 'occluded') { drawSemiCircle(ctx, 23, baseline, 10, '#7c3aed', -1); drawTriangle(ctx, 49, baseline, 10, '#7c3aed', -1); } return canvas; }
 function ensureSurfaceFrontImages(map) { if (typeof document === 'undefined' || !map?.addImage) return; Object.entries(FRONT_STYLES).forEach(([frontType, style]) => { if (map.hasImage?.(style.imageId)) return; map.addImage(style.imageId, createFrontIconCanvas(frontType), { pixelRatio: 2 }); }); }
 
 class LayerVisibilityManager { constructor(map) { this.map = map; } applyFromLocalStorage(config = LAYER_VISIBILITY_CONFIG) { config.forEach(({ key, ids }) => { const visibility = localStorage.getItem(key) === 'true' ? 'visible' : 'none'; ids.forEach(id => { if (this.map.getLayer(id)) this.map.setLayoutProperty(id, 'visibility', visibility); }); }); } }
