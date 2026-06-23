@@ -53,6 +53,7 @@ export const DOMAIN_LAYERS = [
 export const UTILITY_LAYERS = [
   { id: 'GRATICULES', name: 'Graticules', subtitle: 'Coordinate Grid Lines' },
   { id: 'SHIPPING_ZONE', name: 'Shipping Zones', subtitle: 'Maritime Shipping Areas' },
+  { id: 'CYCLONE_TRACK', name: 'Cyclone Track', subtitle: 'PAGASA tropical cyclone track' },
 ];
 
 // ── Wave raster tile config ───────────────────────────────────────────────────
