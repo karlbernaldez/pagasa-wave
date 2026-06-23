@@ -22,11 +22,69 @@ const LAYER_VISIBILITY_CONFIG = [
 ];
 
 const FRONT_STYLES = {
-  cold: { color: '#1d4ed8', lineWidth: 3.5, symbols: [{ id: 'triangles', text: '▲', color: '#1d4ed8', size: 24, offset: [0, -0.62] }] },
-  warm: { color: '#ef4444', lineWidth: 3.5, symbols: [{ id: 'circles', text: '●', color: '#ef4444', size: 23, offset: [0, -0.56] }] },
-  stationary: { color: '#64748b', lineWidth: 2.5, symbols: [{ id: 'triangles', text: '▲', color: '#1d4ed8', size: 22, offset: [0, -0.62] }, { id: 'circles', text: '●', color: '#ef4444', size: 21, offset: [0, 0.62] }] },
-  occluded: { color: '#7c3aed', lineWidth: 3.5, symbols: [{ id: 'triangles', text: '▲', color: '#7c3aed', size: 22, offset: [0, -0.62] }, { id: 'circles', text: '●', color: '#7c3aed', size: 21, offset: [0, -1.2] }] },
+  cold: { color: '#1d4ed8', lineWidth: 3.5, imageId: 'surface-front-cold' },
+  warm: { color: '#ef4444', lineWidth: 3.5, imageId: 'surface-front-warm' },
+  stationary: { color: '#64748b', lineWidth: 2.5, imageId: 'surface-front-stationary' },
+  occluded: { color: '#7c3aed', lineWidth: 3.5, imageId: 'surface-front-occluded' },
 };
+
+const drawTriangle = (ctx, x, y, size, color, side = -1) => {
+  ctx.beginPath();
+  ctx.moveTo(x - size / 2, y);
+  ctx.lineTo(x + size / 2, y);
+  ctx.lineTo(x, y + side * size);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+};
+
+const drawSemiCircle = (ctx, x, y, radius, color, side = -1) => {
+  ctx.beginPath();
+  ctx.moveTo(x - radius, y);
+  ctx.arc(x, y, radius, Math.PI, 0, side > 0);
+  ctx.lineTo(x - radius, y);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+};
+
+const createFrontIconCanvas = (frontType) => {
+  const pixelRatio = 2;
+  const width = 96;
+  const height = 48;
+  const canvas = document.createElement('canvas');
+  canvas.width = width * pixelRatio;
+  canvas.height = height * pixelRatio;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(pixelRatio, pixelRatio);
+  const baseline = 26;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (frontType === 'cold') {
+    drawTriangle(ctx, 48, baseline, 18, '#1d4ed8', -1);
+  } else if (frontType === 'warm') {
+    drawSemiCircle(ctx, 48, baseline, 12, '#ef4444', -1);
+  } else if (frontType === 'stationary') {
+    drawSemiCircle(ctx, 30, baseline, 11, '#ef4444', -1);
+    drawTriangle(ctx, 66, baseline, 17, '#1d4ed8', 1);
+  } else if (frontType === 'occluded') {
+    drawSemiCircle(ctx, 32, baseline, 11, '#7c3aed', -1);
+    drawTriangle(ctx, 64, baseline, 17, '#7c3aed', -1);
+  }
+
+  return canvas;
+};
+
+function ensureSurfaceFrontImages(map) {
+  if (typeof document === 'undefined' || !map?.addImage) return;
+  Object.entries(FRONT_STYLES).forEach(([frontType, style]) => {
+    if (map.hasImage?.(style.imageId)) return;
+    map.addImage(style.imageId, createFrontIconCanvas(frontType), { pixelRatio: 2 });
+  });
+}
 
 const fixMalformedLineString = (coordinates) => {
   if (!Array.isArray(coordinates)) return coordinates;
@@ -59,8 +117,8 @@ const waitForMapStyle = (map) => new Promise((resolve) => {
 function safeRemoveLayer(map, id) { if (id && map.getLayer(id)) map.removeLayer(id); }
 function safeRemoveSource(map, id) { if (id && map.getSource(id)) map.removeSource(id); }
 function removeAnnotationArtifacts(map, id) {
-  ['','-0','-1','_bg','_dash','_secondary','_triangles','_circles'].forEach((suffix) => safeRemoveLayer(map, `${id}${suffix}`));
-  ['','-0','-1'].forEach((suffix) => safeRemoveSource(map, `${id}${suffix}`));
+  ['', '-0', '-1', '_bg', '_dash', '_secondary', '_triangles', '_circles', '_frontSymbols'].forEach((suffix) => safeRemoveLayer(map, `${id}${suffix}`));
+  ['', '-0', '-1'].forEach((suffix) => safeRemoveSource(map, `${id}${suffix}`));
   removeMarkerDrag(id);
 }
 function pruneStaleAnnotationArtifacts(map, currentFeatures) {
@@ -107,15 +165,16 @@ class LineRenderer {
     return { sources, layers };
   }
   renderFrontLines(frontLines) {
+    ensureSurfaceFrontImages(this.map);
     frontLines.forEach(feature => {
       const props = feature.properties || {};
       const sourceId = feature.sourceId || props.sourceId || `front-${feature._id || Date.now()}`;
       const data = { type: 'FeatureCollection', features: [feature] };
       const style = FRONT_STYLES[props.frontType || 'stationary'] || FRONT_STYLES.stationary;
       this.upsertSource(sourceId, { type: 'geojson', data });
-      ['_bg','_dash','_secondary','_triangles','_circles'].forEach((suffix) => safeRemoveLayer(this.map, `${sourceId}${suffix}`));
-      this.upsertLayer({ id: `${sourceId}_bg`, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': style.color, 'line-width': style.lineWidth, 'line-opacity': 0.9 } });
-      style.symbols.forEach((symbol) => this.upsertLayer({ id: `${sourceId}_${symbol.id}`, type: 'symbol', source: sourceId, slot: 'top', layout: { 'symbol-placement': 'line', 'symbol-spacing': 42, 'text-field': symbol.text, 'text-size': symbol.size, 'text-allow-overlap': true, 'text-ignore-placement': true, 'text-keep-upright': false, 'text-rotation-alignment': 'map', 'text-pitch-alignment': 'map', 'text-offset': symbol.offset, visibility: 'visible' }, paint: { 'text-color': symbol.color, 'text-halo-color': this.isDarkMode ? 'rgba(15,23,42,0.7)' : 'rgba(255,255,255,0.7)', 'text-halo-width': 1 } }));
+      ['_bg', '_dash', '_secondary', '_triangles', '_circles', '_frontSymbols'].forEach((suffix) => safeRemoveLayer(this.map, `${sourceId}${suffix}`));
+      this.upsertLayer({ id: `${sourceId}_bg`, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': style.color, 'line-width': style.lineWidth, 'line-opacity': 0.86 } });
+      this.upsertLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, slot: 'top', layout: { 'symbol-placement': 'line', 'symbol-spacing': 44, 'icon-image': style.imageId, 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
     });
   }
 }
