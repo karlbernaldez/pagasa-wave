@@ -1,5 +1,7 @@
 import { removeMarkerDrag } from '@dashboards/forecaster/map/layers/markerLayer';
 
+const SURFACE_FRONT_SUFFIXES = ['_bg', '_dash', '_secondary', '_triangles', '_circles', '_frontSymbols'];
+
 function safeRemoveLayer(map, id) {
   if (id && map.getLayer(id)) map.removeLayer(id);
 }
@@ -28,7 +30,6 @@ function getCandidateIds(layer) {
     layer?.sourceId,
     layer?.source,
     layer?.mapLayerId,
-    layer?.name,
     cleanedId,
     markerLayerId(layer),
     layer?.fillId,
@@ -40,8 +41,7 @@ function removeCandidateArtifacts(map, id) {
   safeRemoveLayer(map, id);
   safeRemoveLayer(map, `${id}-0`);
   safeRemoveLayer(map, `${id}-1`);
-  safeRemoveLayer(map, `${id}_bg`);
-  safeRemoveLayer(map, `${id}_dash`);
+  SURFACE_FRONT_SUFFIXES.forEach((suffix) => safeRemoveLayer(map, `${id}${suffix}`));
 
   safeRemoveSource(map, id);
   safeRemoveSource(map, `${id}-0`);
@@ -53,11 +53,11 @@ function removeCandidateArtifacts(map, id) {
 export function removeLayer(map, layer, setLayers) {
   if (!map || !layer) return;
 
-  getCandidateIds(layer).forEach((id) => removeCandidateArtifacts(map, id));
+  const targetIds = getCandidateIds(layer);
+  targetIds.forEach((id) => removeCandidateArtifacts(map, id));
 
-  setLayers((prev) => prev.filter((l) => {
-    const targetIds = getCandidateIds(layer);
-    const currentIds = getCandidateIds(l);
+  setLayers((prev) => prev.filter((currentLayer) => {
+    const currentIds = getCandidateIds(currentLayer);
     return !currentIds.some((id) => targetIds.includes(id));
   }));
 }
