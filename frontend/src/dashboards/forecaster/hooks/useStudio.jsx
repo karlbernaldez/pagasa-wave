@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { setupMap, syncAnnotationFeaturesToMap } from "@dashboards/forecaster/utils/mapSetup";
+import { applyAnnotationStylesToMap } from "@dashboards/forecaster/utils/layers/annotationStylePersistence";
 import { fetchFeatures } from "@/api/featureServices";
 import { fetchProjectById } from "@/api/projectAPI";
 import socket from "@/socket/socketClient";
@@ -30,7 +31,7 @@ function getFeatureProjectId(feature) {
 const resolveFeatureLayerType = (feature) => {
   const props = feature?.properties || {};
   if (props.isFront) return FRONT_TYPE_LABELS[props.frontType] || feature?.name || "Surface Front";
-  return props.type || "Wave Height";
+  return props.type || props.markerType || "Wave Height";
 };
 
 export const useProjectId = () => {
@@ -122,6 +123,9 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
           mapLayerId: feature.properties?.mapLayerId || (isMarker ? `${type}_${name}` : undefined),
           owner: feature.properties?.owner,
           canEdit: feature.properties?.canEdit !== false,
+          frontSymbolSide: feature.properties?.frontSymbolSide || feature.properties?.style?.frontSymbolSide,
+          style: feature.properties?.style || {},
+          properties: feature.properties || {},
         };
       }).filter((layer) => Boolean(layer.id));
       setLayers(initialLayers);
@@ -134,6 +138,7 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
     if (syncMap && mapRef.current) {
       try {
         await syncAnnotationFeaturesToMap(mapRef.current, filteredFeatures, { mapRef, isDarkMode });
+        applyAnnotationStylesToMap(mapRef.current, filteredFeatures);
       } catch (error) {
         console.error("[MAP SYNC ERROR]", error);
       }
@@ -193,11 +198,13 @@ export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLaye
     const filteredFeatures = await setupFeaturesAndLayers({ syncMap: false });
     cleanupRef.current?.();
     cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features: filteredFeatures }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
+    applyAnnotationStylesToMap(map, filteredFeatures);
     if (!map._hasStyleLoadListener) {
       map.on("style.load", async () => {
         const features = await setupFeaturesAndLayers({ syncMap: false });
         cleanupRef.current?.();
         cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
+        applyAnnotationStylesToMap(map, features);
       });
       map._hasStyleLoadListener = true;
     }
