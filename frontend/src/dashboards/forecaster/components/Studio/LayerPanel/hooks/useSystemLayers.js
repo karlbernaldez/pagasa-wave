@@ -19,11 +19,21 @@ const safeSetLayoutVisibility = (map, layerId, visible) => {
   }
 };
 
+const readCachedForecastDate = () => {
+  try {
+    return JSON.parse(localStorage.getItem('cachedProject'))?.forecastDate;
+  } catch {
+    return undefined;
+  }
+};
+
 /**
  * Manages domain, utility, and satellite layer state.
  * Reads initial values from localStorage, then applies them to the map once loaded.
  */
 export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
+  const activeForecastDate = forecastDate ?? readCachedForecastDate();
+
   const [domainLayers, setDomainLayers] = useState({
     PAR: false, TCID: false, TCAD: false,
   });
@@ -117,7 +127,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
 
       if (saved.utilities.PAGASA_NWP_RASTER) {
         try {
-          ensurePagasaPanahonNwpRasterLayer(map, { visible: true, forecastDate });
+          ensurePagasaPanahonNwpRasterLayer(map, { visible: true, forecastDate: activeForecastDate });
         } catch (error) {
           console.error('[pagasa-nwp-raster-layer-error]', error);
           localStorage.setItem(PAGASA_NWP_RASTER_STORAGE_KEY, 'false');
@@ -150,12 +160,12 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
     if (!map) return;
 
     try {
-      updatePagasaPanahonNwpRasterImage(map, forecastDate);
+      updatePagasaPanahonNwpRasterImage(map, activeForecastDate);
     } catch (error) {
       console.error('[pagasa-nwp-raster-update-error]', error);
       showPagasaNwpRasterError(error?.message || 'Unable to update PAGASA NWP raster.');
     }
-  }, [forecastDate, mapRef, utilitiesLayers.PAGASA_NWP_RASTER]);
+  }, [activeForecastDate, mapRef, utilitiesLayers.PAGASA_NWP_RASTER]);
 
   // ── Toggle handlers ─────────────────────────────────────────────────────────
   const toggleDomainLayer = (layerId) => {
@@ -209,7 +219,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
 
     try {
       if (nextEnabled) {
-        ensurePagasaPanahonNwpRasterLayer(map, { visible: true, forecastDate });
+        ensurePagasaPanahonNwpRasterLayer(map, { visible: true, forecastDate: activeForecastDate });
       } else {
         setPagasaPanahonNwpRasterVisibility(map, false);
       }
