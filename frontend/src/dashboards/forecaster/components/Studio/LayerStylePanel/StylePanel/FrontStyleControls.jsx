@@ -1,4 +1,5 @@
 import { Section, PropSlider, PropToggle } from '../LayerStylePanel';
+import { queuePersistAnnotationStyle } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
 
 const COLORS = { cold: '#1d4ed8', warm: '#ef4444', occluded: '#7c3aed' };
 const FRONT_SYMBOL_RADIUS = 6;
@@ -166,7 +167,12 @@ export function FrontStyleControls({ layerIds, layerInfo, style, onChange, setLa
     const symbolLayerId = layerIds.find((id) => map?.getLayer(id)?.type === 'fill') || `${sourceId}_frontSymbols`;
     const isOppositeSide = (style.frontSymbolSide ?? layerInfo?.frontSymbolSide ?? 'normal') === 'opposite';
 
-    const updateStyle = (patch) => onChange({ ...style, ...patch });
+    const updateStyle = (patch) => {
+        const nextStyle = { ...style, ...patch };
+        onChange(nextStyle);
+        queuePersistAnnotationStyle(layerInfo, nextStyle);
+        return nextStyle;
+    };
 
     const setLineWidth = (value) => {
         updateStyle({ lineWidth: value });
@@ -195,7 +201,7 @@ export function FrontStyleControls({ layerIds, layerInfo, style, onChange, setLa
         updateStyle({ frontSymbolSide: nextSide });
         setLayers?.((prev) => prev.map((layer) => {
             const matches = layer.id === layerInfo?.id || layer.sourceID === sourceId || layer.sourceId === sourceId || layer.source === sourceId;
-            return matches ? { ...layer, frontSymbolSide: nextSide } : layer;
+            return matches ? { ...layer, frontSymbolSide: nextSide, style: { ...(layer.style || {}), frontSymbolSide: nextSide } } : layer;
         }));
 
         if (mainSource?.setData && sourceData) {
