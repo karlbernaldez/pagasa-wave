@@ -8,8 +8,8 @@ import { useProjectId } from '@dashboards/forecaster/hooks/useStudio';
 const FRONT_TYPES = {
   cold: { label: 'Cold', fullLabel: 'Cold Front', color: '#1d4ed8', lineWidth: 4, icon: Snowflake, imageId: 'surface-front-cold', symbols: [{ kind: 'triangle', color: '#1d4ed8', side: -1 }] },
   warm: { label: 'Warm', fullLabel: 'Warm Front', color: '#ef4444', lineWidth: 4, icon: CloudSun, imageId: 'surface-front-warm', symbols: [{ kind: 'semicircle', color: '#ef4444', side: -1 }] },
-  stationary: { label: 'Stationary', fullLabel: 'Stationary Front', color: '#64748b', lineWidth: 3, icon: Waves, imageId: 'surface-front-stationary', symbols: [{ kind: 'semicircle', color: '#ef4444', side: -1, along: -18 }, { kind: 'triangle', color: '#1d4ed8', side: 1, along: 18 }] },
-  occluded: { label: 'Occluded', fullLabel: 'Occluded Front', color: '#7c3aed', lineWidth: 4, icon: CheckCircle2, imageId: 'surface-front-occluded', symbols: [{ kind: 'semicircle', color: '#7c3aed', side: -1, along: -16 }, { kind: 'triangle', color: '#7c3aed', side: -1, along: 16 }] },
+  stationary: { label: 'Stationary', fullLabel: 'Stationary Front', color: '#64748b', lineWidth: 3, icon: Waves, imageId: 'surface-front-stationary', symbols: [{ kind: 'semicircle', color: '#ef4444', side: -1, along: -14 }, { kind: 'triangle', color: '#1d4ed8', side: 1, along: 14 }] },
+  occluded: { label: 'Occluded', fullLabel: 'Occluded Front', color: '#7c3aed', lineWidth: 4, icon: CheckCircle2, imageId: 'surface-front-occluded', symbols: [{ kind: 'semicircle', color: '#7c3aed', side: -1, along: -13 }, { kind: 'triangle', color: '#7c3aed', side: -1, along: 13 }] },
 };
 
 const PANEL_WIDTH = 430;
@@ -23,112 +23,58 @@ const getSafePosition = (position) => ({ x: Math.min(Math.max(position.x, 16), M
 const getMapContainerRect = (mapRef) => mapRef?.current?.getContainer?.()?.getBoundingClientRect?.() || { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
 const getPointerPosition = (e) => e.target.getStage().getPointerPosition();
 const buildFrontName = (frontType) => FRONT_TYPES[frontType]?.fullLabel || 'Surface Front';
+const normalizeFrontType = (frontType) => FRONT_TYPES[frontType] ? frontType : 'cold';
 
-const drawTriangle = (ctx, x, y, size, color, side = -1) => {
-  ctx.beginPath();
-  ctx.moveTo(x - size / 2, y);
-  ctx.lineTo(x + size / 2, y);
-  ctx.lineTo(x, y + side * size);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-};
-const drawSemiCircle = (ctx, x, y, radius, color, side = -1) => {
-  ctx.beginPath();
-  ctx.moveTo(x - radius, y);
-  ctx.arc(x, y, radius, Math.PI, 0, side > 0);
-  ctx.lineTo(x - radius, y);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-};
+const drawTriangle = (ctx, x, y, size, color, side = -1) => { ctx.beginPath(); ctx.moveTo(x - size / 2, y); ctx.lineTo(x + size / 2, y); ctx.lineTo(x, y + side * size); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); };
+const drawSemiCircle = (ctx, x, y, radius, color, side = -1) => { ctx.beginPath(); ctx.moveTo(x - radius, y); ctx.arc(x, y, radius, Math.PI, 0, side > 0); ctx.lineTo(x - radius, y); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); };
 const createFrontIconCanvas = (frontType) => {
   const pixelRatio = 2;
-  const width = 96;
-  const height = 48;
+  const width = 72;
+  const height = 34;
   const canvas = document.createElement('canvas');
   canvas.width = width * pixelRatio;
   canvas.height = height * pixelRatio;
   const ctx = canvas.getContext('2d');
   ctx.scale(pixelRatio, pixelRatio);
-  const baseline = 26;
-  if (frontType === 'cold') drawTriangle(ctx, 48, baseline, 18, '#1d4ed8', -1);
-  else if (frontType === 'warm') drawSemiCircle(ctx, 48, baseline, 12, '#ef4444', -1);
-  else if (frontType === 'stationary') { drawSemiCircle(ctx, 30, baseline, 11, '#ef4444', -1); drawTriangle(ctx, 66, baseline, 17, '#1d4ed8', 1); }
-  else if (frontType === 'occluded') { drawSemiCircle(ctx, 32, baseline, 11, '#7c3aed', -1); drawTriangle(ctx, 64, baseline, 17, '#7c3aed', -1); }
+  const baseline = height / 2;
+  if (frontType === 'cold') drawTriangle(ctx, 36, baseline, 14, '#1d4ed8', -1);
+  else if (frontType === 'warm') drawSemiCircle(ctx, 36, baseline, 10, '#ef4444', -1);
+  else if (frontType === 'stationary') { drawSemiCircle(ctx, 24, baseline, 9, '#ef4444', -1); drawTriangle(ctx, 50, baseline, 13, '#1d4ed8', 1); }
+  else if (frontType === 'occluded') { drawSemiCircle(ctx, 24, baseline, 9, '#7c3aed', -1); drawTriangle(ctx, 50, baseline, 13, '#7c3aed', -1); }
   return canvas;
 };
-function ensureSurfaceFrontImages(map) {
-  if (typeof document === 'undefined' || !map?.addImage) return;
-  Object.entries(FRONT_TYPES).forEach(([frontType, style]) => {
-    if (map.hasImage?.(style.imageId)) return;
-    map.addImage(style.imageId, createFrontIconCanvas(frontType), { pixelRatio: 2 });
-  });
-}
+function ensureSurfaceFrontImages(map) { if (typeof document === 'undefined' || !map?.addImage) return; Object.entries(FRONT_TYPES).forEach(([type, style]) => { if (map.hasImage?.(style.imageId)) return; map.addImage(style.imageId, createFrontIconCanvas(type), { pixelRatio: 2 }); }); }
 
 function renderFrontLayers(map, sourceId, geojson, frontType) {
-  const style = FRONT_TYPES[frontType] || FRONT_TYPES.cold;
+  const frozenFrontType = normalizeFrontType(frontType);
+  const style = FRONT_TYPES[frozenFrontType];
   const beforeLayer = map.getLayer('custom-points-layer') ? 'custom-points-layer' : undefined;
   [`${sourceId}_bg`, `${sourceId}_frontSymbols`, `${sourceId}_triangles`, `${sourceId}_circles`, `${sourceId}_secondary`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
   if (map.getSource(sourceId)) map.getSource(sourceId).setData(geojson);
   else map.addSource(sourceId, { type: 'geojson', data: geojson });
   ensureSurfaceFrontImages(map);
-
-  map.addLayer({
-    id: `${sourceId}_bg`,
-    type: 'line',
-    source: sourceId,
-    slot: 'top',
-    layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' },
-    paint: { 'line-color': style.color, 'line-width': style.lineWidth, 'line-opacity': 0.86 },
-  }, beforeLayer);
-
-  map.addLayer({
-    id: `${sourceId}_frontSymbols`,
-    type: 'symbol',
-    source: sourceId,
-    slot: 'top',
-    layout: {
-      'symbol-placement': 'line',
-      'symbol-spacing': 44,
-      'icon-image': style.imageId,
-      'icon-size': 1,
-      'icon-allow-overlap': true,
-      'icon-ignore-placement': true,
-      'icon-keep-upright': false,
-      'icon-rotation-alignment': 'map',
-      'icon-pitch-alignment': 'map',
-      visibility: 'visible',
-    },
-  }, beforeLayer);
+  map.addLayer({ id: `${sourceId}_bg`, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': style.color, 'line-width': style.lineWidth, 'line-opacity': 0.86 } }, beforeLayer);
+  map.addLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, slot: 'top', layout: { 'symbol-placement': 'line', 'symbol-spacing': 34, 'icon-image': style.imageId, 'icon-size': 0.92, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } }, beforeLayer);
 }
 
 function makePreviewSymbols(points, frontType) {
-  const style = FRONT_TYPES[frontType] || FRONT_TYPES.cold;
+  const style = FRONT_TYPES[normalizeFrontType(frontType)];
   if (!Array.isArray(points) || points.length < 4) return [];
   const symbols = [];
-  const spacing = 52;
+  const spacing = 42;
   let carry = 0;
   for (let i = 0; i < points.length - 2; i += 2) {
-    const x1 = points[i];
-    const y1 = points[i + 1];
-    const x2 = points[i + 2];
-    const y2 = points[i + 3];
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const len = Math.hypot(dx, dy);
+    const x1 = points[i], y1 = points[i + 1], x2 = points[i + 2], y2 = points[i + 3];
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
     if (len < 1) continue;
-    const ux = dx / len;
-    const uy = dy / len;
-    const nx = -uy;
-    const ny = ux;
+    const ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
     let distance = spacing - carry;
     while (distance < len) {
       const baseX = x1 + ux * distance;
       const baseY = y1 + uy * distance;
       const angle = Math.atan2(dy, dx) * 180 / Math.PI;
       style.symbols.forEach((symbol, idx) => {
-        const sideOffset = 16 * symbol.side;
+        const sideOffset = symbol.kind === 'triangle' ? 5 * symbol.side : 4 * symbol.side;
         const alongOffset = symbol.along || 0;
         symbols.push({ id: `${i}-${distance}-${idx}`, kind: symbol.kind, color: symbol.color, x: baseX + nx * sideOffset + ux * alongOffset, y: baseY + ny * sideOffset + uy * alongOffset, rotation: angle + (symbol.kind === 'triangle' ? 90 : 0), side: symbol.side });
       });
@@ -162,13 +108,14 @@ const FlagCanvas = ({ mapRef, isDarkMode }) => {
   const mapBoundsRef = useRef(null);
   useEffect(() => { const preventScroll = (e) => { if (isFlagDrawing.current) e.preventDefault(); }; document.body.addEventListener('touchmove', preventScroll, { passive: false }); return () => document.body.removeEventListener('touchmove', preventScroll); }, []);
   const getAdjustedPoint = useCallback((e) => { const pos = getPointerPosition(e); const rect = mapBoundsRef.current || getMapContainerRect(mapRef); return { x: pos.x - rect.left, y: pos.y - rect.top }; }, [mapRef]);
-  const handleDown = useCallback((e) => { mapBoundsRef.current = getMapContainerRect(mapRef); isFlagDrawing.current = true; const pos = getAdjustedPoint(e); setLines([{ points: [pos.x, pos.y], color: FRONT_TYPES[frontType].color, frontType }]); }, [frontType, getAdjustedPoint, mapRef]);
+  const handleDown = useCallback((e) => { const frozenFrontType = normalizeFrontType(frontType); mapBoundsRef.current = getMapContainerRect(mapRef); isFlagDrawing.current = true; const pos = getAdjustedPoint(e); setLines([{ points: [pos.x, pos.y], color: FRONT_TYPES[frozenFrontType].color, frontType: frozenFrontType }]); }, [frontType, getAdjustedPoint, mapRef]);
   const handleMove = useCallback((e) => { if (!isFlagDrawing.current) return; const pos = getAdjustedPoint(e); setLines((prev) => { if (!prev.length) return prev; const lastLine = prev[prev.length - 1]; return [...prev.slice(0, -1), { ...lastLine, points: [...lastLine.points, pos.x, pos.y] }]; }); }, [getAdjustedPoint]);
-  const handleUp = useCallback(async () => { const map = mapRef.current; const line = lines[lines.length - 1]; isFlagDrawing.current = false; if (!map || !line?.points || line.points.length < 4) { setLines([]); return; } const coords = []; for (let i = 0; i < line.points.length; i += 2) { const lngLat = map.unproject([line.points[i], line.points[i + 1]]); coords.push([lngLat.lng, lngLat.lat]); } const sourceId = `SF_${uuidv4()}`; const feature = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { isFront: true, frontType, project: projectId } }; const geojson = { type: 'FeatureCollection', features: [feature] }; renderFrontLayers(map, sourceId, geojson, frontType); createFeature({ geometry: feature.geometry, properties: feature.properties, name: buildFrontName(frontType), sourceId }).catch((err) => console.error('Error saving surface front:', err)); setLines([]); }, [frontType, lines, mapRef, projectId]);
-  const currentStyle = FRONT_TYPES[frontType];
+  const handleUp = useCallback(async () => { const map = mapRef.current; const line = lines[lines.length - 1]; const frozenFrontType = normalizeFrontType(line?.frontType || frontType); isFlagDrawing.current = false; if (!map || !line?.points || line.points.length < 4) { setLines([]); return; } const coords = []; for (let i = 0; i < line.points.length; i += 2) { const lngLat = map.unproject([line.points[i], line.points[i + 1]]); coords.push([lngLat.lng, lngLat.lat]); } const sourceId = `SF_${uuidv4()}`; const feature = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { isFront: true, frontType: frozenFrontType, project: projectId } }; const geojson = { type: 'FeatureCollection', features: [feature] }; renderFrontLayers(map, sourceId, geojson, frozenFrontType); createFeature({ geometry: feature.geometry, properties: feature.properties, name: buildFrontName(frozenFrontType), sourceId }).catch((err) => console.error('Error saving surface front:', err)); setLines([]); }, [frontType, lines, mapRef, projectId]);
   const previewLine = lines[lines.length - 1];
-  const previewSymbols = previewLine ? makePreviewSymbols(previewLine.points, frontType) : [];
-  return <><SurfaceFrontPanel frontType={frontType} setFrontType={setFrontType} isDarkMode={isDarkMode} /><Stage width={window.innerWidth} height={window.innerHeight} onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} style={{ position: 'fixed', top: 0, left: 0, zIndex: 10, pointerEvents: 'auto' }}><Layer>{lines.map((line, i) => <Line key={i} points={line.points} stroke={currentStyle.color} strokeWidth={currentStyle.lineWidth} tension={0.45} lineCap="round" lineJoin="round" />)}{previewSymbols.map((symbol) => symbol.kind === 'triangle' ? <RegularPolygon key={symbol.id} x={symbol.x} y={symbol.y} sides={3} radius={10} fill={symbol.color} rotation={symbol.rotation} /> : <Wedge key={symbol.id} x={symbol.x} y={symbol.y} radius={11} angle={180} fill={symbol.color} rotation={symbol.rotation + (symbol.side < 0 ? 180 : 0)} />)}</Layer></Stage></>;
+  const previewFrontType = normalizeFrontType(previewLine?.frontType || frontType);
+  const currentStyle = FRONT_TYPES[previewFrontType];
+  const previewSymbols = previewLine ? makePreviewSymbols(previewLine.points, previewFrontType) : [];
+  return <><SurfaceFrontPanel frontType={frontType} setFrontType={setFrontType} isDarkMode={isDarkMode} /><Stage width={window.innerWidth} height={window.innerHeight} onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} style={{ position: 'fixed', top: 0, left: 0, zIndex: 10, pointerEvents: 'auto' }}><Layer>{lines.map((line, i) => <Line key={i} points={line.points} stroke={FRONT_TYPES[normalizeFrontType(line.frontType)].color} strokeWidth={FRONT_TYPES[normalizeFrontType(line.frontType)].lineWidth} tension={0.45} lineCap="round" lineJoin="round" />)}{previewSymbols.map((symbol) => symbol.kind === 'triangle' ? <RegularPolygon key={symbol.id} x={symbol.x} y={symbol.y} sides={3} radius={9} fill={symbol.color} rotation={symbol.rotation} /> : <Wedge key={symbol.id} x={symbol.x} y={symbol.y} radius={9} angle={180} fill={symbol.color} rotation={symbol.rotation + (symbol.side < 0 ? 180 : 0)} />)}</Layer></Stage></>;
 };
 
 export default FlagCanvas;
