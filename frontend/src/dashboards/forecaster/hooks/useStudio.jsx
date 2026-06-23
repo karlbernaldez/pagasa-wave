@@ -11,22 +11,19 @@ const FORECAST_REFRESH_DEBOUNCE_MS = 350;
 const FORECAST_CHART_UPDATED_EVENT = "forecast-chart:updated";
 export const FORECAST_CHART_BROWSER_EVENT = "wavelab:forecast-chart-updated";
 
+const FRONT_TYPE_LABELS = { cold: "Cold Front", warm: "Warm Front", stationary: "Stationary Front", occluded: "Occluded Front" };
+const resolveFeatureLayerType = (feature) => {
+  const props = feature?.properties || {};
+  if (props.isFront) return FRONT_TYPE_LABELS[props.frontType] || feature?.name || "Surface Front";
+  return props.type || "Wave Height";
+};
+
 export const useProjectId = () => {
   const { projectId: paramId } = useParams();
   const navigate = useNavigate();
   const projectId = paramId || null;
-
-  useEffect(() => {
-    if (!projectId) return;
-    localStorage.setItem("projectId", projectId);
-  }, [projectId]);
-
-  const updateProjectId = useCallback((id, { replace = true } = {}) => {
-    if (!id) return;
-    localStorage.setItem("projectId", id);
-    navigate(`/studio/${id}`, { replace });
-  }, [navigate]);
-
+  useEffect(() => { if (projectId) localStorage.setItem("projectId", projectId); }, [projectId]);
+  const updateProjectId = useCallback((id, { replace = true } = {}) => { if (!id) return; localStorage.setItem("projectId", id); navigate(`/studio/${id}`, { replace }); }, [navigate]);
   return [projectId, updateProjectId];
 };
 
@@ -94,15 +91,13 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
       const filteredFeatures = (Array.isArray(features) ? features : []).filter((f) => String(f?.properties?.project || "") === String(projectId));
       setSavedFeatures(filteredFeatures);
       const initialLayers = filteredFeatures.map((f) => {
-        const type = f.properties?.type || "Wave Height";
-        const name = f.name || "Untitled Feature";
+        const type = resolveFeatureLayerType(f);
+        const name = f.name || type || "Untitled Feature";
         const isMarker = ["typhoon", "low_pressure", "high_pressure", "less_1", "text_note"].includes(type);
         return { id: f.sourceId, sourceID: f.sourceId, name, visible: true, locked: false, type, markerType: f.properties?.markerType || (isMarker ? type : undefined), mapLayerId: f.properties?.mapLayerId || (isMarker ? `${type}_${name}` : undefined), owner: f.properties?.owner, canEdit: Boolean(f.properties?.canEdit) };
       });
       setLayers(initialLayers);
-      if (syncMap && mapRef.current) {
-        await syncAnnotationFeaturesToMap(mapRef.current, filteredFeatures, { mapRef, isDarkMode });
-      }
+      if (syncMap && mapRef.current) await syncAnnotationFeaturesToMap(mapRef.current, filteredFeatures, { mapRef, isDarkMode });
       return filteredFeatures;
     } catch (error) {
       if (requestSeqRef.current !== requestSeq) return [];
@@ -136,52 +131,26 @@ export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLaye
   const refreshTimerRef = useRef(null);
   const refreshInFlightRef = useRef(false);
   const queuedRefreshRef = useRef(false);
-
   const applyFeaturesToMap = useCallback(async () => {
     const map = mapRef.current;
     if (!map || !projectId) return;
-    if (refreshInFlightRef.current) {
-      queuedRefreshRef.current = true;
-      return;
-    }
-
+    if (refreshInFlightRef.current) { queuedRefreshRef.current = true; return; }
     refreshInFlightRef.current = true;
-    try {
-      await setupFeaturesAndLayers({ syncMap: true });
-    } finally {
-      refreshInFlightRef.current = false;
-      if (queuedRefreshRef.current) {
-        queuedRefreshRef.current = false;
-        window.setTimeout(applyFeaturesToMap, FORECAST_REFRESH_DEBOUNCE_MS);
-      }
-    }
+    try { await setupFeaturesAndLayers({ syncMap: true }); }
+    finally { refreshInFlightRef.current = false; if (queuedRefreshRef.current) { queuedRefreshRef.current = false; window.setTimeout(applyFeaturesToMap, FORECAST_REFRESH_DEBOUNCE_MS); } }
   }, [mapRef, projectId, setupFeaturesAndLayers]);
-
   const scheduleFeatureRefresh = useCallback(() => {
     if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
-    refreshTimerRef.current = window.setTimeout(() => {
-      refreshTimerRef.current = null;
-      applyFeaturesToMap();
-    }, FORECAST_REFRESH_DEBOUNCE_MS);
+    refreshTimerRef.current = window.setTimeout(() => { refreshTimerRef.current = null; applyFeaturesToMap(); }, FORECAST_REFRESH_DEBOUNCE_MS);
   }, [applyFeaturesToMap]);
-
   useEffect(() => {
     if (!projectId) return undefined;
     if (!socket.connected) socket.connect();
     socket.emit("forecast:join_project", projectId);
-    const handleForecastChartUpdate = (payload = {}) => {
-      if (String(payload.projectId || "") !== String(projectId)) return;
-      scheduleFeatureRefresh();
-      window.dispatchEvent(new CustomEvent(FORECAST_CHART_BROWSER_EVENT, { detail: { ...payload, source: "socket" } }));
-    };
+    const handleForecastChartUpdate = (payload = {}) => { if (String(payload.projectId || "") !== String(projectId)) return; scheduleFeatureRefresh(); window.dispatchEvent(new CustomEvent(FORECAST_CHART_BROWSER_EVENT, { detail: { ...payload, source: "socket" } })); };
     socket.on(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate);
-    return () => {
-      if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
-      socket.emit("forecast:leave_project", projectId);
-      socket.off(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate);
-    };
+    return () => { if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current); socket.emit("forecast:leave_project", projectId); socket.off(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate); };
   }, [projectId, scheduleFeatureRefresh]);
-
   const handleMapLoad = useCallback(async (map) => {
     mapRef.current = map;
     const filteredFeatures = await setupFeaturesAndLayers({ syncMap: false });
