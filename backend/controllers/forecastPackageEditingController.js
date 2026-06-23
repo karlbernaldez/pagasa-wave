@@ -42,11 +42,10 @@ function serializeChartContext(forecastPackage, chart, user) {
   const activeEditorLabels = activeEditors.map((editor) => getDisplayName(editor.user)).filter(Boolean);
   const blockingChartType = completionRow?.isComplete ? null : getPreviousIncompleteChartType(serializedPackage.chartCompletion || [], plainChart?.chartType);
   const editable = EDITABLE_PACKAGE_STATUSES.includes(serializedPackage.status);
-  const ownerOrAdmin = isPackageOwnerOrAdmin(user, serializedPackage);
   const activeEditorCurrentUser = activeEditors.some((editor) => isSameId(editor.user, user?.id));
   const hasOtherActiveEditors = activeEditors.some((editor) => !isSameId(editor.user, user?.id));
   const isReady = Boolean(completionRow?.isComplete);
-  return { package: serializedPackage, chart: plainChart, chartType: plainChart?.chartType, completion: completionRow || null, blockingChartType, claim: { claimedByCurrentUser: activeEditorCurrentUser, claimedByOtherUser: hasOtherActiveEditors, claimedByLabel: activeEditorLabels.join(', '), activeEditorCount: activeEditors.length, activeEditorLabels, canClaim: editable && !isReady && !blockingChartType && !activeEditorCurrentUser, canRelease: editable && activeEditorCurrentUser, canCertify: editable && !isReady && !blockingChartType && (activeEditorCurrentUser || ownerOrAdmin) && activeEditors.length <= 1 } };
+  return { package: serializedPackage, chart: plainChart, chartType: plainChart?.chartType, completion: completionRow || null, blockingChartType, claim: { claimedByCurrentUser: activeEditorCurrentUser, claimedByOtherUser: hasOtherActiveEditors, claimedByLabel: activeEditorLabels.join(', '), activeEditorCount: activeEditors.length, activeEditorLabels, canClaim: editable && !isReady && !blockingChartType && !activeEditorCurrentUser, canRelease: editable && activeEditorCurrentUser, canCertify: editable && !isReady && !blockingChartType && activeEditorCurrentUser && activeEditors.length === 1 } };
 }
 function getLegacyClaimPatch(activeEditors) { const firstEditor = activeEditors[0]; return { 'charts.$.claimedBy': firstEditor?.user || null, 'charts.$.claimedAt': firstEditor?.startedAt || null }; }
 function canAutoJoinChart(forecastPackage, chart) { if (!EDITABLE_PACKAGE_STATUSES.includes(forecastPackage.status)) return false; const completionRow = getCompletionRow(forecastPackage, chart.chartType); if (completionRow?.isComplete) return false; return !getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chart.chartType); }
