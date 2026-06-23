@@ -53,6 +53,7 @@ export const DOMAIN_LAYERS = [
 export const UTILITY_LAYERS = [
   { id: 'GRATICULES', name: 'Graticules', subtitle: 'Coordinate Grid Lines' },
   { id: 'SHIPPING_ZONE', name: 'Shipping Zones', subtitle: 'Maritime Shipping Areas' },
+  { id: 'PAGASA_NWP_RASTER', name: 'PAGASA NWP Raster', subtitle: 'Panahon precipitation forecast raster' },
   { id: 'CYCLONE_TRACK', name: 'Cyclone Track', subtitle: 'PAGASA tropical cyclone track' },
 ];
 
