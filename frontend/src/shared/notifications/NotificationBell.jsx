@@ -13,6 +13,8 @@ import {
   declineFeatureChangeRequest,
 } from '@/api/featureServices';
 
+const FORECAST_CHART_BROWSER_EVENT = 'wavelab:forecast-chart-updated';
+
 function formatRelativeTime(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -51,6 +53,18 @@ function getRequestSummary(notification) {
   if (metadata.comment) lines.push(`<strong>Comment:</strong> ${metadata.comment}`);
   if (metadata.status && metadata.status !== 'pending') lines.push(`<strong>Status:</strong> ${metadata.status}`);
   return `<div style="text-align:left;line-height:1.55">${lines.map((line) => `<p style="margin:0 0 8px">${line}</p>`).join('')}</div>`;
+}
+
+function dispatchStudioRefresh(projectId, payload = {}) {
+  if (!projectId) return;
+  window.dispatchEvent(new CustomEvent(FORECAST_CHART_BROWSER_EVENT, {
+    detail: {
+      projectId: String(projectId),
+      resourceType: 'annotation',
+      updatedAt: new Date().toISOString(),
+      ...payload,
+    },
+  }));
 }
 
 export default function NotificationBell({ isDarkMode = false, className = '' }) {
@@ -128,7 +142,9 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
     });
 
     if (result.isConfirmed && isPending) {
-      await approveFeatureChangeRequest(id);
+      const response = await approveFeatureChangeRequest(id);
+      const projectId = response?.projectId || notification?.metadata?.projectId;
+      dispatchStudioRefresh(projectId, { action: response?.requestType === 'delete' ? 'annotation_deleted' : 'annotation_renamed', sourceId: response?.appliedSourceId || response?.sourceId });
       await Swal.fire({ icon: 'success', title: 'Request approved', timer: 1400, showConfirmButton: false });
       openResourcePath(notification?.resourcePath);
       await loadNotifications({ silent: true });
@@ -136,7 +152,8 @@ export default function NotificationBell({ isDarkMode = false, className = '' })
     }
 
     if (result.isDenied && isPending) {
-      await declineFeatureChangeRequest(id);
+      const response = await declineFeatureChangeRequest(id);
+      dispatchStudioRefresh(response?.projectId || notification?.metadata?.projectId, { action: 'annotation_request_declined', sourceId: response?.sourceId });
       await Swal.fire({ icon: 'success', title: 'Request declined', timer: 1400, showConfirmButton: false });
       await loadNotifications({ silent: true });
       return;
