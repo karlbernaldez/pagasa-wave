@@ -42,14 +42,15 @@ const getTheme = (isDarkMode) => ({
     ? 'border-cyan-100/18 bg-white/[0.10] text-white hover:border-cyan-100/40 hover:bg-cyan-300/16 hover:text-white'
     : 'border-white/80 bg-white/72 text-slate-900 hover:border-blue-200 hover:bg-blue-50/95 hover:text-blue-950',
   disabled: isDarkMode
-    ? 'border-cyan-100/14 bg-white/[0.075] text-white cursor-not-allowed'
-    : 'border-white/70 bg-white/58 text-slate-700 cursor-not-allowed',
+    ? 'border-cyan-100/14 bg-white/[0.075] text-white cursor-not-allowed opacity-100 disabled:opacity-100'
+    : 'border-white/70 bg-white/58 text-slate-700 cursor-not-allowed opacity-100 disabled:opacity-100',
   active: isDarkMode
     ? 'border-cyan-100/55 bg-cyan-300/26 text-white shadow-[0_0_26px_rgba(34,211,238,0.28),inset_0_1px_0_rgba(255,255,255,0.24)]'
     : 'border-blue-300/90 bg-blue-100/95 text-blue-950 shadow-[0_0_22px_rgba(59,130,246,0.20),inset_0_1px_0_rgba(255,255,255,0.98)]',
   iconRail: isDarkMode ? 'bg-white/[0.13] ring-1 ring-white/16 text-white' : 'bg-white/78 ring-1 ring-white/90 text-slate-900',
   divider: isDarkMode ? 'bg-cyan-50/24' : 'bg-slate-300/95',
   subtle: isDarkMode ? 'text-white' : 'text-slate-700',
+  label: isDarkMode ? '!text-white' : '!text-slate-900',
 });
 
 const getSafePosition = (position, width) => {
@@ -75,15 +76,15 @@ const TrayButton = ({ active, activeClassName, disabled = false, icon, label, on
     onClick={disabled ? undefined : onClick}
     disabled={disabled}
     className={cn(
-      'flex h-12 min-w-[84px] shrink-0 items-center justify-center gap-2 rounded-2xl border px-2.5 transition-all duration-150',
+      'flex h-12 min-w-[84px] shrink-0 items-center justify-center gap-2 rounded-2xl border px-2.5 opacity-100 transition-all duration-150 disabled:opacity-100',
       'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/80',
       disabled ? theme.disabled : active ? activeClassName || theme.active : theme.button
     )}
   >
-    <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-xl', theme.iconRail)}>
+    <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-xl opacity-100', theme.iconRail)}>
       {icon}
     </span>
-    <span className="truncate text-[11px] font-black leading-tight tracking-[0.035em]">{label}</span>
+    <span className={cn('truncate text-[11px] font-black leading-tight tracking-[0.035em] opacity-100', theme.label)}>{label}</span>
   </button>
 );
 
@@ -95,7 +96,7 @@ const IconButton = ({ children, disabled = false, label, onClick, theme }) => (
     onPointerDown={(event) => event.stopPropagation()}
     onClick={disabled ? undefined : onClick}
     disabled={disabled}
-    className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-colors', disabled ? theme.disabled : theme.button)}
+    className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border opacity-100 transition-colors disabled:opacity-100', disabled ? theme.disabled : theme.button)}
   >
     {children}
   </button>
@@ -141,13 +142,13 @@ const DrawToolbar = ({ draw, drawInstance, onToggleCanvas, onToggleFlagCanvas, t
       <FeatureNotAvailableModal isOpen={openModals.featureNotAvailable} onClose={() => toggleModal('featureNotAvailable', false)} />
       <FloatingShell isDragging={isDragging} position={position} width={dockWidth} theme={theme}>
         {isCollapsed ? (
-          <div className="relative z-10 flex h-12 items-center gap-1.5"><button type="button" aria-label="Open drawing tools" title="Open drawing tools" onClick={handleToggleCollapse} className="flex min-w-0 flex-1 items-center gap-2 rounded-[18px] px-1.5 py-1 text-xs font-black tracking-[0.02em]"><span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl', theme.iconRail)}><TbTools size={16} aria-hidden="true" /></span><span className="min-w-0 flex-1 truncate text-left">Draw Tools</span><ChevronUp size={14} className={theme.subtle} aria-hidden="true" /></button></div>
+          <div className="relative z-10 flex h-12 items-center gap-1.5"><button type="button" aria-label="Open drawing tools" title="Open drawing tools" onClick={handleToggleCollapse} className="flex min-w-0 flex-1 items-center gap-2 rounded-[18px] px-1.5 py-1 text-xs font-black tracking-[0.02em]"><span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl', theme.iconRail)}><TbTools size={16} aria-hidden="true" /></span><span className={cn('min-w-0 flex-1 truncate text-left', theme.label)}>Draw Tools</span><ChevronUp size={14} className={theme.subtle} aria-hidden="true" /></button></div>
         ) : (
           <div className="relative z-10 flex h-14 min-w-0 items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
             <button type="button" aria-label="Drag draw tools" title="Drag to move" className={cn('flex h-12 w-12 shrink-0 cursor-grab touch-none items-center justify-center rounded-2xl border active:cursor-grabbing', theme.button)} {...dragHandleProps}><GripHorizontal size={16} aria-hidden="true" /></button>
             <Divider theme={theme} />
             <TrayButton label="Text" active={selectedToolType === 'text_note'} disabled={disabled} onClick={handleSelectTextNote} theme={theme} icon={<Type size={16} aria-hidden="true" />} />
-            <TrayButton label="Low Wave" active={selectedToolType === 'less_1'} disabled={disabled} onClick={handleSelectLess1} theme={theme} icon={<img src={l1} alt="" className="h-5 w-5 object-contain" aria-hidden="true" />} />
+            <TrayButton label="Low Wave" active={selectedToolType === 'less_1'} disabled={disabled} onClick={handleSelectLess1} theme={theme} icon={<img src={l1} alt="" className="h-5 w-5 object-contain opacity-100" aria-hidden="true" />} />
             <Divider theme={theme} />
             <TrayButton label={waveActive ? 'Stop Wave' : 'Wave'} active={waveActive} disabled={disabled} onClick={handleToggleDrawing} theme={theme} icon={waveActive ? <X size={16} aria-hidden="true" /> : <Waves size={16} aria-hidden="true" />} />
             <TrayButton label={isFlagDrawing ? 'Stop Fronts' : 'Surface Fronts'} active={isFlagDrawing} disabled={disabled} onClick={handleToggleFlagDrawing} theme={theme} icon={<Flag size={16} aria-hidden="true" />} />
