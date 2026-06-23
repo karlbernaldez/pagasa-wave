@@ -70,11 +70,9 @@ function createFrontIconCanvas(frontType) {
   canvas.height = height * pixelRatio;
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
-
   const ctx = canvas.getContext('2d');
   ctx.scale(pixelRatio, pixelRatio);
   const baseline = height / 2;
-
   if (frontType === 'cold') drawTriangle(ctx, 40, baseline, 12, '#1d4ed8', -1);
   else if (frontType === 'warm') drawSemiCircle(ctx, 40, baseline, 9, '#ef4444', -1);
   else if (frontType === 'stationary') {
@@ -84,7 +82,6 @@ function createFrontIconCanvas(frontType) {
     drawSemiCircle(ctx, 24, baseline, 8, '#7c3aed', -1);
     drawTriangle(ctx, 56, baseline, 11, '#7c3aed', -1);
   }
-
   return canvas;
 }
 
@@ -273,7 +270,7 @@ class LineRenderer {
   }
   addFrontLineLayer(sourceId, style, suffix = '_bg', secondary = false) {
     const dash = secondary ? style.secondaryDash : style.dash;
-    this.upsertLayer({ id: `${sourceId}${suffix}`, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': secondary ? style.secondaryColor : style.color, 'line-width': style.lineWidth, 'line-opacity': 0.9, ...(dash ? { 'line-dasharray': dash } : {}) } });
+    this.upsertLayer({ id: `${sourceId}${suffix}`, type: 'line', source: sourceId, layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': secondary ? style.secondaryColor : style.color, 'line-width': style.lineWidth, 'line-opacity': 0.95, ...(dash ? { 'line-dasharray': dash } : {}) } });
   }
   renderFrontLines(frontLines) {
     ensureSurfaceFrontImages(this.map);
@@ -288,7 +285,7 @@ class LineRenderer {
         this.addFrontLineLayer(sourceId, style, '_bg', false);
         if (style.secondaryColor) this.addFrontLineLayer(sourceId, style, '_secondary', true);
         if (this.map.hasImage?.(style.imageId)) {
-          this.upsertLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, slot: 'top', layout: { 'symbol-placement': 'line', 'symbol-spacing': style.spacing, 'icon-image': style.imageId, 'icon-size': style.iconSize, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
+          this.upsertLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, layout: { 'symbol-placement': 'line', 'symbol-spacing': style.spacing, 'icon-image': style.imageId, 'icon-size': style.iconSize, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
         }
       } catch (error) {
         console.error('[surface-front-render-error]', feature?.sourceId || feature?.properties?.sourceId, error);
@@ -304,7 +301,6 @@ export async function syncAnnotationFeaturesToMap(map, features = [], { mapRef, 
   const theme = { lineColor: isDarkMode ? '#ffffff' : '#000000', textColor: isDarkMode ? '#ffffff' : '#000000', isDarkMode };
   const classifier = new FeatureClassifier();
   const { markerPoints, frontLines, nonFrontLines } = classifier.classify(featuresArray);
-
   if (mapRef) new MarkerRenderer(mapRef).renderAll(markerPoints);
   const lineRenderer = new LineRenderer(map, theme);
   lineRenderer.renderNonFrontLines(nonFrontLines);
@@ -327,7 +323,6 @@ export async function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, set
     setupFinished = true;
     finishMapSetup({ setLoading, setMapLoaded, logger });
   };
-
   try {
     const draw = initDrawControl(map);
     window.drawInstance = draw;
@@ -338,14 +333,12 @@ export async function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, set
     await addWindSource(map, isDarkMode);
     await addWindLayer(map, isDarkMode);
     new ImageLoader(map).loadAll();
-
     const featuresArray = Array.isArray(initialFeatures) ? initialFeatures : initialFeatures?.features || [];
     setGlobalSourceIds(featuresArray.map(f => getAnnotationSourceId(f)).filter(Boolean));
     const { totalLineCount } = new FeatureClassifier().classify(featuresArray);
     setLineCount?.(totalLineCount);
     await syncAnnotationFeaturesToMap(map, featuresArray, { mapRef, isDarkMode });
     new LayerVisibilityManager(map).applyFromLocalStorage();
-
     const handleDrawCreate = (e) => {
       const feature = e.features[0];
       if (feature?.geometry.type === 'Point') {
@@ -356,7 +349,6 @@ export async function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, set
         draw.delete(feature.id);
       }
     };
-
     map.on('draw.create', handleDrawCreate);
     map.once('render', completeSetupOnce);
     window.setTimeout(completeSetupOnce, 250);
