@@ -19,6 +19,34 @@ const ForecastPackageChartEditorSchema = new Schema({
   },
 }, { _id: false });
 
+const ForecastPackageChartReadyVoteSchema = new Schema({
+  user: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  readyAt: {
+    type: Date,
+    default: Date.now,
+  },
+}, { _id: false });
+
+const ForecastPackageChartParticipantSchema = new Schema({
+  user: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  firstJoinedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  lastJoinedAt: {
+    type: Date,
+    default: Date.now,
+  },
+}, { _id: false });
+
 const ForecastPackageChartSchema = new Schema({
   chartType: {
     type: String,
@@ -36,6 +64,14 @@ const ForecastPackageChartSchema = new Schema({
   },
   activeEditors: {
     type: [ForecastPackageChartEditorSchema],
+    default: [],
+  },
+  participants: {
+    type: [ForecastPackageChartParticipantSchema],
+    default: [],
+  },
+  readyEditors: {
+    type: [ForecastPackageChartReadyVoteSchema],
     default: [],
   },
   claimedBy: {
