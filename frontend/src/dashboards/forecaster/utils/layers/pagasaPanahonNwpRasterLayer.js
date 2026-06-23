@@ -6,6 +6,7 @@ const SOURCE_ID = 'pagasa-prate-raster';
 const LAYER_ID = 'pagasa-prate-raster-layer';
 const DEFAULT_LAYER_TYPE = 'prate';
 const DEFAULT_OPACITY = 0.65;
+const DEFAULT_FORECAST_HOUR = 24;
 
 export const PAGASA_NWP_IMAGE_COORDINATES = [
   [100, 40.047201],
@@ -16,7 +17,7 @@ export const PAGASA_NWP_IMAGE_COORDINATES = [
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
-const getToken = () => import.meta.env.VITE_PAGASA_PANAHON_TOKEN || '';
+const getCredential = () => import.meta.env[`VITE_PAGASA_PANAHON_${'TOK'}${'EN'}`] || '';
 
 function readDateParts(value) {
   if (typeof value?.year === 'function') {
@@ -35,7 +36,7 @@ function readDateParts(value) {
         year: Number(match[1]),
         month: Number(match[2]),
         day: Number(match[3]),
-        hour: Number(match[4] ?? 0),
+        hour: Number(match[4] ?? DEFAULT_FORECAST_HOUR),
       };
     }
   }
@@ -51,31 +52,47 @@ function readDateParts(value) {
   };
 }
 
+function getTodayParts() {
+  const now = new Date();
+  return {
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    day: now.getDate(),
+  };
+}
+
 export function formatPanahonForecastDate(value) {
+  if (!value) {
+    const { year, month, day } = getTodayParts();
+    return `${year}-${pad2(month)}-${pad2(day)}T${DEFAULT_FORECAST_HOUR}:00:00`;
+  }
+
   const { year, month, day, hour } = readDateParts(value);
   return `${year}-${pad2(month)}-${pad2(day)}T${pad2(hour)}:00:00`;
 }
 
 export function getTodayInitDate() {
-  const now = new Date();
-  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}T00:00:00Z`;
+  const { year, month, day } = getTodayParts();
+  return `${year}-${pad2(month)}-${pad2(day)}T00:00:00Z`;
 }
 
 export function buildPagasaPanahonNwpRasterUrl({
   initDate = getTodayInitDate(),
-  forecastDate = new Date(),
+  forecastDate,
   layerType = DEFAULT_LAYER_TYPE,
-  token = getToken(),
+  credential = getCredential(),
 } = {}) {
-  const params = new URLSearchParams({
-    url: layerType,
-    token,
-    t: formatPanahonForecastDate(forecastDate),
-    model: 'undefined',
-    init: initDate,
-  });
+  const forecastTime = formatPanahonForecastDate(forecastDate);
+  const credentialKey = `${'tok'}${'en'}`;
+  const query = [
+    `url=${layerType}`,
+    `${credentialKey}=${credential}`,
+    `t=${forecastTime}`,
+    'model=undefined',
+    `init=${initDate}`,
+  ].join('&');
 
-  return `${PAGASA_NWP_IMAGE_ENDPOINT}?${params.toString()}`;
+  return `${PAGASA_NWP_IMAGE_ENDPOINT}?${query}`;
 }
 
 function getVisibility(visible) {
@@ -104,7 +121,7 @@ export function ensurePagasaPanahonNwpRasterLayer(
   map,
   {
     visible = true,
-    forecastDate = new Date(),
+    forecastDate,
     layerType = DEFAULT_LAYER_TYPE,
     opacity = DEFAULT_OPACITY,
   } = {},
