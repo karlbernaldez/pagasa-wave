@@ -1,15 +1,17 @@
 import { loadImage, loadCustomImages } from '@dashboards/forecaster/map/helpers/imageLoader';
 import { initDrawControl } from '@dashboards/forecaster/map/controls/drawControl';
 import { initTyphoonLayer } from '@dashboards/forecaster//map/layers/typhoonLayer';
-import { saveMarker } from '@dashboards/forecaster/map/layers/markerLayer';
+import { saveMarker, removeMarkerDrag } from '@dashboards/forecaster/map/layers/markerLayer';
 import { addHimawariLayer } from '@dashboards/forecaster/map/layers/satelliteLayer';
 import { addWindSource, addWindLayer } from '@dashboards/forecaster/map/layers/windLayer';
 
 import { setGlobalMapLoaded, setGlobalSourceIds, } from '@dashboards/forecaster/map/helpers/mapGlobalState';
 
 const MARKER_IMAGES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1'];
+const MARKER_TYPES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note'];
 const WIND_BARB_IMAGES = ['0kts', '5kts', '10kts', '15kts', '20kts', '25kts', '30kts'];
 const WAVE_HEIGHT_THRESHOLD = 2;
+const renderedAnnotationIds = new Set();
 
 const LAYER_VISIBILITY_CONFIG = [
   { key: 'PAR', ids: ['PAR', 'PAR_dash'] },
@@ -33,6 +35,26 @@ const getValidCoordinates = (geometry) => {
   return coords;
 };
 
+const markerLayerId = (feature) => {
+  const props = feature?.properties || {};
+  const markerType = props.markerType || props.type;
+  const name = feature?.name || props.name || props.title || props.labelValue;
+  if (!MARKER_TYPES.includes(markerType) || !name) return null;
+  return props.mapLayerId || `${markerType}_${name}`;
+};
+
+const getAnnotationArtifactIds = (feature) => {
+  const props = feature?.properties || {};
+  return Array.from(new Set([
+    feature?.sourceId,
+    props.sourceId,
+    props.stableId,
+    props.annotationId,
+    props.mapLayerId,
+    markerLayerId(feature),
+  ].filter(Boolean)));
+};
+
 const waitForMapStyle = (map) => new Promise((resolve) => {
   if (!map || map.isStyleLoaded?.()) {
     resolve();
@@ -44,6 +66,40 @@ const waitForMapStyle = (map) => new Promise((resolve) => {
   map.once?.('load', done);
   window.setTimeout(done, 750);
 });
+
+function safeRemoveLayer(map, id) {
+  if (id && map.getLayer(id)) map.removeLayer(id);
+}
+
+function safeRemoveSource(map, id) {
+  if (id && map.getSource(id)) map.removeSource(id);
+}
+
+function removeAnnotationArtifacts(map, id) {
+  safeRemoveLayer(map, id);
+  safeRemoveLayer(map, `${id}-0`);
+  safeRemoveLayer(map, `${id}-1`);
+  safeRemoveLayer(map, `${id}_bg`);
+  safeRemoveLayer(map, `${id}_dash`);
+
+  safeRemoveSource(map, id);
+  safeRemoveSource(map, `${id}-0`);
+  safeRemoveSource(map, `${id}-1`);
+
+  removeMarkerDrag(id);
+}
+
+function pruneStaleAnnotationArtifacts(map, currentFeatures) {
+  const currentIds = new Set(currentFeatures.flatMap(getAnnotationArtifactIds));
+
+  Array.from(renderedAnnotationIds).forEach((id) => {
+    if (currentIds.has(id)) return;
+    removeAnnotationArtifacts(map, id);
+    renderedAnnotationIds.delete(id);
+  });
+
+  currentIds.forEach((id) => renderedAnnotationIds.add(id));
+}
 
 function finishMapSetup({ setLoading, setMapLoaded, logger }) {
   setLoading?.(false);
@@ -99,8 +155,9 @@ class MarkerRenderer {
     else if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') [lng, lat] = coords[0];
     else if (Array.isArray(coords[0]) && Array.isArray(coords[0][0])) [lng, lat] = coords[0][0];
     if (lng === undefined || lat === undefined) return;
-    const title = point.name || point.properties?.name || '';
-    const markerType = point.properties?.type;
+    const props = point.properties || {};
+    const title = point.name || props.name || props.title || '';
+    const markerType = props.markerType || props.type;
     saveMarker({ lat, lng }, this.mapRef, () => { }, markerType)(title);
   }
 }
@@ -174,6 +231,7 @@ export async function syncAnnotationFeaturesToMap(map, features = [], { mapRef, 
   await waitForMapStyle(map);
 
   const featuresArray = Array.isArray(features) ? features : features?.features || [];
+  pruneStaleAnnotationArtifacts(map, featuresArray);
   if (!featuresArray.length) return;
 
   const theme = { lineColor: isDarkMode ? '#ffffff' : '#000000', textColor: isDarkMode ? '#ffffff' : '#000000', isDarkMode };
