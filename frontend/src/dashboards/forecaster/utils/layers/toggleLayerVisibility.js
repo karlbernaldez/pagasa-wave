@@ -1,3 +1,5 @@
+const SURFACE_FRONT_SUFFIXES = ['_bg', '_dash', '_secondary', '_triangles', '_circles', '_frontSymbols'];
+
 function safeSetVisibility(map, id, visibility) {
   if (id && map.getLayer(id)) {
     map.setLayoutProperty(id, 'visibility', visibility);
@@ -27,7 +29,6 @@ function getCandidateIds(layer) {
     layer?.sourceId,
     layer?.source,
     layer?.mapLayerId,
-    layer?.name,
     cleanedId,
     markerLayerId(layer),
     layer?.fillId,
@@ -39,8 +40,7 @@ function setCandidateVisibility(map, id, visibility) {
   safeSetVisibility(map, id, visibility);
   safeSetVisibility(map, `${id}-0`, visibility);
   safeSetVisibility(map, `${id}-1`, visibility);
-  safeSetVisibility(map, `${id}_bg`, visibility);
-  safeSetVisibility(map, `${id}_dash`, visibility);
+  SURFACE_FRONT_SUFFIXES.forEach((suffix) => safeSetVisibility(map, `${id}${suffix}`, visibility));
 }
 
 function matchesLayer(target, current) {
