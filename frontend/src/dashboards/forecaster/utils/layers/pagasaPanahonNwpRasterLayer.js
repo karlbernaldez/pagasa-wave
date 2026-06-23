@@ -58,7 +58,7 @@ export function formatPanahonForecastDate(value) {
 
 export function getTodayInitDate() {
   const now = new Date();
-  return `${now.getUTCFullYear()}-${pad2(now.getUTCMonth() + 1)}-${pad2(now.getUTCDate())}T00:00:00Z`;
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}T00:00:00Z`;
 }
 
 export function buildPagasaPanahonNwpRasterUrl({
