@@ -36,20 +36,20 @@ const getDefaultPosition = (collapsed = false) => {
 
 const getTheme = (isDarkMode) => ({
   dock: isDarkMode
-    ? 'border-cyan-200/20 bg-[#0b2638]/78 text-cyan-50 shadow-[0_18px_60px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.16)]'
-    : 'border-white/80 bg-white/74 text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.95)]',
+    ? 'border-cyan-200/24 bg-[#0b2638]/82 text-cyan-50 shadow-[0_18px_60px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.16)]'
+    : 'border-white/80 bg-white/78 text-slate-950 shadow-[0_18px_50px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.95)]',
   button: isDarkMode
-    ? 'border-white/8 bg-white/[0.045] text-cyan-100/78 hover:border-cyan-200/24 hover:bg-cyan-300/10 hover:text-cyan-50'
-    : 'border-white/70 bg-white/48 text-slate-700 hover:border-blue-200 hover:bg-blue-50/75 hover:text-blue-800',
+    ? 'border-white/12 bg-white/[0.065] text-cyan-50 hover:border-cyan-200/30 hover:bg-cyan-300/12 hover:text-white'
+    : 'border-white/75 bg-white/58 text-slate-800 hover:border-blue-200 hover:bg-blue-50/85 hover:text-blue-900',
   disabled: isDarkMode
-    ? 'border-white/5 bg-white/[0.025] text-cyan-100/28 opacity-60'
-    : 'border-white/50 bg-white/30 text-slate-400 opacity-70',
+    ? 'border-white/6 bg-white/[0.03] text-cyan-100/45 opacity-75'
+    : 'border-white/55 bg-white/35 text-slate-500 opacity-80',
   active: isDarkMode
-    ? 'border-cyan-200/36 bg-cyan-300/18 text-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.18),inset_0_1px_0_rgba(255,255,255,0.18)]'
-    : 'border-blue-300/80 bg-blue-100/80 text-blue-800 shadow-[0_0_22px_rgba(59,130,246,0.16),inset_0_1px_0_rgba(255,255,255,0.9)]',
-  iconRail: isDarkMode ? 'bg-white/[0.07] ring-1 ring-white/10' : 'bg-white/55 ring-1 ring-white/80',
-  divider: isDarkMode ? 'bg-cyan-100/12' : 'bg-slate-200/80',
-  subtle: isDarkMode ? 'text-cyan-100/58' : 'text-slate-500',
+    ? 'border-cyan-200/44 bg-cyan-300/22 text-white shadow-[0_0_24px_rgba(34,211,238,0.22),inset_0_1px_0_rgba(255,255,255,0.20)]'
+    : 'border-blue-300/85 bg-blue-100/90 text-blue-900 shadow-[0_0_22px_rgba(59,130,246,0.18),inset_0_1px_0_rgba(255,255,255,0.95)]',
+  iconRail: isDarkMode ? 'bg-white/[0.09] ring-1 ring-white/12 text-cyan-50' : 'bg-white/70 ring-1 ring-white/85 text-slate-800',
+  divider: isDarkMode ? 'bg-cyan-100/18' : 'bg-slate-300/85',
+  subtle: isDarkMode ? 'text-cyan-50/78' : 'text-slate-600',
 });
 
 const getSafePosition = (position, width) => {
@@ -83,7 +83,7 @@ const TrayButton = ({ active, activeClassName, disabled = false, icon, label, on
     <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-xl', theme.iconRail)}>
       {icon}
     </span>
-    <span className="truncate text-[10px] font-black leading-tight">{label}</span>
+    <span className="truncate text-[10px] font-black leading-tight tracking-[0.02em] drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]">{label}</span>
   </button>
 );
 
@@ -141,7 +141,7 @@ const DrawToolbar = ({ draw, drawInstance, onToggleCanvas, onToggleFlagCanvas, t
       <FeatureNotAvailableModal isOpen={openModals.featureNotAvailable} onClose={() => toggleModal('featureNotAvailable', false)} />
       <FloatingShell isDragging={isDragging} position={position} width={dockWidth} theme={theme}>
         {isCollapsed ? (
-          <div className="relative z-10 flex h-12 items-center gap-1.5"><button type="button" aria-label="Open drawing tools" title="Open drawing tools" onClick={handleToggleCollapse} className="flex min-w-0 flex-1 items-center gap-2 rounded-[18px] px-1.5 py-1 text-xs font-black"><span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl', theme.iconRail)}><TbTools size={16} aria-hidden="true" /></span><span className="min-w-0 flex-1 truncate text-left">Draw Tools</span><ChevronUp size={14} className={theme.subtle} aria-hidden="true" /></button></div>
+          <div className="relative z-10 flex h-12 items-center gap-1.5"><button type="button" aria-label="Open drawing tools" title="Open drawing tools" onClick={handleToggleCollapse} className="flex min-w-0 flex-1 items-center gap-2 rounded-[18px] px-1.5 py-1 text-xs font-black tracking-[0.02em]"><span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl', theme.iconRail)}><TbTools size={16} aria-hidden="true" /></span><span className="min-w-0 flex-1 truncate text-left drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]">Draw Tools</span><ChevronUp size={14} className={theme.subtle} aria-hidden="true" /></button></div>
         ) : (
           <div className="relative z-10 flex h-14 min-w-0 items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
             <button type="button" aria-label="Drag draw tools" title="Drag to move" className={cn('flex h-12 w-12 shrink-0 cursor-grab touch-none items-center justify-center rounded-2xl border active:cursor-grabbing', theme.button)} {...dragHandleProps}><GripHorizontal size={16} aria-hidden="true" /></button>
