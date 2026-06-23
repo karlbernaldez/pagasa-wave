@@ -58,7 +58,7 @@ function ensureSurfaceFrontImages(map) { if (typeof document === 'undefined' || 
 function addFrontLineLayer(map, layerId, sourceId, style, secondary = false) {
   const dash = secondary ? style.secondaryDash : style.dash;
   if (map.getLayer(layerId)) return;
-  map.addLayer({ id: layerId, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': secondary ? style.secondaryColor : style.color, 'line-width': style.lineWidth, 'line-opacity': 0.9, ...(dash ? { 'line-dasharray': dash } : {}) } });
+  map.addLayer({ id: layerId, type: 'line', source: sourceId, layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: { 'line-color': secondary ? style.secondaryColor : style.color, 'line-width': style.lineWidth, 'line-opacity': 0.95, ...(dash ? { 'line-dasharray': dash } : {}) } });
 }
 function removeFrontLayers(map, sourceId) {
   [`${sourceId}_bg`, `${sourceId}_secondary`, `${sourceId}_frontSymbols`, `${sourceId}_triangles`, `${sourceId}_circles`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
@@ -72,7 +72,7 @@ function renderFrontLayers(map, sourceId, geojson, frontType) {
   addFrontLineLayer(map, `${sourceId}_bg`, sourceId, style, false);
   if (style.secondaryColor) addFrontLineLayer(map, `${sourceId}_secondary`, sourceId, style, true);
   if (map.hasImage?.(style.imageId) && !map.getLayer(`${sourceId}_frontSymbols`)) {
-    map.addLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, slot: 'top', layout: { 'symbol-placement': 'line', 'symbol-spacing': frozenFrontType === 'occluded' ? 58 : 34, 'icon-image': style.imageId, 'icon-size': 0.88, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
+    map.addLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, layout: { 'symbol-placement': 'line', 'symbol-spacing': frozenFrontType === 'occluded' ? 58 : 34, 'icon-image': style.imageId, 'icon-size': 0.88, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
   }
 }
 function makePreviewSymbols(points, frontType) {
