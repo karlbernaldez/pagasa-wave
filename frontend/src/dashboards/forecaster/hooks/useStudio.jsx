@@ -12,6 +12,21 @@ const FORECAST_CHART_UPDATED_EVENT = "forecast-chart:updated";
 export const FORECAST_CHART_BROWSER_EVENT = "wavelab:forecast-chart-updated";
 
 const FRONT_TYPE_LABELS = { cold: "Cold Front", warm: "Warm Front", stationary: "Stationary Front", occluded: "Occluded Front" };
+
+function getIdString(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (value._id) return String(value._id);
+  if (value.id) return String(value.id);
+  if (typeof value.toString === "function" && value.toString !== Object.prototype.toString) return String(value.toString());
+  return "";
+}
+
+function getFeatureProjectId(feature) {
+  return getIdString(feature?.properties?.project || feature?.project);
+}
+
 const resolveFeatureLayerType = (feature) => {
   const props = feature?.properties || {};
   if (props.isFront) return FRONT_TYPE_LABELS[props.frontType] || feature?.name || "Surface Front";
@@ -85,24 +100,46 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
     const requestSeq = requestSeqRef.current + 1;
     requestSeqRef.current = requestSeq;
     if (!projectId) { setSavedFeatures([]); setLayers([]); return []; }
+
+    let filteredFeatures = [];
     try {
       const features = await fetchFeatures(projectId);
       if (requestSeqRef.current !== requestSeq) return [];
-      const filteredFeatures = (Array.isArray(features) ? features : []).filter((f) => String(f?.properties?.project || "") === String(projectId));
+      filteredFeatures = (Array.isArray(features) ? features : []).filter((feature) => getFeatureProjectId(feature) === String(projectId));
       setSavedFeatures(filteredFeatures);
-      const initialLayers = filteredFeatures.map((f) => {
-        const type = resolveFeatureLayerType(f);
-        const name = f.name || type || "Untitled Feature";
+      const initialLayers = filteredFeatures.map((feature) => {
+        const type = resolveFeatureLayerType(feature);
+        const name = feature.name || type || "Untitled Feature";
         const isMarker = ["typhoon", "low_pressure", "high_pressure", "less_1", "text_note"].includes(type);
-        return { id: f.sourceId, sourceID: f.sourceId, name, visible: true, locked: false, type, markerType: f.properties?.markerType || (isMarker ? type : undefined), mapLayerId: f.properties?.mapLayerId || (isMarker ? `${type}_${name}` : undefined), owner: f.properties?.owner, canEdit: Boolean(f.properties?.canEdit) };
-      });
+        return {
+          id: feature.sourceId || feature.properties?.sourceId || feature.properties?.stableId,
+          sourceID: feature.sourceId || feature.properties?.sourceId || feature.properties?.stableId,
+          name,
+          visible: true,
+          locked: false,
+          type,
+          markerType: feature.properties?.markerType || (isMarker ? type : undefined),
+          mapLayerId: feature.properties?.mapLayerId || (isMarker ? `${type}_${name}` : undefined),
+          owner: feature.properties?.owner,
+          canEdit: feature.properties?.canEdit !== false,
+        };
+      }).filter((layer) => Boolean(layer.id));
       setLayers(initialLayers);
-      if (syncMap && mapRef.current) await syncAnnotationFeaturesToMap(mapRef.current, filteredFeatures, { mapRef, isDarkMode });
-      return filteredFeatures;
     } catch (error) {
       if (requestSeqRef.current !== requestSeq) return [];
-      console.error("[MAP LOAD ERROR]", error); setSavedFeatures([]); setLayers([]); return [];
+      console.error("[FEATURE LOAD ERROR]", error);
+      return [];
     }
+
+    if (syncMap && mapRef.current) {
+      try {
+        await syncAnnotationFeaturesToMap(mapRef.current, filteredFeatures, { mapRef, isDarkMode });
+      } catch (error) {
+        console.error("[MAP SYNC ERROR]", error);
+      }
+    }
+
+    return filteredFeatures;
   }, [isDarkMode, projectId]);
   return { savedFeatures, layers, setLayers, mapRef, cleanupRef, setupFeaturesAndLayers };
 };
