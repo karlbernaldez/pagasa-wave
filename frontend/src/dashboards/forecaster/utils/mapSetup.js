@@ -11,6 +11,8 @@ const MARKER_TYPES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'tex
 const WIND_BARB_IMAGES = ['0kts', '5kts', '10kts', '15kts', '20kts', '25kts', '30kts'];
 const WAVE_HEIGHT_THRESHOLD = 2;
 const renderedAnnotationIds = new Set();
+const FRONT_ICON_VERSION = 'v3';
+
 const LAYER_VISIBILITY_CONFIG = [
   { key: 'PAR', ids: ['PAR', 'PAR_dash'] },
   { key: 'SATELLITE', ids: ['Satellite'] },
@@ -21,10 +23,10 @@ const LAYER_VISIBILITY_CONFIG = [
 ];
 
 const FRONT_STYLES = {
-  cold: { color: '#1d4ed8', lineWidth: 3.5, imageId: 'surface-front-cold', spacing: 34, iconSize: 0.88 },
-  warm: { color: '#ef4444', lineWidth: 3.5, imageId: 'surface-front-warm', spacing: 34, iconSize: 0.88 },
-  stationary: { color: '#1d4ed8', secondaryColor: '#ef4444', lineWidth: 3, dash: [2, 2], secondaryDash: [0, 2, 2], imageId: 'surface-front-stationary', spacing: 34, iconSize: 0.88 },
-  occluded: { color: '#7c3aed', lineWidth: 3.5, imageId: 'surface-front-occluded', spacing: 46, iconSize: 0.88 },
+  cold: { color: '#1d4ed8', lineWidth: 3.5, imageId: `surface-front-cold-${FRONT_ICON_VERSION}`, spacing: 34, iconSize: 0.88 },
+  warm: { color: '#ef4444', lineWidth: 3.5, imageId: `surface-front-warm-${FRONT_ICON_VERSION}`, spacing: 34, iconSize: 0.88 },
+  stationary: { color: '#1d4ed8', secondaryColor: '#ef4444', lineWidth: 3, dash: [2, 2], secondaryDash: [0, 2, 2], imageId: `surface-front-stationary-${FRONT_ICON_VERSION}`, spacing: 34, iconSize: 0.88 },
+  occluded: { color: '#7c3aed', lineWidth: 3.5, imageId: `surface-front-occluded-${FRONT_ICON_VERSION}`, spacing: 58, iconSize: 0.88 },
 };
 
 function getFeatureFrontType(feature) {
@@ -39,7 +41,7 @@ function getFeatureFrontType(feature) {
   return 'cold';
 }
 
-const drawTriangle = (ctx, x, y, size, color, side = -1) => {
+function drawTriangle(ctx, x, y, size, color, side = -1) {
   ctx.beginPath();
   ctx.moveTo(x - size / 2, y);
   ctx.lineTo(x + size / 2, y);
@@ -47,9 +49,9 @@ const drawTriangle = (ctx, x, y, size, color, side = -1) => {
   ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
-};
+}
 
-const drawSemiCircle = (ctx, x, y, radius, color, side = -1) => {
+function drawSemiCircle(ctx, x, y, radius, color, side = -1) {
   ctx.beginPath();
   ctx.moveTo(x - radius, y);
   ctx.arc(x, y, radius, Math.PI, 0, side > 0);
@@ -57,9 +59,9 @@ const drawSemiCircle = (ctx, x, y, radius, color, side = -1) => {
   ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
-};
+}
 
-const createFrontIconCanvas = (frontType) => {
+function createFrontIconCanvas(frontType) {
   const pixelRatio = 2;
   const width = 80;
   const height = 32;
@@ -68,6 +70,7 @@ const createFrontIconCanvas = (frontType) => {
   canvas.height = height * pixelRatio;
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
+
   const ctx = canvas.getContext('2d');
   ctx.scale(pixelRatio, pixelRatio);
   const baseline = height / 2;
@@ -83,7 +86,7 @@ const createFrontIconCanvas = (frontType) => {
   }
 
   return canvas;
-};
+}
 
 function ensureSurfaceFrontImages(map) {
   if (typeof document === 'undefined' || !map?.addImage) return;
@@ -93,16 +96,28 @@ function ensureSurfaceFrontImages(map) {
   });
 }
 
+function getIdString(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (value._id) return String(value._id);
+  if (value.id) return String(value.id);
+  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString());
+  return '';
+}
+
 const fixMalformedLineString = (coordinates) => {
   if (!Array.isArray(coordinates)) return coordinates;
   if (coordinates.length === 1 && Array.isArray(coordinates[0]) && Array.isArray(coordinates[0][0])) return coordinates[0];
   return coordinates;
 };
+
 const getValidCoordinates = (geometry) => {
   const coords = geometry?.coordinates;
   if (!Array.isArray(coords) || coords.length === 0) return null;
   return coords;
 };
+
 const markerLayerId = (feature) => {
   const props = feature?.properties || {};
   const markerType = props.markerType || props.type;
@@ -110,24 +125,46 @@ const markerLayerId = (feature) => {
   if (!MARKER_TYPES.includes(markerType) || !name) return null;
   return props.mapLayerId || `${markerType}_${name}`;
 };
+
+const getAnnotationSourceId = (feature) => {
+  const props = feature?.properties || {};
+  return getIdString(feature?.sourceId || props.sourceId || props.stableId || props.annotationId || feature?._id);
+};
+
 const getAnnotationArtifactIds = (feature) => {
   const props = feature?.properties || {};
-  return Array.from(new Set([feature?.sourceId, props.sourceId, props.stableId, props.annotationId, props.mapLayerId, markerLayerId(feature)].filter(Boolean)));
+  return Array.from(new Set([
+    getAnnotationSourceId(feature),
+    props.sourceId,
+    props.stableId,
+    props.annotationId,
+    props.mapLayerId,
+    markerLayerId(feature),
+  ].map(getIdString).filter(Boolean)));
 };
+
 const waitForMapStyle = (map) => new Promise((resolve) => {
   if (!map || map.isStyleLoaded?.()) return resolve();
-  const done = () => resolve();
+  let resolved = false;
+  const done = () => {
+    if (resolved) return;
+    resolved = true;
+    resolve();
+  };
   map.once?.('style.load', done);
   map.once?.('load', done);
   window.setTimeout(done, 750);
 });
+
 function safeRemoveLayer(map, id) { if (id && map.getLayer(id)) map.removeLayer(id); }
 function safeRemoveSource(map, id) { if (id && map.getSource(id)) map.removeSource(id); }
+
 function removeAnnotationArtifacts(map, id) {
   ['', '-0', '-1', '_bg', '_dash', '_secondary', '_triangles', '_circles', '_frontSymbols'].forEach((suffix) => safeRemoveLayer(map, `${id}${suffix}`));
   ['', '-0', '-1'].forEach((suffix) => safeRemoveSource(map, `${id}${suffix}`));
   removeMarkerDrag(id);
 }
+
 function pruneStaleAnnotationArtifacts(map, currentFeatures) {
   const currentIds = new Set(currentFeatures.flatMap(getAnnotationArtifactIds));
   Array.from(renderedAnnotationIds).forEach((id) => {
@@ -138,6 +175,7 @@ function pruneStaleAnnotationArtifacts(map, currentFeatures) {
   });
   currentIds.forEach((id) => renderedAnnotationIds.add(id));
 }
+
 function finishMapSetup({ setLoading, setMapLoaded, logger }) {
   setLoading?.(false);
   setMapLoaded?.(true);
@@ -154,6 +192,7 @@ class LayerVisibilityManager {
     });
   }
 }
+
 class FeatureClassifier {
   constructor() { this.markerPoints = []; this.frontLines = []; this.nonFrontLines = []; this.totalLineCount = 0; }
   classify(featuresArray) { featuresArray.forEach(feature => this.processFeature(feature)); return { markerPoints: this.markerPoints, frontLines: this.frontLines, nonFrontLines: this.nonFrontLines, totalLineCount: this.totalLineCount }; }
@@ -172,6 +211,7 @@ class FeatureClassifier {
     else this.nonFrontLines.push(feature);
   }
 }
+
 class MarkerRenderer {
   constructor(mapRef) { this.mapRef = mapRef; }
   renderAll(markerPoints) { markerPoints.forEach(point => this.renderPoint(point)); }
@@ -190,11 +230,25 @@ class MarkerRenderer {
 
 class LineRenderer {
   constructor(map, theme) { this.map = map; this.lineColor = theme.lineColor; this.textColor = theme.textColor; this.isDarkMode = theme.isDarkMode; }
-  upsertSource(id, data) { if (this.map.getSource(id)) this.map.getSource(id).setData(data.data || data); else this.map.addSource(id, data); }
-  upsertLayer(layer) { if (!this.map.getLayer(layer.id)) this.map.addLayer(layer); if (this.map.getLayer(layer.id)) this.map.setLayoutProperty(layer.id, 'visibility', 'visible'); }
-  renderNonFrontLines(nonFrontLines) { nonFrontLines.map(feature => this.prepareNonFrontLine(feature)).forEach(({ sources, layers }) => { sources.forEach(({ id, data }) => this.upsertSource(id, data)); layers.forEach(layer => this.upsertLayer(layer)); }); }
+  upsertSource(id, data) {
+    if (!id) return;
+    const sourceData = data?.data || data;
+    if (this.map.getSource(id)) this.map.getSource(id).setData(sourceData);
+    else this.map.addSource(id, data);
+  }
+  upsertLayer(layer) {
+    if (!layer?.id) return;
+    if (!this.map.getLayer(layer.id)) this.map.addLayer(layer);
+    if (this.map.getLayer(layer.id)) this.map.setLayoutProperty(layer.id, 'visibility', 'visible');
+  }
+  renderNonFrontLines(nonFrontLines) {
+    nonFrontLines.map(feature => this.prepareNonFrontLine(feature)).forEach(({ sources, layers }) => {
+      sources.forEach(({ id, data }) => this.upsertSource(id, data));
+      layers.forEach(layer => this.upsertLayer(layer));
+    });
+  }
   prepareNonFrontLine(feature) {
-    const sourceId = feature.sourceId || feature.properties?.sourceId || `non-front-${feature._id || Date.now()}`;
+    const sourceId = getAnnotationSourceId(feature) || `non-front-${feature._id || Date.now()}`;
     const geojsonFeature = { type: 'Feature', geometry: feature.geometry, properties: feature.properties || {}, id: feature._id };
     const waveHeight = Number(feature.properties?.labelValue || 0);
     const linePaint = { 'line-color': this.lineColor, 'line-opacity': 0.6, 'line-width': 3, 'line-blur': 0.3 };
@@ -224,16 +278,21 @@ class LineRenderer {
   renderFrontLines(frontLines) {
     ensureSurfaceFrontImages(this.map);
     frontLines.forEach(feature => {
-      const props = feature.properties || {};
-      const sourceId = feature.sourceId || props.sourceId || `front-${feature._id || Date.now()}`;
-      const data = { type: 'FeatureCollection', features: [feature] };
-      const frontType = getFeatureFrontType(feature);
-      const style = FRONT_STYLES[frontType] || FRONT_STYLES.cold;
-      this.upsertSource(sourceId, { type: 'geojson', data });
-      ['_bg', '_dash', '_secondary', '_triangles', '_circles', '_frontSymbols'].forEach((suffix) => safeRemoveLayer(this.map, `${sourceId}${suffix}`));
-      this.addFrontLineLayer(sourceId, style, '_bg', false);
-      if (style.secondaryColor) this.addFrontLineLayer(sourceId, style, '_secondary', true);
-      this.upsertLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, slot: 'top', layout: { 'symbol-placement': 'line', 'symbol-spacing': style.spacing, 'icon-image': style.imageId, 'icon-size': style.iconSize, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
+      try {
+        const sourceId = getAnnotationSourceId(feature) || `front-${feature._id || Date.now()}`;
+        const data = { type: 'FeatureCollection', features: [feature] };
+        const frontType = getFeatureFrontType(feature);
+        const style = FRONT_STYLES[frontType] || FRONT_STYLES.cold;
+        this.upsertSource(sourceId, { type: 'geojson', data });
+        ['_bg', '_dash', '_secondary', '_triangles', '_circles', '_frontSymbols'].forEach((suffix) => safeRemoveLayer(this.map, `${sourceId}${suffix}`));
+        this.addFrontLineLayer(sourceId, style, '_bg', false);
+        if (style.secondaryColor) this.addFrontLineLayer(sourceId, style, '_secondary', true);
+        if (this.map.hasImage?.(style.imageId)) {
+          this.upsertLayer({ id: `${sourceId}_frontSymbols`, type: 'symbol', source: sourceId, slot: 'top', layout: { 'symbol-placement': 'line', 'symbol-spacing': style.spacing, 'icon-image': style.imageId, 'icon-size': style.iconSize, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-keep-upright': false, 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', visibility: 'visible' } });
+        }
+      } catch (error) {
+        console.error('[surface-front-render-error]', feature?.sourceId || feature?.properties?.sourceId, error);
+      }
     });
   }
 }
@@ -242,15 +301,69 @@ export async function syncAnnotationFeaturesToMap(map, features = [], { mapRef, 
   if (!map) return;
   await waitForMapStyle(map);
   const featuresArray = Array.isArray(features) ? features : features?.features || [];
-  pruneStaleAnnotationArtifacts(map, featuresArray);
-  if (!featuresArray.length) return;
   const theme = { lineColor: isDarkMode ? '#ffffff' : '#000000', textColor: isDarkMode ? '#ffffff' : '#000000', isDarkMode };
   const classifier = new FeatureClassifier();
   const { markerPoints, frontLines, nonFrontLines } = classifier.classify(featuresArray);
+
   if (mapRef) new MarkerRenderer(mapRef).renderAll(markerPoints);
   const lineRenderer = new LineRenderer(map, theme);
   lineRenderer.renderNonFrontLines(nonFrontLines);
   lineRenderer.renderFrontLines(frontLines);
+  pruneStaleAnnotationArtifacts(map, featuresArray);
 }
-class ImageLoader { constructor(map) { this.map = map; this.loadedImages = new Set(); } async loadAll() { await Promise.allSettled([...MARKER_IMAGES.map(id => this.loadSingle(id, `/${id.replace('_', '')}.png`)), ...WIND_BARB_IMAGES.map(id => this.loadSingle(id, `/barbs/${id}.svg`))]); } async loadSingle(id, url) { if (this.loadedImages.has(id)) return; try { await loadImage(this.map, id, url); this.loadedImages.add(id); } catch (error) { console.warn(`Failed to load image ${id}:`, error); } } }
-export async function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages, isDarkMode }) { if (!map) { console.warn('No map instance provided'); setLoading?.(false); return () => { }; } setLoading?.(true); let setupFinished = false; const completeSetupOnce = () => { if (setupFinished) return; setupFinished = true; finishMapSetup({ setLoading, setMapLoaded, logger }); }; try { const draw = initDrawControl(map); window.drawInstance = draw; setDrawInstance(draw); addHimawariLayer(map); loadCustomImages(map); initTyphoonLayer(map); await addWindSource(map, isDarkMode); await addWindLayer(map, isDarkMode); new ImageLoader(map).loadAll(); const featuresArray = Array.isArray(initialFeatures) ? initialFeatures : initialFeatures?.features || []; setGlobalSourceIds(featuresArray.map(f => f.sourceId || f.properties?.sourceId).filter(Boolean)); const { totalLineCount } = new FeatureClassifier().classify(featuresArray); setLineCount?.(totalLineCount); await syncAnnotationFeaturesToMap(map, featuresArray, { mapRef, isDarkMode }); new LayerVisibilityManager(map).applyFromLocalStorage(); const handleDrawCreate = (e) => { const feature = e.features[0]; if (feature?.geometry.type === 'Point') { const [lng, lat] = feature.geometry.coordinates; setSelectedPoint({ lng, lat }); const selectedType = selectedToolRef?.current || ''; if (!['less_1', 'text_note'].includes(selectedType.toLowerCase())) setShowTitleModal(true); draw.delete(feature.id); } }; map.on('draw.create', handleDrawCreate); map.once('render', completeSetupOnce); window.setTimeout(completeSetupOnce, 250); return function cleanup() { map.off('draw.create', handleDrawCreate); delete window.drawInstance; }; } catch (error) { console.error('[mapSetup] Failed to setup map:', error); completeSetupOnce(); return () => { }; } }
+
+class ImageLoader {
+  constructor(map) { this.map = map; this.loadedImages = new Set(); }
+  async loadAll() { await Promise.allSettled([...MARKER_IMAGES.map(id => this.loadSingle(id, `/${id.replace('_', '')}.png`)), ...WIND_BARB_IMAGES.map(id => this.loadSingle(id, `/barbs/${id}.svg`))]); }
+  async loadSingle(id, url) { if (this.loadedImages.has(id)) return; try { await loadImage(this.map, id, url); this.loadedImages.add(id); } catch (error) { console.warn(`Failed to load image ${id}:`, error); } }
+}
+
+export async function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages, isDarkMode }) {
+  if (!map) { console.warn('No map instance provided'); setLoading?.(false); return () => { }; }
+  setLoading?.(true);
+  let setupFinished = false;
+  const completeSetupOnce = () => {
+    if (setupFinished) return;
+    setupFinished = true;
+    finishMapSetup({ setLoading, setMapLoaded, logger });
+  };
+
+  try {
+    const draw = initDrawControl(map);
+    window.drawInstance = draw;
+    setDrawInstance(draw);
+    addHimawariLayer(map);
+    loadCustomImages(map);
+    initTyphoonLayer(map);
+    await addWindSource(map, isDarkMode);
+    await addWindLayer(map, isDarkMode);
+    new ImageLoader(map).loadAll();
+
+    const featuresArray = Array.isArray(initialFeatures) ? initialFeatures : initialFeatures?.features || [];
+    setGlobalSourceIds(featuresArray.map(f => getAnnotationSourceId(f)).filter(Boolean));
+    const { totalLineCount } = new FeatureClassifier().classify(featuresArray);
+    setLineCount?.(totalLineCount);
+    await syncAnnotationFeaturesToMap(map, featuresArray, { mapRef, isDarkMode });
+    new LayerVisibilityManager(map).applyFromLocalStorage();
+
+    const handleDrawCreate = (e) => {
+      const feature = e.features[0];
+      if (feature?.geometry.type === 'Point') {
+        const [lng, lat] = feature.geometry.coordinates;
+        setSelectedPoint({ lng, lat });
+        const selectedType = selectedToolRef?.current || '';
+        if (!['less_1', 'text_note'].includes(selectedType.toLowerCase())) setShowTitleModal(true);
+        draw.delete(feature.id);
+      }
+    };
+
+    map.on('draw.create', handleDrawCreate);
+    map.once('render', completeSetupOnce);
+    window.setTimeout(completeSetupOnce, 250);
+    return function cleanup() { map.off('draw.create', handleDrawCreate); delete window.drawInstance; };
+  } catch (error) {
+    console.error('[mapSetup] Failed to setup map:', error);
+    completeSetupOnce();
+    return () => { };
+  }
+}
