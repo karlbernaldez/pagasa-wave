@@ -1,4 +1,4 @@
-import { Stage, Layer, Line, Text, Circle } from 'react-konva';
+import { Stage, Layer, Line, RegularPolygon, Wedge } from 'react-konva';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { CheckCircle2, CloudSun, GripHorizontal, RotateCcw, Snowflake, Waves } from 'lucide-react';
@@ -6,10 +6,10 @@ import { createFeature } from '@/api/featureServices';
 import { useProjectId } from '@dashboards/forecaster/hooks/useStudio';
 
 const FRONT_TYPES = {
-  cold: { label: 'Cold', fullLabel: 'Cold Front', color: '#1d4ed8', lineWidth: 4, icon: Snowflake, symbols: [{ kind: 'triangle', color: '#1d4ed8', side: -1 }] },
-  warm: { label: 'Warm', fullLabel: 'Warm Front', color: '#ef4444', lineWidth: 4, icon: CloudSun, symbols: [{ kind: 'circle', color: '#ef4444', side: -1 }] },
-  stationary: { label: 'Stationary', fullLabel: 'Stationary Front', color: '#64748b', lineWidth: 3, icon: Waves, symbols: [{ kind: 'triangle', color: '#1d4ed8', side: -1 }, { kind: 'circle', color: '#ef4444', side: 1 }] },
-  occluded: { label: 'Occluded', fullLabel: 'Occluded Front', color: '#7c3aed', lineWidth: 4, icon: CheckCircle2, symbols: [{ kind: 'triangle', color: '#7c3aed', side: -1 }, { kind: 'circle', color: '#7c3aed', side: -1, extraOffset: 15 }] },
+  cold: { label: 'Cold', fullLabel: 'Cold Front', color: '#1d4ed8', lineWidth: 4, icon: Snowflake, imageId: 'surface-front-cold', symbols: [{ kind: 'triangle', color: '#1d4ed8', side: -1 }] },
+  warm: { label: 'Warm', fullLabel: 'Warm Front', color: '#ef4444', lineWidth: 4, icon: CloudSun, imageId: 'surface-front-warm', symbols: [{ kind: 'semicircle', color: '#ef4444', side: -1 }] },
+  stationary: { label: 'Stationary', fullLabel: 'Stationary Front', color: '#64748b', lineWidth: 3, icon: Waves, imageId: 'surface-front-stationary', symbols: [{ kind: 'semicircle', color: '#ef4444', side: -1, along: -18 }, { kind: 'triangle', color: '#1d4ed8', side: 1, along: 18 }] },
+  occluded: { label: 'Occluded', fullLabel: 'Occluded Front', color: '#7c3aed', lineWidth: 4, icon: CheckCircle2, imageId: 'surface-front-occluded', symbols: [{ kind: 'semicircle', color: '#7c3aed', side: -1, along: -16 }, { kind: 'triangle', color: '#7c3aed', side: -1, along: 16 }] },
 };
 
 const PANEL_WIDTH = 430;
@@ -23,6 +23,85 @@ const getSafePosition = (position) => ({ x: Math.min(Math.max(position.x, 16), M
 const getMapContainerRect = (mapRef) => mapRef?.current?.getContainer?.()?.getBoundingClientRect?.() || { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
 const getPointerPosition = (e) => e.target.getStage().getPointerPosition();
 const buildFrontName = (frontType) => FRONT_TYPES[frontType]?.fullLabel || 'Surface Front';
+
+const drawTriangle = (ctx, x, y, size, color, side = -1) => {
+  ctx.beginPath();
+  ctx.moveTo(x - size / 2, y);
+  ctx.lineTo(x + size / 2, y);
+  ctx.lineTo(x, y + side * size);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+};
+const drawSemiCircle = (ctx, x, y, radius, color, side = -1) => {
+  ctx.beginPath();
+  ctx.moveTo(x - radius, y);
+  ctx.arc(x, y, radius, Math.PI, 0, side > 0);
+  ctx.lineTo(x - radius, y);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+};
+const createFrontIconCanvas = (frontType) => {
+  const pixelRatio = 2;
+  const width = 96;
+  const height = 48;
+  const canvas = document.createElement('canvas');
+  canvas.width = width * pixelRatio;
+  canvas.height = height * pixelRatio;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(pixelRatio, pixelRatio);
+  const baseline = 26;
+  if (frontType === 'cold') drawTriangle(ctx, 48, baseline, 18, '#1d4ed8', -1);
+  else if (frontType === 'warm') drawSemiCircle(ctx, 48, baseline, 12, '#ef4444', -1);
+  else if (frontType === 'stationary') { drawSemiCircle(ctx, 30, baseline, 11, '#ef4444', -1); drawTriangle(ctx, 66, baseline, 17, '#1d4ed8', 1); }
+  else if (frontType === 'occluded') { drawSemiCircle(ctx, 32, baseline, 11, '#7c3aed', -1); drawTriangle(ctx, 64, baseline, 17, '#7c3aed', -1); }
+  return canvas;
+};
+function ensureSurfaceFrontImages(map) {
+  if (typeof document === 'undefined' || !map?.addImage) return;
+  Object.entries(FRONT_TYPES).forEach(([frontType, style]) => {
+    if (map.hasImage?.(style.imageId)) return;
+    map.addImage(style.imageId, createFrontIconCanvas(frontType), { pixelRatio: 2 });
+  });
+}
+
+function renderFrontLayers(map, sourceId, geojson, frontType) {
+  const style = FRONT_TYPES[frontType] || FRONT_TYPES.cold;
+  const beforeLayer = map.getLayer('custom-points-layer') ? 'custom-points-layer' : undefined;
+  [`${sourceId}_bg`, `${sourceId}_frontSymbols`, `${sourceId}_triangles`, `${sourceId}_circles`, `${sourceId}_secondary`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
+  if (map.getSource(sourceId)) map.getSource(sourceId).setData(geojson);
+  else map.addSource(sourceId, { type: 'geojson', data: geojson });
+  ensureSurfaceFrontImages(map);
+
+  map.addLayer({
+    id: `${sourceId}_bg`,
+    type: 'line',
+    source: sourceId,
+    slot: 'top',
+    layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' },
+    paint: { 'line-color': style.color, 'line-width': style.lineWidth, 'line-opacity': 0.86 },
+  }, beforeLayer);
+
+  map.addLayer({
+    id: `${sourceId}_frontSymbols`,
+    type: 'symbol',
+    source: sourceId,
+    slot: 'top',
+    layout: {
+      'symbol-placement': 'line',
+      'symbol-spacing': 44,
+      'icon-image': style.imageId,
+      'icon-size': 1,
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+      'icon-keep-upright': false,
+      'icon-rotation-alignment': 'map',
+      'icon-pitch-alignment': 'map',
+      visibility: 'visible',
+    },
+  }, beforeLayer);
+}
 
 function makePreviewSymbols(points, frontType) {
   const style = FRONT_TYPES[frontType] || FRONT_TYPES.cold;
@@ -45,66 +124,19 @@ function makePreviewSymbols(points, frontType) {
     const ny = ux;
     let distance = spacing - carry;
     while (distance < len) {
-      const x = x1 + ux * distance;
-      const y = y1 + uy * distance;
+      const baseX = x1 + ux * distance;
+      const baseY = y1 + uy * distance;
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
       style.symbols.forEach((symbol, idx) => {
-        const offset = 16 * symbol.side + (symbol.extraOffset || 0);
-        symbols.push({
-          id: `${i}-${distance}-${idx}`,
-          kind: symbol.kind,
-          color: symbol.color,
-          x: x + nx * offset,
-          y: y + ny * offset,
-          rotation: Math.atan2(dy, dx) * 180 / Math.PI + (symbol.kind === 'triangle' ? 90 : 0),
-        });
+        const sideOffset = 16 * symbol.side;
+        const alongOffset = symbol.along || 0;
+        symbols.push({ id: `${i}-${distance}-${idx}`, kind: symbol.kind, color: symbol.color, x: baseX + nx * sideOffset + ux * alongOffset, y: baseY + ny * sideOffset + uy * alongOffset, rotation: angle + (symbol.kind === 'triangle' ? 90 : 0), side: symbol.side });
       });
       distance += spacing;
     }
     carry = len - (distance - spacing);
   }
   return symbols;
-}
-
-function renderFrontLayers(map, sourceId, geojson, frontType) {
-  const style = FRONT_TYPES[frontType] || FRONT_TYPES.cold;
-  const beforeLayer = map.getLayer('custom-points-layer') ? 'custom-points-layer' : undefined;
-  const sourceLayerIds = [`${sourceId}_bg`, `${sourceId}_triangles`, `${sourceId}_circles`];
-  sourceLayerIds.forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
-  if (map.getSource(sourceId)) map.getSource(sourceId).setData(geojson);
-  else map.addSource(sourceId, { type: 'geojson', data: geojson });
-
-  map.addLayer({
-    id: `${sourceId}_bg`,
-    type: 'line',
-    source: sourceId,
-    slot: 'top',
-    layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' },
-    paint: { 'line-color': style.color, 'line-width': style.lineWidth, 'line-opacity': 0.92 },
-  }, beforeLayer);
-
-  style.symbols.forEach((symbol) => {
-    const layerId = `${sourceId}_${symbol.kind === 'triangle' ? 'triangles' : 'circles'}`;
-    map.addLayer({
-      id: layerId,
-      type: 'symbol',
-      source: sourceId,
-      slot: 'top',
-      layout: {
-        'symbol-placement': 'line',
-        'symbol-spacing': 42,
-        'text-field': symbol.kind === 'triangle' ? '▲' : '●',
-        'text-size': symbol.kind === 'triangle' ? 24 : 23,
-        'text-allow-overlap': true,
-        'text-ignore-placement': true,
-        'text-keep-upright': false,
-        'text-rotation-alignment': 'map',
-        'text-pitch-alignment': 'map',
-        'text-offset': [0, symbol.side < 0 ? -0.62 : 0.62],
-        visibility: 'visible',
-      },
-      paint: { 'text-color': symbol.color, 'text-halo-color': 'rgba(255,255,255,0.72)', 'text-halo-width': 1 },
-    }, beforeLayer);
-  });
 }
 
 const SurfaceFrontPanel = ({ frontType, setFrontType, isDarkMode }) => {
@@ -136,7 +168,7 @@ const FlagCanvas = ({ mapRef, isDarkMode }) => {
   const currentStyle = FRONT_TYPES[frontType];
   const previewLine = lines[lines.length - 1];
   const previewSymbols = previewLine ? makePreviewSymbols(previewLine.points, frontType) : [];
-  return <><SurfaceFrontPanel frontType={frontType} setFrontType={setFrontType} isDarkMode={isDarkMode} /><Stage width={window.innerWidth} height={window.innerHeight} onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} style={{ position: 'fixed', top: 0, left: 0, zIndex: 10, pointerEvents: 'auto' }}><Layer>{lines.map((line, i) => <Line key={i} points={line.points} stroke={currentStyle.color} strokeWidth={currentStyle.lineWidth} tension={0.45} lineCap="round" lineJoin="round" />)}{previewSymbols.map((symbol) => symbol.kind === 'triangle' ? <Text key={symbol.id} text="▲" x={symbol.x - 10} y={symbol.y - 10} width={20} height={20} fontSize={22} fill={symbol.color} rotation={symbol.rotation} align="center" verticalAlign="middle" /> : <Circle key={symbol.id} x={symbol.x} y={symbol.y} radius={8} fill={symbol.color} />)}</Layer></Stage></>;
+  return <><SurfaceFrontPanel frontType={frontType} setFrontType={setFrontType} isDarkMode={isDarkMode} /><Stage width={window.innerWidth} height={window.innerHeight} onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} style={{ position: 'fixed', top: 0, left: 0, zIndex: 10, pointerEvents: 'auto' }}><Layer>{lines.map((line, i) => <Line key={i} points={line.points} stroke={currentStyle.color} strokeWidth={currentStyle.lineWidth} tension={0.45} lineCap="round" lineJoin="round" />)}{previewSymbols.map((symbol) => symbol.kind === 'triangle' ? <RegularPolygon key={symbol.id} x={symbol.x} y={symbol.y} sides={3} radius={10} fill={symbol.color} rotation={symbol.rotation} /> : <Wedge key={symbol.id} x={symbol.x} y={symbol.y} radius={11} angle={180} fill={symbol.color} rotation={symbol.rotation + (symbol.side < 0 ? 180 : 0)} />)}</Layer></Stage></>;
 };
 
 export default FlagCanvas;
