@@ -12,6 +12,10 @@ import {
   setPagasaPanahonNwpRasterVisibility,
   updatePagasaPanahonNwpRasterImage,
 } from '@dashboards/forecaster/utils/layers/pagasaPanahonNwpRasterLayer';
+import {
+  ensureHimawariSatelliteLayer,
+  setHimawariSatelliteVisibility,
+} from '@dashboards/forecaster/map/layers/satelliteLayer';
 
 const safeSetLayoutVisibility = (map, layerId, visible) => {
   if (map?.getLayer?.(layerId)) {
@@ -65,6 +69,20 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
   };
 
   const showPagasaNwpRasterError = (message = 'Unable to load PAGASA NWP raster.') => {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: message,
+      showConfirmButton: false,
+      timer: 2600,
+      timerProgressBar: true,
+      background: isDarkMode ? '#374151' : '#fff',
+      color: isDarkMode ? '#f3f4f6' : '#111827',
+    });
+  };
+
+  const showSatelliteError = (message = 'Unable to load Himawari satellite.') => {
     Swal.fire({
       toast: true,
       position: 'top-end',
@@ -138,7 +156,14 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
       }
 
       // Satellite
-      safeSetLayoutVisibility(map, 'Satellite', saved.satellite);
+      try {
+        ensureHimawariSatelliteLayer(map, { visible: saved.satellite });
+      } catch (error) {
+        console.error('[himawari-satellite-layer-error]', error);
+        localStorage.setItem('SATELLITE', 'false');
+        setSatelliteLayer(false);
+        setHimawariSatelliteVisibility(map, false);
+      }
     };
 
     map.isStyleLoaded() ? apply() : map.once('load', apply);
@@ -255,7 +280,23 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
     setSatelliteLayer((prev) => {
       const next = !prev;
       localStorage.setItem('SATELLITE', String(next));
-      safeSetLayoutVisibility(mapRef.current, 'Satellite', next);
+      const map = mapRef.current;
+      if (!map) return next;
+
+      try {
+        if (next) {
+          ensureHimawariSatelliteLayer(map, { visible: true });
+        } else {
+          setHimawariSatelliteVisibility(map, false);
+        }
+      } catch (error) {
+        console.error('[himawari-satellite-layer-error]', error);
+        localStorage.setItem('SATELLITE', 'false');
+        setHimawariSatelliteVisibility(map, false);
+        showSatelliteError(error?.message || 'Unable to load Himawari satellite.');
+        return false;
+      }
+
       return next;
     });
   };
