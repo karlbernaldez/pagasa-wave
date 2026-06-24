@@ -43,7 +43,8 @@ Examples:
   ./build_ww3.sh --package-date 20260624 hs 1.5 --styles light,dark,night
 
 Forecast-package file lookup:
-  wavetiles/input/ww3/<runTag>/ww3_grdo.<yyyymmdd>T<hh>.nc
+  Preferred: wavetiles/input/ww3/<runTag>/ww3_grdo.<yyyymmdd>T<hh>.nc
+  Fallback : wavetiles/input/ww3/<sourceCycleRunTag>/ww3_grdo.<yyyymmdd>T<hh>.nc
 
 Forecast-package run mapping for 2026-06-24:
   analysis -> 2026062318 / ww3_grdo.20260623T18.nc
@@ -114,15 +115,17 @@ match = re.match(r"^(\d{4})-?(\d{2})-?(\d{2})$", raw)
 if not match:
     raise SystemExit(f"Invalid package date {raw!r}; expected YYYY-MM-DD or YYYYMMDD")
 base = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+source_cycle_date = base - timedelta(days=1)
+source_cycle_tag = source_cycle_date.strftime("%Y%m%d") + "18"
 runs = (
-    ("analysis", base - timedelta(days=1), "18"),
+    ("analysis", source_cycle_date, "18"),
     ("24h", base, "18"),
     ("36h", base + timedelta(days=1), "06"),
     ("48h", base + timedelta(days=1), "18"),
 )
 for label, run_date, hour in runs:
     yyyymmdd = run_date.strftime("%Y%m%d")
-    print(f"{label}|{yyyymmdd}{hour}|{yyyymmdd}T{hour}")
+    print(f"{label}|{yyyymmdd}{hour}|{yyyymmdd}T{hour}|{source_cycle_tag}")
 PY
 }
 
@@ -147,6 +150,35 @@ resolve_ncfile_path() {
     return 1
 }
 
+resolve_package_ncfile_path() {
+    local run_tag=$1
+    local timestamp=$2
+    local source_cycle_tag=$3
+    local candidate fallback match
+
+    run_tag=$(strip_cr "$run_tag")
+    timestamp=$(strip_cr "$timestamp")
+    source_cycle_tag=$(strip_cr "$source_cycle_tag")
+
+    candidate="$ROOT/input/ww3/$run_tag/ww3_grdo.$timestamp.nc"
+    if resolve_ncfile_path "$candidate"; then
+        return 0
+    fi
+
+    fallback="$ROOT/input/ww3/$source_cycle_tag/ww3_grdo.$timestamp.nc"
+    if [[ "$fallback" != "$candidate" ]] && resolve_ncfile_path "$fallback"; then
+        return 0
+    fi
+
+    match=$(find "$ROOT/input/ww3" -mindepth 2 -maxdepth 2 -type f -name "ww3_grdo.$timestamp.nc" -print -quit 2>/dev/null || true)
+    if [[ -n "$match" ]]; then
+        resolve_ncfile_path "$match"
+        return 0
+    fi
+
+    return 1
+}
+
 print_missing_ncfile_error() {
     local candidate
     candidate=$(strip_cr "$1")
@@ -164,6 +196,16 @@ print_missing_ncfile_error() {
     fi
 }
 
+print_missing_package_ncfile_error() {
+    local run_tag=$1
+    local timestamp=$2
+    local source_cycle_tag=$3
+    print_missing_ncfile_error "$ROOT/input/ww3/$run_tag/ww3_grdo.$timestamp.nc"
+    if [[ "$run_tag" != "$source_cycle_tag" ]]; then
+        echo "Also checked source cycle folder: $ROOT/input/ww3/$source_cycle_tag/ww3_grdo.$timestamp.nc" >&2
+    fi
+}
+
 run_package_mode() {
     local package_date=$1
     shift
@@ -174,15 +216,15 @@ run_package_mode() {
     echo "  INPUT_ROOT   : $ROOT/input/ww3"
     echo "============================================"
 
-    local label run_tag timestamp ncfile requested_ncfile
-    while IFS='|' read -r label run_tag timestamp; do
+    local label run_tag timestamp source_cycle_tag ncfile
+    while IFS='|' read -r label run_tag timestamp source_cycle_tag; do
         label=$(strip_cr "$label")
         run_tag=$(strip_cr "$run_tag")
         timestamp=$(strip_cr "$timestamp")
+        source_cycle_tag=$(strip_cr "$source_cycle_tag")
         [[ -n "$label" ]] || continue
-        requested_ncfile="$ROOT/input/ww3/$run_tag/ww3_grdo.$timestamp.nc"
-        if ! ncfile=$(resolve_ncfile_path "$requested_ncfile"); then
-            print_missing_ncfile_error "$requested_ncfile"
+        if ! ncfile=$(resolve_package_ncfile_path "$run_tag" "$timestamp" "$source_cycle_tag"); then
+            print_missing_package_ncfile_error "$run_tag" "$timestamp" "$source_cycle_tag"
             exit 1
         fi
         echo
