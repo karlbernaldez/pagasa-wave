@@ -55,53 +55,95 @@ async function findPackageForDate(forecastDate) {
   );
 }
 
+async function ensureDailyChartProject({ forecastDate, user, requiredChart, packageName }) {
+  const name = buildForecastChartProjectName(forecastDate, requiredChart.label);
+  const query = {
+    owner: user.id,
+    chartType: requiredChart.chartType,
+    forecastDate: getForecastDateQuery(forecastDate),
+  };
+
+  const existing = await Project.findOne(query).sort({ updatedAt: -1 });
+  if (existing) {
+    const patch = {};
+    if (existing.name !== name) patch.name = name;
+    if (!existing.status) patch.status = PROJECT_STATUS.DRAFT;
+    if (Object.keys(patch).length) {
+      await Project.updateOne({ _id: existing._id }, { $set: patch });
+      Object.assign(existing, patch);
+    }
+    return existing;
+  }
+
+  try {
+    return await Project.create({
+      name,
+      description: 'Automatically created for daily operational forecast production.',
+      chartType: requiredChart.chartType,
+      forecastDate,
+      owner: user.id,
+      status: PROJECT_STATUS.DRAFT,
+      version: 1,
+      auditLogs: [
+        {
+          action: 'created',
+          performedBy: user.id,
+          previousStatus: null,
+          newStatus: PROJECT_STATUS.DRAFT,
+          comment: `Auto-created from daily Forecast Package: ${packageName}`,
+        },
+      ],
+    });
+  } catch (error) {
+    if (error?.code !== 11000) throw error;
+
+    const conflictingProject = await Project.findOne({ owner: user.id, name });
+    if (!conflictingProject) throw error;
+
+    await Project.updateOne(
+      { _id: conflictingProject._id },
+      {
+        $set: {
+          chartType: requiredChart.chartType,
+          forecastDate,
+          status: conflictingProject.status || PROJECT_STATUS.DRAFT,
+        },
+      }
+    );
+
+    conflictingProject.chartType = requiredChart.chartType;
+    conflictingProject.forecastDate = forecastDate;
+    if (!conflictingProject.status) conflictingProject.status = PROJECT_STATUS.DRAFT;
+    return conflictingProject;
+  }
+}
+
 async function createDailyForecastPackage({ forecastDate, user }) {
   const name = buildForecastPackageName(forecastDate);
   if (!name) throwError('forecastDate must be a valid date', 400);
 
-  const createdProjectIds = [];
+  const charts = [];
+
+  for (const requiredChart of REQUIRED_FORECAST_CHARTS) {
+    const project = await ensureDailyChartProject({ forecastDate, user, requiredChart, packageName: name });
+    charts.push({
+      chartType: requiredChart.chartType,
+      project: project._id,
+      sortOrder: requiredChart.sortOrder,
+      activeEditors: [],
+      participants: [],
+      readyEditors: [],
+    });
+  }
+
+  const chartCompletion = REQUIRED_FORECAST_CHARTS.map((requiredChart) => ({
+    chartType: requiredChart.chartType,
+    isComplete: false,
+    completedAt: null,
+    completedBy: null,
+  }));
 
   try {
-    const charts = [];
-
-    for (const requiredChart of REQUIRED_FORECAST_CHARTS) {
-      const project = await Project.create({
-        name: buildForecastChartProjectName(forecastDate, requiredChart.label),
-        description: 'Automatically created for daily operational forecast production.',
-        chartType: requiredChart.chartType,
-        forecastDate,
-        owner: user.id,
-        status: PROJECT_STATUS.DRAFT,
-        version: 1,
-        auditLogs: [
-          {
-            action: 'created',
-            performedBy: user.id,
-            previousStatus: null,
-            newStatus: PROJECT_STATUS.DRAFT,
-            comment: `Auto-created from daily Forecast Package: ${name}`,
-          },
-        ],
-      });
-
-      createdProjectIds.push(project._id);
-      charts.push({
-        chartType: requiredChart.chartType,
-        project: project._id,
-        sortOrder: requiredChart.sortOrder,
-        activeEditors: [],
-        participants: [],
-        readyEditors: [],
-      });
-    }
-
-    const chartCompletion = REQUIRED_FORECAST_CHARTS.map((requiredChart) => ({
-      chartType: requiredChart.chartType,
-      isComplete: false,
-      completedAt: null,
-      completedBy: null,
-    }));
-
     const forecastPackage = await ForecastPackage.create({
       name,
       forecastDate,
@@ -122,15 +164,10 @@ async function createDailyForecastPackage({ forecastDate, user }) {
 
     return populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
   } catch (error) {
-    await Project.deleteMany({ _id: { $in: createdProjectIds } }).catch((cleanupError) => {
-      console.error('[ForecastPackage] Failed to cleanup auto-created chart projects:', cleanupError);
-    });
-
     if (error?.code === 11000) {
       const existing = await findPackageForDate(forecastDate);
       if (existing) return existing;
     }
-
     throw error;
   }
 }
