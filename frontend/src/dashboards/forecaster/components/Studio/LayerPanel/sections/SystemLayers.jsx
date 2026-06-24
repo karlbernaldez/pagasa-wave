@@ -34,6 +34,8 @@ const SectionLabel = ({ label, count, isDarkMode, accent = false }) => (
   </div>
 );
 
+const countActiveByDefinition = (definitions, state) => definitions.filter((layer) => state[layer.id]).length;
+
 const SystemLayersSection = ({
   expanded,
   activeCount,
@@ -57,14 +59,12 @@ const SystemLayersSection = ({
   onSetWindBarbStyle,
   isDarkMode,
 }) => {
-  const utilityCount = Object.values(utilitiesLayers).filter(Boolean).length;
+  const domainCount = countActiveByDefinition(DOMAIN_LAYERS, domainLayers);
+  const utilityCount = countActiveByDefinition(UTILITY_LAYERS, utilitiesLayers);
   const satelliteOverlayCount =
     (satelliteLayer ? 1 : 0) +
-    SATELLITE_OVERLAY_LAYERS.filter((layer) => utilitiesLayers[layer.id]).length;
-  const referenceCount =
-    Object.values(domainLayers).filter(Boolean).length +
-    utilityCount +
-    (satelliteLayer ? 1 : 0);
+    countActiveByDefinition(SATELLITE_OVERLAY_LAYERS, utilitiesLayers);
+  const referenceCount = domainCount + utilityCount + satelliteOverlayCount;
 
   if (!expanded) return null;
 
@@ -77,7 +77,7 @@ const SystemLayersSection = ({
           <LayerGroupCard
             icon={<Map size={15} strokeWidth={2} />}
             title="Domains"
-            badge={Object.values(domainLayers).filter(Boolean).length}
+            badge={domainCount}
             expanded={expandedGroups.domains}
             onToggle={() => onToggleGroup('domains')}
             isDarkMode={isDarkMode}
