@@ -1,11 +1,9 @@
-const SATELLITE_SOURCE_IDS = ['pagasa-satellite-image-source-a', 'pagasa-satellite-image-source-b'];
-const SATELLITE_LAYER_IDS = ['Satellite', 'Satellite_next'];
-export const HIMAWARI_LAYER_ID = SATELLITE_LAYER_IDS[0];
+const SATELLITE_SOURCE_ID = 'pagasa-satellite-image-source';
+export const HIMAWARI_LAYER_ID = 'Satellite';
 
 const PAGASA_SATELLITE_API_URL = 'https://www.panahon.gov.ph/api/v1/satellite';
 const PAGASA_ORIGIN = 'https://www.panahon.gov.ph';
-const FRAME_INTERVAL_MS = 650;
-const FADE_DURATION_MS = 280;
+const FRAME_INTERVAL_MS = 700;
 const SATELLITE_FRAME_IDS = Array.from({ length: 24 }, (_, index) => index + 1);
 
 const PHILIPPINES_SATELLITE_COORDINATES = [
@@ -13,6 +11,19 @@ const PHILIPPINES_SATELLITE_COORDINATES = [
   [146.99, 29.55],
   [146.99, -1.5],
   [104, -1.5],
+];
+
+const KNOWN_APP_OVERLAY_LAYER_IDS = [
+  'PAR',
+  'PAR_dash',
+  'TCID',
+  'TCAD',
+  'graticules',
+  'graticules_blur',
+  'SHIPPING_ZONE_OUTLINE',
+  'SHIPPING_ZONE_LABELS',
+  'PAGASA_NWP_RASTER',
+  'CYCLONE_TRACK',
 ];
 
 const animationStateByMap = new WeakMap();
@@ -140,40 +151,69 @@ function stopSatelliteAnimation(map) {
   animationStateByMap.delete(map);
 }
 
-function ensureSatelliteImageLayerPair(map, initialUrl, visible) {
-  SATELLITE_LAYER_IDS.forEach((layerId) => {
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
-  });
-  SATELLITE_SOURCE_IDS.forEach((sourceId) => {
-    if (map.getSource(sourceId)) map.removeSource(sourceId);
-  });
-
-  SATELLITE_SOURCE_IDS.forEach((sourceId) => {
-    map.addSource(sourceId, {
-      type: 'image',
-      url: initialUrl,
-      coordinates: PHILIPPINES_SATELLITE_COORDINATES,
-    });
-  });
-
-  SATELLITE_LAYER_IDS.forEach((layerId, index) => {
-    map.addLayer({
-      id: layerId,
-      type: 'raster',
-      source: SATELLITE_SOURCE_IDS[index],
-      slot: 'bottom',
-      layout: { visibility: visible ? 'visible' : 'none' },
-      paint: { 'raster-opacity': index === 0 ? 0.95 : 0 },
-    });
-  });
+function isSatelliteLayer(layer) {
+  return layer?.id === HIMAWARI_LAYER_ID || layer?.source === SATELLITE_SOURCE_ID;
 }
 
-function setSatelliteLayersVisibility(map, visible) {
-  SATELLITE_LAYER_IDS.forEach((layerId) => {
-    if (map.getLayer(layerId)) {
-      map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+function isApplicationOverlayLayer(layer) {
+  if (!layer || isSatelliteLayer(layer)) return false;
+  if (KNOWN_APP_OVERLAY_LAYER_IDS.includes(layer.id)) return true;
+  if (!layer.source) return false;
+  if (layer.source === 'composite' || layer.source === 'mapbox' || layer.source === 'mapbox-dem') return false;
+  return true;
+}
+
+function getFirstApplicationOverlayLayerId(map) {
+  const layers = map.getStyle?.()?.layers || [];
+  return layers.find(isApplicationOverlayLayer)?.id || null;
+}
+
+function moveSatelliteBelowApplicationOverlays(map) {
+  if (!map?.getLayer?.(HIMAWARI_LAYER_ID)) return;
+  const beforeId = getFirstApplicationOverlayLayerId(map);
+  if (beforeId && beforeId !== HIMAWARI_LAYER_ID) {
+    try {
+      map.moveLayer(HIMAWARI_LAYER_ID, beforeId);
+    } catch (error) {
+      console.warn('[pagasa-satellite-layer-order-warning]', error);
     }
+  }
+}
+
+function ensureSatelliteImageLayer(map, initialUrl, visible) {
+  if (map.getLayer(HIMAWARI_LAYER_ID)) map.removeLayer(HIMAWARI_LAYER_ID);
+  if (map.getSource(SATELLITE_SOURCE_ID)) map.removeSource(SATELLITE_SOURCE_ID);
+
+  map.addSource(SATELLITE_SOURCE_ID, {
+    type: 'image',
+    url: initialUrl,
+    coordinates: PHILIPPINES_SATELLITE_COORDINATES,
   });
+
+  const layerDefinition = {
+    id: HIMAWARI_LAYER_ID,
+    type: 'raster',
+    source: SATELLITE_SOURCE_ID,
+    slot: 'bottom',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: { 'raster-opacity': 0.75 },
+  };
+
+  const beforeId = getFirstApplicationOverlayLayerId(map);
+  if (beforeId) {
+    map.addLayer(layerDefinition, beforeId);
+  } else {
+    map.addLayer(layerDefinition);
+  }
+
+  moveSatelliteBelowApplicationOverlays(map);
+}
+
+function setSatelliteLayerVisibility(map, visible) {
+  if (map.getLayer(HIMAWARI_LAYER_ID)) {
+    map.setLayoutProperty(HIMAWARI_LAYER_ID, 'visibility', visible ? 'visible' : 'none');
+    moveSatelliteBelowApplicationOverlays(map);
+  }
 }
 
 function startSatelliteAnimation(map, frameUrls) {
@@ -183,32 +223,24 @@ function startSatelliteAnimation(map, frameUrls) {
   const state = {
     frameUrls,
     index: 0,
-    activeLayerSlot: 0,
     timerId: null,
   };
 
   state.timerId = window.setInterval(() => {
-    if (!map || !map.getLayer(SATELLITE_LAYER_IDS[0]) || !map.getLayer(SATELLITE_LAYER_IDS[1])) {
+    if (!map || !map.getLayer(HIMAWARI_LAYER_ID)) {
       stopSatelliteAnimation(map);
       return;
     }
 
     const nextIndex = (state.index + 1) % state.frameUrls.length;
-    const nextSlot = state.activeLayerSlot === 0 ? 1 : 0;
-    const currentSlot = state.activeLayerSlot;
-    const nextSource = map.getSource(SATELLITE_SOURCE_IDS[nextSlot]);
+    const source = map.getSource(SATELLITE_SOURCE_ID);
 
-    if (nextSource?.updateImage) {
-      nextSource.updateImage({ url: state.frameUrls[nextIndex], coordinates: PHILIPPINES_SATELLITE_COORDINATES });
+    if (source?.updateImage) {
+      source.updateImage({ url: state.frameUrls[nextIndex], coordinates: PHILIPPINES_SATELLITE_COORDINATES });
     }
 
-    map.setPaintProperty(SATELLITE_LAYER_IDS[nextSlot], 'raster-opacity-transition', { duration: FADE_DURATION_MS, delay: 0 });
-    map.setPaintProperty(SATELLITE_LAYER_IDS[currentSlot], 'raster-opacity-transition', { duration: FADE_DURATION_MS, delay: 0 });
-    map.setPaintProperty(SATELLITE_LAYER_IDS[nextSlot], 'raster-opacity', 0.95);
-    map.setPaintProperty(SATELLITE_LAYER_IDS[currentSlot], 'raster-opacity', 0);
-
+    moveSatelliteBelowApplicationOverlays(map);
     state.index = nextIndex;
-    state.activeLayerSlot = nextSlot;
   }, FRAME_INTERVAL_MS);
 
   animationStateByMap.set(map, state);
@@ -216,7 +248,7 @@ function startSatelliteAnimation(map, frameUrls) {
 
 export function setHimawariSatelliteVisibility(map, visible) {
   if (!map) return;
-  setSatelliteLayersVisibility(map, visible);
+  setSatelliteLayerVisibility(map, visible);
   if (!visible) stopSatelliteAnimation(map);
 }
 
@@ -226,8 +258,8 @@ export async function ensureHimawariSatelliteLayer(map, { visible = false } = {}
   removeLegacyHimawariVideo(map);
 
   const frameUrls = await preloadFrames(await fetchSatelliteFrameUrls());
-  ensureSatelliteImageLayerPair(map, frameUrls[0], visible);
-  setSatelliteLayersVisibility(map, visible);
+  ensureSatelliteImageLayer(map, frameUrls[0], visible);
+  setSatelliteLayerVisibility(map, visible);
 
   if (visible) startSatelliteAnimation(map, frameUrls);
 }
