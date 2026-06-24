@@ -156,12 +156,14 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
       }
 
       // Satellite
-      try {
-        ensureHimawariSatelliteLayer(map, { visible: saved.satellite });
-      } catch (error) {
-        console.error('[himawari-satellite-layer-error]', error);
-        localStorage.setItem('SATELLITE', 'false');
-        setSatelliteLayer(false);
+      if (saved.satellite) {
+        ensureHimawariSatelliteLayer(map, { visible: true }).catch((error) => {
+          console.error('[pagasa-satellite-layer-error]', error);
+          localStorage.setItem('SATELLITE', 'false');
+          setSatelliteLayer(false);
+          setHimawariSatelliteVisibility(map, false);
+        });
+      } else {
         setHimawariSatelliteVisibility(map, false);
       }
     };
@@ -277,27 +279,25 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
 
   const toggleSatelliteLayer = () => {
     if (!checkProjectId()) return;
-    setSatelliteLayer((prev) => {
-      const next = !prev;
-      localStorage.setItem('SATELLITE', String(next));
-      const map = mapRef.current;
-      if (!map) return next;
 
-      try {
-        if (next) {
-          ensureHimawariSatelliteLayer(map, { visible: true });
-        } else {
-          setHimawariSatelliteVisibility(map, false);
-        }
-      } catch (error) {
-        console.error('[himawari-satellite-layer-error]', error);
-        localStorage.setItem('SATELLITE', 'false');
-        setHimawariSatelliteVisibility(map, false);
-        showSatelliteError(error?.message || 'Unable to load Himawari satellite.');
-        return false;
-      }
+    const nextEnabled = !satelliteLayer;
+    localStorage.setItem('SATELLITE', String(nextEnabled));
+    setSatelliteLayer(nextEnabled);
 
-      return next;
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (!nextEnabled) {
+      setHimawariSatelliteVisibility(map, false);
+      return;
+    }
+
+    ensureHimawariSatelliteLayer(map, { visible: true }).catch((error) => {
+      console.error('[pagasa-satellite-layer-error]', error);
+      localStorage.setItem('SATELLITE', 'false');
+      setSatelliteLayer(false);
+      setHimawariSatelliteVisibility(map, false);
+      showSatelliteError(error?.message || 'Unable to load PAGASA satellite.');
     });
   };
 
