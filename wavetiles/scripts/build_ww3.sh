@@ -38,7 +38,7 @@ Environment overrides:
   WW3_STYLES          Comma-separated styles for ww3.py (default from ww3.py)
   WW3_COG_STYLE       Style used to build the COG (default: light)
   WW3_SKIP_COG        Set to 1 to skip COG creation
-  WW3_PYTHON          Python executable (default: python3)
+  WW3_PYTHON          Python executable override, for example: python or py
   WW3_GDAL_TRANSLATE  gdal_translate executable (default: gdal_translate)
   WW3_NO_PAUSE        Set to 1 to avoid pause-on-error in interactive terminals
 EOF
@@ -64,8 +64,23 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PYTHON_BIN=${WW3_PYTHON:-python3}
 GDAL_TRANSLATE=${WW3_GDAL_TRANSLATE:-gdal_translate}
+
+PYTHON_BIN=${WW3_PYTHON:-}
+PYTHON_ARGS=()
+if [[ -z "$PYTHON_BIN" ]]; then
+    if command -v python3 >/dev/null 2>&1 && python3 -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
+        PYTHON_BIN=python3
+    elif command -v python >/dev/null 2>&1 && python -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
+        PYTHON_BIN=python
+    elif command -v py >/dev/null 2>&1 && py -3 -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
+        PYTHON_BIN=py
+        PYTHON_ARGS=(-3)
+    else
+        echo "Python 3 was not found. Install Python 3 or set WW3_PYTHON to a working executable." >&2
+        exit 1
+    fi
+fi
 
 if [[ ! -f "$NCFILE" ]]; then
     echo "NetCDF file not found: $NCFILE" >&2
@@ -85,7 +100,7 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
     exit 1
 fi
 
-"$PYTHON_BIN" - "$SIGMA" <<'PY'
+"$PYTHON_BIN" "${PYTHON_ARGS[@]}" - "$SIGMA" <<'PY'
 import sys
 try:
     sigma = float(sys.argv[1])
@@ -126,13 +141,14 @@ cat <<EOF
   DATE      : $DATE
   SIGMA     : $SIGMA
   COG_STYLE : $COG_STYLE
+  PYTHON    : $PYTHON_BIN ${PYTHON_ARGS[*]}
   ROOT      : $ROOT
 ============================================
 EOF
 
 echo
 echo "-> [1/2] Running ww3.py..."
-"$PYTHON_BIN" "$SCRIPT_DIR/ww3.py" \
+"$PYTHON_BIN" "${PYTHON_ARGS[@]}" "$SCRIPT_DIR/ww3.py" \
     "$NCFILE" \
     --var "$VARNAME" \
     --sigma "$SIGMA" \
