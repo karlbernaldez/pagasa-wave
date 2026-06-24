@@ -12,9 +12,25 @@ set -euo pipefail
 #
 # DATE is derived from the filename; do not pass it as an argument.
 
+pause_on_error() {
+    local status=$?
+    if [[ $status -ne 0 && -t 0 && "${WW3_NO_PAUSE:-0}" != "1" ]]; then
+        echo
+        echo "WW3 build failed with exit code $status."
+        echo "Review the error above. Set WW3_NO_PAUSE=1 to disable this prompt."
+        read -r -p "Press Enter to close this terminal..." _ || true
+    fi
+    exit "$status"
+}
+trap pause_on_error EXIT
+
 usage() {
     cat >&2 <<'EOF'
 Usage: build_ww3.sh <NCFILE> [VARNAME] [SIGMA] [-- extra ww3.py args]
+
+Examples:
+  ./build_ww3.sh ../input/ww3/2026062318/ww3_grdo.20260623T18.nc hs 1.5 --skip-existing
+  ./build_ww3.sh ../input/ww3/2026062318/ww3_grdo.20260623T18.nc hs 1.5 --styles light,dark,night
 
 Environment overrides:
   WW3_VAR             Variable to process when VARNAME is omitted (default: hs)
@@ -24,6 +40,7 @@ Environment overrides:
   WW3_SKIP_COG        Set to 1 to skip COG creation
   WW3_PYTHON          Python executable (default: python3)
   WW3_GDAL_TRANSLATE  gdal_translate executable (default: gdal_translate)
+  WW3_NO_PAUSE        Set to 1 to avoid pause-on-error in interactive terminals
 EOF
 }
 
@@ -45,7 +62,30 @@ if [[ $# -gt 0 ]]; then
     shift
 fi
 
-python3 - "$SIGMA" <<'PY'
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PYTHON_BIN=${WW3_PYTHON:-python3}
+GDAL_TRANSLATE=${WW3_GDAL_TRANSLATE:-gdal_translate}
+
+if [[ ! -f "$NCFILE" ]]; then
+    echo "NetCDF file not found: $NCFILE" >&2
+    echo "Current directory: $(pwd)" >&2
+    parent_dir="$(dirname "$NCFILE")"
+    if [[ -d "$parent_dir" ]]; then
+        echo "Files in $parent_dir:" >&2
+        ls -1 "$parent_dir" >&2 || true
+    else
+        echo "Parent directory does not exist: $parent_dir" >&2
+    fi
+    exit 1
+fi
+
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+    echo "Python executable not found: $PYTHON_BIN" >&2
+    exit 1
+fi
+
+"$PYTHON_BIN" - "$SIGMA" <<'PY'
 import sys
 try:
     sigma = float(sys.argv[1])
@@ -58,11 +98,6 @@ if sigma > 100:
         f"SIGMA={sigma!r} looks like a date, not a sigma value. DATE is derived from the filename."
     )
 PY
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PYTHON_BIN=${WW3_PYTHON:-python3}
-GDAL_TRANSLATE=${WW3_GDAL_TRANSLATE:-gdal_translate}
 
 GEOTIFF_DIR="$ROOT/geotiff"
 COG_DIR="$ROOT/cog"
@@ -112,6 +147,11 @@ if [[ "${WW3_SKIP_COG:-0}" == "1" ]]; then
 fi
 
 echo
+if ! command -v "$GDAL_TRANSLATE" >/dev/null 2>&1; then
+    echo "gdal_translate executable not found: $GDAL_TRANSLATE" >&2
+    exit 1
+fi
+
 echo "-> [2/2] Building COG from ${COG_STYLE} RGBA..."
 
 if [[ ! -f "$RGBA_TIF" ]]; then
