@@ -181,6 +181,7 @@ const StudioPanel = ({
 
   const { windConfig, toggleWindLayer, setWindElement, toggleWindModel, setWindBarbStyle } = useWindConfig({ mapRef, isDarkMode });
   const { waveConfig, toggleWaveLayer, setWaveElement, toggleWaveModel, setDirectionStyle } = useWaveConfig({ mapRef, isDarkMode });
+  const showWaveLegend = Boolean(waveConfig.enabled && waveConfig.elements?.raster);
 
   const editState = useCustomLayerEdit({ setLayers, mapRef });
 
@@ -642,7 +643,7 @@ const StudioPanel = ({
 
       <SharedModals {...sharedModalProps} />
       <ShareProjectModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} onShare={handleShareProject} projectName={projectName} isDarkMode={isDarkMode} />
-      <WaveLegend mapRef={mapRef} isDarkMode={isDarkMode} />
+      {showWaveLegend && <WaveLegend mapRef={mapRef} isDarkMode={isDarkMode} />}
     </>
   );
 };
