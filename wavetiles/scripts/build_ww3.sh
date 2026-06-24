@@ -64,6 +64,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WW3_SCRIPT="$SCRIPT_DIR/tiling/ww3.py"
 GDAL_TRANSLATE=${WW3_GDAL_TRANSLATE:-gdal_translate}
 
 PYTHON_BIN=${WW3_PYTHON:-}
@@ -80,6 +81,12 @@ if [[ -z "$PYTHON_BIN" ]]; then
         echo "Python 3 was not found. Install Python 3 or set WW3_PYTHON to a working executable." >&2
         exit 1
     fi
+fi
+
+if [[ ! -f "$WW3_SCRIPT" ]]; then
+    echo "WW3 tiling script not found: $WW3_SCRIPT" >&2
+    echo "Current directory: $(pwd)" >&2
+    exit 1
 fi
 
 if [[ ! -f "$NCFILE" ]]; then
@@ -148,7 +155,7 @@ EOF
 
 echo
 echo "-> [1/2] Running ww3.py..."
-"$PYTHON_BIN" "${PYTHON_ARGS[@]}" "$SCRIPT_DIR/ww3.py" \
+"$PYTHON_BIN" "${PYTHON_ARGS[@]}" "$WW3_SCRIPT" \
     "$NCFILE" \
     --var "$VARNAME" \
     --sigma "$SIGMA" \
