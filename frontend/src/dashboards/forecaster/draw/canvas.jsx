@@ -28,6 +28,18 @@ const getSafePanelPosition = (position) => {
   };
 };
 
+const getInitialPanelPosition = () => {
+  try {
+    if (typeof window === 'undefined') return getSafePanelPosition(getDefaultPanelPosition());
+    const saved = window.localStorage.getItem(SLIDER_STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : null;
+    const next = Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y) ? parsed : getDefaultPanelPosition();
+    return getSafePanelPosition(next);
+  } catch {
+    return getSafePanelPosition(getDefaultPanelPosition());
+  }
+};
+
 const getMapContainerRect = (mapRef) => {
   const container = mapRef?.current?.getContainer?.();
   return container?.getBoundingClientRect?.() || null;
@@ -51,23 +63,8 @@ const WaveHeightSlider = memo(({ value, onChange, isDarkMode, closedMode, onClos
   const setWaveValue = (nextValue) => onChange(clampWaveValue(nextValue));
   const dragRef = useRef(null);
   const [isDraggingPanel, setIsDraggingPanel] = useState(false);
-  const [position, setPosition] = useState(() => getDefaultPanelPosition());
+  const [position, setPosition] = useState(getInitialPanelPosition);
   const positionRef = useRef(position);
-
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(SLIDER_STORAGE_KEY);
-      const parsed = saved ? JSON.parse(saved) : null;
-      const next = Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y) ? parsed : getDefaultPanelPosition();
-      const safe = getSafePanelPosition(next);
-      positionRef.current = safe;
-      setPosition(safe);
-    } catch {
-      const safe = getSafePanelPosition(getDefaultPanelPosition());
-      positionRef.current = safe;
-      setPosition(safe);
-    }
-  }, []);
 
   useEffect(() => {
     const handleResize = () => {
