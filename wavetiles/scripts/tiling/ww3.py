@@ -131,14 +131,23 @@ def require_executable(name: str) -> None:
 
 def gdal2tiles_command() -> list[str]:
     """Return the most portable gdal2tiles invocation for Windows, OSGeo4W, and Linux."""
+    try:
+        if importlib.util.find_spec("osgeo_utils.gdal2tiles") is not None:
+            return [sys.executable, "-m", "osgeo_utils.gdal2tiles"]
+    except ModuleNotFoundError:
+        pass
+
     for executable in ("gdal2tiles.py", "gdal2tiles"):
-        if shutil.which(executable):
-            return [executable]
-    if importlib.util.find_spec("osgeo_utils.gdal2tiles") is not None:
-        return [sys.executable, "-m", "osgeo_utils.gdal2tiles"]
+        path = shutil.which(executable)
+        if not path:
+            continue
+        if os.name == "nt" or path.lower().endswith((".py", ".pyw")):
+            return [sys.executable, path]
+        return [path]
+
     raise RuntimeError(
         "Could not find gdal2tiles. Install GDAL Python utilities or make gdal2tiles.py available in PATH. "
-        "For OSGeo4W, verify with: python -m osgeo_utils.gdal2tiles --help"
+        "Verify with: python -m osgeo_utils.gdal2tiles --help"
     )
 
 
