@@ -3,7 +3,6 @@ import express from 'express';
 import {
   approveForecastPackage,
   createForecastPackage,
-  getCurrentForecastPackage,
   getForecastPackageById,
   getUserForecastPackages,
   publishForecastPackage,
@@ -12,6 +11,7 @@ import {
   submitForecastPackage,
   updateForecastChartCompletion,
 } from '../controllers/forecastPackageController.js';
+import { getCurrentForecastPackage } from '../controllers/currentForecastPackageController.js';
 import {
   getForecastPackageChartContextByProject,
   joinForecastPackageChartEditingByProject,
