@@ -44,10 +44,26 @@ Environment overrides:
 EOF
 }
 
+add_gdal_path_if_needed() {
+    if command -v gdaladdo >/dev/null 2>&1; then
+        return 0
+    fi
+
+    local gdal_dir
+    for gdal_dir in "/c/OSGeo4W/bin" "/c/OSGeo4W64/bin"; do
+        if [[ -x "$gdal_dir/gdaladdo.exe" || -x "$gdal_dir/gdaladdo" ]]; then
+            export PATH="$gdal_dir:$PATH"
+            return 0
+        fi
+    done
+}
+
 if [[ $# -lt 1 ]]; then
     usage
     exit 2
 fi
+
+add_gdal_path_if_needed
 
 NCFILE=$1
 shift
