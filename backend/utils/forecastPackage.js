@@ -43,31 +43,73 @@ export const REQUIRED_FORECAST_CHART_TYPES = Object.freeze(
   REQUIRED_FORECAST_CHARTS.map((chart) => chart.chartType)
 );
 
+const FORECAST_TIME_ZONE = 'Asia/Manila';
+const PHILIPPINES_UTC_OFFSET_HOURS = 8;
+
 export function getForecastChartLabel(chartType) {
   return REQUIRED_FORECAST_CHARTS.find((chart) => chart.chartType === chartType)?.label || chartType;
 }
 
-export function normalizeForecastDate(value) {
-  const date = new Date(value);
+function getTimeZoneDateParts(value, timeZone = FORECAST_TIME_ZONE) {
+  const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  date.setHours(0, 0, 0, 0);
-  return date;
+
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const getPart = (type) => parts.find((part) => part.type === type)?.value || '';
+  const year = getPart('year');
+  const month = getPart('month');
+  const day = getPart('day');
+  if (!year || !month || !day) return null;
+
+  return { year: Number(year), month: Number(month), day: Number(day), key: `${year}-${month}-${day}` };
+}
+
+function parseDateKey(value) {
+  const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  const [, year, month, day] = match;
+  return { year: Number(year), month: Number(month), day: Number(day), key: `${year}-${month}-${day}` };
+}
+
+function makePhilippinesOperationalDate({ year, month, day }) {
+  const utcTime = Date.UTC(year, month - 1, day, -PHILIPPINES_UTC_OFFSET_HOURS, 0, 0, 0);
+  return new Date(utcTime);
+}
+
+export function normalizeForecastDate(value) {
+  const parts = typeof value === 'string'
+    ? (parseDateKey(value) || getTimeZoneDateParts(value))
+    : getTimeZoneDateParts(value || new Date());
+
+  if (!parts) return null;
+  return makePhilippinesOperationalDate(parts);
 }
 
 export function formatLocalDateKey(value) {
-  const date = normalizeForecastDate(value);
-  if (!date) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return getTimeZoneDateParts(date)?.key || null;
+}
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+export function getTodayForecastDateKey(now = new Date()) {
+  return formatLocalDateKey(now);
 }
 
 export function buildForecastPackageName(forecastDate) {
   const dateKey = formatLocalDateKey(forecastDate);
   if (!dateKey) return null;
   return `Marine Forecast ${dateKey}`;
+}
+
+export function buildForecastChartProjectName(forecastDate, chartLabel) {
+  const packageName = buildForecastPackageName(forecastDate);
+  return packageName && chartLabel ? `${packageName} - ${chartLabel}` : packageName;
 }
 
 export function getPackageCompletion(chartCompletion = []) {
