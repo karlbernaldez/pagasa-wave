@@ -11,14 +11,31 @@ export const ADMIN_TABS = {
   SETTINGS: 'settings',
 };
 
-export const MENU_ITEMS = [
-  { id: ADMIN_TABS.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
-  { id: ADMIN_TABS.CHARTS, label: 'Review Charts', icon: Waves },
-  { id: ADMIN_TABS.USERS, label: 'Users', icon: Users },
-  { id: ADMIN_TABS.ANALYTICS, label: 'Analytics', icon: BarChart3 },
-  { id: ADMIN_TABS.CALENDAR, label: 'Calendar', icon: CalendarDays },
-  { id: ADMIN_TABS.SETTINGS, label: 'Settings', icon: Settings },
+export const MENU_GROUPS = [
+  {
+    label: 'Review',
+    items: [
+      { id: ADMIN_TABS.DASHBOARD, label: 'Overview', icon: LayoutDashboard },
+      { id: ADMIN_TABS.CHARTS, label: 'Review Queue', icon: Waves },
+    ],
+  },
+  {
+    label: 'Management',
+    items: [
+      { id: ADMIN_TABS.USERS, label: 'Users', icon: Users },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { id: ADMIN_TABS.ANALYTICS, label: 'Analytics', icon: BarChart3 },
+      { id: ADMIN_TABS.CALENDAR, label: 'Calendar', icon: CalendarDays },
+      { id: ADMIN_TABS.SETTINGS, label: 'Settings', icon: Settings },
+    ],
+  },
 ];
+
+export const MENU_ITEMS = MENU_GROUPS.flatMap((group) => group.items);
 
 export const PAGE_META = {
   [ADMIN_TABS.DASHBOARD]: {
