@@ -150,7 +150,7 @@ const WaveHeightSlider = memo(({ value, onChange, isDarkMode, closedMode, onClos
 
 WaveHeightSlider.displayName = 'WaveHeightSlider';
 
-const DrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMode, setLayersRef, closedMode = false, setClosedMode, lineCount = 0 }) => {
+const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMode, setLayersRef, closedMode = false, setClosedMode, lineCount = 0 }) => {
   const canvasRef = useRef(null);
   const activeLineRef = useRef(null);
   const rafRef = useRef(null);
@@ -208,7 +208,7 @@ const DrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMode, se
   const setSaveLines = useCallback((nextLines) => { const next = typeof nextLines === 'function' ? nextLines(activeLineRef.current ? [activeLineRef.current] : []) : nextLines; activeLineRef.current = Array.isArray(next) && next.length ? next[next.length - 1] : null; if (activeLineRef.current) schedulePreviewDraw(); else clearPreview(); }, [clearPreview, schedulePreviewDraw]);
 
   useEffect(() => { const preventScroll = (event) => { if (isDrawing.current) event.preventDefault(); }; document.body.addEventListener('touchmove', preventScroll, { passive: false }); return () => document.body.removeEventListener('touchmove', preventScroll); }, []);
-  useEffect(() => { resizeCanvas(); window.addEventListener('resize', resizeCanvas); const map = mapRef?.current; map?.on?.('resize', resizeCanvas); map?.on?.('move', resizeCanvas); map?.on?.('zoom', resizeCanvas); return () => { window.removeEventListener('resize', resizeCanvas); map?.off?.('resize', resizeCanvas); map?.off?.('move', resizeCanvas); map?.off?.('zoom', resizeCanvas); if (rafRef.current) window.cancelAnimationFrame(rafRef.current); }; }, [mapRef, resizeCanvas]);
+  useEffect(() => { resizeCanvas(); window.addEventListener('resize', resizeCanvas); const map = mapRef?.current; map?.on?.('resize', resizeCanvas); map?.on?.('move', resizeCanvas); map?.on?.('zoom', resizeCanvas); return () => { window.removeEventListener('resize', resizeCanvas); map?.off?.('resize', resizeCanvas); map?.off?.('move', resizeCanvas); map?.off?.('zoom', resizeCanvas); if (rafRef.current) window.cancelAnimationFrame(rafRef.current); clearPreview(); }; }, [mapRef, resizeCanvas, clearPreview]);
 
   const onPointerDown = useCallback((event) => { if (drawLock.current) return; resizeCanvas(); event.preventDefault(); event.currentTarget.setPointerCapture?.(event.pointerId); const [x, y] = getPointerPoint(event, event.currentTarget); pointerIdRef.current = event.pointerId; isDrawing.current = true; lastPreviewTimeRef.current = 0; activeLineRef.current = { points: [x, y], rawPoints: [x, y] }; clearPreview(); }, [clearPreview, resizeCanvas]);
   const onPointerMove = useCallback((event) => { if (drawLock.current) return; if (!isDrawing.current || pointerIdRef.current !== event.pointerId) return; event.preventDefault(); const line = activeLineRef.current; if (!line) return; const now = performance.now(); if (now - lastPreviewTimeRef.current < PREVIEW_FRAME_MS) return; const [x, y] = getPointerPoint(event, event.currentTarget); if (distanceFromLastPoint(line.rawPoints, x, y) < MIN_POINT_DISTANCE) return; line.rawPoints = line.rawPoints.concat([x, y]); line.points = getPreviewCurvePoints(line.rawPoints); lastPreviewTimeRef.current = now; schedulePreviewDraw(); }, [schedulePreviewDraw]);
@@ -233,6 +233,11 @@ const DrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMode, se
       <canvas ref={canvasRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={finishDrawing} onPointerCancel={finishDrawing} className="fixed z-10 touch-none pointer-events-auto" />
     </>
   );
+};
+
+const DrawingCanvas = ({ isCanvasActive = false, ...props }) => {
+  if (!isCanvasActive) return null;
+  return <ActiveDrawingCanvas {...props} />;
 };
 
 export default memo(DrawingCanvas);
