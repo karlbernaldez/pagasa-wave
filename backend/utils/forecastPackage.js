@@ -50,6 +50,10 @@ export function getForecastChartLabel(chartType) {
   return REQUIRED_FORECAST_CHARTS.find((chart) => chart.chartType === chartType)?.label || chartType;
 }
 
+function padDatePart(value) {
+  return String(value).padStart(2, '0');
+}
+
 function getTimeZoneDateParts(value, timeZone = FORECAST_TIME_ZONE) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
@@ -67,7 +71,12 @@ function getTimeZoneDateParts(value, timeZone = FORECAST_TIME_ZONE) {
   const day = getPart('day');
   if (!year || !month || !day) return null;
 
-  return { year: Number(year), month: Number(month), day: Number(day), key: `${year}-${month}-${day}` };
+  return {
+    year: Number(year),
+    month: Number(month),
+    day: Number(day),
+    key: `${year}-${padDatePart(month)}-${padDatePart(day)}`,
+  };
 }
 
 function parseDateKey(value) {
