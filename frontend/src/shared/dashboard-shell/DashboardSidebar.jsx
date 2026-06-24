@@ -107,24 +107,26 @@ const DashboardSidebar = ({
     const itemClass = `relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
       isSidebarCollapsed ? 'justify-center' : 'justify-between'
     } ${getNavClasses({ disabled: item.disabled, isActive: stateActive, isDarkMode })}`;
+    const shouldMatchExact = item.end ?? item.path === '/dashboard';
 
     return (
       <div key={item.id ?? item.path ?? item.label}>
         {item.path && !item.disabled ? (
           <NavLink
             to={item.path}
+            end={shouldMatchExact}
             title={isSidebarCollapsed ? item.label : undefined}
             className={({ isActive: routeActive }) =>
               `relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
                 isSidebarCollapsed ? 'justify-center' : ''
-              } ${getNavClasses({ isActive: routeActive || isActive, isDarkMode })}`
+              } ${getNavClasses({ isActive: routeActive || stateActive, isDarkMode })}`
             }
             onClick={closeMobile}
           >
             {({ isActive: routeActive }) =>
               renderItemContent({
                 Icon,
-                isActive: routeActive || isActive,
+                isActive: routeActive || stateActive,
                 label: item.label,
               })
             }
@@ -158,6 +160,23 @@ const DashboardSidebar = ({
           }`}>
             {item.children.map((child) => {
               const childActive = child.isActive?.(activeId) ?? (activeId === child.id);
+              const childClass = `block w-full rounded-lg px-2 py-2 text-left text-sm font-bold transition-colors ${getSubNavClasses({ isActive: childActive, isDarkMode })}`;
+
+              if (child.path) {
+                return (
+                  <NavLink
+                    key={child.id}
+                    to={child.path}
+                    end
+                    onClick={closeMobile}
+                    className={({ isActive: routeActive }) =>
+                      `block w-full rounded-lg px-2 py-2 text-left text-sm font-bold transition-colors ${getSubNavClasses({ isActive: routeActive || childActive, isDarkMode })}`
+                    }
+                  >
+                    {child.label}
+                  </NavLink>
+                );
+              }
 
               return (
                 <button
@@ -167,7 +186,7 @@ const DashboardSidebar = ({
                     onItemSelect?.(child);
                     closeMobile();
                   }}
-                  className={`block w-full rounded-lg px-2 py-2 text-left text-sm font-bold transition-colors ${getSubNavClasses({ isActive: childActive, isDarkMode })}`}
+                  className={childClass}
                 >
                   {child.label}
                 </button>
