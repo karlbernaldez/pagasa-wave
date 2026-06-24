@@ -24,9 +24,23 @@ const KNOWN_APP_OVERLAY_LAYER_IDS = [
 ];
 
 const gifUrlByMap = new WeakMap();
+const loadingByMap = new WeakMap();
+
+function removeSatelliteLayerAndSource(map) {
+  if (!map) return;
+  if (map.getLayer(HIMAWARI_LAYER_ID)) map.removeLayer(HIMAWARI_LAYER_ID);
+  if (map.getSource(SATELLITE_SOURCE_ID)) map.removeSource(SATELLITE_SOURCE_ID);
+}
 
 function removeLegacySatelliteLayers(map) {
-  ['himawari-video-layer', 'himawari-video', 'Satellite_next', 'pagasa-satellite-image-source-a', 'pagasa-satellite-image-source-b', 'pagasa-satellite-image-source'].forEach((id) => {
+  [
+    'Satellite_next',
+    'himawari-video-layer',
+    'himawari-video',
+    'pagasa-satellite-image-source-a',
+    'pagasa-satellite-image-source-b',
+    'pagasa-satellite-image-source',
+  ].forEach((id) => {
     if (map.getLayer(id)) map.removeLayer(id);
     if (map.getSource(id)) map.removeSource(id);
   });
@@ -81,33 +95,49 @@ export function setHimawariSatelliteVisibility(map, visible) {
 export async function ensureHimawariSatelliteLayer(map, { visible = false } = {}) {
   if (!map) return;
 
-  removeLegacySatelliteLayers(map);
-  revokePreviousGifUrl(map);
+  const existingLoad = loadingByMap.get(map);
+  if (existingLoad) return existingLoad;
 
-  const gifUrl = await preloadHimawariAndCreateGif();
-  if (!gifUrl) throw new Error('No animated PAGASA satellite GIF could be generated.');
-  gifUrlByMap.set(map, gifUrl);
+  const loadPromise = (async () => {
+    removeLegacySatelliteLayers(map);
+    removeSatelliteLayerAndSource(map);
+    revokePreviousGifUrl(map);
 
-  map.addSource(SATELLITE_SOURCE_ID, {
-    type: 'image',
-    url: gifUrl,
-    coordinates: PHILIPPINES_SATELLITE_COORDINATES,
-  });
+    const gifUrl = await preloadHimawariAndCreateGif();
+    if (!gifUrl) throw new Error('No animated PAGASA satellite GIF could be generated.');
+    gifUrlByMap.set(map, gifUrl);
 
-  const layerDefinition = {
-    id: HIMAWARI_LAYER_ID,
-    type: 'raster',
-    source: SATELLITE_SOURCE_ID,
-    slot: 'bottom',
-    layout: { visibility: visible ? 'visible' : 'none' },
-    paint: { 'raster-opacity': 0.75 },
-  };
+    removeSatelliteLayerAndSource(map);
 
-  const beforeId = getFirstApplicationOverlayLayerId(map);
-  if (beforeId) map.addLayer(layerDefinition, beforeId);
-  else map.addLayer(layerDefinition);
+    map.addSource(SATELLITE_SOURCE_ID, {
+      type: 'image',
+      url: gifUrl,
+      coordinates: PHILIPPINES_SATELLITE_COORDINATES,
+    });
 
-  setSatelliteLayerVisibility(map, visible);
+    const layerDefinition = {
+      id: HIMAWARI_LAYER_ID,
+      type: 'raster',
+      source: SATELLITE_SOURCE_ID,
+      slot: 'bottom',
+      layout: { visibility: visible ? 'visible' : 'none' },
+      paint: { 'raster-opacity': 0.75 },
+    };
+
+    const beforeId = getFirstApplicationOverlayLayerId(map);
+    if (beforeId) map.addLayer(layerDefinition, beforeId);
+    else map.addLayer(layerDefinition);
+
+    setSatelliteLayerVisibility(map, visible);
+  })();
+
+  loadingByMap.set(map, loadPromise);
+
+  try {
+    await loadPromise;
+  } finally {
+    if (loadingByMap.get(map) === loadPromise) loadingByMap.delete(map);
+  }
 }
 
 export function addHimawariLayer(map) {
