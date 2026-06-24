@@ -3,7 +3,6 @@ import express from 'express';
 import {
   approveForecastPackage,
   createForecastPackage,
-  getAdminForecastPackages,
   getCurrentForecastPackage,
   getForecastPackageById,
   getUserForecastPackages,
@@ -26,7 +25,7 @@ const router = express.Router();
 
 router.use(protect);
 
-router.get('/admin/packages', isAdmin, getAdminForecastPackages);
+router.get('/admin/packages', isAdmin, getUserForecastPackages);
 router.patch('/:id/start-review', isAdmin, startForecastPackageReview);
 router.patch('/:id/request-revision', isAdmin, requestForecastPackageRevision);
 router.patch('/:id/approve', isAdmin, approveForecastPackage);
