@@ -1,47 +1,67 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Outlet, useSearchParams } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import ProtectedAdminRoute from '@/middleware/ProtectedAdminRoute';
 import { AdminDashboardProvider } from '@dashboards/admin/context/AdminDashboardContext';
-import { ADMIN_TABS, PAGE_META } from '@dashboards/admin/constants/navigation';
+import {
+  ADMIN_TABS,
+  PAGE_META,
+  getAdminRouteForTab,
+  getAdminTabForPath,
+} from '@dashboards/admin/constants/navigation';
 import AdminShell from './AdminShell';
 
 const TAB_STORAGE_KEY = 'adminActiveTab';
 const PAGINATED_TABS = new Set([ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST]);
 
-function getInitialTab(searchParams) {
-  return (
-    searchParams.get('tab') ||
-    localStorage.getItem(TAB_STORAGE_KEY) ||
-    ADMIN_TABS.DASHBOARD
-  );
+function buildSearchForTab(tab, searchParams) {
+  const next = new URLSearchParams();
+
+  if (PAGINATED_TABS.has(tab)) {
+    next.set('page', searchParams.get('page') ?? '1');
+    next.set('limit', searchParams.get('limit') ?? '5');
+  }
+
+  return next.toString();
 }
 
 function AdminDashboardLayoutContent() {
   const { isDarkMode, setIsDarkMode } = useTheme();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const activeTab = getInitialTab(searchParams);
+  const activeTab = getAdminTabForPath(location.pathname);
   const activeMeta = PAGE_META[activeTab] ?? PAGE_META[ADMIN_TABS.DASHBOARD];
 
   const setActiveTab = useCallback(
     (tab) => {
+      const route = getAdminRouteForTab(tab);
+      const search = buildSearchForTab(tab, searchParams);
+
       localStorage.setItem(TAB_STORAGE_KEY, tab);
-
-      const next = new URLSearchParams({ tab });
-
-      if (PAGINATED_TABS.has(tab)) {
-        next.set('page', searchParams.get('page') ?? '1');
-        next.set('limit', searchParams.get('limit') ?? '5');
-      }
-
-      setSearchParams(next, { replace: true });
+      navigate(search ? `${route}?${search}` : route, { replace: false });
     },
-    [searchParams, setSearchParams],
+    [navigate, searchParams],
   );
+
+  useEffect(() => {
+    const legacyTab = searchParams.get('tab');
+    if (!legacyTab) return;
+
+    const route = getAdminRouteForTab(legacyTab);
+    const search = buildSearchForTab(legacyTab, searchParams);
+
+    localStorage.setItem(TAB_STORAGE_KEY, legacyTab);
+    navigate(search ? `${route}?${search}` : route, { replace: true });
+  }, [navigate, searchParams]);
+
+  useEffect(() => {
+    localStorage.setItem(TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     document.title = activeMeta?.title
