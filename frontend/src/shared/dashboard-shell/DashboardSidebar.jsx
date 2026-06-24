@@ -44,10 +44,11 @@ const getSubNavClasses = ({ isActive, isDarkMode }) => {
 const DashboardSidebar = ({
   activeId,
   footerText = 'Philippine Atmospheric, Geophysical and Astronomical Services Administration',
+  groups,
   isDarkMode,
   isMobileOpen,
   isSidebarCollapsed,
-  items,
+  items = [],
   label,
   onItemSelect,
   setIsMobileOpen,
@@ -56,6 +57,9 @@ const DashboardSidebar = ({
 }) => {
   const toggleCollapse = () => setIsSidebarCollapsed((prev) => !prev);
   const closeMobile = () => setIsMobileOpen(false);
+  const navGroups = Array.isArray(groups) && groups.length > 0
+    ? groups
+    : [{ label: 'Navigation', items }];
 
   const renderActiveMark = (isActive) =>
     isActive ? (
@@ -175,6 +179,19 @@ const DashboardSidebar = ({
     );
   };
 
+  const renderNavGroup = (group, index) => (
+    <div key={group.id ?? group.label ?? index} className={index > 0 ? 'mt-5' : ''}>
+      {!isSidebarCollapsed && (
+        <div className={`mb-2 px-3 text-[10px] font-black uppercase tracking-[0.16em] ${getMutedText(isDarkMode)}`}>
+          {group.label}
+        </div>
+      )}
+      <div className="space-y-1">
+        {(group.items ?? []).map(renderNavItem)}
+      </div>
+    </div>
+  );
+
   return (
     <>
       {isMobileOpen && (
@@ -231,14 +248,7 @@ const DashboardSidebar = ({
         </div>
 
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-          {!isSidebarCollapsed && (
-            <div className={`mb-2 px-3 text-[10px] font-black uppercase tracking-[0.16em] ${getMutedText(isDarkMode)}`}>
-              Navigation
-            </div>
-          )}
-          <div className="space-y-1">
-            {items.map(renderNavItem)}
-          </div>
+          {navGroups.map(renderNavGroup)}
         </nav>
 
         <div className={`border-t p-3 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
