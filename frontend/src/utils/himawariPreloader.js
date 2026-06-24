@@ -1,46 +1,51 @@
 import { fetchSatelliteImageById } from '@/api/satelliteAPI';
-import GIF from 'gif.js.optimized'; // lightweight JS library to create GIFs in browser
+import GIF from 'gif.js.optimized';
+
+const SATELLITE_FRAME_IDS = Array.from({ length: 24 }, (_, index) => 24 - index);
+const FRAME_DELAY_MS = 180;
+
+function loadImage(blobUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = blobUrl;
+  });
+}
 
 export async function preloadHimawariAndCreateGif() {
   const frames = [];
-  const SAT_FRAMES = 24;
+  const objectUrls = [];
 
-  // 1. Fetch all frames
-  for (let i = 1; i <= SAT_FRAMES; i++) {
+  for (const id of SATELLITE_FRAME_IDS) {
     try {
-      const blobUrl = await fetchSatelliteImageById(i);
-      const img = await new Promise((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = reject;
-        image.src = blobUrl;
-      });
-      frames.push(img);
+      const blobUrl = await fetchSatelliteImageById(id);
+      objectUrls.push(blobUrl);
+      const image = await loadImage(blobUrl);
+      frames.push(image);
     } catch (err) {
-      console.error(`Failed to fetch frame ${i}`, err);
+      console.error(`Failed to fetch satellite frame ${id}`, err);
     }
   }
 
-  if (frames.length === 0) return null;
+  if (!frames.length) return null;
 
-  // 2. Create a GIF from frames
   const gif = new GIF({
     workers: 2,
     quality: 10,
-    workerScript: '/gif.worker.js', // ensure this is available in public/
+    workerScript: '/gif.worker.js',
     width: frames[0].width,
     height: frames[0].height,
   });
 
-  frames.forEach(frame => {
-    gif.addFrame(frame, { delay: 200 }); // 200ms per frame
+  frames.forEach((frame) => {
+    gif.addFrame(frame, { delay: FRAME_DELAY_MS });
   });
 
-  return new Promise(resolve => {
-    gif.on('finished', blob => {
-      // Convert blob to URL to use in Mapbox
-      const url = URL.createObjectURL(blob);
-      resolve(url);
+  return new Promise((resolve) => {
+    gif.on('finished', (blob) => {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      resolve(URL.createObjectURL(blob));
     });
     gif.render();
   });
