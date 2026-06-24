@@ -1,23 +1,50 @@
 const WW3_FORECAST_OFFSETS = {
   analysis: { days: -1, hour: '18' },
   'wave analysis': { days: -1, hour: '18' },
+  'forecast_24h': { days: 0, hour: '18' },
+  'forecast 24h': { days: 0, hour: '18' },
+  '24h': { days: 0, hour: '18' },
   '24h forecast': { days: 0, hour: '18' },
   '24hr forecast': { days: 0, hour: '18' },
+  '24 hour forecast': { days: 0, hour: '18' },
   '24-hour forecast': { days: 0, hour: '18' },
+  'forecast_36h': { days: 1, hour: '06' },
+  'forecast 36h': { days: 1, hour: '06' },
+  '36h': { days: 1, hour: '06' },
   '36h forecast': { days: 1, hour: '06' },
   '36hr forecast': { days: 1, hour: '06' },
+  '36 hour forecast': { days: 1, hour: '06' },
   '36-hour forecast': { days: 1, hour: '06' },
+  'forecast_48h': { days: 1, hour: '18' },
+  'forecast 48h': { days: 1, hour: '18' },
+  '48h': { days: 1, hour: '18' },
   '48h forecast': { days: 1, hour: '18' },
   '48hr forecast': { days: 1, hour: '18' },
+  '48 hour forecast': { days: 1, hour: '18' },
   '48-hour forecast': { days: 1, hour: '18' },
 };
 
-const DEFAULT_WW3_OFFSET = WW3_FORECAST_OFFSETS['wave analysis'];
+const DEFAULT_WW3_OFFSET = WW3_FORECAST_OFFSETS.analysis;
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
 const normalizeChartType = (chartType = '') =>
-  String(chartType).trim().toLowerCase().replace(/\s+/g, ' ');
+  String(chartType)
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ');
+
+const resolveOffset = (chartType) => {
+  const normalized = normalizeChartType(chartType);
+  const directOffset = WW3_FORECAST_OFFSETS[normalized];
+  if (directOffset) return directOffset;
+
+  const hourMatch = normalized.match(/(?:forecast\s*)?(24|36|48)\s*(?:h|hr|hour)?/);
+  if (!hourMatch) return DEFAULT_WW3_OFFSET;
+
+  return WW3_FORECAST_OFFSETS[`forecast ${hourMatch[1]}h`] ?? DEFAULT_WW3_OFFSET;
+};
 
 const dateFromParts = (year, month, day) =>
   new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
@@ -53,7 +80,7 @@ const shiftDate = (date, days) => {
 };
 
 export const resolveWW3ForecastRun = ({ forecastDate, chartType } = {}) => {
-  const offset = WW3_FORECAST_OFFSETS[normalizeChartType(chartType)] ?? DEFAULT_WW3_OFFSET;
+  const offset = resolveOffset(chartType);
   const date = shiftDate(parseForecastDate(forecastDate), offset.days);
   const yyyymmdd = [
     date.getUTCFullYear(),
