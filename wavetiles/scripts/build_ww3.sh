@@ -3,14 +3,20 @@ set -euo pipefail
 
 # WW3 operational wrapper.
 #
-# Compatible usage:
+# Compatible single-file usage:
 #   ./build_ww3.sh <NCFILE> [VARNAME] [SIGMA]
 #
-# Operational usage:
-#   WW3_STYLES=light,dark ./build_ww3.sh <NCFILE> hs 1.5 --skip-existing
-#   ./build_ww3.sh <NCFILE> hs 1.5 --styles light,dark,night --zoom-max 8
+# Forecast-package usage:
+#   ./build_ww3.sh --package-date 2026-06-24 hs 1.5 --skip-existing
+#   ./build_ww3.sh --package-date 20260624 hs 1.5 --styles light,dark
 #
-# DATE is derived from the filename; do not pass it as an argument.
+# The package date expands to:
+#   analysis: previous day 18Z
+#   24h     : package date 18Z
+#   36h     : next day 06Z
+#   48h     : next day 18Z
+#
+# DATE is derived from each filename; do not pass it as an argument.
 
 pause_on_error() {
     local status=$?
@@ -26,11 +32,23 @@ trap pause_on_error EXIT
 
 usage() {
     cat >&2 <<'EOF'
-Usage: build_ww3.sh <NCFILE> [VARNAME] [SIGMA] [-- extra ww3.py args]
+Usage:
+  build_ww3.sh <NCFILE> [VARNAME] [SIGMA] [-- extra ww3.py args]
+  build_ww3.sh --package-date <YYYY-MM-DD|YYYYMMDD> [VARNAME] [SIGMA] [-- extra ww3.py args]
 
 Examples:
   ./build_ww3.sh ../input/ww3/2026062318/ww3_grdo.20260623T18.nc hs 1.5 --skip-existing
-  ./build_ww3.sh ../input/ww3/2026062318/ww3_grdo.20260623T18.nc hs 1.5 --styles light,dark,night
+  ./build_ww3.sh --package-date 2026-06-24 hs 1.5 --skip-existing
+  ./build_ww3.sh --package-date 20260624 hs 1.5 --styles light,dark,night
+
+Forecast-package file lookup:
+  wavetiles/input/ww3/<runTag>/ww3_grdo.<yyyymmdd>T<hh>.nc
+
+Forecast-package run mapping for 2026-06-24:
+  analysis -> 2026062318 / ww3_grdo.20260623T18.nc
+  24h      -> 2026062418 / ww3_grdo.20260624T18.nc
+  36h      -> 2026062506 / ww3_grdo.20260625T06.nc
+  48h      -> 2026062518 / ww3_grdo.20260625T18.nc
 
 Environment overrides:
   WW3_VAR             Variable to process when VARNAME is omitted (default: hs)
@@ -58,9 +76,111 @@ add_gdal_path_if_needed() {
     done
 }
 
+resolve_python() {
+    PYTHON_BIN=${WW3_PYTHON:-}
+    PYTHON_ARGS=()
+    if [[ -z "$PYTHON_BIN" ]]; then
+        if command -v python3 >/dev/null 2>&1 && python3 -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
+            PYTHON_BIN=python3
+        elif command -v python >/dev/null 2>&1 && python -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
+            PYTHON_BIN=python
+        elif command -v py >/dev/null 2>&1 && py -3 -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
+            PYTHON_BIN=py
+            PYTHON_ARGS=(-3)
+        else
+            echo "Python 3 was not found. Install Python 3 or set WW3_PYTHON to a working executable." >&2
+            exit 1
+        fi
+    fi
+
+    if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+        echo "Python executable not found: $PYTHON_BIN" >&2
+        exit 1
+    fi
+}
+
+build_package_runs() {
+    local package_date=$1
+    shift
+
+    "$PYTHON_BIN" "${PYTHON_ARGS[@]}" - "$package_date" <<'PY'
+import re
+import sys
+from datetime import date, timedelta
+
+raw = sys.argv[1]
+match = re.match(r"^(\d{4})-?(\d{2})-?(\d{2})$", raw)
+if not match:
+    raise SystemExit(f"Invalid package date {raw!r}; expected YYYY-MM-DD or YYYYMMDD")
+base = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+runs = (
+    ("analysis", base - timedelta(days=1), "18"),
+    ("24h", base, "18"),
+    ("36h", base + timedelta(days=1), "06"),
+    ("48h", base + timedelta(days=1), "18"),
+)
+for label, run_date, hour in runs:
+    yyyymmdd = run_date.strftime("%Y%m%d")
+    print(f"{label}|{yyyymmdd}{hour}|{yyyymmdd}T{hour}")
+PY
+}
+
+run_package_mode() {
+    local package_date=$1
+    shift
+
+    echo "============================================"
+    echo " WW3 Forecast Package Pipeline"
+    echo "  PACKAGE_DATE : $package_date"
+    echo "  INPUT_ROOT   : $ROOT/input/ww3"
+    echo "============================================"
+
+    local row label run_tag timestamp ncfile
+    while IFS='|' read -r label run_tag timestamp; do
+        [[ -n "$label" ]] || continue
+        ncfile="$ROOT/input/ww3/$run_tag/ww3_grdo.$timestamp.nc"
+        echo
+        echo "-> [$label] $run_tag"
+        echo "   Input: $ncfile"
+        WW3_NO_PAUSE=1 "$0" "$ncfile" "$@"
+    done < <(build_package_runs "$package_date")
+
+    echo
+    echo "+ WW3 forecast package complete: $package_date"
+}
+
 if [[ $# -lt 1 ]]; then
     usage
     exit 2
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WW3_SCRIPT="$SCRIPT_DIR/tiling/ww3.py"
+GDAL_TRANSLATE=${WW3_GDAL_TRANSLATE:-gdal_translate}
+PYTHON_BIN=
+PYTHON_ARGS=()
+
+resolve_python
+
+# Add OSGeo4W only after Python selection so OSGeo4W's python.exe does not shadow the normal Python.
+add_gdal_path_if_needed
+
+if [[ ! -f "$WW3_SCRIPT" ]]; then
+    echo "WW3 tiling script not found: $WW3_SCRIPT" >&2
+    echo "Current directory: $(pwd)" >&2
+    exit 1
+fi
+
+if [[ "${1:-}" == "--package-date" || "${1:-}" == "--forecast-date" ]]; then
+    if [[ $# -lt 2 ]]; then
+        usage
+        exit 2
+    fi
+    PACKAGE_DATE=$2
+    shift 2
+    run_package_mode "$PACKAGE_DATE" "$@"
+    exit 0
 fi
 
 NCFILE=$1
@@ -76,36 +196,6 @@ if [[ $# -gt 0 ]]; then
     shift
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-WW3_SCRIPT="$SCRIPT_DIR/tiling/ww3.py"
-GDAL_TRANSLATE=${WW3_GDAL_TRANSLATE:-gdal_translate}
-
-PYTHON_BIN=${WW3_PYTHON:-}
-PYTHON_ARGS=()
-if [[ -z "$PYTHON_BIN" ]]; then
-    if command -v python3 >/dev/null 2>&1 && python3 -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
-        PYTHON_BIN=python3
-    elif command -v python >/dev/null 2>&1 && python -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
-        PYTHON_BIN=python
-    elif command -v py >/dev/null 2>&1 && py -3 -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
-        PYTHON_BIN=py
-        PYTHON_ARGS=(-3)
-    else
-        echo "Python 3 was not found. Install Python 3 or set WW3_PYTHON to a working executable." >&2
-        exit 1
-    fi
-fi
-
-# Add OSGeo4W only after Python selection so OSGeo4W's python.exe does not shadow the normal Python.
-add_gdal_path_if_needed
-
-if [[ ! -f "$WW3_SCRIPT" ]]; then
-    echo "WW3 tiling script not found: $WW3_SCRIPT" >&2
-    echo "Current directory: $(pwd)" >&2
-    exit 1
-fi
-
 if [[ ! -f "$NCFILE" ]]; then
     echo "NetCDF file not found: $NCFILE" >&2
     echo "Current directory: $(pwd)" >&2
@@ -116,11 +206,6 @@ if [[ ! -f "$NCFILE" ]]; then
     else
         echo "Parent directory does not exist: $parent_dir" >&2
     fi
-    exit 1
-fi
-
-if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
-    echo "Python executable not found: $PYTHON_BIN" >&2
     exit 1
 fi
 
