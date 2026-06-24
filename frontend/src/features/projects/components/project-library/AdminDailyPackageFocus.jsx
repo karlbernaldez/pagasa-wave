@@ -113,7 +113,7 @@ export default function AdminDailyPackageFocus({
         </div>
       </div>
 
-      <div className="grid gap-3 border-t p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-5 ${isDarkMode ? 'border-white/10' : 'border-cyan-100'}">
+      <div className={`grid gap-3 border-t p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-5 ${isDarkMode ? 'border-white/10' : 'border-cyan-100'}`}>
         <StatCard icon={CalendarCheck2} label="Today visible" value={stats.dailyTotal} helper="Packages dated today" tone="cyan" isDarkMode={isDarkMode} />
         <StatCard icon={Clock3} label="Needs review" value={stats.dailyPending} helper="Submitted or under review" tone="amber" isDarkMode={isDarkMode} />
         <StatCard icon={CheckCircle2} label="Approved" value={stats.dailyApproved} helper="Approved or published today" tone="emerald" isDarkMode={isDarkMode} />
