@@ -4,11 +4,9 @@ export const HIMAWARI_LAYER_ID = SATELLITE_LAYER_IDS[0];
 
 const PAGASA_SATELLITE_API_URL = 'https://www.panahon.gov.ph/api/v1/satellite';
 const PAGASA_ORIGIN = 'https://www.panahon.gov.ph';
-const DEFAULT_PAGASA_SATELLITE_ID = 'himawari';
-const SATELLITE_ID_STORAGE_KEY = 'PAGASA_SATELLITE_ID';
 const FRAME_INTERVAL_MS = 650;
 const FADE_DURATION_MS = 280;
-const MAX_FRAMES = 24;
+const SATELLITE_FRAME_IDS = Array.from({ length: 24 }, (_, index) => index + 1);
 
 const PHILIPPINES_SATELLITE_COORDINATES = [
   [104, 29.55],
@@ -23,23 +21,9 @@ function isObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value);
 }
 
-function getSatelliteProductId(productId) {
-  const explicitId = String(productId || '').trim();
-  if (explicitId) return explicitId;
-
-  try {
-    const savedId = window.localStorage.getItem(SATELLITE_ID_STORAGE_KEY);
-    if (savedId?.trim()) return savedId.trim();
-  } catch {
-    // Ignore storage failures.
-  }
-
-  return import.meta.env.VITE_PAGASA_SATELLITE_ID || DEFAULT_PAGASA_SATELLITE_ID;
-}
-
-function buildSatelliteApiUrl(productId) {
+function buildSatelliteApiUrl(frameId) {
   const url = new URL(PAGASA_SATELLITE_API_URL);
-  url.searchParams.set('id', getSatelliteProductId(productId));
+  url.searchParams.set('id', String(frameId));
   return url.toString();
 }
 
@@ -56,85 +40,63 @@ function looksLikeSatelliteImageUrl(value) {
   return typeof value === 'string' && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(value);
 }
 
-function getTimestampScore(item) {
-  if (!isObject(item)) return 0;
-  const candidates = [item.datetime, item.dateTime, item.timestamp, item.time, item.date, item.created_at, item.createdAt, item.updated_at, item.updatedAt];
-
-  for (const value of candidates) {
-    const parsed = Date.parse(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-
-  return 0;
-}
-
 function collectImageCandidates(value, candidates = []) {
   if (!value) return candidates;
 
   if (typeof value === 'string') {
-    if (looksLikeSatelliteImageUrl(value)) candidates.push({ url: toAbsoluteUrl(value), score: 0 });
+    if (looksLikeSatelliteImageUrl(value)) candidates.push(toAbsoluteUrl(value));
     return candidates;
   }
 
   if (Array.isArray(value)) {
-    value.forEach((item, index) => {
-      const before = candidates.length;
-      collectImageCandidates(item, candidates);
-      for (let candidateIndex = before; candidateIndex < candidates.length; candidateIndex += 1) {
-        candidates[candidateIndex].order = candidates[candidateIndex].order ?? index;
-      }
-    });
+    value.forEach((item) => collectImageCandidates(item, candidates));
     return candidates;
   }
 
   if (!isObject(value)) return candidates;
 
   const preferredKeys = ['image', 'imageUrl', 'image_url', 'url', 'src', 'file', 'filename', 'path', 'link'];
-  const itemScore = getTimestampScore(value);
-
   preferredKeys.forEach((key) => {
     const url = toAbsoluteUrl(value[key]);
-    if (url && looksLikeSatelliteImageUrl(url)) candidates.push({ url, score: itemScore, order: candidates.length });
+    if (url && looksLikeSatelliteImageUrl(url)) candidates.push(url);
   });
 
   Object.entries(value).forEach(([key, nested]) => {
     if (preferredKeys.includes(key)) return;
-    const before = candidates.length;
     collectImageCandidates(nested, candidates);
-    for (let index = before; index < candidates.length; index += 1) {
-      if (!candidates[index].score) candidates[index].score = itemScore;
-    }
   });
 
   return candidates;
 }
 
-function getSatelliteFrameUrls(payload) {
-  const seen = new Set();
-  const candidates = collectImageCandidates(payload)
-    .filter((candidate) => candidate.url && !seen.has(candidate.url) && seen.add(candidate.url))
-    .sort((left, right) => {
-      if (left.score || right.score) return left.score - right.score;
-      return (left.order ?? 0) - (right.order ?? 0);
-    })
-    .slice(-MAX_FRAMES);
-
-  return candidates.map((candidate) => candidate.url);
+function getSatelliteImageUrl(payload) {
+  return collectImageCandidates(payload).find(Boolean) || null;
 }
 
-async function fetchSatelliteFrameUrls(productId) {
-  const apiUrl = buildSatelliteApiUrl(productId);
+async function fetchSatelliteFrameUrl(frameId) {
+  const apiUrl = buildSatelliteApiUrl(frameId);
   const response = await fetch(apiUrl, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`PAGASA satellite API returned ${response.status}`);
+  if (!response.ok) throw new Error(`PAGASA satellite API id=${frameId} returned ${response.status}`);
 
   const payload = await response.json();
-  const frameUrls = getSatelliteFrameUrls(payload);
+  const imageUrl = getSatelliteImageUrl(payload);
 
-  if (!frameUrls.length) {
-    console.warn('[pagasa-satellite-api-unrecognized-payload]', { apiUrl, payload });
-    throw new Error('No satellite images found in PAGASA response.');
+  if (!imageUrl) {
+    console.warn('[pagasa-satellite-api-unrecognized-payload]', { frameId, apiUrl, payload });
+    throw new Error(`No satellite image found for id=${frameId}.`);
   }
 
+  return imageUrl;
+}
+
+async function fetchSatelliteFrameUrls() {
+  const settled = await Promise.allSettled(SATELLITE_FRAME_IDS.map(fetchSatelliteFrameUrl));
+  const frameUrls = settled
+    .filter((result) => result.status === 'fulfilled')
+    .map((result) => result.value)
+    .filter(Boolean);
+
+  if (!frameUrls.length) throw new Error('No satellite frames found from PAGASA ids 1-24.');
   return frameUrls;
 }
 
@@ -208,7 +170,6 @@ function setSatelliteLayersVisibility(map, visible) {
 
 function startSatelliteAnimation(map, frameUrls) {
   stopSatelliteAnimation(map);
-
   if (frameUrls.length <= 1) return;
 
   const state = {
@@ -251,12 +212,12 @@ export function setHimawariSatelliteVisibility(map, visible) {
   if (!visible) stopSatelliteAnimation(map);
 }
 
-export async function ensureHimawariSatelliteLayer(map, { visible = false, productId } = {}) {
+export async function ensureHimawariSatelliteLayer(map, { visible = false } = {}) {
   if (!map) return;
 
   removeLegacyHimawariVideo(map);
 
-  const frameUrls = await preloadFrames(await fetchSatelliteFrameUrls(productId));
+  const frameUrls = await preloadFrames(await fetchSatelliteFrameUrls());
   ensureSatelliteImageLayerPair(map, frameUrls[0], visible);
   setSatelliteLayersVisibility(map, visible);
 
