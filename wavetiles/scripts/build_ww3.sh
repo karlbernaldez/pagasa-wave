@@ -126,9 +126,13 @@ for label, run_date, hour in runs:
 PY
 }
 
+strip_cr() {
+    printf '%s' "${1//$'\r'/}"
+}
+
 resolve_ncfile_path() {
-    local candidate=$1
-    candidate=${candidate%$'\r'}
+    local candidate
+    candidate=$(strip_cr "$1")
 
     if [[ -f "$candidate" ]]; then
         printf '%s\n' "$candidate"
@@ -144,7 +148,8 @@ resolve_ncfile_path() {
 }
 
 print_missing_ncfile_error() {
-    local candidate=$1
+    local candidate
+    candidate=$(strip_cr "$1")
     echo "NetCDF file not found: $candidate" >&2
     if [[ "$candidate" != *.nc ]]; then
         echo "Also checked: $candidate.nc" >&2
@@ -171,6 +176,9 @@ run_package_mode() {
 
     local label run_tag timestamp ncfile requested_ncfile
     while IFS='|' read -r label run_tag timestamp; do
+        label=$(strip_cr "$label")
+        run_tag=$(strip_cr "$run_tag")
+        timestamp=$(strip_cr "$timestamp")
         [[ -n "$label" ]] || continue
         requested_ncfile="$ROOT/input/ww3/$run_tag/ww3_grdo.$timestamp.nc"
         if ! ncfile=$(resolve_ncfile_path "$requested_ncfile"); then
