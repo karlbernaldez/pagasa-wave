@@ -1,12 +1,12 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-import { ADMIN_TABS, MENU_ITEMS } from '@dashboards/admin/constants/navigation';
+import { ADMIN_TABS, MENU_GROUPS } from '@dashboards/admin/constants/navigation';
 import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
 
-const adminSidebarItems = MENU_ITEMS.map((item) => {
+const enhanceAdminItem = (item) => {
   if (item.id !== ADMIN_TABS.USERS) return item;
 
   return {
@@ -19,7 +19,12 @@ const adminSidebarItems = MENU_ITEMS.map((item) => {
       { id: ADMIN_TABS.USERS_ROLES, label: 'Roles' },
     ],
   };
-});
+};
+
+const adminSidebarGroups = MENU_GROUPS.map((group) => ({
+  ...group,
+  items: group.items.map(enhanceAdminItem),
+}));
 
 const ADMIN_USER_OPTIONS = { roleOverride: 'Administrator' };
 
@@ -50,7 +55,7 @@ const AdminShell = ({
       setIsMobileOpen={setIsMobileOpen}
       setIsSidebarCollapsed={setIsSidebarCollapsed}
       sidebar={{
-        items: adminSidebarItems,
+        groups: adminSidebarGroups,
         label: 'Admin Dashboard',
       }}
       header={{
