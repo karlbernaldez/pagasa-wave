@@ -55,7 +55,7 @@ function collectImageCandidates(value, candidates = []) {
 
   if (!isObject(value)) return candidates;
 
-  const preferredKeys = ['image', 'imageUrl', 'image_url', 'url', 'src', 'file', 'filename', 'path', 'link'];
+  const preferredKeys = ['image', 'imageUrl', 'image_url', 'url', 'src', 'file', 'filename', 'path', 'link', 'data'];
   preferredKeys.forEach((key) => {
     const url = toAbsoluteUrl(value[key]);
     if (url && looksLikeSatelliteImageUrl(url)) candidates.push(url);
@@ -78,12 +78,21 @@ async function fetchSatelliteFrameUrl(frameId) {
   const response = await fetch(apiUrl, { cache: 'no-store' });
   if (!response.ok) throw new Error(`PAGASA satellite API id=${frameId} returned ${response.status}`);
 
-  const payload = await response.json();
-  const imageUrl = getSatelliteImageUrl(payload);
+  const contentType = response.headers.get('content-type') || '';
+  if (/image\//i.test(contentType)) return apiUrl;
 
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    console.warn('[pagasa-satellite-api-non-json-response]', { frameId, apiUrl, contentType, error });
+    return apiUrl;
+  }
+
+  const imageUrl = getSatelliteImageUrl(payload);
   if (!imageUrl) {
-    console.warn('[pagasa-satellite-api-unrecognized-payload]', { frameId, apiUrl, payload });
-    throw new Error(`No satellite image found for id=${frameId}.`);
+    console.warn('[pagasa-satellite-api-unrecognized-payload]', { frameId, apiUrl, contentType, payload });
+    return apiUrl;
   }
 
   return imageUrl;
@@ -103,7 +112,6 @@ async function fetchSatelliteFrameUrls() {
 function preloadImage(url) {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    image.crossOrigin = 'anonymous';
     image.onload = () => resolve(url);
     image.onerror = () => reject(new Error(`Failed to preload satellite frame: ${url}`));
     image.src = url;
