@@ -3,6 +3,8 @@ export const HIMAWARI_LAYER_ID = 'Satellite';
 
 const PAGASA_SATELLITE_API_URL = 'https://www.panahon.gov.ph/api/v1/satellite';
 const PAGASA_ORIGIN = 'https://www.panahon.gov.ph';
+const DEFAULT_PAGASA_SATELLITE_ID = 'himawari';
+const SATELLITE_ID_STORAGE_KEY = 'PAGASA_SATELLITE_ID';
 
 const PHILIPPINES_SATELLITE_COORDINATES = [
   [104, 29.55],
@@ -13,6 +15,26 @@ const PHILIPPINES_SATELLITE_COORDINATES = [
 
 function isObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getSatelliteProductId(productId) {
+  const explicitId = String(productId || '').trim();
+  if (explicitId) return explicitId;
+
+  try {
+    const savedId = window.localStorage.getItem(SATELLITE_ID_STORAGE_KEY);
+    if (savedId?.trim()) return savedId.trim();
+  } catch {
+    // Ignore storage failures.
+  }
+
+  return import.meta.env.VITE_PAGASA_SATELLITE_ID || DEFAULT_PAGASA_SATELLITE_ID;
+}
+
+function buildSatelliteApiUrl(productId) {
+  const url = new URL(PAGASA_SATELLITE_API_URL);
+  url.searchParams.set('id', getSatelliteProductId(productId));
+  return url.toString();
 }
 
 function toAbsoluteUrl(value) {
@@ -30,17 +52,7 @@ function looksLikeSatelliteImageUrl(value) {
 
 function getTimestampScore(item) {
   if (!isObject(item)) return 0;
-  const candidates = [
-    item.datetime,
-    item.dateTime,
-    item.timestamp,
-    item.time,
-    item.date,
-    item.created_at,
-    item.createdAt,
-    item.updated_at,
-    item.updatedAt,
-  ];
+  const candidates = [item.datetime, item.dateTime, item.timestamp, item.time, item.date, item.created_at, item.createdAt, item.updated_at, item.updatedAt];
 
   for (const value of candidates) {
     const parsed = Date.parse(value);
@@ -54,9 +66,7 @@ function collectImageCandidates(value, candidates = []) {
   if (!value) return candidates;
 
   if (typeof value === 'string') {
-    if (looksLikeSatelliteImageUrl(value)) {
-      candidates.push({ url: toAbsoluteUrl(value), score: 0 });
-    }
+    if (looksLikeSatelliteImageUrl(value)) candidates.push({ url: toAbsoluteUrl(value), score: 0 });
     return candidates;
   }
 
@@ -67,24 +77,12 @@ function collectImageCandidates(value, candidates = []) {
 
   if (!isObject(value)) return candidates;
 
-  const preferredKeys = [
-    'image',
-    'imageUrl',
-    'image_url',
-    'url',
-    'src',
-    'file',
-    'filename',
-    'path',
-    'link',
-  ];
+  const preferredKeys = ['image', 'imageUrl', 'image_url', 'url', 'src', 'file', 'filename', 'path', 'link'];
   const itemScore = getTimestampScore(value);
 
   preferredKeys.forEach((key) => {
     const url = toAbsoluteUrl(value[key]);
-    if (url && looksLikeSatelliteImageUrl(url)) {
-      candidates.push({ url, score: itemScore });
-    }
+    if (url && looksLikeSatelliteImageUrl(url)) candidates.push({ url, score: itemScore });
   });
 
   Object.entries(value).forEach(([key, nested]) => {
@@ -107,17 +105,16 @@ function getLatestSatelliteImageUrl(payload) {
   return candidates[0]?.url || null;
 }
 
-async function fetchLatestSatelliteImageUrl() {
-  const response = await fetch(PAGASA_SATELLITE_API_URL, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`PAGASA satellite API returned ${response.status}`);
-  }
+async function fetchLatestSatelliteImageUrl(productId) {
+  const apiUrl = buildSatelliteApiUrl(productId);
+  const response = await fetch(apiUrl, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`PAGASA satellite API returned ${response.status}`);
 
   const payload = await response.json();
   const imageUrl = getLatestSatelliteImageUrl(payload);
 
   if (!imageUrl) {
-    console.warn('[pagasa-satellite-api-unrecognized-payload]', payload);
+    console.warn('[pagasa-satellite-api-unrecognized-payload]', { apiUrl, payload });
     throw new Error('No satellite image found in PAGASA response.');
   }
 
@@ -134,12 +131,12 @@ export function setHimawariSatelliteVisibility(map, visible) {
   map.setLayoutProperty(HIMAWARI_LAYER_ID, 'visibility', visible ? 'visible' : 'none');
 }
 
-export async function ensureHimawariSatelliteLayer(map, { visible = false } = {}) {
+export async function ensureHimawariSatelliteLayer(map, { visible = false, productId } = {}) {
   if (!map) return;
 
   removeLegacyHimawariVideo(map);
 
-  const imageUrl = await fetchLatestSatelliteImageUrl();
+  const imageUrl = await fetchLatestSatelliteImageUrl(productId);
   const source = map.getSource(SATELLITE_SOURCE_ID);
 
   if (source?.updateImage) {
