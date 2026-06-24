@@ -30,6 +30,17 @@ const getViewportWidth = () => (typeof window === 'undefined' ? 1440 : window.in
 const getViewportHeight = () => (typeof window === 'undefined' ? 900 : window.innerHeight);
 const getDefaultPosition = () => ({ x: 300, y: 100 });
 const getSafePosition = (position) => ({ x: Math.min(Math.max(position.x, 16), Math.max(16, getViewportWidth() - PANEL_WIDTH - 16)), y: Math.min(Math.max(position.y, 72), Math.max(72, getViewportHeight() - PANEL_HEIGHT - 16)) });
+const getInitialPosition = () => {
+  try {
+    if (typeof window === 'undefined') return getSafePosition(getDefaultPosition());
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : null;
+    const next = Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y) ? parsed : getDefaultPosition();
+    return getSafePosition(next);
+  } catch {
+    return getSafePosition(getDefaultPosition());
+  }
+};
 const getMapContainerRect = (mapRef) => mapRef?.current?.getContainer?.()?.getBoundingClientRect?.() || { left: 0, top: 0, width: getViewportWidth(), height: getViewportHeight() };
 const getStageBounds = (mapRef) => { const rect = getMapContainerRect(mapRef); return { left: rect.left || 0, top: rect.top || 0, width: rect.width || getViewportWidth(), height: rect.height || getViewportHeight() }; };
 const getPointerPosition = (event) => event.target.getStage().getPointerPosition();
@@ -225,10 +236,9 @@ function makeStationaryPreviewSymbols(points) {
 
 const SurfaceFrontPanel = ({ frontType, setFrontType, isDarkMode }) => {
   const dragRef = useRef(null);
-  const [position, setPosition] = useState(() => getSafePosition(getDefaultPosition()));
+  const [position, setPosition] = useState(getInitialPosition);
   const [isDragging, setIsDragging] = useState(false);
   const positionRef = useRef(position);
-  useEffect(() => { try { const saved = window.localStorage.getItem(STORAGE_KEY); const parsed = saved ? JSON.parse(saved) : null; const safe = getSafePosition(Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y) ? parsed : getDefaultPosition()); positionRef.current = safe; setPosition(safe); } catch { const safe = getSafePosition(getDefaultPosition()); positionRef.current = safe; setPosition(safe); } }, []);
   useEffect(() => { const handleResize = () => { const safe = getSafePosition(positionRef.current); positionRef.current = safe; setPosition(safe); }; window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
   const persistPosition = useCallback((next) => { try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { } }, []);
   const handleDragStart = useCallback((event) => { if (event.button !== undefined && event.button !== 0) return; event.preventDefault(); event.stopPropagation(); dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: positionRef.current.x, originY: positionRef.current.y }; setIsDragging(true); event.currentTarget.setPointerCapture?.(event.pointerId); }, []);
