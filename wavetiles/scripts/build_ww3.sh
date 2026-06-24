@@ -63,8 +63,6 @@ if [[ $# -lt 1 ]]; then
     exit 2
 fi
 
-add_gdal_path_if_needed
-
 NCFILE=$1
 shift
 
@@ -98,6 +96,9 @@ if [[ -z "$PYTHON_BIN" ]]; then
         exit 1
     fi
 fi
+
+# Add OSGeo4W only after Python selection so OSGeo4W's python.exe does not shadow the normal Python.
+add_gdal_path_if_needed
 
 if [[ ! -f "$WW3_SCRIPT" ]]; then
     echo "WW3 tiling script not found: $WW3_SCRIPT" >&2
