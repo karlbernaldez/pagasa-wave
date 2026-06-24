@@ -16,11 +16,13 @@ Operational controls:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
 import shutil
 import subprocess
+import sys
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -125,6 +127,19 @@ def run(cmd: Sequence[object], dry_run: bool = False) -> None:
 def require_executable(name: str) -> None:
     if shutil.which(name) is None:
         raise RuntimeError(f"Required executable not found in PATH: {name}")
+
+
+def gdal2tiles_command() -> list[str]:
+    """Return the most portable gdal2tiles invocation for Windows, OSGeo4W, and Linux."""
+    for executable in ("gdal2tiles.py", "gdal2tiles"):
+        if shutil.which(executable):
+            return [executable]
+    if importlib.util.find_spec("osgeo_utils.gdal2tiles") is not None:
+        return [sys.executable, "-m", "osgeo_utils.gdal2tiles"]
+    raise RuntimeError(
+        "Could not find gdal2tiles. Install GDAL Python utilities or make gdal2tiles.py available in PATH. "
+        "For OSGeo4W, verify with: python -m osgeo_utils.gdal2tiles --help"
+    )
 
 
 def target_res(zoom_max: int) -> float:
@@ -368,7 +383,7 @@ def tileset_job(job: TilesetJob) -> None:
     run(["gdaladdo", "-r", "nearest", job.rgba_tif, "2", "4", "8", "16", "32", "64", "128"], job.dry_run)
     mkdir(job.tiles_out)
     run([
-        "gdal2tiles.py", "--xyz", "-z", f"{job.zoom_min}-{job.zoom_max}", "-r", "near", "-w", "none",
+        *gdal2tiles_command(), "--xyz", "-z", f"{job.zoom_min}-{job.zoom_max}", "-r", "near", "-w", "none",
         f"--processes={job.processes}", job.rgba_tif, job.tiles_out,
     ], job.dry_run)
     mkdir(job.legend_out.parent)
@@ -441,7 +456,7 @@ def main() -> None:
     config = build_config(args)
     if not config.dry_run:
         require_executable("gdaladdo")
-        require_executable("gdal2tiles.py")
+        gdal2tiles_command()
 
     date_tag = extract_date_from_name(config.nc_path.name)
     with xr.open_dataset(config.nc_path) as ds:
