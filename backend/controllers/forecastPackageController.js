@@ -6,6 +6,7 @@ import {
   FORECAST_PACKAGE_STATUS,
   REQUIRED_FORECAST_CHARTS,
   REQUIRED_FORECAST_CHART_TYPES,
+  buildForecastChartProjectName,
   buildForecastPackageName,
   getForecastChartLabel,
   getPackageCompletion,
@@ -17,6 +18,9 @@ const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.DRAFT,
   FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
 ];
+const AUTO_PACKAGE_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2}$/;
+const AUTO_CHART_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2} - /;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function assertAuthenticated(req) {
   if (!req.user) throwError('Unauthorized', 401);
@@ -33,6 +37,12 @@ function isPackageOwnerOrAdmin(user, forecastPackage) {
 
 function isSameId(left, right) {
   return String(left?._id || left || '') === String(right?._id || right || '');
+}
+
+function getForecastDateQuery(value) {
+  const start = normalizeForecastDate(value || new Date());
+  if (!start) return null;
+  return { $gte: start, $lt: new Date(start.getTime() + ONE_DAY_MS) };
 }
 
 function getDisplayName(user) {
@@ -144,6 +154,42 @@ function getActiveEditingChartLabel(forecastPackage) {
   return chart ? getForecastChartLabel(chart.chartType) : null;
 }
 
+async function syncForecastPackageDisplayNames(forecastPackage) {
+  if (!forecastPackage?.forecastDate) return forecastPackage;
+
+  const canonicalPackageName = buildForecastPackageName(forecastPackage.forecastDate);
+  const currentPackageName = String(forecastPackage.name || '');
+  const shouldRenamePackage = !currentPackageName || AUTO_PACKAGE_NAME_PATTERN.test(currentPackageName);
+  let changed = false;
+
+  if (canonicalPackageName && shouldRenamePackage && forecastPackage.name !== canonicalPackageName) {
+    forecastPackage.name = canonicalPackageName;
+    changed = true;
+  }
+
+  for (const chart of forecastPackage.charts || []) {
+    const project = chart.project;
+    if (!project || typeof project === 'string') continue;
+    const currentProjectName = String(project.name || '');
+    const shouldRenameChart = !currentProjectName || AUTO_CHART_NAME_PATTERN.test(currentProjectName);
+    const nextProjectName = canonicalPackageName && shouldRenameChart
+      ? buildForecastChartProjectName(forecastPackage.forecastDate, getForecastChartLabel(chart.chartType))
+      : null;
+
+    if (nextProjectName && project.name !== nextProjectName) {
+      project.name = nextProjectName;
+      await Project.updateOne({ _id: project._id }, { $set: { name: nextProjectName, forecastDate: forecastPackage.forecastDate } });
+      changed = true;
+    }
+  }
+
+  if (changed && typeof forecastPackage.save === 'function') {
+    await forecastPackage.save();
+  }
+
+  return forecastPackage;
+}
+
 function serializePackage(forecastPackage) {
   const plain = typeof forecastPackage.toObject === 'function'
     ? forecastPackage.toObject()
@@ -223,7 +269,8 @@ function findForecastPackageByChartProjectId(projectId) {
 }
 
 async function populateForecastPackageById(id) {
-  return populateForecastPackage(ForecastPackage.findById(id));
+  const forecastPackage = await populateForecastPackage(ForecastPackage.findById(id));
+  return syncForecastPackageDisplayNames(forecastPackage);
 }
 
 async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) {
@@ -359,7 +406,7 @@ export const createForecastPackage = asyncHandler(async (req, res) => {
   const name = String(req.body?.name || buildForecastPackageName(forecastDate) || '').trim();
   if (!name) throwError('name is required', 400);
 
-  const existingPackage = await ForecastPackage.findOne({ forecastDate }).lean();
+  const existingPackage = await ForecastPackage.findOne({ forecastDate: getForecastDateQuery(forecastDate) }).lean();
 
   if (existingPackage) {
     throwError('A Forecast Package already exists for this forecast date', 409);
@@ -463,6 +510,10 @@ export const getUserForecastPackages = asyncHandler(async (req, res) => {
     ForecastPackage.countDocuments(query),
   ]);
 
+  for (const forecastPackage of packages) {
+    await syncForecastPackageDisplayNames(forecastPackage);
+  }
+
   res.json({
     packages: packages.map(serializePackage),
     total,
@@ -481,21 +532,15 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
 
   if (!requestedDate) throwError('forecastDate must be a valid date', 400);
 
-  let forecastPackage = await populateForecastPackage(
-    ForecastPackage.findOne({ forecastDate: requestedDate })
+  const forecastPackage = await populateForecastPackage(
+    ForecastPackage.findOne({ forecastDate: getForecastDateQuery(requestedDate) })
   );
 
   if (!forecastPackage) {
-    forecastPackage = await populateForecastPackage(
-      ForecastPackage.findOne({})
-        .sort({ forecastDate: -1, updatedAt: -1 })
-    );
+    return res.json({ package: null, message: 'No Forecast Package found for the current Philippines operational day' });
   }
 
-  if (!forecastPackage) {
-    return res.json({ package: null, message: 'No Forecast Packages found' });
-  }
-
+  await syncForecastPackageDisplayNames(forecastPackage);
   res.json({ package: serializePackage(forecastPackage) });
 });
 
@@ -505,6 +550,7 @@ export const getForecastPackageById = asyncHandler(async (req, res) => {
   const forecastPackage = await populateForecastPackage(ForecastPackage.findById(req.params.id));
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
+  await syncForecastPackageDisplayNames(forecastPackage);
   res.json(serializePackage(forecastPackage));
 });
 
@@ -514,6 +560,7 @@ export const getForecastPackageChartContextByProject = asyncHandler(async (req, 
   const forecastPackage = await populateForecastPackage(findForecastPackageByChartProjectId(req.params.projectId));
   if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
 
+  await syncForecastPackageDisplayNames(forecastPackage);
   const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
   if (!chart) throwError('Forecast Package chart context not found', 404);
 
@@ -630,23 +677,25 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-  if (!canSubmitPackage(forecastPackage.status)) {
-    throwError('Only Draft or Revision Requested Forecast Packages can be submitted', 400);
+  if (!isPackageOwnerOrAdmin(req.user, forecastPackage)) {
+    throwError('Only the package owner or an admin can submit this package', 403);
   }
 
-  const activeEditingChartLabel = getActiveEditingChartLabel(forecastPackage);
-  if (activeEditingChartLabel) {
-    throwError(`${activeEditingChartLabel} still has active editors. Ask forecasters to release before submitting`, 409);
+  if (!canSubmitPackage(forecastPackage.status)) {
+    throwError(`Package cannot be submitted while it is ${forecastPackage.status}`, 403);
   }
 
   const completion = getPackageCompletion(forecastPackage.chartCompletion || []);
   if (!completion.isComplete) {
-    throwError('Forecast Package cannot be submitted until all required charts are complete', 400);
+    throwError('All required charts must be marked complete before submitting', 400);
+  }
+
+  const activeEditingChart = getActiveEditingChartLabel(forecastPackage);
+  if (activeEditingChart) {
+    throwError(`${activeEditingChart} still has active editors. Release the chart before submitting`, 409);
   }
 
   const previousStatus = forecastPackage.status;
-  await lockLinkedChartProjects(forecastPackage, req.user.id, previousStatus);
-
   forecastPackage.status = FORECAST_PACKAGE_STATUS.SUBMITTED;
   forecastPackage.submittedAt = new Date();
   forecastPackage.auditLogs.push({
@@ -654,30 +703,14 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
     performedBy: req.user.id,
     previousStatus,
     newStatus: FORECAST_PACKAGE_STATUS.SUBMITTED,
-    comment: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
-      ? 'Forecast Package revision resubmitted for review'
-      : 'Forecast Package submitted for review',
+    comment: 'Forecast Package submitted for admin review',
   });
 
   await forecastPackage.save();
+  await lockLinkedChartProjects(forecastPackage, req.user.id, previousStatus);
 
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
-});
-
-export const getAdminForecastPackages = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-  assertAdmin(req);
-
-  const { status = '' } = req.query;
-  const query = {};
-  if (status && status !== 'All') query.status = status;
-
-  const packages = await populateForecastPackage(
-    ForecastPackage.find(query).sort({ submittedAt: -1, updatedAt: -1, forecastDate: -1 })
-  );
-
-  res.json(packages.map(serializePackage));
 });
 
 export const startForecastPackageReview = asyncHandler(async (req, res) => {
@@ -686,17 +719,9 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
 
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
-  if (String(forecastPackage.owner) === String(req.user.id)) {
-    throwError('Admins cannot review their own Forecast Packages', 403);
-  }
-
-  if (forecastPackage.status === FORECAST_PACKAGE_STATUS.UNDER_REVIEW) {
-    const populated = await populateForecastPackageById(forecastPackage._id);
-    return res.json(serializePackage(populated));
-  }
 
   if (forecastPackage.status !== FORECAST_PACKAGE_STATUS.SUBMITTED) {
-    throwError('Only submitted Forecast Packages can move to Under Review', 400);
+    throwError('Only Submitted packages can be moved to Under Review', 403);
   }
 
   const previousStatus = forecastPackage.status;
@@ -708,7 +733,7 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
     performedBy: req.user.id,
     previousStatus,
     newStatus: FORECAST_PACKAGE_STATUS.UNDER_REVIEW,
-    comment: 'Forecast Package review started',
+    comment: 'Forecast Package moved to review',
   });
 
   await forecastPackage.save();
@@ -724,15 +749,14 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-  if (forecastPackage.status !== FORECAST_PACKAGE_STATUS.UNDER_REVIEW) {
-    throwError('Only Forecast Packages under review can receive revision requests', 400);
+  if (![FORECAST_PACKAGE_STATUS.UNDER_REVIEW, FORECAST_PACKAGE_STATUS.REJECTED].includes(forecastPackage.status)) {
+    throwError('Only packages under review or rejected packages can request revision', 403);
   }
 
   const previousStatus = forecastPackage.status;
-  await requestLinkedChartProjectRevisions(forecastPackage, req.user.id, comment);
-
   forecastPackage.status = FORECAST_PACKAGE_STATUS.REVISION_REQUESTED;
   forecastPackage.reviewedAt = new Date();
+  forecastPackage.rejectedBy = req.user.id;
   forecastPackage.reviewComment = comment;
   forecastPackage.auditLogs.push({
     action: 'revision_requested',
@@ -743,6 +767,8 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
   });
 
   await forecastPackage.save();
+  await requestLinkedChartProjectRevisions(forecastPackage, req.user.id, comment);
+
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -754,24 +780,49 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-  if (String(forecastPackage.owner) === String(req.user.id)) {
-    throwError('Admins cannot approve their own Forecast Packages', 403);
-  }
-
-  if (forecastPackage.status !== FORECAST_PACKAGE_STATUS.UNDER_REVIEW) {
-    throwError('Only Forecast Packages under review can be approved', 400);
+  if (![FORECAST_PACKAGE_STATUS.UNDER_REVIEW, FORECAST_PACKAGE_STATUS.REVISION_REQUESTED].includes(forecastPackage.status)) {
+    throwError('Only packages under review or revision requested can be approved', 403);
   }
 
   const previousStatus = forecastPackage.status;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.APPROVED;
-  forecastPackage.reviewedAt = new Date();
   forecastPackage.approvedBy = req.user.id;
   forecastPackage.auditLogs.push({
     action: 'approved',
     performedBy: req.user.id,
     previousStatus,
     newStatus: FORECAST_PACKAGE_STATUS.APPROVED,
-    comment: 'Forecast Package approved',
+    comment: 'Forecast Package approved by admin',
+  });
+
+  await forecastPackage.save();
+  const populated = await populateForecastPackageById(forecastPackage._id);
+  res.json(serializePackage(populated));
+});
+
+export const rejectForecastPackage = asyncHandler(async (req, res) => {
+  assertAuthenticated(req);
+  assertAdmin(req);
+
+  const comment = getRequiredComment(req.body?.comment, 'Rejection comment');
+  const forecastPackage = await ForecastPackage.findById(req.params.id);
+  if (!forecastPackage) throwError('Forecast Package not found', 404);
+
+  if (forecastPackage.status !== FORECAST_PACKAGE_STATUS.UNDER_REVIEW) {
+    throwError('Only packages under review can be rejected', 403);
+  }
+
+  const previousStatus = forecastPackage.status;
+  forecastPackage.status = FORECAST_PACKAGE_STATUS.REJECTED;
+  forecastPackage.reviewedAt = new Date();
+  forecastPackage.rejectedBy = req.user.id;
+  forecastPackage.reviewComment = comment;
+  forecastPackage.auditLogs.push({
+    action: 'rejected',
+    performedBy: req.user.id,
+    previousStatus,
+    newStatus: FORECAST_PACKAGE_STATUS.REJECTED,
+    comment,
   });
 
   await forecastPackage.save();
@@ -787,7 +838,7 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
   if (forecastPackage.status !== FORECAST_PACKAGE_STATUS.APPROVED) {
-    throwError('Only approved Forecast Packages can be published', 400);
+    throwError('Only approved packages can be published', 403);
   }
 
   const previousStatus = forecastPackage.status;
@@ -799,6 +850,28 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
     previousStatus,
     newStatus: FORECAST_PACKAGE_STATUS.PUBLISHED,
     comment: 'Forecast Package published',
+  });
+
+  await forecastPackage.save();
+  const populated = await populateForecastPackageById(forecastPackage._id);
+  res.json(serializePackage(populated));
+});
+
+export const archiveForecastPackage = asyncHandler(async (req, res) => {
+  assertAuthenticated(req);
+  assertAdmin(req);
+
+  const forecastPackage = await ForecastPackage.findById(req.params.id);
+  if (!forecastPackage) throwError('Forecast Package not found', 404);
+
+  const previousStatus = forecastPackage.status;
+  forecastPackage.status = FORECAST_PACKAGE_STATUS.ARCHIVED;
+  forecastPackage.auditLogs.push({
+    action: 'archived',
+    performedBy: req.user.id,
+    previousStatus,
+    newStatus: FORECAST_PACKAGE_STATUS.ARCHIVED,
+    comment: 'Forecast Package archived',
   });
 
   await forecastPackage.save();
