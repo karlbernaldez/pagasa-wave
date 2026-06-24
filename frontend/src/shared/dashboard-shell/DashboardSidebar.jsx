@@ -100,7 +100,7 @@ const DashboardSidebar = ({
 
   const renderNavItem = (item) => {
     const Icon = item.icon;
-    const isActive = item.isActive?.(activeId) ?? activeId === item.id ?? false;
+    const isActive = item.isActive?.(activeId) ?? (activeId === item.id);
     const hasChildren = Array.isArray(item.children) && item.children.length > 0;
     const isExpanded = item.isExpanded?.(activeId) ?? (hasChildren && item.children.some((child) => child.id === activeId));
     const stateActive = isActive || isExpanded;
@@ -157,7 +157,7 @@ const DashboardSidebar = ({
             isDarkMode ? 'border-white/10' : 'border-white/80'
           }`}>
             {item.children.map((child) => {
-              const childActive = child.isActive?.(activeId) ?? activeId === child.id;
+              const childActive = child.isActive?.(activeId) ?? (activeId === child.id);
 
               return (
                 <button
