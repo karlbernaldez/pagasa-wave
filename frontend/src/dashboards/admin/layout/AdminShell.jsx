@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-import { ADMIN_TABS, MENU_GROUPS } from '@dashboards/admin/constants/navigation';
+import { ADMIN_ROUTE_BY_TAB, ADMIN_TABS, MENU_GROUPS } from '@dashboards/admin/constants/navigation';
 import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
@@ -15,8 +15,8 @@ const enhanceAdminItem = (item) => {
     isExpanded: (activeId) => USER_TABS.includes(activeId),
     expandIcon: (isExpanded) => isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />,
     children: [
-      { id: ADMIN_TABS.USERS_LIST, label: 'User List' },
-      { id: ADMIN_TABS.USERS_ROLES, label: 'Roles' },
+      { id: ADMIN_TABS.USERS_LIST, label: 'User List', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_LIST] },
+      { id: ADMIN_TABS.USERS_ROLES, label: 'Roles', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_ROLES] },
     ],
   };
 };
