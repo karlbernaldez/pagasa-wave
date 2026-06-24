@@ -1,15 +1,14 @@
 import { lazy } from 'react';
-import ProtectedAdminRoute from '@/middleware/ProtectedAdminRoute';
+
+import AdminRouteLayout from '@dashboards/admin/layout/AdminRouteLayout';
 
 const Dashboard = lazy(() => import('@dashboards/admin/pages/Dashboard'));
 
 export default [
   {
-    path: '/dashboard',
-    element: (
-      <ProtectedAdminRoute requireAuth>
-        <Dashboard />
-      </ProtectedAdminRoute>
-    )
-  }
+    element: <AdminRouteLayout />,
+    children: [
+      { path: '/dashboard', element: <Dashboard /> },
+    ],
+  },
 ];
