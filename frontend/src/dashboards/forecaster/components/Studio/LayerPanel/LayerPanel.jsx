@@ -176,7 +176,7 @@ const StudioPanel = ({
     domainLayers, utilitiesLayers, satelliteLayer,
     activeCount: systemActiveCount,
     toggleDomainLayer, toggleUtilityLayer, toggleSatelliteLayer,
-  } = useSystemLayers({ mapRef, isDarkMode });
+  } = useSystemLayers({ mapRef, isDarkMode, forecastDate });
 
   const { windConfig, toggleWindLayer, setWindElement, toggleWindModel, setWindBarbStyle } = useWindConfig({ mapRef, isDarkMode });
   const { waveConfig, toggleWaveLayer, setWaveElement, toggleWaveModel, setDirectionStyle } = useWaveConfig({ mapRef, isDarkMode });
@@ -260,73 +260,71 @@ const StudioPanel = ({
     }
   }, [activeLayerId, hasSelectedAnnotationLayer, annotationStyleDrag.resetPosition]);
 
-  // ── Project handlers ─────────────────────────────────────────────────────────
-  const handleSubmitFile = useCallback(async (file) => {
-    setIsSubmitting(true);
+  // ── Delete handling ──────────────────────────────────────────────────────────
+  const confirmDeleteLayer = async () => {
+    const layer = confirmDialog.layer;
+    if (!layer) return;
     try {
-      const formData = new FormData();
-      formData.append('projectFile', file);
-      formData.append('projectId', localStorage.getItem('projectId'));
-      setShowSubmitModal(false);
-      Swal.fire('Success', 'File submitted successfully!', 'success');
-    } catch {
-      Swal.fire('Error', 'Failed to submit file.', 'error');
+      await removeFeature(layer.id);
+      removeLayer(mapRef.current, layer, setLayers, draw);
+    } catch (error) {
+      console.error('Failed to delete layer:', error);
+      Swal.fire('Error', 'Could not delete layer from server.', 'error');
     } finally {
-      setIsSubmitting(false);
+      setConfirmDialog({ isOpen: false, layer: null });
     }
-  }, []);
+  };
 
-  const handleCreateProjectSubmit = useCallback((formData) => {
+  // ── Menu actions ─────────────────────────────────────────────────────────────
+  const menuActions = {
+    onNew,
+    onOpen: () => setShowProjectList(true),
+    onSave,
+    onSaveAs: () => setShowModal(true),
+    onSubmit: () => setShowSubmitModal(true),
+    onGeoJson: addLayer,
+    onView,
+  };
+
+  const menuSections = buildMenuSections(menuActions);
+
+  const toggleSubmenu = (id) => {
+    setActiveMenu((prev) => (prev === id ? null : id));
+  };
+
+  const handleCreateProject = (projectData) =>
     createProjectHandler({
-      projectName: formData.projectName,
-      chartType: formData.chartType,
-      description: formData.description,
-      forecastDate: dayjs(formData.forecastDate),
-      onNew,
-      setShowModal,
+      projectData,
+      setLoading: setIsSubmitting,
+      onSuccess: (project) => {
+        setProjectFromSelection(project);
+        setShowModal(false);
+      },
     });
-  }, [onNew]);
 
-  const handleSelectProject = useCallback((proj) => {
-    setProjectFromSelection(proj);
-    if (onSave) onSave(proj);
-  }, [onSave, setProjectFromSelection]);
+  const handleProjectSelected = (project) => {
+    setProjectFromSelection(project);
+    setShowProjectList(false);
+  };
 
-  const handleDeleteProject = useMemo(() => createDeleteHandler({ resetProject }), [resetProject]);
+  const handleShareProject = ({ email, permission }) => {
+    console.log('Share project', { email, permission, projectName });
+    setShowShareModal(false);
+  };
 
-  const handleShareProject = useCallback(async ({ users }) => {
-    try {
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Project shared with ${users.length} user${users.length !== 1 ? 's' : ''}`, showConfirmButton: false, timer: 2500 });
-      setShowShareModal(false);
-    } catch {
-      Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Failed to share project', showConfirmButton: false, timer: 2500 });
-    }
-  }, []);
+  const handleDeleteProject = createDeleteHandler({
+    resetProject,
+    projectName,
+    setShowProjectList,
+  });
 
-  // ── Menu sections ────────────────────────────────────────────────────────────
-  const menuSections = useMemo(() =>
-    buildMenuSections({
-      openNewProject: () => { setShowModal(true); setMenuOpen(false); },
-      openProjectList: () => { setShowProjectList(true); setMenuOpen(false); },
-      openShareProject: () => { setShowShareModal(true); setMenuOpen(false); },
-      openSubmitData: () => { setShowSubmitModal(true); setMenuOpen(false); },
-      onView,
-    }),
-    [onView]
-  );
-
-  const toggleSubmenu = (id) => setActiveMenu((prev) => (prev === id ? null : id));
-
-  // ── Shared modal props ────────────────────────────────────────────────────────
   const sharedModalProps = {
-    isDarkMode, showModal, showProjectList, showSubmitModal,
-    onCloseCreate: () => setShowModal(false),
-    onCloseProjectList: () => setShowProjectList(false),
-    onCloseSubmit: () => setShowSubmitModal(false),
-    onCreateProject: handleCreateProjectSubmit,
-    onSelectProject: handleSelectProject,
+    showModal, setShowModal,
+    showProjectList, setShowProjectList,
+    showSubmitModal, setShowSubmitModal,
+    onCreateProject: handleCreateProject,
+    onProjectSelected: handleProjectSelected,
     onDeleteProject: handleDeleteProject,
-    onSubmitFile: handleSubmitFile,
     projectName, chartType, forecastDate, isSubmitting,
   };
 
@@ -648,30 +646,18 @@ const StudioPanel = ({
 
       <ConfirmationDialog
         isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog({ isOpen: false, layer: null })}
-        onConfirm={() => {
-          removeLayer(mapRef.current, confirmDialog.layer, setLayers, draw);
-          removeFeature(draw, confirmDialog.layer.id, mapRef);
-        }}
-        title="Delete Layer?"
-        message="Are you sure you want to delete"
-        layerName={confirmDialog.layer?.name}
-        isDarkMode={isDarkMode}
+        title="Delete layer?"
+        message={`Are you sure you want to delete ${confirmDialog.layer?.name || 'this layer'}?`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteLayer}
+        onCancel={() => setConfirmDialog({ isOpen: false, layer: null })}
       />
 
-      {/* ── Project modals ───────────────────────────────────────────────────────── */}
       <SharedModals {...sharedModalProps} />
       <ShareProjectModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} onShare={handleShareProject} projectName={projectName} isDarkMode={isDarkMode} />
-
-      {/* ── Wave legend ──────────────────────────────────────────────────────────── */}
-      {waveConfig.enabled && waveConfig.elements?.raster && (
-        <WaveLegend
-          isDarkMode={isDarkMode}
-          className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 select-none"
-        />
-      )}
-
-      {/* ── Layer style panel ─────────────────────────────────────────────────────── */}
+      <WaveLegend mapRef={mapRef} isDarkMode={isDarkMode} />
     </>
   );
 };
