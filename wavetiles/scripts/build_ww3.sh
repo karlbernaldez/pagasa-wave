@@ -38,6 +38,7 @@ Usage:
 
 Examples:
   ./build_ww3.sh ../input/ww3/2026062318/ww3_grdo.20260623T18.nc hs 1.5 --skip-existing
+  ./build_ww3.sh ../input/ww3/2026062318/ww3_grdo.20260623T18 hs 1.5 --skip-existing
   ./build_ww3.sh --package-date 2026-06-24 hs 1.5 --skip-existing
   ./build_ww3.sh --package-date 20260624 hs 1.5 --styles light,dark,night
 
@@ -125,6 +126,39 @@ for label, run_date, hour in runs:
 PY
 }
 
+resolve_ncfile_path() {
+    local candidate=$1
+    candidate=${candidate%$'\r'}
+
+    if [[ -f "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+    fi
+
+    if [[ "$candidate" != *.nc && -f "$candidate.nc" ]]; then
+        printf '%s\n' "$candidate.nc"
+        return 0
+    fi
+
+    return 1
+}
+
+print_missing_ncfile_error() {
+    local candidate=$1
+    echo "NetCDF file not found: $candidate" >&2
+    if [[ "$candidate" != *.nc ]]; then
+        echo "Also checked: $candidate.nc" >&2
+    fi
+    echo "Current directory: $(pwd)" >&2
+    parent_dir="$(dirname "$candidate")"
+    if [[ -d "$parent_dir" ]]; then
+        echo "Files in $parent_dir:" >&2
+        ls -1 "$parent_dir" >&2 || true
+    else
+        echo "Parent directory does not exist: $parent_dir" >&2
+    fi
+}
+
 run_package_mode() {
     local package_date=$1
     shift
@@ -135,10 +169,14 @@ run_package_mode() {
     echo "  INPUT_ROOT   : $ROOT/input/ww3"
     echo "============================================"
 
-    local row label run_tag timestamp ncfile
+    local label run_tag timestamp ncfile requested_ncfile
     while IFS='|' read -r label run_tag timestamp; do
         [[ -n "$label" ]] || continue
-        ncfile="$ROOT/input/ww3/$run_tag/ww3_grdo.$timestamp.nc"
+        requested_ncfile="$ROOT/input/ww3/$run_tag/ww3_grdo.$timestamp.nc"
+        if ! ncfile=$(resolve_ncfile_path "$requested_ncfile"); then
+            print_missing_ncfile_error "$requested_ncfile"
+            exit 1
+        fi
         echo
         echo "-> [$label] $run_tag"
         echo "   Input: $ncfile"
@@ -183,8 +221,13 @@ if [[ "${1:-}" == "--package-date" || "${1:-}" == "--forecast-date" ]]; then
     exit 0
 fi
 
-NCFILE=$1
+REQUESTED_NCFILE=$1
 shift
+
+if ! NCFILE=$(resolve_ncfile_path "$REQUESTED_NCFILE"); then
+    print_missing_ncfile_error "$REQUESTED_NCFILE"
+    exit 1
+fi
 
 VARNAME=${1:-${WW3_VAR:-hs}}
 if [[ $# -gt 0 ]]; then
@@ -194,19 +237,6 @@ fi
 SIGMA=${1:-${WW3_SIGMA:-1.5}}
 if [[ $# -gt 0 ]]; then
     shift
-fi
-
-if [[ ! -f "$NCFILE" ]]; then
-    echo "NetCDF file not found: $NCFILE" >&2
-    echo "Current directory: $(pwd)" >&2
-    parent_dir="$(dirname "$NCFILE")"
-    if [[ -d "$parent_dir" ]]; then
-        echo "Files in $parent_dir:" >&2
-        ls -1 "$parent_dir" >&2 || true
-    else
-        echo "Parent directory does not exist: $parent_dir" >&2
-    fi
-    exit 1
 fi
 
 "$PYTHON_BIN" "${PYTHON_ARGS[@]}" - "$SIGMA" <<'PY'
