@@ -25,6 +25,8 @@ import {
 
 const MRI3_TIMESTEP = '012';
 const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
+const LOCAL_WW3_TILE_BASE = 'http://localhost:8081';
+const LOCAL_WW3_DATE = '2026062318';
 
 // ── Module-level singletons ───────────────────────────────────────────────────
 
@@ -44,15 +46,19 @@ const normalizeModel = (model = '') => model.trim().toUpperCase();
 
 const resolveDate = (model) => {
   switch (model) {
-    case 'WW3': return '2026011200';
+    case 'WW3': return LOCAL_WW3_DATE;
     default: return '2026011200';
   }
 };
 
+const resolveTileBase = (model) => (
+  model === 'WW3' ? LOCAL_WW3_TILE_BASE : WAVE_BUCKET_BASE
+);
+
 const buildTileUrl = (model, theme) => {
   const m = normalizeModel(model);
   const date = resolveDate(m);
-  const base = `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}`;
+  const base = `${resolveTileBase(m)}/${m}/${theme}/${date}`;
   return m === 'MRI3'
     ? `${base}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`
     : `${base}/{z}/{x}/{y}.png`;
