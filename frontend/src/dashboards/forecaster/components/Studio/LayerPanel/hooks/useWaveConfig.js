@@ -13,8 +13,8 @@ const INITIAL_STATE = {
   directionStyle: DEFAULT_DIRECTION_STYLE,
 };
 
-export const useWaveConfig = ({ isDarkMode }) => {
-  const map          = getLatestMapInstance();
+export const useWaveConfig = ({ mapRef, isDarkMode }) => {
+  const map          = getLatestMapInstance(mapRef);
   const prevThemeRef = useRef(isDarkMode ? 'dark' : 'light');
 
   const [waveConfig, setWaveConfig] = useState(INITIAL_STATE);
@@ -23,8 +23,12 @@ export const useWaveConfig = ({ isDarkMode }) => {
 
   // Stable apply helper — all layer sync flows through here
   const applyLayers = useCallback(
-    (config) => syncAllWaveLayers(map, config, isDarkMode, prevThemeRef),
-    [map, isDarkMode],
+    (config) => {
+      const currentMap = getLatestMapInstance(mapRef);
+      if (!currentMap) return;
+      syncAllWaveLayers(currentMap, config, isDarkMode, prevThemeRef);
+    },
+    [mapRef, isDarkMode],
   );
 
   // ── Hydrate ─────────────────────────────────────────────────────────────────
@@ -32,8 +36,9 @@ export const useWaveConfig = ({ isDarkMode }) => {
     const saved = readWaveStorage();
     setWaveConfig(saved);
 
-    if (map && saved.enabled) {
-      addWaveLayer(map, isDarkMode, saved.models).then(() => applyLayers(saved));
+    const currentMap = getLatestMapInstance(mapRef);
+    if (currentMap && saved.enabled) {
+      addWaveLayer(currentMap, isDarkMode, saved.models).then(() => applyLayers(saved));
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -51,15 +56,18 @@ export const useWaveConfig = ({ isDarkMode }) => {
     setWaveConfig((prev) => {
       const next = { ...prev, enabled: !prev.enabled };
       saveEnabled(next.enabled);
+      const currentMap = getLatestMapInstance(mapRef);
+
+      if (!currentMap) return next;
 
       if (!next.enabled) {
         applyLayers({ ...next, elements: OFF_ELEMENTS });
       } else {
-        addWaveLayer(map, isDarkMode, next.models).then(() => applyLayers(next));
+        addWaveLayer(currentMap, isDarkMode, next.models).then(() => applyLayers(next));
       }
       return next;
     });
-  }, [map, isDarkMode, applyLayers, saveEnabled]);
+  }, [mapRef, isDarkMode, applyLayers, saveEnabled]);
 
   const setWaveElement = useCallback((elementId) => {
     setWaveConfig((prev) => {
@@ -84,15 +92,18 @@ export const useWaveConfig = ({ isDarkMode }) => {
 
       const next = { ...prev, models };
       saveModels(models);
+      const currentMap = getLatestMapInstance(mapRef);
+
+      if (!currentMap) return next;
 
       if (isAdding && next.enabled) {
-        addWaveLayer(map, isDarkMode, [normalized]).then(() => applyLayers(next));
+        addWaveLayer(currentMap, isDarkMode, [normalized]).then(() => applyLayers(next));
       } else {
         applyLayers(next);
       }
       return next;
     });
-  }, [map, isDarkMode, applyLayers, saveModels]);
+  }, [mapRef, isDarkMode, applyLayers, saveModels]);
 
   const setDirectionStyle = useCallback((patch) => {
     setWaveConfig((prev) => {
