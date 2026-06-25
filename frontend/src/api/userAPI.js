@@ -1,5 +1,15 @@
 const USER_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/users`;
 
+export const USER_UPDATED_EVENT = 'wavelab:user-updated';
+
+function broadcastUserUpdate(user) {
+  if (typeof window === 'undefined' || !user) return;
+
+  window.dispatchEvent(new CustomEvent(USER_UPDATED_EVENT, {
+    detail: { user, updatedAt: Date.now() },
+  }));
+}
+
 /* -------------------------------------------------------
    Common request helper
 ------------------------------------------------------- */
@@ -29,13 +39,13 @@ const request = async (url, options = {}) => {
 };
 
 /* -------------------------------------------------------
-   GET ALL USERS (Admin) — paginated + filtered
+   GET ALL USERS (Admin) - paginated + filtered
    
    Params:
-     page    – page number       (default 1)
-     limit   – rows per page     (default 10)
-     search  – text search       (optional)
-     status  – filter by status  (optional)
+     page    - page number       (default 1)
+     limit   - rows per page     (default 10)
+     search  - text search       (optional)
+     status  - filter by status  (optional)
 
    Returns: { data: User[], total, page, limit, totalPages }
 ------------------------------------------------------- */
@@ -79,11 +89,15 @@ export const changePasswordAPI = (userId, { currentPassword, newPassword }) =>
 /* -------------------------------------------------------
    UPDATE USER PROFILE (allowedFields only)
 ------------------------------------------------------- */
-export const updateUserDetailsAPI = (userId, payload) =>
-  request(`${USER_API_BASE_URL}/${userId}`, {
+export const updateUserDetailsAPI = async (userId, payload) => {
+  const updated = await request(`${USER_API_BASE_URL}/${userId}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   });
+
+  broadcastUserUpdate(updated);
+  return updated;
+};
 
 /* -------------------------------------------------------
    UPDATE USER STATUS
