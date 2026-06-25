@@ -20,22 +20,35 @@ export const DEFAULT_OPERATIONS = {
   packageDurationHours: 24,
   deadlineWarningMinutes: 60,
   timezone: 'Asia/Manila',
-  showForecasterDeadlineBanner: true,
   waveAnalysisDeadlineMinutes: 90,
   forecast24DeadlineMinutes: 120,
   forecast36DeadlineMinutes: 150,
   forecast48DeadlineMinutes: 180,
+  archivePublishedAfterDays: 14,
+  archiveRejectedAfterDays: 30,
+  keepDraftProjectsDays: 7,
+  autoArchivePublishedPackages: true,
+};
+
+export const DEFAULT_FORECASTER_WORKSPACE = {
+  showPackageProgressBanner: true,
+  showForecasterDeadlineBanner: true,
+  showChartReadinessChecklist: true,
+  hideArchivedFromForecaster: true,
   requireAllChartsBeforeSubmit: true,
+  allowResubmitAfterRevision: true,
+  deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
+  revisionInstructionMessage: 'Review admin comments, update affected charts, and resubmit the package for approval.',
+};
+
+export const DEFAULT_ADMIN_REVIEW = {
   reviewSlaHours: 2,
   publishSlaHours: 1,
   revisionGraceHours: 4,
   autoPublishApprovedPackage: false,
-  archivePublishedAfterDays: 14,
-  archiveRejectedAfterDays: 30,
-  keepDraftProjectsDays: 7,
-  hideArchivedFromForecaster: true,
-  deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
-  revisionInstructionMessage: 'Review admin comments, update affected charts, and resubmit the package for approval.',
+  flagOverdueReviews: true,
+  requireReturnComment: true,
+  requirePublishConfirmation: true,
 };
 
 export const DEFAULT_ABOUT = {
@@ -70,7 +83,7 @@ export const DEFAULT_ABOUT = {
     { title: 'Dual Polarization Quality Control', description: 'Develop dual polarization quality control techniques.' },
     { title: 'Quantitative Precipitation Estimates', description: 'Develop dual-polarization QPE and QPN for heavy rainfall monitoring.' },
     { title: 'Regional Data Assimilation', description: 'Enhance the PAGASA Regional Data Assimilation and NWP System.' },
-    { title: 'S2S Climate Applications', description: 'Sub-seasonal to Seasonal applications for agriculture and water resources.' },
+    { title: 'S2S Climate Applications', description: 'Sub-seasonal to Seasonal applications for disaster risk reduction.' },
   ],
 
   // Focus Areas / Pillars
