@@ -203,15 +203,12 @@ function buildOwnerSeries(packages) {
 }
 
 function buildRecentOutcomeRows(packages) {
-  return [...packages]
+  return packages
+    .filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status))
     .sort((a, b) => new Date(packageTimestamp(b)).getTime() - new Date(packageTimestamp(a)).getTime())
     .slice(0, 6)
     .map((forecastPackage) => {
       const decisionHours = getDecisionHours(forecastPackage);
-      const queueDate = new Date(packageTimestamp(forecastPackage));
-      const queueHours = REVIEW_STATUSES.has(forecastPackage.status) && !Number.isNaN(queueDate.getTime())
-        ? Math.max(0, (Date.now() - queueDate.getTime()) / 3600000)
-        : null;
 
       return {
         id: forecastPackage.id,
@@ -221,7 +218,6 @@ function buildRecentOutcomeRows(packages) {
         owner: forecastPackage.ownerLabel || 'Forecast team',
         chartCount: getChartCount(forecastPackage),
         decisionTime: decisionHours == null ? null : formatHours(decisionHours),
-        queueAge: queueHours == null ? null : formatHours(queueHours),
       };
     });
 }
@@ -310,7 +306,6 @@ export default function AnalyticsSection({ isDarkMode }) {
   const analytics = useMemo(() => {
     const reviewablePackages = state.packages.filter(isReviewablePackage);
     const todayPackage = reviewablePackages.find(isDailyForecastPackage) || null;
-    const openReviewQueue = reviewablePackages.filter((forecastPackage) => REVIEW_STATUSES.has(forecastPackage.status)).length;
     const returned = reviewablePackages.filter((forecastPackage) => RETURNED_STATUSES.has(forecastPackage.status)).length;
     const approved = reviewablePackages.filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status)).length;
     const decisions = approved + returned;
@@ -323,14 +318,6 @@ export default function AnalyticsSection({ isDarkMode }) {
       ? decisionHours.reduce((sum, value) => sum + value, 0) / decisionHours.length
       : 0;
 
-    const queuePackages = reviewablePackages.filter((forecastPackage) => REVIEW_STATUSES.has(forecastPackage.status));
-    const queueHours = queuePackages.map((forecastPackage) => {
-      const date = new Date(packageTimestamp(forecastPackage));
-      if (Number.isNaN(date.getTime())) return 0;
-      return Math.max(0, (Date.now() - date.getTime()) / 3600000);
-    });
-    const oldestQueueHours = queueHours.length ? Math.max(...queueHours) : 0;
-
     const activeUsers = state.users.filter((user) => user.status === 'active').length;
 
     return {
@@ -340,7 +327,6 @@ export default function AnalyticsSection({ isDarkMode }) {
       dailySeries: buildDailySeries(reviewablePackages),
       recentOutcomeRows: buildRecentOutcomeRows(reviewablePackages),
       ownerSeries: buildOwnerSeries(reviewablePackages),
-      openReviewQueue,
       returned,
       approved,
       decisions,
@@ -349,7 +335,6 @@ export default function AnalyticsSection({ isDarkMode }) {
       returnRate: percent(returned, decisions),
       reviewCompletionRate: percent(decisions, reviewablePackages.length),
       averageDecisionHours,
-      oldestQueueHours,
       activeUsers,
     };
   }, [state.packages, state.users]);
@@ -374,7 +359,7 @@ export default function AnalyticsSection({ isDarkMode }) {
         <div>
           <p className={cn('text-sm font-black', text)}>Operational analytics</p>
           <p className={cn('mt-1 text-xs font-semibold', muted)}>
-            Focused on submitted daily forecast packages, final decisions, return rate, and review speed. Draft/setup packages are excluded.
+            Focused on submitted daily forecast packages, final decisions, successful daily operations, return rate, and review speed. Draft/setup packages are excluded.
           </p>
         </div>
 
@@ -449,10 +434,10 @@ export default function AnalyticsSection({ isDarkMode }) {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)_minmax(20rem,0.8fr)]">
-        <Panel title="Recent Daily Package Outcomes" description="A compact history of what happened to each recent submitted package." isDarkMode={isDarkMode}>
+        <Panel title="Successful Daily Package Outcomes" description="Recent daily packages that reached Approved or Published state." isDarkMode={isDarkMode}>
           <div className="space-y-2">
             {analytics.recentOutcomeRows.length === 0 ? (
-              <EmptyState isDarkMode={isDarkMode} title="No recent outcomes" description="Submitted daily packages will appear here after review activity exists." />
+              <EmptyState isDarkMode={isDarkMode} title="No successful daily outcomes yet" description="Approved or published daily packages will appear here after successful review decisions." />
             ) : analytics.recentOutcomeRows.map((item) => (
               <OutcomeRow key={item.id || item.title} item={item} isDarkMode={isDarkMode} />
             ))}
@@ -469,7 +454,7 @@ export default function AnalyticsSection({ isDarkMode }) {
             <RatioRow label="Returned package rate" value={analytics.returnRate} isDarkMode={isDarkMode} tone={analytics.returnRate > 25 ? 'amber' : 'cyan'} />
             <RatioRow label="Active user share" value={percent(analytics.activeUsers, state.totalUsers)} isDarkMode={isDarkMode} tone="emerald" />
             <div className={cn('rounded-xl border p-3 text-xs font-semibold backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-400' : 'border-white/80 bg-white/65 text-slate-500')}>
-              Queue counts are intentionally de-emphasized because the daily workflow usually has one package. Analytics now focuses on outcomes and review speed over time.
+              Successful outcomes only list approved or published daily packages. Returned/rejected packages stay visible in return-rate and decision-funnel analytics.
             </div>
           </div>
         </Panel>
@@ -489,7 +474,7 @@ function Panel({ title, description, isDarkMode, children }) {
 
 function OutcomeRow({ item, isDarkMode }) {
   const tone = STATUS_TONE[item.status] || 'border-slate-400/20 bg-slate-400/10 text-slate-500';
-  const timing = item.decisionTime ? `Decision: ${item.decisionTime}` : item.queueAge ? `Queued: ${item.queueAge}` : 'No timing yet';
+  const timing = item.decisionTime ? `Decision: ${item.decisionTime}` : 'Decision timing unavailable';
 
   return <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{item.dateLabel}</p><p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{item.owner} - {item.chartCount} charts - {timing}</p></div><span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black', tone)}>{item.status}</span></div></div>;
 }
