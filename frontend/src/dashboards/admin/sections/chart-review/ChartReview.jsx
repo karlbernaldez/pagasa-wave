@@ -1,13 +1,5 @@
-import ProjectLibraryPage from '@/features/projects/ProjectLibraryPage';
+import AdminForecastPackageReviewPage from './AdminForecastPackageReviewPage';
 
-const ChartReviewSection = () => {
-  return (
-    <ProjectLibraryPage
-      role="admin"
-      title="Review Forecast Packages"
-      description="Prioritize today's daily forecast package while keeping approved, rejected, published, and past packages available for review history."
-    />
-  );
-};
+const ChartReviewSection = () => <AdminForecastPackageReviewPage />;
 
 export default ChartReviewSection;
