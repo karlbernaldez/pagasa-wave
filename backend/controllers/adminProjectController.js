@@ -11,6 +11,7 @@ const ALLOWED_ADMIN_STATUSES = Object.freeze([
   PROJECT_STATUS.APPROVED,
   PROJECT_STATUS.PUBLISHED,
   PROJECT_STATUS.REJECTED,
+  PROJECT_STATUS.NO_PUBLICATION,
   PROJECT_STATUS.ARCHIVED,
 ]);
 
@@ -130,6 +131,7 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
       $or: [
         { updatedAt: dateQuery },
         { submittedAt: dateQuery },
+        { noPublicationAt: dateQuery },
         { forecastDate: dateQuery },
       ],
     });
@@ -146,6 +148,8 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
         { name: searchRegex },
         { description: searchRegex },
         { chartType: searchRegex },
+        { noPublicationReason: searchRegex },
+        { noPublicationNotes: searchRegex },
         ...(ownerIds.length > 0 ? [{ owner: { $in: ownerIds } }] : []),
       ],
     });
@@ -171,6 +175,7 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
       .populate('reviewStartedBy', 'firstName lastName email username')
       .populate('approvedBy', 'firstName lastName email username')
       .populate('rejectedBy', 'firstName lastName email username')
+      .populate('noPublicationBy', 'firstName lastName email username')
       .populate('auditLogs.performedBy', 'firstName lastName email username')
       .sort(sortQuery)
       .skip(skip)
