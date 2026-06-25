@@ -47,7 +47,6 @@ export const DEFAULT_FORECASTER_WORKSPACE = {
   showForecasterDeadlineBanner: true,
   showChartReadinessChecklist: true,
   hideArchivedFromForecaster: true,
-  requireAllChartsBeforeSubmit: true,
   allowResubmitAfterRevision: true,
   deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
   revisionInstructionMessage: 'Review admin comments, update affected charts, and resubmit the package for approval.',
