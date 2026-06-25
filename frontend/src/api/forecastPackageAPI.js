@@ -22,6 +22,11 @@ const request = async (url, options = {}) => {
   return data;
 };
 
+const appendQueryParam = (params, key, value) => {
+  if (value === undefined || value === null || value === '' || value === 'All') return;
+  params.set(key, String(value));
+};
+
 export const fetchCurrentForecastPackage = ({ forecastDate, signal } = {}) => {
   const params = new URLSearchParams();
   if (forecastDate) params.set('forecastDate', forecastDate);
@@ -30,11 +35,40 @@ export const fetchCurrentForecastPackage = ({ forecastDate, signal } = {}) => {
   return request(url, { signal });
 };
 
+export const fetchAdminForecastPackages = ({
+  page = 1,
+  limit = 12,
+  status = '',
+  signal,
+} = {}) => {
+  const params = new URLSearchParams();
+  appendQueryParam(params, 'page', page);
+  appendQueryParam(params, 'limit', limit);
+  appendQueryParam(params, 'status', status);
+
+  return request(`${FORECAST_PACKAGE_API_BASE_URL}/admin/packages?${params}`, { signal });
+};
+
 export const createForecastPackage = (packageData = {}) =>
   request(FORECAST_PACKAGE_API_BASE_URL, { method: 'POST', body: JSON.stringify(packageData) });
 
 export const fetchForecastPackageById = (id, { signal } = {}) =>
   request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}`, { signal });
+
+export const startForecastPackageReview = (id) =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/start-review`, { method: 'PATCH' });
+
+export const requestForecastPackageRevision = (id, comment = '') =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/request-revision`, {
+    method: 'PATCH',
+    body: JSON.stringify({ comment }),
+  });
+
+export const approveForecastPackage = (id) =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/approve`, { method: 'PATCH' });
+
+export const publishForecastPackage = (id) =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/publish`, { method: 'PATCH' });
 
 export const fetchForecastPackageChartContextByProject = (projectId, { signal, autoJoin = true } = {}) => {
   const params = new URLSearchParams();
