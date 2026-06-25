@@ -1,4 +1,4 @@
-import { ShieldCheck } from 'lucide-react';
+import { ClipboardList, ShieldCheck } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
 import { TextareaField } from '../ui/FormFields';
@@ -14,6 +14,18 @@ function InfoCard({ title, children, dark }) {
   );
 }
 
+function MessageField({ label, field, settings, set, dark, rows = 3 }) {
+  return (
+    <TextareaField
+      label={label}
+      value={settings[field] ?? ''}
+      onChange={set(field)}
+      rows={rows}
+      dark={dark}
+    />
+  );
+}
+
 export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dark }) {
   const set = (field) => (value) => setSettings((prev) => ({ ...prev, [field]: value }));
 
@@ -23,10 +35,21 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
         Configure the helper messages shown to forecasters while they prepare, submit, revise, or resubmit forecast packages.
       </InfoCard>
 
-      <Accordion icon={ShieldCheck} title="Submission Messages" dark={dark} defaultOpen>
+      <Accordion icon={ShieldCheck} title="Package Reminder Messages" dark={dark} defaultOpen>
         <div className="grid gap-4">
-          <TextareaField label="Deadline Reminder Message" value={settings.deadlineReminderMessage ?? ''} onChange={set('deadlineReminderMessage')} rows={3} dark={dark} />
-          <TextareaField label="Revision Instruction Message" value={settings.revisionInstructionMessage ?? ''} onChange={set('revisionInstructionMessage')} rows={3} dark={dark} />
+          <MessageField label="Deadline Reminder Message" field="deadlineReminderMessage" settings={settings} set={set} dark={dark} />
+          <MessageField label="Deadline Approaching Message" field="deadlineApproachingMessage" settings={settings} set={set} dark={dark} />
+          <MessageField label="Deadline Passed Message" field="deadlinePassedMessage" settings={settings} set={set} dark={dark} />
+          <MessageField label="Publish Target Missed Message" field="publishTargetMissedMessage" settings={settings} set={set} dark={dark} />
+          <MessageField label="No-Publication Cutoff Message" field="noPublicationCutoffMessage" settings={settings} set={set} dark={dark} />
+          <MessageField label="Revision Instruction Message" field="revisionInstructionMessage" settings={settings} set={set} dark={dark} />
+        </div>
+      </Accordion>
+
+      <Accordion icon={ClipboardList} title="Workspace Helper Copy" dark={dark}>
+        <div className="grid gap-4">
+          <MessageField label="Empty Package Message" field="emptyPackageMessage" settings={settings} set={set} dark={dark} />
+          <MessageField label="Chart Sequence Helper Message" field="chartSequenceHelperMessage" settings={settings} set={set} dark={dark} rows={4} />
         </div>
       </Accordion>
     </div>
