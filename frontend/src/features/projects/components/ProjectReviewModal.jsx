@@ -29,7 +29,7 @@ import {
   isProjectUnderReview,
 } from '@/features/projects/projectStatuses';
 
-export default function ProjectReviewModal({ project, isDarkMode = false, onClose, onApprove, onReject, onPublish, onActionComplete }) {
+export default function ProjectReviewModal({ project, isDarkMode = false, onClose, onApprove, onReject, onNoPublication, onPublish, onActionComplete }) {
   const lastProjectIdRef = useRef(getProjectId(project));
   const [currentProject, setCurrentProject] = useState(project);
   const [currentFeatureCollection, setCurrentFeatureCollection] = useState(() => normalizeFeatureCollection(getEmbeddedCurrentFeatureSource(project)));
@@ -102,6 +102,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
     runAction,
     onApprove,
     onReject,
+    onNoPublication,
     onPublish,
   });
 
