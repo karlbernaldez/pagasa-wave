@@ -14,6 +14,7 @@ import {
   requestProjectRevision,
   approveProject,
   rejectProject,
+  markProjectNoPublication,
   publishProject,
   archiveProject,
   renameProject
@@ -82,6 +83,8 @@ router.patch('/:id/request-revision', isAdmin, preventAdminSelfReview, requestPr
 router.patch('/:id/approve', isAdmin, preventAdminSelfReview, approveProject);
 
 router.patch('/:id/reject', isAdmin, preventAdminSelfReview, rejectProject);
+
+router.patch('/:id/no-publication', isAdmin, preventAdminSelfReview, markProjectNoPublication);
 
 router.patch('/:id/publish', isAdmin, preventAdminSelfReview, publishProject);
 
