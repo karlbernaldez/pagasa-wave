@@ -43,7 +43,7 @@ export const MENU_GROUPS = [
     label: 'Review',
     items: [
       { id: ADMIN_TABS.DASHBOARD, label: 'Overview', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.DASHBOARD], icon: LayoutDashboard },
-      { id: ADMIN_TABS.CHARTS, label: 'Review Queue', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CHARTS], icon: Waves },
+      { id: ADMIN_TABS.CHARTS, label: 'Forecast Packages', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CHARTS], icon: Waves },
     ],
   },
   {
@@ -70,8 +70,8 @@ export const PAGE_META = {
     description: 'Monitor submissions and approve forecasts',
   },
   [ADMIN_TABS.CHARTS]: {
-    title: 'Wave Charts Review',
-    description: 'Review and approve submitted wave forecast charts',
+    title: 'Review Forecast Packages',
+    description: 'Prioritize today\'s daily forecast package while keeping approved, rejected, and past packages available.',
   },
   [ADMIN_TABS.USERS]: {
     title: 'User Management',
