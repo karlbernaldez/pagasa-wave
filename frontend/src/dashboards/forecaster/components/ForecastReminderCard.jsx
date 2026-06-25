@@ -43,13 +43,17 @@ function getZonedMinutes(date, timezone = DEFAULT_TIMEZONE) {
   return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
 }
 
+function getConfiguredMessage(settings, field, fallback) {
+  return String(settings?.[field] || '').trim() || fallback;
+}
+
 function getReminderState({ packageData, settings, now }) {
   if (packageData?.status === 'Revision Requested') {
     return {
       tone: 'revision',
       label: 'Revision required',
       badge: 'Action needed',
-      message: settings.revisionInstructionMessage,
+      message: getConfiguredMessage(settings, 'revisionInstructionMessage', 'Review admin comments, update affected charts, and resubmit the package for approval.'),
     };
   }
 
@@ -63,7 +67,7 @@ function getReminderState({ packageData, settings, now }) {
   const publishTargetMinutes = parseTimeToMinutes(operations.packagePublishTarget);
   const noPublicationCutoffMinutes = parseTimeToMinutes(operations.noPublicationCutoff);
   const warningMinutes = Number(operations.deadlineWarningMinutes ?? 60);
-  const reminderMessage = settings.deadlineReminderMessage;
+  const reminderMessage = getConfiguredMessage(settings, 'deadlineReminderMessage', 'Complete and submit today\'s forecast package before the operational deadline.');
 
   if (nowMinutes === null || deadlineMinutes === null) {
     return {
@@ -79,7 +83,7 @@ function getReminderState({ packageData, settings, now }) {
       tone: 'critical',
       label: 'No-publication cutoff reached',
       badge: 'Admin action',
-      message: 'No-publication cutoff has been reached. Complete the package immediately or coordinate with Admin for an operational exception.',
+      message: getConfiguredMessage(settings, 'noPublicationCutoffMessage', 'No-publication cutoff has been reached. Complete the package immediately or coordinate with Admin for an operational exception.'),
     };
   }
 
@@ -88,7 +92,7 @@ function getReminderState({ packageData, settings, now }) {
       tone: 'critical',
       label: 'Publish target missed',
       badge: 'Escalate',
-      message: 'The publish target has passed. Submit late if possible and coordinate with Admin so the daily record can be resolved.',
+      message: getConfiguredMessage(settings, 'publishTargetMissedMessage', 'The publish target has passed. Submit late if possible and coordinate with Admin so the daily record can be resolved.'),
     };
   }
 
@@ -97,7 +101,7 @@ function getReminderState({ packageData, settings, now }) {
       tone: 'overdue',
       label: 'Deadline passed',
       badge: 'Late',
-      message: 'The submission deadline has passed. Submit late if possible or coordinate with Admin before the no-publication cutoff.',
+      message: getConfiguredMessage(settings, 'deadlinePassedMessage', 'The submission deadline has passed. Submit late if possible or coordinate with Admin before the no-publication cutoff.'),
     };
   }
 
@@ -106,7 +110,7 @@ function getReminderState({ packageData, settings, now }) {
       tone: 'warning',
       label: 'Deadline approaching',
       badge: 'Due soon',
-      message: 'Submission deadline is approaching. Finish the required charts and submit the package as soon as possible.',
+      message: getConfiguredMessage(settings, 'deadlineApproachingMessage', 'Submission deadline is approaching. Finish the required charts and submit the package as soon as possible.'),
     };
   }
 
