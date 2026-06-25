@@ -2,17 +2,17 @@ import { Archive, CalendarCheck2, CheckCircle2, Clock3, XCircle } from 'lucide-r
 
 import { groupForecastPackages, isDailyForecastPackage } from '@/features/projects/utils/forecastPackageGrouping';
 
-function getDailyPackageStats(projects) {
-  const packages = groupForecastPackages(projects);
-  const dailyPackages = packages.filter(isDailyForecastPackage);
+function getDailyPackageStats({ packages = [], projects = [] }) {
+  const rows = packages.length > 0 ? packages : groupForecastPackages(projects);
+  const dailyPackages = rows.filter(isDailyForecastPackage);
 
   return {
-    packageTotal: packages.length,
+    packageTotal: rows.length,
     dailyTotal: dailyPackages.length,
-    dailyPending: dailyPackages.filter((forecastPackage) => forecastPackage.pendingCount > 0).length,
-    dailyApproved: dailyPackages.filter((forecastPackage) => forecastPackage.status === 'Approved').length,
-    dailyReturned: dailyPackages.filter((forecastPackage) => forecastPackage.returnedCount > 0).length,
-    pastVisible: packages.filter((forecastPackage) => forecastPackage.dateKey && !isDailyForecastPackage(forecastPackage)).length,
+    dailyPending: dailyPackages.filter((forecastPackage) => forecastPackage.pendingCount > 0 || forecastPackage.status === 'Submitted' || forecastPackage.status === 'Under Review').length,
+    dailyApproved: dailyPackages.filter((forecastPackage) => forecastPackage.status === 'Approved' || forecastPackage.status === 'Published').length,
+    dailyReturned: dailyPackages.filter((forecastPackage) => forecastPackage.returnedCount > 0 || forecastPackage.status === 'Rejected' || forecastPackage.status === 'Revision Requested').length,
+    pastVisible: rows.filter((forecastPackage) => forecastPackage.dateKey && !isDailyForecastPackage(forecastPackage)).length,
   };
 }
 
@@ -59,15 +59,17 @@ function QuickFilterButton({ children, isDarkMode, onClick }) {
 
 export default function AdminDailyPackageFocus({
   isDarkMode,
+  packages = [],
   projects = [],
   setStatusFilter,
   total = 0,
 }) {
-  const stats = getDailyPackageStats(projects);
+  const stats = getDailyPackageStats({ packages, projects });
   const formattedDate = new Intl.DateTimeFormat(undefined, {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'Asia/Manila',
   }).format(new Date());
 
   return (
@@ -85,7 +87,7 @@ export default function AdminDailyPackageFocus({
             Review Forecast Packages Daily
           </h2>
           <p className={`mt-1 max-w-3xl text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-            Today&apos;s package is grouped first with its wave analysis and forecast charts inside. Approved, rejected, published, and past packages remain available through the filters below.
+            Today&apos;s package comes directly from the ForecastPackage record with its linked wave analysis and forecast chart projects inside.
           </p>
         </div>
 
@@ -98,10 +100,10 @@ export default function AdminDailyPackageFocus({
       </div>
 
       <div className={`grid gap-3 border-t p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-5 ${isDarkMode ? 'border-white/10' : 'border-cyan-100'}`}>
-        <StatCard icon={CalendarCheck2} label="Today packages" value={stats.dailyTotal} helper="Packages dated today" tone="cyan" isDarkMode={isDarkMode} />
-        <StatCard icon={Clock3} label="Needs review" value={stats.dailyPending} helper="Daily packages with pending charts" tone="amber" isDarkMode={isDarkMode} />
-        <StatCard icon={CheckCircle2} label="Approved" value={stats.dailyApproved} helper="Fully approved daily packages" tone="emerald" isDarkMode={isDarkMode} />
-        <StatCard icon={XCircle} label="Returned" value={stats.dailyReturned} helper="Packages with rejected or revision charts" tone="rose" isDarkMode={isDarkMode} />
+        <StatCard icon={CalendarCheck2} label="Today packages" value={stats.dailyTotal} helper="ForecastPackage records dated today" tone="cyan" isDarkMode={isDarkMode} />
+        <StatCard icon={Clock3} label="Needs review" value={stats.dailyPending} helper="Daily packages pending review" tone="amber" isDarkMode={isDarkMode} />
+        <StatCard icon={CheckCircle2} label="Approved" value={stats.dailyApproved} helper="Approved or published packages" tone="emerald" isDarkMode={isDarkMode} />
+        <StatCard icon={XCircle} label="Returned" value={stats.dailyReturned} helper="Rejected or revision requested packages" tone="rose" isDarkMode={isDarkMode} />
         <StatCard icon={Archive} label="Package history" value={total || stats.packageTotal} helper={`${stats.pastVisible} past packages visible`} tone="slate" isDarkMode={isDarkMode} />
       </div>
     </section>
