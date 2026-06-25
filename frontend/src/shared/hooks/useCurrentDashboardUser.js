@@ -11,14 +11,14 @@ function clean(value) {
 }
 
 function getInitials(user) {
-  const username = clean(user?.username);
   const firstName = clean(user?.firstName);
   const lastName = clean(user?.lastName);
+  const username = clean(user?.username);
   const email = clean(user?.email);
 
-  if (username) return username.slice(0, 2).toUpperCase();
   if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
   if (firstName) return firstName.slice(0, 2).toUpperCase();
+  if (username) return username.slice(0, 2).toUpperCase();
   if (email) return email.slice(0, 2).toUpperCase();
   return 'WL';
 }
@@ -28,11 +28,11 @@ function getFullName(user) {
 }
 
 function getPrimaryName(user) {
-  const username = clean(user?.username);
   const fullName = getFullName(user);
+  const username = clean(user?.username);
   const email = clean(user?.email);
 
-  return username || fullName || email || 'WaveLab User';
+  return fullName || username || email || 'WaveLab User';
 }
 
 function capitalizeDisplayName(value) {
