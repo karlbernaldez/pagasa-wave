@@ -45,6 +45,10 @@ const PROJECT_NOTIFICATION_COPY = {
     title: 'Project rejected',
     message: (project, comment) => `"${project.name}" was rejected: ${comment}`,
   },
+  marked_no_publication: {
+    title: 'No publication recorded',
+    message: (project, comment) => `"${project.name}" was marked as No Publication: ${comment}`,
+  },
   published: {
     title: 'Project published',
     message: (project) => `"${project.name}" has been published.`,
@@ -83,6 +87,21 @@ function getRequiredComment(value, label = 'Comment') {
   if (!comment) throwError(`${label} is required`, 400);
   if (comment.length > 1000) throwError(`${label} must be 1000 characters or less`, 400);
   return comment;
+}
+
+function getNoPublicationPayload(body = {}) {
+  const reason = String(body.reason || body.noPublicationReason || '').trim();
+  const notes = String(body.notes || body.noPublicationNotes || body.comment || '').trim();
+
+  if (!reason) throwError('No-publication reason is required', 400);
+  if (reason.length > 160) throwError('No-publication reason must be 160 characters or less', 400);
+  if (notes.length > 1000) throwError('No-publication notes must be 1000 characters or less', 400);
+
+  return {
+    reason,
+    notes,
+    comment: notes ? `${reason}: ${notes}` : reason,
+  };
 }
 
 function getStableFeatureId(feature) {
@@ -172,6 +191,7 @@ async function sendProject(project, res) {
     { path: 'reviewStartedBy', select: 'firstName lastName email username' },
     { path: 'approvedBy', select: 'firstName lastName email username' },
     { path: 'rejectedBy', select: 'firstName lastName email username' },
+    { path: 'noPublicationBy', select: 'firstName lastName email username' },
     { path: 'auditLogs.performedBy', select: 'firstName lastName email username' },
   ]);
   res.json(project);
@@ -192,6 +212,7 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
     PROJECT_STATUS.APPROVED,
     PROJECT_STATUS.PUBLISHED,
     PROJECT_STATUS.REJECTED,
+    PROJECT_STATUS.NO_PUBLICATION,
     PROJECT_STATUS.ARCHIVED
   ];
 
@@ -213,6 +234,7 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
     .populate('reviewStartedBy', 'firstName lastName email username')
     .populate('approvedBy', 'firstName lastName email username')
     .populate('rejectedBy', 'firstName lastName email username')
+    .populate('noPublicationBy', 'firstName lastName email username')
     .populate('auditLogs.performedBy', 'firstName lastName email username')
     .sort({
       lastOpenedAt: -1,
@@ -678,6 +700,45 @@ export const rejectProject = asyncHandler(async (req, res) => {
 });
 
 /* =========================================================
+   MARK NO PUBLICATION (ADMIN)
+========================================================= */
+export const markProjectNoPublication = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const { reason, notes, comment } = getNoPublicationPayload(req.body);
+  const project = await Project.findById(req.params.id);
+  if (!project) throwError('Project not found', 404);
+
+  if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.NO_PUBLICATION)) {
+    throwError('Invalid status transition', 400);
+  }
+
+  const previousStatus = project.status;
+  project.status = PROJECT_STATUS.NO_PUBLICATION;
+  project.noPublicationAt = new Date();
+  project.noPublicationBy = req.user.id;
+  project.noPublicationReason = reason;
+  project.noPublicationNotes = notes;
+  project.reviewComment = comment;
+  project.reviewedAt = new Date();
+
+  project.auditLogs.push({
+    action: 'marked_no_publication',
+    performedBy: req.user.id,
+    previousStatus,
+    newStatus: PROJECT_STATUS.NO_PUBLICATION,
+    comment,
+  });
+
+  await project.save();
+  await notifyProjectOwner(project, req.user.id, 'marked_no_publication', comment);
+
+  return sendProject(project, res);
+});
+
+/* =========================================================
    PUBLISH PROJECT (ADMIN)
 ========================================================= */
 export const publishProject = asyncHandler(async (req, res) => {
@@ -742,7 +803,7 @@ export const archiveProject = asyncHandler(async (req, res) => {
   if (!project) throwError('Project not found', 404);
 
   if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.ARCHIVED)) {
-    throwError('Only published projects can be archived', 400);
+    throwError('Only published or no-publication projects can be archived', 400);
   }
 
   const previousStatus = project.status;
