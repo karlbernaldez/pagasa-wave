@@ -27,15 +27,6 @@ const pagesConfig = {
   contact: { label: 'Contact', component: ContactTab, group: 'Public Site' },
 };
 
-const groupLabels = {
-  operations: 'Package schedule, forecast duration, per-chart deadlines, and archive retention.',
-  forecasterWorkspace: 'Forecaster dashboard banners, submission guardrails, chart readiness, and revision guidance.',
-  adminReview: 'Admin review SLA, publication behavior, overdue flags, and decision requirements.',
-  general: 'Public dashboard copy, branding, and visitor maintenance mode.',
-  about: 'Public About page sections, partners, leadership, and program copy.',
-  contact: 'Public Contact page cards, assistance routing, and response targets.',
-};
-
 function ActionButton({ icon: Icon, children, disabled, onClick, isDarkMode }) {
   return (
     <button
@@ -129,7 +120,6 @@ const SettingsSection = ({ isDarkMode }) => {
   const contentSurface = dark ? 'bg-slate-950' : 'bg-slate-50';
   const text = dark ? 'text-white' : 'text-slate-950';
   const muted = dark ? 'text-slate-400' : 'text-slate-500';
-  const activeCopy = groupLabels[activeTab] || 'Configure WaveLab admin settings.';
 
   return (
     <div className="mx-auto max-w-[1500px] p-4 sm:p-6">
@@ -144,11 +134,8 @@ const SettingsSection = ({ isDarkMode }) => {
                 Dashboard Settings Control Center
               </h2>
               <p className={cn('mt-1 max-w-3xl text-sm font-semibold leading-6', muted)}>
-                Settings are grouped by the dashboard or work area they affect: operations, forecaster workspace, admin review, and public site content.
+                Choose a dashboard group first, then configure only the settings available for that area.
               </p>
-              <div className={cn('mt-4 rounded-xl border px-4 py-3 text-sm font-semibold leading-6', dark ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50/80 text-cyan-800')}>
-                Current group: {activeCopy}
-              </div>
             </div>
 
             <div className="flex flex-wrap gap-2 lg:justify-end">
