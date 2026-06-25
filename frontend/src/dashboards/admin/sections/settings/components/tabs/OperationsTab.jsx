@@ -1,7 +1,7 @@
-import { Archive, CalendarClock, Clock3 } from 'lucide-react';
+import { AlertTriangle, Archive, CalendarClock, Clock3 } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
-import { Field, inputCls, labelCls } from '../ui/FormFields';
+import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -53,9 +53,13 @@ function SelectField({ label, value, onChange, options, dark }) {
   );
 }
 
-function InfoCard({ title, children, dark }) {
+function InfoCard({ title, children, dark, tone = 'cyan' }) {
+  const toneClass = tone === 'amber'
+    ? dark ? 'border-amber-300/20 bg-amber-400/10 text-amber-100' : 'border-amber-100 bg-amber-50/80 text-amber-800'
+    : dark ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50/80 text-cyan-800';
+
   return (
-    <div className={cn('rounded-xl border p-4 text-sm font-semibold leading-6', dark ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50/80 text-cyan-800')}>
+    <div className={cn('rounded-xl border p-4 text-sm font-semibold leading-6', toneClass)}>
       <p className="mb-1 text-xs font-black uppercase tracking-wide opacity-80">{title}</p>
       {children}
     </div>
@@ -64,6 +68,18 @@ function InfoCard({ title, children, dark }) {
 
 export default function OperationsTab({ settings = {}, setSettings, dark }) {
   const set = (field) => (value) => setSettings((prev) => ({ ...prev, [field]: value }));
+  const reasonsText = Array.isArray(settings.noPublicationReasons)
+    ? settings.noPublicationReasons.join('\n')
+    : '';
+
+  const setReasons = (value) => {
+    set('noPublicationReasons')(
+      value
+        .split('\n')
+        .map((reason) => reason.trim())
+        .filter(Boolean),
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -73,10 +89,11 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
 
       <Accordion icon={CalendarClock} title="Daily Forecast Package Schedule" dark={dark} defaultOpen>
         <div className="grid gap-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <Field label="Daily Package Opens" type="time" value={settings.packageOpenTime ?? ''} onChange={set('packageOpenTime')} dark={dark} />
             <Field label="Submission Deadline" type="time" value={settings.packageSubmissionDeadline ?? ''} onChange={set('packageSubmissionDeadline')} dark={dark} />
             <Field label="Publish Target" type="time" value={settings.packagePublishTarget ?? ''} onChange={set('packagePublishTarget')} dark={dark} />
+            <Field label="No-Publication Cutoff" type="time" value={settings.noPublicationCutoff ?? ''} onChange={set('noPublicationCutoff')} dark={dark} />
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -96,15 +113,26 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
         </div>
       </Accordion>
 
+      <Accordion icon={AlertTriangle} title="No Publication / Operational Exception" dark={dark}>
+        <div className="grid gap-4">
+          <InfoCard title="No delete rule" dark={dark} tone="amber">
+            Official daily packages should never be deleted. If no chart is produced, model data is unavailable, or a server outage blocks publication, mark the package as No Publication / Operational Exception and keep the record for calendar, analytics, and audit history.
+          </InfoCard>
+          <TextareaField label="Allowed No-Publication Reasons" value={reasonsText} onChange={setReasons} rows={7} dark={dark} />
+          <ToggleRow title="Official daily packages are never deleted" description="Only duplicate, test, or corrupted records should be manually deleted. Daily operational records remain auditable." checked={!!settings.officialDailyPackagesAreNeverDeleted} onChange={set('officialDailyPackagesAreNeverDeleted')} dark={dark} />
+        </div>
+      </Accordion>
+
       <Accordion icon={Archive} title="Archive and Retention" dark={dark}>
         <div className="grid gap-4">
           <div className="grid gap-4 md:grid-cols-3">
             <NumberField label="Archive Published Packages After" value={settings.archivePublishedAfterDays} onChange={set('archivePublishedAfterDays')} min={1} suffix="days" dark={dark} />
-            <NumberField label="Archive Rejected Packages After" value={settings.archiveRejectedAfterDays} onChange={set('archiveRejectedAfterDays')} min={1} suffix="days" dark={dark} />
+            <NumberField label="Archive No-Publication Packages After" value={settings.archiveNoPublicationAfterDays} onChange={set('archiveNoPublicationAfterDays')} min={1} suffix="days" dark={dark} />
             <NumberField label="Keep Draft Projects For" value={settings.keepDraftProjectsDays} onChange={set('keepDraftProjectsDays')} min={1} suffix="days" dark={dark} />
           </div>
 
           <ToggleRow title="Archive published packages automatically" description="Move published packages out of active operations after the retention window." checked={!!settings.autoArchivePublishedPackages} onChange={set('autoArchivePublishedPackages')} dark={dark} />
+          <ToggleRow title="Archive no-publication packages automatically" description="Move no-publication exception packages to archive after the retention window, without deleting them." checked={!!settings.autoArchiveNoPublicationPackages} onChange={set('autoArchiveNoPublicationPackages')} dark={dark} />
         </div>
       </Accordion>
     </div>
