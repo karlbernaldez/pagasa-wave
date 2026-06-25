@@ -1,42 +1,85 @@
-import { Archive, CalendarCheck2, CheckCircle2, Clock3, XCircle } from 'lucide-react';
+import { Archive, BarChart3, CalendarCheck2, CheckCircle2, Clock3, XCircle } from 'lucide-react';
 
-import { groupForecastPackages, isDailyForecastPackage } from '@/features/projects/utils/forecastPackageGrouping';
+import {
+  CHART_LABELS,
+  groupForecastPackages,
+  isDailyForecastPackage,
+} from '@/features/projects/utils/forecastPackageGrouping';
 
-function getDailyPackageStats({ packages = [], projects = [] }) {
-  const rows = packages.length > 0 ? packages : groupForecastPackages(projects);
-  const dailyPackages = rows.filter(isDailyForecastPackage);
+const DAILY_CHART_TYPES = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
+
+const STATUS_TONE = {
+  Draft: 'slate',
+  Submitted: 'amber',
+  'Under Review': 'cyan',
+  'Revision Requested': 'rose',
+  Approved: 'emerald',
+  Published: 'emerald',
+  Rejected: 'rose',
+  Archived: 'slate',
+};
+
+function getRows({ packages = [], projects = [] }) {
+  return packages.length > 0 ? packages : groupForecastPackages(projects);
+}
+
+function getDailyFocus({ packages = [], projects = [] }) {
+  const rows = getRows({ packages, projects });
+  const dailyPackage = rows.find(isDailyForecastPackage) || rows[0] || null;
+  const chartRows = dailyPackage?.charts || [];
+  const chartByType = new Map(chartRows.map((chart) => [chart.chartType || chart.project?.chartType, chart]));
 
   return {
-    packageTotal: rows.length,
-    dailyTotal: dailyPackages.length,
-    dailyPending: dailyPackages.filter((forecastPackage) => forecastPackage.pendingCount > 0 || forecastPackage.status === 'Submitted' || forecastPackage.status === 'Under Review').length,
-    dailyApproved: dailyPackages.filter((forecastPackage) => forecastPackage.status === 'Approved' || forecastPackage.status === 'Published').length,
-    dailyReturned: dailyPackages.filter((forecastPackage) => forecastPackage.returnedCount > 0 || forecastPackage.status === 'Rejected' || forecastPackage.status === 'Revision Requested').length,
-    pastVisible: rows.filter((forecastPackage) => forecastPackage.dateKey && !isDailyForecastPackage(forecastPackage)).length,
+    dailyPackage,
+    historyCount: rows.filter((forecastPackage) => forecastPackage.dateKey && !isDailyForecastPackage(forecastPackage)).length,
+    chartTiles: DAILY_CHART_TYPES.map((chartType) => {
+      const row = chartByType.get(chartType);
+      const project = row?.project || row;
+      return {
+        chartType,
+        label: CHART_LABELS[chartType] || chartType,
+        status: project?.status || 'Missing',
+        projectName: project?.name || project?.title || 'No chart project linked yet',
+      };
+    }),
   };
 }
 
-function StatCard({ icon: Icon, label, value, helper, tone, isDarkMode }) {
-  const toneClass = {
-    cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700',
-    amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700',
-    emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700',
-    rose: isDarkMode ? 'bg-rose-400/10 text-rose-200' : 'bg-rose-50 text-rose-700',
-    slate: isDarkMode ? 'bg-white/[0.06] text-slate-300' : 'bg-slate-100 text-slate-700',
-  }[tone];
+function getToneClasses(tone, isDarkMode) {
+  const classes = {
+    cyan: isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-200 bg-cyan-50 text-cyan-700',
+    amber: isDarkMode ? 'border-amber-300/20 bg-amber-300/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-700',
+    emerald: isDarkMode ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    rose: isDarkMode ? 'border-rose-300/20 bg-rose-300/10 text-rose-100' : 'border-rose-200 bg-rose-50 text-rose-700',
+    slate: isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-700',
+  };
+
+  return classes[tone] || classes.slate;
+}
+
+function ChartFocusTile({ chart, isDarkMode }) {
+  const tone = STATUS_TONE[chart.status] || 'slate';
+  const icon = tone === 'emerald' ? CheckCircle2 : tone === 'rose' ? XCircle : tone === 'amber' || tone === 'cyan' ? Clock3 : BarChart3;
+  const Icon = icon;
 
   return (
     <div className={`rounded-2xl border p-4 shadow-sm ${isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/70'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className={`truncate text-xs font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{label}</p>
-          <p className={`mt-2 text-3xl font-black tabular-nums ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{value}</p>
+          <p className={`truncate text-xs font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+            {chart.label}
+          </p>
+          <p className={`mt-2 truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`} title={chart.projectName}>
+            {chart.projectName}
+          </p>
         </div>
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${toneClass}`}>
-          <Icon size={19} />
+        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${getToneClasses(tone, isDarkMode)}`}>
+          <Icon size={18} />
         </span>
       </div>
-      <p className={`mt-3 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{helper}</p>
+      <span className={`mt-4 inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${getToneClasses(tone, isDarkMode)}`}>
+        {chart.status}
+      </span>
     </div>
   );
 }
@@ -64,7 +107,7 @@ export default function AdminDailyPackageFocus({
   setStatusFilter,
   total = 0,
 }) {
-  const stats = getDailyPackageStats({ packages, projects });
+  const { chartTiles, dailyPackage, historyCount } = getDailyFocus({ packages, projects });
   const formattedDate = new Intl.DateTimeFormat(undefined, {
     month: 'long',
     day: 'numeric',
@@ -84,10 +127,10 @@ export default function AdminDailyPackageFocus({
             <span className={`text-xs font-bold ${isDarkMode ? 'text-cyan-100/70' : 'text-cyan-800/70'}`}>{formattedDate}</span>
           </div>
           <h2 className={`mt-3 text-xl font-black tracking-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
-            Review Forecast Packages Daily
+            Today&apos;s four forecast charts
           </h2>
           <p className={`mt-1 max-w-3xl text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-            Today&apos;s package comes directly from the ForecastPackage record with its linked wave analysis and forecast chart projects inside.
+            {dailyPackage?.title || 'Today\'s ForecastPackage'} is the primary review target. Package history stays available below through filters and pagination.
           </p>
         </div>
 
@@ -99,12 +142,18 @@ export default function AdminDailyPackageFocus({
         </div>
       </div>
 
-      <div className={`grid gap-3 border-t p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-5 ${isDarkMode ? 'border-white/10' : 'border-cyan-100'}`}>
-        <StatCard icon={CalendarCheck2} label="Today packages" value={stats.dailyTotal} helper="ForecastPackage records dated today" tone="cyan" isDarkMode={isDarkMode} />
-        <StatCard icon={Clock3} label="Needs review" value={stats.dailyPending} helper="Daily packages pending review" tone="amber" isDarkMode={isDarkMode} />
-        <StatCard icon={CheckCircle2} label="Approved" value={stats.dailyApproved} helper="Approved or published packages" tone="emerald" isDarkMode={isDarkMode} />
-        <StatCard icon={XCircle} label="Returned" value={stats.dailyReturned} helper="Rejected or revision requested packages" tone="rose" isDarkMode={isDarkMode} />
-        <StatCard icon={Archive} label="Package history" value={total || stats.packageTotal} helper={`${stats.pastVisible} past packages visible`} tone="slate" isDarkMode={isDarkMode} />
+      <div className={`grid gap-3 border-t p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4 ${isDarkMode ? 'border-white/10' : 'border-cyan-100'}`}>
+        {chartTiles.map((chart) => (
+          <ChartFocusTile key={chart.chartType} chart={chart} isDarkMode={isDarkMode} />
+        ))}
+      </div>
+
+      <div className={`flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 text-xs font-bold sm:px-5 ${isDarkMode ? 'border-white/10 text-slate-400' : 'border-cyan-100 text-slate-500'}`}>
+        <span className="inline-flex items-center gap-2">
+          <Archive size={14} />
+          {historyCount} past package{historyCount === 1 ? '' : 's'} visible in history
+        </span>
+        <span>{total || packages.length} total package{(total || packages.length) === 1 ? '' : 's'} matching current filters</span>
       </div>
     </section>
   );
