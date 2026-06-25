@@ -203,6 +203,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     onStartReview,
     onApprove,
     onReject,
+    onNoPublication,
     onPublish,
     mode,
   } = controller.table;
@@ -376,6 +377,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
           onClose={() => setReviewProject(null)}
           onApprove={onApprove}
           onReject={onReject}
+          onNoPublication={onNoPublication}
           onPublish={onPublish}
           onActionComplete={handleReviewActionComplete}
         />
