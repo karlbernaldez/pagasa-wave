@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, BellRing, CalendarDays, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw, Send } from 'lucide-react';
+import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw, Send } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import {
@@ -10,11 +10,13 @@ import {
   updateForecastChartCompletion,
 } from '@/api/forecastPackageAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import ForecastReminderCard from '../components/ForecastReminderCard';
 import useForecasterWorkspaceSettings from '../hooks/useForecasterWorkspaceSettings';
 
 const FORECAST_TIME_ZONE = 'Asia/Manila';
-
 const REQUIRED_CHART_SEQUENCE = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
+const EDITABLE_PACKAGE_STATUSES = new Set(['Draft', 'Revision Requested']);
+const AUTO_PACKAGE_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2}$/;
 
 const REQUIRED_CHART_LABELS = {
   analysis: 'Wave Analysis',
@@ -50,32 +52,20 @@ const CHART_METADATA = {
   },
 };
 
-const EDITABLE_PACKAGE_STATUSES = new Set(['Draft', 'Revision Requested']);
-const AUTO_PACKAGE_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2}$/;
-
 function formatForecastDate(value) {
   if (!value) return 'Today';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Today';
-
-  return new Intl.DateTimeFormat('en-PH', {
-    dateStyle: 'full',
-    timeZone: FORECAST_TIME_ZONE,
-  }).format(date);
+  return new Intl.DateTimeFormat('en-PH', { dateStyle: 'full', timeZone: FORECAST_TIME_ZONE }).format(date);
 }
 
 function formatForecastDateKey(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-
   const parts = new Intl.DateTimeFormat('en-CA', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    timeZone: FORECAST_TIME_ZONE,
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: FORECAST_TIME_ZONE,
   }).formatToParts(date);
-
   const getPart = (type) => parts.find((part) => part.type === type)?.value || '';
   const year = getPart('year');
   const month = getPart('month');
@@ -85,15 +75,11 @@ function formatForecastDateKey(value) {
 
 function getUserDisplayName(user) {
   if (!user || typeof user === 'string') return '';
-  return [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
-    || user.username
-    || user.email
-    || '';
+  return [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.username || user.email || '';
 }
 
 function getActiveEditorNames(chart) {
-  const activeEditors = Array.isArray(chart?.activeEditors) ? chart.activeEditors : [];
-  const names = activeEditors
+  const names = (Array.isArray(chart?.activeEditors) ? chart.activeEditors : [])
     .map((editor) => getUserDisplayName(editor?.user))
     .filter(Boolean);
   const legacyName = getUserDisplayName(chart?.claimedBy);
@@ -108,27 +94,21 @@ function formatNameList(names) {
   return `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}`;
 }
 
-function getPackageTitle(packageData) {
-  const dateKey = formatForecastDateKey(packageData?.forecastDate);
-  const name = packageData?.name || '';
-
-  if (dateKey && (!name || AUTO_PACKAGE_NAME_PATTERN.test(name))) {
-    return `Marine Forecast ${dateKey}`;
-  }
-
-  return name || 'Marine Forecast Package';
-}
-
 function getPackagePayload(response) {
   if (!response) return null;
-  if (Object.prototype.hasOwnProperty.call(response, 'package')) {
-    return response.package || null;
-  }
+  if (Object.prototype.hasOwnProperty.call(response, 'package')) return response.package || null;
   return response;
 }
 
 function getPackageId(packageData) {
   return packageData?._id || packageData?.id;
+}
+
+function getPackageTitle(packageData) {
+  const dateKey = formatForecastDateKey(packageData?.forecastDate);
+  const name = packageData?.name || '';
+  if (dateKey && (!name || AUTO_PACKAGE_NAME_PATTERN.test(name))) return `Marine Forecast ${dateKey}`;
+  return name || 'Marine Forecast Package';
 }
 
 function getChartProjectId(chart) {
@@ -146,10 +126,19 @@ function isChartComplete(packageData, chartType) {
 function getFirstIncompletePrerequisite(packageData, chartType) {
   const chartIndex = REQUIRED_CHART_SEQUENCE.indexOf(chartType);
   if (chartIndex <= 0) return null;
+  return REQUIRED_CHART_SEQUENCE.slice(0, chartIndex).find((previousChartType) => !isChartComplete(packageData, previousChartType)) || null;
+}
 
-  return REQUIRED_CHART_SEQUENCE.slice(0, chartIndex).find((previousChartType) => (
-    !isChartComplete(packageData, previousChartType)
-  )) || null;
+function getNextIncompleteChartType(packageData) {
+  return REQUIRED_CHART_SEQUENCE.find((chartType) => !isChartComplete(packageData, chartType)) || null;
+}
+
+function getCompletion(packageData) {
+  if (packageData?.completion) return packageData.completion;
+  const rows = packageData?.chartCompletion || [];
+  const required = REQUIRED_CHART_SEQUENCE.length;
+  const completed = rows.filter((row) => row.isComplete).length;
+  return { required, completed, percentage: required ? Math.round((completed / required) * 100) : 0, isComplete: completed === required };
 }
 
 function sortChartsBySequence(charts = []) {
@@ -160,55 +149,16 @@ function sortChartsBySequence(charts = []) {
   });
 }
 
-function getCompletion(packageData) {
-  const completion = packageData?.completion;
-  if (completion) return completion;
-
-  const rows = packageData?.chartCompletion || [];
-  const required = Object.keys(REQUIRED_CHART_LABELS).length;
-  const completed = rows.filter((row) => row.isComplete).length;
-
-  return {
-    required,
-    completed,
-    percentage: required ? Math.round((completed / required) * 100) : 0,
-    isComplete: completed === required,
-  };
-}
-
-function getNextIncompleteChartType(packageData) {
-  return REQUIRED_CHART_SEQUENCE.find((chartType) => !isChartComplete(packageData, chartType)) || null;
-}
-
 function getNextAction(packageData, completion, isEditable) {
-  if (!packageData) {
-    return 'Create today\'s package to generate the four required forecast charts.';
-  }
-
-  if (!isEditable) {
-    return `Package is ${packageData.status}. Charts are locked until Admin requests a revision.`;
-  }
-
+  if (!packageData) return 'Create today\'s package to generate the four required forecast charts.';
+  if (!isEditable) return `Package is ${packageData.status}. Charts are locked until Admin requests a revision.`;
   if (!completion.isComplete) {
     const nextChartType = getNextIncompleteChartType(packageData);
     return nextChartType
       ? `Continue with ${REQUIRED_CHART_LABELS[nextChartType]}. Later charts remain queued until prerequisites are certified.`
       : `${completion.required - completion.completed} chart${completion.required - completion.completed === 1 ? '' : 's'} still need forecast work.`;
   }
-
   return 'All charts are complete. Submit the package for admin review.';
-}
-
-function getWorkspaceReminderMessage(packageData, settings) {
-  if (packageData?.status === 'Revision Requested') {
-    return settings.revisionInstructionMessage;
-  }
-
-  if (!packageData || EDITABLE_PACKAGE_STATUSES.has(packageData.status || 'Draft')) {
-    return settings.deadlineReminderMessage;
-  }
-
-  return '';
 }
 
 function StatusPill({ status, isDarkMode }) {
@@ -248,109 +198,22 @@ function WorkflowStep({ number, title, description, active, done, isDarkMode }) 
   );
 }
 
-function ReminderMessageCard({ message, isDarkMode }) {
-  if (!message) return null;
-
-  return (
-    <section className={`wavelab-reminder-card relative overflow-hidden rounded-[2rem] border p-5 shadow-2xl ${isDarkMode ? 'border-amber-200/60 bg-gradient-to-br from-amber-300/25 via-amber-500/16 to-orange-600/18 text-amber-50 shadow-amber-950/50 ring-2 ring-amber-300/30' : 'border-amber-300 bg-gradient-to-br from-amber-50 via-white to-orange-50 text-amber-950 shadow-amber-200/70 ring-2 ring-amber-200/70'}`}>
-      <style>{`
-        @keyframes wavelabReminderBellRing {
-          0%, 82%, 100% { transform: rotate(0deg); }
-          86% { transform: rotate(-13deg); }
-          90% { transform: rotate(11deg); }
-          94% { transform: rotate(-7deg); }
-          98% { transform: rotate(4deg); }
-        }
-
-        @keyframes wavelabReminderIconPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.42); }
-          55% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); }
-        }
-
-        @keyframes wavelabReminderCardPulse {
-          0%, 100% { transform: translateY(0); filter: brightness(1); }
-          50% { transform: translateY(-1px); filter: brightness(1.08); }
-        }
-
-        @keyframes wavelabReminderShimmer {
-          0% { transform: translateX(-110%); }
-          100% { transform: translateX(110%); }
-        }
-
-        .wavelab-reminder-card {
-          animation: wavelabReminderCardPulse 4.8s ease-in-out infinite;
-        }
-
-        .wavelab-reminder-icon {
-          animation: wavelabReminderIconPulse 2.8s ease-out infinite;
-        }
-
-        .wavelab-reminder-bell {
-          animation: wavelabReminderBellRing 3.6s ease-in-out infinite;
-          transform-origin: 50% 12%;
-        }
-
-        .wavelab-reminder-shimmer::after {
-          animation: wavelabReminderShimmer 2.8s ease-in-out infinite;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
-          content: '';
-          inset: 0;
-          position: absolute;
-          width: 45%;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .wavelab-reminder-card,
-          .wavelab-reminder-icon,
-          .wavelab-reminder-bell,
-          .wavelab-reminder-shimmer::after {
-            animation: none !important;
-          }
-        }
-      `}</style>
-      <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-amber-300/25 blur-2xl" />
-      <div className="wavelab-reminder-shimmer pointer-events-none absolute bottom-0 left-0 h-1.5 w-full overflow-hidden bg-gradient-to-r from-amber-300 via-orange-400 to-amber-200" />
-      <div className="relative flex gap-4">
-        <span className={`wavelab-reminder-icon grid h-14 w-14 shrink-0 place-items-center rounded-2xl shadow-lg ${isDarkMode ? 'bg-amber-300 text-slate-950 shadow-amber-950/40' : 'bg-amber-500 text-white shadow-amber-200'}`}>
-          <BellRing className="wavelab-reminder-bell" size={24} />
-        </span>
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <p className={`text-[11px] font-black uppercase tracking-[0.22em] ${isDarkMode ? 'text-amber-100' : 'text-amber-700'}`}>Action reminder</p>
-            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${isDarkMode ? 'bg-amber-100 text-slate-950' : 'bg-amber-600 text-white'}`}>Priority</span>
-          </div>
-          <p className={`text-base font-black leading-7 ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{message}</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function OperationsPanel({ packageData, completion, isEditable, isDarkMode, workspaceSettings }) {
   const nextAction = getNextAction(packageData, completion, isEditable);
   const isSubmittedOrLater = packageData && !isEditable;
-  const reminderMessage = getWorkspaceReminderMessage(packageData, workspaceSettings);
 
   return (
     <aside className="space-y-4">
-      <ReminderMessageCard message={reminderMessage} isDarkMode={isDarkMode} />
+      <ForecastReminderCard packageData={packageData} settings={workspaceSettings} isDarkMode={isDarkMode} />
 
       <section className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-        <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>
-          Operations Brief
-        </p>
-        <h3 className={`mt-3 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-          Next best action
-        </h3>
-        <p className={`mt-2 text-sm leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-          {nextAction}
-        </p>
+        <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>Operations Brief</p>
+        <h3 className={`mt-3 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Next best action</h3>
+        <p className={`mt-2 text-sm leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{nextAction}</p>
       </section>
 
       <section className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-        <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-          Workflow
-        </p>
+        <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Workflow</p>
         <div className="mt-4 space-y-5">
           <WorkflowStep number="1" title="Analyze current seas" description="Finish Wave Analysis before opening the forecast horizons." active={isEditable && getNextIncompleteChartType(packageData) === 'analysis'} done={isChartComplete(packageData, 'analysis') || isSubmittedOrLater} isDarkMode={isDarkMode} />
           <WorkflowStep number="2" title="Build forecast sequence" description="Certify 24h, then 36h, then 48h so each frame has a verified baseline." active={isEditable && !completion.isComplete && getNextIncompleteChartType(packageData) !== 'analysis'} done={completion.isComplete || isSubmittedOrLater} isDarkMode={isDarkMode} />
@@ -372,11 +235,11 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const activeEditorText = formatNameList(activeEditorNames);
   const readyByName = getUserDisplayName(chart?.readyBy || completion?.completedBy);
   const metadata = CHART_METADATA[chartType] || { code: 'CHT', horizon: 'Forecast chart', mandate: 'Prepare and verify this forecast chart.', checkpoint: 'Confirm readiness before package submission.' };
-  const statusLabel = isComplete ? 'Ready for review' : isQueued ? 'Queued' : 'In production';
   const hasActiveEditors = activeEditorNames.length > 0;
   const canToggle = isEditable && !isQueued && !isUpdating;
   const canOpen = Boolean(projectId && !isQueued);
   const accentClass = isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : hasActiveEditors ? 'bg-amber-400' : 'bg-cyan-400';
+  const statusLabel = isComplete ? 'Ready for review' : isQueued ? 'Queued' : 'In production';
   const statusClass = isComplete
     ? 'bg-emerald-500/10 text-emerald-500'
     : isQueued
@@ -410,16 +273,16 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
             {isComplete ? <CheckCircle2 size={22} /> : <ClipboardList size={22} />}
           </div>
         </div>
+
         <div className={`mt-5 rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/55' : 'border-slate-100 bg-slate-50'}`}>
           <div className={`mb-4 inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-black ${collaborationClass}`}><span className="truncate">{collaborationLabel}</span></div>
           <p className={`text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{metadata.mandate}</p>
           <div className={`mt-4 border-t pt-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
             <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{isQueued ? 'Prerequisite required' : hasActiveEditors && !isComplete ? 'Active editors' : 'Readiness checkpoint'}</p>
-            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              {isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : metadata.checkpoint}
-            </p>
+            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : metadata.checkpoint}</p>
           </div>
         </div>
+
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button className="w-full sm:w-auto" size="sm" variant={isQueued ? 'secondary' : 'primary'} disabled={!canOpen} onClick={() => canOpen && onOpen(projectId)}>
             {isQueued ? `Waiting for ${REQUIRED_CHART_LABELS[blockingChartType]}` : isComplete ? 'Review chart' : 'Open chart'}
@@ -458,8 +321,7 @@ export default function ForecasterProjectLibraryPage() {
 
   const completion = useMemo(() => getCompletion(packageData), [packageData]);
   const packageId = getPackageId(packageData);
-  const charts = packageData?.charts || [];
-  const orderedCharts = useMemo(() => sortChartsBySequence(charts), [charts]);
+  const orderedCharts = useMemo(() => sortChartsBySequence(packageData?.charts || []), [packageData?.charts]);
   const isEditable = EDITABLE_PACKAGE_STATUSES.has(packageData?.status || 'Draft');
   const canSubmit = Boolean(packageId && isEditable && completion.isComplete && !submitting);
   const packageTitle = getPackageTitle(packageData);
@@ -471,9 +333,10 @@ export default function ForecasterProjectLibraryPage() {
       const response = await fetchCurrentForecastPackage({ signal });
       setPackageData(getPackagePayload(response));
     } catch (err) {
-      if (err?.name === 'AbortError') return;
-      console.error('Failed to load current forecast package:', err);
-      setError(err?.message || 'Failed to load current forecast package.');
+      if (err?.name !== 'AbortError') {
+        console.error('Failed to load current forecast package:', err);
+        setError(err?.message || 'Failed to load current forecast package.');
+      }
     } finally {
       setLoading(false);
     }
@@ -499,8 +362,6 @@ export default function ForecasterProjectLibraryPage() {
       setCreating(false);
     }
   };
-
-  const handleOpenChart = (projectId) => navigate(`/studio/${projectId}`);
 
   const handleToggleChartComplete = async (chartType, isComplete) => {
     if (!packageId || !chartType || updatingChartType) return;
@@ -551,12 +412,14 @@ export default function ForecasterProjectLibraryPage() {
             <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>Refresh</Button>
           </div>
         </div>
+
         {error && (
           <div className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`} role="alert">
             <span className="inline-flex items-start gap-2"><AlertCircle className="mt-0.5 shrink-0" size={17} />{error}</span>
             <button type="button" className={`shrink-0 text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-red-200 hover:text-white' : 'text-red-700 hover:text-red-900'}`} onClick={() => setError('')}>Dismiss</button>
           </div>
         )}
+
         {loading ? (
           <div className={`flex min-h-[320px] items-center justify-center rounded-3xl border ${isDarkMode ? 'border-white/10 bg-slate-900/80 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}><span className="inline-flex items-center gap-2 text-sm font-bold"><Loader2 className="animate-spin" size={18} />Loading current forecast package...</span></div>
         ) : !packageData ? (
@@ -579,15 +442,21 @@ export default function ForecasterProjectLibraryPage() {
                   </div>
                 </div>
               </section>
+
               <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard label="Forecast date" value={formatForecastDateKey(packageData.forecastDate) || 'Today'} detail="Philippines operational day" icon={CalendarDays} isDarkMode={isDarkMode} />
                 <MetricCard label="Current step" value={REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || 'Submit'} detail={completion.isComplete ? 'Ready for admin review' : 'Next chart in sequence'} icon={CheckCircle2} isDarkMode={isDarkMode} />
                 <MetricCard label="Package state" value={packageData.status || 'Draft'} detail={isEditable ? 'Editable by forecaster' : 'Read-only until revision'} icon={ClipboardList} isDarkMode={isDarkMode} />
                 <MetricCard label="Review gate" value={completion.isComplete ? 'Open' : 'Blocked'} detail={completion.isComplete ? 'Submission enabled after editors release' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
               </section>
+
               <section>
                 <div className="mb-3 flex items-center justify-between gap-3"><div><p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Required Charts</p><h3 className={`mt-1 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Sequential forecast production board</h3></div></div>
-                <div className="grid gap-4 md:grid-cols-2">{orderedCharts.map((chart) => <ChartCard key={chart.chartType} chart={chart} packageData={packageData} isDarkMode={isDarkMode} isEditable={isEditable} isUpdating={updatingChartType === chart.chartType} onOpen={handleOpenChart} onToggleComplete={handleToggleChartComplete} />)}</div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {orderedCharts.map((chart) => (
+                    <ChartCard key={chart.chartType} chart={chart} packageData={packageData} isDarkMode={isDarkMode} isEditable={isEditable} isUpdating={updatingChartType === chart.chartType} onOpen={(projectId) => navigate(`/studio/${projectId}`)} onToggleComplete={handleToggleChartComplete} />
+                  ))}
+                </div>
               </section>
             </div>
             <OperationsPanel packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} workspaceSettings={workspaceSettings} />
