@@ -9,6 +9,7 @@ export default function useProjectReviewActionHandlers({
   runAction,
   onApprove,
   onReject,
+  onNoPublication,
   onPublish,
 }) {
   return useMemo(() => ({
@@ -28,6 +29,11 @@ export default function useProjectReviewActionHandlers({
       () => onReject(currentProject, remarks.trim()),
       { requireRemarks: true },
     ),
+    onNoPublication: (reason) => runAction(
+      'noPublication',
+      () => onNoPublication(currentProject, { reason, notes: remarks.trim() }),
+      { requireRemarks: true },
+    ),
     onPublish: () => runAction('publish', () => onPublish(currentProject)),
-  }), [currentProject, onApprove, onPublish, onReject, projectId, remarks, runAction]);
+  }), [currentProject, onApprove, onNoPublication, onPublish, onReject, projectId, remarks, runAction]);
 }
