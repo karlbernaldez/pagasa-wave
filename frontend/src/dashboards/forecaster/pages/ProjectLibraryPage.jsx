@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw, Send } from 'lucide-react';
+import { AlertCircle, BellRing, CalendarDays, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw, Send } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import {
@@ -10,6 +10,7 @@ import {
   updateForecastChartCompletion,
 } from '@/api/forecastPackageAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import useForecasterWorkspaceSettings from '../hooks/useForecasterWorkspaceSettings';
 
 const FORECAST_TIME_ZONE = 'Asia/Manila';
 
@@ -198,6 +199,18 @@ function getNextAction(packageData, completion, isEditable) {
   return 'All charts are complete. Submit the package for admin review.';
 }
 
+function getWorkspaceReminderMessage(packageData, settings) {
+  if (packageData?.status === 'Revision Requested') {
+    return settings.revisionInstructionMessage;
+  }
+
+  if (!packageData || EDITABLE_PACKAGE_STATUSES.has(packageData.status || 'Draft')) {
+    return settings.deadlineReminderMessage;
+  }
+
+  return '';
+}
+
 function StatusPill({ status, isDarkMode }) {
   return (
     <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${isDarkMode ? 'bg-cyan-400/10 text-cyan-200 ring-1 ring-cyan-300/20' : 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'}`}>
@@ -235,12 +248,33 @@ function WorkflowStep({ number, title, description, active, done, isDarkMode }) 
   );
 }
 
-function OperationsPanel({ packageData, completion, isEditable, isDarkMode }) {
+function ReminderMessageCard({ message, isDarkMode }) {
+  if (!message) return null;
+
+  return (
+    <section className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+      <div className="flex gap-3">
+        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${isDarkMode ? 'bg-amber-300/10 text-amber-100' : 'bg-white text-amber-700'}`}>
+          <BellRing size={18} />
+        </span>
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] opacity-75">Reminder</p>
+          <p className="mt-2 text-sm font-semibold leading-6">{message}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OperationsPanel({ packageData, completion, isEditable, isDarkMode, workspaceSettings }) {
   const nextAction = getNextAction(packageData, completion, isEditable);
   const isSubmittedOrLater = packageData && !isEditable;
+  const reminderMessage = getWorkspaceReminderMessage(packageData, workspaceSettings);
 
   return (
     <aside className="space-y-4">
+      <ReminderMessageCard message={reminderMessage} isDarkMode={isDarkMode} />
+
       <section className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
         <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>
           Operations Brief
@@ -354,6 +388,7 @@ function EmptyPackageState({ isCreating, isDarkMode, onCreate }) {
 export default function ForecasterProjectLibraryPage() {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  const workspaceSettings = useForecasterWorkspaceSettings();
   const [packageData, setPackageData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -495,7 +530,7 @@ export default function ForecasterProjectLibraryPage() {
                 <div className="grid gap-4 md:grid-cols-2">{orderedCharts.map((chart) => <ChartCard key={chart.chartType} chart={chart} packageData={packageData} isDarkMode={isDarkMode} isEditable={isEditable} isUpdating={updatingChartType === chart.chartType} onOpen={handleOpenChart} onToggleComplete={handleToggleChartComplete} />)}</div>
               </section>
             </div>
-            <OperationsPanel packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} />
+            <OperationsPanel packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} workspaceSettings={workspaceSettings} />
           </div>
         )}
       </div>
