@@ -139,6 +139,13 @@ export const rejectProject = (id, comment = '') =>
     body: JSON.stringify({ comment }),
   });
 
+// Mark project as No Publication / Operational Exception (Admin)
+export const markProjectNoPublication = (id, { reason, notes = '' } = {}) =>
+  request(`${PROJECT_API_BASE_URL}/${id}/no-publication`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason, notes }),
+  });
+
 // Publish project (Admin)
 export const publishProject = (id) =>
   request(`${PROJECT_API_BASE_URL}/${id}/publish`, {
