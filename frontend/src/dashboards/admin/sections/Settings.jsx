@@ -13,19 +13,25 @@ import GeneralTab from './settings/components/tabs/GeneralTab';
 import AboutTab from './settings/components/tabs/AboutTab';
 import ContactTab from './settings/components/tabs/ContactTab';
 
+import { SETTINGS_GROUPS, TABS } from './settings/constants/tabs';
 import { ensureIdsInSettings } from './settings/utils/ensureIds';
 import { useUndoRedoState } from './settings/hooks/useUndoRedoState';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-const pagesConfig = {
-  operations: { label: 'Forecast Operations', component: OperationsTab, group: 'Operations' },
-  forecasterWorkspace: { label: 'Forecaster Workspace', component: ForecasterWorkspaceTab, group: 'Forecaster Dashboard' },
-  adminReview: { label: 'Admin Review', component: AdminReviewTab, group: 'Admin Dashboard' },
-  general: { label: 'General', component: GeneralTab, group: 'Public Site' },
-  about: { label: 'About', component: AboutTab, group: 'Public Site' },
-  contact: { label: 'Contact', component: ContactTab, group: 'Public Site' },
+const COMPONENTS = {
+  operations: OperationsTab,
+  forecasterWorkspace: ForecasterWorkspaceTab,
+  adminReview: AdminReviewTab,
+  general: GeneralTab,
+  about: AboutTab,
+  contact: ContactTab,
 };
+
+const pagesConfig = TABS.reduce((acc, tab) => {
+  acc[tab.id] = { ...tab, component: COMPONENTS[tab.id] };
+  return acc;
+}, {});
 
 function ActionButton({ icon: Icon, children, disabled, onClick, isDarkMode }) {
   return (
@@ -35,6 +41,7 @@ function ActionButton({ icon: Icon, children, disabled, onClick, isDarkMode }) {
       disabled={disabled}
       className={cn(
         'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm backdrop-blur-xl transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+        'focus:outline-none focus:ring-2 focus:ring-cyan-400/50',
         isDarkMode
           ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
           : 'border-white/80 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-950',
@@ -113,7 +120,9 @@ const SettingsSection = ({ isDarkMode }) => {
     handleReset?.();
   };
 
-  const ActiveComponent = pagesConfig[activeTab]?.component;
+  const activeConfig = pagesConfig[activeTab];
+  const activeGroup = SETTINGS_GROUPS.find((group) => group.id === activeConfig?.group);
+  const ActiveComponent = activeConfig?.component;
   const pageSurface = dark
     ? 'border-white/10 bg-slate-950/50 shadow-black/20'
     : 'border-white/70 bg-white/70 shadow-slate-300/40';
@@ -134,8 +143,15 @@ const SettingsSection = ({ isDarkMode }) => {
                 Dashboard Settings Control Center
               </h2>
               <p className={cn('mt-1 max-w-3xl text-sm font-semibold leading-6', muted)}>
-                Choose a dashboard group first, then configure only the settings available for that area.
+                Select a work area first, then edit only the configurable copy, schedules, and public content for that area. Fixed forecast-package rules stay out of Settings.
               </p>
+              {activeGroup && (
+                <div className={cn('mt-4 rounded-2xl border px-4 py-3', dark ? 'border-white/10 bg-white/[0.03]' : 'border-white/80 bg-white/70')}>
+                  <p className={cn('text-xs font-black uppercase tracking-[0.14em]', muted)}>Selected area</p>
+                  <p className={cn('mt-1 text-sm font-black', text)}>{activeGroup.label} · {activeConfig?.label}</p>
+                  <p className={cn('mt-1 text-xs font-semibold leading-5', muted)}>{activeGroup.description}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2 lg:justify-end">
