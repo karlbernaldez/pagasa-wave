@@ -1,7 +1,7 @@
-import { Archive, CalendarClock, Clock3, PackageCheck, ShieldCheck } from 'lucide-react';
+import { Archive, CalendarClock, Clock3 } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
-import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
+import { Field, inputCls, labelCls } from '../ui/FormFields';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -35,13 +35,7 @@ function NumberField({ label, value, onChange, min = 0, dark, suffix }) {
     <div>
       <label className={labelCls(dark)}>{label}</label>
       <div className="relative">
-        <input
-          type="number"
-          min={min}
-          value={value ?? ''}
-          onChange={(event) => onChange(toNumber(event.target.value, min))}
-          className={cn(inputCls(dark), suffix && 'pr-16')}
-        />
+        <input type="number" min={min} value={value ?? ''} onChange={(event) => onChange(toNumber(event.target.value, min))} className={cn(inputCls(dark), suffix && 'pr-16')} />
         {suffix && <span className={cn('pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>{suffix}</span>}
       </div>
     </div>
@@ -53,9 +47,7 @@ function SelectField({ label, value, onChange, options, dark }) {
     <div>
       <label className={labelCls(dark)}>{label}</label>
       <select value={value ?? ''} onChange={(event) => onChange(event.target.value)} className={inputCls(dark)}>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
     </div>
   );
@@ -75,8 +67,8 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <InfoCard title="Forecast workflow rules" dark={dark}>
-        These settings are admin-facing operational defaults for the forecaster dashboard and package lifecycle. They define when packages are expected, how long charts stay active, and when completed work should move out of day-to-day views.
+      <InfoCard title="Forecast package lifecycle" dark={dark}>
+        These are the cross-dashboard operational rules: when the daily package opens, when it should be submitted, how long forecast windows last, and when old work leaves active operations.
       </InfoCard>
 
       <Accordion icon={CalendarClock} title="Daily Forecast Package Schedule" dark={dark} defaultOpen>
@@ -92,51 +84,15 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
             <NumberField label="Late Warning Before Deadline" value={settings.deadlineWarningMinutes} onChange={set('deadlineWarningMinutes')} min={0} suffix="min" dark={dark} />
             <SelectField label="Timezone" value={settings.timezone} onChange={set('timezone')} dark={dark} options={[{ value: 'Asia/Manila', label: 'Asia/Manila' }, { value: 'UTC', label: 'UTC' }]} />
           </div>
-
-          <ToggleRow
-            title="Show deadline banners in forecaster dashboard"
-            description="Forecasters see package deadline, late-warning, and publish-target status while working."
-            checked={!!settings.showForecasterDeadlineBanner}
-            onChange={set('showForecasterDeadlineBanner')}
-            dark={dark}
-          />
         </div>
       </Accordion>
 
       <Accordion icon={Clock3} title="Chart / Project Deadlines" dark={dark}>
-        <div className="grid gap-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <NumberField label="Wave Analysis Deadline" value={settings.waveAnalysisDeadlineMinutes} onChange={set('waveAnalysisDeadlineMinutes')} min={0} suffix="min" dark={dark} />
-            <NumberField label="24h Forecast Deadline" value={settings.forecast24DeadlineMinutes} onChange={set('forecast24DeadlineMinutes')} min={0} suffix="min" dark={dark} />
-            <NumberField label="36h Forecast Deadline" value={settings.forecast36DeadlineMinutes} onChange={set('forecast36DeadlineMinutes')} min={0} suffix="min" dark={dark} />
-            <NumberField label="48h Forecast Deadline" value={settings.forecast48DeadlineMinutes} onChange={set('forecast48DeadlineMinutes')} min={0} suffix="min" dark={dark} />
-          </div>
-
-          <ToggleRow
-            title="Require all four charts before package submission"
-            description="Keeps the daily package complete before it can enter admin review."
-            checked={!!settings.requireAllChartsBeforeSubmit}
-            onChange={set('requireAllChartsBeforeSubmit')}
-            dark={dark}
-          />
-        </div>
-      </Accordion>
-
-      <Accordion icon={PackageCheck} title="Review and Publication Rules" dark={dark}>
-        <div className="grid gap-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <NumberField label="Review SLA" value={settings.reviewSlaHours} onChange={set('reviewSlaHours')} min={1} suffix="hrs" dark={dark} />
-            <NumberField label="Publish SLA After Approval" value={settings.publishSlaHours} onChange={set('publishSlaHours')} min={1} suffix="hrs" dark={dark} />
-            <NumberField label="Revision Grace Period" value={settings.revisionGraceHours} onChange={set('revisionGraceHours')} min={1} suffix="hrs" dark={dark} />
-          </div>
-
-          <ToggleRow
-            title="Auto-publish approved daily package"
-            description="Allows a package to move to Published after approval when publication checks pass."
-            checked={!!settings.autoPublishApprovedPackage}
-            onChange={set('autoPublishApprovedPackage')}
-            dark={dark}
-          />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <NumberField label="Wave Analysis Deadline" value={settings.waveAnalysisDeadlineMinutes} onChange={set('waveAnalysisDeadlineMinutes')} min={0} suffix="min" dark={dark} />
+          <NumberField label="24h Forecast Deadline" value={settings.forecast24DeadlineMinutes} onChange={set('forecast24DeadlineMinutes')} min={0} suffix="min" dark={dark} />
+          <NumberField label="36h Forecast Deadline" value={settings.forecast36DeadlineMinutes} onChange={set('forecast36DeadlineMinutes')} min={0} suffix="min" dark={dark} />
+          <NumberField label="48h Forecast Deadline" value={settings.forecast48DeadlineMinutes} onChange={set('forecast48DeadlineMinutes')} min={0} suffix="min" dark={dark} />
         </div>
       </Accordion>
 
@@ -148,20 +104,7 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
             <NumberField label="Keep Draft Projects For" value={settings.keepDraftProjectsDays} onChange={set('keepDraftProjectsDays')} min={1} suffix="days" dark={dark} />
           </div>
 
-          <ToggleRow
-            title="Hide archived packages from forecaster dashboard"
-            description="Archived work remains searchable by admins but does not clutter active forecaster views."
-            checked={!!settings.hideArchivedFromForecaster}
-            onChange={set('hideArchivedFromForecaster')}
-            dark={dark}
-          />
-        </div>
-      </Accordion>
-
-      <Accordion icon={ShieldCheck} title="Forecaster Guidance" dark={dark}>
-        <div className="grid gap-4">
-          <TextareaField label="Deadline Reminder Message" value={settings.deadlineReminderMessage ?? ''} onChange={set('deadlineReminderMessage')} rows={3} dark={dark} />
-          <TextareaField label="Revision Instruction Message" value={settings.revisionInstructionMessage ?? ''} onChange={set('revisionInstructionMessage')} rows={3} dark={dark} />
+          <ToggleRow title="Archive published packages automatically" description="Move published packages out of active operations after the retention window." checked={!!settings.autoArchivePublishedPackages} onChange={set('autoArchivePublishedPackages')} dark={dark} />
         </div>
       </Accordion>
     </div>
