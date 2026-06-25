@@ -25,18 +25,6 @@ function ToggleRow({ title, description, checked, onChange, dark }) {
   );
 }
 
-function RuleCard({ title, description, dark }) {
-  return (
-    <div className={cn(
-      'rounded-xl border p-4',
-      dark ? 'border-emerald-300/20 bg-emerald-400/10' : 'border-emerald-100 bg-emerald-50/80',
-    )}>
-      <p className={cn('text-sm font-black', dark ? 'text-emerald-100' : 'text-emerald-800')}>{title}</p>
-      <p className={cn('mt-1 text-xs font-semibold leading-5', dark ? 'text-emerald-200/80' : 'text-emerald-700')}>{description}</p>
-    </div>
-  );
-}
-
 function InfoCard({ title, children, dark }) {
   return (
     <div className={cn('rounded-xl border p-4 text-sm font-semibold leading-6', dark ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50/80 text-cyan-800')}>
@@ -66,11 +54,6 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
 
       <Accordion icon={ShieldCheck} title="Submission Guardrails" dark={dark}>
         <div className="grid gap-4">
-          <RuleCard
-            title="Complete chart set required"
-            description="Daily package submission always requires the expected chart set: Wave Analysis, 24h Forecast, 36h Forecast, and 48h Forecast. This is a fixed operational rule, not an admin toggle."
-            dark={dark}
-          />
           <ToggleRow title="Allow resubmit after revision" description="Forecasters can update returned charts and submit the package again." checked={!!settings.allowResubmitAfterRevision} onChange={set('allowResubmitAfterRevision')} dark={dark} />
           <TextareaField label="Deadline Reminder Message" value={settings.deadlineReminderMessage ?? ''} onChange={set('deadlineReminderMessage')} rows={3} dark={dark} />
           <TextareaField label="Revision Instruction Message" value={settings.revisionInstructionMessage ?? ''} onChange={set('revisionInstructionMessage')} rows={3} dark={dark} />
