@@ -9,7 +9,13 @@ const DEFAULT_TIMEZONE = 'Asia/Manila';
 
 const DEFAULT_FORECASTER_WORKSPACE_SETTINGS = {
   deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
+  deadlineApproachingMessage: 'Submission deadline is approaching. Finish the required charts and submit the package as soon as possible.',
+  deadlinePassedMessage: 'The submission deadline has passed. Submit late if possible or coordinate with Admin before the no-publication cutoff.',
+  publishTargetMissedMessage: 'The publish target has passed. Submit late if possible and coordinate with Admin so the daily record can be resolved.',
+  noPublicationCutoffMessage: 'No-publication cutoff has been reached. Complete the package immediately or coordinate with Admin for an operational exception.',
   revisionInstructionMessage: 'Review admin comments, update affected charts, and resubmit the package for approval.',
+  emptyPackageMessage: 'Create today\'s forecast package to generate the four required charts.',
+  chartSequenceHelperMessage: 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Forecasters can co-edit; readiness waits until active editors release.',
 };
 
 const DEFAULT_OPERATIONS_SETTINGS = {
@@ -58,7 +64,13 @@ async function readDatabaseSettings() {
 
   localStorage.setItem(FORECASTER_WORKSPACE_SETTINGS_KEY, JSON.stringify({
     deadlineReminderMessage: nextSettings.deadlineReminderMessage,
+    deadlineApproachingMessage: nextSettings.deadlineApproachingMessage,
+    deadlinePassedMessage: nextSettings.deadlinePassedMessage,
+    publishTargetMissedMessage: nextSettings.publishTargetMissedMessage,
+    noPublicationCutoffMessage: nextSettings.noPublicationCutoffMessage,
     revisionInstructionMessage: nextSettings.revisionInstructionMessage,
+    emptyPackageMessage: nextSettings.emptyPackageMessage,
+    chartSequenceHelperMessage: nextSettings.chartSequenceHelperMessage,
   }));
   localStorage.setItem(OPERATIONS_SETTINGS_KEY, JSON.stringify(nextSettings.operations));
 
