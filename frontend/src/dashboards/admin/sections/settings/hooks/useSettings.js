@@ -8,6 +8,7 @@ import {
   DEFAULT_GENERAL,
   DEFAULT_OPERATIONS,
 } from '../constants/defaults';
+import { getOperationsScheduleValidationError } from '../utils/operationsScheduleValidation';
 
 const LS_GENERAL_KEY = 'admin.settings.general';
 const LS_OPERATIONS_KEY = 'admin.settings.operations';
@@ -50,6 +51,14 @@ const loadBootstrap = () => {
 
   return bootstrapPromise;
 };
+
+function getValidationError(tab, payload) {
+  if (tab === 'operations') {
+    return getOperationsScheduleValidationError(payload);
+  }
+
+  return null;
+}
 
 export default function useSettings() {
   const [activeTab, setActiveTab] = useState('operations');
@@ -96,6 +105,13 @@ export default function useSettings() {
 
   const handleSave = useCallback(async (settings) => {
     const payload = settings?.[activeTab] ?? {};
+    const validationError = getValidationError(activeTab, payload);
+
+    if (validationError) {
+      setStatus({ type: 'error', message: validationError });
+      return;
+    }
+
     setSaving(true);
 
     try {
