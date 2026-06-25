@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { checkAuthSession, logoutUser } from '@/api/auth';
-import { fetchUserDetails } from '@/api/userAPI';
+import { USER_UPDATED_EVENT, fetchUserDetails } from '@/api/userAPI';
 
 let userCache = null;
 let userRequest = null;
@@ -84,6 +84,12 @@ export function resetCurrentDashboardUserCache() {
   userRequest = null;
 }
 
+function primeCurrentDashboardUserCache(user) {
+  if (!user) return;
+  userCache = user;
+  userRequest = null;
+}
+
 async function loadCurrentUser() {
   if (userCache) return userCache;
   if (userRequest) return userRequest;
@@ -135,6 +141,19 @@ export default function useCurrentDashboardUser(fallbackUser = null, options = {
       active = false;
     };
   }, [fallbackUser]);
+
+  useEffect(() => {
+    const handleUserUpdate = (event) => {
+      const updatedUser = event.detail?.user;
+      if (!updatedUser) return;
+
+      primeCurrentDashboardUserCache(updatedUser);
+      setRawUser((prev) => ({ ...(prev || {}), ...updatedUser }));
+    };
+
+    window.addEventListener(USER_UPDATED_EVENT, handleUserUpdate);
+    return () => window.removeEventListener(USER_UPDATED_EVENT, handleUserUpdate);
+  }, []);
 
   const logout = useCallback(async () => {
     resetCurrentDashboardUserCache();
