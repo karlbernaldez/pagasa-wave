@@ -42,6 +42,7 @@ const REVIEWABLE_STATUSES = new Set([
   ...RETURNED_STATUSES,
   ...APPROVED_STATUSES,
 ]);
+const REAL_WORK_AUDIT_ACTIONS = ['edited', 'created'];
 
 const STATUS_COLORS = {
   Submitted: '#38bdf8',
@@ -88,6 +89,17 @@ function toDateKey(value) {
   return getDateKey(value || new Date());
 }
 
+function toTimestamp(value) {
+  if (!value) return null;
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function earliestTimestamp(values) {
+  const timestamps = values.map(toTimestamp).filter((timestamp) => Number.isFinite(timestamp));
+  return timestamps.length ? Math.min(...timestamps) : null;
+}
+
 function formatShortDate(value) {
   const date = new Date(`${value}T00:00:00+08:00`);
   if (Number.isNaN(date.getTime())) return 'No date';
@@ -120,12 +132,63 @@ function getApprovalPublishDate(forecastPackage) {
   return forecastPackage.publishedAt || forecastPackage.reviewedAt || forecastPackage.updatedAt || null;
 }
 
+function getChartProject(forecastPackageChart) {
+  return forecastPackageChart?.project || forecastPackageChart;
+}
+
+function getEarliestAuditTimestamp(project, actions) {
+  const auditLogs = Array.isArray(project?.auditLogs) ? project.auditLogs : [];
+  const actionSet = new Set(actions);
+
+  return earliestTimestamp(
+    auditLogs
+      .filter((log) => actionSet.has(log?.action))
+      .map((log) => log?.timestamp),
+  );
+}
+
+function getEarliestVersionTimestamp(project) {
+  const versions = Array.isArray(project?.versions) ? project.versions : [];
+  return earliestTimestamp(versions.map((version) => version?.createdAt));
+}
+
+function getEarliestChartWorkTimestamp(forecastPackage) {
+  const chartProjects = (forecastPackage?.chartProjects?.length
+    ? forecastPackage.chartProjects
+    : (forecastPackage?.charts || []).map(getChartProject)
+  ).filter(Boolean);
+
+  const timestampCandidates = chartProjects.flatMap((project) => {
+    const editedAuditTimestamp = getEarliestAuditTimestamp(project, ['edited']);
+    const createdAuditTimestamp = getEarliestAuditTimestamp(project, ['created']);
+    const versionTimestamp = getEarliestVersionTimestamp(project);
+    const updatedTimestamp = toTimestamp(project?.updatedAt);
+
+    return [
+      editedAuditTimestamp,
+      createdAuditTimestamp,
+      versionTimestamp,
+      updatedTimestamp,
+    ];
+  });
+
+  return earliestTimestamp(timestampCandidates);
+}
+
+function getPreparationStartDate(forecastPackage) {
+  const earliestChartWorkTimestamp = getEarliestChartWorkTimestamp(forecastPackage);
+  if (earliestChartWorkTimestamp) return new Date(earliestChartWorkTimestamp);
+
+  const packageCreatedTimestamp = toTimestamp(forecastPackage.createdAt);
+  return packageCreatedTimestamp ? new Date(packageCreatedTimestamp) : null;
+}
+
 function getSubmissionHours(forecastPackage) {
-  const start = new Date(forecastPackage.createdAt);
+  const start = getPreparationStartDate(forecastPackage);
   const submittedAt = getSubmittedDate(forecastPackage);
   const end = new Date(submittedAt);
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  if (!start || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
   return Math.max(0, (end.getTime() - start.getTime()) / 3600000);
 }
 
@@ -202,9 +265,9 @@ function buildOwnerSeries(packages) {
 function buildTimingSeries({ averageSubmissionHours, averageApprovalPublishHours }) {
   return [
     {
-      metric: 'Submit time',
+      metric: 'Prep to submit',
       value: Number(averageSubmissionHours.toFixed(1)),
-      description: 'Package creation to submission',
+      description: 'Earliest chart work to package submission',
     },
     {
       metric: 'Approval time',
@@ -366,7 +429,7 @@ export default function AnalyticsSection({ isDarkMode }) {
           <div className="flex flex-col items-center gap-3 text-center">
             <Loader2 className={cn('h-8 w-8 animate-spin', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
             <p className={cn('text-sm font-black', text)}>Loading package analytics</p>
-            <p className={cn('text-xs font-semibold', muted)}>Aggregating daily package submission speed and approval timing.</p>
+            <p className={cn('text-xs font-semibold', muted)}>Aggregating daily package preparation speed and approval timing.</p>
           </div>
         </div>
       </div>
@@ -409,16 +472,16 @@ export default function AnalyticsSection({ isDarkMode }) {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard icon={CalendarCheck2} label="Today's Package" value={analytics.todayPackage?.status || 'None'} helper={analytics.todayPackage ? `${getChartCount(analytics.todayPackage)} linked charts` : 'No submitted package today'} tone={analytics.todayPackage ? 'cyan' : 'amber'} isDarkMode={isDarkMode} />
-        <MetricCard icon={Clock3} label="Avg Submit Time" value={formatHours(analytics.averageSubmissionHours)} helper="Package creation to submission" tone="blue" isDarkMode={isDarkMode} />
+        <MetricCard icon={Clock3} label="Avg Prep Time" value={formatHours(analytics.averageSubmissionHours)} helper="Earliest chart work to submission" tone="blue" isDarkMode={isDarkMode} />
         <MetricCard icon={CheckCircle2} label="Avg Approval Time" value={formatHours(analytics.averageApprovalPublishHours)} helper="Submission to approved/published" tone="emerald" isDarkMode={isDarkMode} />
         <MetricCard icon={ShieldCheck} label="Return Rate" value={`${analytics.returnRate}%`} helper={`${analytics.returned} returned or rejected`} tone={analytics.returnRate > 25 ? 'amber' : 'cyan'} isDarkMode={isDarkMode} />
       </section>
 
-      <Panel title="Package Timing" description="How fast daily packages move from preparation to submission, then from submission to approval or publication." isDarkMode={isDarkMode}>
+      <Panel title="Package Timing" description="How fast daily packages move from first chart work to submission, then from submission to approval or publication." isDarkMode={isDarkMode}>
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-          <BarBlock data={analytics.timingSeries} dataKey="value" nameKey="metric" color="#06b6d4" isDarkMode={isDarkMode} emptyTitle="No timing data" emptyDescription="Timing appears after packages have submittedAt and approved/published timestamps." />
+          <BarBlock data={analytics.timingSeries} dataKey="value" nameKey="metric" color="#06b6d4" isDarkMode={isDarkMode} emptyTitle="No timing data" emptyDescription="Timing appears after chart work, submittedAt, and approved/published timestamps are available." />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            <TimingStat label="Average submit time" value={formatHours(analytics.averageSubmissionHours)} description="createdAt to submittedAt" isDarkMode={isDarkMode} />
+            <TimingStat label="Average prep time" value={formatHours(analytics.averageSubmissionHours)} description="first chart work to submittedAt" isDarkMode={isDarkMode} />
             <TimingStat label="Average approval time" value={formatHours(analytics.averageApprovalPublishHours)} description="submittedAt to reviewed/published" isDarkMode={isDarkMode} />
           </div>
         </div>
@@ -484,7 +547,7 @@ export default function AnalyticsSection({ isDarkMode }) {
             <RatioRow label="Returned package rate" value={analytics.returnRate} isDarkMode={isDarkMode} tone={analytics.returnRate > 25 ? 'amber' : 'cyan'} />
             <RatioRow label="Active user share" value={percent(analytics.activeUsers, state.totalUsers)} isDarkMode={isDarkMode} tone="emerald" />
             <div className={cn('rounded-xl border p-3 text-xs font-semibold backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-400' : 'border-white/80 bg-white/65 text-slate-500')}>
-              Submit time measures package creation to submission. Approval time measures submission to approved or published status. Returned/rejected packages stay visible in return-rate and decision-funnel analytics.
+              Prep time measures earliest chart edit/create/version/update to submission. Approval time measures submission to approved or published status. Returned/rejected packages stay visible in return-rate and decision-funnel analytics.
             </div>
           </div>
         </Panel>
@@ -508,7 +571,7 @@ function TimingStat({ label, value, description, isDarkMode }) {
 
 function OutcomeRow({ item, isDarkMode }) {
   const tone = STATUS_TONE[item.status] || 'border-slate-400/20 bg-slate-400/10 text-slate-500';
-  const submitTiming = item.submissionTime ? `Submit: ${item.submissionTime}` : 'Submit timing unavailable';
+  const submitTiming = item.submissionTime ? `Prep: ${item.submissionTime}` : 'Prep timing unavailable';
   const approvalTiming = item.approvalTime ? `Approve: ${item.approvalTime}` : 'Approval timing unavailable';
 
   return <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{item.dateLabel}</p><p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{item.owner} - {item.chartCount} charts - {submitTiming} - {approvalTiming}</p></div><span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black', tone)}>{item.status}</span></div></div>;
