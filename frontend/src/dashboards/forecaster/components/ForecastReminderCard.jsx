@@ -4,12 +4,26 @@ import { AlertTriangle, BellRing, Clock3 } from 'lucide-react';
 const DEFAULT_TIMEZONE = 'Asia/Manila';
 
 function parseTimeToMinutes(value) {
-  const match = String(value || '').match(/^(\d{2}):(\d{2})$/);
-  if (!match) return null;
+  const raw = String(value || '').trim();
+  const twentyFourHourMatch = raw.match(/^(\d{1,2}):(\d{2})$/);
 
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  if (twentyFourHourMatch) {
+    const hours = Number(twentyFourHourMatch[1]);
+    const minutes = Number(twentyFourHourMatch[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  }
+
+  const twelveHourMatch = raw.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (!twelveHourMatch) return null;
+
+  let hours = Number(twelveHourMatch[1]);
+  const minutes = Number(twelveHourMatch[2] || 0);
+  const period = twelveHourMatch[3].toUpperCase();
+
+  if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) return null;
+  if (period === 'AM') hours = hours === 12 ? 0 : hours;
+  if (period === 'PM') hours = hours === 12 ? 12 : hours + 12;
 
   return hours * 60 + minutes;
 }
