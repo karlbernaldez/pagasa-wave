@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { getSettings } from '@/api/siteSettings';
 
 export const FORECASTER_WORKSPACE_SETTINGS_KEY = 'admin.settings.forecasterWorkspace';
 export const OPERATIONS_SETTINGS_KEY = 'admin.settings.operations';
@@ -28,19 +29,53 @@ function readJsonSettings(key, fallback) {
   }
 }
 
-function readSettings() {
+function hasValues(value) {
+  return value && typeof value === 'object' && Object.keys(value).length > 0;
+}
+
+function readLocalSettings() {
   return {
     ...readJsonSettings(FORECASTER_WORKSPACE_SETTINGS_KEY, DEFAULT_FORECASTER_WORKSPACE_SETTINGS),
     operations: readJsonSettings(OPERATIONS_SETTINGS_KEY, DEFAULT_OPERATIONS_SETTINGS),
   };
 }
 
+async function readDatabaseSettings() {
+  const [forecasterWorkspace, operations] = await Promise.all([
+    getSettings('forecasterWorkspace').catch(() => null),
+    getSettings('operations').catch(() => null),
+  ]);
+
+  const localSettings = readLocalSettings();
+  const nextSettings = {
+    ...DEFAULT_FORECASTER_WORKSPACE_SETTINGS,
+    ...(hasValues(forecasterWorkspace) ? forecasterWorkspace : localSettings),
+    operations: {
+      ...DEFAULT_OPERATIONS_SETTINGS,
+      ...(hasValues(operations) ? operations : localSettings.operations),
+    },
+  };
+
+  localStorage.setItem(FORECASTER_WORKSPACE_SETTINGS_KEY, JSON.stringify({
+    deadlineReminderMessage: nextSettings.deadlineReminderMessage,
+    revisionInstructionMessage: nextSettings.revisionInstructionMessage,
+  }));
+  localStorage.setItem(OPERATIONS_SETTINGS_KEY, JSON.stringify(nextSettings.operations));
+
+  return nextSettings;
+}
+
 export default function useForecasterWorkspaceSettings() {
-  const [settings, setSettings] = useState(() => readSettings());
+  const [settings, setSettings] = useState(() => readLocalSettings());
+
+  const refreshSettings = useCallback(() => {
+    setSettings(readLocalSettings());
+    readDatabaseSettings()
+      .then(setSettings)
+      .catch(() => setSettings(readLocalSettings()));
+  }, []);
 
   useEffect(() => {
-    const refreshSettings = () => setSettings(readSettings());
-
     const handleStorage = (event) => {
       if ([FORECASTER_WORKSPACE_SETTINGS_KEY, OPERATIONS_SETTINGS_KEY].includes(event.key)) {
         refreshSettings();
@@ -48,7 +83,7 @@ export default function useForecasterWorkspaceSettings() {
     };
 
     const handleCustomUpdate = (event) => {
-      if (!event.detail?.key || [FORECASTER_WORKSPACE_SETTINGS_KEY, OPERATIONS_SETTINGS_KEY].includes(event.detail.key)) {
+      if (!event.detail?.key || [FORECASTER_WORKSPACE_SETTINGS_KEY, OPERATIONS_SETTINGS_KEY, 'operations', 'forecasterWorkspace'].includes(event.detail.key)) {
         refreshSettings();
       }
     };
@@ -71,7 +106,7 @@ export default function useForecasterWorkspaceSettings() {
       window.removeEventListener('pageshow', refreshSettings);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [refreshSettings]);
 
   return settings;
 }
