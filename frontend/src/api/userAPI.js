@@ -2,6 +2,16 @@ const USER_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/users`;
 
 export const USER_UPDATED_EVENT = 'wavelab:user-updated';
 
+function normalizeUserPayload(user) {
+  if (!user || typeof user !== 'object') return user;
+
+  const { _id, ...rest } = user;
+  return {
+    ...rest,
+    id: user.id || _id,
+  };
+}
+
 function broadcastUserUpdate(user) {
   if (typeof window === 'undefined' || !user) return;
 
@@ -60,8 +70,10 @@ export const fetchAllUsers = ({ page = 1, limit = 10, search, status } = {}) => 
 /* -------------------------------------------------------
    GET USER DETAILS
 ------------------------------------------------------- */
-export const fetchUserDetails = (userId) =>
-  request(`${USER_API_BASE_URL}/${userId}`, { method: 'GET' });
+export const fetchUserDetails = async (userId) => {
+  const user = await request(`${USER_API_BASE_URL}/${userId}`, { method: 'GET' });
+  return normalizeUserPayload(user);
+};
 
 /* -------------------------------------------------------
    CREATE USER (Admin)
@@ -74,7 +86,7 @@ export const createUserAPI = async (payload) => {
 
   // backend returns: { message, user, defaultPassword }
   return {
-    user: data.user,
+    user: normalizeUserPayload(data.user),
     defaultPassword: data.defaultPassword,
     message: data.message,
   };
@@ -90,10 +102,10 @@ export const changePasswordAPI = (userId, { currentPassword, newPassword }) =>
    UPDATE USER PROFILE (allowedFields only)
 ------------------------------------------------------- */
 export const updateUserDetailsAPI = async (userId, payload) => {
-  const updated = await request(`${USER_API_BASE_URL}/${userId}`, {
+  const updated = normalizeUserPayload(await request(`${USER_API_BASE_URL}/${userId}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
-  });
+  }));
 
   broadcastUserUpdate(updated);
   return updated;
@@ -108,7 +120,7 @@ export const updateUserStatusAPI = async (userId, status) => {
     body: JSON.stringify({ status }),
   });
 
-  return data.user; // backend returns { message, user }
+  return normalizeUserPayload(data.user); // backend returns { message, user }
 };
 
 /* -------------------------------------------------------
