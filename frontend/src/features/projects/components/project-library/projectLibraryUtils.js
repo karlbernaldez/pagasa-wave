@@ -70,6 +70,7 @@ export function getAdminProjectStats(projects, total = projects.length, statusCo
     { value: getCount(statusCounts, "Submitted", projects), label: "Submitted", helper: "Awaiting admin review", tone: "slate" },
     { value: getCount(statusCounts, "Under Review", projects), label: "Under Review", helper: "In the review desk", tone: "amber" },
     { value: getCount(statusCounts, "Revision Requested", projects), label: "Returned", helper: "Revision requested", tone: "amber" },
+    { value: getCount(statusCounts, "No Publication", projects), label: "No Publication", helper: "Operational exception", tone: "amber" },
     { value: getCount(statusCounts, "Published", projects), label: "Published", helper: "Released forecast packages", tone: "emerald" },
   ];
 }
