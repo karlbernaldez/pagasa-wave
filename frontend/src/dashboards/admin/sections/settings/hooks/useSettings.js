@@ -14,6 +14,7 @@ const LS_GENERAL_KEY = 'admin.settings.general';
 const LS_OPERATIONS_KEY = 'admin.settings.operations';
 const LS_FORECASTER_WORKSPACE_KEY = 'admin.settings.forecasterWorkspace';
 const LS_ADMIN_REVIEW_KEY = 'admin.settings.adminReview';
+const SETTINGS_UPDATED_EVENT = 'wavelab:settings-updated';
 
 const LOCAL_KEYS = {
   general: LS_GENERAL_KEY,
@@ -33,6 +34,12 @@ const readLocal = (key, fallback) => {
     return fallback;
   }
 };
+
+function broadcastSettingsUpdate(key, value = null) {
+  window.dispatchEvent(new CustomEvent(SETTINGS_UPDATED_EVENT, {
+    detail: { key, value, updatedAt: Date.now() },
+  }));
+}
 
 const loadBootstrap = () => {
   if (bootstrapCache) return Promise.resolve(bootstrapCache);
@@ -117,6 +124,7 @@ export default function useSettings() {
     try {
       if (LOCAL_KEYS[activeTab]) {
         localStorage.setItem(LOCAL_KEYS[activeTab], JSON.stringify(payload));
+        broadcastSettingsUpdate(LOCAL_KEYS[activeTab], payload);
         setPages((prev) => ({ ...prev, [activeTab]: { ...prev[activeTab], ...payload } }));
         setStatus({ type: 'success', message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} settings saved.` });
       } else {
@@ -126,6 +134,7 @@ export default function useSettings() {
           ...(bootstrapCache || {}),
           [activeTab]: { ...(bootstrapCache?.[activeTab] || {}), ...payload },
         };
+        broadcastSettingsUpdate(activeTab, payload);
         setStatus({ type: 'success', message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} page saved to database.` });
       }
     } catch (err) {
@@ -149,8 +158,10 @@ export default function useSettings() {
 
     if (LOCAL_KEYS[activeTab]) {
       localStorage.removeItem(LOCAL_KEYS[activeTab]);
+      broadcastSettingsUpdate(LOCAL_KEYS[activeTab], defaults[activeTab]);
     } else {
       bootstrapCache = { ...(bootstrapCache || {}), [activeTab]: defaults[activeTab] };
+      broadcastSettingsUpdate(activeTab, defaults[activeTab]);
     }
 
     setStatus({ type: 'success', message: 'Reset to default values.' });
