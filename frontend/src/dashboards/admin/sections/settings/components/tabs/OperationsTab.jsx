@@ -10,26 +10,6 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function ToggleRow({ title, description, checked, onChange, dark }) {
-  return (
-    <label className={cn(
-      'flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-all duration-200',
-      checked
-        ? dark ? 'border-cyan-400/40 bg-cyan-400/10' : 'border-cyan-200 bg-cyan-50'
-        : dark ? 'border-slate-700 bg-slate-800/30' : 'border-slate-200 bg-slate-50',
-    )}>
-      <div className={cn('relative h-6 w-11 rounded-full transition-colors duration-300', checked ? 'bg-cyan-500' : dark ? 'bg-slate-700' : 'bg-slate-300')}>
-        <div className={cn('absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all duration-300', checked ? 'left-6' : 'left-1')} />
-        <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="sr-only" />
-      </div>
-      <div className="min-w-0">
-        <p className={cn('text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>{title}</p>
-        <p className={cn('mt-1 text-xs font-semibold leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>{description}</p>
-      </div>
-    </label>
-  );
-}
-
 function NumberField({ label, value, onChange, min = 0, dark, suffix }) {
   return (
     <div>
@@ -53,13 +33,9 @@ function SelectField({ label, value, onChange, options, dark }) {
   );
 }
 
-function InfoCard({ title, children, dark, tone = 'cyan' }) {
-  const toneClass = tone === 'amber'
-    ? dark ? 'border-amber-300/20 bg-amber-400/10 text-amber-100' : 'border-amber-100 bg-amber-50/80 text-amber-800'
-    : dark ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50/80 text-cyan-800';
-
+function InfoCard({ title, children, dark }) {
   return (
-    <div className={cn('rounded-xl border p-4 text-sm font-semibold leading-6', toneClass)}>
+    <div className={cn('rounded-xl border p-4 text-sm font-semibold leading-6', dark ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50/80 text-cyan-800')}>
       <p className="mb-1 text-xs font-black uppercase tracking-wide opacity-80">{title}</p>
       {children}
     </div>
@@ -84,7 +60,7 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
   return (
     <div className="flex flex-col gap-4">
       <InfoCard title="Forecast package lifecycle" dark={dark}>
-        These are the cross-dashboard operational rules: when the daily package opens, when it should be submitted, how long forecast windows last, and when old work leaves active operations.
+        Configure operational timings, deadline windows, exception reasons, and retention periods for daily forecast packages.
       </InfoCard>
 
       <Accordion icon={CalendarClock} title="Daily Forecast Package Schedule" dark={dark} defaultOpen>
@@ -115,24 +91,15 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
 
       <Accordion icon={AlertTriangle} title="No Publication / Operational Exception" dark={dark}>
         <div className="grid gap-4">
-          <InfoCard title="No delete rule" dark={dark} tone="amber">
-            Official daily packages should never be deleted. If no chart is produced, model data is unavailable, or a server outage blocks publication, mark the package as No Publication / Operational Exception and keep the record for calendar, analytics, and audit history.
-          </InfoCard>
           <TextareaField label="Allowed No-Publication Reasons" value={reasonsText} onChange={setReasons} rows={7} dark={dark} />
-          <ToggleRow title="Official daily packages are never deleted" description="Only duplicate, test, or corrupted records should be manually deleted. Daily operational records remain auditable." checked={!!settings.officialDailyPackagesAreNeverDeleted} onChange={set('officialDailyPackagesAreNeverDeleted')} dark={dark} />
         </div>
       </Accordion>
 
       <Accordion icon={Archive} title="Archive and Retention" dark={dark}>
-        <div className="grid gap-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <NumberField label="Archive Published Packages After" value={settings.archivePublishedAfterDays} onChange={set('archivePublishedAfterDays')} min={1} suffix="days" dark={dark} />
-            <NumberField label="Archive No-Publication Packages After" value={settings.archiveNoPublicationAfterDays} onChange={set('archiveNoPublicationAfterDays')} min={1} suffix="days" dark={dark} />
-            <NumberField label="Keep Draft Projects For" value={settings.keepDraftProjectsDays} onChange={set('keepDraftProjectsDays')} min={1} suffix="days" dark={dark} />
-          </div>
-
-          <ToggleRow title="Archive published packages automatically" description="Move published packages out of active operations after the retention window." checked={!!settings.autoArchivePublishedPackages} onChange={set('autoArchivePublishedPackages')} dark={dark} />
-          <ToggleRow title="Archive no-publication packages automatically" description="Move no-publication exception packages to archive after the retention window, without deleting them." checked={!!settings.autoArchiveNoPublicationPackages} onChange={set('autoArchiveNoPublicationPackages')} dark={dark} />
+        <div className="grid gap-4 md:grid-cols-3">
+          <NumberField label="Archive Published Packages After" value={settings.archivePublishedAfterDays} onChange={set('archivePublishedAfterDays')} min={1} suffix="days" dark={dark} />
+          <NumberField label="Archive No-Publication Packages After" value={settings.archiveNoPublicationAfterDays} onChange={set('archiveNoPublicationAfterDays')} min={1} suffix="days" dark={dark} />
+          <NumberField label="Keep Draft Projects For" value={settings.keepDraftProjectsDays} onChange={set('keepDraftProjectsDays')} min={1} suffix="days" dark={dark} />
         </div>
       </Accordion>
     </div>
