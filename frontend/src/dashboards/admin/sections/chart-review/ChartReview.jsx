@@ -4,8 +4,8 @@ const ChartReviewSection = () => {
   return (
     <ProjectLibraryPage
       role="admin"
-      title="Forecast Operations"
-      description="Review, approve, and manage submitted marine forecast projects."
+      title="Review Forecast Packages"
+      description="Prioritize today's daily forecast package while keeping approved, rejected, published, and past packages available for review history."
     />
   );
 };
