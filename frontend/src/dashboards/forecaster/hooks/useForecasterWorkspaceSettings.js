@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-const FORECASTER_WORKSPACE_SETTINGS_KEY = 'admin.settings.forecasterWorkspace';
-const OPERATIONS_SETTINGS_KEY = 'admin.settings.operations';
+export const FORECASTER_WORKSPACE_SETTINGS_KEY = 'admin.settings.forecasterWorkspace';
+export const OPERATIONS_SETTINGS_KEY = 'admin.settings.operations';
+export const SETTINGS_UPDATED_EVENT = 'wavelab:settings-updated';
+
 const DEFAULT_TIMEZONE = 'Asia/Manila';
 
 const DEFAULT_FORECASTER_WORKSPACE_SETTINGS = {
@@ -26,63 +28,6 @@ function readJsonSettings(key, fallback) {
   }
 }
 
-function parseTimeToMinutes(value) {
-  const match = String(value || '').match(/^(\d{2}):(\d{2})$/);
-  if (!match) return null;
-
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-
-  return hours * 60 + minutes;
-}
-
-function getZonedMinutes(date, timezone = DEFAULT_TIMEZONE) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone: timezone || DEFAULT_TIMEZONE,
-  }).formatToParts(date);
-
-  const getPart = (type) => parts.find((part) => part.type === type)?.value;
-  const hours = Number(getPart('hour'));
-  const minutes = Number(getPart('minute'));
-
-  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
-}
-
-function getDeadlineAwareMessage(settings, now) {
-  const operations = settings.operations || DEFAULT_OPERATIONS_SETTINGS;
-  const nowMinutes = getZonedMinutes(now, operations.timezone || DEFAULT_TIMEZONE);
-  const deadlineMinutes = parseTimeToMinutes(operations.packageSubmissionDeadline);
-  const publishTargetMinutes = parseTimeToMinutes(operations.packagePublishTarget);
-  const noPublicationCutoffMinutes = parseTimeToMinutes(operations.noPublicationCutoff);
-  const warningMinutes = Number(operations.deadlineWarningMinutes ?? 60);
-
-  if (nowMinutes === null || deadlineMinutes === null) {
-    return settings.deadlineReminderMessage;
-  }
-
-  if (noPublicationCutoffMinutes !== null && nowMinutes >= noPublicationCutoffMinutes) {
-    return 'NO-PUBLICATION CUTOFF REACHED — Complete the package immediately or coordinate with Admin for an operational exception.';
-  }
-
-  if (publishTargetMinutes !== null && nowMinutes >= publishTargetMinutes) {
-    return 'PUBLISH TARGET MISSED — Submit late if possible and coordinate with Admin so the daily record can be resolved.';
-  }
-
-  if (nowMinutes >= deadlineMinutes) {
-    return 'DEADLINE PASSED — Submit late if possible or coordinate with Admin before the no-publication cutoff.';
-  }
-
-  if (Number.isFinite(warningMinutes) && nowMinutes >= deadlineMinutes - warningMinutes) {
-    return 'DEADLINE APPROACHING — Finish the required charts and submit the package as soon as possible.';
-  }
-
-  return settings.deadlineReminderMessage;
-}
-
 function readSettings() {
   return {
     ...readJsonSettings(FORECASTER_WORKSPACE_SETTINGS_KEY, DEFAULT_FORECASTER_WORKSPACE_SETTINGS),
@@ -92,35 +37,41 @@ function readSettings() {
 
 export default function useForecasterWorkspaceSettings() {
   const [settings, setSettings] = useState(() => readSettings());
-  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    setSettings(readSettings());
+    const refreshSettings = () => setSettings(readSettings());
 
     const handleStorage = (event) => {
       if ([FORECASTER_WORKSPACE_SETTINGS_KEY, OPERATIONS_SETTINGS_KEY].includes(event.key)) {
-        setSettings(readSettings());
+        refreshSettings();
       }
     };
 
-    const handleFocus = () => {
-      setSettings(readSettings());
-      setNow(new Date());
+    const handleCustomUpdate = (event) => {
+      if (!event.detail?.key || [FORECASTER_WORKSPACE_SETTINGS_KEY, OPERATIONS_SETTINGS_KEY].includes(event.detail.key)) {
+        refreshSettings();
+      }
     };
 
-    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) refreshSettings();
+    };
 
+    refreshSettings();
     window.addEventListener('storage', handleStorage);
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener(SETTINGS_UPDATED_EVENT, handleCustomUpdate);
+    window.addEventListener('focus', refreshSettings);
+    window.addEventListener('pageshow', refreshSettings);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
-      window.clearInterval(timer);
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener(SETTINGS_UPDATED_EVENT, handleCustomUpdate);
+      window.removeEventListener('focus', refreshSettings);
+      window.removeEventListener('pageshow', refreshSettings);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
-  return useMemo(() => ({
-    ...settings,
-    deadlineReminderMessage: getDeadlineAwareMessage(settings, now),
-  }), [settings, now]);
+  return settings;
 }
