@@ -7,7 +7,6 @@ import {
   Loader2,
   RefreshCw,
   ShieldCheck,
-  Waves,
 } from 'lucide-react';
 import {
   Area,
@@ -74,22 +73,6 @@ function normalizeUser(user) {
   };
 }
 
-function formatRelative(value) {
-  if (!value) return 'No refresh yet';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'No refresh yet';
-
-  const diffMinutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
-  if (diffMinutes < 1) return 'just now';
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-
-  const diffHours = Math.round(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-
-  const diffDays = Math.round(diffHours / 24);
-  return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-}
-
 function formatHours(hours) {
   if (!Number.isFinite(hours) || hours <= 0) return '0h';
   if (hours < 10) return `${hours.toFixed(1)}h`;
@@ -128,15 +111,29 @@ function isReviewablePackage(forecastPackage) {
   return REVIEWABLE_STATUSES.has(forecastPackage.status);
 }
 
-function getDecisionDate(forecastPackage) {
-  if (!APPROVED_STATUSES.has(forecastPackage.status) && !RETURNED_STATUSES.has(forecastPackage.status)) return null;
-  return forecastPackage.reviewedAt || forecastPackage.publishedAt || forecastPackage.updatedAt || null;
+function getSubmittedDate(forecastPackage) {
+  return forecastPackage.submittedAt || null;
 }
 
-function getDecisionHours(forecastPackage) {
-  const start = new Date(forecastPackage.submittedAt || forecastPackage.createdAt || forecastPackage.updatedAt);
-  const endValue = getDecisionDate(forecastPackage);
-  const end = new Date(endValue);
+function getApprovalPublishDate(forecastPackage) {
+  if (!APPROVED_STATUSES.has(forecastPackage.status)) return null;
+  return forecastPackage.publishedAt || forecastPackage.reviewedAt || forecastPackage.updatedAt || null;
+}
+
+function getSubmissionHours(forecastPackage) {
+  const start = new Date(forecastPackage.createdAt);
+  const submittedAt = getSubmittedDate(forecastPackage);
+  const end = new Date(submittedAt);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return Math.max(0, (end.getTime() - start.getTime()) / 3600000);
+}
+
+function getApprovalPublishHours(forecastPackage) {
+  const submittedAt = getSubmittedDate(forecastPackage);
+  const approvedAt = getApprovalPublishDate(forecastPackage);
+  const start = new Date(submittedAt);
+  const end = new Date(approvedAt);
 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
   return Math.max(0, (end.getTime() - start.getTime()) / 3600000);
@@ -208,7 +205,8 @@ function buildRecentOutcomeRows(packages) {
     .sort((a, b) => new Date(packageTimestamp(b)).getTime() - new Date(packageTimestamp(a)).getTime())
     .slice(0, 6)
     .map((forecastPackage) => {
-      const decisionHours = getDecisionHours(forecastPackage);
+      const submissionHours = getSubmissionHours(forecastPackage);
+      const approvalPublishHours = getApprovalPublishHours(forecastPackage);
 
       return {
         id: forecastPackage.id,
@@ -217,9 +215,16 @@ function buildRecentOutcomeRows(packages) {
         status: forecastPackage.status,
         owner: forecastPackage.ownerLabel || 'Forecast team',
         chartCount: getChartCount(forecastPackage),
-        decisionTime: decisionHours == null ? null : formatHours(decisionHours),
+        submissionTime: submissionHours == null ? null : formatHours(submissionHours),
+        approvalTime: approvalPublishHours == null ? null : formatHours(approvalPublishHours),
       };
     });
+}
+
+function average(values) {
+  const usableValues = values.filter((value) => Number.isFinite(value));
+  if (!usableValues.length) return 0;
+  return usableValues.reduce((sum, value) => sum + value, 0) / usableValues.length;
 }
 
 function CustomTooltip({ active, payload, label, isDarkMode }) {
@@ -309,14 +314,11 @@ export default function AnalyticsSection({ isDarkMode }) {
     const returned = reviewablePackages.filter((forecastPackage) => RETURNED_STATUSES.has(forecastPackage.status)).length;
     const approved = reviewablePackages.filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status)).length;
     const decisions = approved + returned;
-    const totalCharts = reviewablePackages.reduce((sum, forecastPackage) => sum + getChartCount(forecastPackage), 0);
 
-    const decisionHours = reviewablePackages
-      .map(getDecisionHours)
-      .filter((value) => Number.isFinite(value));
-    const averageDecisionHours = decisionHours.length
-      ? decisionHours.reduce((sum, value) => sum + value, 0) / decisionHours.length
-      : 0;
+    const submissionHours = reviewablePackages.map(getSubmissionHours);
+    const approvalPublishHours = reviewablePackages
+      .filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status))
+      .map(getApprovalPublishHours);
 
     const activeUsers = state.users.filter((user) => user.status === 'active').length;
 
@@ -330,11 +332,11 @@ export default function AnalyticsSection({ isDarkMode }) {
       returned,
       approved,
       decisions,
-      totalCharts,
       approvalRate: percent(approved, decisions),
       returnRate: percent(returned, decisions),
       reviewCompletionRate: percent(decisions, reviewablePackages.length),
-      averageDecisionHours,
+      averageSubmissionHours: average(submissionHours),
+      averageApprovalPublishHours: average(approvalPublishHours),
       activeUsers,
     };
   }, [state.packages, state.users]);
@@ -346,7 +348,7 @@ export default function AnalyticsSection({ isDarkMode }) {
           <div className="flex flex-col items-center gap-3 text-center">
             <Loader2 className={cn('h-8 w-8 animate-spin', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
             <p className={cn('text-sm font-black', text)}>Loading package analytics</p>
-            <p className={cn('text-xs font-semibold', muted)}>Aggregating daily package outcomes and admin decision timing.</p>
+            <p className={cn('text-xs font-semibold', muted)}>Aggregating daily package submission speed and approval timing.</p>
           </div>
         </div>
       </div>
@@ -359,7 +361,7 @@ export default function AnalyticsSection({ isDarkMode }) {
         <div>
           <p className={cn('text-sm font-black', text)}>Operational analytics</p>
           <p className={cn('mt-1 text-xs font-semibold', muted)}>
-            Focused on submitted daily forecast packages, final decisions, successful daily operations, return rate, and review speed. Draft/setup packages are excluded.
+            Focused on submitted daily forecast packages, successful daily operations, return rate, preparation speed, and approval/publish speed. Draft/setup packages are excluded.
           </p>
         </div>
 
@@ -389,8 +391,8 @@ export default function AnalyticsSection({ isDarkMode }) {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard icon={CalendarCheck2} label="Today's Package" value={analytics.todayPackage?.status || 'None'} helper={analytics.todayPackage ? `${getChartCount(analytics.todayPackage)} linked charts` : 'No submitted package today'} tone={analytics.todayPackage ? 'cyan' : 'amber'} isDarkMode={isDarkMode} />
-        <MetricCard icon={CheckCircle2} label="Approved / Published" value={analytics.approved} helper={`${analytics.approvalRate}% approval rate from decisions`} tone="emerald" isDarkMode={isDarkMode} />
-        <MetricCard icon={Clock3} label="Avg Decision Time" value={formatHours(analytics.averageDecisionHours)} helper="Submission to decision" tone="blue" isDarkMode={isDarkMode} />
+        <MetricCard icon={Clock3} label="Avg Submit Time" value={formatHours(analytics.averageSubmissionHours)} helper="Package creation to submission" tone="blue" isDarkMode={isDarkMode} />
+        <MetricCard icon={CheckCircle2} label="Avg Approval Time" value={formatHours(analytics.averageApprovalPublishHours)} helper="Submission to approved/published" tone="emerald" isDarkMode={isDarkMode} />
         <MetricCard icon={ShieldCheck} label="Return Rate" value={`${analytics.returnRate}%`} helper={`${analytics.returned} returned or rejected`} tone={analytics.returnRate > 25 ? 'amber' : 'cyan'} isDarkMode={isDarkMode} />
       </section>
 
@@ -454,7 +456,7 @@ export default function AnalyticsSection({ isDarkMode }) {
             <RatioRow label="Returned package rate" value={analytics.returnRate} isDarkMode={isDarkMode} tone={analytics.returnRate > 25 ? 'amber' : 'cyan'} />
             <RatioRow label="Active user share" value={percent(analytics.activeUsers, state.totalUsers)} isDarkMode={isDarkMode} tone="emerald" />
             <div className={cn('rounded-xl border p-3 text-xs font-semibold backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-400' : 'border-white/80 bg-white/65 text-slate-500')}>
-              Successful outcomes only list approved or published daily packages. Returned/rejected packages stay visible in return-rate and decision-funnel analytics.
+              Submit time measures package creation to submission. Approval time measures submission to approved or published status. Returned/rejected packages stay visible in return-rate and decision-funnel analytics.
             </div>
           </div>
         </Panel>
@@ -474,9 +476,10 @@ function Panel({ title, description, isDarkMode, children }) {
 
 function OutcomeRow({ item, isDarkMode }) {
   const tone = STATUS_TONE[item.status] || 'border-slate-400/20 bg-slate-400/10 text-slate-500';
-  const timing = item.decisionTime ? `Decision: ${item.decisionTime}` : 'Decision timing unavailable';
+  const submitTiming = item.submissionTime ? `Submit: ${item.submissionTime}` : 'Submit timing unavailable';
+  const approvalTiming = item.approvalTime ? `Approve: ${item.approvalTime}` : 'Approval timing unavailable';
 
-  return <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{item.dateLabel}</p><p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{item.owner} - {item.chartCount} charts - {timing}</p></div><span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black', tone)}>{item.status}</span></div></div>;
+  return <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{item.dateLabel}</p><p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{item.owner} - {item.chartCount} charts - {submitTiming} - {approvalTiming}</p></div><span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black', tone)}>{item.status}</span></div></div>;
 }
 
 function BarBlock({ data, dataKey, nameKey, color, isDarkMode, emptyTitle, emptyDescription }) {
