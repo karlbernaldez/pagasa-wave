@@ -1,11 +1,15 @@
 import { CheckCircle2, Clock3, ExternalLink, PackageCheck, RotateCcw, XCircle } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
-import { CHART_LABELS, isDailyForecastPackage } from '@/features/projects/utils/forecastPackageGrouping';
+import { CHART_LABELS, formatPackageDate, isDailyForecastPackage } from '@/features/projects/utils/forecastPackageGrouping';
 import { getProjectStatusLabel, getProjectStatusStyle } from '@/features/projects/projectStatuses';
 
 const PACKAGE_STATUS_STYLES = {
-  'Needs Review': {
+  Submitted: {
+    light: 'border-slate-200 bg-slate-100 text-slate-700',
+    dark: 'border-white/10 bg-white/[0.05] text-slate-300',
+  },
+  'Under Review': {
     light: 'border-amber-200 bg-amber-50 text-amber-700',
     dark: 'border-amber-400/30 bg-amber-400/10 text-amber-200',
   },
@@ -13,15 +17,23 @@ const PACKAGE_STATUS_STYLES = {
     light: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     dark: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200',
   },
-  Returned: {
+  Published: {
+    light: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    dark: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200',
+  },
+  Rejected: {
     light: 'border-rose-200 bg-rose-50 text-rose-700',
     dark: 'border-rose-400/30 bg-rose-400/10 text-rose-200',
   },
-  Closed: {
+  'Revision Requested': {
+    light: 'border-rose-200 bg-rose-50 text-rose-700',
+    dark: 'border-rose-400/30 bg-rose-400/10 text-rose-200',
+  },
+  Archived: {
     light: 'border-slate-200 bg-slate-100 text-slate-600',
     dark: 'border-white/10 bg-white/[0.05] text-slate-300',
   },
-  'In Progress': {
+  Draft: {
     light: 'border-blue-200 bg-blue-50 text-blue-700',
     dark: 'border-blue-400/30 bg-blue-400/10 text-blue-200',
   },
@@ -39,22 +51,23 @@ function PackageMetric({ icon: Icon, label, value, isDarkMode }) {
   );
 }
 
-function ChartRow({ chart, isDarkMode, onOpenChart }) {
-  const statusClass = getProjectStatusStyle(chart.status);
+function ChartRow({ chartRow, isDarkMode, onOpenChart }) {
+  const chart = chartRow.project;
+  const statusClass = getProjectStatusStyle(chart?.status);
 
   return (
     <div className={`flex flex-col gap-3 rounded-2xl border p-3 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-white/10 bg-slate-950/35' : 'border-slate-200 bg-slate-50/80'}`}>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className={`text-sm font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-            {CHART_LABELS[chart.chartType] || chart.chartType || 'Forecast Chart'}
+            {CHART_LABELS[chartRow.chartType] || chartRow.chartType || 'Forecast Chart'}
           </p>
           <span className={`inline-flex max-w-full shrink-0 truncate rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusClass}`}>
-            {getProjectStatusLabel(chart.status)}
+            {getProjectStatusLabel(chart?.status)}
           </span>
         </div>
-        <p className={`mt-1 truncate text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`} title={chart.name || chart.title}>
-          {chart.name || chart.title || 'Untitled chart'}
+        <p className={`mt-1 truncate text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`} title={chart?.name || chart?.title}>
+          {chart?.name || chart?.title || 'Untitled chart'}
         </p>
       </div>
 
@@ -67,7 +80,8 @@ function ChartRow({ chart, isDarkMode, onOpenChart }) {
 
 export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpenChart }) {
   const isDaily = isDailyForecastPackage(forecastPackage);
-  const statusStyle = PACKAGE_STATUS_STYLES[forecastPackage.status] ?? PACKAGE_STATUS_STYLES['In Progress'];
+  const statusStyle = PACKAGE_STATUS_STYLES[forecastPackage.status] ?? PACKAGE_STATUS_STYLES.Draft;
+  const packageDateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
 
   return (
     <article className={`overflow-hidden rounded-3xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
@@ -92,11 +106,11 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
               {forecastPackage.title}
             </h3>
             <p className={`mt-1 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              {forecastPackage.ownerLabel} · {forecastPackage.chartCount} chart{forecastPackage.chartCount === 1 ? '' : 's'} in this package
+              {packageDateLabel} · {forecastPackage.ownerLabel} · {forecastPackage.chartCount} chart{forecastPackage.chartCount === 1 ? '' : 's'}
             </p>
           </div>
 
-          <Button icon={PackageCheck} onClick={() => onOpenChart?.(forecastPackage.primaryChart)}>
+          <Button icon={PackageCheck} onClick={() => onOpenChart?.(forecastPackage.primaryChart, forecastPackage)}>
             Review package
           </Button>
         </div>
@@ -109,8 +123,8 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
       </div>
 
       <div className="space-y-2 px-4 pb-4">
-        {forecastPackage.charts.map((chart) => (
-          <ChartRow key={chart._id || chart.id} chart={chart} isDarkMode={isDarkMode} onOpenChart={onOpenChart} />
+        {forecastPackage.charts.map((chartRow) => (
+          <ChartRow key={chartRow.project?._id || chartRow.project?.id || chartRow.chartType} chartRow={chartRow} isDarkMode={isDarkMode} onOpenChart={(chart) => onOpenChart?.(chart, forecastPackage)} />
         ))}
       </div>
     </article>
