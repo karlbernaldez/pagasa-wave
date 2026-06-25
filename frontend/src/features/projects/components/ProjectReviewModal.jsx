@@ -127,7 +127,7 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
         <header className={`flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500 sm:text-xs">Project Review</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500 sm:text-xs">Forecast Chart Review</p>
               <span className={`${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-100 bg-blue-50 text-blue-700'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>
                 {statusLabel}
               </span>
