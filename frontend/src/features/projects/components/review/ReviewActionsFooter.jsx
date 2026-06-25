@@ -1,6 +1,8 @@
-import { AlertCircle, Check, MessageSquareText, Send } from 'lucide-react';
+import { AlertCircle, Check, MessageSquareText, Send, ShieldAlert } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
+
+const NO_PUBLICATION_REASON = 'Operational exception / no verified publication';
 
 export default function ReviewActionsFooter({
   isReviewable = false,
@@ -15,6 +17,7 @@ export default function ReviewActionsFooter({
   onRequestRevision,
   onApprove,
   onReject,
+  onNoPublication,
   onPublish,
   onClose,
 }) {
@@ -68,13 +71,13 @@ export default function ReviewActionsFooter({
               Approve
             </Button>
             <Button
-              variant={hasRemarks && isUnderReview ? 'danger' : 'ghost'}
-              icon={AlertCircle}
-              loading={busyAction === 'reject'}
+              variant={hasRemarks && isUnderReview ? 'secondary' : 'ghost'}
+              icon={ShieldAlert}
+              loading={busyAction === 'noPublication'}
               disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
-              onClick={onReject}
+              onClick={() => onNoPublication?.(NO_PUBLICATION_REASON)}
             >
-              Reject
+              No Publication
             </Button>
           </div>
         )}
@@ -97,7 +100,7 @@ export default function ReviewActionsFooter({
 
       {!hasRemarks && isReviewable && (
         <p className={`mt-2 text-center text-[11px] font-semibold ${isDarkMode ? 'text-slate-600' : 'text-slate-400'} ${disabledReviewButton}`}>
-          Add remarks to enable comment, revision, or reject actions.
+          Add remarks to enable comment, revision, or no-publication actions.
         </p>
       )}
     </div>
