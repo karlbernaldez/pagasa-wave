@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  BarChart3,
   CheckCircle2,
   Clock3,
   Loader2,
   PackageCheck,
   RefreshCw,
-  Users,
   Waves,
 } from 'lucide-react';
 import {
@@ -28,7 +26,6 @@ import {
 import { fetchAdminForecastPackages } from '@/api/forecastPackageAPI';
 import { fetchAllUsers } from '@/api/userAPI';
 import {
-  CHART_LABELS,
   adaptForecastPackageModel,
   getDateKey,
 } from '@/features/projects/utils/forecastPackageGrouping';
@@ -37,7 +34,7 @@ const cn = (...classes) => classes.filter(Boolean).join(' ');
 const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
 const APPROVED_STATUSES = new Set(['Approved', 'Published']);
-const DAILY_CHART_TYPES = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
+const REQUIRED_CHARTS_PER_PACKAGE = 4;
 
 const STATUS_COLORS = {
   Submitted: '#38bdf8',
@@ -107,6 +104,10 @@ function packageTimestamp(forecastPackage) {
   return forecastPackage?.submittedAt || forecastPackage?.reviewedAt || forecastPackage?.updatedAt || forecastPackage?.createdAt;
 }
 
+function getChartCount(forecastPackage) {
+  return forecastPackage.chartCount || forecastPackage.charts?.length || 0;
+}
+
 function buildDailySeries(packages) {
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, index) => {
@@ -131,7 +132,7 @@ function buildDailySeries(packages) {
 
     const day = byKey.get(key);
     day.packages += 1;
-    day.charts += forecastPackage.chartCount || forecastPackage.charts?.length || 0;
+    day.charts += getChartCount(forecastPackage);
     if (APPROVED_STATUSES.has(forecastPackage.status) || RETURNED_STATUSES.has(forecastPackage.status)) {
       day.reviewed += 1;
     }
@@ -140,20 +141,41 @@ function buildDailySeries(packages) {
   return days;
 }
 
-function buildChartTypeSeries(packages) {
-  const counts = new Map(DAILY_CHART_TYPES.map((type) => [type, 0]));
+function buildPackageReadinessSeries(packages) {
+  const buckets = {
+    Complete: 0,
+    Partial: 0,
+    Empty: 0,
+  };
 
   packages.forEach((forecastPackage) => {
-    (forecastPackage.charts || []).forEach((chart) => {
-      const type = chart.chartType || chart.project?.chartType || 'forecast';
-      counts.set(type, (counts.get(type) || 0) + 1);
-    });
+    const chartCount = getChartCount(forecastPackage);
+    if (chartCount >= REQUIRED_CHARTS_PER_PACKAGE) {
+      buckets.Complete += 1;
+    } else if (chartCount > 0) {
+      buckets.Partial += 1;
+    } else {
+      buckets.Empty += 1;
+    }
   });
 
-  return [...counts.entries()].map(([type, value]) => ({
-    type: CHART_LABELS[type] || type.replace(/_/g, ' '),
-    value,
-  }));
+  return [
+    {
+      label: 'Complete packages',
+      description: '4 of 4 charts linked',
+      value: buckets.Complete,
+    },
+    {
+      label: 'Partial packages',
+      description: '1-3 charts linked',
+      value: buckets.Partial,
+    },
+    {
+      label: 'Empty packages',
+      description: 'No charts linked',
+      value: buckets.Empty,
+    },
+  ];
 }
 
 function buildStatusRows(packages) {
@@ -271,8 +293,8 @@ export default function AnalyticsSection({ isDarkMode }) {
     const returned = state.packages.filter((forecastPackage) => RETURNED_STATUSES.has(forecastPackage.status)).length;
     const approved = state.packages.filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status)).length;
     const decisions = approved + returned;
-    const totalCharts = state.packages.reduce((sum, forecastPackage) => sum + (forecastPackage.chartCount || forecastPackage.charts?.length || 0), 0);
-    const completePackages = state.packages.filter((forecastPackage) => (forecastPackage.chartCount || 0) >= 4).length;
+    const totalCharts = state.packages.reduce((sum, forecastPackage) => sum + getChartCount(forecastPackage), 0);
+    const completePackages = state.packages.filter((forecastPackage) => getChartCount(forecastPackage) >= REQUIRED_CHARTS_PER_PACKAGE).length;
 
     const queuePackages = state.packages.filter((forecastPackage) => REVIEW_STATUSES.has(forecastPackage.status));
     const queueHours = queuePackages.map((forecastPackage) => {
@@ -290,7 +312,7 @@ export default function AnalyticsSection({ isDarkMode }) {
     return {
       statusRows: buildStatusRows(state.packages),
       dailySeries: buildDailySeries(state.packages),
-      typeSeries: buildChartTypeSeries(state.packages),
+      packageReadinessSeries: buildPackageReadinessSeries(state.packages),
       ownerSeries: buildOwnerSeries(state.packages),
       reviewQueue,
       returned,
@@ -373,7 +395,7 @@ export default function AnalyticsSection({ isDarkMode }) {
                 <YAxis allowDecimals={false} tick={{ fill: axisColor, fontSize: 12 }} tickLine={false} axisLine={false} />
                 <Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} />
                 <Area type="monotone" dataKey="packages" name="Packages" stroke="#38bdf8" fill="url(#packagesFill)" strokeWidth={2} />
-                <Area type="monotone" dataKey="charts" name="Charts" stroke="#10b981" fill="url(#chartsFill)" strokeWidth={2} />
+                <Area type="monotone" dataKey="charts" name="Linked Charts" stroke="#10b981" fill="url(#chartsFill)" strokeWidth={2} />
                 <Area type="monotone" dataKey="reviewed" name="Reviewed" stroke="#8b5cf6" fill="transparent" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
@@ -399,8 +421,11 @@ export default function AnalyticsSection({ isDarkMode }) {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-3">
-        <Panel title="Analysis & Forecast Mix" description="Chart products represented in forecast packages." isDarkMode={isDarkMode}>
-          <BarBlock data={analytics.typeSeries} dataKey="value" nameKey="type" color="#06b6d4" isDarkMode={isDarkMode} emptyTitle="No chart slots" emptyDescription="Chart type mix will appear after packages are available." />
+        <Panel title="Package Readiness" description="Whether forecast packages have the required 4 chart products linked." isDarkMode={isDarkMode}>
+          <BarBlock data={analytics.packageReadinessSeries} dataKey="value" nameKey="label" color="#06b6d4" isDarkMode={isDarkMode} emptyTitle="No package readiness data" emptyDescription="Readiness appears after forecast packages are available." />
+          <p className={cn('mt-3 text-xs font-semibold leading-5', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+            Submitted packages should be complete. Partial or empty packages indicate draft/setup work, not a valid review submission.
+          </p>
         </Panel>
 
         <Panel title="Forecast Team Throughput" description="Package volume by owner/team label." isDarkMode={isDarkMode}>
@@ -413,7 +438,7 @@ export default function AnalyticsSection({ isDarkMode }) {
             <RatioRow label="Returned package rate" value={percent(analytics.returned, analytics.returned + analytics.approved)} isDarkMode={isDarkMode} tone={analytics.returned > analytics.approved ? 'amber' : 'cyan'} />
             <RatioRow label="Active user share" value={percent(analytics.activeUsers, state.totalUsers)} isDarkMode={isDarkMode} tone="emerald" />
             <div className={cn('rounded-xl border p-3 text-xs font-semibold backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-400' : 'border-white/80 bg-white/65 text-slate-500')}>
-              Analytics now use forecast packages as the primary unit and chart slots as the secondary unit.
+              Analytics now use forecast packages as the primary unit. Linked chart counts are shown only as package readiness context.
             </div>
           </div>
         </Panel>
@@ -433,7 +458,7 @@ function Panel({ title, description, isDarkMode, children }) {
 
 function BarBlock({ data, dataKey, nameKey, color, isDarkMode, emptyTitle, emptyDescription }) {
   if (!data.length || data.every((item) => !item[dataKey])) return <EmptyState isDarkMode={isDarkMode} title={emptyTitle} description={emptyDescription} />;
-  return <div className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 12, bottom: 4 }}><CartesianGrid stroke={isDarkMode ? 'rgba(148,163,184,0.12)' : 'rgba(100,116,139,0.16)'} horizontal={false} /><XAxis type="number" allowDecimals={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} /><YAxis type="category" dataKey={nameKey} width={96} tick={{ fill: isDarkMode ? '#cbd5e1' : '#475569', fontSize: 12, fontWeight: 700 }} tickLine={false} axisLine={false} /><Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} /><Bar dataKey={dataKey} fill={color} radius={[0, 8, 8, 0]} /></BarChart></ResponsiveContainer></div>;
+  return <div className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 12, bottom: 4 }}><CartesianGrid stroke={isDarkMode ? 'rgba(148,163,184,0.12)' : 'rgba(100,116,139,0.16)'} horizontal={false} /><XAxis type="number" allowDecimals={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} /><YAxis type="category" dataKey={nameKey} width={128} tick={{ fill: isDarkMode ? '#cbd5e1' : '#475569', fontSize: 12, fontWeight: 700 }} tickLine={false} axisLine={false} /><Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} /><Bar dataKey={dataKey} fill={color} radius={[0, 8, 8, 0]} /></BarChart></ResponsiveContainer></div>;
 }
 
 function RatioRow({ label, value, isDarkMode, tone = 'cyan' }) {
