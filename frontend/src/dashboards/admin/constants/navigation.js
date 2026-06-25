@@ -66,35 +66,35 @@ export const MENU_ITEMS = MENU_GROUPS.flatMap((group) => group.items);
 
 export const PAGE_META = {
   [ADMIN_TABS.DASHBOARD]: {
-    title: 'Dashboard Overview',
-    description: 'Monitor submissions and approve forecasts',
+    title: 'Admin Overview',
+    description: 'Monitor today\'s forecast package review workflow, users, and publication readiness.',
   },
   [ADMIN_TABS.CHARTS]: {
     title: 'Review Forecast Packages',
-    description: 'Prioritize today\'s daily forecast package while keeping approved, rejected, and past packages available.',
+    description: 'Prioritize today\'s analysis and forecast charts while keeping approved, rejected, and past packages available.',
   },
   [ADMIN_TABS.USERS]: {
     title: 'User Management',
-    description: 'Manage Forecasters, Admins, and other user roles',
+    description: 'Manage forecaster accounts, admin users, roles, and access status.',
   },
   [ADMIN_TABS.USERS_LIST]: {
     title: 'User List',
-    description: 'View and manage all user accounts and access statuses',
+    description: 'View, approve, suspend, and manage operational user accounts.',
   },
   [ADMIN_TABS.USERS_ROLES]: {
     title: 'Roles & Permissions',
-    description: 'Configure available roles and access levels',
+    description: 'Review admin and forecaster role boundaries for forecast operations.',
   },
   [ADMIN_TABS.ANALYTICS]: {
-    title: 'Analytics & Reports',
-    description: 'View detailed analytics and performance metrics',
+    title: 'Operational Analytics',
+    description: 'Track review throughput, forecast chart status, and user readiness.',
   },
   [ADMIN_TABS.CALENDAR]: {
-    title: 'Team Calendar',
-    description: 'Track publication schedules, reviews, and admin events',
+    title: 'Forecast Operations Calendar',
+    description: 'Track forecast package dates, review events, publication milestones, and admin notes.',
   },
   [ADMIN_TABS.SETTINGS]: {
-    title: 'Settings & Configuration',
-    description: 'Configure system settings and preferences',
+    title: 'Public Content Settings',
+    description: 'Configure WaveLab public page content, contact details, and system-facing copy.',
   },
 };
