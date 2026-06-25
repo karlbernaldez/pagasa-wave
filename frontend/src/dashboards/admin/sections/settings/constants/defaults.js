@@ -28,9 +28,6 @@ export const DEFAULT_OPERATIONS = {
   archivePublishedAfterDays: 14,
   archiveNoPublicationAfterDays: 30,
   keepDraftProjectsDays: 7,
-  autoArchivePublishedPackages: true,
-  autoArchiveNoPublicationPackages: true,
-  officialDailyPackagesAreNeverDeleted: true,
   noPublicationReasons: [
     'Model data unavailable',
     'Server or system outage',
@@ -43,11 +40,6 @@ export const DEFAULT_OPERATIONS = {
 };
 
 export const DEFAULT_FORECASTER_WORKSPACE = {
-  showPackageProgressBanner: true,
-  showForecasterDeadlineBanner: true,
-  showChartReadinessChecklist: true,
-  hideArchivedFromForecaster: true,
-  allowResubmitAfterRevision: true,
   deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
   revisionInstructionMessage: 'Review admin comments, update affected charts, and resubmit the package for approval.',
 };
@@ -56,12 +48,6 @@ export const DEFAULT_ADMIN_REVIEW = {
   reviewSlaHours: 2,
   publishSlaHours: 1,
   revisionGraceHours: 4,
-  autoPublishApprovedPackage: false,
-  flagOverdueReviews: true,
-  requireReturnComment: true,
-  requirePublishConfirmation: true,
-  requireNoPublicationReason: true,
-  allowNoPublicationOutcome: true,
 };
 
 export const DEFAULT_ABOUT = {
