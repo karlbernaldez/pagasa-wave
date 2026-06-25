@@ -52,9 +52,8 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
         </div>
       </Accordion>
 
-      <Accordion icon={ShieldCheck} title="Submission Guardrails" dark={dark}>
+      <Accordion icon={ShieldCheck} title="Submission Messages" dark={dark}>
         <div className="grid gap-4">
-          <ToggleRow title="Allow resubmit after revision" description="Forecasters can update returned charts and submit the package again." checked={!!settings.allowResubmitAfterRevision} onChange={set('allowResubmitAfterRevision')} dark={dark} />
           <TextareaField label="Deadline Reminder Message" value={settings.deadlineReminderMessage ?? ''} onChange={set('deadlineReminderMessage')} rows={3} dark={dark} />
           <TextareaField label="Revision Instruction Message" value={settings.revisionInstructionMessage ?? ''} onChange={set('revisionInstructionMessage')} rows={3} dark={dark} />
         </div>
