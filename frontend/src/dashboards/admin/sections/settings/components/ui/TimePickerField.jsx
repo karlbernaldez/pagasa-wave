@@ -1,4 +1,4 @@
-import { ChevronDown, Clock3 } from 'lucide-react';
+import { Clock3, Minus, Plus } from 'lucide-react';
 
 import { labelCls } from './FormFields';
 
@@ -42,27 +42,67 @@ function formatTimeLabel(value) {
   return `${parsed.hour}:${parsed.minute} ${parsed.period}`;
 }
 
-function SelectPill({ label, value, onChange, options, dark, wide = false }) {
+function stepHour(hour, direction) {
+  const current = Number(hour) || 12;
+  if (direction > 0) return current === 12 ? 1 : current + 1;
+  return current === 1 ? 12 : current - 1;
+}
+
+function stepMinute(minute, direction) {
+  const currentIndex = MINUTE_OPTIONS.indexOf(String(minute).padStart(2, '0'));
+  const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+  const nextIndex = (safeIndex + direction + MINUTE_OPTIONS.length) % MINUTE_OPTIONS.length;
+  return MINUTE_OPTIONS[nextIndex];
+}
+
+function StepButton({ icon: Icon, label, onClick, dark }) {
   return (
-    <div className={cn(
-      'relative rounded-xl border transition focus-within:ring-2 focus-within:ring-cyan-400/40',
-      dark ? 'border-slate-700 bg-slate-950/70 hover:border-cyan-300/30' : 'border-slate-200 bg-white hover:border-blue-200',
-      wide ? 'min-w-[5rem]' : 'min-w-[4.35rem]',
-    )}>
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={cn(
-          'h-11 w-full appearance-none rounded-xl bg-transparent px-3 pr-8 text-center text-sm font-black outline-none',
-          dark ? 'text-white' : 'text-slate-950',
-        )}
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
-      <ChevronDown className={cn('pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2', dark ? 'text-slate-500' : 'text-slate-400')} size={14} />
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        'grid h-8 w-8 place-items-center rounded-lg border text-xs transition active:scale-95',
+        dark
+          ? 'border-slate-700 bg-slate-950/70 text-slate-300 hover:border-cyan-300/35 hover:text-cyan-100'
+          : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-700',
+      )}
+    >
+      <Icon size={14} />
+    </button>
+  );
+}
+
+function TimeColumn({ label, value, options, onChange, onStep, dark }) {
+  return (
+    <div className="min-w-0 flex-1">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className={cn('text-[10px] font-black uppercase tracking-[0.16em]', dark ? 'text-slate-500' : 'text-slate-500')}>{label}</p>
+        <div className="flex gap-1.5">
+          <StepButton icon={Minus} label={`Decrease ${label}`} onClick={() => onStep(-1)} dark={dark} />
+          <StepButton icon={Plus} label={`Increase ${label}`} onClick={() => onStep(1)} dark={dark} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {options.map((option) => {
+          const active = String(value) === String(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onChange(option)}
+              className={cn(
+                'h-9 rounded-lg border text-xs font-black transition active:scale-95',
+                active
+                  ? dark ? 'border-cyan-300 bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-950/30' : 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                  : dark ? 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-cyan-100' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700',
+              )}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -70,7 +110,7 @@ function SelectPill({ label, value, onChange, options, dark, wide = false }) {
 function PeriodToggle({ value, onChange, dark }) {
   return (
     <div className={cn(
-      'flex h-11 rounded-xl border p-1',
+      'grid grid-cols-2 rounded-xl border p-1',
       dark ? 'border-slate-700 bg-slate-950/70' : 'border-slate-200 bg-slate-100',
     )}>
       {PERIOD_OPTIONS.map((period) => {
@@ -81,7 +121,7 @@ function PeriodToggle({ value, onChange, dark }) {
             type="button"
             onClick={() => onChange(period)}
             className={cn(
-              'rounded-lg px-3 text-xs font-black transition',
+              'h-10 rounded-lg px-3 text-xs font-black transition active:scale-95',
               active
                 ? dark ? 'bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-950/30' : 'bg-blue-600 text-white shadow-sm'
                 : dark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900',
@@ -118,21 +158,36 @@ export default function TimePickerField({ label, value, onChange, dark, helper }
       )}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', dark ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700')}>
-              <Clock3 size={16} />
+            <span className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-xl', dark ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700')}>
+              <Clock3 size={17} />
             </span>
             <div className="min-w-0">
-              <p className={cn('truncate text-[11px] font-black uppercase tracking-[0.16em]', dark ? 'text-slate-500' : 'text-slate-500')}>Selected time</p>
-              <p className={cn('text-lg font-black leading-tight', dark ? 'text-white' : 'text-slate-950')}>{formatTimeLabel(value)}</p>
+              <p className={cn('truncate text-[10px] font-black uppercase tracking-[0.18em]', dark ? 'text-slate-500' : 'text-slate-500')}>Selected time</p>
+              <p className={cn('text-xl font-black leading-tight', dark ? 'text-white' : 'text-slate-950')}>{formatTimeLabel(value)}</p>
             </div>
+          </div>
+          <div className="w-24 shrink-0">
+            <PeriodToggle value={parsed.period} onChange={(period) => update({ period })} dark={dark} />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <SelectPill label={`${label} hour`} value={parsed.hour} onChange={(hour) => update({ hour })} options={HOUR_OPTIONS} dark={dark} />
-          <span className={cn('text-lg font-black', dark ? 'text-slate-500' : 'text-slate-400')}>:</span>
-          <SelectPill label={`${label} minute`} value={parsed.minute} onChange={(minute) => update({ minute })} options={minuteOptions} dark={dark} />
-          <PeriodToggle value={parsed.period} onChange={(period) => update({ period })} dark={dark} />
+        <div className="grid gap-3 xl:grid-cols-2">
+          <TimeColumn
+            label="Hour"
+            value={parsed.hour}
+            options={HOUR_OPTIONS}
+            onChange={(hour) => update({ hour })}
+            onStep={(direction) => update({ hour: stepHour(parsed.hour, direction) })}
+            dark={dark}
+          />
+          <TimeColumn
+            label="Minute"
+            value={parsed.minute}
+            options={minuteOptions}
+            onChange={(minute) => update({ minute })}
+            onStep={(direction) => update({ minute: stepMinute(parsed.minute, direction) })}
+            dark={dark}
+          />
         </div>
       </div>
       {helper && (
