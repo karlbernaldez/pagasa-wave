@@ -252,12 +252,67 @@ function ReminderMessageCard({ message, isDarkMode }) {
   if (!message) return null;
 
   return (
-    <section className={`relative overflow-hidden rounded-[2rem] border p-5 shadow-2xl ${isDarkMode ? 'border-amber-200/60 bg-gradient-to-br from-amber-300/25 via-amber-500/16 to-orange-600/18 text-amber-50 shadow-amber-950/50 ring-2 ring-amber-300/30' : 'border-amber-300 bg-gradient-to-br from-amber-50 via-white to-orange-50 text-amber-950 shadow-amber-200/70 ring-2 ring-amber-200/70'}`}>
+    <section className={`wavelab-reminder-card relative overflow-hidden rounded-[2rem] border p-5 shadow-2xl ${isDarkMode ? 'border-amber-200/60 bg-gradient-to-br from-amber-300/25 via-amber-500/16 to-orange-600/18 text-amber-50 shadow-amber-950/50 ring-2 ring-amber-300/30' : 'border-amber-300 bg-gradient-to-br from-amber-50 via-white to-orange-50 text-amber-950 shadow-amber-200/70 ring-2 ring-amber-200/70'}`}>
+      <style>{`
+        @keyframes wavelabReminderBellRing {
+          0%, 82%, 100% { transform: rotate(0deg); }
+          86% { transform: rotate(-13deg); }
+          90% { transform: rotate(11deg); }
+          94% { transform: rotate(-7deg); }
+          98% { transform: rotate(4deg); }
+        }
+
+        @keyframes wavelabReminderIconPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.42); }
+          55% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); }
+        }
+
+        @keyframes wavelabReminderCardPulse {
+          0%, 100% { transform: translateY(0); filter: brightness(1); }
+          50% { transform: translateY(-1px); filter: brightness(1.08); }
+        }
+
+        @keyframes wavelabReminderShimmer {
+          0% { transform: translateX(-110%); }
+          100% { transform: translateX(110%); }
+        }
+
+        .wavelab-reminder-card {
+          animation: wavelabReminderCardPulse 4.8s ease-in-out infinite;
+        }
+
+        .wavelab-reminder-icon {
+          animation: wavelabReminderIconPulse 2.8s ease-out infinite;
+        }
+
+        .wavelab-reminder-bell {
+          animation: wavelabReminderBellRing 3.6s ease-in-out infinite;
+          transform-origin: 50% 12%;
+        }
+
+        .wavelab-reminder-shimmer::after {
+          animation: wavelabReminderShimmer 2.8s ease-in-out infinite;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+          content: '';
+          inset: 0;
+          position: absolute;
+          width: 45%;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .wavelab-reminder-card,
+          .wavelab-reminder-icon,
+          .wavelab-reminder-bell,
+          .wavelab-reminder-shimmer::after {
+            animation: none !important;
+          }
+        }
+      `}</style>
       <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-amber-300/25 blur-2xl" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-amber-300 via-orange-400 to-amber-200" />
+      <div className="wavelab-reminder-shimmer pointer-events-none absolute bottom-0 left-0 h-1.5 w-full overflow-hidden bg-gradient-to-r from-amber-300 via-orange-400 to-amber-200" />
       <div className="relative flex gap-4">
-        <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl shadow-lg ${isDarkMode ? 'bg-amber-300 text-slate-950 shadow-amber-950/40' : 'bg-amber-500 text-white shadow-amber-200'}`}>
-          <BellRing size={24} />
+        <span className={`wavelab-reminder-icon grid h-14 w-14 shrink-0 place-items-center rounded-2xl shadow-lg ${isDarkMode ? 'bg-amber-300 text-slate-950 shadow-amber-950/40' : 'bg-amber-500 text-white shadow-amber-200'}`}>
+          <BellRing className="wavelab-reminder-bell" size={24} />
         </span>
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
