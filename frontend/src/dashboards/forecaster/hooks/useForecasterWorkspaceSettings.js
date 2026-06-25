@@ -8,6 +8,12 @@ export const SETTINGS_UPDATED_EVENT = 'wavelab:settings-updated';
 const DEFAULT_TIMEZONE = 'Asia/Manila';
 
 const DEFAULT_FORECASTER_WORKSPACE_SETTINGS = {
+  workspaceWelcomeTitle: 'Daily Forecast Package',
+  workspaceWelcomeDescription: 'Prepare the required wave charts, coordinate with active editors, and submit the package for admin review.',
+  defaultMapView: 'Philippine Area of Responsibility',
+  autosaveIntervalSeconds: 30,
+  collaborationPresenceMessage: 'Another forecaster is editing this chart. Coordinate before overwriting shared work.',
+  qaChecklistReminder: 'Before submitting, verify chart time labels, layer visibility, annotations, and package metadata.',
   deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
   deadlineApproachingMessage: 'Submission deadline is approaching. Finish the required charts and submit the package as soon as possible.',
   deadlinePassedMessage: 'The submission deadline has passed. Submit late if possible or coordinate with Admin before the no-publication cutoff.',
@@ -39,6 +45,13 @@ function hasValues(value) {
   return value && typeof value === 'object' && Object.keys(value).length > 0;
 }
 
+function pickForecasterWorkspaceSettings(settings) {
+  return Object.keys(DEFAULT_FORECASTER_WORKSPACE_SETTINGS).reduce((acc, key) => {
+    acc[key] = settings[key];
+    return acc;
+  }, {});
+}
+
 function readLocalSettings() {
   return {
     ...readJsonSettings(FORECASTER_WORKSPACE_SETTINGS_KEY, DEFAULT_FORECASTER_WORKSPACE_SETTINGS),
@@ -62,16 +75,7 @@ async function readDatabaseSettings() {
     },
   };
 
-  localStorage.setItem(FORECASTER_WORKSPACE_SETTINGS_KEY, JSON.stringify({
-    deadlineReminderMessage: nextSettings.deadlineReminderMessage,
-    deadlineApproachingMessage: nextSettings.deadlineApproachingMessage,
-    deadlinePassedMessage: nextSettings.deadlinePassedMessage,
-    publishTargetMissedMessage: nextSettings.publishTargetMissedMessage,
-    noPublicationCutoffMessage: nextSettings.noPublicationCutoffMessage,
-    revisionInstructionMessage: nextSettings.revisionInstructionMessage,
-    emptyPackageMessage: nextSettings.emptyPackageMessage,
-    chartSequenceHelperMessage: nextSettings.chartSequenceHelperMessage,
-  }));
+  localStorage.setItem(FORECASTER_WORKSPACE_SETTINGS_KEY, JSON.stringify(pickForecasterWorkspaceSettings(nextSettings)));
   localStorage.setItem(OPERATIONS_SETTINGS_KEY, JSON.stringify(nextSettings.operations));
 
   return nextSettings;
