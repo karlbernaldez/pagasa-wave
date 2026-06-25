@@ -6,6 +6,7 @@ import useSettings from './settings/hooks/useSettings';
 import TabBar from './settings/components/TabBar';
 import SaveBar from './settings/components/ui/SaveBar';
 
+import OperationsTab from './settings/components/tabs/OperationsTab';
 import GeneralTab from './settings/components/tabs/GeneralTab';
 import AboutTab from './settings/components/tabs/AboutTab';
 import ContactTab from './settings/components/tabs/ContactTab';
@@ -16,9 +17,17 @@ import { useUndoRedoState } from './settings/hooks/useUndoRedoState';
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 const pagesConfig = {
-  general: { label: 'General', component: GeneralTab },
-  about: { label: 'About', component: AboutTab },
-  contact: { label: 'Contact', component: ContactTab },
+  operations: { label: 'Forecast Operations', component: OperationsTab, group: 'Operations' },
+  general: { label: 'General', component: GeneralTab, group: 'Public content' },
+  about: { label: 'About', component: AboutTab, group: 'Public content' },
+  contact: { label: 'Contact', component: ContactTab, group: 'Public content' },
+};
+
+const groupLabels = {
+  operations: 'Forecast workflow, deadlines, review SLA, publication rules, and archive timing.',
+  general: 'Public dashboard copy, branding, and visitor maintenance mode.',
+  about: 'Public About page sections, partners, leadership, and program copy.',
+  contact: 'Public Contact page cards, assistance routing, and response targets.',
 };
 
 function ActionButton({ icon: Icon, children, disabled, onClick, isDarkMode }) {
@@ -45,6 +54,7 @@ const SettingsSection = ({ isDarkMode }) => {
 
   const {
     activeTab, setActiveTab,
+    operationsData,
     generalData,
     aboutData,
     contactData,
@@ -56,6 +66,7 @@ const SettingsSection = ({ isDarkMode }) => {
   } = useSettings();
 
   const rawSettings = {
+    operations: operationsData,
     general: generalData,
     about: aboutData,
     contact: contactData,
@@ -70,7 +81,7 @@ const SettingsSection = ({ isDarkMode }) => {
 
     return normalized;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generalData, aboutData, contactData]);
+  }, [operationsData, generalData, aboutData, contactData]);
 
   const history = useUndoRedoState(combinedInitial, {
     maxHistory: 100,
@@ -108,6 +119,7 @@ const SettingsSection = ({ isDarkMode }) => {
   const contentSurface = dark ? 'bg-slate-950' : 'bg-slate-50';
   const text = dark ? 'text-white' : 'text-slate-950';
   const muted = dark ? 'text-slate-400' : 'text-slate-500';
+  const activeCopy = groupLabels[activeTab] || 'Configure WaveLab admin settings.';
 
   return (
     <div className="mx-auto max-w-[1500px] p-4 sm:p-6">
@@ -119,11 +131,14 @@ const SettingsSection = ({ isDarkMode }) => {
                 Admin settings
               </p>
               <h2 className={cn('mt-2 text-2xl font-black tracking-tight', text)}>
-                Public Content Settings
+                Operations and Public Content Settings
               </h2>
               <p className={cn('mt-1 max-w-3xl text-sm font-semibold leading-6', muted)}>
-                Manage WaveLab public page content, branding copy, contact information, and operational site settings.
+                Configure forecast-package deadlines, forecaster workflow rules, archive timing, and public-facing site content from one settings area.
               </p>
+              <div className={cn('mt-4 rounded-xl border px-4 py-3 text-sm font-semibold leading-6', dark ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50/80 text-cyan-800')}>
+                Current group: {activeCopy}
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -150,10 +165,11 @@ const SettingsSection = ({ isDarkMode }) => {
           tabs={Object.entries(pagesConfig).map(([key, val]) => ({
             id: key,
             label: val.label,
+            group: val.group,
           }))}
         />
 
-        <div className={cn('min-h-[520px] p-4 sm:p-6', contentSurface)}>
+        <div className={cn('min-h-[560px] p-4 sm:p-6', contentSurface)}>
           {!dataLoaded ? (
             <div className={cn('flex items-center justify-center rounded-2xl border py-24 text-sm font-semibold', dark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-white/80 bg-white/70 text-slate-500')}>
               <svg
