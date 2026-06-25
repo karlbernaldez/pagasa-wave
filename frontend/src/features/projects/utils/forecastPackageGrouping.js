@@ -11,14 +11,27 @@ const REVIEW_STATUSES = new Set(['Submitted', 'Under Review']);
 const APPROVED_STATUSES = new Set(['Approved', 'Published']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested']);
 const FINAL_STATUSES = new Set(['Approved', 'Published', 'Rejected', 'Archived']);
+const FORECAST_TIME_ZONE = 'Asia/Manila';
 
-export function getDateKey(value) {
+export function getDateKey(value, timeZone = FORECAST_TIME_ZONE) {
   if (!value) return '';
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
 
-  return date.toISOString().slice(0, 10);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const getPart = (type) => parts.find((part) => part.type === type)?.value || '';
+  const year = getPart('year');
+  const month = getPart('month');
+  const day = getPart('day');
+
+  return year && month && day ? `${year}-${month}-${day}` : '';
 }
 
 export function formatPackageDate(dateKey) {
@@ -28,7 +41,8 @@ export function formatPackageDate(dateKey) {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
-  }).format(new Date(`${dateKey}T00:00:00`));
+    timeZone: FORECAST_TIME_ZONE,
+  }).format(new Date(`${dateKey}T00:00:00+08:00`));
 }
 
 function getPackageStatus(charts) {
@@ -39,11 +53,77 @@ function getPackageStatus(charts) {
   return 'In Progress';
 }
 
+function getOwnerLabelFromUser(user) {
+  if (!user) return '';
+  if (typeof user === 'string') return '';
+  const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  return name || user.username || user.email || '';
+}
+
 function getOwnerLabel(charts) {
   const owners = [...new Set(charts.map((chart) => chart.ownerDisplay).filter(Boolean))];
   if (owners.length === 0) return 'Forecast team';
   if (owners.length === 1) return owners[0];
   return `${owners.length} forecasters`;
+}
+
+function normalizeChartProject(project, chartType) {
+  if (!project || typeof project === 'string') {
+    return {
+      _id: project,
+      id: project,
+      chartType,
+      name: CHART_LABELS[chartType] || chartType || 'Forecast Chart',
+      title: CHART_LABELS[chartType] || chartType || 'Forecast Chart',
+      status: 'Draft',
+    };
+  }
+
+  const id = project._id || project.id;
+
+  return {
+    ...project,
+    _id: id,
+    id,
+    chartType: project.chartType || chartType,
+    name: project.name || project.title || CHART_LABELS[chartType] || 'Forecast Chart',
+    title: project.name || project.title || CHART_LABELS[chartType] || 'Forecast Chart',
+    ownerDisplay: getOwnerLabelFromUser(project.owner) || project.ownerDisplay,
+  };
+}
+
+export function adaptForecastPackageModel(forecastPackage) {
+  const id = forecastPackage?._id || forecastPackage?.id;
+  const dateKey = getDateKey(forecastPackage?.forecastDate || forecastPackage?.createdAt);
+  const charts = (forecastPackage?.charts || [])
+    .map((chart) => ({
+      ...chart,
+      project: normalizeChartProject(chart.project, chart.chartType),
+    }))
+    .sort((a, b) => (a.sortOrder ?? CHART_ORDER.indexOf(a.chartType)) - (b.sortOrder ?? CHART_ORDER.indexOf(b.chartType)));
+  const chartProjects = charts.map((chart) => chart.project);
+  const pendingCharts = chartProjects.filter((chart) => REVIEW_STATUSES.has(chart.status));
+  const approvedCharts = chartProjects.filter((chart) => APPROVED_STATUSES.has(chart.status));
+  const returnedCharts = chartProjects.filter((chart) => RETURNED_STATUSES.has(chart.status));
+  const primaryChartRow = charts.find((chart) => REVIEW_STATUSES.has(chart.project?.status)) || charts[0];
+
+  return {
+    ...forecastPackage,
+    id,
+    _id: id,
+    dateKey,
+    title: forecastPackage?.name || (dateKey ? `${formatPackageDate(dateKey)} Forecast Package` : 'Forecast Package'),
+    ownerLabel: getOwnerLabelFromUser(forecastPackage?.owner) || getOwnerLabel(chartProjects),
+    status: forecastPackage?.status || getPackageStatus(chartProjects),
+    charts,
+    chartProjects,
+    chartCount: charts.length,
+    pendingCount: pendingCharts.length,
+    approvedCount: approvedCharts.length,
+    returnedCount: returnedCharts.length,
+    primaryChart: primaryChartRow?.project,
+    updatedAt: new Date(forecastPackage?.updatedAt || forecastPackage?.submittedAt || forecastPackage?.createdAt || 0).getTime(),
+  };
 }
 
 export function groupForecastPackages(projects = []) {
@@ -67,24 +147,25 @@ export function groupForecastPackages(projects = []) {
 
   return [...groups.values()]
     .map((forecastPackage) => {
-      const charts = [...forecastPackage.charts].sort(
+      const chartProjects = [...forecastPackage.charts].sort(
         (a, b) => CHART_ORDER.indexOf(a.chartType) - CHART_ORDER.indexOf(b.chartType),
       );
-      const pendingCharts = charts.filter((chart) => REVIEW_STATUSES.has(chart.status));
-      const approvedCharts = charts.filter((chart) => APPROVED_STATUSES.has(chart.status));
-      const returnedCharts = charts.filter((chart) => RETURNED_STATUSES.has(chart.status));
+      const pendingCharts = chartProjects.filter((chart) => REVIEW_STATUSES.has(chart.status));
+      const approvedCharts = chartProjects.filter((chart) => APPROVED_STATUSES.has(chart.status));
+      const returnedCharts = chartProjects.filter((chart) => RETURNED_STATUSES.has(chart.status));
 
       return {
         ...forecastPackage,
-        charts,
-        ownerLabel: getOwnerLabel(charts),
-        status: getPackageStatus(charts),
-        chartCount: charts.length,
+        charts: chartProjects.map((project) => ({ chartType: project.chartType, project })),
+        chartProjects,
+        ownerLabel: getOwnerLabel(chartProjects),
+        status: getPackageStatus(chartProjects),
+        chartCount: chartProjects.length,
         pendingCount: pendingCharts.length,
         approvedCount: approvedCharts.length,
         returnedCount: returnedCharts.length,
-        primaryChart: pendingCharts[0] || charts.find((chart) => !FINAL_STATUSES.has(chart.status)) || charts[0],
-        updatedAt: charts.reduce((latest, chart) => {
+        primaryChart: pendingCharts[0] || chartProjects.find((chart) => !FINAL_STATUSES.has(chart.status)) || chartProjects[0],
+        updatedAt: chartProjects.reduce((latest, chart) => {
           const timestamp = new Date(chart.updatedAt || chart.submittedAt || chart.createdAt || 0).getTime();
           return Math.max(latest, Number.isNaN(timestamp) ? 0 : timestamp);
         }, 0),
