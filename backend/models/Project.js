@@ -18,6 +18,7 @@ const AuditLogSchema = new Schema({
       'approved',
       'rejected',
       'published',
+      'marked_no_publication',
       'archived'
     ],
     required: true
@@ -63,6 +64,7 @@ const ProjectSchema = new Schema({
       'Approved',
       'Published',
       'Rejected',
+      'No Publication',
       'Archived'
     ],
     default: 'Draft'
@@ -81,6 +83,19 @@ const ProjectSchema = new Schema({
   reviewComment: String,
   publishedAt: Date,
 
+  noPublicationAt: Date,
+  noPublicationBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  noPublicationReason: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  noPublicationNotes: {
+    type: String,
+    default: '',
+    trim: true
+  },
+
   lastOpenedAt: { type: Date, default: null },
   lastOpenedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   openCount: { type: Number, default: 0 },
@@ -98,5 +113,6 @@ ProjectSchema.index({ owner: 1, status: 1, updatedAt: -1 });
 ProjectSchema.index({ owner: 1, chartType: 1, updatedAt: -1 });
 ProjectSchema.index({ owner: 1, forecastDate: -1 });
 ProjectSchema.index({ status: 1, updatedAt: -1 });
+ProjectSchema.index({ status: 1, noPublicationAt: -1 });
 
 export default mongoose.models.Project || mongoose.model('Project', ProjectSchema);
