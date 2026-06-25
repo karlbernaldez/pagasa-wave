@@ -40,6 +40,12 @@ export const DEFAULT_OPERATIONS = {
 };
 
 export const DEFAULT_FORECASTER_WORKSPACE = {
+  workspaceWelcomeTitle: 'Daily Forecast Package',
+  workspaceWelcomeDescription: 'Prepare the required wave charts, coordinate with active editors, and submit the package for admin review.',
+  defaultMapView: 'Philippine Area of Responsibility',
+  autosaveIntervalSeconds: 30,
+  collaborationPresenceMessage: 'Another forecaster is editing this chart. Coordinate before overwriting shared work.',
+  qaChecklistReminder: 'Before submitting, verify chart time labels, layer visibility, annotations, and package metadata.',
   deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
   deadlineApproachingMessage: 'Submission deadline is approaching. Finish the required charts and submit the package as soon as possible.',
   deadlinePassedMessage: 'The submission deadline has passed. Submit late if possible or coordinate with Admin before the no-publication cutoff.',
@@ -69,7 +75,7 @@ export const DEFAULT_ABOUT = {
 
   // Stats
   stats: [
-    { number: '36', label: 'Project Duration', sublabel: 'Months (2024–2026)' },
+    { number: '36', label: 'Project Duration', sublabel: 'Months (2024-2026)' },
     { number: '6', label: 'Core Objectives', sublabel: 'Research areas' },
     { number: '2', label: 'Main Partners', sublabel: 'DOST-PAGASA & CWA Taiwan' },
     { number: '3', label: 'Project Components', sublabel: 'Typhoon, Marine, Climate' },
@@ -102,7 +108,7 @@ export const DEFAULT_ABOUT = {
   // Timeline
   milestones: [
     { year: '2024', title: 'Program Initiation', description: 'MECO-TECO-VOTE III Component B officially launched.' },
-    { year: '2024–25', title: 'System Development', description: 'Development of display system and wave model programs.' },
+    { year: '2024-25', title: 'System Development', description: 'Development of display system and wave model programs.' },
     { year: '2025', title: 'Implementation Phase', description: 'Integration of dual polarization radar and wave prediction systems.' },
     { year: '2026', title: 'Program Completion', description: 'Full deployment of seamless prediction capabilities.' },
   ],
