@@ -37,6 +37,7 @@ function SelectControl({ label, value, onChange, options, isDarkMode = false }) 
 export default function ProjectToolbar({
   role = "forecaster",
   isDarkMode = false,
+  packageReviewMode = false,
   search,
   setSearch,
   statusFilter,
@@ -59,6 +60,12 @@ export default function ProjectToolbar({
     value: status,
     label: status === "All" ? "All Statuses" : status,
   }));
+  const itemLabel = packageReviewMode ? "packages" : "projects";
+  const searchPlaceholder = packageReviewMode
+    ? "Search packages, forecasters, or issue dates..."
+    : role === "admin"
+      ? "Search projects or forecasters..."
+      : "Search by title or description...";
 
   const searchControl = (
     <label className="min-w-0 space-y-1.5 md:col-span-2 xl:col-span-1">
@@ -72,7 +79,7 @@ export default function ProjectToolbar({
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder={role === "admin" ? "Search projects or forecasters..." : "Search by title or description..."}
+          placeholder={searchPlaceholder}
           className={`min-w-0 flex-1 bg-transparent text-sm font-semibold caret-blue-500 outline-none ${
             isDarkMode ? "text-slate-100 placeholder:text-slate-500" : "text-slate-900 placeholder:text-slate-400"
           }`}
@@ -170,7 +177,7 @@ export default function ProjectToolbar({
           </Button>
 
           <Button variant="ghost" size="md" onClick={onClear}>
-            Clear
+            Clear {itemLabel}
           </Button>
         </div>
       </div>
