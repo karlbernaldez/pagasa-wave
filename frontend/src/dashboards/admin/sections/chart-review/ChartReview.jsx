@@ -1,5 +1,5 @@
-import AdminForecastPackageReviewPage from './AdminForecastPackageReviewPage';
+import AdminForecastPackageReviewPageV2 from './AdminForecastPackageReviewPageV2';
 
-const ChartReviewSection = () => <AdminForecastPackageReviewPage />;
+const ChartReviewSection = () => <AdminForecastPackageReviewPageV2 />;
 
 export default ChartReviewSection;
