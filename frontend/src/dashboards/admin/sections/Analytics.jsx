@@ -199,6 +199,21 @@ function buildOwnerSeries(packages) {
     .slice(0, 5);
 }
 
+function buildTimingSeries({ averageSubmissionHours, averageApprovalPublishHours }) {
+  return [
+    {
+      metric: 'Submit time',
+      value: Number(averageSubmissionHours.toFixed(1)),
+      description: 'Package creation to submission',
+    },
+    {
+      metric: 'Approval time',
+      value: Number(averageApprovalPublishHours.toFixed(1)),
+      description: 'Submission to approved/published',
+    },
+  ];
+}
+
 function buildRecentOutcomeRows(packages) {
   return packages
     .filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status))
@@ -320,6 +335,8 @@ export default function AnalyticsSection({ isDarkMode }) {
       .filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status))
       .map(getApprovalPublishHours);
 
+    const averageSubmissionHours = average(submissionHours);
+    const averageApprovalPublishHours = average(approvalPublishHours);
     const activeUsers = state.users.filter((user) => user.status === 'active').length;
 
     return {
@@ -329,14 +346,15 @@ export default function AnalyticsSection({ isDarkMode }) {
       dailySeries: buildDailySeries(reviewablePackages),
       recentOutcomeRows: buildRecentOutcomeRows(reviewablePackages),
       ownerSeries: buildOwnerSeries(reviewablePackages),
+      timingSeries: buildTimingSeries({ averageSubmissionHours, averageApprovalPublishHours }),
       returned,
       approved,
       decisions,
       approvalRate: percent(approved, decisions),
       returnRate: percent(returned, decisions),
       reviewCompletionRate: percent(decisions, reviewablePackages.length),
-      averageSubmissionHours: average(submissionHours),
-      averageApprovalPublishHours: average(approvalPublishHours),
+      averageSubmissionHours,
+      averageApprovalPublishHours,
       activeUsers,
     };
   }, [state.packages, state.users]);
@@ -395,6 +413,16 @@ export default function AnalyticsSection({ isDarkMode }) {
         <MetricCard icon={CheckCircle2} label="Avg Approval Time" value={formatHours(analytics.averageApprovalPublishHours)} helper="Submission to approved/published" tone="emerald" isDarkMode={isDarkMode} />
         <MetricCard icon={ShieldCheck} label="Return Rate" value={`${analytics.returnRate}%`} helper={`${analytics.returned} returned or rejected`} tone={analytics.returnRate > 25 ? 'amber' : 'cyan'} isDarkMode={isDarkMode} />
       </section>
+
+      <Panel title="Package Timing" description="How fast daily packages move from preparation to submission, then from submission to approval or publication." isDarkMode={isDarkMode}>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <BarBlock data={analytics.timingSeries} dataKey="value" nameKey="metric" color="#06b6d4" isDarkMode={isDarkMode} emptyTitle="No timing data" emptyDescription="Timing appears after packages have submittedAt and approved/published timestamps." />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <TimingStat label="Average submit time" value={formatHours(analytics.averageSubmissionHours)} description="createdAt to submittedAt" isDarkMode={isDarkMode} />
+            <TimingStat label="Average approval time" value={formatHours(analytics.averageApprovalPublishHours)} description="submittedAt to reviewed/published" isDarkMode={isDarkMode} />
+          </div>
+        </div>
+      </Panel>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.85fr)]">
         <Panel title="Seven-Day Review Outcomes" description="Daily submitted packages, approved/published outcomes, and returned packages." isDarkMode={isDarkMode}>
@@ -472,6 +500,10 @@ function MetricCard({ icon: Icon, label, value, helper, tone, isDarkMode }) {
 
 function Panel({ title, description, isDarkMode, children }) {
   return <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}><div className="mb-4"><h2 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h2><p className={cn('mt-1 text-sm font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p></div>{children}</div>;
+}
+
+function TimingStat({ label, value, description, isDarkMode }) {
+  return <div className={cn('rounded-xl border p-4', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p><p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p><p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>{description}</p></div>;
 }
 
 function OutcomeRow({ item, isDarkMode }) {
