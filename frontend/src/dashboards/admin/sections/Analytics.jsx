@@ -4,8 +4,8 @@ import {
   CheckCircle2,
   Clock3,
   Loader2,
-  PackageCheck,
   RefreshCw,
+  ShieldCheck,
   Waves,
 } from 'lucide-react';
 import {
@@ -31,10 +31,15 @@ import {
 } from '@/features/projects/utils/forecastPackageGrouping';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
+
 const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
 const APPROVED_STATUSES = new Set(['Approved', 'Published']);
-const REQUIRED_CHARTS_PER_PACKAGE = 4;
+const REVIEWABLE_STATUSES = new Set([
+  ...REVIEW_STATUSES,
+  ...RETURNED_STATUSES,
+  ...APPROVED_STATUSES,
+]);
 
 const STATUS_COLORS = {
   Submitted: '#38bdf8',
@@ -45,9 +50,6 @@ const STATUS_COLORS = {
   Approved: '#10b981',
   Published: '#14b8a6',
   Rejected: '#f43f5e',
-  Archived: '#64748b',
-  Draft: '#94a3b8',
-  Missing: '#94a3b8',
 };
 
 function normalizeUser(user) {
@@ -108,6 +110,10 @@ function getChartCount(forecastPackage) {
   return forecastPackage.chartCount || forecastPackage.charts?.length || 0;
 }
 
+function isReviewablePackage(forecastPackage) {
+  return REVIEWABLE_STATUSES.has(forecastPackage.status);
+}
+
 function buildDailySeries(packages) {
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, index) => {
@@ -118,9 +124,9 @@ function buildDailySeries(packages) {
     return {
       key,
       day: formatShortDate(key),
-      packages: 0,
-      charts: 0,
+      submitted: 0,
       reviewed: 0,
+      returned: 0,
     };
   });
 
@@ -131,57 +137,18 @@ function buildDailySeries(packages) {
     if (!byKey.has(key)) return;
 
     const day = byKey.get(key);
-    day.packages += 1;
-    day.charts += getChartCount(forecastPackage);
-    if (APPROVED_STATUSES.has(forecastPackage.status) || RETURNED_STATUSES.has(forecastPackage.status)) {
-      day.reviewed += 1;
-    }
+    day.submitted += 1;
+    if (APPROVED_STATUSES.has(forecastPackage.status)) day.reviewed += 1;
+    if (RETURNED_STATUSES.has(forecastPackage.status)) day.returned += 1;
   });
 
   return days;
 }
 
-function buildPackageReadinessSeries(packages) {
-  const buckets = {
-    Complete: 0,
-    Partial: 0,
-    Empty: 0,
-  };
-
-  packages.forEach((forecastPackage) => {
-    const chartCount = getChartCount(forecastPackage);
-    if (chartCount >= REQUIRED_CHARTS_PER_PACKAGE) {
-      buckets.Complete += 1;
-    } else if (chartCount > 0) {
-      buckets.Partial += 1;
-    } else {
-      buckets.Empty += 1;
-    }
-  });
-
-  return [
-    {
-      label: 'Complete packages',
-      description: '4 of 4 charts linked',
-      value: buckets.Complete,
-    },
-    {
-      label: 'Partial packages',
-      description: '1-3 charts linked',
-      value: buckets.Partial,
-    },
-    {
-      label: 'Empty packages',
-      description: 'No charts linked',
-      value: buckets.Empty,
-    },
-  ];
-}
-
 function buildStatusRows(packages) {
   const counts = new Map();
   packages.forEach((forecastPackage) => {
-    const status = forecastPackage.status || 'Draft';
+    const status = forecastPackage.status || 'Submitted';
     counts.set(status, (counts.get(status) || 0) + 1);
   });
 
@@ -191,6 +158,15 @@ function buildStatusRows(packages) {
     value,
     color: STATUS_COLORS[status] || '#94a3b8',
   })).sort((a, b) => b.value - a.value);
+}
+
+function buildReviewWorkloadSeries({ reviewQueue, underReview, returned, approved }) {
+  return [
+    { label: 'Awaiting review', description: 'Submitted packages not started', value: reviewQueue },
+    { label: 'In review', description: 'Packages actively being reviewed', value: underReview },
+    { label: 'Returned', description: 'Revision or rejection decisions', value: returned },
+    { label: 'Approved / Published', description: 'Packages cleared by admin', value: approved },
+  ];
 }
 
 function buildOwnerSeries(packages) {
@@ -289,14 +265,16 @@ export default function AnalyticsSection({ isDarkMode }) {
   }, [loadAnalytics]);
 
   const analytics = useMemo(() => {
-    const reviewQueue = state.packages.filter((forecastPackage) => REVIEW_STATUSES.has(forecastPackage.status)).length;
-    const returned = state.packages.filter((forecastPackage) => RETURNED_STATUSES.has(forecastPackage.status)).length;
-    const approved = state.packages.filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status)).length;
+    const reviewablePackages = state.packages.filter(isReviewablePackage);
+    const awaitingReview = reviewablePackages.filter((forecastPackage) => forecastPackage.status === 'Submitted' || forecastPackage.status === 'Needs Review').length;
+    const underReview = reviewablePackages.filter((forecastPackage) => forecastPackage.status === 'Under Review').length;
+    const returned = reviewablePackages.filter((forecastPackage) => RETURNED_STATUSES.has(forecastPackage.status)).length;
+    const approved = reviewablePackages.filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status)).length;
+    const openReviewQueue = awaitingReview + underReview;
     const decisions = approved + returned;
-    const totalCharts = state.packages.reduce((sum, forecastPackage) => sum + getChartCount(forecastPackage), 0);
-    const completePackages = state.packages.filter((forecastPackage) => getChartCount(forecastPackage) >= REQUIRED_CHARTS_PER_PACKAGE).length;
+    const totalCharts = reviewablePackages.reduce((sum, forecastPackage) => sum + getChartCount(forecastPackage), 0);
 
-    const queuePackages = state.packages.filter((forecastPackage) => REVIEW_STATUSES.has(forecastPackage.status));
+    const queuePackages = reviewablePackages.filter((forecastPackage) => REVIEW_STATUSES.has(forecastPackage.status));
     const queueHours = queuePackages.map((forecastPackage) => {
       const date = new Date(packageTimestamp(forecastPackage));
       if (Number.isNaN(date.getTime())) return 0;
@@ -310,16 +288,26 @@ export default function AnalyticsSection({ isDarkMode }) {
     const pendingUsers = state.users.filter((user) => user.status === 'pending').length;
 
     return {
-      statusRows: buildStatusRows(state.packages),
-      dailySeries: buildDailySeries(state.packages),
-      packageReadinessSeries: buildPackageReadinessSeries(state.packages),
-      ownerSeries: buildOwnerSeries(state.packages),
-      reviewQueue,
+      reviewablePackages,
+      statusRows: buildStatusRows(reviewablePackages),
+      dailySeries: buildDailySeries(reviewablePackages),
+      reviewWorkloadSeries: buildReviewWorkloadSeries({
+        reviewQueue: awaitingReview,
+        underReview,
+        returned,
+        approved,
+      }),
+      ownerSeries: buildOwnerSeries(reviewablePackages),
+      awaitingReview,
+      underReview,
+      openReviewQueue,
       returned,
       approved,
+      decisions,
       totalCharts,
       approvalRate: percent(approved, decisions),
-      packageCompletenessRate: percent(completePackages, state.packages.length),
+      returnRate: percent(returned, decisions),
+      reviewCompletionRate: percent(decisions, reviewablePackages.length),
       averageQueueHours,
       activeUsers,
       pendingUsers,
@@ -333,7 +321,7 @@ export default function AnalyticsSection({ isDarkMode }) {
           <div className="flex flex-col items-center gap-3 text-center">
             <Loader2 className={cn('h-8 w-8 animate-spin', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
             <p className={cn('text-sm font-black', text)}>Loading package analytics</p>
-            <p className={cn('text-xs font-semibold', muted)}>Aggregating forecast packages, chart slots, and user readiness.</p>
+            <p className={cn('text-xs font-semibold', muted)}>Aggregating submitted package review workload and admin decisions.</p>
           </div>
         </div>
       </div>
@@ -346,7 +334,7 @@ export default function AnalyticsSection({ isDarkMode }) {
         <div>
           <p className={cn('text-sm font-black', text)}>Operational analytics</p>
           <p className={cn('mt-1 text-xs font-semibold', muted)}>
-            Based on {state.totalPackages} forecast packages, {analytics.totalCharts} chart slots, and {state.totalUsers} user accounts. Last refreshed {formatRelative(state.loadedAt)}.
+            Based on {analytics.reviewablePackages.length} submitted/reviewable packages, {analytics.totalCharts} linked chart records, and {state.totalUsers} user accounts. Draft/setup packages are excluded.
           </p>
         </div>
 
@@ -375,36 +363,36 @@ export default function AnalyticsSection({ isDarkMode }) {
       )}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={Waves} label="Packages In Review" value={analytics.reviewQueue} helper="Submitted or under review" tone="cyan" isDarkMode={isDarkMode} />
-        <MetricCard icon={CheckCircle2} label="Approval Rate" value={`${analytics.approvalRate}%`} helper="Approved or published decisions" tone="emerald" isDarkMode={isDarkMode} />
-        <MetricCard icon={Clock3} label="Avg Queue Age" value={formatHours(analytics.averageQueueHours)} helper="Open package review queue" tone="amber" isDarkMode={isDarkMode} />
-        <MetricCard icon={PackageCheck} label="Complete Packages" value={`${analytics.packageCompletenessRate}%`} helper="Packages with all 4 charts linked" tone="blue" isDarkMode={isDarkMode} />
+        <MetricCard icon={Waves} label="Open Review Queue" value={analytics.openReviewQueue} helper={`${analytics.awaitingReview} awaiting, ${analytics.underReview} in review`} tone="cyan" isDarkMode={isDarkMode} />
+        <MetricCard icon={CheckCircle2} label="Approved / Published" value={analytics.approved} helper={`${analytics.approvalRate}% approval rate from decisions`} tone="emerald" isDarkMode={isDarkMode} />
+        <MetricCard icon={Clock3} label="Avg Queue Age" value={formatHours(analytics.averageQueueHours)} helper="Age of packages still in review" tone="amber" isDarkMode={isDarkMode} />
+        <MetricCard icon={ShieldCheck} label="Decision Completion" value={`${analytics.reviewCompletionRate}%`} helper={`${analytics.decisions} reviewed decisions recorded`} tone="blue" isDarkMode={isDarkMode} />
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.85fr)]">
-        <Panel title="Seven-Day Package Workflow" description="Package dates, chart volume, and reviewed package activity." isDarkMode={isDarkMode}>
+        <Panel title="Seven-Day Review Workflow" description="Submitted packages compared with admin decisions and returned packages." isDarkMode={isDarkMode}>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={analytics.dailySeries} margin={{ top: 12, right: 18, left: -18, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="packagesFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#38bdf8" stopOpacity={0.35} /><stop offset="95%" stopColor="#38bdf8" stopOpacity={0.02} /></linearGradient>
-                  <linearGradient id="chartsFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3} /><stop offset="95%" stopColor="#10b981" stopOpacity={0.02} /></linearGradient>
+                  <linearGradient id="submittedFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#38bdf8" stopOpacity={0.35} /><stop offset="95%" stopColor="#38bdf8" stopOpacity={0.02} /></linearGradient>
+                  <linearGradient id="reviewedFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3} /><stop offset="95%" stopColor="#10b981" stopOpacity={0.02} /></linearGradient>
                 </defs>
                 <CartesianGrid stroke={gridColor} vertical={false} />
                 <XAxis dataKey="day" tick={{ fill: axisColor, fontSize: 12 }} tickLine={false} axisLine={false} />
                 <YAxis allowDecimals={false} tick={{ fill: axisColor, fontSize: 12 }} tickLine={false} axisLine={false} />
                 <Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} />
-                <Area type="monotone" dataKey="packages" name="Packages" stroke="#38bdf8" fill="url(#packagesFill)" strokeWidth={2} />
-                <Area type="monotone" dataKey="charts" name="Linked Charts" stroke="#10b981" fill="url(#chartsFill)" strokeWidth={2} />
-                <Area type="monotone" dataKey="reviewed" name="Reviewed" stroke="#8b5cf6" fill="transparent" strokeWidth={2} />
+                <Area type="monotone" dataKey="submitted" name="Submitted" stroke="#38bdf8" fill="url(#submittedFill)" strokeWidth={2} />
+                <Area type="monotone" dataKey="reviewed" name="Approved / Published" stroke="#10b981" fill="url(#reviewedFill)" strokeWidth={2} />
+                <Area type="monotone" dataKey="returned" name="Returned" stroke="#f59e0b" fill="transparent" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Panel>
 
-        <Panel title="Package Review Funnel" description="Current package distribution by workflow state." isDarkMode={isDarkMode}>
+        <Panel title="Package Review Funnel" description="Current reviewable package distribution by admin workflow state." isDarkMode={isDarkMode}>
           {analytics.statusRows.length === 0 ? (
-            <EmptyState isDarkMode={isDarkMode} title="No package data" description="Package status counts will appear here once packages are available." />
+            <EmptyState isDarkMode={isDarkMode} title="No submitted packages" description="Analytics will appear after forecast packages are submitted for admin review." />
           ) : (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -421,24 +409,21 @@ export default function AnalyticsSection({ isDarkMode }) {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-3">
-        <Panel title="Package Readiness" description="Whether forecast packages have the required 4 chart products linked." isDarkMode={isDarkMode}>
-          <BarBlock data={analytics.packageReadinessSeries} dataKey="value" nameKey="label" color="#06b6d4" isDarkMode={isDarkMode} emptyTitle="No package readiness data" emptyDescription="Readiness appears after forecast packages are available." />
-          <p className={cn('mt-3 text-xs font-semibold leading-5', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
-            Submitted packages should be complete. Partial or empty packages indicate draft/setup work, not a valid review submission.
-          </p>
+        <Panel title="Review Workload" description="Actionable package queues only; draft/setup packages are not shown." isDarkMode={isDarkMode}>
+          <BarBlock data={analytics.reviewWorkloadSeries} dataKey="value" nameKey="label" color="#06b6d4" isDarkMode={isDarkMode} emptyTitle="No review workload" emptyDescription="Submitted and reviewed package counts will appear here." />
         </Panel>
 
-        <Panel title="Forecast Team Throughput" description="Package volume by owner/team label." isDarkMode={isDarkMode}>
-          <BarBlock data={analytics.ownerSeries} dataKey="value" nameKey="owner" color="#8b5cf6" isDarkMode={isDarkMode} emptyTitle="No owner data" emptyDescription="Package ownership will appear after packages are available." />
+        <Panel title="Forecast Team Throughput" description="Submitted/reviewable package volume by owner or team label." isDarkMode={isDarkMode}>
+          <BarBlock data={analytics.ownerSeries} dataKey="value" nameKey="owner" color="#8b5cf6" isDarkMode={isDarkMode} emptyTitle="No owner data" emptyDescription="Package ownership appears after packages are submitted." />
         </Panel>
 
-        <Panel title="Operational Readiness" description="Quick ratios from current package and user states." isDarkMode={isDarkMode}>
+        <Panel title="Decision Health" description="Ratios that help admins see review quality and bottlenecks." isDarkMode={isDarkMode}>
           <div className="space-y-4">
-            <RatioRow label="Package completeness" value={analytics.packageCompletenessRate} isDarkMode={isDarkMode} tone="emerald" />
-            <RatioRow label="Returned package rate" value={percent(analytics.returned, analytics.returned + analytics.approved)} isDarkMode={isDarkMode} tone={analytics.returned > analytics.approved ? 'amber' : 'cyan'} />
+            <RatioRow label="Review completion" value={analytics.reviewCompletionRate} isDarkMode={isDarkMode} tone="emerald" />
+            <RatioRow label="Returned package rate" value={analytics.returnRate} isDarkMode={isDarkMode} tone={analytics.returnRate > 25 ? 'amber' : 'cyan'} />
             <RatioRow label="Active user share" value={percent(analytics.activeUsers, state.totalUsers)} isDarkMode={isDarkMode} tone="emerald" />
             <div className={cn('rounded-xl border p-3 text-xs font-semibold backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-400' : 'border-white/80 bg-white/65 text-slate-500')}>
-              Analytics now use forecast packages as the primary unit. Linked chart counts are shown only as package readiness context.
+              Admin analytics intentionally exclude draft and unsubmitted setup packages. The page focuses on submitted package review workload and final decisions.
             </div>
           </div>
         </Panel>
