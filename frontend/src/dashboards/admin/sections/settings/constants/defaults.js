@@ -17,6 +17,7 @@ export const DEFAULT_OPERATIONS = {
   packageOpenTime: '06:00',
   packageSubmissionDeadline: '10:00',
   packagePublishTarget: '12:00',
+  noPublicationCutoff: '18:00',
   packageDurationHours: 24,
   deadlineWarningMinutes: 60,
   timezone: 'Asia/Manila',
@@ -25,9 +26,20 @@ export const DEFAULT_OPERATIONS = {
   forecast36DeadlineMinutes: 150,
   forecast48DeadlineMinutes: 180,
   archivePublishedAfterDays: 14,
-  archiveRejectedAfterDays: 30,
+  archiveNoPublicationAfterDays: 30,
   keepDraftProjectsDays: 7,
   autoArchivePublishedPackages: true,
+  autoArchiveNoPublicationPackages: true,
+  officialDailyPackagesAreNeverDeleted: true,
+  noPublicationReasons: [
+    'Model data unavailable',
+    'Server or system outage',
+    'No verified chart produced',
+    'No forecaster available',
+    'Force majeure / emergency operations',
+    'Cancelled by admin',
+    'Other',
+  ],
 };
 
 export const DEFAULT_FORECASTER_WORKSPACE = {
@@ -49,6 +61,8 @@ export const DEFAULT_ADMIN_REVIEW = {
   flagOverdueReviews: true,
   requireReturnComment: true,
   requirePublishConfirmation: true,
+  requireNoPublicationReason: true,
+  allowNoPublicationOutcome: true,
 };
 
 export const DEFAULT_ABOUT = {
