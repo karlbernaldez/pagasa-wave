@@ -2,6 +2,7 @@ import { AlertTriangle, Archive, CalendarClock, Clock3 } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
 import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
+import { getOperationsScheduleValidationError } from '../../utils/operationsScheduleValidation';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -42,8 +43,18 @@ function InfoCard({ title, children, dark }) {
   );
 }
 
+function ValidationMessage({ children, dark }) {
+  return (
+    <div className={cn('flex items-start gap-2 rounded-xl border px-4 py-3 text-sm font-bold leading-6', dark ? 'border-amber-300/25 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-800')}>
+      <AlertTriangle className="mt-0.5 shrink-0" size={16} />
+      <span>{children}</span>
+    </div>
+  );
+}
+
 export default function OperationsTab({ settings = {}, setSettings, dark }) {
   const set = (field) => (value) => setSettings((prev) => ({ ...prev, [field]: value }));
+  const scheduleError = getOperationsScheduleValidationError(settings);
   const reasonsText = Array.isArray(settings.noPublicationReasons)
     ? settings.noPublicationReasons.join('\n')
     : '';
@@ -71,6 +82,8 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
             <Field label="Publish Target" type="time" value={settings.packagePublishTarget ?? ''} onChange={set('packagePublishTarget')} dark={dark} />
             <Field label="No-Publication Cutoff" type="time" value={settings.noPublicationCutoff ?? ''} onChange={set('noPublicationCutoff')} dark={dark} />
           </div>
+
+          {scheduleError && <ValidationMessage dark={dark}>{scheduleError}</ValidationMessage>}
 
           <div className="grid gap-4 md:grid-cols-3">
             <NumberField label="Forecast Package Duration" value={settings.packageDurationHours} onChange={set('packageDurationHours')} min={1} suffix="hrs" dark={dark} />
