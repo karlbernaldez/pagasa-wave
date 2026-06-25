@@ -1,14 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSettings, saveSettings } from '@/api/siteSettings';
-import { DEFAULT_GENERAL, DEFAULT_ABOUT, DEFAULT_CONTACT } from '../constants/defaults';
+import { DEFAULT_GENERAL, DEFAULT_OPERATIONS, DEFAULT_ABOUT, DEFAULT_CONTACT } from '../constants/defaults';
 
-const LS_KEY = 'admin.settings.general';
+const LS_GENERAL_KEY = 'admin.settings.general';
+const LS_OPERATIONS_KEY = 'admin.settings.operations';
+const LOCAL_TABS = new Set(['general', 'operations']);
 
-/* ======================================================
-   BOOTSTRAP CACHE (module-level, shared across mounts)
-====================================================== */
 let bootstrapPromise = null;
 let bootstrapCache = null;
+
+const readLocal = (key, fallback) => {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? { ...fallback, ...JSON.parse(stored) } : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const getLocalKey = (tab) => {
+  if (tab === 'general') return LS_GENERAL_KEY;
+  if (tab === 'operations') return LS_OPERATIONS_KEY;
+  return null;
+};
 
 const loadBootstrap = () => {
   if (bootstrapCache) return Promise.resolve(bootstrapCache);
@@ -17,183 +31,114 @@ const loadBootstrap = () => {
   bootstrapPromise = Promise.all([
     getSettings('about').catch(() => null),
     getSettings('contact').catch(() => null),
-  ])
-    .then(([about, contact]) => {
-      bootstrapCache = {
-        about: about && Object.keys(about).length ? about : null,
-        contact: contact && Object.keys(contact).length ? contact : null,
-      };
-      return bootstrapCache;
-    });
+  ]).then(([about, contact]) => {
+    bootstrapCache = {
+      about: about && Object.keys(about).length ? about : null,
+      contact: contact && Object.keys(contact).length ? contact : null,
+    };
+    return bootstrapCache;
+  });
 
   return bootstrapPromise;
 };
 
-/* ======================================================
-   HOOK
-====================================================== */
 export default function useSettings() {
-
-  const [activeTab, setActiveTab] = useState('general');
-
+  const [activeTab, setActiveTab] = useState('operations');
   const [pages, setPages] = useState({
+    operations: DEFAULT_OPERATIONS,
     general: DEFAULT_GENERAL,
     about: DEFAULT_ABOUT,
     contact: DEFAULT_CONTACT,
   });
-
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  /* ======================================================
-     LOAD ON MOUNT
-  ====================================================== */
   useEffect(() => {
+    setPages((prev) => ({
+      ...prev,
+      operations: readLocal(LS_OPERATIONS_KEY, prev.operations),
+      general: readLocal(LS_GENERAL_KEY, prev.general),
+    }));
 
-    // ---- load local general settings
-    try {
-      const stored = localStorage.getItem(LS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setPages(prev => ({ ...prev, general: { ...prev.general, ...parsed } }));
-      }
-    } catch { }
-
-    // ---- load API bootstrap
     let cancelled = false;
-
-    loadBootstrap().then(data => {
+    loadBootstrap().then((data) => {
       if (cancelled) return;
-
-      setPages(prev => ({
-        general: prev.general,
+      setPages((prev) => ({
+        ...prev,
         about: data?.about ? { ...prev.about, ...data.about } : prev.about,
         contact: data?.contact ? { ...prev.contact, ...data.contact } : prev.contact,
       }));
-
       setDataLoaded(true);
     });
 
     return () => { cancelled = true; };
-
   }, []);
 
-  /* ======================================================
-     AUTO CLEAR STATUS
-  ====================================================== */
   useEffect(() => {
     if (!status) return;
-    const t = setTimeout(() => setStatus(null), 4000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setStatus(null), 4000);
+    return () => clearTimeout(timer);
   }, [status]);
 
-  /* ======================================================
-     SAVE
-  ====================================================== */
   const handleSave = useCallback(async (settings) => {
-
     const payload = settings?.[activeTab] ?? {};
     setSaving(true);
 
     try {
-
-      if (activeTab === 'general') {
-
-        localStorage.setItem(LS_KEY, JSON.stringify(payload));
-
-        setPages(prev => ({
-          ...prev,
-          general: { ...prev.general, ...payload }
-        }));
-
-        setStatus({ type: 'success', message: 'General settings saved.' });
-
+      if (LOCAL_TABS.has(activeTab)) {
+        localStorage.setItem(getLocalKey(activeTab), JSON.stringify(payload));
+        setPages((prev) => ({ ...prev, [activeTab]: { ...prev[activeTab], ...payload } }));
+        setStatus({ type: 'success', message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} settings saved.` });
       } else {
-
         await saveSettings(activeTab, payload);
-
-        setPages(prev => ({
-          ...prev,
-          [activeTab]: { ...prev[activeTab], ...payload }
-        }));
-
+        setPages((prev) => ({ ...prev, [activeTab]: { ...prev[activeTab], ...payload } }));
         bootstrapCache = {
           ...(bootstrapCache || {}),
-          [activeTab]: {
-            ...(bootstrapCache?.[activeTab] || {}),
-            ...payload
-          }
+          [activeTab]: { ...(bootstrapCache?.[activeTab] || {}), ...payload },
         };
-
-        setStatus({
-          type: 'success',
-          message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} page saved to database.`
-        });
-
+        setStatus({ type: 'success', message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} page saved to database.` });
       }
-
     } catch (err) {
-
-      setStatus({
-        type: 'error',
-        message: `Save failed: ${err.message}`
-      });
-
+      setStatus({ type: 'error', message: `Save failed: ${err.message}` });
     } finally {
       setSaving(false);
     }
-
   }, [activeTab]);
 
-  /* ======================================================
-     RESET
-  ====================================================== */
   const handleReset = useCallback(() => {
-
     const defaults = {
+      operations: DEFAULT_OPERATIONS,
       general: DEFAULT_GENERAL,
       about: DEFAULT_ABOUT,
       contact: DEFAULT_CONTACT,
     };
 
-    setPages(prev => ({
-      ...prev,
-      [activeTab]: defaults[activeTab]
-    }));
+    setPages((prev) => ({ ...prev, [activeTab]: defaults[activeTab] }));
 
-    if (activeTab === 'general') {
-      localStorage.removeItem(LS_KEY);
+    if (LOCAL_TABS.has(activeTab)) {
+      localStorage.removeItem(getLocalKey(activeTab));
     } else {
-      bootstrapCache = {
-        ...(bootstrapCache || {}),
-        [activeTab]: defaults[activeTab]
-      };
+      bootstrapCache = { ...(bootstrapCache || {}), [activeTab]: defaults[activeTab] };
     }
 
     setStatus({ type: 'success', message: 'Reset to default values.' });
-
   }, [activeTab]);
 
-  /* ======================================================
-     RETURN
-  ====================================================== */
   return {
     activeTab,
     setActiveTab,
-
+    operationsData: pages.operations,
     generalData: pages.general,
     aboutData: pages.about,
     contactData: pages.contact,
-
-    setGeneralData: v => setPages(p => ({ ...p, general: v })),
-    setAboutData: v => setPages(p => ({ ...p, about: v })),
-    setContactData: v => setPages(p => ({ ...p, contact: v })),
-
+    setOperationsData: (value) => setPages((prev) => ({ ...prev, operations: value })),
+    setGeneralData: (value) => setPages((prev) => ({ ...prev, general: value })),
+    setAboutData: (value) => setPages((prev) => ({ ...prev, about: value })),
+    setContactData: (value) => setPages((prev) => ({ ...prev, contact: value })),
     saving,
     status,
     dataLoaded,
-
     handleSave,
     handleReset,
   };
