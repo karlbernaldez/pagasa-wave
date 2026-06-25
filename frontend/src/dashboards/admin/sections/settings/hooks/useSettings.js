@@ -1,10 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSettings, saveSettings } from '@/api/siteSettings';
-import { DEFAULT_GENERAL, DEFAULT_OPERATIONS, DEFAULT_ABOUT, DEFAULT_CONTACT } from '../constants/defaults';
+import {
+  DEFAULT_ADMIN_REVIEW,
+  DEFAULT_ABOUT,
+  DEFAULT_CONTACT,
+  DEFAULT_FORECASTER_WORKSPACE,
+  DEFAULT_GENERAL,
+  DEFAULT_OPERATIONS,
+} from '../constants/defaults';
 
 const LS_GENERAL_KEY = 'admin.settings.general';
 const LS_OPERATIONS_KEY = 'admin.settings.operations';
-const LOCAL_TABS = new Set(['general', 'operations']);
+const LS_FORECASTER_WORKSPACE_KEY = 'admin.settings.forecasterWorkspace';
+const LS_ADMIN_REVIEW_KEY = 'admin.settings.adminReview';
+
+const LOCAL_KEYS = {
+  general: LS_GENERAL_KEY,
+  operations: LS_OPERATIONS_KEY,
+  forecasterWorkspace: LS_FORECASTER_WORKSPACE_KEY,
+  adminReview: LS_ADMIN_REVIEW_KEY,
+};
 
 let bootstrapPromise = null;
 let bootstrapCache = null;
@@ -16,12 +31,6 @@ const readLocal = (key, fallback) => {
   } catch {
     return fallback;
   }
-};
-
-const getLocalKey = (tab) => {
-  if (tab === 'general') return LS_GENERAL_KEY;
-  if (tab === 'operations') return LS_OPERATIONS_KEY;
-  return null;
 };
 
 const loadBootstrap = () => {
@@ -46,6 +55,8 @@ export default function useSettings() {
   const [activeTab, setActiveTab] = useState('operations');
   const [pages, setPages] = useState({
     operations: DEFAULT_OPERATIONS,
+    forecasterWorkspace: DEFAULT_FORECASTER_WORKSPACE,
+    adminReview: DEFAULT_ADMIN_REVIEW,
     general: DEFAULT_GENERAL,
     about: DEFAULT_ABOUT,
     contact: DEFAULT_CONTACT,
@@ -57,8 +68,10 @@ export default function useSettings() {
   useEffect(() => {
     setPages((prev) => ({
       ...prev,
-      operations: readLocal(LS_OPERATIONS_KEY, prev.operations),
-      general: readLocal(LS_GENERAL_KEY, prev.general),
+      operations: readLocal(LOCAL_KEYS.operations, prev.operations),
+      forecasterWorkspace: readLocal(LOCAL_KEYS.forecasterWorkspace, prev.forecasterWorkspace),
+      adminReview: readLocal(LOCAL_KEYS.adminReview, prev.adminReview),
+      general: readLocal(LOCAL_KEYS.general, prev.general),
     }));
 
     let cancelled = false;
@@ -86,8 +99,8 @@ export default function useSettings() {
     setSaving(true);
 
     try {
-      if (LOCAL_TABS.has(activeTab)) {
-        localStorage.setItem(getLocalKey(activeTab), JSON.stringify(payload));
+      if (LOCAL_KEYS[activeTab]) {
+        localStorage.setItem(LOCAL_KEYS[activeTab], JSON.stringify(payload));
         setPages((prev) => ({ ...prev, [activeTab]: { ...prev[activeTab], ...payload } }));
         setStatus({ type: 'success', message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} settings saved.` });
       } else {
@@ -109,6 +122,8 @@ export default function useSettings() {
   const handleReset = useCallback(() => {
     const defaults = {
       operations: DEFAULT_OPERATIONS,
+      forecasterWorkspace: DEFAULT_FORECASTER_WORKSPACE,
+      adminReview: DEFAULT_ADMIN_REVIEW,
       general: DEFAULT_GENERAL,
       about: DEFAULT_ABOUT,
       contact: DEFAULT_CONTACT,
@@ -116,8 +131,8 @@ export default function useSettings() {
 
     setPages((prev) => ({ ...prev, [activeTab]: defaults[activeTab] }));
 
-    if (LOCAL_TABS.has(activeTab)) {
-      localStorage.removeItem(getLocalKey(activeTab));
+    if (LOCAL_KEYS[activeTab]) {
+      localStorage.removeItem(LOCAL_KEYS[activeTab]);
     } else {
       bootstrapCache = { ...(bootstrapCache || {}), [activeTab]: defaults[activeTab] };
     }
@@ -129,10 +144,14 @@ export default function useSettings() {
     activeTab,
     setActiveTab,
     operationsData: pages.operations,
+    forecasterWorkspaceData: pages.forecasterWorkspace,
+    adminReviewData: pages.adminReview,
     generalData: pages.general,
     aboutData: pages.about,
     contactData: pages.contact,
     setOperationsData: (value) => setPages((prev) => ({ ...prev, operations: value })),
+    setForecasterWorkspaceData: (value) => setPages((prev) => ({ ...prev, forecasterWorkspace: value })),
+    setAdminReviewData: (value) => setPages((prev) => ({ ...prev, adminReview: value })),
     setGeneralData: (value) => setPages((prev) => ({ ...prev, general: value })),
     setAboutData: (value) => setPages((prev) => ({ ...prev, about: value })),
     setContactData: (value) => setPages((prev) => ({ ...prev, contact: value })),
