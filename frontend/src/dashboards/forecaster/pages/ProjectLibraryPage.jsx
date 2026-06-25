@@ -252,14 +252,19 @@ function ReminderMessageCard({ message, isDarkMode }) {
   if (!message) return null;
 
   return (
-    <section className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-      <div className="flex gap-3">
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${isDarkMode ? 'bg-amber-300/10 text-amber-100' : 'bg-white text-amber-700'}`}>
-          <BellRing size={18} />
+    <section className={`relative overflow-hidden rounded-[2rem] border p-5 shadow-2xl ${isDarkMode ? 'border-amber-200/60 bg-gradient-to-br from-amber-300/25 via-amber-500/16 to-orange-600/18 text-amber-50 shadow-amber-950/50 ring-2 ring-amber-300/30' : 'border-amber-300 bg-gradient-to-br from-amber-50 via-white to-orange-50 text-amber-950 shadow-amber-200/70 ring-2 ring-amber-200/70'}`}>
+      <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-amber-300/25 blur-2xl" />
+      <div className="pointer-events-none absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-amber-300 via-orange-400 to-amber-200" />
+      <div className="relative flex gap-4">
+        <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl shadow-lg ${isDarkMode ? 'bg-amber-300 text-slate-950 shadow-amber-950/40' : 'bg-amber-500 text-white shadow-amber-200'}`}>
+          <BellRing size={24} />
         </span>
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] opacity-75">Reminder</p>
-          <p className="mt-2 text-sm font-semibold leading-6">{message}</p>
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <p className={`text-[11px] font-black uppercase tracking-[0.22em] ${isDarkMode ? 'text-amber-100' : 'text-amber-700'}`}>Action reminder</p>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${isDarkMode ? 'bg-amber-100 text-slate-950' : 'bg-amber-600 text-white'}`}>Priority</span>
+          </div>
+          <p className={`text-base font-black leading-7 ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{message}</p>
         </div>
       </div>
     </section>
