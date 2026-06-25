@@ -7,6 +7,8 @@ import TabBar from './settings/components/TabBar';
 import SaveBar from './settings/components/ui/SaveBar';
 
 import OperationsTab from './settings/components/tabs/OperationsTab';
+import ForecasterWorkspaceTab from './settings/components/tabs/ForecasterWorkspaceTab';
+import AdminReviewTab from './settings/components/tabs/AdminReviewTab';
 import GeneralTab from './settings/components/tabs/GeneralTab';
 import AboutTab from './settings/components/tabs/AboutTab';
 import ContactTab from './settings/components/tabs/ContactTab';
@@ -18,13 +20,17 @@ const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 const pagesConfig = {
   operations: { label: 'Forecast Operations', component: OperationsTab, group: 'Operations' },
-  general: { label: 'General', component: GeneralTab, group: 'Public content' },
-  about: { label: 'About', component: AboutTab, group: 'Public content' },
-  contact: { label: 'Contact', component: ContactTab, group: 'Public content' },
+  forecasterWorkspace: { label: 'Forecaster Workspace', component: ForecasterWorkspaceTab, group: 'Forecaster Dashboard' },
+  adminReview: { label: 'Admin Review', component: AdminReviewTab, group: 'Admin Dashboard' },
+  general: { label: 'General', component: GeneralTab, group: 'Public Site' },
+  about: { label: 'About', component: AboutTab, group: 'Public Site' },
+  contact: { label: 'Contact', component: ContactTab, group: 'Public Site' },
 };
 
 const groupLabels = {
-  operations: 'Forecast workflow, deadlines, review SLA, publication rules, and archive timing.',
+  operations: 'Package schedule, forecast duration, per-chart deadlines, and archive retention.',
+  forecasterWorkspace: 'Forecaster dashboard banners, submission guardrails, chart readiness, and revision guidance.',
+  adminReview: 'Admin review SLA, publication behavior, overdue flags, and decision requirements.',
   general: 'Public dashboard copy, branding, and visitor maintenance mode.',
   about: 'Public About page sections, partners, leadership, and program copy.',
   contact: 'Public Contact page cards, assistance routing, and response targets.',
@@ -55,6 +61,8 @@ const SettingsSection = ({ isDarkMode }) => {
   const {
     activeTab, setActiveTab,
     operationsData,
+    forecasterWorkspaceData,
+    adminReviewData,
     generalData,
     aboutData,
     contactData,
@@ -67,6 +75,8 @@ const SettingsSection = ({ isDarkMode }) => {
 
   const rawSettings = {
     operations: operationsData,
+    forecasterWorkspace: forecasterWorkspaceData,
+    adminReview: adminReviewData,
     general: generalData,
     about: aboutData,
     contact: contactData,
@@ -81,7 +91,7 @@ const SettingsSection = ({ isDarkMode }) => {
 
     return normalized;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [operationsData, generalData, aboutData, contactData]);
+  }, [operationsData, forecasterWorkspaceData, adminReviewData, generalData, aboutData, contactData]);
 
   const history = useUndoRedoState(combinedInitial, {
     maxHistory: 100,
@@ -131,10 +141,10 @@ const SettingsSection = ({ isDarkMode }) => {
                 Admin settings
               </p>
               <h2 className={cn('mt-2 text-2xl font-black tracking-tight', text)}>
-                Operations and Public Content Settings
+                Dashboard Settings Control Center
               </h2>
               <p className={cn('mt-1 max-w-3xl text-sm font-semibold leading-6', muted)}>
-                Configure forecast-package deadlines, forecaster workflow rules, archive timing, and public-facing site content from one settings area.
+                Settings are grouped by the dashboard or work area they affect: operations, forecaster workspace, admin review, and public site content.
               </p>
               <div className={cn('mt-4 rounded-xl border px-4 py-3 text-sm font-semibold leading-6', dark ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50/80 text-cyan-800')}>
                 Current group: {activeCopy}
@@ -158,46 +168,23 @@ const SettingsSection = ({ isDarkMode }) => {
           </div>
         </header>
 
-        <TabBar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          dark={dark}
-          tabs={Object.entries(pagesConfig).map(([key, val]) => ({
-            id: key,
-            label: val.label,
-            group: val.group,
-          }))}
-        />
+        <TabBar activeTab={activeTab} setActiveTab={setActiveTab} dark={dark} />
 
         <div className={cn('min-h-[560px] p-4 sm:p-6', contentSurface)}>
           {!dataLoaded ? (
             <div className={cn('flex items-center justify-center rounded-2xl border py-24 text-sm font-semibold', dark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-white/80 bg-white/70 text-slate-500')}>
-              <svg
-                className="mr-2 h-4 w-4 animate-spin"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
+              <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
               </svg>
               Loading settings...
             </div>
           ) : ActiveComponent ? (
-            <ActiveComponent
-              settings={allSettings[activeTab]}
-              setSettings={makeSetter(activeTab)}
-              dark={dark}
-            />
+            <ActiveComponent settings={allSettings[activeTab]} setSettings={makeSetter(activeTab)} dark={dark} />
           ) : null}
         </div>
 
-        <SaveBar
-          onSave={onSave}
-          onReset={onReset}
-          saving={saving}
-          status={status}
-          dark={dark}
-        />
+        <SaveBar onSave={onSave} onReset={onReset} saving={saving} status={status} dark={dark} />
       </section>
     </div>
   );
