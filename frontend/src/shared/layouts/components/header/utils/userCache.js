@@ -1,10 +1,22 @@
 import { checkAuthSession } from '@/api/auth';
-import { fetchUserDetails } from '@/api/userAPI';
+import { USER_UPDATED_EVENT, fetchUserDetails } from '@/api/userAPI';
 
 let _cache = null;
 
-/** In-flight promise – prevents duplicate concurrent fetches (request deduplication). */
+/** In-flight promise - prevents duplicate concurrent fetches (request deduplication). */
 let _inflightRequest = null;
+
+function primeHeaderUserCache(user) {
+  if (!user) return;
+  _cache = { currentUser: user, isLoggedIn: true };
+  _inflightRequest = null;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(USER_UPDATED_EVENT, (event) => {
+    primeHeaderUserCache(event.detail?.user);
+  });
+}
 
 /**
  * Fetches and caches the authenticated user's profile.
