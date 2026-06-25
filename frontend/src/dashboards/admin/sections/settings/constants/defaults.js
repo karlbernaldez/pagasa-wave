@@ -13,6 +13,31 @@ export const DEFAULT_GENERAL = {
   logoPreview: '/pagasa-logo.png',
 };
 
+export const DEFAULT_OPERATIONS = {
+  packageOpenTime: '06:00',
+  packageSubmissionDeadline: '10:00',
+  packagePublishTarget: '12:00',
+  packageDurationHours: 24,
+  deadlineWarningMinutes: 60,
+  timezone: 'Asia/Manila',
+  showForecasterDeadlineBanner: true,
+  waveAnalysisDeadlineMinutes: 90,
+  forecast24DeadlineMinutes: 120,
+  forecast36DeadlineMinutes: 150,
+  forecast48DeadlineMinutes: 180,
+  requireAllChartsBeforeSubmit: true,
+  reviewSlaHours: 2,
+  publishSlaHours: 1,
+  revisionGraceHours: 4,
+  autoPublishApprovedPackage: false,
+  archivePublishedAfterDays: 14,
+  archiveRejectedAfterDays: 30,
+  keepDraftProjectsDays: 7,
+  hideArchivedFromForecaster: true,
+  deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
+  revisionInstructionMessage: 'Review admin comments, update affected charts, and resubmit the package for approval.',
+};
+
 export const DEFAULT_ABOUT = {
   // Hero
   title: 'Seamless Prediction for Typhoon & Marine Weather',
