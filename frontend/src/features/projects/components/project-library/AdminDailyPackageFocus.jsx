@@ -2,6 +2,7 @@ import { Archive, BarChart3, CalendarCheck2, CheckCircle2, Clock3, XCircle } fro
 
 import {
   CHART_LABELS,
+  getDateKey,
   groupForecastPackages,
   isDailyForecastPackage,
 } from '@/features/projects/utils/forecastPackageGrouping';
@@ -17,6 +18,7 @@ const STATUS_TONE = {
   Published: 'emerald',
   Rejected: 'rose',
   Archived: 'slate',
+  Missing: 'slate',
 };
 
 function getRows({ packages = [], projects = [] }) {
@@ -25,13 +27,15 @@ function getRows({ packages = [], projects = [] }) {
 
 function getDailyFocus({ packages = [], projects = [] }) {
   const rows = getRows({ packages, projects });
-  const dailyPackage = rows.find(isDailyForecastPackage) || rows[0] || null;
+  const todayKey = getDateKey(new Date());
+  const dailyPackage = rows.find(isDailyForecastPackage) || null;
   const chartRows = dailyPackage?.charts || [];
   const chartByType = new Map(chartRows.map((chart) => [chart.chartType || chart.project?.chartType, chart]));
 
   return {
+    todayKey,
     dailyPackage,
-    historyCount: rows.filter((forecastPackage) => forecastPackage.dateKey && !isDailyForecastPackage(forecastPackage)).length,
+    historyCount: rows.filter((forecastPackage) => forecastPackage.dateKey && forecastPackage.dateKey !== todayKey).length,
     chartTiles: DAILY_CHART_TYPES.map((chartType) => {
       const row = chartByType.get(chartType);
       const project = row?.project || row;
@@ -39,7 +43,7 @@ function getDailyFocus({ packages = [], projects = [] }) {
         chartType,
         label: CHART_LABELS[chartType] || chartType,
         status: project?.status || 'Missing',
-        projectName: project?.name || project?.title || 'No chart project linked yet',
+        projectName: project?.name || project?.title || 'No chart project linked for today yet',
       };
     }),
   };
@@ -127,10 +131,10 @@ export default function AdminDailyPackageFocus({
             <span className={`text-xs font-bold ${isDarkMode ? 'text-cyan-100/70' : 'text-cyan-800/70'}`}>{formattedDate}</span>
           </div>
           <h2 className={`mt-3 text-xl font-black tracking-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
-            Today&apos;s four forecast charts
+            Today&apos;s Analysis and Forecast Charts
           </h2>
           <p className={`mt-1 max-w-3xl text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-            {dailyPackage?.title || 'Today\'s ForecastPackage'} is the primary review target. Package history stays available below through filters and pagination.
+            {dailyPackage?.title || 'No ForecastPackage is linked to today yet'} is the primary review target. Package history stays available below through filters and pagination.
           </p>
         </div>
 
