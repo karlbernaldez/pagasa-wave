@@ -1,7 +1,7 @@
-import { ClipboardList, ShieldCheck } from 'lucide-react';
+import { ClipboardList, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
-import { TextareaField } from '../ui/FormFields';
+import { Field, TextareaField } from '../ui/FormFields';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -11,6 +11,19 @@ function InfoCard({ title, children, dark }) {
       <p className="mb-1 text-xs font-black uppercase tracking-wide opacity-80">{title}</p>
       {children}
     </div>
+  );
+}
+
+function TextField({ label, field, settings, set, dark, type = 'text', placeholder = '' }) {
+  return (
+    <Field
+      label={label}
+      value={settings[field] ?? ''}
+      onChange={set(field)}
+      type={type}
+      placeholder={placeholder}
+      dark={dark}
+    />
   );
 }
 
@@ -31,11 +44,27 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
 
   return (
     <div className="flex flex-col gap-4">
-      <InfoCard title="Forecaster workspace messages" dark={dark}>
-        Configure the helper messages shown to forecasters while they prepare, submit, revise, or resubmit forecast packages.
+      <InfoCard title="Forecaster workspace settings" dark={dark}>
+        Configure forecaster-facing labels, helper messages, collaboration prompts, and workspace defaults. Fixed workflow rules, like the four required charts and revision resubmission, stay in code rather than settings.
       </InfoCard>
 
-      <Accordion icon={ShieldCheck} title="Package Reminder Messages" dark={dark} defaultOpen>
+      <Accordion icon={LayoutDashboard} title="Workspace Defaults" dark={dark} defaultOpen>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <TextField label="Workspace Welcome Title" field="workspaceWelcomeTitle" settings={settings} set={set} dark={dark} />
+          <TextField label="Default Map View" field="defaultMapView" settings={settings} set={set} dark={dark} />
+          <TextField label="Autosave Interval Seconds" field="autosaveIntervalSeconds" settings={settings} set={set} dark={dark} type="number" />
+          <MessageField label="Workspace Welcome Description" field="workspaceWelcomeDescription" settings={settings} set={set} dark={dark} rows={4} />
+        </div>
+      </Accordion>
+
+      <Accordion icon={Users} title="Collaboration & QA Guidance" dark={dark}>
+        <div className="grid gap-4">
+          <MessageField label="Collaboration Presence Message" field="collaborationPresenceMessage" settings={settings} set={set} dark={dark} />
+          <MessageField label="QA Checklist Reminder" field="qaChecklistReminder" settings={settings} set={set} dark={dark} />
+        </div>
+      </Accordion>
+
+      <Accordion icon={ShieldCheck} title="Package Reminder Messages" dark={dark}>
         <div className="grid gap-4">
           <MessageField label="Deadline Reminder Message" field="deadlineReminderMessage" settings={settings} set={set} dark={dark} />
           <MessageField label="Deadline Approaching Message" field="deadlineApproachingMessage" settings={settings} set={set} dark={dark} />
