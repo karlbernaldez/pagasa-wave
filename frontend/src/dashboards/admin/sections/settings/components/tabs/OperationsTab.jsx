@@ -1,7 +1,8 @@
 import { AlertTriangle, Archive, CalendarClock, Clock3 } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
-import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
+import { TextareaField, inputCls, labelCls } from '../ui/FormFields';
+import TimePickerField from '../ui/TimePickerField';
 import { getOperationsScheduleValidationError } from '../../utils/operationsScheduleValidation';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -77,10 +78,10 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
       <Accordion icon={CalendarClock} title="Daily Forecast Package Schedule" dark={dark} defaultOpen>
         <div className="grid gap-4">
           <div className="grid gap-4 md:grid-cols-4">
-            <Field label="Daily Package Opens" type="time" value={settings.packageOpenTime ?? ''} onChange={set('packageOpenTime')} dark={dark} />
-            <Field label="Submission Deadline" type="time" value={settings.packageSubmissionDeadline ?? ''} onChange={set('packageSubmissionDeadline')} dark={dark} />
-            <Field label="Publish Target" type="time" value={settings.packagePublishTarget ?? ''} onChange={set('packagePublishTarget')} dark={dark} />
-            <Field label="No-Publication Cutoff" type="time" value={settings.noPublicationCutoff ?? ''} onChange={set('noPublicationCutoff')} dark={dark} />
+            <TimePickerField label="Daily Package Opens" value={settings.packageOpenTime ?? ''} onChange={set('packageOpenTime')} dark={dark} helper="When the package becomes active." />
+            <TimePickerField label="Submission Deadline" value={settings.packageSubmissionDeadline ?? ''} onChange={set('packageSubmissionDeadline')} dark={dark} helper="Forecaster submission cutoff." />
+            <TimePickerField label="Publish Target" value={settings.packagePublishTarget ?? ''} onChange={set('packagePublishTarget')} dark={dark} helper="Must be later than submission." />
+            <TimePickerField label="No-Publication Cutoff" value={settings.noPublicationCutoff ?? ''} onChange={set('noPublicationCutoff')} dark={dark} helper="Exception decision deadline." />
           </div>
 
           {scheduleError && <ValidationMessage dark={dark}>{scheduleError}</ValidationMessage>}
