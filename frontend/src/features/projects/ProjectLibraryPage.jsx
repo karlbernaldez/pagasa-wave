@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, FolderKanban, LayoutGrid, List, Plus } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarCheck,
+  CheckCircle2,
+  Clock3,
+  FolderKanban,
+  LayoutGrid,
+  List,
+  Plus,
+} from "lucide-react";
 
 import ProjectStats from "@/features/projects/components/project-library/ProjectStats";
 import ProjectToolbar from "@/features/projects/components/project-library/ProjectToolbar";
@@ -15,8 +24,23 @@ import Button from "@/components/ui/Button";
 import { createProject } from "@/api/projectAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
-import { isProjectPublished } from "@/features/projects/projectStatuses";
+import {
+  PROJECT_STATUS,
+  getProjectStatusLabel,
+  isProjectPublished,
+  isProjectSubmitted,
+  normalizeProjectStatus,
+} from "@/features/projects/projectStatuses";
 import useCurrentDashboardUser from "@/shared/hooks/useCurrentDashboardUser";
+
+const REQUIRED_CHART_COUNT = 4;
+const CHART_ORDER = ["analysis", "forecast_24h", "forecast_36h", "forecast_48h"];
+const CHART_LABELS = {
+  analysis: "Wave Analysis",
+  forecast_24h: "24h Forecast",
+  forecast_36h: "36h Forecast",
+  forecast_48h: "48h Forecast",
+};
 
 function ProjectCardSkeleton({ isDarkMode = false }) {
   const border = isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white";
@@ -156,6 +180,96 @@ function getProjectId(project) {
   return project?._id || project?.id;
 }
 
+function getProjectName(project) {
+  return project?.name || project?.title || "Untitled project";
+}
+
+function getChartType(project) {
+  return project?.chartType || project?.type || "forecast";
+}
+
+function getForecastDateKey(project) {
+  const date = new Date(project?.forecastDate || project?.issuedAt || project?.createdAt || 0);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return date.toISOString().slice(0, 10);
+}
+
+function getChartSortValue(project) {
+  const index = CHART_ORDER.indexOf(getChartType(project));
+  return index === -1 ? CHART_ORDER.length : index;
+}
+
+function formatForecastDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No forecast date";
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function getPackageProgress(projects) {
+  return projects.reduce((counts, project) => {
+    const status = normalizeProjectStatus(project?.status);
+    if ([PROJECT_STATUS.SUBMITTED, PROJECT_STATUS.UNDER_REVIEW].includes(status)) counts.needsReview += 1;
+    if ([PROJECT_STATUS.APPROVED, PROJECT_STATUS.PUBLISHED].includes(status)) counts.approved += 1;
+    if ([PROJECT_STATUS.REVISION_REQUESTED, PROJECT_STATUS.REJECTED].includes(status)) counts.returned += 1;
+    if (status === PROJECT_STATUS.PUBLISHED) counts.published += 1;
+    return counts;
+  }, { needsReview: 0, approved: 0, returned: 0, published: 0 });
+}
+
+function getPackageStatus(projects) {
+  const progress = getPackageProgress(projects);
+  const hasFullPackage = projects.length >= REQUIRED_CHART_COUNT;
+
+  if (hasFullPackage && progress.published === projects.length) {
+    return { label: "Published", tone: "emerald" };
+  }
+
+  if (progress.returned > 0) {
+    return { label: "Returned", tone: "amber" };
+  }
+
+  if (hasFullPackage && progress.approved === projects.length) {
+    return { label: "Approved", tone: "emerald" };
+  }
+
+  if (progress.needsReview > 0 || progress.approved > 0) {
+    return { label: "Under Review", tone: "cyan" };
+  }
+
+  return { label: "Submitted", tone: "sky" };
+}
+
+function buildForecastPackages(projects = []) {
+  const groups = new Map();
+
+  projects.forEach((project) => {
+    const key = getForecastDateKey(project);
+    const existing = groups.get(key) || [];
+    existing.push(project);
+    groups.set(key, existing);
+  });
+
+  return Array.from(groups.entries())
+    .map(([key, groupProjects]) => {
+      const sortedProjects = [...groupProjects].sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+      const representative = sortedProjects[0] || {};
+      return {
+        id: key,
+        dateKey: key,
+        forecastDate: representative.forecastDate || representative.createdAt,
+        projects: sortedProjects,
+        progress: getPackageProgress(sortedProjects),
+        status: getPackageStatus(sortedProjects),
+      };
+    })
+    .sort((a, b) => new Date(b.forecastDate || 0).getTime() - new Date(a.forecastDate || 0).getTime());
+}
+
 function getReviewModalProject(project) {
   if (!project) return project;
 
@@ -174,6 +288,97 @@ function getWelcomeName(user, fallbackRole) {
   if (name.includes("@")) return name.split("@")[0];
 
   return name.split(" ")[0] || fallbackRole;
+}
+
+function PackageStatusPill({ status }) {
+  const toneClass = {
+    emerald: "border-emerald-300/30 bg-emerald-400/15 text-emerald-200",
+    amber: "border-amber-300/30 bg-amber-400/15 text-amber-200",
+    cyan: "border-cyan-300/30 bg-cyan-400/15 text-cyan-200",
+    sky: "border-sky-300/30 bg-sky-400/15 text-sky-200",
+  }[status.tone] || "border-slate-300/30 bg-slate-400/15 text-slate-200";
+
+  return (
+    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${toneClass}`}>
+      {status.label}
+    </span>
+  );
+}
+
+function DailyFocusPackage({ packageItem, isDarkMode, onOpenProject }) {
+  if (!packageItem) return null;
+
+  const borderClass = isDarkMode ? "border-cyan-400/25 bg-cyan-950/20" : "border-cyan-200 bg-cyan-50/70";
+  const cardClass = isDarkMode
+    ? "border-white/10 bg-slate-950/55 text-slate-100 hover:border-cyan-300/40 hover:bg-slate-900"
+    : "border-slate-200 bg-white text-slate-900 hover:border-cyan-300 hover:bg-cyan-50/60";
+  const muted = isDarkMode ? "text-slate-400" : "text-slate-500";
+
+  return (
+    <section className={`overflow-hidden rounded-3xl border shadow-sm ${borderClass}`}>
+      <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" : "border-cyan-200 bg-cyan-100 text-cyan-800"}`}>
+              <CalendarCheck size={14} />
+              Daily Focus
+            </span>
+            <span className={`text-sm font-bold ${muted}`}>{formatForecastDate(packageItem.forecastDate)}</span>
+            <PackageStatusPill status={packageItem.status} />
+          </div>
+          <h2 className={`mt-4 text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-950"}`}>
+            Today&apos;s Analysis and Forecast Charts
+          </h2>
+          <p className={`mt-2 max-w-3xl text-sm font-semibold leading-6 ${muted}`}>
+            Click any chart below to open the review modal. A complete package is marked Published only when all charts for the forecast day are published.
+          </p>
+        </div>
+
+        <div className="grid min-w-[260px] grid-cols-3 gap-2 text-center text-xs font-black">
+          <div className={`rounded-2xl border px-3 py-2 ${isDarkMode ? "border-white/10 bg-slate-950/50" : "border-white/70 bg-white/80"}`}>
+            <p className={muted}>Needs Review</p>
+            <p className="mt-1 text-xl">{packageItem.progress.needsReview}</p>
+          </div>
+          <div className={`rounded-2xl border px-3 py-2 ${isDarkMode ? "border-white/10 bg-slate-950/50" : "border-white/70 bg-white/80"}`}>
+            <p className={muted}>Approved</p>
+            <p className="mt-1 text-xl">{packageItem.progress.approved}</p>
+          </div>
+          <div className={`rounded-2xl border px-3 py-2 ${isDarkMode ? "border-white/10 bg-slate-950/50" : "border-white/70 bg-white/80"}`}>
+            <p className={muted}>Returned</p>
+            <p className="mt-1 text-xl">{packageItem.progress.returned}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-4">
+        {packageItem.projects.map((project) => {
+          const status = normalizeProjectStatus(project.status);
+          const isPublished = status === PROJECT_STATUS.PUBLISHED;
+          const type = getChartType(project);
+
+          return (
+            <button
+              key={getProjectId(project)}
+              type="button"
+              className={`min-w-0 rounded-2xl border p-4 text-left shadow-sm transition ${cardClass}`}
+              onClick={() => onOpenProject(project)}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className={`truncate text-xs font-black uppercase tracking-[0.16em] ${muted}`}>{CHART_LABELS[type] || type}</p>
+                  <p className="mt-2 truncate text-sm font-black" title={getProjectName(project)}>{getProjectName(project)}</p>
+                </div>
+                <CheckCircle2 className={isPublished ? "text-emerald-300" : "text-slate-500"} size={20} />
+              </div>
+              <span className={`mt-4 inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${isPublished ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-200" : "border-sky-300/25 bg-sky-400/15 text-sky-200"}`}>
+                {getProjectStatusLabel(status)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 export default function ProjectLibraryPage({ role = "forecaster", title, description }) {
@@ -207,30 +412,51 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     mode,
   } = controller.table;
 
+  const packages = useMemo(() => buildForecastPackages(projects), [projects]);
+  const dailyFocusPackage = role === "admin" ? packages[0] : null;
+
+  const getReviewQueueForProject = (project) => {
+    const dateKey = getForecastDateKey(project);
+    return projects
+      .filter((candidate) => getForecastDateKey(candidate) === dateKey)
+      .sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+  };
+
+  const openReviewProject = async (project) => {
+    const projectId = getProjectId(project);
+    if (!projectId) return;
+
+    const status = normalizeProjectStatus(project?.status);
+    const shouldStartReview = isProjectSubmitted(status);
+
+    setIsStartingReview(shouldStartReview);
+    try {
+      const updatedProject = shouldStartReview ? await onStartReview?.(project) : project;
+      setReviewProject(updatedProject || project);
+    } catch (err) {
+      console.error("Failed to start review:", err);
+      setFeedbackError(err?.message || "Failed to start project review.");
+    } finally {
+      setIsStartingReview(false);
+    }
+  };
+
   const handleOpen = async (project) => {
     setFeedbackError("");
 
     const projectId = getProjectId(project);
     if (!projectId) return;
 
+    if (role === "admin") {
+      await openReviewProject(project);
+      return;
+    }
+
     if (isProjectPublished(project?.status)) {
       navigate(`/forecasts/${projectId}`);
       return;
     }
 
-    if (role === "admin") {
-      setIsStartingReview(true);
-      try {
-        const updatedProject = await onStartReview?.(project);
-        setReviewProject(updatedProject || project);
-      } catch (err) {
-        console.error("Failed to start review:", err);
-        setFeedbackError(err?.message || "Failed to start project review.");
-      } finally {
-        setIsStartingReview(false);
-      }
-      return;
-    }
     onOpen(project);
   };
 
@@ -278,6 +504,8 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     await onRetry?.();
   };
 
+  const reviewQueue = reviewProject ? getReviewQueueForProject(reviewProject) : [];
+
   const tableProps = {
     ...controller.table,
     onOpen: handleOpen,
@@ -296,6 +524,14 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
           userName={getWelcomeName(user, role === "admin" ? "Admin" : "Forecaster")}
           view={view}
         />
+
+        {role === "admin" && !loading && !error && dailyFocusPackage && (
+          <DailyFocusPackage
+            packageItem={dailyFocusPackage}
+            isDarkMode={isDarkMode}
+            onOpenProject={handleOpen}
+          />
+        )}
 
         {feedbackError && (
           <div className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? "border-red-500/30 bg-red-950/30 text-red-300" : "border-red-200 bg-red-50 text-red-700"}`} role="alert">
@@ -372,8 +608,10 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       {role === "admin" && (
         <ProjectReviewModal
           project={getReviewModalProject(reviewProject)}
+          reviewQueue={reviewQueue}
           isDarkMode={isDarkMode}
           onClose={() => setReviewProject(null)}
+          onSelectProject={openReviewProject}
           onApprove={onApprove}
           onReject={onReject}
           onPublish={onPublish}
