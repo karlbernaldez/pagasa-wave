@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 import ReviewActionsFooter from '@/features/projects/components/review/ReviewActionsFooter';
 import ReviewMapWorkspace from '@/features/projects/components/review/ReviewMapWorkspace';
@@ -29,7 +29,42 @@ import {
   isProjectUnderReview,
 } from '@/features/projects/projectStatuses';
 
-export default function ProjectReviewModal({ project, isDarkMode = false, onClose, onApprove, onReject, onPublish, onActionComplete }) {
+function getQueueProjectId(project) {
+  return getProjectId(project);
+}
+
+function GalleryButton({ direction, disabled, isDarkMode, onClick }) {
+  const Icon = direction === 'previous' ? ChevronLeft : ChevronRight;
+  const label = direction === 'previous' ? 'Previous chart' : 'Next chart';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${
+        isDarkMode
+          ? 'border-white/10 bg-white/[0.06] text-slate-200 hover:bg-white/[0.1]'
+          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+      }`}
+    >
+      <Icon size={22} />
+    </button>
+  );
+}
+
+export default function ProjectReviewModal({
+  project,
+  reviewQueue = [],
+  isDarkMode = false,
+  onClose,
+  onSelectProject,
+  onApprove,
+  onReject,
+  onPublish,
+  onActionComplete,
+}) {
   const lastProjectIdRef = useRef(getProjectId(project));
   const [currentProject, setCurrentProject] = useState(project);
   const [currentFeatureCollection, setCurrentFeatureCollection] = useState(() => normalizeFeatureCollection(getEmbeddedCurrentFeatureSource(project)));
@@ -54,9 +89,24 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
 
     lastProjectIdRef.current = incomingProjectId;
     setFeatureLoadError('');
+    setRemarks('');
   }, [project]);
 
   const projectId = getProjectId(currentProject);
+
+  const gallery = useMemo(() => {
+    const queue = Array.isArray(reviewQueue) ? reviewQueue : [];
+    const index = queue.findIndex((candidate) => getQueueProjectId(candidate) === projectId);
+
+    return {
+      queue,
+      index,
+      previousProject: index > 0 ? queue[index - 1] : null,
+      nextProject: index >= 0 && index < queue.length - 1 ? queue[index + 1] : null,
+      currentNumber: index >= 0 ? index + 1 : 1,
+      total: Math.max(queue.length, 1),
+    };
+  }, [projectId, reviewQueue]);
 
   useEffect(() => {
     let isMounted = true;
@@ -120,22 +170,49 @@ export default function ProjectReviewModal({ project, isDarkMode = false, onClos
 
   const surface = isDarkMode ? 'border-white/10 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-950';
   const mutedText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
+  const canMoveGallery = !busyAction && Boolean(onSelectProject);
+
+  const selectGalleryProject = (targetProject) => {
+    if (!targetProject || !canMoveGallery) return;
+    onSelectProject(targetProject);
+  };
 
   return (
     <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-slate-950/80 p-1 backdrop-blur-sm sm:p-4 xl:items-center xl:p-6">
       <div className={`flex h-full w-full max-w-[1480px] flex-col overflow-hidden rounded-2xl border shadow-2xl ring-1 ring-white/10 sm:h-[min(94vh,940px)] sm:rounded-[28px] ${surface}`}>
         <header className={`flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500 sm:text-xs">Project Review</p>
-              <span className={`${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-100 bg-blue-50 text-blue-700'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>
-                {statusLabel}
-              </span>
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <GalleryButton
+              direction="previous"
+              disabled={!gallery.previousProject || !canMoveGallery}
+              isDarkMode={isDarkMode}
+              onClick={() => selectGalleryProject(gallery.previousProject)}
+            />
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500 sm:text-xs">Project Review</p>
+                <span className={`${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-100 bg-blue-50 text-blue-700'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>
+                  {statusLabel}
+                </span>
+                {gallery.total > 1 && (
+                  <span className={`${isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>
+                    Chart {gallery.currentNumber} of {gallery.total}
+                  </span>
+                )}
+              </div>
+              <h2 className={`mt-2 truncate text-lg font-black leading-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{getProjectName(currentProject)}</h2>
+              <p className={`mt-1 text-xs font-semibold sm:text-sm ${mutedText}`}>
+                {getProjectType(currentProject)} · {getOwner(currentProject)} · Forecast {formatDate(currentProject.forecastDate)}
+              </p>
             </div>
-            <h2 className={`mt-2 truncate text-lg font-black leading-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{getProjectName(currentProject)}</h2>
-            <p className={`mt-1 text-xs font-semibold sm:text-sm ${mutedText}`}>
-              {getProjectType(currentProject)} · {getOwner(currentProject)} · Forecast {formatDate(currentProject.forecastDate)}
-            </p>
+
+            <GalleryButton
+              direction="next"
+              disabled={!gallery.nextProject || !canMoveGallery}
+              isDarkMode={isDarkMode}
+              onClick={() => selectGalleryProject(gallery.nextProject)}
+            />
           </div>
 
           <button
