@@ -18,6 +18,8 @@ import { useProjectLibraryController } from "@/features/projects/hooks/useProjec
 import { isProjectPublished } from "@/features/projects/projectStatuses";
 import useCurrentDashboardUser from "@/shared/hooks/useCurrentDashboardUser";
 
+const CHART_ORDER = ["analysis", "forecast_24h", "forecast_36h", "forecast_48h"];
+
 function ProjectCardSkeleton({ isDarkMode = false }) {
   const border = isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white";
   const block = isDarkMode ? "bg-slate-800" : "bg-slate-200";
@@ -156,6 +158,21 @@ function getProjectId(project) {
   return project?._id || project?.id;
 }
 
+function getForecastDateKey(project) {
+  const date = new Date(project?.forecastDate || project?.issuedAt || project?.createdAt || 0);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return date.toISOString().slice(0, 10);
+}
+
+function getChartType(project) {
+  return project?.chartType || project?.type || "";
+}
+
+function getChartSortValue(project) {
+  const index = CHART_ORDER.indexOf(getChartType(project));
+  return index === -1 ? CHART_ORDER.length : index;
+}
+
 function getReviewModalProject(project) {
   if (!project) return project;
 
@@ -208,30 +225,45 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     mode,
   } = controller.table;
 
+  const getReviewQueueForProject = (project) => {
+    const dateKey = getForecastDateKey(project);
+    return projects
+      .filter((candidate) => getForecastDateKey(candidate) === dateKey)
+      .sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+  };
+
+  const openReviewProject = async (project) => {
+    const projectId = getProjectId(project);
+    if (!projectId) return;
+
+    setIsStartingReview(true);
+    try {
+      const updatedProject = await onStartReview?.(project);
+      setReviewProject(updatedProject || project);
+    } catch (err) {
+      console.error("Failed to start review:", err);
+      setFeedbackError(err?.message || "Failed to start project review.");
+    } finally {
+      setIsStartingReview(false);
+    }
+  };
+
   const handleOpen = async (project) => {
     setFeedbackError("");
 
     const projectId = getProjectId(project);
     if (!projectId) return;
 
+    if (role === "admin") {
+      await openReviewProject(project);
+      return;
+    }
+
     if (isProjectPublished(project?.status)) {
       navigate(`/forecasts/${projectId}`);
       return;
     }
 
-    if (role === "admin") {
-      setIsStartingReview(true);
-      try {
-        const updatedProject = await onStartReview?.(project);
-        setReviewProject(updatedProject || project);
-      } catch (err) {
-        console.error("Failed to start review:", err);
-        setFeedbackError(err?.message || "Failed to start project review.");
-      } finally {
-        setIsStartingReview(false);
-      }
-      return;
-    }
     onOpen(project);
   };
 
@@ -278,6 +310,8 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     }
     await onRetry?.();
   };
+
+  const reviewQueue = reviewProject ? getReviewQueueForProject(reviewProject) : [];
 
   const tableProps = {
     ...controller.table,
@@ -339,6 +373,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
                     onDelete={onDelete}
                     onApprove={onApprove}
                     onReject={onReject}
+                    onNoPublication={onNoPublication}
                     onPublish={onPublish}
                     onActionComplete={onRetry}
                   />
@@ -373,8 +408,10 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       {role === "admin" && (
         <ProjectReviewModal
           project={getReviewModalProject(reviewProject)}
+          reviewQueue={reviewQueue}
           isDarkMode={isDarkMode}
           onClose={() => setReviewProject(null)}
+          onSelectProject={openReviewProject}
           onApprove={onApprove}
           onReject={onReject}
           onNoPublication={onNoPublication}
