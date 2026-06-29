@@ -94,6 +94,11 @@ function getActiveProjectId(projectId) {
   }
 }
 
+function getLowWaveNumberFromName(value) {
+  const match = String(value || '').match(/Low Wave\s*\(<1\s*m\)\s*#(\d+)/i);
+  return match ? Number.parseInt(match[1], 10) : 0;
+}
+
 function isLowWaveLayer(layer = {}) {
   return layer.type === 'less_1'
     || layer.markerType === 'less_1'
@@ -104,17 +109,30 @@ function getLowWaveCounterKey(projectId) {
   return `wavelab:${projectId}:low-wave-count`;
 }
 
+function getVisibleLowWaveMaxNumber() {
+  if (typeof document === 'undefined') return 0;
+
+  try {
+    const text = document.body?.innerText || '';
+    const matches = [...text.matchAll(/Low Wave\s*\(<1\s*m\)\s*#(\d+)/gi)];
+    return matches.reduce((max, match) => Math.max(max, Number.parseInt(match[1], 10) || 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
 function reserveFallbackLowWaveNumber(projectId) {
-  if (typeof window === 'undefined' || !projectId) return 1;
+  if (typeof window === 'undefined' || !projectId) return Math.max(1, getVisibleLowWaveMaxNumber() + 1);
 
   try {
     const key = getLowWaveCounterKey(projectId);
-    const current = Number.parseInt(window.localStorage.getItem(key) || '0', 10);
-    const next = Number.isFinite(current) ? current + 1 : 1;
+    const stored = Number.parseInt(window.localStorage.getItem(key) || '0', 10) || 0;
+    const visible = getVisibleLowWaveMaxNumber();
+    const next = Math.max(stored, visible) + 1;
     window.localStorage.setItem(key, String(next));
     return next;
   } catch {
-    return 1;
+    return Math.max(1, getVisibleLowWaveMaxNumber() + 1);
   }
 }
 
@@ -137,8 +155,12 @@ function formatLowWaveDisplayName(number) {
 }
 
 function getNextLowWaveDisplayName(layers = [], projectId = '') {
-  const lowWaveCount = layers.filter(isLowWaveLayer).length;
-  const nextNumber = lowWaveCount + 1;
+  const lowWaveLayers = layers.filter(isLowWaveLayer);
+  const maxExistingNumber = lowWaveLayers.reduce(
+    (max, layer) => Math.max(max, getLowWaveNumberFromName(layer.name)),
+    0
+  );
+  const nextNumber = maxExistingNumber > 0 ? maxExistingNumber + 1 : lowWaveLayers.length + 1;
   syncFallbackLowWaveCounter(projectId, nextNumber);
   return formatLowWaveDisplayName(nextNumber);
 }
