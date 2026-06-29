@@ -22,6 +22,7 @@ import {
   mergeProjectState,
 } from '@/features/projects/utils/projectReviewViewModel';
 import { fetchProjectFeatureCollection } from '@/api/featureServices';
+import { fetchAdminForecastPackage } from '@/api/projectAPI';
 import {
   getProjectStatusLabel,
   isProjectApproved,
@@ -62,6 +63,7 @@ export default function ProjectReviewModal({ project, reviewQueue = [], isDarkMo
   const [featureLoadError, setFeatureLoadError] = useState('');
   const [remarks, setRemarks] = useState('');
   const [mapMode, setMapMode] = useState('preview');
+  const [autoReviewQueue, setAutoReviewQueue] = useState([]);
 
   useEffect(() => {
     const incomingProjectId = getProjectId(project);
@@ -84,8 +86,36 @@ export default function ProjectReviewModal({ project, reviewQueue = [], isDarkMo
 
   const projectId = getProjectId(currentProject);
 
+  useEffect(() => {
+    let isMounted = true;
+    const providedQueue = Array.isArray(reviewQueue) ? reviewQueue : [];
+
+    setAutoReviewQueue([]);
+
+    if (!projectId || providedQueue.length > 1) return undefined;
+
+    fetchAdminForecastPackage(projectId)
+      .then((packageResponse) => {
+        if (!isMounted) return;
+        const packageProjects = Array.isArray(packageResponse?.projects) ? packageResponse.projects : [];
+        if (packageProjects.length > 1) setAutoReviewQueue(packageProjects);
+      })
+      .catch((error) => {
+        if (isMounted) console.error('[ProjectReviewModal] Failed to load review package queue:', error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId, reviewQueue]);
+
+  const effectiveReviewQueue = useMemo(() => {
+    const providedQueue = Array.isArray(reviewQueue) ? reviewQueue : [];
+    return providedQueue.length > 1 ? providedQueue : autoReviewQueue;
+  }, [autoReviewQueue, reviewQueue]);
+
   const gallery = useMemo(() => {
-    const queue = Array.isArray(reviewQueue) ? reviewQueue : [];
+    const queue = Array.isArray(effectiveReviewQueue) ? effectiveReviewQueue : [];
     const index = queue.findIndex((candidate) => getQueueProjectId(candidate) === projectId);
 
     return {
@@ -94,7 +124,7 @@ export default function ProjectReviewModal({ project, reviewQueue = [], isDarkMo
       currentNumber: index >= 0 ? index + 1 : 1,
       total: Math.max(queue.length, 1),
     };
-  }, [projectId, reviewQueue]);
+  }, [projectId, effectiveReviewQueue]);
 
   useEffect(() => {
     let isMounted = true;
@@ -159,10 +189,14 @@ export default function ProjectReviewModal({ project, reviewQueue = [], isDarkMo
 
   const surface = isDarkMode ? 'border-white/10 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-950';
   const mutedText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
-  const canMoveGallery = !busyAction && Boolean(onSelectProject);
+  const canMoveGallery = !busyAction && effectiveReviewQueue.length > 1;
   const selectGalleryProject = (targetProject) => {
     if (!targetProject || !canMoveGallery) return;
-    onSelectProject(targetProject);
+    if (onSelectProject) {
+      onSelectProject(targetProject);
+      return;
+    }
+    setCurrentProject(targetProject);
   };
 
   return (
