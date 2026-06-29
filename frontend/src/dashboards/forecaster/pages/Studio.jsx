@@ -39,6 +39,11 @@ function isContextNotFound(error) {
   return /context not found|not found/i.test(error?.message || "");
 }
 
+function getDisplayName(user) {
+  if (!user || typeof user === "string") return "";
+  return [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.username || user.email || "";
+}
+
 function formatNameList(names = []) {
   if (!names.length) return "";
   if (names.length === 1) return names[0];
@@ -46,10 +51,83 @@ function formatNameList(names = []) {
   return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
 }
 
+function getTimeValue(value) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Manila",
+  }).format(date);
+}
+
 function getContextProject(context) {
   return context?.chart?.project && typeof context.chart.project === "object"
     ? context.chart.project
     : null;
+}
+
+function getRevisionFeedback({ chartContext, currentProject, isRevisionRequested }) {
+  if (!isRevisionRequested) return null;
+
+  const reviewComment = currentProject?.reviewComment || chartContext?.package?.reviewComment || "";
+  const reviewedAt = currentProject?.reviewedAt || chartContext?.package?.reviewedAt || "";
+  const reviewer = getDisplayName(currentProject?.rejectedBy || chartContext?.package?.rejectedBy);
+  const completedAt = chartContext?.completion?.completedAt || chartContext?.chart?.readyAt || "";
+  const completedBy = getDisplayName(chartContext?.completion?.completedBy || chartContext?.chart?.readyBy);
+  const reviewTime = getTimeValue(reviewedAt);
+  const completionTime = getTimeValue(completedAt);
+  const resolved = Boolean(reviewTime && completionTime && completionTime > reviewTime);
+
+  if (!reviewComment && !reviewedAt) return null;
+
+  return {
+    reviewComment,
+    reviewedAt,
+    reviewer,
+    completedAt,
+    completedBy,
+    resolved,
+  };
+}
+
+function RevisionFeedbackPanel({ feedback, isDarkMode }) {
+  if (!feedback) return null;
+
+  const panelClass = feedback.resolved
+    ? isDarkMode ? "border-emerald-300/25 bg-emerald-950/80 text-emerald-100" : "border-emerald-200 bg-emerald-50 text-emerald-900"
+    : isDarkMode ? "border-amber-300/30 bg-amber-950/85 text-amber-100" : "border-amber-200 bg-amber-50 text-amber-900";
+  const mutedClass = isDarkMode ? "text-white/65" : "text-slate-600";
+
+  return (
+    <div className={`absolute left-1/2 top-[4.5rem] z-[125] w-[min(760px,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-xl ${panelClass}`}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-[0.16em]">Admin feedback</p>
+          <p className="mt-1 text-sm font-bold leading-5">{feedback.reviewComment || "Revision requested. Please review the chart and apply the requested changes."}</p>
+          <p className={`mt-2 text-[11px] font-semibold ${mutedClass}`}>
+            {feedback.reviewer ? `Requested by ${feedback.reviewer}` : "Revision requested"}
+            {feedback.reviewedAt ? ` · ${formatDateTime(feedback.reviewedAt)}` : ""}
+          </p>
+        </div>
+        <div className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-black ${isDarkMode ? "border-white/10 bg-white/10" : "border-white/80 bg-white/70"}`}>
+          {feedback.resolved ? "Re-certified" : "Action required"}
+          {feedback.resolved && feedback.completedAt ? (
+            <p className={`mt-1 text-[10px] font-semibold ${mutedClass}`}>
+              {feedback.completedBy ? `${feedback.completedBy} · ` : ""}{formatDateTime(feedback.completedAt)}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const Studio = ({ logger }) => {
@@ -156,6 +234,7 @@ const Studio = ({ logger }) => {
   const isRevisionRequested = isProjectRevisionRequested(projectStatus);
   const projectStatusLabel = isRevisionRequested ? "Needs Revision" : getProjectStatusLabel(projectStatus);
   const projectStatusStyle = isRevisionRequested ? "border-amber-300 bg-amber-50 text-amber-800" : getProjectStatusStyle(projectStatus);
+  const revisionFeedback = getRevisionFeedback({ chartContext, currentProject, isRevisionRequested });
   const chartType = chartContext?.chartType;
   const chartLabel = getChartLabel(chartType);
   const activeEditorLabels = chartClaim?.activeEditorLabels || [];
@@ -177,6 +256,7 @@ const Studio = ({ logger }) => {
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">{isReadOnlyProject && <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-700"}`}><Lock size={13} />{isPackageReadyReadOnly ? "Ready" : projectStatusLabel || "View only"}</span>}{chartContext && <div className={`hidden items-center gap-2 rounded-2xl border px-3 py-1.5 text-xs font-black lg:flex ${headerControlGroup}`}><span className={isDarkMode ? "text-cyan-200" : "text-blue-700"}>{chartLabel}</span>{!canEditProject ? <span className={headerMutedText}>View only</span> : chartClaim?.claimedByCurrentUser ? <span className="text-emerald-300">You are editing</span> : chartClaim?.claimedByOtherUser ? <span className="text-amber-300">Editing: {activeEditorText}</span> : <span className={headerMutedText}>Available</span>}{canEditProject && chartClaim?.canRelease && <Button size="sm" variant="secondary" onClick={handleReleaseChart} loading={isReleasingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Release</Button>}{canEditProject && chartClaim?.canClaim && <Button size="sm" onClick={handleClaimChart} loading={isClaimingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerPrimaryButton}`}>Join</Button>}{canEditProject && chartClaim?.canCertify && <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={handleCertifyChartReady} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Ready</Button>}{isPackageChartReady && canEditProjectStatus(projectStatus) && <Button size="sm" variant="secondary" onClick={handleReopenChartEdits} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Reopen</Button>}</div>}<NotificationBell /><button onClick={handleToggleTheme} className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-200 hover:scale-105 ${headerControlGroup}`} aria-label="Toggle theme">{isDarkMode ? <Sun size={16} /> : <Moon size={16} />}</button></div>
       </header>
 
+      <RevisionFeedbackPanel feedback={revisionFeedback} isDarkMode={isDarkMode} />
       {studioError && <div className={`absolute left-1/2 top-[4.5rem] z-[130] flex -translate-x-1/2 items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-bold shadow-xl ${isDarkMode ? "border-red-400/30 bg-red-950/80 text-red-200" : "border-red-200 bg-red-50 text-red-700"}`}><AlertTriangle size={16} />{studioError}</div>}
 
       {showMainUI && <MapComponent onMapLoad={handleMapLoad} mapRef={mapRef} isDarkMode={isDarkMode} setIsLoading={setIsLoading} logger={logger} />}
