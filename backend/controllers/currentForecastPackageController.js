@@ -31,15 +31,6 @@ function getTimeValue(value) {
   return Number.isNaN(time) ? 0 : time;
 }
 
-function getId(value) {
-  if (!value) return '';
-  if (typeof value === 'string') return value;
-  if (value._id) return String(value._id);
-  if (value.id) return String(value.id);
-  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString());
-  return '';
-}
-
 function serializePackage(forecastPackage) {
   const plain = typeof forecastPackage.toObject === 'function'
     ? forecastPackage.toObject()
