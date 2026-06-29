@@ -128,6 +128,16 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
     };
   }, [projectId, effectiveReviewQueue]);
 
+  const canMoveGallery = Boolean(effectiveReviewQueue.length > 1);
+  const selectGalleryProject = (targetProject) => {
+    if (!targetProject || !canMoveGallery) return;
+    if (onSelectProject) {
+      onSelectProject(targetProject);
+      return;
+    }
+    setCurrentProject(targetProject);
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -156,6 +166,11 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
   }, [projectId]);
 
   const hasRemarks = remarks.trim().length > 0;
+  const handleActionSuccess = ({ key }) => {
+    if (key !== 'approve') return true;
+    if (gallery.nextProject) selectGalleryProject(gallery.nextProject);
+    return false;
+  };
   const { busyAction, actionError, clearActionError, runAction } = useProjectReviewActions({
     currentProject,
     remarks,
@@ -163,6 +178,7 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
     setCurrentProject,
     setRemarks,
     onActionComplete,
+    onActionSuccess: handleActionSuccess,
     onClose,
   });
   const reviewActionHandlers = useProjectReviewActionHandlers({
@@ -191,24 +207,16 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
 
   const surface = isDarkMode ? 'border-white/10 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-950';
   const mutedText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
-  const canMoveGallery = !busyAction && effectiveReviewQueue.length > 1;
-  const selectGalleryProject = (targetProject) => {
-    if (!targetProject || !canMoveGallery) return;
-    if (onSelectProject) {
-      onSelectProject(targetProject);
-      return;
-    }
-    setCurrentProject(targetProject);
-  };
+  const canUseGalleryControls = !busyAction && canMoveGallery;
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-slate-950/80 p-1 backdrop-blur-sm sm:p-4 xl:items-center xl:p-6">
       <div className="pointer-events-none fixed inset-y-0 left-4 right-4 z-[120] flex items-center justify-between sm:left-8 sm:right-8 xl:left-14 xl:right-14">
         <div className="pointer-events-auto">
-          <GalleryButton direction="previous" disabled={!gallery.previousProject || !canMoveGallery} isDarkMode={isDarkMode} onClick={() => selectGalleryProject(gallery.previousProject)} />
+          <GalleryButton direction="previous" disabled={!gallery.previousProject || !canUseGalleryControls} isDarkMode={isDarkMode} onClick={() => selectGalleryProject(gallery.previousProject)} />
         </div>
         <div className="pointer-events-auto">
-          <GalleryButton direction="next" disabled={!gallery.nextProject || !canMoveGallery} isDarkMode={isDarkMode} onClick={() => selectGalleryProject(gallery.nextProject)} />
+          <GalleryButton direction="next" disabled={!gallery.nextProject || !canUseGalleryControls} isDarkMode={isDarkMode} onClick={() => selectGalleryProject(gallery.nextProject)} />
         </div>
       </div>
 
