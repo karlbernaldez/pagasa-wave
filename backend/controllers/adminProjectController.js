@@ -53,8 +53,28 @@ function getDateRangeFilter(dateRange) {
 
   const days = daysByRange[dateRange];
   if (!days) return null;
-
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
+function getForecastDateBounds(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+
+  return { start, end };
+}
+
+function withAdminProjectPopulates(query) {
+  return query
+    .populate('owner', 'firstName lastName email username')
+    .populate('reviewStartedBy', 'firstName lastName email username')
+    .populate('approvedBy', 'firstName lastName email username')
+    .populate('rejectedBy', 'firstName lastName email username')
+    .populate('noPublicationBy', 'firstName lastName email username')
+    .populate('auditLogs.performedBy', 'firstName lastName email username');
 }
 
 function buildStatusCounts(rows) {
@@ -170,13 +190,7 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
   };
 
   const [projects, total, statusCountRows] = await Promise.all([
-    Project.find(query)
-      .populate('owner', 'firstName lastName email username')
-      .populate('reviewStartedBy', 'firstName lastName email username')
-      .populate('approvedBy', 'firstName lastName email username')
-      .populate('rejectedBy', 'firstName lastName email username')
-      .populate('noPublicationBy', 'firstName lastName email username')
-      .populate('auditLogs.performedBy', 'firstName lastName email username')
+    withAdminProjectPopulates(Project.find(query))
       .sort(sortQuery)
       .skip(skip)
       .limit(limitNumber)
@@ -195,5 +209,36 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
     limit: limitNumber,
     totalPages: Math.max(1, Math.ceil(total / limitNumber)),
     statusCounts: buildStatusCounts(statusCountRows),
+  });
+});
+
+export const getAdminForecastPackage = asyncHandler(async (req, res) => {
+  if (!req.user || req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const project = await Project.findById(req.params.id).select('forecastDate').lean();
+  if (!project) throwError('Project not found', 404);
+
+  const bounds = getForecastDateBounds(project.forecastDate);
+  if (!bounds) throwError('Project forecast date is invalid', 400);
+
+  const query = {
+    status: { $in: ALLOWED_ADMIN_STATUSES },
+    forecastDate: { $gte: bounds.start, $lt: bounds.end },
+  };
+
+  const projects = await withAdminProjectPopulates(Project.find(query))
+    .sort({ forecastDate: -1, chartType: 1, updatedAt: -1, _id: -1 })
+    .lean();
+
+  res.json({
+    forecastDate: bounds.start,
+    expectedChartTypes: ALLOWED_CHART_TYPES,
+    chartCount: projects.length,
+    isComplete: ALLOWED_CHART_TYPES.every((chartType) =>
+      projects.some((candidate) => candidate.chartType === chartType),
+    ),
+    projects,
   });
 });
