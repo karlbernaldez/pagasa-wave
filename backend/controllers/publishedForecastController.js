@@ -6,6 +6,8 @@ import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 import { formatLocalDateKey } from '../utils/forecastPackage.js';
 
 const DEFAULT_RASTER_BOUNDS = [100, -5, 180, 50];
+const DEFAULT_MODEL_RUN_HOUR = 18;
+const DEFAULT_MODEL_RUN_DAY_OFFSET = -1;
 
 function getProjectOwnerId(project) {
   return String(project?.owner?._id || project?.owner || '');
@@ -83,9 +85,22 @@ function getPublicProjectPayload(project) {
   };
 }
 
+function padDatePart(value) {
+  return String(value).padStart(2, '0');
+}
+
 function formatForecastDateToken(value) {
   const localKey = formatLocalDateKey(value);
   return localKey ? localKey.replaceAll('-', '') : '';
+}
+
+function shiftDateToken(dateToken, offsetDays) {
+  const match = String(dateToken || '').match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (!match) return '';
+  const [, year, month, day] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0));
+  date.setUTCDate(date.getUTCDate() + Number(offsetDays || 0));
+  return `${date.getUTCFullYear()}${padDatePart(date.getUTCMonth() + 1)}${padDatePart(date.getUTCDate())}`;
 }
 
 function interpolateTemplate(template, values) {
@@ -106,19 +121,38 @@ function normalizeBounds(value) {
   return value.map(Number).every(Number.isFinite) ? value.map(Number) : DEFAULT_RASTER_BOUNDS;
 }
 
+function getNumberSetting(asset, key, envName, fallback) {
+  const value = asset?.[key] ?? process.env[envName] ?? fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 function resolveCogRaster(project) {
   const asset = getRawRasterAsset(project) || {};
   const forecastDate = formatForecastDateToken(project?.forecastDate);
+  const runHour = getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', DEFAULT_MODEL_RUN_HOUR);
+  const runDayOffset = getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', DEFAULT_MODEL_RUN_DAY_OFFSET);
+  const runDate = asset.runDate || shiftDateToken(forecastDate, runDayOffset);
+  const runHourToken = padDatePart(runHour);
+  const runDateTime = asset.runDateTime || `${runDate}${runHourToken}`;
+  const model = asset.model || process.env.PUBLIC_WAVE_COG_MODEL || 'WW3';
   const tokenValues = {
     projectId: String(project?._id || ''),
     chartType: project?.chartType || '',
     forecastDate,
     date: forecastDate,
-    model: asset.model || process.env.PUBLIC_WAVE_COG_MODEL || 'WW3',
+    model,
+    runDate,
+    runHour: runHourToken,
+    runDateTime,
+    cycle: runHourToken,
   };
 
+  const defaultLocalTileTemplate = process.env.NODE_ENV === 'production'
+    ? ''
+    : 'http://127.0.0.1:8081/{model}/light/{runDateTime}/{z}/{x}/{y}.png';
   const cogUrl = asset.cogUrl || asset.url || interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
-  const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE, tokenValues);
+  const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultLocalTileTemplate, tokenValues);
   const cogTileTemplate = process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
   const tileUrl = directTileUrl || (cogUrl && cogTileTemplate
     ? interpolateTemplate(cogTileTemplate, { ...tokenValues, cogUrl, url: cogUrl })
@@ -136,6 +170,9 @@ function resolveCogRaster(project) {
     bounds: normalizeBounds(asset.bounds),
     opacity: Number.isFinite(Number(asset.opacity)) ? Number(asset.opacity) : 0.96,
     attribution: asset.attribution || 'WaveLab / DOST-PAGASA',
+    runDate,
+    runHour: runHourToken,
+    runDateTime,
   };
 }
 
