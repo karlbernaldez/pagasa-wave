@@ -283,6 +283,8 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen }) {
   const chartReviewStatus = chartProjectStatus || (APPROVED_PACKAGE_STATUSES.has(packageData?.status) ? 'Approved' : packageData?.status);
   const isComplete = Boolean(completion?.isComplete);
   const revisionActionPending = isRevisionActionPending(packageData, chart);
+  const isReCertifiedRevision = chartReviewStatus === REVISION_REQUESTED_STATUS && isComplete && !revisionActionPending;
+  const displayChartStatus = isReCertifiedRevision ? 'Re-certified' : chartReviewStatus;
   const blockingChartType = getFirstIncompletePrerequisite(packageData, chartType);
   const isQueued = Boolean(blockingChartType) && !isComplete;
   const activeEditorNames = getActiveEditorNames(chart);
@@ -291,11 +293,11 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen }) {
   const metadata = CHART_METADATA[chartType] || { code: 'CHT', horizon: 'Forecast chart', mandate: 'Prepare and verify this forecast chart.', checkpoint: 'Confirm readiness before package submission.' };
   const hasActiveEditors = activeEditorNames.length > 0;
   const canOpen = Boolean(projectId && !isQueued);
-  const isApprovedChart = APPROVED_CHART_STATUSES.has(chartReviewStatus);
-  const isWarningChart = WARNING_CHART_STATUSES.has(chartReviewStatus);
-  const accentClass = isApprovedChart || isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : isWarningChart || hasActiveEditors ? 'bg-amber-400' : 'bg-cyan-400';
-  const statusLabel = isQueued && !chartReviewStatus ? 'Queued' : chartReviewStatus || (isComplete ? 'Ready for review' : 'In production');
-  const statusClass = isApprovedChart
+  const isApprovedChart = APPROVED_CHART_STATUSES.has(displayChartStatus);
+  const isWarningChart = WARNING_CHART_STATUSES.has(displayChartStatus) && !isReCertifiedRevision;
+  const accentClass = isApprovedChart || isComplete || isReCertifiedRevision ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : isWarningChart || hasActiveEditors ? 'bg-amber-400' : 'bg-cyan-400';
+  const statusLabel = isQueued && !displayChartStatus ? 'Queued' : displayChartStatus || (isComplete ? 'Ready for review' : 'In production');
+  const statusClass = isApprovedChart || isReCertifiedRevision
     ? 'bg-emerald-500/10 text-emerald-500'
     : isWarningChart
       ? isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'
@@ -315,7 +317,7 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen }) {
         ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
         : isDarkMode ? 'border-white/10 bg-slate-950/50 text-slate-400' : 'border-slate-200 bg-white text-slate-600';
   const passiveActionText = isComplete
-    ? 'Ready for admin review'
+    ? isReCertifiedRevision ? 'Ready for resubmission' : 'Ready for admin review'
     : isQueued
       ? 'Locked by sequence'
       : isEditable ? 'Certify inside Studio' : 'View only';
@@ -342,8 +344,8 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen }) {
           <div className={`mb-4 inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-black ${collaborationClass}`}><span className="truncate">{collaborationLabel}</span></div>
           <p className={`text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{metadata.mandate}</p>
           <div className={`mt-4 border-t pt-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{revisionActionPending ? 'Revision required' : isQueued ? 'Prerequisite required' : hasActiveEditors && !isComplete ? 'Active editors' : isApprovedChart && isComplete ? 'Review completed' : 'Readiness checkpoint'}</p>
-            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{revisionActionPending ? 'Open this chart in Studio, apply the requested changes, then certify it again before resubmitting.' : isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : isApprovedChart && isComplete ? 'This chart was approved as part of the forecast package review.' : metadata.checkpoint}</p>
+            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{revisionActionPending ? 'Revision required' : isQueued ? 'Prerequisite required' : hasActiveEditors && !isComplete ? 'Active editors' : isReCertifiedRevision ? 'Revision re-certified' : isApprovedChart && isComplete ? 'Review completed' : 'Readiness checkpoint'}</p>
+            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{revisionActionPending ? 'Open this chart in Studio, apply the requested changes, then certify it again before resubmitting.' : isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : isReCertifiedRevision ? 'This revision is certified. Submit the package again for admin review.' : isApprovedChart && isComplete ? 'This chart was approved as part of the forecast package review.' : metadata.checkpoint}</p>
           </div>
         </div>
 
