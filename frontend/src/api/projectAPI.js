@@ -1,4 +1,5 @@
 const PROJECT_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/projects`;
+const FORECAST_PACKAGE_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/forecast-packages`;
 
 /* =========================================================
    CORE REQUEST HELPER
@@ -28,6 +29,21 @@ const request = async (url, options = {}) => {
 const appendQueryParam = (params, key, value) => {
   if (value === undefined || value === null || value === '' || value === 'All') return;
   params.set(key, String(value));
+};
+
+const getChartSortValue = (chart) => {
+  const order = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
+  const chartType = chart?.chartType || chart?.project?.chartType;
+  const index = order.indexOf(chartType);
+  return index === -1 ? order.length : index;
+};
+
+const getProjectsFromPackageContext = (context) => {
+  const charts = context?.package?.charts || [];
+  return charts
+    .map((chart) => chart?.project)
+    .filter(Boolean)
+    .sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
 };
 
 /* =========================================================
@@ -187,6 +203,33 @@ export const fetchAdminProjects = ({
   return request(`${PROJECT_API_BASE_URL}/admin/projects?${params}`, { signal });
 };
 
-// Fetch the full forecast package for the selected chart's forecast day.
-export const fetchAdminForecastPackage = (id, { signal } = {}) =>
-  request(`${PROJECT_API_BASE_URL}/admin/projects/${id}/package`, { signal });
+// Fetch the full forecast package for the selected chart.
+export const fetchAdminForecastPackage = async (id, { signal } = {}) => {
+  const adminPackage = await request(`${PROJECT_API_BASE_URL}/admin/projects/${id}/package`, { signal });
+
+  if ((adminPackage?.projects || []).length > 1) {
+    return adminPackage;
+  }
+
+  try {
+    const context = await request(`${FORECAST_PACKAGE_API_BASE_URL}/charts/project/${id}/context?autoJoin=false`, { signal });
+    const projects = getProjectsFromPackageContext(context);
+
+    if (projects.length > 0) {
+      return {
+        ...adminPackage,
+        package: context.package || adminPackage?.package || null,
+        forecastDate: context.package?.forecastDate || adminPackage?.forecastDate,
+        packageName: context.package?.name || adminPackage?.packageName,
+        expectedChartTypes: ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'],
+        chartCount: projects.length,
+        isComplete: projects.length >= 4,
+        projects,
+      };
+    }
+  } catch (error) {
+    console.error('[projectAPI] Failed to load forecast package chart context fallback:', error);
+  }
+
+  return adminPackage;
+};
