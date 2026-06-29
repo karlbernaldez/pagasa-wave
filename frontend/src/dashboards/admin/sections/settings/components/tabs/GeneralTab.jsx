@@ -3,7 +3,7 @@
 // ║  Accordions: Public Content, Branding, Map, Maintenance ║
 // ╚══════════════════════════════════════════════════════╝
 
-import { Globe, Image, Shield, AlertTriangle, MapPinned } from 'lucide-react';
+import { Globe, Image, Shield, AlertTriangle, MapPinned, UsersRound } from 'lucide-react';
 import Accordion from '../ui/Accordion';
 import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
 
@@ -174,6 +174,38 @@ const GeneralTab = ({ settings = {}, setSettings, dark }) => {
             </div>
           )}
 
+        </div>
+      </Accordion>
+
+      {/* ─────────────────────────────────────────────── */}
+      {/* Public Staff Visibility */}
+      {/* ─────────────────────────────────────────────── */}
+
+      <Accordion icon={UsersRound} title="Public Staff Visibility" dark={dark}>
+        <div className="grid gap-4">
+          <label className={`flex items-center gap-3 rounded-2xl border p-4 cursor-pointer transition-all duration-200 ${
+            settings.showPublicStaffInfo !== false
+              ? dark
+                ? 'border-cyan-400/30 bg-cyan-400/10'
+                : 'border-blue-200 bg-blue-50'
+              : dark
+                ? 'border-slate-700 bg-slate-800/30'
+                : 'border-slate-200 bg-slate-50'
+          }`}>
+            <div className={`relative h-6 w-11 rounded-full transition-colors duration-300 ${settings.showPublicStaffInfo !== false ? 'bg-cyan-500' : dark ? 'bg-slate-700' : 'bg-slate-300'}`}>
+              <div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all duration-300 ${settings.showPublicStaffInfo !== false ? 'left-6' : 'left-1'}`} />
+              <input
+                type="checkbox"
+                checked={settings.showPublicStaffInfo !== false}
+                onChange={(e) => set('showPublicStaffInfo')(e.target.checked)}
+                className="sr-only"
+              />
+            </div>
+            <div>
+              <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-900'}`}>Show editors / forecasters publicly</p>
+              <p className={`text-xs leading-5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>Controls whether public chart cards, chart detail metadata, and exports show the forecaster/editor names.</p>
+            </div>
+          </label>
         </div>
       </Accordion>
 
