@@ -27,11 +27,24 @@ const MARKER_TYPE_ALIASES = {
   less1: 'less_1',
   less_than_1m: 'less_1',
   lessthan1m: 'less_1',
+  low_wave: 'less_1',
   low_waves: 'less_1',
   text: 'text_note',
   text_note: 'text_note',
   label: 'text_note',
   map_label: 'text_note',
+};
+
+const MARKER_DISPLAY_NAMES = {
+  less_1: 'Low Wave (<1 m)',
+  text_note: 'Text Note',
+  low_pressure: 'Low Pressure Area',
+  high_pressure: 'High Pressure Area',
+  typhoon: 'Tropical Cyclone',
+};
+
+const MARKER_LABEL_VALUES = {
+  less_1: '<1',
 };
 
 export function normalizeMarkerType(value) {
@@ -81,11 +94,38 @@ function getActiveProjectId(projectId) {
   }
 }
 
-function notifyFeatureSaved(baseName) {
+function getShortLayerSuffix(sourceId) {
+  const token = String(sourceId || Date.now().toString(36))
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(-4)
+    .toUpperCase();
+
+  return token || Date.now().toString(36).slice(-4).toUpperCase();
+}
+
+function getMarkerLabelValue(markerType, rawTitle) {
+  return MARKER_LABEL_VALUES[markerType] || rawTitle?.trim() || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
+}
+
+function getMarkerDisplayName(markerType, rawTitle, sourceId) {
+  const trimmedTitle = rawTitle?.trim();
+
+  if (markerType === 'less_1') {
+    return `${MARKER_DISPLAY_NAMES.less_1} #${getShortLayerSuffix(sourceId)}`;
+  }
+
+  if (markerType === 'text_note') {
+    return trimmedTitle || MARKER_DISPLAY_NAMES.text_note;
+  }
+
+  return trimmedTitle || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
+}
+
+function notifyFeatureSaved(displayName) {
   Swal.fire({
     icon: 'success',
     title: 'Feature saved!',
-    text: `"${baseName}" has been added successfully.`,
+    text: `"${displayName}" has been added successfully.`,
     toast: true,
     position: 'top-end',
     showConfirmButton: false,
@@ -102,22 +142,23 @@ function notifyFeatureSaveFailed(err) {
   });
 }
 
-function buildPointFeaturePayload({ feature, baseName, closedMode, activeProjectId, markerType, sourceId }) {
+function buildPointFeaturePayload({ feature, displayName, labelValue, closedMode, activeProjectId, markerType, sourceId }) {
   return {
     geometry: feature.geometry,
     properties: {
-      labelValue: baseName,
+      labelValue,
+      displayName,
       closedMode,
       isFront: false,
       project: activeProjectId,
-      title: baseName,
-      name: baseName,
+      title: displayName,
+      name: displayName,
       type: markerType,
       markerType,
       symbolType: markerType,
-      mapLayerId: feature.properties.mapLayerId,
+      mapLayerId: sourceId,
     },
-    name: baseName,
+    name: displayName,
     sourceId,
   };
 }
@@ -160,10 +201,10 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
   }
 
   const markerType = normalizeMarkerType(selectedType);
-  const baseName = title?.trim() || 'Untitled Layer';
-  const sourceId = makeSafeSourceId(markerType, baseName);
-  const mapLayerId = `${markerType}_${baseName}`;
-  const panelId = sourceId;
+  const rawTitle = title?.trim() || '';
+  const sourceId = makeSafeSourceId(markerType, rawTitle || MARKER_DISPLAY_NAMES[markerType] || 'marker');
+  const displayName = getMarkerDisplayName(markerType, rawTitle, sourceId);
+  const labelValue = getMarkerLabelValue(markerType, rawTitle);
   const closedMode = false;
 
   const feature = {
@@ -173,36 +214,40 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
       coordinates: normalizedCoords,
     },
     properties: {
-      title: baseName,
-      name: baseName,
+      labelValue,
+      displayName,
+      title: displayName,
+      name: displayName,
       type: markerType,
       markerType,
       symbolType: markerType,
-      mapLayerId,
+      mapLayerId: sourceId,
     },
   };
 
   const panelLayer = {
-    id: panelId,
+    id: sourceId,
     sourceID: sourceId,
-    name: baseName,
+    name: displayName,
     visible: true,
     locked: false,
     type: markerType,
     markerType,
-    mapLayerId,
+    mapLayerId: sourceId,
+    properties: feature.properties,
   };
 
   const persistFeature = ({ refreshOnSuccess = false } = {}) => createFeature(buildPointFeaturePayload({
     feature,
-    baseName,
+    displayName,
+    labelValue,
     closedMode,
     activeProjectId,
     markerType,
     sourceId,
   }))
     .then(() => {
-      notifyFeatureSaved(baseName);
+      notifyFeatureSaved(displayName);
       if (refreshOnSuccess) refreshWorkspaceAfterFallbackSave();
     })
     .catch(notifyFeatureSaveFailed);
@@ -215,14 +260,14 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
   }
 
   updateLayers((prevLayers) => {
-    const existingNames = prevLayers.map((layer) => layer.name);
+    const existingSourceIds = prevLayers.map((layer) => layer.sourceID || layer.id);
 
-    if (existingNames.includes(baseName)) {
+    if (existingSourceIds.includes(sourceId)) {
       Swal.fire({
         toast: true,
         position: 'top-end',
         icon: 'error',
-        title: `The marker named "${baseName}" already exists.`,
+        title: `The marker "${displayName}" already exists.`,
         showConfirmButton: false,
         timer: 3000,
       });
