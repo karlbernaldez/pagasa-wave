@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, X } from 'lucide-react';
 
 import ReviewActionsFooter from '@/features/projects/components/review/ReviewActionsFooter';
 import ReviewMapWorkspace from '@/features/projects/components/review/ReviewMapWorkspace';
@@ -16,7 +16,6 @@ import {
   getPreviousRemarks,
   getProjectId,
   getProjectName,
-  getProjectType,
   getReviewer,
   getTimeline,
   mergeProjectState,
@@ -31,9 +30,69 @@ import {
 } from '@/features/projects/projectStatuses';
 
 const EMPTY_REVIEW_QUEUE = Object.freeze([]);
+const CHART_METADATA = {
+  analysis: {
+    code: 'ANL',
+    label: 'Wave Analysis',
+    horizon: 'Current state',
+    mandate: 'Establish observed sea-state baseline and active wave systems.',
+  },
+  forecast_24h: {
+    code: '+24H',
+    label: '24h Wave Forecast',
+    horizon: 'Day 1 outlook',
+    mandate: 'Prepare near-term operational guidance for the next 24 hours.',
+  },
+  forecast_36h: {
+    code: '+36H',
+    label: '36h Wave Forecast',
+    horizon: 'Extended outlook',
+    mandate: 'Extend the forecast package through the intermediate marine window.',
+  },
+  forecast_48h: {
+    code: '+48H',
+    label: '48h Wave Forecast',
+    horizon: 'Day 2 outlook',
+    mandate: 'Finalize the two-day operational forecast horizon.',
+  },
+};
 
 function getQueueProjectId(project) {
   return getProjectId(project);
+}
+
+function getChartType(project) {
+  return project?.chartType || project?.type || '';
+}
+
+function getChartMetadata(project) {
+  const chartType = getChartType(project);
+  return CHART_METADATA[chartType] || {
+    code: 'CHT',
+    label: chartType || 'Forecast Chart',
+    horizon: 'Forecast chart',
+    mandate: 'Review this forecast chart before package approval.',
+  };
+}
+
+function getStatusTone(status) {
+  if (['Approved', 'Published'].includes(status)) return 'emerald';
+  if (['Rejected', 'Revision Requested'].includes(status)) return 'rose';
+  if (status === 'Under Review') return 'cyan';
+  if (status === 'Submitted') return 'amber';
+  return 'slate';
+}
+
+function getToneClasses(tone, isDarkMode) {
+  const classes = {
+    cyan: isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-200 bg-cyan-50 text-cyan-700',
+    amber: isDarkMode ? 'border-amber-300/20 bg-amber-300/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-700',
+    emerald: isDarkMode ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    rose: isDarkMode ? 'border-rose-300/20 bg-rose-300/10 text-rose-100' : 'border-rose-200 bg-rose-50 text-rose-700',
+    slate: isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-700',
+  };
+
+  return classes[tone] || classes.slate;
 }
 
 function GalleryButton({ direction, disabled, isDarkMode, onClick }) {
@@ -195,6 +254,8 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
   if (!currentProject) return null;
 
   const statusLabel = getProjectStatusLabel(currentProject?.status);
+  const chartMetadata = getChartMetadata(currentProject);
+  const statusTone = getStatusTone(currentProject?.status);
   const isReviewable = isProjectReviewable(currentProject?.status);
   const isUnderReview = isProjectUnderReview(currentProject?.status);
   const isApproved = isProjectApproved(currentProject?.status);
@@ -222,14 +283,23 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
 
       <div className={`relative flex h-full w-full max-w-[1480px] flex-col overflow-hidden rounded-2xl border shadow-2xl ring-1 ring-white/10 sm:h-[min(94vh,940px)] sm:rounded-[28px] ${surface}`}>
         <header className={`flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500 sm:text-xs">Forecast Chart Review</p>
-              <span className={`${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-100 bg-blue-50 text-blue-700'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>{statusLabel}</span>
+              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${getToneClasses(statusTone, isDarkMode)}`}>{statusLabel}</span>
               <span className={`${isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>Chart {gallery.currentNumber} of {gallery.total}</span>
             </div>
-            <h2 className={`mt-2 truncate text-lg font-black leading-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{getProjectName(currentProject)}</h2>
-            <p className={`mt-1 text-xs font-semibold sm:text-sm ${mutedText}`}>{getProjectType(currentProject)} · {getOwner(currentProject)} · Forecast {formatDate(currentProject.forecastDate)}</p>
+
+            <div className={`mt-3 rounded-2xl border p-3 ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-slate-100 bg-slate-50'}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-black tracking-[0.14em] ${isDarkMode ? 'bg-slate-950 text-cyan-200 ring-1 ring-white/10' : 'bg-slate-100 text-blue-700'}`}>{chartMetadata.code}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${getToneClasses(statusTone, isDarkMode)}`}>{statusLabel}</span>
+              </div>
+              <h2 className={`mt-3 truncate text-lg font-black leading-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{chartMetadata.label}</h2>
+              <p className={`mt-1 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{chartMetadata.horizon}</p>
+              <p className={`mt-2 line-clamp-2 text-xs font-semibold sm:text-sm ${mutedText}`}>{chartMetadata.mandate}</p>
+              <p className={`mt-2 truncate text-xs font-semibold ${mutedText}`} title={getProjectName(currentProject)}>{getProjectName(currentProject)} · {getOwner(currentProject)} · Forecast {formatDate(currentProject.forecastDate)}</p>
+            </div>
           </div>
           <button type="button" onClick={onClose} disabled={Boolean(busyAction)} className={`rounded-2xl border border-transparent p-2 transition disabled:cursor-not-allowed disabled:opacity-50 ${isDarkMode ? 'text-slate-400 hover:border-white/10 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:border-slate-200 hover:bg-slate-100 hover:text-slate-900'}`} aria-label="Close review modal"><X size={20} /></button>
         </header>
