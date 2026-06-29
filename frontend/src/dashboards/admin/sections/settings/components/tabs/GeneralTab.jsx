@@ -14,9 +14,9 @@ const MAP_BOUNDS_OPTIONS = [
     description: 'Current WaveLab production viewport: west 93, south 0, east 153.8595159535438, north 25.',
   },
   {
-    value: 'philippinesRegional',
-    label: 'Philippines regional',
-    description: 'Closer public viewport around the Philippine regional area: west 116, south 4, east 127, north 22.',
+    value: 'tcid',
+    label: 'TCID default',
+    description: 'TCID public viewport: west 116, south 4, east 127, north 22.',
   },
   {
     value: 'custom',
@@ -37,6 +37,23 @@ function getCustomBounds(settings) {
     ...DEFAULT_CUSTOM_BOUNDS,
     ...(settings.mapBoundsCustom || {}),
   };
+}
+
+function getSavedCustomBounds(settings) {
+  return Array.isArray(settings.savedCustomMapBounds) ? settings.savedCustomMapBounds : [];
+}
+
+function createCustomBoundsId(name) {
+  const slug = String(name || 'custom-bounds')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') || 'custom-bounds';
+  return `${slug}-${Date.now()}`;
+}
+
+function normalizePreset(value) {
+  return value === 'philippinesRegional' ? 'tcid' : (value || 'tcad');
 }
 
 const GeneralTab = ({ settings = {}, setSettings, dark }) => {
@@ -60,6 +77,51 @@ const GeneralTab = ({ settings = {}, setSettings, dark }) => {
       },
     }));
 
+  const saveCurrentCustomBounds = () =>
+    setSettings(prev => {
+      const name = String(prev.mapBoundsCustomName || '').trim() || 'Custom bounds';
+      const activeBounds = getCustomBounds(prev);
+      const savedBounds = getSavedCustomBounds(prev);
+      const selectedId = prev.selectedCustomMapBoundsId;
+      const existingIndex = savedBounds.findIndex((item) => item.id === selectedId);
+      const nextRecord = {
+        id: existingIndex >= 0 ? savedBounds[existingIndex].id : createCustomBoundsId(name),
+        name,
+        ...activeBounds,
+      };
+      const nextSavedBounds = existingIndex >= 0
+        ? savedBounds.map((item, index) => index === existingIndex ? nextRecord : item)
+        : [...savedBounds, nextRecord];
+
+      return {
+        ...prev,
+        mapBoundsPreset: 'custom',
+        mapBoundsCustomName: name,
+        mapBoundsCustom: activeBounds,
+        selectedCustomMapBoundsId: nextRecord.id,
+        savedCustomMapBounds: nextSavedBounds,
+      };
+    });
+
+  const loadSavedCustomBounds = (id) =>
+    setSettings(prev => {
+      const saved = getSavedCustomBounds(prev).find((item) => item.id === id);
+      if (!saved) return { ...prev, selectedCustomMapBoundsId: '' };
+
+      return {
+        ...prev,
+        mapBoundsPreset: 'custom',
+        selectedCustomMapBoundsId: saved.id,
+        mapBoundsCustomName: saved.name || 'Custom bounds',
+        mapBoundsCustom: {
+          westLng: saved.westLng,
+          southLat: saved.southLat,
+          eastLng: saved.eastLng,
+          northLat: saved.northLat,
+        },
+      };
+    });
+
 
   /* =========================================================
      FILE UPLOAD (history-safe)
@@ -80,7 +142,9 @@ const GeneralTab = ({ settings = {}, setSettings, dark }) => {
   };
 
   const customBounds = getCustomBounds(settings);
-  const selectedMapBoundsOption = MAP_BOUNDS_OPTIONS.find((option) => option.value === settings.mapBoundsPreset) || MAP_BOUNDS_OPTIONS[0];
+  const savedCustomBounds = getSavedCustomBounds(settings);
+  const activePreset = normalizePreset(settings.mapBoundsPreset);
+  const selectedMapBoundsOption = MAP_BOUNDS_OPTIONS.find((option) => option.value === activePreset) || MAP_BOUNDS_OPTIONS[0];
 
 
   return (
@@ -218,7 +282,7 @@ const GeneralTab = ({ settings = {}, setSettings, dark }) => {
           <div>
             <label className={labelCls(dark)}>Map Bounds Preset</label>
             <select
-              value={settings.mapBoundsPreset || 'tcad'}
+              value={activePreset}
               onChange={(e) => set('mapBoundsPreset')(e.target.value)}
               className={inputCls(dark)}
             >
@@ -231,41 +295,76 @@ const GeneralTab = ({ settings = {}, setSettings, dark }) => {
             </p>
           </div>
 
-          {settings.mapBoundsPreset === 'custom' && (
+          {activePreset === 'custom' && (
             <div className={`rounded-2xl border p-4 ${dark ? 'border-slate-700 bg-slate-800/30' : 'border-slate-200 bg-slate-50'}`}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-4">
+                {savedCustomBounds.length > 0 && (
+                  <div>
+                    <label className={labelCls(dark)}>Saved Custom Bounds</label>
+                    <select
+                      value={settings.selectedCustomMapBoundsId || ''}
+                      onChange={(e) => loadSavedCustomBounds(e.target.value)}
+                      className={inputCls(dark)}
+                    >
+                      <option value="">Select a saved bound</option>
+                      {savedCustomBounds.map((bound) => (
+                        <option key={bound.id} value={bound.id}>{bound.name || 'Custom bounds'}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <Field
-                  label="West longitude"
-                  type="number"
-                  value={customBounds.westLng ?? ''}
-                  onChange={setCustomBounds('westLng')}
+                  label="Custom bounds name"
+                  value={settings.mapBoundsCustomName ?? ''}
+                  onChange={set('mapBoundsCustomName')}
                   dark={dark}
                 />
-                <Field
-                  label="South latitude"
-                  type="number"
-                  value={customBounds.southLat ?? ''}
-                  onChange={setCustomBounds('southLat')}
-                  dark={dark}
-                />
-                <Field
-                  label="East longitude"
-                  type="number"
-                  value={customBounds.eastLng ?? ''}
-                  onChange={setCustomBounds('eastLng')}
-                  dark={dark}
-                />
-                <Field
-                  label="North latitude"
-                  type="number"
-                  value={customBounds.northLat ?? ''}
-                  onChange={setCustomBounds('northLat')}
-                  dark={dark}
-                />
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <Field
+                    label="West longitude"
+                    type="number"
+                    value={customBounds.westLng ?? ''}
+                    onChange={setCustomBounds('westLng')}
+                    dark={dark}
+                  />
+                  <Field
+                    label="South latitude"
+                    type="number"
+                    value={customBounds.southLat ?? ''}
+                    onChange={setCustomBounds('southLat')}
+                    dark={dark}
+                  />
+                  <Field
+                    label="East longitude"
+                    type="number"
+                    value={customBounds.eastLng ?? ''}
+                    onChange={setCustomBounds('eastLng')}
+                    dark={dark}
+                  />
+                  <Field
+                    label="North latitude"
+                    type="number"
+                    value={customBounds.northLat ?? ''}
+                    onChange={setCustomBounds('northLat')}
+                    dark={dark}
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className={`text-xs font-semibold leading-5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Bounds must be ordered west &lt; east and south &lt; north. Invalid values automatically fall back to TCAD bounds in public chart rendering.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={saveCurrentCustomBounds}
+                    className={`rounded-xl px-4 py-2 text-xs font-black transition ${dark ? 'bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/25' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  >
+                    {settings.selectedCustomMapBoundsId ? 'Update saved bound' : 'Save named bound'}
+                  </button>
+                </div>
               </div>
-              <p className={`mt-3 text-xs font-semibold leading-5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Bounds must be ordered west &lt; east and south &lt; north. Invalid values automatically fall back to TCAD bounds in public chart rendering.
-              </p>
             </div>
           )}
         </div>
