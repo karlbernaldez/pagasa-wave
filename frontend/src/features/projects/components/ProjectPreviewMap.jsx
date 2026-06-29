@@ -17,6 +17,8 @@ const COLORS = { cold: '#1d4ed8', warm: '#ef4444', occluded: '#7c3aed' };
 const FRONT_SYMBOL_RADIUS = 6;
 const FRONT_TRIANGLE_SIZE = 7;
 const STATIONARY_SEGMENT_LENGTH = 26;
+const LINE_ENDPOINT_LABEL_SOURCE_ID = 'project-preview-line-endpoint-label-source';
+const LINE_ENDPOINT_LABEL_LAYER_ID = 'project-preview-line-endpoint-labels';
 const FRONT_TYPES = {
   cold: { color: COLORS.cold, lineWidth: 2.75, spacing: 40, symbols: [{ kind: 'triangle', color: COLORS.cold, side: -1 }] },
   warm: { color: COLORS.warm, lineWidth: 2.75, spacing: 40, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }] },
@@ -103,6 +105,44 @@ function isFrontFeature(feature) {
   const props = feature?.properties || {};
   const id = String(getFeatureId(feature) || '');
   return Boolean(props.isFront || props.frontType || id.startsWith('SF_') || `${props.name || ''} ${props.title || ''}`.toLowerCase().includes('front'));
+}
+function getLineLabelValue(feature) {
+  const props = feature?.properties || {};
+  return props.labelValue ?? props.waveHeight ?? props.heightValue ?? props.height ?? props.value ?? props.text ?? props.label ?? props.name ?? props.title ?? feature?.name ?? feature?.title ?? '';
+}
+function getLineCoordinateParts(geometry) {
+  const coordinates = geometry?.coordinates;
+  if (!Array.isArray(coordinates)) return [];
+  if (geometry?.type === 'LineString') return [coordinates];
+  if (geometry?.type === 'MultiLineString') return coordinates;
+  return [];
+}
+function buildLineEndpointLabelCollection(featureCollection) {
+  const features = [];
+  featureCollection.features
+    .filter((feature) => ['LineString', 'MultiLineString'].includes(feature?.geometry?.type))
+    .forEach((feature) => {
+      const label = String(getLineLabelValue(feature) || '').trim();
+      if (!label) return;
+      getLineCoordinateParts(feature.geometry).forEach((line, lineIndex) => {
+        if (!Array.isArray(line) || line.length < 2) return;
+        const points = feature?.properties?.closedMode ? [line[0]] : [line[0], line[line.length - 1]];
+        points.forEach((coordinates, pointIndex) => {
+          if (!Array.isArray(coordinates) || coordinates.length < 2) return;
+          features.push({
+            type: 'Feature',
+            id: `${getFeatureId(feature)}-${lineIndex}-${pointIndex}`,
+            geometry: { type: 'Point', coordinates },
+            properties: {
+              text: label,
+              style: feature?.properties?.style || feature?.style || {},
+              diffStatus: feature?.properties?.diffStatus,
+            },
+          });
+        });
+      });
+    });
+  return { type: 'FeatureCollection', features };
 }
 function toLngLat(map, x, y) { const point = map.unproject([x, y]); return [point.lng, point.lat]; }
 function triangleCoordinates(map, x, y, ux, uy, nx, ny, side) {
@@ -252,12 +292,13 @@ function setPreviewLayerPaint(map, { showDiffStyles, styleMode }) {
     map.setPaintProperty('project-preview-lines', 'line-width', styleGet('lineWidth', paint.lineWidth));
     map.setPaintProperty('project-preview-lines', 'line-opacity', showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : styleGet('lineOpacity', 1));
   }
-  if (map.getLayer('project-preview-line-labels')) {
-    map.setLayoutProperty('project-preview-line-labels', 'text-size', styleGet('textSize', paint.lineLabelSize));
-    map.setPaintProperty('project-preview-line-labels', 'text-color', styleGet('textColor', paint.labelColor));
-    map.setPaintProperty('project-preview-line-labels', 'text-halo-color', styleGet('textHaloColor', paint.labelHaloColor));
-    map.setPaintProperty('project-preview-line-labels', 'text-halo-width', styleGet('textHaloWidth', paint.labelHaloWidth));
-  }
+  ['project-preview-line-labels', LINE_ENDPOINT_LABEL_LAYER_ID].forEach((layerId) => {
+    if (!map.getLayer(layerId)) return;
+    map.setLayoutProperty(layerId, 'text-size', styleGet('textSize', paint.lineLabelSize));
+    map.setPaintProperty(layerId, 'text-color', styleGet('textColor', paint.labelColor));
+    map.setPaintProperty(layerId, 'text-halo-color', styleGet('textHaloColor', paint.labelHaloColor));
+    map.setPaintProperty(layerId, 'text-halo-width', styleGet('textHaloWidth', paint.labelHaloWidth));
+  });
   if (map.getLayer('project-preview-points-halo')) {
     map.setPaintProperty('project-preview-points-halo', 'circle-color', pointColor);
     map.setPaintProperty('project-preview-points-halo', 'circle-radius', styleGet('iconSize', paint.pointRadius + 3));
@@ -282,6 +323,7 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
   const paint = getChartStyleModePaint(styleMode);
   const frontFeatures = featureCollection.features.filter(isFrontFeature);
   const genericFeatureCollection = { type: 'FeatureCollection', features: featureCollection.features.filter((feature) => !isFrontFeature(feature)) };
+  const lineEndpointLabels = buildLineEndpointLabelCollection(genericFeatureCollection);
   const polygonColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : styleGet('fillColor', paint.polygonFill);
   const lineColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : styleGet('lineColor', paint.lineColor);
   const pointColor = showDiffStyles ? DIFF_COLOR_EXPRESSION : styleGet('color', styleGet('pointColor', paint.pointColor));
@@ -290,18 +332,22 @@ function addPreviewLayers(map, featureCollection, { showLabels = true, showDiffS
   renderFrontFeatures(map, frontFeatures, showDiffStyles);
   if (map.getSource(sourceId)) {
     map.getSource(sourceId).setData(genericFeatureCollection);
+    setSourceData(map, LINE_ENDPOINT_LABEL_SOURCE_ID, lineEndpointLabels);
     setPreviewLayerPaint(map, { showDiffStyles, styleMode });
     setLayerVisibility(map, 'project-preview-line-labels', showLabels);
+    setLayerVisibility(map, LINE_ENDPOINT_LABEL_LAYER_ID, showLabels);
     setLayerVisibility(map, 'project-preview-points-label', showLabels && paint.showPointLabels);
     return;
   }
 
   map.addSource(sourceId, { type: 'geojson', data: genericFeatureCollection });
+  map.addSource(LINE_ENDPOINT_LABEL_SOURCE_ID, { type: 'geojson', data: lineEndpointLabels });
   map.addLayer({ id: 'project-preview-polygons', type: 'fill', source: sourceId, filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false], paint: { 'fill-color': polygonColor, 'fill-opacity': showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.2, 0.42] : styleGet('fillOpacity', paint.polygonOpacity) } });
   map.addLayer({ id: 'project-preview-polygons-outline', type: 'line', source: sourceId, filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false], paint: { 'line-color': showDiffStyles ? lineColor : styleGet('lineColor', paint.polygonOutline), 'line-width': styleGet('lineWidth', paint.polygonOutlineWidth), 'line-opacity': showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : styleGet('lineOpacity', 0.9) } });
   map.addLayer({ id: 'project-preview-lines-casing', type: 'line', source: sourceId, filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false], paint: { 'line-color': styleGet('lineCasing', 'rgba(255, 255, 255, 0)'), 'line-width': styleGet('lineCasingWidth', 0), 'line-opacity': 0.95 } });
   map.addLayer({ id: 'project-preview-lines', type: 'line', source: sourceId, filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false], paint: { 'line-color': lineColor, 'line-width': styleGet('lineWidth', paint.lineWidth), 'line-opacity': showDiffStyles ? ['match', ['get', 'diffStatus'], 'unchanged', 0.62, 1] : styleGet('lineOpacity', 1) } });
   if (showLabels) map.addLayer({ id: 'project-preview-line-labels', type: 'symbol', source: sourceId, filter: LINE_LABEL_FILTER, layout: { 'symbol-placement': 'line', 'symbol-spacing': 220, 'text-field': LINE_LABEL_TEXT, 'text-size': styleGet('textSize', paint.lineLabelSize), 'text-anchor': 'center', 'text-rotation-alignment': 'map', 'text-pitch-alignment': 'viewport', 'text-keep-upright': true, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': styleGet('textColor', paint.labelColor), 'text-halo-color': styleGet('textHaloColor', paint.labelHaloColor), 'text-halo-width': styleGet('textHaloWidth', paint.labelHaloWidth) } });
+  if (showLabels) map.addLayer({ id: LINE_ENDPOINT_LABEL_LAYER_ID, type: 'symbol', source: LINE_ENDPOINT_LABEL_SOURCE_ID, layout: { 'text-field': ['get', 'text'], 'text-size': styleGet('textSize', paint.lineLabelSize), 'text-anchor': 'bottom', 'text-offset': [0, 0.5], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': styleGet('textColor', paint.labelColor), 'text-halo-color': styleGet('textHaloColor', paint.labelHaloColor), 'text-halo-width': styleGet('textHaloWidth', paint.labelHaloWidth) } });
   map.addLayer({ id: 'project-preview-points-halo', type: 'circle', source: sourceId, filter: POINT_SYMBOL_FILTER, paint: { 'circle-color': pointColor, 'circle-radius': styleGet('iconSize', paint.pointRadius + 3), 'circle-opacity': paint.showPoints ? styleGet('iconOpacity', 0.28) : 0, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1 } });
   map.addLayer({ id: 'project-preview-points-symbol', type: 'circle', source: sourceId, filter: POINT_SYMBOL_FILTER, paint: { 'circle-color': pointColor, 'circle-radius': styleGet('iconSize', paint.pointRadius), 'circle-opacity': paint.showPoints ? styleGet('iconOpacity', 1) : 0, 'circle-stroke-color': styleGet('pointStroke', paint.pointStroke), 'circle-stroke-width': styleGet('pointStrokeWidth', paint.pointStrokeWidth) } });
   map.addLayer({ id: 'project-preview-less-one-symbol', type: 'symbol', source: sourceId, filter: LESS_ONE_FILTER, layout: { 'icon-image': 'preview-less-1', 'icon-size': 0.28, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
@@ -334,7 +380,7 @@ function useNearViewport(rootMargin = '500px', disabled = false) {
 }
 function getFeatureIdentity(feature) { return feature.id || feature._id || feature.properties?.stableId || feature.properties?.annotationId || feature.properties?.id || feature.properties?.sourceId || feature.properties?.name || ''; }
 function getFeatureRenderKey(featureCollection) {
-  return JSON.stringify(featureCollection.features.map((feature) => ({ geometry: feature.geometry, id: getFeatureIdentity(feature), markerType: feature.properties?.markerType, diffStatus: feature.properties?.diffStatus, labelValue: feature.properties?.labelValue, waveHeight: feature.properties?.waveHeight, heightValue: feature.properties?.heightValue, height: feature.properties?.height, value: feature.properties?.value, label: feature.properties?.label, text: feature.properties?.text, style: feature.properties?.style, frontType: feature.properties?.frontType, frontSymbolSide: feature.properties?.frontSymbolSide })));
+  return JSON.stringify(featureCollection.features.map((feature) => ({ geometry: feature.geometry, id: getFeatureIdentity(feature), markerType: feature.properties?.markerType, diffStatus: feature.properties?.diffStatus, labelValue: feature.properties?.labelValue, waveHeight: feature.properties?.waveHeight, heightValue: feature.properties?.heightValue, height: feature.properties?.height, value: feature.properties?.value, label: feature.properties?.label, text: feature.properties?.text, name: feature.name, title: feature.title, style: feature.properties?.style, frontType: feature.properties?.frontType, frontSymbolSide: feature.properties?.frontSymbolSide })));
 }
 function PreviewPlaceholder({ isDarkMode, label, loading = false }) { return <div className={`absolute inset-0 flex items-center justify-center text-xs font-semibold backdrop-blur-[1px] ${isDarkMode ? 'bg-slate-950/55 text-slate-400' : 'bg-white/55 text-slate-500'}`}>{loading ? 'Loading annotations...' : label}</div>; }
 
