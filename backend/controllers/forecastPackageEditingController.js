@@ -23,6 +23,7 @@ function getReadyEditors(chart = {}) { return Array.isArray(chart.readyEditors) 
 function getLegacyClaimPatch(activeEditors) { const firstEditor = activeEditors[0]; return { 'charts.$.claimedBy': firstEditor?.user || null, 'charts.$.claimedAt': firstEditor?.startedAt || null }; }
 function applyLegacyClaimFromActiveEditors(chart, activeEditors) { const firstEditor = activeEditors[0]; chart.claimedBy = firstEditor?.user || null; chart.claimedAt = firstEditor?.startedAt || null; }
 function ensureParticipant(chart, userId) { const now = new Date(); if (!Array.isArray(chart.participants)) chart.participants = []; const existing = chart.participants.find((participant) => isSameId(participant.user, userId)); if (existing) existing.lastJoinedAt = now; else chart.participants.push({ user: userId, firstJoinedAt: now, lastJoinedAt: now }); }
+function isUserReady(chart, userId) { return getReadyEditors(chart).some((vote) => isSameId(vote.user, userId)); }
 function removeReadyVote(chart, userId) { chart.readyEditors = getReadyEditors(chart).filter((vote) => !isSameId(vote.user, userId)); }
 function addReadyVote(chart, userId) { removeReadyVote(chart, userId); chart.readyEditors.push({ user: userId, readyAt: new Date() }); }
 
@@ -91,7 +92,13 @@ function serializeChartContext(forecastPackage, chart, user) {
     },
   };
 }
-function canAutoJoinChart(forecastPackage, chart) { if (!EDITABLE_PACKAGE_STATUSES.includes(forecastPackage.status)) return false; const completionRow = getCompletionRow(forecastPackage, chart.chartType); if (completionRow?.isComplete) return false; return !getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chart.chartType); }
+function canAutoJoinChart(forecastPackage, chart, user) {
+  if (!EDITABLE_PACKAGE_STATUSES.includes(forecastPackage.status)) return false;
+  const completionRow = getCompletionRow(forecastPackage, chart.chartType);
+  if (completionRow?.isComplete) return false;
+  if (user?.id && isUserReady(chart, user.id)) return false;
+  return !getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chart.chartType);
+}
 function assertEditablePackage(forecastPackage) { if (!EDITABLE_PACKAGE_STATUSES.includes(forecastPackage.status)) throwError('Chart workflow can only be changed while the package is Draft or Revision Requested', 403); }
 function resetChartAndDependents(forecastPackage, chartType) { const chartIndex = getChartSequenceIndex(chartType); if (chartIndex < 0) return 0; const resetChartTypes = new Set(REQUIRED_FORECAST_CHART_TYPES.slice(chartIndex)); let resetCount = 0; forecastPackage.chartCompletion?.forEach((row) => { if (!resetChartTypes.has(row.chartType) || !row.isComplete) return; row.isComplete = false; row.completedAt = null; row.completedBy = null; resetCount += 1; }); forecastPackage.charts?.forEach((chart) => { if (!resetChartTypes.has(chart.chartType)) return; chart.readyAt = null; chart.readyBy = null; chart.readyEditors = []; }); return resetCount; }
 function updateChartCompletionState(forecastPackage, chart, isComplete, user) {
@@ -134,11 +141,14 @@ function updateChartCompletionState(forecastPackage, chart, isComplete, user) {
 }
 
 async function getPackageByProject(projectId) { const forecastPackage = await ForecastPackage.findOne({ 'charts.project': projectId }); if (!forecastPackage) throwError('Forecast Package chart context not found', 404); return forecastPackage; }
-async function joinChartIfAllowedByProject(projectId, user, { emit = true, audit = true } = {}) {
+async function joinChartIfAllowedByProject(projectId, user, { emit = true, audit = true, strict = false } = {}) {
   const forecastPackage = await getPackageByProject(projectId);
   const chart = getChartRowByProjectId(forecastPackage, projectId);
   if (!chart) throwError('Forecast Package chart context not found', 404);
-  if (!canAutoJoinChart(forecastPackage, chart)) return { forecastPackage, joined: false };
+  if (!canAutoJoinChart(forecastPackage, chart, user)) {
+    if (strict && isUserReady(chart, user.id)) throwError(`${getForecastChartLabel(chart.chartType)} is already marked ready by you. Reopen the chart from the package board before editing again.`, 409);
+    return { forecastPackage, joined: false };
+  }
   const activeEditors = getActiveEditors(chart);
   const now = new Date();
   if (!activeEditors.some((editor) => isSameId(editor.user, user.id))) activeEditors.push({ user: user.id, startedAt: now });
@@ -171,7 +181,7 @@ export const joinForecastPackageChartEditingByProject = asyncHandler(async (req,
   if (completionRow?.isComplete) throwError(`${getForecastChartLabel(chart.chartType)} is already certified ready`, 400);
   const blockingChartType = getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chart.chartType);
   if (blockingChartType) throwError(`${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chart.chartType)} can be joined for editing`, 400);
-  await joinChartIfAllowedByProject(req.params.projectId, req.user, { emit: true, audit: true });
+  await joinChartIfAllowedByProject(req.params.projectId, req.user, { emit: true, audit: true, strict: true });
   const populated = await populateForecastPackageById(forecastPackage._id);
   const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
   res.json(serializeChartContext(populated, populatedChart, req.user));
