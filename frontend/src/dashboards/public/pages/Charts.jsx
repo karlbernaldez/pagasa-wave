@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CalendarDays, CheckCircle2, Eye, Layers, Search, Waves, Wind } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight, CalendarDays, CheckCircle2, Download, Eye, Layers, Search, Waves, Wind } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 import Button from '@/components/ui/Button';
-import { fetchPublicPublishedCharts } from '@/api/publishedForecastAPI';
+import { fetchPublicPublishedChartOutput, fetchPublicPublishedCharts } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
 import PublicPublishedChartPreviewMap from '@/dashboards/public/components/PublicPublishedChartPreviewMap';
@@ -18,7 +18,9 @@ import {
   groupPublicChartHistory,
   groupPublicChartsByTypeForDate,
 } from '@/dashboards/public/utils/publicChartGroups';
+import PublishedForecastExportMap from '@/features/projects/components/PublishedForecastExportMap';
 import usePublicMapBounds from '@/features/projects/hooks/usePublicMapBounds';
+import { getChartStyleMode, normalizeChartStyleMode } from '@/features/projects/utils/chartStyleModes';
 
 const RECENT_FETCH_LIMIT = 80;
 const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
@@ -39,6 +41,19 @@ function formatDate(value, options = {}) {
   } catch {
     return '—';
   }
+}
+
+function formatDateTime(value) {
+  return formatDate(value, { hour: 'numeric', minute: '2-digit' });
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function getPersonName(person, fallback = 'DOST PAGASA') {
@@ -149,14 +164,98 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
   );
 }
 
+function writeLoadingPdfWindow(printWindow) {
+  printWindow.document.write(`<!doctype html><html><head><title>Preparing Chart Set PDF</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a}.card{max-width:420px;padding:28px;border:1px solid #dbeafe;border-radius:20px;background:white;box-shadow:0 20px 45px rgba(15,23,42,.08)}h1{margin:0 0 8px;font-size:22px}p{margin:0;color:#475569;font-weight:600;line-height:1.5}</style></head><body><div class="card"><h1>Preparing chart set PDF...</h1><p>Please wait while WaveLab prepares the four published charts.</p></div></body></html>`);
+  printWindow.document.close();
+}
+
+function writePdfErrorWindow(printWindow, message) {
+  if (!printWindow || printWindow.closed) return;
+  printWindow.document.open();
+  printWindow.document.write(`<!doctype html><html><head><title>PDF Export Failed</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Arial,sans-serif;background:#fef2f2;color:#991b1b}.card{max-width:460px;padding:28px;border:1px solid #fecaca;border-radius:20px;background:white;box-shadow:0 20px 45px rgba(127,29,29,.1)}h1{margin:0 0 8px;font-size:22px}p{margin:0;color:#7f1d1d;font-weight:600;line-height:1.5}</style></head><body><div class="card"><h1>PDF export failed</h1><p>${escapeHtml(message)}</p></div></body></html>`);
+  printWindow.document.close();
+}
+
+function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, chartEntries, showStaffInfo }) {
+  const dateLabel = formatDate(activeDate);
+  const cardsHtml = chartEntries.map((entry) => {
+    const hasImage = Boolean(entry.imageDataUrl);
+    const project = entry.project;
+    const owner = showStaffInfo && project?.owner ? `<span>Forecaster: ${escapeHtml(getPersonName(project.owner, 'Forecaster'))}</span>` : '';
+    const publishedAt = project?.publishedAt ? `<span>Published: ${escapeHtml(formatDateTime(project.publishedAt))}</span>` : '';
+    return `
+      <article class="chart-card">
+        <header class="chart-card-header">
+          <div><p class="slot">${escapeHtml(entry.slot.badge)}</p><h2>${escapeHtml(project?.name || entry.slot.fallbackTitle)}</h2></div>
+          <p class="type">${escapeHtml(entry.slot.title)}</p>
+        </header>
+        <section class="chart-image-wrap">
+          ${hasImage ? `<img src="${entry.imageDataUrl}" alt="${escapeHtml(entry.slot.title)} published chart" />` : '<div class="missing">No published chart available</div>'}
+        </section>
+        <footer>${publishedAt}${owner}</footer>
+      </article>
+    `;
+  }).join('');
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <title>WaveLab Chart Set - ${escapeHtml(dateLabel)}</title>
+        <style>
+          @page { size: A4 landscape; margin: 0; }
+          * { box-sizing: border-box; }
+          html, body { margin: 0; width: 297mm; height: 210mm; background: #e2e8f0; }
+          body { font-family: Arial, Helvetica, sans-serif; color: #0f172a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .page { width: 297mm; height: 210mm; margin: 0 auto; padding: 7mm; display: grid; grid-template-rows: auto 1fr auto; gap: 4mm; background: #fff; overflow: hidden; }
+          .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 8mm; }
+          .brand { color: #0369a1; font-size: 7pt; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+          h1 { margin: 1mm 0 0; font-size: 16pt; line-height: 1.05; letter-spacing: -0.02em; }
+          .summary { margin: 1mm 0 0; color: #475569; font-size: 8pt; font-weight: 700; }
+          .status { border: 1px solid #bbf7d0; background: #f0fdf4; color: #047857; border-radius: 999px; padding: 2mm 3.5mm; font-size: 7pt; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+          .chart-grid { min-height: 0; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 3mm; }
+          .chart-card { min-height: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 1.8mm; border: 1px solid #bfdbfe; border-radius: 4mm; padding: 2.5mm; background: #f8fafc; overflow: hidden; }
+          .chart-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 4mm; }
+          .slot { margin: 0 0 .5mm; color: #0369a1; font-size: 6.5pt; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
+          h2 { margin: 0; font-size: 9pt; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 112mm; }
+          .type { margin: 0; color: #64748b; font-size: 6.5pt; font-weight: 900; text-transform: uppercase; white-space: nowrap; }
+          .chart-image-wrap { min-height: 0; border: 1px solid #dbeafe; border-radius: 3mm; overflow: hidden; background: #e2e8f0; display: grid; place-items: center; }
+          .chart-image-wrap img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+          .missing { color: #64748b; font-size: 9pt; font-weight: 900; }
+          .chart-card footer { display: flex; align-items: center; justify-content: space-between; gap: 3mm; min-height: 4mm; color: #64748b; font-size: 6.5pt; font-weight: 800; }
+          .footer { display: flex; align-items: center; justify-content: space-between; color: #64748b; font-size: 7pt; font-weight: 800; }
+          .footer strong { color: #0369a1; }
+          @media print { html, body { width: 297mm; height: 210mm; overflow: hidden; background: #fff; } }
+        </style>
+      </head>
+      <body>
+        <main class="page">
+          <section class="topbar">
+            <div><div class="brand">DOST-PAGASA · WaveLab</div><h1>Wave chart set</h1><p class="summary">Valid ${escapeHtml(dateLabel)} · ${escapeHtml(activeStyleLabel)} · Published charts only</p></div>
+            <div class="status">Four-chart PDF</div>
+          </section>
+          <section class="chart-grid">${cardsHtml}</section>
+          <footer class="footer"><span><strong>Final Wave Chart Set</strong> · Generated from /charts</span><span>${escapeHtml(new Date().toLocaleString('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE }))}</span></footer>
+        </main>
+        <script>window.onload = () => { window.focus(); window.print(); };</script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
 export default function Charts() {
   const navigate = useNavigate();
   const { isDarkMode: isDark } = useTheme();
   const { activeChartType, setActiveChartType } = useChartType();
   const { settings: publicSettings } = usePublicMapBounds();
+  const exportRefs = useRef({});
+  const printWindowRef = useRef(null);
   const [state, setState] = useState({ loading: true, error: '', projects: [] });
   const [query, setQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const [exportState, setExportState] = useState({ loading: false, error: '', entries: [] });
   const showStaffInfo = publicSettings.showPublicStaffInfo !== false;
 
   useEffect(() => {
@@ -176,13 +275,104 @@ export default function Charts() {
   const availableCount = useMemo(() => getPublicChartAvailableCount(chartByType), [chartByType]);
   const completeness = useMemo(() => getPublicChartCompleteness(chartByType), [chartByType]);
   const activeStyle = CHART_STYLES.find((item) => item.id === activeChartType) || CHART_STYLES[0];
+  const activeStyleMode = normalizeChartStyleMode(activeChartType);
+  const activeStyleLabel = getChartStyleMode(activeStyleMode).label;
 
   useEffect(() => { if (selectedDate && !historyGroups.some((item) => item.dateKey === selectedDate)) setSelectedDate(''); }, [historyGroups, selectedDate]);
   const openChart = useCallback((chart) => { if (chart?._id) navigate(`/forecasts/${chart._id}`); }, [navigate]);
 
+  const handleDownloadChartSetPdf = async () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      setExportState({ loading: false, error: 'Pop-up was blocked. Please allow pop-ups to export PDF.', entries: [] });
+      return;
+    }
+
+    printWindowRef.current = printWindow;
+    writeLoadingPdfWindow(printWindow);
+    setExportState({ loading: true, error: '', entries: [] });
+    exportRefs.current = {};
+
+    try {
+      const entries = await Promise.all(PUBLIC_CHART_SLOTS.map(async (slot) => {
+        const project = chartByType.get(slot.chartType) || null;
+        if (!project?._id) return { slot, project: null, output: null };
+        const output = await fetchPublicPublishedChartOutput(project._id, { theme: isDark ? 'dark' : 'light' });
+        return { slot, project, output };
+      }));
+      setExportState({ loading: true, error: '', entries });
+    } catch (error) {
+      const message = error?.message || 'Failed to prepare chart set PDF.';
+      writePdfErrorWindow(printWindow, message);
+      setExportState({ loading: false, error: message, entries: [] });
+      printWindowRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (!exportState.loading || !exportState.entries.length) return undefined;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 40;
+
+    const timer = window.setInterval(() => {
+      if (cancelled) return;
+      attempts += 1;
+      const printableEntries = exportState.entries.map((entry) => {
+        if (!entry.project?._id) return { ...entry, imageDataUrl: '' };
+        const mapRef = exportRefs.current[entry.slot.chartType];
+        if (!mapRef?.isReady) return null;
+        return { ...entry, imageDataUrl: mapRef.getDataUrl() };
+      });
+
+      if (printableEntries.every(Boolean)) {
+        window.clearInterval(timer);
+        writeChartSetPdfWindow({
+          printWindow: printWindowRef.current,
+          activeDate,
+          activeStyleLabel,
+          chartEntries: printableEntries,
+          showStaffInfo,
+        });
+        setExportState({ loading: false, error: '', entries: [] });
+        printWindowRef.current = null;
+        exportRefs.current = {};
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        window.clearInterval(timer);
+        const message = 'Map exports are still preparing. Please try again in a moment.';
+        writePdfErrorWindow(printWindowRef.current, message);
+        setExportState({ loading: false, error: message, entries: [] });
+        printWindowRef.current = null;
+        exportRefs.current = {};
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeDate, activeStyleLabel, exportState.entries, exportState.loading, showStaffInfo]);
+
   return (
     <div className={`relative min-h-screen overflow-hidden px-4 py-24 sm:px-6 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
       <LiquidBackdrop isDark={isDark} />
+
+      {exportState.entries.map((entry) => entry.project?._id && entry.output ? (
+        <PublishedForecastExportMap
+          key={`export-${entry.project._id}-${activeStyleMode}`}
+          ref={(instance) => {
+            if (instance) exportRefs.current[entry.slot.chartType] = instance;
+          }}
+          features={entry.output.featureCollection}
+          chartStyleMode={activeStyleMode}
+          raster={entry.output.raster || entry.project.raster}
+        />
+      ) : null)}
+
       <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-7">
         <motion.section className={glassPanel(isDark, 'mx-auto w-full max-w-5xl p-7 text-center sm:p-9')} initial="hidden" animate="show">
           <motion.div variants={scaleIn} className="mb-4"><div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.14em] ${isDark ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-100/80 text-blue-700'}`}><Layers size={15} />{activeStyle.label} · {activeDate ? formatDate(activeDate) : 'Latest available'}</div></motion.div>
@@ -194,13 +384,14 @@ export default function Charts() {
 
         {state.loading && <div className="grid gap-5 lg:grid-cols-2">{PUBLIC_CHART_SLOTS.map((slot) => <div key={slot.chartType} className={glassPanel(isDark, 'h-[415px] animate-pulse')} />)}</div>}
         {!state.loading && state.error && <div className={`mx-auto max-w-2xl rounded-3xl border p-6 text-center text-sm font-bold backdrop-blur-xl ${isDark ? 'border-red-400/20 bg-red-400/10 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>{state.error}</div>}
+        {exportState.error && <div className={`mx-auto max-w-2xl rounded-3xl border p-4 text-center text-sm font-bold backdrop-blur-xl ${isDark ? 'border-red-400/20 bg-red-400/10 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>{exportState.error}</div>}
         {!state.loading && !state.error && !recentProjects.length && <div className={glassPanel(isDark, 'mx-auto max-w-2xl p-10 text-center')}><p className="text-lg font-black">No published wave charts found</p><p className={`mt-2 text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Published charts will appear here once Admin publishes approved outputs.</p></div>}
 
         {!state.loading && !state.error && recentProjects.length > 0 && <>
           <section className="space-y-5">
             <div className={glassPanel(isDark, 'flex flex-wrap items-center justify-between gap-3 p-5')}>
               <div><p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}><CalendarDays size={15} /> Current chart set</p><h2 className={`mt-2 text-3xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(activeDate)}</h2></div>
-              <div className="flex flex-wrap items-center gap-2"><CompletenessBadge completeness={completeness} isDark={isDark} /><div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600'}`}>{availableCount}/4 published charts available</div></div>
+              <div className="flex flex-wrap items-center gap-2"><CompletenessBadge completeness={completeness} isDark={isDark} /><div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600'}`}>{availableCount}/4 published charts available</div><Button size="sm" variant="secondary" icon={Download} loading={exportState.loading} disabled={!availableCount || exportState.loading} onClick={handleDownloadChartSetPdf}>PDF</Button></div>
             </div>
             <motion.div className="grid gap-5 lg:grid-cols-2" initial="hidden" animate="show">{PUBLIC_CHART_SLOTS.map((slot) => <ChartSlotCard key={`${activeDate}-${slot.chartType}`} slot={slot} chart={chartByType.get(slot.chartType)} activeStyle={activeChartType} isDark={isDark} onOpen={openChart} showStaffInfo={showStaffInfo} />)}</motion.div>
           </section>
