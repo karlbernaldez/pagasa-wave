@@ -1,6 +1,7 @@
 import express from 'express';
 
 import ForecastPackage from '../models/ForecastPackage.js';
+import Project from '../models/Project.js';
 import {
   approveForecastPackage,
   createForecastPackage,
@@ -24,9 +25,11 @@ import { isAdmin } from '../middleware/adminMiddleware.js';
 import {
   ADMIN_DRAFT_PACKAGE_LABEL,
   FORECAST_PACKAGE_STATUS,
+  REQUIRED_FORECAST_CHARTS,
   deriveForecastPackageStatusFromCharts,
   getForecastPackageDisplayStatus,
 } from '../utils/forecastPackage.js';
+import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 import { emitForecastChartUpdated, emitForecastPackageUpdated } from '../socket/socketEmitter.js';
 
 const router = express.Router();
@@ -57,6 +60,10 @@ const STATUS_FILTER_ALIASES = Object.freeze({
   'Not Yet Ready': FORECAST_PACKAGE_STATUS.DRAFT,
 });
 
+const CHART_LABEL_BY_TYPE = Object.freeze(
+  REQUIRED_FORECAST_CHARTS.reduce((memo, chart) => ({ ...memo, [chart.chartType]: chart.label }), {}),
+);
+
 function getId(value) {
   if (!value) return '';
   if (typeof value === 'string') return value;
@@ -70,6 +77,12 @@ function getChartProjectIds(forecastPackage) {
   return (Array.isArray(forecastPackage?.charts) ? forecastPackage.charts : [])
     .map((chart) => getId(chart?.project))
     .filter(Boolean);
+}
+
+function getTimeValue(value) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function clampInt(value, min, max, fallback) {
@@ -113,6 +126,46 @@ function emitForecastPackageWorkflowAfterResponse(action) {
     };
     next();
   };
+}
+
+async function requireResolvedRevisionBeforeSubmit(req, res, next) {
+  try {
+    const forecastPackage = await ForecastPackage.findById(req.params.id).lean();
+    if (!forecastPackage || forecastPackage.status !== FORECAST_PACKAGE_STATUS.REVISION_REQUESTED) return next();
+
+    const revisionRequestedAt = getTimeValue(forecastPackage.reviewedAt || forecastPackage.updatedAt);
+    const charts = Array.isArray(forecastPackage.charts) ? forecastPackage.charts : [];
+    const projectIds = getChartProjectIds(forecastPackage);
+    if (!projectIds.length) return next();
+
+    const projects = await Project.find({ _id: { $in: projectIds } }).select('_id status').lean();
+    const projectStatusById = new Map(projects.map((project) => [getId(project), project.status]));
+    const pendingChartLabels = [];
+
+    charts.forEach((chart) => {
+      const projectId = getId(chart.project);
+      if (projectStatusById.get(projectId) !== PROJECT_STATUS.REVISION_REQUESTED) return;
+
+      const completion = (forecastPackage.chartCompletion || []).find((row) => row.chartType === chart.chartType);
+      if (!completion?.isComplete) return;
+
+      const completedAt = getTimeValue(completion.completedAt || chart.readyAt);
+      if (!revisionRequestedAt || !completedAt || completedAt <= revisionRequestedAt) {
+        pendingChartLabels.push(CHART_LABEL_BY_TYPE[chart.chartType] || chart.chartType || 'Forecast chart');
+      }
+    });
+
+    if (pendingChartLabels.length) {
+      return res.status(409).json({
+        message: `Resolve and re-certify requested revisions for ${pendingChartLabels.join(', ')} before resubmitting the package.`,
+        pendingRevisionCharts: pendingChartLabels,
+      });
+    }
+
+    return next();
+  } catch (error) {
+    return next(error);
+  }
 }
 
 async function syncPackageStatusFromCharts(forecastPackage, userId) {
@@ -220,6 +273,6 @@ router.patch('/charts/project/:projectId/release', emitForecastPackageWorkflowAf
 router.patch('/charts/project/:projectId/completion', emitForecastPackageWorkflowAfterResponse('chart_completion_updated'), updateForecastChartCompletionByProject);
 router.get('/:id', getForecastPackageById);
 router.patch('/:id/charts/:chartType/completion', emitForecastPackageWorkflowAfterResponse('chart_completion_updated'), updateForecastChartCompletion);
-router.patch('/:id/submit', emitForecastPackageWorkflowAfterResponse('submitted'), submitForecastPackage);
+router.patch('/:id/submit', requireResolvedRevisionBeforeSubmit, emitForecastPackageWorkflowAfterResponse('submitted'), submitForecastPackage);
 
 export default router;
