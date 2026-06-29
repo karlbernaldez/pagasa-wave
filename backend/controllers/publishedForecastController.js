@@ -99,6 +99,10 @@ function normalizeChartType(chartType = '') {
   return String(chartType).trim().toLowerCase().replace(/[\s-]+/g, '_');
 }
 
+function normalizeRasterTheme(value) {
+  return String(value || '').trim().toLowerCase() === 'dark' ? 'dark' : 'light';
+}
+
 function formatForecastDateToken(value) {
   const localKey = formatLocalDateKey(value);
   return localKey ? localKey.replaceAll('-', '') : '';
@@ -144,7 +148,7 @@ function getChartRunDefaults(chartType) {
   };
 }
 
-function resolveCogRaster(project) {
+function resolveCogRaster(project, { theme = 'light' } = {}) {
   const asset = getRawRasterAsset(project) || {};
   const forecastDate = formatForecastDateToken(project?.forecastDate);
   const chartDefaults = getChartRunDefaults(project?.chartType);
@@ -153,6 +157,7 @@ function resolveCogRaster(project) {
   const runDate = asset.runDate || shiftDateToken(forecastDate, runDayOffset);
   const runHourToken = padDatePart(runHour);
   const runDateTime = asset.runDateTime || `${runDate}${runHourToken}`;
+  const rasterTheme = normalizeRasterTheme(asset.theme || theme);
   const model = asset.model || process.env.PUBLIC_WAVE_COG_MODEL || 'WW3';
   const tokenValues = {
     projectId: String(project?._id || ''),
@@ -160,6 +165,7 @@ function resolveCogRaster(project) {
     forecastDate,
     date: forecastDate,
     model,
+    theme: rasterTheme,
     runDate,
     runHour: runHourToken,
     runDateTime,
@@ -168,7 +174,7 @@ function resolveCogRaster(project) {
 
   const defaultLocalTileTemplate = process.env.NODE_ENV === 'production'
     ? ''
-    : 'http://127.0.0.1:8081/{model}/light/{runDateTime}/{z}/{x}/{y}.png';
+    : 'http://127.0.0.1:8081/{model}/{theme}/{runDateTime}/{z}/{x}/{y}.png';
   const cogUrl = asset.cogUrl || asset.url || interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
   const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultLocalTileTemplate, tokenValues);
   const cogTileTemplate = process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
@@ -181,6 +187,7 @@ function resolveCogRaster(project) {
   return {
     type: 'cog',
     model: tokenValues.model,
+    theme: rasterTheme,
     cogUrl: cogUrl || null,
     tileUrl,
     tileSize: Number(asset.tileSize) || 256,
@@ -194,14 +201,14 @@ function resolveCogRaster(project) {
   };
 }
 
-async function buildPublishedForecastPayload(project, { canArchive = false } = {}) {
+async function buildPublishedForecastPayload(project, { canArchive = false, theme = 'light' } = {}) {
   const versionFeatureCollection = getPublishedFeatureCollectionFromVersions(project);
   const featureCollection = versionFeatureCollection || await getCurrentFeatureCollection(project._id);
 
   return {
     project: getPublicProjectPayload(project),
     featureCollection,
-    raster: resolveCogRaster(project),
+    raster: resolveCogRaster(project, { theme }),
     canArchive,
   };
 }
@@ -277,6 +284,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const skip = (page - 1) * limit;
   const query = buildPublicListQuery(req);
+  const theme = normalizeRasterTheme(req.query.theme);
 
   const [projects, total] = await Promise.all([
     Project.find(query)
@@ -291,7 +299,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
   ]);
 
   res.json({
-    projects: projects.map((project) => ({ ...project, raster: resolveCogRaster(project) })),
+    projects: projects.map((project) => ({ ...project, raster: resolveCogRaster(project, { theme }) })),
     total,
     page,
     limit,
@@ -304,7 +312,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
 export const getPublicPublishedForecastOutput = asyncHandler(async (req, res) => {
   const project = await findPublicPublishedProject(req.params.id);
   const canArchive = req.user?.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED;
-  res.json(await buildPublishedForecastPayload(project, { canArchive }));
+  res.json(await buildPublishedForecastPayload(project, { canArchive, theme: normalizeRasterTheme(req.query.theme) }));
 });
 
 export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
@@ -316,5 +324,5 @@ export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
     throwError('You do not have access to this published forecast', 403);
   }
 
-  res.json(await buildPublishedForecastPayload(project, { canArchive: req.user.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED }));
+  res.json(await buildPublishedForecastPayload(project, { canArchive: req.user.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED, theme: normalizeRasterTheme(req.query.theme) }));
 });
