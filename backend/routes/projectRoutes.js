@@ -19,7 +19,7 @@ import {
   archiveProject,
   renameProject
 } from '../controllers/projectController.js';
-import { getAdminProjects } from '../controllers/adminProjectController.js';
+import { getAdminForecastPackage, getAdminProjects } from '../controllers/adminProjectController.js';
 import {
   getPublishedForecastOutput,
   getPublicPublishedForecastOutput,
@@ -73,6 +73,7 @@ router.use(protect);
 // Admin routes - keep before dynamic /:id routes
 // ─────────────────────────────────────────────
 router.get('/admin/projects', isAdmin, getAdminProjects);
+router.get('/admin/projects/:id/package', isAdmin, getAdminForecastPackage);
 
 router.patch('/:id/start-review', isAdmin, preventAdminSelfReview, startReviewProject);
 
