@@ -310,8 +310,17 @@ async function findPackageByProject(project) {
     if (forecastPackage) return forecastPackage;
   }
 
-  return withPackagePopulates(
+  const directPackage = await withPackagePopulates(
     ForecastPackage.findOne({ 'charts.project': project._id }),
+  ).lean();
+
+  if (directPackage) return directPackage;
+
+  const forecastBounds = getDateBounds(project.forecastDate);
+  if (!forecastBounds) return null;
+
+  return withPackagePopulates(
+    ForecastPackage.findOne({ forecastDate: { $gte: forecastBounds.start, $lt: forecastBounds.end } }),
   ).lean();
 }
 
