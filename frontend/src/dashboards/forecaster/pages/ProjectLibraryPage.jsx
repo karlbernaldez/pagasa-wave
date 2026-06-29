@@ -18,6 +18,8 @@ const REQUIRED_CHART_SEQUENCE = ['analysis', 'forecast_24h', 'forecast_36h', 'fo
 const EDITABLE_PACKAGE_STATUSES = new Set(['Draft', 'Revision Requested']);
 const APPROVED_PACKAGE_STATUSES = new Set(['Approved', 'Published']);
 const APPROVED_CHART_STATUSES = new Set(['Approved', 'Published']);
+const WARNING_CHART_STATUSES = new Set(['Revision Requested', 'Under Review', 'Submitted']);
+const REVISION_REQUESTED_STATUS = 'Revision Requested';
 const AUTO_PACKAGE_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2}$/;
 
 const REQUIRED_CHART_LABELS = {
@@ -130,6 +132,32 @@ function getChartCompletion(packageData, chartType) {
   return packageData?.chartCompletion?.find((row) => row.chartType === chartType);
 }
 
+function getTimeValue(value) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function isRevisionActionPending(packageData, chart) {
+  if (packageData?.status !== REVISION_REQUESTED_STATUS) return false;
+  if (getChartProjectStatus(chart) !== REVISION_REQUESTED_STATUS) return false;
+
+  const completion = getChartCompletion(packageData, chart?.chartType);
+  if (!completion?.isComplete) return false;
+
+  const revisionRequestedAt = getTimeValue(packageData.reviewedAt || packageData.updatedAt);
+  const completedAt = getTimeValue(completion.completedAt || chart?.readyAt);
+  return !completedAt || !revisionRequestedAt || completedAt <= revisionRequestedAt;
+}
+
+function getRevisionActionPendingChartTypes(packageData) {
+  if (packageData?.status !== REVISION_REQUESTED_STATUS) return [];
+  return (packageData?.charts || [])
+    .filter((chart) => isRevisionActionPending(packageData, chart))
+    .map((chart) => chart.chartType)
+    .filter(Boolean);
+}
+
 function isChartComplete(packageData, chartType) {
   return Boolean(getChartCompletion(packageData, chartType)?.isComplete);
 }
@@ -160,9 +188,13 @@ function sortChartsBySequence(charts = []) {
   });
 }
 
-function getNextAction(packageData, completion, isEditable) {
+function getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes = []) {
   if (!packageData) return 'Create today\'s package to generate the four required forecast charts.';
   if (!isEditable) return `Package is ${packageData.status}. Charts are locked until Admin requests a revision.`;
+  if (pendingRevisionChartTypes.length) {
+    const labels = pendingRevisionChartTypes.map((chartType) => REQUIRED_CHART_LABELS[chartType] || chartType).join(', ');
+    return `Resolve and re-certify requested revisions for ${labels} before resubmitting the package.`;
+  }
   if (!completion.isComplete) {
     const nextChartType = getNextIncompleteChartType(packageData);
     return nextChartType
@@ -209,8 +241,8 @@ function WorkflowStep({ number, title, description, active, done, isDarkMode }) 
   );
 }
 
-function OperationsPanel({ packageData, completion, isEditable, isDarkMode, workspaceSettings }) {
-  const nextAction = getNextAction(packageData, completion, isEditable);
+function OperationsPanel({ packageData, completion, isEditable, isDarkMode, workspaceSettings, pendingRevisionChartTypes }) {
+  const nextAction = getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes);
   const isSubmittedOrLater = packageData && !isEditable;
 
   return (
@@ -228,7 +260,7 @@ function OperationsPanel({ packageData, completion, isEditable, isDarkMode, work
         <div className="mt-4 space-y-5">
           <WorkflowStep number="1" title="Analyze current seas" description="Finish Wave Analysis before opening the forecast horizons." active={isEditable && getNextIncompleteChartType(packageData) === 'analysis'} done={isChartComplete(packageData, 'analysis') || isSubmittedOrLater} isDarkMode={isDarkMode} />
           <WorkflowStep number="2" title="Build forecast sequence" description="Certify 24h, then 36h, then 48h so each frame has a verified baseline." active={isEditable && !completion.isComplete && getNextIncompleteChartType(packageData) !== 'analysis'} done={completion.isComplete || isSubmittedOrLater} isDarkMode={isDarkMode} />
-          <WorkflowStep number="3" title="Submit package" description="Submit once all four charts are complete and no forecaster is still editing." active={isEditable && completion.isComplete} done={isSubmittedOrLater} isDarkMode={isDarkMode} />
+          <WorkflowStep number="3" title="Submit package" description="Submit once all four charts are complete and no forecaster is still editing." active={isEditable && completion.isComplete && pendingRevisionChartTypes.length === 0} done={isSubmittedOrLater} isDarkMode={isDarkMode} />
         </div>
       </section>
     </aside>
@@ -242,6 +274,7 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const chartProjectStatus = getChartProjectStatus(chart);
   const chartReviewStatus = chartProjectStatus || (APPROVED_PACKAGE_STATUSES.has(packageData?.status) ? 'Approved' : packageData?.status);
   const isComplete = Boolean(completion?.isComplete);
+  const revisionActionPending = isRevisionActionPending(packageData, chart);
   const blockingChartType = getFirstIncompletePrerequisite(packageData, chartType);
   const isQueued = Boolean(blockingChartType) && !isComplete;
   const activeEditorNames = getActiveEditorNames(chart);
@@ -252,33 +285,31 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const canToggle = isEditable && !isQueued && !isUpdating;
   const canOpen = Boolean(projectId && !isQueued);
   const isApprovedChart = APPROVED_CHART_STATUSES.has(chartReviewStatus);
-  const isLockedComplete = isComplete && !isEditable;
-  const accentClass = isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : hasActiveEditors ? 'bg-amber-400' : 'bg-cyan-400';
-  const statusLabel = isComplete
-    ? isLockedComplete ? chartReviewStatus || packageData.status : 'Ready for review'
-    : isQueued ? 'Queued' : 'In production';
-  const statusClass = isComplete
-    ? isApprovedChart
-      ? 'bg-emerald-500/10 text-emerald-500'
-      : isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'
-    : isQueued
-      ? isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
-      : hasActiveEditors
-        ? isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'
+  const isWarningChart = WARNING_CHART_STATUSES.has(chartReviewStatus);
+  const accentClass = isApprovedChart || isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : isWarningChart || hasActiveEditors ? 'bg-amber-400' : 'bg-cyan-400';
+  const statusLabel = isQueued && !chartReviewStatus ? 'Queued' : chartReviewStatus || (isComplete ? 'Ready for review' : 'In production');
+  const statusClass = isApprovedChart
+    ? 'bg-emerald-500/10 text-emerald-500'
+    : isWarningChart
+      ? isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'
+      : isQueued
+        ? isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
         : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700';
-  const collaborationLabel = isComplete
-    ? readyByName ? `Certified by ${readyByName}` : 'Certified ready'
-    : hasActiveEditors ? `Editing by ${activeEditorText}` : 'No active editors';
-  const collaborationClass = isComplete
-    ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    : hasActiveEditors
-      ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
-      : isDarkMode ? 'border-white/10 bg-slate-950/50 text-slate-400' : 'border-slate-200 bg-white text-slate-600';
+  const collaborationLabel = revisionActionPending
+    ? 'Revision needs re-certification'
+    : isComplete
+      ? readyByName ? `Certified by ${readyByName}` : 'Certified ready'
+      : hasActiveEditors ? `Editing by ${activeEditorText}` : 'No active editors';
+  const collaborationClass = revisionActionPending
+    ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
+    : isComplete
+      ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      : hasActiveEditors
+        ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
+        : isDarkMode ? 'border-white/10 bg-slate-950/50 text-slate-400' : 'border-slate-200 bg-white text-slate-600';
   const toggleLabel = isQueued
     ? 'Locked by sequence'
-    : isLockedComplete
-      ? chartReviewStatus || packageData.status
-      : isComplete ? 'Ready' : hasActiveEditors ? 'Finish in Studio' : 'Certify ready';
+    : isComplete ? 'Reopen edits' : hasActiveEditors ? 'Finish in Studio' : 'Certify ready';
 
   return (
     <article className={`group relative overflow-hidden rounded-3xl border shadow-sm transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-white/10 bg-slate-900/85 hover:border-cyan-300/30' : 'border-slate-200 bg-white hover:border-blue-200'}`}>
@@ -302,8 +333,8 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
           <div className={`mb-4 inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-black ${collaborationClass}`}><span className="truncate">{collaborationLabel}</span></div>
           <p className={`text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{metadata.mandate}</p>
           <div className={`mt-4 border-t pt-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{isQueued ? 'Prerequisite required' : hasActiveEditors && !isComplete ? 'Active editors' : isApprovedChart && isComplete ? 'Review completed' : 'Readiness checkpoint'}</p>
-            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : isApprovedChart && isComplete ? 'This chart was approved as part of the forecast package review.' : metadata.checkpoint}</p>
+            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{revisionActionPending ? 'Revision required' : isQueued ? 'Prerequisite required' : hasActiveEditors && !isComplete ? 'Active editors' : isApprovedChart && isComplete ? 'Review completed' : 'Readiness checkpoint'}</p>
+            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{revisionActionPending ? 'Reopen this chart, apply the requested changes, then certify it again before resubmitting.' : isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : isApprovedChart && isComplete ? 'This chart was approved as part of the forecast package review.' : metadata.checkpoint}</p>
           </div>
         </div>
 
@@ -347,10 +378,13 @@ export default function ForecasterProjectLibraryPage() {
   const completion = useMemo(() => getCompletion(packageData), [packageData]);
   const packageId = getPackageId(packageData);
   const orderedCharts = useMemo(() => sortChartsBySequence(packageData?.charts || []), [packageData?.charts]);
+  const pendingRevisionChartTypes = useMemo(() => getRevisionActionPendingChartTypes(packageData), [packageData]);
+  const hasPendingRevisionAction = pendingRevisionChartTypes.length > 0;
   const isEditable = EDITABLE_PACKAGE_STATUSES.has(packageData?.status || 'Draft');
-  const canSubmit = Boolean(packageId && isEditable && completion.isComplete && !submitting);
+  const canSubmit = Boolean(packageId && isEditable && completion.isComplete && !hasPendingRevisionAction && !submitting);
   const packageTitle = getPackageTitle(packageData);
   const chartSequenceHelper = workspaceSettings.chartSequenceHelperMessage || 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Forecasters can co-edit; readiness waits until active editors release.';
+  const submitButtonLabel = hasPendingRevisionAction ? 'Resolve revision first' : 'Submit Forecast Package';
 
   const loadCurrentPackage = useCallback(async ({ signal } = {}) => {
     setLoading(true);
@@ -434,7 +468,7 @@ export default function ForecasterProjectLibraryPage() {
             <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Complete the daily forecast sequence from analysis through the 48-hour outlook.</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            {packageData && <Button icon={Send} loading={submitting} disabled={!canSubmit} onClick={handleSubmitPackage}>Submit Forecast Package</Button>}
+            {packageData && <Button icon={Send} loading={submitting} disabled={!canSubmit} onClick={handleSubmitPackage}>{submitButtonLabel}</Button>}
             <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>Refresh</Button>
           </div>
         </div>
@@ -458,7 +492,7 @@ export default function ForecasterProjectLibraryPage() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2"><StatusPill status={packageData.status} isDarkMode={isDarkMode} /><span className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{formatForecastDate(packageData.forecastDate)}</span></div>
                     <h2 className={`mt-3 text-xl font-black sm:text-2xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{packageTitle}</h2>
-                    <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</p>
+                    <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be reopened and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</p>
                     {!isEditable && <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>This package is locked while it is {packageData.status}.</p>}
                   </div>
                   <div className={`w-full rounded-2xl border p-4 lg:max-w-[240px] ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
@@ -471,9 +505,9 @@ export default function ForecasterProjectLibraryPage() {
 
               <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard label="Forecast date" value={formatForecastDateKey(packageData.forecastDate) || 'Today'} detail="Philippines operational day" icon={CalendarDays} isDarkMode={isDarkMode} />
-                <MetricCard label="Current step" value={REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || packageData.status || 'Submit'} detail={completion.isComplete ? `Package is ${packageData.status}` : 'Next chart in sequence'} icon={CheckCircle2} isDarkMode={isDarkMode} />
+                <MetricCard label="Current step" value={pendingRevisionChartTypes.length ? 'Resolve Revision' : REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || packageData.status || 'Submit'} detail={pendingRevisionChartTypes.length ? 'Re-certify revision chart first' : completion.isComplete ? `Package is ${packageData.status}` : 'Next chart in sequence'} icon={CheckCircle2} isDarkMode={isDarkMode} />
                 <MetricCard label="Chart deadlines" value="On track" detail="No chart deadline warnings" icon={ClipboardList} isDarkMode={isDarkMode} />
-                <MetricCard label="Review gate" value={completion.isComplete ? 'Open' : 'Blocked'} detail={completion.isComplete ? 'Sequence complete' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
+                <MetricCard label="Review gate" value={hasPendingRevisionAction ? 'Blocked' : completion.isComplete ? 'Open' : 'Blocked'} detail={hasPendingRevisionAction ? 'Revision action required' : completion.isComplete ? 'Sequence complete' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
               </section>
 
               <section>
@@ -485,7 +519,7 @@ export default function ForecasterProjectLibraryPage() {
                 </div>
               </section>
             </div>
-            <OperationsPanel packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} workspaceSettings={operationsSettings} />
+            <OperationsPanel packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} workspaceSettings={operationsSettings} pendingRevisionChartTypes={pendingRevisionChartTypes} />
           </div>
         )}
       </div>
