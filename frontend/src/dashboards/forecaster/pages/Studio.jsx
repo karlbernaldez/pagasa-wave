@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Lock, Moon, Sun, X } from "lucide-react";
 
@@ -24,6 +24,7 @@ import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
 import { saveMarker } from "@dashboards/forecaster/map/layers/markerLayer";
 
 const TOOLBAR_DELAY = 1000;
+const PUBLISHED_STATUS = "Published";
 
 const FORECAST_CHART_LABELS = {
   analysis: "Wave Analysis",
@@ -74,9 +75,7 @@ function formatDateTime(value) {
 }
 
 function getContextProject(context) {
-  return context?.chart?.project && typeof context.chart.project === "object"
-    ? context.chart.project
-    : null;
+  return context?.chart?.project && typeof context.chart.project === "object" ? context.chart.project : null;
 }
 
 function getRevisionFeedback({ chartContext, currentProject, isRevisionRequested }) {
@@ -93,14 +92,7 @@ function getRevisionFeedback({ chartContext, currentProject, isRevisionRequested
 
   if (!reviewComment && !reviewedAt) return null;
 
-  return {
-    reviewComment,
-    reviewedAt,
-    reviewer,
-    completedAt,
-    completedBy,
-    resolved,
-  };
+  return { reviewComment, reviewedAt, reviewer, completedAt, completedBy, resolved };
 }
 
 function RevisionFeedbackPanel({ feedback, isDarkMode }) {
@@ -117,18 +109,11 @@ function RevisionFeedbackPanel({ feedback, isDarkMode }) {
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.16em]">Admin feedback</p>
           <p className="mt-1 text-sm font-bold leading-5">{feedback.reviewComment || "Revision requested. Please review the chart and apply the requested changes."}</p>
-          <p className={`mt-2 text-[11px] font-semibold ${mutedClass}`}>
-            {feedback.reviewer ? `Requested by ${feedback.reviewer}` : "Revision requested"}
-            {feedback.reviewedAt ? ` · ${formatDateTime(feedback.reviewedAt)}` : ""}
-          </p>
+          <p className={`mt-2 text-[11px] font-semibold ${mutedClass}`}>{feedback.reviewer ? `Requested by ${feedback.reviewer}` : "Revision requested"}{feedback.reviewedAt ? ` · ${formatDateTime(feedback.reviewedAt)}` : ""}</p>
         </div>
         <div className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-black ${isDarkMode ? "border-white/10 bg-white/10" : "border-white/80 bg-white/70"}`}>
           {feedback.resolved ? "Re-certified" : "Action required"}
-          {feedback.resolved && feedback.completedAt ? (
-            <p className={`mt-1 text-[10px] font-semibold ${mutedClass}`}>
-              {feedback.completedBy ? `${feedback.completedBy} · ` : ""}{formatDateTime(feedback.completedAt)}
-            </p>
-          ) : null}
+          {feedback.resolved && feedback.completedAt ? <p className={`mt-1 text-[10px] font-semibold ${mutedClass}`}>{feedback.completedBy ? `${feedback.completedBy} · ` : ""}{formatDateTime(feedback.completedAt)}</p> : null}
         </div>
       </div>
     </div>
@@ -143,26 +128,18 @@ function WorkflowErrorModal({ error, isDarkMode, onClose }) {
       <div className={`w-full max-w-lg overflow-hidden rounded-3xl border shadow-2xl ${isDarkMode ? "border-red-300/20 bg-slate-950 text-slate-100" : "border-red-200 bg-white text-slate-950"}`}>
         <div className={`flex items-start justify-between gap-4 border-b p-5 ${isDarkMode ? "border-white/10" : "border-slate-100"}`}>
           <div className="flex gap-3">
-            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isDarkMode ? "bg-red-500/15 text-red-200" : "bg-red-50 text-red-600"}`}>
-              <AlertTriangle size={22} />
-            </div>
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isDarkMode ? "bg-red-500/15 text-red-200" : "bg-red-50 text-red-600"}`}><AlertTriangle size={22} /></div>
             <div>
               <h2 id="studio-workflow-error-title" className="text-lg font-black">{error.title || "Action blocked"}</h2>
               <p className={`mt-1 text-sm ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>Please resolve this before continuing.</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition ${isDarkMode ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`} aria-label="Close error dialog">
-            <X size={16} />
-          </button>
+          <button type="button" onClick={onClose} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition ${isDarkMode ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`} aria-label="Close error dialog"><X size={16} /></button>
         </div>
         <div className="space-y-4 p-5">
-          <div className={`rounded-2xl border p-4 text-sm font-bold leading-6 ${isDarkMode ? "border-red-300/20 bg-red-950/35 text-red-100" : "border-red-100 bg-red-50 text-red-800"}`}>
-            {error.message}
-          </div>
+          <div className={`rounded-2xl border p-4 text-sm font-bold leading-6 ${isDarkMode ? "border-red-300/20 bg-red-950/35 text-red-100" : "border-red-100 bg-red-50 text-red-800"}`}>{error.message}</div>
           {error.detail && <p className={`text-sm leading-6 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{error.detail}</p>}
-          <div className="flex justify-end">
-            <Button onClick={onClose}>Got it</Button>
-          </div>
+          <div className="flex justify-end"><Button onClick={onClose}>Got it</Button></div>
         </div>
       </div>
     </div>
@@ -186,18 +163,9 @@ function ReadyConfirmModal({ open, isDarkMode, chartLabel, claim, isBusy, onCanc
           <p className={`mt-2 text-sm leading-6 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>Use this only after you opened the chart in Studio, applied your changes, and checked the forecast layers.</p>
         </div>
         <div className="space-y-3 p-5">
-          <div className={`rounded-2xl border p-4 text-sm ${isDarkMode ? "border-white/10 bg-white/[0.04]" : "border-slate-100 bg-slate-50"}`}>
-            <p className="font-black">Participants</p>
-            <p className={`mt-1 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{participantText}</p>
-          </div>
-          <div className={`rounded-2xl border p-4 text-sm ${isDarkMode ? "border-white/10 bg-white/[0.04]" : "border-slate-100 bg-slate-50"}`}>
-            <p className="font-black">Already certified</p>
-            <p className={`mt-1 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{readyText}</p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="secondary" onClick={onCancel} disabled={isBusy}>Cancel</Button>
-            <Button icon={CheckCircle2} onClick={onConfirm} loading={isBusy} disabled={isBusy}>Confirm ready</Button>
-          </div>
+          <div className={`rounded-2xl border p-4 text-sm ${isDarkMode ? "border-white/10 bg-white/[0.04]" : "border-slate-100 bg-slate-50"}`}><p className="font-black">Participants</p><p className={`mt-1 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{participantText}</p></div>
+          <div className={`rounded-2xl border p-4 text-sm ${isDarkMode ? "border-white/10 bg-white/[0.04]" : "border-slate-100 bg-slate-50"}`}><p className="font-black">Already certified</p><p className={`mt-1 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{readyText}</p></div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={onCancel} disabled={isBusy}>Cancel</Button><Button icon={CheckCircle2} onClick={onConfirm} loading={isBusy} disabled={isBusy}>Confirm ready</Button></div>
         </div>
       </div>
     </div>
@@ -237,12 +205,15 @@ const Studio = ({ logger }) => {
   const setLayersRef = useRef();
 
   const projectStatus = currentProject?.status;
+  const packageStatus = chartContext?.package?.status;
   const chartClaim = chartContext?.claim;
+  const isPublishedView = projectStatus === PUBLISHED_STATUS || packageStatus === PUBLISHED_STATUS;
   const isPackageChartReady = Boolean(chartContext?.completion?.isComplete);
-  const canEditProject = Boolean(currentProject && canEditProjectStatus(projectStatus) && !isPackageChartReady);
+  const canEditProject = Boolean(currentProject && !isPublishedView && canEditProjectStatus(projectStatus) && !isPackageChartReady);
   const canUseEditingTools = Boolean(canEditProject && chartClaim?.claimedByCurrentUser);
-  const isReadOnlyProject = Boolean(currentProject && !canUseEditingTools);
+  const isReadOnlyProject = Boolean(currentProject && (isPublishedView || !canUseEditingTools));
   const isPackageReadyReadOnly = Boolean(currentProject && isPackageChartReady);
+  const shouldShowStudioPanels = !isPublishedView;
   const isBlockingWorkspaceModalOpen = showTitleModal || showCreateProjectModal || showNoProjectsModal || isCanvasActive || isFlagCanvasActive || Boolean(workflowError) || showReadyConfirm;
   const { isInactivityPromptVisible, stayActive, refreshWorkspace } = useInactivityReload(undefined, { disabled: isBlockingWorkspaceModalOpen });
 
@@ -258,7 +229,7 @@ const Studio = ({ logger }) => {
   const loadChartContext = useCallback(async ({ signal, silent = false, autoJoin } = {}) => {
     if (!projectId) { setChartContext(null); setIsLoadingChartContext(false); return; }
     const loadedStatus = currentProject?.status || latestProject?.status;
-    const canAutoJoinCurrentChart = canEditProjectStatus(loadedStatus);
+    const canAutoJoinCurrentChart = loadedStatus !== PUBLISHED_STATUS && canEditProjectStatus(loadedStatus);
     const shouldAutoJoin = Boolean((autoJoin ?? !suppressAutoJoinRef.current) && canAutoJoinCurrentChart);
     if (!silent) setIsLoadingChartContext(true);
     try {
@@ -281,10 +252,7 @@ const Studio = ({ logger }) => {
     const joinRoom = () => socket.emit("forecast:join_project", projectId);
     if (socket.connected) joinRoom();
     socket.on("connect", joinRoom);
-    return () => {
-      socket.off("connect", joinRoom);
-      socket.emit("forecast:leave_project", projectId);
-    };
+    return () => { socket.off("connect", joinRoom); socket.emit("forecast:leave_project", projectId); };
   }, [projectId]);
   useEffect(() => {
     setIsLoading(true); setMapLoaded(false); setShowToolbar(false); setCapturedImages({ light: null, dark: null });
@@ -293,7 +261,7 @@ const Studio = ({ logger }) => {
   }, [projectId, setClosedMode, setDrawCounter, setDrawInstance, setLineCount, setSelectedPoint, setShowTitleModal, markerTitleRef, setCapturedImages]);
   useEffect(() => { const controller = new AbortController(); loadChartContext({ signal: controller.signal, autoJoin: true }); return () => controller.abort(); }, [loadChartContext]);
   useEffect(() => { const handler = (event) => { if (String(event.detail?.projectId || "") === String(projectId)) loadChartContext({ silent: true, autoJoin: false }); }; window.addEventListener(FORECAST_CHART_BROWSER_EVENT, handler); return () => window.removeEventListener(FORECAST_CHART_BROWSER_EVENT, handler); }, [loadChartContext, projectId]);
-  useEffect(() => { if (canUseEditingTools) return; if (isCanvasActive) toggleCanvas(); if (isFlagCanvasActive) toggleFlagCanvas(); setShowTitleModal(false); selectedToolRef.current = null; }, [canUseEditingTools, isCanvasActive, isFlagCanvasActive, toggleCanvas, toggleFlagCanvas, setShowTitleModal]);
+  useEffect(() => { if (canUseEditingTools && !isPublishedView) return; if (isCanvasActive) toggleCanvas(); if (isFlagCanvasActive) toggleFlagCanvas(); setShowTitleModal(false); selectedToolRef.current = null; }, [canUseEditingTools, isPublishedView, isCanvasActive, isFlagCanvasActive, toggleCanvas, toggleFlagCanvas, setShowTitleModal]);
   useEffect(() => { const timer = setTimeout(() => setShowToolbar(true), TOOLBAR_DELAY); return () => clearTimeout(timer); }, [projectId]);
   useEffect(() => {
     const map = mapRef.current;
@@ -303,7 +271,7 @@ const Studio = ({ logger }) => {
   }, [isDarkMode, mapRef]);
 
   const handleSaveTitle = (title) => {
-    if (!canUseEditingTools) return;
+    if (!canUseEditingTools || isPublishedView) return;
     markerTitleRef.current = title;
     saveMarker(selectedPoint, mapRef, setShowTitleModal, type)(title);
     savePointFeature({ coords: [selectedPoint.lng, selectedPoint.lat], title, selectedType: type, setLayersRef, projectId });
@@ -340,7 +308,7 @@ const Studio = ({ logger }) => {
   };
 
   const handleReopenChartEdits = async () => {
-    if (!projectId || isCertifyingChart || !canEditProjectStatus(projectStatus)) return;
+    if (!projectId || isCertifyingChart || isPublishedView || !canEditProjectStatus(projectStatus)) return;
     setIsCertifyingChart(true); setStudioError(""); setWorkflowError(null);
     try { const context = await updateForecastChartCompletionByProject(projectId, false); applyChartContext(context); }
     catch (error) { setWorkflowError({ title: "Cannot reopen chart", message: getErrorMessage(error, "Failed to reopen chart editing."), detail: "Refresh the workspace and try reopening the chart again." }); }
@@ -353,7 +321,7 @@ const Studio = ({ logger }) => {
   const isRevisionRequested = isProjectRevisionRequested(projectStatus);
   const projectStatusLabel = isRevisionRequested ? "Needs Revision" : getProjectStatusLabel(projectStatus);
   const projectStatusStyle = isRevisionRequested ? "border-amber-300 bg-amber-50 text-amber-800" : getProjectStatusStyle(projectStatus);
-  const revisionFeedback = getRevisionFeedback({ chartContext, currentProject, isRevisionRequested });
+  const revisionFeedback = isPublishedView ? null : getRevisionFeedback({ chartContext, currentProject, isRevisionRequested });
   const chartType = chartContext?.chartType;
   const chartLabel = getChartLabel(chartType);
   const activeEditorLabels = chartClaim?.activeEditorLabels || [];
@@ -371,27 +339,41 @@ const Studio = ({ logger }) => {
   return (
     <div className={`relative h-screen w-full overflow-hidden ${isDarkMode ? "bg-slate-950" : "bg-slate-100"}`}>
       <header className={`studio-liquid-panel absolute left-2 right-2 top-2 z-[120] flex h-14 items-center justify-between gap-2 rounded-2xl border px-2 shadow-2xl backdrop-blur-2xl sm:left-3 sm:right-3 sm:px-3 ${headerClass}`}>
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"><Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary} className={`!rounded-xl ${headerGhostButton}`}><span className="hidden sm:inline">Forecast Package</span><span className="sm:hidden">Package</span></Button><div className={`min-w-0 border-l pl-2 sm:pl-3 ${headerDivider}`}><p className={`hidden text-xs font-semibold uppercase tracking-[0.18em] sm:block ${headerMutedText}`}>WaveLab Studio</p><div className="flex min-w-0 items-center gap-2"><h1 className={`max-w-[32vw] truncate text-xs font-bold sm:max-w-[42vw] sm:text-sm ${headerStrongText}`}>{projectName}</h1>{currentProject?.status && <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black lg:inline-flex ${projectStatusStyle}`}>{projectStatusLabel}</span>}</div></div></div>
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">{isReadOnlyProject && <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-700"}`}><Lock size={13} />{isPackageReadyReadOnly ? "Ready" : projectStatusLabel || "View only"}</span>}{chartContext && <div className={`hidden items-center gap-2 rounded-2xl border px-3 py-1.5 text-xs font-black lg:flex ${headerControlGroup}`}><span className={isDarkMode ? "text-cyan-200" : "text-blue-700"}>{chartLabel}</span>{!canEditProject ? <span className={headerMutedText}>View only</span> : chartClaim?.claimedByCurrentUser ? <span className="text-emerald-300">You are editing</span> : chartClaim?.claimedByOtherUser ? <span className="text-amber-300">Editing: {activeEditorText}</span> : <span className={headerMutedText}>Available</span>}{canEditProject && chartClaim?.canRelease && <Button size="sm" variant="secondary" onClick={handleReleaseChart} loading={isReleasingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Release</Button>}{canEditProject && chartClaim?.canClaim && <Button size="sm" onClick={handleClaimChart} loading={isClaimingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerPrimaryButton}`}>Join</Button>}{canEditProject && chartClaim?.canCertify && <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={handleCertifyChartReady} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Ready</Button>}{isPackageChartReady && canEditProjectStatus(projectStatus) && <Button size="sm" variant="secondary" onClick={handleReopenChartEdits} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Reopen</Button>}</div>}<NotificationBell /><button onClick={handleToggleTheme} className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-200 hover:scale-105 ${headerControlGroup}`} aria-label="Toggle theme">{isDarkMode ? <Sun size={16} /> : <Moon size={16} />}</button></div>
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+          <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary} className={`!rounded-xl ${headerGhostButton}`}><span className="hidden sm:inline">Forecast Package</span><span className="sm:hidden">Package</span></Button>
+          <div className={`min-w-0 border-l pl-2 sm:pl-3 ${headerDivider}`}>
+            <p className={`hidden text-xs font-semibold uppercase tracking-[0.18em] sm:block ${headerMutedText}`}>WaveLab Studio</p>
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className={`max-w-[32vw] truncate text-xs font-bold sm:max-w-[42vw] sm:text-sm ${headerStrongText}`}>{projectName}</h1>
+              {currentProject?.status && <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black lg:inline-flex ${projectStatusStyle}`}>{projectStatusLabel}</span>}
+            </div>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          {isReadOnlyProject && <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-700"}`}><Lock size={13} />{isPublishedView ? "Published view" : isPackageReadyReadOnly ? "Ready" : projectStatusLabel || "View only"}</span>}
+          {chartContext && <div className={`hidden items-center gap-2 rounded-2xl border px-3 py-1.5 text-xs font-black lg:flex ${headerControlGroup}`}><span className={isDarkMode ? "text-cyan-200" : "text-blue-700"}>{chartLabel}</span>{!canEditProject ? <span className={headerMutedText}>View only</span> : chartClaim?.claimedByCurrentUser ? <span className="text-emerald-300">You are editing</span> : chartClaim?.claimedByOtherUser ? <span className="text-amber-300">Editing: {activeEditorText}</span> : <span className={headerMutedText}>Available</span>}{canEditProject && chartClaim?.canRelease && <Button size="sm" variant="secondary" onClick={handleReleaseChart} loading={isReleasingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Release</Button>}{canEditProject && chartClaim?.canClaim && <Button size="sm" onClick={handleClaimChart} loading={isClaimingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerPrimaryButton}`}>Join</Button>}{canEditProject && chartClaim?.canCertify && <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={handleCertifyChartReady} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Ready</Button>}{!isPublishedView && isPackageChartReady && canEditProjectStatus(projectStatus) && <Button size="sm" variant="secondary" onClick={handleReopenChartEdits} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Reopen</Button>}</div>}
+          <NotificationBell />
+          <button onClick={handleToggleTheme} className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-200 hover:scale-105 ${headerControlGroup}`} aria-label="Toggle theme">{isDarkMode ? <Sun size={16} /> : <Moon size={16} />}</button>
+        </div>
       </header>
 
       <RevisionFeedbackPanel feedback={revisionFeedback} isDarkMode={isDarkMode} />
       {studioError && <div className={`absolute left-1/2 top-[4.5rem] z-[130] flex -translate-x-1/2 items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-bold shadow-xl ${isDarkMode ? "border-red-400/30 bg-red-950/80 text-red-200" : "border-red-200 bg-red-50 text-red-700"}`}><AlertTriangle size={16} />{studioError}</div>}
 
       {showMainUI && <MapComponent onMapLoad={handleMapLoad} mapRef={mapRef} isDarkMode={isDarkMode} setIsLoading={setIsLoading} logger={logger} />}
-      {showMainUI && <LayerPanel mapRef={mapRef} isDarkMode={isDarkMode} layers={layers} setLayers={setLayers} draw={drawInstance} onNew={handleOpenCreateProject} onView={() => navigate("/viewer")} readOnly={isReadOnlyProject} />}
-      {showMainUI && showToolbar && !isReadOnlyProject && <DrawToolBar isCanvasActive={isCanvasActive} toggleCanvas={toggleCanvas} isFlagCanvasActive={isFlagCanvasActive} toggleFlagCanvas={toggleFlagCanvas} setShowTitleModal={setShowTitleModal} setSelectedPoint={setSelectedPoint} setType={setType} mapRef={mapRef} drawInstance={drawInstance} lineCount={lineCount} setLineCount={setLineCount} setDrawCounter={setDrawCounter} drawCounter={drawCounter} closedMode={closedMode} setClosedMode={setClosedMode} selectedToolRef={selectedToolRef} disabled={!canUseEditingTools} />}
-      {showMainUI && !isReadOnlyProject && <Canvas isCanvasActive={isCanvasActive} setIsCanvasActive={toggleCanvas} mapRef={mapRef} isDarkMode={isDarkMode} setLayersRef={setLayersRef} drawInstance={drawInstance} drawCounter={drawCounter} setDrawCounter={setDrawCounter} closedMode={closedMode} setClosedMode={setClosedMode} lineCount={lineCount} projectId={projectId} />}
-      {showMainUI && !isReadOnlyProject && <FlagCanvas isCanvasActive={isFlagCanvasActive} setIsCanvasActive={toggleFlagCanvas} mapRef={mapRef} isDarkMode={isDarkMode} setLayersRef={setLayersRef} drawInstance={drawInstance} drawCounter={drawCounter} setDrawCounter={setDrawCounter} projectId={projectId} />}
-      {showMainUI && <MapStatusBar mapLoaded={mapLoaded} isLoading={isLoading} isDarkMode={isDarkMode} activeProject={currentProject} />}
+      {showMainUI && shouldShowStudioPanels && <LayerPanel mapRef={mapRef} isDarkMode={isDarkMode} layers={layers} setLayers={setLayers} draw={drawInstance} onNew={handleOpenCreateProject} onView={() => navigate("/viewer")} readOnly={isReadOnlyProject} />}
+      {showMainUI && shouldShowStudioPanels && showToolbar && !isReadOnlyProject && <DrawToolBar isCanvasActive={isCanvasActive} toggleCanvas={toggleCanvas} isFlagCanvasActive={isFlagCanvasActive} toggleFlagCanvas={toggleFlagCanvas} setShowTitleModal={setShowTitleModal} setSelectedPoint={setSelectedPoint} setType={setType} mapRef={mapRef} drawInstance={drawInstance} lineCount={lineCount} setLineCount={setLineCount} setDrawCounter={setDrawCounter} drawCounter={drawCounter} closedMode={closedMode} setClosedMode={setClosedMode} selectedToolRef={selectedToolRef} disabled={!canUseEditingTools} />}
+      {showMainUI && shouldShowStudioPanels && !isReadOnlyProject && <Canvas isCanvasActive={isCanvasActive} setIsCanvasActive={toggleCanvas} mapRef={mapRef} isDarkMode={isDarkMode} setLayersRef={setLayersRef} drawInstance={drawInstance} drawCounter={drawCounter} setDrawCounter={setDrawCounter} closedMode={closedMode} setClosedMode={setClosedMode} lineCount={lineCount} projectId={projectId} />}
+      {showMainUI && shouldShowStudioPanels && !isReadOnlyProject && <FlagCanvas isCanvasActive={isFlagCanvasActive} setIsCanvasActive={toggleFlagCanvas} mapRef={mapRef} isDarkMode={isDarkMode} setLayersRef={setLayersRef} drawInstance={drawInstance} drawCounter={drawCounter} setDrawCounter={setDrawCounter} projectId={projectId} />}
+      {showMainUI && shouldShowStudioPanels && <MapStatusBar mapLoaded={mapLoaded} isLoading={isLoading} isDarkMode={isDarkMode} activeProject={currentProject} />}
 
-      {showTitleModal && <MarkerTitleModal isOpen={showTitleModal} onClose={closeModal} markerTitle={markerTitle} handleTitleChange={handleTitleChange} onSave={handleSaveTitle} />}
+      {showTitleModal && shouldShowStudioPanels && <MarkerTitleModal isOpen={showTitleModal} onClose={closeModal} markerTitle={markerTitle} handleTitleChange={handleTitleChange} onSave={handleSaveTitle} />}
       {isLoading && <MapLoading message={isLoadingProject ? "Loading project..." : "Loading map..."} />}
-      {showNoProjectsModal && <NoProjectAlert onCreate={handleOpenCreateProject} onOpenLibrary={handleBackToLibrary} onLater={handleMaybeLater} message={message} />}
-      {showCreateProjectModal && <CreateProjectModal isOpen={showCreateProjectModal} onClose={() => setShowCreateProjectModal(false)} onCreate={(projectData) => handleCreateProject({ projectData, setLoading: () => { }, onSuccess: (project) => { setShowCreateProjectModal(false); navigate(`/studio/${project._id || project.id}`); } })} />}
-      <ReadyConfirmModal open={showReadyConfirm} isDarkMode={isDarkMode} chartLabel={chartLabel} claim={chartClaim} isBusy={isCertifyingChart} onCancel={() => setShowReadyConfirm(false)} onConfirm={executeCertifyChartReady} />
+      {showNoProjectsModal && shouldShowStudioPanels && <NoProjectAlert onCreate={handleOpenCreateProject} onOpenLibrary={handleBackToLibrary} onLater={handleMaybeLater} message={message} />}
+      {showCreateProjectModal && shouldShowStudioPanels && <CreateProjectModal isOpen={showCreateProjectModal} onClose={() => setShowCreateProjectModal(false)} onCreate={(projectData) => handleCreateProject({ projectData, setLoading: () => { }, onSuccess: (project) => { setShowCreateProjectModal(false); navigate(`/studio/${project._id || project.id}`); } })} />}
+      <ReadyConfirmModal open={showReadyConfirm && shouldShowStudioPanels} isDarkMode={isDarkMode} chartLabel={chartLabel} claim={chartClaim} isBusy={isCertifyingChart} onCancel={() => setShowReadyConfirm(false)} onConfirm={executeCertifyChartReady} />
       <WorkflowErrorModal error={workflowError} isDarkMode={isDarkMode} onClose={() => setWorkflowError(null)} />
-      {isInactivityPromptVisible && <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm"><div className={`max-w-md rounded-3xl border p-6 text-center shadow-2xl ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"}`}><h2 className="text-xl font-black">Workspace paused for inactivity</h2><p className={`mt-2 text-sm ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>Refresh the workspace to continue with the latest forecast data, or stay active if you are still editing.</p><div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center"><Button onClick={refreshWorkspace}>Refresh workspace</Button><Button variant="secondary" onClick={stayActive}>Stay active</Button></div></div></div>}
+      {isInactivityPromptVisible && shouldShowStudioPanels && <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm"><div className={`max-w-md rounded-3xl border p-6 text-center shadow-2xl ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"}`}><h2 className="text-xl font-black">Workspace paused for inactivity</h2><p className={`mt-2 text-sm ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>Refresh the workspace to continue with the latest forecast data, or stay active if you are still editing.</p><div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center"><Button onClick={refreshWorkspace}>Refresh workspace</Button><Button variant="secondary" onClick={stayActive}>Stay active</Button></div></div></div>}
     </div>
   );
 };
