@@ -7,7 +7,7 @@ import {
   getPackageCompletion,
   REQUIRED_FORECAST_CHART_TYPES,
 } from '../utils/forecastPackage.js';
-import { emitForecastChartUpdated } from '../socket/socketEmitter.js';
+import { emitForecastChartUpdated, emitForecastPackageUpdated } from '../socket/socketEmitter.js';
 
 const EDITABLE_PACKAGE_STATUSES = [FORECAST_PACKAGE_STATUS.DRAFT, FORECAST_PACKAGE_STATUS.REVISION_REQUESTED];
 
@@ -41,6 +41,18 @@ async function populateForecastPackageById(id) {
     .populate('auditLogs.performedBy', 'firstName lastName email username');
 }
 
+function emitChartWorkflowUpdate(forecastPackage, projectId, payload = {}) {
+  const eventPayload = {
+    resourceType: 'forecast_chart',
+    packageId: String(forecastPackage?._id || ''),
+    projectId: String(projectId || ''),
+    ...payload,
+  };
+
+  emitForecastChartUpdated(projectId, eventPayload);
+  emitForecastPackageUpdated(forecastPackage, eventPayload);
+}
+
 function serializePackage(forecastPackage) { const plain = typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage; return { ...plain, completion: getPackageCompletion(plain.chartCompletion || []) }; }
 function serializeChartContext(forecastPackage, chart, user) {
   const serializedPackage = serializePackage(forecastPackage);
@@ -56,7 +68,6 @@ function serializeChartContext(forecastPackage, chart, user) {
   const blockingChartType = completionRow?.isComplete ? null : getPreviousIncompleteChartType(serializedPackage.chartCompletion || [], plainChart?.chartType);
   const editable = EDITABLE_PACKAGE_STATUSES.includes(serializedPackage.status);
   const activeEditorCurrentUser = activeEditors.some((editor) => isSameId(editor.user, user?.id));
-  const participantCurrentUser = participants.some((participant) => isSameId(participant.user, user?.id));
   const hasOtherActiveEditors = activeEditors.some((editor) => !isSameId(editor.user, user?.id));
   const isReady = Boolean(completionRow?.isComplete);
   const participantCount = Math.max(participants.length, activeEditors.length, 1);
@@ -76,7 +87,7 @@ function serializeChartContext(forecastPackage, chart, user) {
       activeEditorLabels,
       canClaim: editable && !isReady && !blockingChartType && !activeEditorCurrentUser,
       canRelease: editable && activeEditorCurrentUser,
-      canCertify: editable && !isReady && !blockingChartType && participantCurrentUser && !currentUserReady,
+      canCertify: editable && !isReady && !blockingChartType && activeEditorCurrentUser && !currentUserReady,
       readyCount,
       participantCount,
       readyEditorLabels,
@@ -94,12 +105,12 @@ function updateChartCompletionState(forecastPackage, chart, isComplete, user) {
   if (!completionRow) throwError(`Unknown or unsupported chart type: ${chart.chartType}`, 400);
   const activeEditors = getActiveEditors(chart);
   const participants = getParticipants(chart);
-  const participantCurrentUser = participants.some((participant) => isSameId(participant.user, user?.id));
+  const activeEditorCurrentUser = activeEditors.some((editor) => isSameId(editor.user, user?.id));
   const blockingChartType = isComplete ? getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chart.chartType) : null;
   if (blockingChartType) throwError(`${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chart.chartType)}`, 400);
   let comment;
   if (isComplete) {
-    if (!participantCurrentUser) throwError(`${getForecastChartLabel(chart.chartType)} must be joined by you before you can mark yourself ready`, 409);
+    if (!activeEditorCurrentUser) throwError(`${getForecastChartLabel(chart.chartType)} must be opened for editing by you before you can mark yourself ready`, 409);
     addReadyVote(chart, user.id);
     const readyUserIds = new Set(getReadyEditors(chart).map((vote) => String(vote.user?._id || vote.user)));
     const allParticipantsReady = participants.length > 0 && participants.every((participant) => readyUserIds.has(String(participant.user?._id || participant.user)));
@@ -137,7 +148,7 @@ async function joinChartIfAllowedByProject(projectId, user, { emit = true, audit
   const update = { $set: { 'charts.$.activeEditors': activeEditors, 'charts.$.participants': chart.participants, ...getLegacyClaimPatch(activeEditors) } };
   if (audit) update.$push = { auditLogs: { action: 'chart_claimed', performedBy: user.id, previousStatus: forecastPackage.status, newStatus: forecastPackage.status, comment: `${getForecastChartLabel(chart.chartType)} joined for editing` } };
   await ForecastPackage.updateOne({ _id: forecastPackage._id, 'charts.project': projectId }, update);
-  if (emit) emitForecastChartUpdated(projectId, { action: 'chart_joined', resourceType: 'forecast_chart', actorUserId: String(user.id) });
+  if (emit) emitChartWorkflowUpdate(forecastPackage, projectId, { action: 'chart_joined', actorUserId: String(user.id) });
   return { forecastPackage, joined: true };
 }
 
@@ -176,7 +187,7 @@ export const releaseForecastPackageChartEditingByProject = asyncHandler(async (r
   if (!chart) throwError('Forecast Package chart context not found', 404);
   const remainingEditors = getActiveEditors(chart).filter((editor) => !isSameId(editor.user, req.user.id));
   await ForecastPackage.updateOne({ _id: forecastPackage._id, 'charts.project': req.params.projectId }, { $set: { 'charts.$.activeEditors': remainingEditors, ...getLegacyClaimPatch(remainingEditors) }, $push: { auditLogs: { action: 'chart_released', performedBy: req.user.id, previousStatus: forecastPackage.status, newStatus: forecastPackage.status, comment: `${getForecastChartLabel(chart.chartType)} editing session released` } } });
-  emitForecastChartUpdated(req.params.projectId, { action: 'chart_released', resourceType: 'forecast_chart', actorUserId: String(req.user.id) });
+  emitChartWorkflowUpdate(forecastPackage, req.params.projectId, { action: 'chart_released', actorUserId: String(req.user.id) });
   const populated = await populateForecastPackageById(forecastPackage._id);
   const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
   res.json(serializeChartContext(populated, populatedChart, req.user));
@@ -189,7 +200,7 @@ export const updateForecastChartCompletionByProject = asyncHandler(async (req, r
   if (!chart) throwError('Forecast Package chart context not found', 404);
   updateChartCompletionState(forecastPackage, chart, Boolean(req.body?.isComplete), req.user);
   await forecastPackage.save();
-  emitForecastChartUpdated(req.params.projectId, { action: 'chart_completion_updated', resourceType: 'forecast_chart', actorUserId: String(req.user.id) });
+  emitChartWorkflowUpdate(forecastPackage, req.params.projectId, { action: 'chart_completion_updated', actorUserId: String(req.user.id) });
   const populated = await populateForecastPackageById(forecastPackage._id);
   const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
   res.json(serializeChartContext(populated, populatedChart, req.user));
