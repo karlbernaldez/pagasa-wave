@@ -13,6 +13,7 @@ import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Button from "@/components/ui/Button";
 
 import { createProject, fetchAdminForecastPackage } from "@/api/projectAPI";
+import { fetchAdminForecastPackages } from "@/api/forecastPackageAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
 import { PROJECT_STATUS, getProjectStatusLabel, isProjectPublished } from "@/features/projects/projectStatuses";
@@ -155,6 +156,28 @@ function getChartSortValue(project) {
   return index === -1 ? CHART_ORDER.length : index;
 }
 
+function uniqueProjects(projects = []) {
+  const seen = new Set();
+  return projects.filter((project) => {
+    const id = getProjectId(project);
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+function sortReviewQueue(projects = []) {
+  return uniqueProjects(projects).sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+}
+
+function getPackageChartProjects(forecastPackage) {
+  return sortReviewQueue((forecastPackage?.charts || []).map((chart) => chart?.project).filter(Boolean));
+}
+
+function packageContainsProject(forecastPackage, projectId) {
+  return getPackageChartProjects(forecastPackage).some((project) => getProjectId(project) === projectId);
+}
+
 function formatForecastDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "No forecast date";
@@ -220,12 +243,13 @@ function DailyFocusPackage({ packageItem, isDarkMode, onOpenProject }) {
     : "border-slate-200 bg-white text-slate-900 hover:border-cyan-300 hover:bg-cyan-50/60";
   const muted = isDarkMode ? "text-slate-400" : "text-slate-500";
   const firstProject = packageItem.projects[0];
+  const packageQueue = packageItem.projects;
 
   return (
     <section className={`overflow-hidden rounded-3xl border shadow-sm ${isDarkMode ? "border-cyan-400/25 bg-cyan-950/20" : "border-cyan-200 bg-cyan-50/70"}`}>
       <button
         type="button"
-        onClick={() => firstProject && onOpenProject(firstProject)}
+        onClick={() => firstProject && onOpenProject(firstProject, packageQueue)}
         className={`block w-full border-b border-white/10 p-5 text-left transition ${isDarkMode ? "hover:bg-cyan-400/10" : "hover:bg-cyan-100/70"}`}
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -239,7 +263,7 @@ function DailyFocusPackage({ packageItem, isDarkMode, onOpenProject }) {
               <span className={`rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? "border-amber-300/30 bg-amber-400/15 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{packageItem.status}</span>
             </div>
             <h2 className={`mt-4 text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-950"}`}>Today&apos;s Analysis and Forecast Charts</h2>
-            <p className={`mt-2 max-w-3xl text-sm font-semibold leading-6 ${muted}`}>Click anywhere in this Daily Focus header, Review package, or any chart card below to open the review modal.</p>
+            <p className={`mt-2 max-w-3xl text-sm font-semibold leading-6 ${muted}`}>Click anywhere in this Daily Focus header, Review package, or any chart card below to open the full package review.</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -259,7 +283,7 @@ function DailyFocusPackage({ packageItem, isDarkMode, onOpenProject }) {
           const isPublished = project.status === PROJECT_STATUS.PUBLISHED;
 
           return (
-            <button key={getProjectId(project)} type="button" className={`min-w-0 rounded-2xl border p-4 text-left shadow-sm transition ${cardClass}`} onClick={() => onOpenProject(project)}>
+            <button key={getProjectId(project)} type="button" className={`min-w-0 rounded-2xl border p-4 text-left shadow-sm transition ${cardClass}`} onClick={() => onOpenProject(project, packageQueue)}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className={`truncate text-xs font-black uppercase tracking-[0.16em] ${muted}`}>{CHART_LABELS[type] || type}</p>
@@ -296,35 +320,60 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
 
   const getReviewQueueForProject = (project, sourceProjects = projects || []) => {
     const dateKey = getForecastDateKey(project);
-    return sourceProjects.filter((candidate) => getForecastDateKey(candidate) === dateKey).sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+    return sortReviewQueue(sourceProjects.filter((candidate) => getForecastDateKey(candidate) === dateKey));
   };
 
-  const loadFullReviewQueue = async (project) => {
-    const localQueue = getReviewQueueForProject(project);
+  const loadQueueFromForecastPackageList = async (project) => {
     const projectId = getProjectId(project);
-    if (!projectId) return localQueue;
+    if (!projectId) return [];
+
+    const response = await fetchAdminForecastPackages({ page: 1, limit: 100 });
+    const forecastPackages = response?.packages || [];
+    const matchingPackage = forecastPackages.find((forecastPackage) => packageContainsProject(forecastPackage, projectId))
+      || forecastPackages.find((forecastPackage) => getForecastDateKey(forecastPackage) === getForecastDateKey(project));
+
+    return getPackageChartProjects(matchingPackage);
+  };
+
+  const loadFullReviewQueue = async (project, preferredQueue = []) => {
+    const localQueue = getReviewQueueForProject(project);
+    let queue = sortReviewQueue([...preferredQueue, ...localQueue]);
+    const projectId = getProjectId(project);
+    if (!projectId) return queue;
 
     try {
       const packageResponse = await fetchAdminForecastPackage(projectId);
       const packageProjects = adaptProjects(packageResponse?.projects || []);
-      const packageQueue = packageProjects.sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
-      return packageQueue.length > 0 ? packageQueue : localQueue;
+      queue = sortReviewQueue([...queue, ...packageProjects]);
     } catch (err) {
-      console.error("Failed to load full review package:", err);
-      return localQueue;
+      console.error("Failed to load project forecast package endpoint:", err);
     }
+
+    if (queue.length < CHART_ORDER.length) {
+      try {
+        const packageProjects = adaptProjects(await loadQueueFromForecastPackageList(project));
+        queue = sortReviewQueue([...queue, ...packageProjects]);
+      } catch (err) {
+        console.error("Failed to load admin forecast package list fallback:", err);
+      }
+    }
+
+    return queue.length > 0 ? queue : localQueue;
   };
 
-  const openReviewProject = async (project) => {
+  const openReviewProject = async (project, preferredQueue = reviewQueue) => {
     const projectId = getProjectId(project);
     if (!projectId) return;
+
+    const initialQueue = sortReviewQueue([...preferredQueue, ...getReviewQueueForProject(project)]);
+    if (initialQueue.length > 0) setReviewQueue(initialQueue);
 
     setIsStartingReview(true);
     try {
       const updatedProject = await onStartReview?.(project);
       const nextProject = updatedProject || project;
-      const nextQueue = await loadFullReviewQueue(nextProject);
-      setReviewQueue(nextQueue);
+      const nextQueue = await loadFullReviewQueue(nextProject, initialQueue);
+      setReviewQueue(nextQueue.length > 0 ? nextQueue : [nextProject]);
       setReviewProject(nextProject);
     } catch (err) {
       console.error("Failed to start review:", err);
@@ -334,13 +383,13 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     }
   };
 
-  const handleOpen = async (project) => {
+  const handleOpen = async (project, preferredQueue = []) => {
     setFeedbackError("");
     const projectId = getProjectId(project);
     if (!projectId) return;
 
     if (role === "admin") {
-      await openReviewProject(project);
+      await openReviewProject(project, preferredQueue);
       return;
     }
 
@@ -419,7 +468,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       {controller.dialogs}
       {role !== "admin" && <CreateProjectModal visible={showCreateProjectModal} onClose={() => setShowCreateProjectModal(false)} onSubmit={handleCreateAndOpenProject} isDarkMode={isDarkMode} />}
       {isStartingReview && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">Starting review package…</div>}
-      {role === "admin" && <ProjectReviewModal project={getReviewModalProject(reviewProject)} reviewQueue={reviewQueue} isDarkMode={isDarkMode} onClose={() => { setReviewProject(null); setReviewQueue([]); }} onSelectProject={openReviewProject} onApprove={onApprove} onReject={onReject} onNoPublication={onNoPublication} onPublish={onPublish} onActionComplete={handleReviewActionComplete} />}
+      {role === "admin" && <ProjectReviewModal project={getReviewModalProject(reviewProject)} reviewQueue={reviewQueue} isDarkMode={isDarkMode} onClose={() => { setReviewProject(null); setReviewQueue([]); }} onSelectProject={(targetProject) => openReviewProject(targetProject, reviewQueue)} onApprove={onApprove} onReject={onReject} onNoPublication={onNoPublication} onPublish={onPublish} onActionComplete={handleReviewActionComplete} />}
     </div>
   );
 }
