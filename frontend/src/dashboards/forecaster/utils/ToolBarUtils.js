@@ -276,7 +276,7 @@ export const toggleDrawing = (isDrawing, setIsDrawing, onToggleCanvas) => {
 };
 
 export const toggleFlagDrawing = (isFlagDrawing, setIsFlagDrawing, onToggleFlagCanvas) => {
-  isFlagDrawing ? stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas) : startFlagDrawing(setIsFlagDrawing);
+  isFlagDrawing ? stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas) : startFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
 };
 
 export const startDrawing = (setIsDrawing, onToggleCanvas) => {
