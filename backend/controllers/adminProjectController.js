@@ -1,5 +1,6 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import { throwError } from '../utils/errorHelper.js';
+import ForecastPackage from '../models/ForecastPackage.js';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
@@ -125,14 +126,45 @@ function sortProjectsByChartType(projects = []) {
   });
 }
 
+function getPackageProjects(forecastPackage) {
+  return sortProjectsByChartType(uniqueProjectsById(
+    (forecastPackage?.charts || [])
+      .map((chart) => chart?.project)
+      .filter((project) => project && typeof project === 'object')
+      .filter((project) => ALLOWED_CHART_TYPES.includes(project.chartType))
+      .filter((project) => ALLOWED_ADMIN_STATUSES.includes(project.status)),
+  ));
+}
+
 function withAdminProjectPopulates(query) {
   return query
     .populate('owner', 'firstName lastName email username')
+    .populate('forecastPackage', 'name forecastDate status')
     .populate('reviewStartedBy', 'firstName lastName email username')
     .populate('approvedBy', 'firstName lastName email username')
     .populate('rejectedBy', 'firstName lastName email username')
     .populate('noPublicationBy', 'firstName lastName email username')
     .populate('auditLogs.performedBy', 'firstName lastName email username');
+}
+
+function withPackagePopulates(query) {
+  return query
+    .populate('owner', 'firstName lastName email username')
+    .populate('reviewStartedBy', 'firstName lastName email username')
+    .populate('approvedBy', 'firstName lastName email username')
+    .populate('rejectedBy', 'firstName lastName email username')
+    .populate({
+      path: 'charts.project',
+      populate: [
+        { path: 'owner', select: 'firstName lastName email username' },
+        { path: 'forecastPackage', select: 'name forecastDate status' },
+        { path: 'reviewStartedBy', select: 'firstName lastName email username' },
+        { path: 'approvedBy', select: 'firstName lastName email username' },
+        { path: 'rejectedBy', select: 'firstName lastName email username' },
+        { path: 'noPublicationBy', select: 'firstName lastName email username' },
+        { path: 'auditLogs.performedBy', select: 'firstName lastName email username' },
+      ],
+    });
 }
 
 function buildStatusCounts(rows) {
@@ -270,17 +302,21 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
   });
 });
 
-export const getAdminForecastPackage = asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
+async function findPackageByProject(project) {
+  if (project.forecastPackage) {
+    const forecastPackage = await withPackagePopulates(
+      ForecastPackage.findById(project.forecastPackage),
+    ).lean();
+
+    if (forecastPackage) return forecastPackage;
   }
 
-  const project = await Project.findById(req.params.id)
-    .select('name forecastDate submittedAt createdAt owner')
-    .lean();
+  return withPackagePopulates(
+    ForecastPackage.findOne({ 'charts.project': project._id }),
+  ).lean();
+}
 
-  if (!project) throwError('Project not found', 404);
-
+async function findLegacyPackageProjects(project) {
   const packageFilters = [];
   const packageNameRegex = getPackageNameRegex(project.name);
   const isoDateTokens = getIsoDateTokens(project.name);
@@ -310,9 +346,55 @@ export const getAdminForecastPackage = asyncHandler(async (req, res) => {
       .lean(),
   ));
 
-  res.json({
+  return {
     forecastDate: forecastBounds?.start || getDateBounds(project.forecastDate)?.start || null,
     packageName: getPackageNamePrefix(project.name),
+    projects,
+  };
+}
+
+export const getAdminForecastPackage = asyncHandler(async (req, res) => {
+  if (!req.user || req.user.role !== 'admin') {
+    throwError('Admin access required', 403);
+  }
+
+  const project = await Project.findById(req.params.id)
+    .select('name forecastDate submittedAt createdAt owner forecastPackage')
+    .lean();
+
+  if (!project) throwError('Project not found', 404);
+
+  const forecastPackage = await findPackageByProject(project);
+
+  if (forecastPackage) {
+    const projects = getPackageProjects(forecastPackage);
+
+    return res.json({
+      package: {
+        _id: forecastPackage._id,
+        id: forecastPackage._id,
+        name: forecastPackage.name,
+        forecastDate: forecastPackage.forecastDate,
+        status: forecastPackage.status,
+      },
+      forecastDate: forecastPackage.forecastDate,
+      packageName: forecastPackage.name,
+      expectedChartTypes: ALLOWED_CHART_TYPES,
+      chartCount: projects.length,
+      isComplete: ALLOWED_CHART_TYPES.every((chartType) =>
+        projects.some((candidate) => candidate.chartType === chartType),
+      ),
+      projects,
+    });
+  }
+
+  const legacyPackage = await findLegacyPackageProjects(project);
+  const projects = legacyPackage.projects;
+
+  return res.json({
+    package: null,
+    forecastDate: legacyPackage.forecastDate,
+    packageName: legacyPackage.packageName,
     expectedChartTypes: ALLOWED_CHART_TYPES,
     chartCount: projects.length,
     isComplete: ALLOWED_CHART_TYPES.every((chartType) =>
