@@ -4,6 +4,9 @@ import Button from '@/components/ui/Button';
 import { CHART_LABELS, formatPackageDate, isDailyForecastPackage } from '@/features/projects/utils/forecastPackageGrouping';
 import { getProjectStatusLabel, getProjectStatusStyle } from '@/features/projects/projectStatuses';
 
+const REVIEWABLE_PACKAGE_STATUSES = new Set(['Submitted', 'Under Review']);
+const REVIEWABLE_PROJECT_STATUSES = new Set(['Submitted', 'Under Review']);
+
 const PACKAGE_STATUS_STYLES = {
   Submitted: {
     light: 'border-slate-200 bg-slate-100 text-slate-700',
@@ -54,6 +57,7 @@ function PackageMetric({ icon: Icon, label, value, isDarkMode }) {
 function ChartRow({ chartRow, isDarkMode, onOpenChart }) {
   const chart = chartRow.project;
   const statusClass = getProjectStatusStyle(chart?.status);
+  const canReviewChart = REVIEWABLE_PROJECT_STATUSES.has(chart?.status);
 
   return (
     <div className={`flex flex-col gap-3 rounded-2xl border p-3 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-white/10 bg-slate-950/35' : 'border-slate-200 bg-slate-50/80'}`}>
@@ -71,8 +75,8 @@ function ChartRow({ chartRow, isDarkMode, onOpenChart }) {
         </p>
       </div>
 
-      <Button size="sm" variant="secondary" icon={ExternalLink} onClick={() => onOpenChart?.(chart)}>
-        Review chart
+      <Button size="sm" variant="secondary" icon={ExternalLink} disabled={!canReviewChart} onClick={() => canReviewChart && onOpenChart?.(chart)}>
+        {canReviewChart ? 'Review chart' : 'Not submitted'}
       </Button>
     </div>
   );
@@ -82,6 +86,7 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
   const isDaily = isDailyForecastPackage(forecastPackage);
   const statusStyle = PACKAGE_STATUS_STYLES[forecastPackage.status] ?? PACKAGE_STATUS_STYLES.Draft;
   const packageDateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
+  const canReviewPackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status) && Boolean(forecastPackage.primaryChart);
 
   return (
     <article className={`overflow-hidden rounded-3xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
@@ -110,8 +115,8 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
             </p>
           </div>
 
-          <Button icon={PackageCheck} onClick={() => onOpenChart?.(forecastPackage.primaryChart, forecastPackage)}>
-            Review package
+          <Button icon={PackageCheck} disabled={!canReviewPackage} onClick={() => canReviewPackage && onOpenChart?.(forecastPackage.primaryChart, forecastPackage)}>
+            {canReviewPackage ? 'Review package' : 'Not reviewable'}
           </Button>
         </div>
       </div>
