@@ -13,6 +13,10 @@ const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested']);
 const FINAL_STATUSES = new Set(['Approved', 'Published', 'Rejected', 'Archived']);
 const FORECAST_TIME_ZONE = 'Asia/Manila';
 
+function displayPackageStatus(status) {
+  return status === 'Draft' ? 'In Production' : status;
+}
+
 export function getDateKey(value, timeZone = FORECAST_TIME_ZONE) {
   if (!value) return '';
 
@@ -46,11 +50,12 @@ export function formatPackageDate(dateKey) {
 }
 
 function getPackageStatus(charts) {
-  if (charts.some((chart) => REVIEW_STATUSES.has(chart.status))) return 'Needs Review';
-  if (charts.some((chart) => RETURNED_STATUSES.has(chart.status))) return 'Returned';
+  if (charts.some((chart) => chart.status === 'Under Review')) return 'Under Review';
+  if (charts.some((chart) => chart.status === 'Submitted')) return 'Submitted';
+  if (charts.some((chart) => RETURNED_STATUSES.has(chart.status))) return 'Revision Requested';
   if (charts.length > 0 && charts.every((chart) => APPROVED_STATUSES.has(chart.status))) return 'Approved';
   if (charts.length > 0 && charts.every((chart) => FINAL_STATUSES.has(chart.status))) return 'Closed';
-  return 'In Progress';
+  return 'In Production';
 }
 
 function getOwnerLabelFromUser(user) {
@@ -106,6 +111,7 @@ export function adaptForecastPackageModel(forecastPackage) {
   const approvedCharts = chartProjects.filter((chart) => APPROVED_STATUSES.has(chart.status));
   const returnedCharts = chartProjects.filter((chart) => RETURNED_STATUSES.has(chart.status));
   const primaryChartRow = charts.find((chart) => REVIEW_STATUSES.has(chart.project?.status)) || charts[0];
+  const derivedStatus = forecastPackage?.displayStatus || displayPackageStatus(forecastPackage?.status) || getPackageStatus(chartProjects);
 
   return {
     ...forecastPackage,
@@ -114,7 +120,8 @@ export function adaptForecastPackageModel(forecastPackage) {
     dateKey,
     title: forecastPackage?.name || (dateKey ? `${formatPackageDate(dateKey)} Forecast Package` : 'Forecast Package'),
     ownerLabel: getOwnerLabelFromUser(forecastPackage?.owner) || getOwnerLabel(chartProjects),
-    status: forecastPackage?.status || getPackageStatus(chartProjects),
+    status: derivedStatus,
+    rawStatus: forecastPackage?.status,
     charts,
     chartProjects,
     chartCount: charts.length,
