@@ -4,14 +4,13 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 
 import { fetchPublicPublishedChartOutput } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hooks/usePublicMapBounds';
 import { CHART_STYLE_MODE, getChartStyleModePaint, normalizeChartStyleMode } from '@/features/projects/utils/chartStyleModes';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 const STYLE_URL = 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n';
-const TCAD_BOUNDS = [[93, 0], [153.8595159535438, 25]];
-const DEFAULT_CENTER = [120.0, 15.5];
 const RASTER_SOURCE_ID = 'published-export-raster-source';
 const RASTER_LAYER_ID = 'published-export-raster';
 const COUNTRY_SOURCE_ID = 'published-export-country-source';
@@ -236,7 +235,7 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
     map.addLayer({ id: 'published-forecast-export-points', type: 'circle', source: FEATURE_SOURCE_ID, filter: POINT_SYMBOL_FILTER, paint: { 'circle-color': paint.pointColor, 'circle-radius': paint.pointRadius, 'circle-opacity': paint.showPoints ? 1 : 0, 'circle-stroke-color': paint.pointStroke, 'circle-stroke-width': paint.pointStrokeWidth } });
     map.addLayer({ id: 'published-forecast-export-less-one', type: 'symbol', source: FEATURE_SOURCE_ID, filter: LESS_ONE_FILTER, layout: { 'icon-image': LESS_ONE_IMAGE_ID, 'icon-size': 0.28, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
     map.addLayer({ id: 'published-forecast-export-line-labels', type: 'symbol', source: LABEL_SOURCE_ID, layout: { 'text-field': ['get', 'text'], 'text-size': paint.lineLabelSize, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
-    map.addLayer({ id: 'published-forecast-export-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': paint.pointLabelSize, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true, 'visibility': paint.showPointLabels ? 'visible' : 'none' }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
+    map.addLayer({ id: 'published-forecast-export-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': paint.pointLabelSize, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
   }
 
   applyExportLayerPaint(map, chartStyleMode);
@@ -244,13 +243,14 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
   return true;
 }
 
-function fitExportBounds(map) {
+function fitExportBounds(map, bounds) {
   map.resize();
-  map.fitBounds(TCAD_BOUNDS, { padding: 18, maxZoom: 6, duration: 0 });
+  map.fitBounds(bounds, { padding: 18, maxZoom: 6, duration: 0 });
 }
 
 const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap({ features, chartStyleMode, raster }, ref) {
   const { isDarkMode } = useTheme();
+  const { bounds: mapBounds } = usePublicMapBounds();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
@@ -280,11 +280,11 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
         throw new Error('Map is still preparing for export. Please try again in a moment.');
       }
 
-      fitExportBounds(mapRef.current);
+      fitExportBounds(mapRef.current, mapBounds);
       return mapRef.current.getCanvas().toDataURL('image/png');
     },
     isReady: Boolean(mapRef.current && isReady && hasFeatures && isMapStyleReady(mapRef.current)),
-  }), [hasFeatures, isReady]);
+  }), [hasFeatures, isReady, mapBounds]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current || !hasFeatures) return undefined;
@@ -293,7 +293,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
       container: containerRef.current,
       style: STYLE_URL,
       projection: 'mercator',
-      center: DEFAULT_CENTER,
+      center: getMapBoundsCenter(mapBounds),
       zoom: 4.8,
       interactive: false,
       attributionControl: false,
@@ -309,7 +309,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
       syncCountryOverlay(map, isDarkMode);
       syncExportLayers(map, featureCollection, normalizedStyleMode);
       restackExportLayers(map);
-      fitExportBounds(map);
+      fitExportBounds(map, mapBounds);
     };
 
     map.on('load', () => {
@@ -326,7 +326,9 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
       mapRef.current = null;
       setIsReady(false);
     };
-  }, [featureCollection, hasFeatures, isDarkMode, normalizedStyleMode, resolvedRaster, shouldRenderRaster]);
+    // Initialize once per mounted export map; updates are handled below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasFeatures]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -340,7 +342,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
       syncCountryOverlay(map, isDarkMode);
       syncExportLayers(map, featureCollection, normalizedStyleMode);
       restackExportLayers(map);
-      fitExportBounds(map);
+      fitExportBounds(map, mapBounds);
       setIsReady(true);
     };
 
@@ -355,7 +357,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     return () => {
       cancelled = true;
     };
-  }, [featureCollection, hasFeatures, isDarkMode, normalizedStyleMode, resolvedRaster, shouldRenderRaster]);
+  }, [featureCollection, hasFeatures, isDarkMode, mapBounds, normalizedStyleMode, resolvedRaster, shouldRenderRaster]);
 
   if (!hasFeatures) return null;
 
