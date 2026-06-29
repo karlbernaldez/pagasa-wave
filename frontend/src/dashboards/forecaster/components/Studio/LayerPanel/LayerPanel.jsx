@@ -267,7 +267,7 @@ const StudioPanel = ({
     const layer = confirmDialog.layer;
     if (!layer) return;
     try {
-      await removeFeature(layer.id);
+      await removeFeature(layer);
       removeLayer(map, layer, setLayers, draw);
     } catch (error) {
       console.error('Failed to delete layer:', error);
