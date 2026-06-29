@@ -20,6 +20,18 @@ const FEATURE_SOURCE_ID = 'published-chart-annotations';
 const LABEL_SOURCE_ID = 'published-chart-line-labels';
 const LESS_ONE_IMAGE_ID = 'published-preview-less-1';
 
+const COUNTRY_LAYER_ORDER = [COUNTRY_LAND_LAYER_ID, COUNTRY_LINE_LAYER_ID];
+const ANNOTATION_LAYER_ORDER = [
+  'published-chart-polygons',
+  'published-chart-polygon-outline',
+  'published-chart-lines',
+  'published-chart-fronts',
+  'published-chart-points',
+  'published-chart-less-one',
+  'published-chart-line-labels',
+  'published-chart-point-labels',
+];
+
 const POINT_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'type'], ''];
 const POINT_FILTER = ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false];
 const LINE_FILTER = ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false];
@@ -91,6 +103,20 @@ function buildCollections(featureCollection) {
 function setGeoJson(map, id, data) {
   if (map.getSource(id)) map.getSource(id).setData(data);
   else map.addSource(id, { type: 'geojson', data });
+}
+
+function safelyMoveLayerToTop(map, layerId) {
+  if (!map.getLayer(layerId)) return;
+  try {
+    map.moveLayer(layerId);
+  } catch (error) {
+    console.warn(`[PublicPublishedChartPreviewMap] Failed to move layer ${layerId}:`, error);
+  }
+}
+
+function restackPreviewLayers(map) {
+  COUNTRY_LAYER_ORDER.forEach((layerId) => safelyMoveLayerToTop(map, layerId));
+  ANNOTATION_LAYER_ORDER.forEach((layerId) => safelyMoveLayerToTop(map, layerId));
 }
 
 function removeRaster(map) {
@@ -249,6 +275,7 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     syncRaster(map, raster, shouldRenderRaster);
     syncCountryOverlay(map, isDarkMode);
     if (hasFeatures) syncAnnotations(map, featureCollection);
+    restackPreviewLayers(map);
     map.fitBounds(DEFAULT_BOUNDS, { padding: 16, maxZoom: 6, duration: 0 });
   }, [featureCollection, hasFeatures, isDarkMode, isReady, raster, shouldRenderRaster]);
 
