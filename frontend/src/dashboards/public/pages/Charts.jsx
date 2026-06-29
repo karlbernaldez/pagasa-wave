@@ -20,6 +20,7 @@ import {
 } from '@/dashboards/public/utils/publicChartGroups';
 
 const RECENT_FETCH_LIMIT = 80;
+const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
 
 const CHART_STYLES = [
   { id: 'wave-wind', label: 'Wave & Wind', shortLabel: 'Wave + Wind', icon: Wind, description: 'Combined wave height and wind context.', color: '#2563eb' },
@@ -33,7 +34,7 @@ const scaleIn = { hidden: { opacity: 0, scale: 0.97 }, show: { opacity: 1, scale
 function formatDate(value, options = {}) {
   if (!value) return '—';
   try {
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', ...options }).format(new Date(value));
+    return new Intl.DateTimeFormat('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE, month: 'short', day: 'numeric', year: 'numeric', ...options }).format(new Date(value));
   } catch {
     return '—';
   }
