@@ -13,6 +13,7 @@ const FORECAST_CHART_UPDATED_EVENT = "forecast-chart:updated";
 export const FORECAST_CHART_BROWSER_EVENT = "wavelab:forecast-chart-updated";
 
 const FRONT_TYPE_LABELS = { cold: "Cold Front", warm: "Warm Front", stationary: "Stationary Front", occluded: "Occluded Front" };
+const MARKER_DISPLAY_NAMES = { less_1: "Low Wave (<1 m)", text_note: "Text Note", low_pressure: "Low Pressure Area", high_pressure: "High Pressure Area", typhoon: "Tropical Cyclone" };
 
 function getIdString(value) {
   if (!value) return "";
@@ -26,6 +27,37 @@ function getIdString(value) {
 
 function getFeatureProjectId(feature) {
   return getIdString(feature?.properties?.project || feature?.project);
+}
+
+function getShortLayerSuffix(feature) {
+  const raw = getIdString(feature?.sourceId || feature?.properties?.sourceId || feature?.properties?.stableId || feature?._id || feature?.id);
+  const suffix = raw.replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase();
+  return suffix || "0000";
+}
+
+function cleanLegacyMarkerName(name = "") {
+  return String(name)
+    .replace(/^(Less 1|Low Wave)[_\s-]*[0-9a-f-]{8,}$/i, "")
+    .replace(/^(Text)[_\s-]*[0-9a-f-]{8,}$/i, "")
+    .trim();
+}
+
+function getLayerDisplayName(feature, type) {
+  const props = feature?.properties || {};
+  const rawName = props.displayName || feature?.name || props.name || props.title || "";
+
+  if (type === "less_1") {
+    const cleanName = cleanLegacyMarkerName(rawName);
+    if (cleanName && !/^less\s*1$/i.test(cleanName) && !/^<1$/i.test(cleanName)) return cleanName;
+    return `${MARKER_DISPLAY_NAMES.less_1} #${getShortLayerSuffix(feature)}`;
+  }
+
+  if (type === "text_note") {
+    const cleanName = cleanLegacyMarkerName(rawName);
+    return cleanName || MARKER_DISPLAY_NAMES.text_note;
+  }
+
+  return rawName || MARKER_DISPLAY_NAMES[type] || type || "Untitled Feature";
 }
 
 const resolveFeatureLayerType = (feature) => {
@@ -110,7 +142,7 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
       setSavedFeatures(filteredFeatures);
       const initialLayers = filteredFeatures.map((feature) => {
         const type = resolveFeatureLayerType(feature);
-        const name = feature.name || type || "Untitled Feature";
+        const name = getLayerDisplayName(feature, type);
         const isMarker = ["typhoon", "low_pressure", "high_pressure", "less_1", "text_note"].includes(type);
         return {
           id: feature.sourceId || feature.properties?.sourceId || feature.properties?.stableId,
@@ -125,7 +157,7 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
           canEdit: feature.properties?.canEdit !== false,
           frontSymbolSide: feature.properties?.frontSymbolSide || feature.properties?.style?.frontSymbolSide,
           style: feature.properties?.style || {},
-          properties: feature.properties || {},
+          properties: { ...(feature.properties || {}), displayName: name },
         };
       }).filter((layer) => Boolean(layer.id));
       setLayers(initialLayers);
