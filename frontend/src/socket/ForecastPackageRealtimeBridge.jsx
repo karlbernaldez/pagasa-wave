@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import socket from './socketClient';
+import { scheduleRealtimeWork } from './realtimeScheduler';
 
 export const FORECAST_PACKAGE_UPDATED_EVENT = 'forecast-package:updated';
 export const FORECAST_CHART_UPDATED_EVENT = 'forecast-chart:updated';
@@ -20,6 +21,9 @@ const QUERY_KEY_PREFIXES = [
   ['projects'],
 ];
 
+const INVALIDATE_KEY = 'forecast-realtime:invalidate';
+const BOARD_REFRESH_KEY = 'forecast-realtime:board-refresh';
+
 function invalidateForecastQueries(queryClient) {
   QUERY_KEY_PREFIXES.forEach((queryKey) => {
     queryClient.invalidateQueries({ queryKey });
@@ -28,6 +32,10 @@ function invalidateForecastQueries(queryClient) {
 
 function dispatchBrowserEvent(name, payload) {
   window.dispatchEvent(new CustomEvent(name, { detail: payload || {} }));
+}
+
+function getPayloadKey(payload = {}) {
+  return String(payload.projectId || payload.packageId || payload.action || 'global');
 }
 
 function dispatchChartEventsForPackage(payload = {}) {
@@ -47,28 +55,54 @@ function dispatchChartEventsForPackage(payload = {}) {
   });
 }
 
-function refreshStateOnlyForecastPackagePage() {
-  if (window.location.pathname === '/studio') {
-    window.location.reload();
-  }
+function scheduleInvalidation(queryClient) {
+  scheduleRealtimeWork(INVALIDATE_KEY, () => invalidateForecastQueries(queryClient), {
+    delayMs: 250,
+    minIntervalMs: 1200,
+  });
+}
+
+function scheduleBoardRefresh() {
+  if (window.location.pathname !== '/studio') return;
+
+  scheduleRealtimeWork(BOARD_REFRESH_KEY, () => window.location.reload(), {
+    delayMs: 600,
+    minIntervalMs: 5000,
+  });
 }
 
 export default function ForecastPackageRealtimeBridge() {
   const queryClient = useQueryClient();
+  const lastBrowserEventAtRef = useRef(new Map());
 
   useEffect(() => {
+    const shouldDispatchBrowserEvent = (eventName, payload = {}) => {
+      const key = `${eventName}:${getPayloadKey(payload)}:${payload.action || ''}`;
+      const now = Date.now();
+      const lastAt = lastBrowserEventAtRef.current.get(key) || 0;
+      if (now - lastAt < 300) return false;
+      lastBrowserEventAtRef.current.set(key, now);
+      return true;
+    };
+
     const handlePackageUpdated = (payload = {}) => {
-      invalidateForecastQueries(queryClient);
-      dispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload);
+      scheduleInvalidation(queryClient);
+      if (shouldDispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload)) {
+        dispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload);
+      }
       dispatchChartEventsForPackage(payload);
-      refreshStateOnlyForecastPackagePage();
+      scheduleBoardRefresh();
     };
 
     const handleChartUpdated = (payload = {}) => {
-      invalidateForecastQueries(queryClient);
-      dispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, payload);
-      dispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload);
-      refreshStateOnlyForecastPackagePage();
+      scheduleInvalidation(queryClient);
+      if (shouldDispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, payload)) {
+        dispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, payload);
+      }
+      if (shouldDispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload)) {
+        dispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload);
+      }
+      scheduleBoardRefresh();
     };
 
     socket.on(FORECAST_PACKAGE_UPDATED_EVENT, handlePackageUpdated);
