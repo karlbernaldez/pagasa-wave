@@ -41,6 +41,8 @@ function populateForecastPackage(query) {
     .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
     .populate('charts.activeEditors.user', 'firstName lastName email username')
+    .populate('charts.participants.user', 'firstName lastName email username')
+    .populate('charts.readyEditors.user', 'firstName lastName email username')
     .populate('charts.claimedBy', 'firstName lastName email username')
     .populate('charts.readyBy', 'firstName lastName email username')
     .populate('chartCompletion.completedBy', 'firstName lastName email username')
@@ -218,10 +220,7 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
     forecastDate: requestedDate,
     user: req.user,
   });
-  const syncedPackage = await syncPackageStatusFromCharts(forecastPackage, req.user.id);
 
-  res.json({
-    package: serializePackage(syncedPackage),
-    autoCreated: !existingPackage,
-  });
+  const syncedPackage = await syncPackageStatusFromCharts(forecastPackage, req.user.id);
+  res.json(serializePackage(syncedPackage));
 });
