@@ -4,13 +4,12 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fetchPublicPublishedChartOutput } from '@/api/publishedForecastAPI';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
+import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hooks/usePublicMapBounds';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 const STYLE_URL = 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n';
-const TCAD_BOUNDS = [[93, 0], [153.8595159535438, 25]];
-const DEFAULT_CENTER = [120, 15.5];
 const RASTER_SOURCE_ID = 'published-cog-raster-source';
 const RASTER_LAYER_ID = 'published-cog-raster';
 const COUNTRY_SOURCE_ID = 'published-country-boundaries-source';
@@ -156,34 +155,16 @@ function syncRaster(map, raster, enabled) {
 
 function syncCountryOverlay(map, isDarkMode) {
   try {
-    if (!map.getSource(COUNTRY_SOURCE_ID)) {
-      map.addSource(COUNTRY_SOURCE_ID, { type: 'vector', url: 'mapbox://mapbox.country-boundaries-v1' });
-    }
+    if (!map.getSource(COUNTRY_SOURCE_ID)) map.addSource(COUNTRY_SOURCE_ID, { type: 'vector', url: 'mapbox://mapbox.country-boundaries-v1' });
 
     if (!map.getLayer(COUNTRY_LAND_LAYER_ID)) {
-      map.addLayer({
-        id: COUNTRY_LAND_LAYER_ID,
-        type: 'fill',
-        source: COUNTRY_SOURCE_ID,
-        'source-layer': 'country_boundaries',
-        paint: { 'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd', 'fill-opacity': 0.82 },
-      });
+      map.addLayer({ id: COUNTRY_LAND_LAYER_ID, type: 'fill', source: COUNTRY_SOURCE_ID, 'source-layer': 'country_boundaries', paint: { 'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd', 'fill-opacity': 0.82 } });
     } else {
       map.setPaintProperty(COUNTRY_LAND_LAYER_ID, 'fill-color', isDarkMode ? '#1e293b' : '#d6d3cd');
     }
 
     if (!map.getLayer(COUNTRY_LINE_LAYER_ID)) {
-      map.addLayer({
-        id: COUNTRY_LINE_LAYER_ID,
-        type: 'line',
-        source: COUNTRY_SOURCE_ID,
-        'source-layer': 'country_boundaries',
-        paint: {
-          'line-color': isDarkMode ? '#94a3b8' : '#4b5563',
-          'line-opacity': 0.5,
-          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2],
-        },
-      });
+      map.addLayer({ id: COUNTRY_LINE_LAYER_ID, type: 'line', source: COUNTRY_SOURCE_ID, 'source-layer': 'country_boundaries', paint: { 'line-color': isDarkMode ? '#94a3b8' : '#4b5563', 'line-opacity': 0.5, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2] } });
     } else {
       map.setPaintProperty(COUNTRY_LINE_LAYER_ID, 'line-color', isDarkMode ? '#94a3b8' : '#4b5563');
     }
@@ -218,6 +199,11 @@ function syncAnnotations(map, featureCollection) {
   map.addLayer({ id: 'published-chart-point-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': 14, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } });
 }
 
+function fitPreviewBounds(map, bounds) {
+  map.resize();
+  map.fitBounds(bounds, { padding: 16, maxZoom: 6, duration: 0 });
+}
+
 function StatusOverlay({ loading, hasRenderableRaster, hasFeatures, isDarkMode }) {
   if (loading) return <div className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-slate-950/55 text-slate-300' : 'bg-white/55 text-slate-600'}`}>Loading published chart...</div>;
   if (!hasRenderableRaster && !hasFeatures) return <div className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-slate-950/70 text-slate-400' : 'bg-slate-100/80 text-slate-500'}`}>Published preview unavailable</div>;
@@ -232,6 +218,7 @@ function getPreviewHeight(height) {
 
 function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode = false, className = '', height = 288, onClick }) {
   const { activeChartType } = useChartType();
+  const { bounds: mapBounds } = usePublicMapBounds();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const [payload, setPayload] = useState(null);
@@ -257,10 +244,12 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return undefined;
-    const map = new mapboxgl.Map({ container: containerRef.current, style: STYLE_URL, projection: 'mercator', center: DEFAULT_CENTER, zoom: 4.8, interactive: false, attributionControl: false, fadeDuration: 0 });
+    const map = new mapboxgl.Map({ container: containerRef.current, style: STYLE_URL, projection: 'mercator', center: getMapBoundsCenter(mapBounds), zoom: 4.8, interactive: false, attributionControl: false, fadeDuration: 0 });
     mapRef.current = map;
-    map.on('load', () => { setIsReady(true); map.resize(); map.fitBounds(TCAD_BOUNDS, { padding: 16, maxZoom: 6, duration: 0 }); });
+    map.on('load', () => { setIsReady(true); fitPreviewBounds(map, mapBounds); });
     return () => { map.remove(); mapRef.current = null; setIsReady(false); };
+    // Initialize once; later bounds changes are handled by the render effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -270,9 +259,8 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     syncCountryOverlay(map, isDarkMode);
     if (hasFeatures) syncAnnotations(map, featureCollection);
     restackLayers(map);
-    map.resize();
-    map.fitBounds(TCAD_BOUNDS, { padding: 16, maxZoom: 6, duration: 0 });
-  }, [featureCollection, hasFeatures, isDarkMode, isReady, raster, shouldRenderRaster]);
+    fitPreviewBounds(map, mapBounds);
+  }, [featureCollection, hasFeatures, isDarkMode, isReady, mapBounds, raster, shouldRenderRaster]);
 
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ height: getPreviewHeight(height) }}>
