@@ -4,12 +4,16 @@ import { getSettings } from '@/api/siteSettings';
 
 export const MAP_BOUNDS_PRESET = Object.freeze({
   TCAD: 'tcad',
-  PHILIPPINES_REGIONAL: 'philippinesRegional',
+  TCID: 'tcid',
   CUSTOM: 'custom',
 });
 
 export const TCAD_MAP_BOUNDS = Object.freeze([[93, 0], [153.8595159535438, 25]]);
-export const PHILIPPINES_REGIONAL_MAP_BOUNDS = Object.freeze([[116, 4], [127, 22]]);
+export const TCID_MAP_BOUNDS = Object.freeze([[116, 4], [127, 22]]);
+
+const LEGACY_PRESET_ALIASES = Object.freeze({
+  philippinesRegional: MAP_BOUNDS_PRESET.TCID,
+});
 
 const DEFAULT_CUSTOM_BOUNDS = Object.freeze({
   westLng: 93,
@@ -38,7 +42,8 @@ function isValidLat(value) {
 
 export function normalizeMapBoundsPreset(value) {
   const preset = String(value || '').trim();
-  return Object.values(MAP_BOUNDS_PRESET).includes(preset) ? preset : MAP_BOUNDS_PRESET.TCAD;
+  const normalized = LEGACY_PRESET_ALIASES[preset] || preset;
+  return Object.values(MAP_BOUNDS_PRESET).includes(normalized) ? normalized : MAP_BOUNDS_PRESET.TCAD;
 }
 
 export function getMapBoundsCenter(bounds) {
@@ -53,16 +58,19 @@ export function getMapBoundsCenter(bounds) {
 
 export function getMapBoundsLabel(settings = {}) {
   const preset = normalizeMapBoundsPreset(settings.mapBoundsPreset);
-  if (preset === MAP_BOUNDS_PRESET.PHILIPPINES_REGIONAL) return 'Philippines regional bounds';
-  if (preset === MAP_BOUNDS_PRESET.CUSTOM) return 'Custom bounds';
+  if (preset === MAP_BOUNDS_PRESET.TCID) return 'TCID bounds';
+  if (preset === MAP_BOUNDS_PRESET.CUSTOM) {
+    const name = String(settings.mapBoundsCustomName || settings.mapBoundsCustom?.name || '').trim();
+    return name ? `${name} bounds` : 'Custom bounds';
+  }
   return 'TCAD bounds';
 }
 
 export function resolvePublicMapBounds(settings = {}) {
   const preset = normalizeMapBoundsPreset(settings.mapBoundsPreset);
 
-  if (preset === MAP_BOUNDS_PRESET.PHILIPPINES_REGIONAL) {
-    return PHILIPPINES_REGIONAL_MAP_BOUNDS;
+  if (preset === MAP_BOUNDS_PRESET.TCID) {
+    return TCID_MAP_BOUNDS;
   }
 
   if (preset === MAP_BOUNDS_PRESET.CUSTOM) {
