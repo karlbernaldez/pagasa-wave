@@ -4,7 +4,7 @@ import { updateFeatureCoordinates } from '@/api/featureServices'; // your API ca
 // Track cleanup functions so we can remove drag listeners if needed
 const dragCleanupRegistry = new Map(); // sourceId → cleanup fn
 
-export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (title) => {
+export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (title, options = {}) => {
   if (!selectedPoint) return;
 
   const { lng, lat } = selectedPoint;
@@ -20,29 +20,36 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
   const defaultTitles = {
     typhoon: 'Typhoon',
     low_pressure: 'LPA',
-    less_1: 'Less 1',
+    high_pressure: 'HPA',
+    less_1: '<1',
     text_note: 'Text Label',
   };
 
   const markerType = type;
   const iconName = iconMap[markerType];
+  const sourceId = options.sourceId || `${markerType}_${title}`;
+  const layerId = options.layerId || sourceId;
+  const labelValue = options.labelValue || title || defaultTitles[markerType];
+  const displayName = options.displayName || title || defaultTitles[markerType];
 
   const feature = {
     type: 'Feature',
     geometry: { type: 'Point', coordinates: [lng, lat] },
     properties: {
-      title: title || defaultTitles[markerType],
+      title: labelValue,
+      name: displayName,
+      displayName,
+      labelValue,
       markerType,
+      type: markerType,
       icon: iconName,
+      mapLayerId: layerId,
     },
   };
 
   // Support both raw map instance and React ref
   const map = mapRef?.current ?? mapRef;
   if (!map) return;
-
-  const sourceId = `${markerType}_${title}`;
-  const layerId = `${markerType}_${title}`;
 
   // ── Add source ────────────────────────────────────────────
   if (!map.getSource(sourceId)) {
@@ -138,8 +145,6 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
     layerId,
     sourceId,
     async ({ lng: newLng, lat: newLat }) => {
-      // console.log(`📍 Marker "${title}" moved to`, newLng, newLat);
-
       // ✅ Persist new coordinates to backend
       try {
         await updateFeatureCoordinates(sourceId, [newLng, newLat]);
