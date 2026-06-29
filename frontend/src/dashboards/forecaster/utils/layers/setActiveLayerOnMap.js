@@ -1,14 +1,7 @@
-const MARKER_TYPES = new Set(['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note']);
+import { getLiveMapboxLayerIds, getMarkerType } from './layerIdentity';
+
 const ACTIVE_HIGHLIGHT_PREFIX = '__active_annotation_highlight__';
 const ACTIVE_HIGHLIGHT_SOURCE = `${ACTIVE_HIGHLIGHT_PREFIX}_empty_source`;
-
-const resolveMarkerLayerId = (layerInfo) => {
-    const markerType = layerInfo?.markerType || layerInfo?.type;
-    const name = layerInfo?.name;
-
-    if (!MARKER_TYPES.has(markerType) || !name) return null;
-    return `${markerType}_${name}`;
-};
 
 const resolveSourceId = (layerInfo) => layerInfo?.sourceID || layerInfo?.sourceId || layerInfo?.source || layerInfo?.id;
 
@@ -37,18 +30,18 @@ const resolveFrontLayerIds = (layerInfo) => {
     ];
 };
 
-const resolveMapboxLayerIds = (layerInfo) => {
+const resolveMapboxLayerIds = (map, layerInfo) => {
     if (isFrontLayer(layerInfo)) return resolveFrontLayerIds(layerInfo);
 
     if (layerInfo.type === 'Wave Height') {
         return [layerInfo.id, `${layerInfo.id}-0`, `${layerInfo.id}-1`];
     }
 
-    return [
-        layerInfo.mapLayerId,
-        resolveMarkerLayerId(layerInfo),
-        layerInfo.id,
-    ].filter(Boolean);
+    if (getMarkerType(layerInfo)) {
+        return getLiveMapboxLayerIds(map, layerInfo);
+    }
+
+    return [layerInfo.mapLayerId, layerInfo.id].filter(Boolean);
 };
 
 const removeActiveHighlightLayers = (map) => {
@@ -180,7 +173,7 @@ export const setActiveLayerOnMap = ({
         return;
     }
 
-    const mapboxLayerIds = resolveMapboxLayerIds(layerInfo).filter((lid) => map.getLayer(lid));
+    const mapboxLayerIds = resolveMapboxLayerIds(map, layerInfo).filter((lid) => map.getLayer(lid));
     if (!mapboxLayerIds.length) {
         console.warn(`[setActiveLayerOnMap] No Mapbox layers found for "${layerInfo.id}"`);
         return;
