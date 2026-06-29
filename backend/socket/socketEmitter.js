@@ -6,11 +6,27 @@ export const setIo = (io) => {
 
 const getIo = () => globalThis.__socketIo ?? null;
 
+const getId = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value._id) return String(value._id);
+  if (value.id) return String(value.id);
+  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString());
+  return '';
+};
+
+const getPackageProjectIds = (forecastPackage) => (
+  Array.isArray(forecastPackage?.charts) ? forecastPackage.charts : []
+)
+  .map((chart) => getId(chart?.project))
+  .filter(Boolean);
+
 export const SOCKET_EVENTS = {
   NOTIFICATION_NEW: 'notification:new',
   NOTIFICATION_READ: 'notification:read',
   NOTIFICATION_ALL_READ: 'notification:all_read',
   FORECAST_CHART_UPDATED: 'forecast-chart:updated',
+  FORECAST_PACKAGE_UPDATED: 'forecast-package:updated',
 };
 
 export const emitNewNotification = (notification) => {
@@ -51,5 +67,32 @@ export const emitForecastChartUpdated = (projectId, payload = {}) => {
     projectId: String(projectId),
     updatedAt: new Date().toISOString(),
     ...payload,
+  });
+};
+
+export const emitForecastPackageUpdated = (forecastPackage, payload = {}) => {
+  const _io = getIo();
+  const packageId = getId(forecastPackage);
+  if (!_io || !packageId) return;
+
+  const ownerId = getId(forecastPackage?.owner);
+  const projectIds = getPackageProjectIds(forecastPackage);
+  const eventPayload = {
+    packageId,
+    status: forecastPackage?.status,
+    projectIds,
+    updatedAt: new Date().toISOString(),
+    ...payload,
+  };
+
+  _io.to(roomFor.role('admin')).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
+  _io.to(roomFor.role('forecaster')).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
+
+  if (ownerId) {
+    _io.to(roomFor.user(ownerId)).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
+  }
+
+  projectIds.forEach((projectId) => {
+    _io.to(roomFor.forecastChartProject(projectId)).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
   });
 };
