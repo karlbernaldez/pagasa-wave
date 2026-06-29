@@ -42,13 +42,7 @@ async function populateForecastPackageById(id) {
 }
 
 function emitChartWorkflowUpdate(forecastPackage, projectId, payload = {}) {
-  const eventPayload = {
-    resourceType: 'forecast_chart',
-    packageId: String(forecastPackage?._id || ''),
-    projectId: String(projectId || ''),
-    ...payload,
-  };
-
+  const eventPayload = { resourceType: 'forecast_chart', packageId: String(forecastPackage?._id || ''), projectId: String(projectId || ''), ...payload };
   emitForecastChartUpdated(projectId, eventPayload);
   emitForecastPackageUpdated(forecastPackage, eventPayload);
 }
@@ -87,7 +81,7 @@ function serializeChartContext(forecastPackage, chart, user) {
       activeEditorLabels,
       canClaim: editable && !isReady && !blockingChartType && !activeEditorCurrentUser,
       canRelease: editable && activeEditorCurrentUser,
-      canCertify: editable && !isReady && !blockingChartType && activeEditorCurrentUser && !currentUserReady,
+      canCertify: editable && !isReady && !blockingChartType && activeEditorCurrentUser,
       readyCount,
       participantCount,
       readyEditorLabels,
