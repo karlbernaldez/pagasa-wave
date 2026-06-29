@@ -9,7 +9,7 @@ import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeF
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 const STYLE_URL = 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n';
-const DEFAULT_BOUNDS = [[93, 5], [153.8595159535438, 25]];
+const DEFAULT_BOUNDS = [[93, 0], [153.8595159535438, 25]];
 const DEFAULT_CENTER = [120, 15.5];
 const RASTER_SOURCE_ID = 'published-cog-raster-source';
 const RASTER_LAYER_ID = 'published-cog-raster';
@@ -281,7 +281,7 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
 
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ height }}>
-      <button type="button" className="absolute inset-0 z-10 h-full w-full cursor-pointer" onClick={onClick} aria-label="Open published chart" />
+      {onClick && <button type="button" className="absolute inset-0 z-10 h-full w-full cursor-pointer" onClick={onClick} aria-label="Open published chart" />}
       <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
       <StatusOverlay loading={loading} hasRenderableRaster={hasRenderableRaster} hasFeatures={hasFeatures} isDarkMode={isDarkMode} />
       <div className={`pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t ${isDarkMode ? 'from-slate-950/80' : 'from-white/80'} to-transparent`} />
