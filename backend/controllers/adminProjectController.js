@@ -131,8 +131,7 @@ function getPackageProjects(forecastPackage) {
     (forecastPackage?.charts || [])
       .map((chart) => chart?.project)
       .filter((project) => project && typeof project === 'object')
-      .filter((project) => ALLOWED_CHART_TYPES.includes(project.chartType))
-      .filter((project) => ALLOWED_ADMIN_STATUSES.includes(project.status)),
+      .filter((project) => ALLOWED_CHART_TYPES.includes(project.chartType)),
   ));
 }
 
