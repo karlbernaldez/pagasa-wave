@@ -15,6 +15,7 @@ const AuditLogSchema = new Schema({
       'moved_to_review',
       'comment_added',
       'revision_requested',
+      'revision_reopened',
       'approved',
       'rejected',
       'published',
