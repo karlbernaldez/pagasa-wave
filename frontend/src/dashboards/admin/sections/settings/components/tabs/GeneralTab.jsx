@@ -1,11 +1,43 @@
 // ╔══════════════════════════════════════════════════════╗
 // ║                 tabs/GeneralTab.jsx                  ║
-// ║  Accordions: Public Content, Branding, Maintenance   ║
+// ║  Accordions: Public Content, Branding, Map, Maintenance ║
 // ╚══════════════════════════════════════════════════════╝
 
-import { Globe, Image, Shield, AlertTriangle } from 'lucide-react';
+import { Globe, Image, Shield, AlertTriangle, MapPinned } from 'lucide-react';
 import Accordion from '../ui/Accordion';
-import { Field, TextareaField } from '../ui/FormFields';
+import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
+
+const MAP_BOUNDS_OPTIONS = [
+  {
+    value: 'tcad',
+    label: 'TCAD default',
+    description: 'Current WaveLab production viewport: west 93, south 0, east 153.8595159535438, north 25.',
+  },
+  {
+    value: 'philippinesRegional',
+    label: 'Philippines regional',
+    description: 'Closer public viewport around the Philippine regional area: west 116, south 4, east 127, north 22.',
+  },
+  {
+    value: 'custom',
+    label: 'Custom bounds',
+    description: 'Use admin-entered west, south, east, and north bounds for published public chart outputs.',
+  },
+];
+
+const DEFAULT_CUSTOM_BOUNDS = {
+  westLng: 93,
+  southLat: 0,
+  eastLng: 153.8595159535438,
+  northLat: 25,
+};
+
+function getCustomBounds(settings) {
+  return {
+    ...DEFAULT_CUSTOM_BOUNDS,
+    ...(settings.mapBoundsCustom || {}),
+  };
+}
 
 const GeneralTab = ({ settings = {}, setSettings, dark }) => {
 
@@ -17,6 +49,15 @@ const GeneralTab = ({ settings = {}, setSettings, dark }) => {
     setSettings(prev => ({
       ...prev,
       [field]: val,
+    }));
+
+  const setCustomBounds = (field) => (value) =>
+    setSettings(prev => ({
+      ...prev,
+      mapBoundsCustom: {
+        ...getCustomBounds(prev),
+        [field]: value,
+      },
     }));
 
 
@@ -37,6 +78,9 @@ const GeneralTab = ({ settings = {}, setSettings, dark }) => {
     // reset input so same file can be re-selected
     e.target.value = '';
   };
+
+  const customBounds = getCustomBounds(settings);
+  const selectedMapBoundsOption = MAP_BOUNDS_OPTIONS.find((option) => option.value === settings.mapBoundsPreset) || MAP_BOUNDS_OPTIONS[0];
 
 
   return (
@@ -130,6 +174,68 @@ const GeneralTab = ({ settings = {}, setSettings, dark }) => {
             </div>
           )}
 
+        </div>
+      </Accordion>
+
+      {/* ─────────────────────────────────────────────── */}
+      {/* Published Map Bounds */}
+      {/* ─────────────────────────────────────────────── */}
+
+      <Accordion icon={MapPinned} title="Published Chart Map Bounds" dark={dark}>
+        <div className="grid gap-4">
+          <div>
+            <label className={labelCls(dark)}>Map Bounds Preset</label>
+            <select
+              value={settings.mapBoundsPreset || 'tcad'}
+              onChange={(e) => set('mapBoundsPreset')(e.target.value)}
+              className={inputCls(dark)}
+            >
+              {MAP_BOUNDS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <p className={`mt-2 text-xs font-semibold leading-5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+              {selectedMapBoundsOption.description}
+            </p>
+          </div>
+
+          {settings.mapBoundsPreset === 'custom' && (
+            <div className={`rounded-2xl border p-4 ${dark ? 'border-slate-700 bg-slate-800/30' : 'border-slate-200 bg-slate-50'}`}>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <Field
+                  label="West longitude"
+                  type="number"
+                  value={customBounds.westLng ?? ''}
+                  onChange={setCustomBounds('westLng')}
+                  dark={dark}
+                />
+                <Field
+                  label="South latitude"
+                  type="number"
+                  value={customBounds.southLat ?? ''}
+                  onChange={setCustomBounds('southLat')}
+                  dark={dark}
+                />
+                <Field
+                  label="East longitude"
+                  type="number"
+                  value={customBounds.eastLng ?? ''}
+                  onChange={setCustomBounds('eastLng')}
+                  dark={dark}
+                />
+                <Field
+                  label="North latitude"
+                  type="number"
+                  value={customBounds.northLat ?? ''}
+                  onChange={setCustomBounds('northLat')}
+                  dark={dark}
+                />
+              </div>
+              <p className={`mt-3 text-xs font-semibold leading-5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Bounds must be ordered west &lt; east and south &lt; north. Invalid values automatically fall back to TCAD bounds in public chart rendering.
+              </p>
+            </div>
+          )}
         </div>
       </Accordion>
 
