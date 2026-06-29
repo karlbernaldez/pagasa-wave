@@ -23,7 +23,11 @@ export default function useProjectReviewActionHandlers({
       () => requestProjectRevision(projectId, remarks.trim()),
       { requireRemarks: true },
     ),
-    onApprove: () => runAction('approve', () => onApprove(currentProject)),
+    onApprove: () => runAction(
+      'approve',
+      () => onApprove(currentProject),
+      { closeOnSuccess: false },
+    ),
     onReject: () => runAction(
       'reject',
       () => onReject(currentProject, remarks.trim()),
