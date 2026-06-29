@@ -100,20 +100,58 @@ function isLowWaveLayer(layer = {}) {
     || /^Low Wave \(<1 m\)(\s+#\d+)?$/i.test(String(layer.name || '').trim());
 }
 
-function getNextLowWaveDisplayName(layers = []) {
+function getLowWaveCounterKey(projectId) {
+  return `wavelab:${projectId}:low-wave-count`;
+}
+
+function reserveFallbackLowWaveNumber(projectId) {
+  if (typeof window === 'undefined' || !projectId) return 1;
+
+  try {
+    const key = getLowWaveCounterKey(projectId);
+    const current = Number.parseInt(window.localStorage.getItem(key) || '0', 10);
+    const next = Number.isFinite(current) ? current + 1 : 1;
+    window.localStorage.setItem(key, String(next));
+    return next;
+  } catch {
+    return 1;
+  }
+}
+
+function syncFallbackLowWaveCounter(projectId, nextNumber) {
+  if (typeof window === 'undefined' || !projectId) return;
+
+  try {
+    const key = getLowWaveCounterKey(projectId);
+    const current = Number.parseInt(window.localStorage.getItem(key) || '0', 10);
+    if (!Number.isFinite(current) || nextNumber > current) {
+      window.localStorage.setItem(key, String(nextNumber));
+    }
+  } catch {
+    // Ignore localStorage failures. Source IDs still keep DB records unique.
+  }
+}
+
+function formatLowWaveDisplayName(number) {
+  return `${MARKER_DISPLAY_NAMES.less_1} #${Math.max(1, Number(number) || 1)}`;
+}
+
+function getNextLowWaveDisplayName(layers = [], projectId = '') {
   const lowWaveCount = layers.filter(isLowWaveLayer).length;
-  return `${MARKER_DISPLAY_NAMES.less_1} #${lowWaveCount + 1}`;
+  const nextNumber = lowWaveCount + 1;
+  syncFallbackLowWaveCounter(projectId, nextNumber);
+  return formatLowWaveDisplayName(nextNumber);
 }
 
 function getMarkerLabelValue(markerType, rawTitle) {
   return MARKER_LABEL_VALUES[markerType] || rawTitle?.trim() || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
 }
 
-function getMarkerDisplayName(markerType, rawTitle, layers = []) {
+function getMarkerDisplayName(markerType, rawTitle, layers = [], projectId = '') {
   const trimmedTitle = rawTitle?.trim();
 
   if (markerType === 'less_1') {
-    return getNextLowWaveDisplayName(layers);
+    return layers.length ? getNextLowWaveDisplayName(layers, projectId) : formatLowWaveDisplayName(reserveFallbackLowWaveNumber(projectId));
   }
 
   if (markerType === 'text_note') {
@@ -211,7 +249,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
   const updateLayers = typeof setLayersRef?.current === 'function' ? setLayersRef.current : null;
 
   const buildFeatureState = (layers = []) => {
-    const displayName = getMarkerDisplayName(markerType, rawTitle, layers);
+    const displayName = getMarkerDisplayName(markerType, rawTitle, layers, activeProjectId);
     const feature = {
       type: 'Feature',
       geometry: {
