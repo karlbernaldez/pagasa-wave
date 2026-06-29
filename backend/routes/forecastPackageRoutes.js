@@ -30,8 +30,18 @@ import {
 
 const router = express.Router();
 
-const ADMIN_PACKAGE_STATUSES = Object.freeze([
+const ADMIN_SYNC_SOURCE_STATUSES = Object.freeze([
   FORECAST_PACKAGE_STATUS.DRAFT,
+  FORECAST_PACKAGE_STATUS.SUBMITTED,
+  FORECAST_PACKAGE_STATUS.UNDER_REVIEW,
+  FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
+  FORECAST_PACKAGE_STATUS.APPROVED,
+  FORECAST_PACKAGE_STATUS.PUBLISHED,
+  FORECAST_PACKAGE_STATUS.REJECTED,
+  FORECAST_PACKAGE_STATUS.ARCHIVED,
+]);
+
+const ADMIN_VISIBLE_PACKAGE_STATUSES = Object.freeze([
   FORECAST_PACKAGE_STATUS.SUBMITTED,
   FORECAST_PACKAGE_STATUS.UNDER_REVIEW,
   FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
@@ -112,11 +122,11 @@ async function getAdminForecastPackages(req, res, next) {
     const limitNumber = clampInt(req.query.limit, 1, 100, 12);
     const status = normalizeStatusFilter(req.query.status);
 
-    if (status && !ADMIN_PACKAGE_STATUSES.includes(status)) {
+    if (status && !ADMIN_SYNC_SOURCE_STATUSES.includes(status)) {
       return res.status(400).json({ message: 'Invalid or unauthorized package status filter' });
     }
 
-    const allPackages = await ForecastPackage.find({ status: { $in: ADMIN_PACKAGE_STATUSES } })
+    const allPackages = await ForecastPackage.find({ status: { $in: ADMIN_SYNC_SOURCE_STATUSES } })
       .populate('owner', 'firstName lastName email username')
       .populate('charts.project')
       .sort({ forecastDate: -1, updatedAt: -1, _id: -1 })
@@ -125,9 +135,12 @@ async function getAdminForecastPackages(req, res, next) {
     const syncedPackages = await Promise.all(
       allPackages.map((forecastPackage) => syncPackageStatusFromCharts(forecastPackage, req.user.id)),
     );
+    const visiblePackages = syncedPackages.filter((forecastPackage) => (
+      ADMIN_VISIBLE_PACKAGE_STATUSES.includes(forecastPackage.status)
+    ));
     const filteredPackages = status
-      ? syncedPackages.filter((forecastPackage) => forecastPackage.status === status)
-      : syncedPackages;
+      ? visiblePackages.filter((forecastPackage) => forecastPackage.status === status)
+      : visiblePackages;
     const total = filteredPackages.length;
     const skip = (pageNumber - 1) * limitNumber;
     const packages = filteredPackages
