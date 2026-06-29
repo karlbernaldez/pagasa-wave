@@ -68,7 +68,7 @@ function getDateRangeFilter(dateRange) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
-function getForecastDateBounds(value) {
+function getDateBounds(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
 
@@ -93,6 +93,28 @@ function getPackageNameRegex(projectName = '') {
   const prefix = getPackageNamePrefix(projectName);
   if (!prefix || prefix.length < 6) return null;
   return new RegExp(`^${escapeRegex(prefix)}(?:\\s[-–—]\\s|$)`, 'i');
+}
+
+function getIsoDateTokens(value = '') {
+  return [...String(value || '').matchAll(/\b\d{4}-\d{2}-\d{2}\b/g)].map((match) => match[0]);
+}
+
+function pushDateBoundsFilter(filters, field, value) {
+  const bounds = getDateBounds(value);
+  if (!bounds) return null;
+
+  filters.push({ [field]: { $gte: bounds.start, $lt: bounds.end } });
+  return bounds;
+}
+
+function uniqueProjectsById(projects = []) {
+  const seen = new Set();
+  return projects.filter((project) => {
+    const id = String(project?._id || '');
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 function sortProjectsByChartType(projects = []) {
@@ -253,35 +275,44 @@ export const getAdminForecastPackage = asyncHandler(async (req, res) => {
     throwError('Admin access required', 403);
   }
 
-  const project = await Project.findById(req.params.id).select('name forecastDate').lean();
+  const project = await Project.findById(req.params.id)
+    .select('name forecastDate submittedAt createdAt owner')
+    .lean();
+
   if (!project) throwError('Project not found', 404);
 
-  const bounds = getForecastDateBounds(project.forecastDate);
-  if (!bounds) throwError('Project forecast date is invalid', 400);
-
+  const packageFilters = [];
   const packageNameRegex = getPackageNameRegex(project.name);
-  const packageFilters = [
-    { forecastDate: { $gte: bounds.start, $lt: bounds.end } },
-  ];
+  const isoDateTokens = getIsoDateTokens(project.name);
 
   if (packageNameRegex) {
-    packageFilters.unshift({ name: packageNameRegex });
+    packageFilters.push({ name: packageNameRegex });
   }
 
+  isoDateTokens.forEach((dateToken) => {
+    packageFilters.push({ name: new RegExp(escapeRegex(dateToken), 'i') });
+  });
+
+  const forecastBounds = pushDateBoundsFilter(packageFilters, 'forecastDate', project.forecastDate);
+  pushDateBoundsFilter(packageFilters, 'submittedAt', project.submittedAt);
+  pushDateBoundsFilter(packageFilters, 'createdAt', project.createdAt);
+
   const query = {
+    owner: project.owner,
     status: { $in: ALLOWED_ADMIN_STATUSES },
     chartType: { $in: ALLOWED_CHART_TYPES },
-    $or: packageFilters,
+    ...(packageFilters.length > 0 ? { $or: packageFilters } : {}),
   };
 
-  const projects = sortProjectsByChartType(
+  const projects = sortProjectsByChartType(uniqueProjectsById(
     await withAdminProjectPopulates(Project.find(query))
       .sort({ forecastDate: -1, chartType: 1, updatedAt: -1, _id: -1 })
+      .limit(20)
       .lean(),
-  );
+  ));
 
   res.json({
-    forecastDate: bounds.start,
+    forecastDate: forecastBounds?.start || getDateBounds(project.forecastDate)?.start || null,
     packageName: getPackageNamePrefix(project.name),
     expectedChartTypes: ALLOWED_CHART_TYPES,
     chartCount: projects.length,
