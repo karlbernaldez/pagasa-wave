@@ -17,6 +17,7 @@ const FORECAST_TIME_ZONE = 'Asia/Manila';
 const REQUIRED_CHART_SEQUENCE = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
 const EDITABLE_PACKAGE_STATUSES = new Set(['Draft', 'Revision Requested']);
 const APPROVED_PACKAGE_STATUSES = new Set(['Approved', 'Published']);
+const APPROVED_CHART_STATUSES = new Set(['Approved', 'Published']);
 const AUTO_PACKAGE_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2}$/;
 
 const REQUIRED_CHART_LABELS = {
@@ -118,6 +119,11 @@ function getPackageTitle(packageData) {
 
 function getChartProjectId(chart) {
   return chart?.project?._id || chart?.project?.id || chart?.project;
+}
+
+function getChartProjectStatus(chart) {
+  if (chart?.project && typeof chart.project === 'object') return chart.project.status || '';
+  return chart?.status || '';
 }
 
 function getChartCompletion(packageData, chartType) {
@@ -233,6 +239,8 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const chartType = chart?.chartType;
   const completion = getChartCompletion(packageData, chartType);
   const projectId = getChartProjectId(chart);
+  const chartProjectStatus = getChartProjectStatus(chart);
+  const chartReviewStatus = chartProjectStatus || (APPROVED_PACKAGE_STATUSES.has(packageData?.status) ? 'Approved' : packageData?.status);
   const isComplete = Boolean(completion?.isComplete);
   const blockingChartType = getFirstIncompletePrerequisite(packageData, chartType);
   const isQueued = Boolean(blockingChartType) && !isComplete;
@@ -243,14 +251,16 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const hasActiveEditors = activeEditorNames.length > 0;
   const canToggle = isEditable && !isQueued && !isUpdating;
   const canOpen = Boolean(projectId && !isQueued);
-  const isApprovedPackage = APPROVED_PACKAGE_STATUSES.has(packageData?.status);
+  const isApprovedChart = APPROVED_CHART_STATUSES.has(chartReviewStatus);
   const isLockedComplete = isComplete && !isEditable;
   const accentClass = isComplete ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : hasActiveEditors ? 'bg-amber-400' : 'bg-cyan-400';
   const statusLabel = isComplete
-    ? isApprovedPackage ? 'Approved' : isLockedComplete ? packageData.status : 'Ready for review'
+    ? isLockedComplete ? chartReviewStatus || packageData.status : 'Ready for review'
     : isQueued ? 'Queued' : 'In production';
   const statusClass = isComplete
-    ? 'bg-emerald-500/10 text-emerald-500'
+    ? isApprovedChart
+      ? 'bg-emerald-500/10 text-emerald-500'
+      : isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'
     : isQueued
       ? isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
       : hasActiveEditors
@@ -267,7 +277,7 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
   const toggleLabel = isQueued
     ? 'Locked by sequence'
     : isLockedComplete
-      ? isApprovedPackage ? 'Approved' : packageData.status
+      ? chartReviewStatus || packageData.status
       : isComplete ? 'Ready' : hasActiveEditors ? 'Finish in Studio' : 'Certify ready';
 
   return (
@@ -292,8 +302,8 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, isUpdating, onO
           <div className={`mb-4 inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-black ${collaborationClass}`}><span className="truncate">{collaborationLabel}</span></div>
           <p className={`text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{metadata.mandate}</p>
           <div className={`mt-4 border-t pt-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{isQueued ? 'Prerequisite required' : hasActiveEditors && !isComplete ? 'Active editors' : isApprovedPackage && isComplete ? 'Review completed' : 'Readiness checkpoint'}</p>
-            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : isApprovedPackage && isComplete ? 'This chart was approved as part of the forecast package review.' : metadata.checkpoint}</p>
+            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{isQueued ? 'Prerequisite required' : hasActiveEditors && !isComplete ? 'Active editors' : isApprovedChart && isComplete ? 'Review completed' : 'Readiness checkpoint'}</p>
+            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : isApprovedChart && isComplete ? 'This chart was approved as part of the forecast package review.' : metadata.checkpoint}</p>
           </div>
         </div>
 
