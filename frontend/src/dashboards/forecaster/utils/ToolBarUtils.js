@@ -94,24 +94,26 @@ function getActiveProjectId(projectId) {
   }
 }
 
-function getShortLayerSuffix(sourceId) {
-  const token = String(sourceId || Date.now().toString(36))
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .slice(-4)
-    .toUpperCase();
+function isLowWaveLayer(layer = {}) {
+  return layer.type === 'less_1'
+    || layer.markerType === 'less_1'
+    || /^Low Wave \(<1 m\)(\s+#\d+)?$/i.test(String(layer.name || '').trim());
+}
 
-  return token || Date.now().toString(36).slice(-4).toUpperCase();
+function getNextLowWaveDisplayName(layers = []) {
+  const lowWaveCount = layers.filter(isLowWaveLayer).length;
+  return `${MARKER_DISPLAY_NAMES.less_1} #${lowWaveCount + 1}`;
 }
 
 function getMarkerLabelValue(markerType, rawTitle) {
   return MARKER_LABEL_VALUES[markerType] || rawTitle?.trim() || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
 }
 
-function getMarkerDisplayName(markerType, rawTitle, sourceId) {
+function getMarkerDisplayName(markerType, rawTitle, layers = []) {
   const trimmedTitle = rawTitle?.trim();
 
   if (markerType === 'less_1') {
-    return `${MARKER_DISPLAY_NAMES.less_1} #${getShortLayerSuffix(sourceId)}`;
+    return getNextLowWaveDisplayName(layers);
   }
 
   if (markerType === 'text_note') {
@@ -203,41 +205,49 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
   const markerType = normalizeMarkerType(selectedType);
   const rawTitle = title?.trim() || '';
   const sourceId = makeSafeSourceId(markerType, rawTitle || MARKER_DISPLAY_NAMES[markerType] || 'marker');
-  const displayName = getMarkerDisplayName(markerType, rawTitle, sourceId);
   const labelValue = getMarkerLabelValue(markerType, rawTitle);
   const closedMode = false;
 
-  const feature = {
-    type: 'Feature',
-    geometry: {
-      type: 'Point',
-      coordinates: normalizedCoords,
-    },
-    properties: {
-      labelValue,
+  const updateLayers = typeof setLayersRef?.current === 'function' ? setLayersRef.current : null;
+
+  const buildFeatureState = (layers = []) => {
+    const displayName = getMarkerDisplayName(markerType, rawTitle, layers);
+    const feature = {
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: normalizedCoords,
+      },
+      properties: {
+        labelValue,
+        displayName,
+        title: displayName,
+        name: displayName,
+        type: markerType,
+        markerType,
+        symbolType: markerType,
+        mapLayerId: sourceId,
+      },
+    };
+
+    return {
       displayName,
-      title: displayName,
-      name: displayName,
-      type: markerType,
-      markerType,
-      symbolType: markerType,
-      mapLayerId: sourceId,
-    },
+      feature,
+      panelLayer: {
+        id: sourceId,
+        sourceID: sourceId,
+        name: displayName,
+        visible: true,
+        locked: false,
+        type: markerType,
+        markerType,
+        mapLayerId: sourceId,
+        properties: feature.properties,
+      },
+    };
   };
 
-  const panelLayer = {
-    id: sourceId,
-    sourceID: sourceId,
-    name: displayName,
-    visible: true,
-    locked: false,
-    type: markerType,
-    markerType,
-    mapLayerId: sourceId,
-    properties: feature.properties,
-  };
-
-  const persistFeature = ({ refreshOnSuccess = false } = {}) => createFeature(buildPointFeaturePayload({
+  const persistFeature = ({ displayName, feature, refreshOnSuccess = false } = {}) => createFeature(buildPointFeaturePayload({
     feature,
     displayName,
     labelValue,
@@ -252,15 +262,16 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     })
     .catch(notifyFeatureSaveFailed);
 
-  const updateLayers = typeof setLayersRef?.current === 'function' ? setLayersRef.current : null;
-
   if (!updateLayers) {
-    persistFeature({ refreshOnSuccess: true });
+    const { displayName, feature } = buildFeatureState([]);
+    persistFeature({ displayName, feature, refreshOnSuccess: true });
     return;
   }
 
   updateLayers((prevLayers) => {
     const existingSourceIds = prevLayers.map((layer) => layer.sourceID || layer.id);
+
+    const { displayName, feature, panelLayer } = buildFeatureState(prevLayers);
 
     if (existingSourceIds.includes(sourceId)) {
       Swal.fire({
@@ -274,7 +285,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
       return prevLayers;
     }
 
-    persistFeature();
+    persistFeature({ displayName, feature });
     return [...prevLayers, panelLayer];
   });
 }
