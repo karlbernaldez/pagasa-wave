@@ -257,10 +257,10 @@ const StudioPanel = ({
   );
 
   useEffect(() => {
-    if (hasSelectedAnnotationLayer) {
+    if (hasSelectedAnnotationLayer && !readOnly) {
       annotationStyleDrag.resetPosition();
     }
-  }, [activeLayerId, hasSelectedAnnotationLayer, annotationStyleDrag.resetPosition]);
+  }, [activeLayerId, hasSelectedAnnotationLayer, readOnly, annotationStyleDrag.resetPosition]);
 
   // ── Delete handling ──────────────────────────────────────────────────────────
   const confirmDeleteLayer = async () => {
@@ -557,7 +557,7 @@ const StudioPanel = ({
         </div>
       </div>
 
-      {hasSelectedAnnotationLayer && (
+      {hasSelectedAnnotationLayer && !readOnly && (
         <LayerStylePanel
           mapRef={mapRef}
           layers={layers}
