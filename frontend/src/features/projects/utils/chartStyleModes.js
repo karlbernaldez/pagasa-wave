@@ -61,8 +61,8 @@ export function getChartStyleModePaint(value) {
       labelColor: '#000000',
       labelHaloColor: '#ffffff',
       labelHaloWidth: 3,
-      lineLabelSize: 22,
-      pointLabelSize: 14,
+      lineLabelSize: 16,
+      pointLabelSize: 12,
       showPointLabels: true,
       showPoints: true,
     };
@@ -85,8 +85,8 @@ export function getChartStyleModePaint(value) {
       labelColor: '#000000',
       labelHaloColor: '#ffffff',
       labelHaloWidth: 2,
-      lineLabelSize: 18,
-      pointLabelSize: 11,
+      lineLabelSize: 12,
+      pointLabelSize: 9,
       showPointLabels: false,
       showPoints: true,
     };
@@ -108,8 +108,8 @@ export function getChartStyleModePaint(value) {
     labelColor: '#000000',
     labelHaloColor: '#ffffff',
     labelHaloWidth: 2,
-    lineLabelSize: 18,
-    pointLabelSize: 12,
+    lineLabelSize: 12,
+    pointLabelSize: 10,
     showPointLabels: true,
     showPoints: true,
   };
