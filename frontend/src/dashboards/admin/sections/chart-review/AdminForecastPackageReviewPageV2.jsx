@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, FolderKanban } from 'lucide-react';
 
 import { approveProject, publishProject, rejectProject, startReviewProject } from '@/api/projectAPI';
-import { approveForecastPackage, fetchAdminForecastPackages, startForecastPackageReview } from '@/api/forecastPackageAPI';
+import { approveForecastPackage, fetchAdminForecastPackages, publishForecastPackage, startForecastPackageReview } from '@/api/forecastPackageAPI';
 import Button from '@/components/ui/Button';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import ForecastPackageCard from './ForecastPackageCard';
@@ -99,6 +99,7 @@ export default function AdminForecastPackageReviewPageV2() {
   const [sortDir, setSortDir] = useState('desc');
   const [reviewProject, setReviewProject] = useState(null);
   const [busyReview, setBusyReview] = useState(false);
+  const [publishingPackageId, setPublishingPackageId] = useState(null);
   const [feedbackError, setFeedbackError] = useState('');
 
   const query = useQuery({
@@ -138,16 +139,45 @@ export default function AdminForecastPackageReviewPageV2() {
     try {
       if (forecastPackage?.status === 'Submitted') {
         await startForecastPackageReview(getId(forecastPackage));
-      } else if (project?.status === 'Submitted') {
-        await startReviewProject(projectId);
       }
-      setReviewProject({ ...project, status: project.status === 'Submitted' ? 'Under Review' : project.status });
+
+      const updatedProject = project?.status === 'Submitted'
+        ? await startReviewProject(projectId)
+        : project;
+
+      setReviewProject({
+        ...project,
+        ...updatedProject,
+        status: updatedProject?.status || (project.status === 'Submitted' ? 'Under Review' : project.status),
+      });
       await query.refetch();
     } catch (error) {
       console.error('Failed to start forecast package review:', error);
       setFeedbackError(error?.message || 'Failed to start forecast package review.');
     } finally {
       setBusyReview(false);
+    }
+  };
+
+  const publishPackage = async (forecastPackage) => {
+    setFeedbackError('');
+    const packageId = getId(forecastPackage);
+    if (!packageId || forecastPackage?.status !== 'Approved') return;
+
+    setPublishingPackageId(packageId);
+    try {
+      const publishableCharts = (forecastPackage.charts || [])
+        .map((chart) => chart.project)
+        .filter((project) => getId(project) && project?.status === 'Approved');
+
+      await Promise.all(publishableCharts.map((project) => publishProject(getId(project))));
+      await publishForecastPackage(packageId);
+      await query.refetch();
+    } catch (error) {
+      console.error('Failed to publish forecast package:', error);
+      setFeedbackError(error?.message || 'Failed to publish forecast package.');
+    } finally {
+      setPublishingPackageId(null);
     }
   };
 
@@ -183,7 +213,7 @@ export default function AdminForecastPackageReviewPageV2() {
         {query.isLoading && <StateCard isDarkMode={isDarkMode}>Loading forecast packages...</StateCard>}
         {!query.isLoading && query.error && <StateCard isDarkMode={isDarkMode}><Button onClick={() => query.refetch()}>Retry loading packages</Button></StateCard>}
         {!query.isLoading && !query.error && visiblePackages.length === 0 && <StateCard isDarkMode={isDarkMode}><FolderKanban className="mx-auto mb-3" size={26} />No forecast packages found.</StateCard>}
-        {!query.isLoading && !query.error && visiblePackages.length > 0 && <div className="grid gap-5 xl:grid-cols-2">{visiblePackages.map((forecastPackage) => <ForecastPackageCard key={forecastPackage.id} forecastPackage={forecastPackage} isDarkMode={isDarkMode} onOpenChart={openChartForReview} />)}</div>}
+        {!query.isLoading && !query.error && visiblePackages.length > 0 && <div className="grid gap-5 xl:grid-cols-2">{visiblePackages.map((forecastPackage) => <ForecastPackageCard key={forecastPackage.id} forecastPackage={forecastPackage} isDarkMode={isDarkMode} onOpenChart={openChartForReview} onPublishPackage={publishPackage} publishingPackageId={publishingPackageId} />)}</div>}
         <ProjectPagination page={page} total={total} totalPages={totalPages} pageSize={PAGE_SIZE} onPageChange={setPage} isDarkMode={isDarkMode} />
       </div>
       {busyReview && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">Starting review…</div>}
