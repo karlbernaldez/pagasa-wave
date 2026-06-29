@@ -186,3 +186,7 @@ export const fetchAdminProjects = ({
 
   return request(`${PROJECT_API_BASE_URL}/admin/projects?${params}`, { signal });
 };
+
+// Fetch the full forecast package for the selected chart's forecast day.
+export const fetchAdminForecastPackage = (id, { signal } = {}) =>
+  request(`${PROJECT_API_BASE_URL}/admin/projects/${id}/package`, { signal });
