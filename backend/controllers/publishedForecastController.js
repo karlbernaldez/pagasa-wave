@@ -8,6 +8,12 @@ import { formatLocalDateKey } from '../utils/forecastPackage.js';
 const DEFAULT_RASTER_BOUNDS = [100, -5, 180, 50];
 const DEFAULT_MODEL_RUN_HOUR = 18;
 const DEFAULT_MODEL_RUN_DAY_OFFSET = -1;
+const WW3_FORECAST_OFFSETS = Object.freeze({
+  analysis: { days: -1, hour: '18' },
+  forecast_24h: { days: 0, hour: '18' },
+  forecast_36h: { days: 1, hour: '06' },
+  forecast_48h: { days: 1, hour: '18' },
+});
 
 function getProjectOwnerId(project) {
   return String(project?.owner?._id || project?.owner || '');
@@ -89,6 +95,10 @@ function padDatePart(value) {
   return String(value).padStart(2, '0');
 }
 
+function normalizeChartType(chartType = '') {
+  return String(chartType).trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
 function formatForecastDateToken(value) {
   const localKey = formatLocalDateKey(value);
   return localKey ? localKey.replaceAll('-', '') : '';
@@ -127,11 +137,19 @@ function getNumberSetting(asset, key, envName, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function getChartRunDefaults(chartType) {
+  return WW3_FORECAST_OFFSETS[normalizeChartType(chartType)] || {
+    days: DEFAULT_MODEL_RUN_DAY_OFFSET,
+    hour: padDatePart(DEFAULT_MODEL_RUN_HOUR),
+  };
+}
+
 function resolveCogRaster(project) {
   const asset = getRawRasterAsset(project) || {};
   const forecastDate = formatForecastDateToken(project?.forecastDate);
-  const runHour = getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', DEFAULT_MODEL_RUN_HOUR);
-  const runDayOffset = getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', DEFAULT_MODEL_RUN_DAY_OFFSET);
+  const chartDefaults = getChartRunDefaults(project?.chartType);
+  const runHour = getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', chartDefaults.hour);
+  const runDayOffset = getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', chartDefaults.days);
   const runDate = asset.runDate || shiftDateToken(forecastDate, runDayOffset);
   const runHourToken = padDatePart(runHour);
   const runDateTime = asset.runDateTime || `${runDate}${runHourToken}`;
