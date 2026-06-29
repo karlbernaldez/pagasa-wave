@@ -11,6 +11,8 @@ import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeF
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 const STYLE_URL = 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n';
+const EXPORT_WIDTH = 1400;
+const EXPORT_HEIGHT = 700;
 const RASTER_SOURCE_ID = 'published-export-raster-source';
 const RASTER_LAYER_ID = 'published-export-raster';
 const COUNTRY_SOURCE_ID = 'published-export-country-source';
@@ -384,13 +386,13 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
         position: 'fixed',
         left: '-10000px',
         top: 0,
-        width: 1280,
-        height: 720,
+        width: EXPORT_WIDTH,
+        height: EXPORT_HEIGHT,
         overflow: 'hidden',
         pointerEvents: 'none',
       }}
     >
-      <div ref={containerRef} style={{ width: 1280, height: 720 }} />
+      <div ref={containerRef} style={{ width: EXPORT_WIDTH, height: EXPORT_HEIGHT }} />
     </div>
   );
 });
