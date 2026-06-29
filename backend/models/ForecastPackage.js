@@ -168,11 +168,17 @@ const ForecastPackageSchema = new Schema({
     type: [ForecastPackageChartSchema],
     validate: {
       validator(value) {
-        if (!Array.isArray(value) || value.length !== REQUIRED_FORECAST_CHART_TYPES.length) return false;
-        const chartTypes = value.map((item) => item.chartType);
-        return REQUIRED_FORECAST_CHART_TYPES.every((chartType) => chartTypes.includes(chartType));
+        if (!Array.isArray(value)) return false;
+        if (value.length !== REQUIRED_FORECAST_CHART_TYPES.length) return false;
+
+        const chartTypes = value.map((item) => item?.chartType);
+        const uniqueChartTypes = new Set(chartTypes);
+
+        if (uniqueChartTypes.size !== REQUIRED_FORECAST_CHART_TYPES.length) return false;
+
+        return REQUIRED_FORECAST_CHART_TYPES.every((chartType) => uniqueChartTypes.has(chartType));
       },
-      message: 'Forecast Package must include all required forecast chart types.',
+      message: 'Forecast Package must include exactly one project for each required forecast chart type.',
     },
   },
   chartCompletion: {
