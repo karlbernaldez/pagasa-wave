@@ -70,9 +70,59 @@ function makeSafeSourceId(type, name) {
   return `${safeType}_${safeName}_${Date.now()}`;
 }
 
-export function savePointFeature({ coords, title, selectedType, setLayersRef, projectId }) {
-  if (typeof setLayersRef?.current !== 'function') return;
+function getActiveProjectId(projectId) {
+  const explicitProjectId = String(projectId || '').trim();
+  if (explicitProjectId) return explicitProjectId;
 
+  try {
+    return String(window.localStorage.getItem('projectId') || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function notifyFeatureSaved(baseName) {
+  Swal.fire({
+    icon: 'success',
+    title: 'Feature saved!',
+    text: `"${baseName}" has been added successfully.`,
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3500,
+  });
+}
+
+function notifyFeatureSaveFailed(err) {
+  Swal.fire({
+    icon: 'error',
+    title: 'Failed to save feature',
+    text: err?.message || 'An unknown error occurred.',
+    confirmButtonColor: '#d33',
+  });
+}
+
+function buildPointFeaturePayload({ feature, baseName, closedMode, activeProjectId, markerType, sourceId }) {
+  return {
+    geometry: feature.geometry,
+    properties: {
+      labelValue: baseName,
+      closedMode,
+      isFront: false,
+      project: activeProjectId,
+      title: baseName,
+      name: baseName,
+      type: markerType,
+      markerType,
+      symbolType: markerType,
+      mapLayerId: feature.properties.mapLayerId,
+    },
+    name: baseName,
+    sourceId,
+  };
+}
+
+export function savePointFeature({ coords, title, selectedType, setLayersRef, projectId }) {
   const normalizedCoords = getCoordinatePair(coords);
   if (!normalizedCoords) {
     console.error('❌ Invalid coords passed to savePointFeature:', coords);
@@ -87,7 +137,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     return;
   }
 
-  const activeProjectId = projectId;
+  const activeProjectId = getActiveProjectId(projectId);
   if (!activeProjectId) {
     console.error('❌ Missing projectId when saving marker feature.');
     Swal.fire({
@@ -124,10 +174,40 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     },
   };
 
-  setLayersRef.current((prevLayers) => {
-    const existingNames = prevLayers.map((l) => l.name);
+  const panelLayer = {
+    id: panelId,
+    sourceID: sourceId,
+    name: baseName,
+    visible: true,
+    locked: false,
+    type: markerType,
+    markerType,
+    mapLayerId,
+  };
 
-    // ❌ Block and alert if duplicate layer name exists
+  const persistFeature = () => createFeature(buildPointFeaturePayload({
+    feature,
+    baseName,
+    closedMode,
+    activeProjectId,
+    markerType,
+    sourceId,
+  }))
+    .then(() => {
+      notifyFeatureSaved(baseName);
+    })
+    .catch(notifyFeatureSaveFailed);
+
+  const updateLayers = typeof setLayersRef?.current === 'function' ? setLayersRef.current : null;
+
+  if (!updateLayers) {
+    persistFeature();
+    return;
+  }
+
+  updateLayers((prevLayers) => {
+    const existingNames = prevLayers.map((layer) => layer.name);
+
     if (existingNames.includes(baseName)) {
       Swal.fire({
         toast: true,
@@ -140,56 +220,8 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
       return prevLayers;
     }
 
-    createFeature({
-      geometry: feature.geometry,
-      properties: {
-        labelValue: baseName,
-        closedMode,
-        isFront: false,
-        project: activeProjectId,
-        title: baseName,
-        name: baseName,
-        type: markerType,
-        markerType,
-        symbolType: markerType,
-        mapLayerId,
-      },
-      name: baseName,
-      sourceId,
-    })
-      .then(() => {
-        Swal.fire({
-          icon: 'success',
-          title: 'Feature saved!',
-          text: `"${baseName}" has been added successfully.`,
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 3500,
-        });
-      })
-      .catch((err) => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Failed to save feature',
-          text: err?.message || 'An unknown error occurred.',
-          confirmButtonColor: '#d33',
-        });
-      });
-
-    return [
-      ...prevLayers,
-      {
-        id: panelId,
-        sourceID: sourceId,
-        name: baseName,
-        visible: true,
-        locked: false,
-        type: markerType,
-        markerType,
-        mapLayerId,
-      },
-    ];
+    persistFeature();
+    return [...prevLayers, panelLayer];
   });
 }
 
@@ -244,7 +276,7 @@ export const toggleDrawing = (isDrawing, setIsDrawing, onToggleCanvas) => {
 };
 
 export const toggleFlagDrawing = (isFlagDrawing, setIsFlagDrawing, onToggleFlagCanvas) => {
-  isFlagDrawing ? stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas) : startFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
+  isFlagDrawing ? stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas) : startFlagDrawing(setIsFlagDrawing);
 };
 
 export const startDrawing = (setIsDrawing, onToggleCanvas) => {
@@ -270,4 +302,3 @@ export const stopFlagDrawing = (setIsFlagDrawing, onToggleFlagCanvas) => {
 export const toggleCollapse = (setIsCollapsed) => {
   setIsCollapsed(prev => !prev);
 };
-
