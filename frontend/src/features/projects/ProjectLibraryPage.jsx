@@ -12,7 +12,7 @@ import ProjectReviewModal from "@/features/projects/components/ProjectReviewModa
 import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Button from "@/components/ui/Button";
 
-import { createProject, fetchAdminProjects } from "@/api/projectAPI";
+import { createProject, fetchAdminForecastPackage } from "@/api/projectAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
 import { PROJECT_STATUS, getProjectStatusLabel, isProjectPublished } from "@/features/projects/projectStatuses";
@@ -301,13 +301,14 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
 
   const loadFullReviewQueue = async (project) => {
     const localQueue = getReviewQueueForProject(project);
-    if (localQueue.length >= CHART_ORDER.length) return localQueue;
+    const projectId = getProjectId(project);
+    if (!projectId) return localQueue;
 
     try {
-      const response = await fetchAdminProjects({ page: 1, limit: 100, sortBy: "forecastDate", sortDir: "desc" });
-      const allProjects = adaptProjects(response?.projects || []);
-      const fullQueue = getReviewQueueForProject(project, allProjects);
-      return fullQueue.length > localQueue.length ? fullQueue : localQueue;
+      const packageResponse = await fetchAdminForecastPackage(projectId);
+      const packageProjects = adaptProjects(packageResponse?.projects || []);
+      const packageQueue = packageProjects.sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+      return packageQueue.length > 0 ? packageQueue : localQueue;
     } catch (err) {
       console.error("Failed to load full review package:", err);
       return localQueue;
