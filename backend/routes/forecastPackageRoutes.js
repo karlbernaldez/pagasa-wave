@@ -21,7 +21,11 @@ import {
 } from '../controllers/forecastPackageEditingController.js';
 import protect from '../middleware/authMiddleware.js';
 import { isAdmin } from '../middleware/adminMiddleware.js';
-import { FORECAST_PACKAGE_STATUS } from '../utils/forecastPackage.js';
+import {
+  FORECAST_PACKAGE_STATUS,
+  REQUIRED_FORECAST_CHART_TYPES,
+} from '../utils/forecastPackage.js';
+import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const router = express.Router();
 
@@ -35,10 +39,61 @@ const ADMIN_PACKAGE_STATUSES = Object.freeze([
   FORECAST_PACKAGE_STATUS.ARCHIVED,
 ]);
 
+const AUTO_APPROVE_SOURCE_STATUSES = Object.freeze([
+  FORECAST_PACKAGE_STATUS.UNDER_REVIEW,
+  FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
+]);
+
+const APPROVED_PROJECT_STATUSES = Object.freeze([
+  PROJECT_STATUS.APPROVED,
+  PROJECT_STATUS.PUBLISHED,
+]);
+
 function clampInt(value, min, max, fallback) {
   const number = Math.trunc(Number(value));
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, number));
+}
+
+function hasApprovedRequiredChartProjects(forecastPackage) {
+  const charts = Array.isArray(forecastPackage?.charts) ? forecastPackage.charts : [];
+
+  return REQUIRED_FORECAST_CHART_TYPES.every((chartType) => {
+    const chart = charts.find((candidate) => candidate.chartType === chartType);
+    return chart?.project && APPROVED_PROJECT_STATUSES.includes(chart.project.status);
+  });
+}
+
+async function syncApprovedPackageStatus(forecastPackage, userId) {
+  if (!AUTO_APPROVE_SOURCE_STATUSES.includes(forecastPackage?.status)) return forecastPackage;
+  if (!hasApprovedRequiredChartProjects(forecastPackage)) return forecastPackage;
+
+  const previousStatus = forecastPackage.status;
+  const updatedPackage = await ForecastPackage.findByIdAndUpdate(
+    forecastPackage._id,
+    {
+      $set: {
+        status: FORECAST_PACKAGE_STATUS.APPROVED,
+        reviewedAt: new Date(),
+        approvedBy: userId,
+      },
+      $push: {
+        auditLogs: {
+          action: 'approved',
+          performedBy: userId,
+          previousStatus,
+          newStatus: FORECAST_PACKAGE_STATUS.APPROVED,
+          comment: 'Forecast Package auto-approved because all chart projects are approved',
+        },
+      },
+    },
+    { new: true },
+  )
+    .populate('owner', 'firstName lastName email username')
+    .populate('charts.project')
+    .lean();
+
+  return updatedPackage || { ...forecastPackage, status: FORECAST_PACKAGE_STATUS.APPROVED };
 }
 
 async function getAdminForecastPackages(req, res, next) {
@@ -56,7 +111,7 @@ async function getAdminForecastPackages(req, res, next) {
       query.status = status;
     }
 
-    const [packages, total] = await Promise.all([
+    let [packages, total] = await Promise.all([
       ForecastPackage.find(query)
         .populate('owner', 'firstName lastName email username')
         .populate('charts.project')
@@ -66,6 +121,13 @@ async function getAdminForecastPackages(req, res, next) {
         .lean(),
       ForecastPackage.countDocuments(query),
     ]);
+
+    packages = await Promise.all(packages.map((forecastPackage) => syncApprovedPackageStatus(forecastPackage, req.user.id)));
+
+    if (status && status !== 'All') {
+      packages = packages.filter((forecastPackage) => forecastPackage.status === status);
+      total = await ForecastPackage.countDocuments(query);
+    }
 
     res.json({
       packages,
