@@ -30,6 +30,8 @@ import {
   isProjectUnderReview,
 } from '@/features/projects/projectStatuses';
 
+const EMPTY_REVIEW_QUEUE = Object.freeze([]);
+
 function getQueueProjectId(project) {
   return getProjectId(project);
 }
@@ -55,7 +57,7 @@ function GalleryButton({ direction, disabled, isDarkMode, onClick }) {
   );
 }
 
-export default function ProjectReviewModal({ project, reviewQueue = [], isDarkMode = false, onClose, onSelectProject, onApprove, onReject, onNoPublication, onPublish, onActionComplete }) {
+export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW_QUEUE, isDarkMode = false, onClose, onSelectProject, onApprove, onReject, onNoPublication, onPublish, onActionComplete }) {
   const lastProjectIdRef = useRef(getProjectId(project));
   const [currentProject, setCurrentProject] = useState(project);
   const [currentFeatureCollection, setCurrentFeatureCollection] = useState(() => normalizeFeatureCollection(getEmbeddedCurrentFeatureSource(project)));
@@ -85,14 +87,15 @@ export default function ProjectReviewModal({ project, reviewQueue = [], isDarkMo
   }, [project]);
 
   const projectId = getProjectId(currentProject);
+  const providedReviewQueue = Array.isArray(reviewQueue) ? reviewQueue : EMPTY_REVIEW_QUEUE;
+  const providedReviewQueueKey = providedReviewQueue.map((candidate) => getQueueProjectId(candidate)).filter(Boolean).join('|');
 
   useEffect(() => {
     let isMounted = true;
-    const providedQueue = Array.isArray(reviewQueue) ? reviewQueue : [];
 
     setAutoReviewQueue([]);
 
-    if (!projectId || providedQueue.length > 1) return undefined;
+    if (!projectId || providedReviewQueue.length > 1) return undefined;
 
     fetchAdminForecastPackage(projectId)
       .then((packageResponse) => {
@@ -107,12 +110,11 @@ export default function ProjectReviewModal({ project, reviewQueue = [], isDarkMo
     return () => {
       isMounted = false;
     };
-  }, [projectId, reviewQueue]);
+  }, [projectId, providedReviewQueueKey]);
 
-  const effectiveReviewQueue = useMemo(() => {
-    const providedQueue = Array.isArray(reviewQueue) ? reviewQueue : [];
-    return providedQueue.length > 1 ? providedQueue : autoReviewQueue;
-  }, [autoReviewQueue, reviewQueue]);
+  const effectiveReviewQueue = useMemo(() => (
+    providedReviewQueue.length > 1 ? providedReviewQueue : autoReviewQueue
+  ), [autoReviewQueue, providedReviewQueueKey]);
 
   const gallery = useMemo(() => {
     const queue = Array.isArray(effectiveReviewQueue) ? effectiveReviewQueue : [];
