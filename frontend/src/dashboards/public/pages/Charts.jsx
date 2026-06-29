@@ -56,6 +56,10 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function hasExportableFeatures(output) {
+  return Array.isArray(output?.featureCollection?.features) && output.featureCollection.features.length > 0;
+}
+
 function getPersonName(person, fallback = 'DOST PAGASA') {
   if (!person) return fallback;
   if (typeof person === 'string') return person;
@@ -177,6 +181,7 @@ function writePdfErrorWindow(printWindow, message) {
 }
 
 function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, chartEntries, showStaffInfo }) {
+  if (!printWindow || printWindow.closed) return;
   const dateLabel = formatDate(activeDate);
   const cardsHtml = chartEntries.map((entry) => {
     const hasImage = Boolean(entry.imageDataUrl);
@@ -320,10 +325,14 @@ export default function Charts() {
       if (cancelled) return;
       attempts += 1;
       const printableEntries = exportState.entries.map((entry) => {
-        if (!entry.project?._id) return { ...entry, imageDataUrl: '' };
+        if (!entry.project?._id || !hasExportableFeatures(entry.output)) return { ...entry, imageDataUrl: '' };
         const mapRef = exportRefs.current[entry.slot.chartType];
         if (!mapRef?.isReady) return null;
-        return { ...entry, imageDataUrl: mapRef.getDataUrl() };
+        try {
+          return { ...entry, imageDataUrl: mapRef.getDataUrl() };
+        } catch {
+          return null;
+        }
       });
 
       if (printableEntries.every(Boolean)) {
@@ -361,7 +370,7 @@ export default function Charts() {
     <div className={`relative min-h-screen overflow-hidden px-4 py-24 sm:px-6 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
       <LiquidBackdrop isDark={isDark} />
 
-      {exportState.entries.map((entry) => entry.project?._id && entry.output ? (
+      {exportState.entries.map((entry) => entry.project?._id && hasExportableFeatures(entry.output) ? (
         <PublishedForecastExportMap
           key={`export-${entry.project._id}-${activeStyleMode}`}
           ref={(instance) => {
