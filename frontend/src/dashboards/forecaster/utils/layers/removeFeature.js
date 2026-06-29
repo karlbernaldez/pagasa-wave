@@ -5,6 +5,11 @@ function normalizePersistedSourceId(layerOrId) {
     layerOrId?.sourceID ||
     layerOrId?.sourceId ||
     layerOrId?.source ||
+    layerOrId?.properties?.sourceID ||
+    layerOrId?.properties?.sourceId ||
+    layerOrId?.properties?.stableId ||
+    layerOrId?.properties?.annotationId ||
+    layerOrId?.properties?.mapLayerId ||
     layerOrId?.id ||
     layerOrId;
 
