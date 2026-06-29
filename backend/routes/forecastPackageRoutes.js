@@ -27,6 +27,7 @@ import {
   deriveForecastPackageStatusFromCharts,
   getForecastPackageDisplayStatus,
 } from '../utils/forecastPackage.js';
+import { emitForecastChartUpdated, emitForecastPackageUpdated } from '../socket/socketEmitter.js';
 
 const router = express.Router();
 
@@ -56,6 +57,21 @@ const STATUS_FILTER_ALIASES = Object.freeze({
   'Not Yet Ready': FORECAST_PACKAGE_STATUS.DRAFT,
 });
 
+function getId(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value._id) return String(value._id);
+  if (value.id) return String(value.id);
+  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString());
+  return '';
+}
+
+function getChartProjectIds(forecastPackage) {
+  return (Array.isArray(forecastPackage?.charts) ? forecastPackage.charts : [])
+    .map((chart) => getId(chart?.project))
+    .filter(Boolean);
+}
+
 function clampInt(value, min, max, fallback) {
   const number = Math.trunc(Number(value));
   if (!Number.isFinite(number)) return fallback;
@@ -72,6 +88,30 @@ function serializeAdminPackage(forecastPackage) {
   return {
     ...forecastPackage,
     displayStatus: getForecastPackageDisplayStatus(forecastPackage.status),
+  };
+}
+
+function emitForecastPackageWorkflowAfterResponse(action) {
+  return (req, res, next) => {
+    const originalJson = res.json.bind(res);
+    res.json = (body) => {
+      const result = originalJson(body);
+      const forecastPackage = body?.package || body;
+
+      if (getId(forecastPackage)) {
+        emitForecastPackageUpdated(forecastPackage, { action });
+        getChartProjectIds(forecastPackage).forEach((projectId) => {
+          emitForecastChartUpdated(projectId, {
+            action,
+            packageId: getId(forecastPackage),
+            packageStatus: forecastPackage?.status,
+          });
+        });
+      }
+
+      return result;
+    };
+    next();
   };
 }
 
@@ -112,6 +152,10 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
     .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
     .lean();
+
+  if (updatedPackage) {
+    emitForecastPackageUpdated(updatedPackage, { action: 'status_synced' });
+  }
 
   return updatedPackage || { ...forecastPackage, status: nextStatus };
 }
@@ -162,20 +206,20 @@ async function getAdminForecastPackages(req, res, next) {
 router.use(protect);
 
 router.get('/admin/packages', isAdmin, getAdminForecastPackages);
-router.patch('/:id/start-review', isAdmin, startForecastPackageReview);
-router.patch('/:id/request-revision', isAdmin, requestForecastPackageRevision);
-router.patch('/:id/approve', isAdmin, approveForecastPackage);
-router.patch('/:id/publish', isAdmin, publishForecastPackage);
+router.patch('/:id/start-review', isAdmin, emitForecastPackageWorkflowAfterResponse('review_started'), startForecastPackageReview);
+router.patch('/:id/request-revision', isAdmin, emitForecastPackageWorkflowAfterResponse('revision_requested'), requestForecastPackageRevision);
+router.patch('/:id/approve', isAdmin, emitForecastPackageWorkflowAfterResponse('approved'), approveForecastPackage);
+router.patch('/:id/publish', isAdmin, emitForecastPackageWorkflowAfterResponse('published'), publishForecastPackage);
 
-router.post('/', createForecastPackage);
+router.post('/', emitForecastPackageWorkflowAfterResponse('created'), createForecastPackage);
 router.get('/', getUserForecastPackages);
 router.get('/current', getCurrentForecastPackage);
 router.get('/charts/project/:projectId/context', getForecastPackageChartContextByProject);
-router.patch('/charts/project/:projectId/claim', joinForecastPackageChartEditingByProject);
-router.patch('/charts/project/:projectId/release', releaseForecastPackageChartEditingByProject);
-router.patch('/charts/project/:projectId/completion', updateForecastChartCompletionByProject);
+router.patch('/charts/project/:projectId/claim', emitForecastPackageWorkflowAfterResponse('chart_claimed'), joinForecastPackageChartEditingByProject);
+router.patch('/charts/project/:projectId/release', emitForecastPackageWorkflowAfterResponse('chart_released'), releaseForecastPackageChartEditingByProject);
+router.patch('/charts/project/:projectId/completion', emitForecastPackageWorkflowAfterResponse('chart_completion_updated'), updateForecastChartCompletionByProject);
 router.get('/:id', getForecastPackageById);
-router.patch('/:id/charts/:chartType/completion', updateForecastChartCompletion);
-router.patch('/:id/submit', submitForecastPackage);
+router.patch('/:id/charts/:chartType/completion', emitForecastPackageWorkflowAfterResponse('chart_completion_updated'), updateForecastChartCompletion);
+router.patch('/:id/submit', emitForecastPackageWorkflowAfterResponse('submitted'), submitForecastPackage);
 
 export default router;
