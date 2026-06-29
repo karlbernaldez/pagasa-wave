@@ -22,14 +22,16 @@ import {
 import protect from '../middleware/authMiddleware.js';
 import { isAdmin } from '../middleware/adminMiddleware.js';
 import {
+  ADMIN_DRAFT_PACKAGE_LABEL,
   FORECAST_PACKAGE_STATUS,
-  REQUIRED_FORECAST_CHART_TYPES,
+  deriveForecastPackageStatusFromCharts,
+  getForecastPackageDisplayStatus,
 } from '../utils/forecastPackage.js';
-import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const router = express.Router();
 
 const ADMIN_PACKAGE_STATUSES = Object.freeze([
+  FORECAST_PACKAGE_STATUS.DRAFT,
   FORECAST_PACKAGE_STATUS.SUBMITTED,
   FORECAST_PACKAGE_STATUS.UNDER_REVIEW,
   FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
@@ -39,15 +41,10 @@ const ADMIN_PACKAGE_STATUSES = Object.freeze([
   FORECAST_PACKAGE_STATUS.ARCHIVED,
 ]);
 
-const AUTO_APPROVE_SOURCE_STATUSES = Object.freeze([
-  FORECAST_PACKAGE_STATUS.UNDER_REVIEW,
-  FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
-]);
-
-const APPROVED_PROJECT_STATUSES = Object.freeze([
-  PROJECT_STATUS.APPROVED,
-  PROJECT_STATUS.PUBLISHED,
-]);
+const STATUS_FILTER_ALIASES = Object.freeze({
+  [ADMIN_DRAFT_PACKAGE_LABEL]: FORECAST_PACKAGE_STATUS.DRAFT,
+  'Not Yet Ready': FORECAST_PACKAGE_STATUS.DRAFT,
+});
 
 function clampInt(value, min, max, fallback) {
   const number = Math.trunc(Number(value));
@@ -55,79 +52,87 @@ function clampInt(value, min, max, fallback) {
   return Math.min(max, Math.max(min, number));
 }
 
-function hasApprovedRequiredChartProjects(forecastPackage) {
-  const charts = Array.isArray(forecastPackage?.charts) ? forecastPackage.charts : [];
-
-  return REQUIRED_FORECAST_CHART_TYPES.every((chartType) => {
-    const chart = charts.find((candidate) => candidate.chartType === chartType);
-    return chart?.project && APPROVED_PROJECT_STATUSES.includes(chart.project.status);
-  });
+function normalizeStatusFilter(value) {
+  const status = String(value || '').trim();
+  if (!status || status === 'All') return '';
+  return STATUS_FILTER_ALIASES[status] || status;
 }
 
-async function syncApprovedPackageStatus(forecastPackage, userId) {
-  if (!AUTO_APPROVE_SOURCE_STATUSES.includes(forecastPackage?.status)) return forecastPackage;
-  if (!hasApprovedRequiredChartProjects(forecastPackage)) return forecastPackage;
+function serializeAdminPackage(forecastPackage) {
+  return {
+    ...forecastPackage,
+    displayStatus: getForecastPackageDisplayStatus(forecastPackage.status),
+  };
+}
 
-  const previousStatus = forecastPackage.status;
-  const updatedPackage = await ForecastPackage.findByIdAndUpdate(
-    forecastPackage._id,
-    {
-      $set: {
-        status: FORECAST_PACKAGE_STATUS.APPROVED,
-        reviewedAt: new Date(),
-        approvedBy: userId,
-      },
-      $push: {
-        auditLogs: {
-          action: 'approved',
-          performedBy: userId,
-          previousStatus,
-          newStatus: FORECAST_PACKAGE_STATUS.APPROVED,
-          comment: 'Forecast Package auto-approved because all chart projects are approved',
-        },
+async function syncPackageStatusFromCharts(forecastPackage, userId) {
+  const nextStatus = deriveForecastPackageStatusFromCharts(forecastPackage);
+  if (!nextStatus || nextStatus === forecastPackage?.status) return forecastPackage;
+
+  const update = {
+    $set: {
+      status: nextStatus,
+    },
+    $push: {
+      auditLogs: {
+        action: nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ? 'approved' : 'chart_completion_updated',
+        performedBy: userId,
+        previousStatus: forecastPackage.status,
+        newStatus: nextStatus,
+        comment: 'Forecast Package status synced from chart project statuses',
       },
     },
+  };
+
+  if (nextStatus === FORECAST_PACKAGE_STATUS.UNDER_REVIEW && !forecastPackage.reviewStartedAt) {
+    update.$set.reviewStartedAt = new Date();
+    update.$set.reviewStartedBy = userId;
+  }
+
+  if (nextStatus === FORECAST_PACKAGE_STATUS.APPROVED) {
+    update.$set.reviewedAt = new Date();
+    update.$set.approvedBy = userId;
+  }
+
+  const updatedPackage = await ForecastPackage.findByIdAndUpdate(
+    forecastPackage._id,
+    update,
     { new: true },
   )
     .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
     .lean();
 
-  return updatedPackage || { ...forecastPackage, status: FORECAST_PACKAGE_STATUS.APPROVED };
+  return updatedPackage || { ...forecastPackage, status: nextStatus };
 }
 
 async function getAdminForecastPackages(req, res, next) {
   try {
     const pageNumber = clampInt(req.query.page, 1, Number.MAX_SAFE_INTEGER, 1);
     const limitNumber = clampInt(req.query.limit, 1, 100, 12);
+    const status = normalizeStatusFilter(req.query.status);
+
+    if (status && !ADMIN_PACKAGE_STATUSES.includes(status)) {
+      return res.status(400).json({ message: 'Invalid or unauthorized package status filter' });
+    }
+
+    const allPackages = await ForecastPackage.find({ status: { $in: ADMIN_PACKAGE_STATUSES } })
+      .populate('owner', 'firstName lastName email username')
+      .populate('charts.project')
+      .sort({ forecastDate: -1, updatedAt: -1, _id: -1 })
+      .lean();
+
+    const syncedPackages = await Promise.all(
+      allPackages.map((forecastPackage) => syncPackageStatusFromCharts(forecastPackage, req.user.id)),
+    );
+    const filteredPackages = status
+      ? syncedPackages.filter((forecastPackage) => forecastPackage.status === status)
+      : syncedPackages;
+    const total = filteredPackages.length;
     const skip = (pageNumber - 1) * limitNumber;
-    const status = String(req.query.status || '').trim();
-    const query = { status: { $in: ADMIN_PACKAGE_STATUSES } };
-
-    if (status && status !== 'All') {
-      if (!ADMIN_PACKAGE_STATUSES.includes(status)) {
-        return res.status(400).json({ message: 'Invalid or unauthorized package status filter' });
-      }
-      query.status = status;
-    }
-
-    let [packages, total] = await Promise.all([
-      ForecastPackage.find(query)
-        .populate('owner', 'firstName lastName email username')
-        .populate('charts.project')
-        .sort({ forecastDate: -1, updatedAt: -1, _id: -1 })
-        .skip(skip)
-        .limit(limitNumber)
-        .lean(),
-      ForecastPackage.countDocuments(query),
-    ]);
-
-    packages = await Promise.all(packages.map((forecastPackage) => syncApprovedPackageStatus(forecastPackage, req.user.id)));
-
-    if (status && status !== 'All') {
-      packages = packages.filter((forecastPackage) => forecastPackage.status === status);
-      total = await ForecastPackage.countDocuments(query);
-    }
+    const packages = filteredPackages
+      .slice(skip, skip + limitNumber)
+      .map(serializeAdminPackage);
 
     res.json({
       packages,
