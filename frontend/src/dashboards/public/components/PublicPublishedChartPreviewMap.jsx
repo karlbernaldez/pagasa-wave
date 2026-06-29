@@ -226,7 +226,7 @@ function StatusOverlay({ loading, hasRenderableRaster, hasFeatures, isDarkMode }
 
 function getPreviewHeight(height) {
   if (height == null) return height;
-  if (typeof height === 'number') return `min(${height}px, 54vh)`;
+  if (typeof height === 'number') return `min(${height}px, 46vh)`;
   return height;
 }
 
