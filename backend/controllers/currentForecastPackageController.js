@@ -7,6 +7,7 @@ import {
   REQUIRED_FORECAST_CHARTS,
   buildForecastChartProjectName,
   buildForecastPackageName,
+  deriveForecastPackageStatusFromCharts,
   getPackageCompletion,
   normalizeForecastDate,
 } from '../utils/forecastPackage.js';
@@ -53,6 +54,37 @@ async function findPackageForDate(forecastDate) {
   return populateForecastPackage(
     ForecastPackage.findOne({ forecastDate: getForecastDateQuery(forecastDate) })
   );
+}
+
+async function syncPackageStatusFromCharts(forecastPackage, userId) {
+  const nextStatus = deriveForecastPackageStatusFromCharts(forecastPackage);
+  if (!nextStatus || nextStatus === forecastPackage?.status) return forecastPackage;
+
+  const update = {
+    $set: { status: nextStatus },
+    $push: {
+      auditLogs: {
+        action: nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ? 'approved' : 'chart_completion_updated',
+        performedBy: userId,
+        previousStatus: forecastPackage.status,
+        newStatus: nextStatus,
+        comment: 'Forecast Package status synced from chart project statuses',
+      },
+    },
+  };
+
+  if (nextStatus === FORECAST_PACKAGE_STATUS.UNDER_REVIEW && !forecastPackage.reviewStartedAt) {
+    update.$set.reviewStartedAt = new Date();
+    update.$set.reviewStartedBy = userId;
+  }
+
+  if (nextStatus === FORECAST_PACKAGE_STATUS.APPROVED) {
+    update.$set.reviewedAt = new Date();
+    update.$set.approvedBy = userId;
+  }
+
+  const updatedPackage = await ForecastPackage.findByIdAndUpdate(forecastPackage._id, update, { new: true });
+  return populateForecastPackage(ForecastPackage.findById(updatedPackage?._id || forecastPackage._id));
 }
 
 async function ensureDailyChartProject({ forecastDate, user, requiredChart, packageName }) {
@@ -186,9 +218,10 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
     forecastDate: requestedDate,
     user: req.user,
   });
+  const syncedPackage = await syncPackageStatusFromCharts(forecastPackage, req.user.id);
 
   res.json({
-    package: serializePackage(forecastPackage),
+    package: serializePackage(syncedPackage),
     autoCreated: !existingPackage,
   });
 });
