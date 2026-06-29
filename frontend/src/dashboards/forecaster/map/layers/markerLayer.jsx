@@ -2,7 +2,7 @@ import { makeMarkerDraggable } from '@dashboards/forecaster/map/helpers/markerDr
 import { updateFeatureCoordinates } from '@/api/featureServices'; // your API call
 
 // Track cleanup functions so we can remove drag listeners if needed
-const dragCleanupRegistry = new Map(); // sourceId → cleanup fn
+const dragCleanupRegistry = new Map(); // sourceId -> cleanup fn
 
 export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (title, options = {}) => {
   if (!selectedPoint) return;
@@ -31,6 +31,13 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
   const layerId = options.layerId || sourceId;
   const labelValue = options.labelValue || title || defaultTitles[markerType];
   const displayName = options.displayName || title || defaultTitles[markerType];
+  const aliases = Array.from(new Set([
+    sourceId,
+    layerId,
+    `${markerType}_${title}`,
+    `${markerType}_${displayName}`,
+    ...(options.layerAliases || []),
+  ].map((value) => String(value || '').trim()).filter(Boolean)));
 
   const feature = {
     type: 'Feature',
@@ -43,7 +50,11 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
       markerType,
       type: markerType,
       icon: iconName,
+      sourceId,
+      stableId: sourceId,
+      annotationId: sourceId,
       mapLayerId: layerId,
+      layerAliases: aliases,
     },
   };
 
