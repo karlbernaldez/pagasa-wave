@@ -38,9 +38,11 @@ function getPayloadKey(payload = {}) {
   return String(payload.projectId || payload.packageId || payload.action || 'global');
 }
 
-function dispatchChartEventsForPackage(payload = {}) {
+function dispatchChartEventsForPackage(payload = {}, shouldDispatchBrowserEvent) {
   if (payload.projectId) {
-    dispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, payload);
+    if (shouldDispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, payload)) {
+      dispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, payload);
+    }
     return;
   }
 
@@ -48,10 +50,10 @@ function dispatchChartEventsForPackage(payload = {}) {
 
   payload.projectIds.forEach((projectId) => {
     if (!projectId) return;
-    dispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, {
-      ...payload,
-      projectId,
-    });
+    const chartPayload = { ...payload, projectId };
+    if (shouldDispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, chartPayload)) {
+      dispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, chartPayload);
+    }
   });
 }
 
@@ -90,7 +92,7 @@ export default function ForecastPackageRealtimeBridge() {
       if (shouldDispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload)) {
         dispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload);
       }
-      dispatchChartEventsForPackage(payload);
+      dispatchChartEventsForPackage(payload, shouldDispatchBrowserEvent);
       scheduleBoardRefresh();
     };
 
