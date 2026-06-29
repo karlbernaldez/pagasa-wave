@@ -17,6 +17,7 @@ const COUNTRY_SOURCE_ID = 'published-export-country-source';
 const COUNTRY_LAND_LAYER_ID = 'published-export-country-land';
 const COUNTRY_LINE_LAYER_ID = 'published-export-country-lines';
 const FEATURE_SOURCE_ID = 'published-forecast-export-features';
+const FRONT_SOURCE_ID = 'published-forecast-export-fronts-source';
 const LABEL_SOURCE_ID = 'published-forecast-export-line-labels-source';
 
 const POINT_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'type'], ''];
@@ -33,6 +34,7 @@ const EXPORT_LAYER_ORDER = [
   'published-forecast-export-polygons-outline',
   'published-forecast-export-lines-casing',
   'published-forecast-export-lines',
+  'published-forecast-export-fronts',
   'published-forecast-export-points',
   'published-forecast-export-line-labels',
   'published-forecast-export-labels',
@@ -59,15 +61,37 @@ function getLineParts(geometry) {
   return [];
 }
 
+function isFront(feature) {
+  const props = feature?.properties || {};
+  return Boolean(props.isFront || props.frontType || `${props.name || ''} ${props.title || ''}`.toLowerCase().includes('front'));
+}
+
+function getFrontColor(feature) {
+  const type = String(feature?.properties?.frontType || '').toLowerCase();
+  if (type === 'warm') return '#ef4444';
+  if (type === 'occluded') return '#7c3aed';
+  return '#1d4ed8';
+}
+
 function getLineLabel(feature) {
   const props = feature?.properties || {};
   return String(props.labelValue ?? props.waveHeight ?? props.heightValue ?? props.height ?? props.value ?? props.text ?? props.label ?? props.name ?? props.title ?? feature?.name ?? '').trim();
 }
 
-function buildLineLabels(featureCollection) {
+function buildCollections(featureCollection) {
+  const regular = [];
+  const fronts = [];
   const labels = [];
 
   featureCollection.features.forEach((feature, featureIndex) => {
+    if (isFront(feature)) {
+      getLineParts(feature.geometry).forEach((line) => {
+        fronts.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line }, properties: { color: getFrontColor(feature) } });
+      });
+      return;
+    }
+
+    regular.push(feature);
     const text = getLineLabel(feature);
     if (!text) return;
 
@@ -87,7 +111,16 @@ function buildLineLabels(featureCollection) {
     });
   });
 
-  return { type: 'FeatureCollection', features: labels };
+  return {
+    regular: { type: 'FeatureCollection', features: regular },
+    fronts: { type: 'FeatureCollection', features: fronts },
+    labels: { type: 'FeatureCollection', features: labels },
+  };
+}
+
+function setGeoJson(map, id, data) {
+  if (map.getSource(id)) map.getSource(id).setData(data);
+  else map.addSource(id, { type: 'geojson', data });
 }
 
 function moveToTop(map, layerId) {
@@ -167,19 +200,18 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
   if (!isMapStyleReady(map)) return false;
 
   const paint = getChartStyleModePaint(chartStyleMode);
-  const labels = buildLineLabels(featureCollection);
+  const collections = buildCollections(featureCollection);
 
-  if (!map.getSource(FEATURE_SOURCE_ID)) map.addSource(FEATURE_SOURCE_ID, { type: 'geojson', data: featureCollection });
-  else map.getSource(FEATURE_SOURCE_ID).setData(featureCollection);
-
-  if (!map.getSource(LABEL_SOURCE_ID)) map.addSource(LABEL_SOURCE_ID, { type: 'geojson', data: labels });
-  else map.getSource(LABEL_SOURCE_ID).setData(labels);
+  setGeoJson(map, FEATURE_SOURCE_ID, collections.regular);
+  setGeoJson(map, FRONT_SOURCE_ID, collections.fronts);
+  setGeoJson(map, LABEL_SOURCE_ID, collections.labels);
 
   if (!map.getLayer('published-forecast-export-polygons')) {
     map.addLayer({ id: 'published-forecast-export-polygons', type: 'fill', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'fill-color': paint.polygonFill, 'fill-opacity': paint.polygonOpacity } });
     map.addLayer({ id: 'published-forecast-export-polygons-outline', type: 'line', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'line-color': paint.polygonOutline, 'line-width': paint.polygonOutlineWidth, 'line-opacity': 0.9 } });
     map.addLayer({ id: 'published-forecast-export-lines-casing', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': paint.lineCasing, 'line-width': paint.lineCasingWidth, 'line-opacity': 0.95 } });
     map.addLayer({ id: 'published-forecast-export-lines', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': paint.lineColor, 'line-width': paint.lineWidth, 'line-opacity': 1 } });
+    map.addLayer({ id: 'published-forecast-export-fronts', type: 'line', source: FRONT_SOURCE_ID, paint: { 'line-color': ['get', 'color'], 'line-width': 3.6, 'line-opacity': 0.95 } });
     map.addLayer({ id: 'published-forecast-export-points', type: 'circle', source: FEATURE_SOURCE_ID, filter: POINT_FILTER, paint: { 'circle-color': paint.pointColor, 'circle-radius': paint.pointRadius, 'circle-opacity': paint.showPoints ? 1 : 0, 'circle-stroke-color': paint.pointStroke, 'circle-stroke-width': paint.pointStrokeWidth } });
     map.addLayer({ id: 'published-forecast-export-line-labels', type: 'symbol', source: LABEL_SOURCE_ID, layout: { 'text-field': ['get', 'text'], 'text-size': paint.lineLabelSize, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
     map.addLayer({ id: 'published-forecast-export-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': paint.pointLabelSize, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
@@ -228,7 +260,7 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
 
 function fitExportBounds(map, bounds) {
   map.resize();
-  map.fitBounds(bounds, { padding: 18, maxZoom: 6, duration: 0 });
+  map.fitBounds(bounds, { padding: 16, maxZoom: 6, duration: 0 });
 }
 
 const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap({ features, chartStyleMode, raster }, ref) {
