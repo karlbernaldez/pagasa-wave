@@ -23,6 +23,7 @@ import { useChartType } from '@/app/providers/ChartTypeProvider';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import PublicPublishedChartPreviewMap from '@/dashboards/public/components/PublicPublishedChartPreviewMap';
 import PublishedForecastExportMap from '@/features/projects/components/PublishedForecastExportMap';
+import usePublicMapBounds from '@/features/projects/hooks/usePublicMapBounds';
 import { getProjectStatusLabel, getProjectStatusStyle } from '@/features/projects/projectStatuses';
 import {
   CHART_STYLE_MODES,
@@ -94,7 +95,7 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function getPdfMetadata(project, latestReviewSummary, chartStyleLabel) {
+function getPdfMetadata(project, latestReviewSummary, chartStyleLabel, showStaffInfo = true) {
   return {
     title: project?.name || 'Published Wave Chart',
     description: project?.description || 'Final read-only published wave chart generated from WaveLab.',
@@ -103,8 +104,8 @@ function getPdfMetadata(project, latestReviewSummary, chartStyleLabel) {
     chartStyle: chartStyleLabel || 'Wave & Wind',
     validDate: formatDate(project?.forecastDate),
     publishedAt: formatDateTime(project?.publishedAt),
-    forecaster: getPersonName(project?.owner, 'Forecaster'),
-    approvedBy: getPersonName(project?.approvedBy, '—'),
+    forecaster: showStaffInfo ? getPersonName(project?.owner, 'Forecaster') : '',
+    approvedBy: showStaffInfo ? getPersonName(project?.approvedBy, '—') : '',
     remarks: latestReviewSummary?.comment || project?.reviewComment || 'No review remarks recorded.',
   };
 }
@@ -130,8 +131,12 @@ function writePdfErrorWindow(printWindow, message) {
   printWindow.document.close();
 }
 
-function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl, chartStyleLabel }) {
-  const metadata = getPdfMetadata(project, latestReviewSummary, chartStyleLabel);
+function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl, chartStyleLabel, showStaffInfo = true }) {
+  const metadata = getPdfMetadata(project, latestReviewSummary, chartStyleLabel, showStaffInfo);
+  const footerHtml = showStaffInfo
+    ? `<footer class="footer"><span><strong>Final Wave Chart</strong> · Forecaster: ${escapeHtml(metadata.forecaster)}</span><span>Approved by: ${escapeHtml(metadata.approvedBy)}</span></footer>`
+    : '<footer class="footer"><span><strong>Final Wave Chart</strong> · DOST-PAGASA WaveLab</span><span>Published operational output</span></footer>';
+
   printWindow.document.open();
   printWindow.document.write(`
     <!doctype html>
@@ -166,7 +171,7 @@ function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageD
           <header><h1>${escapeHtml(metadata.title)}</h1><p class="description">${escapeHtml(metadata.description)}</p></header>
           <dl class="meta-grid"><div class="meta-card"><dt>Valid Date</dt><dd>${escapeHtml(metadata.validDate)}</dd></div><div class="meta-card"><dt>Chart Type</dt><dd>${escapeHtml(metadata.chartType)}</dd></div><div class="meta-card"><dt>Style</dt><dd>${escapeHtml(metadata.chartStyle)}</dd></div><div class="meta-card"><dt>Published</dt><dd>${escapeHtml(metadata.publishedAt)}</dd></div></dl>
           <section class="map-card"><img src="${imageDataUrl}" alt="${escapeHtml(metadata.title)} published wave chart export" /></section>
-          <footer class="footer"><span><strong>Final Wave Chart</strong> · Forecaster: ${escapeHtml(metadata.forecaster)}</span><span>Approved by: ${escapeHtml(metadata.approvedBy)}</span></footer>
+          ${footerHtml}
         </main>
         <script>window.onload = () => { window.focus(); window.print(); };</script>
       </body>
@@ -257,6 +262,7 @@ export default function PublishedForecastPage() {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const { activeChartType, setActiveChartType } = useChartType();
+  const { label: mapBoundsLabel, settings: publicSettings } = usePublicMapBounds();
   const exportMapRef = useRef(null);
   const [state, setState] = useState({ loading: true, error: '', data: null });
   const [copied, setCopied] = useState(false);
@@ -265,6 +271,7 @@ export default function PublishedForecastPage() {
 
   const activeStyleMode = normalizeChartStyleMode(activeChartType);
   const activeStyle = getChartStyleMode(activeStyleMode);
+  const showStaffInfo = publicSettings.showPublicStaffInfo !== false;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -319,7 +326,7 @@ export default function PublishedForecastPage() {
     setExportState({ loading: 'pdf', error: '' });
 
     try {
-      writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl: getExportMapDataUrl(), chartStyleLabel: activeStyle.label });
+      writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl: getExportMapDataUrl(), chartStyleLabel: activeStyle.label, showStaffInfo });
       setExportState({ loading: '', error: '' });
     } catch (error) {
       const message = error?.message || 'Failed to export PDF.';
@@ -398,7 +405,7 @@ export default function PublishedForecastPage() {
                 <span className={`rounded-full border px-3 py-1 text-xs font-black ${getProjectStatusStyle(project.status)}`}>{getProjectStatusLabel(project.status)}</span>
                 <StatusPill isDarkMode={isDarkMode} tone="green"><ShieldCheck size={13} /> Final output</StatusPill>
                 <StatusPill isDarkMode={isDarkMode}>{activeStyle.label}</StatusPill>
-                <StatusPill isDarkMode={isDarkMode} tone="slate">TCAD bounds</StatusPill>
+                <StatusPill isDarkMode={isDarkMode} tone="slate">{mapBoundsLabel}</StatusPill>
               </div>
               <h1 className="mt-3 max-w-5xl truncate text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl">{project.name}</h1>
               <p className={`mt-1 max-w-4xl truncate text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{project.description || 'Final read-only published wave chart for viewing, sharing, downloading, and archiving.'}</p>
@@ -422,14 +429,14 @@ export default function PublishedForecastPage() {
                 <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-500/10 text-blue-700'}`}><MapPinned size={19} /></span>
                 <div>
                   <p className="text-base font-black">Final wave chart</p>
-                  <p className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Read-only, fixed-bounds public output.</p>
+                  <p className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Read-only, configured-bounds public output.</p>
                 </div>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className={`grid gap-2 sm:grid-cols-2 ${showStaffInfo ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
                 <MetaItem icon={CalendarDays} label="Valid" value={formatDate(project.forecastDate)} isDarkMode={isDarkMode} />
                 <MetaItem icon={FileText} label="Type" value={getChartTypeLabel(project.chartType)} isDarkMode={isDarkMode} />
                 <MetaItem icon={CheckCircle2} label="Published" value={formatDateTime(project.publishedAt)} isDarkMode={isDarkMode} />
-                <MetaItem icon={UserRound} label="Forecaster" value={getPersonName(project.owner, 'Forecaster')} isDarkMode={isDarkMode} />
+                {showStaffInfo && <MetaItem icon={UserRound} label="Forecaster" value={getPersonName(project.owner, 'Forecaster')} isDarkMode={isDarkMode} />}
               </div>
             </div>
             <div className={`overflow-hidden rounded-[1.5rem] ring-1 ${isDarkMode ? 'ring-white/10' : 'ring-blue-100'}`}>
@@ -443,7 +450,7 @@ export default function PublishedForecastPage() {
             <article className={glassPanelClass(isDarkMode, 'p-4')}>
               <h2 className="text-sm font-black">Review summary</h2>
               <div className="mt-3 grid gap-3 text-sm">
-                <div><p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Approved by</p><p className="mt-1 font-bold">{getPersonName(project.approvedBy, '—')}</p></div>
+                {showStaffInfo && <div><p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Approved by</p><p className="mt-1 font-bold">{getPersonName(project.approvedBy, '—')}</p></div>}
                 <div><p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Last action</p><p className="mt-1 font-bold capitalize">{latestReviewSummary?.action?.replaceAll('_', ' ') || '—'}</p></div>
                 <div className={`rounded-2xl border p-3 text-xs font-semibold leading-relaxed ${isDarkMode ? 'border-white/10 bg-slate-950/70 text-slate-300' : 'border-slate-200 bg-white/65 text-slate-700'}`}>{latestReviewSummary?.comment || project.reviewComment || 'No review remarks recorded.'}</div>
               </div>
