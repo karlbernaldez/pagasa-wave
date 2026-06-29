@@ -39,6 +39,7 @@ const VersionSchema = new Schema({
   snapshot: { type: Schema.Types.Mixed, required: true },
   features: { type: [Schema.Types.Mixed], default: [] },
   featureCollection: { type: Schema.Types.Mixed, default: null },
+  raster: { type: Schema.Types.Mixed, default: null },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now },
   reason: { type: String, default: 'snapshot' }
@@ -88,6 +89,7 @@ const ProjectSchema = new Schema({
   rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   reviewComment: String,
   publishedAt: Date,
+  publishedRaster: { type: Schema.Types.Mixed, default: null },
 
   noPublicationAt: Date,
   noPublicationBy: { type: Schema.Types.ObjectId, ref: 'User' },
