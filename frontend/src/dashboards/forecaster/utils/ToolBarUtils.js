@@ -223,7 +223,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
       showConfirmButton: false,
       timer: 3000,
     });
-    return;
+    return Promise.resolve(null);
   }
 
   const activeProjectId = getActiveProjectId(projectId);
@@ -237,7 +237,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
       showConfirmButton: false,
       timer: 3500,
     });
-    return;
+    return Promise.resolve(null);
   }
 
   const markerType = normalizeMarkerType(selectedType);
@@ -269,11 +269,16 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     };
 
     return {
+      sourceId,
       displayName,
+      labelValue,
+      markerType,
       feature,
       panelLayer: {
         id: sourceId,
         sourceID: sourceId,
+        sourceId,
+        source: sourceId,
         name: displayName,
         visible: true,
         locked: false,
@@ -285,9 +290,9 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     };
   };
 
-  const persistFeature = ({ displayName, feature, refreshOnSuccess = false } = {}) => createFeature(buildPointFeaturePayload({
-    feature,
-    displayName,
+  const persistFeature = ({ state, refreshOnSuccess = false } = {}) => createFeature(buildPointFeaturePayload({
+    feature: state.feature,
+    displayName: state.displayName,
     labelValue,
     closedMode,
     activeProjectId,
@@ -295,37 +300,44 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     sourceId,
   }))
     .then(() => {
-      notifyFeatureSaved(displayName);
+      notifyFeatureSaved(state.displayName);
       if (refreshOnSuccess) refreshWorkspaceAfterFallbackSave();
+      return state;
     })
-    .catch(notifyFeatureSaveFailed);
+    .catch((error) => {
+      notifyFeatureSaveFailed(error);
+      return null;
+    });
 
   if (!updateLayers) {
-    const { displayName, feature } = buildFeatureState([]);
-    persistFeature({ displayName, feature, refreshOnSuccess: true });
-    return;
+    const state = buildFeatureState([]);
+    return persistFeature({ state, refreshOnSuccess: true });
   }
 
-  updateLayers((prevLayers) => {
-    const existingSourceIds = prevLayers.map((layer) => layer.sourceID || layer.id);
+  let pendingSave = Promise.resolve(null);
 
-    const { displayName, feature, panelLayer } = buildFeatureState(prevLayers);
+  updateLayers((prevLayers) => {
+    const existingSourceIds = prevLayers.map((layer) => layer.sourceID || layer.sourceId || layer.source || layer.id);
+    const state = buildFeatureState(prevLayers);
 
     if (existingSourceIds.includes(sourceId)) {
       Swal.fire({
         toast: true,
         position: 'top-end',
         icon: 'error',
-        title: `The marker "${displayName}" already exists.`,
+        title: `The marker "${state.displayName}" already exists.`,
         showConfirmButton: false,
         timer: 3000,
       });
+      pendingSave = Promise.resolve(null);
       return prevLayers;
     }
 
-    persistFeature({ displayName, feature });
-    return [...prevLayers, panelLayer];
+    pendingSave = persistFeature({ state });
+    return [...prevLayers, state.panelLayer];
   });
+
+  return pendingSave;
 }
 
 
