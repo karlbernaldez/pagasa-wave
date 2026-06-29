@@ -21,6 +21,7 @@ function getActiveEditors(chart = {}) { const activeEditors = Array.isArray(char
 function getParticipants(chart = {}) { const participants = Array.isArray(chart.participants) ? [...chart.participants] : []; getActiveEditors(chart).forEach((editor) => { if (!participants.some((participant) => isSameId(participant.user, editor.user))) participants.push({ user: editor.user, firstJoinedAt: editor.startedAt || new Date(), lastJoinedAt: editor.startedAt || new Date() }); }); return participants; }
 function getReadyEditors(chart = {}) { return Array.isArray(chart.readyEditors) ? [...chart.readyEditors] : []; }
 function getLegacyClaimPatch(activeEditors) { const firstEditor = activeEditors[0]; return { 'charts.$.claimedBy': firstEditor?.user || null, 'charts.$.claimedAt': firstEditor?.startedAt || null }; }
+function applyLegacyClaimFromActiveEditors(chart, activeEditors) { const firstEditor = activeEditors[0]; chart.claimedBy = firstEditor?.user || null; chart.claimedAt = firstEditor?.startedAt || null; }
 function ensureParticipant(chart, userId) { const now = new Date(); if (!Array.isArray(chart.participants)) chart.participants = []; const existing = chart.participants.find((participant) => isSameId(participant.user, userId)); if (existing) existing.lastJoinedAt = now; else chart.participants.push({ user: userId, firstJoinedAt: now, lastJoinedAt: now }); }
 function removeReadyVote(chart, userId) { chart.readyEditors = getReadyEditors(chart).filter((vote) => !isSameId(vote.user, userId)); }
 function addReadyVote(chart, userId) { removeReadyVote(chart, userId); chart.readyEditors.push({ user: userId, readyAt: new Date() }); }
@@ -79,9 +80,9 @@ function serializeChartContext(forecastPackage, chart, user) {
       claimedByLabel: activeEditorLabels.join(', '),
       activeEditorCount: activeEditors.length,
       activeEditorLabels,
-      canClaim: editable && !isReady && !blockingChartType && !activeEditorCurrentUser,
-      canRelease: editable && activeEditorCurrentUser,
-      canCertify: editable && !isReady && !blockingChartType && activeEditorCurrentUser,
+      canClaim: editable && !isReady && !blockingChartType && !activeEditorCurrentUser && !currentUserReady,
+      canRelease: editable && activeEditorCurrentUser && !currentUserReady,
+      canCertify: editable && !isReady && !blockingChartType && activeEditorCurrentUser && !currentUserReady,
       readyCount,
       participantCount,
       readyEditorLabels,
@@ -106,6 +107,9 @@ function updateChartCompletionState(forecastPackage, chart, isComplete, user) {
   if (isComplete) {
     if (!activeEditorCurrentUser) throwError(`${getForecastChartLabel(chart.chartType)} must be opened for editing by you before you can mark yourself ready`, 409);
     addReadyVote(chart, user.id);
+    const remainingEditors = activeEditors.filter((editor) => !isSameId(editor.user, user.id));
+    chart.activeEditors = remainingEditors;
+    applyLegacyClaimFromActiveEditors(chart, remainingEditors);
     const readyUserIds = new Set(getReadyEditors(chart).map((vote) => String(vote.user?._id || vote.user)));
     const allParticipantsReady = participants.length > 0 && participants.every((participant) => readyUserIds.has(String(participant.user?._id || participant.user)));
     if (!allParticipantsReady) {
