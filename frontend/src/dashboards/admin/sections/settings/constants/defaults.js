@@ -11,6 +11,7 @@ export const DEFAULT_GENERAL = {
   maintenanceMode: false,
   maintenanceMessage: 'System is under scheduled maintenance. Please check back shortly.',
   logoPreview: '/pagasa-logo.png',
+  showPublicStaffInfo: true,
   mapBoundsPreset: 'tcad',
   mapBoundsCustom: {
     westLng: 93,
