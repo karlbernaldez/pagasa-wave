@@ -20,7 +20,7 @@ import { archiveProject } from '@/api/projectAPI';
 import { fetchPublicPublishedChartOutput } from '@/api/publishedForecastAPI';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import ProjectPreviewMap from '@/features/projects/components/ProjectPreviewMap';
+import PublicPublishedChartPreviewMap from '@/dashboards/public/components/PublicPublishedChartPreviewMap';
 import PublishedForecastExportMap from '@/features/projects/components/PublishedForecastExportMap';
 import { getProjectStatusLabel, getProjectStatusStyle } from '@/features/projects/projectStatuses';
 import {
@@ -337,7 +337,7 @@ export default function PublishedForecastPage() {
     async function loadChart() {
       setState({ loading: true, error: '', data: null });
       try {
-        const data = await fetchPublicPublishedChartOutput(projectId, { signal: controller.signal });
+        const data = await fetchPublicPublishedChartOutput(projectId, { signal: controller.signal, theme: isDarkMode ? 'dark' : 'light' });
         setState({ loading: false, error: '', data });
       } catch (error) {
         if (error.name === 'AbortError') return;
@@ -347,7 +347,7 @@ export default function PublishedForecastPage() {
 
     loadChart();
     return () => controller.abort();
-  }, [projectId]);
+  }, [isDarkMode, projectId]);
 
   const project = state.data?.project;
   const featureCollection = state.data?.featureCollection;
@@ -515,22 +515,18 @@ export default function PublishedForecastPage() {
             <div className={`flex items-center justify-between border-b px-5 py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
               <div>
                 <p className="text-sm font-black">Final wave chart</p>
-                <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Read-only map output using {activeStyle.label} style.</p>
+                <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Read-only TCAD-bounded map output using {activeStyle.label} style.</p>
               </div>
               <MapPinned size={20} className={isDarkMode ? 'text-cyan-300' : 'text-blue-700'} aria-hidden="true" />
             </div>
 
             <div className="p-4 sm:p-5">
-              <ProjectPreviewMap
+              <PublicPublishedChartPreviewMap
                 projectId={project._id}
-                features={featureCollection}
-                featureScope="admin"
+                initialRaster={state.data?.raster}
                 height={560}
                 isDarkMode={isDarkMode}
-                lazy={false}
-                showLabels
-                chartStyleMode={activeStyleMode}
-                emptyLabel="No published annotations available"
+                className="rounded-2xl border-0"
               />
             </div>
           </article>
