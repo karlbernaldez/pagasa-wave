@@ -6,6 +6,7 @@ import { getProjectStatusLabel, getProjectStatusStyle } from '@/features/project
 
 const REVIEWABLE_PACKAGE_STATUSES = new Set(['Submitted', 'Under Review']);
 const REVIEWABLE_PROJECT_STATUSES = new Set(['Submitted', 'Under Review']);
+const PUBLISHABLE_PACKAGE_STATUSES = new Set(['Approved']);
 
 const PACKAGE_STATUS_STYLES = {
   Submitted: {
@@ -82,11 +83,18 @@ function ChartRow({ chartRow, isDarkMode, onOpenChart }) {
   );
 }
 
-export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpenChart }) {
+export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpenChart, onPublishPackage, publishingPackageId }) {
   const isDaily = isDailyForecastPackage(forecastPackage);
   const statusStyle = PACKAGE_STATUS_STYLES[forecastPackage.status] ?? PACKAGE_STATUS_STYLES.Draft;
   const packageDateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
   const canReviewPackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status) && Boolean(forecastPackage.primaryChart);
+  const canPublishPackage = PUBLISHABLE_PACKAGE_STATUSES.has(forecastPackage.status);
+  const isPublishing = publishingPackageId === forecastPackage.id;
+  const primaryActionLabel = canPublishPackage
+    ? 'Publish package'
+    : canReviewPackage
+      ? 'Review package'
+      : 'Not reviewable';
 
   return (
     <article className={`overflow-hidden rounded-3xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
@@ -115,8 +123,14 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
             </p>
           </div>
 
-          <Button icon={PackageCheck} disabled={!canReviewPackage} onClick={() => canReviewPackage && onOpenChart?.(forecastPackage.primaryChart, forecastPackage)}>
-            {canReviewPackage ? 'Review package' : 'Not reviewable'}
+          <Button icon={PackageCheck} disabled={isPublishing || (!canReviewPackage && !canPublishPackage)} onClick={() => {
+            if (canPublishPackage) {
+              onPublishPackage?.(forecastPackage);
+              return;
+            }
+            if (canReviewPackage) onOpenChart?.(forecastPackage.primaryChart, forecastPackage);
+          }}>
+            {isPublishing ? 'Publishing…' : primaryActionLabel}
           </Button>
         </div>
       </div>
