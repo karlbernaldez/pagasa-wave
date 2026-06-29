@@ -135,7 +135,7 @@ export default function AdminForecastPackageReviewPageV2() {
     <div className={`min-h-full transition-colors ${isDarkMode ? 'bg-[#0d1117]' : 'bg-slate-50'}`}>
       <div className="mx-auto max-w-[1400px] space-y-5 p-4 sm:space-y-6 sm:p-6">
         <p className={`text-sm font-black ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Review desk ready, {getWelcomeName(user)}.</p>
-        <AdminDailyPackageFocus isDarkMode={isDarkMode} packages={packages} setStatusFilter={(status) => { setStatusFilter(status); setPage(1); }} total={total} />
+        <AdminDailyPackageFocus isDarkMode={isDarkMode} packages={packages} onOpenChart={openChartForReview} total={total} />
         {feedbackError && <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`}><AlertCircle className="mr-2 inline" size={17} />{feedbackError}</div>}
         <ProjectStats stats={packageStats(packages, total)} isDarkMode={isDarkMode} />
         <ProjectToolbar role="admin" packageReviewMode isDarkMode={isDarkMode} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={(status) => { setStatusFilter(status); setPage(1); }} typeFilter={typeFilter} setTypeFilter={setTypeFilter} dateRangeFilter={dateRangeFilter} setDateRangeFilter={setDateRangeFilter} sortBy={sortBy} setSortBy={setSortBy} sortDir={sortDir} setSortDir={setSortDir} activeFilterCount={activeFilterCount} onClear={resetFilters} isFetching={query.isFetching} />
