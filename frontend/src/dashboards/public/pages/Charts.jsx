@@ -315,16 +315,25 @@ export default function Charts() {
       return undefined;
     }
 
+    const totalCount = exportState.entries.length;
     const updateReadyCount = () => {
       const readyCount = exportState.entries.filter((entry) => {
         if (!entry.project?._id || !hasExportableOutput(entry.output)) return true;
         return Boolean(exportRefs.current[entry.slot.chartType]?.isReady);
       }).length;
-      setPdfReadyCount((current) => current === readyCount ? current : readyCount);
+
+      setPdfReadyCount((current) => {
+        if (readyCount >= totalCount) return totalCount;
+        return Math.max(current, readyCount);
+      });
+
+      return readyCount >= totalCount;
     };
 
-    updateReadyCount();
-    const timer = window.setInterval(updateReadyCount, 500);
+    if (updateReadyCount()) return undefined;
+    const timer = window.setInterval(() => {
+      if (updateReadyCount()) window.clearInterval(timer);
+    }, 500);
     return () => window.clearInterval(timer);
   }, [activeStyleMode, exportState.entries]);
 
@@ -365,7 +374,6 @@ export default function Charts() {
           key={`export-${entry.project._id}-${activeStyleMode}`}
           ref={(instance) => {
             if (instance) exportRefs.current[entry.slot.chartType] = instance;
-            else delete exportRefs.current[entry.slot.chartType];
           }}
           features={entry.output.featureCollection}
           chartStyleMode={activeStyleMode}
