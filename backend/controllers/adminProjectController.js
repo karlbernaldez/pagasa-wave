@@ -22,6 +22,18 @@ const ALLOWED_CHART_TYPES = [
   'forecast_48h',
 ];
 
+const CHART_TYPE_SORT = ALLOWED_CHART_TYPES.reduce((order, chartType, index) => {
+  order[chartType] = index;
+  return order;
+}, {});
+
+const CHART_NAME_SUFFIX_PATTERNS = [
+  /\s[-–—]\s*(wave\s*)?analysis\s*(chart)?\s*$/i,
+  /\s[-–—]\s*(24|24h|24-hour|24\s*hour)\s*(wave\s*)?(forecast\s*)?(chart)?\s*$/i,
+  /\s[-–—]\s*(36|36h|36-hour|36\s*hour)\s*(wave\s*)?(forecast\s*)?(chart)?\s*$/i,
+  /\s[-–—]\s*(48|48h|48-hour|48\s*hour)\s*(wave\s*)?(forecast\s*)?(chart)?\s*$/i,
+];
+
 const ADMIN_PROJECT_SORT_FIELDS = {
   name: 'name',
   chartType: 'chartType',
@@ -65,6 +77,30 @@ function getForecastDateBounds(value) {
   end.setUTCDate(end.getUTCDate() + 1);
 
   return { start, end };
+}
+
+function getPackageNamePrefix(projectName = '') {
+  const name = String(projectName || '').trim();
+  if (!name) return '';
+
+  return CHART_NAME_SUFFIX_PATTERNS.reduce(
+    (current, pattern) => current.replace(pattern, ''),
+    name,
+  ).trim();
+}
+
+function getPackageNameRegex(projectName = '') {
+  const prefix = getPackageNamePrefix(projectName);
+  if (!prefix || prefix.length < 6) return null;
+  return new RegExp(`^${escapeRegex(prefix)}(?:\\s[-–—]\\s|$)`, 'i');
+}
+
+function sortProjectsByChartType(projects = []) {
+  return [...projects].sort((a, b) => {
+    const typeDiff = (CHART_TYPE_SORT[a?.chartType] ?? 99) - (CHART_TYPE_SORT[b?.chartType] ?? 99);
+    if (typeDiff !== 0) return typeDiff;
+    return new Date(b?.updatedAt || 0) - new Date(a?.updatedAt || 0);
+  });
 }
 
 function withAdminProjectPopulates(query) {
@@ -217,23 +253,36 @@ export const getAdminForecastPackage = asyncHandler(async (req, res) => {
     throwError('Admin access required', 403);
   }
 
-  const project = await Project.findById(req.params.id).select('forecastDate').lean();
+  const project = await Project.findById(req.params.id).select('name forecastDate').lean();
   if (!project) throwError('Project not found', 404);
 
   const bounds = getForecastDateBounds(project.forecastDate);
   if (!bounds) throwError('Project forecast date is invalid', 400);
 
+  const packageNameRegex = getPackageNameRegex(project.name);
+  const packageFilters = [
+    { forecastDate: { $gte: bounds.start, $lt: bounds.end } },
+  ];
+
+  if (packageNameRegex) {
+    packageFilters.unshift({ name: packageNameRegex });
+  }
+
   const query = {
     status: { $in: ALLOWED_ADMIN_STATUSES },
-    forecastDate: { $gte: bounds.start, $lt: bounds.end },
+    chartType: { $in: ALLOWED_CHART_TYPES },
+    $or: packageFilters,
   };
 
-  const projects = await withAdminProjectPopulates(Project.find(query))
-    .sort({ forecastDate: -1, chartType: 1, updatedAt: -1, _id: -1 })
-    .lean();
+  const projects = sortProjectsByChartType(
+    await withAdminProjectPopulates(Project.find(query))
+      .sort({ forecastDate: -1, chartType: 1, updatedAt: -1, _id: -1 })
+      .lean(),
+  );
 
   res.json({
     forecastDate: bounds.start,
+    packageName: getPackageNamePrefix(project.name),
     expectedChartTypes: ALLOWED_CHART_TYPES,
     chartCount: projects.length,
     isComplete: ALLOWED_CHART_TYPES.every((chartType) =>
