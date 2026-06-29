@@ -11,6 +11,13 @@ export const DEFAULT_GENERAL = {
   maintenanceMode: false,
   maintenanceMessage: 'System is under scheduled maintenance. Please check back shortly.',
   logoPreview: '/pagasa-logo.png',
+  mapBoundsPreset: 'tcad',
+  mapBoundsCustom: {
+    westLng: 93,
+    southLat: 0,
+    eastLng: 153.8595159535438,
+    northLat: 25,
+  },
 };
 
 export const DEFAULT_OPERATIONS = {
