@@ -122,6 +122,14 @@ function buildPointFeaturePayload({ feature, baseName, closedMode, activeProject
   };
 }
 
+function refreshWorkspaceAfterFallbackSave() {
+  if (typeof window === 'undefined') return;
+
+  window.setTimeout(() => {
+    window.location.reload();
+  }, 750);
+}
+
 export function savePointFeature({ coords, title, selectedType, setLayersRef, projectId }) {
   const normalizedCoords = getCoordinatePair(coords);
   if (!normalizedCoords) {
@@ -185,7 +193,7 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     mapLayerId,
   };
 
-  const persistFeature = () => createFeature(buildPointFeaturePayload({
+  const persistFeature = ({ refreshOnSuccess = false } = {}) => createFeature(buildPointFeaturePayload({
     feature,
     baseName,
     closedMode,
@@ -195,13 +203,14 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
   }))
     .then(() => {
       notifyFeatureSaved(baseName);
+      if (refreshOnSuccess) refreshWorkspaceAfterFallbackSave();
     })
     .catch(notifyFeatureSaveFailed);
 
   const updateLayers = typeof setLayersRef?.current === 'function' ? setLayersRef.current : null;
 
   if (!updateLayers) {
-    persistFeature();
+    persistFeature({ refreshOnSuccess: true });
     return;
   }
 
