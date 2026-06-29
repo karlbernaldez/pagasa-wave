@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Lock, Moon, Sun } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Lock, Moon, Sun, X } from "lucide-react";
 
 import MapComponent from "@dashboards/forecaster/map/MapComponent";
 import LayerPanel from "@dashboards/forecaster/components/Studio/LayerPanel/LayerPanel";
@@ -42,6 +42,10 @@ function isContextNotFound(error) {
 function getDisplayName(user) {
   if (!user || typeof user === "string") return "";
   return [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.username || user.email || "";
+}
+
+function getErrorMessage(error, fallback) {
+  return error?.message || fallback || "The action could not be completed.";
 }
 
 function formatNameList(names = []) {
@@ -130,6 +134,40 @@ function RevisionFeedbackPanel({ feedback, isDarkMode }) {
   );
 }
 
+function WorkflowErrorModal({ error, isDarkMode, onClose }) {
+  if (!error) return null;
+
+  return (
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="studio-workflow-error-title">
+      <div className={`w-full max-w-lg overflow-hidden rounded-3xl border shadow-2xl ${isDarkMode ? "border-red-300/20 bg-slate-950 text-slate-100" : "border-red-200 bg-white text-slate-950"}`}>
+        <div className={`flex items-start justify-between gap-4 border-b p-5 ${isDarkMode ? "border-white/10" : "border-slate-100"}`}>
+          <div className="flex gap-3">
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isDarkMode ? "bg-red-500/15 text-red-200" : "bg-red-50 text-red-600"}`}>
+              <AlertTriangle size={22} />
+            </div>
+            <div>
+              <h2 id="studio-workflow-error-title" className="text-lg font-black">{error.title || "Action blocked"}</h2>
+              <p className={`mt-1 text-sm ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>Please resolve this before continuing.</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition ${isDarkMode ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`} aria-label="Close error dialog">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="space-y-4 p-5">
+          <div className={`rounded-2xl border p-4 text-sm font-bold leading-6 ${isDarkMode ? "border-red-300/20 bg-red-950/35 text-red-100" : "border-red-100 bg-red-50 text-red-800"}`}>
+            {error.message}
+          </div>
+          {error.detail && <p className={`text-sm leading-6 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{error.detail}</p>}
+          <div className="flex justify-end">
+            <Button onClick={onClose}>Got it</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const Studio = ({ logger }) => {
   const navigate = useNavigate();
   const { isDarkMode, setIsDarkMode } = useTheme();
@@ -144,11 +182,12 @@ const Studio = ({ logger }) => {
   const [isReleasingChart, setIsReleasingChart] = useState(false);
   const [isCertifyingChart, setIsCertifyingChart] = useState(false);
   const [studioError, setStudioError] = useState("");
+  const [workflowError, setWorkflowError] = useState(null);
 
   useEffect(() => { suppressAutoJoinRef.current = false; }, [projectId]);
   useEffect(() => { setCurrentProject(latestProject || null); }, [latestProject]);
 
-  const handleOpenCreateProject = () => { setStudioError(""); setShowNoProjectsModal(false); setShowCreateProjectModal(true); };
+  const handleOpenCreateProject = () => { setStudioError(""); setWorkflowError(null); setShowNoProjectsModal(false); setShowCreateProjectModal(true); };
   const handleMaybeLater = () => setShowNoProjectsModal(false);
   const { layers, setLayers, mapRef, cleanupRef, setupFeaturesAndLayers } = useMapSetup(projectId, logger, isDarkMode);
   const { drawInstance, setDrawInstance, isCanvasActive, isFlagCanvasActive, lineCount, setLineCount, drawCounter, setDrawCounter, closedMode, setClosedMode, toggleCanvas, toggleFlagCanvas } = useDrawingState();
@@ -167,7 +206,7 @@ const Studio = ({ logger }) => {
   const canUseEditingTools = Boolean(canEditProject && chartClaim?.claimedByCurrentUser);
   const isReadOnlyProject = Boolean(currentProject && !canUseEditingTools);
   const isPackageReadyReadOnly = Boolean(currentProject && isPackageChartReady);
-  const isBlockingWorkspaceModalOpen = showTitleModal || showCreateProjectModal || showNoProjectsModal || isCanvasActive || isFlagCanvasActive;
+  const isBlockingWorkspaceModalOpen = showTitleModal || showCreateProjectModal || showNoProjectsModal || isCanvasActive || isFlagCanvasActive || Boolean(workflowError);
   const { isInactivityPromptVisible, stayActive, refreshWorkspace } = useInactivityReload(undefined, { disabled: isBlockingWorkspaceModalOpen });
 
   const handleBackToLibrary = useCallback(() => { navigate("/studio"); }, [navigate]);
@@ -192,7 +231,7 @@ const Studio = ({ logger }) => {
       if (error?.name === "AbortError") return;
       if (isContextNotFound(error)) { setChartContext(null); return; }
       console.error("Failed to load forecast package chart context:", error);
-      setStudioError(error?.message || "Failed to load forecast package chart workflow.");
+      setStudioError(getErrorMessage(error, "Failed to load forecast package chart workflow."));
     } finally {
       if (!silent) setIsLoadingChartContext(false);
     }
@@ -203,7 +242,7 @@ const Studio = ({ logger }) => {
   useEffect(() => {
     setIsLoading(true); setMapLoaded(false); setShowToolbar(false); setCapturedImages({ light: null, dark: null });
     setDrawInstance(null); setLineCount(0); setDrawCounter(0); setClosedMode(false); setSelectedPoint(null); setShowTitleModal(false);
-    markerTitleRef.current = ""; selectedToolRef.current = null; setStudioError("");
+    markerTitleRef.current = ""; selectedToolRef.current = null; setStudioError(""); setWorkflowError(null);
   }, [projectId, setClosedMode, setDrawCounter, setDrawInstance, setLineCount, setSelectedPoint, setShowTitleModal, markerTitleRef, setCapturedImages]);
   useEffect(() => { const controller = new AbortController(); loadChartContext({ signal: controller.signal, autoJoin: true }); return () => controller.abort(); }, [loadChartContext]);
   useEffect(() => { const handler = (event) => { if (String(event.detail?.projectId || "") === String(projectId)) loadChartContext({ silent: true, autoJoin: false }); }; window.addEventListener(FORECAST_CHART_BROWSER_EVENT, handler); return () => window.removeEventListener(FORECAST_CHART_BROWSER_EVENT, handler); }, [loadChartContext, projectId]);
@@ -223,10 +262,74 @@ const Studio = ({ logger }) => {
     savePointFeature({ coords: [selectedPoint.lng, selectedPoint.lat], title, selectedType: type, setLayersRef, projectId });
   };
 
-  const handleClaimChart = async () => { if (!projectId || isClaimingChart || !canEditProject) return; setIsClaimingChart(true); suppressAutoJoinRef.current = false; setStudioError(""); try { const context = await claimForecastPackageChartByProject(projectId); applyChartContext(context); } catch (error) { setStudioError(error?.message || "Failed to join chart editing."); } finally { setIsClaimingChart(false); } };
-  const handleReleaseChart = async () => { if (!projectId || isReleasingChart || !canEditProject) return; setIsReleasingChart(true); suppressAutoJoinRef.current = true; setStudioError(""); try { const context = await releaseForecastPackageChartByProject(projectId); applyChartContext(context); } catch (error) { suppressAutoJoinRef.current = false; setStudioError(error?.message || "Failed to release chart editing session."); } finally { setIsReleasingChart(false); } };
-  const handleCertifyChartReady = async () => { if (!projectId || isCertifyingChart || !canEditProject) return; setIsCertifyingChart(true); setStudioError(""); try { const context = await updateForecastChartCompletionByProject(projectId, true); applyChartContext(context); } catch (error) { setStudioError(error?.message || "Failed to certify chart readiness."); } finally { setIsCertifyingChart(false); } };
-  const handleReopenChartEdits = async () => { if (!projectId || isCertifyingChart || !canEditProjectStatus(projectStatus)) return; setIsCertifyingChart(true); setStudioError(""); try { const context = await updateForecastChartCompletionByProject(projectId, false); applyChartContext(context); } catch (error) { setStudioError(error?.message || "Failed to reopen chart editing."); } finally { setIsCertifyingChart(false); } };
+  const handleClaimChart = async () => {
+    if (!projectId || isClaimingChart || !canEditProject) return;
+    setIsClaimingChart(true); suppressAutoJoinRef.current = false; setStudioError(""); setWorkflowError(null);
+    try {
+      const context = await claimForecastPackageChartByProject(projectId);
+      applyChartContext(context);
+    } catch (error) {
+      setWorkflowError({
+        title: "Cannot join chart",
+        message: getErrorMessage(error, "Failed to join chart editing."),
+        detail: "Refresh the workspace or check if another forecaster is already editing this chart.",
+      });
+    } finally {
+      setIsClaimingChart(false);
+    }
+  };
+
+  const handleReleaseChart = async () => {
+    if (!projectId || isReleasingChart || !canEditProject) return;
+    setIsReleasingChart(true); suppressAutoJoinRef.current = true; setStudioError(""); setWorkflowError(null);
+    try {
+      const context = await releaseForecastPackageChartByProject(projectId);
+      applyChartContext(context);
+    } catch (error) {
+      suppressAutoJoinRef.current = false;
+      setWorkflowError({
+        title: "Cannot release chart",
+        message: getErrorMessage(error, "Failed to release chart editing session."),
+        detail: "Refresh the workspace and try releasing the chart again.",
+      });
+    } finally {
+      setIsReleasingChart(false);
+    }
+  };
+
+  const handleCertifyChartReady = async () => {
+    if (!projectId || isCertifyingChart || !canEditProject) return;
+    setIsCertifyingChart(true); setStudioError(""); setWorkflowError(null);
+    try {
+      const context = await updateForecastChartCompletionByProject(projectId, true);
+      applyChartContext(context);
+    } catch (error) {
+      setWorkflowError({
+        title: "Cannot certify chart ready",
+        message: getErrorMessage(error, "Failed to certify chart readiness."),
+        detail: "All active editors must release or complete their participation before this chart can be certified ready.",
+      });
+    } finally {
+      setIsCertifyingChart(false);
+    }
+  };
+
+  const handleReopenChartEdits = async () => {
+    if (!projectId || isCertifyingChart || !canEditProjectStatus(projectStatus)) return;
+    setIsCertifyingChart(true); setStudioError(""); setWorkflowError(null);
+    try {
+      const context = await updateForecastChartCompletionByProject(projectId, false);
+      applyChartContext(context);
+    } catch (error) {
+      setWorkflowError({
+        title: "Cannot reopen chart",
+        message: getErrorMessage(error, "Failed to reopen chart editing."),
+        detail: "Refresh the workspace and try reopening the chart again.",
+      });
+    } finally {
+      setIsCertifyingChart(false);
+    }
+  };
 
   const handleMapLoad = useMapLoader(projectId, logger, isDarkMode, setupFeaturesAndLayers, mapRef, cleanupRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, selectedToolRef, setCapturedImages, setIsLoading);
   const showMainUI = !isLoadingProject;
@@ -270,6 +373,7 @@ const Studio = ({ logger }) => {
       {isLoading && <MapLoading message={isLoadingProject ? "Loading project..." : "Loading map..."} />}
       {showNoProjectsModal && <NoProjectAlert onCreate={handleOpenCreateProject} onOpenLibrary={handleBackToLibrary} onLater={handleMaybeLater} message={message} />}
       {showCreateProjectModal && <CreateProjectModal isOpen={showCreateProjectModal} onClose={() => setShowCreateProjectModal(false)} onCreate={(projectData) => handleCreateProject({ projectData, setLoading: () => { }, onSuccess: (project) => { setShowCreateProjectModal(false); navigate(`/studio/${project._id || project.id}`); } })} />}
+      <WorkflowErrorModal error={workflowError} isDarkMode={isDarkMode} onClose={() => setWorkflowError(null)} />
       {isInactivityPromptVisible && <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm"><div className={`max-w-md rounded-3xl border p-6 text-center shadow-2xl ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"}`}><h2 className="text-xl font-black">Workspace paused for inactivity</h2><p className={`mt-2 text-sm ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>Refresh the workspace to continue with the latest forecast data, or stay active if you are still editing.</p><div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center"><Button onClick={refreshWorkspace}>Refresh workspace</Button><Button variant="secondary" onClick={stayActive}>Stay active</Button></div></div></div>}
     </div>
   );
