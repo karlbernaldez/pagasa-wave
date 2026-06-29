@@ -13,12 +13,14 @@ export const DEFAULT_GENERAL = {
   logoPreview: '/pagasa-logo.png',
   showPublicStaffInfo: true,
   mapBoundsPreset: 'tcad',
+  mapBoundsCustomName: '',
   mapBoundsCustom: {
     westLng: 93,
     southLat: 0,
     eastLng: 153.8595159535438,
     northLat: 25,
   },
+  savedCustomMapBounds: [],
 };
 
 export const DEFAULT_OPERATIONS = {
