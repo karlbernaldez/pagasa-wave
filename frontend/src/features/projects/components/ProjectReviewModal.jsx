@@ -43,13 +43,13 @@ function GalleryButton({ direction, disabled, isDarkMode, onClick }) {
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`inline-flex h-14 w-14 items-center justify-center rounded-full border shadow-xl transition disabled:cursor-not-allowed disabled:opacity-30 ${
+      className={`inline-flex h-14 w-14 items-center justify-center rounded-full border shadow-2xl backdrop-blur-xl transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${
         isDarkMode
-          ? 'border-cyan-300/30 bg-slate-950 text-cyan-100 hover:bg-slate-900'
-          : 'border-cyan-200 bg-white text-cyan-700 hover:bg-cyan-50'
+          ? 'border-cyan-300/40 bg-slate-950/95 text-cyan-100 hover:bg-cyan-500/20'
+          : 'border-cyan-200 bg-white/95 text-cyan-700 hover:bg-cyan-50'
       }`}
     >
-      <Icon size={28} />
+      <Icon size={30} />
     </button>
   );
 }
@@ -167,24 +167,22 @@ export default function ProjectReviewModal({ project, reviewQueue = [], isDarkMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-slate-950/80 p-1 backdrop-blur-sm sm:p-4 xl:items-center xl:p-6">
-      <div className={`relative flex h-full w-full max-w-[1480px] flex-col overflow-hidden rounded-2xl border shadow-2xl ring-1 ring-white/10 sm:h-[min(94vh,940px)] sm:rounded-[28px] ${surface}`}>
-        {gallery.total > 1 && (
-          <>
-            <div className="absolute inset-y-0 left-3 z-50 flex items-center sm:left-5">
-              <GalleryButton direction="previous" disabled={!gallery.previousProject || !canMoveGallery} isDarkMode={isDarkMode} onClick={() => selectGalleryProject(gallery.previousProject)} />
-            </div>
-            <div className="absolute inset-y-0 right-3 z-50 flex items-center sm:right-5">
-              <GalleryButton direction="next" disabled={!gallery.nextProject || !canMoveGallery} isDarkMode={isDarkMode} onClick={() => selectGalleryProject(gallery.nextProject)} />
-            </div>
-          </>
-        )}
+      <div className="pointer-events-none fixed inset-y-0 left-4 right-4 z-[120] flex items-center justify-between sm:left-8 sm:right-8 xl:left-14 xl:right-14">
+        <div className="pointer-events-auto">
+          <GalleryButton direction="previous" disabled={!gallery.previousProject || !canMoveGallery} isDarkMode={isDarkMode} onClick={() => selectGalleryProject(gallery.previousProject)} />
+        </div>
+        <div className="pointer-events-auto">
+          <GalleryButton direction="next" disabled={!gallery.nextProject || !canMoveGallery} isDarkMode={isDarkMode} onClick={() => selectGalleryProject(gallery.nextProject)} />
+        </div>
+      </div>
 
+      <div className={`relative flex h-full w-full max-w-[1480px] flex-col overflow-hidden rounded-2xl border shadow-2xl ring-1 ring-white/10 sm:h-[min(94vh,940px)] sm:rounded-[28px] ${surface}`}>
         <header className={`flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500 sm:text-xs">Forecast Chart Review</p>
               <span className={`${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-100 bg-blue-50 text-blue-700'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>{statusLabel}</span>
-              {gallery.total > 1 && <span className={`${isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>Chart {gallery.currentNumber} of {gallery.total}</span>}
+              <span className={`${isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>Chart {gallery.currentNumber} of {gallery.total}</span>
             </div>
             <h2 className={`mt-2 truncate text-lg font-black leading-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{getProjectName(currentProject)}</h2>
             <p className={`mt-1 text-xs font-semibold sm:text-sm ${mutedText}`}>{getProjectType(currentProject)} · {getOwner(currentProject)} · Forecast {formatDate(currentProject.forecastDate)}</p>
