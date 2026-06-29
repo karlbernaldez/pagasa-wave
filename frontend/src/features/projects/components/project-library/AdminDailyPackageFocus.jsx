@@ -44,6 +44,7 @@ function getDailyFocus({ packages = [], projects = [] }) {
         label: CHART_LABELS[chartType] || chartType,
         status: project?.status || 'Missing',
         projectName: project?.name || project?.title || 'No chart project linked for today yet',
+        project,
       };
     }),
   };
@@ -61,13 +62,19 @@ function getToneClasses(tone, isDarkMode) {
   return classes[tone] || classes.slate;
 }
 
-function ChartFocusTile({ chart, isDarkMode }) {
+function ChartFocusTile({ chart, dailyPackage, isDarkMode, onOpenChart }) {
   const tone = STATUS_TONE[chart.status] || 'slate';
   const icon = tone === 'emerald' ? CheckCircle2 : tone === 'rose' ? XCircle : tone === 'amber' || tone === 'cyan' ? Clock3 : BarChart3;
   const Icon = icon;
-
-  return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/70'}`}>
+  const isClickable = Boolean(chart.project && chart.project._id);
+  const baseClass = `rounded-2xl border p-4 text-left shadow-sm transition ${isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/70'}`;
+  const interactiveClass = isClickable
+    ? isDarkMode
+      ? 'cursor-pointer hover:border-cyan-300/30 hover:bg-cyan-300/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/40'
+      : 'cursor-pointer hover:border-cyan-200 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-200'
+    : 'cursor-not-allowed opacity-70';
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className={`truncate text-xs font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
@@ -84,22 +91,16 @@ function ChartFocusTile({ chart, isDarkMode }) {
       <span className={`mt-4 inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${getToneClasses(tone, isDarkMode)}`}>
         {chart.status}
       </span>
-    </div>
+    </>
   );
-}
 
-function QuickFilterButton({ children, isDarkMode, onClick }) {
+  if (!isClickable) {
+    return <div className={`${baseClass} ${interactiveClass}`}>{content}</div>;
+  }
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl border px-3 py-2 text-xs font-black transition-colors ${
-        isDarkMode
-          ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
-          : 'border-white/80 bg-white/75 text-slate-600 hover:bg-white hover:text-slate-950'
-      }`}
-    >
-      {children}
+    <button type="button" className={`${baseClass} ${interactiveClass}`} onClick={() => onOpenChart?.(chart.project, dailyPackage)}>
+      {content}
     </button>
   );
 }
@@ -108,7 +109,7 @@ export default function AdminDailyPackageFocus({
   isDarkMode,
   packages = [],
   projects = [],
-  setStatusFilter,
+  onOpenChart,
   total = 0,
 }) {
   const { chartTiles, dailyPackage, historyCount } = getDailyFocus({ packages, projects });
@@ -121,7 +122,7 @@ export default function AdminDailyPackageFocus({
 
   return (
     <section className={`overflow-hidden rounded-3xl border shadow-xl backdrop-blur-xl ${isDarkMode ? 'border-cyan-300/15 bg-cyan-950/20 shadow-black/20' : 'border-cyan-100 bg-cyan-50/75 shadow-cyan-100/60'}`}>
-      <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="p-4 sm:p-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-200 bg-white/75 text-cyan-700'}`}>
@@ -134,21 +135,14 @@ export default function AdminDailyPackageFocus({
             Today&apos;s Analysis and Forecast Charts
           </h2>
           <p className={`mt-1 max-w-3xl text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-            {dailyPackage?.title || 'No ForecastPackage is linked to today yet'} is the primary review target. Package history stays available below through filters and pagination.
+            {dailyPackage?.title || 'No ForecastPackage is linked to today yet'} is the primary review target. Package history stays available below through the main filters and pagination.
           </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2 lg:justify-end">
-          <QuickFilterButton isDarkMode={isDarkMode} onClick={() => setStatusFilter?.('All')}>All packages</QuickFilterButton>
-          <QuickFilterButton isDarkMode={isDarkMode} onClick={() => setStatusFilter?.('Submitted')}>Submitted</QuickFilterButton>
-          <QuickFilterButton isDarkMode={isDarkMode} onClick={() => setStatusFilter?.('Approved')}>Approved</QuickFilterButton>
-          <QuickFilterButton isDarkMode={isDarkMode} onClick={() => setStatusFilter?.('Rejected')}>Rejected</QuickFilterButton>
         </div>
       </div>
 
       <div className={`grid gap-3 border-t p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4 ${isDarkMode ? 'border-white/10' : 'border-cyan-100'}`}>
         {chartTiles.map((chart) => (
-          <ChartFocusTile key={chart.chartType} chart={chart} isDarkMode={isDarkMode} />
+          <ChartFocusTile key={chart.chartType} chart={chart} dailyPackage={dailyPackage} isDarkMode={isDarkMode} onOpenChart={onOpenChart} />
         ))}
       </div>
 
