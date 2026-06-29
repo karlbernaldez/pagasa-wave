@@ -23,7 +23,6 @@ import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
 import { saveMarker } from "@dashboards/forecaster/map/layers/markerLayer";
 
 const TOOLBAR_DELAY = 1000;
-const STUDIO_HEADER_HEIGHT = 64;
 
 const FORECAST_CHART_LABELS = {
   analysis: "Wave Analysis",
@@ -104,7 +103,9 @@ const Studio = ({ logger }) => {
 
   const loadChartContext = useCallback(async ({ signal, silent = false, autoJoin } = {}) => {
     if (!projectId) { setChartContext(null); setIsLoadingChartContext(false); return; }
-    const shouldAutoJoin = autoJoin ?? !suppressAutoJoinRef.current;
+    const loadedStatus = currentProject?.status || latestProject?.status;
+    const canAutoJoinCurrentChart = canEditProjectStatus(loadedStatus);
+    const shouldAutoJoin = Boolean((autoJoin ?? !suppressAutoJoinRef.current) && canAutoJoinCurrentChart);
     if (!silent) setIsLoadingChartContext(true);
     try {
       const context = await fetchForecastPackageChartContextByProject(projectId, { signal, autoJoin: shouldAutoJoin });
@@ -117,7 +118,7 @@ const Studio = ({ logger }) => {
     } finally {
       if (!silent) setIsLoadingChartContext(false);
     }
-  }, [projectId, applyChartContext]);
+  }, [projectId, applyChartContext, currentProject?.status, latestProject?.status]);
 
   useEffect(() => { document.title = currentProject?.name ? `${currentProject.name}` : "WaveLab - Studio"; }, [currentProject?.name]);
   useEffect(() => { setLayersRef.current = setLayers; }, [setLayers]);
@@ -144,10 +145,10 @@ const Studio = ({ logger }) => {
     savePointFeature({ coords: [selectedPoint.lng, selectedPoint.lat], title, selectedType: type, setLayersRef, projectId });
   };
 
-  const handleClaimChart = async () => { if (!projectId || isClaimingChart) return; setIsClaimingChart(true); suppressAutoJoinRef.current = false; setStudioError(""); try { const context = await claimForecastPackageChartByProject(projectId); applyChartContext(context); } catch (error) { setStudioError(error?.message || "Failed to join chart editing."); } finally { setIsClaimingChart(false); } };
-  const handleReleaseChart = async () => { if (!projectId || isReleasingChart) return; setIsReleasingChart(true); suppressAutoJoinRef.current = true; setStudioError(""); try { const context = await releaseForecastPackageChartByProject(projectId); applyChartContext(context); } catch (error) { suppressAutoJoinRef.current = false; setStudioError(error?.message || "Failed to release chart editing session."); } finally { setIsReleasingChart(false); } };
-  const handleCertifyChartReady = async () => { if (!projectId || isCertifyingChart) return; setIsCertifyingChart(true); setStudioError(""); try { const context = await updateForecastChartCompletionByProject(projectId, true); applyChartContext(context); } catch (error) { setStudioError(error?.message || "Failed to certify chart readiness."); } finally { setIsCertifyingChart(false); } };
-  const handleReopenChartEdits = async () => { if (!projectId || isCertifyingChart) return; setIsCertifyingChart(true); setStudioError(""); try { const context = await updateForecastChartCompletionByProject(projectId, false); applyChartContext(context); } catch (error) { setStudioError(error?.message || "Failed to reopen chart editing."); } finally { setIsCertifyingChart(false); } };
+  const handleClaimChart = async () => { if (!projectId || isClaimingChart || !canEditProject) return; setIsClaimingChart(true); suppressAutoJoinRef.current = false; setStudioError(""); try { const context = await claimForecastPackageChartByProject(projectId); applyChartContext(context); } catch (error) { setStudioError(error?.message || "Failed to join chart editing."); } finally { setIsClaimingChart(false); } };
+  const handleReleaseChart = async () => { if (!projectId || isReleasingChart || !canEditProject) return; setIsReleasingChart(true); suppressAutoJoinRef.current = true; setStudioError(""); try { const context = await releaseForecastPackageChartByProject(projectId); applyChartContext(context); } catch (error) { suppressAutoJoinRef.current = false; setStudioError(error?.message || "Failed to release chart editing session."); } finally { setIsReleasingChart(false); } };
+  const handleCertifyChartReady = async () => { if (!projectId || isCertifyingChart || !canEditProject) return; setIsCertifyingChart(true); setStudioError(""); try { const context = await updateForecastChartCompletionByProject(projectId, true); applyChartContext(context); } catch (error) { setStudioError(error?.message || "Failed to certify chart readiness."); } finally { setIsCertifyingChart(false); } };
+  const handleReopenChartEdits = async () => { if (!projectId || isCertifyingChart || !canEditProjectStatus(projectStatus)) return; setIsCertifyingChart(true); setStudioError(""); try { const context = await updateForecastChartCompletionByProject(projectId, false); applyChartContext(context); } catch (error) { setStudioError(error?.message || "Failed to reopen chart editing."); } finally { setIsCertifyingChart(false); } };
 
   const handleMapLoad = useMapLoader(projectId, logger, isDarkMode, setupFeaturesAndLayers, mapRef, cleanupRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, selectedToolRef, setCapturedImages, setIsLoading);
   const showMainUI = !isLoadingProject;
@@ -157,7 +158,6 @@ const Studio = ({ logger }) => {
   const projectStatusStyle = isRevisionRequested ? "border-amber-300 bg-amber-50 text-amber-800" : getProjectStatusStyle(projectStatus);
   const chartType = chartContext?.chartType;
   const chartLabel = getChartLabel(chartType);
-  const blockingChartLabel = getChartLabel(chartContext?.blockingChartType);
   const activeEditorLabels = chartClaim?.activeEditorLabels || [];
   const activeEditorText = formatNameList(activeEditorLabels);
   const isChartActionBusy = isLoadingChartContext || isClaimingChart || isReleasingChart || isCertifyingChart;
@@ -174,7 +174,7 @@ const Studio = ({ logger }) => {
     <div className={`relative h-screen w-full overflow-hidden ${isDarkMode ? "bg-slate-950" : "bg-slate-100"}`}>
       <header className={`studio-liquid-panel absolute left-2 right-2 top-2 z-[120] flex h-14 items-center justify-between gap-2 rounded-2xl border px-2 shadow-2xl backdrop-blur-2xl sm:left-3 sm:right-3 sm:px-3 ${headerClass}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"><Button variant="secondary" size="sm" icon={ArrowLeft} onClick={handleBackToLibrary} className={`!rounded-xl ${headerGhostButton}`}><span className="hidden sm:inline">Forecast Package</span><span className="sm:hidden">Package</span></Button><div className={`min-w-0 border-l pl-2 sm:pl-3 ${headerDivider}`}><p className={`hidden text-xs font-semibold uppercase tracking-[0.18em] sm:block ${headerMutedText}`}>WaveLab Studio</p><div className="flex min-w-0 items-center gap-2"><h1 className={`max-w-[32vw] truncate text-xs font-bold sm:max-w-[42vw] sm:text-sm ${headerStrongText}`}>{projectName}</h1>{currentProject?.status && <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-black lg:inline-flex ${projectStatusStyle}`}>{projectStatusLabel}</span>}</div></div></div>
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">{isReadOnlyProject && <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-700"}`}><Lock size={13} />{isPackageReadyReadOnly ? "Ready" : projectStatusLabel || "Read only"}</span>}{chartContext && <div className={`hidden items-center gap-2 rounded-2xl border px-3 py-1.5 text-xs font-black lg:flex ${headerControlGroup}`}><span className={isDarkMode ? "text-cyan-200" : "text-blue-700"}>{chartLabel}</span>{chartClaim?.claimedByCurrentUser ? <span className="text-emerald-300">You are editing</span> : chartClaim?.claimedByOtherUser ? <span className="text-amber-300">Editing: {activeEditorText}</span> : <span className={headerMutedText}>Available</span>}{chartClaim?.canRelease && <Button size="sm" variant="secondary" onClick={handleReleaseChart} loading={isReleasingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Release</Button>}{chartClaim?.canClaim && <Button size="sm" onClick={handleClaimChart} loading={isClaimingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerPrimaryButton}`}>Join</Button>}{chartClaim?.canCertify && <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={handleCertifyChartReady} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Ready</Button>}{isPackageChartReady && canEditProjectStatus(projectStatus) && <Button size="sm" variant="secondary" onClick={handleReopenChartEdits} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Reopen</Button>}</div>}<NotificationBell /><button onClick={handleToggleTheme} className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-200 hover:scale-105 ${headerControlGroup}`} aria-label="Toggle theme">{isDarkMode ? <Sun size={16} /> : <Moon size={16} />}</button></div>
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">{isReadOnlyProject && <span className={`hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black xl:inline-flex ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-100 text-slate-700"}`}><Lock size={13} />{isPackageReadyReadOnly ? "Ready" : projectStatusLabel || "View only"}</span>}{chartContext && <div className={`hidden items-center gap-2 rounded-2xl border px-3 py-1.5 text-xs font-black lg:flex ${headerControlGroup}`}><span className={isDarkMode ? "text-cyan-200" : "text-blue-700"}>{chartLabel}</span>{!canEditProject ? <span className={headerMutedText}>View only</span> : chartClaim?.claimedByCurrentUser ? <span className="text-emerald-300">You are editing</span> : chartClaim?.claimedByOtherUser ? <span className="text-amber-300">Editing: {activeEditorText}</span> : <span className={headerMutedText}>Available</span>}{canEditProject && chartClaim?.canRelease && <Button size="sm" variant="secondary" onClick={handleReleaseChart} loading={isReleasingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Release</Button>}{canEditProject && chartClaim?.canClaim && <Button size="sm" onClick={handleClaimChart} loading={isClaimingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerPrimaryButton}`}>Join</Button>}{canEditProject && chartClaim?.canCertify && <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={handleCertifyChartReady} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Ready</Button>}{isPackageChartReady && canEditProjectStatus(projectStatus) && <Button size="sm" variant="secondary" onClick={handleReopenChartEdits} loading={isCertifyingChart} disabled={isChartActionBusy} className={`!h-8 !rounded-xl ${headerGhostButton}`}>Reopen</Button>}</div>}<NotificationBell /><button onClick={handleToggleTheme} className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-200 hover:scale-105 ${headerControlGroup}`} aria-label="Toggle theme">{isDarkMode ? <Sun size={16} /> : <Moon size={16} />}</button></div>
       </header>
 
       {studioError && <div className={`absolute left-1/2 top-[4.5rem] z-[130] flex -translate-x-1/2 items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-bold shadow-xl ${isDarkMode ? "border-red-400/30 bg-red-950/80 text-red-200" : "border-red-200 bg-red-50 text-red-700"}`}><AlertTriangle size={16} />{studioError}</div>}
