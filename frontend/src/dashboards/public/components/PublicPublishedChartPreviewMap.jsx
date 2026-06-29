@@ -9,7 +9,7 @@ import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeF
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 const STYLE_URL = 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n';
-const DEFAULT_BOUNDS = [[93, 0], [153.8595159535438, 25]];
+const TCAD_BOUNDS = [[93, 0], [153.8595159535438, 25]];
 const DEFAULT_CENTER = [120, 15.5];
 const RASTER_SOURCE_ID = 'published-cog-raster-source';
 const RASTER_LAYER_ID = 'published-cog-raster';
@@ -20,8 +20,16 @@ const FEATURE_SOURCE_ID = 'published-chart-annotations';
 const LABEL_SOURCE_ID = 'published-chart-line-labels';
 const LESS_ONE_IMAGE_ID = 'published-preview-less-1';
 
-const COUNTRY_LAYER_ORDER = [COUNTRY_LAND_LAYER_ID, COUNTRY_LINE_LAYER_ID];
-const ANNOTATION_LAYER_ORDER = [
+const POINT_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'type'], ''];
+const POINT_FILTER = ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false];
+const LINE_FILTER = ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false];
+const POLYGON_FILTER = ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false];
+const LESS_ONE_FILTER = ['all', POINT_FILTER, ['==', POINT_TYPE, 'less_1']];
+const POINT_SYMBOL_FILTER = ['all', POINT_FILTER, ['!=', POINT_TYPE, 'less_1']];
+const POINT_LABEL_FILTER = ['all', POINT_FILTER, ['!=', POINT_TYPE, 'less_1']];
+const LAYER_ORDER = [
+  COUNTRY_LAND_LAYER_ID,
+  COUNTRY_LINE_LAYER_ID,
   'published-chart-polygons',
   'published-chart-polygon-outline',
   'published-chart-lines',
@@ -32,20 +40,12 @@ const ANNOTATION_LAYER_ORDER = [
   'published-chart-point-labels',
 ];
 
-const POINT_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'type'], ''];
-const POINT_FILTER = ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false];
-const LINE_FILTER = ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false];
-const POLYGON_FILTER = ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false];
-const LESS_ONE_FILTER = ['all', POINT_FILTER, ['==', POINT_TYPE, 'less_1']];
-const POINT_SYMBOL_FILTER = ['all', POINT_FILTER, ['!=', POINT_TYPE, 'less_1']];
-const POINT_LABEL_FILTER = ['all', POINT_FILTER, ['!=', POINT_TYPE, 'less_1']];
-
 function isFront(feature) {
   const props = feature?.properties || {};
   return Boolean(props.isFront || props.frontType || `${props.name || ''} ${props.title || ''}`.toLowerCase().includes('front'));
 }
 
-function frontColor(feature) {
+function getFrontColor(feature) {
   const type = String(feature?.properties?.frontType || '').toLowerCase();
   if (type === 'warm') return '#ef4444';
   if (type === 'occluded') return '#7c3aed';
@@ -64,12 +64,6 @@ function getLineLabel(feature) {
   return String(props.labelValue ?? props.waveHeight ?? props.heightValue ?? props.height ?? props.value ?? props.text ?? props.label ?? props.name ?? props.title ?? feature?.name ?? '').trim();
 }
 
-function isClosedLine(feature, line) {
-  const first = line?.[0];
-  const last = line?.[line.length - 1];
-  return Boolean(feature?.properties?.closedMode || (Array.isArray(first) && Array.isArray(last) && first[0] === last[0] && first[1] === last[1]));
-}
-
 function buildCollections(featureCollection) {
   const regular = [];
   const fronts = [];
@@ -77,18 +71,20 @@ function buildCollections(featureCollection) {
 
   featureCollection.features.forEach((feature, featureIndex) => {
     if (isFront(feature)) {
-      getLineParts(feature.geometry).forEach((line) => {
-        fronts.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line }, properties: { color: frontColor(feature) } });
-      });
+      getLineParts(feature.geometry).forEach((line) => fronts.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line }, properties: { color: getFrontColor(feature) } }));
       return;
     }
 
     regular.push(feature);
     const text = getLineLabel(feature);
     if (!text) return;
+
     getLineParts(feature.geometry).forEach((line, lineIndex) => {
       if (!Array.isArray(line) || line.length < 2) return;
-      const points = isClosedLine(feature, line) ? [line[0]] : [line[0], line[line.length - 1]];
+      const first = line[0];
+      const last = line[line.length - 1];
+      const closed = feature?.properties?.closedMode || (Array.isArray(first) && Array.isArray(last) && first[0] === last[0] && first[1] === last[1]);
+      const points = closed ? [first] : [first, last];
       points.forEach((coordinates, pointIndex) => labels.push({ type: 'Feature', id: `${feature.id || featureIndex}-${lineIndex}-${pointIndex}`, geometry: { type: 'Point', coordinates }, properties: { text } }));
     });
   });
@@ -105,18 +101,17 @@ function setGeoJson(map, id, data) {
   else map.addSource(id, { type: 'geojson', data });
 }
 
-function safelyMoveLayerToTop(map, layerId) {
+function moveToTop(map, layerId) {
   if (!map.getLayer(layerId)) return;
   try {
     map.moveLayer(layerId);
   } catch (error) {
-    console.warn(`[PublicPublishedChartPreviewMap] Failed to move layer ${layerId}:`, error);
+    console.warn(`[PublicPublishedChartPreviewMap] Failed to move ${layerId}:`, error);
   }
 }
 
-function restackPreviewLayers(map) {
-  COUNTRY_LAYER_ORDER.forEach((layerId) => safelyMoveLayerToTop(map, layerId));
-  ANNOTATION_LAYER_ORDER.forEach((layerId) => safelyMoveLayerToTop(map, layerId));
+function restackLayers(map) {
+  LAYER_ORDER.forEach((layerId) => moveToTop(map, layerId));
 }
 
 function removeRaster(map) {
@@ -131,8 +126,7 @@ function syncRaster(map, raster, enabled) {
     return;
   }
 
-  const changed = map.getSource(RASTER_SOURCE_ID) && map.__publishedCogTileUrl !== raster.tileUrl;
-  if (changed) removeRaster(map);
+  if (map.getSource(RASTER_SOURCE_ID) && map.__publishedCogTileUrl !== raster.tileUrl) removeRaster(map);
 
   if (!map.getSource(RASTER_SOURCE_ID)) {
     map.addSource(RASTER_SOURCE_ID, {
@@ -163,10 +157,7 @@ function syncRaster(map, raster, enabled) {
 function syncCountryOverlay(map, isDarkMode) {
   try {
     if (!map.getSource(COUNTRY_SOURCE_ID)) {
-      map.addSource(COUNTRY_SOURCE_ID, {
-        type: 'vector',
-        url: 'mapbox://mapbox.country-boundaries-v1',
-      });
+      map.addSource(COUNTRY_SOURCE_ID, { type: 'vector', url: 'mapbox://mapbox.country-boundaries-v1' });
     }
 
     if (!map.getLayer(COUNTRY_LAND_LAYER_ID)) {
@@ -175,10 +166,7 @@ function syncCountryOverlay(map, isDarkMode) {
         type: 'fill',
         source: COUNTRY_SOURCE_ID,
         'source-layer': 'country_boundaries',
-        paint: {
-          'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd',
-          'fill-opacity': 0.82,
-        },
+        paint: { 'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd', 'fill-opacity': 0.82 },
       });
     } else {
       map.setPaintProperty(COUNTRY_LAND_LAYER_ID, 'fill-color', isDarkMode ? '#1e293b' : '#d6d3cd');
@@ -236,6 +224,12 @@ function StatusOverlay({ loading, hasRenderableRaster, hasFeatures, isDarkMode }
   return null;
 }
 
+function getPreviewHeight(height) {
+  if (height == null) return height;
+  if (typeof height === 'number') return `min(${height}px, 54vh)`;
+  return height;
+}
+
 function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode = false, className = '', height = 288, onClick }) {
   const { activeChartType } = useChartType();
   const containerRef = useRef(null);
@@ -265,7 +259,7 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     if (!containerRef.current || mapRef.current) return undefined;
     const map = new mapboxgl.Map({ container: containerRef.current, style: STYLE_URL, projection: 'mercator', center: DEFAULT_CENTER, zoom: 4.8, interactive: false, attributionControl: false, fadeDuration: 0 });
     mapRef.current = map;
-    map.on('load', () => { setIsReady(true); map.resize(); map.fitBounds(DEFAULT_BOUNDS, { padding: 16, maxZoom: 6, duration: 0 }); });
+    map.on('load', () => { setIsReady(true); map.resize(); map.fitBounds(TCAD_BOUNDS, { padding: 16, maxZoom: 6, duration: 0 }); });
     return () => { map.remove(); mapRef.current = null; setIsReady(false); };
   }, []);
 
@@ -275,12 +269,13 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     syncRaster(map, raster, shouldRenderRaster);
     syncCountryOverlay(map, isDarkMode);
     if (hasFeatures) syncAnnotations(map, featureCollection);
-    restackPreviewLayers(map);
-    map.fitBounds(DEFAULT_BOUNDS, { padding: 16, maxZoom: 6, duration: 0 });
+    restackLayers(map);
+    map.resize();
+    map.fitBounds(TCAD_BOUNDS, { padding: 16, maxZoom: 6, duration: 0 });
   }, [featureCollection, hasFeatures, isDarkMode, isReady, raster, shouldRenderRaster]);
 
   return (
-    <div className={`relative overflow-hidden ${className}`} style={{ height }}>
+    <div className={`relative overflow-hidden ${className}`} style={{ height: getPreviewHeight(height) }}>
       {onClick && <button type="button" className="absolute inset-0 z-10 h-full w-full cursor-pointer" onClick={onClick} aria-label="Open published chart" />}
       <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
       <StatusOverlay loading={loading} hasRenderableRaster={hasRenderableRaster} hasFeatures={hasFeatures} isDarkMode={isDarkMode} />
