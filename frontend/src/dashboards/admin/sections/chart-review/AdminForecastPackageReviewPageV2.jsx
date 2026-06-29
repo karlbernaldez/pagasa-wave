@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, FolderKanban } from 'lucide-react';
 
 import { approveProject, publishProject, rejectProject, startReviewProject } from '@/api/projectAPI';
-import { fetchAdminForecastPackages, startForecastPackageReview } from '@/api/forecastPackageAPI';
+import { approveForecastPackage, fetchAdminForecastPackages, startForecastPackageReview } from '@/api/forecastPackageAPI';
 import Button from '@/components/ui/Button';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import ForecastPackageCard from './ForecastPackageCard';
@@ -18,6 +18,8 @@ import { adaptForecastPackageModel } from '@/features/projects/utils/forecastPac
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const PAGE_SIZE = 12;
+const PROJECT_APPROVED_STATUSES = ['Approved', 'Published'];
+const PACKAGE_AUTO_APPROVE_STATUSES = ['Under Review', 'Revision Requested'];
 const getId = (item) => item?._id || item?.id;
 
 function getWelcomeName(user) {
@@ -51,6 +53,29 @@ function filterPackages(packages, search, typeFilter) {
     ].join(' ').toLowerCase();
     return haystack.includes(query);
   });
+}
+
+function getPackageContainingProject(packages, projectId) {
+  return packages.find((forecastPackage) => (
+    forecastPackage.charts || []
+  ).some((chart) => getId(chart.project) === projectId));
+}
+
+function mergeApprovedProjectIntoPackage(forecastPackage, updatedProject) {
+  const updatedProjectId = getId(updatedProject);
+  return {
+    ...forecastPackage,
+    charts: (forecastPackage?.charts || []).map((chart) => (
+      getId(chart.project) === updatedProjectId
+        ? { ...chart, project: { ...chart.project, ...updatedProject } }
+        : chart
+    )),
+  };
+}
+
+function isPackageReadyForApproval(forecastPackage) {
+  const charts = forecastPackage?.charts || [];
+  return charts.length > 0 && charts.every((chart) => PROJECT_APPROVED_STATUSES.includes(chart.project?.status));
 }
 
 function StateCard({ children, isDarkMode }) {
@@ -126,8 +151,24 @@ export default function AdminForecastPackageReviewPageV2() {
     }
   };
 
+  const approvePackageIfAllChartsApproved = async (updatedProject) => {
+    const projectId = getId(updatedProject);
+    if (!projectId || updatedProject?.status !== 'Approved') return;
+
+    const matchingPackage = getPackageContainingProject(packages, projectId);
+    if (!matchingPackage || !PACKAGE_AUTO_APPROVE_STATUSES.includes(matchingPackage.status)) return;
+
+    const nextPackage = mergeApprovedProjectIntoPackage(matchingPackage, updatedProject);
+    if (!isPackageReadyForApproval(nextPackage)) return;
+
+    await approveForecastPackage(getId(matchingPackage));
+  };
+
   const onActionComplete = async (updatedProject) => {
-    if (updatedProject) setReviewProject(updatedProject);
+    if (updatedProject) {
+      setReviewProject(updatedProject);
+      await approvePackageIfAllChartsApproved(updatedProject);
+    }
     await query.refetch();
   };
 
