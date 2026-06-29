@@ -5,6 +5,8 @@ export const setIo = (io) => {
 };
 
 const getIo = () => globalThis.__socketIo ?? null;
+const FORECAST_EMIT_DEDUPE_WINDOW_MS = 150;
+const recentForecastEmits = new Map();
 
 const getId = (value) => {
   if (!value) return '';
@@ -20,6 +22,22 @@ const getPackageProjectIds = (forecastPackage) => (
 )
   .map((chart) => getId(chart?.project))
   .filter(Boolean);
+
+function shouldEmitForecastEvent(key) {
+  const now = Date.now();
+  const lastAt = recentForecastEmits.get(key) || 0;
+  if (now - lastAt < FORECAST_EMIT_DEDUPE_WINDOW_MS) return false;
+
+  recentForecastEmits.set(key, now);
+
+  if (recentForecastEmits.size > 500) {
+    for (const [entryKey, entryAt] of recentForecastEmits.entries()) {
+      if (now - entryAt > 5000) recentForecastEmits.delete(entryKey);
+    }
+  }
+
+  return true;
+}
 
 export const SOCKET_EVENTS = {
   NOTIFICATION_NEW: 'notification:new',
@@ -63,11 +81,15 @@ export const emitForecastChartUpdated = (projectId, payload = {}) => {
   const _io = getIo();
   if (!_io || !projectId) return;
 
-  _io.to(roomFor.forecastChartProject(String(projectId))).emit(SOCKET_EVENTS.FORECAST_CHART_UPDATED, {
+  const eventPayload = {
     projectId: String(projectId),
     updatedAt: new Date().toISOString(),
     ...payload,
-  });
+  };
+  const eventKey = `${SOCKET_EVENTS.FORECAST_CHART_UPDATED}:${eventPayload.projectId}:${eventPayload.action || ''}:${eventPayload.packageId || ''}`;
+  if (!shouldEmitForecastEvent(eventKey)) return;
+
+  _io.to(roomFor.forecastChartProject(String(projectId))).emit(SOCKET_EVENTS.FORECAST_CHART_UPDATED, eventPayload);
 };
 
 export const emitForecastPackageUpdated = (forecastPackage, payload = {}) => {
@@ -84,6 +106,8 @@ export const emitForecastPackageUpdated = (forecastPackage, payload = {}) => {
     updatedAt: new Date().toISOString(),
     ...payload,
   };
+  const eventKey = `${SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED}:${packageId}:${eventPayload.projectId || ''}:${eventPayload.action || ''}`;
+  if (!shouldEmitForecastEvent(eventKey)) return;
 
   _io.to(roomFor.role('admin')).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
   _io.to(roomFor.role('user')).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
