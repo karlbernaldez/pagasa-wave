@@ -46,6 +46,6 @@ export const getThemeStyles = (isDarkMode) => {
 // LABEL MAP FOR AUTO-GENERATED TITLES
 // ============================================================
 export const MARKER_LABEL_MAP = {
-  text_note: 'Text',
-  less_1: 'Less 1',
+  text_note: 'Text Note',
+  less_1: 'Low Wave',
 };
