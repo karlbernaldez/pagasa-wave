@@ -4,6 +4,8 @@ import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
+const DEFAULT_RASTER_BOUNDS = [100, -5, 180, 50];
+
 function getProjectOwnerId(project) {
   return String(project?.owner?._id || project?.owner || '');
 }
@@ -35,12 +37,15 @@ function toFeatureSnapshot(feature) {
   };
 }
 
-function getPublishedFeatureCollectionFromVersions(project) {
+function getPublishedVersion(project) {
   const versions = Array.isArray(project?.versions) ? project.versions : [];
-  const publishedVersion = [...versions]
+  return [...versions]
     .reverse()
-    .find((version) => version?.reason === 'publish' && (version.featureCollection || version.snapshot));
+    .find((version) => version?.reason === 'publish' && (version.featureCollection || version.snapshot || version.raster));
+}
 
+function getPublishedFeatureCollectionFromVersions(project) {
+  const publishedVersion = getPublishedVersion(project);
   const source = publishedVersion?.featureCollection || publishedVersion?.snapshot;
 
   if (source?.type === 'FeatureCollection' && Array.isArray(source.features)) {
@@ -77,6 +82,67 @@ function getPublicProjectPayload(project) {
   };
 }
 
+function formatForecastDateToken(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(date.getUTCDate()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}`;
+}
+
+function interpolateTemplate(template, values) {
+  if (!template) return '';
+  return String(template).replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+    if (key in values) return encodeURIComponent(String(values[key] ?? ''));
+    return match;
+  });
+}
+
+function getRawRasterAsset(project) {
+  const publishedVersion = getPublishedVersion(project);
+  return project?.publishedRaster || publishedVersion?.raster || project?.raster || null;
+}
+
+function normalizeBounds(value) {
+  if (!Array.isArray(value) || value.length !== 4) return DEFAULT_RASTER_BOUNDS;
+  return value.map(Number).every(Number.isFinite) ? value.map(Number) : DEFAULT_RASTER_BOUNDS;
+}
+
+function resolveCogRaster(project) {
+  const asset = getRawRasterAsset(project) || {};
+  const forecastDate = formatForecastDateToken(project?.forecastDate);
+  const tokenValues = {
+    projectId: String(project?._id || ''),
+    chartType: project?.chartType || '',
+    forecastDate,
+    date: forecastDate,
+    model: asset.model || process.env.PUBLIC_WAVE_COG_MODEL || 'WW3',
+  };
+
+  const cogUrl = asset.cogUrl || asset.url || interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
+  const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE, tokenValues);
+  const cogTileTemplate = process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
+  const tileUrl = directTileUrl || (cogUrl && cogTileTemplate
+    ? interpolateTemplate(cogTileTemplate, { ...tokenValues, cogUrl, url: cogUrl })
+    : '');
+
+  if (!tileUrl) return null;
+
+  return {
+    type: 'cog',
+    model: tokenValues.model,
+    cogUrl: cogUrl || null,
+    tileUrl,
+    tileSize: Number(asset.tileSize) || 256,
+    scheme: asset.scheme || 'xyz',
+    bounds: normalizeBounds(asset.bounds),
+    opacity: Number.isFinite(Number(asset.opacity)) ? Number(asset.opacity) : 0.96,
+    attribution: asset.attribution || 'WaveLab / DOST-PAGASA',
+  };
+}
+
 async function buildPublishedForecastPayload(project, { canArchive = false } = {}) {
   const versionFeatureCollection = getPublishedFeatureCollectionFromVersions(project);
   const featureCollection = versionFeatureCollection || await getCurrentFeatureCollection(project._id);
@@ -84,6 +150,7 @@ async function buildPublishedForecastPayload(project, { canArchive = false } = {
   return {
     project: getPublicProjectPayload(project),
     featureCollection,
+    raster: resolveCogRaster(project),
     canArchive,
   };
 }
@@ -162,7 +229,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
 
   const [projects, total] = await Promise.all([
     Project.find(query)
-      .select('name description chartType forecastDate status publishedAt owner approvedBy reviewComment')
+      .select('name description chartType forecastDate status publishedAt owner approvedBy reviewComment publishedRaster')
       .populate('owner', 'firstName lastName username')
       .populate('approvedBy', 'firstName lastName username')
       .sort({ forecastDate: -1, publishedAt: -1, updatedAt: -1, _id: -1 })
@@ -173,7 +240,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
   ]);
 
   res.json({
-    projects,
+    projects: projects.map((project) => ({ ...project, raster: resolveCogRaster(project) })),
     total,
     page,
     limit,
