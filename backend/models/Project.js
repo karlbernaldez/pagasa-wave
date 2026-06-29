@@ -53,6 +53,12 @@ const ProjectSchema = new Schema({
     required: true
   },
   forecastDate: { type: Date, required: true },
+  forecastPackage: {
+    type: Schema.Types.ObjectId,
+    ref: 'ForecastPackage',
+    default: null,
+    index: true,
+  },
 
   status: {
     type: String,
@@ -114,5 +120,6 @@ ProjectSchema.index({ owner: 1, chartType: 1, updatedAt: -1 });
 ProjectSchema.index({ owner: 1, forecastDate: -1 });
 ProjectSchema.index({ status: 1, updatedAt: -1 });
 ProjectSchema.index({ status: 1, noPublicationAt: -1 });
+ProjectSchema.index({ forecastPackage: 1, chartType: 1 });
 
 export default mongoose.models.Project || mongoose.model('Project', ProjectSchema);
