@@ -18,6 +18,7 @@ import {
   groupPublicChartHistory,
   groupPublicChartsByTypeForDate,
 } from '@/dashboards/public/utils/publicChartGroups';
+import usePublicMapBounds from '@/features/projects/hooks/usePublicMapBounds';
 
 const RECENT_FETCH_LIMIT = 80;
 const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
@@ -91,11 +92,17 @@ function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) 
   );
 }
 
-function ChartSlotCard({ slot, chart, activeStyle, isDark, onOpen }) {
+function ChartSlotCard({ slot, chart, activeStyle, isDark, onOpen, showStaffInfo }) {
   const style = CHART_STYLES.find((item) => item.id === activeStyle) || CHART_STYLES[0];
   const hasChart = Boolean(chart?._id);
   const title = chart?.name || slot.fallbackTitle;
-  const description = getPublicChartCardDescription({ chart, slot, hasChart, formatDate, getPersonName });
+  const publicNameFormatter = showStaffInfo ? getPersonName : () => 'DOST-PAGASA';
+  const description = getPublicChartCardDescription({ chart, slot, hasChart, formatDate, getPersonName: publicNameFormatter });
+  const metaText = hasChart
+    ? showStaffInfo
+      ? `Published ${formatDate(chart.publishedAt)} · ${getPersonName(chart.owner)}`
+      : `Published ${formatDate(chart.publishedAt)}`
+    : 'This slot is empty for the selected date';
 
   return (
     <motion.article variants={scaleIn} whileHover={{ y: -4 }} className={`${glassPanel(isDark, 'group relative flex min-h-[415px] flex-col overflow-hidden transition duration-300')} ${isDark ? 'hover:border-cyan-300/30' : 'hover:border-blue-200'}`}>
@@ -112,7 +119,7 @@ function ChartSlotCard({ slot, chart, activeStyle, isDark, onOpen }) {
       <div className="flex flex-1 flex-col justify-between p-5">
         <div>
           <h2 className={`text-xl font-black leading-tight tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h2>
-          <p className={`mt-2 text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{hasChart ? `Published ${formatDate(chart.publishedAt)} · ${getPersonName(chart.owner)}` : 'This slot is empty for the selected date'}</p>
+          <p className={`mt-2 text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{metaText}</p>
           <p className={`mt-3 line-clamp-2 text-sm font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
         </div>
         <div className={`mt-5 flex items-center justify-between border-t pt-4 ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
@@ -146,9 +153,11 @@ export default function Charts() {
   const navigate = useNavigate();
   const { isDarkMode: isDark } = useTheme();
   const { activeChartType, setActiveChartType } = useChartType();
+  const { settings: publicSettings } = usePublicMapBounds();
   const [state, setState] = useState({ loading: true, error: '', projects: [] });
   const [query, setQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const showStaffInfo = publicSettings.showPublicStaffInfo !== false;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -193,7 +202,7 @@ export default function Charts() {
               <div><p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}><CalendarDays size={15} /> Current chart set</p><h2 className={`mt-2 text-3xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(activeDate)}</h2></div>
               <div className="flex flex-wrap items-center gap-2"><CompletenessBadge completeness={completeness} isDark={isDark} /><div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600'}`}>{availableCount}/4 published charts available</div></div>
             </div>
-            <motion.div className="grid gap-5 lg:grid-cols-2" initial="hidden" animate="show">{PUBLIC_CHART_SLOTS.map((slot) => <ChartSlotCard key={`${activeDate}-${slot.chartType}`} slot={slot} chart={chartByType.get(slot.chartType)} activeStyle={activeChartType} isDark={isDark} onOpen={openChart} />)}</motion.div>
+            <motion.div className="grid gap-5 lg:grid-cols-2" initial="hidden" animate="show">{PUBLIC_CHART_SLOTS.map((slot) => <ChartSlotCard key={`${activeDate}-${slot.chartType}`} slot={slot} chart={chartByType.get(slot.chartType)} activeStyle={activeChartType} isDark={isDark} onOpen={openChart} showStaffInfo={showStaffInfo} />)}</motion.div>
           </section>
           <RecentHistory projects={recentProjects} selectedDate={activeDate} onSelectDate={setSelectedDate} isDark={isDark} />
         </>}
