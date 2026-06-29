@@ -86,7 +86,7 @@ export const emitForecastPackageUpdated = (forecastPackage, payload = {}) => {
   };
 
   _io.to(roomFor.role('admin')).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
-  _io.to(roomFor.role('forecaster')).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
+  _io.to(roomFor.role('user')).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
 
   if (ownerId) {
     _io.to(roomFor.user(ownerId)).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
