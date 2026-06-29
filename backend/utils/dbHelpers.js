@@ -123,41 +123,52 @@ function getStableFeatureId(feature) {
   return feature?.properties?.stableId || feature?.properties?.annotationId || feature?.properties?.sourceId || feature?.sourceId;
 }
 
+function getFeatureType(feature) {
+  return feature?.properties?.type || feature?.properties?.markerType || feature?.properties?.symbolType || '';
+}
+
 function buildRenamedFeatureProperties(feature, newName) {
   const stableId = getStableFeatureId(feature);
+  const type = getFeatureType(feature);
+  const isLowWaveMarker = type === 'less_1';
 
-  return {
+  const updateData = {
     name: newName,
-    'properties.labelValue': newName,
     'properties.title': newName,
     'properties.name': newName,
+    'properties.displayName': newName,
     'properties.stableId': stableId,
     'properties.annotationId': stableId,
+    'properties.sourceId': feature.sourceId,
   };
+
+  // Low-wave point markers use labelValue for the rendered map symbol (<1).
+  // Renaming should change only the layer display name, not the meteorological symbol.
+  if (!isLowWaveMarker) {
+    updateData['properties.labelValue'] = newName;
+  }
+
+  return updateData;
 }
 
 /**
- * Build new SourceId and update data for feature renaming.
- * Keep all user-visible label fields in sync so Studio, Project Library previews,
- * review modals, and reload hydration all display the same renamed annotation.
- * Preserve stable annotation identity separately from sourceId so review diffs can
- * classify renames and geometry edits as changed instead of removed + added.
+ * Build stable SourceId and update data for feature renaming.
+ *
+ * Production rule: sourceId is object identity. It must never change during
+ * rename, because Mapbox layers, annotation panel rows, style updates, delete,
+ * drag persistence, and websocket refresh all target this ID. A rename only
+ * changes user-visible fields.
  *
  * @param {Feature} feature - Existing feature
  * @param {string} newName - New feature name
- * @returns {[string, Object]} - New sourceId and update object
+ * @returns {[string, Object]} - Stable sourceId and update object
  */
 export const buildNewSourceIdAndUpdateData = (feature, newName) => {
-  const type = feature.properties.type || feature.properties.markerType || feature.properties.symbolType;
-  const isMarker = ['low_pressure', 'high_pressure', 'typhoon', 'less_1'].includes(type);
-  const newSourceId = isMarker ? `${type}_${newName}` : newName;
+  const stableSourceId = feature.sourceId || getStableFeatureId(feature);
 
   return [
-    newSourceId,
-    {
-      sourceId: newSourceId,
-      ...buildRenamedFeatureProperties(feature, newName),
-    },
+    stableSourceId,
+    buildRenamedFeatureProperties(feature, newName),
   ];
 };
 
