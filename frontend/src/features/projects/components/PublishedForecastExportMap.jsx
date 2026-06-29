@@ -2,6 +2,8 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
+import { fetchPublicPublishedChartOutput } from '@/api/publishedForecastAPI';
+import { useTheme } from '@/app/providers/ThemeProvider';
 import { CHART_STYLE_MODE, getChartStyleModePaint, normalizeChartStyleMode } from '@/features/projects/utils/chartStyleModes';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 
@@ -18,18 +20,6 @@ const COUNTRY_LINE_LAYER_ID = 'published-export-country-lines';
 const FEATURE_SOURCE_ID = 'published-forecast-export-features';
 const LABEL_SOURCE_ID = 'published-forecast-export-line-labels-source';
 const LESS_ONE_IMAGE_ID = 'published-export-less-1';
-
-const LINE_LABEL_TEXT = [
-  'coalesce',
-  ['to-string', ['get', 'labelValue']],
-  ['to-string', ['get', 'waveHeight']],
-  ['to-string', ['get', 'heightValue']],
-  ['to-string', ['get', 'value']],
-  ['to-string', ['get', 'name']],
-  ['to-string', ['get', 'title']],
-  ['to-string', ['get', 'label']],
-  '',
-];
 
 const POINT_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'type'], ''];
 const POINT_FILTER = ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false];
@@ -51,6 +41,12 @@ const EXPORT_LAYER_ORDER = [
   'published-forecast-export-line-labels',
   'published-forecast-export-labels',
 ];
+
+function getProjectIdFromLocation() {
+  if (typeof window === 'undefined') return '';
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  return parts[parts.length - 1] || '';
+}
 
 function isMapStyleReady(map) {
   return Boolean(map && map.isStyleLoaded && map.isStyleLoaded());
@@ -152,34 +148,16 @@ function syncRaster(map, raster, enabled) {
 
 function syncCountryOverlay(map, isDarkMode) {
   try {
-    if (!map.getSource(COUNTRY_SOURCE_ID)) {
-      map.addSource(COUNTRY_SOURCE_ID, { type: 'vector', url: 'mapbox://mapbox.country-boundaries-v1' });
-    }
+    if (!map.getSource(COUNTRY_SOURCE_ID)) map.addSource(COUNTRY_SOURCE_ID, { type: 'vector', url: 'mapbox://mapbox.country-boundaries-v1' });
 
     if (!map.getLayer(COUNTRY_LAND_LAYER_ID)) {
-      map.addLayer({
-        id: COUNTRY_LAND_LAYER_ID,
-        type: 'fill',
-        source: COUNTRY_SOURCE_ID,
-        'source-layer': 'country_boundaries',
-        paint: { 'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd', 'fill-opacity': 0.82 },
-      });
+      map.addLayer({ id: COUNTRY_LAND_LAYER_ID, type: 'fill', source: COUNTRY_SOURCE_ID, 'source-layer': 'country_boundaries', paint: { 'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd', 'fill-opacity': 0.82 } });
     } else {
       map.setPaintProperty(COUNTRY_LAND_LAYER_ID, 'fill-color', isDarkMode ? '#1e293b' : '#d6d3cd');
     }
 
     if (!map.getLayer(COUNTRY_LINE_LAYER_ID)) {
-      map.addLayer({
-        id: COUNTRY_LINE_LAYER_ID,
-        type: 'line',
-        source: COUNTRY_SOURCE_ID,
-        'source-layer': 'country_boundaries',
-        paint: {
-          'line-color': isDarkMode ? '#94a3b8' : '#4b5563',
-          'line-opacity': 0.5,
-          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2],
-        },
-      });
+      map.addLayer({ id: COUNTRY_LINE_LAYER_ID, type: 'line', source: COUNTRY_SOURCE_ID, 'source-layer': 'country_boundaries', paint: { 'line-color': isDarkMode ? '#94a3b8' : '#4b5563', 'line-opacity': 0.5, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2] } });
     } else {
       map.setPaintProperty(COUNTRY_LINE_LAYER_ID, 'line-color', isDarkMode ? '#94a3b8' : '#4b5563');
     }
@@ -202,29 +180,24 @@ function applyExportLayerPaint(map, chartStyleMode) {
     map.setPaintProperty('published-forecast-export-polygons', 'fill-color', paint.polygonFill);
     map.setPaintProperty('published-forecast-export-polygons', 'fill-opacity', paint.polygonOpacity);
   }
-
   if (map.getLayer('published-forecast-export-polygons-outline')) {
     map.setPaintProperty('published-forecast-export-polygons-outline', 'line-color', paint.polygonOutline);
     map.setPaintProperty('published-forecast-export-polygons-outline', 'line-width', paint.polygonOutlineWidth);
   }
-
   if (map.getLayer('published-forecast-export-lines-casing')) {
     map.setPaintProperty('published-forecast-export-lines-casing', 'line-color', paint.lineCasing);
     map.setPaintProperty('published-forecast-export-lines-casing', 'line-width', paint.lineCasingWidth);
   }
-
   if (map.getLayer('published-forecast-export-lines')) {
     map.setPaintProperty('published-forecast-export-lines', 'line-color', paint.lineColor);
     map.setPaintProperty('published-forecast-export-lines', 'line-width', paint.lineWidth);
   }
-
   if (map.getLayer('published-forecast-export-line-labels')) {
     map.setLayoutProperty('published-forecast-export-line-labels', 'text-size', paint.lineLabelSize);
     map.setPaintProperty('published-forecast-export-line-labels', 'text-color', paint.labelColor);
     map.setPaintProperty('published-forecast-export-line-labels', 'text-halo-color', paint.labelHaloColor);
     map.setPaintProperty('published-forecast-export-line-labels', 'text-halo-width', paint.labelHaloWidth);
   }
-
   if (map.getLayer('published-forecast-export-points')) {
     map.setPaintProperty('published-forecast-export-points', 'circle-color', paint.pointColor);
     map.setPaintProperty('published-forecast-export-points', 'circle-radius', paint.pointRadius);
@@ -232,7 +205,6 @@ function applyExportLayerPaint(map, chartStyleMode) {
     map.setPaintProperty('published-forecast-export-points', 'circle-stroke-width', paint.pointStrokeWidth);
     map.setPaintProperty('published-forecast-export-points', 'circle-opacity', paint.showPoints ? 1 : 0);
   }
-
   if (map.getLayer('published-forecast-export-labels')) {
     map.setLayoutProperty('published-forecast-export-labels', 'text-size', paint.pointLabelSize);
     map.setPaintProperty('published-forecast-export-labels', 'text-color', paint.labelColor);
@@ -248,17 +220,11 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
   const paint = getChartStyleModePaint(chartStyleMode);
   const labels = buildLineLabels(featureCollection);
 
-  if (!map.getSource(FEATURE_SOURCE_ID)) {
-    map.addSource(FEATURE_SOURCE_ID, { type: 'geojson', data: featureCollection });
-  } else {
-    map.getSource(FEATURE_SOURCE_ID).setData(featureCollection);
-  }
+  if (!map.getSource(FEATURE_SOURCE_ID)) map.addSource(FEATURE_SOURCE_ID, { type: 'geojson', data: featureCollection });
+  else map.getSource(FEATURE_SOURCE_ID).setData(featureCollection);
 
-  if (!map.getSource(LABEL_SOURCE_ID)) {
-    map.addSource(LABEL_SOURCE_ID, { type: 'geojson', data: labels });
-  } else {
-    map.getSource(LABEL_SOURCE_ID).setData(labels);
-  }
+  if (!map.getSource(LABEL_SOURCE_ID)) map.addSource(LABEL_SOURCE_ID, { type: 'geojson', data: labels });
+  else map.getSource(LABEL_SOURCE_ID).setData(labels);
 
   ensureLessOneImage(map);
 
@@ -283,14 +249,30 @@ function fitExportBounds(map) {
   map.fitBounds(TCAD_BOUNDS, { padding: 18, maxZoom: 6, duration: 0 });
 }
 
-const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap({ features, chartStyleMode, raster, isDarkMode = false }, ref) {
+const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap({ features, chartStyleMode, raster }, ref) {
+  const { isDarkMode } = useTheme();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
+  const [fetchedRaster, setFetchedRaster] = useState(null);
   const featureCollection = useMemo(() => normalizeFeatureCollection(features), [features]);
   const normalizedStyleMode = normalizeChartStyleMode(chartStyleMode);
   const hasFeatures = featureCollection.features.length > 0;
   const shouldRenderRaster = normalizedStyleMode === CHART_STYLE_MODE.WAVE_WIND;
+  const resolvedRaster = raster || fetchedRaster;
+  const projectId = useMemo(() => getProjectIdFromLocation(), []);
+  const theme = isDarkMode ? 'dark' : 'light';
+
+  useEffect(() => {
+    let mounted = true;
+    if (raster || !projectId) return undefined;
+
+    fetchPublicPublishedChartOutput(projectId, { theme })
+      .then((data) => { if (mounted) setFetchedRaster(data?.raster || null); })
+      .catch((error) => console.warn('[PublishedForecastExportMap] Failed to load export raster:', error));
+
+    return () => { mounted = false; };
+  }, [projectId, raster, theme]);
 
   useImperativeHandle(ref, () => ({
     getDataUrl() {
@@ -323,7 +305,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
     const renderExport = () => {
       if (!isMapStyleReady(map)) return;
-      syncRaster(map, raster, shouldRenderRaster);
+      syncRaster(map, resolvedRaster, shouldRenderRaster);
       syncCountryOverlay(map, isDarkMode);
       syncExportLayers(map, featureCollection, normalizedStyleMode);
       restackExportLayers(map);
@@ -344,7 +326,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
       mapRef.current = null;
       setIsReady(false);
     };
-  }, [featureCollection, hasFeatures, isDarkMode, normalizedStyleMode, raster, shouldRenderRaster]);
+  }, [featureCollection, hasFeatures, isDarkMode, normalizedStyleMode, resolvedRaster, shouldRenderRaster]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -354,7 +336,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
     const renderExport = () => {
       if (cancelled || !mapRef.current || !isMapStyleReady(map)) return;
-      syncRaster(map, raster, shouldRenderRaster);
+      syncRaster(map, resolvedRaster, shouldRenderRaster);
       syncCountryOverlay(map, isDarkMode);
       syncExportLayers(map, featureCollection, normalizedStyleMode);
       restackExportLayers(map);
@@ -373,7 +355,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     return () => {
       cancelled = true;
     };
-  }, [featureCollection, hasFeatures, isDarkMode, normalizedStyleMode, raster, shouldRenderRaster]);
+  }, [featureCollection, hasFeatures, isDarkMode, normalizedStyleMode, resolvedRaster, shouldRenderRaster]);
 
   if (!hasFeatures) return null;
 
