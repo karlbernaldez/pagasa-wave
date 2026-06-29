@@ -18,6 +18,7 @@ import { canEditProjectStatus, getProjectStatusLabel, getProjectStatusStyle, isP
 import { FORECAST_CHART_BROWSER_EVENT, useProjectId, useInactivityReload, useProjectLoader, useMapSetup, useDrawingState, useMarkerModal, useMapLoader } from "@dashboards/forecaster/hooks/useStudio";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { claimForecastPackageChartByProject, fetchForecastPackageChartContextByProject, releaseForecastPackageChartByProject, updateForecastChartCompletionByProject } from "@/api/forecastPackageAPI";
+import socket from "@/socket/socketClient";
 import { savePointFeature } from "@dashboards/forecaster/utils/ToolBarUtils";
 import { handleCreateProject } from "@dashboards/forecaster/utils/ProjectUtils";
 import { saveMarker } from "@dashboards/forecaster/map/layers/markerLayer";
@@ -168,6 +169,41 @@ function WorkflowErrorModal({ error, isDarkMode, onClose }) {
   );
 }
 
+function ReadyConfirmModal({ open, isDarkMode, chartLabel, claim, isBusy, onCancel, onConfirm }) {
+  if (!open) return null;
+
+  const readyEditors = claim?.readyEditorLabels || [];
+  const participants = claim?.participantLabels || [];
+  const readyText = readyEditors.length ? formatNameList(readyEditors) : "No one has marked ready yet";
+  const participantText = participants.length ? formatNameList(participants) : "Only you are participating";
+
+  return (
+    <div className="fixed inset-0 z-[215] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="studio-ready-confirm-title">
+      <div className={`w-full max-w-lg overflow-hidden rounded-3xl border shadow-2xl ${isDarkMode ? "border-cyan-300/20 bg-slate-950 text-slate-100" : "border-blue-100 bg-white text-slate-950"}`}>
+        <div className={`border-b p-5 ${isDarkMode ? "border-white/10" : "border-slate-100"}`}>
+          <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? "text-cyan-200" : "text-blue-700"}`}>Confirm readiness</p>
+          <h2 id="studio-ready-confirm-title" className="mt-2 text-xl font-black">Certify {chartLabel}?</h2>
+          <p className={`mt-2 text-sm leading-6 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>Use this only after you opened the chart in Studio, applied your changes, and checked the forecast layers.</p>
+        </div>
+        <div className="space-y-3 p-5">
+          <div className={`rounded-2xl border p-4 text-sm ${isDarkMode ? "border-white/10 bg-white/[0.04]" : "border-slate-100 bg-slate-50"}`}>
+            <p className="font-black">Participants</p>
+            <p className={`mt-1 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{participantText}</p>
+          </div>
+          <div className={`rounded-2xl border p-4 text-sm ${isDarkMode ? "border-white/10 bg-white/[0.04]" : "border-slate-100 bg-slate-50"}`}>
+            <p className="font-black">Already certified</p>
+            <p className={`mt-1 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{readyText}</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="secondary" onClick={onCancel} disabled={isBusy}>Cancel</Button>
+            <Button icon={CheckCircle2} onClick={onConfirm} loading={isBusy} disabled={isBusy}>Confirm ready</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const Studio = ({ logger }) => {
   const navigate = useNavigate();
   const { isDarkMode, setIsDarkMode } = useTheme();
@@ -183,6 +219,7 @@ const Studio = ({ logger }) => {
   const [isCertifyingChart, setIsCertifyingChart] = useState(false);
   const [studioError, setStudioError] = useState("");
   const [workflowError, setWorkflowError] = useState(null);
+  const [showReadyConfirm, setShowReadyConfirm] = useState(false);
 
   useEffect(() => { suppressAutoJoinRef.current = false; }, [projectId]);
   useEffect(() => { setCurrentProject(latestProject || null); }, [latestProject]);
@@ -206,7 +243,7 @@ const Studio = ({ logger }) => {
   const canUseEditingTools = Boolean(canEditProject && chartClaim?.claimedByCurrentUser);
   const isReadOnlyProject = Boolean(currentProject && !canUseEditingTools);
   const isPackageReadyReadOnly = Boolean(currentProject && isPackageChartReady);
-  const isBlockingWorkspaceModalOpen = showTitleModal || showCreateProjectModal || showNoProjectsModal || isCanvasActive || isFlagCanvasActive || Boolean(workflowError);
+  const isBlockingWorkspaceModalOpen = showTitleModal || showCreateProjectModal || showNoProjectsModal || isCanvasActive || isFlagCanvasActive || Boolean(workflowError) || showReadyConfirm;
   const { isInactivityPromptVisible, stayActive, refreshWorkspace } = useInactivityReload(undefined, { disabled: isBlockingWorkspaceModalOpen });
 
   const handleBackToLibrary = useCallback(() => { navigate("/studio"); }, [navigate]);
@@ -240,9 +277,19 @@ const Studio = ({ logger }) => {
   useEffect(() => { document.title = currentProject?.name ? `${currentProject.name}` : "WaveLab - Studio"; }, [currentProject?.name]);
   useEffect(() => { setLayersRef.current = setLayers; }, [setLayers]);
   useEffect(() => {
+    if (!projectId) return undefined;
+    const joinRoom = () => socket.emit("forecast:join_project", projectId);
+    if (socket.connected) joinRoom();
+    socket.on("connect", joinRoom);
+    return () => {
+      socket.off("connect", joinRoom);
+      socket.emit("forecast:leave_project", projectId);
+    };
+  }, [projectId]);
+  useEffect(() => {
     setIsLoading(true); setMapLoaded(false); setShowToolbar(false); setCapturedImages({ light: null, dark: null });
     setDrawInstance(null); setLineCount(0); setDrawCounter(0); setClosedMode(false); setSelectedPoint(null); setShowTitleModal(false);
-    markerTitleRef.current = ""; selectedToolRef.current = null; setStudioError(""); setWorkflowError(null);
+    markerTitleRef.current = ""; selectedToolRef.current = null; setStudioError(""); setWorkflowError(null); setShowReadyConfirm(false);
   }, [projectId, setClosedMode, setDrawCounter, setDrawInstance, setLineCount, setSelectedPoint, setShowTitleModal, markerTitleRef, setCapturedImages]);
   useEffect(() => { const controller = new AbortController(); loadChartContext({ signal: controller.signal, autoJoin: true }); return () => controller.abort(); }, [loadChartContext]);
   useEffect(() => { const handler = (event) => { if (String(event.detail?.projectId || "") === String(projectId)) loadChartContext({ silent: true, autoJoin: false }); }; window.addEventListener(FORECAST_CHART_BROWSER_EVENT, handler); return () => window.removeEventListener(FORECAST_CHART_BROWSER_EVENT, handler); }, [loadChartContext, projectId]);
@@ -265,70 +312,39 @@ const Studio = ({ logger }) => {
   const handleClaimChart = async () => {
     if (!projectId || isClaimingChart || !canEditProject) return;
     setIsClaimingChart(true); suppressAutoJoinRef.current = false; setStudioError(""); setWorkflowError(null);
-    try {
-      const context = await claimForecastPackageChartByProject(projectId);
-      applyChartContext(context);
-    } catch (error) {
-      setWorkflowError({
-        title: "Cannot join chart",
-        message: getErrorMessage(error, "Failed to join chart editing."),
-        detail: "Refresh the workspace or check if another forecaster is already editing this chart.",
-      });
-    } finally {
-      setIsClaimingChart(false);
-    }
+    try { const context = await claimForecastPackageChartByProject(projectId); applyChartContext(context); }
+    catch (error) { setWorkflowError({ title: "Cannot join chart", message: getErrorMessage(error, "Failed to join chart editing."), detail: "Refresh the workspace or check if another forecaster is already editing this chart." }); }
+    finally { setIsClaimingChart(false); }
   };
 
   const handleReleaseChart = async () => {
     if (!projectId || isReleasingChart || !canEditProject) return;
     setIsReleasingChart(true); suppressAutoJoinRef.current = true; setStudioError(""); setWorkflowError(null);
-    try {
-      const context = await releaseForecastPackageChartByProject(projectId);
-      applyChartContext(context);
-    } catch (error) {
-      suppressAutoJoinRef.current = false;
-      setWorkflowError({
-        title: "Cannot release chart",
-        message: getErrorMessage(error, "Failed to release chart editing session."),
-        detail: "Refresh the workspace and try releasing the chart again.",
-      });
-    } finally {
-      setIsReleasingChart(false);
-    }
+    try { const context = await releaseForecastPackageChartByProject(projectId); applyChartContext(context); }
+    catch (error) { suppressAutoJoinRef.current = false; setWorkflowError({ title: "Cannot release chart", message: getErrorMessage(error, "Failed to release chart editing session."), detail: "Refresh the workspace and try releasing the chart again." }); }
+    finally { setIsReleasingChart(false); }
   };
 
-  const handleCertifyChartReady = async () => {
+  const executeCertifyChartReady = async () => {
     if (!projectId || isCertifyingChart || !canEditProject) return;
     setIsCertifyingChart(true); setStudioError(""); setWorkflowError(null);
-    try {
-      const context = await updateForecastChartCompletionByProject(projectId, true);
-      applyChartContext(context);
-    } catch (error) {
-      setWorkflowError({
-        title: "Cannot certify chart ready",
-        message: getErrorMessage(error, "Failed to certify chart readiness."),
-        detail: "All active editors must release or complete their participation before this chart can be certified ready.",
-      });
-    } finally {
-      setIsCertifyingChart(false);
-    }
+    try { const context = await updateForecastChartCompletionByProject(projectId, true); setShowReadyConfirm(false); applyChartContext(context); }
+    catch (error) { setShowReadyConfirm(false); setWorkflowError({ title: "Cannot certify chart ready", message: getErrorMessage(error, "Failed to certify chart readiness."), detail: "All active editors must release or complete their participation before this chart can be certified ready." }); }
+    finally { setIsCertifyingChart(false); }
+  };
+
+  const handleCertifyChartReady = () => {
+    if (!projectId || isCertifyingChart || !canEditProject) return;
+    setWorkflowError(null);
+    setShowReadyConfirm(true);
   };
 
   const handleReopenChartEdits = async () => {
     if (!projectId || isCertifyingChart || !canEditProjectStatus(projectStatus)) return;
     setIsCertifyingChart(true); setStudioError(""); setWorkflowError(null);
-    try {
-      const context = await updateForecastChartCompletionByProject(projectId, false);
-      applyChartContext(context);
-    } catch (error) {
-      setWorkflowError({
-        title: "Cannot reopen chart",
-        message: getErrorMessage(error, "Failed to reopen chart editing."),
-        detail: "Refresh the workspace and try reopening the chart again.",
-      });
-    } finally {
-      setIsCertifyingChart(false);
-    }
+    try { const context = await updateForecastChartCompletionByProject(projectId, false); applyChartContext(context); }
+    catch (error) { setWorkflowError({ title: "Cannot reopen chart", message: getErrorMessage(error, "Failed to reopen chart editing."), detail: "Refresh the workspace and try reopening the chart again." }); }
+    finally { setIsCertifyingChart(false); }
   };
 
   const handleMapLoad = useMapLoader(projectId, logger, isDarkMode, setupFeaturesAndLayers, mapRef, cleanupRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, selectedToolRef, setCapturedImages, setIsLoading);
@@ -373,6 +389,7 @@ const Studio = ({ logger }) => {
       {isLoading && <MapLoading message={isLoadingProject ? "Loading project..." : "Loading map..."} />}
       {showNoProjectsModal && <NoProjectAlert onCreate={handleOpenCreateProject} onOpenLibrary={handleBackToLibrary} onLater={handleMaybeLater} message={message} />}
       {showCreateProjectModal && <CreateProjectModal isOpen={showCreateProjectModal} onClose={() => setShowCreateProjectModal(false)} onCreate={(projectData) => handleCreateProject({ projectData, setLoading: () => { }, onSuccess: (project) => { setShowCreateProjectModal(false); navigate(`/studio/${project._id || project.id}`); } })} />}
+      <ReadyConfirmModal open={showReadyConfirm} isDarkMode={isDarkMode} chartLabel={chartLabel} claim={chartClaim} isBusy={isCertifyingChart} onCancel={() => setShowReadyConfirm(false)} onConfirm={executeCertifyChartReady} />
       <WorkflowErrorModal error={workflowError} isDarkMode={isDarkMode} onClose={() => setWorkflowError(null)} />
       {isInactivityPromptVisible && <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm"><div className={`max-w-md rounded-3xl border p-6 text-center shadow-2xl ${isDarkMode ? "border-white/10 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"}`}><h2 className="text-xl font-black">Workspace paused for inactivity</h2><p className={`mt-2 text-sm ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>Refresh the workspace to continue with the latest forecast data, or stay active if you are still editing.</p><div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center"><Button onClick={refreshWorkspace}>Refresh workspace</Button><Button variant="secondary" onClick={stayActive}>Stay active</Button></div></div></div>}
     </div>
