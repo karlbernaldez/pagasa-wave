@@ -154,6 +154,8 @@ function syncCountryOverlay(map, isDarkMode) {
           'fill-opacity': 0.82,
         },
       });
+    } else {
+      map.setPaintProperty(COUNTRY_LAND_LAYER_ID, 'fill-color', isDarkMode ? '#1e293b' : '#d6d3cd');
     }
 
     if (!map.getLayer(COUNTRY_LINE_LAYER_ID)) {
@@ -168,6 +170,8 @@ function syncCountryOverlay(map, isDarkMode) {
           'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2],
         },
       });
+    } else {
+      map.setPaintProperty(COUNTRY_LINE_LAYER_ID, 'line-color', isDarkMode ? '#94a3b8' : '#4b5563');
     }
   } catch (error) {
     console.warn('[PublicPublishedChartPreviewMap] Country overlay unavailable:', error);
@@ -213,6 +217,7 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(Boolean(projectId));
   const [isReady, setIsReady] = useState(false);
+  const theme = isDarkMode ? 'dark' : 'light';
   const raster = payload?.raster || initialRaster || null;
   const featureCollection = useMemo(() => normalizeFeatureCollection(payload?.featureCollection), [payload]);
   const hasFeatures = featureCollection.features.length > 0;
@@ -223,12 +228,12 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     let mounted = true;
     if (!projectId) { setPayload(null); setLoading(false); return undefined; }
     setLoading(true);
-    fetchPublicPublishedChartOutput(projectId)
+    fetchPublicPublishedChartOutput(projectId, { theme })
       .then((data) => { if (mounted) setPayload(data || null); })
       .catch((error) => { if (mounted) { console.error('[PublicPublishedChartPreviewMap] Failed to load published output:', error); setPayload(null); } })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  }, [projectId]);
+  }, [projectId, theme]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return undefined;
