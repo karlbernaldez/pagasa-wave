@@ -12,10 +12,11 @@ import ProjectReviewModal from "@/features/projects/components/ProjectReviewModa
 import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Button from "@/components/ui/Button";
 
-import { createProject } from "@/api/projectAPI";
+import { createProject, fetchAdminProjects } from "@/api/projectAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
 import { PROJECT_STATUS, getProjectStatusLabel, isProjectPublished } from "@/features/projects/projectStatuses";
+import { adaptProjects } from "@/features/projects/projectAdapter";
 import useCurrentDashboardUser from "@/shared/hooks/useCurrentDashboardUser";
 
 const CHART_ORDER = ["analysis", "forecast_24h", "forecast_36h", "forecast_48h"];
@@ -222,33 +223,35 @@ function DailyFocusPackage({ packageItem, isDarkMode, onOpenProject }) {
 
   return (
     <section className={`overflow-hidden rounded-3xl border shadow-sm ${isDarkMode ? "border-cyan-400/25 bg-cyan-950/20" : "border-cyan-200 bg-cyan-50/70"}`}>
-      <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => firstProject && onOpenProject(firstProject)}
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.16em] transition ${isDarkMode ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100 hover:bg-cyan-400/20" : "border-cyan-200 bg-cyan-100 text-cyan-800 hover:bg-cyan-200"}`}
-            >
-              <CalendarCheck size={14} />
-              Daily Focus
-            </button>
-            <span className={`text-sm font-bold ${muted}`}>{formatForecastDate(packageItem.forecastDate)}</span>
-            <span className={`rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? "border-amber-300/30 bg-amber-400/15 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{packageItem.status}</span>
+      <button
+        type="button"
+        onClick={() => firstProject && onOpenProject(firstProject)}
+        className={`block w-full border-b border-white/10 p-5 text-left transition ${isDarkMode ? "hover:bg-cyan-400/10" : "hover:bg-cyan-100/70"}`}
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" : "border-cyan-200 bg-cyan-100 text-cyan-800"}`}>
+                <CalendarCheck size={14} />
+                Daily Focus
+              </span>
+              <span className={`text-sm font-bold ${muted}`}>{formatForecastDate(packageItem.forecastDate)}</span>
+              <span className={`rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? "border-amber-300/30 bg-amber-400/15 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{packageItem.status}</span>
+            </div>
+            <h2 className={`mt-4 text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-950"}`}>Today&apos;s Analysis and Forecast Charts</h2>
+            <p className={`mt-2 max-w-3xl text-sm font-semibold leading-6 ${muted}`}>Click anywhere in this Daily Focus header, Review package, or any chart card below to open the review modal.</p>
           </div>
-          <h2 className={`mt-4 text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-950"}`}>Today&apos;s Analysis and Forecast Charts</h2>
-          <p className={`mt-2 max-w-3xl text-sm font-semibold leading-6 ${muted}`}>Click the Daily Focus badge, Review package, or any chart card below to open the review modal.</p>
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => firstProject && onOpenProject(firstProject)}>Review package</Button>
-          <div className={`grid grid-cols-3 gap-2 rounded-2xl border p-2 text-center text-xs font-black ${isDarkMode ? "border-white/10 bg-slate-950/50" : "border-white/70 bg-white/80"}`}>
-            <div><p className={muted}>Needs Review</p><p className="mt-1 text-xl">{packageItem.progress.needsReview}</p></div>
-            <div><p className={muted}>Approved</p><p className="mt-1 text-xl">{packageItem.progress.approved}</p></div>
-            <div><p className={muted}>Returned</p><p className="mt-1 text-xl">{packageItem.progress.returned}</p></div>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex rounded-xl bg-cyan-500 px-4 py-2 text-sm font-black text-white shadow-sm">Review package</span>
+            <div className={`grid grid-cols-3 gap-2 rounded-2xl border p-2 text-center text-xs font-black ${isDarkMode ? "border-white/10 bg-slate-950/50" : "border-white/70 bg-white/80"}`}>
+              <div><p className={muted}>Needs Review</p><p className="mt-1 text-xl">{packageItem.progress.needsReview}</p></div>
+              <div><p className={muted}>Approved</p><p className="mt-1 text-xl">{packageItem.progress.approved}</p></div>
+              <div><p className={muted}>Returned</p><p className="mt-1 text-xl">{packageItem.progress.returned}</p></div>
+            </div>
           </div>
         </div>
-      </div>
+      </button>
 
       <div className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-4">
         {packageItem.projects.map((project) => {
@@ -281,6 +284,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
   const { user } = useCurrentDashboardUser(null, userOptions);
   const [view, setView] = useState("grid");
   const [reviewProject, setReviewProject] = useState(null);
+  const [reviewQueue, setReviewQueue] = useState([]);
   const [isStartingReview, setIsStartingReview] = useState(false);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -290,9 +294,24 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
   const packages = useMemo(() => buildForecastPackages(projects || []), [projects]);
   const dailyFocusPackage = role === "admin" ? packages[0] : null;
 
-  const getReviewQueueForProject = (project) => {
+  const getReviewQueueForProject = (project, sourceProjects = projects || []) => {
     const dateKey = getForecastDateKey(project);
-    return projects.filter((candidate) => getForecastDateKey(candidate) === dateKey).sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+    return sourceProjects.filter((candidate) => getForecastDateKey(candidate) === dateKey).sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+  };
+
+  const loadFullReviewQueue = async (project) => {
+    const localQueue = getReviewQueueForProject(project);
+    if (localQueue.length >= CHART_ORDER.length) return localQueue;
+
+    try {
+      const response = await fetchAdminProjects({ page: 1, limit: 100, sortBy: "forecastDate", sortDir: "desc" });
+      const allProjects = adaptProjects(response?.projects || []);
+      const fullQueue = getReviewQueueForProject(project, allProjects);
+      return fullQueue.length > localQueue.length ? fullQueue : localQueue;
+    } catch (err) {
+      console.error("Failed to load full review package:", err);
+      return localQueue;
+    }
   };
 
   const openReviewProject = async (project) => {
@@ -302,7 +321,10 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     setIsStartingReview(true);
     try {
       const updatedProject = await onStartReview?.(project);
-      setReviewProject(updatedProject || project);
+      const nextProject = updatedProject || project;
+      const nextQueue = await loadFullReviewQueue(nextProject);
+      setReviewQueue(nextQueue);
+      setReviewProject(nextProject);
     } catch (err) {
       console.error("Failed to start review:", err);
       setFeedbackError(err?.message || "Failed to start project review.");
@@ -355,7 +377,6 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
     await onRetry?.();
   };
 
-  const reviewQueue = reviewProject ? getReviewQueueForProject(reviewProject) : [];
   const tableProps = { ...controller.table, onOpen: handleOpen, isDarkMode };
 
   return (
@@ -396,8 +417,8 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
 
       {controller.dialogs}
       {role !== "admin" && <CreateProjectModal visible={showCreateProjectModal} onClose={() => setShowCreateProjectModal(false)} onSubmit={handleCreateAndOpenProject} isDarkMode={isDarkMode} />}
-      {isStartingReview && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">Starting review…</div>}
-      {role === "admin" && <ProjectReviewModal project={getReviewModalProject(reviewProject)} reviewQueue={reviewQueue} isDarkMode={isDarkMode} onClose={() => setReviewProject(null)} onSelectProject={openReviewProject} onApprove={onApprove} onReject={onReject} onNoPublication={onNoPublication} onPublish={onPublish} onActionComplete={handleReviewActionComplete} />}
+      {isStartingReview && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">Starting review package…</div>}
+      {role === "admin" && <ProjectReviewModal project={getReviewModalProject(reviewProject)} reviewQueue={reviewQueue} isDarkMode={isDarkMode} onClose={() => { setReviewProject(null); setReviewQueue([]); }} onSelectProject={openReviewProject} onApprove={onApprove} onReject={onReject} onNoPublication={onNoPublication} onPublish={onPublish} onActionComplete={handleReviewActionComplete} />}
     </div>
   );
 }
