@@ -85,6 +85,14 @@ function getTimeValue(value) {
   return Number.isNaN(time) ? 0 : time;
 }
 
+function getActiveEditors(chart = {}) {
+  const activeEditors = Array.isArray(chart.activeEditors) ? [...chart.activeEditors] : [];
+  if (chart.claimedBy && !activeEditors.some((editor) => getId(editor.user) === getId(chart.claimedBy))) {
+    activeEditors.push({ user: chart.claimedBy, startedAt: chart.claimedAt || null });
+  }
+  return activeEditors;
+}
+
 function clampInt(value, min, max, fallback) {
   const number = Math.trunc(Number(value));
   if (!Number.isFinite(number)) return fallback;
@@ -126,6 +134,31 @@ function emitForecastPackageWorkflowAfterResponse(action) {
     };
     next();
   };
+}
+
+async function requireJoinedChartBeforeCompletion(req, res, next) {
+  try {
+    if (!req.body?.isComplete) return next();
+
+    const forecastPackage = await ForecastPackage.findById(req.params.id).lean();
+    if (!forecastPackage) return next();
+
+    const chart = (forecastPackage.charts || []).find((row) => row.chartType === req.params.chartType);
+    if (!chart) return next();
+
+    const activeEditors = getActiveEditors(chart);
+    const currentUserJoined = activeEditors.some((editor) => getId(editor.user) === getId(req.user?.id));
+    if (!currentUserJoined) {
+      return res.status(409).json({
+        success: false,
+        message: `${CHART_LABEL_BY_TYPE[chart.chartType] || chart.chartType || 'Forecast chart'} must be opened in Studio before it can be certified ready.`,
+      });
+    }
+
+    return next();
+  } catch (error) {
+    return next(error);
+  }
 }
 
 async function requireResolvedRevisionBeforeSubmit(req, res, next) {
@@ -272,7 +305,7 @@ router.patch('/charts/project/:projectId/claim', emitForecastPackageWorkflowAfte
 router.patch('/charts/project/:projectId/release', emitForecastPackageWorkflowAfterResponse('chart_released'), releaseForecastPackageChartEditingByProject);
 router.patch('/charts/project/:projectId/completion', emitForecastPackageWorkflowAfterResponse('chart_completion_updated'), updateForecastChartCompletionByProject);
 router.get('/:id', getForecastPackageById);
-router.patch('/:id/charts/:chartType/completion', emitForecastPackageWorkflowAfterResponse('chart_completion_updated'), updateForecastChartCompletion);
+router.patch('/:id/charts/:chartType/completion', requireJoinedChartBeforeCompletion, emitForecastPackageWorkflowAfterResponse('chart_completion_updated'), updateForecastChartCompletion);
 router.patch('/:id/submit', requireResolvedRevisionBeforeSubmit, emitForecastPackageWorkflowAfterResponse('submitted'), submitForecastPackage);
 
 export default router;
