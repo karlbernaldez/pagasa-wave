@@ -30,6 +30,29 @@ function dispatchBrowserEvent(name, payload) {
   window.dispatchEvent(new CustomEvent(name, { detail: payload || {} }));
 }
 
+function dispatchChartEventsForPackage(payload = {}) {
+  if (payload.projectId) {
+    dispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, payload);
+    return;
+  }
+
+  if (!Array.isArray(payload.projectIds)) return;
+
+  payload.projectIds.forEach((projectId) => {
+    if (!projectId) return;
+    dispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, {
+      ...payload,
+      projectId,
+    });
+  });
+}
+
+function refreshStateOnlyForecastPackagePage() {
+  if (window.location.pathname === '/studio') {
+    window.location.reload();
+  }
+}
+
 export default function ForecastPackageRealtimeBridge() {
   const queryClient = useQueryClient();
 
@@ -37,12 +60,15 @@ export default function ForecastPackageRealtimeBridge() {
     const handlePackageUpdated = (payload = {}) => {
       invalidateForecastQueries(queryClient);
       dispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload);
+      dispatchChartEventsForPackage(payload);
+      refreshStateOnlyForecastPackagePage();
     };
 
     const handleChartUpdated = (payload = {}) => {
       invalidateForecastQueries(queryClient);
       dispatchBrowserEvent(FORECAST_CHART_BROWSER_EVENT, payload);
       dispatchBrowserEvent(FORECAST_PACKAGE_BROWSER_EVENT, payload);
+      refreshStateOnlyForecastPackagePage();
     };
 
     socket.on(FORECAST_PACKAGE_UPDATED_EVENT, handlePackageUpdated);
