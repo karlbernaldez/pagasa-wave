@@ -298,7 +298,6 @@ export const getAdminForecastPackage = asyncHandler(async (req, res) => {
   pushDateBoundsFilter(packageFilters, 'createdAt', project.createdAt);
 
   const query = {
-    owner: project.owner,
     status: { $in: ALLOWED_ADMIN_STATUSES },
     chartType: { $in: ALLOWED_CHART_TYPES },
     ...(packageFilters.length > 0 ? { $or: packageFilters } : {}),
