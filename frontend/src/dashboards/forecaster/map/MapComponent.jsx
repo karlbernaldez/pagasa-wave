@@ -1,12 +1,10 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
+import { DEFAULT_MAP_STYLE_URL, DEFAULT_STUDIO_MAP_VIEW, boundsPair, lngLatPair } from '@/config/mapViewDefaults';
 import { registerMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-
-// Single base style
-const STYLE_URL = 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n';
 
 // Basemap palette. Keep forecast/annotation overlays untouched.
 const BASEMAP_THEMES = {
@@ -226,16 +224,13 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       projection: 'mercator',
-      style: STYLE_URL,
-      center: [120.0, 15.5],
-      zoom: 5.5,
-      minZoom: 4,
-      maxZoom: 16,
+      style: DEFAULT_MAP_STYLE_URL,
+      center: lngLatPair(DEFAULT_STUDIO_MAP_VIEW.center),
+      zoom: DEFAULT_STUDIO_MAP_VIEW.zoom.default,
+      minZoom: DEFAULT_STUDIO_MAP_VIEW.zoom.min,
+      maxZoom: DEFAULT_STUDIO_MAP_VIEW.zoom.max,
       preserveDrawingBuffer: true,
-      maxBounds: [
-        [80, -10],
-        [170, 40],
-      ],
+      maxBounds: boundsPair(DEFAULT_STUDIO_MAP_VIEW.maxBounds),
     });
 
     const resizeMap = () => map.resize();
@@ -249,13 +244,10 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
 
     window.map = map;
     map.fitBounds(
-      [
-        [93, 5],
-        [153.8595159535438, 25],
-      ],
+      boundsPair(DEFAULT_STUDIO_MAP_VIEW.fitBounds),
       {
-        padding: { top: 50, bottom: 50, left: 200, right: 200 },
-        maxZoom: 8,
+        padding: DEFAULT_STUDIO_MAP_VIEW.padding,
+        maxZoom: DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom,
       }
     );
 
