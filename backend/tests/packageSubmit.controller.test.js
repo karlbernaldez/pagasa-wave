@@ -6,10 +6,16 @@ const ADMIN_ID = 'admin-1';
 
 async function loadModules() {
   const workflow = await import('../utils/' + 'forecast' + 'Package.js');
-  const controller = await import('../controllers/' + 'forecast' + 'PackageController.js');
+  const packageController = await import('../controllers/' + 'forecast' + 'PackageController.js');
+  const submitController = await import('../controllers/forecastPackageSubmitController.js');
   const packageModel = await import('../models/' + 'Forecast' + 'Package.js');
   const projectModel = await import('../models/Project.js');
-  return { workflow, controller, PackageModel: packageModel.default, Project: projectModel.default };
+  return {
+    workflow,
+    controller: { ...packageController, submitForecastPackage: submitController.submitForecastPackage },
+    PackageModel: packageModel.default,
+    Project: projectModel.default,
+  };
 }
 
 function ownerId(value = USER_ID) { return { toString: () => value }; }
@@ -221,6 +227,60 @@ test('package submit action submits and locks linked chart projects when every r
     assert.equal(updateManyPayload.update.$push.auditLogs.action, 'submitted');
     assert.equal(res.body.completion.completed, 4);
     assert.equal(res.body.completion.isComplete, true);
+  } finally {
+    PackageModel.findById = originalFindById;
+    Project.updateMany = originalUpdateMany;
+  }
+});
+
+test('package submit action allows a participating non-owner forecaster to submit', async () => {
+  const { workflow, controller, PackageModel, Project } = await loadModules();
+  const originalFindById = PackageModel.findById;
+  const originalUpdateMany = Project.updateMany;
+  const pkg = createPkg(workflow, true);
+  const participantId = 'forecaster-2';
+  pkg.chartCompletion[0].completedBy = participantId;
+  let calls = 0;
+  let updateManyPayload;
+
+  try {
+    PackageModel.findById = () => { calls += 1; return calls === 1 ? pkg : createQuery(pkg); };
+    Project.updateMany = async (filter, update) => { updateManyPayload = { filter, update }; return { modifiedCount: 4 }; };
+
+    const res = await run(
+      controller.submitForecastPackage,
+      req({ user: { id: participantId, role: 'forecaster' } })
+    );
+
+    assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
+    assert.equal(pkg.auditLogs.at(-1).performedBy, participantId);
+    assert.deepEqual(updateManyPayload.filter._id.$in, ['project-1', 'project-2', 'project-3', 'project-4']);
+    assert.equal(res.body.completion.isComplete, true);
+  } finally {
+    PackageModel.findById = originalFindById;
+    Project.updateMany = originalUpdateMany;
+  }
+});
+
+test('package submit action blocks admins from submitting forecast packages', async () => {
+  const { workflow, controller, PackageModel, Project } = await loadModules();
+  const originalFindById = PackageModel.findById;
+  const originalUpdateMany = Project.updateMany;
+  const pkg = createPkg(workflow, true);
+  let updateManyCalls = 0;
+
+  try {
+    PackageModel.findById = () => pkg;
+    Project.updateMany = async () => { updateManyCalls += 1; };
+
+    await assert.rejects(
+      () => run(controller.submitForecastPackage, req({ user: { id: ADMIN_ID, role: 'admin' } })),
+      { status: 403, message: 'Only the package owner or a participating forecaster can submit this package' }
+    );
+
+    assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
+    assert.equal(pkg.saveCalls, 0);
+    assert.equal(updateManyCalls, 0);
   } finally {
     PackageModel.findById = originalFindById;
     Project.updateMany = originalUpdateMany;
