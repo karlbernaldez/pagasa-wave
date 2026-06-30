@@ -8,6 +8,7 @@ import SaveBar from './settings/components/ui/SaveBar';
 
 import OperationsTab from './settings/components/tabs/OperationsTab';
 import ForecasterWorkspaceTab from './settings/components/tabs/ForecasterWorkspaceTab';
+import MapViewSettingsTab from './settings/components/tabs/MapViewSettingsTab';
 import AdminReviewTab from './settings/components/tabs/AdminReviewTab';
 import GeneralTab from './settings/components/tabs/GeneralTab';
 import AboutTab from './settings/components/tabs/AboutTab';
@@ -22,6 +23,7 @@ const cn = (...classes) => classes.filter(Boolean).join(' ');
 const COMPONENTS = {
   operations: OperationsTab,
   forecasterWorkspace: ForecasterWorkspaceTab,
+  mapView: MapViewSettingsTab,
   adminReview: AdminReviewTab,
   general: GeneralTab,
   about: AboutTab,
@@ -60,6 +62,7 @@ const SettingsSection = ({ isDarkMode }) => {
     activeTab, setActiveTab,
     operationsData,
     forecasterWorkspaceData,
+    mapViewData,
     adminReviewData,
     generalData,
     aboutData,
@@ -74,6 +77,7 @@ const SettingsSection = ({ isDarkMode }) => {
   const rawSettings = {
     operations: operationsData,
     forecasterWorkspace: forecasterWorkspaceData,
+    mapView: mapViewData,
     adminReview: adminReviewData,
     general: generalData,
     about: aboutData,
@@ -89,7 +93,7 @@ const SettingsSection = ({ isDarkMode }) => {
 
     return normalized;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [operationsData, forecasterWorkspaceData, adminReviewData, generalData, aboutData, contactData]);
+  }, [operationsData, forecasterWorkspaceData, mapViewData, adminReviewData, generalData, aboutData, contactData]);
 
   const history = useUndoRedoState(combinedInitial, {
     maxHistory: 100,
