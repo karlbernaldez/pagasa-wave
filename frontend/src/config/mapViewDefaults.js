@@ -36,9 +36,16 @@ const toFiniteNumber = (value, fallback) => {
   return Number.isFinite(number) ? number : fallback;
 };
 
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
 const normalizePoint = (point = {}, fallback = {}) => ({
   longitude: toFiniteNumber(point.longitude, fallback.longitude),
   latitude: toFiniteNumber(point.latitude, fallback.latitude),
+});
+
+const clampPointToBounds = (point = {}, bounds = {}) => ({
+  longitude: clamp(point.longitude, bounds.west, bounds.east),
+  latitude: clamp(point.latitude, bounds.south, bounds.north),
 });
 
 const normalizeBounds = (bounds = {}, fallback = {}) => {
@@ -51,6 +58,21 @@ const normalizeBounds = (bounds = {}, fallback = {}) => {
 
   if (next.west >= next.east || next.south >= next.north) {
     return { ...fallback };
+  }
+
+  return next;
+};
+
+const clampBoundsToBounds = (bounds = {}, containingBounds = {}, fallback = {}) => {
+  const next = {
+    west: clamp(bounds.west, containingBounds.west, containingBounds.east),
+    south: clamp(bounds.south, containingBounds.south, containingBounds.north),
+    east: clamp(bounds.east, containingBounds.west, containingBounds.east),
+    north: clamp(bounds.north, containingBounds.south, containingBounds.north),
+  };
+
+  if (next.west >= next.east || next.south >= next.north) {
+    return clampBoundsToBounds(fallback, containingBounds, containingBounds);
   }
 
   return next;
@@ -81,12 +103,22 @@ export function normalizeStudioMapViewSettings(settings = {}) {
   const defaults = DEFAULT_STUDIO_MAP_VIEW;
   const zoom = normalizeZoom(settings.zoom, defaults.zoom);
   const fitBoundsMaxZoom = toFiniteNumber(settings.fitBoundsMaxZoom, defaults.fitBoundsMaxZoom);
+  const maxBounds = normalizeBounds(settings.maxBounds, defaults.maxBounds);
+  const fitBounds = clampBoundsToBounds(
+    normalizeBounds(settings.fitBounds, defaults.fitBounds),
+    maxBounds,
+    defaults.fitBounds,
+  );
+  const center = clampPointToBounds(
+    normalizePoint(settings.center, defaults.center),
+    maxBounds,
+  );
 
   return {
-    center: normalizePoint(settings.center, defaults.center),
+    center,
     zoom,
-    maxBounds: normalizeBounds(settings.maxBounds, defaults.maxBounds),
-    fitBounds: normalizeBounds(settings.fitBounds, defaults.fitBounds),
+    maxBounds,
+    fitBounds,
     padding: normalizePadding(settings.padding, defaults.padding),
     fitBoundsMaxZoom: fitBoundsMaxZoom <= zoom.max ? fitBoundsMaxZoom : defaults.fitBoundsMaxZoom,
   };
