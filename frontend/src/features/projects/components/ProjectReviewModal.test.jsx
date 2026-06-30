@@ -55,7 +55,7 @@ function renderModal(project) {
 }
 
 describe('ProjectReviewModal', () => {
-  it('keeps hook order stable when opening from no project to a selected project', () => {
+  it('keeps hook order stable when opening from no project to a selected project', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { rerender } = renderModal(null);
 
@@ -74,7 +74,7 @@ describe('ProjectReviewModal', () => {
       );
     }).not.toThrow();
 
-    expect(screen.getByText('Coastal Wave Forecast')).toBeInTheDocument();
+    expect(await screen.findByText((text) => text.includes('Coastal Wave Forecast'))).toBeInTheDocument();
     expect(screen.getByLabelText(/review map workspace/i)).toBeInTheDocument();
 
     expect(consoleErrorSpy).not.toHaveBeenCalledWith(
