@@ -26,6 +26,7 @@ vi.mock('@/api/featureServices', () => ({
 vi.mock('@/api/projectAPI', () => ({
   addReviewComment: vi.fn(),
   requestProjectRevision: vi.fn(),
+  fetchAdminForecastPackage: vi.fn(() => Promise.resolve(null)),
 }));
 
 const baseProject = {
