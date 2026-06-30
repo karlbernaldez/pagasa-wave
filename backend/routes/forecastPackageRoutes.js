@@ -10,9 +10,9 @@ import {
   publishForecastPackage,
   requestForecastPackageRevision,
   startForecastPackageReview,
-  submitForecastPackage,
   updateForecastChartCompletion,
 } from '../controllers/forecastPackageController.js';
+import { submitForecastPackage } from '../controllers/forecastPackageSubmitController.js';
 import { getCurrentForecastPackage } from '../controllers/currentForecastPackageController.js';
 import {
   getForecastPackageChartContextByProject,
