@@ -1,7 +1,79 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ThemeProvider } from 'styled-components';
 
 import ForecastPackageCard from './ForecastPackageCard';
+
+const testTheme = {
+  tokens: {
+    spacing: {
+      2: '0.5rem',
+      3: '0.75rem',
+      4: '1rem',
+      5: '1.25rem',
+    },
+    radius: {
+      lg: '0.75rem',
+      xl: '1rem',
+    },
+    typography: {
+      scale: {
+        sm: '0.875rem',
+        md: '1rem',
+      },
+      weight: {
+        semibold: 600,
+        bold: 700,
+      },
+    },
+    motion: {
+      duration: {
+        fast: '150ms',
+      },
+      easing: {
+        standard: 'ease',
+      },
+    },
+    shadows: {
+      focus: '0 0 0 3px rgba(59, 130, 246, 0.35)',
+    },
+    colors: {
+      action: {
+        primary: '#2563eb',
+        primaryHover: '#1d4ed8',
+        secondary: '#f8fafc',
+        secondaryHover: '#e2e8f0',
+        danger: '#dc2626',
+        dangerHover: '#b91c1c',
+      },
+      text: {
+        dark: {
+          primary: '#ffffff',
+        },
+        light: {
+          primary: '#0f172a',
+          secondary: '#475569',
+        },
+      },
+      surface: {
+        light: {
+          raised: '#ffffff',
+          muted: '#f8fafc',
+        },
+      },
+      brand: {
+        primary: '#0057b8',
+        secondary: '#0f172a',
+      },
+      border: {
+        light: {
+          default: '#e2e8f0',
+          strong: '#cbd5e1',
+        },
+      },
+    },
+  },
+};
 
 function createChart(status, chartType = 'analysis') {
   return {
@@ -43,13 +115,15 @@ function renderCard(forecastPackage, handlers = {}) {
   const onPublishPackage = handlers.onPublishPackage || vi.fn();
 
   render(
-    <ForecastPackageCard
-      forecastPackage={forecastPackage}
-      isDarkMode={false}
-      onOpenChart={onOpenChart}
-      onPublishPackage={onPublishPackage}
-      publishingPackageId={handlers.publishingPackageId || null}
-    />
+    <ThemeProvider theme={testTheme}>
+      <ForecastPackageCard
+        forecastPackage={forecastPackage}
+        isDarkMode={false}
+        onOpenChart={onOpenChart}
+        onPublishPackage={onPublishPackage}
+        publishingPackageId={handlers.publishingPackageId || null}
+      />
+    </ThemeProvider>
   );
 
   return { onOpenChart, onPublishPackage };
