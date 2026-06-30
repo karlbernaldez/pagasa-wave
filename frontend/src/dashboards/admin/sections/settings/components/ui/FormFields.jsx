@@ -17,7 +17,7 @@ export const labelCls = (dark) =>
   }`;
 
 // ── Text Input ─────────────────────────────────────────
-export const Field = ({ label, value, onChange, type = 'text', placeholder = '', dark }) => (
+export const Field = ({ label, value, onChange, type = 'text', placeholder = '', dark, ...inputProps }) => (
   <div>
     <label className={labelCls(dark)}>{label}</label>
     <input
@@ -26,6 +26,7 @@ export const Field = ({ label, value, onChange, type = 'text', placeholder = '',
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className={inputCls(dark)}
+      {...inputProps}
     />
   </div>
 );
