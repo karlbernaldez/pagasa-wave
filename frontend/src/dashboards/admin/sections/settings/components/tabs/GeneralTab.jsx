@@ -171,6 +171,13 @@ const GeneralTab = ({ settings = {}, setSettings, dark }) => {
             dark={dark}
           />
 
+          <TextareaField
+            label="Published Chart PDF Note"
+            value={settings.publicChartPdfNote ?? ''}
+            onChange={set('publicChartPdfNote')}
+            dark={dark}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <Field
