@@ -247,6 +247,7 @@ export default function Charts() {
   const { activeChartType, setActiveChartType } = useChartType();
   const { settings: publicSettings } = usePublicMapBounds();
   const exportRefs = useRef({});
+  const exportImageCacheRef = useRef({});
   const [state, setState] = useState({ loading: true, error: '', projects: [] });
   const [query, setQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -283,6 +284,7 @@ export default function Charts() {
   useEffect(() => {
     const controller = new AbortController();
     exportRefs.current = {};
+    exportImageCacheRef.current = {};
     setPdfReadyCount(0);
 
     if (!activeDate || !recentProjects.length) {
@@ -311,6 +313,7 @@ export default function Charts() {
 
   useEffect(() => {
     if (!exportState.entries.length) {
+      exportImageCacheRef.current = {};
       setPdfReadyCount(0);
       return undefined;
     }
@@ -318,8 +321,22 @@ export default function Charts() {
     const totalCount = exportState.entries.length;
     const updateReadyCount = () => {
       const readyCount = exportState.entries.filter((entry) => {
-        if (!entry.project?._id || !hasExportableOutput(entry.output)) return true;
-        return Boolean(exportRefs.current[entry.slot.chartType]?.isReady);
+        const key = entry.slot.chartType;
+        if (!entry.project?._id || !hasExportableOutput(entry.output)) {
+          exportImageCacheRef.current[key] = '';
+          return true;
+        }
+        if (exportImageCacheRef.current[key]) return true;
+        const mapRef = exportRefs.current[key];
+        if (!mapRef?.isReady || !mapRef?.getDataUrl) return false;
+        try {
+          const imageDataUrl = mapRef.getDataUrl();
+          if (!imageDataUrl) return false;
+          exportImageCacheRef.current[key] = imageDataUrl;
+          return true;
+        } catch {
+          return false;
+        }
       }).length;
 
       setPdfReadyCount((current) => {
@@ -343,15 +360,15 @@ export default function Charts() {
       return;
     }
 
-    let printableEntries;
-    try {
-      printableEntries = exportState.entries.map((entry) => {
-        if (!entry.project?._id || !hasExportableOutput(entry.output)) return { ...entry, imageDataUrl: '' };
-        const mapRef = exportRefs.current[entry.slot.chartType];
-        return { ...entry, imageDataUrl: mapRef?.getDataUrl ? mapRef.getDataUrl() : '' };
-      });
-    } catch (error) {
-      setExportState((prev) => ({ ...prev, error: error?.message || 'PDF maps are not ready yet. Please wait a moment and try again.' }));
+    const printableEntries = exportState.entries.map((entry) => {
+      if (!entry.project?._id || !hasExportableOutput(entry.output)) return { ...entry, imageDataUrl: '' };
+      return { ...entry, imageDataUrl: exportImageCacheRef.current[entry.slot.chartType] || '' };
+    });
+
+    const missingImage = printableEntries.some((entry) => entry.project?._id && hasExportableOutput(entry.output) && !entry.imageDataUrl);
+    if (missingImage) {
+      setPdfReadyCount(0);
+      setExportState((prev) => ({ ...prev, error: 'PDF export is still warming up in the background. Please wait until the PDF button is ready.' }));
       return;
     }
 
