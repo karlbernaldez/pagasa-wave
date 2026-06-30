@@ -42,7 +42,7 @@ export const WAVE_ELEMENTS = [
   { id: 'wavePeriod', name: 'Mean Period', icon: '⏱️', storageKey: 'WAVE_PERIOD' },
 ];
 
-// ── Domain / utility layer definitions ───────────────────────────────────────
+// ── Domain / reference layer definitions ──────────────────────────────────────
 
 export const DOMAIN_LAYERS = [
   { id: 'PAR', name: 'PAR', subtitle: 'Philippine Area of Responsibility' },
@@ -53,6 +53,11 @@ export const DOMAIN_LAYERS = [
 export const UTILITY_LAYERS = [
   { id: 'GRATICULES', name: 'Graticules', subtitle: 'Coordinate Grid Lines' },
   { id: 'SHIPPING_ZONE', name: 'Shipping Zones', subtitle: 'Maritime Shipping Areas' },
+];
+
+export const SATELLITE_OVERLAY_LAYERS = [
+  { id: 'PAGASA_NWP_RASTER', name: 'PAGASA NWP Raster', subtitle: 'Panahon precipitation forecast raster' },
+  { id: 'CYCLONE_TRACK', name: 'Cyclone Track', subtitle: 'PAGASA tropical cyclone track' },
 ];
 
 // ── Wave raster tile config ───────────────────────────────────────────────────

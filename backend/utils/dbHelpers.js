@@ -1,9 +1,14 @@
 import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 import { throwError } from './errorHelper.js';
+import { isForecastPackageChartProject } from './forecastPackageAccess.js';
 
 /**
- * Ensure project exists, optionally validate owner
+ * Ensure project exists, optionally validate owner.
+ * Forecast Package chart projects are shared across forecasters, so owner-scoped
+ * reads must allow those linked chart projects even when the current forecaster
+ * is not the original project owner.
+ *
  * @param {string} projectId - Project ID
  * @param {string} [owner] - Optional owner ID
  * @returns {Promise<Project>}
@@ -13,7 +18,10 @@ export const ensureProjectExists = async (projectId, owner = null) => {
   if (!project) throwError('Project not found.', 404);
 
   if (owner && project.owner.toString() !== owner.toString()) {
-    throwError('Unauthorized: you do not own this project.', 403);
+    const sharedForecastChart = await isForecastPackageChartProject(project._id || projectId);
+    if (!sharedForecastChart) {
+      throwError('Unauthorized: you do not own this project.', 403);
+    }
   }
 
   return project;
@@ -97,7 +105,6 @@ export const validateGeometry = (geometry) => {
         throwError('Invalid Polygon ring. Must contain at least 4 [lng, lat] points.', 400);
       }
 
-      // Check if polygon is closed
       const first = ring[0];
       const last = ring[ring.length - 1];
 
@@ -116,41 +123,52 @@ function getStableFeatureId(feature) {
   return feature?.properties?.stableId || feature?.properties?.annotationId || feature?.properties?.sourceId || feature?.sourceId;
 }
 
+function getFeatureType(feature) {
+  return feature?.properties?.type || feature?.properties?.markerType || feature?.properties?.symbolType || '';
+}
+
 function buildRenamedFeatureProperties(feature, newName) {
   const stableId = getStableFeatureId(feature);
+  const type = getFeatureType(feature);
+  const isLowWaveMarker = type === 'less_1';
 
-  return {
+  const updateData = {
     name: newName,
-    'properties.labelValue': newName,
     'properties.title': newName,
     'properties.name': newName,
+    'properties.displayName': newName,
     'properties.stableId': stableId,
     'properties.annotationId': stableId,
+    'properties.sourceId': feature.sourceId,
   };
+
+  // Low-wave point markers use labelValue for the rendered map symbol (<1).
+  // Renaming should change only the layer display name, not the meteorological symbol.
+  if (!isLowWaveMarker) {
+    updateData['properties.labelValue'] = newName;
+  }
+
+  return updateData;
 }
 
 /**
- * Build new SourceId and update data for feature renaming.
- * Keep all user-visible label fields in sync so Studio, Project Library previews,
- * review modals, and reload hydration all display the same renamed annotation.
- * Preserve stable annotation identity separately from sourceId so review diffs can
- * classify renames and geometry edits as changed instead of removed + added.
+ * Build stable SourceId and update data for feature renaming.
+ *
+ * Production rule: sourceId is object identity. It must never change during
+ * rename, because Mapbox layers, annotation panel rows, style updates, delete,
+ * drag persistence, and websocket refresh all target this ID. A rename only
+ * changes user-visible fields.
  *
  * @param {Feature} feature - Existing feature
  * @param {string} newName - New feature name
- * @returns {[string, Object]} - New sourceId and update object
+ * @returns {[string, Object]} - Stable sourceId and update object
  */
 export const buildNewSourceIdAndUpdateData = (feature, newName) => {
-  const type = feature.properties.type || feature.properties.markerType || feature.properties.symbolType;
-  const isMarker = ['low_pressure', 'high_pressure', 'typhoon', 'less_1'].includes(type);
-  const newSourceId = isMarker ? `${type}_${newName}` : newName;
+  const stableSourceId = feature.sourceId || getStableFeatureId(feature);
 
   return [
-    newSourceId,
-    {
-      sourceId: newSourceId,
-      ...buildRenamedFeatureProperties(feature, newName),
-    },
+    stableSourceId,
+    buildRenamedFeatureProperties(feature, newName),
   ];
 };
 
@@ -175,13 +193,11 @@ export const ensureUniqueProjectName = async (name, owner, excludeId = null) => 
  * @returns {Promise<number>} - Number of deleted features
  */
 export const deleteProjectAndFeatures = async (projectId, owner) => {
-  // Delete related features
   const deleteResult = await Feature.deleteMany({
     'properties.project': projectId,
     'properties.owner': owner,
   });
 
-  // Delete the project
   const project = await Project.findById(projectId);
   if (!project) throwError('Project not found.', 404);
   if (project.owner.toString() !== owner.toString()) throwError('Unauthorized: cannot delete this project.', 403);

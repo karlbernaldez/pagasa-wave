@@ -23,8 +23,32 @@ const NAV_ITEMS = [
   { id: 'analytics', label: 'Analytics', path: '/studio?section=analytics', icon: BarChart3, disabled: true },
   { id: 'map-viewer', label: 'Map Viewer', path: '/studio?section=map-viewer', icon: Map, disabled: true },
   { id: 'report-builder', label: 'Report Builder', path: '/pdf', icon: Waves, disabled: true },
-  { id: 'settings', label: 'Settings', path: '/profile', icon: Settings },
+  { id: 'account-settings', label: 'Account Settings', path: '/profile', icon: Settings },
 ];
+
+const HEADER_BY_PATH = {
+  '/profile': {
+    eyebrow: 'Forecaster account',
+    title: 'Account Settings',
+    description: 'Review your profile, contact details, role, and account activity',
+  },
+  '/edit-profile': {
+    eyebrow: 'Forecaster account',
+    title: 'Edit Profile',
+    description: 'Update your personal details, contact information, and password',
+  },
+  '/pdf': {
+    eyebrow: 'Forecaster studio',
+    title: 'Report Builder',
+    description: 'Prepare forecast package reports and exports',
+  },
+};
+
+const DEFAULT_HEADER = {
+  eyebrow: 'Forecaster Studio',
+  title: 'WaveLab Operations',
+  description: 'Track, manage, and continue active marine forecast projects',
+};
 
 export default function ForecasterShell({ children, user: fallbackUser = null }) {
   const { isDarkMode, setIsDarkMode } = useTheme();
@@ -32,6 +56,8 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
   const userOptions = useMemo(() => ({ roleOverride: 'Forecaster' }), []);
   const { user } = useCurrentDashboardUser(fallbackUser, userOptions);
   const activeId = useMemo(() => {
+    if (location.pathname === '/edit-profile') return 'account-settings';
+
     const activeItem = NAV_ITEMS.find((item) => {
       if (item.disabled || !item.path) return false;
 
@@ -41,6 +67,8 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
 
     return activeItem?.id;
   }, [location.pathname]);
+
+  const headerContent = HEADER_BY_PATH[location.pathname] || DEFAULT_HEADER;
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -63,9 +91,7 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
         label: 'Forecaster Studio',
       }}
       header={{
-        eyebrow: 'Forecaster Studio',
-        title: 'WaveLab Operations',
-        description: 'Track, manage, and continue active marine forecast projects',
+        ...headerContent,
         user,
       }}
     >

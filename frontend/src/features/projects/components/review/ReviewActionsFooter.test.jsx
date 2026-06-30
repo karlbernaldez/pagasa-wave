@@ -73,6 +73,7 @@ function renderFooter(props = {}) {
     onRequestRevision: vi.fn(),
     onApprove: vi.fn(),
     onReject: vi.fn(),
+    onNoPublication: vi.fn(),
     onPublish: vi.fn(),
     onClose: vi.fn(),
   };
@@ -98,8 +99,8 @@ describe('ReviewActionsFooter', () => {
 
     expect(screen.getByRole('button', { name: /add comment/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /request revision/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
-    expect(screen.getByText(/add remarks to enable comment, revision, or reject actions/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /no publication/i })).toBeDisabled();
+    expect(screen.getByText(/add remarks to enable comment, revision, or no-publication actions/i)).toBeInTheDocument();
   });
 
   it('calls Add Comment when remarks exist', () => {
@@ -141,21 +142,22 @@ describe('ReviewActionsFooter', () => {
     expect(handlers.onApprove).toHaveBeenCalledTimes(1);
   });
 
-  it('disables Reject when remarks are empty', () => {
+  it('disables No Publication when remarks are empty', () => {
     renderFooter({ hasRemarks: false, isUnderReview: true });
 
-    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /no publication/i })).toBeDisabled();
   });
 
-  it('calls Reject when project is under review and remarks exist', () => {
+  it('calls No Publication when project is under review and remarks exist', () => {
     const handlers = renderFooter({ isUnderReview: true, hasRemarks: true });
-    const rejectButton = screen.getByRole('button', { name: /reject/i });
+    const noPublicationButton = screen.getByRole('button', { name: /no publication/i });
 
-    expect(rejectButton).toBeEnabled();
+    expect(noPublicationButton).toBeEnabled();
 
-    fireEvent.click(rejectButton);
+    fireEvent.click(noPublicationButton);
 
-    expect(handlers.onReject).toHaveBeenCalledTimes(1);
+    expect(handlers.onNoPublication).toHaveBeenCalledTimes(1);
+    expect(handlers.onNoPublication).toHaveBeenCalledWith('Operational exception / no verified publication');
   });
 
   it('shows Publish only when project is approved', () => {
@@ -181,7 +183,7 @@ describe('ReviewActionsFooter', () => {
     expect(screen.queryByRole('button', { name: /add comment/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /request revision/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /reject/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /no publication/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
   });
 
@@ -199,7 +201,7 @@ describe('ReviewActionsFooter', () => {
     expect(screen.getByRole('button', { name: /add comment/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /request revision/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /no publication/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /publish/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /close/i })).toBeDisabled();
   });

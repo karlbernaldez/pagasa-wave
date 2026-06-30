@@ -27,11 +27,24 @@ const MARKER_TYPE_ALIASES = {
   less1: 'less_1',
   less_than_1m: 'less_1',
   lessthan1m: 'less_1',
+  low_wave: 'less_1',
   low_waves: 'less_1',
   text: 'text_note',
   text_note: 'text_note',
   label: 'text_note',
   map_label: 'text_note',
+};
+
+const MARKER_DISPLAY_NAMES = {
+  less_1: 'Low Wave (<1 m)',
+  text_note: 'Text Note',
+  low_pressure: 'Low Pressure Area',
+  high_pressure: 'High Pressure Area',
+  typhoon: 'Tropical Cyclone',
+};
+
+const MARKER_LABEL_VALUES = {
+  less_1: '<1',
 };
 
 export function normalizeMarkerType(value) {
@@ -70,9 +83,157 @@ function makeSafeSourceId(type, name) {
   return `${safeType}_${safeName}_${Date.now()}`;
 }
 
-export function savePointFeature({ coords, title, selectedType, setLayersRef, projectId }) {
-  if (typeof setLayersRef?.current !== 'function') return;
+function getActiveProjectId(projectId) {
+  const explicitProjectId = String(projectId || '').trim();
+  if (explicitProjectId) return explicitProjectId;
 
+  try {
+    return String(window.localStorage.getItem('projectId') || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function getLowWaveNumberFromName(value) {
+  const match = String(value || '').match(/Low Wave\s*\(<1\s*m\)\s*#(\d+)/i);
+  return match ? Number.parseInt(match[1], 10) : 0;
+}
+
+function isLowWaveLayer(layer = {}) {
+  return layer.type === 'less_1'
+    || layer.markerType === 'less_1'
+    || /^Low Wave \(<1 m\)(\s+#\d+)?$/i.test(String(layer.name || '').trim());
+}
+
+function getLowWaveCounterKey(projectId) {
+  return `wavelab:${projectId}:low-wave-count`;
+}
+
+function getVisibleLowWaveMaxNumber() {
+  if (typeof document === 'undefined') return 0;
+
+  try {
+    const text = document.body?.innerText || '';
+    const matches = [...text.matchAll(/Low Wave\s*\(<1\s*m\)\s*#(\d+)/gi)];
+    return matches.reduce((max, match) => Math.max(max, Number.parseInt(match[1], 10) || 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
+function reserveFallbackLowWaveNumber(projectId) {
+  if (typeof window === 'undefined' || !projectId) return Math.max(1, getVisibleLowWaveMaxNumber() + 1);
+
+  try {
+    const key = getLowWaveCounterKey(projectId);
+    const stored = Number.parseInt(window.localStorage.getItem(key) || '0', 10) || 0;
+    const visible = getVisibleLowWaveMaxNumber();
+    const next = Math.max(stored, visible) + 1;
+    window.localStorage.setItem(key, String(next));
+    return next;
+  } catch {
+    return Math.max(1, getVisibleLowWaveMaxNumber() + 1);
+  }
+}
+
+function syncFallbackLowWaveCounter(projectId, nextNumber) {
+  if (typeof window === 'undefined' || !projectId) return;
+
+  try {
+    const key = getLowWaveCounterKey(projectId);
+    const current = Number.parseInt(window.localStorage.getItem(key) || '0', 10);
+    if (!Number.isFinite(current) || nextNumber > current) {
+      window.localStorage.setItem(key, String(nextNumber));
+    }
+  } catch {
+    // Ignore localStorage failures. Source IDs still keep DB records unique.
+  }
+}
+
+function formatLowWaveDisplayName(number) {
+  return `${MARKER_DISPLAY_NAMES.less_1} #${Math.max(1, Number(number) || 1)}`;
+}
+
+function getNextLowWaveDisplayName(layers = [], projectId = '') {
+  const lowWaveLayers = layers.filter(isLowWaveLayer);
+  const maxExistingNumber = lowWaveLayers.reduce(
+    (max, layer) => Math.max(max, getLowWaveNumberFromName(layer.name)),
+    0
+  );
+  const nextNumber = maxExistingNumber > 0 ? maxExistingNumber + 1 : lowWaveLayers.length + 1;
+  syncFallbackLowWaveCounter(projectId, nextNumber);
+  return formatLowWaveDisplayName(nextNumber);
+}
+
+function getMarkerLabelValue(markerType, rawTitle) {
+  return MARKER_LABEL_VALUES[markerType] || rawTitle?.trim() || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
+}
+
+function getMarkerDisplayName(markerType, rawTitle, layers = [], projectId = '') {
+  const trimmedTitle = rawTitle?.trim();
+
+  if (markerType === 'less_1') {
+    return layers.length ? getNextLowWaveDisplayName(layers, projectId) : formatLowWaveDisplayName(reserveFallbackLowWaveNumber(projectId));
+  }
+
+  if (markerType === 'text_note') {
+    return trimmedTitle || MARKER_DISPLAY_NAMES.text_note;
+  }
+
+  return trimmedTitle || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
+}
+
+function notifyFeatureSaved(displayName) {
+  Swal.fire({
+    icon: 'success',
+    title: 'Feature saved!',
+    text: `"${displayName}" has been added successfully.`,
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3500,
+  });
+}
+
+function notifyFeatureSaveFailed(err) {
+  Swal.fire({
+    icon: 'error',
+    title: 'Failed to save feature',
+    text: err?.message || 'An unknown error occurred.',
+    confirmButtonColor: '#d33',
+  });
+}
+
+function buildPointFeaturePayload({ feature, displayName, labelValue, closedMode, activeProjectId, markerType, sourceId }) {
+  return {
+    geometry: feature.geometry,
+    properties: {
+      labelValue,
+      displayName,
+      closedMode,
+      isFront: false,
+      project: activeProjectId,
+      title: displayName,
+      name: displayName,
+      type: markerType,
+      markerType,
+      symbolType: markerType,
+      mapLayerId: sourceId,
+    },
+    name: displayName,
+    sourceId,
+  };
+}
+
+function refreshWorkspaceAfterFallbackSave() {
+  if (typeof window === 'undefined') return;
+
+  window.setTimeout(() => {
+    window.location.reload();
+  }, 750);
+}
+
+export function savePointFeature({ coords, title, selectedType, setLayersRef, projectId }) {
   const normalizedCoords = getCoordinatePair(coords);
   if (!normalizedCoords) {
     console.error('❌ Invalid coords passed to savePointFeature:', coords);
@@ -84,10 +245,10 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
       showConfirmButton: false,
       timer: 3000,
     });
-    return;
+    return Promise.resolve(null);
   }
 
-  const activeProjectId = projectId;
+  const activeProjectId = getActiveProjectId(projectId);
   if (!activeProjectId) {
     console.error('❌ Missing projectId when saving marker feature.');
     Swal.fire({
@@ -98,99 +259,107 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
       showConfirmButton: false,
       timer: 3500,
     });
-    return;
+    return Promise.resolve(null);
   }
 
   const markerType = normalizeMarkerType(selectedType);
-  const baseName = title?.trim() || 'Untitled Layer';
-  const sourceId = makeSafeSourceId(markerType, baseName);
-  const mapLayerId = `${markerType}_${baseName}`;
-  const panelId = sourceId;
+  const rawTitle = title?.trim() || '';
+  const sourceId = makeSafeSourceId(markerType, rawTitle || MARKER_DISPLAY_NAMES[markerType] || 'marker');
+  const labelValue = getMarkerLabelValue(markerType, rawTitle);
   const closedMode = false;
 
-  const feature = {
-    type: 'Feature',
-    geometry: {
-      type: 'Point',
-      coordinates: normalizedCoords,
-    },
-    properties: {
-      title: baseName,
-      name: baseName,
-      type: markerType,
-      markerType,
-      symbolType: markerType,
-      mapLayerId,
-    },
-  };
+  const updateLayers = typeof setLayersRef?.current === 'function' ? setLayersRef.current : null;
 
-  setLayersRef.current((prevLayers) => {
-    const existingNames = prevLayers.map((l) => l.name);
-
-    // ❌ Block and alert if duplicate layer name exists
-    if (existingNames.includes(baseName)) {
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'error',
-        title: `The marker named "${baseName}" already exists.`,
-        showConfirmButton: false,
-        timer: 3000,
-      });
-      return prevLayers;
-    }
-
-    createFeature({
-      geometry: feature.geometry,
+  const buildFeatureState = (layers = []) => {
+    const displayName = getMarkerDisplayName(markerType, rawTitle, layers, activeProjectId);
+    const feature = {
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: normalizedCoords,
+      },
       properties: {
-        labelValue: baseName,
-        closedMode,
-        isFront: false,
-        project: activeProjectId,
-        title: baseName,
-        name: baseName,
+        labelValue,
+        displayName,
+        title: displayName,
+        name: displayName,
         type: markerType,
         markerType,
         symbolType: markerType,
-        mapLayerId,
+        mapLayerId: sourceId,
       },
-      name: baseName,
-      sourceId,
-    })
-      .then(() => {
-        Swal.fire({
-          icon: 'success',
-          title: 'Feature saved!',
-          text: `"${baseName}" has been added successfully.`,
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 3500,
-        });
-      })
-      .catch((err) => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Failed to save feature',
-          text: err?.message || 'An unknown error occurred.',
-          confirmButtonColor: '#d33',
-        });
-      });
+    };
 
-    return [
-      ...prevLayers,
-      {
-        id: panelId,
+    return {
+      sourceId,
+      displayName,
+      labelValue,
+      markerType,
+      feature,
+      panelLayer: {
+        id: sourceId,
         sourceID: sourceId,
-        name: baseName,
+        sourceId,
+        source: sourceId,
+        name: displayName,
         visible: true,
         locked: false,
         type: markerType,
         markerType,
-        mapLayerId,
+        mapLayerId: sourceId,
+        properties: feature.properties,
       },
-    ];
+    };
+  };
+
+  const persistFeature = ({ state, refreshOnSuccess = false } = {}) => createFeature(buildPointFeaturePayload({
+    feature: state.feature,
+    displayName: state.displayName,
+    labelValue,
+    closedMode,
+    activeProjectId,
+    markerType,
+    sourceId,
+  }))
+    .then(() => {
+      notifyFeatureSaved(state.displayName);
+      if (refreshOnSuccess) refreshWorkspaceAfterFallbackSave();
+      return state;
+    })
+    .catch((error) => {
+      notifyFeatureSaveFailed(error);
+      return null;
+    });
+
+  if (!updateLayers) {
+    const state = buildFeatureState([]);
+    return persistFeature({ state, refreshOnSuccess: true });
+  }
+
+  let pendingSave = Promise.resolve(null);
+
+  updateLayers((prevLayers) => {
+    const existingSourceIds = prevLayers.map((layer) => layer.sourceID || layer.sourceId || layer.source || layer.id);
+    const state = buildFeatureState(prevLayers);
+
+    if (existingSourceIds.includes(sourceId)) {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'error',
+        title: `The marker "${state.displayName}" already exists.`,
+        showConfirmButton: false,
+        timer: 3000,
+      });
+      pendingSave = Promise.resolve(null);
+      return prevLayers;
+    }
+
+    pendingSave = persistFeature({ state });
+    return [...prevLayers, state.panelLayer];
   });
+
+  return pendingSave;
 }
 
 
@@ -270,4 +439,3 @@ export const stopFlagDrawing = (setIsFlagDrawing, onToggleFlagCanvas) => {
 export const toggleCollapse = (setIsCollapsed) => {
   setIsCollapsed(prev => !prev);
 };
-

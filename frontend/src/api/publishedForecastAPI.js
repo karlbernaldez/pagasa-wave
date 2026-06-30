@@ -30,15 +30,19 @@ export const fetchPublishedChartOutput = (projectId, { signal } = {}) => {
   return request(`${PROJECT_API_BASE_URL}/${projectId}/published-output`, { signal });
 };
 
-export const fetchPublicPublishedChartOutput = (projectId, { signal } = {}) => {
+export const fetchPublicPublishedChartOutput = (projectId, { signal, theme } = {}) => {
   if (!projectId) {
     return Promise.reject(new Error('Missing projectId when fetching public published chart'));
   }
 
-  return request(`${PROJECT_API_BASE_URL}/public/published/${projectId}`, { signal });
+  const params = new URLSearchParams();
+  if (theme) params.set('theme', theme);
+  const query = params.toString();
+
+  return request(`${PROJECT_API_BASE_URL}/public/published/${projectId}${query ? `?${query}` : ''}`, { signal });
 };
 
-export const fetchPublicPublishedCharts = ({ page = 1, limit = 12, search = '', mode = 'active', before = '', after = '', signal } = {}) => {
+export const fetchPublicPublishedCharts = ({ page = 1, limit = 12, search = '', mode = 'active', before = '', after = '', theme = '', signal } = {}) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
@@ -48,6 +52,7 @@ export const fetchPublicPublishedCharts = ({ page = 1, limit = 12, search = '', 
   if (search.trim()) params.set('search', search.trim());
   if (before) params.set('before', before);
   if (after) params.set('after', after);
+  if (theme) params.set('theme', theme);
 
   return request(`${PROJECT_API_BASE_URL}/public/published?${params.toString()}`, { signal });
 };

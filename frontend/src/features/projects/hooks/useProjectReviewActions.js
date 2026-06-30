@@ -9,6 +9,7 @@ export default function useProjectReviewActions({
   setCurrentProject,
   setRemarks,
   onActionComplete,
+  onActionSuccess,
   onClose,
 }) {
   const [busyAction, setBusyAction] = useState(null);
@@ -31,8 +32,9 @@ export default function useProjectReviewActions({
 
       setCurrentProject(nextProject);
       await onActionComplete?.(nextProject);
+      const shouldClose = await onActionSuccess?.({ key, project: nextProject, closeOnSuccess });
       setRemarks('');
-      if (closeOnSuccess) onClose?.();
+      if (closeOnSuccess && shouldClose !== false) onClose?.();
     } catch (error) {
       console.error(error);
       setActionError(error.message || 'Action failed. Please try again.');

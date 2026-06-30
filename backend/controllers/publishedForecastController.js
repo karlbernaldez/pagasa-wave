@@ -3,6 +3,17 @@ import { throwError } from '../utils/errorHelper.js';
 import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
+import { formatLocalDateKey } from '../utils/forecastPackage.js';
+
+const DEFAULT_RASTER_BOUNDS = [100, -5, 180, 50];
+const DEFAULT_MODEL_RUN_HOUR = 18;
+const DEFAULT_MODEL_RUN_DAY_OFFSET = -1;
+const WW3_FORECAST_OFFSETS = Object.freeze({
+  analysis: { days: -1, hour: '18' },
+  forecast_24h: { days: 0, hour: '18' },
+  forecast_36h: { days: 1, hour: '06' },
+  forecast_48h: { days: 1, hour: '18' },
+});
 
 function getProjectOwnerId(project) {
   return String(project?.owner?._id || project?.owner || '');
@@ -35,12 +46,15 @@ function toFeatureSnapshot(feature) {
   };
 }
 
-function getPublishedFeatureCollectionFromVersions(project) {
+function getPublishedVersion(project) {
   const versions = Array.isArray(project?.versions) ? project.versions : [];
-  const publishedVersion = [...versions]
+  return [...versions]
     .reverse()
-    .find((version) => version?.reason === 'publish' && (version.featureCollection || version.snapshot));
+    .find((version) => version?.reason === 'publish' && (version.featureCollection || version.snapshot || version.raster));
+}
 
+function getPublishedFeatureCollectionFromVersions(project) {
+  const publishedVersion = getPublishedVersion(project);
   const source = publishedVersion?.featureCollection || publishedVersion?.snapshot;
 
   if (source?.type === 'FeatureCollection' && Array.isArray(source.features)) {
@@ -77,13 +91,124 @@ function getPublicProjectPayload(project) {
   };
 }
 
-async function buildPublishedForecastPayload(project, { canArchive = false } = {}) {
+function padDatePart(value) {
+  return String(value).padStart(2, '0');
+}
+
+function normalizeChartType(chartType = '') {
+  return String(chartType).trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function normalizeRasterTheme(value) {
+  return String(value || '').trim().toLowerCase() === 'dark' ? 'dark' : 'light';
+}
+
+function formatForecastDateToken(value) {
+  const localKey = formatLocalDateKey(value);
+  return localKey ? localKey.replaceAll('-', '') : '';
+}
+
+function shiftDateToken(dateToken, offsetDays) {
+  const match = String(dateToken || '').match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (!match) return '';
+  const [, year, month, day] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0));
+  date.setUTCDate(date.getUTCDate() + Number(offsetDays || 0));
+  return `${date.getUTCFullYear()}${padDatePart(date.getUTCMonth() + 1)}${padDatePart(date.getUTCDate())}`;
+}
+
+function interpolateTemplate(template, values) {
+  if (!template) return '';
+  return String(template).replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+    if (key in values) return encodeURIComponent(String(values[key] ?? ''));
+    return match;
+  });
+}
+
+function getRawRasterAsset(project) {
+  const publishedVersion = getPublishedVersion(project);
+  return project?.publishedRaster || publishedVersion?.raster || project?.raster || null;
+}
+
+function normalizeBounds(value) {
+  if (!Array.isArray(value) || value.length !== 4) return DEFAULT_RASTER_BOUNDS;
+  return value.map(Number).every(Number.isFinite) ? value.map(Number) : DEFAULT_RASTER_BOUNDS;
+}
+
+function getNumberSetting(asset, key, envName, fallback) {
+  const value = asset?.[key] ?? process.env[envName] ?? fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function getChartRunDefaults(chartType) {
+  return WW3_FORECAST_OFFSETS[normalizeChartType(chartType)] || {
+    days: DEFAULT_MODEL_RUN_DAY_OFFSET,
+    hour: padDatePart(DEFAULT_MODEL_RUN_HOUR),
+  };
+}
+
+function resolveCogRaster(project, { theme = 'light' } = {}) {
+  const asset = getRawRasterAsset(project) || {};
+  const forecastDate = formatForecastDateToken(project?.forecastDate);
+  const chartDefaults = getChartRunDefaults(project?.chartType);
+  const runHour = getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', chartDefaults.hour);
+  const runDayOffset = getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', chartDefaults.days);
+  const runDate = asset.runDate || shiftDateToken(forecastDate, runDayOffset);
+  const runHourToken = padDatePart(runHour);
+  const runDateTime = asset.runDateTime || `${runDate}${runHourToken}`;
+  const rasterTheme = normalizeRasterTheme(asset.theme || theme);
+  const model = asset.model || process.env.PUBLIC_WAVE_COG_MODEL || 'WW3';
+  const tokenValues = {
+    projectId: String(project?._id || ''),
+    chartType: project?.chartType || '',
+    forecastDate,
+    date: forecastDate,
+    model,
+    theme: rasterTheme,
+    runDate,
+    runHour: runHourToken,
+    runDateTime,
+    cycle: runHourToken,
+  };
+
+  const defaultLocalTileTemplate = process.env.NODE_ENV === 'production'
+    ? ''
+    : 'http://127.0.0.1:8081/{model}/{theme}/{runDateTime}/{z}/{x}/{y}.png';
+  const cogUrl = asset.cogUrl || asset.url || interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
+  const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultLocalTileTemplate, tokenValues);
+  const cogTileTemplate = process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
+  const tileUrl = directTileUrl || (cogUrl && cogTileTemplate
+    ? interpolateTemplate(cogTileTemplate, { ...tokenValues, cogUrl, url: cogUrl })
+    : '');
+
+  if (!tileUrl) return null;
+
+  return {
+    type: 'cog',
+    model: tokenValues.model,
+    theme: rasterTheme,
+    cogUrl: cogUrl || null,
+    tileUrl,
+    tileSize: Number(asset.tileSize) || 256,
+    scheme: asset.scheme || 'xyz',
+    bounds: normalizeBounds(asset.bounds),
+    opacity: Number.isFinite(Number(asset.opacity)) ? Number(asset.opacity) : 0.96,
+    attribution: asset.attribution || 'WaveLab / DOST-PAGASA',
+    runDate,
+    runHour: runHourToken,
+    runDateTime,
+  };
+}
+
+async function buildPublishedForecastPayload(project, { canArchive = false, theme = 'light' } = {}) {
   const versionFeatureCollection = getPublishedFeatureCollectionFromVersions(project);
   const featureCollection = versionFeatureCollection || await getCurrentFeatureCollection(project._id);
 
   return {
     project: getPublicProjectPayload(project),
     featureCollection,
+    raster: resolveCogRaster(project, { theme }),
     canArchive,
   };
 }
@@ -159,10 +284,11 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const skip = (page - 1) * limit;
   const query = buildPublicListQuery(req);
+  const theme = normalizeRasterTheme(req.query.theme);
 
   const [projects, total] = await Promise.all([
     Project.find(query)
-      .select('name description chartType forecastDate status publishedAt owner approvedBy reviewComment')
+      .select('name description chartType forecastDate status publishedAt owner approvedBy reviewComment publishedRaster')
       .populate('owner', 'firstName lastName username')
       .populate('approvedBy', 'firstName lastName username')
       .sort({ forecastDate: -1, publishedAt: -1, updatedAt: -1, _id: -1 })
@@ -173,7 +299,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
   ]);
 
   res.json({
-    projects,
+    projects: projects.map((project) => ({ ...project, raster: resolveCogRaster(project, { theme }) })),
     total,
     page,
     limit,
@@ -186,7 +312,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
 export const getPublicPublishedForecastOutput = asyncHandler(async (req, res) => {
   const project = await findPublicPublishedProject(req.params.id);
   const canArchive = req.user?.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED;
-  res.json(await buildPublishedForecastPayload(project, { canArchive }));
+  res.json(await buildPublishedForecastPayload(project, { canArchive, theme: normalizeRasterTheme(req.query.theme) }));
 });
 
 export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
@@ -198,5 +324,5 @@ export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
     throwError('You do not have access to this published forecast', 403);
   }
 
-  res.json(await buildPublishedForecastPayload(project, { canArchive: req.user.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED }));
+  res.json(await buildPublishedForecastPayload(project, { canArchive: req.user.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED, theme: normalizeRasterTheme(req.query.theme) }));
 });

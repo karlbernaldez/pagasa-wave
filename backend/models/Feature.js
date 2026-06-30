@@ -16,6 +16,9 @@ const FeatureSchema = new mongoose.Schema({
     labelValue: { type: String },
     closedMode: { type: Boolean, default: false },
     isFront: { type: Boolean, default: false },
+    frontType: { type: String, enum: ['cold', 'warm', 'stationary', 'occluded'] },
+    frontSymbolSide: { type: String, enum: ['normal', 'opposite'] },
+    style: { type: mongoose.Schema.Types.Mixed, default: {} },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User', // Reference to the User model
@@ -31,7 +34,9 @@ const FeatureSchema = new mongoose.Schema({
     annotationId: { type: String },
     title: { type: String },
     name: { type: String },
-    type: { type: String, enum: ['high_pressure', 'low_pressure', 'typhoon'] },
+    type: { type: String, enum: ['high_pressure', 'low_pressure', 'typhoon', 'less_1', 'text_note'] },
+    markerType: { type: String },
+    mapLayerId: { type: String },
   },
   name: { type: String, required: true },
   sourceId: { type: String, required: true },
