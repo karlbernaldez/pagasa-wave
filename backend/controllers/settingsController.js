@@ -1,4 +1,9 @@
 import SiteSettings from '../models/SiteSettings.js';
+import {
+  MAP_VIEW_SETTINGS_PAGE,
+  buildMapViewSettingsResponse,
+  parseMapViewSettingsPayload,
+} from '../utils/mapViewSettings.js';
 
 const ALLOWED_PAGES = [
   'general',
@@ -7,6 +12,7 @@ const ALLOWED_PAGES = [
   'operations',
   'forecasterworkspace',
   'adminreview',
+  MAP_VIEW_SETTINGS_PAGE,
 ];
 
 const PUBLIC_CACHEABLE_PAGES = ['about', 'contact'];
@@ -40,6 +46,24 @@ const sanitizeObject = (value) => {
   return clean;
 };
 
+const resolveSettingsResponse = (page, data) => {
+  if (page === MAP_VIEW_SETTINGS_PAGE) {
+    return buildMapViewSettingsResponse(data);
+  }
+
+  return data || {};
+};
+
+const parseSettingsPayload = (page, payload) => {
+  const sanitizedData = sanitizeObject(payload);
+
+  if (page === MAP_VIEW_SETTINGS_PAGE) {
+    return parseMapViewSettingsPayload(sanitizedData);
+  }
+
+  return sanitizedData;
+};
+
 /**
  * GET SETTINGS
  */
@@ -61,7 +85,7 @@ export const getSettings = async (req, res) => {
       res.set('Cache-Control', 'no-store');
     }
 
-    return res.status(200).json(doc?.data || {});
+    return res.status(200).json(resolveSettingsResponse(page, doc?.data));
   } catch (err) {
     console.error('[settings] GET error:', err);
     res.status(500).json({
@@ -93,9 +117,21 @@ export const saveSettings = async (req, res) => {
     }
 
     /**
-     * Sanitize incoming data
+     * Sanitize and validate incoming data
      */
-    const sanitizedData = sanitizeObject(req.body);
+    let sanitizedData;
+    try {
+      sanitizedData = parseSettingsPayload(page, req.body);
+    } catch (error) {
+      if (error.statusCode === 400) {
+        return res.status(400).json({
+          message: error.message,
+          errors: error.details || [],
+        });
+      }
+
+      throw error;
+    }
 
     /**
      * Prevent empty overwrite
@@ -130,7 +166,7 @@ export const saveSettings = async (req, res) => {
       }
     );
 
-    return res.status(200).json(doc.data);
+    return res.status(200).json(resolveSettingsResponse(page, doc.data));
 
   } catch (err) {
     console.error('[settings] PUT error:', err);
