@@ -6,6 +6,7 @@ import {
   DEFAULT_CONTACT,
   DEFAULT_FORECASTER_WORKSPACE,
   DEFAULT_GENERAL,
+  DEFAULT_MAP_VIEW,
   DEFAULT_OPERATIONS,
 } from '../constants/defaults';
 import { getOperationsScheduleValidationError } from '../utils/operationsScheduleValidation';
@@ -15,10 +16,15 @@ const SETTINGS_UPDATED_EVENT = 'wavelab:settings-updated';
 const DEFAULTS = {
   operations: DEFAULT_OPERATIONS,
   forecasterWorkspace: DEFAULT_FORECASTER_WORKSPACE,
+  mapView: DEFAULT_MAP_VIEW,
   adminReview: DEFAULT_ADMIN_REVIEW,
   general: DEFAULT_GENERAL,
   about: DEFAULT_ABOUT,
   contact: DEFAULT_CONTACT,
+};
+
+const API_PAGES = {
+  mapView: 'mapview',
 };
 
 const LEGACY_LOCAL_KEYS = {
@@ -49,10 +55,14 @@ function broadcastSettingsUpdate(key, value = null) {
   }));
 }
 
+function getApiPage(tab) {
+  return API_PAGES[tab] || tab;
+}
+
 async function loadPersistedSettings() {
   const entries = await Promise.all(
     SETTINGS_PAGES.map(async (page) => {
-      const data = await getSettings(page).catch(() => null);
+      const data = await getSettings(getApiPage(page)).catch(() => null);
       return [page, data];
     }),
   );
@@ -115,7 +125,7 @@ export default function useSettings() {
     setSaving(true);
 
     try {
-      const saved = await saveSettings(activeTab, payload);
+      const saved = await saveSettings(getApiPage(activeTab), payload);
       const nextData = { ...DEFAULTS[activeTab], ...saved };
 
       setPages((prev) => ({ ...prev, [activeTab]: nextData }));
@@ -125,6 +135,7 @@ export default function useSettings() {
       }
 
       broadcastSettingsUpdate(activeTab, nextData);
+      broadcastSettingsUpdate(getApiPage(activeTab), nextData);
       if (LEGACY_LOCAL_KEYS[activeTab]) broadcastSettingsUpdate(LEGACY_LOCAL_KEYS[activeTab], nextData);
 
       setStatus({ type: 'success', message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} settings saved to database.` });
@@ -140,7 +151,7 @@ export default function useSettings() {
     setSaving(true);
 
     try {
-      const saved = await saveSettings(activeTab, defaults);
+      const saved = await saveSettings(getApiPage(activeTab), defaults);
       const nextData = { ...defaults, ...saved };
 
       setPages((prev) => ({ ...prev, [activeTab]: nextData }));
@@ -150,6 +161,7 @@ export default function useSettings() {
       }
 
       broadcastSettingsUpdate(activeTab, nextData);
+      broadcastSettingsUpdate(getApiPage(activeTab), nextData);
       if (LEGACY_LOCAL_KEYS[activeTab]) broadcastSettingsUpdate(LEGACY_LOCAL_KEYS[activeTab], nextData);
 
       setStatus({ type: 'success', message: 'Reset to default values and saved to database.' });
@@ -165,12 +177,14 @@ export default function useSettings() {
     setActiveTab,
     operationsData: pages.operations,
     forecasterWorkspaceData: pages.forecasterWorkspace,
+    mapViewData: pages.mapView,
     adminReviewData: pages.adminReview,
     generalData: pages.general,
     aboutData: pages.about,
     contactData: pages.contact,
     setOperationsData: (value) => setPages((prev) => ({ ...prev, operations: value })),
     setForecasterWorkspaceData: (value) => setPages((prev) => ({ ...prev, forecasterWorkspace: value })),
+    setMapViewData: (value) => setPages((prev) => ({ ...prev, mapView: value })),
     setAdminReviewData: (value) => setPages((prev) => ({ ...prev, adminReview: value })),
     setGeneralData: (value) => setPages((prev) => ({ ...prev, general: value })),
     setAboutData: (value) => setPages((prev) => ({ ...prev, about: value })),

@@ -8,6 +8,15 @@
 
 const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/settings`;
 
+function buildSettingsErrorMessage(result, fallback) {
+  const details = Array.isArray(result?.errors) ? result.errors.filter(Boolean) : [];
+  if (details.length > 0) {
+    return `${result.message || fallback}: ${details.join(' ')}`;
+  }
+
+  return result?.message || fallback;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // getSettings(page)
 // Used by PUBLIC pages (About, Contact, etc.) to read live content.
@@ -34,7 +43,7 @@ export const getSettings = async (page) => {
 
       const errorData = await response.json();
       console.error(`[ERROR] Failed to fetch settings for page "${page}":`, response.status, errorData);
-      throw new Error(errorData.message || 'Failed to fetch settings');
+      throw new Error(buildSettingsErrorMessage(errorData, 'Failed to fetch settings'));
     }
 
     return await response.json(); // flat settings object (doc.data from backend)
@@ -69,7 +78,7 @@ export const saveSettings = async (page, data) => {
     const result = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.message || 'Failed to save settings');
+      throw new Error(buildSettingsErrorMessage(result, 'Failed to save settings'));
     }
 
     return result; // returns saved doc.data from backend
