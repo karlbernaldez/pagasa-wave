@@ -29,9 +29,9 @@ const POLYGON_FILTER = ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'],
 const POINT_LABEL_FILTER = ['all', POINT_FILTER, ['!=', POINT_TYPE, 'less_1']];
 
 const EXPORT_LAYER_ORDER = [
+  RASTER_LAYER_ID,
   COUNTRY_LAND_LAYER_ID,
   COUNTRY_LINE_LAYER_ID,
-  RASTER_LAYER_ID,
   'published-forecast-export-polygons',
   'published-forecast-export-polygons-outline',
   'published-forecast-export-lines-casing',
