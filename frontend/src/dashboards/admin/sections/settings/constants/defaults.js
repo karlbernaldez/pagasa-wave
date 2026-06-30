@@ -3,6 +3,8 @@
 // ║  Default fallback values for all settings tabs       ║
 // ╚══════════════════════════════════════════════════════╝
 
+import { DEFAULT_STUDIO_MAP_VIEW } from '@/config/mapViewDefaults';
+
 export const DEFAULT_GENERAL = {
   publicDashboardTitle: 'PAGASA Wave Intelligence Dashboard',
   publicDescription: 'Near-real-time marine conditions, forecasts, and advisories.',
@@ -22,6 +24,15 @@ export const DEFAULT_GENERAL = {
     northLat: 25,
   },
   savedCustomMapBounds: [],
+};
+
+export const DEFAULT_MAP_VIEW = {
+  center: { ...DEFAULT_STUDIO_MAP_VIEW.center },
+  zoom: { ...DEFAULT_STUDIO_MAP_VIEW.zoom },
+  maxBounds: { ...DEFAULT_STUDIO_MAP_VIEW.maxBounds },
+  fitBounds: { ...DEFAULT_STUDIO_MAP_VIEW.fitBounds },
+  padding: { ...DEFAULT_STUDIO_MAP_VIEW.padding },
+  fitBoundsMaxZoom: DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom,
 };
 
 export const DEFAULT_OPERATIONS = {
