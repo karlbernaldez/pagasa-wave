@@ -30,12 +30,13 @@ function getWelcomeName(user) {
 
 function packageStats(packages, total) {
   const counts = packages.reduce((memo, item) => ({ ...memo, [item.status]: (memo[item.status] || 0) + 1 }), {});
+  const reviewReady = (counts.Submitted || 0) + (counts['Under Review'] || 0);
   return [
-    { value: total, label: 'Total Packages', helper: 'Matching package filters', tone: 'blue' },
-    { value: counts.Submitted || 0, label: 'Submitted', helper: 'Awaiting admin review', tone: 'slate' },
-    { value: counts['Under Review'] || 0, label: 'Under Review', helper: 'In the review desk', tone: 'amber' },
-    { value: (counts.Rejected || 0) + (counts['Revision Requested'] || 0), label: 'Returned', helper: 'Rejected or revision requested', tone: 'amber' },
-    { value: counts.Published || 0, label: 'Published', helper: 'Released forecast packages', tone: 'emerald' },
+    { value: reviewReady, label: 'Needs Admin Review', helper: 'Submitted or in review', tone: 'blue' },
+    { value: counts.Submitted || 0, label: 'Submitted', helper: 'Ready to start review', tone: 'slate' },
+    { value: counts['Under Review'] || 0, label: 'Under Review', helper: 'Review already started', tone: 'amber' },
+    { value: counts.Approved || 0, label: 'Ready to Publish', helper: 'All charts approved', tone: 'emerald' },
+    { value: total, label: 'Visible Packages', helper: 'Matching current filters', tone: 'slate' },
   ];
 }
 
@@ -78,6 +79,20 @@ function isPackageReadyForApproval(forecastPackage) {
   return charts.length > 0 && charts.every((chart) => PROJECT_APPROVED_STATUSES.includes(chart.project?.status));
 }
 
+function getEmptyStateCopy({ hasFilters }) {
+  if (hasFilters) {
+    return {
+      title: 'No packages match these filters.',
+      body: 'Try clearing filters or searching a different forecast date, forecaster, or chart type.',
+    };
+  }
+
+  return {
+    title: 'No packages need admin review right now.',
+    body: 'Submitted and under-review forecast packages will appear here when forecasters send charts for review.',
+  };
+}
+
 function StateCard({ children, isDarkMode }) {
   return (
     <div className={`rounded-2xl border p-12 text-center shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80 text-slate-200' : 'border-slate-200 bg-white text-slate-800'}`}>
@@ -114,6 +129,8 @@ export default function AdminForecastPackageReviewPageV2() {
   const total = query.data?.total ?? visiblePackages.length;
   const totalPages = Math.max(1, query.data?.totalPages ?? 1);
   const activeFilterCount = [statusFilter !== 'All', typeFilter !== 'All', dateRangeFilter !== 'All'].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0 || Boolean(search.trim());
+  const emptyStateCopy = getEmptyStateCopy({ hasFilters: hasActiveFilters });
 
   const resetFilters = () => {
     setSearch('');
@@ -210,13 +227,13 @@ export default function AdminForecastPackageReviewPageV2() {
         {feedbackError && <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`}><AlertCircle className="mr-2 inline" size={17} />{feedbackError}</div>}
         <ProjectStats stats={packageStats(packages, total)} isDarkMode={isDarkMode} />
         <ProjectToolbar role="admin" packageReviewMode isDarkMode={isDarkMode} search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={(status) => { setStatusFilter(status); setPage(1); }} typeFilter={typeFilter} setTypeFilter={setTypeFilter} dateRangeFilter={dateRangeFilter} setDateRangeFilter={setDateRangeFilter} sortBy={sortBy} setSortBy={setSortBy} sortDir={sortDir} setSortDir={setSortDir} activeFilterCount={activeFilterCount} onClear={resetFilters} isFetching={query.isFetching} />
-        {query.isLoading && <StateCard isDarkMode={isDarkMode}>Loading forecast packages...</StateCard>}
-        {!query.isLoading && query.error && <StateCard isDarkMode={isDarkMode}><Button onClick={() => query.refetch()}>Retry loading packages</Button></StateCard>}
-        {!query.isLoading && !query.error && visiblePackages.length === 0 && <StateCard isDarkMode={isDarkMode}><FolderKanban className="mx-auto mb-3" size={26} />No forecast packages found.</StateCard>}
+        {query.isLoading && <StateCard isDarkMode={isDarkMode}>Loading review-ready forecast packages...</StateCard>}
+        {!query.isLoading && query.error && <StateCard isDarkMode={isDarkMode}><p className="mb-4 text-sm font-semibold">Forecast packages could not be loaded. Please retry before reviewing submitted charts.</p><Button onClick={() => query.refetch()}>Retry loading packages</Button></StateCard>}
+        {!query.isLoading && !query.error && visiblePackages.length === 0 && <StateCard isDarkMode={isDarkMode}><FolderKanban className="mx-auto mb-3" size={26} /><h2 className="text-lg font-black">{emptyStateCopy.title}</h2><p className={`mx-auto mt-2 max-w-md text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{emptyStateCopy.body}</p>{hasActiveFilters && <div className="mt-5"><Button variant="secondary" onClick={resetFilters}>Clear filters</Button></div>}</StateCard>}
         {!query.isLoading && !query.error && visiblePackages.length > 0 && <div className="grid gap-5 xl:grid-cols-2">{visiblePackages.map((forecastPackage) => <ForecastPackageCard key={forecastPackage.id} forecastPackage={forecastPackage} isDarkMode={isDarkMode} onOpenChart={openChartForReview} onPublishPackage={publishPackage} publishingPackageId={publishingPackageId} />)}</div>}
         <ProjectPagination page={page} total={total} totalPages={totalPages} pageSize={PAGE_SIZE} onPageChange={setPage} isDarkMode={isDarkMode} />
       </div>
-      {busyReview && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">Starting review…</div>}
+      {busyReview && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">Starting review...</div>}
       <ProjectReviewModal project={reviewProject ? { ...reviewProject, reviewComment: undefined } : null} isDarkMode={isDarkMode} onClose={() => setReviewProject(null)} onApprove={(project) => approveProject(getId(project))} onReject={(project, remarks) => rejectProject(getId(project), remarks)} onPublish={(project) => publishProject(getId(project))} onActionComplete={onActionComplete} />
     </div>
   );
