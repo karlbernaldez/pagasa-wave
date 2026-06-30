@@ -105,7 +105,7 @@ const SettingsSection = ({ isDarkMode }) => {
       history.reset(combinedInitial);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataLoaded]);
+  }, [dataLoaded, combinedInitial]);
 
   const allSettings = history.present;
 
@@ -120,7 +120,6 @@ const SettingsSection = ({ isDarkMode }) => {
   const onSave = () => handleSave(allSettings);
 
   const onReset = () => {
-    history.reset(combinedInitial);
     handleReset?.();
   };
 
