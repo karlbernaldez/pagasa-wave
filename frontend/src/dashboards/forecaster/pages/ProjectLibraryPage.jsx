@@ -28,6 +28,51 @@ const REQUIRED_CHART_LABELS = {
   forecast_48h: '48h Wave Forecast',
 };
 
+const LOCKED_PACKAGE_COPY = {
+  Submitted: {
+    nextAction: 'Package has been submitted. Wait for Admin to start review or request revisions before editing again.',
+    lockedNotice: 'Submitted package: charts are locked while Admin queues the review.',
+    currentStep: 'Submitted',
+    reviewGateDetail: 'Waiting for Admin review',
+  },
+  'Under Review': {
+    nextAction: 'Admin review is in progress. Keep the package unchanged unless revisions are requested.',
+    lockedNotice: 'Under review: charts are locked while Admin checks this forecast package.',
+    currentStep: 'Under Review',
+    reviewGateDetail: 'Admin review in progress',
+  },
+  Approved: {
+    nextAction: 'Package is approved and ready for publication. Charts remain locked to preserve the reviewed output.',
+    lockedNotice: 'Approved package: reviewed charts are locked and ready for publishing.',
+    currentStep: 'Approved',
+    reviewGateDetail: 'Ready for publication',
+  },
+  Published: {
+    nextAction: 'Package has been published. Use the public chart output for sharing and archiving decisions.',
+    lockedNotice: 'Published package: final charts are locked as operational outputs.',
+    currentStep: 'Published',
+    reviewGateDetail: 'Published output',
+  },
+  Rejected: {
+    nextAction: 'Package was rejected by Admin. Create or wait for a new package instead of editing this one.',
+    lockedNotice: 'Rejected package: this review cycle is closed and charts are locked.',
+    currentStep: 'Rejected',
+    reviewGateDetail: 'Review closed',
+  },
+  'No Publication': {
+    nextAction: 'Package was marked no publication. Charts are locked because this output will not be published.',
+    lockedNotice: 'No publication package: output is closed and charts are locked.',
+    currentStep: 'No Publication',
+    reviewGateDetail: 'No publication decision',
+  },
+  Archived: {
+    nextAction: 'Package is archived and read-only. Create or open the current active package to continue forecasting.',
+    lockedNotice: 'Archived package: charts are read-only.',
+    currentStep: 'Archived',
+    reviewGateDetail: 'Archived record',
+  },
+};
+
 const CHART_METADATA = {
   analysis: {
     code: 'ANL',
@@ -188,6 +233,15 @@ function getCompletion(packageData) {
   return { required, completed, percentage: required ? Math.round((completed / required) * 100) : 0, isComplete: completed === required };
 }
 
+function getLockedPackageCopy(status) {
+  return LOCKED_PACKAGE_COPY[status] || {
+    nextAction: `Package is ${status || 'locked'}. Charts are read-only until Admin requests a revision.`,
+    lockedNotice: `This package is locked while it is ${status || 'not editable'}.`,
+    currentStep: status || 'Locked',
+    reviewGateDetail: 'Package locked',
+  };
+}
+
 function sortChartsBySequence(charts = []) {
   return [...charts].sort((left, right) => {
     const leftIndex = REQUIRED_CHART_SEQUENCE.indexOf(left.chartType);
@@ -198,7 +252,7 @@ function sortChartsBySequence(charts = []) {
 
 function getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes = []) {
   if (!packageData) return 'Create today\'s package to generate the four required forecast charts.';
-  if (!isEditable) return `Package is ${packageData.status}. Charts are locked until Admin requests a revision.`;
+  if (!isEditable) return getLockedPackageCopy(packageData.status).nextAction;
   if (pendingRevisionChartTypes.length) {
     const labels = pendingRevisionChartTypes.map((chartType) => REQUIRED_CHART_LABELS[chartType] || chartType).join(', ');
     return `Resolve and re-certify requested revisions for ${labels} before resubmitting the package.`;
@@ -391,6 +445,7 @@ export default function ForecasterProjectLibraryPage() {
   const pendingRevisionChartTypes = useMemo(() => getRevisionActionPendingChartTypes(packageData), [packageData]);
   const hasPendingRevisionAction = pendingRevisionChartTypes.length > 0;
   const isEditable = EDITABLE_PACKAGE_STATUSES.has(packageData?.status || 'Draft');
+  const lockedPackageCopy = useMemo(() => getLockedPackageCopy(packageData?.status), [packageData?.status]);
   const canSubmit = Boolean(packageId && isEditable && completion.isComplete && !hasPendingRevisionAction && !submitting);
   const packageTitle = getPackageTitle(packageData);
   const chartSequenceHelper = workspaceSettings.chartSequenceHelperMessage || 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Forecasters can co-edit; readiness waits until active editors release.';
@@ -483,7 +538,7 @@ export default function ForecasterProjectLibraryPage() {
                     <div className="flex flex-wrap items-center gap-2"><StatusPill status={packageData.status} isDarkMode={isDarkMode} /><span className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{formatForecastDate(packageData.forecastDate)}</span></div>
                     <h2 className={`mt-3 text-xl font-black sm:text-2xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{packageTitle}</h2>
                     <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</p>
-                    {!isEditable && <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>This package is locked while it is {packageData.status}.</p>}
+                    {!isEditable && <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>{lockedPackageCopy.lockedNotice}</p>}
                   </div>
                   <div className={`w-full rounded-2xl border p-4 lg:max-w-[240px] ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
                     <p className={`text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Completion</p>
@@ -495,9 +550,9 @@ export default function ForecasterProjectLibraryPage() {
 
               <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard label="Forecast date" value={formatForecastDateKey(packageData.forecastDate) || 'Today'} detail="Philippines operational day" icon={CalendarDays} isDarkMode={isDarkMode} />
-                <MetricCard label="Current step" value={pendingRevisionChartTypes.length ? 'Resolve Revision' : REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || packageData.status || 'Submit'} detail={pendingRevisionChartTypes.length ? 'Open and re-certify revision chart first' : completion.isComplete ? `Package is ${packageData.status}` : 'Next chart in sequence'} icon={CheckCircle2} isDarkMode={isDarkMode} />
+                <MetricCard label="Current step" value={pendingRevisionChartTypes.length ? 'Resolve Revision' : !isEditable ? lockedPackageCopy.currentStep : REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || packageData.status || 'Submit'} detail={pendingRevisionChartTypes.length ? 'Open and re-certify revision chart first' : !isEditable ? lockedPackageCopy.reviewGateDetail : completion.isComplete ? `Package is ${packageData.status}` : 'Next chart in sequence'} icon={CheckCircle2} isDarkMode={isDarkMode} />
                 <MetricCard label="Chart deadlines" value="On track" detail="No chart deadline warnings" icon={ClipboardList} isDarkMode={isDarkMode} />
-                <MetricCard label="Review gate" value={hasPendingRevisionAction ? 'Blocked' : completion.isComplete ? 'Open' : 'Blocked'} detail={hasPendingRevisionAction ? 'Revision action required' : completion.isComplete ? 'Sequence complete' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
+                <MetricCard label="Review gate" value={hasPendingRevisionAction ? 'Blocked' : completion.isComplete ? 'Open' : 'Blocked'} detail={hasPendingRevisionAction ? 'Revision action required' : !isEditable ? lockedPackageCopy.reviewGateDetail : completion.isComplete ? 'Sequence complete' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
               </section>
 
               <section>
