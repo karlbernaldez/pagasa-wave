@@ -12,6 +12,7 @@ export const DEFAULT_GENERAL = {
   maintenanceMessage: 'System is under scheduled maintenance. Please check back shortly.',
   logoPreview: '/pagasa-logo.png',
   showPublicStaffInfo: true,
+  publicChartPdfNote: 'This chart set is supplementary guidance for marine weather awareness and should be used together with official DOST-PAGASA bulletins, warnings, and advisories.',
   mapBoundsPreset: 'tcad',
   mapBoundsCustomName: '',
   mapBoundsCustom: {
