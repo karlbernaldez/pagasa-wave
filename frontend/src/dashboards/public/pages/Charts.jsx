@@ -207,7 +207,7 @@ function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, cha
           * { box-sizing: border-box; }
           html, body { margin: 0; width: 297mm; height: 210mm; background: #e2e8f0; }
           body { font-family: Arial, Helvetica, sans-serif; color: #0f172a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .page { width: 297mm; height: 210mm; margin: 0 auto; padding: 6mm; display: grid; grid-template-rows: auto 1fr auto; gap: 3mm; background: #fff; overflow: hidden; }
+          .page { width: 297mm; height: 210mm; margin: 0 auto; padding: 6mm; display: grid; grid-template-rows: auto 1fr auto; gap: 2.4mm; background: #fff; overflow: hidden; }
           .topbar { display: flex; align-items: center; justify-content: space-between; gap: 7mm; padding-bottom: 3mm; border-bottom: 1px solid #dbeafe; }
           .brand-block { display: flex; align-items: center; gap: 3mm; min-width: 0; }
           .logo-box { width: 15mm; height: 15mm; display: grid; place-items: center; border: 1px solid #dbeafe; border-radius: 50%; background: #f8fafc; overflow: hidden; flex: 0 0 auto; }
@@ -226,10 +226,10 @@ function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, cha
           .chart-image-wrap img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
           .missing { color: #64748b; font-size: 9pt; font-weight: 900; }
           .chart-card footer { display: flex; align-items: center; justify-content: space-between; gap: 3mm; min-height: 3.5mm; color: #64748b; font-size: 6.2pt; font-weight: 800; }
-          .footer { display: grid; grid-template-columns: 1fr auto; gap: 5mm; align-items: center; padding-top: 2.5mm; border-top: 1px solid #dbeafe; color: #64748b; font-size: 6.8pt; font-weight: 800; }
-          .footer strong { color: #0369a1; }
-          .note { max-width: 210mm; line-height: 1.35; color: #334155; }
-          .generated { white-space: nowrap; text-align: right; }
+          .footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4mm; align-items: center; padding-top: 1mm; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 5.2pt; font-weight: 600; line-height: 1.15; }
+          .footer strong { color: #64748b; font-weight: 800; }
+          .note { max-width: 225mm; color: #94a3b8; }
+          .generated { white-space: nowrap; text-align: right; color: #94a3b8; font-weight: 700; }
           @media print { html, body { width: 297mm; height: 210mm; overflow: hidden; background: #fff; } }
         </style>
       </head>
@@ -244,7 +244,7 @@ function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, cha
           </section>
           <section class="chart-grid">${cardsHtml}</section>
           <footer class="footer">
-            <div><strong>Supplementary guidance:</strong> <span class="note">${escapeHtml(note)}</span></div>
+            <div><strong>Note:</strong> <span class="note">${escapeHtml(note)}</span></div>
             <div class="generated">Generated ${escapeHtml(new Date().toLocaleString('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE }))}</div>
           </footer>
         </main>
