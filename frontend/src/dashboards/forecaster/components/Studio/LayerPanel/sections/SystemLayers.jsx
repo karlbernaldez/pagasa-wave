@@ -6,6 +6,7 @@ import ConfigurableLayerGroup from './SystemLayers/ConfigurableLayerGroup';
 import {
   DOMAIN_LAYERS,
   UTILITY_LAYERS,
+  SATELLITE_OVERLAY_LAYERS,
   WIND_MODELS,
   WAVE_MODELS,
   WIND_ELEMENTS,
@@ -33,6 +34,8 @@ const SectionLabel = ({ label, count, isDarkMode, accent = false }) => (
   </div>
 );
 
+const countActiveByDefinition = (definitions, state) => definitions.filter((layer) => state[layer.id]).length;
+
 const SystemLayersSection = ({
   expanded,
   activeCount,
@@ -56,10 +59,12 @@ const SystemLayersSection = ({
   onSetWindBarbStyle,
   isDarkMode,
 }) => {
-  const referenceCount =
-    Object.values(domainLayers).filter(Boolean).length +
-    Object.values(utilitiesLayers).filter(Boolean).length +
-    (satelliteLayer ? 1 : 0);
+  const domainCount = countActiveByDefinition(DOMAIN_LAYERS, domainLayers);
+  const utilityCount = countActiveByDefinition(UTILITY_LAYERS, utilitiesLayers);
+  const satelliteOverlayCount =
+    (satelliteLayer ? 1 : 0) +
+    countActiveByDefinition(SATELLITE_OVERLAY_LAYERS, utilitiesLayers);
+  const referenceCount = domainCount + utilityCount + satelliteOverlayCount;
 
   if (!expanded) return null;
 
@@ -72,7 +77,7 @@ const SystemLayersSection = ({
           <LayerGroupCard
             icon={<Map size={15} strokeWidth={2} />}
             title="Domains"
-            badge={Object.values(domainLayers).filter(Boolean).length}
+            badge={domainCount}
             expanded={expandedGroups.domains}
             onToggle={() => onToggleGroup('domains')}
             isDarkMode={isDarkMode}
@@ -91,7 +96,7 @@ const SystemLayersSection = ({
           <LayerGroupCard
             icon={<Wrench size={15} strokeWidth={2} />}
             title="Utilities"
-            badge={Object.values(utilitiesLayers).filter(Boolean).length}
+            badge={utilityCount}
             expanded={expandedGroups.utilities}
             onToggle={() => onToggleGroup('utilities')}
             isDarkMode={isDarkMode}
@@ -107,50 +112,32 @@ const SystemLayersSection = ({
             ))}
           </LayerGroupCard>
 
-          <button
-            type="button"
-            onClick={onToggleSatellite}
-            className={cn(
-              'flex min-h-14 w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition-all',
-              satelliteLayer
-                ? isDarkMode
-                  ? 'border-cyan-400/25 bg-cyan-400/10'
-                  : 'border-blue-500/25 bg-blue-500/10'
-                : isDarkMode
-                  ? 'border-white/10 bg-white/[0.04] hover:border-white/15 hover:bg-white/[0.07]'
-                  : 'border-slate-200 bg-white hover:border-slate-300'
-            )}
+          <LayerGroupCard
+            icon={<Satellite size={15} strokeWidth={2} />}
+            title="Satellite"
+            badge={satelliteOverlayCount}
+            expanded={expandedGroups.satellite}
+            onToggle={() => onToggleGroup('satellite')}
+            isDarkMode={isDarkMode}
           >
-            <span className="flex min-w-0 items-center gap-2.5">
-              <span className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
-                satelliteLayer
-                  ? isDarkMode ? 'bg-cyan-300/15 text-cyan-200' : 'bg-blue-500/10 text-blue-700'
-                  : isDarkMode ? 'bg-white/[0.08] text-white/45' : 'bg-slate-100 text-slate-500'
-              )}>
-                <Satellite size={15} strokeWidth={2} />
-              </span>
-              <span className="min-w-0">
-                <span className={cn(
-                  'block truncate text-[13px] font-black',
-                  satelliteLayer
-                    ? isDarkMode ? 'text-white/85' : 'text-slate-800'
-                    : isDarkMode ? 'text-white/55' : 'text-slate-600'
-                )}>
-                  Satellite
-                </span>
-                <span className={cn('block truncate text-[10px] font-semibold', isDarkMode ? 'text-white/35' : 'text-slate-500')}>
-                  Himawari composite
-                </span>
-              </span>
-            </span>
-            <span className={cn(
-              'h-2 w-2 shrink-0 rounded-full',
-              satelliteLayer
-                ? isDarkMode ? 'bg-cyan-300' : 'bg-blue-600'
-                : isDarkMode ? 'bg-white/15' : 'bg-slate-300'
-            )} />
-          </button>
+            <CheckboxLayerRow
+              id="SATELLITE"
+              name="Satellite"
+              subtitle="Himawari composite"
+              active={satelliteLayer}
+              onToggle={onToggleSatellite}
+              isDarkMode={isDarkMode}
+            />
+            {SATELLITE_OVERLAY_LAYERS.map((layer) => (
+              <CheckboxLayerRow
+                key={layer.id}
+                {...layer}
+                active={utilitiesLayers[layer.id]}
+                onToggle={onToggleUtility}
+                isDarkMode={isDarkMode}
+              />
+            ))}
+          </LayerGroupCard>
         </div>
 
         <div className="space-y-2">

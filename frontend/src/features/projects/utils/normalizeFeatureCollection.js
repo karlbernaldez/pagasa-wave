@@ -72,6 +72,12 @@ function getFeatureProperties(value) {
     ...(value.title && !value.properties?.title ? { title: value.title } : {}),
     ...(value.label && !value.properties?.label ? { label: value.label } : {}),
     ...(value.sourceId && !value.properties?.sourceId ? { sourceId: value.sourceId } : {}),
+    ...(value.style && !value.properties?.style ? { style: value.style } : {}),
+    ...(value.lineColor && !value.properties?.lineColor ? { lineColor: value.lineColor } : {}),
+    ...(value.fillColor && !value.properties?.fillColor ? { fillColor: value.fillColor } : {}),
+    ...(value.textColor && !value.properties?.textColor ? { textColor: value.textColor } : {}),
+    ...(value.lineWidth && !value.properties?.lineWidth ? { lineWidth: value.lineWidth } : {}),
+    ...(value.fillOpacity && !value.properties?.fillOpacity ? { fillOpacity: value.fillOpacity } : {}),
   };
 }
 

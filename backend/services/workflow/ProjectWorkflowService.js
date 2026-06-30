@@ -84,6 +84,15 @@ export default class ProjectWorkflowService {
     });
   }
 
+  static markNoPublication(project, actorId, comment = '', metadata = {}) {
+    return this.transition(project, PROJECT_STATUS.NO_PUBLICATION, {
+      action: 'marked_no_publication',
+      actorId,
+      comment,
+      metadata,
+    });
+  }
+
   static publish(project, actorId, metadata = {}) {
     return this.transition(project, PROJECT_STATUS.PUBLISHED, {
       action: 'published',

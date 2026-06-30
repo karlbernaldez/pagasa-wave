@@ -147,6 +147,7 @@ const StudioPanel = ({
   const [mapNotReady, setMapNotReady] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
   const fileInputRef = useRef();
+  const map = mapRef?.current ?? null;
 
   // ── Project / modal state ────────────────────────────────────────────────────
   const [activeMenu, setActiveMenu] = useState(null);
@@ -176,10 +177,11 @@ const StudioPanel = ({
     domainLayers, utilitiesLayers, satelliteLayer,
     activeCount: systemActiveCount,
     toggleDomainLayer, toggleUtilityLayer, toggleSatelliteLayer,
-  } = useSystemLayers({ mapRef, isDarkMode });
+  } = useSystemLayers({ mapRef, isDarkMode, forecastDate });
 
   const { windConfig, toggleWindLayer, setWindElement, toggleWindModel, setWindBarbStyle } = useWindConfig({ mapRef, isDarkMode });
   const { waveConfig, toggleWaveLayer, setWaveElement, toggleWaveModel, setDirectionStyle } = useWaveConfig({ mapRef, isDarkMode });
+  const showWaveLegend = Boolean(waveConfig.enabled && waveConfig.elements?.raster);
 
   const editState = useCustomLayerEdit({ setLayers, mapRef });
 
@@ -196,13 +198,13 @@ const StudioPanel = ({
   // ── GeoJSON upload ───────────────────────────────────────────────────────────
   const handleGeoJSONUpload = (e) => {
     const file = e.target.files[0];
-    if (!file || !mapRef.current) return;
-    addGeoJsonLayer(mapRef.current, file, layers, setLayers);
+    if (!file || !map) return;
+    addGeoJsonLayer(map, file, layers, setLayers);
   };
 
   const addLayer = () => {
     if (readOnly) return;
-    if (!mapRef.current) { setMapNotReady(true); return; }
+    if (!map) { setMapNotReady(true); return; }
     fileInputRef.current.value = null;
     fileInputRef.current.click();
   };
@@ -255,78 +257,76 @@ const StudioPanel = ({
   );
 
   useEffect(() => {
-    if (hasSelectedAnnotationLayer) {
+    if (hasSelectedAnnotationLayer && !readOnly) {
       annotationStyleDrag.resetPosition();
     }
-  }, [activeLayerId, hasSelectedAnnotationLayer, annotationStyleDrag.resetPosition]);
+  }, [activeLayerId, hasSelectedAnnotationLayer, readOnly, annotationStyleDrag.resetPosition]);
 
-  // ── Project handlers ─────────────────────────────────────────────────────────
-  const handleSubmitFile = useCallback(async (file) => {
-    setIsSubmitting(true);
+  // ── Delete handling ──────────────────────────────────────────────────────────
+  const confirmDeleteLayer = async () => {
+    const layer = confirmDialog.layer;
+    if (!layer) return;
     try {
-      const formData = new FormData();
-      formData.append('projectFile', file);
-      formData.append('projectId', localStorage.getItem('projectId'));
-      setShowSubmitModal(false);
-      Swal.fire('Success', 'File submitted successfully!', 'success');
-    } catch {
-      Swal.fire('Error', 'Failed to submit file.', 'error');
+      await removeFeature(layer);
+      removeLayer(map, layer, setLayers, draw);
+    } catch (error) {
+      console.error('Failed to delete layer:', error);
+      Swal.fire('Error', 'Could not delete layer from server.', 'error');
     } finally {
-      setIsSubmitting(false);
+      setConfirmDialog({ isOpen: false, layer: null });
     }
-  }, []);
+  };
 
-  const handleCreateProjectSubmit = useCallback((formData) => {
+  // ── Menu actions ─────────────────────────────────────────────────────────────
+  const menuActions = {
+    onNew,
+    onOpen: () => setShowProjectList(true),
+    onSave,
+    onSaveAs: () => setShowModal(true),
+    onSubmit: () => setShowSubmitModal(true),
+    onGeoJson: addLayer,
+    onView,
+  };
+
+  const menuSections = buildMenuSections(menuActions);
+
+  const toggleSubmenu = (id) => {
+    setActiveMenu((prev) => (prev === id ? null : id));
+  };
+
+  const handleCreateProject = (projectData) =>
     createProjectHandler({
-      projectName: formData.projectName,
-      chartType: formData.chartType,
-      description: formData.description,
-      forecastDate: dayjs(formData.forecastDate),
-      onNew,
-      setShowModal,
+      projectData,
+      setLoading: setIsSubmitting,
+      onSuccess: (project) => {
+        setProjectFromSelection(project);
+        setShowModal(false);
+      },
     });
-  }, [onNew]);
 
-  const handleSelectProject = useCallback((proj) => {
-    setProjectFromSelection(proj);
-    if (onSave) onSave(proj);
-  }, [onSave, setProjectFromSelection]);
+  const handleProjectSelected = (project) => {
+    setProjectFromSelection(project);
+    setShowProjectList(false);
+  };
 
-  const handleDeleteProject = useMemo(() => createDeleteHandler({ resetProject }), [resetProject]);
+  const handleShareProject = ({ email, permission }) => {
+    console.log('Share project', { email, permission, projectName });
+    setShowShareModal(false);
+  };
 
-  const handleShareProject = useCallback(async ({ users }) => {
-    try {
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Project shared with ${users.length} user${users.length !== 1 ? 's' : ''}`, showConfirmButton: false, timer: 2500 });
-      setShowShareModal(false);
-    } catch {
-      Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Failed to share project', showConfirmButton: false, timer: 2500 });
-    }
-  }, []);
+  const handleDeleteProject = createDeleteHandler({
+    resetProject,
+    projectName,
+    setShowProjectList,
+  });
 
-  // ── Menu sections ────────────────────────────────────────────────────────────
-  const menuSections = useMemo(() =>
-    buildMenuSections({
-      openNewProject: () => { setShowModal(true); setMenuOpen(false); },
-      openProjectList: () => { setShowProjectList(true); setMenuOpen(false); },
-      openShareProject: () => { setShowShareModal(true); setMenuOpen(false); },
-      openSubmitData: () => { setShowSubmitModal(true); setMenuOpen(false); },
-      onView,
-    }),
-    [onView]
-  );
-
-  const toggleSubmenu = (id) => setActiveMenu((prev) => (prev === id ? null : id));
-
-  // ── Shared modal props ────────────────────────────────────────────────────────
   const sharedModalProps = {
-    isDarkMode, showModal, showProjectList, showSubmitModal,
-    onCloseCreate: () => setShowModal(false),
-    onCloseProjectList: () => setShowProjectList(false),
-    onCloseSubmit: () => setShowSubmitModal(false),
-    onCreateProject: handleCreateProjectSubmit,
-    onSelectProject: handleSelectProject,
+    showModal, setShowModal,
+    showProjectList, setShowProjectList,
+    showSubmitModal, setShowSubmitModal,
+    onCreateProject: handleCreateProject,
+    onProjectSelected: handleProjectSelected,
     onDeleteProject: handleDeleteProject,
-    onSubmitFile: handleSubmitFile,
     projectName, chartType, forecastDate, isSubmitting,
   };
 
@@ -366,7 +366,6 @@ const StudioPanel = ({
           {/* ── SECTION 1: Menu Button (top) ─────────────────────────────────── */}
           <div className={cn('relative border-b p-3', isDarkMode ? 'border-white/10' : 'border-slate-200/70')} ref={menuRef}>
             <div className="flex items-center gap-2">
-              {/* Menu toggle button */}
               <button
                 onClick={() => setMenuOpen((v) => !v)}
                 className={cn(
@@ -389,7 +388,6 @@ const StudioPanel = ({
                 />
               </button>
 
-              {/* Collapse panel button */}
               <button
                 onClick={() => setIsExpanded(false)}
                 title="Collapse studio panel"
@@ -402,7 +400,6 @@ const StudioPanel = ({
               </button>
             </div>
 
-            {/* ── Menu dropdown ─────────────────────────────────────────────── */}
             {menuOpen && (
               <div className={cn(
                 'studio-liquid-panel absolute left-3 right-3 top-full z-50 mt-2 overflow-hidden rounded-xl border shadow-2xl',
@@ -413,7 +410,6 @@ const StudioPanel = ({
                 <div className="space-y-1 p-2">
                   {menuSections.map((section) => (
                     <div key={section.id}>
-                      {/* Section header */}
                       <button
                         onClick={() => toggleSubmenu(section.id)}
                         className={cn(
@@ -430,7 +426,6 @@ const StudioPanel = ({
                         />
                       </button>
 
-                      {/* Section items */}
                       {activeMenu === section.id && (
                         <div className="ml-3 mt-0.5 space-y-0.5 mb-1">
                           {section.items.map((item, idx) => (
@@ -457,22 +452,18 @@ const StudioPanel = ({
             )}
           </div>
 
-          {/* ── SECTION 2: Project Info ──────────────────────────────────────── */}
           <div className={cn('border-b px-3 py-3', isDarkMode ? 'border-white/10' : 'border-slate-200/70')}>
             <div className={cn(
               'flex items-start justify-between gap-3 rounded-xl border px-3 py-3',
               INNER_SURFACE(isDarkMode)
             )}>
               <div className="flex-1 min-w-0">
-                {/* Label */}
                 <p className={cn('mb-1 text-[10px] font-black uppercase tracking-wide', isDarkMode ? 'text-white/35' : 'text-slate-400')}>
                   Active Project
                 </p>
-                {/* Title */}
                 <p className={cn('truncate text-sm font-black leading-tight', isDarkMode ? 'text-white' : 'text-slate-900')}>
                   {projectName}
                 </p>
-                {/* Chart type badge */}
                 <span className={cn(
                   'mt-2 inline-block rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide',
                   isDarkMode ? 'bg-cyan-400/[0.12] text-cyan-200' : 'bg-blue-500/10 text-blue-700'
@@ -481,7 +472,6 @@ const StudioPanel = ({
                 </span>
               </div>
 
-              {/* Info button */}
               <button
                 onClick={() => setShowProjectInfo((v) => !v)}
                 title="Project Info"
@@ -497,8 +487,6 @@ const StudioPanel = ({
             </div>
           </div>
 
-          {/* ── SECTION 3: Layers Panel ──────────────────────────────────────── */}
-          {/* Header row */}
           <div className={cn('flex items-center justify-between border-b px-3 py-3', isDarkMode ? 'border-white/10' : 'border-slate-200/70')}>
             <div className="flex items-center gap-2">
               <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg', isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}>
@@ -513,7 +501,6 @@ const StudioPanel = ({
             </span>
           </div>
 
-          {/* Scrollable layers content */}
           <div className="min-h-0 flex-1 overflow-y-auto hide-scrollbar">
             <SystemLayersSection
               expanded={systemLayersExpanded}
@@ -541,7 +528,6 @@ const StudioPanel = ({
             />
           </div>
 
-          {/* ── Footer: Add Layer button ─────────────────────────────────────── */}
           <div className={cn('border-t p-3', isDarkMode ? 'border-white/10' : 'border-slate-200/70')}>
             <button
               onClick={addLayer}
@@ -571,8 +557,7 @@ const StudioPanel = ({
         </div>
       </div>
 
-      {/* ── Annotation layers dock ─────────────────────────────────────────────── */}
-      {hasSelectedAnnotationLayer && (
+      {hasSelectedAnnotationLayer && !readOnly && (
         <LayerStylePanel
           mapRef={mapRef}
           layers={layers}
@@ -580,7 +565,7 @@ const StudioPanel = ({
           activeLayerId={activeLayerId}
           activeMapboxLayerIds={activeMapboxLayerIds}
           isDarkMode={isDarkMode}
-          onToggleVisibility={(layer) => toggleLayerVisibility(mapRef.current, layer, setLayers)}
+          onToggleVisibility={(layer) => toggleLayerVisibility(map, layer, setLayers)}
           panelClassName="min-h-0"
           controlsClassName="max-h-none"
           panelStyle={annotationStylePanelStyle}
@@ -643,35 +628,22 @@ const StudioPanel = ({
         <ProjectInfo isDarkMode={isDarkMode} setShowModal={setShowModal} onView={onView} menuOpen={isExpanded} />
       )}
 
-      {/* ── Layer modals ─────────────────────────────────────────────────────────── */}
       {mapNotReady && <Modal isOpen={mapNotReady} onClose={() => setMapNotReady(false)} />}
 
       <ConfirmationDialog
         isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog({ isOpen: false, layer: null })}
-        onConfirm={() => {
-          removeLayer(mapRef.current, confirmDialog.layer, setLayers, draw);
-          removeFeature(draw, confirmDialog.layer.id, mapRef);
-        }}
-        title="Delete Layer?"
-        message="Are you sure you want to delete"
-        layerName={confirmDialog.layer?.name}
-        isDarkMode={isDarkMode}
+        title="Delete layer?"
+        message={`Are you sure you want to delete ${confirmDialog.layer?.name || 'this layer'}?`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteLayer}
+        onCancel={() => setConfirmDialog({ isOpen: false, layer: null })}
       />
 
-      {/* ── Project modals ───────────────────────────────────────────────────────── */}
       <SharedModals {...sharedModalProps} />
       <ShareProjectModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} onShare={handleShareProject} projectName={projectName} isDarkMode={isDarkMode} />
-
-      {/* ── Wave legend ──────────────────────────────────────────────────────────── */}
-      {waveConfig.enabled && waveConfig.elements?.raster && (
-        <WaveLegend
-          isDarkMode={isDarkMode}
-          className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 select-none"
-        />
-      )}
-
-      {/* ── Layer style panel ─────────────────────────────────────────────────────── */}
+      {showWaveLegend && <WaveLegend mapRef={mapRef} isDarkMode={isDarkMode} />}
     </>
   );
 };

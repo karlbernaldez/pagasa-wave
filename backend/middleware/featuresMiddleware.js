@@ -1,42 +1,39 @@
 import mongoose from 'mongoose';
 import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
+import { canAccessProject } from '../utils/forecastPackageAccess.js';
 
 export const isOwnerOrAdmin = async (req, res, next) => {
-    try {
-        const projectId = req.params.projectId;
+  try {
+    const projectId = req.params.projectId;
 
-        if (!mongoose.Types.ObjectId.isValid(projectId)) {
-            return res.status(400).json({ message: 'Invalid project ID' });
-        }
-
-        const project = await Project.findById(projectId);
-
-        if (!project) {
-            return res.status(404).json({ message: 'Project not found' });
-        }
-
-        const userId = req.user.id;
-        const isAdmin = req.user.role === 'admin';
-
-        if (project.owner.toString() !== userId && !isAdmin) {
-            return res.status(403).json({ message: 'Access denied. Not the owner or admin.' });
-        }
-
-        // Attach project to request object if needed later
-        req.project = project;
-        next();
-    } catch (error) {
-        console.error('Authorization error:', error);
-        res.status(500).json({ message: 'Server error' });
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({ message: 'Invalid project ID' });
     }
+
+    const project = await Project.findById(projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    const hasAccess = await canAccessProject(req.user, project);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Access denied. Not the owner, admin, or assigned forecast package chart forecaster.' });
+    }
+
+    req.project = project;
+    next();
+  } catch (error) {
+    console.error('Authorization error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
 export const isFeatureOwnerOrAdmin = async (req, res, next) => {
   try {
-    const { sourceId } = req.params; // Access sourceId from route parameters
+    const { sourceId } = req.params;
 
-    // Find feature by sourceId
     const feature = await Feature.findOne({ sourceId });
 
     if (!feature) {
@@ -46,17 +43,14 @@ export const isFeatureOwnerOrAdmin = async (req, res, next) => {
     const userId = req.user.id;
     const isAdmin = req.user.role === 'admin';
 
-    // Check if feature.properties.owner exists before comparing
     if (!feature.properties.owner) {
       return res.status(500).json({ message: 'Feature owner is not set in the database.' });
     }
 
-    // Ensure we have a valid owner
     if (feature.properties.owner.toString() !== userId && !isAdmin) {
       return res.status(403).json({ message: 'Access denied. Not the feature owner or admin.' });
     }
 
-    // Attach feature to request object if needed later
     req.feature = feature;
     next();
   } catch (error) {

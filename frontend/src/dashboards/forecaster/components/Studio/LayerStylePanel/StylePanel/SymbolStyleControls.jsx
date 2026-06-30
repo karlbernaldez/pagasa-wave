@@ -1,8 +1,15 @@
 import { Section, PropColor, PropSlider, PropSelect } from '../LayerStylePanel';
+import { queuePersistAnnotationStyle } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
 
-export function SymbolStyleControls({ layerIds, style, onChange, setPaint, setLayout, isDarkMode, tab = 'symbol' }) {
-    const l = (key, prop, val) => { onChange({ ...style, [key]: val }); setLayout(layerIds, prop, val); };
-    const p = (key, prop, val) => { onChange({ ...style, [key]: val }); setPaint(layerIds, prop, val); };
+export function SymbolStyleControls({ layerIds, layerInfo, style, onChange, setPaint, setLayout, isDarkMode, tab = 'symbol' }) {
+    const update = (patch) => {
+        const nextStyle = { ...style, ...patch };
+        onChange(nextStyle);
+        queuePersistAnnotationStyle(layerInfo, nextStyle);
+        return nextStyle;
+    };
+    const l = (key, prop, val) => { update({ [key]: val }); setLayout(layerIds, prop, val); };
+    const p = (key, prop, val) => { update({ [key]: val }); setPaint(layerIds, prop, val); };
 
     const iconSection = (
         <Section title="Icon" isDarkMode={isDarkMode} compact>

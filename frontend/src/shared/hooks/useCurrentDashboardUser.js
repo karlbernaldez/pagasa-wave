@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { checkAuthSession, logoutUser } from '@/api/auth';
-import { fetchUserDetails } from '@/api/userAPI';
+import { USER_UPDATED_EVENT, fetchUserDetails } from '@/api/userAPI';
 
 let userCache = null;
 let userRequest = null;
@@ -11,14 +11,14 @@ function clean(value) {
 }
 
 function getInitials(user) {
-  const username = clean(user?.username);
   const firstName = clean(user?.firstName);
   const lastName = clean(user?.lastName);
+  const username = clean(user?.username);
   const email = clean(user?.email);
 
-  if (username) return username.slice(0, 2).toUpperCase();
   if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
   if (firstName) return firstName.slice(0, 2).toUpperCase();
+  if (username) return username.slice(0, 2).toUpperCase();
   if (email) return email.slice(0, 2).toUpperCase();
   return 'WL';
 }
@@ -28,11 +28,11 @@ function getFullName(user) {
 }
 
 function getPrimaryName(user) {
-  const username = clean(user?.username);
   const fullName = getFullName(user);
+  const username = clean(user?.username);
   const email = clean(user?.email);
 
-  return username || fullName || email || 'WaveLab User';
+  return fullName || username || email || 'WaveLab User';
 }
 
 function capitalizeDisplayName(value) {
@@ -81,6 +81,12 @@ function normalizeUser(user, options = {}) {
 
 export function resetCurrentDashboardUserCache() {
   userCache = null;
+  userRequest = null;
+}
+
+function primeCurrentDashboardUserCache(user) {
+  if (!user) return;
+  userCache = user;
   userRequest = null;
 }
 
@@ -135,6 +141,19 @@ export default function useCurrentDashboardUser(fallbackUser = null, options = {
       active = false;
     };
   }, [fallbackUser]);
+
+  useEffect(() => {
+    const handleUserUpdate = (event) => {
+      const updatedUser = event.detail?.user;
+      if (!updatedUser) return;
+
+      primeCurrentDashboardUserCache(updatedUser);
+      setRawUser((prev) => ({ ...(prev || {}), ...updatedUser }));
+    };
+
+    window.addEventListener(USER_UPDATED_EVENT, handleUserUpdate);
+    return () => window.removeEventListener(USER_UPDATED_EVENT, handleUserUpdate);
+  }, []);
 
   const logout = useCallback(async () => {
     resetCurrentDashboardUserCache();

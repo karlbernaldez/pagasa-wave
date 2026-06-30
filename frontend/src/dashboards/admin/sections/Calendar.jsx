@@ -13,24 +13,25 @@ import {
   Waves,
 } from 'lucide-react';
 
-import { fetchAdminProjects } from '@/api/projectAPI';
-import { adaptProjects } from '@/features/projects/projectAdapter';
-import { PROJECT_STATUS } from '@/features/projects/projectStatuses';
+import { fetchAdminForecastPackages } from '@/api/forecastPackageAPI';
+import {
+  adaptForecastPackageModel,
+  formatPackageDate,
+  getDateKey,
+  isDailyForecastPackage,
+} from '@/features/projects/utils/forecastPackageGrouping';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
-
-const EVENT_TYPES = [
-  'Forecast',
-  'Review',
-  'Publication',
-  'Maintenance',
-  'Meeting',
-];
-
 const CUSTOM_EVENTS_STORAGE_KEY = 'adminCalendarCustomEvents';
 
+const EVENT_TYPES = ['Package', 'Review', 'Publication', 'Returned', 'Maintenance', 'Meeting'];
+const FILTERS = ['All', 'Package', 'Review', 'Publication', 'Returned', 'Notes'];
+const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
+const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
+const APPROVED_STATUSES = new Set(['Approved', 'Published']);
+
 const TYPE_META = {
-  Forecast: {
+  Package: {
     icon: Waves,
     dot: 'bg-cyan-500',
     light: 'border-cyan-200 bg-cyan-50/80 text-cyan-700',
@@ -48,6 +49,12 @@ const TYPE_META = {
     light: 'border-emerald-200 bg-emerald-50/80 text-emerald-700',
     dark: 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200',
   },
+  Returned: {
+    icon: AlertTriangle,
+    dot: 'bg-rose-500',
+    light: 'border-rose-200 bg-rose-50/80 text-rose-700',
+    dark: 'border-rose-300/20 bg-rose-400/10 text-rose-200',
+  },
   Maintenance: {
     icon: RefreshCw,
     dot: 'bg-violet-500',
@@ -62,7 +69,21 @@ const TYPE_META = {
   },
 };
 
+const STATUS_LABELS = {
+  Submitted: 'Awaiting review',
+  'Under Review': 'In review',
+  'Needs Review': 'Needs review',
+  Returned: 'Returned',
+  'Revision Requested': 'Revision requested',
+  Rejected: 'Rejected',
+  Approved: 'Ready to publish',
+  Published: 'Published',
+};
+
 function toIsoDate(value = new Date()) {
+  const key = getDateKey(value);
+  if (key) return key;
+
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return '';
 
@@ -74,19 +95,25 @@ function toIsoDate(value = new Date()) {
 
 function parseDate(value) {
   if (!value) return null;
-  const date = new Date(value);
+  const date = new Date(`${value}T00:00:00+08:00`);
   if (Number.isNaN(date.getTime())) return null;
   return date;
 }
 
-function formatDate(value, options = {}) {
+function formatDate(value) {
+  if (!value) return 'No date';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return formatPackageDate(value);
+  const key = toIsoDate(value);
+  return key ? formatPackageDate(key) : 'No date';
+}
+
+function formatShortDate(value) {
   const date = parseDate(value);
   if (!date) return 'No date';
-
   return new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
-    year: options.year ? 'numeric' : undefined,
+    timeZone: 'Asia/Manila',
   }).format(date);
 }
 
@@ -94,6 +121,7 @@ function formatMonth(date) {
   return new Intl.DateTimeFormat(undefined, {
     month: 'long',
     year: 'numeric',
+    timeZone: 'Asia/Manila',
   }).format(date);
 }
 
@@ -102,49 +130,86 @@ function getEventTone(type, isDarkMode) {
   return isDarkMode ? meta.dark : meta.light;
 }
 
-function getProjectEvents(projects) {
-  return projects.flatMap((project) => {
-    const events = [];
-    const projectId = project.id || project._id || project.title;
+function getPackageAction(forecastPackage) {
+  if (REVIEW_STATUSES.has(forecastPackage.status)) return 'Admin review needed';
+  if (RETURNED_STATUSES.has(forecastPackage.status)) return 'Forecaster revision needed';
+  if (forecastPackage.status === 'Approved') return 'Ready for publication';
+  if (forecastPackage.status === 'Published') return 'Daily package published';
+  return 'Track package progress';
+}
 
-    if (project.forecastDate) {
+function getPackageEvents(packages) {
+  return packages.flatMap((forecastPackage) => {
+    const id = forecastPackage.id || forecastPackage._id || forecastPackage.dateKey;
+    const date = forecastPackage.dateKey || toIsoDate(forecastPackage.forecastDate || forecastPackage.createdAt);
+    const title = forecastPackage.title || `${formatPackageDate(date)} Forecast Package`;
+    const events = [];
+
+    if (date) {
       events.push({
-        id: `${projectId}-forecast`,
-        title: project.title,
-        date: toIsoDate(project.forecastDate),
-        owner: project.ownerDisplay || 'Forecast Team',
-        type: 'Forecast',
-        source: 'project',
-        status: project.status,
+        id: `${id}-package`,
+        title,
+        date,
+        owner: forecastPackage.ownerLabel || 'Forecast team',
+        type: 'Package',
+        source: 'package',
+        status: forecastPackage.status,
+        isDaily: isDailyForecastPackage(forecastPackage),
+        detail: `${forecastPackage.chartCount || 0} of 4 charts linked`,
+        action: getPackageAction(forecastPackage),
       });
     }
 
-    if ([PROJECT_STATUS.SUBMITTED, PROJECT_STATUS.UNDER_REVIEW, PROJECT_STATUS.REVISION_REQUESTED].includes(project.status)) {
+    if (REVIEW_STATUSES.has(forecastPackage.status)) {
       events.push({
-        id: `${projectId}-review`,
-        title: `Review: ${project.title}`,
-        date: toIsoDate(project.submittedAt || project.updatedAt || project.createdAt),
+        id: `${id}-review`,
+        title: `Review ${title}`,
+        date: toIsoDate(forecastPackage.submittedAt || forecastPackage.updatedAt || forecastPackage.createdAt || date),
         owner: 'Admin Review',
         type: 'Review',
-        source: 'project',
-        status: project.status,
+        source: 'package',
+        status: forecastPackage.status,
+        detail: `${forecastPackage.pendingCount || 0} chart${forecastPackage.pendingCount === 1 ? '' : 's'} awaiting decision`,
+        action: 'Open the package in Review and approve, reject, or request revision.',
       });
     }
 
-    if ([PROJECT_STATUS.APPROVED, PROJECT_STATUS.PUBLISHED].includes(project.status)) {
+    if (RETURNED_STATUSES.has(forecastPackage.status)) {
       events.push({
-        id: `${projectId}-publish`,
-        title: project.status === PROJECT_STATUS.PUBLISHED ? `Published: ${project.title}` : `Ready to publish: ${project.title}`,
-        date: toIsoDate(project.publishedAt || project.updatedAt || project.reviewedAt),
+        id: `${id}-returned`,
+        title: `Returned ${title}`,
+        date: toIsoDate(forecastPackage.reviewedAt || forecastPackage.updatedAt || date),
+        owner: 'Admin Review',
+        type: 'Returned',
+        source: 'package',
+        status: forecastPackage.status,
+        detail: `${forecastPackage.returnedCount || 0} chart${forecastPackage.returnedCount === 1 ? '' : 's'} returned`,
+        action: 'Follow up until revised package is resubmitted.',
+      });
+    }
+
+    if (APPROVED_STATUSES.has(forecastPackage.status)) {
+      events.push({
+        id: `${id}-publish`,
+        title: forecastPackage.status === 'Published' ? `Published ${title}` : `Ready to publish ${title}`,
+        date: toIsoDate(forecastPackage.publishedAt || forecastPackage.reviewedAt || forecastPackage.updatedAt || date),
         owner: 'Publication',
         type: 'Publication',
-        source: 'project',
-        status: project.status,
+        source: 'package',
+        status: forecastPackage.status,
+        detail: `${forecastPackage.approvedCount || forecastPackage.chartCount || 0} chart${(forecastPackage.approvedCount || forecastPackage.chartCount) === 1 ? '' : 's'} approved`,
+        action: forecastPackage.status === 'Published' ? 'Archive and monitor distribution.' : 'Publish the approved daily package.',
       });
     }
 
     return events.filter((event) => event.date);
   });
+}
+
+function isEventVisible(event, filter) {
+  if (filter === 'All') return true;
+  if (filter === 'Notes') return event.source === 'custom';
+  return event.type === filter;
 }
 
 function buildCalendarDays(monthDate, events) {
@@ -153,6 +218,7 @@ function buildCalendarDays(monthDate, events) {
   const firstDay = new Date(year, month, 1);
   const startDay = firstDay.getDay();
   const startDate = new Date(year, month, 1 - startDay);
+  const todayIso = toIsoDate();
 
   return Array.from({ length: 42 }, (_, index) => {
     const date = new Date(startDate);
@@ -163,7 +229,7 @@ function buildCalendarDays(monthDate, events) {
       iso,
       day: date.getDate(),
       isCurrentMonth: date.getMonth() === month,
-      isToday: iso === toIsoDate(),
+      isToday: iso === todayIso,
       events: events.filter((event) => event.date === iso),
     };
   });
@@ -172,13 +238,14 @@ function buildCalendarDays(monthDate, events) {
 function sortEvents(events) {
   return [...events].sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
+    const typeOrder = EVENT_TYPES.indexOf(a.type) - EVENT_TYPES.indexOf(b.type);
+    if (typeOrder !== 0) return typeOrder;
     return a.title.localeCompare(b.title);
   });
 }
 
 function loadCustomEvents() {
   if (typeof window === 'undefined') return [];
-
   try {
     const saved = window.localStorage.getItem(CUSTOM_EVENTS_STORAGE_KEY);
     const parsed = saved ? JSON.parse(saved) : [];
@@ -188,142 +255,84 @@ function loadCustomEvents() {
   }
 }
 
+function getMonthStats(days) {
+  const monthEvents = days.flatMap((day) => (day.isCurrentMonth ? day.events : []));
+  return {
+    total: monthEvents.length,
+    reviews: monthEvents.filter((event) => event.type === 'Review').length,
+    publications: monthEvents.filter((event) => event.type === 'Publication').length,
+    returned: monthEvents.filter((event) => event.type === 'Returned').length,
+    notes: monthEvents.filter((event) => event.source === 'custom').length,
+  };
+}
+
 export default function CalendarSection({ isDarkMode }) {
   const today = useMemo(() => new Date(), []);
   const todayIso = useMemo(() => toIsoDate(today), [today]);
   const [monthDate, setMonthDate] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(todayIso);
+  const [activeFilter, setActiveFilter] = useState('All');
   const [customEvents, setCustomEvents] = useState(loadCustomEvents);
-  const [draft, setDraft] = useState({
-    title: '',
-    owner: 'Admin Team',
-    type: 'Review',
-    date: todayIso,
-  });
-  const [state, setState] = useState({
-    loading: true,
-    refreshing: false,
-    error: '',
-    projects: [],
-    totalProjects: 0,
-    loadedAt: null,
-  });
+  const [draft, setDraft] = useState({ title: '', owner: 'Admin Team', type: 'Review', date: todayIso });
+  const [state, setState] = useState({ loading: true, refreshing: false, error: '', packages: [], totalPackages: 0, loadedAt: null });
 
   const text = isDarkMode ? 'text-white' : 'text-slate-950';
   const muted = isDarkMode ? 'text-slate-400' : 'text-slate-500';
-  const panel = isDarkMode
-    ? 'border-white/10 bg-slate-950/50 shadow-black/20'
-    : 'border-white/70 bg-white/70 shadow-slate-300/40';
-  const softPanel = isDarkMode
-    ? 'border-white/10 bg-white/[0.04]'
-    : 'border-white/80 bg-white/65';
-  const inputClass = isDarkMode
-    ? 'border-white/10 bg-white/[0.04] text-slate-100 focus:border-cyan-300/30'
-    : 'border-white/80 bg-white/70 text-slate-800 focus:border-cyan-200';
+  const panel = isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40';
+  const softPanel = isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65';
+  const inputClass = isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-100 focus:border-cyan-300/30' : 'border-white/80 bg-white/70 text-slate-800 focus:border-cyan-200';
 
   const loadCalendar = useCallback(async ({ silent = false } = {}) => {
-    setState((current) => ({
-      ...current,
-      loading: !silent && !current.loadedAt,
-      refreshing: silent,
-      error: '',
-    }));
+    setState((current) => ({ ...current, loading: !silent && !current.loadedAt, refreshing: silent, error: '' }));
 
     try {
-      const projectResponse = await fetchAdminProjects({
-        page: 1,
-        limit: 120,
-        sortBy: 'updatedAt',
-        sortDir: 'desc',
-      });
-      const projects = adaptProjects(projectResponse?.projects ?? []);
-
-      setState({
-        loading: false,
-        refreshing: false,
-        error: '',
-        projects,
-        totalProjects: projectResponse?.total ?? projects.length,
-        loadedAt: new Date().toISOString(),
-      });
+      const packageResponse = await fetchAdminForecastPackages({ page: 1, limit: 120 });
+      const packages = (packageResponse?.packages ?? []).map(adaptForecastPackageModel);
+      setState({ loading: false, refreshing: false, error: '', packages, totalPackages: packageResponse?.total ?? packages.length, loadedAt: new Date().toISOString() });
     } catch (error) {
-      setState((current) => ({
-        ...current,
-        loading: false,
-        refreshing: false,
-        error: error?.message || 'Failed to load calendar schedule.',
-      }));
+      setState((current) => ({ ...current, loading: false, refreshing: false, error: error?.message || 'Failed to load package calendar.' }));
     }
   }, []);
 
-  useEffect(() => {
-    loadCalendar();
-  }, [loadCalendar]);
+  useEffect(() => { loadCalendar(); }, [loadCalendar]);
+  useEffect(() => { if (typeof window !== 'undefined') window.localStorage.setItem(CUSTOM_EVENTS_STORAGE_KEY, JSON.stringify(customEvents)); }, [customEvents]);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(CUSTOM_EVENTS_STORAGE_KEY, JSON.stringify(customEvents));
-    }
-  }, [customEvents]);
+  const packageEvents = useMemo(() => getPackageEvents(state.packages), [state.packages]);
+  const allEvents = useMemo(() => sortEvents([...packageEvents, ...customEvents]), [customEvents, packageEvents]);
+  const visibleEvents = useMemo(() => allEvents.filter((event) => isEventVisible(event, activeFilter)), [activeFilter, allEvents]);
+  const calendarDays = useMemo(() => buildCalendarDays(monthDate, visibleEvents), [visibleEvents, monthDate]);
+  const selectedEvents = useMemo(() => visibleEvents.filter((event) => event.date === selectedDate), [selectedDate, visibleEvents]);
+  const upcomingEvents = useMemo(() => visibleEvents.filter((event) => event.date >= todayIso).slice(0, 7), [todayIso, visibleEvents]);
+  const todayPackage = useMemo(() => state.packages.find(isDailyForecastPackage), [state.packages]);
+  const monthStats = useMemo(() => getMonthStats(calendarDays), [calendarDays]);
+  const selectedDateLabel = useMemo(() => formatDate(selectedDate), [selectedDate]);
 
-  const projectEvents = useMemo(() => getProjectEvents(state.projects), [state.projects]);
-  const events = useMemo(() => sortEvents([...projectEvents, ...customEvents]), [customEvents, projectEvents]);
-  const days = useMemo(() => buildCalendarDays(monthDate, events), [events, monthDate]);
-  const selectedEvents = useMemo(
-    () => events.filter((event) => event.date === selectedDate),
-    [events, selectedDate],
-  );
-  const upcomingEvents = useMemo(
-    () => events.filter((event) => event.date >= todayIso).slice(0, 8),
-    [events, todayIso],
-  );
+  const changeMonth = (direction) => setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + direction, 1));
 
-  const monthEvents = useMemo(() => {
-    const monthKey = toIsoDate(monthDate).slice(0, 7);
-    return events.filter((event) => event.date.startsWith(monthKey));
-  }, [events, monthDate]);
-
-  const stats = useMemo(() => ({
-    month: monthEvents.length,
-    review: monthEvents.filter((event) => event.type === 'Review').length,
-    publication: monthEvents.filter((event) => event.type === 'Publication').length,
-    custom: customEvents.length,
-  }), [customEvents.length, monthEvents]);
-
-  const goToMonth = (offset) => {
-    setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+  const goToToday = () => {
+    setSelectedDate(todayIso);
+    setMonthDate(new Date(today.getFullYear(), today.getMonth(), 1));
   };
 
-  const selectDay = (iso) => {
-    setSelectedDate(iso);
-    const date = new Date(iso);
-    if (!Number.isNaN(date.getTime())) {
-      setMonthDate(new Date(date.getFullYear(), date.getMonth(), 1));
-    }
-  };
-
-  const addEvent = () => {
-    const title = draft.title.trim();
-    if (!title || !draft.date) return;
-
+  const addCustomEvent = (event) => {
+    event.preventDefault();
+    if (!draft.title.trim() || !draft.date) return;
     setCustomEvents((current) => [
       ...current,
       {
+        ...draft,
         id: `custom-${Date.now()}`,
-        title,
+        title: draft.title.trim(),
         owner: draft.owner.trim() || 'Admin Team',
-        type: draft.type,
-        date: draft.date,
         source: 'custom',
+        detail: 'Admin note',
+        action: 'Coordinate with the assigned owner.',
       },
     ]);
-    setSelectedDate(draft.date);
-    setDraft((current) => ({ ...current, title: '' }));
+    setDraft((current) => ({ ...current, title: '', date: selectedDate || todayIso }));
   };
 
-  const removeEvent = (eventId) => {
-    setCustomEvents((current) => current.filter((event) => event.id !== eventId));
-  };
+  const removeCustomEvent = (id) => setCustomEvents((current) => current.filter((event) => event.id !== id));
 
   if (state.loading) {
     return (
@@ -332,7 +341,7 @@ export default function CalendarSection({ isDarkMode }) {
           <div className="flex flex-col items-center gap-3 text-center">
             <Loader2 className={cn('h-8 w-8 animate-spin', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
             <p className={cn('text-sm font-black', text)}>Loading operations calendar</p>
-            <p className={cn('text-xs font-semibold', muted)}>Gathering forecast, review, and publication dates.</p>
+            <p className={cn('text-xs font-semibold', muted)}>Fetching package dates, review milestones, publication events, and admin notes.</p>
           </div>
         </div>
       </div>
@@ -341,255 +350,183 @@ export default function CalendarSection({ isDarkMode }) {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-5 p-4 sm:p-6">
-      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className={cn('text-sm font-black', text)}>Operations calendar</p>
-          <p className={cn('mt-1 text-xs font-semibold', muted)}>
-            {state.totalProjects} projects tracked. {customEvents.length} admin event{customEvents.length === 1 ? '' : 's'} added locally.
-          </p>
+      <section className={cn('overflow-hidden rounded-3xl border p-5 shadow-xl backdrop-blur-xl', panel)}>
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <p className={cn('text-xs font-black uppercase tracking-[0.2em]', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')}>Forecast operations calendar</p>
+            <h1 className={cn('mt-2 text-2xl font-black tracking-tight sm:text-3xl', text)}>Daily package schedule, decisions, and publication readiness</h1>
+            <p className={cn('mt-2 max-w-3xl text-sm font-semibold leading-6', muted)}>
+              Use this to answer what happened today, what needs admin action, and which upcoming package or note needs attention next.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={goToToday} className={cn('inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm transition-colors', softPanel)}>
+              <CalendarDays size={15} /> Today
+            </button>
+            <button type="button" onClick={() => loadCalendar({ silent: true })} className={cn('inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm transition-colors', softPanel)}>
+              <RefreshCw size={15} className={state.refreshing ? 'animate-spin' : ''} /> Refresh
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => selectDay(todayIso)}
-            className={cn('min-h-10 rounded-xl border px-3 py-2 text-sm font-black shadow-sm backdrop-blur-xl transition-colors', isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white' : 'border-white/80 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-950')}
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            onClick={() => loadCalendar({ silent: true })}
-            className={cn('inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm backdrop-blur-xl transition-colors', isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white' : 'border-white/80 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-950')}
-          >
-            <RefreshCw size={15} className={state.refreshing ? 'animate-spin' : ''} />
-            Refresh
-          </button>
+        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)]">
+          <div className={cn('rounded-2xl border p-4', softPanel)}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className={cn('text-xs font-black uppercase tracking-wide', muted)}>Today package</p>
+                <p className={cn('mt-1 text-xl font-black', text)}>{todayPackage?.status || 'No submitted package today'}</p>
+              </div>
+              <span className={cn('rounded-full border px-3 py-1 text-xs font-black', getEventTone(todayPackage?.status === 'Published' || todayPackage?.status === 'Approved' ? 'Publication' : todayPackage ? 'Review' : 'Returned', isDarkMode))}>
+                {todayPackage ? STATUS_LABELS[todayPackage.status] || todayPackage.status : 'Missing'}
+              </span>
+            </div>
+            <p className={cn('mt-3 text-sm font-semibold leading-6', muted)}>
+              {todayPackage ? `${todayPackage.chartCount || 0} of 4 charts linked. ${getPackageAction(todayPackage)}.` : 'No reviewable daily package is linked to today yet.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <MiniStat label="Month events" value={monthStats.total} isDarkMode={isDarkMode} />
+            <MiniStat label="Publications" value={monthStats.publications} isDarkMode={isDarkMode} />
+            <MiniStat label="Reviews" value={monthStats.reviews} isDarkMode={isDarkMode} />
+            <MiniStat label="Returned" value={monthStats.returned} isDarkMode={isDarkMode} />
+          </div>
         </div>
       </section>
 
-      {state.error && (
-        <section className={cn('rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm backdrop-blur-xl', isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50/80 text-amber-800')}>
-          {state.error}
-        </section>
-      )}
+      {state.error && <section className={cn('rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm backdrop-blur-xl', isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50/80 text-amber-800')}>{state.error}</section>}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={CalendarDays} label="Month Events" value={stats.month} helper={formatMonth(monthDate)} tone="cyan" isDarkMode={isDarkMode} />
-        <StatCard icon={Clock3} label="Reviews" value={stats.review} helper="Submitted or under review" tone="amber" isDarkMode={isDarkMode} />
-        <StatCard icon={CheckCircle2} label="Publications" value={stats.publication} helper="Approved or published dates" tone="emerald" isDarkMode={isDarkMode} />
-        <StatCard icon={Plus} label="Admin Events" value={stats.custom} helper="Local calendar entries" tone="blue" isDarkMode={isDarkMode} />
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(23rem,0.75fr)]">
         <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', panel)}>
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className={cn('text-base font-black', text)}>{formatMonth(monthDate)}</h2>
-              <p className={cn('mt-1 text-sm font-semibold', muted)}>Forecast, review, publication, and admin-scheduled events.</p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center justify-between gap-3 lg:justify-start">
+              <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month" className={cn('grid h-10 w-10 place-items-center rounded-xl border transition-colors', softPanel)}><ChevronLeft size={18} /></button>
+              <div className="min-w-44 text-center lg:text-left">
+                <h2 className={cn('text-lg font-black', text)}>{formatMonth(monthDate)}</h2>
+                <p className={cn('text-xs font-semibold', muted)}>{monthStats.total} visible event{monthStats.total === 1 ? '' : 's'}</p>
+              </div>
+              <button type="button" onClick={() => changeMonth(1)} aria-label="Next month" className={cn('grid h-10 w-10 place-items-center rounded-xl border transition-colors', softPanel)}><ChevronRight size={18} /></button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => goToMonth(-1)}
-                className={cn('grid h-10 w-10 place-items-center rounded-xl border transition-colors', softPanel, isDarkMode ? 'text-slate-300 hover:bg-white/[0.08]' : 'text-slate-600 hover:bg-white')}
-                aria-label="Previous month"
-              >
-                <ChevronLeft size={17} />
-              </button>
-              <button
-                type="button"
-                onClick={() => goToMonth(1)}
-                className={cn('grid h-10 w-10 place-items-center rounded-xl border transition-colors', softPanel, isDarkMode ? 'text-slate-300 hover:bg-white/[0.08]' : 'text-slate-600 hover:bg-white')}
-                aria-label="Next month"
-              >
-                <ChevronRight size={17} />
-              </button>
+            <div className="flex flex-wrap gap-2">
+              {FILTERS.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setActiveFilter(filter)}
+                  className={cn(
+                    'rounded-full border px-3 py-1.5 text-xs font-black transition-colors',
+                    activeFilter === filter
+                      ? isDarkMode ? 'border-cyan-300/40 bg-cyan-400/15 text-cyan-100' : 'border-cyan-200 bg-cyan-50 text-cyan-700'
+                      : isDarkMode ? 'border-white/10 bg-white/[0.03] text-slate-400 hover:text-white' : 'border-white/80 bg-white/60 text-slate-500 hover:text-slate-900',
+                  )}
+                >
+                  {filter}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-2 pb-2 text-xs font-black uppercase tracking-wide">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <p key={day} className={muted}>{day}</p>
-            ))}
+          <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-black uppercase tracking-wide">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <div key={day} className={muted}>{day}</div>)}
           </div>
-
-          <div className="grid grid-cols-7 gap-2">
-            {days.map((day) => (
-              <button
-                key={day.iso}
-                type="button"
-                onClick={() => selectDay(day.iso)}
-                className={cn(
-                  'min-h-[112px] rounded-xl border p-2 text-left shadow-sm backdrop-blur-xl transition-colors',
-                  day.iso === selectedDate
-                    ? isDarkMode ? 'border-cyan-300/30 bg-cyan-400/10' : 'border-cyan-200 bg-cyan-50/80'
-                    : softPanel,
-                  !day.isCurrentMonth && 'opacity-45',
-                  isDarkMode ? 'hover:bg-white/[0.07]' : 'hover:bg-white',
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className={cn('grid h-7 w-7 place-items-center rounded-lg text-xs font-black', day.isToday ? 'bg-cyan-600 text-white' : text)}>
-                    {day.day}
-                  </span>
-                  {day.events.length > 0 && (
-                    <span className={cn('text-[10px] font-black', muted)}>{day.events.length}</span>
-                  )}
-                </div>
-
-                <div className="mt-2 space-y-1">
-                  {day.events.slice(0, 2).map((event) => (
-                    <div key={event.id} className={cn('truncate rounded-md border px-1.5 py-1 text-[10px] font-black', getEventTone(event.type, isDarkMode))}>
-                      {event.title}
-                    </div>
-                  ))}
-                  {day.events.length > 2 && (
-                    <p className={cn('text-[10px] font-black', muted)}>+{day.events.length - 2} more</p>
-                  )}
-                </div>
-              </button>
-            ))}
+          <div className="mt-2 grid grid-cols-7 gap-2">
+            {calendarDays.map((day) => <CalendarDay key={day.iso} day={day} selected={day.iso === selectedDate} isDarkMode={isDarkMode} onSelect={() => setSelectedDate(day.iso)} />)}
           </div>
         </div>
 
         <aside className="space-y-5">
-          <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', panel)}>
-            <h3 className={cn('text-base font-black', text)}>Add Event</h3>
-            <p className={cn('mt-1 text-xs font-semibold', muted)}>Add local admin schedule items for this browser session.</p>
-
-            <div className="mt-4 space-y-3">
-              <input
-                value={draft.title}
-                onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-                placeholder="Event title"
-                className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none backdrop-blur-xl', inputClass)}
-              />
-              <input
-                value={draft.owner}
-                onChange={(event) => setDraft((current) => ({ ...current, owner: event.target.value }))}
-                placeholder="Owner"
-                className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none backdrop-blur-xl', inputClass)}
-              />
-              <input
-                type="date"
-                value={draft.date}
-                onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))}
-                className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none backdrop-blur-xl', inputClass)}
-              />
-              <select
-                value={draft.type}
-                onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value }))}
-                className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none backdrop-blur-xl', inputClass)}
-              >
-                {EVENT_TYPES.map((type) => <option key={type}>{type}</option>)}
-              </select>
-              <button
-                type="button"
-                onClick={addEvent}
-                className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-600/20 transition-colors hover:bg-cyan-500"
-              >
-                <Plus size={15} />
-                Add to Calendar
-              </button>
+          <Panel title={selectedDateLabel} description={`${selectedEvents.length} visible event${selectedEvents.length === 1 ? '' : 's'} on selected date.`} isDarkMode={isDarkMode}>
+            <div className="space-y-2">
+              {selectedEvents.length === 0 ? <EmptyState title="No visible events" description="Switch filters or add an admin note for this date." isDarkMode={isDarkMode} /> : selectedEvents.map((event) => <EventRow key={event.id} event={event} isDarkMode={isDarkMode} onRemove={removeCustomEvent} />)}
             </div>
-          </div>
+          </Panel>
 
-          <AgendaCard
-            title={formatDate(selectedDate, { year: true })}
-            description="Selected day"
-            events={selectedEvents}
-            isDarkMode={isDarkMode}
-            onRemove={removeEvent}
-          />
+          <Panel title="Upcoming Operations" description="Next package, review, publication, and admin-note items." isDarkMode={isDarkMode}>
+            <div className="space-y-2">
+              {upcomingEvents.length === 0 ? <EmptyState title="No upcoming visible events" description="Upcoming package events will appear after packages are available." isDarkMode={isDarkMode} /> : upcomingEvents.map((event) => <TimelineRow key={event.id} event={event} isDarkMode={isDarkMode} />)}
+            </div>
+          </Panel>
+
+          <Panel title="Add Admin Note" description="Use notes for maintenance windows, meetings, publication reminders, or manual follow-ups." isDarkMode={isDarkMode}>
+            <form onSubmit={addCustomEvent} className="space-y-3">
+              <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Example: Coordinate publication check" className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" value={draft.date} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+                <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)}>
+                  {EVENT_TYPES.filter((type) => type !== 'Package').map((type) => <option key={type}>{type}</option>)}
+                </select>
+              </div>
+              <input value={draft.owner} onChange={(event) => setDraft((current) => ({ ...current, owner: event.target.value }))} placeholder="Owner" className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+              <button type="submit" className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-3 py-2 text-sm font-black text-white shadow-lg shadow-cyan-500/25 transition-colors hover:bg-cyan-400"><Plus size={16} /> Add note</button>
+            </form>
+          </Panel>
         </aside>
       </section>
-
-      <AgendaCard
-        title="Upcoming Schedule"
-        description="Next forecast, review, publication, and admin events"
-        events={upcomingEvents}
-        isDarkMode={isDarkMode}
-        onRemove={removeEvent}
-      />
     </div>
   );
 }
 
-function StatCard({ icon: Icon, label, value, helper, tone, isDarkMode }) {
-  const toneClass = {
-    blue: isDarkMode ? 'bg-blue-400/10 text-blue-200' : 'bg-blue-50/80 text-blue-700',
-    cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50/80 text-cyan-700',
-    emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50/80 text-emerald-700',
-    amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50/80 text-amber-700',
-  }[tone];
+function CalendarDay({ day, selected, isDarkMode, onSelect }) {
+  const primaryEvents = day.events.slice(0, 2);
+  const hiddenCount = Math.max(0, day.events.length - primaryEvents.length);
 
   return (
-    <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={cn('truncate text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p>
-          <p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p>
-        </div>
-        <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', toneClass)}>
-          <Icon size={21} />
-        </span>
-      </div>
-      <p className={cn('mt-3 text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{helper}</p>
-    </div>
-  );
-}
-
-function AgendaCard({ title, description, events, isDarkMode, onRemove }) {
-  const text = isDarkMode ? 'text-white' : 'text-slate-950';
-  const muted = isDarkMode ? 'text-slate-400' : 'text-slate-500';
-
-  return (
-    <section className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}>
-      <div className="mb-4">
-        <h3 className={cn('text-base font-black', text)}>{title}</h3>
-        <p className={cn('mt-1 text-sm font-semibold', muted)}>{description}</p>
-      </div>
-
-      {events.length === 0 ? (
-        <div className={cn('rounded-xl border px-4 py-6 text-center', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
-          <AlertTriangle className={cn('mx-auto h-6 w-6', isDarkMode ? 'text-slate-600' : 'text-slate-400')} />
-          <p className={cn('mt-3 text-sm font-black', text)}>No scheduled events</p>
-          <p className={cn('mt-1 text-xs font-semibold', muted)}>Add a local event or navigate to a project date.</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {events.map((event) => {
-            const meta = TYPE_META[event.type] || TYPE_META.Meeting;
-            const Icon = meta.icon;
-
-            return (
-              <div key={event.id} className={cn('flex items-start gap-3 rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
-                <span className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-xl', getEventTone(event.type, isDarkMode))}>
-                  <Icon size={16} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className={cn('truncate text-sm font-black', text)}>{event.title}</p>
-                  <p className={cn('mt-1 text-xs font-semibold', muted)}>
-                    {formatDate(event.date, { year: true })} - {event.owner} - {event.type}
-                  </p>
-                </div>
-                {event.source === 'custom' && (
-                  <button
-                    type="button"
-                    onClick={() => onRemove(event.id)}
-                    className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors', isDarkMode ? 'text-slate-500 hover:bg-red-500/10 hover:text-red-300' : 'text-slate-400 hover:bg-red-50 hover:text-red-600')}
-                    aria-label={`Remove ${event.title}`}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'min-h-[112px] rounded-xl border p-2 text-left transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400/60',
+        selected
+          ? isDarkMode ? 'border-cyan-300/50 bg-cyan-400/10 shadow-lg shadow-cyan-950/20' : 'border-cyan-200 bg-cyan-50 shadow-lg shadow-cyan-100/60'
+          : isDarkMode ? 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]' : 'border-white/80 bg-white/65 hover:bg-white',
+        !day.isCurrentMonth && 'opacity-45',
       )}
-    </section>
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className={cn('grid h-7 w-7 place-items-center rounded-full text-sm font-black', day.isToday ? 'bg-cyan-500 text-white' : isDarkMode ? 'text-white' : 'text-slate-900')}>{day.day}</span>
+        {day.events.length > 0 && <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-black', isDarkMode ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600')}>{day.events.length}</span>}
+      </div>
+      <div className="mt-2 space-y-1">
+        {primaryEvents.map((event) => <EventChip key={event.id} event={event} isDarkMode={isDarkMode} />)}
+        {hiddenCount > 0 && <p className={cn('text-[10px] font-black', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>+{hiddenCount} more</p>}
+      </div>
+    </button>
   );
+}
+
+function EventChip({ event, isDarkMode }) {
+  return (
+    <span className={cn('flex max-w-full items-center gap-1 rounded-lg border px-1.5 py-1 text-[10px] font-black', getEventTone(event.type, isDarkMode))}>
+      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', TYPE_META[event.type]?.dot || TYPE_META.Meeting.dot)} />
+      <span className="truncate">{event.type === 'Package' ? STATUS_LABELS[event.status] || event.status || 'Package' : event.type}</span>
+    </span>
+  );
+}
+
+function MiniStat({ label, value, isDarkMode }) {
+  return <div className={cn('rounded-2xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p><p className={cn('mt-1 text-2xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p></div>;
+}
+
+function MetricCard({ icon: Icon, label, value, helper, tone, isDarkMode }) {
+  const toneClass = { blue: isDarkMode ? 'bg-blue-400/10 text-blue-200' : 'bg-blue-50/80 text-blue-700', cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50/80 text-cyan-700', emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50/80 text-emerald-700', amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50/80 text-amber-700' }[tone];
+  return <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={cn('truncate text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p><p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p></div><span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', toneClass)}><Icon size={21} /></span></div><p className={cn('mt-3 text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{helper}</p></div>;
+}
+
+function Panel({ title, description, isDarkMode, children }) {
+  return <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}><div className="mb-4"><h2 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h2><p className={cn('mt-1 text-sm font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p></div>{children}</div>;
+}
+
+function EventRow({ event, isDarkMode, onRemove }) {
+  const meta = TYPE_META[event.type] || TYPE_META.Meeting;
+  const Icon = meta.icon;
+  return <div className={cn('flex items-start justify-between gap-3 rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><div className="flex min-w-0 gap-3"><span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-xl border', getEventTone(event.type, isDarkMode))}><Icon size={17} /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{event.title}</p><span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide', getEventTone(event.type, isDarkMode))}>{event.type}{event.isDaily ? ' today' : ''}</span></div><p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{formatDate(event.date)} · {event.owner}</p>{event.detail && <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>{event.detail}</p>}{event.action && <p className={cn('mt-2 text-xs font-black', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')}>{event.action}</p>}</div></div>{event.source === 'custom' && <button type="button" onClick={() => onRemove(event.id)} aria-label="Remove note" className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors', isDarkMode ? 'text-slate-500 hover:bg-white/10 hover:text-rose-300' : 'text-slate-400 hover:bg-white hover:text-rose-500')}><Trash2 size={15} /></button>}</div>;
+}
+
+function TimelineRow({ event, isDarkMode }) {
+  return <div className="flex gap-3"><div className="flex flex-col items-center"><span className={cn('mt-1 h-2.5 w-2.5 rounded-full', TYPE_META[event.type]?.dot || TYPE_META.Meeting.dot)} /><span className={cn('mt-1 h-full w-px', isDarkMode ? 'bg-white/10' : 'bg-slate-200')} /></div><div className="min-w-0 pb-3"><p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>{formatShortDate(event.date)} · {event.type}</p><p className={cn('mt-1 truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{event.title}</p><p className={cn('mt-1 text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{event.action || event.detail || event.owner}</p></div></div>;
+}
+
+function EmptyState({ title, description, isDarkMode }) {
+  return <div className={cn('rounded-xl border p-4 text-center', isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-white/80 bg-white/60')}><AlertTriangle size={18} className={cn('mx-auto mb-2', isDarkMode ? 'text-slate-500' : 'text-slate-400')} /><p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</p><p className={cn('mt-1 text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p></div>;
 }

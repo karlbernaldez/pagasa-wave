@@ -10,6 +10,7 @@ export const STATUS_FILTERS = [
   "Approved",
   "Published",
   "Rejected",
+  "No Publication",
   "Archived",
 ];
 
@@ -61,6 +62,11 @@ export const STATUS_META = {
     dot: "bg-rose-500",
     light: "bg-rose-50 text-rose-700 border-rose-100",
     dark: "bg-rose-900/30 text-rose-300 border-rose-700/50",
+  },
+  "No Publication": {
+    dot: "bg-amber-500",
+    light: "bg-amber-50 text-amber-800 border-amber-200",
+    dark: "bg-amber-900/30 text-amber-300 border-amber-700/50",
   },
   Archived: {
     dot: "bg-slate-500",
