@@ -120,7 +120,7 @@ function downloadDataUrl(dataUrl, filename) {
 }
 
 function writeLoadingPdfWindow(printWindow) {
-  printWindow.document.write(`<!doctype html><html><head><title>Preparing PDF Export</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a}.card{max-width:420px;padding:28px;border:1px solid #dbeafe;border-radius:20px;background:white;box-shadow:0 20px 45px rgba(15,23,42,.08)}h1{margin:0 0 8px;font-size:22px}p{margin:0;color:#475569;font-weight:600;line-height:1.5}</style></head><body><div class="card"><h1>Preparing PDF export…</h1><p>Please wait while WaveLab prepares the published wave chart.</p></div></body></html>`);
+  printWindow.document.write(`<!doctype html><html><head><title>Preparing PDF Export</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a}.card{max-width:420px;padding:28px;border:1px solid #dbeafe;border-radius:20px;background:white;box-shadow:0 20px 45px rgba(15,23,42,.08)}h1{margin:0 0 8px;font-size:22px}p{margin:0;color:#475569;font-weight:600;line-height:1.5}</style></head><body><div class="card"><h1>Preparing PDF export…</h1><p>Please wait while WaveLab prepares the configured-bounds chart export.</p></div></body></html>`);
   printWindow.document.close();
 }
 
@@ -301,7 +301,7 @@ export default function PublishedForecastPage() {
 
   const getExportMapDataUrl = () => {
     const mapDataUrl = exportMapRef.current?.getDataUrl();
-    if (!mapDataUrl) throw new Error('Map is still preparing for export. Please try again in a moment.');
+    if (!mapDataUrl) throw new Error('The export map is still preparing. Wait a moment, then try again.');
     return mapDataUrl;
   };
 
@@ -411,11 +411,16 @@ export default function PublishedForecastPage() {
               <p className={`mt-1 max-w-4xl truncate text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{project.description || 'Final read-only published wave chart for viewing, sharing, downloading, and archiving.'}</p>
             </div>
 
-            <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
-              <Button variant="secondary" size="sm" icon={Clipboard} onClick={handleCopyLink}>{copied ? 'Copied' : 'Copy'}</Button>
-              <Button variant="secondary" size="sm" icon={Download} loading={exportState.loading === 'pdf'} disabled={Boolean(exportState.loading)} onClick={handleDownloadPdf}>PDF</Button>
-              <Button variant="secondary" size="sm" icon={Share2} loading={exportState.loading === 'image'} disabled={Boolean(exportState.loading)} onClick={handleExportImage}>Image</Button>
-              {canArchive && <Button variant="danger" size="sm" icon={Archive} loading={archiveState.loading} onClick={handleArchive}>Archive</Button>}
+            <div className="shrink-0 lg:text-right">
+              <div className="flex flex-wrap gap-2 lg:justify-end">
+                <Button variant="secondary" size="sm" icon={Clipboard} onClick={handleCopyLink}>{copied ? 'Copied' : 'Copy'}</Button>
+                <Button variant="secondary" size="sm" icon={Download} loading={exportState.loading === 'pdf'} disabled={Boolean(exportState.loading)} onClick={handleDownloadPdf}>{exportState.loading === 'pdf' ? 'Preparing PDF...' : 'Export PDF'}</Button>
+                <Button variant="secondary" size="sm" icon={Share2} loading={exportState.loading === 'image'} disabled={Boolean(exportState.loading)} onClick={handleExportImage}>Image</Button>
+                {canArchive && <Button variant="danger" size="sm" icon={Archive} loading={archiveState.loading} onClick={handleArchive}>Archive</Button>}
+              </div>
+              <p className={`mt-2 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                PDF export uses the configured public chart bounds.
+              </p>
             </div>
           </div>
         </section>
