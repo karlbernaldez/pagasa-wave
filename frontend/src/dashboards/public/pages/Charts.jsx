@@ -24,6 +24,7 @@ import { getChartStyleMode, normalizeChartStyleMode } from '@/features/projects/
 
 const RECENT_FETCH_LIMIT = 80;
 const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
+const DEFAULT_PUBLIC_CHART_PDF_NOTE = 'This chart set is supplementary guidance for marine weather awareness and should be used together with official DOST-PAGASA bulletins, warnings, and advisories.';
 
 const CHART_STYLES = [
   { id: 'wave-wind', label: 'Wave & Wind', shortLabel: 'Wave + Wind', icon: Wind, description: 'Wave raster plus published annotations.', color: '#2563eb' },
@@ -171,9 +172,11 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
   );
 }
 
-function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, chartEntries, showStaffInfo }) {
+function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, chartEntries, showStaffInfo, logoSrc, pdfNote }) {
   if (!printWindow || printWindow.closed) return;
   const dateLabel = formatDate(activeDate);
+  const safeLogoSrc = logoSrc || '/pagasa-logo.png';
+  const note = String(pdfNote || DEFAULT_PUBLIC_CHART_PDF_NOTE).trim();
   const cardsHtml = chartEntries.map((entry) => {
     const hasImage = Boolean(entry.imageDataUrl);
     const project = entry.project;
@@ -204,35 +207,46 @@ function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, cha
           * { box-sizing: border-box; }
           html, body { margin: 0; width: 297mm; height: 210mm; background: #e2e8f0; }
           body { font-family: Arial, Helvetica, sans-serif; color: #0f172a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .page { width: 297mm; height: 210mm; margin: 0 auto; padding: 7mm; display: grid; grid-template-rows: auto 1fr auto; gap: 4mm; background: #fff; overflow: hidden; }
-          .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 8mm; }
+          .page { width: 297mm; height: 210mm; margin: 0 auto; padding: 6mm; display: grid; grid-template-rows: auto 1fr auto; gap: 3mm; background: #fff; overflow: hidden; }
+          .topbar { display: flex; align-items: center; justify-content: space-between; gap: 7mm; padding-bottom: 3mm; border-bottom: 1px solid #dbeafe; }
+          .brand-block { display: flex; align-items: center; gap: 3mm; min-width: 0; }
+          .logo-box { width: 15mm; height: 15mm; display: grid; place-items: center; border: 1px solid #dbeafe; border-radius: 50%; background: #f8fafc; overflow: hidden; flex: 0 0 auto; }
+          .logo-box img { width: 12mm; height: 12mm; object-fit: contain; display: block; }
           .brand { color: #0369a1; font-size: 7pt; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
-          h1 { margin: 1mm 0 0; font-size: 16pt; line-height: 1.05; letter-spacing: -0.02em; }
-          .summary { margin: 1mm 0 0; color: #475569; font-size: 8pt; font-weight: 700; }
-          .status { border: 1px solid #bbf7d0; background: #f0fdf4; color: #047857; border-radius: 999px; padding: 2mm 3.5mm; font-size: 7pt; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
-          .chart-grid { min-height: 0; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 3mm; }
-          .chart-card { min-height: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 1.8mm; border: 1px solid #bfdbfe; border-radius: 4mm; padding: 2.5mm; background: #f8fafc; overflow: hidden; }
+          h1 { margin: .5mm 0 0; font-size: 16pt; line-height: 1.05; letter-spacing: -0.025em; }
+          .summary { margin: 1mm 0 0; color: #475569; font-size: 8pt; font-weight: 800; }
+          .status { border: 1px solid #86efac; background: #f0fdf4; color: #047857; border-radius: 999px; padding: 2mm 3.5mm; font-size: 7pt; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+          .chart-grid { min-height: 0; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 2.6mm; }
+          .chart-card { min-height: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 1.5mm; border: 1px solid #bfdbfe; border-radius: 4mm; padding: 2.2mm; background: #f8fafc; overflow: hidden; }
           .chart-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 4mm; }
-          .slot { margin: 0 0 .5mm; color: #0369a1; font-size: 6.5pt; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
-          h2 { margin: 0; font-size: 9pt; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 112mm; }
-          .type { margin: 0; color: #64748b; font-size: 6.5pt; font-weight: 900; text-transform: uppercase; white-space: nowrap; }
+          .slot { margin: 0 0 .4mm; color: #0369a1; font-size: 6.3pt; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
+          h2 { margin: 0; font-size: 8.6pt; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 112mm; }
+          .type { margin: 0; color: #64748b; font-size: 6.2pt; font-weight: 900; text-transform: uppercase; white-space: nowrap; }
           .chart-image-wrap { min-height: 0; border: 1px solid #dbeafe; border-radius: 3mm; overflow: hidden; background: #e2e8f0; display: grid; place-items: center; }
           .chart-image-wrap img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
           .missing { color: #64748b; font-size: 9pt; font-weight: 900; }
-          .chart-card footer { display: flex; align-items: center; justify-content: space-between; gap: 3mm; min-height: 4mm; color: #64748b; font-size: 6.5pt; font-weight: 800; }
-          .footer { display: flex; align-items: center; justify-content: space-between; color: #64748b; font-size: 7pt; font-weight: 800; }
+          .chart-card footer { display: flex; align-items: center; justify-content: space-between; gap: 3mm; min-height: 3.5mm; color: #64748b; font-size: 6.2pt; font-weight: 800; }
+          .footer { display: grid; grid-template-columns: 1fr auto; gap: 5mm; align-items: center; padding-top: 2.5mm; border-top: 1px solid #dbeafe; color: #64748b; font-size: 6.8pt; font-weight: 800; }
           .footer strong { color: #0369a1; }
+          .note { max-width: 210mm; line-height: 1.35; color: #334155; }
+          .generated { white-space: nowrap; text-align: right; }
           @media print { html, body { width: 297mm; height: 210mm; overflow: hidden; background: #fff; } }
         </style>
       </head>
       <body>
         <main class="page">
           <section class="topbar">
-            <div><div class="brand">DOST-PAGASA · WaveLab</div><h1>Wave chart set</h1><p class="summary">Valid ${escapeHtml(dateLabel)} · ${escapeHtml(activeStyleLabel)} · Published charts only</p></div>
+            <div class="brand-block">
+              <div class="logo-box"><img src="${escapeHtml(safeLogoSrc)}" alt="PAGASA logo" /></div>
+              <div><div class="brand">DOST-PAGASA · WaveLab</div><h1>Wave chart set</h1><p class="summary">Valid ${escapeHtml(dateLabel)} · ${escapeHtml(activeStyleLabel)} · Published operational output</p></div>
+            </div>
             <div class="status">Four-chart PDF</div>
           </section>
           <section class="chart-grid">${cardsHtml}</section>
-          <footer class="footer"><span><strong>Final Wave Chart Set</strong> · Generated from /charts</span><span>${escapeHtml(new Date().toLocaleString('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE }))}</span></footer>
+          <footer class="footer">
+            <div><strong>Supplementary guidance:</strong> <span class="note">${escapeHtml(note)}</span></div>
+            <div class="generated">Generated ${escapeHtml(new Date().toLocaleString('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE }))}</div>
+          </footer>
         </main>
         <script>window.onload = () => { window.focus(); window.print(); };</script>
       </body>
@@ -379,7 +393,15 @@ export default function Charts() {
     }
 
     setExportState((prev) => ({ ...prev, error: '' }));
-    writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, chartEntries: printableEntries, showStaffInfo });
+    writeChartSetPdfWindow({
+      printWindow,
+      activeDate,
+      activeStyleLabel,
+      chartEntries: printableEntries,
+      showStaffInfo,
+      logoSrc: publicSettings.logoPreview || '/pagasa-logo.png',
+      pdfNote: publicSettings.publicChartPdfNote || DEFAULT_PUBLIC_CHART_PDF_NOTE,
+    });
   };
 
   return (
