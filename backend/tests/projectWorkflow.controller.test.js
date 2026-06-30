@@ -6,6 +6,7 @@ import Notification from '../models/Notification.js';
 import {
   addReviewComment,
   approveProject,
+  getAllProjectsForAdmin,
   publishProject,
   rejectProject,
   requestProjectRevision,
@@ -50,14 +51,23 @@ function createFakeProject(overrides = {}) {
   };
 }
 
-function createReq({ projectId = 'project-1', role = 'admin', userId = ADMIN_ID, body = {} } = {}) {
+function createReq({ projectId = 'project-1', role = 'admin', userId = ADMIN_ID, body = {}, query = {} } = {}) {
   return {
     params: { id: projectId },
     body,
+    query,
     user: {
       id: userId,
       role,
     },
+  };
+}
+
+function createAdminProjectQuery(result = []) {
+  return {
+    populate() { return this; },
+    sort() { return this; },
+    lean() { return Promise.resolve(result); },
   };
 }
 
@@ -120,6 +130,34 @@ async function withMockedNotifications(fn) {
   }
 }
 
+test('admin project list excludes draft projects from review desk query', async () => {
+  const originalFind = Project.find;
+  let capturedFilter;
+
+  Project.find = (filter) => {
+    capturedFilter = filter;
+    return createAdminProjectQuery([]);
+  };
+
+  try {
+    const res = await runController(getAllProjectsForAdmin, createReq());
+
+    assert.deepEqual(res.body, []);
+    assert.equal(capturedFilter.status.$in.includes(PROJECT_STATUS.DRAFT), false);
+    assert.equal(capturedFilter.status.$in.includes(PROJECT_STATUS.SUBMITTED), true);
+    assert.equal(capturedFilter.status.$in.includes(PROJECT_STATUS.UNDER_REVIEW), true);
+  } finally {
+    Project.find = originalFind;
+  }
+});
+
+test('admin project list rejects Draft as an unauthorized review status filter', async () => {
+  await assert.rejects(
+    () => runController(getAllProjectsForAdmin, createReq({ query: { status: PROJECT_STATUS.DRAFT } })),
+    { message: 'Invalid or unauthorized status filter', status: 400 }
+  );
+});
+
 test('startReviewProject moves submitted project to under review and writes audit log', async () => {
   const project = createFakeProject({ status: PROJECT_STATUS.SUBMITTED });
 
@@ -149,6 +187,21 @@ test('startReviewProject is idempotent when project is already under review', as
 
     assert.equal(res.body, project);
     assert.equal(project.status, PROJECT_STATUS.UNDER_REVIEW);
+    assert.equal(project.saveCalls, 0);
+    assert.equal(project.auditLogs.length, 0);
+  });
+});
+
+test('startReviewProject rejects draft projects as not reviewable by admin', async () => {
+  const project = createFakeProject({ status: PROJECT_STATUS.DRAFT });
+
+  await withMockedProject(project, async () => {
+    await assert.rejects(
+      () => runController(startReviewProject, createReq()),
+      { message: 'Invalid status transition', status: 400 }
+    );
+
+    assert.equal(project.status, PROJECT_STATUS.DRAFT);
     assert.equal(project.saveCalls, 0);
     assert.equal(project.auditLogs.length, 0);
   });
@@ -208,6 +261,24 @@ test('addReviewComment rejects comments outside submitted or under review states
   });
 });
 
+test('addReviewComment rejects draft projects as not reviewable by admin', async () => {
+  const project = createFakeProject({ status: PROJECT_STATUS.DRAFT });
+
+  await withMockedProject(project, async () => {
+    await assert.rejects(
+      () => runController(addReviewComment, createReq({ body: { comment: 'Not ready.' } })),
+      {
+        message: 'Comments can only be added while a project is submitted or under review',
+        status: 400,
+      }
+    );
+
+    assert.equal(project.status, PROJECT_STATUS.DRAFT);
+    assert.equal(project.saveCalls, 0);
+    assert.equal(project.auditLogs.length, 0);
+  });
+});
+
 test('requestProjectRevision requires a revision comment before mutating project', async () => {
   const project = createFakeProject({ status: PROJECT_STATUS.UNDER_REVIEW });
 
@@ -252,6 +323,21 @@ test('requestProjectRevision moves under review project to revision requested', 
   });
 });
 
+test('requestProjectRevision rejects submitted projects until admin starts review', async () => {
+  const project = createFakeProject({ status: PROJECT_STATUS.SUBMITTED });
+
+  await withMockedProject(project, async () => {
+    await assert.rejects(
+      () => runController(requestProjectRevision, createReq({ body: { comment: 'Needs review first.' } })),
+      { message: 'Invalid status transition', status: 400 }
+    );
+
+    assert.equal(project.status, PROJECT_STATUS.SUBMITTED);
+    assert.equal(project.saveCalls, 0);
+    assert.equal(project.auditLogs.length, 0);
+  });
+});
+
 test('approveProject blocks admin self-review', async () => {
   const project = createFakeProject({
     status: PROJECT_STATUS.UNDER_REVIEW,
@@ -292,6 +378,21 @@ test('approveProject moves under review project to approved and notifies owner',
   });
 });
 
+test('approveProject rejects submitted projects until admin starts review', async () => {
+  const project = createFakeProject({ status: PROJECT_STATUS.SUBMITTED });
+
+  await withMockedProject(project, async () => {
+    await assert.rejects(
+      () => runController(approveProject, createReq()),
+      { message: 'Invalid status transition', status: 400 }
+    );
+
+    assert.equal(project.status, PROJECT_STATUS.SUBMITTED);
+    assert.equal(project.saveCalls, 0);
+    assert.equal(project.auditLogs.length, 0);
+  });
+});
+
 test('rejectProject requires a rejection comment', async () => {
   const project = createFakeProject({ status: PROJECT_STATUS.UNDER_REVIEW });
 
@@ -327,6 +428,21 @@ test('rejectProject moves under review project to rejected and saves remarks', a
       assert.equal(notifications.length, 1);
       assert.equal(notifications[0].type, 'rejected');
     });
+  });
+});
+
+test('rejectProject rejects submitted projects until admin starts review', async () => {
+  const project = createFakeProject({ status: PROJECT_STATUS.SUBMITTED });
+
+  await withMockedProject(project, async () => {
+    await assert.rejects(
+      () => runController(rejectProject, createReq({ body: { comment: 'Not acceptable.' } })),
+      { message: 'Invalid status transition', status: 400 }
+    );
+
+    assert.equal(project.status, PROJECT_STATUS.SUBMITTED);
+    assert.equal(project.saveCalls, 0);
+    assert.equal(project.auditLogs.length, 0);
   });
 });
 
