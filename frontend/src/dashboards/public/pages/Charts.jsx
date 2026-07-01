@@ -343,22 +343,21 @@ export default function Charts() {
   }, [activeDate, chartByType, isDark, recentProjects.length]);
 
   useEffect(() => {
-    if (!exportState.entries.length) {
-      exportImageCacheRef.current = {};
-      setPdfReadyCount(0);
-      return undefined;
-    }
+    exportImageCacheRef.current = {};
+    setPdfReadyCount(0);
+
+    if (!exportState.entries.length) return undefined;
 
     const totalCount = exportState.entries.length;
     const updateReadyCount = () => {
       const readyCount = exportState.entries.filter((entry) => {
-        const key = entry.slot.chartType;
+        const key = `${activeStyleMode}:${entry.slot.chartType}`;
         if (!entry.project?._id || !hasExportableOutput(entry.output)) {
           exportImageCacheRef.current[key] = '';
           return true;
         }
         if (exportImageCacheRef.current[key]) return true;
-        const mapRef = exportRefs.current[key];
+        const mapRef = exportRefs.current[entry.slot.chartType];
         if (!mapRef?.isReady || !mapRef?.getDataUrl) return false;
         try {
           const imageDataUrl = mapRef.getDataUrl();
@@ -393,7 +392,7 @@ export default function Charts() {
 
     const printableEntries = exportState.entries.map((entry) => {
       if (!entry.project?._id || !hasExportableOutput(entry.output)) return { ...entry, imageDataUrl: '' };
-      return { ...entry, imageDataUrl: exportImageCacheRef.current[entry.slot.chartType] || '' };
+      return { ...entry, imageDataUrl: exportImageCacheRef.current[`${activeStyleMode}:${entry.slot.chartType}`] || '' };
     });
 
     const missingImage = printableEntries.some((entry) => entry.project?._id && hasExportableOutput(entry.output) && !entry.imageDataUrl);
