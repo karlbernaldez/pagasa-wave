@@ -266,14 +266,16 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
   const hasRenderableContent = hasFeatures || Boolean(shouldRenderRaster && resolvedRaster?.tileUrl);
   const projectId = useMemo(() => getProjectIdFromLocation(), []);
   const theme = isDarkMode ? 'dark' : 'light';
+  const mapBoundsSignature = useMemo(() => JSON.stringify(mapBounds), [mapBounds]);
+  const featureSignature = useMemo(() => JSON.stringify(featureCollection), [featureCollection]);
   const renderSignature = useMemo(() => [
     projectId,
     normalizedStyleMode,
     theme,
     shouldRenderRaster ? resolvedRaster?.tileUrl || 'raster-pending' : 'no-raster',
-    featureCollection.features.length,
-    JSON.stringify(mapBounds),
-  ].join('|'), [featureCollection.features.length, mapBounds, normalizedStyleMode, projectId, resolvedRaster?.tileUrl, shouldRenderRaster, theme]);
+    featureSignature,
+    mapBoundsSignature,
+  ].join('|'), [featureSignature, mapBoundsSignature, normalizedStyleMode, projectId, resolvedRaster?.tileUrl, shouldRenderRaster, theme]);
 
   const clearReadyCapture = () => {
     readySignatureRef.current = '';
@@ -281,11 +283,11 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     setIsReady(false);
   };
 
-  const markReadyCapture = () => {
+  const markReadyCapture = (signature) => {
     const map = mapRef.current;
     if (!map || !hasRenderableContent || !isMapStyleReady(map)) return false;
 
-    readySignatureRef.current = renderSignature;
+    readySignatureRef.current = signature;
     readyDataUrlRef.current = map.getCanvas().toDataURL('image/png');
     setIsReady(true);
     return true;
@@ -344,15 +346,6 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
     mapRef.current = map;
 
-    map.on('load', () => {
-      clearReadyCapture();
-      renderExport();
-    });
-
-    map.on('idle', () => {
-      if (renderExport()) markReadyCapture();
-    });
-
     return () => {
       map.remove();
       mapRef.current = null;
@@ -369,22 +362,30 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     if (!map || !hasRenderableContent) return undefined;
 
     let cancelled = false;
+    const signature = renderSignature;
     clearReadyCapture();
 
-    const handleIdle = () => {
-      if (!cancelled) markReadyCapture();
+    const markReady = () => {
+      if (!cancelled) markReadyCapture(signature);
     };
 
-    if (isMapStyleReady(map) && renderExport()) {
-      if (map.loaded()) handleIdle();
-      else map.once('idle', handleIdle);
-    }
+    const renderWhenReady = () => {
+      if (cancelled || !renderExport()) return;
+      if (map.loaded()) markReady();
+      else map.once('idle', markReady);
+    };
+
+    if (isMapStyleReady(map)) renderWhenReady();
+    else map.once('load', renderWhenReady);
 
     return () => {
       cancelled = true;
-      map.off('idle', handleIdle);
+      map.off('load', renderWhenReady);
+      map.off('idle', markReady);
     };
-  }, [featureCollection, hasFeatures, hasRenderableContent, isDarkMode, mapBounds, normalizedStyleMode, renderSignature, resolvedRaster, shouldRenderRaster]);
+    // renderSignature is the stable value-level dependency for all render inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasRenderableContent, renderSignature]);
 
   if (!hasRenderableContent) return null;
 
