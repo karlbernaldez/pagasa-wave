@@ -149,6 +149,7 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
   const isDaily = isDailyForecastPackage(forecastPackage);
   const statusStyle = PACKAGE_STATUS_STYLES[forecastPackage.status] ?? PACKAGE_STATUS_STYLES.Draft;
   const reviewStage = PACKAGE_REVIEW_STAGE[forecastPackage.status] ?? PACKAGE_REVIEW_STAGE.Draft;
+  const showReviewStageChip = reviewStage.label !== forecastPackage.status;
   const packageDateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
   const canReviewPackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status) && Boolean(forecastPackage.primaryChart);
   const canPublishPackage = PUBLISHABLE_PACKAGE_STATUSES.has(forecastPackage.status);
@@ -185,9 +186,11 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
               <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${isDarkMode ? statusStyle.dark : statusStyle.light}`}>
                 {forecastPackage.status}
               </span>
-              <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}>
-                {reviewStage.label}
-              </span>
+              {showReviewStageChip && (
+                <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}>
+                  {reviewStage.label}
+                </span>
+              )}
             </div>
             <h3 className={`mt-3 text-lg font-black leading-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
               {forecastPackage.title}
