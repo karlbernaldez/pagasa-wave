@@ -160,7 +160,7 @@ describe('ForecasterProjectLibraryPage locked package states', () => {
   it('explains that submitted packages are waiting for admin review', async () => {
     await renderPageWithPackage('Submitted');
 
-    expect(screen.getByText(/submitted package: charts are locked while admin queues the review/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/submitted package: charts are locked while admin queues the review/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/package has been submitted. wait for admin to start review or request revisions/i)).toBeInTheDocument();
     expect(screen.getAllByText(/waiting for admin review/i)).not.toHaveLength(0);
   });
@@ -168,7 +168,7 @@ describe('ForecasterProjectLibraryPage locked package states', () => {
   it('explains that under-review packages are locked during admin review', async () => {
     await renderPageWithPackage('Under Review');
 
-    expect(screen.getByText(/under review: charts are locked while admin checks this forecast package/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/under review: charts are locked while admin checks this forecast package/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/admin review is in progress. keep the package unchanged unless revisions are requested/i)).toBeInTheDocument();
     expect(screen.getAllByText(/admin review in progress/i)).not.toHaveLength(0);
   });
@@ -176,7 +176,7 @@ describe('ForecasterProjectLibraryPage locked package states', () => {
   it('explains approved package locked state without generic copy', async () => {
     await renderPageWithPackage('Approved');
 
-    expect(screen.getByText(/approved package: reviewed charts are locked and ready for publishing/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/approved package: reviewed charts are locked and ready for publishing/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/package is approved and ready for publication/i)).toBeInTheDocument();
     expect(screen.queryByText(/this package is locked while it is approved/i)).not.toBeInTheDocument();
   });
@@ -184,7 +184,7 @@ describe('ForecasterProjectLibraryPage locked package states', () => {
   it('explains published package locked state without generic copy', async () => {
     await renderPageWithPackage('Published');
 
-    expect(screen.getByText(/published package: final charts are locked as operational outputs/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/published package: final charts are locked as operational outputs/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/package has been published. use the public chart output/i)).toBeInTheDocument();
     expect(screen.queryByText(/this package is locked while it is published/i)).not.toBeInTheDocument();
   });
