@@ -28,6 +28,7 @@ const LESS_ONE_FILTER = ['all', POINT_FILTER, ['==', POINT_TYPE, 'less_1']];
 const POINT_SYMBOL_FILTER = ['all', POINT_FILTER, ['!=', POINT_TYPE, 'less_1']];
 const POINT_LABEL_FILTER = ['all', POINT_FILTER, ['!=', POINT_TYPE, 'less_1']];
 const LAYER_ORDER = [
+  RASTER_LAYER_ID,
   COUNTRY_LAND_LAYER_ID,
   COUNTRY_LINE_LAYER_ID,
   'published-chart-polygons',
@@ -184,6 +185,7 @@ function syncAnnotations(map, featureCollection) {
     map.addLayer({ id: 'published-chart-point-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': 14, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } });
   }
 
+  restackLayers(map);
   renderFrontFeatures(map, fronts, { namespace: 'published-chart-front' });
 }
 
@@ -245,9 +247,9 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     if (!map || !isReady) return;
     syncRaster(map, raster, shouldRenderRaster);
     syncCountryOverlay(map, isDarkMode);
-    if (hasFeatures) syncAnnotations(map, featureCollection);
-    restackLayers(map);
     fitPreviewBounds(map, mapBounds);
+    if (hasFeatures) syncAnnotations(map, featureCollection);
+    else restackLayers(map);
   }, [featureCollection, hasFeatures, isDarkMode, isReady, mapBounds, raster, shouldRenderRaster]);
 
   return (

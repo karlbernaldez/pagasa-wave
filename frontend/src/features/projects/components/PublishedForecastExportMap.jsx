@@ -273,7 +273,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     syncCountryOverlay(map, isDarkMode);
     fitExportBounds(map, mapBounds);
     if (hasFeatures) syncExportLayers(map, featureCollection, normalizedStyleMode);
-    restackExportLayers(map);
+    else restackExportLayers(map);
     return true;
   };
 
@@ -290,15 +290,14 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
   useImperativeHandle(ref, () => ({
     getDataUrl() {
-      if (!mapRef.current || !hasRenderableContent || !isMapStyleReady(mapRef.current)) {
+      if (!mapRef.current || !hasRenderableContent || !isReady || !isMapStyleReady(mapRef.current)) {
         throw new Error('Map is still preparing for export. Please try again in a moment.');
       }
 
-      renderExport();
       return mapRef.current.getCanvas().toDataURL('image/png');
     },
     get isReady() {
-      return Boolean(mapRef.current && hasRenderableContent && isMapStyleReady(mapRef.current));
+      return Boolean(mapRef.current && hasRenderableContent && isReady && isMapStyleReady(mapRef.current));
     },
   }));
 
@@ -320,7 +319,8 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     mapRef.current = map;
 
     map.on('load', () => {
-      if (renderExport()) setIsReady(true);
+      setIsReady(false);
+      renderExport();
     });
 
     map.on('idle', () => {
@@ -341,22 +341,17 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     if (!map || !hasRenderableContent) return undefined;
 
     let cancelled = false;
+    setIsReady(false);
 
-    const renderWhenReady = () => {
-      if (cancelled) return;
-      if (renderExport()) setIsReady(true);
+    const markReady = () => {
+      if (!cancelled) setIsReady(true);
     };
 
-    if (isMapStyleReady(map)) {
-      renderWhenReady();
-      return undefined;
-    }
-
-    setIsReady(false);
-    map.once('idle', renderWhenReady);
+    if (isMapStyleReady(map) && renderExport()) map.once('idle', markReady);
 
     return () => {
       cancelled = true;
+      map.off('idle', markReady);
     };
   }, [featureCollection, hasFeatures, hasRenderableContent, isDarkMode, mapBounds, normalizedStyleMode, resolvedRaster, shouldRenderRaster]);
 
