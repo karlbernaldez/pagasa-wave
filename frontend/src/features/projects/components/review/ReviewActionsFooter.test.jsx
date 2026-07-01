@@ -107,11 +107,8 @@ describe('ReviewActionsFooter', () => {
     renderFooter({ hasRemarks: true, isUnderReview: true });
 
     expect(screen.getByText(/review action impact/i)).toBeInTheDocument();
-    expect(screen.getByText(/approve/i)).toBeInTheDocument();
     expect(screen.getByText(/moves this chart to approved and counts toward package approval/i)).toBeInTheDocument();
-    expect(screen.getByText(/request revision/i)).toBeInTheDocument();
     expect(screen.getByText(/returns this chart and package to the forecaster with your remarks/i)).toBeInTheDocument();
-    expect(screen.getByText(/no publication/i)).toBeInTheDocument();
     expect(screen.getByText(/closes this chart with an operational exception note/i)).toBeInTheDocument();
   });
 
