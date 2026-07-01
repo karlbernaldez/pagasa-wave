@@ -4,6 +4,37 @@ import Button from '@/components/ui/Button';
 
 const NO_PUBLICATION_REASON = 'Operational exception / no verified publication';
 
+function ActionImpactGuide({ isReviewable, isUnderReview, isApproved, hasRemarks, isDarkMode }) {
+  if (!isReviewable && !isApproved) return null;
+
+  const surfaceClass = isDarkMode
+    ? 'border-white/10 bg-white/[0.04] text-slate-300'
+    : 'border-slate-200 bg-slate-50 text-slate-700';
+  const mutedClass = isDarkMode ? 'text-slate-500' : 'text-slate-500';
+
+  if (isApproved) {
+    return (
+      <div className={`rounded-2xl border px-3 py-2 text-xs font-semibold ${surfaceClass}`}>
+        <p className="font-black uppercase tracking-[0.14em]">Publish action</p>
+        <p className="mt-1 leading-5">Publish finalizes this approved chart as an operational output. Use it only after confirming the reviewed package is ready for release.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-2xl border px-3 py-2 text-xs font-semibold ${surfaceClass}`}>
+      <p className="font-black uppercase tracking-[0.14em]">Review action impact</p>
+      <ul className="mt-1 space-y-1 leading-5">
+        <li><span className="font-black">Approve</span> moves this chart to Approved and counts toward package approval.</li>
+        <li><span className="font-black">Request Revision</span> returns this chart and package to the forecaster with your remarks.</li>
+        <li><span className="font-black">No Publication</span> closes this chart with an operational exception note.</li>
+      </ul>
+      {!isUnderReview && <p className={`mt-2 ${mutedClass}`}>Start review before making approval, revision, or no-publication decisions.</p>}
+      {!hasRemarks && <p className={`mt-2 ${mutedClass}`}>Remarks are required before comment, revision, or no-publication actions are enabled.</p>}
+    </div>
+  );
+}
+
 export default function ReviewActionsFooter({
   isReviewable = false,
   isUnderReview = false,
@@ -41,6 +72,8 @@ export default function ReviewActionsFooter({
             </button>
           </div>
         )}
+
+        <ActionImpactGuide isReviewable={isReviewable} isUnderReview={isUnderReview} isApproved={isApproved} hasRemarks={hasRemarks} isDarkMode={isDarkMode} />
 
         {isReviewable && (
           <div className="grid grid-cols-2 gap-2 [&>button]:min-h-10 [&>button]:w-full">
