@@ -2,40 +2,47 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarCheck2,
   CheckCircle2,
   Clock3,
-  FileCheck2,
   Loader2,
+  PackageCheck,
   RefreshCw,
-  Settings,
   ShieldCheck,
   UserCheck,
   Users,
   Waves,
 } from 'lucide-react';
 
-import { fetchAdminProjects } from '@/api/projectAPI';
+import { fetchAdminForecastPackages } from '@/api/forecastPackageAPI';
 import { fetchAllUsers } from '@/api/userAPI';
 import { ADMIN_TABS } from '@dashboards/admin/constants/navigation';
-import { adaptProjects } from '@/features/projects/projectAdapter';
-import { PROJECT_STATUS } from '@/features/projects/projectStatuses';
+import {
+  CHART_LABELS,
+  adaptForecastPackageModel,
+  formatPackageDate,
+  getDateKey,
+  isDailyForecastPackage,
+} from '@/features/projects/utils/forecastPackageGrouping';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
-
-const REVIEW_STATUSES = new Set([
-  PROJECT_STATUS.SUBMITTED,
-  PROJECT_STATUS.UNDER_REVIEW,
-]);
+const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
+const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
+const APPROVED_STATUSES = new Set(['Approved', 'Published']);
+const DAILY_CHART_TYPES = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
 
 const STATUS_TONE = {
-  [PROJECT_STATUS.SUBMITTED]: 'border-sky-400/20 bg-sky-400/10 text-sky-600',
-  [PROJECT_STATUS.UNDER_REVIEW]: 'border-violet-400/20 bg-violet-400/10 text-violet-600',
-  [PROJECT_STATUS.REVISION_REQUESTED]: 'border-amber-400/20 bg-amber-400/10 text-amber-600',
-  [PROJECT_STATUS.APPROVED]: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-600',
-  [PROJECT_STATUS.PUBLISHED]: 'border-teal-400/20 bg-teal-400/10 text-teal-600',
-  [PROJECT_STATUS.REJECTED]: 'border-rose-400/20 bg-rose-400/10 text-rose-600',
-  [PROJECT_STATUS.ARCHIVED]: 'border-slate-400/20 bg-slate-400/10 text-slate-500',
-  [PROJECT_STATUS.DRAFT]: 'border-slate-400/20 bg-slate-400/10 text-slate-500',
+  Submitted: 'border-sky-400/20 bg-sky-400/10 text-sky-600',
+  'Under Review': 'border-violet-400/20 bg-violet-400/10 text-violet-600',
+  'Needs Review': 'border-cyan-400/20 bg-cyan-400/10 text-cyan-600',
+  'Revision Requested': 'border-amber-400/20 bg-amber-400/10 text-amber-600',
+  Returned: 'border-amber-400/20 bg-amber-400/10 text-amber-600',
+  Approved: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-600',
+  Published: 'border-teal-400/20 bg-teal-400/10 text-teal-600',
+  Rejected: 'border-rose-400/20 bg-rose-400/10 text-rose-600',
+  Archived: 'border-slate-400/20 bg-slate-400/10 text-slate-500',
+  Draft: 'border-slate-400/20 bg-slate-400/10 text-slate-500',
+  Missing: 'border-slate-400/20 bg-slate-400/10 text-slate-500',
 };
 
 function normalizeUser(user) {
@@ -49,14 +56,6 @@ function normalizeUser(user) {
     status: String(user?.status || 'pending').toLowerCase(),
     position: user?.position || user?.agency || 'No position set',
   };
-}
-
-function getCount(statusCounts, status, projects) {
-  if (statusCounts && Object.prototype.hasOwnProperty.call(statusCounts, status)) {
-    return Number(statusCounts[status]) || 0;
-  }
-
-  return projects.filter((project) => project.status === status).length;
 }
 
 function formatDate(value) {
@@ -88,16 +87,34 @@ function formatRelative(value) {
   return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
 }
 
-function buildProjectEvent(project) {
-  const owner = project.ownerDisplay || 'Forecaster';
+function getPackageTimestamp(forecastPackage) {
+  return forecastPackage?.updatedAt || forecastPackage?.reviewedAt || forecastPackage?.submittedAt || forecastPackage?.createdAt;
+}
 
-  if (project.status === PROJECT_STATUS.PUBLISHED) return `${project.title} was published`;
-  if (project.status === PROJECT_STATUS.APPROVED) return `${project.title} is ready to publish`;
-  if (project.status === PROJECT_STATUS.REVISION_REQUESTED) return `${project.title} was returned to ${owner}`;
-  if (project.status === PROJECT_STATUS.UNDER_REVIEW) return `${project.title} is under review`;
-  if (project.status === PROJECT_STATUS.SUBMITTED) return `${owner} submitted ${project.title}`;
+function getPackageEvent(forecastPackage) {
+  if (forecastPackage.status === 'Published') return `${forecastPackage.title} was published`;
+  if (forecastPackage.status === 'Approved') return `${forecastPackage.title} is ready to publish`;
+  if (RETURNED_STATUSES.has(forecastPackage.status)) return `${forecastPackage.title} was returned for revision`;
+  if (REVIEW_STATUSES.has(forecastPackage.status)) return `${forecastPackage.title} needs package review`;
+  return `${forecastPackage.title} was updated`;
+}
 
-  return `${project.title} was updated`;
+function chartStatusForType(forecastPackage, chartType) {
+  const chart = forecastPackage?.charts?.find((item) => item.chartType === chartType);
+  const project = chart?.project || chart;
+  return project?.status || 'Missing';
+}
+
+function getChartReviewSummary(forecastPackage) {
+  return DAILY_CHART_TYPES.map((chartType) => ({
+    chartType,
+    label: CHART_LABELS[chartType] || chartType,
+    status: chartStatusForType(forecastPackage, chartType),
+  }));
+}
+
+function getPackageCount(packages, predicate) {
+  return packages.filter(predicate).length;
 }
 
 export default function DashboardOverview({ isDarkMode, onSelectTab }) {
@@ -105,9 +122,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
     loading: true,
     refreshing: false,
     error: '',
-    projects: [],
-    totalProjects: 0,
-    statusCounts: null,
+    packages: [],
+    totalPackages: 0,
     users: [],
     totalUsers: 0,
     loadedAt: null,
@@ -128,20 +144,12 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
     }));
 
     try {
-      const [projectResponse, userResponse] = await Promise.all([
-        fetchAdminProjects({
-          page: 1,
-          limit: 10,
-          sortBy: 'updatedAt',
-          sortDir: 'desc',
-        }),
-        fetchAllUsers({
-          page: 1,
-          limit: 8,
-        }),
+      const [packageResponse, userResponse] = await Promise.all([
+        fetchAdminForecastPackages({ page: 1, limit: 24 }),
+        fetchAllUsers({ page: 1, limit: 8 }),
       ]);
 
-      const projects = adaptProjects(projectResponse?.projects ?? []);
+      const packages = (packageResponse?.packages ?? []).map(adaptForecastPackageModel);
       const users = Array.isArray(userResponse)
         ? userResponse.map(normalizeUser)
         : (userResponse?.data ?? []).map(normalizeUser);
@@ -150,9 +158,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         loading: false,
         refreshing: false,
         error: '',
-        projects,
-        totalProjects: projectResponse?.total ?? projects.length,
-        statusCounts: projectResponse?.statusCounts ?? null,
+        packages,
+        totalPackages: packageResponse?.total ?? packages.length,
         users,
         totalUsers: Array.isArray(userResponse)
           ? users.length
@@ -174,40 +181,42 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
   }, [loadDashboard]);
 
   const metrics = useMemo(() => {
-    const submitted = getCount(state.statusCounts, PROJECT_STATUS.SUBMITTED, state.projects);
-    const underReview = getCount(state.statusCounts, PROJECT_STATUS.UNDER_REVIEW, state.projects);
-    const revision = getCount(state.statusCounts, PROJECT_STATUS.REVISION_REQUESTED, state.projects);
-    const approved = getCount(state.statusCounts, PROJECT_STATUS.APPROVED, state.projects);
-    const published = getCount(state.statusCounts, PROJECT_STATUS.PUBLISHED, state.projects);
+    const dailyPackage = state.packages.find(isDailyForecastPackage) || null;
+    const reviewPackages = getPackageCount(state.packages, (forecastPackage) => REVIEW_STATUSES.has(forecastPackage.status));
+    const returnedPackages = getPackageCount(state.packages, (forecastPackage) => RETURNED_STATUSES.has(forecastPackage.status));
+    const approvedPackages = getPackageCount(state.packages, (forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status));
     const pendingUsers = state.users.filter((user) => user.status === 'pending').length;
     const activeUsers = state.users.filter((user) => user.status === 'active').length;
+    const todayChartSummary = getChartReviewSummary(dailyPackage);
+    const todayReadyCharts = todayChartSummary.filter((chart) => chart.status !== 'Missing').length;
 
     return {
-      submitted,
-      underReview,
-      revision,
-      approved,
-      published,
-      reviewQueue: submitted + underReview,
-      attentionQueue: submitted + underReview + revision,
+      dailyPackage,
+      todayKey: getDateKey(new Date()),
+      todayChartSummary,
+      todayReadyCharts,
+      reviewPackages,
+      returnedPackages,
+      approvedPackages,
+      attentionQueue: reviewPackages + returnedPackages,
       pendingUsers,
       activeUsers,
     };
-  }, [state.projects, state.statusCounts, state.users]);
+  }, [state.packages, state.users]);
 
   const reviewQueue = useMemo(
-    () => state.projects.filter((project) => REVIEW_STATUSES.has(project.status)).slice(0, 5),
-    [state.projects],
+    () => state.packages.filter((forecastPackage) => REVIEW_STATUSES.has(forecastPackage.status)).slice(0, 5),
+    [state.packages],
   );
 
   const recentActivity = useMemo(
-    () => state.projects.slice(0, 5).map((project) => ({
-      id: project.id,
-      text: buildProjectEvent(project),
-      status: project.status,
-      date: project.updatedAt || project.submittedAt || project.createdAt,
+    () => state.packages.slice(0, 5).map((forecastPackage) => ({
+      id: forecastPackage.id,
+      text: getPackageEvent(forecastPackage),
+      status: forecastPackage.status,
+      date: getPackageTimestamp(forecastPackage),
     })),
-    [state.projects],
+    [state.packages],
   );
 
   if (state.loading) {
@@ -217,7 +226,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
           <div className="flex flex-col items-center gap-3 text-center">
             <Loader2 className={cn('h-8 w-8 animate-spin', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
             <p className={cn('text-sm font-black', text)}>Loading admin operations</p>
-            <p className={cn('text-xs font-semibold', muted)}>Fetching review queues, publication state, and user access.</p>
+            <p className={cn('text-xs font-semibold', muted)}>Fetching forecast packages, daily chart readiness, and user access.</p>
           </div>
         </div>
       </div>
@@ -266,20 +275,52 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         </section>
       )}
 
+      <section className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl sm:p-5', surface)}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className={cn('text-xs font-black uppercase tracking-[0.16em]', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')}>
+              Daily focus
+            </p>
+            <h2 className={cn('mt-2 text-2xl font-black tracking-tight', text)}>
+              {metrics.dailyPackage?.title || `${formatPackageDate(metrics.todayKey)} Forecast Package`}
+            </h2>
+            <p className={cn('mt-1 text-sm font-semibold leading-6', muted)}>
+              {metrics.dailyPackage
+                ? `${metrics.todayReadyCharts} of 4 analysis and forecast charts are linked for today.`
+                : 'No ForecastPackage is linked to today yet. Create or submit today\'s package to unlock the review flow.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelectTab?.(ADMIN_TABS.CHARTS)}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-500/25 transition-colors hover:bg-cyan-400"
+          >
+            Open Forecast Packages
+            <ArrowRight size={16} />
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {metrics.todayChartSummary.map((chart) => (
+            <ChartTile key={chart.chartType} chart={chart} isDarkMode={isDarkMode} />
+          ))}
+        </div>
+      </section>
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={Waves}
-          label="Review Queue"
-          value={metrics.reviewQueue}
-          helper={`${metrics.submitted} submitted, ${metrics.underReview} in review`}
+          label="Packages In Review"
+          value={metrics.reviewPackages}
+          helper="Submitted or under review"
           tone="cyan"
           isDarkMode={isDarkMode}
         />
         <MetricCard
-          icon={FileCheck2}
-          label="Ready To Publish"
-          value={metrics.approved}
-          helper={`${metrics.published} already published`}
+          icon={PackageCheck}
+          label="Approved Packages"
+          value={metrics.approvedPackages}
+          helper="Approved or already published"
           tone="emerald"
           isDarkMode={isDarkMode}
         />
@@ -295,7 +336,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
           icon={AlertTriangle}
           label="Needs Attention"
           value={metrics.attentionQueue}
-          helper={`${metrics.revision} returned for revision`}
+          helper={`${metrics.returnedPackages} returned package${metrics.returnedPackages === 1 ? '' : 's'}`}
           tone={metrics.attentionQueue > 0 ? 'amber' : 'emerald'}
           isDarkMode={isDarkMode}
         />
@@ -303,35 +344,42 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.85fr)]">
         <Panel
-          title="Review Queue"
-          description="Submitted forecast charts that need admin triage."
-          actionLabel="Open Review Charts"
+          title="Package Review Queue"
+          description="Forecast packages that need admin review or triage."
+          actionLabel="Open Review Packages"
           onAction={() => onSelectTab?.(ADMIN_TABS.CHARTS)}
           isDarkMode={isDarkMode}
         >
           <div className="space-y-2">
             {reviewQueue.length === 0 ? (
               <EmptyState
-                title="No charts waiting for review"
-                description="Submitted forecast charts will appear here when forecasters send them for review."
+                title="No packages waiting for review"
+                description="Submitted daily forecast packages will appear here when forecasters send them for admin review."
                 isDarkMode={isDarkMode}
               />
-            ) : reviewQueue.map((project) => (
-              <ProjectRow key={project.id} project={project} isDarkMode={isDarkMode} />
+            ) : reviewQueue.map((forecastPackage) => (
+              <PackageRow key={forecastPackage.id} forecastPackage={forecastPackage} isDarkMode={isDarkMode} />
             ))}
           </div>
         </Panel>
 
         <Panel
           title="Operational Checklist"
-          description="Daily checks for a clean review workflow."
+          description="Daily checks for a clean package review workflow."
           isDarkMode={isDarkMode}
         >
           <div className="space-y-3">
             <ChecklistItem
-              done={metrics.reviewQueue === 0}
-              title="Clear review queue"
-              detail={`${metrics.reviewQueue} chart${metrics.reviewQueue === 1 ? '' : 's'} waiting`}
+              done={Boolean(metrics.dailyPackage)}
+              title="Confirm today\'s package"
+              detail={metrics.dailyPackage ? `${metrics.todayReadyCharts} of 4 charts linked` : 'No package linked to today'}
+              isDarkMode={isDarkMode}
+              onClick={() => onSelectTab?.(ADMIN_TABS.CHARTS)}
+            />
+            <ChecklistItem
+              done={metrics.reviewPackages === 0}
+              title="Clear package review queue"
+              detail={`${metrics.reviewPackages} package${metrics.reviewPackages === 1 ? '' : 's'} waiting`}
               isDarkMode={isDarkMode}
               onClick={() => onSelectTab?.(ADMIN_TABS.CHARTS)}
             />
@@ -342,47 +390,24 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
               isDarkMode={isDarkMode}
               onClick={() => onSelectTab?.(ADMIN_TABS.USERS_LIST)}
             />
-            <ChecklistItem
-              done={!state.error}
-              title="Confirm data health"
-              detail={state.error || `Dashboard refreshed ${formatRelative(state.loadedAt)}`}
-              isDarkMode={isDarkMode}
-              onClick={() => loadDashboard({ silent: true })}
-            />
           </div>
         </Panel>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-3">
-        <Panel
-          title="Publication Pipeline"
-          description="Current project state distribution."
-          isDarkMode={isDarkMode}
-        >
+        <Panel title="Package Pipeline" description="Current package state distribution." isDarkMode={isDarkMode}>
           <div className="space-y-3">
-            <PipelineBar label="Submitted" value={metrics.submitted} total={state.totalProjects} color="bg-sky-500" isDarkMode={isDarkMode} />
-            <PipelineBar label="Under Review" value={metrics.underReview} total={state.totalProjects} color="bg-violet-500" isDarkMode={isDarkMode} />
-            <PipelineBar label="Revision Requested" value={metrics.revision} total={state.totalProjects} color="bg-amber-500" isDarkMode={isDarkMode} />
-            <PipelineBar label="Approved" value={metrics.approved} total={state.totalProjects} color="bg-emerald-500" isDarkMode={isDarkMode} />
-            <PipelineBar label="Published" value={metrics.published} total={state.totalProjects} color="bg-teal-500" isDarkMode={isDarkMode} />
+            <PipelineBar label="In Review" value={metrics.reviewPackages} total={state.totalPackages} color="bg-cyan-500" isDarkMode={isDarkMode} />
+            <PipelineBar label="Returned" value={metrics.returnedPackages} total={state.totalPackages} color="bg-amber-500" isDarkMode={isDarkMode} />
+            <PipelineBar label="Approved / Published" value={metrics.approvedPackages} total={state.totalPackages} color="bg-emerald-500" isDarkMode={isDarkMode} />
           </div>
         </Panel>
 
-        <Panel
-          title="Recent Activity"
-          description="Latest project updates."
-          isDarkMode={isDarkMode}
-        >
+        <Panel title="Recent Package Activity" description="Latest forecast package updates." isDarkMode={isDarkMode}>
           <div className="space-y-3">
             {recentActivity.length === 0 ? (
-              <EmptyState
-                title="No activity yet"
-                description="Project updates will appear here after forecasters submit charts."
-                isDarkMode={isDarkMode}
-              />
-            ) : recentActivity.map((item) => (
-              <ActivityRow key={item.id} item={item} isDarkMode={isDarkMode} />
-            ))}
+              <EmptyState title="No activity yet" description="Package updates will appear here after forecasters submit charts." isDarkMode={isDarkMode} />
+            ) : recentActivity.map((item) => <ActivityRow key={item.id} item={item} isDarkMode={isDarkMode} />)}
           </div>
         </Panel>
 
@@ -399,40 +424,16 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
           </div>
           <div className="space-y-2">
             {state.users.length === 0 ? (
-              <EmptyState
-                title="No users loaded"
-                description="User accounts will appear here once the admin user endpoint responds."
-                isDarkMode={isDarkMode}
-              />
-            ) : state.users.slice(0, 4).map((user) => (
-              <UserRow key={user.id} user={user} isDarkMode={isDarkMode} />
-            ))}
+              <EmptyState title="No users loaded" description="User accounts will appear here once the admin user endpoint responds." isDarkMode={isDarkMode} />
+            ) : state.users.slice(0, 4).map((user) => <UserRow key={user.id} user={user} isDarkMode={isDarkMode} />)}
           </div>
         </Panel>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <QuickAction
-          icon={Waves}
-          title="Review forecast charts"
-          description="Inspect submitted map outputs and approve or request revisions."
-          onClick={() => onSelectTab?.(ADMIN_TABS.CHARTS)}
-          isDarkMode={isDarkMode}
-        />
-        <QuickAction
-          icon={ShieldCheck}
-          title="Manage access"
-          description="Approve, suspend, or update operational user accounts."
-          onClick={() => onSelectTab?.(ADMIN_TABS.USERS_LIST)}
-          isDarkMode={isDarkMode}
-        />
-        <QuickAction
-          icon={Settings}
-          title="Update configuration"
-          description="Maintain public content and system settings."
-          onClick={() => onSelectTab?.(ADMIN_TABS.SETTINGS)}
-          isDarkMode={isDarkMode}
-        />
+        <QuickAction icon={Waves} title="Review forecast packages" description="Inspect today\'s package and approve, reject, or request revisions." onClick={() => onSelectTab?.(ADMIN_TABS.CHARTS)} isDarkMode={isDarkMode} />
+        <QuickAction icon={ShieldCheck} title="Manage access" description="Approve, suspend, or update operational user accounts." onClick={() => onSelectTab?.(ADMIN_TABS.USERS_LIST)} isDarkMode={isDarkMode} />
+        <QuickAction icon={CalendarCheck2} title="Check operations calendar" description="Review package dates, publication milestones, and admin notes." onClick={() => onSelectTab?.(ADMIN_TABS.CALENDAR)} isDarkMode={isDarkMode} />
       </section>
     </div>
   );
@@ -443,12 +444,7 @@ function StatusPill({ icon: Icon, label, tone, isDarkMode }) {
     ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
     : isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50/80 text-amber-700';
 
-  return (
-    <span className={cn('inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm backdrop-blur-xl', toneClass)}>
-      <Icon size={15} />
-      {label}
-    </span>
-  );
+  return <span className={cn('inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm backdrop-blur-xl', toneClass)}><Icon size={15} />{label}</span>;
 }
 
 function MetricCard({ icon: Icon, label, value, helper, tone, isDarkMode }) {
@@ -462,13 +458,8 @@ function MetricCard({ icon: Icon, label, value, helper, tone, isDarkMode }) {
   return (
     <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={cn('truncate text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p>
-          <p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p>
-        </div>
-        <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', toneClass)}>
-          <Icon size={21} />
-        </span>
+        <div className="min-w-0"><p className={cn('truncate text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p><p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p></div>
+        <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', toneClass)}><Icon size={21} /></span>
       </div>
       <p className={cn('mt-3 text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{helper}</p>
     </div>
@@ -479,144 +470,66 @@ function Panel({ title, description, actionLabel, onAction, isDarkMode, children
   return (
     <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}>
       <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h2>
-          <p className={cn('mt-1 text-sm font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p>
-        </div>
-        {actionLabel && (
-          <button
-            type="button"
-            onClick={onAction}
-            className={cn('shrink-0 rounded-lg px-3 py-2 text-xs font-black transition-colors', isDarkMode ? 'bg-white/[0.06] text-slate-200 hover:bg-white/[0.1]' : 'bg-white/75 text-slate-700 hover:bg-white')}
-          >
-            {actionLabel}
-          </button>
-        )}
+        <div className="min-w-0"><h2 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h2><p className={cn('mt-1 text-sm font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p></div>
+        {actionLabel && <button type="button" onClick={onAction} className={cn('shrink-0 rounded-lg px-3 py-2 text-xs font-black transition-colors', isDarkMode ? 'bg-white/[0.06] text-slate-200 hover:bg-white/[0.1]' : 'bg-white/75 text-slate-700 hover:bg-white')}>{actionLabel}</button>}
       </div>
       {children}
     </div>
   );
 }
 
-function ProjectRow({ project, isDarkMode }) {
-  const tone = STATUS_TONE[project.status] || STATUS_TONE[PROJECT_STATUS.DRAFT];
+function ChartTile({ chart, isDarkMode }) {
+  const tone = STATUS_TONE[chart.status] || STATUS_TONE.Draft;
+  return (
+    <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
+      <p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{chart.label}</p>
+      <span className={cn('mt-3 inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black', tone)}>{chart.status}</span>
+    </div>
+  );
+}
 
+function PackageRow({ forecastPackage, isDarkMode }) {
+  const tone = STATUS_TONE[forecastPackage.status] || STATUS_TONE.Draft;
   return (
     <div className={cn('flex items-center justify-between gap-3 rounded-xl border p-3 backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
-      <div className="min-w-0">
-        <p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{project.title}</p>
-        <p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-          {project.ownerDisplay || 'Forecaster'} - {project.chartType || 'Forecast'} - {formatDate(project.updatedAt || project.submittedAt)}
-        </p>
-      </div>
-      <span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black', tone)}>
-        {project.status}
-      </span>
+      <div className="min-w-0"><p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{forecastPackage.title}</p><p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{forecastPackage.ownerLabel || 'Forecast team'} - {forecastPackage.chartCount || 0} charts - {formatDate(getPackageTimestamp(forecastPackage))}</p></div>
+      <span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black', tone)}>{forecastPackage.status}</span>
     </div>
   );
 }
 
 function ChecklistItem({ done, title, detail, isDarkMode, onClick }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn('flex w-full items-start gap-3 rounded-xl border p-3 text-left backdrop-blur-xl transition-colors', isDarkMode ? 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]' : 'border-white/80 bg-white/65 hover:bg-white')}
-    >
-      <span className={cn('mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg', done ? 'bg-emerald-400/10 text-emerald-500' : 'bg-amber-400/10 text-amber-500')}>
-        {done ? <CheckCircle2 size={17} /> : <Clock3 size={17} />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={cn('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</span>
-        <span className={cn('mt-1 block text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{detail}</span>
-      </span>
+    <button type="button" onClick={onClick} className={cn('flex w-full items-start gap-3 rounded-xl border p-3 text-left backdrop-blur-xl transition-colors', isDarkMode ? 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]' : 'border-white/80 bg-white/65 hover:bg-white')}>
+      <span className={cn('mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg', done ? 'bg-emerald-400/10 text-emerald-500' : 'bg-amber-400/10 text-amber-500')}>{done ? <CheckCircle2 size={17} /> : <Clock3 size={17} />}</span>
+      <span className="min-w-0 flex-1"><span className={cn('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</span><span className={cn('mt-1 block text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{detail}</span></span>
       <ArrowRight size={15} className={cn('mt-1 shrink-0', isDarkMode ? 'text-slate-500' : 'text-slate-400')} />
     </button>
   );
 }
 
 function PipelineBar({ label, value, total, color, isDarkMode }) {
-  const percent = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
-
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
-        <span className={cn('font-bold', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{label}</span>
-        <span className={cn('font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</span>
-      </div>
-      <div className={cn('h-2.5 overflow-hidden rounded-full', isDarkMode ? 'bg-white/10' : 'bg-white/80')}>
-        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${percent}%` }} />
-      </div>
-    </div>
-  );
+  const percent = total ? Math.round((value / total) * 100) : 0;
+  return <div><div className="mb-1 flex justify-between text-xs font-black"><span className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>{label}</span><span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>{value}</span></div><div className={cn('h-2 overflow-hidden rounded-full', isDarkMode ? 'bg-white/10' : 'bg-slate-200')}><div className={cn('h-full rounded-full', color)} style={{ width: `${Math.min(100, percent)}%` }} /></div></div>;
 }
 
 function ActivityRow({ item, isDarkMode }) {
-  return (
-    <div className="flex gap-3">
-      <span className={cn('mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', item.status === PROJECT_STATUS.PUBLISHED ? 'bg-emerald-500' : 'bg-cyan-500')} />
-      <div className="min-w-0">
-        <p className={cn('text-sm font-bold leading-5', isDarkMode ? 'text-slate-200' : 'text-slate-800')}>{item.text}</p>
-        <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>{formatRelative(item.date)}</p>
-      </div>
-    </div>
-  );
+  const tone = STATUS_TONE[item.status] || STATUS_TONE.Draft;
+  return <div className="flex gap-3"><span className={cn('mt-1 h-2.5 w-2.5 shrink-0 rounded-full border', tone)} /><div className="min-w-0"><p className={cn('text-sm font-bold leading-5', isDarkMode ? 'text-slate-200' : 'text-slate-700')}>{item.text}</p><p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>{formatDate(item.date)}</p></div></div>;
 }
 
-function MiniStat({ icon: Icon, label, value, isDarkMode }) {
-  return (
-    <div className={cn('rounded-xl border p-3 backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
-      <div className="flex items-center gap-2">
-        <Icon size={15} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} />
-        <span className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</span>
-      </div>
-      <p className={cn('mt-2 text-2xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p>
-    </div>
-  );
+function MiniStat({ label, value, icon: Icon, isDarkMode }) {
+  return <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><Icon size={18} className={isDarkMode ? 'text-cyan-200' : 'text-cyan-700'} /><p className={cn('mt-3 text-2xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p><p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p></div>;
 }
 
 function UserRow({ user, isDarkMode }) {
-  const active = user.status === 'active';
-
-  return (
-    <div className={cn('flex items-center justify-between gap-3 rounded-xl border p-3 backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
-      <div className="min-w-0">
-        <p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{user.name}</p>
-        <p className={cn('mt-1 truncate text-xs font-semibold capitalize', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-          {user.role} - {user.position}
-        </p>
-      </div>
-      <span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black capitalize', active ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-600' : 'border-amber-400/20 bg-amber-400/10 text-amber-600')}>
-        {user.status}
-      </span>
-    </div>
-  );
-}
-
-function EmptyState({ title, description, isDarkMode }) {
-  return (
-    <div className={cn('rounded-xl border px-4 py-6 text-center backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
-      <p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</p>
-      <p className={cn('mx-auto mt-1 max-w-sm text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p>
-    </div>
-  );
+  return <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{user.name}</p><p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{user.role} - {user.status}</p></div>;
 }
 
 function QuickAction({ icon: Icon, title, description, onClick, isDarkMode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn('group flex min-h-32 items-start gap-3 rounded-2xl border p-4 text-left shadow-xl backdrop-blur-xl transition-all', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20 hover:bg-slate-900/70' : 'border-white/70 bg-white/70 shadow-slate-300/40 hover:bg-white')}
-    >
-      <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-xl', isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700')}>
-        <Icon size={19} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={cn('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</span>
-        <span className={cn('mt-1 block text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</span>
-      </span>
-      <ArrowRight size={16} className={cn('mt-1 shrink-0 transition-transform group-hover:translate-x-0.5', isDarkMode ? 'text-slate-500' : 'text-slate-400')} />
-    </button>
-  );
+  return <button type="button" onClick={onClick} className={cn('flex items-start gap-3 rounded-2xl border p-4 text-left shadow-xl backdrop-blur-xl transition-transform hover:-translate-y-0.5', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20 hover:bg-white/[0.04]' : 'border-white/70 bg-white/70 shadow-slate-300/40 hover:bg-white')}><span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700')}><Icon size={21} /></span><span><span className={cn('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</span><span className={cn('mt-1 block text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</span></span></button>;
+}
+
+function EmptyState({ title, description, isDarkMode }) {
+  return <div className={cn('rounded-xl border p-4 text-center', isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-white/80 bg-white/60')}><p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</p><p className={cn('mt-1 text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p></div>;
 }

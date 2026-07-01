@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, FolderKanban, LayoutGrid, List, Plus } from "lucide-react";
+import { AlertCircle, CalendarCheck, CheckCircle2, FolderKanban, LayoutGrid, List, Plus } from "lucide-react";
 
 import ProjectStats from "@/features/projects/components/project-library/ProjectStats";
 import ProjectToolbar from "@/features/projects/components/project-library/ProjectToolbar";
@@ -12,11 +12,21 @@ import ProjectReviewModal from "@/features/projects/components/ProjectReviewModa
 import CreateProjectModal from "@/components/ui/modals/CreateProjectModal";
 import Button from "@/components/ui/Button";
 
-import { createProject } from "@/api/projectAPI";
+import { createProject, fetchAdminForecastPackage } from "@/api/projectAPI";
+import { fetchAdminForecastPackages } from "@/api/forecastPackageAPI";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useProjectLibraryController } from "@/features/projects/hooks/useProjectLibraryController";
-import { isProjectPublished } from "@/features/projects/projectStatuses";
+import { PROJECT_STATUS, getProjectStatusLabel, isProjectPublished } from "@/features/projects/projectStatuses";
+import { adaptProjects } from "@/features/projects/projectAdapter";
 import useCurrentDashboardUser from "@/shared/hooks/useCurrentDashboardUser";
+
+const CHART_ORDER = ["analysis", "forecast_24h", "forecast_36h", "forecast_48h"];
+const CHART_LABELS = {
+  analysis: "Wave Analysis",
+  forecast_24h: "24h Forecast",
+  forecast_36h: "36h Forecast",
+  forecast_48h: "48h Forecast",
+};
 
 function ProjectCardSkeleton({ isDarkMode = false }) {
   const border = isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white";
@@ -86,23 +96,11 @@ function ViewToggle({ view, setView, isDarkMode }) {
 
   return (
     <div className={`grid w-full grid-cols-2 rounded-2xl border p-1 shadow-sm sm:inline-grid sm:w-auto ${isDarkMode ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-white"}`}>
-      <button
-        type="button"
-        aria-label="Show project cards"
-        aria-pressed={view === "grid"}
-        className={`${buttonBase} ${view === "grid" ? activeClass : inactiveClass}`}
-        onClick={() => setView("grid")}
-      >
+      <button type="button" aria-label="Show project cards" aria-pressed={view === "grid"} className={`${buttonBase} ${view === "grid" ? activeClass : inactiveClass}`} onClick={() => setView("grid")}>
         <LayoutGrid size={16} />
         <span>Cards</span>
       </button>
-      <button
-        type="button"
-        aria-label="Show project list"
-        aria-pressed={view === "list"}
-        className={`${buttonBase} ${view === "list" ? activeClass : inactiveClass}`}
-        onClick={() => setView("list")}
-      >
+      <button type="button" aria-label="Show project list" aria-pressed={view === "list"} className={`${buttonBase} ${view === "list" ? activeClass : inactiveClass}`} onClick={() => setView("list")}>
         <List size={16} />
         <span>List</span>
       </button>
@@ -139,12 +137,95 @@ function getProjectId(project) {
   return project?._id || project?.id;
 }
 
+function getProjectName(project) {
+  return project?.name || project?.title || "Untitled project";
+}
+
+function getForecastDateKey(project) {
+  const date = new Date(project?.forecastDate || project?.issuedAt || project?.createdAt || 0);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return date.toISOString().slice(0, 10);
+}
+
+function getChartType(project) {
+  return project?.chartType || project?.type || "";
+}
+
+function getChartSortValue(project) {
+  const index = CHART_ORDER.indexOf(getChartType(project));
+  return index === -1 ? CHART_ORDER.length : index;
+}
+
+function uniqueProjects(projects = []) {
+  const seen = new Set();
+  return projects.filter((project) => {
+    const id = getProjectId(project);
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+function sortReviewQueue(projects = []) {
+  return uniqueProjects(projects).sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+}
+
+function getPackageChartProjects(forecastPackage) {
+  return sortReviewQueue((forecastPackage?.charts || []).map((chart) => chart?.project).filter(Boolean));
+}
+
+function packageContainsProject(forecastPackage, projectId) {
+  return getPackageChartProjects(forecastPackage).some((project) => getProjectId(project) === projectId);
+}
+
+function formatForecastDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No forecast date";
+  return new Intl.DateTimeFormat(undefined, { month: "long", day: "numeric", year: "numeric" }).format(date);
+}
+
+function getPackageProgress(projects) {
+  return projects.reduce((counts, project) => {
+    if ([PROJECT_STATUS.SUBMITTED, PROJECT_STATUS.UNDER_REVIEW].includes(project.status)) counts.needsReview += 1;
+    if ([PROJECT_STATUS.APPROVED, PROJECT_STATUS.PUBLISHED].includes(project.status)) counts.approved += 1;
+    if ([PROJECT_STATUS.REVISION_REQUESTED, PROJECT_STATUS.REJECTED].includes(project.status)) counts.returned += 1;
+    if (project.status === PROJECT_STATUS.PUBLISHED) counts.published += 1;
+    return counts;
+  }, { needsReview: 0, approved: 0, returned: 0, published: 0 });
+}
+
+function getPackageStatus(projects) {
+  const progress = getPackageProgress(projects);
+  if (projects.length >= CHART_ORDER.length && progress.published === projects.length) return "Published";
+  if (progress.returned > 0) return "Returned";
+  if (progress.approved === projects.length && projects.length > 0) return "Approved";
+  return "Under Review";
+}
+
+function buildForecastPackages(projects) {
+  const groups = new Map();
+  projects.forEach((project) => {
+    const key = getForecastDateKey(project);
+    groups.set(key, [...(groups.get(key) || []), project]);
+  });
+
+  return Array.from(groups.entries())
+    .map(([key, groupProjects]) => {
+      const sortedProjects = [...groupProjects].sort((a, b) => getChartSortValue(a) - getChartSortValue(b));
+      return {
+        id: key,
+        forecastDate: sortedProjects[0]?.forecastDate || sortedProjects[0]?.createdAt,
+        projects: sortedProjects,
+        progress: getPackageProgress(sortedProjects),
+        status: getPackageStatus(sortedProjects),
+      };
+    })
+    .sort((a, b) => new Date(b.forecastDate || 0).getTime() - new Date(a.forecastDate || 0).getTime());
+}
+
 function getReviewModalProject(project) {
   if (!project) return project;
-  return {
-    ...project,
-    reviewComment: undefined,
-  };
+  return { ...project, reviewComment: undefined };
 }
 
 function getWelcomeName(user, fallbackRole) {
@@ -152,6 +233,71 @@ function getWelcomeName(user, fallbackRole) {
   if (!name || name.toLowerCase().startsWith("loading")) return fallbackRole;
   if (name.includes("@")) return name.split("@")[0];
   return name.split(" ")[0] || fallbackRole;
+}
+
+function DailyFocusPackage({ packageItem, isDarkMode, onOpenProject }) {
+  if (!packageItem) return null;
+
+  const cardClass = isDarkMode
+    ? "border-white/10 bg-slate-950/55 text-slate-100 hover:border-cyan-300/40 hover:bg-slate-900"
+    : "border-slate-200 bg-white text-slate-900 hover:border-cyan-300 hover:bg-cyan-50/60";
+  const muted = isDarkMode ? "text-slate-400" : "text-slate-500";
+  const firstProject = packageItem.projects[0];
+  const packageQueue = packageItem.projects;
+
+  return (
+    <section className={`overflow-hidden rounded-3xl border shadow-sm ${isDarkMode ? "border-cyan-400/25 bg-cyan-950/20" : "border-cyan-200 bg-cyan-50/70"}`}>
+      <button
+        type="button"
+        onClick={() => firstProject && onOpenProject(firstProject, packageQueue)}
+        className={`block w-full border-b border-white/10 p-5 text-left transition ${isDarkMode ? "hover:bg-cyan-400/10" : "hover:bg-cyan-100/70"}`}
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" : "border-cyan-200 bg-cyan-100 text-cyan-800"}`}>
+                <CalendarCheck size={14} />
+                Daily Focus
+              </span>
+              <span className={`text-sm font-bold ${muted}`}>{formatForecastDate(packageItem.forecastDate)}</span>
+              <span className={`rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? "border-amber-300/30 bg-amber-400/15 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{packageItem.status}</span>
+            </div>
+            <h2 className={`mt-4 text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-950"}`}>Today&apos;s Analysis and Forecast Charts</h2>
+            <p className={`mt-2 max-w-3xl text-sm font-semibold leading-6 ${muted}`}>Click anywhere in this Daily Focus header, Review package, or any chart card below to open the full package review.</p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex rounded-xl bg-cyan-500 px-4 py-2 text-sm font-black text-white shadow-sm">Review package</span>
+            <div className={`grid grid-cols-3 gap-2 rounded-2xl border p-2 text-center text-xs font-black ${isDarkMode ? "border-white/10 bg-slate-950/50" : "border-white/70 bg-white/80"}`}>
+              <div><p className={muted}>Needs Review</p><p className="mt-1 text-xl">{packageItem.progress.needsReview}</p></div>
+              <div><p className={muted}>Approved</p><p className="mt-1 text-xl">{packageItem.progress.approved}</p></div>
+              <div><p className={muted}>Returned</p><p className="mt-1 text-xl">{packageItem.progress.returned}</p></div>
+            </div>
+          </div>
+        </div>
+      </button>
+
+      <div className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-4">
+        {packageItem.projects.map((project) => {
+          const type = getChartType(project);
+          const isPublished = project.status === PROJECT_STATUS.PUBLISHED;
+
+          return (
+            <button key={getProjectId(project)} type="button" className={`min-w-0 rounded-2xl border p-4 text-left shadow-sm transition ${cardClass}`} onClick={() => onOpenProject(project, packageQueue)}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className={`truncate text-xs font-black uppercase tracking-[0.16em] ${muted}`}>{CHART_LABELS[type] || type}</p>
+                  <p className="mt-2 truncate text-sm font-black" title={getProjectName(project)}>{getProjectName(project)}</p>
+                </div>
+                <CheckCircle2 className={isPublished ? "text-emerald-300" : "text-slate-500"} size={20} />
+              </div>
+              <span className={`mt-4 inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${isPublished ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-200" : "border-sky-300/25 bg-sky-400/15 text-sky-200"}`}>{getProjectStatusLabel(project.status)}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 export default function ProjectLibraryPage({ role = "forecaster", title, description }) {
@@ -162,34 +308,93 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
   const { user } = useCurrentDashboardUser(null, userOptions);
   const [view, setView] = useState("grid");
   const [reviewProject, setReviewProject] = useState(null);
+  const [reviewQueue, setReviewQueue] = useState([]);
   const [isStartingReview, setIsStartingReview] = useState(false);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
 
-  const { projects, loading, error, onRetry, onOpen, onRename, onDelete, onStartReview, onApprove, onReject, onPublish, mode } = controller.table;
+  const { projects, loading, error, onRetry, onOpen, onRename, onDelete, onStartReview, onApprove, onReject, onNoPublication, onPublish, mode } = controller.table;
+  const packages = useMemo(() => buildForecastPackages(projects || []), [projects]);
+  const dailyFocusPackage = role === "admin" ? packages[0] : null;
 
-  const handleOpen = async (project) => {
+  const getReviewQueueForProject = (project, sourceProjects = projects || []) => {
+    const dateKey = getForecastDateKey(project);
+    return sortReviewQueue(sourceProjects.filter((candidate) => getForecastDateKey(candidate) === dateKey));
+  };
+
+  const loadQueueFromForecastPackageList = async (project) => {
+    const projectId = getProjectId(project);
+    if (!projectId) return [];
+
+    const response = await fetchAdminForecastPackages({ page: 1, limit: 100 });
+    const forecastPackages = response?.packages || [];
+    const matchingPackage = forecastPackages.find((forecastPackage) => packageContainsProject(forecastPackage, projectId))
+      || forecastPackages.find((forecastPackage) => getForecastDateKey(forecastPackage) === getForecastDateKey(project));
+
+    return getPackageChartProjects(matchingPackage);
+  };
+
+  const loadFullReviewQueue = async (project, preferredQueue = []) => {
+    const localQueue = getReviewQueueForProject(project);
+    let queue = sortReviewQueue([...preferredQueue, ...localQueue]);
+    const projectId = getProjectId(project);
+    if (!projectId) return queue;
+
+    try {
+      const packageResponse = await fetchAdminForecastPackage(projectId);
+      const packageProjects = adaptProjects(packageResponse?.projects || []);
+      queue = sortReviewQueue([...queue, ...packageProjects]);
+    } catch (err) {
+      console.error("Failed to load project forecast package endpoint:", err);
+    }
+
+    if (queue.length < CHART_ORDER.length) {
+      try {
+        const packageProjects = adaptProjects(await loadQueueFromForecastPackageList(project));
+        queue = sortReviewQueue([...queue, ...packageProjects]);
+      } catch (err) {
+        console.error("Failed to load admin forecast package list fallback:", err);
+      }
+    }
+
+    return queue.length > 0 ? queue : localQueue;
+  };
+
+  const openReviewProject = async (project, preferredQueue = reviewQueue) => {
+    const projectId = getProjectId(project);
+    if (!projectId) return;
+
+    const initialQueue = sortReviewQueue([...preferredQueue, ...getReviewQueueForProject(project)]);
+    if (initialQueue.length > 0) setReviewQueue(initialQueue);
+
+    setIsStartingReview(true);
+    try {
+      const updatedProject = await onStartReview?.(project);
+      const nextProject = updatedProject || project;
+      const nextQueue = await loadFullReviewQueue(nextProject, initialQueue);
+      setReviewQueue(nextQueue.length > 0 ? nextQueue : [nextProject]);
+      setReviewProject(nextProject);
+    } catch (err) {
+      console.error("Failed to start review:", err);
+      setFeedbackError(err?.message || "Failed to start project review.");
+    } finally {
+      setIsStartingReview(false);
+    }
+  };
+
+  const handleOpen = async (project, preferredQueue = []) => {
     setFeedbackError("");
     const projectId = getProjectId(project);
     if (!projectId) return;
 
-    if (isProjectPublished(project?.status)) {
-      navigate(`/forecasts/${projectId}`);
+    if (role === "admin") {
+      await openReviewProject(project, preferredQueue);
       return;
     }
 
-    if (role === "admin") {
-      setIsStartingReview(true);
-      try {
-        const updatedProject = await onStartReview?.(project);
-        setReviewProject(updatedProject || project);
-      } catch (err) {
-        console.error("Failed to start review:", err);
-        setFeedbackError(err?.message || "Failed to start project review.");
-      } finally {
-        setIsStartingReview(false);
-      }
+    if (isProjectPublished(project?.status)) {
+      navigate(`/forecasts/${projectId}`);
       return;
     }
 
@@ -229,6 +434,8 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       <div className="mx-auto max-w-[1400px] space-y-5 p-4 sm:space-y-6 sm:p-6">
         <ProjectViewControls isCreatingProject={isCreatingProject} isDarkMode={isDarkMode} onCreateProject={() => setShowCreateProjectModal(true)} role={role} setView={setView} userName={getWelcomeName(user, role === "admin" ? "Admin" : "Forecaster")} view={view} />
 
+        {role === "admin" && !loading && !error && dailyFocusPackage && <DailyFocusPackage packageItem={dailyFocusPackage} isDarkMode={isDarkMode} onOpenProject={handleOpen} />}
+
         {feedbackError && (
           <div className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? "border-red-500/30 bg-red-950/30 text-red-300" : "border-red-200 bg-red-50 text-red-700"}`} role="alert">
             <span className="inline-flex items-start gap-2"><AlertCircle className="mt-0.5 shrink-0" size={17} />{feedbackError}</span>
@@ -247,7 +454,7 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
             {!loading && !error && projects?.length > 0 && (
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {projects.map((project) => (
-                  <ProjectCard key={project._id || project.id} project={project} mode={mode} isDarkMode={isDarkMode} onOpen={handleOpen} onRename={onRename} onDelete={onDelete} onApprove={onApprove} onReject={onReject} onPublish={onPublish} onActionComplete={onRetry} />
+                  <ProjectCard key={project._id || project.id} project={project} mode={mode} isDarkMode={isDarkMode} onOpen={handleOpen} onRename={onRename} onDelete={onDelete} onApprove={onApprove} onReject={onReject} onNoPublication={onNoPublication} onPublish={onPublish} onActionComplete={onRetry} />
                 ))}
               </div>
             )}
@@ -259,14 +466,9 @@ export default function ProjectLibraryPage({ role = "forecaster", title, descrip
       </div>
 
       {controller.dialogs}
-
       {role !== "admin" && <CreateProjectModal visible={showCreateProjectModal} onClose={() => setShowCreateProjectModal(false)} onSubmit={handleCreateAndOpenProject} isDarkMode={isDarkMode} />}
-
-      {isStartingReview && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">Starting review…</div>}
-
-      {role === "admin" && (
-        <ProjectReviewModal project={getReviewModalProject(reviewProject)} isDarkMode={isDarkMode} onClose={() => setReviewProject(null)} onApprove={onApprove} onReject={onReject} onPublish={onPublish} onActionComplete={handleReviewActionComplete} />
-      )}
+      {isStartingReview && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">Starting review package…</div>}
+      {role === "admin" && <ProjectReviewModal project={getReviewModalProject(reviewProject)} reviewQueue={reviewQueue} isDarkMode={isDarkMode} onClose={() => { setReviewProject(null); setReviewQueue([]); }} onSelectProject={(targetProject) => openReviewProject(targetProject, reviewQueue)} onApprove={onApprove} onReject={onReject} onNoPublication={onNoPublication} onPublish={onPublish} onActionComplete={handleReviewActionComplete} />}
     </div>
   );
 }

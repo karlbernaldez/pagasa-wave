@@ -1,12 +1,17 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
+import { getSettings } from '@/api/siteSettings';
+import {
+  DEFAULT_MAP_STYLE_URL,
+  DEFAULT_STUDIO_MAP_VIEW,
+  boundsPair,
+  lngLatPair,
+  normalizeStudioMapViewSettings,
+} from '@/config/mapViewDefaults';
 import { registerMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-
-// Single base style
-const STYLE_URL = 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n';
 
 // Basemap palette. Keep forecast/annotation overlays untouched.
 const BASEMAP_THEMES = {
@@ -210,71 +215,88 @@ const applyTheme = (map, isDarkMode) => {
   return true;
 };
 
+async function loadStudioMapViewSettings() {
+  try {
+    const settings = await getSettings('mapview');
+    return normalizeStudioMapViewSettings(settings);
+  } catch (error) {
+    console.warn('[MapComponent] Failed to load map view settings. Falling back to defaults.', error);
+    return normalizeStudioMapViewSettings(DEFAULT_STUDIO_MAP_VIEW);
+  }
+}
+
 const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
 
   // Initialize map (runs once)
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current) return undefined;
 
-    // Clean container (important for hot reloads)
-    while (mapContainerRef.current.firstChild) {
-      mapContainerRef.current.removeChild(mapContainerRef.current.firstChild);
-    }
+    let cancelled = false;
+    let map = null;
+    let resizeObserver = null;
+    let resizeFrame = null;
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      projection: 'mercator',
-      style: STYLE_URL,
-      center: [120.0, 15.5],
-      zoom: 5.5,
-      minZoom: 4,
-      maxZoom: 16,
-      preserveDrawingBuffer: true,
-      maxBounds: [
-        [80, -10],
-        [170, 40],
-      ],
-    });
+    const initializeMap = async () => {
+      const mapViewSettings = await loadStudioMapViewSettings();
+      if (cancelled || !mapContainerRef.current) return;
 
-    const resizeMap = () => map.resize();
-    const resizeObserver =
-      typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(resizeMap)
-        : null;
-    const resizeFrame = requestAnimationFrame(resizeMap);
-
-    resizeObserver?.observe(mapContainerRef.current);
-
-    window.map = map;
-    map.fitBounds(
-      [
-        [93, 5],
-        [153.8595159535438, 25],
-      ],
-      {
-        padding: { top: 50, bottom: 50, left: 200, right: 200 },
-        maxZoom: 8,
+      // Clean container (important for hot reloads)
+      while (mapContainerRef.current.firstChild) {
+        mapContainerRef.current.removeChild(mapContainerRef.current.firstChild);
       }
-    );
 
-    map.on('load', () => {
-      mapRef.current = map;
-      map.resize();
+      map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        projection: 'mercator',
+        style: DEFAULT_MAP_STYLE_URL,
+        center: lngLatPair(mapViewSettings.center),
+        zoom: mapViewSettings.zoom.default,
+        minZoom: mapViewSettings.zoom.min,
+        maxZoom: mapViewSettings.zoom.max,
+        preserveDrawingBuffer: true,
+        maxBounds: boundsPair(mapViewSettings.maxBounds),
+      });
 
-      registerMapInstance(map);
-      if (setMapInstance) setMapInstance(map);
-      if (onMapLoad) onMapLoad(map);
+      const resizeMap = () => map.resize();
+      resizeObserver =
+        typeof ResizeObserver !== 'undefined'
+          ? new ResizeObserver(resizeMap)
+          : null;
+      resizeFrame = requestAnimationFrame(resizeMap);
 
-      // Apply initial theme after the custom style is fully available.
-      applyTheme(map, isDarkMode);
-    });
+      resizeObserver?.observe(mapContainerRef.current);
+
+      window.map = map;
+      map.fitBounds(
+        boundsPair(mapViewSettings.fitBounds),
+        {
+          padding: mapViewSettings.padding,
+          maxZoom: mapViewSettings.fitBoundsMaxZoom,
+        }
+      );
+
+      map.on('load', () => {
+        mapRef.current = map;
+        map.resize();
+
+        registerMapInstance(map);
+        if (setMapInstance) setMapInstance(map);
+        if (onMapLoad) onMapLoad(map);
+
+        // Apply initial theme after the custom style is fully available.
+        applyTheme(map, isDarkMode);
+      });
+    };
+
+    initializeMap();
 
     return () => {
-      cancelAnimationFrame(resizeFrame);
+      cancelled = true;
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
       resizeObserver?.disconnect();
-      map.remove();
+      map?.remove();
       mapRef.current = null;
       if (setMapInstance) setMapInstance(null);
     };
@@ -282,9 +304,9 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
 
   // Theme updates (NO style reload)
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current) return undefined;
     const map = mapRef.current;
-    if (applyTheme(map, isDarkMode)) return;
+    if (applyTheme(map, isDarkMode)) return undefined;
 
     const applyWhenReady = () => applyTheme(map, isDarkMode);
     map.once('styledata', applyWhenReady);

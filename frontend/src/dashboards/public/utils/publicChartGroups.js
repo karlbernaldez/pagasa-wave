@@ -25,11 +25,49 @@ export const PUBLIC_CHART_SLOTS = [
   },
 ];
 
+const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
+
+function padDatePart(value) {
+  return String(value).padStart(2, '0');
+}
+
+function getDatePartsInPhilippines(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: PUBLIC_CHART_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const getPart = (type) => parts.find((part) => part.type === type)?.value || '';
+  const year = getPart('year');
+  const month = getPart('month');
+  const day = getPart('day');
+  if (!year || !month || !day) return null;
+
+  return {
+    year: Number(year),
+    month: Number(month),
+    day: Number(day),
+    key: `${year}-${month}-${day}`,
+  };
+}
+
+function shiftDateKey(dateKey, days) {
+  const parts = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!parts) return '';
+  const [, year, month, day] = parts;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0));
+  date.setUTCDate(date.getUTCDate() + days);
+  return `${date.getUTCFullYear()}-${padDatePart(date.getUTCMonth() + 1)}-${padDatePart(date.getUTCDate())}`;
+}
+
 export function toPublicChartDateKey(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
+  return getDatePartsInPhilippines(value)?.key || '';
 }
 
 export function getPublicChartTenDayWindow(projects = []) {
@@ -41,12 +79,9 @@ export function getPublicChartTenDayWindow(projects = []) {
 
   if (!latestDate) return { latestDate: '', startDate: '' };
 
-  const start = new Date(`${latestDate}T00:00:00.000Z`);
-  start.setUTCDate(start.getUTCDate() - 10);
-
   return {
     latestDate,
-    startDate: start.toISOString().slice(0, 10),
+    startDate: shiftDateKey(latestDate, -10),
   };
 }
 

@@ -17,8 +17,12 @@ const baseOptions = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
+export const setAccessCookie = (res, accessToken) => {
+  res.cookie('accessToken', accessToken, { ...baseOptions, maxAge: ACCESS_COOKIE_MAX_AGE_MS });
+};
+
 export const setAuthCookies = (res, accessToken, refreshToken) => {
-  res.cookie('accessToken',  accessToken,  { ...baseOptions, maxAge: ACCESS_COOKIE_MAX_AGE_MS  });
+  setAccessCookie(res, accessToken);
   res.cookie('refreshToken', refreshToken, { ...baseOptions, maxAge: REFRESH_COOKIE_MAX_AGE_MS });
 };
 

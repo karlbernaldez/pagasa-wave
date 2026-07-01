@@ -46,7 +46,7 @@
   "main": "server.js",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "test:workflow": "node --test tests/projectWorkflow.test.js tests/projectWorkflow.controller.test.js",
+    "test:workflow": "node --test tests/projectWorkflow.test.js tests/projectWorkflow.controller.test.js tests/packageWorkflow.test.js tests/packageCreate.controller.test.js tests/packageSubmit.controller.test.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "ingest:knowledge": "node scripts/ingestKnowledge.js"

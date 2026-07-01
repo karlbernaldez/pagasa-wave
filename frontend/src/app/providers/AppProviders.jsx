@@ -5,6 +5,7 @@ import { darkTheme, theme } from '@/styles/theme';
 import { AuthProvider } from './AuthProvider';
 import { ThemeProviderCustom, useTheme } from './ThemeProvider';
 import { ChartTypeProvider } from "@/app/providers/ChartTypeProvider";
+import ForecastPackageRealtimeBridge from '@/socket/ForecastPackageRealtimeBridge';
 
 const ThemeWrapper = ({ children }) => {
   const { isDarkMode } = useTheme();
@@ -26,6 +27,7 @@ const AppProviders = ({ children }) => {
         <ChartTypeProvider>
 
           <ThemeWrapper>
+            <ForecastPackageRealtimeBridge />
             {children}
           </ThemeWrapper>
 

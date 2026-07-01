@@ -66,10 +66,11 @@ export function getProjectStats(projects, total = projects.length, statusCounts 
 
 export function getAdminProjectStats(projects, total = projects.length, statusCounts = null) {
   return [
-    { value: total, label: "Total Projects", helper: "Matching filters", tone: "blue" },
-    { value: getCount(statusCounts, "Submitted", projects), label: "Submitted", helper: "Matching filters", tone: "slate" },
-    { value: getCount(statusCounts, "Under Review", projects), label: "Under Review", helper: "Matching filters", tone: "amber" },
-    { value: getCount(statusCounts, "Revision Requested", projects), label: "Needs Revision", helper: "Matching filters", tone: "amber" },
-    { value: getCount(statusCounts, "Published", projects), label: "Published", helper: "Matching filters", tone: "emerald" },
+    { value: total, label: "Total Packages", helper: "All reviewable forecast packages", tone: "blue" },
+    { value: getCount(statusCounts, "Submitted", projects), label: "Submitted", helper: "Awaiting admin review", tone: "slate" },
+    { value: getCount(statusCounts, "Under Review", projects), label: "Under Review", helper: "In the review desk", tone: "amber" },
+    { value: getCount(statusCounts, "Revision Requested", projects), label: "Returned", helper: "Revision requested", tone: "amber" },
+    { value: getCount(statusCounts, "No Publication", projects), label: "No Publication", helper: "Operational exception", tone: "amber" },
+    { value: getCount(statusCounts, "Published", projects), label: "Published", helper: "Released forecast packages", tone: "emerald" },
   ];
 }

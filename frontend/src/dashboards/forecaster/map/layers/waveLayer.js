@@ -5,6 +5,7 @@ import {
   BLACK_ICON_COLOR,
   COLORED_ICON_COLOR,
 } from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
+import { getCachedForecastPackageContext, resolveWW3ForecastRun } from '@dashboards/forecaster/components/Studio/LayerPanel/hooks/waveConfig/ww3ForecastRuns';
 
 // ── Popup style injection (once) ──────────────────────────────────────────────
 
@@ -25,11 +26,13 @@ import {
 
 const MRI3_TIMESTEP = '012';
 const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
+const LOCAL_WW3_TILE_BASE = 'http://127.0.0.1:8081';
 
 // ── Module-level singletons ───────────────────────────────────────────────────
 
 let _wavePopup = null;
 const _popupListeners = new Set();
+const _tileUrlBySourceId = new Map();
 
 const getWavePopup = () => {
   if (!_wavePopup) {
@@ -42,25 +45,48 @@ const getWavePopup = () => {
 
 const normalizeModel = (model = '') => model.trim().toUpperCase();
 
-const resolveDate = (model) => {
+const resolveDate = (model, forecastPackage = {}) => {
   switch (model) {
-    case 'WW3': return '2026011200';
+    case 'WW3': {
+      const context = forecastPackage.forecastDate || forecastPackage.chartType
+        ? forecastPackage
+        : getCachedForecastPackageContext();
+      return resolveWW3ForecastRun(context).runTag;
+    }
     default: return '2026011200';
   }
 };
 
-const buildTileUrl = (model, theme) => {
+const resolveTileBase = (model) => (
+  model === 'WW3' ? LOCAL_WW3_TILE_BASE : WAVE_BUCKET_BASE
+);
+
+const buildTileUrl = (model, theme, forecastPackage = {}) => {
   const m = normalizeModel(model);
-  const date = resolveDate(m);
-  const base = `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}`;
+  const date = resolveDate(m, forecastPackage);
+  const base = `${resolveTileBase(m)}/${m}/${theme}/${date}`;
   return m === 'MRI3'
     ? `${base}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`
     : `${base}/{z}/{x}/{y}.png`;
 };
 
-
 const ensureSource = (map, id, config) => {
   if (!map.getSource(id)) map.addSource(id, config);
+};
+
+const upsertRasterSource = (map, id, config) => {
+  const nextTileUrl = config.tiles?.[0];
+  const existing = Boolean(map.getSource(id));
+  const changed = existing && nextTileUrl && _tileUrlBySourceId.get(id) !== nextTileUrl;
+
+  if (changed) {
+    map.removeSource(id);
+  }
+
+  if (!existing || changed) {
+    map.addSource(id, config);
+    if (nextTileUrl) _tileUrlBySourceId.set(id, nextTileUrl);
+  }
 };
 
 // Extract model name from layer id — 'wave-direction-WW3' → 'WW3'
@@ -69,16 +95,16 @@ const modelFromLayerId = (layerId = '', prefix = 'wave-direction-') =>
 
 // ── Sources ───────────────────────────────────────────────────────────────────
 
-export async function addWaveSource(map, isDarkMode, models) {
+export async function addWaveSource(map, isDarkMode, models, forecastPackage = {}) {
   if (!map) return;
 
   const theme = isDarkMode ? 'dark' : 'light';
 
   for (const model of models) {
     console.log(`[Wave] Adding source for model: ${model}`);
-    ensureSource(map, `wave-source-${model}`, {
+    upsertRasterSource(map, `wave-source-${model}`, {
       type: 'raster',
-      tiles: [buildTileUrl(model, theme)],
+      tiles: [buildTileUrl(model, theme, forecastPackage)],
       tileSize: 256,
       bounds: [100, -5, 180, 50],
       scheme: 'xyz',
@@ -107,12 +133,12 @@ export async function addWaveSource(map, isDarkMode, models) {
   });
 }
 
-export async function addWaveLayer(map, isDarkMode, models) {
+export async function addWaveLayer(map, isDarkMode, models, forecastPackage = {}) {
   if (!map) return;
 
   const normalized = models.map(normalizeModel).filter(Boolean);
 
-  await addWaveSource(map, isDarkMode, normalized);
+  await addWaveSource(map, isDarkMode, normalized, forecastPackage);
   addWaveDirectionLayers(map, normalized);
   addSharedLayers(map, isDarkMode);
   setupPopup(map, isDarkMode, normalized);

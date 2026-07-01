@@ -44,10 +44,11 @@ const getSubNavClasses = ({ isActive, isDarkMode }) => {
 const DashboardSidebar = ({
   activeId,
   footerText = 'Philippine Atmospheric, Geophysical and Astronomical Services Administration',
+  groups,
   isDarkMode,
   isMobileOpen,
   isSidebarCollapsed,
-  items,
+  items = [],
   label,
   onItemSelect,
   setIsMobileOpen,
@@ -56,6 +57,9 @@ const DashboardSidebar = ({
 }) => {
   const toggleCollapse = () => setIsSidebarCollapsed((prev) => !prev);
   const closeMobile = () => setIsMobileOpen(false);
+  const navGroups = Array.isArray(groups) && groups.length > 0
+    ? groups
+    : [{ label: 'Navigation', items }];
 
   const renderActiveMark = (isActive) =>
     isActive ? (
@@ -96,31 +100,33 @@ const DashboardSidebar = ({
 
   const renderNavItem = (item) => {
     const Icon = item.icon;
-    const isActive = item.isActive?.(activeId) ?? activeId === item.id ?? false;
+    const isActive = item.isActive?.(activeId) ?? (activeId === item.id);
     const hasChildren = Array.isArray(item.children) && item.children.length > 0;
     const isExpanded = item.isExpanded?.(activeId) ?? (hasChildren && item.children.some((child) => child.id === activeId));
     const stateActive = isActive || isExpanded;
     const itemClass = `relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
       isSidebarCollapsed ? 'justify-center' : 'justify-between'
     } ${getNavClasses({ disabled: item.disabled, isActive: stateActive, isDarkMode })}`;
+    const shouldMatchExact = item.end ?? item.path === '/dashboard';
 
     return (
       <div key={item.id ?? item.path ?? item.label}>
         {item.path && !item.disabled ? (
           <NavLink
             to={item.path}
+            end={shouldMatchExact}
             title={isSidebarCollapsed ? item.label : undefined}
             className={({ isActive: routeActive }) =>
               `relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
                 isSidebarCollapsed ? 'justify-center' : ''
-              } ${getNavClasses({ isActive: routeActive || isActive, isDarkMode })}`
+              } ${getNavClasses({ isActive: routeActive || stateActive, isDarkMode })}`
             }
             onClick={closeMobile}
           >
             {({ isActive: routeActive }) =>
               renderItemContent({
                 Icon,
-                isActive: routeActive || isActive,
+                isActive: routeActive || stateActive,
                 label: item.label,
               })
             }
@@ -153,7 +159,24 @@ const DashboardSidebar = ({
             isDarkMode ? 'border-white/10' : 'border-white/80'
           }`}>
             {item.children.map((child) => {
-              const childActive = child.isActive?.(activeId) ?? activeId === child.id;
+              const childActive = child.isActive?.(activeId) ?? (activeId === child.id);
+              const childClass = `block w-full rounded-lg px-2 py-2 text-left text-sm font-bold transition-colors ${getSubNavClasses({ isActive: childActive, isDarkMode })}`;
+
+              if (child.path) {
+                return (
+                  <NavLink
+                    key={child.id}
+                    to={child.path}
+                    end
+                    onClick={closeMobile}
+                    className={({ isActive: routeActive }) =>
+                      `block w-full rounded-lg px-2 py-2 text-left text-sm font-bold transition-colors ${getSubNavClasses({ isActive: routeActive || childActive, isDarkMode })}`
+                    }
+                  >
+                    {child.label}
+                  </NavLink>
+                );
+              }
 
               return (
                 <button
@@ -163,7 +186,7 @@ const DashboardSidebar = ({
                     onItemSelect?.(child);
                     closeMobile();
                   }}
-                  className={`block w-full rounded-lg px-2 py-2 text-left text-sm font-bold transition-colors ${getSubNavClasses({ isActive: childActive, isDarkMode })}`}
+                  className={childClass}
                 >
                   {child.label}
                 </button>
@@ -174,6 +197,19 @@ const DashboardSidebar = ({
       </div>
     );
   };
+
+  const renderNavGroup = (group, index) => (
+    <div key={group.id ?? group.label ?? index} className={index > 0 ? 'mt-5' : ''}>
+      {!isSidebarCollapsed && (
+        <div className={`mb-2 px-3 text-[10px] font-black uppercase tracking-[0.16em] ${getMutedText(isDarkMode)}`}>
+          {group.label}
+        </div>
+      )}
+      <div className="space-y-1">
+        {(group.items ?? []).map(renderNavItem)}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -231,14 +267,7 @@ const DashboardSidebar = ({
         </div>
 
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-          {!isSidebarCollapsed && (
-            <div className={`mb-2 px-3 text-[10px] font-black uppercase tracking-[0.16em] ${getMutedText(isDarkMode)}`}>
-              Navigation
-            </div>
-          )}
-          <div className="space-y-1">
-            {items.map(renderNavItem)}
-          </div>
+          {navGroups.map(renderNavGroup)}
         </nav>
 
         <div className={`border-t p-3 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>

@@ -15,9 +15,11 @@ const AuditLogSchema = new Schema({
       'moved_to_review',
       'comment_added',
       'revision_requested',
+      'revision_reopened',
       'approved',
       'rejected',
       'published',
+      'marked_no_publication',
       'archived'
     ],
     required: true
@@ -38,6 +40,7 @@ const VersionSchema = new Schema({
   snapshot: { type: Schema.Types.Mixed, required: true },
   features: { type: [Schema.Types.Mixed], default: [] },
   featureCollection: { type: Schema.Types.Mixed, default: null },
+  raster: { type: Schema.Types.Mixed, default: null },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now },
   reason: { type: String, default: 'snapshot' }
@@ -52,6 +55,12 @@ const ProjectSchema = new Schema({
     required: true
   },
   forecastDate: { type: Date, required: true },
+  forecastPackage: {
+    type: Schema.Types.ObjectId,
+    ref: 'ForecastPackage',
+    default: null,
+    index: true,
+  },
 
   status: {
     type: String,
@@ -63,6 +72,7 @@ const ProjectSchema = new Schema({
       'Approved',
       'Published',
       'Rejected',
+      'No Publication',
       'Archived'
     ],
     default: 'Draft'
@@ -80,6 +90,20 @@ const ProjectSchema = new Schema({
   rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   reviewComment: String,
   publishedAt: Date,
+  publishedRaster: { type: Schema.Types.Mixed, default: null },
+
+  noPublicationAt: Date,
+  noPublicationBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  noPublicationReason: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  noPublicationNotes: {
+    type: String,
+    default: '',
+    trim: true
+  },
 
   lastOpenedAt: { type: Date, default: null },
   lastOpenedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
@@ -98,5 +122,7 @@ ProjectSchema.index({ owner: 1, status: 1, updatedAt: -1 });
 ProjectSchema.index({ owner: 1, chartType: 1, updatedAt: -1 });
 ProjectSchema.index({ owner: 1, forecastDate: -1 });
 ProjectSchema.index({ status: 1, updatedAt: -1 });
+ProjectSchema.index({ status: 1, noPublicationAt: -1 });
+ProjectSchema.index({ forecastPackage: 1, chartType: 1 });
 
 export default mongoose.models.Project || mongoose.model('Project', ProjectSchema);

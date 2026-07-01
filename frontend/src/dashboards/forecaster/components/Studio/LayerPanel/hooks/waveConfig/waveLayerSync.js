@@ -68,6 +68,8 @@ const SYMBOL_LAYER_MAP = [
   },
 ];
 
+const rasterTileUrlBySource = new Map();
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Raster Layers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,6 +104,8 @@ const removeStaleRasterSources = (map, targetSourceIds) => {
       if (map.getSource(sourceId)) {
         map.removeSource(sourceId);
       }
+
+      rasterTileUrlBySource.delete(sourceId);
     });
 };
 
@@ -113,6 +117,8 @@ const upsertRasterLayer = (
     opacity,
     showRaster,
     themeChanged,
+    forecastDate,
+    chartType,
   },
 ) => {
   const sourceId = `${WAVE_RASTER_SOURCE_PREFIX}${model}`;
@@ -121,18 +127,22 @@ const upsertRasterLayer = (
     model,
     theme,
     date: WAVE_RASTER_DATE,
+    forecastDate,
+    chartType,
   });
 
   const { scheme, bounds } = getRasterConfig(model);
 
   let sourceExists = Boolean(map.getSource(sourceId));
+  const sourceUrlChanged = sourceExists && rasterTileUrlBySource.get(sourceId) !== tileUrl;
 
-  if (sourceExists && themeChanged) {
+  if (sourceExists && (themeChanged || sourceUrlChanged)) {
     if (map.getLayer(layerId)) {
       map.removeLayer(layerId);
     }
 
     map.removeSource(sourceId);
+    rasterTileUrlBySource.delete(sourceId);
     sourceExists = false;
   }
 
@@ -144,6 +154,7 @@ const upsertRasterLayer = (
       scheme,
       bounds,
     });
+    rasterTileUrlBySource.set(sourceId, tileUrl);
   }
 
   if (!map.getLayer(layerId)) {
@@ -184,6 +195,7 @@ export const syncWaveRasterLayers = (
   showRaster = false,
   isDarkMode = false,
   themeChanged = false,
+  forecastPackage = {},
 ) => {
   if (!map) return;
 
@@ -214,6 +226,8 @@ export const syncWaveRasterLayers = (
       opacity,
       showRaster,
       themeChanged,
+      forecastDate: forecastPackage.forecastDate,
+      chartType: forecastPackage.chartType,
     }),
   );
 
@@ -272,7 +286,7 @@ export const syncWaveSymbolLayers = (map, config) => {
 
         map.setPaintProperty(layerId, 'icon-color', iconColor);
         map.setLayoutProperty(layerId, 'icon-size', iconSize);
-        map.setPaintProperty(layerId, 'icon-opacity', iconOpacity);   // ← new
+        map.setPaintProperty(layerId, 'icon-opacity', iconOpacity);
       }
     });
 
@@ -295,7 +309,7 @@ export const syncWaveSymbolLayers = (map, config) => {
 
 // ── Master sync ───────────────────────────────────────────────────────────────
 
-export const syncAllWaveLayers = (map, config, isDarkMode, prevThemeRef) => {
+export const syncAllWaveLayers = (map, config, isDarkMode, prevThemeRef, forecastPackage = {}) => {
   if (!map) return;
 
   const nextTheme = isDarkMode ? 'dark' : 'light';
@@ -309,6 +323,7 @@ export const syncAllWaveLayers = (map, config, isDarkMode, prevThemeRef) => {
     enabled && models.length > 0 && Boolean(elements.raster),
     isDarkMode,
     themeChanged,
+    forecastPackage,
   );
 
   syncWaveSymbolLayers(map, config);

@@ -1,31 +1,76 @@
-// ╔══════════════════════════════════════════════════════╗
-// ║                      tabs.js                         ║
-// ║  Tab config — add new pages here to auto-register    ║
-// ╚══════════════════════════════════════════════════════╝
-import { Settings, FileText, Mail } from 'lucide-react';
+import { FileText, LayoutDashboard, Mail, MapPinned, Settings, ShieldCheck, Workflow } from 'lucide-react';
 
-// ─── To add a new settings tab (e.g. Contact):
-//   1. Add its default data to constants/defaults.js
-//   2. Create its tab component in components/tabs/
-//   3. Add an entry here — the rest auto-wires
-// ──────────────────────────────────────────────────────
+export const SETTINGS_GROUPS = [
+  {
+    id: 'forecastOperations',
+    label: 'Forecast Operations',
+    description: 'Operational timing, package windows, archive policy, and no-publication options.',
+  },
+  {
+    id: 'forecasterWorkspace',
+    label: 'Forecaster Workspace',
+    description: 'Helper copy, workspace defaults, collaboration reminders, map defaults, and forecaster-facing guidance.',
+  },
+  {
+    id: 'adminReview',
+    label: 'Admin Review',
+    description: 'Review SLA targets and admin-facing package resolution settings.',
+  },
+  {
+    id: 'publicSite',
+    label: 'Public Site',
+    description: 'Public dashboard branding, About page content, and Contact page content.',
+  },
+];
+
 export const TABS = [
+  {
+    id: 'operations',
+    label: 'Schedule & Policy',
+    icon: Workflow,
+    group: 'forecastOperations',
+    apiPage: null,
+  },
+  {
+    id: 'forecasterWorkspace',
+    label: 'Workspace Defaults',
+    icon: LayoutDashboard,
+    group: 'forecasterWorkspace',
+    apiPage: null,
+  },
+  {
+    id: 'mapView',
+    label: 'Map View',
+    icon: MapPinned,
+    group: 'forecasterWorkspace',
+    apiPage: 'mapview',
+  },
+  {
+    id: 'adminReview',
+    label: 'Review Targets',
+    icon: ShieldCheck,
+    group: 'adminReview',
+    apiPage: null,
+  },
   {
     id: 'general',
     label: 'General',
     icon: Settings,
-    apiPage: null,          // null = localStorage only
+    group: 'publicSite',
+    apiPage: null,
   },
   {
     id: 'about',
     label: 'About Page',
     icon: FileText,
-    apiPage: 'about',       // maps to GET/PUT /api/settings/about
+    group: 'publicSite',
+    apiPage: 'about',
   },
   {
     id: 'contact',
     label: 'Contact Page',
     icon: Mail,
+    group: 'publicSite',
     apiPage: 'contact',
   },
 ];

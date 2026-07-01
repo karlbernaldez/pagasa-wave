@@ -1,13 +1,5 @@
-import ProjectLibraryPage from '@/features/projects/ProjectLibraryPage';
+import AdminForecastPackageReviewPageV2 from './AdminForecastPackageReviewPageV2';
 
-const ChartReviewSection = () => {
-  return (
-    <ProjectLibraryPage
-      role="admin"
-      title="Forecast Operations"
-      description="Review, approve, and manage submitted marine forecast projects."
-    />
-  );
-};
+const ChartReviewSection = () => <AdminForecastPackageReviewPageV2 />;
 
 export default ChartReviewSection;

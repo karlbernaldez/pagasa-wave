@@ -1,58 +1,164 @@
-const SYMBOL_SIZES = {
-    typhoon: { icon: { original: 0.03, active: 0.1 }, text: { original: 12, active: 16 } },
-    low_pressure: { icon: { original: 0.015, active: 0.06 }, text: { original: 11, active: 14 } },
-    high_pressure: { icon: { original: 0.015, active: 0.06 }, text: { original: 11, active: 14 } },
-    less_1: { icon: { original: 0.28, active: 0.6 }, text: { original: 12, active: 18 } },
-    text_note: { icon: { original: 0.01, active: 0.01 }, text: { original: 16, active: 22 } },
-    'Wave Height': { icon: { original: 0.12, active: 0.12 }, text: { original: 18, active: 24 } },
-    default: { icon: { original: 0.07, active: 0.1 }, text: { original: 18, active: 24 } },
+import { getLiveMapboxLayerIds, getMarkerType } from './layerIdentity';
+
+const ACTIVE_HIGHLIGHT_PREFIX = '__active_annotation_highlight__';
+const ACTIVE_HIGHLIGHT_SOURCE = `${ACTIVE_HIGHLIGHT_PREFIX}_empty_source`;
+
+const resolveSourceId = (layerInfo) => layerInfo?.sourceID || layerInfo?.sourceId || layerInfo?.source || layerInfo?.id;
+
+const isFrontLayer = (layerInfo) => {
+    const sourceId = resolveSourceId(layerInfo);
+    const label = `${layerInfo?.type || ''} ${layerInfo?.name || ''}`.toLowerCase();
+
+    return Boolean(
+        layerInfo?.properties?.isFront ||
+        layerInfo?.isFront ||
+        sourceId?.startsWith?.('SF_') ||
+        label.includes('front')
+    );
 };
 
-const MARKER_TYPES = new Set(['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note']);
+const resolveFrontLayerIds = (layerInfo) => {
+    const sourceId = resolveSourceId(layerInfo);
+    if (!sourceId) return [];
 
-const getSymbolSizes = (markerType, isActive) => {
-    const cfg = SYMBOL_SIZES[markerType] ?? SYMBOL_SIZES.default;
-    return {
-        iconSize: isActive ? cfg.icon.active : cfg.icon.original,
-        textSize: isActive ? cfg.text.active : cfg.text.original,
-    };
+    return [
+        `${sourceId}_dash`,
+        `${sourceId}_secondary`,
+        `${sourceId}_frontSymbols`,
+        `${sourceId}_frontSymbolOutline`,
+        sourceId,
+    ];
 };
 
-const resolveMarkerLayerId = (layerInfo) => {
-    const markerType = layerInfo?.markerType || layerInfo?.type;
-    const name = layerInfo?.name;
+const resolveMapboxLayerIds = (map, layerInfo) => {
+    if (isFrontLayer(layerInfo)) return resolveFrontLayerIds(layerInfo);
 
-    if (!MARKER_TYPES.has(markerType) || !name) return null;
-    return `${markerType}_${name}`;
-};
-
-const resolveMapboxLayerIds = (layerInfo) => {
     if (layerInfo.type === 'Wave Height') {
         return [layerInfo.id, `${layerInfo.id}-0`, `${layerInfo.id}-1`];
     }
 
-    return [
-        layerInfo.mapLayerId,
-        resolveMarkerLayerId(layerInfo),
-        layerInfo.id,
-    ].filter(Boolean);
+    if (getMarkerType(layerInfo)) {
+        return getLiveMapboxLayerIds(map, layerInfo);
+    }
+
+    return [layerInfo.mapLayerId, layerInfo.id].filter(Boolean);
 };
 
-const setLayerStyles = (map, mapboxLayerIds, markerType, isActive) => {
-    for (const lid of mapboxLayerIds) {
-        const mapLayer = map.getLayer(lid);
-        if (!mapLayer) continue;
+const removeActiveHighlightLayers = (map) => {
+    if (!map?.getStyle) return;
 
-        if (mapLayer.type === 'line') {
-            map.setPaintProperty(lid, 'line-width', isActive ? 8 : 3);
-        } else if (mapLayer.type === 'symbol') {
-            const { iconSize, textSize } = getSymbolSizes(markerType, isActive);
-            if (map.getLayoutProperty(lid, 'icon-image')) {
-                map.setLayoutProperty(lid, 'icon-size', iconSize);
-            }
-            map.setLayoutProperty(lid, 'text-size', textSize);
-        }
+    const style = map.getStyle();
+    const highlightLayerIds = (style?.layers || [])
+        .map((layer) => layer.id)
+        .filter((id) => id.startsWith(ACTIVE_HIGHLIGHT_PREFIX));
+
+    highlightLayerIds.forEach((layerId) => {
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+    });
+
+    if (map.getSource(ACTIVE_HIGHLIGHT_SOURCE)) {
+        map.removeSource(ACTIVE_HIGHLIGHT_SOURCE);
     }
+};
+
+const getSharedLayerDefinition = (mapLayer) => {
+    const definition = {
+        source: mapLayer.source,
+        filter: mapLayer.filter,
+        slot: mapLayer.slot,
+    };
+
+    if (mapLayer['source-layer']) definition['source-layer'] = mapLayer['source-layer'];
+    if (mapLayer.sourceLayer) definition['source-layer'] = mapLayer.sourceLayer;
+
+    Object.keys(definition).forEach((key) => {
+        if (definition[key] === undefined) delete definition[key];
+    });
+
+    return definition;
+};
+
+const safeAddHighlightLayer = (map, layer, beforeId) => {
+    if (!layer?.id || map.getLayer(layer.id)) return;
+
+    try {
+        map.addLayer(layer, beforeId && map.getLayer(beforeId) ? beforeId : undefined);
+    } catch (error) {
+        console.warn(`[setActiveLayerOnMap] Could not add active highlight layer "${layer.id}"`, error);
+    }
+};
+
+const addActiveHighlightForLayer = (map, layerId, index) => {
+    const mapLayer = map.getLayer(layerId);
+    if (!mapLayer?.source) return;
+
+    const shared = getSharedLayerDefinition(mapLayer);
+    const highlightId = `${ACTIVE_HIGHLIGHT_PREFIX}_${index}_${mapLayer.type}`;
+
+    if (mapLayer.type === 'line') {
+        const existingWidth = map.getPaintProperty(layerId, 'line-width');
+        const baseWidth = typeof existingWidth === 'number' ? existingWidth : 4;
+        safeAddHighlightLayer(map, {
+            id: highlightId,
+            type: 'line',
+            ...shared,
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round',
+                visibility: 'visible',
+            },
+            paint: {
+                'line-color': '#22d3ee',
+                'line-opacity': 0.55,
+                'line-width': Math.max(baseWidth + 6, 8),
+                'line-blur': 1.5,
+            },
+        }, layerId);
+        return;
+    }
+
+    if (mapLayer.type === 'fill') {
+        safeAddHighlightLayer(map, {
+            id: highlightId,
+            type: 'line',
+            ...shared,
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round',
+                visibility: 'visible',
+            },
+            paint: {
+                'line-color': '#22d3ee',
+                'line-opacity': 0.8,
+                'line-width': 3,
+                'line-blur': 0.5,
+            },
+        }, layerId);
+        return;
+    }
+
+    if (mapLayer.type === 'symbol') {
+        safeAddHighlightLayer(map, {
+            id: highlightId,
+            type: 'circle',
+            ...shared,
+            filter: ['==', '$type', 'Point'],
+            paint: {
+                'circle-radius': 18,
+                'circle-color': '#22d3ee',
+                'circle-opacity': 0.16,
+                'circle-stroke-color': '#67e8f9',
+                'circle-stroke-opacity': 0.9,
+                'circle-stroke-width': 2,
+                'circle-blur': 0.2,
+            },
+        }, layerId);
+    }
+};
+
+const addActiveHighlights = (map, mapboxLayerIds) => {
+    removeActiveHighlightLayers(map);
+    mapboxLayerIds.forEach((layerId, index) => addActiveHighlightForLayer(map, layerId, index));
 };
 
 export const setActiveLayerOnMap = ({
@@ -67,31 +173,22 @@ export const setActiveLayerOnMap = ({
         return;
     }
 
-    const mapboxLayerIds = resolveMapboxLayerIds(layerInfo).filter((lid) => map.getLayer(lid));
+    const mapboxLayerIds = resolveMapboxLayerIds(map, layerInfo).filter((lid) => map.getLayer(lid));
     if (!mapboxLayerIds.length) {
         console.warn(`[setActiveLayerOnMap] No Mapbox layers found for "${layerInfo.id}"`);
         return;
     }
 
-    // Toggle off same layer
+    // Toggle off same layer. Do not mutate user style; only remove temporary highlights.
     if (activeLayerId === layerInfo.id) {
-        setLayerStyles(map, mapboxLayerIds, layerInfo.type, false);
+        removeActiveHighlightLayers(map);
         setActiveLayerId(null);
         setActiveMapboxLayerId?.([]);
         return;
     }
 
-    // Reset previous
-    if (activeLayerId) {
-        const prev = layers.find((l) => l.id === activeLayerId);
-        if (prev) {
-            const prevIds = resolveMapboxLayerIds(prev).filter((lid) => map.getLayer(lid));
-            setLayerStyles(map, prevIds, prev.type, false);
-        }
-    }
-
-    // Activate new
-    setLayerStyles(map, mapboxLayerIds, layerInfo.type, true);
+    // Activate new layer with a non-persistent highlight overlay.
+    addActiveHighlights(map, mapboxLayerIds);
 
     if (draw?.get && draw?.changeMode) {
         for (const lid of mapboxLayerIds) {
