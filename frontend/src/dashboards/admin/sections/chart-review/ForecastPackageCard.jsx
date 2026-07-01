@@ -55,6 +55,41 @@ const PACKAGE_NEXT_STEP = {
   Draft: 'Package is still in production and should not be reviewed yet.',
 };
 
+const PACKAGE_REVIEW_STAGE = {
+  Submitted: {
+    label: 'Ready to start review',
+    helper: 'Open a submitted chart to move this package into Under Review.',
+  },
+  'Under Review': {
+    label: 'Review in progress',
+    helper: 'Review submitted or under-review charts until each chart is approved or returned.',
+  },
+  Approved: {
+    label: 'Ready to publish',
+    helper: 'Publishing will publish approved charts first, then publish the package.',
+  },
+  Published: {
+    label: 'Published',
+    helper: 'Final output is available. No review action is needed.',
+  },
+  'Revision Requested': {
+    label: 'Returned to forecaster',
+    helper: 'This package will reappear for review after forecasters resubmit.',
+  },
+  Rejected: {
+    label: 'Closed',
+    helper: 'The package has been rejected and is not publishable.',
+  },
+  Archived: {
+    label: 'Archived',
+    helper: 'Archived packages are retained for record keeping only.',
+  },
+  Draft: {
+    label: 'In production',
+    helper: 'Draft packages should not be visible in the admin review queue.',
+  },
+};
+
 const LOCKED_CHART_ACTION = {
   Approved: 'Approved',
   Published: 'Published output',
@@ -113,6 +148,7 @@ function ChartRow({ chartRow, isDarkMode, onOpenChart }) {
 export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpenChart, onPublishPackage, publishingPackageId }) {
   const isDaily = isDailyForecastPackage(forecastPackage);
   const statusStyle = PACKAGE_STATUS_STYLES[forecastPackage.status] ?? PACKAGE_STATUS_STYLES.Draft;
+  const reviewStage = PACKAGE_REVIEW_STAGE[forecastPackage.status] ?? PACKAGE_REVIEW_STAGE.Draft;
   const packageDateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
   const canReviewPackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status) && Boolean(forecastPackage.primaryChart);
   const canPublishPackage = PUBLISHABLE_PACKAGE_STATUSES.has(forecastPackage.status);
@@ -149,6 +185,9 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
               <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${isDarkMode ? statusStyle.dark : statusStyle.light}`}>
                 {forecastPackage.status}
               </span>
+              <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}>
+                {reviewStage.label}
+              </span>
             </div>
             <h3 className={`mt-3 text-lg font-black leading-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
               {forecastPackage.title}
@@ -158,6 +197,9 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
             </p>
             <p className={`mt-2 text-sm font-bold leading-6 ${isDarkMode ? 'text-cyan-100/80' : 'text-slate-700'}`}>
               {nextStep}
+            </p>
+            <p className={`mt-1 text-xs font-semibold leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              {reviewStage.helper}
             </p>
             <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
               {readyChartCount}/{REQUIRED_CHART_COUNT} required charts already reviewed or returned.
