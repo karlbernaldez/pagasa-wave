@@ -138,46 +138,10 @@ function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageD
     : '<footer class="footer"><span><strong>Final Wave Chart</strong> · DOST-PAGASA WaveLab</span><span>Published operational output</span></footer>';
 
   printWindow.document.open();
-  printWindow.document.write(`
-    <!doctype html>
-    <html>
-      <head>
-        <title>${escapeHtml(metadata.title)} - Published Wave Chart</title>
-        <style>
-          @page { size: A4 landscape; margin: 0; }
-          * { box-sizing: border-box; }
-          html, body { margin: 0; width: 297mm; height: 210mm; background: #e2e8f0; }
-          body { font-family: Arial, Helvetica, sans-serif; color: #0f172a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .page { width: 297mm; height: 210mm; margin: 0 auto; padding: 10mm; display: grid; grid-template-rows: auto auto 1fr auto; gap: 4mm; background: #fff; overflow: hidden; }
-          .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8mm; }
-          .brand { color: #0369a1; font-size: 8pt; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
-          .status { border: 1px solid #bbf7d0; background: #f0fdf4; color: #047857; border-radius: 999px; padding: 2mm 3.5mm; font-size: 8pt; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
-          h1 { margin: 0; font-size: 18pt; line-height: 1.05; letter-spacing: -0.02em; }
-          .description { margin: 1.5mm 0 0; color: #475569; font-size: 8.5pt; font-weight: 600; line-height: 1.35; }
-          .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; }
-          .meta-card { border: 1px solid #dbeafe; background: #f8fafc; border-radius: 3mm; padding: 2.5mm; }
-          .meta-card dt { margin: 0 0 1mm; color: #64748b; font-size: 6.5pt; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
-          .meta-card dd { margin: 0; color: #0f172a; font-size: 8.5pt; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .map-card { border: 1px solid #bfdbfe; border-radius: 5mm; overflow: hidden; background: #f8fafc; min-height: 0; }
-          .map-card img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
-          .footer { display: flex; align-items: center; justify-content: space-between; gap: 5mm; color: #64748b; font-size: 7pt; font-weight: 800; }
-          .footer strong { color: #0369a1; }
-          @media print { html, body { width: 297mm; height: 210mm; overflow: hidden; background: #fff; } }
-        </style>
-      </head>
-      <body>
-        <main class="page">
-          <section class="topbar"><div class="brand">DOST-PAGASA · WaveLab</div><div class="status">${escapeHtml(metadata.status)}</div></section>
-          <header><h1>${escapeHtml(metadata.title)}</h1><p class="description">${escapeHtml(metadata.description)}</p></header>
-          <dl class="meta-grid"><div class="meta-card"><dt>Valid Date</dt><dd>${escapeHtml(metadata.validDate)}</dd></div><div class="meta-card"><dt>Chart Type</dt><dd>${escapeHtml(metadata.chartType)}</dd></div><div class="meta-card"><dt>Style</dt><dd>${escapeHtml(metadata.chartStyle)}</dd></div><div class="meta-card"><dt>Published</dt><dd>${escapeHtml(metadata.publishedAt)}</dd></div></dl>
-          <section class="map-card"><img src="${imageDataUrl}" alt="${escapeHtml(metadata.title)} published wave chart export" /></section>
-          ${footerHtml}
-        </main>
-        <script>window.onload = () => { window.focus(); window.print(); };</script>
-      </body>
-    </html>
-  `);
+  printWindow.document.write(`<!doctype html><html><head><title>${escapeHtml(metadata.title)} - Published Wave Chart</title><style>@page{size:A4 landscape;margin:0}*{box-sizing:border-box}html,body{margin:0;width:297mm;height:210mm;background:#e2e8f0}body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{width:297mm;height:210mm;margin:0 auto;padding:10mm;display:grid;grid-template-rows:auto auto 1fr auto;gap:4mm;background:#fff;overflow:hidden}.topbar{display:flex;align-items:center;justify-content:space-between;gap:8mm}.brand{color:#0369a1;font-size:8pt;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.status{border:1px solid #bbf7d0;background:#f0fdf4;color:#047857;border-radius:999px;padding:2mm 3.5mm;font-size:8pt;font-weight:900;text-transform:uppercase;letter-spacing:.08em}h1{margin:0;font-size:18pt;line-height:1.05;letter-spacing:-.02em}.description{margin:1.5mm 0 0;color:#475569;font-size:8.5pt;font-weight:600;line-height:1.35}.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm}.meta-card{border:1px solid #dbeafe;background:#f8fafc;border-radius:3mm;padding:2.5mm}.meta-card dt{margin:0 0 1mm;color:#64748b;font-size:6.5pt;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.meta-card dd{margin:0;color:#0f172a;font-size:8.5pt;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.map-card{border:1px solid #bfdbfe;border-radius:5mm;overflow:hidden;background:#f8fafc;min-height:0}.map-card img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}.footer{display:flex;align-items:center;justify-content:space-between;gap:5mm;color:#64748b;font-size:7pt;font-weight:800}.footer strong{color:#0369a1}@media print{html,body{width:297mm;height:210mm;overflow:hidden;background:#fff}}</style></head><body><main class="page"><section class="topbar"><div class="brand">DOST-PAGASA · WaveLab</div><div class="status">${escapeHtml(metadata.status)}</div></section><header><h1>${escapeHtml(metadata.title)}</h1><p class="description">${escapeHtml(metadata.description)}</p></header><dl class="meta-grid"><div class="meta-card"><dt>Valid Date</dt><dd>${escapeHtml(metadata.validDate)}</dd></div><div class="meta-card"><dt>Chart Type</dt><dd>${escapeHtml(metadata.chartType)}</dd></div><div class="meta-card"><dt>Style</dt><dd>${escapeHtml(metadata.chartStyle)}</dd></div><div class="meta-card"><dt>Published</dt><dd>${escapeHtml(metadata.publishedAt)}</dd></div></dl><section class="map-card"><img src="${imageDataUrl}" alt="${escapeHtml(metadata.title)} published wave chart export" /></section>${footerHtml}</main></body></html>`);
   printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
 }
 
 function glassPanelClass(isDarkMode, extra = '') {
@@ -268,6 +232,7 @@ export default function PublishedForecastPage() {
   const [copied, setCopied] = useState(false);
   const [archiveState, setArchiveState] = useState({ loading: false, error: '' });
   const [exportState, setExportState] = useState({ loading: '', error: '' });
+  const [isExportReady, setIsExportReady] = useState(false);
 
   const activeStyleMode = normalizeChartStyleMode(activeChartType);
   const activeStyle = getChartStyleMode(activeStyleMode);
@@ -278,6 +243,7 @@ export default function PublishedForecastPage() {
 
     async function loadChart() {
       setState({ loading: true, error: '', data: null });
+      setIsExportReady(false);
       try {
         const data = await fetchPublicPublishedChartOutput(projectId, { signal: controller.signal, theme: isDarkMode ? 'dark' : 'light' });
         setState({ loading: false, error: '', data });
@@ -298,8 +264,44 @@ export default function PublishedForecastPage() {
   const latestReviewSummary = useMemo(() => getLatestReviewSummary(project), [project]);
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const pageClass = isDarkMode ? 'relative min-h-screen overflow-hidden bg-slate-950 text-slate-100' : 'relative min-h-screen overflow-hidden bg-slate-50 text-slate-950';
+  const exportDisabled = Boolean(exportState.loading) || !isExportReady;
+  const exportReadinessCopy = isExportReady
+    ? `PDF and image exports are ready using ${mapBoundsLabel}.`
+    : `Preparing PDF and image exports using ${mapBoundsLabel}…`;
+
+  useEffect(() => {
+    setIsExportReady(false);
+    if (!project?._id) return undefined;
+
+    let cancelled = false;
+
+    const checkExportReady = () => {
+      if (cancelled) return false;
+      const exportMap = exportMapRef.current;
+      if (!exportMap?.isReady || !exportMap?.getDataUrl) return false;
+      try {
+        if (!exportMap.getDataUrl()) return false;
+        setIsExportReady(true);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    if (checkExportReady()) return undefined;
+
+    const timer = window.setInterval(() => {
+      if (checkExportReady()) window.clearInterval(timer);
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeStyleMode, featureCollection, isDarkMode, mapBoundsLabel, project?._id, raster]);
 
   const getExportMapDataUrl = () => {
+    if (!isExportReady) throw new Error('The export map is still preparing the configured public chart bounds. Please wait until exports are ready.');
     const mapDataUrl = exportMapRef.current?.getDataUrl();
     if (!mapDataUrl) throw new Error('The export map is still preparing. Wait a moment, then try again.');
     return mapDataUrl;
@@ -316,6 +318,11 @@ export default function PublishedForecastPage() {
   };
 
   const handleDownloadPdf = async () => {
+    if (!isExportReady) {
+      setExportState({ loading: '', error: 'PDF export is still preparing the configured public chart bounds. Please wait until exports are ready.' });
+      return;
+    }
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       setExportState({ loading: '', error: 'Pop-up was blocked. Please allow pop-ups to export PDF.' });
@@ -414,12 +421,12 @@ export default function PublishedForecastPage() {
             <div className="shrink-0 lg:text-right">
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <Button variant="secondary" size="sm" icon={Clipboard} onClick={handleCopyLink}>{copied ? 'Copied' : 'Copy'}</Button>
-                <Button variant="secondary" size="sm" icon={Download} loading={exportState.loading === 'pdf'} disabled={Boolean(exportState.loading)} onClick={handleDownloadPdf}>{exportState.loading === 'pdf' ? 'Preparing PDF...' : 'Export PDF'}</Button>
-                <Button variant="secondary" size="sm" icon={Share2} loading={exportState.loading === 'image'} disabled={Boolean(exportState.loading)} onClick={handleExportImage}>Image</Button>
+                <Button variant="secondary" size="sm" icon={Download} loading={exportState.loading === 'pdf'} disabled={exportDisabled} onClick={handleDownloadPdf}>{exportState.loading === 'pdf' ? 'Preparing PDF...' : isExportReady ? 'Export PDF' : 'Preparing PDF'}</Button>
+                <Button variant="secondary" size="sm" icon={Share2} loading={exportState.loading === 'image'} disabled={exportDisabled} onClick={handleExportImage}>{isExportReady ? 'Image' : 'Preparing image'}</Button>
                 {canArchive && <Button variant="danger" size="sm" icon={Archive} loading={archiveState.loading} onClick={handleArchive}>Archive</Button>}
               </div>
               <p className={`mt-2 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                PDF export uses the configured public chart bounds.
+                {exportReadinessCopy}
               </p>
             </div>
           </div>
