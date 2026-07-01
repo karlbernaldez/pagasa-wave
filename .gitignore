@@ -56,3 +56,7 @@ wavetiles/__pycache__
 # Local dev logs
 *.log
 frontend/*.log
+
+# Local dev logs
+*.log
+frontend/*.log
