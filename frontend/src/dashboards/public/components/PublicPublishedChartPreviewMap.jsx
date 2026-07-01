@@ -5,6 +5,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchPublicPublishedChartOutput } from '@/api/publishedForecastAPI';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
 import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hooks/usePublicMapBounds';
+import { isFrontFeature, renderFrontFeatures } from '@/features/projects/utils/frontRendering';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -32,24 +33,11 @@ const LAYER_ORDER = [
   'published-chart-polygons',
   'published-chart-polygon-outline',
   'published-chart-lines',
-  'published-chart-fronts',
   'published-chart-points',
   'published-chart-less-one',
   'published-chart-line-labels',
   'published-chart-point-labels',
 ];
-
-function isFront(feature) {
-  const props = feature?.properties || {};
-  return Boolean(props.isFront || props.frontType || `${props.name || ''} ${props.title || ''}`.toLowerCase().includes('front'));
-}
-
-function getFrontColor(feature) {
-  const type = String(feature?.properties?.frontType || '').toLowerCase();
-  if (type === 'warm') return '#ef4444';
-  if (type === 'occluded') return '#7c3aed';
-  return '#1d4ed8';
-}
 
 function getLineParts(geometry) {
   if (!Array.isArray(geometry?.coordinates)) return [];
@@ -69,8 +57,8 @@ function buildCollections(featureCollection) {
   const labels = [];
 
   featureCollection.features.forEach((feature, featureIndex) => {
-    if (isFront(feature)) {
-      getLineParts(feature.geometry).forEach((line) => fronts.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line }, properties: { color: getFrontColor(feature) } }));
+    if (isFrontFeature(feature)) {
+      fronts.push(feature);
       return;
     }
 
@@ -90,7 +78,7 @@ function buildCollections(featureCollection) {
 
   return {
     regular: { type: 'FeatureCollection', features: regular },
-    fronts: { type: 'FeatureCollection', features: fronts },
+    fronts,
     labels: { type: 'FeatureCollection', features: labels },
   };
 }
@@ -184,19 +172,19 @@ function syncAnnotations(map, featureCollection) {
   const { regular, fronts, labels } = buildCollections(featureCollection);
   ensureLessOneImage(map);
   setGeoJson(map, FEATURE_SOURCE_ID, regular);
-  setGeoJson(map, `${FEATURE_SOURCE_ID}-fronts`, fronts);
   setGeoJson(map, LABEL_SOURCE_ID, labels);
 
-  if (map.getLayer('published-chart-lines')) return;
+  if (!map.getLayer('published-chart-lines')) {
+    map.addLayer({ id: 'published-chart-polygons', type: 'fill', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'fill-color': '#0ea5e9', 'fill-opacity': 0.2 } });
+    map.addLayer({ id: 'published-chart-polygon-outline', type: 'line', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'line-color': '#0284c7', 'line-width': 2, 'line-opacity': 0.9 } });
+    map.addLayer({ id: 'published-chart-lines', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': '#0f172a', 'line-width': 3, 'line-opacity': 0.9 } });
+    map.addLayer({ id: 'published-chart-points', type: 'circle', source: FEATURE_SOURCE_ID, filter: POINT_SYMBOL_FILTER, paint: { 'circle-color': '#2563eb', 'circle-radius': 7, 'circle-opacity': 0.95, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } });
+    map.addLayer({ id: 'published-chart-less-one', type: 'symbol', source: FEATURE_SOURCE_ID, filter: LESS_ONE_FILTER, layout: { 'icon-image': LESS_ONE_IMAGE_ID, 'icon-size': 0.28, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+    map.addLayer({ id: 'published-chart-line-labels', type: 'symbol', source: LABEL_SOURCE_ID, layout: { 'text-field': ['get', 'text'], 'text-size': 16, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } });
+    map.addLayer({ id: 'published-chart-point-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': 14, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } });
+  }
 
-  map.addLayer({ id: 'published-chart-polygons', type: 'fill', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'fill-color': '#0ea5e9', 'fill-opacity': 0.2 } });
-  map.addLayer({ id: 'published-chart-polygon-outline', type: 'line', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'line-color': '#0284c7', 'line-width': 2, 'line-opacity': 0.9 } });
-  map.addLayer({ id: 'published-chart-lines', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': '#0f172a', 'line-width': 3, 'line-opacity': 0.9 } });
-  map.addLayer({ id: 'published-chart-fronts', type: 'line', source: `${FEATURE_SOURCE_ID}-fronts`, paint: { 'line-color': ['get', 'color'], 'line-width': 2.75, 'line-opacity': 1 } });
-  map.addLayer({ id: 'published-chart-points', type: 'circle', source: FEATURE_SOURCE_ID, filter: POINT_SYMBOL_FILTER, paint: { 'circle-color': '#2563eb', 'circle-radius': 7, 'circle-opacity': 0.95, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } });
-  map.addLayer({ id: 'published-chart-less-one', type: 'symbol', source: FEATURE_SOURCE_ID, filter: LESS_ONE_FILTER, layout: { 'icon-image': LESS_ONE_IMAGE_ID, 'icon-size': 0.28, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
-  map.addLayer({ id: 'published-chart-line-labels', type: 'symbol', source: LABEL_SOURCE_ID, layout: { 'text-field': ['get', 'text'], 'text-size': 16, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } });
-  map.addLayer({ id: 'published-chart-point-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': 14, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } });
+  renderFrontFeatures(map, fronts, { namespace: 'published-chart-front' });
 }
 
 function fitPreviewBounds(map, bounds) {
