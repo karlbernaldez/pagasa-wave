@@ -271,9 +271,9 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
     syncRaster(map, resolvedRaster, shouldRenderRaster);
     syncCountryOverlay(map, isDarkMode);
+    fitExportBounds(map, mapBounds);
     if (hasFeatures) syncExportLayers(map, featureCollection, normalizedStyleMode);
     restackExportLayers(map);
-    fitExportBounds(map, mapBounds);
     return true;
   };
 
