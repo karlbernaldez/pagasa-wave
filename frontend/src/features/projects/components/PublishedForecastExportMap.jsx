@@ -255,6 +255,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const readySignatureRef = useRef('');
+  const readyDataUrlRef = useRef('');
   const [isReady, setIsReady] = useState(false);
   const [fetchedRaster, setFetchedRaster] = useState(null);
   const featureCollection = useMemo(() => normalizeFeatureCollection(features), [features]);
@@ -273,6 +274,22 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     featureCollection.features.length,
     JSON.stringify(mapBounds),
   ].join('|'), [featureCollection.features.length, mapBounds, normalizedStyleMode, projectId, resolvedRaster?.tileUrl, shouldRenderRaster, theme]);
+
+  const clearReadyCapture = () => {
+    readySignatureRef.current = '';
+    readyDataUrlRef.current = '';
+    setIsReady(false);
+  };
+
+  const markReadyCapture = () => {
+    const map = mapRef.current;
+    if (!map || !hasRenderableContent || !isMapStyleReady(map)) return false;
+
+    readySignatureRef.current = renderSignature;
+    readyDataUrlRef.current = map.getCanvas().toDataURL('image/png');
+    setIsReady(true);
+    return true;
+  };
 
   const renderExport = () => {
     const map = mapRef.current;
@@ -299,14 +316,14 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
   useImperativeHandle(ref, () => ({
     getDataUrl() {
-      if (!mapRef.current || !hasRenderableContent || !isReady || readySignatureRef.current !== renderSignature || !isMapStyleReady(mapRef.current)) {
+      if (!mapRef.current || !hasRenderableContent || readySignatureRef.current !== renderSignature || !readyDataUrlRef.current || !isMapStyleReady(mapRef.current)) {
         throw new Error('Map is still preparing for export. Please try again in a moment.');
       }
 
-      return mapRef.current.getCanvas().toDataURL('image/png');
+      return readyDataUrlRef.current;
     },
     get isReady() {
-      return Boolean(mapRef.current && hasRenderableContent && isReady && readySignatureRef.current === renderSignature && isMapStyleReady(mapRef.current));
+      return Boolean(mapRef.current && hasRenderableContent && readySignatureRef.current === renderSignature && readyDataUrlRef.current && isMapStyleReady(mapRef.current));
     },
   }));
 
@@ -328,22 +345,19 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     mapRef.current = map;
 
     map.on('load', () => {
-      readySignatureRef.current = '';
-      setIsReady(false);
+      clearReadyCapture();
       renderExport();
     });
 
     map.on('idle', () => {
-      if (renderExport()) {
-        readySignatureRef.current = renderSignature;
-        setIsReady(true);
-      }
+      if (renderExport()) markReadyCapture();
     });
 
     return () => {
       map.remove();
       mapRef.current = null;
       readySignatureRef.current = '';
+      readyDataUrlRef.current = '';
       setIsReady(false);
     };
     // Initialize once per mounted export map; updates are handled below.
@@ -355,20 +369,20 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     if (!map || !hasRenderableContent) return undefined;
 
     let cancelled = false;
-    readySignatureRef.current = '';
-    setIsReady(false);
+    clearReadyCapture();
 
-    const markReady = () => {
-      if (cancelled) return;
-      readySignatureRef.current = renderSignature;
-      setIsReady(true);
+    const handleIdle = () => {
+      if (!cancelled) markReadyCapture();
     };
 
-    if (isMapStyleReady(map) && renderExport()) map.once('idle', markReady);
+    if (isMapStyleReady(map) && renderExport()) {
+      if (map.loaded()) handleIdle();
+      else map.once('idle', handleIdle);
+    }
 
     return () => {
       cancelled = true;
-      map.off('idle', markReady);
+      map.off('idle', handleIdle);
     };
   }, [featureCollection, hasFeatures, hasRenderableContent, isDarkMode, mapBounds, normalizedStyleMode, renderSignature, resolvedRaster, shouldRenderRaster]);
 
