@@ -22,11 +22,34 @@ const COUNTRY_LINE_LAYER_ID = 'published-export-country-lines';
 const FEATURE_SOURCE_ID = 'published-forecast-export-features';
 const LABEL_SOURCE_ID = 'published-forecast-export-line-labels-source';
 
-const POINT_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'type'], ''];
+const MARKER_ICON_IMAGES = [
+  { name: 'less_1', path: '/L1.png', size: 0.32 },
+  { name: 'low_pressure', path: '/LPA.png', size: 0.3 },
+  { name: 'high_pressure', path: '/HPA.png', size: 0.3 },
+  { name: 'typhoon', path: '/hurricane.png', size: 0.32 },
+];
+const MARKER_ICON_NAMES = MARKER_ICON_IMAGES.map(({ name }) => name);
+const MARKER_ICON_NAME_SET = new Set(MARKER_ICON_NAMES);
+
+const POINT_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'symbolType'], ['get', 'type'], ''];
 const POINT_FILTER = ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false];
 const LINE_FILTER = ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false];
 const POLYGON_FILTER = ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false];
+const MARKER_ICON_FILTER = ['all', POINT_FILTER, ['in', POINT_TYPE, ['literal', MARKER_ICON_NAMES]]];
+const POINT_SYMBOL_FILTER = ['all', POINT_FILTER, ['!', ['in', POINT_TYPE, ['literal', MARKER_ICON_NAMES]]], ['!=', POINT_TYPE, 'text_note']];
 const POINT_LABEL_FILTER = ['all', POINT_FILTER, ['!=', POINT_TYPE, 'less_1']];
+const MARKER_ICON_IMAGE_EXPRESSION = [
+  'match',
+  POINT_TYPE,
+  ...MARKER_ICON_IMAGES.flatMap(({ name }) => [name, name]),
+  '',
+];
+const MARKER_ICON_SIZE_EXPRESSION = [
+  'match',
+  POINT_TYPE,
+  ...MARKER_ICON_IMAGES.flatMap(({ name, size }) => [name, size]),
+  0.3,
+];
 
 const EXPORT_LAYER_ORDER = [
   RASTER_LAYER_ID,
@@ -37,6 +60,7 @@ const EXPORT_LAYER_ORDER = [
   'published-forecast-export-lines-casing',
   'published-forecast-export-lines',
   'published-forecast-export-points',
+  'published-forecast-export-marker-icons',
   'published-forecast-export-line-labels',
   'published-forecast-export-labels',
 ];
@@ -65,6 +89,48 @@ function getLineParts(geometry) {
 function getLineLabel(feature) {
   const props = feature?.properties || {};
   return String(props.labelValue ?? props.waveHeight ?? props.heightValue ?? props.height ?? props.value ?? props.text ?? props.label ?? props.name ?? props.title ?? feature?.name ?? '').trim();
+}
+
+function getPointMarkerType(feature) {
+  const props = feature?.properties || {};
+  return String(props.markerType || props.symbolType || props.type || '').trim();
+}
+
+function collectionNeedsMarkerImages(featureCollection) {
+  return featureCollection.features.some((feature) => MARKER_ICON_NAME_SET.has(getPointMarkerType(feature)));
+}
+
+function ensureExportMarkerImages(map) {
+  if (!map) return false;
+
+  const pendingLoads = map.__publishedExportMarkerImageLoads || new Set();
+  map.__publishedExportMarkerImageLoads = pendingLoads;
+
+  let allReady = true;
+
+  MARKER_ICON_IMAGES.forEach(({ name, path }) => {
+    if (map.hasImage(name)) return;
+
+    allReady = false;
+    if (pendingLoads.has(name)) return;
+
+    pendingLoads.add(name);
+    map.loadImage(path, (error, image) => {
+      pendingLoads.delete(name);
+
+      if (error || !image) {
+        console.warn(`[PublishedForecastExportMap] Failed to load marker image ${name}:`, error);
+        map.fire?.('wavelab.exportImagesLoaded');
+        return;
+      }
+
+      if (!map.hasImage(name)) map.addImage(name, image);
+      map.fire?.('wavelab.exportImagesLoaded');
+      map.triggerRepaint?.();
+    });
+  });
+
+  return allReady;
 }
 
 function buildCollections(featureCollection) {
@@ -192,14 +258,17 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
   setGeoJson(map, FEATURE_SOURCE_ID, collections.regular);
   setGeoJson(map, LABEL_SOURCE_ID, collections.labels);
 
+  if (collectionNeedsMarkerImages(collections.regular) && !ensureExportMarkerImages(map)) return false;
+
   if (!map.getLayer('published-forecast-export-polygons')) {
     map.addLayer({ id: 'published-forecast-export-polygons', type: 'fill', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'fill-color': paint.polygonFill, 'fill-opacity': paint.polygonOpacity } });
     map.addLayer({ id: 'published-forecast-export-polygons-outline', type: 'line', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'line-color': paint.polygonOutline, 'line-width': paint.polygonOutlineWidth, 'line-opacity': 0.9 } });
     map.addLayer({ id: 'published-forecast-export-lines-casing', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': paint.lineCasing, 'line-width': paint.lineCasingWidth, 'line-opacity': 0.95 } });
     map.addLayer({ id: 'published-forecast-export-lines', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': paint.lineColor, 'line-width': paint.lineWidth, 'line-opacity': 1 } });
-    map.addLayer({ id: 'published-forecast-export-points', type: 'circle', source: FEATURE_SOURCE_ID, filter: POINT_FILTER, paint: { 'circle-color': paint.pointColor, 'circle-radius': paint.pointRadius, 'circle-opacity': paint.showPoints ? 1 : 0, 'circle-stroke-color': paint.pointStroke, 'circle-stroke-width': paint.pointStrokeWidth } });
+    map.addLayer({ id: 'published-forecast-export-points', type: 'circle', source: FEATURE_SOURCE_ID, filter: POINT_SYMBOL_FILTER, paint: { 'circle-color': paint.pointColor, 'circle-radius': paint.pointRadius, 'circle-opacity': paint.showPoints ? 1 : 0, 'circle-stroke-color': paint.pointStroke, 'circle-stroke-width': paint.pointStrokeWidth } });
+    map.addLayer({ id: 'published-forecast-export-marker-icons', type: 'symbol', source: FEATURE_SOURCE_ID, filter: MARKER_ICON_FILTER, layout: { 'icon-image': MARKER_ICON_IMAGE_EXPRESSION, 'icon-size': MARKER_ICON_SIZE_EXPRESSION, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
     map.addLayer({ id: 'published-forecast-export-line-labels', type: 'symbol', source: LABEL_SOURCE_ID, layout: { 'text-field': ['get', 'text'], 'text-size': paint.lineLabelSize, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
-    map.addLayer({ id: 'published-forecast-export-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': paint.pointLabelSize, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
+    map.addLayer({ id: 'published-forecast-export-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'displayName'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': paint.pointLabelSize, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
   }
 
   if (map.getLayer('published-forecast-export-polygons')) {
@@ -224,6 +293,11 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
     map.setPaintProperty('published-forecast-export-points', 'circle-stroke-color', paint.pointStroke);
     map.setPaintProperty('published-forecast-export-points', 'circle-stroke-width', paint.pointStrokeWidth);
     map.setPaintProperty('published-forecast-export-points', 'circle-opacity', paint.showPoints ? 1 : 0);
+  }
+  if (map.getLayer('published-forecast-export-marker-icons')) {
+    map.setLayoutProperty('published-forecast-export-marker-icons', 'icon-image', MARKER_ICON_IMAGE_EXPRESSION);
+    map.setLayoutProperty('published-forecast-export-marker-icons', 'icon-size', MARKER_ICON_SIZE_EXPRESSION);
+    setLayerVisibility(map, 'published-forecast-export-marker-icons', paint.showPoints);
   }
   if (map.getLayer('published-forecast-export-line-labels')) {
     map.setLayoutProperty('published-forecast-export-line-labels', 'text-size', paint.lineLabelSize);
@@ -300,8 +374,8 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     syncRaster(map, resolvedRaster, shouldRenderRaster);
     syncCountryOverlay(map, isDarkMode);
     fitExportBounds(map, mapBounds);
-    if (hasFeatures) syncExportLayers(map, featureCollection, normalizedStyleMode);
-    else restackExportLayers(map);
+    if (hasFeatures) return syncExportLayers(map, featureCollection, normalizedStyleMode);
+    restackExportLayers(map);
     return true;
   };
 
@@ -364,6 +438,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     let cancelled = false;
     let firstFrame = 0;
     let secondFrame = 0;
+    let retryTimer = 0;
     const signature = renderSignature;
     clearReadyCapture();
 
@@ -377,18 +452,25 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     };
 
     const renderWhenReady = () => {
-      if (cancelled || !renderExport()) return;
+      if (cancelled) return;
+      if (!renderExport()) {
+        retryTimer = window.setTimeout(renderWhenReady, 120);
+        return;
+      }
       if (map.loaded()) captureAfterPaint();
       else map.once('idle', captureAfterPaint);
     };
 
     if (isMapStyleReady(map)) renderWhenReady();
     else map.once('load', renderWhenReady);
+    map.on('wavelab.exportImagesLoaded', renderWhenReady);
 
     return () => {
       cancelled = true;
       map.off('load', renderWhenReady);
       map.off('idle', captureAfterPaint);
+      map.off('wavelab.exportImagesLoaded', renderWhenReady);
+      if (retryTimer) window.clearTimeout(retryTimer);
       if (firstFrame) window.cancelAnimationFrame(firstFrame);
       if (secondFrame) window.cancelAnimationFrame(secondFrame);
     };
