@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, CalendarDays, CheckCircle2, Download, Eye, Layers, Search, Waves, Wind } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowRight, CalendarDays, CheckCircle2, Download, Eye, Layers, RefreshCw, Search, Waves, Wind } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import Button from '@/components/ui/Button';
@@ -32,15 +31,12 @@ const CHART_STYLES = [
   { id: 'visually-impaired', label: 'Accessible', shortLabel: 'Accessible', icon: Eye, description: 'Higher contrast labels and viewing mode.', color: '#059669' },
 ];
 
-const fadeUp = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
-const scaleIn = { hidden: { opacity: 0, scale: 0.97 }, show: { opacity: 1, scale: 1, transition: { duration: 0.35 } } };
-
 function formatDate(value, options = {}) {
-  if (!value) return '—';
+  if (!value) return '-';
   try {
     return new Intl.DateTimeFormat('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE, month: 'short', day: 'numeric', year: 'numeric', ...options }).format(new Date(value));
   } catch {
-    return '—';
+    return '-';
   }
 }
 
@@ -64,7 +60,7 @@ function hasExportableOutput(output) {
   );
 }
 
-function getPersonName(person, fallback = 'DOST PAGASA') {
+function getPersonName(person, fallback = 'DOST-PAGASA') {
   if (!person) return fallback;
   if (typeof person === 'string') return person;
   const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ').trim();
@@ -81,7 +77,22 @@ function LiquidBackdrop({ isDark }) {
       <div className={`absolute -left-36 -top-36 h-[540px] w-[540px] rounded-full blur-3xl ${isDark ? 'bg-cyan-500/10' : 'bg-blue-300/25'}`} />
       <div className={`absolute -right-32 top-64 h-[500px] w-[500px] rounded-full blur-3xl ${isDark ? 'bg-blue-700/10' : 'bg-cyan-200/30'}`} />
       <div className={`absolute bottom-[-200px] left-1/3 h-[520px] w-[520px] rounded-full blur-3xl ${isDark ? 'bg-sky-400/5' : 'bg-indigo-200/20'}`} />
-      <div className={`absolute inset-0 bg-[size:28px_28px] opacity-60 ${isDark ? 'bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.08)_1px,_transparent_1px)]' : 'bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.08)_1px,_transparent_1px)]'}`} />
+    </div>
+  );
+}
+
+function StateNotice({ isDark, tone = 'slate', title, children, action }) {
+  const toneClass = tone === 'red'
+    ? isDark ? 'border-red-400/20 bg-red-400/10 text-red-100' : 'border-red-200 bg-red-50 text-red-700'
+    : tone === 'amber'
+      ? isDark ? 'border-amber-400/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-700'
+      : isDark ? 'border-white/10 bg-slate-900/70 text-slate-200' : 'border-slate-200 bg-white/80 text-slate-700';
+
+  return (
+    <div className={`mx-auto max-w-2xl rounded-3xl border p-6 text-center backdrop-blur-xl ${toneClass}`}>
+      <p className="text-sm font-black uppercase tracking-[0.16em]">{title}</p>
+      <div className="mt-2 text-sm font-semibold leading-relaxed">{children}</div>
+      {action && <div className="mt-5 flex justify-center">{action}</div>}
     </div>
   );
 }
@@ -94,7 +105,7 @@ function CompletenessBadge({ completeness, isDark }) {
 
 function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) {
   return (
-    <motion.section variants={fadeUp} className={glassPanel(isDark, 'mx-auto grid w-full max-w-5xl gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_390px]')}>
+    <section className={glassPanel(isDark, 'mx-auto grid w-full max-w-5xl gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_390px]')}>
       <label className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/10 bg-slate-950/55' : 'border-slate-200/80 bg-white/70'}`}>
         <Search size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
         <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search wave charts, date, or description" className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'text-white placeholder:text-slate-600' : 'text-slate-950 placeholder:text-slate-400'}`} />
@@ -111,7 +122,7 @@ function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) 
           );
         })}
       </div>
-    </motion.section>
+    </section>
   );
 }
 
@@ -123,12 +134,12 @@ function ChartSlotCard({ slot, chart, activeStyle, isDark, onOpen, showStaffInfo
   const description = getPublicChartCardDescription({ chart, slot, hasChart, formatDate, getPersonName: publicNameFormatter });
   const metaText = hasChart
     ? showStaffInfo
-      ? `Published ${formatDate(chart.publishedAt)} · ${getPersonName(chart.owner)}`
+      ? `Published ${formatDate(chart.publishedAt)} - ${getPersonName(chart.owner)}`
       : `Published ${formatDate(chart.publishedAt)}`
     : 'This slot is empty for the selected date';
 
   return (
-    <motion.article variants={scaleIn} whileHover={{ y: -4 }} className={`${glassPanel(isDark, 'group relative flex min-h-[415px] flex-col overflow-hidden transition duration-300')} ${isDark ? 'hover:border-cyan-300/30' : 'hover:border-blue-200'}`}>
+    <article className={`${glassPanel(isDark, 'group relative flex min-h-[415px] flex-col overflow-hidden transition duration-300')} ${isDark ? 'hover:border-cyan-300/30' : 'hover:border-blue-200'}`}>
       <div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${style.color}88, transparent)` }} aria-hidden="true" />
       <div className="relative h-60 overflow-hidden text-left md:h-64">
         {hasChart ? (
@@ -150,7 +161,7 @@ function ChartSlotCard({ slot, chart, activeStyle, isDark, onOpen, showStaffInfo
           <Button size="sm" icon={ArrowRight} disabled={!hasChart} onClick={() => onOpen(chart)}>View</Button>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 }
 
@@ -238,7 +249,7 @@ function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, cha
           <section class="topbar">
             <div class="brand-block">
               <div class="logo-box"><img src="${escapeHtml(safeLogoSrc)}" alt="PAGASA logo" /></div>
-              <div><div class="brand">DOST-PAGASA · WaveLab</div><h1>Wave chart set</h1><p class="summary">Valid ${escapeHtml(dateLabel)} · ${escapeHtml(activeStyleLabel)} · Published operational output</p></div>
+              <div><div class="brand">DOST-PAGASA - WaveLab</div><h1>Wave chart set</h1><p class="summary">Valid ${escapeHtml(dateLabel)} - ${escapeHtml(activeStyleLabel)} - Published operational output</p></div>
             </div>
             <div class="status">Four-chart PDF</div>
           </section>
@@ -264,6 +275,7 @@ export default function Charts() {
   const exportImageCacheRef = useRef({});
   const [state, setState] = useState({ loading: true, error: '', projects: [] });
   const [query, setQuery] = useState('');
+  const [reloadToken, setReloadToken] = useState(0);
   const [selectedDate, setSelectedDate] = useState('');
   const [exportState, setExportState] = useState({ loading: false, error: '', entries: [] });
   const [pdfReadyCount, setPdfReadyCount] = useState(0);
@@ -276,7 +288,7 @@ export default function Charts() {
       .then((data) => setState({ loading: false, error: '', projects: filterProjectsToPublicChartWindow(data?.projects || [], getPublicChartTenDayWindow()) }))
       .catch((error) => { if (error?.name !== 'AbortError') setState({ loading: false, error: error?.message || 'Failed to load public charts.', projects: [] }); });
     return () => controller.abort();
-  }, [isDark, query]);
+  }, [isDark, query, reloadToken]);
 
   const recentProjects = state.projects;
   const historyGroups = useMemo(() => groupPublicChartHistory(recentProjects), [recentProjects]);
@@ -290,7 +302,12 @@ export default function Charts() {
   const activeStyleLabel = getChartStyleMode(activeStyleMode).label;
   const pdfTotalCount = exportState.entries.length;
   const isPdfReady = Boolean(!exportState.loading && pdfTotalCount && pdfReadyCount >= pdfTotalCount);
-  const pdfButtonLabel = exportState.loading ? 'Preparing PDF' : isPdfReady ? 'PDF' : 'Warming PDF';
+  const pdfButtonLabel = exportState.loading ? 'Preparing PDF' : isPdfReady ? 'Download PDF' : 'Preparing PDF';
+  const pdfStatusText = availableCount
+    ? isPdfReady
+      ? `PDF export is ready. ${availableCount} of 4 published charts will be included; empty slots are marked unavailable.`
+      : `Preparing ${Math.min(pdfReadyCount, pdfTotalCount || 4)} of ${pdfTotalCount || 4} chart slots for PDF export. Empty slots will be marked unavailable.`
+    : 'PDF export becomes available after at least one chart is published for this date.';
 
   useEffect(() => { if (selectedDate && !historyGroups.some((item) => item.dateKey === selectedDate)) setSelectedDate(''); }, [historyGroups, selectedDate]);
   const openChart = useCallback((chart) => { if (chart?._id) navigate(`/forecasts/${chart._id}`); }, [navigate]);
@@ -370,7 +387,7 @@ export default function Charts() {
 
   const handleDownloadChartSetPdf = () => {
     if (!isPdfReady) {
-      setExportState((prev) => ({ ...prev, error: 'PDF export is still warming up in the background. Please wait until the PDF button is ready.' }));
+      setExportState((prev) => ({ ...prev, error: 'PDF export is still preparing the chart images. Please wait until the Download PDF button is ready.' }));
       return;
     }
 
@@ -382,7 +399,7 @@ export default function Charts() {
     const missingImage = printableEntries.some((entry) => entry.project?._id && hasExportableOutput(entry.output) && !entry.imageDataUrl);
     if (missingImage) {
       setPdfReadyCount(0);
-      setExportState((prev) => ({ ...prev, error: 'PDF export is still warming up in the background. Please wait until the PDF button is ready.' }));
+      setExportState((prev) => ({ ...prev, error: 'PDF export is still preparing the chart images. Please wait until the Download PDF button is ready.' }));
       return;
     }
 
@@ -421,30 +438,60 @@ export default function Charts() {
       ) : null)}
 
       <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-7">
-        <motion.section className={glassPanel(isDark, 'mx-auto w-full max-w-5xl p-7 text-center sm:p-9')} initial="hidden" animate="show">
-          <motion.div variants={scaleIn} className="mb-4"><div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.14em] ${isDark ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-100/80 text-blue-700'}`}><Layers size={15} />{activeStyle.label} · {activeDate ? formatDate(activeDate) : 'Latest available'}</div></motion.div>
-          <motion.h1 variants={fadeUp} className={`text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl ${isDark ? 'text-white' : 'text-slate-900'}`}>Wave Charts</motion.h1>
-          <motion.p variants={fadeUp} className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Browse the latest public WaveLab chart set and review recently published operational wave outputs.</motion.p>
-        </motion.section>
+        <section className={glassPanel(isDark, 'mx-auto w-full max-w-5xl p-7 text-center sm:p-9')}>
+          <div className="mb-4"><div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.14em] ${isDark ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-100/80 text-blue-700'}`}><Layers size={15} />{activeStyle.label} - {activeDate ? formatDate(activeDate) : 'Latest available'}</div></div>
+          <h1 className={`text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl ${isDark ? 'text-white' : 'text-slate-900'}`}>Wave Charts</h1>
+          <p className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Browse the latest public WaveLab chart set and review recently published operational wave outputs.</p>
+        </section>
 
         <ChartControls activeStyle={activeChartType} onChange={setActiveChartType} query={query} onQueryChange={setQuery} isDark={isDark} />
 
-        {state.loading && <div className="grid gap-5 lg:grid-cols-2">{PUBLIC_CHART_SLOTS.map((slot) => <div key={slot.chartType} className={glassPanel(isDark, 'h-[415px] animate-pulse')} />)}</div>}
-        {!state.loading && state.error && <div className={`mx-auto max-w-2xl rounded-3xl border p-6 text-center text-sm font-bold backdrop-blur-xl ${isDark ? 'border-red-400/20 bg-red-400/10 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>{state.error}</div>}
-        {exportState.error && <div className={`mx-auto max-w-2xl rounded-3xl border p-4 text-center text-sm font-bold backdrop-blur-xl ${isDark ? 'border-amber-400/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>{exportState.error}</div>}
-        {!state.loading && !state.error && !recentProjects.length && <div className={glassPanel(isDark, 'mx-auto max-w-2xl p-10 text-center')}><p className="text-lg font-black">No published wave charts found</p><p className={`mt-2 text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Published charts will appear here once Admin publishes approved outputs.</p></div>}
+        {state.loading && (
+          <section className="space-y-4">
+            <StateNotice isDark={isDark} title="Loading latest chart set">Fetching published charts and preparing the public chart cards.</StateNotice>
+            <div className="grid gap-5 lg:grid-cols-2">{PUBLIC_CHART_SLOTS.map((slot) => <div key={slot.chartType} className={glassPanel(isDark, 'h-[415px] animate-pulse')} />)}</div>
+          </section>
+        )}
+
+        {!state.loading && state.error && (
+          <StateNotice
+            isDark={isDark}
+            tone="red"
+            title="Charts could not be loaded"
+            action={<Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => setReloadToken((value) => value + 1)}>Retry</Button>}
+          >
+            <p>{state.error}</p>
+            <p className="mt-1">Refresh the chart list or try again later.</p>
+          </StateNotice>
+        )}
+
+        {exportState.error && <StateNotice isDark={isDark} tone="amber" title="PDF export not ready">{exportState.error}</StateNotice>}
+
+        {!state.loading && !state.error && !recentProjects.length && (
+          <StateNotice isDark={isDark} title={query.trim() ? 'No charts match this search' : 'No published wave charts found'}>
+            {query.trim() ? 'Clear the search to view recent published outputs.' : 'Published charts will appear here once Admin publishes approved outputs.'}
+          </StateNotice>
+        )}
 
         {!state.loading && !state.error && recentProjects.length > 0 && <>
           <section className="space-y-5">
-            <div className={glassPanel(isDark, 'flex flex-wrap items-center justify-between gap-3 p-5')}>
-              <div><p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}><CalendarDays size={15} /> Current chart set</p><h2 className={`mt-2 text-3xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(activeDate)}</h2></div>
-              <div className="flex flex-wrap items-center gap-2"><CompletenessBadge completeness={completeness} isDark={isDark} /><div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600'}`}>{availableCount}/4 published charts available</div><Button size="sm" variant="secondary" icon={Download} loading={exportState.loading || (!isPdfReady && !!availableCount)} disabled={!availableCount || exportState.loading || !isPdfReady} onClick={handleDownloadChartSetPdf}>{pdfButtonLabel}</Button></div>
+            <div className={glassPanel(isDark, 'flex flex-wrap items-start justify-between gap-3 p-5')}>
+              <div>
+                <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}><CalendarDays size={15} /> Current chart set</p>
+                <h2 className={`mt-2 text-3xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(activeDate)}</h2>
+                <p className={`mt-2 max-w-2xl text-xs font-semibold leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{pdfStatusText}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <CompletenessBadge completeness={completeness} isDark={isDark} />
+                <div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600'}`}>{availableCount}/4 published charts available</div>
+                <Button size="sm" variant="secondary" icon={Download} loading={exportState.loading || (!isPdfReady && !!availableCount)} disabled={!availableCount || exportState.loading || !isPdfReady} onClick={handleDownloadChartSetPdf}>{pdfButtonLabel}</Button>
+              </div>
             </div>
-            <motion.div className="grid gap-5 lg:grid-cols-2" initial="hidden" animate="show">{PUBLIC_CHART_SLOTS.map((slot) => <ChartSlotCard key={`${activeDate}-${slot.chartType}`} slot={slot} chart={chartByType.get(slot.chartType)} activeStyle={activeChartType} isDark={isDark} onOpen={openChart} showStaffInfo={showStaffInfo} />)}</motion.div>
+            <div className="grid gap-5 lg:grid-cols-2">{PUBLIC_CHART_SLOTS.map((slot) => <ChartSlotCard key={`${activeDate}-${slot.chartType}`} slot={slot} chart={chartByType.get(slot.chartType)} activeStyle={activeChartType} isDark={isDark} onOpen={openChart} showStaffInfo={showStaffInfo} />)}</div>
           </section>
           <RecentHistory projects={recentProjects} selectedDate={activeDate} onSelectDate={setSelectedDate} isDark={isDark} />
         </>}
-        <p className={`text-center text-xs font-semibold tabular-nums ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Data: DOST-PAGASA · WaveLab · Published charts only</p>
+        <p className={`text-center text-xs font-semibold tabular-nums ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Data: DOST-PAGASA - WaveLab - Published charts only</p>
       </div>
     </div>
   );
