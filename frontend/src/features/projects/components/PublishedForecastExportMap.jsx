@@ -362,17 +362,24 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     if (!map || !hasRenderableContent) return undefined;
 
     let cancelled = false;
+    let firstFrame = 0;
+    let secondFrame = 0;
     const signature = renderSignature;
     clearReadyCapture();
 
-    const markReady = () => {
-      if (!cancelled) markReadyCapture(signature);
+    const captureAfterPaint = () => {
+      if (cancelled) return;
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          if (!cancelled) markReadyCapture(signature);
+        });
+      });
     };
 
     const renderWhenReady = () => {
       if (cancelled || !renderExport()) return;
-      if (map.loaded()) markReady();
-      else map.once('idle', markReady);
+      if (map.loaded()) captureAfterPaint();
+      else map.once('idle', captureAfterPaint);
     };
 
     if (isMapStyleReady(map)) renderWhenReady();
@@ -381,7 +388,9 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     return () => {
       cancelled = true;
       map.off('load', renderWhenReady);
-      map.off('idle', markReady);
+      map.off('idle', captureAfterPaint);
+      if (firstFrame) window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
     };
     // renderSignature is the stable value-level dependency for all render inputs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
