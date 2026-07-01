@@ -103,6 +103,28 @@ describe('ReviewActionsFooter', () => {
     expect(screen.getByText(/add remarks to enable comment, revision, or no-publication actions/i)).toBeInTheDocument();
   });
 
+  it('explains the impact of review actions before admins decide', () => {
+    renderFooter({ hasRemarks: true, isUnderReview: true });
+
+    expect(screen.getByText(/review action impact/i)).toBeInTheDocument();
+    expect(screen.getByText(/moves this chart to approved and counts toward package approval/i)).toBeInTheDocument();
+    expect(screen.getByText(/returns this chart and package to the forecaster with your remarks/i)).toBeInTheDocument();
+    expect(screen.getByText(/closes this chart with an operational exception note/i)).toBeInTheDocument();
+  });
+
+  it('explains when review must be started before action decisions', () => {
+    renderFooter({ isUnderReview: false, hasRemarks: true });
+
+    expect(screen.getByText(/start review before making approval, revision, or no-publication decisions/i)).toBeInTheDocument();
+  });
+
+  it('explains publish impact for approved projects', () => {
+    renderFooter({ isReviewable: false, isApproved: true });
+
+    expect(screen.getByText(/publish action/i)).toBeInTheDocument();
+    expect(screen.getByText(/publish finalizes this approved chart as an operational output/i)).toBeInTheDocument();
+  });
+
   it('calls Add Comment when remarks exist', () => {
     const handlers = renderFooter({ hasRemarks: true });
 
