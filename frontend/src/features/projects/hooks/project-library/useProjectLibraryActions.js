@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import {
   approveProject,
+  markProjectNoPublication,
   publishProject,
   rejectProject,
   startReviewProject,
@@ -60,6 +61,11 @@ export function useProjectLibraryActions({ isAdmin, refetch, replaceProject }) {
     await refetch();
   };
 
+  const handleNoPublication = async (project, payload = {}) => {
+    await markProjectNoPublication(getProjectId(project), payload);
+    await refetch();
+  };
+
   const handlePublish = async (project) => {
     await publishProject(getProjectId(project));
     await refetch();
@@ -71,6 +77,7 @@ export function useProjectLibraryActions({ isAdmin, refetch, replaceProject }) {
     onStartReview: isAdmin ? handleStartReview : undefined,
     onApprove: isAdmin ? handleApprove : undefined,
     onReject: isAdmin ? handleReject : undefined,
+    onNoPublication: isAdmin ? handleNoPublication : undefined,
     onPublish: isAdmin ? handlePublish : undefined,
   };
 }

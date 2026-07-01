@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  CalendarCheck2,
   CheckCircle2,
   Clock3,
   Loader2,
   RefreshCw,
-  Users,
-  Waves,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   Area,
@@ -23,41 +23,47 @@ import {
   YAxis,
 } from 'recharts';
 
-import { fetchAdminProjects } from '@/api/projectAPI';
+import { fetchAdminForecastPackages } from '@/api/forecastPackageAPI';
 import { fetchAllUsers } from '@/api/userAPI';
-import { adaptProjects } from '@/features/projects/projectAdapter';
-import { PROJECT_STATUS } from '@/features/projects/projectStatuses';
+import {
+  adaptForecastPackageModel,
+  formatPackageDate,
+  getDateKey,
+  isDailyForecastPackage,
+} from '@/features/projects/utils/forecastPackageGrouping';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-const STATUS_LABELS = {
-  [PROJECT_STATUS.SUBMITTED]: 'Submitted',
-  [PROJECT_STATUS.UNDER_REVIEW]: 'Under Review',
-  [PROJECT_STATUS.REVISION_REQUESTED]: 'Revision',
-  [PROJECT_STATUS.APPROVED]: 'Approved',
-  [PROJECT_STATUS.PUBLISHED]: 'Published',
-  [PROJECT_STATUS.REJECTED]: 'Rejected',
-  [PROJECT_STATUS.ARCHIVED]: 'Archived',
-  [PROJECT_STATUS.DRAFT]: 'Draft',
-};
+const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
+const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
+const APPROVED_STATUSES = new Set(['Approved', 'Published']);
+const REVIEWABLE_STATUSES = new Set([
+  ...REVIEW_STATUSES,
+  ...RETURNED_STATUSES,
+  ...APPROVED_STATUSES,
+]);
+const REAL_WORK_AUDIT_ACTIONS = ['edited', 'created'];
 
 const STATUS_COLORS = {
-  [PROJECT_STATUS.SUBMITTED]: '#38bdf8',
-  [PROJECT_STATUS.UNDER_REVIEW]: '#8b5cf6',
-  [PROJECT_STATUS.REVISION_REQUESTED]: '#f59e0b',
-  [PROJECT_STATUS.APPROVED]: '#10b981',
-  [PROJECT_STATUS.PUBLISHED]: '#14b8a6',
-  [PROJECT_STATUS.REJECTED]: '#f43f5e',
-  [PROJECT_STATUS.ARCHIVED]: '#64748b',
-  [PROJECT_STATUS.DRAFT]: '#94a3b8',
+  Submitted: '#38bdf8',
+  'Under Review': '#8b5cf6',
+  'Needs Review': '#06b6d4',
+  Returned: '#f59e0b',
+  'Revision Requested': '#f59e0b',
+  Approved: '#10b981',
+  Published: '#14b8a6',
+  Rejected: '#f43f5e',
 };
 
-const CHART_TYPE_LABELS = {
-  analysis: 'Analysis',
-  forecast_24h: '24h Forecast',
-  forecast_36h: '36h Forecast',
-  forecast_48h: '48h Forecast',
-  forecast: 'Forecast',
+const STATUS_TONE = {
+  Submitted: 'border-sky-400/20 bg-sky-400/10 text-sky-500',
+  'Under Review': 'border-violet-400/20 bg-violet-400/10 text-violet-500',
+  'Needs Review': 'border-cyan-400/20 bg-cyan-400/10 text-cyan-500',
+  Returned: 'border-amber-400/20 bg-amber-400/10 text-amber-500',
+  'Revision Requested': 'border-amber-400/20 bg-amber-400/10 text-amber-500',
+  Approved: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-500',
+  Published: 'border-teal-400/20 bg-teal-400/10 text-teal-500',
+  Rejected: 'border-rose-400/20 bg-rose-400/10 text-rose-500',
 };
 
 function normalizeUser(user) {
@@ -66,50 +72,6 @@ function normalizeUser(user) {
     status: String(user?.status || 'pending').toLowerCase(),
     role: String(user?.role || 'user').toLowerCase(),
   };
-}
-
-function getStatusCount(statusCounts, status, projects) {
-  if (statusCounts && Object.prototype.hasOwnProperty.call(statusCounts, status)) {
-    return Number(statusCounts[status]) || 0;
-  }
-
-  return projects.filter((project) => project.status === status).length;
-}
-
-function getProjectDate(project) {
-  return project.updatedAt || project.reviewedAt || project.submittedAt || project.createdAt;
-}
-
-function dateKey(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
-}
-
-function formatShortDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'No date';
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
-}
-
-function formatRelative(value) {
-  if (!value) return 'No refresh yet';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'No refresh yet';
-
-  const diffMinutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
-  if (diffMinutes < 1) return 'just now';
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-
-  const diffHours = Math.round(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-
-  const diffDays = Math.round(diffHours / 24);
-  return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
 }
 
 function formatHours(hours) {
@@ -123,59 +85,174 @@ function percent(value, total) {
   return Math.round((value / total) * 100);
 }
 
-function buildDailySeries(projects) {
+function toDateKey(value) {
+  return getDateKey(value || new Date());
+}
+
+function toTimestamp(value) {
+  if (!value) return null;
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function earliestTimestamp(values) {
+  const timestamps = values.map(toTimestamp).filter((timestamp) => Number.isFinite(timestamp));
+  return timestamps.length ? Math.min(...timestamps) : null;
+}
+
+function formatShortDate(value) {
+  const date = new Date(`${value}T00:00:00+08:00`);
+  if (Number.isNaN(date.getTime())) return 'No date';
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'Asia/Manila',
+  }).format(date);
+}
+
+function packageTimestamp(forecastPackage) {
+  return forecastPackage?.submittedAt || forecastPackage?.reviewedAt || forecastPackage?.updatedAt || forecastPackage?.createdAt;
+}
+
+function getChartCount(forecastPackage) {
+  return forecastPackage.chartCount || forecastPackage.charts?.length || 0;
+}
+
+function isReviewablePackage(forecastPackage) {
+  return REVIEWABLE_STATUSES.has(forecastPackage.status);
+}
+
+function getSubmittedDate(forecastPackage) {
+  return forecastPackage.submittedAt || null;
+}
+
+function getApprovalPublishDate(forecastPackage) {
+  if (!APPROVED_STATUSES.has(forecastPackage.status)) return null;
+  return forecastPackage.publishedAt || forecastPackage.reviewedAt || forecastPackage.updatedAt || null;
+}
+
+function getChartProject(forecastPackageChart) {
+  return forecastPackageChart?.project || forecastPackageChart;
+}
+
+function getEarliestAuditTimestamp(project, actions) {
+  const auditLogs = Array.isArray(project?.auditLogs) ? project.auditLogs : [];
+  const actionSet = new Set(actions);
+
+  return earliestTimestamp(
+    auditLogs
+      .filter((log) => actionSet.has(log?.action))
+      .map((log) => log?.timestamp),
+  );
+}
+
+function getEarliestVersionTimestamp(project) {
+  const versions = Array.isArray(project?.versions) ? project.versions : [];
+  return earliestTimestamp(versions.map((version) => version?.createdAt));
+}
+
+function getEarliestChartWorkTimestamp(forecastPackage) {
+  const chartProjects = (forecastPackage?.chartProjects?.length
+    ? forecastPackage.chartProjects
+    : (forecastPackage?.charts || []).map(getChartProject)
+  ).filter(Boolean);
+
+  const timestampCandidates = chartProjects.flatMap((project) => {
+    const editedAuditTimestamp = getEarliestAuditTimestamp(project, ['edited']);
+    const createdAuditTimestamp = getEarliestAuditTimestamp(project, ['created']);
+    const versionTimestamp = getEarliestVersionTimestamp(project);
+    const updatedTimestamp = toTimestamp(project?.updatedAt);
+
+    return [
+      editedAuditTimestamp,
+      createdAuditTimestamp,
+      versionTimestamp,
+      updatedTimestamp,
+    ];
+  });
+
+  return earliestTimestamp(timestampCandidates);
+}
+
+function getPreparationStartDate(forecastPackage) {
+  const earliestChartWorkTimestamp = getEarliestChartWorkTimestamp(forecastPackage);
+  if (earliestChartWorkTimestamp) return new Date(earliestChartWorkTimestamp);
+
+  const packageCreatedTimestamp = toTimestamp(forecastPackage.createdAt);
+  return packageCreatedTimestamp ? new Date(packageCreatedTimestamp) : null;
+}
+
+function getSubmissionHours(forecastPackage) {
+  const start = getPreparationStartDate(forecastPackage);
+  const submittedAt = getSubmittedDate(forecastPackage);
+  const end = new Date(submittedAt);
+
+  if (!start || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return Math.max(0, (end.getTime() - start.getTime()) / 3600000);
+}
+
+function getApprovalPublishHours(forecastPackage) {
+  const submittedAt = getSubmittedDate(forecastPackage);
+  const approvedAt = getApprovalPublishDate(forecastPackage);
+  const start = new Date(submittedAt);
+  const end = new Date(approvedAt);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return Math.max(0, (end.getTime() - start.getTime()) / 3600000);
+}
+
+function buildDailySeries(packages) {
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today);
     date.setDate(today.getDate() - (6 - index));
-    const key = date.toISOString().slice(0, 10);
+    const key = toDateKey(date);
 
     return {
       key,
       day: formatShortDate(key),
       submitted: 0,
-      reviewed: 0,
-      published: 0,
+      approved: 0,
+      returned: 0,
     };
   });
 
   const byKey = new Map(days.map((day) => [day.key, day]));
 
-  projects.forEach((project) => {
-    const submittedKey = dateKey(project.submittedAt || project.createdAt);
-    const reviewedKey = dateKey(project.reviewedAt || project.updatedAt);
-    const publishedKey = dateKey(project.publishedAt || (project.status === PROJECT_STATUS.PUBLISHED ? project.updatedAt : null));
+  packages.forEach((forecastPackage) => {
+    const key = forecastPackage.dateKey || toDateKey(forecastPackage.forecastDate || forecastPackage.createdAt);
+    if (!byKey.has(key)) return;
 
-    if (byKey.has(submittedKey)) byKey.get(submittedKey).submitted += 1;
-    if (byKey.has(reviewedKey)) byKey.get(reviewedKey).reviewed += 1;
-    if (byKey.has(publishedKey)) byKey.get(publishedKey).published += 1;
+    const day = byKey.get(key);
+    day.submitted += 1;
+    if (APPROVED_STATUSES.has(forecastPackage.status)) day.approved += 1;
+    if (RETURNED_STATUSES.has(forecastPackage.status)) day.returned += 1;
   });
 
   return days;
 }
 
-function buildTypeSeries(projects) {
+function buildStatusRows(packages) {
   const counts = new Map();
-
-  projects.forEach((project) => {
-    const key = project.chartType || 'forecast';
-    counts.set(key, (counts.get(key) || 0) + 1);
+  packages.forEach((forecastPackage) => {
+    const status = forecastPackage.status || 'Submitted';
+    counts.set(status, (counts.get(status) || 0) + 1);
   });
 
-  return [...counts.entries()]
-    .map(([type, value]) => ({
-      type: CHART_TYPE_LABELS[type] || type.replace(/_/g, ' '),
-      value,
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6);
+  return [...counts.entries()].map(([status, value]) => ({
+    status,
+    label: status,
+    value,
+    color: STATUS_COLORS[status] || '#94a3b8',
+  })).sort((a, b) => b.value - a.value);
 }
 
-function buildOwnerSeries(projects) {
+function buildOwnerSeries(packages) {
   const counts = new Map();
 
-  projects.forEach((project) => {
-    const owner = project.ownerDisplay || 'Project Owner';
+  packages.forEach((forecastPackage) => {
+    const owner = forecastPackage.ownerLabel || 'Forecast team';
     counts.set(owner, (counts.get(owner) || 0) + 1);
   });
 
@@ -183,6 +260,49 @@ function buildOwnerSeries(projects) {
     .map(([owner, value]) => ({ owner, value }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
+}
+
+function buildTimingSeries({ averageSubmissionHours, averageApprovalPublishHours }) {
+  return [
+    {
+      metric: 'Prep to submit',
+      value: Number(averageSubmissionHours.toFixed(1)),
+      description: 'Earliest chart work to package submission',
+    },
+    {
+      metric: 'Approval time',
+      value: Number(averageApprovalPublishHours.toFixed(1)),
+      description: 'Submission to approved/published',
+    },
+  ];
+}
+
+function buildRecentOutcomeRows(packages) {
+  return packages
+    .filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status))
+    .sort((a, b) => new Date(packageTimestamp(b)).getTime() - new Date(packageTimestamp(a)).getTime())
+    .slice(0, 6)
+    .map((forecastPackage) => {
+      const submissionHours = getSubmissionHours(forecastPackage);
+      const approvalPublishHours = getApprovalPublishHours(forecastPackage);
+
+      return {
+        id: forecastPackage.id,
+        title: forecastPackage.title,
+        dateLabel: formatPackageDate(forecastPackage.dateKey || forecastPackage.forecastDate || forecastPackage.createdAt),
+        status: forecastPackage.status,
+        owner: forecastPackage.ownerLabel || 'Forecast team',
+        chartCount: getChartCount(forecastPackage),
+        submissionTime: submissionHours == null ? null : formatHours(submissionHours),
+        approvalTime: approvalPublishHours == null ? null : formatHours(approvalPublishHours),
+      };
+    });
+}
+
+function average(values) {
+  const usableValues = values.filter((value) => Number.isFinite(value));
+  if (!usableValues.length) return 0;
+  return usableValues.reduce((sum, value) => sum + value, 0) / usableValues.length;
 }
 
 function CustomTooltip({ active, payload, label, isDarkMode }) {
@@ -208,9 +328,8 @@ export default function AnalyticsSection({ isDarkMode }) {
     loading: true,
     refreshing: false,
     error: '',
-    projects: [],
-    totalProjects: 0,
-    statusCounts: null,
+    packages: [],
+    totalPackages: 0,
     users: [],
     totalUsers: 0,
     loadedAt: null,
@@ -233,20 +352,12 @@ export default function AnalyticsSection({ isDarkMode }) {
     }));
 
     try {
-      const [projectResponse, userResponse] = await Promise.all([
-        fetchAdminProjects({
-          page: 1,
-          limit: 100,
-          sortBy: 'updatedAt',
-          sortDir: 'desc',
-        }),
-        fetchAllUsers({
-          page: 1,
-          limit: 100,
-        }),
+      const [packageResponse, userResponse] = await Promise.all([
+        fetchAdminForecastPackages({ page: 1, limit: 100 }),
+        fetchAllUsers({ page: 1, limit: 100 }),
       ]);
 
-      const projects = adaptProjects(projectResponse?.projects ?? []);
+      const packages = (packageResponse?.packages ?? []).map(adaptForecastPackageModel);
       const users = Array.isArray(userResponse)
         ? userResponse.map(normalizeUser)
         : (userResponse?.data ?? []).map(normalizeUser);
@@ -255,13 +366,10 @@ export default function AnalyticsSection({ isDarkMode }) {
         loading: false,
         refreshing: false,
         error: '',
-        projects,
-        totalProjects: projectResponse?.total ?? projects.length,
-        statusCounts: projectResponse?.statusCounts ?? null,
+        packages,
+        totalPackages: packageResponse?.total ?? packages.length,
         users,
-        totalUsers: Array.isArray(userResponse)
-          ? users.length
-          : userResponse?.total ?? users.length,
+        totalUsers: Array.isArray(userResponse) ? users.length : userResponse?.total ?? users.length,
         loadedAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -279,55 +387,40 @@ export default function AnalyticsSection({ isDarkMode }) {
   }, [loadAnalytics]);
 
   const analytics = useMemo(() => {
-    const statusRows = Object.values(PROJECT_STATUS).map((status) => ({
-      status,
-      label: STATUS_LABELS[status] || status,
-      value: getStatusCount(state.statusCounts, status, state.projects),
-      color: STATUS_COLORS[status] || '#94a3b8',
-    })).filter((item) => item.value > 0);
+    const reviewablePackages = state.packages.filter(isReviewablePackage);
+    const todayPackage = reviewablePackages.find(isDailyForecastPackage) || null;
+    const returned = reviewablePackages.filter((forecastPackage) => RETURNED_STATUSES.has(forecastPackage.status)).length;
+    const approved = reviewablePackages.filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status)).length;
+    const decisions = approved + returned;
 
-    const submitted = getStatusCount(state.statusCounts, PROJECT_STATUS.SUBMITTED, state.projects);
-    const underReview = getStatusCount(state.statusCounts, PROJECT_STATUS.UNDER_REVIEW, state.projects);
-    const revision = getStatusCount(state.statusCounts, PROJECT_STATUS.REVISION_REQUESTED, state.projects);
-    const approved = getStatusCount(state.statusCounts, PROJECT_STATUS.APPROVED, state.projects);
-    const published = getStatusCount(state.statusCounts, PROJECT_STATUS.PUBLISHED, state.projects);
-    const rejected = getStatusCount(state.statusCounts, PROJECT_STATUS.REJECTED, state.projects);
+    const submissionHours = reviewablePackages.map(getSubmissionHours);
+    const approvalPublishHours = reviewablePackages
+      .filter((forecastPackage) => APPROVED_STATUSES.has(forecastPackage.status))
+      .map(getApprovalPublishHours);
 
-    const decisions = approved + published + rejected + revision;
-    const positiveDecisions = approved + published;
-    const queue = submitted + underReview;
-
-    const queueProjects = state.projects.filter((project) =>
-      [PROJECT_STATUS.SUBMITTED, PROJECT_STATUS.UNDER_REVIEW].includes(project.status),
-    );
-    const queueHours = queueProjects.map((project) => {
-      const value = project.submittedAt || project.reviewStartedAt || project.createdAt;
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return 0;
-      return Math.max(0, (Date.now() - date.getTime()) / 3600000);
-    });
-    const averageQueueHours = queueHours.length
-      ? queueHours.reduce((sum, value) => sum + value, 0) / queueHours.length
-      : 0;
-
+    const averageSubmissionHours = average(submissionHours);
+    const averageApprovalPublishHours = average(approvalPublishHours);
     const activeUsers = state.users.filter((user) => user.status === 'active').length;
-    const pendingUsers = state.users.filter((user) => user.status === 'pending').length;
 
     return {
-      statusRows,
-      dailySeries: buildDailySeries(state.projects),
-      typeSeries: buildTypeSeries(state.projects),
-      ownerSeries: buildOwnerSeries(state.projects),
-      reviewQueue: queue,
-      approvalRate: percent(positiveDecisions, decisions),
-      revisionRate: percent(revision, decisions),
-      publicationRate: percent(published, state.totalProjects),
-      averageQueueHours,
+      reviewablePackages,
+      todayPackage,
+      statusRows: buildStatusRows(reviewablePackages),
+      dailySeries: buildDailySeries(reviewablePackages),
+      recentOutcomeRows: buildRecentOutcomeRows(reviewablePackages),
+      ownerSeries: buildOwnerSeries(reviewablePackages),
+      timingSeries: buildTimingSeries({ averageSubmissionHours, averageApprovalPublishHours }),
+      returned,
+      approved,
+      decisions,
+      approvalRate: percent(approved, decisions),
+      returnRate: percent(returned, decisions),
+      reviewCompletionRate: percent(decisions, reviewablePackages.length),
+      averageSubmissionHours,
+      averageApprovalPublishHours,
       activeUsers,
-      pendingUsers,
-      reviewedSample: state.projects.filter((project) => getProjectDate(project)).length,
     };
-  }, [state.projects, state.statusCounts, state.totalProjects, state.users]);
+  }, [state.packages, state.users]);
 
   if (state.loading) {
     return (
@@ -335,8 +428,8 @@ export default function AnalyticsSection({ isDarkMode }) {
         <div className={cn('flex min-h-[440px] items-center justify-center rounded-2xl border shadow-xl backdrop-blur-xl', panel)}>
           <div className="flex flex-col items-center gap-3 text-center">
             <Loader2 className={cn('h-8 w-8 animate-spin', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
-            <p className={cn('text-sm font-black', text)}>Loading operational analytics</p>
-            <p className={cn('text-xs font-semibold', muted)}>Aggregating projects, review states, and user readiness.</p>
+            <p className={cn('text-sm font-black', text)}>Loading package analytics</p>
+            <p className={cn('text-xs font-semibold', muted)}>Aggregating daily package preparation speed and approval timing.</p>
           </div>
         </div>
       </div>
@@ -349,7 +442,7 @@ export default function AnalyticsSection({ isDarkMode }) {
         <div>
           <p className={cn('text-sm font-black', text)}>Operational analytics</p>
           <p className={cn('mt-1 text-xs font-semibold', muted)}>
-            Based on {state.totalProjects} projects and {state.totalUsers} user accounts. Last refreshed {formatRelative(state.loadedAt)}.
+            Focused on submitted daily forecast packages, successful daily operations, return rate, preparation speed, and approval/publish speed. Draft/setup packages are excluded.
           </p>
         </div>
 
@@ -378,93 +471,52 @@ export default function AnalyticsSection({ isDarkMode }) {
       )}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          icon={Waves}
-          label="Review Queue"
-          value={analytics.reviewQueue}
-          helper="Submitted and under review"
-          tone="cyan"
-          isDarkMode={isDarkMode}
-        />
-        <MetricCard
-          icon={CheckCircle2}
-          label="Approval Rate"
-          value={`${analytics.approvalRate}%`}
-          helper="Approved or published decisions"
-          tone="emerald"
-          isDarkMode={isDarkMode}
-        />
-        <MetricCard
-          icon={Clock3}
-          label="Avg Queue Age"
-          value={formatHours(analytics.averageQueueHours)}
-          helper="Open submitted/review items"
-          tone="amber"
-          isDarkMode={isDarkMode}
-        />
-        <MetricCard
-          icon={Users}
-          label="Active Users"
-          value={analytics.activeUsers}
-          helper={`${analytics.pendingUsers} pending account${analytics.pendingUsers === 1 ? '' : 's'}`}
-          tone="blue"
-          isDarkMode={isDarkMode}
-        />
+        <MetricCard icon={CalendarCheck2} label="Today's Package" value={analytics.todayPackage?.status || 'None'} helper={analytics.todayPackage ? `${getChartCount(analytics.todayPackage)} linked charts` : 'No submitted package today'} tone={analytics.todayPackage ? 'cyan' : 'amber'} isDarkMode={isDarkMode} />
+        <MetricCard icon={Clock3} label="Avg Prep Time" value={formatHours(analytics.averageSubmissionHours)} helper="Earliest chart work to submission" tone="blue" isDarkMode={isDarkMode} />
+        <MetricCard icon={CheckCircle2} label="Avg Approval Time" value={formatHours(analytics.averageApprovalPublishHours)} helper="Submission to approved/published" tone="emerald" isDarkMode={isDarkMode} />
+        <MetricCard icon={ShieldCheck} label="Return Rate" value={`${analytics.returnRate}%`} helper={`${analytics.returned} returned or rejected`} tone={analytics.returnRate > 25 ? 'amber' : 'cyan'} isDarkMode={isDarkMode} />
       </section>
 
+      <Panel title="Package Timing" description="How fast daily packages move from first chart work to submission, then from submission to approval or publication." isDarkMode={isDarkMode}>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <BarBlock data={analytics.timingSeries} dataKey="value" nameKey="metric" color="#06b6d4" isDarkMode={isDarkMode} emptyTitle="No timing data" emptyDescription="Timing appears after chart work, submittedAt, and approved/published timestamps are available." />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <TimingStat label="Average prep time" value={formatHours(analytics.averageSubmissionHours)} description="first chart work to submittedAt" isDarkMode={isDarkMode} />
+            <TimingStat label="Average approval time" value={formatHours(analytics.averageApprovalPublishHours)} description="submittedAt to reviewed/published" isDarkMode={isDarkMode} />
+          </div>
+        </div>
+      </Panel>
+
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.85fr)]">
-        <Panel
-          title="Seven-Day Workflow"
-          description="Submitted, reviewed, and published project activity from the latest project sample."
-          isDarkMode={isDarkMode}
-        >
+        <Panel title="Seven-Day Review Outcomes" description="Daily submitted packages, approved/published outcomes, and returned packages." isDarkMode={isDarkMode}>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={analytics.dailySeries} margin={{ top: 12, right: 18, left: -18, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="submittedFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="publishedFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                  </linearGradient>
+                  <linearGradient id="submittedFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#38bdf8" stopOpacity={0.35} /><stop offset="95%" stopColor="#38bdf8" stopOpacity={0.02} /></linearGradient>
+                  <linearGradient id="approvedFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3} /><stop offset="95%" stopColor="#10b981" stopOpacity={0.02} /></linearGradient>
                 </defs>
                 <CartesianGrid stroke={gridColor} vertical={false} />
                 <XAxis dataKey="day" tick={{ fill: axisColor, fontSize: 12 }} tickLine={false} axisLine={false} />
                 <YAxis allowDecimals={false} tick={{ fill: axisColor, fontSize: 12 }} tickLine={false} axisLine={false} />
                 <Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} />
                 <Area type="monotone" dataKey="submitted" name="Submitted" stroke="#38bdf8" fill="url(#submittedFill)" strokeWidth={2} />
-                <Area type="monotone" dataKey="reviewed" name="Reviewed" stroke="#8b5cf6" fill="transparent" strokeWidth={2} />
-                <Area type="monotone" dataKey="published" name="Published" stroke="#10b981" fill="url(#publishedFill)" strokeWidth={2} />
+                <Area type="monotone" dataKey="approved" name="Approved / Published" stroke="#10b981" fill="url(#approvedFill)" strokeWidth={2} />
+                <Area type="monotone" dataKey="returned" name="Returned" stroke="#f59e0b" fill="transparent" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Panel>
 
-        <Panel
-          title="Review Funnel"
-          description="Current project distribution by workflow state."
-          isDarkMode={isDarkMode}
-        >
+        <Panel title="Review Decision Funnel" description="Outcome distribution for submitted/reviewable packages." isDarkMode={isDarkMode}>
           {analytics.statusRows.length === 0 ? (
-            <EmptyState isDarkMode={isDarkMode} title="No workflow data" description="Project status counts will appear here once projects are available." />
+            <EmptyState isDarkMode={isDarkMode} title="No submitted packages" description="Analytics will appear after forecast packages are submitted for admin review." />
           ) : (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={analytics.statusRows}
-                    dataKey="value"
-                    nameKey="label"
-                    innerRadius="58%"
-                    outerRadius="82%"
-                    paddingAngle={3}
-                  >
-                    {analytics.statusRows.map((entry) => (
-                      <Cell key={entry.status} fill={entry.color} />
-                    ))}
+                  <Pie data={analytics.statusRows} dataKey="value" nameKey="label" innerRadius="58%" outerRadius="82%" paddingAngle={3}>
+                    {analytics.statusRows.map((entry) => <Cell key={entry.status} fill={entry.color} />)}
                   </Pie>
                   <Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} />
                 </PieChart>
@@ -474,50 +526,28 @@ export default function AnalyticsSection({ isDarkMode }) {
         </Panel>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-3">
-        <Panel
-          title="Chart Type Mix"
-          description="Most common chart products in the latest sample."
-          isDarkMode={isDarkMode}
-        >
-          <BarBlock
-            data={analytics.typeSeries}
-            dataKey="value"
-            nameKey="type"
-            color="#06b6d4"
-            isDarkMode={isDarkMode}
-            emptyTitle="No chart types"
-            emptyDescription="Chart type mix will appear after projects are available."
-          />
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)_minmax(20rem,0.8fr)]">
+        <Panel title="Successful Daily Package Outcomes" description="Recent daily packages that reached Approved or Published state." isDarkMode={isDarkMode}>
+          <div className="space-y-2">
+            {analytics.recentOutcomeRows.length === 0 ? (
+              <EmptyState isDarkMode={isDarkMode} title="No successful daily outcomes yet" description="Approved or published daily packages will appear here after successful review decisions." />
+            ) : analytics.recentOutcomeRows.map((item) => (
+              <OutcomeRow key={item.id || item.title} item={item} isDarkMode={isDarkMode} />
+            ))}
+          </div>
         </Panel>
 
-        <Panel
-          title="Forecaster Throughput"
-          description="Project volume by owner in the latest sample."
-          isDarkMode={isDarkMode}
-        >
-          <BarBlock
-            data={analytics.ownerSeries}
-            dataKey="value"
-            nameKey="owner"
-            color="#8b5cf6"
-            isDarkMode={isDarkMode}
-            emptyTitle="No owner data"
-            emptyDescription="Forecaster throughput will appear after projects are available."
-          />
+        <Panel title="Forecast Team Throughput" description="Submitted/reviewable package volume by owner or team label." isDarkMode={isDarkMode}>
+          <BarBlock data={analytics.ownerSeries} dataKey="value" nameKey="owner" color="#8b5cf6" isDarkMode={isDarkMode} emptyTitle="No owner data" emptyDescription="Package ownership appears after packages are submitted." />
         </Panel>
 
-        <Panel
-          title="Operational Readiness"
-          description="Quick ratios from current project and user states."
-          isDarkMode={isDarkMode}
-        >
+        <Panel title="Decision Health" description="Ratios that help admins see review quality and bottlenecks." isDarkMode={isDarkMode}>
           <div className="space-y-4">
-            <RatioRow label="Publication rate" value={analytics.publicationRate} isDarkMode={isDarkMode} />
-            <RatioRow label="Revision rate" value={analytics.revisionRate} isDarkMode={isDarkMode} tone={analytics.revisionRate > 30 ? 'amber' : 'cyan'} />
+            <RatioRow label="Decision completion" value={analytics.reviewCompletionRate} isDarkMode={isDarkMode} tone="emerald" />
+            <RatioRow label="Returned package rate" value={analytics.returnRate} isDarkMode={isDarkMode} tone={analytics.returnRate > 25 ? 'amber' : 'cyan'} />
             <RatioRow label="Active user share" value={percent(analytics.activeUsers, state.totalUsers)} isDarkMode={isDarkMode} tone="emerald" />
             <div className={cn('rounded-xl border p-3 text-xs font-semibold backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-400' : 'border-white/80 bg-white/65 text-slate-500')}>
-              Analytics currently use the latest {state.projects.length} project records plus global status totals when provided by the API.
+              Prep time measures earliest chart edit/create/version/update to submission. Approval time measures submission to approved or published status. Returned/rejected packages stay visible in return-rate and decision-funnel analytics.
             </div>
           </div>
         </Panel>
@@ -527,90 +557,36 @@ export default function AnalyticsSection({ isDarkMode }) {
 }
 
 function MetricCard({ icon: Icon, label, value, helper, tone, isDarkMode }) {
-  const toneClass = {
-    blue: isDarkMode ? 'bg-blue-400/10 text-blue-200' : 'bg-blue-50/80 text-blue-700',
-    cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50/80 text-cyan-700',
-    emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50/80 text-emerald-700',
-    amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50/80 text-amber-700',
-  }[tone];
-
-  return (
-    <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={cn('truncate text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p>
-          <p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p>
-        </div>
-        <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', toneClass)}>
-          <Icon size={21} />
-        </span>
-      </div>
-      <p className={cn('mt-3 text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{helper}</p>
-    </div>
-  );
+  const toneClass = { blue: isDarkMode ? 'bg-blue-400/10 text-blue-200' : 'bg-blue-50/80 text-blue-700', cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50/80 text-cyan-700', emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50/80 text-emerald-700', amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50/80 text-amber-700' }[tone];
+  return <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={cn('truncate text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p><p className={cn('mt-2 truncate text-2xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p></div><span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', toneClass)}><Icon size={21} /></span></div><p className={cn('mt-3 text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{helper}</p></div>;
 }
 
 function Panel({ title, description, isDarkMode, children }) {
-  return (
-    <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}>
-      <div className="mb-4">
-        <h2 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h2>
-        <p className={cn('mt-1 text-sm font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p>
-      </div>
-      {children}
-    </div>
-  );
+  return <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}><div className="mb-4"><h2 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h2><p className={cn('mt-1 text-sm font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p></div>{children}</div>;
+}
+
+function TimingStat({ label, value, description, isDarkMode }) {
+  return <div className={cn('rounded-xl border p-4', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p><p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p><p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>{description}</p></div>;
+}
+
+function OutcomeRow({ item, isDarkMode }) {
+  const tone = STATUS_TONE[item.status] || 'border-slate-400/20 bg-slate-400/10 text-slate-500';
+  const submitTiming = item.submissionTime ? `Prep: ${item.submissionTime}` : 'Prep timing unavailable';
+  const approvalTiming = item.approvalTime ? `Approve: ${item.approvalTime}` : 'Approval timing unavailable';
+
+  return <div className={cn('rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{item.dateLabel}</p><p className={cn('mt-1 truncate text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{item.owner} - {item.chartCount} charts - {submitTiming} - {approvalTiming}</p></div><span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black', tone)}>{item.status}</span></div></div>;
 }
 
 function BarBlock({ data, dataKey, nameKey, color, isDarkMode, emptyTitle, emptyDescription }) {
-  if (!data.length) {
-    return <EmptyState title={emptyTitle} description={emptyDescription} isDarkMode={isDarkMode} />;
-  }
-
-  return (
-    <div className="h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 4 }}>
-          <CartesianGrid stroke={isDarkMode ? 'rgba(148,163,184,0.12)' : 'rgba(100,116,139,0.16)'} horizontal={false} />
-          <XAxis type="number" allowDecimals={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} />
-          <YAxis
-            type="category"
-            dataKey={nameKey}
-            width={96}
-            tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} />
-          <Bar dataKey={dataKey} name="Projects" fill={color} radius={[0, 8, 8, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  if (!data.length || data.every((item) => !item[dataKey])) return <EmptyState isDarkMode={isDarkMode} title={emptyTitle} description={emptyDescription} />;
+  return <div className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 12, bottom: 4 }}><CartesianGrid stroke={isDarkMode ? 'rgba(148,163,184,0.12)' : 'rgba(100,116,139,0.16)'} horizontal={false} /><XAxis type="number" allowDecimals={false} tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} /><YAxis type="category" dataKey={nameKey} width={128} tick={{ fill: isDarkMode ? '#cbd5e1' : '#475569', fontSize: 12, fontWeight: 700 }} tickLine={false} axisLine={false} /><Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} /><Bar dataKey={dataKey} fill={color} radius={[0, 8, 8, 0]} /></BarChart></ResponsiveContainer></div>;
 }
 
 function RatioRow({ label, value, isDarkMode, tone = 'cyan' }) {
   const color = tone === 'emerald' ? 'bg-emerald-500' : tone === 'amber' ? 'bg-amber-500' : 'bg-cyan-500';
-
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
-        <span className={cn('font-bold', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{label}</span>
-        <span className={cn('font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}%</span>
-      </div>
-      <div className={cn('h-2.5 overflow-hidden rounded-full', isDarkMode ? 'bg-white/10' : 'bg-white/80')}>
-        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
-      </div>
-    </div>
-  );
+  return <div><div className="mb-1 flex justify-between text-xs font-black"><span className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>{label}</span><span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>{value}%</span></div><div className={cn('h-2 overflow-hidden rounded-full', isDarkMode ? 'bg-white/10' : 'bg-slate-200')}><div className={cn('h-full rounded-full', color)} style={{ width: `${Math.min(100, Math.max(0, value))}%` }} /></div></div>;
 }
 
 function EmptyState({ title, description, isDarkMode }) {
-  return (
-    <div className={cn('rounded-xl border px-4 py-8 text-center backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
-      <AlertTriangle className={cn('mx-auto h-6 w-6', isDarkMode ? 'text-slate-600' : 'text-slate-400')} />
-      <p className={cn('mt-3 text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</p>
-      <p className={cn('mx-auto mt-1 max-w-sm text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p>
-    </div>
-  );
+  return <div className={cn('rounded-xl border p-4 text-center', isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-white/80 bg-white/60')}><AlertTriangle size={18} className={cn('mx-auto mb-2', isDarkMode ? 'text-slate-500' : 'text-slate-400')} /><p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</p><p className={cn('mt-1 text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p></div>;
 }

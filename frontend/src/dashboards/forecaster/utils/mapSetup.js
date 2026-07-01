@@ -1,509 +1,55 @@
 import { loadImage, loadCustomImages } from '@dashboards/forecaster/map/helpers/imageLoader';
 import { initDrawControl } from '@dashboards/forecaster/map/controls/drawControl';
 import { initTyphoonLayer } from '@dashboards/forecaster//map/layers/typhoonLayer';
-import { saveMarker } from '@dashboards/forecaster/map/layers/markerLayer';
+import { saveMarker, removeMarkerDrag } from '@dashboards/forecaster/map/layers/markerLayer';
 import { addHimawariLayer } from '@dashboards/forecaster/map/layers/satelliteLayer';
 import { addWindSource, addWindLayer } from '@dashboards/forecaster/map/layers/windLayer';
+import { setGlobalMapLoaded, setGlobalSourceIds } from '@dashboards/forecaster/map/helpers/mapGlobalState';
 
-import { setGlobalMapLoaded, setGlobalSourceIds, } from '@dashboards/forecaster/map/helpers/mapGlobalState';
-
-// === Constants ===
 const MARKER_IMAGES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1'];
+const MARKER_TYPES = ['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note'];
 const WIND_BARB_IMAGES = ['0kts', '5kts', '10kts', '15kts', '20kts', '25kts', '30kts'];
 const WAVE_HEIGHT_THRESHOLD = 2;
-
-const LAYER_VISIBILITY_CONFIG = [
-  { key: 'PAR', ids: ['PAR', 'PAR_dash'] },
-  { key: 'SATELLITE', ids: ['Satellite'] },
-  { key: 'TCID', ids: ['TCID'] },
-  { key: 'TCAD', ids: ['TCAD'] },
-  {
-    key: 'SHIPPING_ZONE',
-    ids: [
-      'SHIPPING_ZONE_OUTLINE',
-      'SHIPPING_ZONE_LABELS',
-    ]
-  },
-  {
-    key: 'GRATICULES',
-    ids: [
-      'graticules',
-      'graticules_blur',
-    ]
-  },
-
-];
-
-// === Geometry Helpers ===
-const fixMalformedLineString = (coordinates) => {
-  if (!Array.isArray(coordinates)) return coordinates;
-
-  // Unwrap nested arrays: [[[coords]]] → [[coords]]
-  if (
-    coordinates.length === 1 &&
-    Array.isArray(coordinates[0]) &&
-    Array.isArray(coordinates[0][0])
-  ) {
-    return coordinates[0];
-  }
-
-  return coordinates;
+const COLORS = { cold: '#1d4ed8', warm: '#ef4444', occluded: '#7c3aed' };
+const FRONT_SYMBOL_RADIUS = 6;
+const FRONT_TRIANGLE_SIZE = 7;
+const STATIONARY_SEGMENT_LENGTH = 26;
+const STATIONARY_SEGMENT_COLORS = [COLORS.warm, COLORS.cold];
+const STATIONARY_SEGMENT_SYMBOLS = [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }];
+const renderedAnnotationIds = new Set();
+const LAYER_VISIBILITY_CONFIG = [{ key: 'PAR', ids: ['PAR', 'PAR_dash'] }, { key: 'SATELLITE', ids: ['Satellite'] }, { key: 'TCID', ids: ['TCID'] }, { key: 'TCAD', ids: ['TCAD'] }, { key: 'SHIPPING_ZONE', ids: ['SHIPPING_ZONE_OUTLINE', 'SHIPPING_ZONE_LABELS'] }, { key: 'GRATICULES', ids: ['graticules', 'graticules_blur'] }];
+const FRONT_STYLES = {
+  cold: { color: COLORS.cold, lineWidth: 2.5, spacing: 40, symbols: [{ kind: 'triangle', color: COLORS.cold, side: -1 }] },
+  warm: { color: COLORS.warm, lineWidth: 2.5, spacing: 40, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }] },
+  stationary: { color: COLORS.cold, lineWidth: 2.25, spacing: 38, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }] },
+  occluded: { color: COLORS.occluded, lineWidth: 2.5, spacing: 38, symbols: [{ kind: 'semicircle', color: COLORS.occluded, side: -1 }, { kind: 'triangle', color: COLORS.occluded, side: -1 }] },
 };
-
-const getValidCoordinates = (geometry) => {
-  if (!geometry?.coordinates) return null;
-
-  const coords = geometry.coordinates;
-  if (!Array.isArray(coords) || coords.length === 0) return null;
-
-  return coords;
-};
-
-// === Layer Visibility Manager ===
-class LayerVisibilityManager {
-  constructor(map) {
-    this.map = map;
-  }
-
-  applyFromLocalStorage(config = LAYER_VISIBILITY_CONFIG) {
-    config.forEach(({ key, ids }) => {
-      const isVisible = localStorage.getItem(key) === 'true';
-      const visibility = isVisible ? 'visible' : 'none';
-
-      // console.log(
-      //   `[LayerVisibilityManager] key="${key}", value=${isVisible}, visibility=${visibility}`
-      // );
-
-      ids.forEach(id => {
-        if (this.map.getLayer(id)) {
-          this.map.setLayoutProperty(id, 'visibility', visibility);
-        }
-      });
-    });
-  }
-}
-
-// === Feature Classification ===
-class FeatureClassifier {
-  constructor() {
-    this.markerPoints = [];
-    this.frontLines = [];
-    this.nonFrontLines = [];
-    this.totalLineCount = 0;
-  }
-
-  classify(featuresArray) {
-    featuresArray.forEach(feature => this.processFeature(feature));
-    return {
-      markerPoints: this.markerPoints,
-      frontLines: this.frontLines,
-      nonFrontLines: this.nonFrontLines,
-      totalLineCount: this.totalLineCount,
-    };
-  }
-
-  processFeature(feature) {
-    const type = feature.geometry?.type;
-
-    switch (type) {
-      case 'Point':
-        this.markerPoints.push(feature);
-        break;
-
-      case 'Polygon':
-        // Handle polygon directly via draw control
-        this.addPolygonToDraw(feature);
-        break;
-
-      case 'LineString':
-        this.processLineString(feature);
-        break;
-
-      default:
-        console.warn('Unknown geometry type:', type);
-    }
-  }
-
-  addPolygonToDraw(feature) {
-    if (window.drawInstance) {
-      window.drawInstance.add({
-        type: 'Feature',
-        geometry: feature.geometry,
-        properties: feature.properties || {},
-      });
-    }
-  }
-
-  processLineString(feature) {
-    this.totalLineCount++;
-
-    // Fix malformed coordinates
-    if (feature.geometry?.coordinates) {
-      feature.geometry.coordinates = fixMalformedLineString(feature.geometry.coordinates);
-    }
-
-    // Classify as front or non-front
-    if (feature.properties?.isFront) {
-      this.frontLines.push(feature);
-    } else {
-      this.nonFrontLines.push(feature);
-    }
-  }
-}
-
-// === Marker Renderer ===
-class MarkerRenderer {
-  constructor(mapRef) {
-    this.mapRef = mapRef;
-  }
-
-  renderAll(markerPoints) {
-    markerPoints.forEach(point => this.renderPoint(point));
-  }
-
-  renderPoint(point) {
-    const coords = getValidCoordinates(point.geometry);
-    if (!coords) return;
-
-    let lng, lat;
-
-    // ✅ Handle flat [lng, lat]
-    if (typeof coords[0] === 'number') {
-      [lng, lat] = coords;
-    }
-    // ✅ Handle nested [[lng, lat]]
-    else if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
-      [lng, lat] = coords[0];
-    }
-    // ✅ Handle triple nested [[[lng, lat]]]
-    else if (Array.isArray(coords[0]) && Array.isArray(coords[0][0])) {
-      [lng, lat] = coords[0][0];
-    }
-
-    if (lng === undefined || lat === undefined) return;
-
-    const title = point.name || '';
-    const markerType = point.properties?.type;
-
-    saveMarker({ lat, lng }, this.mapRef, () => { }, markerType)(title);
-  }
-}
-
-// === Line Renderer ===
-class LineRenderer {
-  constructor(map, theme) {
-    this.map = map;
-    this.lineColor = theme.lineColor;
-    this.textColor = theme.textColor;
-    this.isDarkMode = theme.isDarkMode;
-  }
-
-  renderNonFrontLines(nonFrontLines) {
-    // Batch source/layer additions for better performance
-    const batch = nonFrontLines.map(feature =>
-      this.prepareNonFrontLine(feature)
-    );
-
-    batch.forEach(({ sources, layers }) => {
-      sources.forEach(({ id, data }) => {
-        if (!this.map.getSource(id)) {
-          this.map.addSource(id, data);
-        }
-      });
-
-      layers.forEach(layer => {
-        if (!this.map.getLayer(layer.id)) {
-          this.map.addLayer(layer);
-        }
-      });
-    });
-  }
-
-  prepareNonFrontLine(feature) {
-    const sourceId = feature.sourceId || `non-front-${feature._id || Date.now()}`;
-    const sources = [];
-    const layers = [];
-
-    // Prepare main line
-    const geojsonFeature = {
-      type: 'Feature',
-      geometry: feature.geometry,
-      properties: feature.properties || {},
-      id: feature._id,
-    };
-
-    const waveHeight = feature.properties?.labelValue || 0;
-    const isDashed = waveHeight < WAVE_HEIGHT_THRESHOLD;
-
-    sources.push({
-      id: sourceId,
-      data: { type: 'geojson', data: geojsonFeature },
-    });
-
-    layers.push({
-      id: sourceId,
-      type: 'line',
-      source: sourceId,
-      slot: 'top',
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round',
-      },
-      paint: {
-        'line-color': this.lineColor,
-        'line-opacity': 0.6,
-        'line-width': 3,
-        'line-dasharray': isDashed ? [0.5, 0.5] : [],
-        'line-blur': 0.3,
-      },
-      filter: ['==', '$type', 'LineString'],
-    });
-
-    // Prepare labels
-    const labelData = this.prepareLabelData(feature, sourceId);
-    sources.push(...labelData.sources);
-    layers.push(...labelData.layers);
-
-    return { sources, layers };
-  }
-
-  prepareLabelData(feature, sourceId) {
-    const coords = feature.geometry?.coordinates;
-    if (!Array.isArray(coords) || coords.length < 2) {
-      return { sources: [], layers: [] };
-    }
-
-    const props = feature.properties || {};
-    const labelValue = String(props.labelValue || feature.name || 'Label');
-    const closedMode = props.closedMode;
-
-    const points = closedMode
-      ? [coords[0]]
-      : [coords[0], coords[coords.length - 1]];
-
-    const sources = [];
-    const layers = [];
-
-    points.forEach((coord, i) => {
-      const labelSourceId = `${sourceId}-${i}`;
-      const labelLayerId = `${sourceId}-${i}`;
-
-      sources.push({
-        id: labelSourceId,
-        data: {
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: [{
-              type: 'Feature',
-              id: `${feature._id}-${i}`,
-              geometry: { type: 'Point', coordinates: coord },
-              properties: { text: labelValue },
-            }],
-          },
-        },
-      });
-
-      layers.push({
-        id: labelLayerId,
-        type: 'symbol',
-        source: labelSourceId,
-        slot: 'top',
-        layout: {
-          'text-field': ['get', 'text'],
-          'text-size': 18,
-          'text-anchor': 'bottom',
-          'text-offset': [0, 0.5],
-        },
-        paint: {
-          'text-color': this.textColor,
-          'text-halo-width': 2,
-          'text-halo-color': this.isDarkMode ? '#19b8b7' : '#ffffff',
-        },
-      });
-    });
-
-    return { sources, layers };
-  }
-
-  renderFrontLines(frontLines) {
-    frontLines.forEach(feature => {
-      const sourceId = feature.sourceId || `front-${feature._id || Date.now()}`;
-      const bgLayerId = `${sourceId}_bg`;
-      const dashLayerId = `${sourceId}_dash`;
-
-      if (!this.map.getSource(sourceId)) {
-        this.map.addSource(sourceId, {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [feature] },
-        });
-      }
-
-      if (!this.map.getLayer(bgLayerId)) {
-        this.map.addLayer({
-          id: bgLayerId,
-          type: 'line',
-          source: sourceId,
-          slot: 'top',
-          paint: {
-            'line-color': '#0000FF',
-            'line-width': 6,
-            'line-opacity': 0.8,
-          },
-        });
-      }
-
-      if (!this.map.getLayer(dashLayerId)) {
-        this.map.addLayer({
-          id: dashLayerId,
-          type: 'line',
-          source: sourceId,
-          slot: 'top',
-          paint: {
-            'line-color': '#FF0000',
-            'line-width': 6,
-            'line-dasharray': [0, 4, 3],
-          },
-        });
-      }
-    });
-  }
-}
-
-// === Image Loader ===
-class ImageLoader {
-  constructor(map) {
-    this.map = map;
-    this.loadedImages = new Set();
-  }
-
-  async loadAll() {
-    const imagePromises = [
-      ...MARKER_IMAGES.map(id =>
-        this.loadSingle(id, `/${id.replace('_', '')}.png`)
-      ),
-      ...WIND_BARB_IMAGES.map(id =>
-        this.loadSingle(id, `/barbs/${id}.svg`)
-      ),
-    ];
-
-    await Promise.allSettled(imagePromises);
-  }
-
-  async loadSingle(id, url) {
-    if (this.loadedImages.has(id)) return;
-
-    try {
-      await loadImage(this.map, id, url);
-      this.loadedImages.add(id);
-    } catch (error) {
-      console.warn(`Failed to load image ${id}:`, error);
-    }
-  }
-}
-
-// === Main Setup Function ===
-export async function setupMap({
-  mapRef,
-  setDrawInstance,
-  setMapLoaded,
-  setSelectedPoint,
-  setShowTitleModal,
-  setLineCount,
-  initialFeatures = [],
-  logger,
-  setLoading,
-  selectedToolRef,
-  setCapturedImages,
-  isDarkMode,
-}) {
-  if (!map) {
-    console.warn('No map instance provided');
-    return () => { };
-  }
-
-  setLoading?.(true);
-
-  // Initialize theme
-  const theme = {
-    lineColor: isDarkMode ? '#ffffff' : '#000000',
-    textColor: isDarkMode ? '#ffffff' : '#000000',
-    isDarkMode,
-  };
-
-  // Initialize draw control
-  const draw = initDrawControl(map);
-  window.drawInstance = draw; // Store globally for classifier
-  setDrawInstance(draw);
-
-  // Setup base layers
-  addHimawariLayer(map);
-  loadCustomImages(map);
-  initTyphoonLayer(map);
-  await addWindSource(map, isDarkMode);
-  await addWindLayer(map, isDarkMode);
-
-  // Load images asynchronously
-  const imageLoader = new ImageLoader(map);
-  imageLoader.loadAll();
-
-  // Process features
-  const featuresArray = Array.isArray(initialFeatures)
-    ? initialFeatures
-    : initialFeatures?.features || [];
-
-  const sourceIds = featuresArray.map(f => f.sourceId);
-  setGlobalSourceIds(sourceIds);
-  const classifier = new FeatureClassifier();
-  const { markerPoints, frontLines, nonFrontLines, totalLineCount } =
-    classifier.classify(featuresArray);
-
-  setLineCount?.(totalLineCount);
-
-  // Render features
-  const markerRenderer = new MarkerRenderer(mapRef);
-  markerRenderer.renderAll(markerPoints);
-
-  const lineRenderer = new LineRenderer(map, theme);
-  lineRenderer.renderNonFrontLines(nonFrontLines);
-  lineRenderer.renderFrontLines(frontLines);
-
-  // Apply layer visibility
-  const visibilityManager = new LayerVisibilityManager(map);
-  visibilityManager.applyFromLocalStorage();
-
-  // Setup draw event handler
-  const handleDrawCreate = (e) => {
-    const feature = e.features[0];
-
-    if (feature?.geometry.type === 'Point') {
-      const [lng, lat] = feature.geometry.coordinates;
-      setSelectedPoint({ lng, lat });
-
-      const selectedType = selectedToolRef?.current || '';
-
-      if (!['less_1', 'text_note'].includes(selectedType.toLowerCase())) {
-        setShowTitleModal(true);
-      }
-
-      draw.delete(feature.id);
-    }
-  };
-
-  map.on('draw.create', handleDrawCreate);
-
-  // Handle map ready
-  map.once('render', () => {
-    setLoading?.(false);
-    setMapLoaded(true);
-    setGlobalMapLoaded(true);
-    logger?.info('Map setup complete with initial features.');
-
-  });
-
-  // Return cleanup function
-  return function cleanup() {
-    map.off('draw.create', handleDrawCreate);
-    delete window.drawInstance;
-  };
-}
+function getIdString(value) { if (!value) return ''; if (typeof value === 'string') return value; if (typeof value === 'number') return String(value); if (value._id) return String(value._id); if (value.id) return String(value.id); if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString()); return ''; }
+function getAnnotationSourceId(feature) { const props = feature?.properties || {}; return getIdString(feature?.sourceId || props.sourceId || props.stableId || props.annotationId || feature?._id); }
+function getFeatureFrontType(feature) { const props = feature?.properties || {}; const rawType = String(props.frontType || props.front_type || feature?.frontType || '').toLowerCase(); if (FRONT_STYLES[rawType]) return rawType; const name = `${feature?.name || ''} ${props.name || ''} ${props.title || ''}`.toLowerCase(); if (name.includes('warm')) return 'warm'; if (name.includes('stationary')) return 'stationary'; if (name.includes('occluded')) return 'occluded'; return 'cold'; }
+function fixMalformedLineString(coordinates) { if (!Array.isArray(coordinates)) return coordinates; if (coordinates.length === 1 && Array.isArray(coordinates[0]) && Array.isArray(coordinates[0][0])) return coordinates[0]; return coordinates; }
+function getValidCoordinates(geometry) { const coords = geometry?.coordinates; return Array.isArray(coords) && coords.length ? coords : null; }
+function markerLayerId(feature) { const props = feature?.properties || {}; const markerType = props.markerType || props.type; const name = feature?.name || props.name || props.title || props.labelValue; if (!MARKER_TYPES.includes(markerType) || !name) return null; return props.mapLayerId || `${markerType}_${name}`; }
+function getAnnotationArtifactIds(feature) { const props = feature?.properties || {}; return Array.from(new Set([getAnnotationSourceId(feature), props.sourceId, props.stableId, props.annotationId, props.mapLayerId, markerLayerId(feature)].map(getIdString).filter(Boolean))); }
+function safeRemoveLayer(map, id) { if (id && map.getLayer(id)) map.removeLayer(id); }
+function safeRemoveSource(map, id) { if (id && map.getSource(id)) map.removeSource(id); }
+function removeAnnotationArtifacts(map, id) { ['', '-0', '-1', '_bg', '_dash', '_secondary', '_triangles', '_circles', '_frontSymbols', '_frontSymbolOutline'].forEach((suffix) => safeRemoveLayer(map, `${id}${suffix}`)); ['', '-0', '-1', '_frontSymbolSource', '_stationarySegmentSource'].forEach((suffix) => safeRemoveSource(map, `${id}${suffix}`)); removeMarkerDrag(id); }
+function pruneStaleAnnotationArtifacts(map, currentFeatures) { const currentIds = new Set(currentFeatures.flatMap(getAnnotationArtifactIds)); Array.from(renderedAnnotationIds).forEach((id) => { if (!currentIds.has(id)) { removeAnnotationArtifacts(map, id); renderedAnnotationIds.delete(id); } }); currentIds.forEach((id) => renderedAnnotationIds.add(id)); }
+function finishMapSetup({ setLoading, setMapLoaded, logger }) { setLoading?.(false); setMapLoaded?.(true); setGlobalMapLoaded(true); logger?.info('Map setup complete with initial features.'); }
+const waitForMapStyle = (map) => new Promise((resolve) => { if (!map || map.isStyleLoaded?.()) return resolve(); let resolved = false; const done = () => { if (resolved) return; resolved = true; resolve(); }; map.once?.('style.load', done); map.once?.('load', done); window.setTimeout(done, 750); });
+const toLngLat = (map, x, y) => { const p = map.unproject([x, y]); return [p.lng, p.lat]; };
+function triangleCoordinates(map, x, y, ux, uy, nx, ny, side) { const s = FRONT_TRIANGLE_SIZE; return [[toLngLat(map, x - ux * s, y - uy * s), toLngLat(map, x + ux * s, y + uy * s), toLngLat(map, x + nx * side * s * 1.35, y + ny * side * s * 1.35), toLngLat(map, x - ux * s, y - uy * s)]]; }
+function semicircleCoordinates(map, x, y, ux, uy, nx, ny, side) { const r = FRONT_SYMBOL_RADIUS; const points = []; for (let i = 0; i <= 12; i += 1) { const theta = Math.PI - (Math.PI * i) / 12; points.push(toLngLat(map, x + ux * r * Math.cos(theta) + nx * side * r * Math.sin(theta), y + uy * r * Math.cos(theta) + ny * side * r * Math.sin(theta))); } points.push(toLngLat(map, x - ux * r, y - uy * r)); return [points]; }
+function buildShapeFeature(map, symbol, x, y, ux, uy, nx, ny) { const shapeCoordinates = symbol.kind === 'triangle' ? triangleCoordinates(map, x, y, ux, uy, nx, ny, symbol.side) : semicircleCoordinates(map, x, y, ux, uy, nx, ny, symbol.side); return { type: 'Feature', geometry: { type: 'Polygon', coordinates: shapeCoordinates }, properties: { color: symbol.color } }; }
+function buildScreenPath(map, coordinates) { const points = (coordinates || []).map((coord) => map.project(coord)); const segments = []; let total = 0; for (let i = 0; i < points.length - 1; i += 1) { const start = points[i]; const end = points[i + 1]; const dx = end.x - start.x; const dy = end.y - start.y; const len = Math.hypot(dx, dy); if (len < 1) continue; segments.push({ start, dx, dy, len, startDistance: total }); total += len; } return { segments, total }; }
+function pointAtDistance(path, distance) { if (!path.segments.length) return null; const clamped = Math.min(Math.max(distance, 0), path.total); const segment = path.segments.find((item) => clamped <= item.startDistance + item.len) || path.segments[path.segments.length - 1]; const local = Math.min(Math.max(clamped - segment.startDistance, 0), segment.len); const t = segment.len ? local / segment.len : 0; const ux = segment.dx / segment.len; const uy = segment.dy / segment.len; return { x: segment.start.x + segment.dx * t, y: segment.start.y + segment.dy * t, ux, uy, nx: -uy, ny: ux }; }
+function buildFrontSymbolFeatures(map, coordinates, frontType) { const style = FRONT_STYLES[getFeatureFrontType({ properties: { frontType } })] || FRONT_STYLES.cold; const path = buildScreenPath(map, coordinates); const features = []; if (!path.total) return features; let symbolIndex = 0; for (let distance = style.spacing; distance < path.total; distance += style.spacing) { const point = pointAtDistance(path, distance); const symbol = style.symbols[symbolIndex % style.symbols.length]; if (point) features.push(buildShapeFeature(map, symbol, point.x, point.y, point.ux, point.uy, point.nx, point.ny)); symbolIndex += 1; } return features; }
+function buildStationarySegmentFeatures(map, coordinates) { const path = buildScreenPath(map, coordinates); const features = []; if (!path.total) return features; for (let startDistance = 0, index = 0; startDistance < path.total; startDistance += STATIONARY_SEGMENT_LENGTH, index += 1) { const endDistance = Math.min(path.total, startDistance + STATIONARY_SEGMENT_LENGTH); const start = pointAtDistance(path, startDistance); const end = pointAtDistance(path, endDistance); if (!start || !end || endDistance <= startDistance) continue; features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [toLngLat(map, start.x, start.y), toLngLat(map, end.x, end.y)] }, properties: { color: STATIONARY_SEGMENT_COLORS[index % STATIONARY_SEGMENT_COLORS.length] } }); } return features; }
+function buildStationarySymbolFeatures(map, coordinates) { const path = buildScreenPath(map, coordinates); const features = []; if (!path.total) return features; for (let startDistance = 0, index = 0; startDistance < path.total; startDistance += STATIONARY_SEGMENT_LENGTH, index += 1) { const endDistance = Math.min(path.total, startDistance + STATIONARY_SEGMENT_LENGTH); if (endDistance - startDistance < STATIONARY_SEGMENT_LENGTH * 0.5) continue; const point = pointAtDistance(path, (startDistance + endDistance) / 2); const symbol = STATIONARY_SEGMENT_SYMBOLS[index % STATIONARY_SEGMENT_SYMBOLS.length]; if (point) features.push(buildShapeFeature(map, symbol, point.x, point.y, point.ux, point.uy, point.nx, point.ny)); } return features; }
+class LayerVisibilityManager { constructor(map) { this.map = map; } applyFromLocalStorage(config = LAYER_VISIBILITY_CONFIG) { config.forEach(({ key, ids }) => { const visibility = localStorage.getItem(key) === 'true' ? 'visible' : 'none'; ids.forEach(id => { if (this.map.getLayer(id)) this.map.setLayoutProperty(id, 'visibility', visibility); }); }); } }
+class FeatureClassifier { constructor() { this.markerPoints = []; this.frontLines = []; this.nonFrontLines = []; this.totalLineCount = 0; } classify(featuresArray) { featuresArray.forEach(feature => this.processFeature(feature)); return { markerPoints: this.markerPoints, frontLines: this.frontLines, nonFrontLines: this.nonFrontLines, totalLineCount: this.totalLineCount }; } processFeature(feature) { const type = feature.geometry?.type; if (type === 'Point') this.markerPoints.push(feature); else if (type === 'Polygon') this.addPolygonToDraw(feature); else if (type === 'LineString') this.processLineString(feature); else console.warn('Unknown geometry type:', type); } addPolygonToDraw(feature) { if (window.drawInstance) window.drawInstance.add({ type: 'Feature', geometry: feature.geometry, properties: feature.properties || {} }); } processLineString(feature) { this.totalLineCount++; if (feature.geometry?.coordinates) feature.geometry.coordinates = fixMalformedLineString(feature.geometry.coordinates); if (feature.properties?.isFront) this.frontLines.push(feature); else this.nonFrontLines.push(feature); } }
+class MarkerRenderer { constructor(mapRef) { this.mapRef = mapRef; } renderAll(markerPoints) { markerPoints.forEach(point => this.renderPoint(point)); } renderPoint(point) { const coords = getValidCoordinates(point.geometry); if (!coords) return; let lng, lat; if (typeof coords[0] === 'number') [lng, lat] = coords; else if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') [lng, lat] = coords[0]; else if (Array.isArray(coords[0]) && Array.isArray(coords[0][0])) [lng, lat] = coords[0][0]; if (lng === undefined || lat === undefined) return; const props = point.properties || {}; saveMarker({ lat, lng }, this.mapRef, () => { }, props.markerType || props.type)(point.name || props.name || props.title || ''); } }
+class LineRenderer { constructor(map, theme) { this.map = map; this.lineColor = theme.lineColor; this.textColor = theme.textColor; this.isDarkMode = theme.isDarkMode; } upsertSource(id, data) { if (!id) return; const sourceData = data?.data || data; if (this.map.getSource(id)) this.map.getSource(id).setData(sourceData); else this.map.addSource(id, data); } upsertLayer(layer) { if (!layer?.id) return; if (!this.map.getLayer(layer.id)) this.map.addLayer(layer); if (this.map.getLayer(layer.id)) this.map.setLayoutProperty(layer.id, 'visibility', 'visible'); } renderNonFrontLines(nonFrontLines) { nonFrontLines.map(feature => this.prepareNonFrontLine(feature)).forEach(({ sources, layers }) => { sources.forEach(({ id, data }) => this.upsertSource(id, data)); layers.forEach(layer => this.upsertLayer(layer)); }); } prepareNonFrontLine(feature) { const sourceId = getAnnotationSourceId(feature) || `non-front-${feature._id || Date.now()}`; const geojsonFeature = { type: 'Feature', geometry: feature.geometry, properties: feature.properties || {}, id: feature._id }; const waveHeight = Number(feature.properties?.labelValue || 0); const linePaint = { 'line-color': this.lineColor, 'line-opacity': 0.6, 'line-width': 3, 'line-blur': 0.3 }; if (waveHeight < WAVE_HEIGHT_THRESHOLD) linePaint['line-dasharray'] = [0.5, 0.5]; const sources = [{ id: sourceId, data: { type: 'geojson', data: geojsonFeature } }]; const layers = [{ id: sourceId, type: 'line', source: sourceId, slot: 'top', layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'visible' }, paint: linePaint, filter: ['==', '$type', 'LineString'] }]; const labelData = this.prepareLabelData(feature, sourceId); return { sources: [...sources, ...labelData.sources], layers: [...layers, ...labelData.layers] }; } prepareLabelData(feature, sourceId) { const coords = feature.geometry?.coordinates; if (!Array.isArray(coords) || coords.length < 2) return { sources: [], layers: [] }; const props = feature.properties || {}; const labelValue = String(props.labelValue || feature.name || 'Label'); const points = props.closedMode ? [coords[0]] : [coords[0], coords[coords.length - 1]]; const sources = []; const layers = []; points.forEach((coord, i) => { sources.push({ id: `${sourceId}-${i}`, data: { type: 'geojson', data: { type: 'FeatureCollection', features: [{ type: 'Feature', id: `${feature._id}-${i}`, geometry: { type: 'Point', coordinates: coord }, properties: { text: labelValue } }] } } }); layers.push({ id: `${sourceId}-${i}`, type: 'symbol', source: `${sourceId}-${i}`, slot: 'top', layout: { 'text-field': ['get', 'text'], 'text-size': 18, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], visibility: 'visible' }, paint: { 'text-color': this.textColor, 'text-halo-width': 2, 'text-halo-color': this.isDarkMode ? '#19b8b7' : '#ffffff' } }); }); return { sources, layers }; } addFrontLineLayer(layerId, sourceId, paint, lineCap = 'round') { this.upsertLayer({ id: layerId, type: 'line', source: sourceId, layout: { 'line-join': 'round', 'line-cap': lineCap, visibility: 'visible' }, paint }); } renderFrontLines(frontLines) { frontLines.forEach(feature => { try { const sourceId = getAnnotationSourceId(feature) || `front-${feature._id || Date.now()}`; const data = { type: 'FeatureCollection', features: [feature] }; const frontType = getFeatureFrontType(feature); const style = FRONT_STYLES[frontType] || FRONT_STYLES.cold; this.upsertSource(sourceId, { type: 'geojson', data }); ['_dash', '_secondary', '_triangles', '_circles', '_frontSymbols', '_frontSymbolOutline'].forEach((suffix) => safeRemoveLayer(this.map, `${sourceId}${suffix}`)); safeRemoveSource(this.map, `${sourceId}_frontSymbolSource`); safeRemoveSource(this.map, `${sourceId}_stationarySegmentSource`); if (frontType === 'stationary') { this.map.addSource(`${sourceId}_stationarySegmentSource`, { type: 'geojson', data: { type: 'FeatureCollection', features: buildStationarySegmentFeatures(this.map, feature.geometry?.coordinates) } }); this.addFrontLineLayer(`${sourceId}_dash`, `${sourceId}_stationarySegmentSource`, { 'line-color': ['get', 'color'], 'line-width': style.lineWidth, 'line-opacity': 1 }, 'butt'); } else { this.addFrontLineLayer(`${sourceId}_dash`, sourceId, { 'line-color': style.color, 'line-width': style.lineWidth, 'line-opacity': 1 }); } this.map.addSource(`${sourceId}_frontSymbolSource`, { type: 'geojson', data: { type: 'FeatureCollection', features: frontType === 'stationary' ? buildStationarySymbolFeatures(this.map, feature.geometry?.coordinates) : buildFrontSymbolFeatures(this.map, feature.geometry?.coordinates, frontType) } }); this.upsertLayer({ id: `${sourceId}_frontSymbols`, type: 'fill', source: `${sourceId}_frontSymbolSource`, paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 1 } }); } catch (error) { console.error('[surface-front-render-error]', feature?.sourceId || feature?.properties?.sourceId, error); } }); } }
+export async function syncAnnotationFeaturesToMap(map, features = [], { mapRef, isDarkMode = false } = {}) { if (!map) return; await waitForMapStyle(map); const featuresArray = Array.isArray(features) ? features : features?.features || []; const theme = { lineColor: isDarkMode ? '#ffffff' : '#000000', textColor: isDarkMode ? '#ffffff' : '#000000', isDarkMode }; const classifier = new FeatureClassifier(); const { markerPoints, frontLines, nonFrontLines } = classifier.classify(featuresArray); if (mapRef) new MarkerRenderer(mapRef).renderAll(markerPoints); const lineRenderer = new LineRenderer(map, theme); lineRenderer.renderNonFrontLines(nonFrontLines); lineRenderer.renderFrontLines(frontLines); pruneStaleAnnotationArtifacts(map, featuresArray); }
+class ImageLoader { constructor(map) { this.map = map; this.loadedImages = new Set(); } async loadAll() { await Promise.allSettled([...MARKER_IMAGES.map(id => this.loadSingle(id, `/${id.replace('_', '')}.png`)), ...WIND_BARB_IMAGES.map(id => this.loadSingle(id, `/barbs/${id}.svg`))]); } async loadSingle(id, url) { if (this.loadedImages.has(id)) return; try { await loadImage(this.map, id, url); this.loadedImages.add(id); } catch (error) { console.warn(`Failed to load image ${id}:`, error); } } }
+export async function setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures = [], logger, setLoading, selectedToolRef, setCapturedImages, isDarkMode }) { if (!map) { console.warn('No map instance provided'); setLoading?.(false); return () => { }; } setLoading?.(true); let setupFinished = false; const completeSetupOnce = () => { if (setupFinished) return; setupFinished = true; finishMapSetup({ setLoading, setMapLoaded, logger }); }; try { const draw = initDrawControl(map); window.drawInstance = draw; setDrawInstance(draw); addHimawariLayer(map); loadCustomImages(map); initTyphoonLayer(map); await addWindSource(map, isDarkMode); await addWindLayer(map, isDarkMode); new ImageLoader(map).loadAll(); const featuresArray = Array.isArray(initialFeatures) ? initialFeatures : initialFeatures?.features || []; setGlobalSourceIds(featuresArray.map(f => getAnnotationSourceId(f)).filter(Boolean)); const { totalLineCount } = new FeatureClassifier().classify(featuresArray); setLineCount?.(totalLineCount); await syncAnnotationFeaturesToMap(map, featuresArray, { mapRef, isDarkMode }); new LayerVisibilityManager(map).applyFromLocalStorage(); const handleDrawCreate = (e) => { const feature = e.features[0]; if (feature?.geometry.type === 'Point') { const [lng, lat] = feature.geometry.coordinates; setSelectedPoint({ lng, lat }); const selectedType = selectedToolRef?.current || ''; if (!['less_1', 'text_note'].includes(selectedType.toLowerCase())) setShowTitleModal(true); draw.delete(feature.id); } }; map.on('draw.create', handleDrawCreate); map.once('render', completeSetupOnce); window.setTimeout(completeSetupOnce, 250); return function cleanup() { map.off('draw.create', handleDrawCreate); delete window.drawInstance; }; } catch (error) { console.error('[mapSetup] Failed to setup map:', error); completeSetupOnce(); return () => { }; } }

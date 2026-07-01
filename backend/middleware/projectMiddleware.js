@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Project from '../models/Project.js';
+import { canAccessProject } from '../utils/forecastPackageAccess.js';
 
 const isOwnerOrAdmin = async (req, res, next) => {
   try {
@@ -15,14 +16,11 @@ const isOwnerOrAdmin = async (req, res, next) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const userId = req.user.id;
-    const isAdmin = req.user.role === 'admin';
-
-    if (project.owner.toString() !== userId && !isAdmin) {
-      return res.status(403).json({ message: 'Access denied. Not the owner or admin.' });
+    const hasAccess = await canAccessProject(req.user, project);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Access denied. Not the owner, admin, or assigned forecast package chart forecaster.' });
     }
 
-    // Attach project to request object if needed later
     req.project = project;
     next();
   } catch (error) {

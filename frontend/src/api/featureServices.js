@@ -7,19 +7,33 @@ function getCanonicalProjectId(projectId) {
   return String(projectId || '').split(':')[0];
 }
 
-// ── Shared session-expired handler ────────────────────────────────────────────
+async function getErrorMessage(response, fallback) {
+  try {
+    const errorData = await response.json();
+    return errorData?.message || errorData?.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 async function handleSessionExpired() {
   await showSessionModal({
-    variant:      'warning',
-    title:        'Session Expired',
-    message:      'Your session has timed out. Please log in again to continue.',
+    variant: 'warning',
+    title: 'Session Expired',
+    message: 'Your session has timed out. Please log in again to continue.',
     confirmLabel: 'Go to Login',
   });
   window.location.href = '/login';
 }
 
-// ── Feature API ───────────────────────────────────────────────────────────────
+async function throwFeatureRequestError(response, fallbackMessage) {
+  if (response.status === 401) {
+    await handleSessionExpired();
+    throw new Error('Session expired');
+  }
+
+  throw new Error(await getErrorMessage(response, fallbackMessage));
+}
 
 export const deleteFeature = async (sourceId) => {
   try {
@@ -32,8 +46,7 @@ export const deleteFeature = async (sourceId) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to delete feature');
+      await throwFeatureRequestError(response, 'Failed to delete feature');
     }
 
     return response.json();
@@ -41,6 +54,49 @@ export const deleteFeature = async (sourceId) => {
     console.error('[ERROR] Failed to delete feature:', error);
     throw error;
   }
+};
+
+export const requestFeatureChange = async (sourceId, payload) => {
+  const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/request-change`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    await throwFeatureRequestError(response, 'Failed to send annotation request');
+  }
+
+  return response.json();
+};
+
+export const approveFeatureChangeRequest = async (notificationId) => {
+  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    await throwFeatureRequestError(response, 'Failed to approve annotation request');
+  }
+
+  return response.json();
+};
+
+export const declineFeatureChangeRequest = async (notificationId) => {
+  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/decline`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    await throwFeatureRequestError(response, 'Failed to decline annotation request');
+  }
+
+  return response.json();
 };
 
 export const createFeature = async (feature) => {
@@ -57,7 +113,7 @@ export const createFeature = async (feature) => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to save feature');
+      throw new Error(data.error || data.message || 'Failed to save feature');
     }
 
     return data;
@@ -80,14 +136,7 @@ export const fetchFeatures = async (projectId) => {
     });
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        await handleSessionExpired(); // ← styled modal, then redirect
-        return;
-      }
-
-      const errorData = await response.json();
-      console.error('[ERROR] Failed to fetch features:', response.status, errorData);
-      throw new Error('Failed to fetch features');
+      await throwFeatureRequestError(response, 'Failed to fetch features');
     }
 
     return await response.json();
@@ -113,18 +162,7 @@ export const fetchProjectFeatureCollection = async (projectId) => {
     );
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        await handleSessionExpired(); // ← styled modal, then redirect
-        return;
-      }
-
-      const errorData = await response.json();
-      console.error(
-        '[ERROR] Failed to fetch project FeatureCollection:',
-        response.status,
-        errorData
-      );
-      throw new Error(errorData.error || 'Failed to fetch project features');
+      await throwFeatureRequestError(response, 'Failed to fetch project features');
     }
 
     return await response.json();
@@ -156,7 +194,7 @@ export async function updateFeatureNameAPI(layerId, newName) {
     } else {
       console.error('Error:', err.message);
     }
-    throw new Error('Failed to update feature name');
+    throw new Error(err.response?.data?.message || 'Failed to update feature name');
   }
 }
 
@@ -169,8 +207,22 @@ export async function updateFeatureCoordinates(sourceId, coordinates) {
   });
 
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || 'Failed to update coordinates');
+    await throwFeatureRequestError(response, 'Failed to update coordinates');
+  }
+
+  return response.json();
+}
+
+export async function updateFeatureStyle(sourceId, style) {
+  const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/style`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ style }),
+  });
+
+  if (!response.ok) {
+    await throwFeatureRequestError(response, 'Failed to update annotation style');
   }
 
   return response.json();

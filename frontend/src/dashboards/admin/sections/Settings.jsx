@@ -1,241 +1,197 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect } from 'react';
+import { RotateCcw, Save, Undo2, Redo2 } from 'lucide-react';
 
 import useSettings from './settings/hooks/useSettings';
 
 import TabBar from './settings/components/TabBar';
 import SaveBar from './settings/components/ui/SaveBar';
 
+import OperationsTab from './settings/components/tabs/OperationsTab';
+import ForecasterWorkspaceTab from './settings/components/tabs/ForecasterWorkspaceTab';
+import MapViewSettingsTab from './settings/components/tabs/MapViewSettingsTab';
+import AdminReviewTab from './settings/components/tabs/AdminReviewTab';
 import GeneralTab from './settings/components/tabs/GeneralTab';
 import AboutTab from './settings/components/tabs/AboutTab';
 import ContactTab from './settings/components/tabs/ContactTab';
 
-import { ensureIdsInSettings } from "./settings/utils/ensureIds";
-import { useUndoRedoState } from "./settings/hooks/useUndoRedoState";
+import { SETTINGS_GROUPS, TABS } from './settings/constants/tabs';
+import { ensureIdsInSettings } from './settings/utils/ensureIds';
+import { useUndoRedoState } from './settings/hooks/useUndoRedoState';
 
+const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-/* =========================================================
-   1️⃣ PAGE REGISTRY (ADD NEW PAGES HERE ONLY)
-========================================================= */
-
-const pagesConfig = {
-  general: { label: "General", component: GeneralTab },
-  about:   { label: "About",   component: AboutTab   },
-  contact: { label: "Contact", component: ContactTab },
-
-  // Example future page:
-  // faq: { label: "FAQ", component: FAQTab },
+const COMPONENTS = {
+  operations: OperationsTab,
+  forecasterWorkspace: ForecasterWorkspaceTab,
+  mapView: MapViewSettingsTab,
+  adminReview: AdminReviewTab,
+  general: GeneralTab,
+  about: AboutTab,
+  contact: ContactTab,
 };
 
+const pagesConfig = TABS.reduce((acc, tab) => {
+  acc[tab.id] = { ...tab, component: COMPONENTS[tab.id] };
+  return acc;
+}, {});
 
-/* ========================================================= */
+function ActionButton({ icon: Icon, children, disabled, onClick, isDarkMode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm backdrop-blur-xl transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+        'focus:outline-none focus:ring-2 focus:ring-cyan-400/50',
+        isDarkMode
+          ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
+          : 'border-white/80 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-950',
+      )}
+    >
+      <Icon size={15} />
+      {children}
+    </button>
+  );
+}
 
 const SettingsSection = ({ isDarkMode }) => {
-
   const dark = isDarkMode;
 
   const {
     activeTab, setActiveTab,
+    operationsData,
+    forecasterWorkspaceData,
+    mapViewData,
+    adminReviewData,
     generalData,
     aboutData,
     contactData,
     saving,
     status,
-    dataLoaded,         // ← true once all API calls resolve
+    dataLoaded,
     handleSave,
     handleReset,
   } = useSettings();
 
-
-  /* =========================================================
-     2️⃣ BUILD RAW SETTINGS OBJECT DYNAMICALLY
-  ========================================================= */
-
   const rawSettings = {
+    operations: operationsData,
+    forecasterWorkspace: forecasterWorkspaceData,
+    mapView: mapViewData,
+    adminReview: adminReviewData,
     general: generalData,
-    about:   aboutData,
+    about: aboutData,
     contact: contactData,
   };
 
-
-  /* =========================================================
-     3️⃣ NORMALIZE IDS FOR ALL PAGES
-  ========================================================= */
-
   const combinedInitial = useMemo(() => {
-
     const normalized = {};
 
-    Object.keys(pagesConfig).forEach(key => {
+    Object.keys(pagesConfig).forEach((key) => {
       normalized[key] = ensureIdsInSettings(rawSettings[key] || {});
     });
 
     return normalized;
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generalData, aboutData, contactData]);
-
-
-  /* =========================================================
-     4️⃣ GLOBAL HISTORY
-     Initialized with defaults; reset to real DB data once
-     dataLoaded flips to true (see effect below).
-  ========================================================= */
+  }, [operationsData, forecasterWorkspaceData, mapViewData, adminReviewData, generalData, aboutData, contactData]);
 
   const history = useUndoRedoState(combinedInitial, {
     maxHistory: 100,
     hotkeys: true,
   });
 
-  // When the async data finishes loading, replace the history baseline
-  // with the real server values so the user always sees DB data on mount.
   useEffect(() => {
     if (dataLoaded) {
       history.reset(combinedInitial);
     }
-    // Only run when dataLoaded transitions to true — not on subsequent edits.
-    // combinedInitial is intentionally omitted from deps here; its value at
-    // the moment dataLoaded becomes true is exactly what we want.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataLoaded]);
+  }, [dataLoaded, combinedInitial]);
 
   const allSettings = history.present;
 
-
-  /* =========================================================
-     5️⃣ GENERIC SETTER FACTORY
-  ========================================================= */
-
-  const makeSetter = key => updater =>
-    history.set(prev => ({
+  const makeSetter = (key) => (updater) =>
+    history.set((prev) => ({
       ...prev,
-      [key]: typeof updater === "function"
+      [key]: typeof updater === 'function'
         ? updater(prev[key])
-        : updater
+        : updater,
     }));
-
-
-  /* =========================================================
-     6️⃣ SAVE / RESET
-  ========================================================= */
 
   const onSave = () => handleSave(allSettings);
 
   const onReset = () => {
-    history.reset(combinedInitial);
     handleReset?.();
   };
 
-
-  /* =========================================================
-     7️⃣ ACTIVE TAB COMPONENT (dynamic)
-  ========================================================= */
-
-  const ActiveComponent = pagesConfig[activeTab]?.component;
-
-
-  /* =========================================================
-     UI
-  ========================================================= */
+  const activeConfig = pagesConfig[activeTab];
+  const activeGroup = SETTINGS_GROUPS.find((group) => group.id === activeConfig?.group);
+  const ActiveComponent = activeConfig?.component;
+  const pageSurface = dark
+    ? 'border-white/10 bg-slate-950/50 shadow-black/20'
+    : 'border-white/70 bg-white/70 shadow-slate-300/40';
+  const contentSurface = dark ? 'bg-slate-950' : 'bg-slate-50';
+  const text = dark ? 'text-white' : 'text-slate-950';
+  const muted = dark ? 'text-slate-400' : 'text-slate-500';
 
   return (
-    <div className={`rounded-2xl border overflow-hidden flex flex-col ${
-      dark
-        ? 'bg-slate-950 border-slate-800'
-        : 'bg-slate-50 border-slate-200'
-    }`}>
+    <div className="mx-auto max-w-[1500px] p-4 sm:p-6">
+      <section className={cn('overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl', pageSurface)}>
+        <header className={cn('border-b px-5 py-5 sm:px-6', dark ? 'border-white/10 bg-white/[0.03]' : 'border-white/70 bg-white/75')}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className={cn('text-xs font-black uppercase tracking-[0.16em]', dark ? 'text-cyan-200' : 'text-cyan-700')}>
+                Admin settings
+              </p>
+              <h2 className={cn('mt-2 text-2xl font-black tracking-tight', text)}>
+                Dashboard Settings Control Center
+              </h2>
+              <p className={cn('mt-1 max-w-3xl text-sm font-semibold leading-6', muted)}>
+                Select a work area first, then edit only the configurable copy, schedules, and public content for that area. Fixed forecast-package rules stay out of Settings.
+              </p>
+              {activeGroup && (
+                <div className={cn('mt-4 rounded-2xl border px-4 py-3', dark ? 'border-white/10 bg-white/[0.03]' : 'border-white/80 bg-white/70')}>
+                  <p className={cn('text-xs font-black uppercase tracking-[0.14em]', muted)}>Selected area</p>
+                  <p className={cn('mt-1 text-sm font-black', text)}>{activeGroup.label} · {activeConfig?.label}</p>
+                  <p className={cn('mt-1 text-xs font-semibold leading-5', muted)}>{activeGroup.description}</p>
+                </div>
+              )}
+            </div>
 
-      {/* HEADER */}
-      <div className={`px-6 py-5 border-b ${
-        dark
-          ? 'border-slate-800 bg-slate-900/50'
-          : 'border-slate-200 bg-white'
-      }`}>
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <ActionButton icon={Undo2} onClick={history.undo} disabled={!history.canUndo} isDarkMode={dark}>
+                Undo
+              </ActionButton>
+              <ActionButton icon={Redo2} onClick={history.redo} disabled={!history.canRedo} isDarkMode={dark}>
+                Redo
+              </ActionButton>
+              <ActionButton icon={RotateCcw} onClick={onReset} disabled={!dataLoaded || saving} isDarkMode={dark}>
+                Reset
+              </ActionButton>
+              <ActionButton icon={Save} onClick={onSave} disabled={!dataLoaded || saving} isDarkMode={dark}>
+                {saving ? 'Saving' : 'Save'}
+              </ActionButton>
+            </div>
+          </div>
+        </header>
 
-        <h3 className={`text-xl font-black tracking-tight ${
-          dark ? 'text-white' : 'text-slate-900'
-        }`}>
-          Settings
-        </h3>
+        <TabBar activeTab={activeTab} setActiveTab={setActiveTab} dark={dark} />
 
-        <p className={`mt-0.5 text-sm ${
-          dark ? 'text-slate-400' : 'text-slate-500'
-        }`}>
-          Manage public page content, branding, and system configuration.
-        </p>
-
-        {/* GLOBAL UNDO / REDO */}
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={history.undo}
-            disabled={!history.canUndo}
-            className="px-3 py-1 rounded bg-slate-700 text-white disabled:opacity-40"
-          >
-            Undo
-          </button>
-
-          <button
-            onClick={history.redo}
-            disabled={!history.canRedo}
-            className="px-3 py-1 rounded bg-slate-700 text-white disabled:opacity-40"
-          >
-            Redo
-          </button>
+        <div className={cn('min-h-[560px] p-4 sm:p-6', contentSurface)}>
+          {!dataLoaded ? (
+            <div className={cn('flex items-center justify-center rounded-2xl border py-24 text-sm font-semibold', dark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-white/80 bg-white/70 text-slate-500')}>
+              <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+              </svg>
+              Loading settings...
+            </div>
+          ) : ActiveComponent ? (
+            <ActiveComponent settings={allSettings[activeTab]} setSettings={makeSetter(activeTab)} dark={dark} />
+          ) : null}
         </div>
 
-      </div>
-
-
-      {/* TAB BAR */}
-      <TabBar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        dark={dark}
-        tabs={Object.entries(pagesConfig).map(([key, val]) => ({
-          id: key,
-          label: val.label
-        }))}
-      />
-
-
-      {/* TAB CONTENT — show a subtle loading state until DB data arrives */}
-      <div className={`flex-1 p-6 overflow-y-auto ${
-        dark ? 'bg-slate-950' : 'bg-slate-50'
-      }`}>
-
-        {!dataLoaded ? (
-          <div className={`flex items-center justify-center py-20 text-sm ${
-            dark ? 'text-slate-500' : 'text-slate-400'
-          }`}>
-            <svg
-              className="animate-spin mr-2 h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-            </svg>
-            Loading settings…
-          </div>
-        ) : ActiveComponent ? (
-          <ActiveComponent
-            settings={allSettings[activeTab]}
-            setSettings={makeSetter(activeTab)}
-            dark={dark}
-          />
-        ) : null}
-
-      </div>
-
-
-      {/* SAVE BAR */}
-      <SaveBar
-        onSave={onSave}
-        onReset={onReset}
-        saving={saving}
-        status={status}
-        dark={dark}
-      />
-
+        <SaveBar onSave={onSave} onReset={onReset} saving={saving} status={status} dark={dark} />
+      </section>
     </div>
   );
 };

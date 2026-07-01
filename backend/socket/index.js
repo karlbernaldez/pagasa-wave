@@ -5,10 +5,6 @@ import { createClient } from 'redis';
 import { verifySocketSession } from './socketAuth.js';
 import { logger } from '#utils/logger';
 
-// ─── Redis clients ────────────────────────────────────────────────────────────
-// Socket.io's Redis adapter requires two dedicated clients: one to publish,
-// one to subscribe. They must NOT be shared with other parts of the app.
-
 const createRedisClients = async () => {
   const opts = { url: process.env.REDIS_URL };
 
@@ -24,29 +20,14 @@ const createRedisClients = async () => {
   return { pub, sub };
 };
 
-// ─── Room helpers ──────────────────────────────────────────────────────────────
-// Each connected socket joins three deterministic rooms so that any server
-// instance can target the right clients without knowing which instance they
-// connected to.
-
 export const roomFor = {
   user: (userId) => `user:${userId}`,
   role: (role) => `role:${role}`,
   broadcast: () => 'broadcast',
+  forecastChartProject: (projectId) => `forecast-chart-project:${projectId}`,
 };
 
-// ─── Initialise ───────────────────────────────────────────────────────────────
-
-/**
- * Attach Socket.io to an existing HTTP server.
- * Returns the `io` instance so other modules (e.g. notificationService) can
- * emit events without importing the full server.
- *
- * @param {import('http').Server} httpServer
- * @returns {Promise<import('socket.io').Server>}
- */
 export const initSocket = async (httpServer) => {
-
   const { pub, sub } = await createRedisClients();
 
   const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
@@ -63,11 +44,9 @@ export const initSocket = async (httpServer) => {
   });
 
   io.adapter(createAdapter(pub, sub));
-
   io.use(verifySocketSession);
 
   io.on('connection', (socket) => {
-
     const { userId, role } = socket.data;
 
     socket.join([
@@ -76,19 +55,28 @@ export const initSocket = async (httpServer) => {
       roomFor.broadcast(),
     ]);
 
+    socket.on('forecast:join_project', (projectId) => {
+      if (!projectId) return;
+      socket.join(roomFor.forecastChartProject(String(projectId)));
+    });
+
+    socket.on('forecast:leave_project', (projectId) => {
+      if (!projectId) return;
+      socket.leave(roomFor.forecastChartProject(String(projectId)));
+    });
+
     logger.info('[Socket.io] client connected', {
       userId,
       role,
-      socketId: socket.id
+      socketId: socket.id,
     });
 
     socket.on('disconnect', (reason) => {
       logger.info('[Socket.io] client disconnected', {
         userId,
-        reason
+        reason,
       });
     });
-
   });
 
   return io;

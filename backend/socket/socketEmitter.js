@@ -1,40 +1,55 @@
 import { roomFor } from './index.js';
-import { logger }  from '#utils/logger';
-
-// ── Use globalThis to guarantee ONE shared io instance ────────────────────────
-// Node may load this module twice under different import paths (alias vs relative).
-// globalThis survives that and ensures setIo() and the emit helpers always
-// read/write the same reference.
 
 export const setIo = (io) => {
   globalThis.__socketIo = io;
 };
 
 const getIo = () => globalThis.__socketIo ?? null;
+const FORECAST_EMIT_DEDUPE_WINDOW_MS = 150;
+const recentForecastEmits = new Map();
 
-// ─── Event names ──────────────────────────────────────────────────────────────
-export const SOCKET_EVENTS = {
-  NOTIFICATION_NEW:      'notification:new',
-  NOTIFICATION_READ:     'notification:read',
-  NOTIFICATION_ALL_READ: 'notification:all_read',
+const getId = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value._id) return String(value._id);
+  if (value.id) return String(value.id);
+  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString());
+  return '';
 };
 
-// ─── Emit helpers ─────────────────────────────────────────────────────────────
-export const emitNewNotification = (notification) => {
-  const _io = getIo();
+const getPackageProjectIds = (forecastPackage) => (
+  Array.isArray(forecastPackage?.charts) ? forecastPackage.charts : []
+)
+  .map((chart) => getId(chart?.project))
+  .filter(Boolean);
 
-  if (!_io) {
-    console.warn('[socketEmitter] _io is null — setIo() not yet called');
-    return;
+function shouldEmitForecastEvent(key) {
+  const now = Date.now();
+  const lastAt = recentForecastEmits.get(key) || 0;
+  if (now - lastAt < FORECAST_EMIT_DEDUPE_WINDOW_MS) return false;
+
+  recentForecastEmits.set(key, now);
+
+  if (recentForecastEmits.size > 500) {
+    for (const [entryKey, entryAt] of recentForecastEmits.entries()) {
+      if (now - entryAt > 5000) recentForecastEmits.delete(entryKey);
+    }
   }
 
-  // Debug — remove after confirmed working
-  const roleRoom = _io.sockets.adapter.rooms.get(roomFor.role(notification.recipientRole));
-  console.log('[socketEmitter] emitNewNotification', {
-    recipientRole:    notification.recipientRole,
-    roleRoomSize:     roleRoom?.size ?? 0,
-    totalConnections: _io.sockets.sockets.size,
-  });
+  return true;
+}
+
+export const SOCKET_EVENTS = {
+  NOTIFICATION_NEW: 'notification:new',
+  NOTIFICATION_READ: 'notification:read',
+  NOTIFICATION_ALL_READ: 'notification:all_read',
+  FORECAST_CHART_UPDATED: 'forecast-chart:updated',
+  FORECAST_PACKAGE_UPDATED: 'forecast-package:updated',
+};
+
+export const emitNewNotification = (notification) => {
+  const _io = getIo();
+  if (!_io) return;
 
   const payload = { ...notification, unread: true };
 
@@ -60,4 +75,48 @@ export const emitAllNotificationsRead = (userId) => {
   const _io = getIo();
   if (!_io) return;
   _io.to(roomFor.user(String(userId))).emit(SOCKET_EVENTS.NOTIFICATION_ALL_READ);
+};
+
+export const emitForecastChartUpdated = (projectId, payload = {}) => {
+  const _io = getIo();
+  if (!_io || !projectId) return;
+
+  const eventPayload = {
+    projectId: String(projectId),
+    updatedAt: new Date().toISOString(),
+    ...payload,
+  };
+  const eventKey = `${SOCKET_EVENTS.FORECAST_CHART_UPDATED}:${eventPayload.projectId}:${eventPayload.action || ''}:${eventPayload.packageId || ''}`;
+  if (!shouldEmitForecastEvent(eventKey)) return;
+
+  _io.to(roomFor.forecastChartProject(String(projectId))).emit(SOCKET_EVENTS.FORECAST_CHART_UPDATED, eventPayload);
+};
+
+export const emitForecastPackageUpdated = (forecastPackage, payload = {}) => {
+  const _io = getIo();
+  const packageId = getId(forecastPackage);
+  if (!_io || !packageId) return;
+
+  const ownerId = getId(forecastPackage?.owner);
+  const projectIds = getPackageProjectIds(forecastPackage);
+  const eventPayload = {
+    packageId,
+    status: forecastPackage?.status,
+    projectIds,
+    updatedAt: new Date().toISOString(),
+    ...payload,
+  };
+  const eventKey = `${SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED}:${packageId}:${eventPayload.projectId || ''}:${eventPayload.action || ''}`;
+  if (!shouldEmitForecastEvent(eventKey)) return;
+
+  _io.to(roomFor.role('admin')).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
+  _io.to(roomFor.role('user')).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
+
+  if (ownerId) {
+    _io.to(roomFor.user(ownerId)).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
+  }
+
+  projectIds.forEach((projectId) => {
+    _io.to(roomFor.forecastChartProject(projectId)).emit(SOCKET_EVENTS.FORECAST_PACKAGE_UPDATED, eventPayload);
+  });
 };

@@ -1,86 +1,278 @@
-import { Stage, Layer, Line } from 'react-konva';
-import { useRef, useState, useEffect } from 'react';
+import { Stage, Layer, Line, RegularPolygon, Wedge } from 'react-konva';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import Swal from 'sweetalert2';
+import { CheckCircle2, CloudSun, GripHorizontal, RotateCcw, Snowflake, Waves } from 'lucide-react';
 import { createFeature } from '@/api/featureServices';
-import {
-  handlePointerDown,
-  handlePointerMove,
-  handlePointerUp,
-} from './frontUtils';
-import { downloadGeoJSON } from './frontUtils';
+import { useProjectId } from '@dashboards/forecaster/hooks/useStudio';
 
-const FlagCanvas = ({
-  mapRef,
-  drawCounter,
-  setDrawCounter,
-  setLayersRef,
-  closedMode,
-}) => {
+const COLORS = { cold: '#1d4ed8', warm: '#ef4444', occluded: '#7c3aed' };
+const FRONT_TYPES = {
+  cold: { label: 'Cold', fullLabel: 'Cold Front', color: COLORS.cold, lineWidth: 2.75, spacing: 40, icon: Snowflake, symbols: [{ kind: 'triangle', color: COLORS.cold, side: -1 }] },
+  warm: { label: 'Warm', fullLabel: 'Warm Front', color: COLORS.warm, lineWidth: 2.75, spacing: 40, icon: CloudSun, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }] },
+  stationary: { label: 'Stationary', fullLabel: 'Stationary Front', color: COLORS.cold, lineWidth: 2.5, spacing: 38, icon: Waves, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }] },
+  occluded: { label: 'Occluded', fullLabel: 'Occluded Front', color: COLORS.occluded, lineWidth: 2.75, spacing: 38, icon: CheckCircle2, symbols: [{ kind: 'semicircle', color: COLORS.occluded, side: -1 }, { kind: 'triangle', color: COLORS.occluded, side: -1 }] },
+};
+
+const PANEL_WIDTH = 430;
+const PANEL_HEIGHT = 146;
+const STORAGE_KEY = 'wavelab-surface-front-panel-position-v1';
+const MIN_POINT_DISTANCE = 3.5;
+const FRONT_SYMBOL_RADIUS = 6;
+const FRONT_TRIANGLE_SIZE = 7;
+const STATIONARY_SEGMENT_LENGTH = 26;
+const STATIONARY_SEGMENT_COLORS = [COLORS.warm, COLORS.cold];
+const STATIONARY_SEGMENT_SYMBOLS = [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }];
+
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+const normalizeFrontType = (frontType) => (FRONT_TYPES[frontType] ? frontType : 'cold');
+const getViewportWidth = () => (typeof window === 'undefined' ? 1440 : window.innerWidth);
+const getViewportHeight = () => (typeof window === 'undefined' ? 900 : window.innerHeight);
+const getDefaultPosition = () => ({ x: 300, y: 100 });
+const getSafePosition = (position) => ({ x: Math.min(Math.max(position.x, 16), Math.max(16, getViewportWidth() - PANEL_WIDTH - 16)), y: Math.min(Math.max(position.y, 72), Math.max(72, getViewportHeight() - PANEL_HEIGHT - 16)) });
+const getInitialPosition = () => {
+  try {
+    if (typeof window === 'undefined') return getSafePosition(getDefaultPosition());
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : null;
+    const next = Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y) ? parsed : getDefaultPosition();
+    return getSafePosition(next);
+  } catch {
+    return getSafePosition(getDefaultPosition());
+  }
+};
+const getMapContainerRect = (mapRef) => mapRef?.current?.getContainer?.()?.getBoundingClientRect?.() || { left: 0, top: 0, width: getViewportWidth(), height: getViewportHeight() };
+const getStageBounds = (mapRef) => { const rect = getMapContainerRect(mapRef); return { left: rect.left || 0, top: rect.top || 0, width: rect.width || getViewportWidth(), height: rect.height || getViewportHeight() }; };
+const getPointerPosition = (event) => event.target.getStage().getPointerPosition();
+const buildFrontName = (frontType) => FRONT_TYPES[normalizeFrontType(frontType)]?.fullLabel || 'Surface Front';
+const getDistanceFromLastPoint = (points, x, y) => { if (!Array.isArray(points) || points.length < 2) return Infinity; return Math.hypot(x - points[points.length - 2], y - points[points.length - 1]); };
+
+function addFrontLineLayer(map, layerId, sourceId, paint, lineCap = 'round') {
+  if (map.getLayer(layerId)) return;
+  map.addLayer({ id: layerId, type: 'line', source: sourceId, layout: { 'line-join': 'round', 'line-cap': lineCap, visibility: 'visible' }, paint });
+}
+
+function removeFrontLayers(map, sourceId) {
+  [`${sourceId}_dash`, `${sourceId}_secondary`, `${sourceId}_frontSymbols`, `${sourceId}_frontSymbolOutline`].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
+  [`${sourceId}_frontSymbolSource`, `${sourceId}_stationarySegmentSource`].forEach((id) => { if (map.getSource(id)) map.removeSource(id); });
+}
+
+const toLngLat = (map, x, y) => { const p = map.unproject([x, y]); return [p.lng, p.lat]; };
+
+function triangleCoordinates(map, x, y, ux, uy, nx, ny, side) {
+  const s = FRONT_TRIANGLE_SIZE;
+  return [[toLngLat(map, x - ux * s, y - uy * s), toLngLat(map, x + ux * s, y + uy * s), toLngLat(map, x + nx * side * s * 1.35, y + ny * side * s * 1.35), toLngLat(map, x - ux * s, y - uy * s)]];
+}
+
+function semicircleCoordinates(map, x, y, ux, uy, nx, ny, side) {
+  const r = FRONT_SYMBOL_RADIUS;
+  const points = [];
+  for (let i = 0; i <= 12; i += 1) {
+    const theta = Math.PI - (Math.PI * i) / 12;
+    points.push(toLngLat(map, x + ux * r * Math.cos(theta) + nx * side * r * Math.sin(theta), y + uy * r * Math.cos(theta) + ny * side * r * Math.sin(theta)));
+  }
+  points.push(toLngLat(map, x - ux * r, y - uy * r));
+  return [points];
+}
+
+function buildShapeFeature(map, symbol, x, y, ux, uy, nx, ny) {
+  const coordinates = symbol.kind === 'triangle' ? triangleCoordinates(map, x, y, ux, uy, nx, ny, symbol.side) : semicircleCoordinates(map, x, y, ux, uy, nx, ny, symbol.side);
+  return { type: 'Feature', geometry: { type: 'Polygon', coordinates }, properties: { color: symbol.color } };
+}
+
+function buildScreenPath(map, coordinates) {
+  const points = coordinates.map((coord) => map.project(coord));
+  const segments = [];
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const start = points[i];
+    const end = points[i + 1];
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) continue;
+    segments.push({ start, dx, dy, len, startDistance: total });
+    total += len;
+  }
+  return { segments, total };
+}
+
+function pointAtDistance(path, distance) {
+  if (!path.segments.length) return null;
+  const clamped = Math.min(Math.max(distance, 0), path.total);
+  const segment = path.segments.find((item) => clamped <= item.startDistance + item.len) || path.segments[path.segments.length - 1];
+  const local = Math.min(Math.max(clamped - segment.startDistance, 0), segment.len);
+  const t = segment.len ? local / segment.len : 0;
+  const ux = segment.dx / segment.len;
+  const uy = segment.dy / segment.len;
+  return { x: segment.start.x + segment.dx * t, y: segment.start.y + segment.dy * t, ux, uy, nx: -uy, ny: ux };
+}
+
+function buildFrontSymbolFeatures(map, coordinates, frontType) {
+  const style = FRONT_TYPES[normalizeFrontType(frontType)];
+  const path = buildScreenPath(map, coordinates || []);
+  const features = [];
+  if (!path.total) return features;
+  let symbolIndex = 0;
+  for (let distance = style.spacing; distance < path.total; distance += style.spacing) {
+    const point = pointAtDistance(path, distance);
+    const symbol = style.symbols[symbolIndex % style.symbols.length];
+    if (point) features.push(buildShapeFeature(map, symbol, point.x, point.y, point.ux, point.uy, point.nx, point.ny));
+    symbolIndex += 1;
+  }
+  return features;
+}
+
+function buildStationarySegmentFeatures(map, coordinates) {
+  const path = buildScreenPath(map, coordinates || []);
+  const features = [];
+  if (!path.total) return features;
+  for (let startDistance = 0, index = 0; startDistance < path.total; startDistance += STATIONARY_SEGMENT_LENGTH, index += 1) {
+    const endDistance = Math.min(path.total, startDistance + STATIONARY_SEGMENT_LENGTH);
+    const start = pointAtDistance(path, startDistance);
+    const end = pointAtDistance(path, endDistance);
+    if (!start || !end || endDistance <= startDistance) continue;
+    features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [toLngLat(map, start.x, start.y), toLngLat(map, end.x, end.y)] }, properties: { color: STATIONARY_SEGMENT_COLORS[index % STATIONARY_SEGMENT_COLORS.length] } });
+  }
+  return features;
+}
+
+function buildStationarySymbolFeatures(map, coordinates) {
+  const path = buildScreenPath(map, coordinates || []);
+  const features = [];
+  if (!path.total) return features;
+  for (let startDistance = 0, index = 0; startDistance < path.total; startDistance += STATIONARY_SEGMENT_LENGTH, index += 1) {
+    const endDistance = Math.min(path.total, startDistance + STATIONARY_SEGMENT_LENGTH);
+    if (endDistance - startDistance < STATIONARY_SEGMENT_LENGTH * 0.5) continue;
+    const point = pointAtDistance(path, (startDistance + endDistance) / 2);
+    const symbol = STATIONARY_SEGMENT_SYMBOLS[index % STATIONARY_SEGMENT_SYMBOLS.length];
+    if (point) features.push(buildShapeFeature(map, symbol, point.x, point.y, point.ux, point.uy, point.nx, point.ny));
+  }
+  return features;
+}
+
+function renderFrontLayers(map, sourceId, geojson, frontType) {
+  const frozenFrontType = normalizeFrontType(frontType);
+  const style = FRONT_TYPES[frozenFrontType];
+  const coordinates = geojson?.features?.[0]?.geometry?.coordinates || [];
+  removeFrontLayers(map, sourceId);
+  if (map.getSource(sourceId)) map.getSource(sourceId).setData(geojson); else map.addSource(sourceId, { type: 'geojson', data: geojson });
+  if (frozenFrontType === 'stationary') {
+    map.addSource(`${sourceId}_stationarySegmentSource`, { type: 'geojson', data: { type: 'FeatureCollection', features: buildStationarySegmentFeatures(map, coordinates) } });
+    addFrontLineLayer(map, `${sourceId}_dash`, `${sourceId}_stationarySegmentSource`, { 'line-color': ['get', 'color'], 'line-width': style.lineWidth, 'line-opacity': 1 }, 'butt');
+  } else {
+    addFrontLineLayer(map, `${sourceId}_dash`, sourceId, { 'line-color': style.color, 'line-width': style.lineWidth, 'line-opacity': 1 });
+  }
+  map.addSource(`${sourceId}_frontSymbolSource`, { type: 'geojson', data: { type: 'FeatureCollection', features: frozenFrontType === 'stationary' ? buildStationarySymbolFeatures(map, coordinates) : buildFrontSymbolFeatures(map, coordinates, frozenFrontType) } });
+  map.addLayer({ id: `${sourceId}_frontSymbols`, type: 'fill', source: `${sourceId}_frontSymbolSource`, paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 1 } });
+}
+
+function buildPreviewPath(points) {
+  const segments = [];
+  let total = 0;
+  for (let i = 0; i < points.length - 2; i += 2) {
+    const start = { x: points[i], y: points[i + 1] };
+    const dx = points[i + 2] - points[i];
+    const dy = points[i + 3] - points[i + 1];
+    const len = Math.hypot(dx, dy);
+    if (len < 1) continue;
+    segments.push({ start, dx, dy, len, startDistance: total });
+    total += len;
+  }
+  return { segments, total };
+}
+
+function previewPointAt(path, distance) {
+  if (!path.segments.length) return null;
+  const clamped = Math.min(Math.max(distance, 0), path.total);
+  const segment = path.segments.find((item) => clamped <= item.startDistance + item.len) || path.segments[path.segments.length - 1];
+  const local = Math.min(Math.max(clamped - segment.startDistance, 0), segment.len);
+  const t = segment.len ? local / segment.len : 0;
+  return { x: segment.start.x + segment.dx * t, y: segment.start.y + segment.dy * t, rotation: Math.atan2(segment.dy, segment.dx) * 180 / Math.PI };
+}
+
+function makePreviewSymbols(points, frontType) {
+  const style = FRONT_TYPES[normalizeFrontType(frontType)];
+  const path = buildPreviewPath(points || []);
+  const symbols = [];
+  if (!path.total) return symbols;
+  let symbolIndex = 0;
+  for (let distance = style.spacing; distance < path.total; distance += style.spacing) {
+    const point = previewPointAt(path, distance);
+    const symbol = style.symbols[symbolIndex % style.symbols.length];
+    if (point) symbols.push({ id: `${distance}-${symbolIndex}`, kind: symbol.kind, color: symbol.color, x: point.x, y: point.y, rotation: point.rotation + (symbol.kind === 'triangle' ? 90 : 0), side: symbol.side });
+    symbolIndex += 1;
+  }
+  return symbols;
+}
+
+function makeStationaryPreviewSegments(points) {
+  const path = buildPreviewPath(points || []);
+  const segments = [];
+  if (!path.total) return segments;
+  for (let startDistance = 0, index = 0; startDistance < path.total; startDistance += STATIONARY_SEGMENT_LENGTH, index += 1) {
+    const endDistance = Math.min(path.total, startDistance + STATIONARY_SEGMENT_LENGTH);
+    const start = previewPointAt(path, startDistance);
+    const end = previewPointAt(path, endDistance);
+    if (!start || !end || endDistance <= startDistance) continue;
+    segments.push({ id: `${startDistance}-${index}`, color: STATIONARY_SEGMENT_COLORS[index % STATIONARY_SEGMENT_COLORS.length], points: [start.x, start.y, end.x, end.y] });
+  }
+  return segments;
+}
+
+function makeStationaryPreviewSymbols(points) {
+  const path = buildPreviewPath(points || []);
+  const symbols = [];
+  if (!path.total) return symbols;
+  for (let startDistance = 0, index = 0; startDistance < path.total; startDistance += STATIONARY_SEGMENT_LENGTH, index += 1) {
+    const endDistance = Math.min(path.total, startDistance + STATIONARY_SEGMENT_LENGTH);
+    if (endDistance - startDistance < STATIONARY_SEGMENT_LENGTH * 0.5) continue;
+    const point = previewPointAt(path, (startDistance + endDistance) / 2);
+    const symbol = STATIONARY_SEGMENT_SYMBOLS[index % STATIONARY_SEGMENT_SYMBOLS.length];
+    if (point) symbols.push({ id: `stationary-${startDistance}-${index}`, kind: symbol.kind, color: symbol.color, x: point.x, y: point.y, rotation: point.rotation + (symbol.kind === 'triangle' ? 90 : 0), side: symbol.side });
+  }
+  return symbols;
+}
+
+const SurfaceFrontPanel = ({ frontType, setFrontType, isDarkMode }) => {
+  const dragRef = useRef(null);
+  const [position, setPosition] = useState(getInitialPosition);
+  const [isDragging, setIsDragging] = useState(false);
+  const positionRef = useRef(position);
+  useEffect(() => { const handleResize = () => { const safe = getSafePosition(positionRef.current); positionRef.current = safe; setPosition(safe); }; window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
+  const persistPosition = useCallback((next) => { try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { } }, []);
+  const handleDragStart = useCallback((event) => { if (event.button !== undefined && event.button !== 0) return; event.preventDefault(); event.stopPropagation(); dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: positionRef.current.x, originY: positionRef.current.y }; setIsDragging(true); event.currentTarget.setPointerCapture?.(event.pointerId); }, []);
+  const handleDragMove = useCallback((event) => { const drag = dragRef.current; if (!drag || drag.pointerId !== event.pointerId) return; event.preventDefault(); const next = getSafePosition({ x: drag.originX + event.clientX - drag.startX, y: drag.originY + event.clientY - drag.startY }); positionRef.current = next; setPosition(next); }, []);
+  const handleDragEnd = useCallback((event) => { if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return; event.currentTarget.releasePointerCapture?.(event.pointerId); dragRef.current = null; setIsDragging(false); persistPosition(positionRef.current); }, [persistPosition]);
+  const resetPosition = useCallback((event) => { event.stopPropagation(); const safe = getSafePosition(getDefaultPosition()); positionRef.current = safe; setPosition(safe); persistPosition(safe); }, [persistPosition]);
+  return <div className={cn('studio-liquid-panel fixed z-[110] rounded-2xl border p-3 shadow-2xl', isDragging && 'select-none shadow-[0_26px_70px_rgba(34,211,238,0.22)]', isDarkMode ? 'studio-liquid-dark border-white/[0.18] text-white' : 'studio-liquid-light border-white/80 text-slate-950')} style={{ left: position.x, top: position.y, width: `min(${PANEL_WIDTH}px, calc(100vw - 2rem))` }}><div className="mb-3 flex items-center justify-between gap-2"><button type="button" className="flex min-w-0 flex-1 cursor-grab touch-none items-center gap-2 text-left active:cursor-grabbing" onPointerDown={handleDragStart} onPointerMove={handleDragMove} onPointerUp={handleDragEnd} onPointerCancel={handleDragEnd} title="Drag surface fronts panel"><span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', isDarkMode ? 'bg-cyan-400/12 text-cyan-300' : 'bg-blue-500/10 text-blue-600')}><GripHorizontal size={16} /></span><div><div className="text-[11px] font-black uppercase tracking-wide">Surface Fronts</div><div className={cn('text-[10px] font-bold', isDarkMode ? 'text-white/45' : 'text-slate-500')}>{FRONT_TYPES[frontType]?.fullLabel}</div></div></button><button type="button" onClick={resetPosition} className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border', isDarkMode ? 'border-white/10 bg-white/[0.055] text-white/70' : 'border-white/80 bg-white/60 text-slate-600')} title="Reset panel position"><RotateCcw size={14} /></button></div><div className="grid grid-cols-2 gap-2">{Object.entries(FRONT_TYPES).map(([key, config]) => { const Icon = config.icon; const active = frontType === key; return <button key={key} type="button" onClick={() => setFrontType(key)} className={cn('flex h-10 items-center justify-center gap-2 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all', active ? isDarkMode ? 'border-cyan-300/35 bg-cyan-400/18 text-cyan-100' : 'border-blue-300 bg-blue-50 text-blue-700' : isDarkMode ? 'border-white/8 bg-white/[0.04] text-white/50 hover:bg-white/[0.08] hover:text-white' : 'border-white/70 bg-white/45 text-slate-500 hover:bg-white hover:text-slate-800')}><Icon size={14} /><span>{config.label}</span></button>; })}</div></div>;
+};
+
+const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
+  const [projectId] = useProjectId();
   const [lines, setLines] = useState([]);
+  const [frontType, setFrontType] = useState('cold');
+  const [stageBounds, setStageBounds] = useState(() => getStageBounds(mapRef));
+  const activeLineRef = useRef(null);
   const isFlagDrawing = useRef(false);
-  const colorToggle = useRef(true); // true = red, false = blue
+  const getAdjustedPoint = useCallback((event) => { const pos = getPointerPosition(event); return { x: pos?.x || 0, y: pos?.y || 0 }; }, []);
+  const refreshStageBounds = useCallback(() => { const next = getStageBounds(mapRef); setStageBounds(next); return next; }, [mapRef]);
+  useEffect(() => { const preventScroll = (event) => { if (isFlagDrawing.current) event.preventDefault(); }; const handleResize = () => refreshStageBounds(); refreshStageBounds(); document.body.addEventListener('touchmove', preventScroll, { passive: false }); window.addEventListener('resize', handleResize); return () => { document.body.removeEventListener('touchmove', preventScroll); window.removeEventListener('resize', handleResize); }; }, [refreshStageBounds]);
+  const clearActiveLine = useCallback(() => { activeLineRef.current = null; setLines([]); }, []);
+  const handleDown = useCallback((event) => { const frozenFrontType = normalizeFrontType(frontType); refreshStageBounds(); isFlagDrawing.current = true; const pos = getAdjustedPoint(event); const nextLine = { points: [pos.x, pos.y], frontType: frozenFrontType }; activeLineRef.current = nextLine; setLines([nextLine]); }, [frontType, getAdjustedPoint, refreshStageBounds]);
+  const handleMove = useCallback((event) => { if (!isFlagDrawing.current) return; const pos = getAdjustedPoint(event); const currentLine = activeLineRef.current; if (!currentLine) return; if (getDistanceFromLastPoint(currentLine.points, pos.x, pos.y) < MIN_POINT_DISTANCE) return; const nextLine = { ...currentLine, points: [...currentLine.points, pos.x, pos.y] }; activeLineRef.current = nextLine; setLines([nextLine]); }, [getAdjustedPoint]);
+  const handleUp = useCallback(async () => { const map = mapRef.current; const line = activeLineRef.current; const frozenFrontType = normalizeFrontType(line?.frontType || frontType); isFlagDrawing.current = false; if (!map || !line?.points || line.points.length < 4) { clearActiveLine(); return; } if (!projectId) { clearActiveLine(); await Swal.fire({ icon: 'warning', title: 'No Project Selected', text: 'Please create or select a valid project before saving surface fronts.', confirmButtonColor: isDarkMode ? '#6366f1' : '#3b82f6' }); return; } const coords = []; for (let i = 0; i < line.points.length; i += 2) { const lngLat = map.unproject([line.points[i], line.points[i + 1]]); coords.push([lngLat.lng, lngLat.lat]); } const owner = JSON.parse(localStorage.getItem('user') || 'null'); const sourceId = `SF_${uuidv4()}`; const name = buildFrontName(frozenFrontType); const feature = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { isFront: true, frontType: frozenFrontType, owner: owner?.id, project: projectId, sourceId } }; const geojson = { type: 'FeatureCollection', features: [feature] }; try { await createFeature({ geometry: feature.geometry, properties: feature.properties, name, sourceId }); if (typeof setLayersRef?.current === 'function') setLayersRef.current((prevLayers) => [{ id: sourceId, sourceID: sourceId, name, visible: true, locked: false, type: name }, ...prevLayers.filter((layer) => layer.id !== sourceId && layer.sourceID !== sourceId)]); try { renderFrontLayers(map, sourceId, geojson, frozenFrontType); } catch (renderError) { console.warn('Surface front saved but could not be rendered locally:', renderError); } } catch (err) { console.error('Error saving surface front:', err); await Swal.fire({ icon: 'error', title: 'Save Failed', text: err?.message || 'Could not save surface front.', confirmButtonColor: isDarkMode ? '#6366f1' : '#3b82f6' }); removeFrontLayers(map, sourceId); if (map.getSource(sourceId)) map.removeSource(sourceId); } finally { clearActiveLine(); } }, [clearActiveLine, frontType, isDarkMode, mapRef, projectId, setLayersRef]);
+  const previewLine = lines[lines.length - 1];
+  const previewFrontType = normalizeFrontType(previewLine?.frontType || frontType);
+  const previewStyle = FRONT_TYPES[previewFrontType];
+  const previewSymbols = previewLine ? (previewFrontType === 'stationary' ? makeStationaryPreviewSymbols(previewLine.points) : makePreviewSymbols(previewLine.points, previewFrontType)) : [];
+  const stationarySegments = previewFrontType === 'stationary' && previewLine ? makeStationaryPreviewSegments(previewLine.points) : [];
+  return <><SurfaceFrontPanel frontType={frontType} setFrontType={setFrontType} isDarkMode={isDarkMode} /><Stage width={stageBounds.width} height={stageBounds.height} onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} style={{ position: 'fixed', top: stageBounds.top, left: stageBounds.left, width: stageBounds.width, height: stageBounds.height, zIndex: 10, pointerEvents: 'auto' }}><Layer>{previewFrontType === 'stationary' ? stationarySegments.map((segment) => <Line key={segment.id} points={segment.points} stroke={segment.color} strokeWidth={previewStyle.lineWidth} tension={0.45} lineCap="butt" lineJoin="round" />) : lines.map((line, i) => { const style = FRONT_TYPES[normalizeFrontType(line.frontType)]; return <Line key={i} points={line.points} stroke={style.color} strokeWidth={style.lineWidth} dash={style.dash || []} tension={0.45} lineCap="round" lineJoin="round" />; })}{previewSymbols.map((symbol) => symbol.kind === 'triangle' ? <RegularPolygon key={symbol.id} x={symbol.x} y={symbol.y} sides={3} radius={7} fill={symbol.color} rotation={symbol.rotation} /> : <Wedge key={symbol.id} x={symbol.x} y={symbol.y} radius={6} angle={180} fill={symbol.color} rotation={symbol.rotation + (symbol.side < 0 ? 180 : 0)} />)}</Layer></Stage></>;
+};
 
-  useEffect(() => {
-    const preventScroll = (e) => e.preventDefault();
-    document.body.addEventListener('touchmove', preventScroll, {
-      passive: false,
-    });
-    return () => {
-      document.body.removeEventListener('touchmove', preventScroll);
-    };
-  }, []);
-
-  const handleDown = (e) => {
-    const strokeColor = colorToggle.current ? 'red' : 'blue';
-    handlePointerDown(e, lines, setLines, isFlagDrawing, strokeColor);
-  };
-
-  return (
-    <div>
-      <Stage
-        width={window.innerWidth}
-        height={window.innerHeight}
-        onPointerDown={handleDown}
-        onPointerMove={(e) =>
-          handlePointerMove(e, lines, setLines, isFlagDrawing)
-        }
-        onPointerUp={() =>
-          handlePointerUp(
-            mapRef,
-            lines,
-            setLines,
-            isFlagDrawing,
-            drawCounter,
-            setDrawCounter,
-            setLayersRef,
-            createFeature,
-            closedMode,
-            colorToggle // <-- pass it here
-          )
-        }
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          zIndex: 10,
-          pointerEvents: 'auto',
-        }}
-      >
-        <Layer>
-          {lines.map((line, i) => (
-            <Line
-              key={i}
-              points={line.points}
-              stroke={line.color}
-              strokeWidth={2}
-              tension={0.5}
-              lineCap="round"
-              lineJoin="round"
-            />
-          ))}
-        </Layer>
-      </Stage>
-    </div>
-  );
+const FlagCanvas = ({ isCanvasActive = false, ...props }) => {
+  if (!isCanvasActive) return null;
+  return <ActiveFlagCanvas {...props} />;
 };
 
 export default FlagCanvas;

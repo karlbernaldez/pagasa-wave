@@ -11,46 +11,90 @@ export const ADMIN_TABS = {
   SETTINGS: 'settings',
 };
 
-export const MENU_ITEMS = [
-  { id: ADMIN_TABS.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
-  { id: ADMIN_TABS.CHARTS, label: 'Review Charts', icon: Waves },
-  { id: ADMIN_TABS.USERS, label: 'Users', icon: Users },
-  { id: ADMIN_TABS.ANALYTICS, label: 'Analytics', icon: BarChart3 },
-  { id: ADMIN_TABS.CALENDAR, label: 'Calendar', icon: CalendarDays },
-  { id: ADMIN_TABS.SETTINGS, label: 'Settings', icon: Settings },
+export const ADMIN_ROUTE_BY_TAB = {
+  [ADMIN_TABS.DASHBOARD]: '/dashboard',
+  [ADMIN_TABS.CHARTS]: '/dashboard/review',
+  [ADMIN_TABS.USERS]: '/dashboard/users',
+  [ADMIN_TABS.USERS_LIST]: '/dashboard/users',
+  [ADMIN_TABS.USERS_ROLES]: '/dashboard/users/roles',
+  [ADMIN_TABS.ANALYTICS]: '/dashboard/analytics',
+  [ADMIN_TABS.CALENDAR]: '/dashboard/calendar',
+  [ADMIN_TABS.SETTINGS]: '/dashboard/settings',
+};
+
+export const ADMIN_TAB_BY_ROUTE = Object.entries(ADMIN_ROUTE_BY_TAB).reduce(
+  (routes, [tab, path]) => ({
+    ...routes,
+    [path]: tab,
+  }),
+  {},
+);
+
+export function getAdminRouteForTab(tab) {
+  return ADMIN_ROUTE_BY_TAB[tab] ?? ADMIN_ROUTE_BY_TAB[ADMIN_TABS.DASHBOARD];
+}
+
+export function getAdminTabForPath(pathname) {
+  return ADMIN_TAB_BY_ROUTE[pathname] ?? ADMIN_TABS.DASHBOARD;
+}
+
+export const MENU_GROUPS = [
+  {
+    label: 'Review',
+    items: [
+      { id: ADMIN_TABS.DASHBOARD, label: 'Overview', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.DASHBOARD], icon: LayoutDashboard },
+      { id: ADMIN_TABS.CHARTS, label: 'Forecast Packages', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CHARTS], icon: Waves },
+    ],
+  },
+  {
+    label: 'Management',
+    items: [
+      { id: ADMIN_TABS.USERS, label: 'Users', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS], icon: Users },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { id: ADMIN_TABS.ANALYTICS, label: 'Analytics', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ANALYTICS], icon: BarChart3 },
+      { id: ADMIN_TABS.CALENDAR, label: 'Calendar', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CALENDAR], icon: CalendarDays },
+      { id: ADMIN_TABS.SETTINGS, label: 'Settings', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS], icon: Settings },
+    ],
+  },
 ];
+
+export const MENU_ITEMS = MENU_GROUPS.flatMap((group) => group.items);
 
 export const PAGE_META = {
   [ADMIN_TABS.DASHBOARD]: {
-    title: 'Dashboard Overview',
-    description: 'Monitor submissions and approve forecasts',
+    title: 'Admin Overview',
+    description: 'Monitor today\'s forecast package review workflow, users, and publication readiness.',
   },
   [ADMIN_TABS.CHARTS]: {
-    title: 'Wave Charts Review',
-    description: 'Review and approve submitted wave forecast charts',
+    title: 'Review Forecast Packages',
+    description: 'Prioritize today\'s analysis and forecast charts while keeping approved, rejected, and past packages available.',
   },
   [ADMIN_TABS.USERS]: {
     title: 'User Management',
-    description: 'Manage Forecasters, Admins, and other user roles',
+    description: 'Manage forecaster accounts, admin users, roles, and access status.',
   },
   [ADMIN_TABS.USERS_LIST]: {
     title: 'User List',
-    description: 'View and manage all user accounts and access statuses',
+    description: 'View, approve, suspend, and manage operational user accounts.',
   },
   [ADMIN_TABS.USERS_ROLES]: {
     title: 'Roles & Permissions',
-    description: 'Configure available roles and access levels',
+    description: 'Review admin and forecaster role boundaries for forecast operations.',
   },
   [ADMIN_TABS.ANALYTICS]: {
-    title: 'Analytics & Reports',
-    description: 'View detailed analytics and performance metrics',
+    title: 'Operational Analytics',
+    description: 'Track review throughput, forecast chart status, and user readiness.',
   },
   [ADMIN_TABS.CALENDAR]: {
-    title: 'Team Calendar',
-    description: 'Track publication schedules, reviews, and admin events',
+    title: 'Forecast Operations Calendar',
+    description: 'Track forecast package dates, review events, publication milestones, and admin notes.',
   },
   [ADMIN_TABS.SETTINGS]: {
-    title: 'Settings & Configuration',
-    description: 'Configure system settings and preferences',
+    title: 'Public Content Settings',
+    description: 'Configure WaveLab public page content, contact details, and system-facing copy.',
   },
 };

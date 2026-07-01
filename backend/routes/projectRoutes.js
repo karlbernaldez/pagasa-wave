@@ -14,25 +14,79 @@ import {
   requestProjectRevision,
   approveProject,
   rejectProject,
+  markProjectNoPublication,
   publishProject,
   archiveProject,
   renameProject
 } from '../controllers/projectController.js';
-import { getAdminProjects } from '../controllers/adminProjectController.js';
+import { getAdminForecastPackage, getAdminProjects } from '../controllers/adminProjectController.js';
 import {
   getPublishedForecastOutput,
   getPublicPublishedForecastOutput,
   listPublicPublishedForecasts,
 } from '../controllers/publishedForecastController.js';
 import Project from '../models/Project.js';
+import ForecastPackage from '../models/ForecastPackage.js';
 
 import protect from '../middleware/authMiddleware.js';
 import isOwnerOrAdmin from '../middleware/projectMiddleware.js';
 import { isAdmin } from '../middleware/adminMiddleware.js';
 import { throwError } from '../utils/errorHelper.js';
 import { canEditProjectStatus, getProjectEditLockMessage } from '../utils/projectWorkflow.js';
+import { emitForecastChartUpdated, emitForecastPackageUpdated } from '../socket/socketEmitter.js';
 
 const router = express.Router();
+
+function getId(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value._id) return String(value._id);
+  if (value.id) return String(value.id);
+  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString());
+  return '';
+}
+
+async function emitProjectWorkflowUpdate(projectId, project, action) {
+  if (!projectId) return;
+
+  const forecastPackage = await ForecastPackage.findOne({ 'charts.project': projectId })
+    .populate('owner', 'firstName lastName email username')
+    .populate('charts.project')
+    .lean();
+
+  const payload = {
+    action,
+    status: project?.status,
+    packageId: getId(forecastPackage),
+  };
+
+  emitForecastChartUpdated(projectId, payload);
+
+  if (forecastPackage) {
+    emitForecastPackageUpdated(forecastPackage, {
+      action,
+      projectId,
+      projectStatus: project?.status,
+    });
+  }
+}
+
+function emitProjectWorkflowAfterResponse(action) {
+  return (req, res, next) => {
+    const originalJson = res.json.bind(res);
+    res.json = (body) => {
+      const result = originalJson(body);
+      const projectId = getId(body) || req.params.id;
+
+      emitProjectWorkflowUpdate(projectId, body, action).catch((error) => {
+        console.error('[ProjectRoutes] Failed to emit workflow socket update:', error);
+      });
+
+      return result;
+    };
+    next();
+  };
+}
 
 async function requireEditableProject(req, _res, next) {
   try {
@@ -72,20 +126,23 @@ router.use(protect);
 // Admin routes - keep before dynamic /:id routes
 // ─────────────────────────────────────────────
 router.get('/admin/projects', isAdmin, getAdminProjects);
+router.get('/admin/projects/:id/package', isAdmin, getAdminForecastPackage);
 
-router.patch('/:id/start-review', isAdmin, preventAdminSelfReview, startReviewProject);
+router.patch('/:id/start-review', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('review_started'), startReviewProject);
 
-router.post('/:id/review-comment', isAdmin, preventAdminSelfReview, addReviewComment);
+router.post('/:id/review-comment', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('comment_added'), addReviewComment);
 
-router.patch('/:id/request-revision', isAdmin, preventAdminSelfReview, requestProjectRevision);
+router.patch('/:id/request-revision', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('revision_requested'), requestProjectRevision);
 
-router.patch('/:id/approve', isAdmin, preventAdminSelfReview, approveProject);
+router.patch('/:id/approve', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('approved'), approveProject);
 
-router.patch('/:id/reject', isAdmin, preventAdminSelfReview, rejectProject);
+router.patch('/:id/reject', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('rejected'), rejectProject);
 
-router.patch('/:id/publish', isAdmin, preventAdminSelfReview, publishProject);
+router.patch('/:id/no-publication', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('marked_no_publication'), markProjectNoPublication);
 
-router.patch('/:id/archive', isAdmin, preventAdminSelfReview, archiveProject);
+router.patch('/:id/publish', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('published'), publishProject);
+
+router.patch('/:id/archive', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('archived'), archiveProject);
 
 // ─────────────────────────────────────────────
 // Published output routes - keep before dynamic /:id routes
@@ -110,6 +167,6 @@ router.patch('/:id/rename', isOwnerOrAdmin, requireEditableProject, renameProjec
 router.delete('/:id', isOwnerOrAdmin, requireEditableProject, deleteProject);
 
 // Workflow - owner action
-router.patch('/:id/submit', submitProject);
+router.patch('/:id/submit', emitProjectWorkflowAfterResponse('submitted'), submitProject);
 
 export default router;

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { saveMarker } from '@dashboards/forecaster/map/layers/markerLayer';
 import { getLatestMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
 import {
@@ -107,9 +106,16 @@ export function useDrawToolbar({
   }, []);
 
   // ── Save helpers ─────────────────────────────────────────
-  const savePoint = useCallback(({ lat, lng, coords, title, selectedType, map }) => {
-    saveMarker({ lat, lng }, map, setShowTitleModal, selectedType)(title);
-    savePointFeature({ coords, title, selectedType, setLayersRef, projectId });
+  const savePoint = useCallback(async ({ lat, lng, coords, title, selectedType, map }) => {
+    const savedFeature = await savePointFeature({ coords, title, selectedType, setLayersRef, projectId });
+    if (!savedFeature?.sourceId) return;
+
+    saveMarker({ lat, lng }, map, setShowTitleModal, selectedType)(savedFeature.labelValue || title, {
+      sourceId: savedFeature.sourceId,
+      layerId: savedFeature.sourceId,
+      displayName: savedFeature.displayName,
+      labelValue: savedFeature.labelValue || title,
+    });
   }, [setLayersRef, projectId]);
 
   // ── Map click flow ───────────────────────────────────────
@@ -142,7 +148,7 @@ export function useDrawToolbar({
         draw.changeMode('simple_select');
 
         if (selectedType === TOOL_IDS.LESS_1) {
-          const title = `${MARKER_LABEL_MAP.less_1}_${uuidv4()}`;
+          const title = MARKER_LABEL_MAP.less_1;
           savePoint({ lat, lng, coords, title, selectedType, map });
         } else {
           console.log('Storing pending map click for marker title input');
@@ -173,7 +179,7 @@ export function useDrawToolbar({
     const lat = parseFloat(data.lat);
     const lng = parseFloat(data.lng);
     const coords = [lng, lat];
-    const title = data.title;
+    const title = data.title || MARKER_LABEL_MAP[selectedType] || MARKER_LABEL_MAP.less_1;
     const map = getLatestMapInstance();
 
     savePoint({ lat, lng, coords, title, selectedType, map });

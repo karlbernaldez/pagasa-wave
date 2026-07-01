@@ -1,18 +1,38 @@
 import SiteSettings from '../models/SiteSettings.js';
+import {
+  MAP_VIEW_SETTINGS_PAGE,
+  buildMapViewSettingsResponse,
+  parseMapViewSettingsPayload,
+} from '../utils/mapViewSettings.js';
 
-const ALLOWED_PAGES = ['general', 'about', 'contact'];
+const ALLOWED_PAGES = [
+  'general',
+  'about',
+  'contact',
+  'operations',
+  'forecasterworkspace',
+  'adminreview',
+  MAP_VIEW_SETTINGS_PAGE,
+];
+
+const PUBLIC_CACHEABLE_PAGES = ['about', 'contact'];
 
 const normalizePage = (page) => page?.toLowerCase().trim();
 
 /**
- * Prevent Mongo operator injection & prototype pollution
+ * Prevent Mongo operator injection & prototype pollution.
+ * Recurses through plain objects/arrays so nested settings remain safe.
  */
-const sanitizeObject = (obj) => {
-  if (!obj || typeof obj !== 'object') return {};
+const sanitizeObject = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeObject(item));
+  }
+
+  if (!value || typeof value !== 'object') return value;
 
   const clean = {};
 
-  for (const key of Object.keys(obj)) {
+  for (const key of Object.keys(value)) {
     if (
       key.startsWith('$') ||
       key.includes('.') ||
@@ -20,10 +40,28 @@ const sanitizeObject = (obj) => {
       key === 'constructor'
     ) continue;
 
-    clean[key] = obj[key];
+    clean[key] = sanitizeObject(value[key]);
   }
 
   return clean;
+};
+
+const resolveSettingsResponse = (page, data) => {
+  if (page === MAP_VIEW_SETTINGS_PAGE) {
+    return buildMapViewSettingsResponse(data);
+  }
+
+  return data || {};
+};
+
+const parseSettingsPayload = (page, payload) => {
+  const sanitizedData = sanitizeObject(payload);
+
+  if (page === MAP_VIEW_SETTINGS_PAGE) {
+    return parseMapViewSettingsPayload(sanitizedData);
+  }
+
+  return sanitizedData;
 };
 
 /**
@@ -41,9 +79,13 @@ export const getSettings = async (req, res) => {
 
     const doc = await SiteSettings.findOne({ page }).lean();
 
-    res.set('Cache-Control', 'public, max-age=300'); // cache 5 minutes
+    if (PUBLIC_CACHEABLE_PAGES.includes(page)) {
+      res.set('Cache-Control', 'public, max-age=300');
+    } else {
+      res.set('Cache-Control', 'no-store');
+    }
 
-    return res.status(200).json(doc?.data || {});
+    return res.status(200).json(resolveSettingsResponse(page, doc?.data));
   } catch (err) {
     console.error('[settings] GET error:', err);
     res.status(500).json({
@@ -68,21 +110,33 @@ export const saveSettings = async (req, res) => {
     /**
      * Ensure payload exists
      */
-    if (!req.body || typeof req.body !== 'object') {
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
       return res.status(400).json({
         message: 'Invalid settings payload.',
       });
     }
 
     /**
-     * Sanitize incoming data
+     * Sanitize and validate incoming data
      */
-    const sanitizedData = sanitizeObject(req.body);
+    let sanitizedData;
+    try {
+      sanitizedData = parseSettingsPayload(page, req.body);
+    } catch (error) {
+      if (error.statusCode === 400) {
+        return res.status(400).json({
+          message: error.message,
+          errors: error.details || [],
+        });
+      }
+
+      throw error;
+    }
 
     /**
      * Prevent empty overwrite
      */
-    if (Object.keys(sanitizedData).length === 0) {
+    if (!sanitizedData || Object.keys(sanitizedData).length === 0) {
       return res.status(400).json({
         message: 'Settings payload is empty or invalid.',
       });
@@ -112,7 +166,7 @@ export const saveSettings = async (req, res) => {
       }
     );
 
-    return res.status(200).json(doc.data);
+    return res.status(200).json(resolveSettingsResponse(page, doc.data));
 
   } catch (err) {
     console.error('[settings] PUT error:', err);

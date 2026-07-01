@@ -126,7 +126,7 @@ export function useUsers({ statusFilter = 'all' } = {}) {
     try {
       const response = await createUserAPI(payload);
 
-      if (!response?.user?._id) {
+      if (!response?.user?._id && !response?.user?.id) {
         throw new Error('Invalid response from server.');
       }
 
@@ -156,7 +156,7 @@ export function useUsers({ statusFilter = 'all' } = {}) {
       const detailKeys = Object.keys(updates).filter((k) => k !== 'status');
       if (detailKeys.length > 0) {
         const detailPayload = Object.fromEntries(detailKeys.map((k) => [k, updates[k]]));
-        const detailResponse = await updateUserDetailsAPI(userId, detailPayload);
+        const detailResponse = await updateUserDetailsAPI(userId, detailPayload, { broadcast: false });
         updated = detailResponse ?? updated;
       }
 
@@ -220,63 +220,37 @@ export function useUsers({ statusFilter = 'all' } = {}) {
 
             return onlyStatus
               ? updateUserStatusAPI(id, updated.status)
-              : updateUserDetailsAPI(id, updated);
+              : updateUser(id, updated);
           })
         );
 
-        // Apply optimistic update to local state
-        setUsers((prev) =>
-          prev.map((u) => {
-            if (!ids.has(u.id)) return u;
-            return normalizeUser({ ...u, ...action(u) });
-          })
-        );
+        await fetchUsers({ force: true });
       }
-
-      // Sync with server to confirm final state
-      await fetchUsers();
     } catch (err) {
       console.error('[useUsers] bulkUpdateUsers error:', err);
-      // Revert optimistic changes by re-fetching
-      await fetchUsers();
       throw err;
     }
-  }, [users, fetchUsers]);
+  }, [users, updateUser, fetchUsers]);
 
-  // ── Computed stats ────────────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const counts = { total, active: 0, pending: 0, suspended: 0 };
-    for (const u of users) {
-      if (u.status in counts) counts[u.status]++;
-    }
-    return counts;
-  }, [users, total]);
-
-  const resetNewUser = useCallback(() => setNewUser(defaultNewUser), []);
-
-  // ── Public API ────────────────────────────────────────────────────────────
+  // ─── Derived state ─────────────────────────────────────────────────────────
+  const activeUsers = useMemo(
+    () => users.filter((u) => u.status === 'active').length,
+    [users]
+  );
 
   return {
-    // data
-    users,           // current page rows (normalized)
-    total,           // total matching documents on the server
-    stats,           // { total, active, pending, suspended }
+    users,
+    total,
     isLoadingUsers,
     usersError,
-
-    // add-user form
     newUser,
     setNewUser,
-    resetNewUser,
-
-    // mutations
     createUser,
     updateUser,
     replaceUser,
     deleteUser,
     bulkUpdateUsers,
-
-    // manual refresh
     refreshUsers,
+    activeUsers,
   };
 }

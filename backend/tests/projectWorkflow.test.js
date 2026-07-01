@@ -104,7 +104,7 @@ test('review comments can be added only while submitted or under review', () => 
   assert.equal(canAddReviewCommentStatus(PROJECT_STATUS.ARCHIVED), false);
 });
 
-test('feature rename changes mutable sourceId but preserves stable annotation identity', () => {
+test('feature rename updates mutable display fields but preserves stable annotation identity', () => {
   const feature = {
     sourceId: 'low_pressure_OLD',
     properties: {
@@ -116,11 +116,14 @@ test('feature rename changes mutable sourceId but preserves stable annotation id
 
   const [newSourceId, updateData] = buildNewSourceIdAndUpdateData(feature, 'NEW');
 
-  assert.equal(newSourceId, 'low_pressure_NEW');
-  assert.equal(updateData.sourceId, 'low_pressure_NEW');
+  assert.equal(newSourceId, 'low_pressure_OLD');
+  assert.equal(updateData.sourceId, undefined);
+  assert.equal(updateData['properties.sourceId'], 'low_pressure_OLD');
+  assert.equal(updateData.name, 'NEW');
   assert.equal(updateData['properties.labelValue'], 'NEW');
   assert.equal(updateData['properties.title'], 'NEW');
   assert.equal(updateData['properties.name'], 'NEW');
+  assert.equal(updateData['properties.displayName'], 'NEW');
   assert.equal(updateData['properties.stableId'], 'annotation-123');
   assert.equal(updateData['properties.annotationId'], 'annotation-123');
 });
@@ -133,8 +136,13 @@ test('feature rename backfills stable annotation identity for legacy features', 
 
   const [newSourceId, updateData] = buildNewSourceIdAndUpdateData(feature, 'renamed_line');
 
-  assert.equal(newSourceId, 'renamed_line');
-  assert.equal(updateData.sourceId, 'renamed_line');
+  assert.equal(newSourceId, 'legacy_line');
+  assert.equal(updateData.sourceId, undefined);
+  assert.equal(updateData['properties.sourceId'], 'legacy_line');
+  assert.equal(updateData.name, 'renamed_line');
+  assert.equal(updateData['properties.title'], 'renamed_line');
+  assert.equal(updateData['properties.name'], 'renamed_line');
+  assert.equal(updateData['properties.displayName'], 'renamed_line');
   assert.equal(updateData['properties.stableId'], 'legacy_line');
   assert.equal(updateData['properties.annotationId'], 'legacy_line');
 });

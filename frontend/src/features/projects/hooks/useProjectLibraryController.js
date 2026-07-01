@@ -63,7 +63,7 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
 
   useEffect(() => {
     document.title = isAdmin
-      ? "WaveLab · Project Review"
+      ? "WaveLab · Review Forecast Packages"
       : "WaveLab · Forecast Operations";
   }, [isAdmin]);
 
@@ -117,6 +117,7 @@ export function useProjectLibraryController({ role = "forecaster", title, descri
       onStartReview: actions.onStartReview,
       onApprove: actions.onApprove,
       onReject: actions.onReject,
+      onNoPublication: actions.onNoPublication,
       onPublish: actions.onPublish,
       mode: isAdmin ? "review" : "library",
     },

@@ -20,6 +20,7 @@ const notificationSchema = new Schema(
     resourcePath: { type: String, trim: true, default: '' },
 
     projectName: { type: String, trim: true, default: '' },
+    metadata: { type: Schema.Types.Mixed, default: {} },
 
     readBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   },
@@ -30,21 +31,11 @@ const notificationSchema = new Schema(
   },
 );
 
-// ─── Indexes ──────────────────────────────────────────────────────────────────
-
-// Primary query pattern: visibility filter + sort by newest
 notificationSchema.index({ recipientUser: 1, createdAt: -1 });
 notificationSchema.index({ recipientRole: 1, createdAt: -1 });
 notificationSchema.index({ broadcast:     1, createdAt: -1 });
-
-// Unread-count query: filter readBy array efficiently
 notificationSchema.index({ readBy: 1 });
-
-// Useful for project-related notification lookups/deduping later.
 notificationSchema.index({ resourceType: 1, resourceId: 1, createdAt: -1 });
-
-// Optional: auto-delete very old notifications (e.g. after 90 days).
-// Remove or adjust the `expireAfterSeconds` value to suit your retention policy.
 notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
 
 export default model('Notification', notificationSchema);

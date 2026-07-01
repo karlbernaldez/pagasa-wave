@@ -8,6 +8,15 @@ let authCache = {
   ts: 0,
 };
 
+const clearAuthCache = () => {
+  authCache = { value: null, ts: 0 };
+};
+
+const clearLegacyClientAuthStorage = () => {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('user');
+};
+
 const setAuthCache = (value) => {
   authCache = {
     value,
@@ -65,6 +74,8 @@ export const verifyOtp = async ({ email, otp }) => {
     throw new Error(error.message || 'Invalid or expired OTP.');
   }
 
+  clearAuthCache();
+  clearLegacyClientAuthStorage();
   return response.json();
 };
 
@@ -139,7 +150,8 @@ export const loginUser = async (credentials) => {
       throw new Error(error.message || 'Login failed. Please check your credentials.');
     }
 
-    authCache = { value: null, ts: 0 };
+    clearAuthCache();
+    clearLegacyClientAuthStorage();
     return await response.json();
   } catch (error) {
     console.error('Login Error:', error);
@@ -166,8 +178,8 @@ export const refreshAccessToken = async () => {
       }
 
       const data = await response.json();
-      authCache = { value: null, ts: 0 };
-      return data.accessToken;
+      clearAuthCache();
+      return data.accessToken || true;
     } catch (err) {
       console.error('Error refreshing access token:', err);
       return null;
@@ -196,7 +208,7 @@ export const checkAuthSession = async ({ force = false } = {}) => {
       });
     }
 
-    if (initial.status === 403) {
+    if (initial.status === 401 || initial.status === 403) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
         const retried = await fetchAuthCheck();
@@ -220,33 +232,23 @@ export const checkAuthSession = async ({ force = false } = {}) => {
 };
 
 export const fetchWithAuth = async (url, options = {}) => {
-  let accessToken = localStorage.getItem('authToken');
-  if (!accessToken) {
-    throw new Error('No access token found.');
-  }
-
-  const response = await fetch(url, {
+  const request = () => fetch(url, {
     ...options,
     headers: {
       ...options.headers,
-      Authorization: `Bearer ${accessToken}`,
     },
     credentials: 'include',
   });
 
-  if (response.status === 401) {
-    accessToken = await refreshAccessToken();
-    if (!accessToken) {
+  let response = await request();
+
+  if (response.status === 401 || response.status === 403) {
+    const refreshed = await refreshAccessToken();
+    if (!refreshed) {
       throw new Error('Unable to refresh token. Please log in again.');
     }
 
-    return fetchWithAuth(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    response = await request();
   }
 
   return response;
@@ -259,8 +261,8 @@ export const logoutUser = async () => {
       credentials: 'include',
     });
 
-    localStorage.clear();
-    authCache = { value: null, ts: 0 };
+    clearLegacyClientAuthStorage();
+    clearAuthCache();
 
     if (!response.ok) {
       const errData = await response.json().catch(() => null);

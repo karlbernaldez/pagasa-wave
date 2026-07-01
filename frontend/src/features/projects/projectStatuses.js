@@ -6,6 +6,7 @@ export const PROJECT_STATUS = {
   APPROVED: 'Approved',
   PUBLISHED: 'Published',
   REJECTED: 'Rejected',
+  NO_PUBLICATION: 'No Publication',
   ARCHIVED: 'Archived',
 };
 
@@ -17,6 +18,7 @@ export const PROJECT_STATUS_LABEL = {
   [PROJECT_STATUS.APPROVED]: 'Approved',
   [PROJECT_STATUS.PUBLISHED]: 'Published',
   [PROJECT_STATUS.REJECTED]: 'Rejected',
+  [PROJECT_STATUS.NO_PUBLICATION]: 'No Publication',
   [PROJECT_STATUS.ARCHIVED]: 'Archived',
 };
 
@@ -28,6 +30,7 @@ export const PROJECT_STATUS_STYLE = {
   [PROJECT_STATUS.APPROVED]: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   [PROJECT_STATUS.PUBLISHED]: 'bg-teal-100 text-teal-800 border-teal-300',
   [PROJECT_STATUS.REJECTED]: 'bg-rose-100 text-rose-800 border-rose-300',
+  [PROJECT_STATUS.NO_PUBLICATION]: 'bg-amber-100 text-amber-900 border-amber-300',
   [PROJECT_STATUS.ARCHIVED]: 'bg-zinc-100 text-zinc-600 border-zinc-300',
 };
 
@@ -46,6 +49,10 @@ const STATUS_ALIASES = {
   approved: PROJECT_STATUS.APPROVED,
   published: PROJECT_STATUS.PUBLISHED,
   rejected: PROJECT_STATUS.REJECTED,
+  nopublication: PROJECT_STATUS.NO_PUBLICATION,
+  no_publication: PROJECT_STATUS.NO_PUBLICATION,
+  operationalexception: PROJECT_STATUS.NO_PUBLICATION,
+  operational_exception: PROJECT_STATUS.NO_PUBLICATION,
   archived: PROJECT_STATUS.ARCHIVED,
 };
 
@@ -101,6 +108,10 @@ export function isProjectApproved(status) {
 
 export function isProjectPublished(status) {
   return normalizeProjectStatus(status) === PROJECT_STATUS.PUBLISHED;
+}
+
+export function isProjectNoPublication(status) {
+  return normalizeProjectStatus(status) === PROJECT_STATUS.NO_PUBLICATION;
 }
 
 export function canEditProjectStatus(status) {

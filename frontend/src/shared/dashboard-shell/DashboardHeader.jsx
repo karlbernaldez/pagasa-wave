@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, LogOut, Menu, Moon, Settings, Sun, UserRound, Waves } from 'lucide-react';
 import NotificationBell from '@/shared/notifications/NotificationBell';
 import { logoutUser } from '@/api/auth';
@@ -13,6 +14,7 @@ const DashboardHeader = ({
   title,
   user,
 }) => {
+  const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const iconButtonClass = `flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
@@ -46,6 +48,16 @@ const DashboardHeader = ({
 
     setIsUserMenuOpen((current) => !current);
   }, [onUserClick]);
+
+  const goToProfile = useCallback(() => {
+    closeUserMenu();
+    navigate('/profile');
+  }, [closeUserMenu, navigate]);
+
+  const goToEditProfile = useCallback(() => {
+    closeUserMenu();
+    navigate('/edit-profile');
+  }, [closeUserMenu, navigate]);
 
   const handleLogout = useCallback(async () => {
     closeUserMenu();
@@ -191,22 +203,24 @@ const DashboardHeader = ({
                     <button
                       type="button"
                       role="menuitem"
+                      onClick={goToProfile}
                       className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold transition-colors ${
                         isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-white' : 'text-slate-500 hover:bg-white/65 hover:text-slate-950'
                       }`}
                     >
                       <UserRound size={15} />
-                      Profile Settings
+                      View Profile
                     </button>
                     <button
                       type="button"
                       role="menuitem"
+                      onClick={goToEditProfile}
                       className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold transition-colors ${
                         isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-white' : 'text-slate-500 hover:bg-white/65 hover:text-slate-950'
                       }`}
                     >
                       <Settings size={15} />
-                      Preferences
+                      Edit Account Settings
                     </button>
                   </div>
 

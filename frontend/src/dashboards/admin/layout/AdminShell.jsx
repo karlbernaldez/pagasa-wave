@@ -1,12 +1,12 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-import { ADMIN_TABS, MENU_ITEMS } from '@dashboards/admin/constants/navigation';
+import { ADMIN_ROUTE_BY_TAB, ADMIN_TABS, MENU_GROUPS } from '@dashboards/admin/constants/navigation';
 import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
 
-const adminSidebarItems = MENU_ITEMS.map((item) => {
+const enhanceAdminItem = (item) => {
   if (item.id !== ADMIN_TABS.USERS) return item;
 
   return {
@@ -15,11 +15,16 @@ const adminSidebarItems = MENU_ITEMS.map((item) => {
     isExpanded: (activeId) => USER_TABS.includes(activeId),
     expandIcon: (isExpanded) => isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />,
     children: [
-      { id: ADMIN_TABS.USERS_LIST, label: 'User List' },
-      { id: ADMIN_TABS.USERS_ROLES, label: 'Roles' },
+      { id: ADMIN_TABS.USERS_LIST, label: 'User List', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_LIST] },
+      { id: ADMIN_TABS.USERS_ROLES, label: 'Roles', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_ROLES] },
     ],
   };
-});
+};
+
+const adminSidebarGroups = MENU_GROUPS.map((group) => ({
+  ...group,
+  items: group.items.map(enhanceAdminItem),
+}));
 
 const ADMIN_USER_OPTIONS = { roleOverride: 'Administrator' };
 
@@ -50,7 +55,7 @@ const AdminShell = ({
       setIsMobileOpen={setIsMobileOpen}
       setIsSidebarCollapsed={setIsSidebarCollapsed}
       sidebar={{
-        items: adminSidebarItems,
+        groups: adminSidebarGroups,
         label: 'Admin Dashboard',
       }}
       header={{

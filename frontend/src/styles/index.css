@@ -147,3 +147,14 @@ body,
   z-index: 1;
   mix-blend-mode: soft-light;
 }
+
+/* Published chart detail: keep the compact header clear of the public navbar. */
+main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
+  padding-top: 5rem !important;
+}
+
+@media (min-width: 1024px) {
+  main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
+    padding-top: 5.75rem !important;
+  }
+}
