@@ -134,9 +134,33 @@ describe('ForecastPackageCard', () => {
     renderCard(createPackage());
 
     expect(screen.getByRole('button', { name: /publish package/i })).toBeEnabled();
+    expect(screen.getByText(/ready to publish/i)).toBeInTheDocument();
     expect(screen.getByText(/all required charts are approved/i)).toBeInTheDocument();
     expect(screen.getByText(/4\/4 required charts already reviewed or returned/i)).toBeInTheDocument();
     expect(screen.getByText(/approved\/published/i)).toBeInTheDocument();
+  });
+
+  it('does not render a duplicate package stage chip when the stage repeats the status', () => {
+    renderCard(createPackage({ status: 'Published' }));
+
+    expect(screen.getAllByText(/^published$/i)).toHaveLength(1);
+    expect(screen.getByText(/final output is available/i)).toBeInTheDocument();
+  });
+
+  it('renders a distinct workflow stage chip when it adds information beyond the status', () => {
+    renderCard(createPackage({
+      status: 'Submitted',
+      charts: [
+        createChart('Submitted', 'analysis'),
+        createChart('Submitted', 'forecast_24h'),
+        createChart('Submitted', 'forecast_36h'),
+        createChart('Submitted', 'forecast_48h'),
+      ],
+    }));
+
+    expect(screen.getByText(/^submitted$/i)).toBeInTheDocument();
+    expect(screen.getByText(/ready to start review/i)).toBeInTheDocument();
+    expect(screen.getByText(/open a submitted chart to move this package into under review/i)).toBeInTheDocument();
   });
 
   it('uses status-specific disabled labels for non-reviewable chart rows', () => {
