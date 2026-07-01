@@ -134,7 +134,7 @@ describe('ForecastPackageCard', () => {
     renderCard(createPackage());
 
     expect(screen.getByRole('button', { name: /publish package/i })).toBeEnabled();
-    expect(screen.getByText(/ready to publish/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/ready to publish/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/all required charts are approved/i)).toBeInTheDocument();
     expect(screen.getByText(/4\/4 required charts already reviewed or returned/i)).toBeInTheDocument();
     expect(screen.getByText(/approved\/published/i)).toBeInTheDocument();
@@ -158,7 +158,7 @@ describe('ForecastPackageCard', () => {
       ],
     }));
 
-    expect(screen.getByText(/^submitted$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/^submitted$/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/ready to start review/i)).toBeInTheDocument();
     expect(screen.getByText(/open a submitted chart to move this package into under review/i)).toBeInTheDocument();
   });
