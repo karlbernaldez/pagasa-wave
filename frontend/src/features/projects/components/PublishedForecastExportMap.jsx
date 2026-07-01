@@ -254,6 +254,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
   const { bounds: mapBounds } = usePublicMapBounds();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  const readySignatureRef = useRef('');
   const [isReady, setIsReady] = useState(false);
   const [fetchedRaster, setFetchedRaster] = useState(null);
   const featureCollection = useMemo(() => normalizeFeatureCollection(features), [features]);
@@ -264,6 +265,14 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
   const hasRenderableContent = hasFeatures || Boolean(shouldRenderRaster && resolvedRaster?.tileUrl);
   const projectId = useMemo(() => getProjectIdFromLocation(), []);
   const theme = isDarkMode ? 'dark' : 'light';
+  const renderSignature = useMemo(() => [
+    projectId,
+    normalizedStyleMode,
+    theme,
+    shouldRenderRaster ? resolvedRaster?.tileUrl || 'raster-pending' : 'no-raster',
+    featureCollection.features.length,
+    JSON.stringify(mapBounds),
+  ].join('|'), [featureCollection.features.length, mapBounds, normalizedStyleMode, projectId, resolvedRaster?.tileUrl, shouldRenderRaster, theme]);
 
   const renderExport = () => {
     const map = mapRef.current;
@@ -290,14 +299,14 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
   useImperativeHandle(ref, () => ({
     getDataUrl() {
-      if (!mapRef.current || !hasRenderableContent || !isReady || !isMapStyleReady(mapRef.current)) {
+      if (!mapRef.current || !hasRenderableContent || !isReady || readySignatureRef.current !== renderSignature || !isMapStyleReady(mapRef.current)) {
         throw new Error('Map is still preparing for export. Please try again in a moment.');
       }
 
       return mapRef.current.getCanvas().toDataURL('image/png');
     },
     get isReady() {
-      return Boolean(mapRef.current && hasRenderableContent && isReady && isMapStyleReady(mapRef.current));
+      return Boolean(mapRef.current && hasRenderableContent && isReady && readySignatureRef.current === renderSignature && isMapStyleReady(mapRef.current));
     },
   }));
 
@@ -319,17 +328,22 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     mapRef.current = map;
 
     map.on('load', () => {
+      readySignatureRef.current = '';
       setIsReady(false);
       renderExport();
     });
 
     map.on('idle', () => {
-      if (renderExport()) setIsReady(true);
+      if (renderExport()) {
+        readySignatureRef.current = renderSignature;
+        setIsReady(true);
+      }
     });
 
     return () => {
       map.remove();
       mapRef.current = null;
+      readySignatureRef.current = '';
       setIsReady(false);
     };
     // Initialize once per mounted export map; updates are handled below.
@@ -341,10 +355,13 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     if (!map || !hasRenderableContent) return undefined;
 
     let cancelled = false;
+    readySignatureRef.current = '';
     setIsReady(false);
 
     const markReady = () => {
-      if (!cancelled) setIsReady(true);
+      if (cancelled) return;
+      readySignatureRef.current = renderSignature;
+      setIsReady(true);
     };
 
     if (isMapStyleReady(map) && renderExport()) map.once('idle', markReady);
@@ -353,7 +370,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
       cancelled = true;
       map.off('idle', markReady);
     };
-  }, [featureCollection, hasFeatures, hasRenderableContent, isDarkMode, mapBounds, normalizedStyleMode, resolvedRaster, shouldRenderRaster]);
+  }, [featureCollection, hasFeatures, hasRenderableContent, isDarkMode, mapBounds, normalizedStyleMode, renderSignature, resolvedRaster, shouldRenderRaster]);
 
   if (!hasRenderableContent) return null;
 
