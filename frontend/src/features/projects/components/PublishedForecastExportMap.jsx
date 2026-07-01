@@ -6,6 +6,7 @@ import { fetchPublicPublishedChartOutput } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hooks/usePublicMapBounds';
 import { CHART_STYLE_MODE, getChartStyleModePaint, normalizeChartStyleMode } from '@/features/projects/utils/chartStyleModes';
+import { isFrontFeature, renderFrontFeatures } from '@/features/projects/utils/frontRendering';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -19,7 +20,6 @@ const COUNTRY_SOURCE_ID = 'published-export-country-source';
 const COUNTRY_LAND_LAYER_ID = 'published-export-country-land';
 const COUNTRY_LINE_LAYER_ID = 'published-export-country-lines';
 const FEATURE_SOURCE_ID = 'published-forecast-export-features';
-const FRONT_SOURCE_ID = 'published-forecast-export-fronts-source';
 const LABEL_SOURCE_ID = 'published-forecast-export-line-labels-source';
 
 const POINT_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'type'], ''];
@@ -36,7 +36,6 @@ const EXPORT_LAYER_ORDER = [
   'published-forecast-export-polygons-outline',
   'published-forecast-export-lines-casing',
   'published-forecast-export-lines',
-  'published-forecast-export-fronts',
   'published-forecast-export-points',
   'published-forecast-export-line-labels',
   'published-forecast-export-labels',
@@ -63,18 +62,6 @@ function getLineParts(geometry) {
   return [];
 }
 
-function isFront(feature) {
-  const props = feature?.properties || {};
-  return Boolean(props.isFront || props.frontType || `${props.name || ''} ${props.title || ''}`.toLowerCase().includes('front'));
-}
-
-function getFrontColor(feature) {
-  const type = String(feature?.properties?.frontType || '').toLowerCase();
-  if (type === 'warm') return '#ef4444';
-  if (type === 'occluded') return '#7c3aed';
-  return '#1d4ed8';
-}
-
 function getLineLabel(feature) {
   const props = feature?.properties || {};
   return String(props.labelValue ?? props.waveHeight ?? props.heightValue ?? props.height ?? props.value ?? props.text ?? props.label ?? props.name ?? props.title ?? feature?.name ?? '').trim();
@@ -86,10 +73,8 @@ function buildCollections(featureCollection) {
   const labels = [];
 
   featureCollection.features.forEach((feature, featureIndex) => {
-    if (isFront(feature)) {
-      getLineParts(feature.geometry).forEach((line) => {
-        fronts.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line }, properties: { color: getFrontColor(feature) } });
-      });
+    if (isFrontFeature(feature)) {
+      fronts.push(feature);
       return;
     }
 
@@ -115,7 +100,7 @@ function buildCollections(featureCollection) {
 
   return {
     regular: { type: 'FeatureCollection', features: regular },
-    fronts: { type: 'FeatureCollection', features: fronts },
+    fronts,
     labels: { type: 'FeatureCollection', features: labels },
   };
 }
@@ -205,7 +190,6 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
   const collections = buildCollections(featureCollection);
 
   setGeoJson(map, FEATURE_SOURCE_ID, collections.regular);
-  setGeoJson(map, FRONT_SOURCE_ID, collections.fronts);
   setGeoJson(map, LABEL_SOURCE_ID, collections.labels);
 
   if (!map.getLayer('published-forecast-export-polygons')) {
@@ -213,7 +197,6 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
     map.addLayer({ id: 'published-forecast-export-polygons-outline', type: 'line', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'line-color': paint.polygonOutline, 'line-width': paint.polygonOutlineWidth, 'line-opacity': 0.9 } });
     map.addLayer({ id: 'published-forecast-export-lines-casing', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': paint.lineCasing, 'line-width': paint.lineCasingWidth, 'line-opacity': 0.95 } });
     map.addLayer({ id: 'published-forecast-export-lines', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': paint.lineColor, 'line-width': paint.lineWidth, 'line-opacity': 1 } });
-    map.addLayer({ id: 'published-forecast-export-fronts', type: 'line', source: FRONT_SOURCE_ID, paint: { 'line-color': ['get', 'color'], 'line-width': 3.6, 'line-opacity': 0.95 } });
     map.addLayer({ id: 'published-forecast-export-points', type: 'circle', source: FEATURE_SOURCE_ID, filter: POINT_FILTER, paint: { 'circle-color': paint.pointColor, 'circle-radius': paint.pointRadius, 'circle-opacity': paint.showPoints ? 1 : 0, 'circle-stroke-color': paint.pointStroke, 'circle-stroke-width': paint.pointStrokeWidth } });
     map.addLayer({ id: 'published-forecast-export-line-labels', type: 'symbol', source: LABEL_SOURCE_ID, layout: { 'text-field': ['get', 'text'], 'text-size': paint.lineLabelSize, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
     map.addLayer({ id: 'published-forecast-export-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': paint.pointLabelSize, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
@@ -257,6 +240,7 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
   }
 
   restackExportLayers(map);
+  renderFrontFeatures(map, collections.fronts, { namespace: 'published-forecast-export-front' });
   return true;
 }
 
