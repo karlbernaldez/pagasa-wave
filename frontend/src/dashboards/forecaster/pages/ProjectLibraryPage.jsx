@@ -250,6 +250,32 @@ function sortChartsBySequence(charts = []) {
   });
 }
 
+function getSubmitReadiness(packageData, completion, isEditable, pendingRevisionChartTypes = []) {
+  if (!packageData) {
+    return { title: 'No package yet', detail: 'Create today\'s package to begin the four-chart forecast workflow.', tone: 'neutral' };
+  }
+  if (!isEditable) {
+    const copy = getLockedPackageCopy(packageData.status);
+    return { title: 'Locked for forecasters', detail: copy.lockedNotice, tone: 'locked' };
+  }
+  if (pendingRevisionChartTypes.length) {
+    const labels = pendingRevisionChartTypes.map((chartType) => REQUIRED_CHART_LABELS[chartType] || chartType).join(', ');
+    return { title: 'Revision action required', detail: `Open and re-certify ${labels} before resubmitting this package.`, tone: 'warning' };
+  }
+  if (!completion.isComplete) {
+    const nextChartType = getNextIncompleteChartType(packageData);
+    const remaining = Math.max(0, completion.required - completion.completed);
+    return {
+      title: 'Not ready to submit',
+      detail: nextChartType
+        ? `Continue with ${REQUIRED_CHART_LABELS[nextChartType]}. ${remaining} chart${remaining === 1 ? '' : 's'} still need certification.`
+        : `${remaining} chart${remaining === 1 ? '' : 's'} still need certification before submission.`,
+      tone: 'blocked',
+    };
+  }
+  return { title: 'Ready to submit', detail: 'All required charts are certified. Submit this package for Admin review.', tone: 'ready' };
+}
+
 function getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes = []) {
   if (!packageData) return 'Create today\'s package to generate the four required forecast charts.';
   if (!isEditable) return getLockedPackageCopy(packageData.status).nextAction;
@@ -289,6 +315,29 @@ function MetricCard({ label, value, detail, icon: Icon, isDarkMode }) {
   );
 }
 
+function SubmitReadinessCard({ readiness, canSubmit, isDarkMode }) {
+  const toneClass = readiness.tone === 'ready'
+    ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+    : readiness.tone === 'warning'
+      ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-800'
+      : readiness.tone === 'locked'
+        ? isDarkMode ? 'border-white/10 bg-slate-950/55 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'
+        : isDarkMode ? 'border-blue-300/20 bg-blue-400/10 text-blue-100' : 'border-blue-200 bg-blue-50 text-blue-800';
+
+  return (
+    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 shrink-0">{canSubmit ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}</div>
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.14em]">Submit readiness</p>
+          <p className="mt-1 text-sm font-black">{readiness.title}</p>
+          <p className="mt-1 text-xs font-semibold leading-5 opacity-90">{readiness.detail}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WorkflowStep({ number, title, description, active, done, isDarkMode }) {
   return (
     <div className="flex gap-3">
@@ -322,7 +371,7 @@ function OperationsPanel({ packageData, completion, isEditable, isDarkMode, work
         <div className="mt-4 space-y-5">
           <WorkflowStep number="1" title="Analyze current seas" description="Finish Wave Analysis before opening the forecast horizons." active={isEditable && getNextIncompleteChartType(packageData) === 'analysis'} done={isChartComplete(packageData, 'analysis') || isSubmittedOrLater} isDarkMode={isDarkMode} />
           <WorkflowStep number="2" title="Build forecast sequence" description="Certify 24h, then 36h, then 48h so each frame has a verified baseline." active={isEditable && !completion.isComplete && getNextIncompleteChartType(packageData) !== 'analysis'} done={completion.isComplete || isSubmittedOrLater} isDarkMode={isDarkMode} />
-          <WorkflowStep number="3" title="Submit package" description="Submit once all four charts are complete and no forecaster is still editing." active={isEditable && completion.isComplete && pendingRevisionChartTypes.length === 0} done={isSubmittedOrLater} isDarkMode={isDarkMode} />
+          <WorkflowStep number="3" title="Submit package" description="Submit once all four charts are complete, no requested revision is pending, and no forecaster is still editing." active={isEditable && completion.isComplete && pendingRevisionChartTypes.length === 0} done={isSubmittedOrLater} isDarkMode={isDarkMode} />
         </div>
       </section>
     </aside>
@@ -446,10 +495,17 @@ export default function ForecasterProjectLibraryPage() {
   const hasPendingRevisionAction = pendingRevisionChartTypes.length > 0;
   const isEditable = EDITABLE_PACKAGE_STATUSES.has(packageData?.status || 'Draft');
   const lockedPackageCopy = useMemo(() => getLockedPackageCopy(packageData?.status), [packageData?.status]);
+  const submitReadiness = useMemo(() => getSubmitReadiness(packageData, completion, isEditable, pendingRevisionChartTypes), [packageData, completion, isEditable, pendingRevisionChartTypes]);
   const canSubmit = Boolean(packageId && isEditable && completion.isComplete && !hasPendingRevisionAction && !submitting);
   const packageTitle = getPackageTitle(packageData);
   const chartSequenceHelper = workspaceSettings.chartSequenceHelperMessage || 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Forecasters can co-edit; readiness waits until active editors release.';
-  const submitButtonLabel = hasPendingRevisionAction ? 'Resolve revision first' : 'Submit Forecast Package';
+  const submitButtonLabel = !isEditable
+    ? 'Package locked'
+    : hasPendingRevisionAction
+      ? 'Resolve revision first'
+      : completion.isComplete
+        ? 'Submit Forecast Package'
+        : 'Complete required charts';
 
   const loadCurrentPackage = useCallback(async ({ signal } = {}) => {
     setLoading(true);
@@ -540,10 +596,13 @@ export default function ForecasterProjectLibraryPage() {
                     <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</p>
                     {!isEditable && <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>{lockedPackageCopy.lockedNotice}</p>}
                   </div>
-                  <div className={`w-full rounded-2xl border p-4 lg:max-w-[240px] ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
-                    <p className={`text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Completion</p>
-                    <div className="mt-2 flex items-end gap-2"><span className={`text-3xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{completion.percentage}%</span><span className={`pb-1 text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{completion.completed}/{completion.required} charts</span></div>
-                    <div className={`mt-3 h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}><div className="h-full rounded-full bg-cyan-500" style={{ width: `${completion.percentage}%` }} /></div>
+                  <div className="w-full space-y-3 lg:max-w-[280px]">
+                    <div className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
+                      <p className={`text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Completion</p>
+                      <div className="mt-2 flex items-end gap-2"><span className={`text-3xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{completion.percentage}%</span><span className={`pb-1 text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{completion.completed}/{completion.required} charts</span></div>
+                      <div className={`mt-3 h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}><div className="h-full rounded-full bg-cyan-500" style={{ width: `${completion.percentage}%` }} /></div>
+                    </div>
+                    <SubmitReadinessCard readiness={submitReadiness} canSubmit={canSubmit} isDarkMode={isDarkMode} />
                   </div>
                 </div>
               </section>
@@ -552,7 +611,7 @@ export default function ForecasterProjectLibraryPage() {
                 <MetricCard label="Forecast date" value={formatForecastDateKey(packageData.forecastDate) || 'Today'} detail="Philippines operational day" icon={CalendarDays} isDarkMode={isDarkMode} />
                 <MetricCard label="Current step" value={pendingRevisionChartTypes.length ? 'Resolve Revision' : !isEditable ? lockedPackageCopy.currentStep : REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || packageData.status || 'Submit'} detail={pendingRevisionChartTypes.length ? 'Open and re-certify revision chart first' : !isEditable ? lockedPackageCopy.reviewGateDetail : completion.isComplete ? `Package is ${packageData.status}` : 'Next chart in sequence'} icon={CheckCircle2} isDarkMode={isDarkMode} />
                 <MetricCard label="Chart deadlines" value="On track" detail="No chart deadline warnings" icon={ClipboardList} isDarkMode={isDarkMode} />
-                <MetricCard label="Review gate" value={hasPendingRevisionAction ? 'Blocked' : completion.isComplete ? 'Open' : 'Blocked'} detail={hasPendingRevisionAction ? 'Revision action required' : !isEditable ? lockedPackageCopy.reviewGateDetail : completion.isComplete ? 'Sequence complete' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
+                <MetricCard label="Review gate" value={hasPendingRevisionAction || !completion.isComplete || !isEditable ? 'Blocked' : 'Open'} detail={hasPendingRevisionAction ? 'Revision action required' : !isEditable ? lockedPackageCopy.reviewGateDetail : completion.isComplete ? 'Sequence complete' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
               </section>
 
               <section>
