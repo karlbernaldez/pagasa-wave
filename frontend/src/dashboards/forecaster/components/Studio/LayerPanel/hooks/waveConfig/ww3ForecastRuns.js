@@ -94,9 +94,11 @@ export const resolveWW3ForecastRun = ({ forecastDate, chartType } = {}) => {
     pad2(date.getUTCMonth() + 1),
     pad2(date.getUTCDate()),
   ].join('');
+  const runDateTime = `${yyyymmdd}${offset.hour}`;
 
   return {
-    runTag: `${yyyymmdd}${offset.hour}`,
+    runTag: `${packageDate}/${runDateTime}`,
+    runDateTime,
     filenameTimestamp: `${yyyymmdd}T${offset.hour}`,
     packageDate,
   };
