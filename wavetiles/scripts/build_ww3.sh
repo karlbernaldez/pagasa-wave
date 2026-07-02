@@ -52,6 +52,9 @@ Forecast-package run mapping for 2026-06-24:
   36h      -> 2026062506 / ww3_grdo.20260625T06.nc
   48h      -> 2026062518 / ww3_grdo.20260625T18.nc
 
+Forecast-package tile output for 2026-06-24:
+  wavetiles/tiles/WW3/<style>/2026JUN24/<runDateTag>/...
+
 Environment overrides:
   WW3_VAR             Variable to process when VARNAME is omitted (default: hs)
   WW3_SIGMA           Smoothing sigma when SIGMA is omitted (default: 1.5)
@@ -126,6 +129,24 @@ runs = (
 for label, run_date, hour in runs:
     yyyymmdd = run_date.strftime("%Y%m%d")
     print(f"{label}|{yyyymmdd}{hour}|{yyyymmdd}T{hour}|{source_cycle_tag}")
+PY
+}
+
+format_package_output_date() {
+    local package_date=$1
+
+    "$PYTHON_BIN" "${PYTHON_ARGS[@]}" - "$package_date" <<'PY'
+import re
+import sys
+from datetime import date
+
+raw = sys.argv[1]
+match = re.match(r"^(\d{4})-?(\d{2})-?(\d{2})$", raw)
+if not match:
+    raise SystemExit(f"Invalid package date {raw!r}; expected YYYY-MM-DD or YYYYMMDD")
+base = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+months = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+print(f"{base.year}{months[base.month - 1]}{base.day:02d}")
 PY
 }
 
@@ -206,14 +227,47 @@ print_missing_package_ncfile_error() {
     fi
 }
 
+relocate_package_tiles() {
+    local date_tag=$1
+    local package_output_date=${WW3_PACKAGE_OUTPUT_DATE:-}
+    local source_dir style_dir target_dir moved
+
+    if [[ -z "$package_output_date" ]]; then
+        return 0
+    fi
+
+    moved=0
+    shopt -s nullglob
+    for source_dir in "$TILES_DIR"/*/"$date_tag"; do
+        [[ -d "$source_dir" ]] || continue
+        style_dir=$(dirname "$source_dir")
+        target_dir="$style_dir/$package_output_date/$date_tag"
+        mkdir -p "$(dirname "$target_dir")"
+        rm -rf "$target_dir"
+        mv "$source_dir" "$target_dir"
+        moved=1
+        echo "   Package tiles: $target_dir"
+    done
+    shopt -u nullglob
+
+    if [[ "$moved" -eq 0 ]]; then
+        echo "! No generated tile folders found for package relocation: $TILES_DIR/*/$date_tag" >&2
+    fi
+}
+
 run_package_mode() {
     local package_date=$1
     shift
 
+    local package_output_date
+    package_output_date=$(format_package_output_date "$package_date")
+
     echo "============================================"
     echo " WW3 Forecast Package Pipeline"
     echo "  PACKAGE_DATE : $package_date"
+    echo "  TILE_PACKAGE : $package_output_date"
     echo "  INPUT_ROOT   : $ROOT/input/ww3"
+    echo "  TILES_ROOT   : $ROOT/tiles/WW3/<style>/$package_output_date"
     echo "============================================"
 
     local label run_tag timestamp source_cycle_tag ncfile
@@ -230,11 +284,12 @@ run_package_mode() {
         echo
         echo "-> [$label] $run_tag"
         echo "   Input: $ncfile"
-        WW3_NO_PAUSE=1 "$0" "$ncfile" "$@"
+        WW3_NO_PAUSE=1 WW3_PACKAGE_OUTPUT_DATE="$package_output_date" "$0" "$ncfile" "$@"
     done < <(build_package_runs "$package_date")
 
     echo
     echo "+ WW3 forecast package complete: $package_date"
+    echo "  Tiles root: $ROOT/tiles/WW3/<style>/$package_output_date"
 }
 
 if [[ $# -lt 1 ]]; then
@@ -332,6 +387,7 @@ cat <<EOF
   COG_STYLE : $COG_STYLE
   PYTHON    : $PYTHON_BIN ${PYTHON_ARGS[*]}
   ROOT      : $ROOT
+  TILES_DIR : $TILES_DIR
 ============================================
 EOF
 
@@ -344,6 +400,8 @@ echo "-> [1/2] Running ww3.py..."
     --geotiff-dir "$GEOTIFF_DIR" \
     --tiles-dir "$TILES_DIR" \
     "$@"
+
+relocate_package_tiles "$DATE"
 
 if [[ "${WW3_SKIP_COG:-0}" == "1" ]]; then
     echo
