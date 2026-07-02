@@ -19,8 +19,8 @@ const TILE_URL_BUILDERS = {
     const context = forecastDate || chartType
       ? { forecastDate, chartType }
       : getCachedForecastPackageContext();
-    const { runTag } = resolveWW3ForecastRun(context);
-    return `${LOCAL_WW3_TILE_BASE}/WW3/${theme}/${runTag}/{z}/{x}/{y}.png`;
+    const { runTag, packageDate } = resolveWW3ForecastRun(context);
+    return `${LOCAL_WW3_TILE_BASE}/WW3/${theme}/${packageDate}/${runTag}/{z}/{x}/{y}.png`;
   },
   BMKG: () =>
     "https://peta-maritim.bmkg.go.id/api21/mpl_req/w3g_global/swh/0/202606020000/202606031200/{z}/{x}/{y}.png?ci=1&overlays=,contourf&conc=snow",
