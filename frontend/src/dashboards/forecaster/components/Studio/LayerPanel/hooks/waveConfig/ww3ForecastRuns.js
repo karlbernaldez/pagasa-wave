@@ -25,6 +25,7 @@ const WW3_FORECAST_OFFSETS = {
 };
 
 const DEFAULT_WW3_OFFSET = WW3_FORECAST_OFFSETS.analysis;
+const MONTH_TOKENS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
@@ -79,8 +80,14 @@ const shiftDate = (date, days) => {
   return shifted;
 };
 
+export const formatWW3PackageDate = (forecastDate) => {
+  const date = parseForecastDate(forecastDate);
+  return `${date.getUTCFullYear()}${MONTH_TOKENS[date.getUTCMonth()]}${pad2(date.getUTCDate())}`;
+};
+
 export const resolveWW3ForecastRun = ({ forecastDate, chartType } = {}) => {
   const offset = resolveOffset(chartType);
+  const packageDate = formatWW3PackageDate(forecastDate);
   const date = shiftDate(parseForecastDate(forecastDate), offset.days);
   const yyyymmdd = [
     date.getUTCFullYear(),
@@ -91,6 +98,7 @@ export const resolveWW3ForecastRun = ({ forecastDate, chartType } = {}) => {
   return {
     runTag: `${yyyymmdd}${offset.hour}`,
     filenameTimestamp: `${yyyymmdd}T${offset.hour}`,
+    packageDate,
   };
 };
 
