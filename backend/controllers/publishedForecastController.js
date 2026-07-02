@@ -8,6 +8,7 @@ import { formatLocalDateKey } from '../utils/forecastPackage.js';
 const DEFAULT_RASTER_BOUNDS = [100, -5, 180, 50];
 const DEFAULT_MODEL_RUN_HOUR = 18;
 const DEFAULT_MODEL_RUN_DAY_OFFSET = -1;
+const MONTH_TOKENS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const WW3_FORECAST_OFFSETS = Object.freeze({
   analysis: { days: -1, hour: '18' },
   forecast_24h: { days: 0, hour: '18' },
@@ -108,6 +109,13 @@ function formatForecastDateToken(value) {
   return localKey ? localKey.replaceAll('-', '') : '';
 }
 
+function formatPackageDateToken(value) {
+  const match = String(formatForecastDateToken(value) || '').match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (!match) return '';
+  const [, year, month, day] = match;
+  return `${year}${MONTH_TOKENS[Number(month) - 1]}${day}`;
+}
+
 function shiftDateToken(dateToken, offsetDays) {
   const match = String(dateToken || '').match(/^(\d{4})(\d{2})(\d{2})$/);
   if (!match) return '';
@@ -151,6 +159,7 @@ function getChartRunDefaults(chartType) {
 function resolveCogRaster(project, { theme = 'light' } = {}) {
   const asset = getRawRasterAsset(project) || {};
   const forecastDate = formatForecastDateToken(project?.forecastDate);
+  const packageDate = asset.packageDate || formatPackageDateToken(project?.forecastDate);
   const chartDefaults = getChartRunDefaults(project?.chartType);
   const runHour = getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', chartDefaults.hour);
   const runDayOffset = getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', chartDefaults.days);
@@ -166,6 +175,7 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
     date: forecastDate,
     model,
     theme: rasterTheme,
+    packageDate,
     runDate,
     runHour: runHourToken,
     runDateTime,
@@ -174,7 +184,7 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
 
   const defaultLocalTileTemplate = process.env.NODE_ENV === 'production'
     ? ''
-    : 'http://127.0.0.1:8081/{model}/{theme}/{runDateTime}/{z}/{x}/{y}.png';
+    : 'http://127.0.0.1:8081/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png';
   const cogUrl = asset.cogUrl || asset.url || interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
   const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultLocalTileTemplate, tokenValues);
   const cogTileTemplate = process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
@@ -198,6 +208,7 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
     runDate,
     runHour: runHourToken,
     runDateTime,
+    packageDate,
   };
 }
 
