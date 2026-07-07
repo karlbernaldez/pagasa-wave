@@ -86,11 +86,23 @@ fi
 # Frontend env is intentionally not created with secrets. It must contain only public values.
 FRONTEND_ENV="$APP_ROOT/frontend/.env.production"
 if [[ ! -f "$FRONTEND_ENV" ]]; then
-  cp "$SCRIPT_DIR/frontend.env.example" "$FRONTEND_ENV"
-  sed -i "s|__PUBLIC_ORIGIN__|$PUBLIC_ORIGIN|g" "$FRONTEND_ENV"
+  if [[ -f "$SCRIPT_DIR/frontend.env.example" ]]; then
+    cp "$SCRIPT_DIR/frontend.env.example" "$FRONTEND_ENV"
+    sed -i "s|__PUBLIC_ORIGIN__|$PUBLIC_ORIGIN|g" "$FRONTEND_ENV"
+  else
+    cat > "$FRONTEND_ENV" <<EOF
+VITE_API_URL=$PUBLIC_ORIGIN
+VITE_MAPBOX_ACCESS_TOKEN=replace-with-public-mapbox-token
+EOF
+  fi
   chown "$APP_USER:$APP_USER" "$FRONTEND_ENV"
   chmod 600 "$FRONTEND_ENV"
   echo "Created $FRONTEND_ENV. Edit VITE_MAPBOX_ACCESS_TOKEN before building if needed."
+fi
+
+if grep -q "replace-with-public-mapbox-token" "$FRONTEND_ENV"; then
+  echo "$FRONTEND_ENV still contains the placeholder Mapbox token. Edit it before deploying."
+  exit 2
 fi
 
 sudo -u "$APP_USER" bash -lc "
