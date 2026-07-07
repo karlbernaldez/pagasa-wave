@@ -104,9 +104,15 @@ fi
 # Vite recreates frontend/dist during each build. Re-apply web-server-safe
 # permissions and SELinux labels so Nginx can serve public assets such as
 # /pagasa-logo.png, favicons, and immutable /assets/* files after every deploy.
+#
+# The Nginx worker normally runs as nginx, not as the wavelab app user. That
+# means built files must be world-readable and every parent directory in the
+# served path must be world-traversable. Apply ownership first, then chmod, so
+# restrictive umasks from the build cannot leave files as 660/770.
+chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIST"
+chmod o+x /opt /opt/wavelab "$APP_ROOT" "$APP_ROOT/frontend" "$FRONTEND_DIST"
 find "$FRONTEND_DIST" -type d -exec chmod 755 {} \;
 find "$FRONTEND_DIST" -type f -exec chmod 644 {} \;
-chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIST"
 
 if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]]; then
   if command -v semanage >/dev/null 2>&1; then
@@ -114,6 +120,13 @@ if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]];
       || semanage fcontext -m -t httpd_sys_content_t "$FRONTEND_DIST(/.*)?"
   fi
   restorecon -Rv "$FRONTEND_DIST"
+fi
+
+if [[ -f "$FRONTEND_DIST/pagasa-logo.png" ]]; then
+  ls -lah "$FRONTEND_DIST/pagasa-logo.png"
+else
+  echo "Expected frontend public asset missing: $FRONTEND_DIST/pagasa-logo.png"
+  exit 1
 fi
 
 cp "$SCRIPT_DIR/wavelab-backend.service" "$SERVICE_FILE"
