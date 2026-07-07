@@ -84,7 +84,7 @@ if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]];
 fi
 
 # Frontend env is intentionally not created with secrets. It must contain only public values.
-FRONTEND_ENV="$APP_ROOT/frontend/.env.production"
+FRONTEND_ENV="$APP_ROOT/frontend/.env"
 if [[ ! -f "$FRONTEND_ENV" ]]; then
   if [[ -f "$SCRIPT_DIR/frontend.env.example" ]]; then
     cp "$SCRIPT_DIR/frontend.env.example" "$FRONTEND_ENV"
