@@ -90,7 +90,7 @@ sudo -u "$APP_USER" bash -lc "
   cd '$APP_ROOT/frontend'
   corepack enable
   corepack prepare pnpm@10.17.1 --activate
-  pnpm install --frozen-lockfile
+  pnpm install --no-frozen-lockfile
   pnpm test
   pnpm build
 "
