@@ -95,6 +95,27 @@ sudo -u "$APP_USER" bash -lc "
   pnpm build
 "
 
+FRONTEND_DIST="$APP_ROOT/frontend/dist"
+if [[ ! -d "$FRONTEND_DIST" ]]; then
+  echo "Frontend build output not found: $FRONTEND_DIST"
+  exit 1
+fi
+
+# Vite recreates frontend/dist during each build. Re-apply web-server-safe
+# permissions and SELinux labels so Nginx can serve public assets such as
+# /pagasa-logo.png, favicons, and immutable /assets/* files after every deploy.
+find "$FRONTEND_DIST" -type d -exec chmod 755 {} \;
+find "$FRONTEND_DIST" -type f -exec chmod 644 {} \;
+chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIST"
+
+if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]]; then
+  if command -v semanage >/dev/null 2>&1; then
+    semanage fcontext -a -t httpd_sys_content_t "$FRONTEND_DIST(/.*)?" 2>/dev/null \
+      || semanage fcontext -m -t httpd_sys_content_t "$FRONTEND_DIST(/.*)?"
+  fi
+  restorecon -Rv "$FRONTEND_DIST"
+fi
+
 cp "$SCRIPT_DIR/wavelab-backend.service" "$SERVICE_FILE"
 cp "$SCRIPT_DIR/nginx.conf" "$NGINX_CONF"
 sed -i "s/__PUBLIC_HOST__/$PUBLIC_HOST/g" "$NGINX_CONF"
@@ -105,6 +126,9 @@ systemctl enable --now wavelab-backend
 systemctl reload nginx
 
 curl -fsS http://127.0.0.1:5000/status >/dev/null
+
+# Validate that root-level Vite public assets are reachable through Nginx.
+curl -fsSI "http://127.0.0.1/pagasa-logo.png" >/dev/null
 
 echo "WaveLab deploy completed."
 echo "Public origin used for this deployment: $PUBLIC_ORIGIN"
