@@ -8,8 +8,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 const baseOptions = {
   httpOnly: true,
-  secure:   process.env.NODE_ENV === 'production',
-  // Use 'None' + secure:true if the frontend lives on a different origin
+  secure:   process.env.COOKIE_SECURE === 'true',
   sameSite: 'Strict',
   path:     '/',
 };
