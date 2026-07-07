@@ -41,7 +41,15 @@ fi
 
 mkdir -p /etc/wavelab
 mkdir -p "$APP_ROOT/backend/logs" "$APP_ROOT/backend/frames" "$APP_ROOT/backend/public" "$APP_ROOT/backend/tmp"
-chown -R "$APP_USER:$APP_USER" "$APP_ROOT"
+
+# Do not chown the whole repository. That changes .git ownership and prevents
+# the deployment operator from running git fetch/pull after a deploy. Restrict
+# ownership changes to runtime/build output paths that the app actually writes.
+chown -R "$APP_USER:$APP_USER" \
+  "$APP_ROOT/backend/logs" \
+  "$APP_ROOT/backend/frames" \
+  "$APP_ROOT/backend/public" \
+  "$APP_ROOT/backend/tmp"
 
 if [[ ! -f "$BACKEND_ENV" ]]; then
   cp "$SCRIPT_DIR/backend.env.example" "$BACKEND_ENV"
