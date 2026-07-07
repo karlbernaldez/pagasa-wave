@@ -22,6 +22,26 @@ MongoDB
   - use managed MongoDB or a separately maintained MongoDB server
 ```
 
+## Domain or IP support
+
+A domain is recommended for final production because it allows HTTPS and secure cookies.
+
+If no domain is available yet, deploy with the server public IP first:
+
+```text
+PUBLIC_HOST=SERVER_IP
+PUBLIC_ORIGIN=http://SERVER_IP
+```
+
+When a domain becomes available, switch to:
+
+```text
+PUBLIC_HOST=your-domain.com
+PUBLIC_ORIGIN=https://your-domain.com
+```
+
+Then rebuild the frontend and enable TLS with Certbot.
+
 ## Files
 
 ```text
@@ -45,13 +65,29 @@ deploy/almalinux/
 
 ## First-time server preparation
 
-Create the application user and clone the repository:
+If you already cloned the repository, skip the clone command and make sure the app path is `/opt/wavelab/app` or set `APP_ROOT` when running `deploy.sh`.
+
+Recommended path:
 
 ```bash
 sudo useradd --system --create-home --shell /bin/bash wavelab || true
 sudo mkdir -p /opt/wavelab
 sudo chown -R wavelab:wavelab /opt/wavelab
 sudo -u wavelab git clone -b main https://github.com/karlbernaldez/pagasa-wave.git /opt/wavelab/app
+```
+
+If the repo is already cloned somewhere else, either move it:
+
+```bash
+sudo mkdir -p /opt/wavelab
+sudo mv /path/to/current/clone /opt/wavelab/app
+sudo chown -R wavelab:wavelab /opt/wavelab/app
+```
+
+or run the deployment helper with a custom root:
+
+```bash
+sudo APP_ROOT=/path/to/current/clone bash deploy/almalinux/deploy.sh SERVER_IP
 ```
 
 Install Node.js 20 or 22 LTS before running the deployment helper. Confirm:
@@ -64,12 +100,13 @@ corepack --version
 
 ## Configure backend environment
 
-Create the backend environment file:
+Create the backend environment file. Use your server IP while there is no domain:
 
 ```bash
+SERVER_IP=203.0.113.10
 sudo mkdir -p /etc/wavelab
 sudo cp /opt/wavelab/app/deploy/almalinux/backend.env.example /etc/wavelab/backend.env
-sudo sed -i 's/__DOMAIN__/your-domain.com/g' /etc/wavelab/backend.env
+sudo sed -i "s|__PUBLIC_ORIGIN__|http://$SERVER_IP|g" /etc/wavelab/backend.env
 sudo chmod 600 /etc/wavelab/backend.env
 sudo chown root:root /etc/wavelab/backend.env
 sudo nano /etc/wavelab/backend.env
@@ -85,38 +122,48 @@ REDIS_URL=redis://127.0.0.1:6379
 JWT_SECRET=...
 JWT_REFRESH_SECRET=...
 ADMIN_KEY=...
-CORS_ALLOWED_ORIGINS=https://your-domain.com
+CORS_ALLOWED_ORIGINS=http://SERVER_IP
 ```
 
 Do not put `JWT_SECRET` or `JWT_REFRESH_SECRET` in frontend env files.
 
 ## Configure frontend environment
 
-Create the frontend build env:
+Create the frontend build env. Use your server IP while there is no domain:
 
 ```bash
+SERVER_IP=203.0.113.10
 sudo -u wavelab cp /opt/wavelab/app/deploy/almalinux/frontend.env.example /opt/wavelab/app/frontend/.env.production
-sudo -u wavelab sed -i 's/__DOMAIN__/your-domain.com/g' /opt/wavelab/app/frontend/.env.production
+sudo -u wavelab sed -i "s|__PUBLIC_ORIGIN__|http://$SERVER_IP|g" /opt/wavelab/app/frontend/.env.production
 sudo -u wavelab nano /opt/wavelab/app/frontend/.env.production
 ```
 
-Expected values:
+Expected values for IP-only deployment:
 
 ```text
-VITE_API_URL=https://your-domain.com
+VITE_API_URL=http://SERVER_IP
 VITE_MAPBOX_ACCESS_TOKEN=...
 ```
 
 Only public browser-safe values should be placed here.
 
-## Deploy
+## Deploy without a domain
 
-Run from the repository root:
+Run from the repository root with the server public IP:
 
 ```bash
 cd /opt/wavelab/app
-sudo bash deploy/almalinux/deploy.sh your-domain.com
+sudo bash deploy/almalinux/deploy.sh SERVER_IP
 ```
+
+You can also let the script try to auto-detect the public IP:
+
+```bash
+cd /opt/wavelab/app
+sudo bash deploy/almalinux/deploy.sh
+```
+
+Explicitly passing the IP is safer.
 
 The script will:
 
@@ -131,38 +178,67 @@ The script will:
 - start/restart the backend
 - validate `/status` locally
 
-## Enable HTTPS
+## Enable domain and HTTPS later
 
-After DNS points to the server:
+After DNS points to the server, update backend env:
+
+```bash
+sudo nano /etc/wavelab/backend.env
+```
+
+Change:
+
+```text
+CORS_ALLOWED_ORIGINS=http://SERVER_IP
+```
+
+to:
+
+```text
+CORS_ALLOWED_ORIGINS=https://your-domain.com
+```
+
+Update frontend env:
+
+```bash
+sudo -u wavelab nano /opt/wavelab/app/frontend/.env.production
+```
+
+Change:
+
+```text
+VITE_API_URL=http://SERVER_IP
+```
+
+to:
+
+```text
+VITE_API_URL=https://your-domain.com
+```
+
+Update Nginx for the domain and rebuild frontend:
+
+```bash
+cd /opt/wavelab/app
+sudo bash deploy/almalinux/deploy.sh your-domain.com
+```
+
+Then enable HTTPS:
 
 ```bash
 sudo dnf install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d your-domain.com
 ```
 
-After HTTPS is active, confirm these values:
-
-```text
-/etc/wavelab/backend.env:
-CORS_ALLOWED_ORIGINS=https://your-domain.com
-
-/opt/wavelab/app/frontend/.env.production:
-VITE_API_URL=https://your-domain.com
-```
-
-If frontend env changes, rebuild the frontend:
-
-```bash
-cd /opt/wavelab/app/frontend
-sudo -u wavelab pnpm build
-sudo systemctl reload nginx
-```
+After HTTPS is active, validate again.
 
 ## Validate after deployment
 
+For IP-only deployment:
+
 ```bash
 curl -i http://127.0.0.1:5000/status
-curl -i https://your-domain.com/api/status
+curl -i http://SERVER_IP/api/status
 sudo systemctl status redis
 sudo systemctl status nginx
 sudo systemctl status wavelab-backend
@@ -170,10 +246,19 @@ sudo journalctl -u wavelab-backend -n 100 --no-pager
 sudo tail -n 100 /var/log/nginx/error.log
 ```
 
+For domain + HTTPS deployment:
+
+```bash
+curl -i https://your-domain.com/api/status
+sudo systemctl status redis
+sudo systemctl status nginx
+sudo systemctl status wavelab-backend
+```
+
 Application smoke tests:
 
 ```text
-- Login works with secure cookies
+- Login works
 - OTP flow works
 - Forecaster and Admin roles work
 - Project creation works
@@ -194,7 +279,7 @@ sudo systemctl stop wavelab-backend
 sudo -u wavelab git fetch origin
 sudo -u wavelab git checkout main
 sudo -u wavelab git reset --hard <known-good-commit-sha>
-sudo bash deploy/almalinux/deploy.sh your-domain.com
+sudo bash deploy/almalinux/deploy.sh SERVER_IP
 ```
 
 For stronger production safety, use release directories:
@@ -213,3 +298,4 @@ Then point the systemd `WorkingDirectory` and Nginx root at `/opt/wavelab/curren
 - SELinux may block Nginx proxying unless `httpd_can_network_connect` is enabled.
 - Backend logs are written under `/opt/wavelab/app/backend/logs` and should be monitored for disk usage.
 - Real env files must never be committed.
+- IP-only HTTP deployment is acceptable for initial staging, but final production should use a domain and HTTPS.
