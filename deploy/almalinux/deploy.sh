@@ -35,6 +35,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIST="$APP_ROOT/frontend/dist"
+WAVETILES_ROOT="$APP_ROOT/wavetiles/tiles"
 
 make_path_traversable() {
   local path="$1"
@@ -50,6 +51,7 @@ fi
 
 mkdir -p /etc/wavelab
 mkdir -p "$APP_ROOT/backend/logs" "$APP_ROOT/backend/frames" "$APP_ROOT/backend/public" "$APP_ROOT/backend/tmp"
+mkdir -p "$WAVETILES_ROOT"
 
 # Do not chown the whole repository. That changes .git ownership and prevents
 # the deployment operator from running git fetch/pull after a deploy. Restrict
@@ -58,7 +60,8 @@ chown -R "$APP_USER:$APP_USER" \
   "$APP_ROOT/backend/logs" \
   "$APP_ROOT/backend/frames" \
   "$APP_ROOT/backend/public" \
-  "$APP_ROOT/backend/tmp"
+  "$APP_ROOT/backend/tmp" \
+  "$WAVETILES_ROOT"
 
 if [[ ! -f "$BACKEND_ENV" ]]; then
   cp "$SCRIPT_DIR/backend.env.example" "$BACKEND_ENV"
@@ -92,12 +95,19 @@ if [[ ! -f "$FRONTEND_ENV" ]]; then
   else
     cat > "$FRONTEND_ENV" <<EOF
 VITE_API_URL=$PUBLIC_ORIGIN
+VITE_WW3_TILE_BASE=$PUBLIC_ORIGIN/wavetiles
 VITE_MAPBOX_ACCESS_TOKEN=replace-with-public-mapbox-token
 EOF
   fi
   chown "$APP_USER:$APP_USER" "$FRONTEND_ENV"
   chmod 600 "$FRONTEND_ENV"
   echo "Created $FRONTEND_ENV. Edit VITE_MAPBOX_ACCESS_TOKEN before building if needed."
+fi
+
+if ! grep -q "^VITE_WW3_TILE_BASE=" "$FRONTEND_ENV"; then
+  printf '\nVITE_WW3_TILE_BASE=%s/wavetiles\n' "$PUBLIC_ORIGIN" >> "$FRONTEND_ENV"
+  chown "$APP_USER:$APP_USER" "$FRONTEND_ENV"
+  chmod 600 "$FRONTEND_ENV"
 fi
 
 if grep -q "replace-with-public-mapbox-token" "$FRONTEND_ENV"; then
@@ -139,15 +149,20 @@ fi
 # restrictive umasks from the build cannot leave files as 660/770.
 chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIST"
 make_path_traversable "$FRONTEND_DIST"
+make_path_traversable "$WAVETILES_ROOT"
 find "$FRONTEND_DIST" -type d -exec chmod 755 {} \;
 find "$FRONTEND_DIST" -type f -exec chmod 644 {} \;
+find "$WAVETILES_ROOT" -type d -exec chmod 755 {} \;
+find "$WAVETILES_ROOT" -type f -exec chmod 644 {} \;
 
 if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]]; then
   if command -v semanage >/dev/null 2>&1; then
     semanage fcontext -a -t httpd_sys_content_t "$FRONTEND_DIST(/.*)?" 2>/dev/null \
       || semanage fcontext -m -t httpd_sys_content_t "$FRONTEND_DIST(/.*)?"
+    semanage fcontext -a -t httpd_sys_content_t "$WAVETILES_ROOT(/.*)?" 2>/dev/null \
+      || semanage fcontext -m -t httpd_sys_content_t "$WAVETILES_ROOT(/.*)?"
   fi
-  restorecon -Rv "$FRONTEND_DIST"
+  restorecon -Rv "$FRONTEND_DIST" "$WAVETILES_ROOT"
 fi
 
 if [[ -f "$FRONTEND_DIST/pagasa-logo.png" ]]; then
@@ -166,6 +181,7 @@ sed -i \
 sed -i \
   -e "s|__PUBLIC_HOST__|$PUBLIC_HOST|g" \
   -e "s|__FRONTEND_ROOT__|$FRONTEND_DIST|g" \
+  -e "s|__APP_ROOT__|$APP_ROOT|g" \
   "$NGINX_CONF"
 
 nginx -t
@@ -181,4 +197,5 @@ curl -fsSI "http://127.0.0.1/pagasa-logo.png" >/dev/null
 echo "WaveLab deploy completed."
 echo "Public origin used for this deployment: $PUBLIC_ORIGIN"
 echo "App root used for this deployment: $APP_ROOT"
+echo "WW3 tile base used for this deployment: $PUBLIC_ORIGIN/wavetiles"
 echo "When a domain is available, update /etc/wavelab/backend.env and frontend/.env.production, rebuild frontend, then enable TLS with certbot."
