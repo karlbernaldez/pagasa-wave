@@ -3,7 +3,7 @@ set -euo pipefail
 
 PUBLIC_HOST="${1:-}"
 APP_USER="${APP_USER:-wavelab}"
-APP_ROOT="${APP_ROOT:-/opt/wavelab/app}"
+APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
 BACKEND_ENV="${BACKEND_ENV:-/etc/wavelab/backend.env}"
 NGINX_CONF="${NGINX_CONF:-/etc/nginx/conf.d/wavelab.conf}"
 SERVICE_FILE="${SERVICE_FILE:-/etc/systemd/system/wavelab-backend.service}"
@@ -29,11 +29,20 @@ fi
 if [[ ! -d "$APP_ROOT" ]]; then
   echo "App root not found: $APP_ROOT"
   echo "Clone the repo first, for example:"
-  echo "  sudo -u $APP_USER git clone -b main https://github.com/karlbernaldez/pagasa-wave.git $APP_ROOT"
+  echo "  sudo -u $APP_USER git clone -b dev https://github.com/karlbernaldez/pagasa-wave.git $APP_ROOT"
   exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FRONTEND_DIST="$APP_ROOT/frontend/dist"
+
+make_path_traversable() {
+  local path="$1"
+  while [[ "$path" != "/" && -n "$path" ]]; do
+    chmod o+x "$path" 2>/dev/null || true
+    path="$(dirname "$path")"
+  done
+}
 
 if ! id "$APP_USER" >/dev/null 2>&1; then
   useradd --system --create-home --shell /bin/bash "$APP_USER"
@@ -103,7 +112,6 @@ sudo -u "$APP_USER" bash -lc "
   pnpm build
 "
 
-FRONTEND_DIST="$APP_ROOT/frontend/dist"
 if [[ ! -d "$FRONTEND_DIST" ]]; then
   echo "Frontend build output not found: $FRONTEND_DIST"
   exit 1
@@ -118,7 +126,7 @@ fi
 # served path must be world-traversable. Apply ownership first, then chmod, so
 # restrictive umasks from the build cannot leave files as 660/770.
 chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIST"
-chmod o+x /opt /opt/wavelab "$APP_ROOT" "$APP_ROOT/frontend" "$FRONTEND_DIST"
+make_path_traversable "$FRONTEND_DIST"
 find "$FRONTEND_DIST" -type d -exec chmod 755 {} \;
 find "$FRONTEND_DIST" -type f -exec chmod 644 {} \;
 
@@ -139,7 +147,14 @@ fi
 
 cp "$SCRIPT_DIR/wavelab-backend.service" "$SERVICE_FILE"
 cp "$SCRIPT_DIR/nginx.conf" "$NGINX_CONF"
-sed -i "s/__PUBLIC_HOST__/$PUBLIC_HOST/g" "$NGINX_CONF"
+sed -i \
+  -e "s|__APP_USER__|$APP_USER|g" \
+  -e "s|__APP_ROOT__|$APP_ROOT|g" \
+  "$SERVICE_FILE"
+sed -i \
+  -e "s|__PUBLIC_HOST__|$PUBLIC_HOST|g" \
+  -e "s|__FRONTEND_ROOT__|$FRONTEND_DIST|g" \
+  "$NGINX_CONF"
 
 nginx -t
 systemctl daemon-reload
@@ -153,4 +168,5 @@ curl -fsSI "http://127.0.0.1/pagasa-logo.png" >/dev/null
 
 echo "WaveLab deploy completed."
 echo "Public origin used for this deployment: $PUBLIC_ORIGIN"
+echo "App root used for this deployment: $APP_ROOT"
 echo "When a domain is available, update /etc/wavelab/backend.env and frontend/.env.production, rebuild frontend, then enable TLS with certbot."
