@@ -12,6 +12,7 @@ const VerifyEmail = lazy(() => import('@/pages/VerifyEmail'));
 const Charts = lazy(() => import('@/dashboards/public/pages/Charts'));
 const AboutUs = lazy(() => import('@/dashboards/public/pages/AboutUs'));
 const Contact = lazy(() => import('@/dashboards/public/pages/Contact'));
+const NotFound = lazy(() => import('@/dashboards/public/pages/NotFound'));
 const PublishedForecastPage = lazy(() => import('@/features/projects/pages/PublishedForecastPage'));
 
 function LegacyChartRedirect() {
@@ -32,6 +33,7 @@ export default [
       { path: '/forecasts/:projectId', element: <LegacyChartRedirect /> },
       { path: '/about-us', element: <AboutUs /> },
       { path: '/contact', element: <Contact /> },
+      { path: '*', element: <NotFound /> },
     ],
   },
   {
