@@ -1,0 +1,11 @@
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - gdal=3.10.*
+  - rasterio
+  - numpy
+  - scipy
+  - xarray
+  - netcdf4
+  - h5netcdf
