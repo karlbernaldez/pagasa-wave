@@ -33,6 +33,7 @@ import {
 
 const RECENT_FETCH_LIMIT = 80;
 const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
+const HERO_IMAGE_URL = '/images/wavelab-public-hero.svg';
 
 function parsePublicDate(value) {
   if (!value) return null;
@@ -256,9 +257,12 @@ export default function Home() {
 
   return (
     <main className={`relative min-h-screen overflow-hidden ${pageClass}`}>
-      <section className="relative isolate overflow-hidden px-4 pb-20 pt-28 sm:px-6 lg:px-8">
-        <div className="absolute inset-0 -z-20 bg-gradient-to-br from-sky-950 via-blue-900 to-cyan-900" aria-hidden="true" />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_78%_24%,rgba(186,230,253,0.32),transparent_30%),linear-gradient(90deg,rgba(2,6,23,0.90),rgba(2,6,23,0.58),rgba(2,6,23,0.20))]" aria-hidden="true" />
+      <section
+        className="relative isolate overflow-hidden bg-sky-950 bg-cover bg-center px-4 pb-20 pt-28 sm:px-6 lg:bg-[center_right] lg:px-8"
+        style={{ backgroundImage: `url(${HERO_IMAGE_URL})` }}
+      >
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950/92 via-blue-950/70 to-slate-950/15" aria-hidden="true" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-950/20 via-transparent to-slate-950/40" aria-hidden="true" />
         <div className={`absolute bottom-0 left-0 right-0 -z-10 h-40 bg-gradient-to-t ${isDark ? 'from-slate-950 via-slate-950/70' : 'from-slate-50 via-slate-50/70'} to-transparent`} aria-hidden="true" />
 
         <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_430px]">
