@@ -226,65 +226,65 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
 
 /* Extend the same clear glass language to the public header and hero controls. */
 main.relative.min-h-screen > header.sticky {
-  background: rgba(255, 255, 255, 0.58) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(165%) contrast(104%) brightness(1.02) !important;
-  backdrop-filter: blur(12px) saturate(165%) contrast(104%) brightness(1.02) !important;
-  border-color: rgba(255, 255, 255, 0.46) !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(155%) contrast(103%) brightness(1.02) !important;
+  backdrop-filter: blur(6px) saturate(155%) contrast(103%) brightness(1.02) !important;
+  border-color: rgba(255, 255, 255, 0.42) !important;
   box-shadow:
-    0 14px 42px rgba(15, 23, 42, 0.055),
-    inset 0 1px 0 rgba(255, 255, 255, 0.70) !important;
+    0 12px 36px rgba(15, 23, 42, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.54) !important;
 }
 
 main.relative.min-h-screen.bg-slate-950 > header.sticky {
-  background: rgba(2, 6, 23, 0.36) !important;
-  -webkit-backdrop-filter: blur(13px) saturate(175%) contrast(108%) brightness(1.04) !important;
-  backdrop-filter: blur(13px) saturate(175%) contrast(108%) brightness(1.04) !important;
+  background: rgba(2, 6, 23, 0.16) !important;
+  -webkit-backdrop-filter: blur(7px) saturate(165%) contrast(106%) brightness(1.04) !important;
+  backdrop-filter: blur(7px) saturate(165%) contrast(106%) brightness(1.04) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
   box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.24),
+    0 14px 42px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
 }
 
 main.relative.min-h-screen > header.sticky nav > div.hidden.items-center.gap-3.lg\:flex > div,
 main.relative.min-h-screen > header.sticky nav > div.hidden.items-center.gap-3.lg\:flex > button,
 main.relative.min-h-screen > header.sticky nav > button[aria-controls="wavelab-public-mobile-menu"] {
-  background: rgba(255, 255, 255, 0.10) !important;
-  -webkit-backdrop-filter: blur(8px) saturate(150%) contrast(103%) !important;
-  backdrop-filter: blur(8px) saturate(150%) contrast(103%) !important;
-  border-color: rgba(255, 255, 255, 0.46) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(145%) contrast(102%) !important;
+  backdrop-filter: blur(5px) saturate(145%) contrast(102%) !important;
+  border-color: rgba(255, 255, 255, 0.42) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    0 10px 26px rgba(15, 23, 42, 0.055) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.44),
+    0 8px 22px rgba(15, 23, 42, 0.045) !important;
 }
 
 main.relative.min-h-screen.bg-slate-950 > header.sticky nav > div.hidden.items-center.gap-3.lg\:flex > div,
 main.relative.min-h-screen.bg-slate-950 > header.sticky nav > div.hidden.items-center.gap-3.lg\:flex > button,
 main.relative.min-h-screen.bg-slate-950 > header.sticky nav > button[aria-controls="wavelab-public-mobile-menu"] {
-  background: rgba(255, 255, 255, 0.028) !important;
+  background: rgba(255, 255, 255, 0.016) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 10px 28px rgba(0, 0, 0, 0.18) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.16) !important;
 }
 
 main.relative.min-h-screen > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > div.inline-flex,
 main.relative.min-h-screen > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > p.inline-flex,
 main.relative.min-h-screen > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > div.mt-7 a:last-child {
-  background: rgba(255, 255, 255, 0.12) !important;
-  -webkit-backdrop-filter: blur(7px) saturate(150%) contrast(103%) brightness(1.02) !important;
-  backdrop-filter: blur(7px) saturate(150%) contrast(103%) brightness(1.02) !important;
-  border-color: rgba(255, 255, 255, 0.58) !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(145%) contrast(102%) brightness(1.02) !important;
+  backdrop-filter: blur(5px) saturate(145%) contrast(102%) brightness(1.02) !important;
+  border-color: rgba(255, 255, 255, 0.52) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.58),
-    0 12px 28px rgba(15, 23, 42, 0.06) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.46),
+    0 10px 24px rgba(15, 23, 42, 0.045) !important;
 }
 
 main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > div.inline-flex,
 main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > p.inline-flex,
 main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > div.mt-7 a:last-child {
-  background: rgba(255, 255, 255, 0.032) !important;
+  background: rgba(255, 255, 255, 0.018) !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 12px 30px rgba(0, 0, 0, 0.20) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 26px rgba(0, 0, 0, 0.18) !important;
 }
