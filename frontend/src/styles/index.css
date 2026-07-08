@@ -153,5 +153,5 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
 
 /* Public landing: move the latest forecast card slightly closer to the hero fade. */
 .wavelab-home > div.relative.z-10 > section:nth-of-type(2) {
-  margin-top: 1.75rem !important;
+  margin-top: -2.25rem !important;
 }
