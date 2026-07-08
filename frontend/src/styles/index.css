@@ -299,3 +299,64 @@ main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:first-chil
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 10px 26px rgba(0, 0, 0, 0.18) !important;
 }
+
+/* Below-hero glass: give transparent panels a visible ocean-light backdrop instead of plain white. */
+main.relative.min-h-screen > div.relative.z-10 {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+main.relative.min-h-screen > div.relative.z-10::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 36rem;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(14, 165, 233, 0.16), transparent 28%),
+    radial-gradient(circle at 78% 8%, rgba(45, 212, 191, 0.14), transparent 30%),
+    radial-gradient(circle at 58% 38%, rgba(125, 211, 252, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.18), rgba(224, 242, 254, 0.42) 38%, rgba(240, 253, 250, 0.34));
+}
+
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10::before {
+  background:
+    radial-gradient(circle at 18% 10%, rgba(14, 165, 233, 0.12), transparent 30%),
+    radial-gradient(circle at 78% 8%, rgba(45, 212, 191, 0.10), transparent 32%),
+    radial-gradient(circle at 58% 38%, rgba(59, 130, 246, 0.10), transparent 34%),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.18), rgba(8, 47, 73, 0.36) 42%, rgba(4, 47, 46, 0.26));
+}
+
+main.relative.min-h-screen > div.relative.z-10 > section {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .crystal-panel {
+  background: rgba(255, 255, 255, 0.060) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(150%) contrast(103%) brightness(1.02) !important;
+  backdrop-filter: blur(6px) saturate(150%) contrast(103%) brightness(1.02) !important;
+  border-color: rgba(255, 255, 255, 0.52) !important;
+}
+
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .crystal-panel {
+  background: rgba(2, 6, 23, 0.095) !important;
+  -webkit-backdrop-filter: blur(7px) saturate(160%) contrast(106%) brightness(1.04) !important;
+  backdrop-filter: blur(7px) saturate(160%) contrast(106%) brightness(1.04) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .crystal-surface {
+  background: rgba(255, 255, 255, 0.035) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(145%) contrast(102%) brightness(1.02) !important;
+  backdrop-filter: blur(5px) saturate(145%) contrast(102%) brightness(1.02) !important;
+}
+
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .crystal-surface {
+  background: rgba(255, 255, 255, 0.018) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(155%) contrast(105%) brightness(1.03) !important;
+  backdrop-filter: blur(6px) saturate(155%) contrast(105%) brightness(1.03) !important;
+}
