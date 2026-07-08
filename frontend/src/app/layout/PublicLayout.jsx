@@ -1,21 +1,26 @@
 import { Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 import HeaderNavbar from '@shared/layouts/components/header/Header';
 import Footer from '@shared/layouts/components/Footer';
 import Chatbot from '@/components/Chatbot/index';
 
 const PublicLayout = () => {
+  const location = useLocation();
+  const isPublicHome = location.pathname === '/';
+
   return (
     <>
-      <Suspense fallback={<div style={{ height: 60 }} />}>
-        <HeaderNavbar showAccountControls />
-      </Suspense>
+      {!isPublicHome && (
+        <Suspense fallback={<div style={{ height: 60 }} />}>
+          <HeaderNavbar showAccountControls />
+        </Suspense>
+      )}
 
       <Outlet />
 
       <Suspense fallback={<div style={{ height: 100 }} />}>
-        <Footer />
+        {!isPublicHome && <Footer />}
         <Chatbot />
       </Suspense>
     </>
