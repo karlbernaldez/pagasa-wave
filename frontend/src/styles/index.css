@@ -156,32 +156,33 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   margin-top: -2.25rem !important;
 }
 
-/* Public landing: make the GeoJSON Philippines map more visible while keeping a liquid-glass feel. */
+/* Public landing: icy liquid-glass GeoJSON Philippines map. */
 @media (min-width: 1024px) {
   html body .wavelab-home .hero-ph-map {
     justify-self: end !important;
     width: min(42vw, 500px) !important;
     min-height: clamp(500px, 58vh, 680px) !important;
-    transform: translate(3.2rem, -0.45rem) !important;
+    transform: translate(3.15rem, -0.55rem) !important;
     mix-blend-mode: normal !important;
   }
 
   html body .wavelab-home .hero-ph-map::before {
-    inset: 8% -6% 4% -10% !important;
+    inset: 5% -8% 1% -12% !important;
     background:
-      radial-gradient(circle at 46% 42%, rgba(219,234,254,0.30), rgba(14,165,233,0.18) 38%, transparent 68%) !important;
-    filter: blur(20px) !important;
-    opacity: 0.64 !important;
+      radial-gradient(circle at 48% 42%, rgba(248, 250, 252, 0.46), rgba(219, 234, 254, 0.22) 38%, transparent 69%) !important;
+    filter: blur(24px) !important;
+    opacity: 0.72 !important;
   }
 
   html body .wavelab-home .ph-map-shape {
-    width: min(100%, 470px) !important;
-    height: clamp(500px, 58vh, 665px) !important;
+    width: min(100%, 475px) !important;
+    height: clamp(500px, 58vh, 670px) !important;
     opacity: 0.98 !important;
-    transform: scale(1.01) !important;
+    transform: scale(1.02) !important;
+    overflow: visible !important;
     filter:
-      drop-shadow(0 20px 26px rgba(15,23,42,0.18))
-      drop-shadow(0 0 10px rgba(255,255,255,0.28)) !important;
+      drop-shadow(0 24px 28px rgba(15, 23, 42, 0.20))
+      drop-shadow(0 0 11px rgba(255, 255, 255, 0.40)) !important;
   }
 
   html body .wavelab-home .ph-map-shape g[filter] {
@@ -189,30 +190,34 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   }
 
   html body .wavelab-home .ph-map-path {
-    fill: rgba(255, 255, 255, 0.09) !important;
-    stroke: rgba(29, 78, 216, 0.98) !important;
-    stroke-width: 2.65px !important;
+    fill: rgba(226, 238, 251, 0.27) !important;
+    stroke: rgba(250, 253, 255, 0.96) !important;
+    stroke-width: 2.95px !important;
+    stroke-linejoin: round !important;
+    stroke-linecap: round !important;
     paint-order: stroke fill !important;
-    opacity: 1 !important;
+    opacity: 0.98 !important;
     vector-effect: non-scaling-stroke;
     filter: none !important;
+    shape-rendering: geometricPrecision;
   }
 
   html body .wavelab-home .ph-map-path:nth-child(2n) {
-    fill: rgba(191, 219, 254, 0.12) !important;
-    stroke: rgba(2, 132, 199, 0.96) !important;
+    fill: rgba(210, 226, 244, 0.30) !important;
+    stroke: rgba(242, 248, 255, 0.92) !important;
   }
 
   html body .wavelab-home .ph-map-path:nth-child(3n) {
-    fill: rgba(255, 255, 255, 0.07) !important;
-    stroke: rgba(37, 99, 235, 0.90) !important;
+    fill: rgba(255, 255, 255, 0.19) !important;
+    stroke: rgba(214, 232, 249, 0.94) !important;
   }
 
   html body .wavelab-home .ph-map-shape > g:first-of-type {
     filter:
-      drop-shadow(0 0 2px rgba(255,255,255,0.75))
-      drop-shadow(0 0 7px rgba(37,99,235,0.34))
-      drop-shadow(0 10px 12px rgba(15,23,42,0.14)) !important;
+      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.86))
+      drop-shadow(1px 1px 0 rgba(49, 92, 128, 0.52))
+      drop-shadow(0 0 5px rgba(255, 255, 255, 0.62))
+      drop-shadow(0 13px 14px rgba(15, 23, 42, 0.18)) !important;
   }
 
   html body .wavelab-home.bg-slate-950 .hero-ph-map {
@@ -220,7 +225,15 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   }
 
   html body .wavelab-home.bg-slate-950 .ph-map-path {
-    fill: rgba(103, 232, 249, 0.11) !important;
-    stroke: rgba(125, 211, 252, 0.96) !important;
+    fill: rgba(226, 238, 251, 0.20) !important;
+    stroke: rgba(245, 251, 255, 0.92) !important;
+  }
+
+  html body .wavelab-home.bg-slate-950 .ph-map-shape > g:first-of-type {
+    filter:
+      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.34))
+      drop-shadow(1px 1px 0 rgba(8, 47, 73, 0.62))
+      drop-shadow(0 0 7px rgba(186, 230, 253, 0.34))
+      drop-shadow(0 14px 18px rgba(0, 0, 0, 0.38)) !important;
   }
 }
