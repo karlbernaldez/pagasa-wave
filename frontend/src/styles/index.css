@@ -161,7 +161,7 @@ html body main.wavelab-home > header.sticky {
   border: 0 !important;
   border-bottom: 0 !important;
   border-color: transparent !important;
-  border-radius: 0 0 2.25rem 2.25rem !important;
+  border-radius: 0 !important;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.040), rgba(255, 255, 255, 0.010) 72%, rgba(255, 255, 255, 0)) !important;
   -webkit-backdrop-filter: blur(9px) saturate(170%) contrast(104%) brightness(1.03) !important;
@@ -214,7 +214,7 @@ html body main.wavelab-home > header.sticky > nav {
 
 @media (max-width: 1023px) {
   html body main.wavelab-home > header.sticky {
-    border-radius: 0 0 1.6rem 1.6rem !important;
+    border-radius: 0 !important;
   }
 }
 
