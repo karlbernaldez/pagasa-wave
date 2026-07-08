@@ -34,8 +34,23 @@ import {
 const RECENT_FETCH_LIMIT = 80;
 const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
 
+function parsePublicDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
+  const dateKeyMatch = String(value).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (dateKeyMatch) {
+    const [, year, month, day] = dateKeyMatch;
+    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 16, 0, 0));
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function formatDate(value, options = {}) {
-  if (!value) return '-';
+  const date = parsePublicDate(value);
+  if (!date) return '-';
 
   try {
     return new Intl.DateTimeFormat('en-US', {
@@ -44,7 +59,7 @@ function formatDate(value, options = {}) {
       day: 'numeric',
       year: 'numeric',
       ...options,
-    }).format(new Date(value));
+    }).format(date);
   } catch {
     return '-';
   }
@@ -56,20 +71,18 @@ function formatDateTime(value) {
 
 function getLatestUpdatedAt(projects = []) {
   return projects.reduce((latest, project) => {
-    const candidate = new Date(project?.publishedAt || project?.updatedAt || project?.createdAt || 0);
-    if (Number.isNaN(candidate.getTime())) return latest;
+    const candidate = parsePublicDate(project?.publishedAt || project?.updatedAt || project?.createdAt);
+    if (!candidate) return latest;
     return !latest || candidate > latest ? candidate : latest;
   }, null);
 }
 
 function getForecastPeriodLabel(activeDate) {
-  if (!activeDate) return 'Latest available forecast period';
-
-  const start = new Date(`${activeDate}T00:00:00+08:00`);
-  if (Number.isNaN(start.getTime())) return 'Latest available forecast period';
+  const start = parsePublicDate(activeDate);
+  if (!start) return 'Latest available forecast period';
 
   const end = new Date(start);
-  end.setDate(end.getDate() + 2);
+  end.setUTCDate(end.getUTCDate() + 2);
 
   return `${formatDate(start)} - ${formatDate(end)}`;
 }
@@ -246,7 +259,7 @@ export default function Home() {
       <section className="relative isolate overflow-hidden px-4 pb-20 pt-28 sm:px-6 lg:px-8">
         <div className="absolute inset-0 -z-20 bg-gradient-to-br from-sky-950 via-blue-900 to-cyan-900" aria-hidden="true" />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_78%_24%,rgba(186,230,253,0.32),transparent_30%),linear-gradient(90deg,rgba(2,6,23,0.90),rgba(2,6,23,0.58),rgba(2,6,23,0.20))]" aria-hidden="true" />
-        <div className="absolute bottom-0 left-0 right-0 -z-10 h-40 bg-gradient-to-t from-slate-50 via-slate-50/70 to-transparent dark:from-slate-950" aria-hidden="true" />
+        <div className={`absolute bottom-0 left-0 right-0 -z-10 h-40 bg-gradient-to-t ${isDark ? 'from-slate-950 via-slate-950/70' : 'from-slate-50 via-slate-50/70'} to-transparent`} aria-hidden="true" />
 
         <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_430px]">
           <div className="max-w-3xl py-12 text-white lg:py-20">
