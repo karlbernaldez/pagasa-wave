@@ -156,21 +156,28 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   margin-top: -2.25rem !important;
 }
 
-/* Public landing: make the fixed header read as soft liquid glass instead of a hard strip. */
+/* Public landing: make the fixed header a floating liquid-glass capsule. */
 html body main.wavelab-home > header.sticky {
-  border: 0 !important;
-  border-bottom: 0 !important;
-  border-color: transparent !important;
-  border-radius: 0 0 2.25rem 2.25rem !important;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.040), rgba(255, 255, 255, 0.010) 72%, rgba(255, 255, 255, 0)) !important;
-  -webkit-backdrop-filter: blur(9px) saturate(170%) contrast(104%) brightness(1.03) !important;
-  backdrop-filter: blur(9px) saturate(170%) contrast(104%) brightness(1.03) !important;
-  box-shadow:
-    0 16px 46px rgba(15, 23, 42, 0.035),
-    inset 0 1px 0 rgba(255, 255, 255, 0.42),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.12) !important;
+  position: fixed !important;
+  top: 0.8rem !important;
+  left: 1rem !important;
+  right: 1rem !important;
+  bottom: auto !important;
+  z-index: 50 !important;
+  width: auto !important;
   overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  border-radius: 1.8rem !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08) 58%, rgba(255, 255, 255, 0.04)) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(170%) contrast(104%) brightness(1.03) !important;
+  backdrop-filter: blur(12px) saturate(170%) contrast(104%) brightness(1.03) !important;
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.08),
+    0 6px 18px rgba(14, 165, 233, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
 }
 
 html body main.wavelab-home > header.sticky::before {
@@ -178,33 +185,45 @@ html body main.wavelab-home > header.sticky::before {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  border-radius: inherit;
   background:
-    radial-gradient(520px 64px at 22% 0%, rgba(255, 255, 255, 0.16), transparent 70%),
-    radial-gradient(480px 70px at 82% 8%, rgba(125, 211, 252, 0.10), transparent 72%),
-    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.085) 48%, transparent 100%);
-  opacity: 0.72;
+    radial-gradient(520px 84px at 18% 0%, rgba(255, 255, 255, 0.22), transparent 72%),
+    radial-gradient(420px 76px at 84% 6%, rgba(125, 211, 252, 0.14), transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 46%);
+  opacity: 0.88;
   mix-blend-mode: screen;
 }
 
 html body main.wavelab-home > header.sticky::after {
   content: "";
   position: absolute;
-  left: 1.5rem;
-  right: 1.5rem;
-  bottom: 0;
-  height: 1px;
+  inset: 1px;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.36), transparent);
-  opacity: 0.48;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  opacity: 0.82;
 }
 
 html body main.wavelab-home.bg-slate-950 > header.sticky {
+  border-color: rgba(255, 255, 255, 0.10) !important;
   background:
-    linear-gradient(180deg, rgba(2, 6, 23, 0.10), rgba(2, 6, 23, 0.025) 72%, rgba(2, 6, 23, 0)) !important;
+    linear-gradient(180deg, rgba(2, 6, 23, 0.26), rgba(2, 6, 23, 0.12) 58%, rgba(2, 6, 23, 0.06)) !important;
   box-shadow:
-    0 18px 52px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.045) !important;
+    0 22px 56px rgba(0, 0, 0, 0.28),
+    0 6px 18px rgba(56, 189, 248, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035) !important;
+}
+
+html body main.wavelab-home.bg-slate-950 > header.sticky::before {
+  background:
+    radial-gradient(520px 84px at 18% 0%, rgba(255, 255, 255, 0.10), transparent 72%),
+    radial-gradient(420px 76px at 84% 6%, rgba(103, 232, 249, 0.12), transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 46%);
+  opacity: 0.72;
 }
 
 html body main.wavelab-home > header.sticky > nav {
@@ -214,11 +233,14 @@ html body main.wavelab-home > header.sticky > nav {
 
 @media (max-width: 1023px) {
   html body main.wavelab-home > header.sticky {
-    border-radius: 0 0 1.6rem 1.6rem !important;
+    top: 0.55rem !important;
+    left: 0.65rem !important;
+    right: 0.65rem !important;
+    border-radius: 1.35rem !important;
   }
 }
 
-/* Public landing: icy transparent liquid-glass GeoJSON Philippines map. */
+/* Public landing: PH map with liquid transparent fill + adaptive outlines. */
 @media (min-width: 1024px) {
   html body .wavelab-home .hero-ph-map {
     justify-self: end !important;
@@ -243,8 +265,8 @@ html body main.wavelab-home > header.sticky > nav {
     transform: scale(1.02) !important;
     overflow: visible !important;
     filter:
-      drop-shadow(0 22px 26px rgba(15, 23, 42, 0.18))
-      drop-shadow(0 0 9px rgba(255, 255, 255, 0.36)) !important;
+      drop-shadow(0 18px 24px rgba(15, 23, 42, 0.16))
+      drop-shadow(0 0 8px rgba(255, 255, 255, 0.24)) !important;
   }
 
   html body .wavelab-home .ph-map-shape g[filter] {
@@ -252,9 +274,9 @@ html body main.wavelab-home > header.sticky > nav {
   }
 
   html body .wavelab-home .ph-map-path {
-    fill: rgba(255, 255, 255, 0.055) !important;
-    stroke: rgba(250, 253, 255, 0.95) !important;
-    stroke-width: 3.15px !important;
+    fill: rgba(255, 255, 255, 0.070) !important;
+    stroke: rgba(15, 23, 42, 0.34) !important;
+    stroke-width: 2.2px !important;
     stroke-linejoin: round !important;
     stroke-linecap: round !important;
     paint-order: stroke fill !important;
@@ -265,21 +287,20 @@ html body main.wavelab-home > header.sticky > nav {
   }
 
   html body .wavelab-home .ph-map-path:nth-child(2n) {
-    fill: rgba(226, 238, 251, 0.075) !important;
-    stroke: rgba(246, 251, 255, 0.90) !important;
+    fill: rgba(255, 255, 255, 0.055) !important;
+    stroke: rgba(15, 23, 42, 0.28) !important;
   }
 
   html body .wavelab-home .ph-map-path:nth-child(3n) {
-    fill: rgba(255, 255, 255, 0.035) !important;
-    stroke: rgba(219, 236, 250, 0.92) !important;
+    fill: rgba(226, 238, 251, 0.065) !important;
+    stroke: rgba(30, 41, 59, 0.30) !important;
   }
 
   html body .wavelab-home .ph-map-shape > g:first-of-type {
     filter:
-      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.78))
-      drop-shadow(1px 1px 0 rgba(48, 83, 112, 0.58))
-      drop-shadow(0 0 4px rgba(255, 255, 255, 0.50))
-      drop-shadow(0 12px 13px rgba(15, 23, 42, 0.16)) !important;
+      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.72))
+      drop-shadow(0 8px 12px rgba(15, 23, 42, 0.10))
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.40)) !important;
   }
 
   html body .wavelab-home.bg-slate-950 .hero-ph-map {
@@ -287,20 +308,25 @@ html body main.wavelab-home > header.sticky > nav {
   }
 
   html body .wavelab-home.bg-slate-950 .ph-map-path {
-    fill: rgba(236, 254, 255, 0.055) !important;
-    stroke: rgba(245, 251, 255, 0.90) !important;
+    fill: rgba(236, 254, 255, 0.060) !important;
+    stroke: rgba(255, 255, 255, 0.88) !important;
+    stroke-width: 2.25px !important;
   }
 
   html body .wavelab-home.bg-slate-950 .ph-map-path:nth-child(2n) {
-    fill: rgba(186, 230, 253, 0.065) !important;
-    stroke: rgba(224, 242, 254, 0.88) !important;
+    fill: rgba(186, 230, 253, 0.055) !important;
+    stroke: rgba(240, 249, 255, 0.84) !important;
+  }
+
+  html body .wavelab-home.bg-slate-950 .ph-map-path:nth-child(3n) {
+    fill: rgba(255, 255, 255, 0.040) !important;
+    stroke: rgba(224, 242, 254, 0.86) !important;
   }
 
   html body .wavelab-home.bg-slate-950 .ph-map-shape > g:first-of-type {
     filter:
-      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.30))
-      drop-shadow(1px 1px 0 rgba(8, 47, 73, 0.62))
-      drop-shadow(0 0 6px rgba(186, 230, 253, 0.28))
-      drop-shadow(0 13px 16px rgba(0, 0, 0, 0.34)) !important;
+      drop-shadow(0 0 6px rgba(255, 255, 255, 0.20))
+      drop-shadow(0 0 14px rgba(186, 230, 253, 0.18))
+      drop-shadow(0 14px 18px rgba(0, 0, 0, 0.28)) !important;
   }
 }
