@@ -162,10 +162,10 @@ export default function Home() {
 
   return (
     <main className={`relative min-h-screen overflow-hidden ${pageClass}`}>
-      <section className="relative isolate flex min-h-[700px] items-center overflow-hidden bg-sky-950 bg-cover bg-center px-4 pb-48 pt-28 sm:px-6 lg:min-h-[820px] lg:bg-[center_right] lg:px-8" style={{ backgroundImage: `url(${HERO_IMAGE_URL})` }}>
+      <section className="relative isolate flex min-h-[720px] h-[100svh] items-center overflow-hidden bg-sky-950 bg-cover bg-center px-4 py-28 sm:px-6 lg:min-h-[760px] lg:bg-[center_right] lg:px-8" style={{ backgroundImage: `url(${HERO_IMAGE_URL})` }}>
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950/82 via-blue-950/42 to-transparent" aria-hidden="true" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-950/10 via-transparent to-slate-950/25" aria-hidden="true" />
-        <div className={`absolute bottom-0 left-0 right-0 -z-10 h-52 bg-gradient-to-t ${isDark ? 'from-slate-950 via-slate-950/70' : 'from-slate-50 via-slate-50/75'} to-transparent`} aria-hidden="true" />
+        <div className={`absolute bottom-0 left-0 right-0 -z-10 h-28 bg-gradient-to-t ${isDark ? 'from-slate-950 via-slate-950/65' : 'from-slate-50 via-slate-50/65'} to-transparent`} aria-hidden="true" />
         <div className="mx-auto w-full max-w-7xl">
           <div className="max-w-3xl text-white lg:-translate-y-8">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-cyan-50 shadow-lg shadow-black/10 backdrop-blur"><Waves size={16} aria-hidden="true" />Wavelab Public</div>
@@ -180,7 +180,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto -mt-28 flex max-w-[88rem] flex-col gap-8 px-4 pb-20 sm:px-6 lg:px-8">
+      <section className="relative z-10 mx-auto flex max-w-[88rem] flex-col gap-8 px-4 py-20 sm:px-6 lg:px-8">
         {state.loading && <div className={panelClass(isDark, 'p-8')}><StateNotice isDark={isDark} title="Loading latest forecasts">Fetching the latest published WaveLab charts and preparing the public forecast summary.</StateNotice></div>}
         {!state.loading && state.error && <StateNotice isDark={isDark} tone="red" title="Forecasts could not be loaded" action={<button type="button" onClick={() => setReloadToken((value) => value + 1)} className="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"><RefreshCw size={16} aria-hidden="true" />Retry</button>}><p>{state.error}</p><p className="mt-1">Refresh the public forecast list or try again later.</p></StateNotice>}
         {!state.loading && !state.error && !recentProjects.length && <StateNotice isDark={isDark} tone="amber" title="No published forecasts are available right now">Please check again later or refer to official advisory channels for current marine updates.</StateNotice>}
