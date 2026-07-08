@@ -159,59 +159,67 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   }
 }
 
-/* Wavelab public landing: transparency overrides for the crystal glass style. */
+/* Wavelab public landing: near-clear crystal glass overrides. */
 .liquid-summary {
-  background: rgba(255, 255, 255, 0.012) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(180%) contrast(108%) brightness(1.03) !important;
-  backdrop-filter: blur(12px) saturate(180%) contrast(108%) brightness(1.03) !important;
+  background: rgba(255, 255, 255, 0.004) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
+  backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
 }
 
 .liquid-summary.is-dark {
-  background: rgba(2, 6, 23, 0.038) !important;
-  -webkit-backdrop-filter: blur(13px) saturate(190%) contrast(114%) brightness(1.08) !important;
-  backdrop-filter: blur(13px) saturate(190%) contrast(114%) brightness(1.08) !important;
+  background: rgba(2, 6, 23, 0.018) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(175%) contrast(110%) brightness(1.06) !important;
+  backdrop-filter: blur(6px) saturate(175%) contrast(110%) brightness(1.06) !important;
 }
 
 .liquid-summary::before {
-  opacity: 0.24 !important;
+  opacity: 0.10 !important;
 }
 
 .liquid-summary.is-dark::before {
-  opacity: 0.22 !important;
+  opacity: 0.08 !important;
 }
 
 .liquid-row {
-  background: rgba(255, 255, 255, 0.024) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(165%) contrast(108%) brightness(1.03) !important;
-  backdrop-filter: blur(10px) saturate(165%) contrast(108%) brightness(1.03) !important;
+  background: rgba(255, 255, 255, 0.010) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(155%) contrast(104%) brightness(1.02) !important;
+  backdrop-filter: blur(5px) saturate(155%) contrast(104%) brightness(1.02) !important;
 }
 
 .liquid-row.is-dark {
-  background: rgba(255, 255, 255, 0.030) !important;
-  -webkit-backdrop-filter: blur(11px) saturate(175%) contrast(114%) brightness(1.06) !important;
-  backdrop-filter: blur(11px) saturate(175%) contrast(114%) brightness(1.06) !important;
+  background: rgba(255, 255, 255, 0.018) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(165%) contrast(108%) brightness(1.04) !important;
+  backdrop-filter: blur(6px) saturate(165%) contrast(108%) brightness(1.04) !important;
 }
 
 .liquid-row::before {
-  opacity: 0.18 !important;
+  opacity: 0.08 !important;
 }
 
 .liquid-row.is-dark::before {
-  opacity: 0.14 !important;
+  opacity: 0.07 !important;
 }
 
 .crystal-panel {
-  background: rgba(255, 255, 255, 0.20) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(155%) contrast(104%) brightness(1.02) !important;
+  backdrop-filter: blur(10px) saturate(155%) contrast(104%) brightness(1.02) !important;
 }
 
 .crystal-panel.is-dark {
-  background: rgba(2, 6, 23, 0.24) !important;
+  background: rgba(2, 6, 23, 0.16) !important;
+  -webkit-backdrop-filter: blur(11px) saturate(165%) contrast(108%) brightness(1.04) !important;
+  backdrop-filter: blur(11px) saturate(165%) contrast(108%) brightness(1.04) !important;
 }
 
 .crystal-surface {
-  background: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(255, 255, 255, 0.075) !important;
+  -webkit-backdrop-filter: blur(7px) saturate(145%) contrast(103%) brightness(1.02) !important;
+  backdrop-filter: blur(7px) saturate(145%) contrast(103%) brightness(1.02) !important;
 }
 
 .crystal-surface.is-dark {
-  background: rgba(255, 255, 255, 0.040) !important;
+  background: rgba(255, 255, 255, 0.025) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(155%) contrast(106%) brightness(1.03) !important;
+  backdrop-filter: blur(8px) saturate(155%) contrast(106%) brightness(1.03) !important;
 }
