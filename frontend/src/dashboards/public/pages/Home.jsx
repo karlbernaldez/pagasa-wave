@@ -113,14 +113,33 @@ const HOME_LIQUID_CSS = `
   background: rgba(255,255,255,0.055) !important;
   border-color: rgba(255,255,255,0.13) !important;
 }
-.wavelab-home .hero-map-card {
-  background: rgba(255,255,255,0.006) !important;
-  -webkit-backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
-  backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
+.wavelab-home .hero-ph-map {
+  pointer-events: none;
+  min-height: clamp(440px, 56vh, 660px);
 }
-.wavelab-home .hero-map-card.is-dark { background: rgba(2,6,23,0.020) !important; }
+.wavelab-home .hero-ph-map::before {
+  content: '';
+  position: absolute;
+  inset: 8% 0 4% 0;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 42%, rgba(255,255,255,0.42), rgba(14,165,233,0.12) 42%, transparent 70%);
+  filter: blur(34px);
+  opacity: 0.68;
+}
+.wavelab-home.bg-slate-950 .hero-ph-map::before {
+  background: radial-gradient(circle at 50% 42%, rgba(103,232,249,0.18), rgba(14,165,233,0.10) 42%, transparent 70%);
+  opacity: 0.74;
+}
 .wavelab-home .ph-map-shape {
-  filter: drop-shadow(0 16px 20px rgba(14,165,233,0.18));
+  width: min(100%, 430px);
+  height: clamp(420px, 54vh, 650px);
+  margin-inline: auto;
+  filter: drop-shadow(0 30px 38px rgba(15,23,42,0.18)) drop-shadow(0 0 18px rgba(255,255,255,0.42));
+  opacity: 0.94;
+}
+.wavelab-home.bg-slate-950 .ph-map-shape {
+  filter: drop-shadow(0 32px 42px rgba(0,0,0,0.38)) drop-shadow(0 0 22px rgba(103,232,249,0.18));
+  opacity: 0.92;
 }
 .wavelab-home .solid-blue,
 .wavelab-home .solid-blue:hover,
@@ -153,6 +172,8 @@ const HOME_LIQUID_CSS = `
     padding-top: 8.5rem !important;
     padding-bottom: 4rem !important;
   }
+  .wavelab-home .hero-ph-map { min-height: 360px; }
+  .wavelab-home .ph-map-shape { height: 360px; }
 }
 `;
 
@@ -253,67 +274,11 @@ function PublicLandingHeader({ currentTime, menuOpen, onToggleMenu, onCloseMenu,
   );
 }
 
-function PhilippinesMapCard({ isDarkMode, availableCount, latestUpdatedAt, forecastPeriodLabel }) {
-  const chipClass = cx('rounded-full border px-3 py-1.5 text-[11px] font-black uppercase tracking-wide', isDarkMode ? 'border-white/10 bg-white/[0.06] text-cyan-100' : 'border-white/60 bg-white/35 text-blue-800');
+function HeroPhilippinesMap() {
   return (
-    <LiquidPanel isDarkMode={isDarkMode} as="aside" className="hero-map-card self-center rounded-[2.35rem] p-5 lg:translate-x-4" aria-label="Philippines forecast coverage map">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Forecast coverage</p>
-          <h2 className={cx('mt-2 text-2xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>Philippines</h2>
-          <p className={cx('mt-1 text-sm font-semibold', isDarkMode ? 'text-slate-200/90' : 'text-slate-700')}>{forecastPeriodLabel}</p>
-        </div>
-        <span className={cx('rounded-2xl px-3 py-2 text-xs font-black shadow-sm', isDarkMode ? 'bg-emerald-400/10 text-emerald-100' : 'bg-emerald-50/90 text-emerald-700')}>Published</span>
-      </div>
-
-      <div className="relative mt-5 h-72 overflow-hidden rounded-[1.7rem] border border-white/35 bg-[radial-gradient(circle_at_50%_30%,rgba(14,165,233,0.28),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.12),rgba(6,182,212,0.08))]">
-        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.18),transparent_34%,rgba(255,255,255,0.08)),repeating-linear-gradient(135deg,rgba(255,255,255,0.08)_0_1px,transparent_1px_28px)]" aria-hidden="true" />
-        <svg className="ph-map-shape absolute inset-0 h-full w-full" viewBox="0 0 260 300" role="img" aria-label="Stylized map of the Philippines">
-          <defs>
-            <linearGradient id="phMapFill" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor={isDarkMode ? '#cffafe' : '#eff6ff'} stopOpacity="0.98" />
-              <stop offset="55%" stopColor={isDarkMode ? '#67e8f9' : '#93c5fd'} stopOpacity="0.82" />
-              <stop offset="100%" stopColor={isDarkMode ? '#22d3ee' : '#0ea5e9'} stopOpacity="0.66" />
-            </linearGradient>
-            <filter id="phGlow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-              <feMerge>
-                <feMergeNode in="coloredBlur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-          <g fill="url(#phMapFill)" stroke="rgba(255,255,255,0.78)" strokeWidth="2.3" filter="url(#phGlow)">
-            <path d="M102 27c12 8 18 20 14 31-4 12-18 16-30 10-13-7-18-22-9-33 5-7 14-12 25-8z" />
-            <path d="M126 65c14 7 25 19 27 34 2 13-5 25-17 28-16 4-31-6-38-20-7-15-2-33 10-40 5-3 11-4 18-2z" />
-            <path d="M90 111c12 7 17 19 12 31-5 11-19 16-31 10-13-6-18-20-11-31 6-10 18-15 30-10z" />
-            <path d="M151 133c17 7 26 22 22 39-4 16-21 25-38 20-17-6-27-21-23-38 4-16 21-28 39-21z" />
-            <path d="M111 172c13 7 20 20 15 34-4 13-17 19-30 15-14-5-22-18-18-31 4-14 19-25 33-18z" />
-            <path d="M162 211c20 8 34 26 32 45-3 19-23 31-43 25-21-6-34-24-31-43 3-20 22-36 42-27z" />
-            <path d="M94 234c11 4 18 14 15 25-3 10-15 16-26 12-11-4-17-15-13-25 3-10 13-16 24-12z" />
-          </g>
-          <g fill="none" stroke={isDarkMode ? 'rgba(103,232,249,0.55)' : 'rgba(29,78,216,0.35)'} strokeWidth="1.8" strokeDasharray="6 8">
-            <path d="M48 78c49-18 110-18 160 0" />
-            <path d="M44 157c56-18 118-19 176 2" />
-            <path d="M58 229c47-15 105-15 153 1" />
-          </g>
-          <g fill={isDarkMode ? '#cffafe' : '#1d4ed8'} stroke="white" strokeWidth="2">
-            <circle cx="101" cy="50" r="5" />
-            <circle cx="134" cy="101" r="5" />
-            <circle cx="151" cy="164" r="5" />
-            <circle cx="158" cy="245" r="5" />
-          </g>
-        </svg>
-        <div className="absolute bottom-4 left-4 right-4 grid grid-cols-4 gap-2">
-          {['Analysis', '24h', '36h', '48h'].map((label) => <span key={label} className="rounded-full border border-white/45 bg-white/20 px-2 py-1 text-center text-[10px] font-black uppercase tracking-wide text-slate-900 backdrop-blur-md">{label}</span>)}
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <span className={chipClass}>{availableCount} charts</span>
-        <span className={chipClass}>Updated {latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Unavailable'}</span>
-      </div>
-    </LiquidPanel>
+    <aside className="hero-ph-map relative hidden items-center justify-center lg:flex" aria-label="Liquid glass map of the Philippines">
+      <div className="ph-map-shape relative z-10" role="img" aria-label="Philippines map" />
+    </aside>
   );
 }
 
@@ -374,5 +339,5 @@ export default function Home() {
   const forecastPeriodLabel = getForecastPeriodLabel(latestDate);
   const pdfState = state.loading ? 'preparing' : state.error ? 'error' : availableCount > 0 ? 'ready' : 'unavailable';
 
-  return <main className={cx('wavelab-home relative min-h-screen overflow-hidden transition-colors duration-500', isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-950')}><style>{HOME_LIQUID_CSS}</style><PublicLandingHeader currentTime={currentTime} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((value) => !value)} onCloseMenu={() => setMenuOpen(false)} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} /><div className="relative z-10"><section className="relative overflow-hidden border-b border-white/10"><div className="hero-bg-layer absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(248,250,252,0.96) 0%, rgba(239,246,255,0.84) 32%, rgba(240,253,250,0.36) 58%, rgba(255,255,255,0.02) 100%), url(${PUBLIC_HERO_IMAGE_URL})`, opacity: isDarkMode ? 0 : 1 }} aria-hidden="true" /><div className="hero-bg-layer absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(2,6,23,0.88) 0%, rgba(15,23,42,0.72) 34%, rgba(15,23,42,0.34) 58%, rgba(2,6,23,0.04) 100%), url(${PUBLIC_DARK_HERO_IMAGE_URL})`, opacity: isDarkMode ? 1 : 0 }} aria-hidden="true" /><div className={cx('absolute inset-0 transition-opacity duration-700', isDarkMode ? 'opacity-100 bg-[radial-gradient(circle_at_20%_18%,rgba(56,189,248,0.16),transparent_30%),radial-gradient(circle_at_68%_18%,rgba(45,212,191,0.10),transparent_26%)]' : 'opacity-100 bg-[radial-gradient(circle_at_20%_18%,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_68%_18%,rgba(6,182,212,0.06),transparent_26%)]')} aria-hidden="true" /><div className="hero-bottom-fade" aria-hidden="true" /><div className="hero-inner relative mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:px-8"><div><h1 className={cx('max-w-4xl text-4xl font-black leading-[1.04] tracking-tight sm:text-5xl lg:text-7xl', isDarkMode ? 'text-white drop-shadow-[0_8px_34px_rgba(0,0,0,0.35)]' : 'text-slate-950')}>Wave Forecasts, Made Easier to Access</h1><p className={cx('mt-6 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg', isDarkMode ? 'text-slate-200' : 'text-slate-700')}>View the latest published wave forecast charts and marine forecast outputs from Wavelab in one clear portal.</p><div className="mt-7 flex flex-col gap-3 sm:flex-row"><CTAButton to={latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts'} icon={Layers} isDarkMode={isDarkMode}>View Latest Charts</CTAButton><CTAButton to="/charts" variant="secondary" icon={FileText} isDarkMode={isDarkMode}>Browse Archive</CTAButton></div></div><PhilippinesMapCard isDarkMode={isDarkMode} availableCount={availableCount} latestUpdatedAt={latestUpdatedAt} forecastPeriodLabel={forecastPeriodLabel} /></div></section><section className="mx-auto mt-12 max-w-7xl px-4 sm:px-6 lg:px-8">{state.loading ? <div className="grid gap-5"><StateNotice title="Loading forecast" isDarkMode={isDarkMode}>Fetching published charts.</StateNotice><div className="grid gap-4 lg:grid-cols-3">{[0, 1, 2].map((item) => <LiquidPanel key={item} isDarkMode={isDarkMode} className="h-48 animate-pulse rounded-[2rem]" />)}</div></div> : null}{!state.loading && state.error ? <StateNotice tone="red" title="Forecasts could not be loaded" action={<CTAButton icon={RefreshCw} onClick={() => setReloadToken((value) => value + 1)} isDarkMode={isDarkMode}>Try Again</CTAButton>} isDarkMode={isDarkMode}>{state.error}</StateNotice> : null}{!state.loading && !state.error && !recentProjects.length ? <StateNotice tone="amber" title="No published charts available" isDarkMode={isDarkMode}>Published forecast charts will appear here once available.</StateNotice> : null}{!state.loading && !state.error && recentProjects.length > 0 ? <LatestForecastCard latestDate={latestDate} forecastPeriodLabel={forecastPeriodLabel} availableCount={availableCount} latestUpdatedAt={latestUpdatedAt} latestPrimaryChart={latestPrimaryChart} pdfState={pdfState} onRetry={() => setReloadToken((value) => value + 1)} isDarkMode={isDarkMode} /> : null}</section><section aria-labelledby="latest-charts-heading" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Latest charts</p><h2 id="latest-charts-heading" className="section-heading mt-2 text-3xl font-black">Published forecast charts</h2></div><Link to="/charts" className="inline-flex items-center gap-2 text-sm font-black text-blue-700 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500/70">View all <ArrowRight size={15} aria-hidden="true" /></Link></div>{!state.loading && !state.error && recentProjects.length > 0 ? <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">{PUBLIC_CHART_SLOTS.map((slot) => <ChartPreviewCard key={slot.chartType} slot={slot} chart={chartByType.get(slot.chartType)} isDarkMode={isDarkMode} />)}</div> : <StateNotice title="Chart previews unavailable" isDarkMode={isDarkMode}>No published forecast charts are available for preview right now.</StateNotice>}</section><section id="guide" aria-labelledby="forecast-guide-heading" className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8"><div className="mb-6"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Guide</p><h2 id="forecast-guide-heading" className="section-heading mt-2 text-3xl font-black">Read the charts quickly</h2></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4"><GuideCard icon={Waves} title="Wave height" isDarkMode={isDarkMode}>Estimated sea wave conditions in meters.</GuideCard><GuideCard icon={Layers} title="Chart type" isDarkMode={isDarkMode}>Analysis and forecast windows are grouped by package.</GuideCard><GuideCard icon={Clock} title="Valid time" isDarkMode={isDarkMode}>Use the chart date and time before making decisions.</GuideCard><GuideCard icon={ShieldCheck} title="Safety" isDarkMode={isDarkMode}>Always check official advisories and local conditions.</GuideCard></div></section><section id="about" aria-labelledby="about-heading" className="mx-auto grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8"><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6 sm:p-8"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">About</p><h2 id="about-heading" className="section-heading mt-2 text-3xl font-black">Built for published wave forecasts</h2><p className="muted-copy mt-3 max-w-2xl text-sm font-medium leading-relaxed">Wavelab helps prepare, review, and publish wave forecast outputs. This public portal keeps the experience focused on released charts, forecast periods, and archive access.</p></LiquidPanel><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6"><h2 className="section-heading text-2xl font-black">Need an earlier forecast?</h2><p className="muted-copy mt-3 text-sm font-medium leading-relaxed">Browse published packages by date or chart type.</p><div className="mt-5"><CTAButton to="/charts" icon={ArrowRight} isDarkMode={isDarkMode}>Open Archive</CTAButton></div></LiquidPanel></section><section aria-labelledby="forecast-notice-heading" className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8"><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6 sm:p-8"><div className="flex flex-col gap-4 sm:flex-row"><AlertTriangle size={34} className="shrink-0 text-amber-500" aria-hidden="true" /><div><h2 id="forecast-notice-heading" className="section-heading text-xl font-black">Important Notice</h2><p className={cx('mt-2 text-sm font-semibold leading-relaxed', isDarkMode ? 'text-amber-50/90' : 'text-slate-700')}>Forecast information is provided for guidance and situational awareness. Always refer to official marine advisories, warnings, and local conditions before making travel or operational decisions.</p></div></div></LiquidPanel></section></div></main>;
+  return <main className={cx('wavelab-home relative min-h-screen overflow-hidden transition-colors duration-500', isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-950')}><style>{HOME_LIQUID_CSS}</style><PublicLandingHeader currentTime={currentTime} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((value) => !value)} onCloseMenu={() => setMenuOpen(false)} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} /><div className="relative z-10"><section className="relative overflow-hidden border-b border-white/10"><div className="hero-bg-layer absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(248,250,252,0.96) 0%, rgba(239,246,255,0.84) 32%, rgba(240,253,250,0.36) 58%, rgba(255,255,255,0.02) 100%), url(${PUBLIC_HERO_IMAGE_URL})`, opacity: isDarkMode ? 0 : 1 }} aria-hidden="true" /><div className="hero-bg-layer absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(2,6,23,0.88) 0%, rgba(15,23,42,0.72) 34%, rgba(15,23,42,0.34) 58%, rgba(2,6,23,0.04) 100%), url(${PUBLIC_DARK_HERO_IMAGE_URL})`, opacity: isDarkMode ? 1 : 0 }} aria-hidden="true" /><div className={cx('absolute inset-0 transition-opacity duration-700', isDarkMode ? 'opacity-100 bg-[radial-gradient(circle_at_20%_18%,rgba(56,189,248,0.16),transparent_30%),radial-gradient(circle_at_68%_18%,rgba(45,212,191,0.10),transparent_26%)]' : 'opacity-100 bg-[radial-gradient(circle_at_20%_18%,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_68%_18%,rgba(6,182,212,0.06),transparent_26%)]')} aria-hidden="true" /><div className="hero-bottom-fade" aria-hidden="true" /><div className="hero-inner relative mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_440px] lg:px-8"><div><h1 className={cx('max-w-4xl text-4xl font-black leading-[1.04] tracking-tight sm:text-5xl lg:text-7xl', isDarkMode ? 'text-white drop-shadow-[0_8px_34px_rgba(0,0,0,0.35)]' : 'text-slate-950')}>Wave Forecasts, Made Easier to Access</h1><p className={cx('mt-6 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg', isDarkMode ? 'text-slate-200' : 'text-slate-700')}>View the latest published wave forecast charts and marine forecast outputs from Wavelab in one clear portal.</p><div className="mt-7 flex flex-col gap-3 sm:flex-row"><CTAButton to={latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts'} icon={Layers} isDarkMode={isDarkMode}>View Latest Charts</CTAButton><CTAButton to="/charts" variant="secondary" icon={FileText} isDarkMode={isDarkMode}>Browse Archive</CTAButton></div></div><HeroPhilippinesMap /></div></section><section className="mx-auto mt-12 max-w-7xl px-4 sm:px-6 lg:px-8">{state.loading ? <div className="grid gap-5"><StateNotice title="Loading forecast" isDarkMode={isDarkMode}>Fetching published charts.</StateNotice><div className="grid gap-4 lg:grid-cols-3">{[0, 1, 2].map((item) => <LiquidPanel key={item} isDarkMode={isDarkMode} className="h-48 animate-pulse rounded-[2rem]" />)}</div></div> : null}{!state.loading && state.error ? <StateNotice tone="red" title="Forecasts could not be loaded" action={<CTAButton icon={RefreshCw} onClick={() => setReloadToken((value) => value + 1)} isDarkMode={isDarkMode}>Try Again</CTAButton>} isDarkMode={isDarkMode}>{state.error}</StateNotice> : null}{!state.loading && !state.error && !recentProjects.length ? <StateNotice tone="amber" title="No published charts available" isDarkMode={isDarkMode}>Published forecast charts will appear here once available.</StateNotice> : null}{!state.loading && !state.error && recentProjects.length > 0 ? <LatestForecastCard latestDate={latestDate} forecastPeriodLabel={forecastPeriodLabel} availableCount={availableCount} latestUpdatedAt={latestUpdatedAt} latestPrimaryChart={latestPrimaryChart} pdfState={pdfState} onRetry={() => setReloadToken((value) => value + 1)} isDarkMode={isDarkMode} /> : null}</section><section aria-labelledby="latest-charts-heading" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Latest charts</p><h2 id="latest-charts-heading" className="section-heading mt-2 text-3xl font-black">Published forecast charts</h2></div><Link to="/charts" className="inline-flex items-center gap-2 text-sm font-black text-blue-700 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500/70">View all <ArrowRight size={15} aria-hidden="true" /></Link></div>{!state.loading && !state.error && recentProjects.length > 0 ? <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">{PUBLIC_CHART_SLOTS.map((slot) => <ChartPreviewCard key={slot.chartType} slot={slot} chart={chartByType.get(slot.chartType)} isDarkMode={isDarkMode} />)}</div> : <StateNotice title="Chart previews unavailable" isDarkMode={isDarkMode}>No published forecast charts are available for preview right now.</StateNotice>}</section><section id="guide" aria-labelledby="forecast-guide-heading" className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8"><div className="mb-6"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Guide</p><h2 id="forecast-guide-heading" className="section-heading mt-2 text-3xl font-black">Read the charts quickly</h2></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4"><GuideCard icon={Waves} title="Wave height" isDarkMode={isDarkMode}>Estimated sea wave conditions in meters.</GuideCard><GuideCard icon={Layers} title="Chart type" isDarkMode={isDarkMode}>Analysis and forecast windows are grouped by package.</GuideCard><GuideCard icon={Clock} title="Valid time" isDarkMode={isDarkMode}>Use the chart date and time before making decisions.</GuideCard><GuideCard icon={ShieldCheck} title="Safety" isDarkMode={isDarkMode}>Always check official advisories and local conditions.</GuideCard></div></section><section id="about" aria-labelledby="about-heading" className="mx-auto grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8"><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6 sm:p-8"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">About</p><h2 id="about-heading" className="section-heading mt-2 text-3xl font-black">Built for published wave forecasts</h2><p className="muted-copy mt-3 max-w-2xl text-sm font-medium leading-relaxed">Wavelab helps prepare, review, and publish wave forecast outputs. This public portal keeps the experience focused on released charts, forecast periods, and archive access.</p></LiquidPanel><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6"><h2 className="section-heading text-2xl font-black">Need an earlier forecast?</h2><p className="muted-copy mt-3 text-sm font-medium leading-relaxed">Browse published packages by date or chart type.</p><div className="mt-5"><CTAButton to="/charts" icon={ArrowRight} isDarkMode={isDarkMode}>Open Archive</CTAButton></div></LiquidPanel></section><section aria-labelledby="forecast-notice-heading" className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8"><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6 sm:p-8"><div className="flex flex-col gap-4 sm:flex-row"><AlertTriangle size={34} className="shrink-0 text-amber-500" aria-hidden="true" /><div><h2 id="forecast-notice-heading" className="section-heading text-xl font-black">Important Notice</h2><p className={cx('mt-2 text-sm font-semibold leading-relaxed', isDarkMode ? 'text-amber-50/90' : 'text-slate-700')}>Forecast information is provided for guidance and situational awareness. Always refer to official marine advisories, warnings, and local conditions before making travel or operational decisions.</p></div></div></LiquidPanel></section></div></main>;
 }
