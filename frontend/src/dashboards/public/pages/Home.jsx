@@ -138,7 +138,7 @@ function PublicLandingHeader({ lastUpdated, menuOpen, onToggleMenu, onCloseMenu 
             <Link key={item.label} to={item.to} className="rounded-xl px-1 py-2 transition hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/70">{item.label}</Link>
           ) : (
             <a key={item.label} href={item.href} className="rounded-xl px-1 py-2 transition hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/70">{item.label}</a>
-          ))}
+          ))) }
         </div>
 
         <div className="hidden items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-2.5 text-right lg:flex">
@@ -168,7 +168,7 @@ function PublicLandingHeader({ lastUpdated, menuOpen, onToggleMenu, onCloseMenu 
               <Link key={item.label} to={item.to} onClick={onCloseMenu} className="rounded-2xl px-4 py-3 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/70">{item.label}</Link>
             ) : (
               <a key={item.label} href={item.href} onClick={onCloseMenu} className="rounded-2xl px-4 py-3 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/70">{item.label}</a>
-            ))}
+            ))) }
             <div className="mt-2 rounded-2xl bg-blue-50 px-4 py-3 text-blue-800">Last updated: {lastUpdated ? formatDateTime(lastUpdated) : 'When charts publish'}</div>
           </div>
         </div>
