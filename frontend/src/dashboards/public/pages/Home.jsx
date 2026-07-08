@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clock,
   Download,
-  Eye,
   FileText,
   Layers,
   Menu,
@@ -114,13 +113,14 @@ const HOME_LIQUID_CSS = `
   background: rgba(255,255,255,0.055) !important;
   border-color: rgba(255,255,255,0.13) !important;
 }
-.wavelab-home .hero-summary {
+.wavelab-home .hero-map-card {
   background: rgba(255,255,255,0.006) !important;
   -webkit-backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
   backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
 }
-.wavelab-home .hero-summary.is-dark {
-  background: rgba(2,6,23,0.020) !important;
+.wavelab-home .hero-map-card.is-dark { background: rgba(2,6,23,0.020) !important; }
+.wavelab-home .ph-map-shape {
+  filter: drop-shadow(0 16px 20px rgba(14,165,233,0.18));
 }
 .wavelab-home .solid-blue,
 .wavelab-home .solid-blue:hover,
@@ -156,15 +156,64 @@ const HOME_LIQUID_CSS = `
 }
 `;
 
-function cx(...classes) { return classes.filter(Boolean).join(' '); }
-function parsePublicDate(value) { if (!value) return null; if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value; const match = String(value).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); if (match) return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 16, 0, 0)); const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? null : parsed; }
-function formatDate(value, options = {}) { const date = parsePublicDate(value); if (!date) return 'Unavailable'; try { return new Intl.DateTimeFormat('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE, month: 'short', day: 'numeric', year: 'numeric', ...options }).format(date); } catch { return 'Unavailable'; } }
-function formatDateTime(value) { return formatDate(value, { hour: 'numeric', minute: '2-digit' }); }
-function formatCurrentTime(value) { try { return new Intl.DateTimeFormat('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE, hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(value); } catch { return '--:--'; } }
-function getLatestUpdatedAt(projects = []) { return projects.reduce((latest, project) => { const candidate = parsePublicDate(project?.publishedAt || project?.updatedAt || project?.createdAt); if (!candidate) return latest; return !latest || candidate > latest ? candidate : latest; }, null); }
-function getForecastPeriodLabel(activeDate) { const start = parsePublicDate(activeDate); if (!start) return 'Latest available forecast period'; const end = new Date(start); end.setUTCDate(end.getUTCDate() + 1); return `${formatDate(start, { month: 'short', day: 'numeric' })} - ${formatDate(end, { month: 'short', day: 'numeric', year: 'numeric' })}`; }
-function LiquidPanel({ children, isDarkMode, className = '', as: Component = 'div', ...props }) { return <Component className={cx('home-liquid border', isDarkMode && 'is-dark', className)} {...props}>{children}</Component>; }
-function LiquidRow({ children, isDarkMode, className = '' }) { return <div className={cx('home-liquid-row border', isDarkMode && 'is-dark', className)}>{children}</div>; }
+function cx(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
+
+function parsePublicDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const match = String(value).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 16, 0, 0));
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDate(value, options = {}) {
+  const date = parsePublicDate(value);
+  if (!date) return 'Unavailable';
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE, month: 'short', day: 'numeric', year: 'numeric', ...options }).format(date);
+  } catch {
+    return 'Unavailable';
+  }
+}
+
+function formatDateTime(value) {
+  return formatDate(value, { hour: 'numeric', minute: '2-digit' });
+}
+
+function formatCurrentTime(value) {
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE, hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(value);
+  } catch {
+    return '--:--';
+  }
+}
+
+function getLatestUpdatedAt(projects = []) {
+  return projects.reduce((latest, project) => {
+    const candidate = parsePublicDate(project?.publishedAt || project?.updatedAt || project?.createdAt);
+    if (!candidate) return latest;
+    return !latest || candidate > latest ? candidate : latest;
+  }, null);
+}
+
+function getForecastPeriodLabel(activeDate) {
+  const start = parsePublicDate(activeDate);
+  if (!start) return 'Latest available forecast period';
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return `${formatDate(start, { month: 'short', day: 'numeric' })} - ${formatDate(end, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+}
+
+function LiquidPanel({ children, isDarkMode, className = '', as: Component = 'div', ...props }) {
+  return <Component className={cx('home-liquid border', isDarkMode && 'is-dark', className)} {...props}>{children}</Component>;
+}
+
+function LiquidRow({ children, isDarkMode, className = '' }) {
+  return <div className={cx('home-liquid-row border', isDarkMode && 'is-dark', className)}>{children}</div>;
+}
 
 function CTAButton({ to, children, variant = 'primary', icon: Icon, disabled = false, onClick, isDarkMode = false }) {
   const baseClass = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:ring-offset-2';
@@ -204,14 +253,105 @@ function PublicLandingHeader({ currentTime, menuOpen, onToggleMenu, onCloseMenu,
   );
 }
 
-function SummaryGlassRow({ icon: Icon, label, value, isDarkMode }) { return <LiquidRow isDarkMode={isDarkMode} className={cx('flex items-center gap-4 rounded-[1.45rem] px-4 py-3.5 transition duration-300 hover:-translate-y-0.5', isDarkMode ? 'border-white/[0.16]' : 'border-white/[0.62]')}><span className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-inner', isDarkMode ? 'bg-white/[0.08] text-cyan-100' : 'bg-blue-50/80 text-blue-700')}><Icon size={20} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className={cx('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{label}</span><span className={cx('mt-0.5 block truncate text-sm font-semibold', isDarkMode ? 'text-slate-200/90' : 'text-slate-700')}>{value}</span></span></LiquidRow>; }
-function ForecastDetail({ icon: Icon, label, value, isDarkMode }) { return <LiquidRow isDarkMode={isDarkMode} className={cx('flex gap-3 rounded-2xl p-4', isDarkMode ? 'border-white/10' : 'border-white/55')}><div className={cx('mt-0.5', isDarkMode ? 'text-cyan-100' : 'text-blue-700')}><Icon size={19} aria-hidden="true" /></div><div><p className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{label}</p><p className={cx('mt-1 text-sm font-medium', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{value}</p></div></LiquidRow>; }
-function StateNotice({ title, children, tone = 'slate', action, isDarkMode }) { const toneClass = tone === 'red' ? (isDarkMode ? 'border-red-400/20 text-red-100' : 'border-red-200 text-red-700') : tone === 'amber' ? (isDarkMode ? 'border-amber-300/20 text-amber-100' : 'border-amber-200 text-amber-800') : (isDarkMode ? 'border-white/10 text-slate-200' : 'border-slate-200 text-slate-700'); return <LiquidPanel isDarkMode={isDarkMode} className={cx('rounded-3xl p-6 text-center', toneClass)}><p className="text-sm font-black uppercase tracking-[0.16em]">{title}</p><div className="mt-2 text-sm font-semibold leading-relaxed">{children}</div>{action ? <div className="mt-5 flex justify-center">{action}</div> : null}</LiquidPanel>; }
-function PdfAction({ state, onRetry, isDarkMode }) { if (state === 'preparing') return <CTAButton disabled icon={Download} isDarkMode={isDarkMode}>Preparing PDF...</CTAButton>; if (state === 'unavailable') return <CTAButton disabled icon={Download} isDarkMode={isDarkMode}>PDF Unavailable</CTAButton>; if (state === 'error') return <CTAButton icon={RefreshCw} onClick={onRetry} isDarkMode={isDarkMode}>Try Again</CTAButton>; return <CTAButton to="/charts" variant="secondary" icon={Download} isDarkMode={isDarkMode}>Download PDF</CTAButton>; }
-function ChartFallback() { return <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(224,242,254,0.55),rgba(240,253,250,0.55))] text-blue-300" aria-label="Wave forecast chart preview unavailable"><div className="rounded-full border border-white/80 bg-white/40 p-6 shadow-inner"><Waves size={38} aria-hidden="true" /></div></div>; }
-function ChartPreviewCard({ slot, chart, isDarkMode }) { const hasChart = Boolean(chart?._id); const title = chart?.name || slot.fallbackTitle || slot.title || 'Published wave chart'; const coverage = slot?.badge || slot?.label || chart?.chartType || 'Published chart'; return <LiquidPanel isDarkMode={isDarkMode} as="article" className="group flex min-h-[360px] flex-col overflow-hidden rounded-[1.8rem] transition duration-300 hover:-translate-y-1 hover:border-blue-200"><div className="relative h-44 overflow-hidden bg-slate-100/45">{hasChart ? <PublicPublishedChartPreviewMap projectId={chart._id} initialRaster={chart.raster} isDarkMode={isDarkMode} height={null} className="h-full w-full rounded-none border-0" aria-label={`${title} preview map`} /> : <ChartFallback />}<div className="solid-blue absolute left-4 top-4 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-950/20">{coverage}</div></div><div className="flex flex-1 flex-col p-5"><h3 className={cx('text-base font-black leading-snug', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h3><dl className={cx('mt-4 grid gap-2 text-sm', isDarkMode ? 'text-slate-300' : 'text-slate-600')}><div><dt className="sr-only">Valid date and time</dt><dd>Valid: {hasChart ? formatDateTime(chart.forecastDate) : 'Unavailable'}</dd></div><div><dt className="sr-only">Coverage</dt><dd>Coverage: {coverage}</dd></div></dl><div className="mt-auto pt-5">{hasChart ? <Link to={`/charts/${chart._id}`} className="inline-flex items-center gap-2 text-sm font-black text-blue-700 transition hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500/70">View Chart <ArrowRight size={14} aria-hidden="true" /></Link> : <span className={cx('text-sm font-black', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>Chart unavailable</span>}</div></div></LiquidPanel>; }
-function GuideCard({ icon: Icon, title, children, isDarkMode }) { return <LiquidPanel isDarkMode={isDarkMode} as="article" className="rounded-[1.65rem] p-6"><div className={cx('mb-5 flex h-14 w-14 items-center justify-center rounded-2xl', isDarkMode ? 'bg-white/[0.08] text-cyan-100' : 'bg-blue-50/80 text-blue-700')}><Icon size={28} aria-hidden="true" /></div><h3 className={cx('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h3><p className={cx('mt-2 text-sm font-medium leading-relaxed', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{children}</p></LiquidPanel>; }
-function LatestForecastCard({ latestDate, forecastPeriodLabel, availableCount, latestUpdatedAt, latestPrimaryChart, pdfState, onRetry, isDarkMode }) { const forecastLink = latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts'; return <LiquidPanel id="latest" isDarkMode={isDarkMode} as="section" className="grid gap-8 rounded-[2rem] p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]" aria-labelledby="latest-forecast-heading"><div className="grid gap-6 md:grid-cols-[auto_minmax(0,1fr)]"><div className="solid-blue flex h-20 w-20 items-center justify-center rounded-[1.6rem] shadow-lg shadow-blue-900/20"><CalendarDays size={38} aria-hidden="true" /></div><div><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Latest forecast</p><h2 id="latest-forecast-heading" className={cx('mt-3 text-3xl font-black leading-tight sm:text-4xl', isDarkMode ? 'text-white' : 'text-slate-950')}>{latestDate ? formatDate(latestDate) : 'Published package'}</h2><div className="mt-4 flex flex-wrap gap-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50/90 px-3 py-1 text-xs font-black uppercase text-emerald-700"><CheckCircle2 size={14} aria-hidden="true" /> Published</span><span className={cx('rounded-full px-3 py-1 text-xs font-black', isDarkMode ? 'bg-blue-400/10 text-cyan-100' : 'bg-blue-50/90 text-blue-800')}>{forecastPeriodLabel}</span></div><div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><ForecastDetail icon={CalendarDays} label="Forecast Date" value={latestDate ? formatDate(latestDate) : 'Latest'} isDarkMode={isDarkMode} /><ForecastDetail icon={Clock} label="Valid Period" value={forecastPeriodLabel} isDarkMode={isDarkMode} /><ForecastDetail icon={Layers} label="Charts" value={`${availableCount} available`} isDarkMode={isDarkMode} /><ForecastDetail icon={Clock} label="Updated" value={latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Unavailable'} isDarkMode={isDarkMode} /></div></div></div><LiquidPanel isDarkMode={isDarkMode} as="aside" className="rounded-[1.6rem] p-5"><p className={cx('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>Open forecast</p><p className={cx('mt-2 text-sm leading-relaxed', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>Open the newest published chart package or browse earlier outputs.</p><div className="mt-5 grid gap-3"><CTAButton to={forecastLink} icon={ArrowRight} isDarkMode={isDarkMode}>Open Forecast</CTAButton><PdfAction state={pdfState} onRetry={onRetry} isDarkMode={isDarkMode} /><CTAButton to="/charts" variant="secondary" icon={FileText} isDarkMode={isDarkMode}>Browse Archive</CTAButton></div></LiquidPanel></LiquidPanel>; }
+function PhilippinesMapCard({ isDarkMode, availableCount, latestUpdatedAt, forecastPeriodLabel }) {
+  const chipClass = cx('rounded-full border px-3 py-1.5 text-[11px] font-black uppercase tracking-wide', isDarkMode ? 'border-white/10 bg-white/[0.06] text-cyan-100' : 'border-white/60 bg-white/35 text-blue-800');
+  return (
+    <LiquidPanel isDarkMode={isDarkMode} as="aside" className="hero-map-card self-center rounded-[2.35rem] p-5 lg:translate-x-4" aria-label="Philippines forecast coverage map">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Forecast coverage</p>
+          <h2 className={cx('mt-2 text-2xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>Philippines</h2>
+          <p className={cx('mt-1 text-sm font-semibold', isDarkMode ? 'text-slate-200/90' : 'text-slate-700')}>{forecastPeriodLabel}</p>
+        </div>
+        <span className={cx('rounded-2xl px-3 py-2 text-xs font-black shadow-sm', isDarkMode ? 'bg-emerald-400/10 text-emerald-100' : 'bg-emerald-50/90 text-emerald-700')}>Published</span>
+      </div>
+
+      <div className="relative mt-5 h-72 overflow-hidden rounded-[1.7rem] border border-white/35 bg-[radial-gradient(circle_at_50%_30%,rgba(14,165,233,0.28),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.12),rgba(6,182,212,0.08))]">
+        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.18),transparent_34%,rgba(255,255,255,0.08)),repeating-linear-gradient(135deg,rgba(255,255,255,0.08)_0_1px,transparent_1px_28px)]" aria-hidden="true" />
+        <svg className="ph-map-shape absolute inset-0 h-full w-full" viewBox="0 0 260 300" role="img" aria-label="Stylized map of the Philippines">
+          <defs>
+            <linearGradient id="phMapFill" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stopColor={isDarkMode ? '#cffafe' : '#eff6ff'} stopOpacity="0.98" />
+              <stop offset="55%" stopColor={isDarkMode ? '#67e8f9' : '#93c5fd'} stopOpacity="0.82" />
+              <stop offset="100%" stopColor={isDarkMode ? '#22d3ee' : '#0ea5e9'} stopOpacity="0.66" />
+            </linearGradient>
+            <filter id="phGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <g fill="url(#phMapFill)" stroke="rgba(255,255,255,0.78)" strokeWidth="2.3" filter="url(#phGlow)">
+            <path d="M102 27c12 8 18 20 14 31-4 12-18 16-30 10-13-7-18-22-9-33 5-7 14-12 25-8z" />
+            <path d="M126 65c14 7 25 19 27 34 2 13-5 25-17 28-16 4-31-6-38-20-7-15-2-33 10-40 5-3 11-4 18-2z" />
+            <path d="M90 111c12 7 17 19 12 31-5 11-19 16-31 10-13-6-18-20-11-31 6-10 18-15 30-10z" />
+            <path d="M151 133c17 7 26 22 22 39-4 16-21 25-38 20-17-6-27-21-23-38 4-16 21-28 39-21z" />
+            <path d="M111 172c13 7 20 20 15 34-4 13-17 19-30 15-14-5-22-18-18-31 4-14 19-25 33-18z" />
+            <path d="M162 211c20 8 34 26 32 45-3 19-23 31-43 25-21-6-34-24-31-43 3-20 22-36 42-27z" />
+            <path d="M94 234c11 4 18 14 15 25-3 10-15 16-26 12-11-4-17-15-13-25 3-10 13-16 24-12z" />
+          </g>
+          <g fill="none" stroke={isDarkMode ? 'rgba(103,232,249,0.55)' : 'rgba(29,78,216,0.35)'} strokeWidth="1.8" strokeDasharray="6 8">
+            <path d="M48 78c49-18 110-18 160 0" />
+            <path d="M44 157c56-18 118-19 176 2" />
+            <path d="M58 229c47-15 105-15 153 1" />
+          </g>
+          <g fill={isDarkMode ? '#cffafe' : '#1d4ed8'} stroke="white" strokeWidth="2">
+            <circle cx="101" cy="50" r="5" />
+            <circle cx="134" cy="101" r="5" />
+            <circle cx="151" cy="164" r="5" />
+            <circle cx="158" cy="245" r="5" />
+          </g>
+        </svg>
+        <div className="absolute bottom-4 left-4 right-4 grid grid-cols-4 gap-2">
+          {['Analysis', '24h', '36h', '48h'].map((label) => <span key={label} className="rounded-full border border-white/45 bg-white/20 px-2 py-1 text-center text-[10px] font-black uppercase tracking-wide text-slate-900 backdrop-blur-md">{label}</span>)}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className={chipClass}>{availableCount} charts</span>
+        <span className={chipClass}>Updated {latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Unavailable'}</span>
+      </div>
+    </LiquidPanel>
+  );
+}
+
+function ForecastDetail({ icon: Icon, label, value, isDarkMode }) {
+  return <LiquidRow isDarkMode={isDarkMode} className={cx('flex gap-3 rounded-2xl p-4', isDarkMode ? 'border-white/10' : 'border-white/55')}><div className={cx('mt-0.5', isDarkMode ? 'text-cyan-100' : 'text-blue-700')}><Icon size={19} aria-hidden="true" /></div><div><p className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{label}</p><p className={cx('mt-1 text-sm font-medium', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{value}</p></div></LiquidRow>;
+}
+
+function StateNotice({ title, children, tone = 'slate', action, isDarkMode }) {
+  const toneClass = tone === 'red' ? (isDarkMode ? 'border-red-400/20 text-red-100' : 'border-red-200 text-red-700') : tone === 'amber' ? (isDarkMode ? 'border-amber-300/20 text-amber-100' : 'border-amber-200 text-amber-800') : (isDarkMode ? 'border-white/10 text-slate-200' : 'border-slate-200 text-slate-700');
+  return <LiquidPanel isDarkMode={isDarkMode} className={cx('rounded-3xl p-6 text-center', toneClass)}><p className="text-sm font-black uppercase tracking-[0.16em]">{title}</p><div className="mt-2 text-sm font-semibold leading-relaxed">{children}</div>{action ? <div className="mt-5 flex justify-center">{action}</div> : null}</LiquidPanel>;
+}
+
+function PdfAction({ state, onRetry, isDarkMode }) {
+  if (state === 'preparing') return <CTAButton disabled icon={Download} isDarkMode={isDarkMode}>Preparing PDF...</CTAButton>;
+  if (state === 'unavailable') return <CTAButton disabled icon={Download} isDarkMode={isDarkMode}>PDF Unavailable</CTAButton>;
+  if (state === 'error') return <CTAButton icon={RefreshCw} onClick={onRetry} isDarkMode={isDarkMode}>Try Again</CTAButton>;
+  return <CTAButton to="/charts" variant="secondary" icon={Download} isDarkMode={isDarkMode}>Download PDF</CTAButton>;
+}
+
+function ChartFallback() {
+  return <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(224,242,254,0.55),rgba(240,253,250,0.55))] text-blue-300" aria-label="Wave forecast chart preview unavailable"><div className="rounded-full border border-white/80 bg-white/40 p-6 shadow-inner"><Waves size={38} aria-hidden="true" /></div></div>;
+}
+
+function ChartPreviewCard({ slot, chart, isDarkMode }) {
+  const hasChart = Boolean(chart?._id);
+  const title = chart?.name || slot.fallbackTitle || slot.title || 'Published wave chart';
+  const coverage = slot?.badge || slot?.label || chart?.chartType || 'Published chart';
+  return <LiquidPanel isDarkMode={isDarkMode} as="article" className="group flex min-h-[360px] flex-col overflow-hidden rounded-[1.8rem] transition duration-300 hover:-translate-y-1 hover:border-blue-200"><div className="relative h-44 overflow-hidden bg-slate-100/45">{hasChart ? <PublicPublishedChartPreviewMap projectId={chart._id} initialRaster={chart.raster} isDarkMode={isDarkMode} height={null} className="h-full w-full rounded-none border-0" aria-label={`${title} preview map`} /> : <ChartFallback />}<div className="solid-blue absolute left-4 top-4 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-950/20">{coverage}</div></div><div className="flex flex-1 flex-col p-5"><h3 className={cx('text-base font-black leading-snug', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h3><dl className={cx('mt-4 grid gap-2 text-sm', isDarkMode ? 'text-slate-300' : 'text-slate-600')}><div><dt className="sr-only">Valid date and time</dt><dd>Valid: {hasChart ? formatDateTime(chart.forecastDate) : 'Unavailable'}</dd></div><div><dt className="sr-only">Coverage</dt><dd>Coverage: {coverage}</dd></div></dl><div className="mt-auto pt-5">{hasChart ? <Link to={`/charts/${chart._id}`} className="inline-flex items-center gap-2 text-sm font-black text-blue-700 transition hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500/70">View Chart <ArrowRight size={14} aria-hidden="true" /></Link> : <span className={cx('text-sm font-black', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>Chart unavailable</span>}</div></div></LiquidPanel>;
+}
+
+function GuideCard({ icon: Icon, title, children, isDarkMode }) {
+  return <LiquidPanel isDarkMode={isDarkMode} as="article" className="rounded-[1.65rem] p-6"><div className={cx('mb-5 flex h-14 w-14 items-center justify-center rounded-2xl', isDarkMode ? 'bg-white/[0.08] text-cyan-100' : 'bg-blue-50/80 text-blue-700')}><Icon size={28} aria-hidden="true" /></div><h3 className={cx('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h3><p className={cx('mt-2 text-sm font-medium leading-relaxed', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{children}</p></LiquidPanel>;
+}
+
+function LatestForecastCard({ latestDate, forecastPeriodLabel, availableCount, latestUpdatedAt, latestPrimaryChart, pdfState, onRetry, isDarkMode }) {
+  const forecastLink = latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts';
+  return <LiquidPanel id="latest" isDarkMode={isDarkMode} as="section" className="grid gap-8 rounded-[2rem] p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]" aria-labelledby="latest-forecast-heading"><div className="grid gap-6 md:grid-cols-[auto_minmax(0,1fr)]"><div className="solid-blue flex h-20 w-20 items-center justify-center rounded-[1.6rem] shadow-lg shadow-blue-900/20"><CalendarDays size={38} aria-hidden="true" /></div><div><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Latest forecast</p><h2 id="latest-forecast-heading" className={cx('mt-3 text-3xl font-black leading-tight sm:text-4xl', isDarkMode ? 'text-white' : 'text-slate-950')}>{latestDate ? formatDate(latestDate) : 'Published package'}</h2><div className="mt-4 flex flex-wrap gap-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50/90 px-3 py-1 text-xs font-black uppercase text-emerald-700"><CheckCircle2 size={14} aria-hidden="true" /> Published</span><span className={cx('rounded-full px-3 py-1 text-xs font-black', isDarkMode ? 'bg-blue-400/10 text-cyan-100' : 'bg-blue-50/90 text-blue-800')}>{forecastPeriodLabel}</span></div><div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><ForecastDetail icon={CalendarDays} label="Forecast Date" value={latestDate ? formatDate(latestDate) : 'Latest'} isDarkMode={isDarkMode} /><ForecastDetail icon={Clock} label="Valid Period" value={forecastPeriodLabel} isDarkMode={isDarkMode} /><ForecastDetail icon={Layers} label="Charts" value={`${availableCount} available`} isDarkMode={isDarkMode} /><ForecastDetail icon={Clock} label="Updated" value={latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Unavailable'} isDarkMode={isDarkMode} /></div></div></div><LiquidPanel isDarkMode={isDarkMode} as="aside" className="rounded-[1.6rem] p-5"><p className={cx('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>Open forecast</p><p className={cx('mt-2 text-sm leading-relaxed', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>Open the newest published chart package or browse earlier outputs.</p><div className="mt-5 grid gap-3"><CTAButton to={forecastLink} icon={ArrowRight} isDarkMode={isDarkMode}>Open Forecast</CTAButton><PdfAction state={pdfState} onRetry={onRetry} isDarkMode={isDarkMode} /><CTAButton to="/charts" variant="secondary" icon={FileText} isDarkMode={isDarkMode}>Browse Archive</CTAButton></div></LiquidPanel></LiquidPanel>;
+}
 
 export default function Home() {
   const { isDarkMode, setIsDarkMode } = useTheme();
@@ -219,9 +359,11 @@ export default function Home() {
   const [reloadToken, setReloadToken] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+
   useEffect(() => { document.title = 'Wavelab | Public Wave Forecasts'; }, []);
   useEffect(() => { const timer = window.setInterval(() => setCurrentTime(new Date()), 1000); return () => window.clearInterval(timer); }, []);
   useEffect(() => { const controller = new AbortController(); setState((prev) => ({ ...prev, loading: true, error: '' })); fetchPublicPublishedCharts({ page: 1, limit: RECENT_FETCH_LIMIT, mode: 'active', signal: controller.signal }).then((data) => { const allProjects = Array.isArray(data?.projects) ? data.projects : []; const windowedProjects = filterProjectsToPublicChartWindow(allProjects, getPublicChartTenDayWindow(allProjects)); setState({ loading: false, error: '', projects: windowedProjects }); }).catch((error) => { if (error?.name !== 'AbortError') setState({ loading: false, error: error?.message || 'Failed to load public forecasts.', projects: [] }); }); return () => controller.abort(); }, [reloadToken]);
+
   const recentProjects = state.projects;
   const historyGroups = useMemo(() => groupPublicChartHistory(recentProjects), [recentProjects]);
   const latestDate = historyGroups[0]?.dateKey || '';
@@ -231,5 +373,6 @@ export default function Home() {
   const latestPrimaryChart = useMemo(() => PUBLIC_CHART_SLOTS.map((slot) => chartByType.get(slot.chartType)).find(Boolean), [chartByType]);
   const forecastPeriodLabel = getForecastPeriodLabel(latestDate);
   const pdfState = state.loading ? 'preparing' : state.error ? 'error' : availableCount > 0 ? 'ready' : 'unavailable';
-  return <main className={cx('wavelab-home relative min-h-screen overflow-hidden transition-colors duration-500', isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-950')}><style>{HOME_LIQUID_CSS}</style><PublicLandingHeader currentTime={currentTime} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((value) => !value)} onCloseMenu={() => setMenuOpen(false)} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} /><div className="relative z-10"><section className="relative overflow-hidden border-b border-white/10"><div className="hero-bg-layer absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(248,250,252,0.96) 0%, rgba(239,246,255,0.84) 32%, rgba(240,253,250,0.36) 58%, rgba(255,255,255,0.02) 100%), url(${PUBLIC_HERO_IMAGE_URL})`, opacity: isDarkMode ? 0 : 1 }} aria-hidden="true" /><div className="hero-bg-layer absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(2,6,23,0.88) 0%, rgba(15,23,42,0.72) 34%, rgba(15,23,42,0.34) 58%, rgba(2,6,23,0.04) 100%), url(${PUBLIC_DARK_HERO_IMAGE_URL})`, opacity: isDarkMode ? 1 : 0 }} aria-hidden="true" /><div className={cx('absolute inset-0 transition-opacity duration-700', isDarkMode ? 'opacity-100 bg-[radial-gradient(circle_at_20%_18%,rgba(56,189,248,0.16),transparent_30%),radial-gradient(circle_at_68%_18%,rgba(45,212,191,0.10),transparent_26%)]' : 'opacity-100 bg-[radial-gradient(circle_at_20%_18%,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_68%_18%,rgba(6,182,212,0.06),transparent_26%)]')} aria-hidden="true" /><div className="hero-bottom-fade" aria-hidden="true" /><div className="hero-inner relative mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8"><div><h1 className={cx('max-w-4xl text-4xl font-black leading-[1.04] tracking-tight sm:text-5xl lg:text-7xl', isDarkMode ? 'text-white drop-shadow-[0_8px_34px_rgba(0,0,0,0.35)]' : 'text-slate-950')}>Wave Forecasts, Made Easier to Access</h1><p className={cx('mt-6 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg', isDarkMode ? 'text-slate-200' : 'text-slate-700')}>View the latest published wave forecast charts and marine forecast outputs from Wavelab in one clear portal.</p><div className="mt-7 flex flex-col gap-3 sm:flex-row"><CTAButton to={latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts'} icon={Layers} isDarkMode={isDarkMode}>View Latest Charts</CTAButton><CTAButton to="/charts" variant="secondary" icon={FileText} isDarkMode={isDarkMode}>Browse Archive</CTAButton></div></div><LiquidPanel isDarkMode={isDarkMode} as="aside" className="hero-summary self-center rounded-[2.35rem] p-5 lg:translate-x-4" aria-label="Latest forecast summary"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Latest summary</p><h2 className={cx('mt-3 text-2xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{latestDate ? formatDate(latestDate) : 'Published charts'}</h2><p className={cx('mt-1 text-sm font-semibold', isDarkMode ? 'text-slate-200/90' : 'text-slate-700')}>{state.loading ? 'Preparing forecast access...' : state.error ? 'Forecast data is temporarily unavailable.' : recentProjects.length ? forecastPeriodLabel : 'No published charts available.'}</p><div className="mt-5 grid gap-3"><SummaryGlassRow icon={Layers} label="Charts" value={state.loading ? 'Preparing' : `${availableCount} available`} isDarkMode={isDarkMode} /><SummaryGlassRow icon={Clock} label="Updated" value={latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Unavailable'} isDarkMode={isDarkMode} /><SummaryGlassRow icon={Eye} label="Status" value={state.loading ? 'Preparing' : recentProjects.length ? 'Published' : 'Unavailable'} isDarkMode={isDarkMode} /></div></LiquidPanel></div></section><section className="mx-auto mt-12 max-w-7xl px-4 sm:px-6 lg:px-8">{state.loading ? <div className="grid gap-5"><StateNotice title="Loading forecast" isDarkMode={isDarkMode}>Fetching published charts.</StateNotice><div className="grid gap-4 lg:grid-cols-3">{[0, 1, 2].map((item) => <LiquidPanel key={item} isDarkMode={isDarkMode} className="h-48 animate-pulse rounded-[2rem]" />)}</div></div> : null}{!state.loading && state.error ? <StateNotice tone="red" title="Forecasts could not be loaded" action={<CTAButton icon={RefreshCw} onClick={() => setReloadToken((value) => value + 1)} isDarkMode={isDarkMode}>Try Again</CTAButton>} isDarkMode={isDarkMode}>{state.error}</StateNotice> : null}{!state.loading && !state.error && !recentProjects.length ? <StateNotice tone="amber" title="No published charts available" isDarkMode={isDarkMode}>Published forecast charts will appear here once available.</StateNotice> : null}{!state.loading && !state.error && recentProjects.length > 0 ? <LatestForecastCard latestDate={latestDate} forecastPeriodLabel={forecastPeriodLabel} availableCount={availableCount} latestUpdatedAt={latestUpdatedAt} latestPrimaryChart={latestPrimaryChart} pdfState={pdfState} onRetry={() => setReloadToken((value) => value + 1)} isDarkMode={isDarkMode} /> : null}</section><section aria-labelledby="latest-charts-heading" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Latest charts</p><h2 id="latest-charts-heading" className="section-heading mt-2 text-3xl font-black">Published forecast charts</h2></div><Link to="/charts" className="inline-flex items-center gap-2 text-sm font-black text-blue-700 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500/70">View all <ArrowRight size={15} aria-hidden="true" /></Link></div>{!state.loading && !state.error && recentProjects.length > 0 ? <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">{PUBLIC_CHART_SLOTS.map((slot) => <ChartPreviewCard key={slot.chartType} slot={slot} chart={chartByType.get(slot.chartType)} isDarkMode={isDarkMode} />)}</div> : <StateNotice title="Chart previews unavailable" isDarkMode={isDarkMode}>No published forecast charts are available for preview right now.</StateNotice>}</section><section id="guide" aria-labelledby="forecast-guide-heading" className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8"><div className="mb-6"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Guide</p><h2 id="forecast-guide-heading" className="section-heading mt-2 text-3xl font-black">Read the charts quickly</h2></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4"><GuideCard icon={Waves} title="Wave height" isDarkMode={isDarkMode}>Estimated sea wave conditions in meters.</GuideCard><GuideCard icon={Layers} title="Chart type" isDarkMode={isDarkMode}>Analysis and forecast windows are grouped by package.</GuideCard><GuideCard icon={Clock} title="Valid time" isDarkMode={isDarkMode}>Use the chart date and time before making decisions.</GuideCard><GuideCard icon={ShieldCheck} title="Safety" isDarkMode={isDarkMode}>Always check official advisories and local conditions.</GuideCard></div></section><section id="about" aria-labelledby="about-heading" className="mx-auto grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8"><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6 sm:p-8"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">About</p><h2 id="about-heading" className="section-heading mt-2 text-3xl font-black">Built for published wave forecasts</h2><p className="muted-copy mt-3 max-w-2xl text-sm font-medium leading-relaxed">Wavelab helps prepare, review, and publish wave forecast outputs. This public portal keeps the experience focused on released charts, forecast periods, and archive access.</p></LiquidPanel><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6"><h2 className="section-heading text-2xl font-black">Need an earlier forecast?</h2><p className="muted-copy mt-3 text-sm font-medium leading-relaxed">Browse published packages by date or chart type.</p><div className="mt-5"><CTAButton to="/charts" icon={ArrowRight} isDarkMode={isDarkMode}>Open Archive</CTAButton></div></LiquidPanel></section><section aria-labelledby="forecast-notice-heading" className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8"><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6 sm:p-8"><div className="flex flex-col gap-4 sm:flex-row"><AlertTriangle size={34} className="shrink-0 text-amber-500" aria-hidden="true" /><div><h2 id="forecast-notice-heading" className="section-heading text-xl font-black">Important Notice</h2><p className={cx('mt-2 text-sm font-semibold leading-relaxed', isDarkMode ? 'text-amber-50/90' : 'text-slate-700')}>Forecast information is provided for guidance and situational awareness. Always refer to official marine advisories, warnings, and local conditions before making travel or operational decisions.</p></div></div></LiquidPanel></section></div></main>;
+
+  return <main className={cx('wavelab-home relative min-h-screen overflow-hidden transition-colors duration-500', isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-950')}><style>{HOME_LIQUID_CSS}</style><PublicLandingHeader currentTime={currentTime} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((value) => !value)} onCloseMenu={() => setMenuOpen(false)} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} /><div className="relative z-10"><section className="relative overflow-hidden border-b border-white/10"><div className="hero-bg-layer absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(248,250,252,0.96) 0%, rgba(239,246,255,0.84) 32%, rgba(240,253,250,0.36) 58%, rgba(255,255,255,0.02) 100%), url(${PUBLIC_HERO_IMAGE_URL})`, opacity: isDarkMode ? 0 : 1 }} aria-hidden="true" /><div className="hero-bg-layer absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(2,6,23,0.88) 0%, rgba(15,23,42,0.72) 34%, rgba(15,23,42,0.34) 58%, rgba(2,6,23,0.04) 100%), url(${PUBLIC_DARK_HERO_IMAGE_URL})`, opacity: isDarkMode ? 1 : 0 }} aria-hidden="true" /><div className={cx('absolute inset-0 transition-opacity duration-700', isDarkMode ? 'opacity-100 bg-[radial-gradient(circle_at_20%_18%,rgba(56,189,248,0.16),transparent_30%),radial-gradient(circle_at_68%_18%,rgba(45,212,191,0.10),transparent_26%)]' : 'opacity-100 bg-[radial-gradient(circle_at_20%_18%,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_68%_18%,rgba(6,182,212,0.06),transparent_26%)]')} aria-hidden="true" /><div className="hero-bottom-fade" aria-hidden="true" /><div className="hero-inner relative mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:px-8"><div><h1 className={cx('max-w-4xl text-4xl font-black leading-[1.04] tracking-tight sm:text-5xl lg:text-7xl', isDarkMode ? 'text-white drop-shadow-[0_8px_34px_rgba(0,0,0,0.35)]' : 'text-slate-950')}>Wave Forecasts, Made Easier to Access</h1><p className={cx('mt-6 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg', isDarkMode ? 'text-slate-200' : 'text-slate-700')}>View the latest published wave forecast charts and marine forecast outputs from Wavelab in one clear portal.</p><div className="mt-7 flex flex-col gap-3 sm:flex-row"><CTAButton to={latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts'} icon={Layers} isDarkMode={isDarkMode}>View Latest Charts</CTAButton><CTAButton to="/charts" variant="secondary" icon={FileText} isDarkMode={isDarkMode}>Browse Archive</CTAButton></div></div><PhilippinesMapCard isDarkMode={isDarkMode} availableCount={availableCount} latestUpdatedAt={latestUpdatedAt} forecastPeriodLabel={forecastPeriodLabel} /></div></section><section className="mx-auto mt-12 max-w-7xl px-4 sm:px-6 lg:px-8">{state.loading ? <div className="grid gap-5"><StateNotice title="Loading forecast" isDarkMode={isDarkMode}>Fetching published charts.</StateNotice><div className="grid gap-4 lg:grid-cols-3">{[0, 1, 2].map((item) => <LiquidPanel key={item} isDarkMode={isDarkMode} className="h-48 animate-pulse rounded-[2rem]" />)}</div></div> : null}{!state.loading && state.error ? <StateNotice tone="red" title="Forecasts could not be loaded" action={<CTAButton icon={RefreshCw} onClick={() => setReloadToken((value) => value + 1)} isDarkMode={isDarkMode}>Try Again</CTAButton>} isDarkMode={isDarkMode}>{state.error}</StateNotice> : null}{!state.loading && !state.error && !recentProjects.length ? <StateNotice tone="amber" title="No published charts available" isDarkMode={isDarkMode}>Published forecast charts will appear here once available.</StateNotice> : null}{!state.loading && !state.error && recentProjects.length > 0 ? <LatestForecastCard latestDate={latestDate} forecastPeriodLabel={forecastPeriodLabel} availableCount={availableCount} latestUpdatedAt={latestUpdatedAt} latestPrimaryChart={latestPrimaryChart} pdfState={pdfState} onRetry={() => setReloadToken((value) => value + 1)} isDarkMode={isDarkMode} /> : null}</section><section aria-labelledby="latest-charts-heading" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Latest charts</p><h2 id="latest-charts-heading" className="section-heading mt-2 text-3xl font-black">Published forecast charts</h2></div><Link to="/charts" className="inline-flex items-center gap-2 text-sm font-black text-blue-700 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500/70">View all <ArrowRight size={15} aria-hidden="true" /></Link></div>{!state.loading && !state.error && recentProjects.length > 0 ? <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">{PUBLIC_CHART_SLOTS.map((slot) => <ChartPreviewCard key={slot.chartType} slot={slot} chart={chartByType.get(slot.chartType)} isDarkMode={isDarkMode} />)}</div> : <StateNotice title="Chart previews unavailable" isDarkMode={isDarkMode}>No published forecast charts are available for preview right now.</StateNotice>}</section><section id="guide" aria-labelledby="forecast-guide-heading" className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8"><div className="mb-6"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Guide</p><h2 id="forecast-guide-heading" className="section-heading mt-2 text-3xl font-black">Read the charts quickly</h2></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4"><GuideCard icon={Waves} title="Wave height" isDarkMode={isDarkMode}>Estimated sea wave conditions in meters.</GuideCard><GuideCard icon={Layers} title="Chart type" isDarkMode={isDarkMode}>Analysis and forecast windows are grouped by package.</GuideCard><GuideCard icon={Clock} title="Valid time" isDarkMode={isDarkMode}>Use the chart date and time before making decisions.</GuideCard><GuideCard icon={ShieldCheck} title="Safety" isDarkMode={isDarkMode}>Always check official advisories and local conditions.</GuideCard></div></section><section id="about" aria-labelledby="about-heading" className="mx-auto grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8"><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6 sm:p-8"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">About</p><h2 id="about-heading" className="section-heading mt-2 text-3xl font-black">Built for published wave forecasts</h2><p className="muted-copy mt-3 max-w-2xl text-sm font-medium leading-relaxed">Wavelab helps prepare, review, and publish wave forecast outputs. This public portal keeps the experience focused on released charts, forecast periods, and archive access.</p></LiquidPanel><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6"><h2 className="section-heading text-2xl font-black">Need an earlier forecast?</h2><p className="muted-copy mt-3 text-sm font-medium leading-relaxed">Browse published packages by date or chart type.</p><div className="mt-5"><CTAButton to="/charts" icon={ArrowRight} isDarkMode={isDarkMode}>Open Archive</CTAButton></div></LiquidPanel></section><section aria-labelledby="forecast-notice-heading" className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8"><LiquidPanel isDarkMode={isDarkMode} className="rounded-[2rem] p-6 sm:p-8"><div className="flex flex-col gap-4 sm:flex-row"><AlertTriangle size={34} className="shrink-0 text-amber-500" aria-hidden="true" /><div><h2 id="forecast-notice-heading" className="section-heading text-xl font-black">Important Notice</h2><p className={cx('mt-2 text-sm font-semibold leading-relaxed', isDarkMode ? 'text-amber-50/90' : 'text-slate-700')}>Forecast information is provided for guidance and situational awareness. Always refer to official marine advisories, warnings, and local conditions before making travel or operational decisions.</p></div></div></LiquidPanel></section></div></main>;
 }
