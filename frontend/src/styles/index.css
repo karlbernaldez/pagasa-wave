@@ -156,6 +156,68 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   margin-top: -2.25rem !important;
 }
 
+/* Public landing: make the fixed header read as soft liquid glass instead of a hard strip. */
+html body main.wavelab-home > header.sticky {
+  border: 0 !important;
+  border-bottom: 0 !important;
+  border-color: transparent !important;
+  border-radius: 0 0 2.25rem 2.25rem !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.040), rgba(255, 255, 255, 0.010) 72%, rgba(255, 255, 255, 0)) !important;
+  -webkit-backdrop-filter: blur(9px) saturate(170%) contrast(104%) brightness(1.03) !important;
+  backdrop-filter: blur(9px) saturate(170%) contrast(104%) brightness(1.03) !important;
+  box-shadow:
+    0 16px 46px rgba(15, 23, 42, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12) !important;
+  overflow: hidden !important;
+}
+
+html body main.wavelab-home > header.sticky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(520px 64px at 22% 0%, rgba(255, 255, 255, 0.16), transparent 70%),
+    radial-gradient(480px 70px at 82% 8%, rgba(125, 211, 252, 0.10), transparent 72%),
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.085) 48%, transparent 100%);
+  opacity: 0.72;
+  mix-blend-mode: screen;
+}
+
+html body main.wavelab-home > header.sticky::after {
+  content: "";
+  position: absolute;
+  left: 1.5rem;
+  right: 1.5rem;
+  bottom: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.36), transparent);
+  opacity: 0.48;
+}
+
+html body main.wavelab-home.bg-slate-950 > header.sticky {
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.10), rgba(2, 6, 23, 0.025) 72%, rgba(2, 6, 23, 0)) !important;
+  box-shadow:
+    0 18px 52px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.045) !important;
+}
+
+html body main.wavelab-home > header.sticky > nav {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 1023px) {
+  html body main.wavelab-home > header.sticky {
+    border-radius: 0 0 1.6rem 1.6rem !important;
+  }
+}
+
 /* Public landing: icy transparent liquid-glass GeoJSON Philippines map. */
 @media (min-width: 1024px) {
   html body .wavelab-home .hero-ph-map {
