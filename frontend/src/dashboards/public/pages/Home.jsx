@@ -84,6 +84,41 @@ function ForecastMetric({ icon: Icon, label, value, isDark }) {
   );
 }
 
+function HeroPreviewCard({ latestDate, forecastPeriodLabel, availableCount, latestUpdatedAt, latestPrimaryChart }) {
+  return (
+    <aside className="hidden rounded-[2rem] border border-white/25 bg-slate-950/25 p-5 text-white shadow-2xl shadow-slate-950/25 backdrop-blur-xl lg:block">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100">Latest forecast</p>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-emerald-100">
+          <CheckCircle2 size={13} aria-hidden="true" /> Published
+        </span>
+      </div>
+      <h2 className="mt-4 text-2xl font-black leading-tight">{latestDate ? formatDate(latestDate) : 'Public charts'}</h2>
+      <p className="mt-2 text-sm font-semibold leading-relaxed text-blue-50/85">Quick access to the newest published WaveLab chart set.</p>
+      <div className="mt-5 grid gap-3">
+        <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-blue-100/70">Forecast period</p>
+          <p className="mt-1 text-sm font-black">{forecastPeriodLabel}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-blue-100/70">Charts</p>
+            <p className="mt-1 text-sm font-black">{availableCount}/{PUBLIC_CHART_SLOTS.length}</p>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-blue-100/70">Updated</p>
+            <p className="mt-1 text-sm font-black">{latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Soon'}</p>
+          </div>
+        </div>
+      </div>
+      <Link to={latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts'} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-blue-700 transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-cyan-200">
+        Open Latest Charts <ArrowRight size={16} aria-hidden="true" />
+      </Link>
+      <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-blue-50/70">Scroll for full forecast details</p>
+    </aside>
+  );
+}
+
 function InfoCard({ icon: Icon, title, children, isDark }) {
   return (
     <article className={`rounded-3xl border p-5 ${isDark ? 'border-white/10 bg-slate-950/40' : 'border-slate-200 bg-white/70'}`}>
@@ -166,7 +201,7 @@ export default function Home() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950/82 via-blue-950/42 to-transparent" aria-hidden="true" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-950/10 via-transparent to-slate-950/25" aria-hidden="true" />
         <div className={`absolute bottom-0 left-0 right-0 -z-10 h-28 bg-gradient-to-t ${isDark ? 'from-slate-950 via-slate-950/65' : 'from-slate-50 via-slate-50/65'} to-transparent`} aria-hidden="true" />
-        <div className="mx-auto w-full max-w-7xl">
+        <div className="mx-auto grid w-full max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_390px]">
           <div className="max-w-3xl text-white lg:-translate-y-8">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-cyan-50 shadow-lg shadow-black/10 backdrop-blur"><Waves size={16} aria-hidden="true" />Wavelab Public</div>
             <h1 className="max-w-4xl text-4xl font-black leading-[1.04] tracking-tight drop-shadow-[0_3px_16px_rgba(0,0,0,0.25)] sm:text-5xl lg:text-[56px]">Public Wave Forecasts, Made Easier to Access</h1>
@@ -177,6 +212,7 @@ export default function Home() {
             </div>
             <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-blue-50/80 drop-shadow">Published forecast outputs only · Updated when new charts are available</p>
           </div>
+          <HeroPreviewCard latestDate={latestDate} forecastPeriodLabel={forecastPeriodLabel} availableCount={availableCount} latestUpdatedAt={latestUpdatedAt} latestPrimaryChart={latestPrimaryChart} />
         </div>
       </section>
 
