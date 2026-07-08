@@ -6,7 +6,6 @@ body,
   height: 100%;
   font-family: Arial, sans-serif;
   overflow: auto;
-  /* Allow page to scroll */
   overflow-x: hidden;
 }
 
@@ -14,7 +13,6 @@ body,
   z-index: 9999 !important;
 }
 
-/* Blue main button for Swal */
 .swal-main-btn {
   background-color: #1d4ed8 !important;
   color: white !important;
@@ -37,7 +35,6 @@ body,
   font-weight: 600 !important;
   border: none !important;
   margin-left: 10px !important;
-  /* ← ADD THIS */
   transition: 0.2s ease-in-out;
 }
 
@@ -45,7 +42,6 @@ body,
   background-color: #c62828 !important;
 }
 
-/* Cancel button */
 .swal-cancel-btn {
   background-color: #1976d2 !important;
   color: white !important;
@@ -54,7 +50,6 @@ body,
   font-weight: 600 !important;
   border: none !important;
   margin-right: 10px !important;
-  /* ← ADD THIS */
   transition: 0.2s ease-in-out;
 }
 
@@ -67,13 +62,13 @@ body,
   justify-content: center;
 }
 
-/* styles.css or tailwind.css */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;     /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @tailwind base;
@@ -118,8 +113,7 @@ body,
 }
 
 .studio-liquid-dark {
-  background:
-    linear-gradient(145deg, rgba(2, 6, 23, 0.78), rgba(8, 27, 47, 0.62) 55%, rgba(6, 78, 96, 0.44));
+  background: linear-gradient(145deg, rgba(2, 6, 23, 0.78), rgba(8, 27, 47, 0.62) 55%, rgba(6, 78, 96, 0.44));
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow:
     0 24px 70px rgba(2, 6, 23, 0.42),
@@ -127,8 +121,7 @@ body,
 }
 
 .studio-liquid-light {
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(239, 249, 255, 0.74) 52%, rgba(224, 242, 254, 0.62));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(239, 249, 255, 0.74) 52%, rgba(224, 242, 254, 0.62));
   border-color: rgba(255, 255, 255, 0.78);
   box-shadow:
     0 22px 55px rgba(15, 23, 42, 0.14),
@@ -148,7 +141,6 @@ body,
   mix-blend-mode: soft-light;
 }
 
-/* Published chart detail: keep the compact header clear of the public navbar. */
 main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   padding-top: 5rem !important;
 }
@@ -159,84 +151,36 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   }
 }
 
-/* Wavelab public landing: near-clear crystal glass overrides. */
-.liquid-summary {
-  background: rgba(255, 255, 255, 0.004) !important;
-  -webkit-backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
-  backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
+/* Public home: keep only the real hero image behind transparent glass. */
+main.relative.min-h-screen > div.pointer-events-none.absolute.inset-0.overflow-hidden,
+main.relative.min-h-screen > div.relative.z-10::before {
+  display: none !important;
+  content: none !important;
+  background: none !important;
 }
 
-.liquid-summary.is-dark {
-  background: rgba(2, 6, 23, 0.018) !important;
-  -webkit-backdrop-filter: blur(6px) saturate(175%) contrast(110%) brightness(1.06) !important;
-  backdrop-filter: blur(6px) saturate(175%) contrast(110%) brightness(1.06) !important;
+main.relative.min-h-screen > div.relative.z-10 {
+  overflow: visible !important;
 }
 
-.liquid-summary::before {
-  opacity: 0.10 !important;
+main.relative.min-h-screen > div.relative.z-10 > section {
+  position: relative !important;
+  z-index: 1 !important;
 }
 
-.liquid-summary.is-dark::before {
-  opacity: 0.08 !important;
-}
-
-.liquid-row {
-  background: rgba(255, 255, 255, 0.010) !important;
-  -webkit-backdrop-filter: blur(5px) saturate(155%) contrast(104%) brightness(1.02) !important;
-  backdrop-filter: blur(5px) saturate(155%) contrast(104%) brightness(1.02) !important;
-}
-
-.liquid-row.is-dark {
-  background: rgba(255, 255, 255, 0.018) !important;
-  -webkit-backdrop-filter: blur(6px) saturate(165%) contrast(108%) brightness(1.04) !important;
-  backdrop-filter: blur(6px) saturate(165%) contrast(108%) brightness(1.04) !important;
-}
-
-.liquid-row::before {
-  opacity: 0.08 !important;
-}
-
-.liquid-row.is-dark::before {
-  opacity: 0.07 !important;
-}
-
-.crystal-panel {
-  background: rgba(255, 255, 255, 0.12) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(155%) contrast(104%) brightness(1.02) !important;
-  backdrop-filter: blur(10px) saturate(155%) contrast(104%) brightness(1.02) !important;
-}
-
-.crystal-panel.is-dark {
-  background: rgba(2, 6, 23, 0.16) !important;
-  -webkit-backdrop-filter: blur(11px) saturate(165%) contrast(108%) brightness(1.04) !important;
-  backdrop-filter: blur(11px) saturate(165%) contrast(108%) brightness(1.04) !important;
-}
-
-.crystal-surface {
-  background: rgba(255, 255, 255, 0.075) !important;
-  -webkit-backdrop-filter: blur(7px) saturate(145%) contrast(103%) brightness(1.02) !important;
-  backdrop-filter: blur(7px) saturate(145%) contrast(103%) brightness(1.02) !important;
-}
-
-.crystal-surface.is-dark {
-  background: rgba(255, 255, 255, 0.025) !important;
-  -webkit-backdrop-filter: blur(8px) saturate(155%) contrast(106%) brightness(1.03) !important;
-  backdrop-filter: blur(8px) saturate(155%) contrast(106%) brightness(1.03) !important;
-}
-
-/* Make the public header float over the hero so its glass sees the real hero backdrop. */
+/* Header glass: float over the hero like the summary card. */
 main.relative.min-h-screen > header.sticky {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   width: 100% !important;
-  background: rgba(255, 255, 255, 0.012) !important;
+  background: rgba(255, 255, 255, 0.010) !important;
   -webkit-backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
   backdrop-filter: blur(5px) saturate(165%) contrast(104%) brightness(1.02) !important;
   border-color: rgba(255, 255, 255, 0.38) !important;
   box-shadow:
-    0 10px 30px rgba(15, 23, 42, 0.040),
+    0 10px 30px rgba(15, 23, 42, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.42),
     inset 0 -1px 0 rgba(255, 255, 255, 0.16) !important;
 }
@@ -246,10 +190,6 @@ main.relative.min-h-screen.bg-slate-950 > header.sticky {
   -webkit-backdrop-filter: blur(6px) saturate(175%) contrast(108%) brightness(1.04) !important;
   backdrop-filter: blur(6px) saturate(175%) contrast(108%) brightness(1.04) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
-  box-shadow:
-    0 12px 36px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
 main.relative.min-h-screen > div.relative.z-10 > section:first-child > div.relative.mx-auto.grid {
@@ -259,13 +199,13 @@ main.relative.min-h-screen > div.relative.z-10 > section:first-child > div.relat
 main.relative.min-h-screen > header.sticky nav > div.hidden.items-center.gap-3.lg\:flex > div,
 main.relative.min-h-screen > header.sticky nav > div.hidden.items-center.gap-3.lg\:flex > button,
 main.relative.min-h-screen > header.sticky nav > button[aria-controls="wavelab-public-mobile-menu"] {
-  background: rgba(255, 255, 255, 0.018) !important;
+  background: rgba(255, 255, 255, 0.016) !important;
   -webkit-backdrop-filter: blur(5px) saturate(155%) contrast(103%) brightness(1.02) !important;
   backdrop-filter: blur(5px) saturate(155%) contrast(103%) brightness(1.02) !important;
   border-color: rgba(255, 255, 255, 0.42) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.42),
-    0 8px 22px rgba(15, 23, 42, 0.040) !important;
+    0 8px 22px rgba(15, 23, 42, 0.04) !important;
 }
 
 main.relative.min-h-screen.bg-slate-950 > header.sticky nav > div.hidden.items-center.gap-3.lg\:flex > div,
@@ -273,15 +213,13 @@ main.relative.min-h-screen.bg-slate-950 > header.sticky nav > div.hidden.items-c
 main.relative.min-h-screen.bg-slate-950 > header.sticky nav > button[aria-controls="wavelab-public-mobile-menu"] {
   background: rgba(255, 255, 255, 0.012) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.16) !important;
 }
 
+/* Hero chips and secondary action. */
 main.relative.min-h-screen > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > div.inline-flex,
 main.relative.min-h-screen > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > p.inline-flex,
 main.relative.min-h-screen > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > div.mt-7 a:last-child {
-  background: rgba(255, 255, 255, 0.055) !important;
+  background: rgba(255, 255, 255, 0.045) !important;
   -webkit-backdrop-filter: blur(5px) saturate(145%) contrast(102%) brightness(1.02) !important;
   backdrop-filter: blur(5px) saturate(145%) contrast(102%) brightness(1.02) !important;
   border-color: rgba(255, 255, 255, 0.52) !important;
@@ -295,68 +233,82 @@ main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:first-chil
 main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:first-child div.relative.mx-auto > div:first-child > div.mt-7 a:last-child {
   background: rgba(255, 255, 255, 0.018) !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 10px 26px rgba(0, 0, 0, 0.18) !important;
 }
 
-/* Below-hero glass: give transparent panels a visible ocean-light backdrop instead of plain white. */
-main.relative.min-h-screen > div.relative.z-10 {
-  position: relative !important;
-  overflow: hidden !important;
-}
-
-main.relative.min-h-screen > div.relative.z-10::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 36rem;
-  bottom: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 18% 10%, rgba(14, 165, 233, 0.16), transparent 28%),
-    radial-gradient(circle at 78% 8%, rgba(45, 212, 191, 0.14), transparent 30%),
-    radial-gradient(circle at 58% 38%, rgba(125, 211, 252, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(248, 250, 252, 0.18), rgba(224, 242, 254, 0.42) 38%, rgba(240, 253, 250, 0.34));
-}
-
-main.relative.min-h-screen.bg-slate-950 > div.relative.z-10::before {
-  background:
-    radial-gradient(circle at 18% 10%, rgba(14, 165, 233, 0.12), transparent 30%),
-    radial-gradient(circle at 78% 8%, rgba(45, 212, 191, 0.10), transparent 32%),
-    radial-gradient(circle at 58% 38%, rgba(59, 130, 246, 0.10), transparent 34%),
-    linear-gradient(180deg, rgba(2, 6, 23, 0.18), rgba(8, 47, 73, 0.36) 42%, rgba(4, 47, 46, 0.26));
-}
-
-main.relative.min-h-screen > div.relative.z-10 > section {
-  position: relative !important;
-  z-index: 1 !important;
-}
-
-main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .crystal-panel {
-  background: rgba(255, 255, 255, 0.060) !important;
-  -webkit-backdrop-filter: blur(6px) saturate(150%) contrast(103%) brightness(1.02) !important;
-  backdrop-filter: blur(6px) saturate(150%) contrast(103%) brightness(1.02) !important;
-  border-color: rgba(255, 255, 255, 0.52) !important;
-}
-
-main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .crystal-panel {
-  background: rgba(2, 6, 23, 0.095) !important;
-  -webkit-backdrop-filter: blur(7px) saturate(160%) contrast(106%) brightness(1.04) !important;
-  backdrop-filter: blur(7px) saturate(160%) contrast(106%) brightness(1.04) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .crystal-surface {
-  background: rgba(255, 255, 255, 0.035) !important;
-  -webkit-backdrop-filter: blur(5px) saturate(145%) contrast(102%) brightness(1.02) !important;
-  backdrop-filter: blur(5px) saturate(145%) contrast(102%) brightness(1.02) !important;
-}
-
-main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .crystal-surface {
+/* Make the full home page use the same clear liquid language as the hero summary. */
+.liquid-summary,
+.liquid-card,
+.crystal-panel,
+.crystal-surface,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) article,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) aside,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) section,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .rounded-\[2rem\],
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .rounded-3xl,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .rounded-\[1\.6rem\],
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .rounded-\[1\.55rem\],
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .rounded-2xl {
   background: rgba(255, 255, 255, 0.018) !important;
-  -webkit-backdrop-filter: blur(6px) saturate(155%) contrast(105%) brightness(1.03) !important;
-  backdrop-filter: blur(6px) saturate(155%) contrast(105%) brightness(1.03) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(160%) contrast(104%) brightness(1.02) !important;
+  backdrop-filter: blur(5px) saturate(160%) contrast(104%) brightness(1.02) !important;
+  border-color: rgba(255, 255, 255, 0.62) !important;
+  box-shadow:
+    0 26px 72px rgba(15, 23, 42, 0.075),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.17),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+main.relative.min-h-screen.bg-slate-950 .liquid-summary,
+main.relative.min-h-screen.bg-slate-950 .liquid-card,
+main.relative.min-h-screen.bg-slate-950 .crystal-panel,
+main.relative.min-h-screen.bg-slate-950 .crystal-surface,
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) article,
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) aside,
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) section,
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .rounded-\[2rem\],
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .rounded-3xl,
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .rounded-\[1\.6rem\],
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .rounded-\[1\.55rem\],
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .rounded-2xl {
+  background: rgba(2, 6, 23, 0.030) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(170%) contrast(108%) brightness(1.05) !important;
+  backdrop-filter: blur(6px) saturate(170%) contrast(108%) brightness(1.05) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035) !important;
+}
+
+.liquid-row,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .grid > div,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) .grid > article {
+  background: rgba(255, 255, 255, 0.010) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(155%) contrast(104%) brightness(1.02) !important;
+  backdrop-filter: blur(5px) saturate(155%) contrast(104%) brightness(1.02) !important;
+  border-color: rgba(255, 255, 255, 0.56) !important;
+}
+
+main.relative.min-h-screen.bg-slate-950 .liquid-row,
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .grid > div,
+main.relative.min-h-screen.bg-slate-950 > div.relative.z-10 > section:not(:first-child) .grid > article {
+  background: rgba(255, 255, 255, 0.018) !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
+}
+
+.liquid-summary::before,
+.liquid-card::before,
+.crystal-surface::before,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) article::before,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) aside::before,
+main.relative.min-h-screen > div.relative.z-10 > section:not(:first-child) section::before {
+  opacity: 0.10 !important;
+}
+
+main.relative.min-h-screen.bg-slate-950 .liquid-summary::before,
+main.relative.min-h-screen.bg-slate-950 .liquid-card::before,
+main.relative.min-h-screen.bg-slate-950 .crystal-surface::before {
+  opacity: 0.08 !important;
 }
