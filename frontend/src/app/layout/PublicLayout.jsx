@@ -5,11 +5,13 @@ import HeaderNavbar from '@shared/layouts/components/header/Header';
 import Footer from '@shared/layouts/components/Footer';
 import Chatbot from '@/components/Chatbot/index';
 
-const publicHomeOverrides = `
-.wavelab-home > header.sticky {
+const publicPageOverrides = `
+.wavelab-home > header {
   display: none !important;
 }
+`;
 
+const publicHomeOverrides = `
 main.relative.min-h-screen > footer {
   display: none !important;
 }
@@ -35,6 +37,7 @@ const PublicLayout = () => {
 
   return (
     <>
+      <style>{publicPageOverrides}</style>
       {isPublicHome && <style>{publicHomeOverrides}</style>}
 
       <Suspense fallback={<div style={{ height: 60 }} />}>
