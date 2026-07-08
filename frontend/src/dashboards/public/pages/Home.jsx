@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CalendarDays,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Download,
   Eye,
@@ -14,12 +15,16 @@ import {
   Map,
   MapPin,
   Menu,
+  Moon,
   RefreshCw,
   ShieldCheck,
+  Sun,
+  User,
   Waves,
   X,
 } from 'lucide-react';
 
+import { useTheme } from '@/app/providers/ThemeProvider';
 import { fetchPublicPublishedCharts } from '@/api/publishedForecastAPI';
 import PublicPublishedChartPreviewMap from '@/dashboards/public/components/PublicPublishedChartPreviewMap';
 import {
@@ -109,7 +114,23 @@ function LiquidBackdrop() {
   );
 }
 
+function SummaryGlassRow({ icon: Icon, label, value }) {
+  return (
+    <div className="group flex items-center gap-4 rounded-3xl border border-white/60 bg-white/[0.34] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition hover:bg-white/[0.48]">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/[0.52] text-blue-700 shadow-inner">
+        <Icon size={20} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-black text-slate-950">{label}</span>
+        <span className="mt-0.5 block truncate text-sm font-semibold text-slate-700">{value}</span>
+      </span>
+      <ChevronRight size={17} className="shrink-0 text-slate-500/70 transition group-hover:translate-x-0.5 group-hover:text-blue-700" aria-hidden="true" />
+    </div>
+  );
+}
+
 function PublicLandingHeader({ lastUpdated, menuOpen, onToggleMenu, onCloseMenu }) {
+  const { isDarkMode, setIsDarkMode } = useTheme();
   const navLinks = [
     { label: 'Latest Forecast', href: '#latest' },
     { label: 'Charts', to: '/charts' },
@@ -117,9 +138,27 @@ function PublicLandingHeader({ lastUpdated, menuOpen, onToggleMenu, onCloseMenu 
     { label: 'About', href: '#about' },
   ];
 
+  const renderDesktopNavLink = (item) => {
+    const className = 'rounded-xl px-1 py-2 transition hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/70';
+    return item.to ? (
+      <Link key={item.label} to={item.to} className={className}>{item.label}</Link>
+    ) : (
+      <a key={item.label} href={item.href} className={className}>{item.label}</a>
+    );
+  };
+
+  const renderMobileNavLink = (item) => {
+    const className = 'rounded-2xl px-4 py-3 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/70';
+    return item.to ? (
+      <Link key={item.label} to={item.to} onClick={onCloseMenu} className={className}>{item.label}</Link>
+    ) : (
+      <a key={item.label} href={item.href} onClick={onCloseMenu} className={className}>{item.label}</a>
+    );
+  };
+
   return (
-    <header className="sticky top-0 z-40 border-b border-white/50 bg-white/[0.82] shadow-sm backdrop-blur-2xl">
-      <nav className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8" aria-label="Wavelab Public navigation">
+    <header className="sticky top-0 z-40 border-b border-white/60 bg-white/[0.88] shadow-sm backdrop-blur-2xl">
+      <nav className="mx-auto flex min-h-20 max-w-[1500px] items-center justify-between gap-5 px-4 sm:px-6 lg:px-8" aria-label="Wavelab Public navigation">
         <Link to="/" className="flex min-w-0 items-center gap-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:ring-offset-2" onClick={onCloseMenu}>
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-700 text-white shadow-lg shadow-blue-900/20">
             <Waves size={27} aria-hidden="true" />
@@ -134,19 +173,35 @@ function PublicLandingHeader({ lastUpdated, menuOpen, onToggleMenu, onCloseMenu 
         </Link>
 
         <div className="hidden items-center gap-8 text-sm font-black text-slate-700 lg:flex">
-          {navLinks.map((item) => (item.to ? (
-            <Link key={item.label} to={item.to} className="rounded-xl px-1 py-2 transition hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/70">{item.label}</Link>
-          ) : (
-            <a key={item.label} href={item.href} className="rounded-xl px-1 py-2 transition hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/70">{item.label}</a>
-          ))) }
+          {navLinks.map(renderDesktopNavLink)}
         </div>
 
-        <div className="hidden items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-2.5 text-right lg:flex">
-          <Clock size={18} className="text-blue-700" aria-hidden="true" />
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Last updated</p>
-            <p className="text-sm font-black text-blue-700">{lastUpdated ? formatDateTime(lastUpdated) : 'When charts publish'}</p>
+        <div className="hidden items-center gap-3 lg:flex">
+          <div className="hidden items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-2.5 text-right xl:flex">
+            <Clock size={18} className="text-blue-700" aria-hidden="true" />
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Last updated</p>
+              <p className="text-sm font-black text-blue-700">{lastUpdated ? formatDateTime(lastUpdated) : 'When charts publish'}</p>
+            </div>
           </div>
+
+          <Link
+            to="/login"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-700 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:ring-offset-2"
+          >
+            <User size={18} aria-hidden="true" />
+            Staff Dashboard
+          </Link>
+
+          <button
+            type="button"
+            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-pressed={isDarkMode}
+            onClick={() => setIsDarkMode((prev) => !prev)}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:ring-offset-2"
+          >
+            {isDarkMode ? <Sun size={22} aria-hidden="true" /> : <Moon size={22} aria-hidden="true" />}
+          </button>
         </div>
 
         <button
@@ -164,12 +219,21 @@ function PublicLandingHeader({ lastUpdated, menuOpen, onToggleMenu, onCloseMenu 
       {menuOpen ? (
         <div id="wavelab-public-mobile-menu" className="border-t border-slate-200 bg-white/[0.95] px-4 py-4 shadow-lg backdrop-blur-xl lg:hidden">
           <div className="mx-auto grid max-w-7xl gap-2 text-sm font-black text-slate-800">
-            {navLinks.map((item) => (item.to ? (
-              <Link key={item.label} to={item.to} onClick={onCloseMenu} className="rounded-2xl px-4 py-3 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/70">{item.label}</Link>
-            ) : (
-              <a key={item.label} href={item.href} onClick={onCloseMenu} className="rounded-2xl px-4 py-3 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/70">{item.label}</a>
-            ))) }
+            {navLinks.map(renderMobileNavLink)}
             <div className="mt-2 rounded-2xl bg-blue-50 px-4 py-3 text-blue-800">Last updated: {lastUpdated ? formatDateTime(lastUpdated) : 'When charts publish'}</div>
+            <Link to="/login" onClick={onCloseMenu} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-700 px-4 py-3 text-white shadow-lg shadow-blue-900/20">
+              <User size={18} aria-hidden="true" /> Staff Dashboard
+            </Link>
+            <button
+              type="button"
+              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-pressed={isDarkMode}
+              onClick={() => setIsDarkMode((prev) => !prev)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-800 shadow-sm"
+            >
+              {isDarkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+              {isDarkMode ? 'Light mode' : 'Dark mode'}
+            </button>
           </div>
         </div>
       ) : null}
@@ -412,11 +476,11 @@ export default function Home() {
         <section
           className="relative overflow-hidden border-b border-white/60 bg-cover bg-center"
           style={{
-            backgroundImage: `linear-gradient(90deg, rgba(248,250,252,0.96) 0%, rgba(239,246,255,0.9) 38%, rgba(240,253,250,0.58) 64%, rgba(255,255,255,0.2) 100%), url(${PUBLIC_HERO_IMAGE_URL})`,
+            backgroundImage: `linear-gradient(90deg, rgba(248,250,252,0.96) 0%, rgba(239,246,255,0.86) 34%, rgba(240,253,250,0.44) 58%, rgba(255,255,255,0.04) 100%), url(${PUBLIC_HERO_IMAGE_URL})`,
           }}
         >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(14,165,233,0.22),transparent_30%),radial-gradient(circle_at_62%_12%,rgba(6,182,212,0.18),transparent_24%)]" aria-hidden="true" />
-          <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-12 pt-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:px-8 lg:pb-20 lg:pt-20">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(14,165,233,0.18),transparent_30%),radial-gradient(circle_at_68%_18%,rgba(6,182,212,0.08),transparent_26%)]" aria-hidden="true" />
+          <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-12 pt-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8 lg:pb-20 lg:pt-20">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/75 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-blue-700 shadow-sm backdrop-blur-xl">
                 <Waves size={16} aria-hidden="true" /> Wavelab Public
@@ -433,16 +497,16 @@ export default function Home() {
               </div>
             </div>
 
-            <aside className={glassPanel('relative overflow-hidden p-6')} aria-label="Latest public forecast summary">
-              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-cyan-200/55 blur-2xl" aria-hidden="true" />
+            <aside className="relative self-center rounded-[2rem] border border-white/65 bg-white/[0.28] p-5 shadow-[0_28px_80px_rgba(15,23,42,0.18)] ring-1 ring-white/35 backdrop-blur-[26px] lg:translate-x-3" aria-label="Latest public forecast summary">
+              <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_22%_15%,rgba(255,255,255,0.55),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.24),rgba(255,255,255,0.08))]" aria-hidden="true" />
               <div className="relative">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Latest summary</p>
                 <h2 className="mt-3 text-2xl font-black text-slate-950">{latestDate ? formatDate(latestDate) : 'Published charts'}</h2>
-                <p className="mt-2 text-sm font-medium text-slate-600">{state.loading ? 'Preparing latest public forecast access...' : state.error ? 'Forecast data is temporarily unavailable.' : recentProjects.length ? forecastPeriodLabel : 'No published forecast charts are available right now.'}</p>
-                <div className="mt-6 grid gap-3">
-                  <ForecastDetail icon={Layers} label="Charts" value={state.loading ? 'Preparing' : `${availableCount} available`} />
-                  <ForecastDetail icon={Clock} label="Updated" value={latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Unavailable'} />
-                  <ForecastDetail icon={Eye} label="Public status" value={state.loading ? 'Preparing' : recentProjects.length ? 'Published' : 'Unavailable'} />
+                <p className="mt-1 text-sm font-semibold text-slate-700">{state.loading ? 'Preparing latest public forecast access...' : state.error ? 'Forecast data is temporarily unavailable.' : recentProjects.length ? forecastPeriodLabel : 'No published forecast charts are available right now.'}</p>
+                <div className="mt-5 grid gap-3">
+                  <SummaryGlassRow icon={Layers} label="Charts" value={state.loading ? 'Preparing' : `${availableCount} available`} />
+                  <SummaryGlassRow icon={Clock} label="Updated" value={latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Unavailable'} />
+                  <SummaryGlassRow icon={Eye} label="Public status" value={state.loading ? 'Preparing' : recentProjects.length ? 'Published' : 'Unavailable'} />
                 </div>
               </div>
             </aside>
