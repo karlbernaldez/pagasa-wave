@@ -49,33 +49,27 @@ export const GlobalStyle = createGlobalStyle`
     text-decoration: none;
   }
 
-  .wavelab-home,
-  .wavelab-home *::before,
-  .wavelab-home *::after,
-  .wavelab-home :where(
-    header,
-    nav,
-    section,
-    article,
-    aside,
-    div,
-    a,
-    button,
-    span,
-    p,
-    h1,
-    h2,
-    h3,
-    svg,
-    path
-  ) {
-    transition-property: background, background-color, border-color, color, box-shadow, opacity, filter, -webkit-backdrop-filter, backdrop-filter, fill, stroke, text-decoration-color, transform !important;
-    transition-duration: 500ms !important;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+  .wavelab-home {
+    transition: background-color 360ms cubic-bezier(0.4, 0, 0.2, 1), color 360ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .wavelab-home > header.sticky,
+  .wavelab-home .home-liquid,
+  .wavelab-home .home-liquid::before,
+  .wavelab-home .home-liquid-row,
+  .wavelab-home .hero-ph-map::before,
+  .wavelab-home .ph-map-shape,
+  .wavelab-home .secondary-action,
+  .wavelab-home .section-heading,
+  .wavelab-home .muted-copy {
+    transition-property: background-color, border-color, color, box-shadow, opacity, filter, -webkit-backdrop-filter, backdrop-filter;
+    transition-duration: 360ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .wavelab-home .hero-bg-layer {
-    transition-duration: 500ms !important;
+    transition: opacity 420ms cubic-bezier(0.4, 0, 0.2, 1), filter 420ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity;
   }
 
   .wavelab-home .hero-bottom-fade {
@@ -89,7 +83,8 @@ export const GlobalStyle = createGlobalStyle`
     position: absolute;
     inset: 0;
     pointer-events: none;
-    transition: opacity 500ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: opacity 420ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity;
   }
 
   .wavelab-home .hero-bottom-fade::before {
@@ -112,25 +107,18 @@ export const GlobalStyle = createGlobalStyle`
 
   @media (prefers-reduced-motion: reduce) {
     .wavelab-home,
-    .wavelab-home *::before,
-    .wavelab-home *::after,
-    .wavelab-home :where(
-      header,
-      nav,
-      section,
-      article,
-      aside,
-      div,
-      a,
-      button,
-      span,
-      p,
-      h1,
-      h2,
-      h3,
-      svg,
-      path
-    ) {
+    .wavelab-home > header.sticky,
+    .wavelab-home .home-liquid,
+    .wavelab-home .home-liquid::before,
+    .wavelab-home .home-liquid-row,
+    .wavelab-home .hero-bg-layer,
+    .wavelab-home .hero-bottom-fade::before,
+    .wavelab-home .hero-bottom-fade::after,
+    .wavelab-home .hero-ph-map::before,
+    .wavelab-home .ph-map-shape,
+    .wavelab-home .secondary-action,
+    .wavelab-home .section-heading,
+    .wavelab-home .muted-copy {
       transition-duration: 1ms !important;
       animation-duration: 1ms !important;
       animation-iteration-count: 1 !important;
