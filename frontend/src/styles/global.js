@@ -78,6 +78,38 @@ export const GlobalStyle = createGlobalStyle`
     transition-duration: 500ms !important;
   }
 
+  .wavelab-home .hero-bottom-fade {
+    background: transparent !important;
+    overflow: hidden;
+  }
+
+  .wavelab-home .hero-bottom-fade::before,
+  .wavelab-home .hero-bottom-fade::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    transition: opacity 500ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .wavelab-home .hero-bottom-fade::before {
+    background: linear-gradient(180deg, rgba(248,250,252,0), rgba(248,250,252,0.92) 78%, rgba(248,250,252,1));
+    opacity: 1;
+  }
+
+  .wavelab-home .hero-bottom-fade::after {
+    background: linear-gradient(180deg, rgba(2,6,23,0), rgba(2,6,23,0.86) 78%, rgba(2,6,23,1));
+    opacity: 0;
+  }
+
+  .wavelab-home.bg-slate-950 .hero-bottom-fade::before {
+    opacity: 0;
+  }
+
+  .wavelab-home.bg-slate-950 .hero-bottom-fade::after {
+    opacity: 1;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .wavelab-home,
     .wavelab-home *::before,
