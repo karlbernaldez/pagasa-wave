@@ -155,3 +155,49 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
 .wavelab-home > div.relative.z-10 > section:nth-of-type(2) {
   margin-top: -2.25rem !important;
 }
+
+/* Public landing: subtle lower-page atmosphere so the liquid cards do not float on a flat gray canvas. */
+.wavelab-home > div.relative.z-10 > section:not(:first-child) {
+  position: relative !important;
+  isolation: isolate;
+}
+
+.wavelab-home > div.relative.z-10 > section:nth-of-type(2)::before,
+.wavelab-home > div.relative.z-10 > section:nth-of-type(3)::before,
+.wavelab-home > div.relative.z-10 > section:nth-of-type(4)::before,
+.wavelab-home > div.relative.z-10 > section:nth-of-type(5)::before,
+.wavelab-home > div.relative.z-10 > section:nth-of-type(6)::before {
+  content: "";
+  position: absolute;
+  left: max(-6vw, -96px);
+  right: max(-6vw, -96px);
+  top: -3rem;
+  bottom: -3rem;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.72), rgba(248,250,252,0.46) 42%, rgba(241,245,249,0.78)),
+    radial-gradient(900px 260px at 16% 4%, rgba(14,165,233,0.11), transparent 62%),
+    radial-gradient(720px 220px at 88% 20%, rgba(45,212,191,0.10), transparent 62%),
+    repeating-linear-gradient(115deg, rgba(37,99,235,0.030) 0 1px, transparent 1px 54px);
+  mask-image: linear-gradient(90deg, transparent, black 9%, black 91%, transparent);
+}
+
+.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(2)::before,
+.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(3)::before,
+.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(4)::before,
+.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(5)::before,
+.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(6)::before {
+  background:
+    linear-gradient(180deg, rgba(2,6,23,0.78), rgba(8,47,73,0.18) 48%, rgba(2,6,23,0.84)),
+    radial-gradient(900px 260px at 16% 4%, rgba(14,165,233,0.12), transparent 64%),
+    radial-gradient(720px 220px at 88% 20%, rgba(45,212,191,0.08), transparent 64%),
+    repeating-linear-gradient(115deg, rgba(125,211,252,0.035) 0 1px, transparent 1px 54px);
+}
+
+.wavelab-home > div.relative.z-10 > section:nth-of-type(3),
+.wavelab-home > div.relative.z-10 > section:nth-of-type(4),
+.wavelab-home > div.relative.z-10 > section:nth-of-type(5),
+.wavelab-home > div.relative.z-10 > section:nth-of-type(6) {
+  padding-top: 3rem !important;
+}
