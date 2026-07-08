@@ -48,6 +48,63 @@ export const GlobalStyle = createGlobalStyle`
   a {
     text-decoration: none;
   }
+
+  .wavelab-home,
+  .wavelab-home *::before,
+  .wavelab-home *::after,
+  .wavelab-home :where(
+    header,
+    nav,
+    section,
+    article,
+    aside,
+    div,
+    a,
+    button,
+    span,
+    p,
+    h1,
+    h2,
+    h3,
+    svg,
+    path
+  ) {
+    transition-property: background, background-color, border-color, color, box-shadow, opacity, filter, -webkit-backdrop-filter, backdrop-filter, fill, stroke, text-decoration-color, transform !important;
+    transition-duration: 500ms !important;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .wavelab-home .hero-bg-layer {
+    transition-duration: 500ms !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wavelab-home,
+    .wavelab-home *::before,
+    .wavelab-home *::after,
+    .wavelab-home :where(
+      header,
+      nav,
+      section,
+      article,
+      aside,
+      div,
+      a,
+      button,
+      span,
+      p,
+      h1,
+      h2,
+      h3,
+      svg,
+      path
+    ) {
+      transition-duration: 1ms !important;
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
 `;
 
 export const AppContainer = styled.div`
