@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" role="img" aria-labelledby="title desc">
+  <title id="title">Night coastal wave forecast landscape</title>
+  <desc id="desc">A calm moonlit Philippine coastal scene with ocean waves, shoreline, islands, stars, and soft night light for Wavelab Public dark mode.</desc>
+  <defs>
+    <linearGradient id="nightSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#020617"/>
+      <stop offset="0.42" stop-color="#082f49"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="moonSea" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06345f"/>
+      <stop offset="0.44" stop-color="#075985"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="deepNightSea" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#020617"/>
+      <stop offset="0.58" stop-color="#0c4a6e"/>
+      <stop offset="1" stop-color="#155e75"/>
+    </linearGradient>
+    <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#e0f2fe" stop-opacity="0.98"/>
+      <stop offset="0.38" stop-color="#bae6fd" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aura" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#67e8f9" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#67e8f9" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="980" fill="url(#nightSky)"/>
+  <circle cx="1160" cy="150" r="210" fill="url(#moonGlow)"/>
+  <circle cx="1160" cy="150" r="54" fill="#f8fafc" opacity="0.92"/>
+  <circle cx="1184" cy="132" r="48" fill="#082f49" opacity="0.26"/>
+
+  <g opacity="0.82">
+    <circle cx="160" cy="110" r="2.2" fill="#e0f2fe"/>
+    <circle cx="250" cy="210" r="1.5" fill="#bae6fd"/>
+    <circle cx="398" cy="92" r="1.8" fill="#f8fafc"/>
+    <circle cx="520" cy="196" r="1.5" fill="#e0f2fe"/>
+    <circle cx="710" cy="82" r="2" fill="#bae6fd"/>
+    <circle cx="845" cy="238" r="1.6" fill="#f8fafc"/>
+    <circle cx="1332" cy="252" r="1.6" fill="#e0f2fe"/>
+    <circle cx="1450" cy="116" r="2" fill="#bae6fd"/>
+  </g>
+
+  <path d="M0 458 C180 408 340 418 500 446 C650 472 760 410 930 412 C1110 414 1280 478 1600 418 L1600 980 L0 980 Z" fill="url(#moonSea)"/>
+  <path d="M0 575 C210 530 355 562 520 592 C705 626 848 556 1050 548 C1244 540 1390 594 1600 560 L1600 980 L0 980 Z" fill="url(#deepNightSea)" opacity="0.92"/>
+
+  <path d="M80 496 C220 456 338 470 455 512" fill="none" stroke="#7dd3fc" stroke-width="7" stroke-linecap="round" opacity="0.42"/>
+  <path d="M610 520 C748 482 884 494 1016 536" fill="none" stroke="#bae6fd" stroke-width="7" stroke-linecap="round" opacity="0.36"/>
+  <path d="M1040 660 C1215 610 1398 625 1540 674" fill="none" stroke="#67e8f9" stroke-width="8" stroke-linecap="round" opacity="0.28"/>
+  <path d="M146 716 C358 642 522 660 714 714" fill="none" stroke="#e0f2fe" stroke-width="9" stroke-linecap="round" opacity="0.22"/>
+
+  <path d="M0 735 C145 694 288 702 410 758 C530 812 702 828 895 778 C1110 722 1304 768 1600 710 L1600 980 L0 980 Z" fill="#172554" opacity="0.86"/>
+  <path d="M0 795 C160 750 336 770 512 832 C702 898 882 860 1045 808 C1238 746 1410 772 1600 744 L1600 980 L0 980 Z" fill="#1e293b" opacity="0.88"/>
+
+  <path d="M160 360 C220 300 300 290 392 362 C458 414 548 422 632 382 C688 354 748 358 815 412 L160 412 Z" fill="#020617" opacity="0.76"/>
+  <path d="M1010 350 C1090 284 1185 296 1280 368 C1354 424 1458 414 1540 364 L1600 420 L960 420 Z" fill="#042f2e" opacity="0.76"/>
+
+  <g opacity="0.62" filter="url(#softBlur)">
+    <circle cx="268" cy="260" r="160" fill="url(#aura)"/>
+    <circle cx="1380" cy="360" r="210" fill="#38bdf8" opacity="0.16"/>
+  </g>
+
+  <g opacity="0.78">
+    <path d="M1270 710 C1264 660 1268 605 1300 552" fill="none" stroke="#052e16" stroke-width="12" stroke-linecap="round"/>
+    <path d="M1300 552 C1252 570 1216 600 1192 646" fill="none" stroke="#14532d" stroke-width="10" stroke-linecap="round"/>
+    <path d="M1300 552 C1355 570 1394 600 1420 652" fill="none" stroke="#14532d" stroke-width="10" stroke-linecap="round"/>
+    <path d="M1300 552 C1298 506 1280 466 1240 430" fill="none" stroke="#166534" stroke-width="9" stroke-linecap="round"/>
+    <path d="M1300 552 C1326 506 1362 480 1412 462" fill="none" stroke="#166534" stroke-width="9" stroke-linecap="round"/>
+  </g>
+
+  <path d="M1130 520 C1184 502 1240 508 1282 536 C1322 562 1398 560 1450 532" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round" opacity="0.35"/>
+</svg>
