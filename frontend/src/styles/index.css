@@ -156,15 +156,13 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   margin-top: -2.25rem !important;
 }
 
-/* Public landing: subtle lower-page atmosphere so the liquid cards do not float on a flat gray canvas. */
+/* Public landing: keep lower sections from sitting on a flat empty canvas. */
 .wavelab-home > div.relative.z-10 > section:not(:first-child) {
   position: relative !important;
   isolation: isolate;
 }
 
 .wavelab-home > div.relative.z-10 > section:nth-of-type(2)::before,
-.wavelab-home > div.relative.z-10 > section:nth-of-type(3)::before,
-.wavelab-home > div.relative.z-10 > section:nth-of-type(4)::before,
 .wavelab-home > div.relative.z-10 > section:nth-of-type(5)::before,
 .wavelab-home > div.relative.z-10 > section:nth-of-type(6)::before {
   content: "";
@@ -177,27 +175,97 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   pointer-events: none;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.72), rgba(248,250,252,0.46) 42%, rgba(241,245,249,0.78)),
-    radial-gradient(900px 260px at 16% 4%, rgba(14,165,233,0.11), transparent 62%),
-    radial-gradient(720px 220px at 88% 20%, rgba(45,212,191,0.10), transparent 62%),
-    repeating-linear-gradient(115deg, rgba(37,99,235,0.030) 0 1px, transparent 1px 54px);
+    radial-gradient(900px 260px at 16% 4%, rgba(14,165,233,0.08), transparent 62%),
+    radial-gradient(720px 220px at 88% 20%, rgba(45,212,191,0.07), transparent 62%);
   mask-image: linear-gradient(90deg, transparent, black 9%, black 91%, transparent);
 }
 
 .wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(2)::before,
-.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(3)::before,
-.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(4)::before,
 .wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(5)::before,
 .wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(6)::before {
   background:
     linear-gradient(180deg, rgba(2,6,23,0.78), rgba(8,47,73,0.18) 48%, rgba(2,6,23,0.84)),
-    radial-gradient(900px 260px at 16% 4%, rgba(14,165,233,0.12), transparent 64%),
-    radial-gradient(720px 220px at 88% 20%, rgba(45,212,191,0.08), transparent 64%),
-    repeating-linear-gradient(115deg, rgba(125,211,252,0.035) 0 1px, transparent 1px 54px);
+    radial-gradient(900px 260px at 16% 4%, rgba(14,165,233,0.10), transparent 64%),
+    radial-gradient(720px 220px at 88% 20%, rgba(45,212,191,0.07), transparent 64%);
 }
 
+/* Public landing: make the Latest Charts and Guide areas feel intentionally designed. */
 .wavelab-home > div.relative.z-10 > section:nth-of-type(3),
-.wavelab-home > div.relative.z-10 > section:nth-of-type(4),
+.wavelab-home > div.relative.z-10 > section:nth-of-type(4) {
+  margin-top: 2rem !important;
+  margin-bottom: 2rem !important;
+  padding: 2rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 2.5rem;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.44), rgba(255,255,255,0.18) 46%, rgba(236,254,255,0.20)),
+    radial-gradient(720px 220px at 12% 0%, rgba(14,165,233,0.12), transparent 62%),
+    radial-gradient(640px 220px at 92% 20%, rgba(45,212,191,0.10), transparent 60%),
+    repeating-linear-gradient(115deg, rgba(37,99,235,0.026) 0 1px, transparent 1px 52px);
+  -webkit-backdrop-filter: blur(14px) saturate(145%) contrast(103%) brightness(1.02);
+  backdrop-filter: blur(14px) saturate(145%) contrast(103%) brightness(1.02);
+  box-shadow:
+    0 26px 72px rgba(15, 23, 42, 0.075),
+    inset 0 1px 0 rgba(255,255,255,0.70),
+    inset 0 -1px 0 rgba(255,255,255,0.18);
+}
+
+.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(3),
+.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(4) {
+  border-color: rgba(255,255,255,0.12);
+  background:
+    linear-gradient(135deg, rgba(2,6,23,0.52), rgba(8,47,73,0.24) 48%, rgba(4,47,46,0.18)),
+    radial-gradient(720px 220px at 12% 0%, rgba(14,165,233,0.13), transparent 62%),
+    radial-gradient(640px 220px at 92% 20%, rgba(45,212,191,0.09), transparent 60%),
+    repeating-linear-gradient(115deg, rgba(125,211,252,0.030) 0 1px, transparent 1px 52px);
+  box-shadow:
+    0 28px 80px rgba(0,0,0,0.24),
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 -1px 0 rgba(255,255,255,0.04);
+}
+
+.wavelab-home > div.relative.z-10 > section:nth-of-type(3) > div:first-child,
+.wavelab-home > div.relative.z-10 > section:nth-of-type(4) > div:first-child {
+  margin-bottom: 1.5rem !important;
+}
+
+.wavelab-home > div.relative.z-10 > section:nth-of-type(3) article,
+.wavelab-home > div.relative.z-10 > section:nth-of-type(4) article {
+  background: rgba(255,255,255,0.52) !important;
+  border-color: rgba(255,255,255,0.72) !important;
+  box-shadow:
+    0 18px 44px rgba(15,23,42,0.085),
+    inset 0 1px 0 rgba(255,255,255,0.72) !important;
+}
+
+.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(3) article,
+.wavelab-home.bg-slate-950 > div.relative.z-10 > section:nth-of-type(4) article {
+  background: rgba(15,23,42,0.44) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  box-shadow:
+    0 18px 44px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.12) !important;
+}
+
+.wavelab-home > div.relative.z-10 > section:nth-of-type(3) article:hover,
+.wavelab-home > div.relative.z-10 > section:nth-of-type(4) article:hover {
+  transform: translateY(-4px);
+}
+
+.wavelab-home > div.relative.z-10 > section:nth-of-type(4) article {
+  min-height: 13rem;
+}
+
 .wavelab-home > div.relative.z-10 > section:nth-of-type(5),
 .wavelab-home > div.relative.z-10 > section:nth-of-type(6) {
   padding-top: 3rem !important;
+}
+
+@media (max-width: 768px) {
+  .wavelab-home > div.relative.z-10 > section:nth-of-type(3),
+  .wavelab-home > div.relative.z-10 > section:nth-of-type(4) {
+    width: calc(100% - 2rem);
+    padding: 1.25rem !important;
+    border-radius: 2rem;
+  }
 }
