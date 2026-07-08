@@ -1,40 +1,455 @@
-//  ╔═══════════════════════════════════════════════════════════════════════╗
-//  ║                        🌪 Component B Project 1                       ║
-//  ╠═══════════════════════════════════════════════════════════════════════╣
-//  ║  📁 Project       : DOST-MECO-TECO-VOTE III Component-B               ║
-//  ║  📝 Description   : Weather forecasting platform                      ║
-//  ║  👨‍💻 Author        : Karl Santiago Bernaldez                           ║
-//  ║  📅 Created       : 2025-03-24                                        ║
-//  ║  🕓 Last Updated  : 2025-05-29                                        ║
-//  ║  🧭 Version       : v1.0.0                                            ║
-//  ╚═══════════════════════════════════════════════════════════════════════╝
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Download,
+  FileText,
+  Globe2,
+  Layers,
+  LifeBuoy,
+  Map,
+  MapPin,
+  RefreshCw,
+  ShieldCheck,
+  Waves,
+} from 'lucide-react';
 
-import React, { useEffect } from 'react';
-import HeroSection from '@dashboards/public/components/home/HeroSection';
-import Alerts from '@dashboards/public/components/home/Alerts';
-import Services from '@dashboards/public/components/home/Services';
-import HowItWorksSection from '@dashboards/public/components/home/HowItWorks';
-import Partners from '@dashboards/public/components/home/Partners';
-import Sources from '@dashboards/public/components/home/Sources';
+import { fetchPublicPublishedCharts } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import PublicPublishedChartPreviewMap from '@/dashboards/public/components/PublicPublishedChartPreviewMap';
+import {
+  PUBLIC_CHART_SLOTS,
+  filterProjectsToPublicChartWindow,
+  getPublicChartAvailableCount,
+  getPublicChartCompleteness,
+  getPublicChartTenDayWindow,
+  groupPublicChartHistory,
+  groupPublicChartsByTypeForDate,
+} from '@/dashboards/public/utils/publicChartGroups';
 
-const Home = () => {
-  const { isDarkMode } = useTheme();
+const RECENT_FETCH_LIMIT = 80;
+const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
 
-  useEffect(() => {
-    document.title = "WaveLab";
-  }, []);
+function formatDate(value, options = {}) {
+  if (!value) return '-';
+
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: PUBLIC_CHART_TIME_ZONE,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      ...options,
+    }).format(new Date(value));
+  } catch {
+    return '-';
+  }
+}
+
+function formatDateTime(value) {
+  return formatDate(value, { hour: 'numeric', minute: '2-digit' });
+}
+
+function getLatestUpdatedAt(projects = []) {
+  return projects.reduce((latest, project) => {
+    const candidate = new Date(project?.publishedAt || project?.updatedAt || project?.createdAt || 0);
+    if (Number.isNaN(candidate.getTime())) return latest;
+    return !latest || candidate > latest ? candidate : latest;
+  }, null);
+}
+
+function getForecastPeriodLabel(activeDate) {
+  if (!activeDate) return 'Latest available forecast period';
+
+  const start = new Date(`${activeDate}T00:00:00+08:00`);
+  if (Number.isNaN(start.getTime())) return 'Latest available forecast period';
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 2);
+
+  return `${formatDate(start)} - ${formatDate(end)}`;
+}
+
+function getPublicChartTitle(slot, chart) {
+  return chart?.name || slot?.fallbackTitle || slot?.title || 'Published Wave Chart';
+}
+
+function getPublicChartDescription(slot, chart) {
+  if (!chart?._id) return `No published ${slot.title.toLowerCase()} is available for the latest forecast date yet.`;
+  return chart.description || `${slot.title} for ${formatDate(chart.forecastDate)}.`;
+}
+
+function sectionPanel(isDark, extra = '') {
+  return `rounded-[2rem] border shadow-[0_22px_70px_rgba(15,23,42,0.10)] backdrop-blur-xl ${
+    isDark
+      ? 'border-white/10 bg-slate-900/78 shadow-black/20'
+      : 'border-white/80 bg-white/88 shadow-blue-100/70'
+  } ${extra}`;
+}
+
+function PublicStateNotice({ isDark, tone = 'slate', title, children, action }) {
+  const toneClass = tone === 'red'
+    ? isDark ? 'border-red-400/20 bg-red-400/10 text-red-100' : 'border-red-200 bg-red-50 text-red-700'
+    : tone === 'amber'
+      ? isDark ? 'border-amber-400/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-700'
+      : isDark ? 'border-white/10 bg-slate-900/70 text-slate-200' : 'border-slate-200 bg-white/80 text-slate-700';
 
   return (
-    <div>
-      <HeroSection isDark={isDarkMode} />
-      {/* <Alerts isDark={isDarkMode} /> */}
-      <Services isDark={isDarkMode} />
-      <Partners isDark={isDarkMode} />
-      {/* <HowItWorksSection isDark={isDarkMode} />
-      <Sources isDark={isDarkMode} /> */}
+    <div className={`rounded-3xl border p-6 ${toneClass}`}>
+      <p className="text-sm font-black uppercase tracking-[0.16em]">{title}</p>
+      <div className="mt-2 text-sm font-semibold leading-relaxed">{children}</div>
+      {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );
-};
+}
 
-export default Home;
+function LandingStat({ icon: Icon, label, value, isDark }) {
+  return (
+    <div className={`rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-blue-100 bg-white/75'}`}>
+      <Icon className={isDark ? 'text-cyan-300' : 'text-blue-600'} size={20} aria-hidden="true" />
+      <p className={`mt-3 text-xs font-black uppercase tracking-[0.16em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
+      <p className={`mt-1 text-lg font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{value}</p>
+    </div>
+  );
+}
+
+function InfoCard({ icon: Icon, title, children, isDark }) {
+  return (
+    <article className={`rounded-3xl border p-5 ${isDark ? 'border-white/10 bg-slate-950/40' : 'border-slate-200 bg-white/70'}`}>
+      <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${isDark ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
+        <Icon size={22} aria-hidden="true" />
+      </div>
+      <h3 className={`text-base font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{title}</h3>
+      <p className={`mt-2 text-sm font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{children}</p>
+    </article>
+  );
+}
+
+function RegionCard({ icon: Icon, title, isDark }) {
+  return (
+    <Link
+      to="/charts"
+      className={`flex items-center gap-3 rounded-2xl border p-4 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-blue-400/70 ${
+        isDark
+          ? 'border-white/10 bg-slate-950/45 text-slate-100 hover:border-cyan-300/30 hover:bg-white/5'
+          : 'border-slate-200 bg-white/75 text-slate-800 hover:border-blue-200 hover:bg-blue-50/80'
+      }`}
+    >
+      <Icon size={20} className={isDark ? 'text-cyan-300' : 'text-blue-600'} aria-hidden="true" />
+      {title}
+    </Link>
+  );
+}
+
+function ChartPreviewCard({ slot, chart, isDark }) {
+  const hasChart = Boolean(chart?._id);
+
+  return (
+    <article className={`${sectionPanel(isDark, 'group flex min-h-[360px] flex-col overflow-hidden transition hover:-translate-y-1')}`}>
+      <div className="relative h-48 overflow-hidden">
+        {hasChart ? (
+          <PublicPublishedChartPreviewMap
+            projectId={chart._id}
+            initialRaster={chart.raster}
+            isDarkMode={isDark}
+            height={null}
+            className="h-full w-full rounded-none border-0"
+          />
+        ) : (
+          <div className={`flex h-full items-center justify-center ${isDark ? 'bg-slate-950/80' : 'bg-slate-100'}`}>
+            <Waves size={36} className={isDark ? 'text-slate-700' : 'text-slate-300'} aria-hidden="true" />
+          </div>
+        )}
+        <div className="absolute left-4 top-4 rounded-xl bg-blue-600 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20">
+          {slot.badge}
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col justify-between p-5">
+        <div>
+          <h3 className={`text-lg font-black leading-tight ${isDark ? 'text-white' : 'text-slate-950'}`}>{getPublicChartTitle(slot, chart)}</h3>
+          <p className={`mt-2 text-xs font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            {hasChart ? `Valid ${formatDateTime(chart.forecastDate)}` : 'Awaiting publication'}
+          </p>
+          <p className={`mt-3 line-clamp-2 text-sm font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            {getPublicChartDescription(slot, chart)}
+          </p>
+        </div>
+
+        <Link
+          to={hasChart ? `/charts/${chart._id}` : '/charts'}
+          className={`mt-5 inline-flex items-center gap-2 text-sm font-black focus:outline-none focus:ring-2 focus:ring-blue-400/60 ${
+            isDark ? 'text-cyan-200' : 'text-blue-700'
+          }`}
+        >
+          {hasChart ? 'View Chart' : 'Browse Charts'}
+          <ArrowRight size={15} aria-hidden="true" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+export default function Home() {
+  const { isDarkMode: isDark } = useTheme();
+  const [state, setState] = useState({ loading: true, error: '', projects: [] });
+  const [reloadToken, setReloadToken] = useState(0);
+
+  useEffect(() => {
+    document.title = 'Wavelab Public | Official Wave Forecasts';
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setState((prev) => ({ ...prev, loading: true, error: '' }));
+    fetchPublicPublishedCharts({
+      page: 1,
+      limit: RECENT_FETCH_LIMIT,
+      mode: 'active',
+      signal: controller.signal,
+    })
+      .then((data) => {
+        const projects = filterProjectsToPublicChartWindow(data?.projects || [], getPublicChartTenDayWindow(data?.projects || []));
+        setState({ loading: false, error: '', projects });
+      })
+      .catch((error) => {
+        if (error?.name !== 'AbortError') {
+          setState({ loading: false, error: error?.message || 'Failed to load public forecasts.', projects: [] });
+        }
+      });
+
+    return () => controller.abort();
+  }, [reloadToken]);
+
+  const recentProjects = state.projects;
+  const historyGroups = useMemo(() => groupPublicChartHistory(recentProjects), [recentProjects]);
+  const latestDate = historyGroups[0]?.dateKey || '';
+  const chartByType = useMemo(() => groupPublicChartsByTypeForDate(recentProjects, latestDate), [latestDate, recentProjects]);
+  const availableCount = useMemo(() => getPublicChartAvailableCount(chartByType), [chartByType]);
+  const completeness = useMemo(() => getPublicChartCompleteness(chartByType), [chartByType]);
+  const latestUpdatedAt = useMemo(() => getLatestUpdatedAt(recentProjects), [recentProjects]);
+  const latestPrimaryChart = useMemo(() => PUBLIC_CHART_SLOTS.map((slot) => chartByType.get(slot.chartType)).find(Boolean), [chartByType]);
+  const forecastPeriodLabel = getForecastPeriodLabel(latestDate);
+
+  const pageClass = isDark
+    ? 'bg-slate-950 text-slate-100'
+    : 'bg-slate-50 text-slate-950';
+  const mutedText = isDark ? 'text-slate-400' : 'text-slate-600';
+
+  return (
+    <main className={`relative min-h-screen overflow-hidden ${pageClass}`}>
+      <section className="relative isolate overflow-hidden px-4 pb-20 pt-28 sm:px-6 lg:px-8">
+        <div className="absolute inset-0 -z-20 bg-gradient-to-br from-sky-950 via-blue-900 to-cyan-900" aria-hidden="true" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_78%_24%,rgba(186,230,253,0.32),transparent_30%),linear-gradient(90deg,rgba(2,6,23,0.90),rgba(2,6,23,0.58),rgba(2,6,23,0.20))]" aria-hidden="true" />
+        <div className="absolute bottom-0 left-0 right-0 -z-10 h-40 bg-gradient-to-t from-slate-50 via-slate-50/70 to-transparent dark:from-slate-950" aria-hidden="true" />
+
+        <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_430px]">
+          <div className="max-w-3xl py-12 text-white lg:py-20">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-cyan-100 backdrop-blur">
+              <Waves size={16} aria-hidden="true" />
+              Wavelab Public
+            </div>
+            <h1 className="text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+              Public Wave Forecasts, Made Easier to Access
+            </h1>
+            <p className="mt-6 max-w-2xl text-base font-semibold leading-relaxed text-blue-50/90 sm:text-lg">
+              View the latest published wave forecast charts and marine forecast outputs from Wavelab in one clear public portal.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                to={latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts'}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-blue-950/30 transition hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+              >
+                <Layers size={18} aria-hidden="true" />
+                View Latest Forecast Charts
+              </Link>
+              <Link
+                to="/charts"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-6 py-4 text-sm font-black text-white backdrop-blur transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+              >
+                <FileText size={18} aria-hidden="true" />
+                Browse Forecast Archive
+              </Link>
+            </div>
+          </div>
+
+          <aside className="rounded-[2rem] border border-white/20 bg-white/12 p-5 text-white shadow-2xl shadow-blue-950/30 backdrop-blur-xl">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100">Latest status</p>
+            <h2 className="mt-3 text-2xl font-black">{latestDate ? formatDate(latestDate) : 'Latest forecast'}</h2>
+            <p className="mt-2 text-sm font-semibold text-blue-50/80">Published chart availability and public forecast readiness.</p>
+            <div className="mt-5 grid gap-3">
+              <LandingStat icon={CalendarDays} label="Forecast period" value={forecastPeriodLabel} isDark />
+              <LandingStat icon={CheckCircle2} label="Published charts" value={`${availableCount}/${PUBLIC_CHART_SLOTS.length} available`} isDark />
+              <LandingStat icon={Clock} label="Last updated" value={latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Not available'} isDark />
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section className="relative z-10 mx-auto -mt-10 flex max-w-7xl flex-col gap-8 px-4 pb-20 sm:px-6 lg:px-8">
+        {state.loading && (
+          <div className={sectionPanel(isDark, 'p-8')}>
+            <PublicStateNotice isDark={isDark} title="Loading latest forecasts">
+              Fetching the latest published WaveLab charts and preparing the public forecast summary.
+            </PublicStateNotice>
+          </div>
+        )}
+
+        {!state.loading && state.error && (
+          <PublicStateNotice
+            isDark={isDark}
+            tone="red"
+            title="Forecasts could not be loaded"
+            action={(
+              <button
+                type="button"
+                onClick={() => setReloadToken((value) => value + 1)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+              >
+                <RefreshCw size={16} aria-hidden="true" />
+                Retry
+              </button>
+            )}
+          >
+            <p>{state.error}</p>
+            <p className="mt-1">Refresh the public forecast list or try again later.</p>
+          </PublicStateNotice>
+        )}
+
+        {!state.loading && !state.error && !recentProjects.length && (
+          <PublicStateNotice isDark={isDark} tone="amber" title="No published forecasts are available right now">
+            Please check again later or refer to official advisory channels for current marine updates.
+          </PublicStateNotice>
+        )}
+
+        {!state.loading && !state.error && recentProjects.length > 0 && (
+          <>
+            <section className={sectionPanel(isDark, 'grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:p-8')} aria-labelledby="latest-forecast-heading">
+              <div>
+                <p className={`text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-cyan-300' : 'text-blue-700'}`}>Latest Published Forecast</p>
+                <h2 id="latest-forecast-heading" className={`mt-3 text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                  Wave Forecast Package {latestDate ? formatDate(latestDate) : ''}
+                </h2>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-emerald-600">
+                    <CheckCircle2 size={14} aria-hidden="true" />
+                    Published
+                  </span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Valid: {forecastPeriodLabel}</span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{completeness.isComplete ? 'Complete chart set' : `${availableCount}/${PUBLIC_CHART_SLOTS.length} charts published`}</span>
+                </div>
+                <p className={`mt-5 max-w-3xl text-sm font-medium leading-relaxed ${mutedText}`}>
+                  Includes the latest public WaveLab chart set for marine weather awareness. Published outputs are shown only after they are available through the public chart workflow.
+                </p>
+              </div>
+
+              <div className={`rounded-3xl border p-5 ${isDark ? 'border-white/10 bg-slate-950/45' : 'border-slate-200 bg-blue-50/60'}`}>
+                <p className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Open Forecast</p>
+                <p className={`mt-2 text-sm font-medium leading-relaxed ${mutedText}`}>View published charts and forecast details.</p>
+                <Link to={latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts'} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  Open Forecast
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+                <div className={`mt-5 border-t pt-5 ${isDark ? 'border-white/10' : 'border-blue-100'}`}>
+                  <p className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Download PDF</p>
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-black text-emerald-600"><CheckCircle2 size={14} aria-hidden="true" /> Available from chart page</p>
+                  <Link to="/charts" className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-blue-400 ${isDark ? 'border-white/10 text-cyan-100 hover:bg-white/5' : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'}`}>
+                    <Download size={16} aria-hidden="true" />
+                    Go to PDF Export
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+            <section aria-labelledby="latest-charts-heading">
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className={`text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Latest Forecast Charts</p>
+                  <h2 id="latest-charts-heading" className={`mt-1 text-2xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Published chart preview</h2>
+                </div>
+                <Link to="/charts" className={`inline-flex items-center gap-2 text-sm font-black ${isDark ? 'text-cyan-200' : 'text-blue-700'}`}>
+                  View All Charts
+                  <ArrowRight size={15} aria-hidden="true" />
+                </Link>
+              </div>
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                {PUBLIC_CHART_SLOTS.map((slot) => (
+                  <ChartPreviewCard key={slot.chartType} slot={slot} chart={chartByType.get(slot.chartType)} isDark={isDark} />
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+
+        <section className="grid gap-5 lg:grid-cols-2">
+          <div className={sectionPanel(isDark, 'p-6')}>
+            <p className={`text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-cyan-300' : 'text-blue-700'}`}>How to Read the Forecast</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <InfoCard icon={Waves} title="Wave Height" isDark={isDark}>Shows the estimated height of waves in meters.</InfoCard>
+              <InfoCard icon={Layers} title="Colors" isDark={isDark}>Colors represent different wave height ranges.</InfoCard>
+              <InfoCard icon={Clock} title="Forecast Time" isDark={isDark}>Each chart is valid for a specific date and time.</InfoCard>
+              <InfoCard icon={ShieldCheck} title="Use With Caution" isDark={isDark}>Use forecasts together with official advisories and local conditions.</InfoCard>
+            </div>
+          </div>
+
+          <div className={sectionPanel(isDark, 'p-6')}>
+            <p className={`text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-cyan-300' : 'text-blue-700'}`}>Explore by Region</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <RegionCard icon={MapPin} title="Luzon Waters" isDark={isDark} />
+              <RegionCard icon={MapPin} title="Visayas Waters" isDark={isDark} />
+              <RegionCard icon={MapPin} title="Mindanao Waters" isDark={isDark} />
+              <RegionCard icon={Globe2} title="West Philippine Sea" isDark={isDark} />
+              <RegionCard icon={Globe2} title="Philippine Sea" isDark={isDark} />
+              <RegionCard icon={LifeBuoy} title="Coastal Areas" isDark={isDark} />
+            </div>
+          </div>
+        </section>
+
+        <section className={`grid gap-5 rounded-[2rem] border p-6 lg:grid-cols-[1fr_auto] lg:items-center ${isDark ? 'border-blue-400/10 bg-blue-400/10' : 'border-blue-100 bg-blue-50'}`}>
+          <div className="flex gap-4">
+            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${isDark ? 'bg-cyan-300/10 text-cyan-200' : 'bg-white text-blue-700'}`}>
+              <CalendarDays size={26} aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Looking for older forecasts?</h2>
+              <p className={`mt-2 text-sm font-medium leading-relaxed ${mutedText}`}>Search and browse previously published forecast packages and charts by date through the public chart archive.</p>
+            </div>
+          </div>
+          <Link to="/charts" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+            View Forecast Archive
+            <ArrowRight size={16} aria-hidden="true" />
+          </Link>
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-2">
+          <article className={sectionPanel(isDark, 'p-6')}>
+            <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? 'bg-blue-400/10 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>
+              <Map size={26} aria-hidden="true" />
+            </div>
+            <h2 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>About Wavelab</h2>
+            <p className={`mt-3 text-sm font-medium leading-relaxed ${mutedText}`}>
+              Wavelab is a forecasting workflow system that helps prepare, review, and publish wave forecast outputs. The public portal provides easier access to published charts and forecast packages for communities, agencies, and marine users.
+            </p>
+          </article>
+
+          <article className={`rounded-[2rem] border p-6 ${isDark ? 'border-amber-300/20 bg-amber-300/10' : 'border-amber-200 bg-amber-50'}`}>
+            <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? 'bg-amber-300/10 text-amber-100' : 'bg-white text-amber-700'}`}>
+              <AlertTriangle size={26} aria-hidden="true" />
+            </div>
+            <h2 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Important Notice</h2>
+            <p className={`mt-3 text-sm font-medium leading-relaxed ${isDark ? 'text-amber-50/80' : 'text-amber-900/80'}`}>
+              Forecast information is provided for guidance and situational awareness. Always refer to official advisories, warnings, and local conditions before making marine travel or operational decisions.
+            </p>
+          </article>
+        </section>
+
+        <p className={`text-center text-xs font-semibold ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Data: DOST-PAGASA - WaveLab - Published charts only</p>
+      </section>
+    </main>
+  );
+}
