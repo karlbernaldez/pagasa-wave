@@ -156,7 +156,7 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   margin-top: -2.25rem !important;
 }
 
-/* Public landing: icy liquid-glass GeoJSON Philippines map. */
+/* Public landing: icy transparent liquid-glass GeoJSON Philippines map. */
 @media (min-width: 1024px) {
   html body .wavelab-home .hero-ph-map {
     justify-self: end !important;
@@ -169,9 +169,9 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   html body .wavelab-home .hero-ph-map::before {
     inset: 5% -8% 1% -12% !important;
     background:
-      radial-gradient(circle at 48% 42%, rgba(248, 250, 252, 0.46), rgba(219, 234, 254, 0.22) 38%, transparent 69%) !important;
-    filter: blur(24px) !important;
-    opacity: 0.72 !important;
+      radial-gradient(circle at 48% 42%, rgba(248, 250, 252, 0.28), rgba(219, 234, 254, 0.12) 38%, transparent 69%) !important;
+    filter: blur(22px) !important;
+    opacity: 0.48 !important;
   }
 
   html body .wavelab-home .ph-map-shape {
@@ -181,8 +181,8 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
     transform: scale(1.02) !important;
     overflow: visible !important;
     filter:
-      drop-shadow(0 24px 28px rgba(15, 23, 42, 0.20))
-      drop-shadow(0 0 11px rgba(255, 255, 255, 0.40)) !important;
+      drop-shadow(0 22px 26px rgba(15, 23, 42, 0.18))
+      drop-shadow(0 0 9px rgba(255, 255, 255, 0.36)) !important;
   }
 
   html body .wavelab-home .ph-map-shape g[filter] {
@@ -190,9 +190,9 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   }
 
   html body .wavelab-home .ph-map-path {
-    fill: rgba(226, 238, 251, 0.27) !important;
-    stroke: rgba(250, 253, 255, 0.96) !important;
-    stroke-width: 2.95px !important;
+    fill: rgba(255, 255, 255, 0.055) !important;
+    stroke: rgba(250, 253, 255, 0.95) !important;
+    stroke-width: 3.15px !important;
     stroke-linejoin: round !important;
     stroke-linecap: round !important;
     paint-order: stroke fill !important;
@@ -203,21 +203,21 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   }
 
   html body .wavelab-home .ph-map-path:nth-child(2n) {
-    fill: rgba(210, 226, 244, 0.30) !important;
-    stroke: rgba(242, 248, 255, 0.92) !important;
+    fill: rgba(226, 238, 251, 0.075) !important;
+    stroke: rgba(246, 251, 255, 0.90) !important;
   }
 
   html body .wavelab-home .ph-map-path:nth-child(3n) {
-    fill: rgba(255, 255, 255, 0.19) !important;
-    stroke: rgba(214, 232, 249, 0.94) !important;
+    fill: rgba(255, 255, 255, 0.035) !important;
+    stroke: rgba(219, 236, 250, 0.92) !important;
   }
 
   html body .wavelab-home .ph-map-shape > g:first-of-type {
     filter:
-      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.86))
-      drop-shadow(1px 1px 0 rgba(49, 92, 128, 0.52))
-      drop-shadow(0 0 5px rgba(255, 255, 255, 0.62))
-      drop-shadow(0 13px 14px rgba(15, 23, 42, 0.18)) !important;
+      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.78))
+      drop-shadow(1px 1px 0 rgba(48, 83, 112, 0.58))
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.50))
+      drop-shadow(0 12px 13px rgba(15, 23, 42, 0.16)) !important;
   }
 
   html body .wavelab-home.bg-slate-950 .hero-ph-map {
@@ -225,15 +225,20 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   }
 
   html body .wavelab-home.bg-slate-950 .ph-map-path {
-    fill: rgba(226, 238, 251, 0.20) !important;
-    stroke: rgba(245, 251, 255, 0.92) !important;
+    fill: rgba(236, 254, 255, 0.055) !important;
+    stroke: rgba(245, 251, 255, 0.90) !important;
+  }
+
+  html body .wavelab-home.bg-slate-950 .ph-map-path:nth-child(2n) {
+    fill: rgba(186, 230, 253, 0.065) !important;
+    stroke: rgba(224, 242, 254, 0.88) !important;
   }
 
   html body .wavelab-home.bg-slate-950 .ph-map-shape > g:first-of-type {
     filter:
-      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.34))
+      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.30))
       drop-shadow(1px 1px 0 rgba(8, 47, 73, 0.62))
-      drop-shadow(0 0 7px rgba(186, 230, 253, 0.34))
-      drop-shadow(0 14px 18px rgba(0, 0, 0, 0.38)) !important;
+      drop-shadow(0 0 6px rgba(186, 230, 253, 0.28))
+      drop-shadow(0 13px 16px rgba(0, 0, 0, 0.34)) !important;
   }
 }
