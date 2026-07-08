@@ -10,6 +10,10 @@ main.relative.min-h-screen > footer {
   display: none !important;
 }
 
+main.relative.min-h-screen > div.pointer-events-none.absolute.inset-0.overflow-hidden {
+  display: none !important;
+}
+
 main.relative.min-h-screen > div.relative.z-10 {
   overflow: visible !important;
 }
