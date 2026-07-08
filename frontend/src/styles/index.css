@@ -156,71 +156,71 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   margin-top: -2.25rem !important;
 }
 
-/* Public landing: optimized liquid-glass GeoJSON Philippines map. */
+/* Public landing: make the GeoJSON Philippines map more visible while keeping a liquid-glass feel. */
 @media (min-width: 1024px) {
-  .wavelab-home .hero-ph-map {
+  html body .wavelab-home .hero-ph-map {
     justify-self: end !important;
     width: min(42vw, 500px) !important;
     min-height: clamp(500px, 58vh, 680px) !important;
     transform: translate(3.2rem, -0.45rem) !important;
-    mix-blend-mode: screen;
+    mix-blend-mode: normal !important;
   }
 
-  .wavelab-home .hero-ph-map::before {
+  html body .wavelab-home .hero-ph-map::before {
     inset: 8% -6% 4% -10% !important;
     background:
-      radial-gradient(circle at 46% 42%, rgba(255,255,255,0.28), rgba(125,211,252,0.16) 38%, transparent 68%) !important;
-    filter: blur(22px) !important;
-    opacity: 0.58 !important;
+      radial-gradient(circle at 46% 42%, rgba(219,234,254,0.30), rgba(14,165,233,0.18) 38%, transparent 68%) !important;
+    filter: blur(20px) !important;
+    opacity: 0.64 !important;
   }
 
-  .wavelab-home .ph-map-shape {
+  html body .wavelab-home .ph-map-shape {
     width: min(100%, 470px) !important;
     height: clamp(500px, 58vh, 665px) !important;
-    opacity: 0.92 !important;
+    opacity: 0.98 !important;
     transform: scale(1.01) !important;
     filter:
-      drop-shadow(0 24px 26px rgba(15,23,42,0.14))
-      drop-shadow(0 0 14px rgba(240,249,255,0.58)) !important;
+      drop-shadow(0 20px 26px rgba(15,23,42,0.18))
+      drop-shadow(0 0 10px rgba(255,255,255,0.28)) !important;
   }
 
-  .wavelab-home .ph-map-shape g[filter] {
+  html body .wavelab-home .ph-map-shape g[filter] {
     filter: none !important;
   }
 
-  .wavelab-home .ph-map-path {
-    fill: rgba(236, 254, 255, 0.18) !important;
-    stroke: rgba(255, 255, 255, 0.82) !important;
-    stroke-width: 2.15px !important;
+  html body .wavelab-home .ph-map-path {
+    fill: rgba(255, 255, 255, 0.09) !important;
+    stroke: rgba(29, 78, 216, 0.98) !important;
+    stroke-width: 2.65px !important;
     paint-order: stroke fill !important;
-    opacity: 0.88 !important;
+    opacity: 1 !important;
     vector-effect: non-scaling-stroke;
     filter: none !important;
   }
 
-  .wavelab-home .ph-map-path:nth-child(2n) {
-    fill: rgba(186, 230, 253, 0.20) !important;
-    stroke: rgba(125, 211, 252, 0.74) !important;
+  html body .wavelab-home .ph-map-path:nth-child(2n) {
+    fill: rgba(191, 219, 254, 0.12) !important;
+    stroke: rgba(2, 132, 199, 0.96) !important;
   }
 
-  .wavelab-home .ph-map-path:nth-child(3n) {
-    fill: rgba(255, 255, 255, 0.14) !important;
-    stroke: rgba(226, 246, 255, 0.92) !important;
+  html body .wavelab-home .ph-map-path:nth-child(3n) {
+    fill: rgba(255, 255, 255, 0.07) !important;
+    stroke: rgba(37, 99, 235, 0.90) !important;
   }
 
-  .wavelab-home .ph-map-shape > g:first-of-type {
+  html body .wavelab-home .ph-map-shape > g:first-of-type {
     filter:
-      drop-shadow(0 1px 0 rgba(255,255,255,0.85))
-      drop-shadow(0 0 8px rgba(14,165,233,0.28))
-      drop-shadow(0 16px 18px rgba(15,23,42,0.12)) !important;
+      drop-shadow(0 0 2px rgba(255,255,255,0.75))
+      drop-shadow(0 0 7px rgba(37,99,235,0.34))
+      drop-shadow(0 10px 12px rgba(15,23,42,0.14)) !important;
   }
 
-  .wavelab-home.bg-slate-950 .hero-ph-map {
-    mix-blend-mode: screen;
+  html body .wavelab-home.bg-slate-950 .hero-ph-map {
+    mix-blend-mode: normal !important;
   }
 
-  .wavelab-home.bg-slate-950 .ph-map-path {
-    fill: rgba(103, 232, 249, 0.12) !important;
-    stroke: rgba(236, 254, 255, 0.76) !important;
+  html body .wavelab-home.bg-slate-950 .ph-map-path {
+    fill: rgba(103, 232, 249, 0.11) !important;
+    stroke: rgba(125, 211, 252, 0.96) !important;
   }
 }
