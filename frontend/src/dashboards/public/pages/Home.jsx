@@ -72,6 +72,18 @@ function StateNotice({ isDark, tone = 'slate', title, children, action }) {
   );
 }
 
+function ForecastMetric({ icon: Icon, label, value, isDark }) {
+  return (
+    <div className={`rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white/70'}`}>
+      <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${isDark ? 'bg-cyan-300/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
+        <Icon size={18} aria-hidden="true" />
+      </div>
+      <p className={`text-[11px] font-black uppercase tracking-[0.18em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
+      <p className={`mt-1 text-sm font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{value}</p>
+    </div>
+  );
+}
+
 function InfoCard({ icon: Icon, title, children, isDark }) {
   return (
     <article className={`rounded-3xl border p-5 ${isDark ? 'border-white/10 bg-slate-950/40' : 'border-slate-200 bg-white/70'}`}>
@@ -155,14 +167,15 @@ export default function Home() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-950/10 via-transparent to-slate-950/25" aria-hidden="true" />
         <div className={`absolute bottom-0 left-0 right-0 -z-10 h-52 bg-gradient-to-t ${isDark ? 'from-slate-950 via-slate-950/70' : 'from-slate-50 via-slate-50/75'} to-transparent`} aria-hidden="true" />
         <div className="mx-auto w-full max-w-7xl">
-          <div className="max-w-3xl text-white">
+          <div className="max-w-3xl text-white lg:-translate-y-8">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-cyan-50 shadow-lg shadow-black/10 backdrop-blur"><Waves size={16} aria-hidden="true" />Wavelab Public</div>
-            <h1 className="max-w-4xl text-4xl font-black leading-[1.04] tracking-tight drop-shadow-[0_3px_16px_rgba(0,0,0,0.25)] sm:text-5xl lg:text-6xl">Public Wave Forecasts, Made Easier to Access</h1>
+            <h1 className="max-w-4xl text-4xl font-black leading-[1.04] tracking-tight drop-shadow-[0_3px_16px_rgba(0,0,0,0.25)] sm:text-5xl lg:text-[56px]">Public Wave Forecasts, Made Easier to Access</h1>
             <p className="mt-6 max-w-2xl text-base font-semibold leading-relaxed text-blue-50 drop-shadow sm:text-lg">View the latest published wave forecast charts and marine forecast outputs from Wavelab in one clear public portal.</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link to={latestPrimaryChart?._id ? `/charts/${latestPrimaryChart._id}` : '/charts'} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-blue-950/30 transition hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-cyan-200"><Layers size={18} aria-hidden="true" />View Latest Forecast Charts</Link>
-              <Link to="/charts" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/45 bg-slate-900/20 px-6 py-4 text-sm font-black text-white backdrop-blur transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-200"><FileText size={18} aria-hidden="true" />Browse Forecast Archive</Link>
+              <Link to="/charts" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/45 bg-white/5 px-6 py-4 text-sm font-black text-white backdrop-blur transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-200"><FileText size={18} aria-hidden="true" />Browse Forecast Archive</Link>
             </div>
+            <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-blue-50/80 drop-shadow">Published forecast outputs only · Updated when new charts are available</p>
           </div>
         </div>
       </section>
@@ -175,15 +188,17 @@ export default function Home() {
         {!state.loading && !state.error && recentProjects.length > 0 && <>
           <section className={panelClass(isDark, 'grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:p-8')} aria-labelledby="latest-forecast-heading">
             <div>
-              <p className={`text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-cyan-300' : 'text-blue-700'}`}>Latest Published Forecast</p>
-              <h2 id="latest-forecast-heading" className={`mt-3 text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-950'}`}>Wave Forecast Package {latestDate ? formatDate(latestDate) : ''}</h2>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <p className={`text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-cyan-300' : 'text-blue-700'}`}>Latest Published Forecast</p>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-emerald-600"><CheckCircle2 size={14} aria-hidden="true" />Published</span>
-                <span className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Valid: {forecastPeriodLabel}</span>
-                <span className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{completeness.isComplete ? 'Complete chart set' : `${availableCount}/${PUBLIC_CHART_SLOTS.length} charts published`}</span>
-                <span className={`rounded-full px-3 py-1 text-xs font-black ${isDark ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Updated: {latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Not available'}</span>
               </div>
-              <p className={`mt-5 max-w-3xl text-sm font-medium leading-relaxed ${mutedText}`}>Includes the latest public WaveLab chart set for marine weather awareness. Published outputs are shown only after they are available through the public chart workflow.</p>
+              <h2 id="latest-forecast-heading" className={`mt-3 text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-950'}`}>Wave Forecast Package {latestDate ? formatDate(latestDate) : ''}</h2>
+              <p className={`mt-4 max-w-3xl text-sm font-medium leading-relaxed ${mutedText}`}>Includes the latest public WaveLab chart set for marine weather awareness. Published outputs are shown only after they are available through the public chart workflow.</p>
+              <div className="mt-6 grid max-w-5xl gap-3 sm:grid-cols-3">
+                <ForecastMetric icon={CalendarDays} label="Forecast period" value={forecastPeriodLabel} isDark={isDark} />
+                <ForecastMetric icon={Layers} label="Published charts" value={`${availableCount}/${PUBLIC_CHART_SLOTS.length} available`} isDark={isDark} />
+                <ForecastMetric icon={Clock} label="Last updated" value={latestUpdatedAt ? formatDateTime(latestUpdatedAt) : 'Not available'} isDark={isDark} />
+              </div>
             </div>
             <div className={`rounded-3xl border p-5 ${isDark ? 'border-white/10 bg-slate-950/45' : 'border-slate-200 bg-blue-50/60'}`}>
               <p className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Open Forecast</p>
