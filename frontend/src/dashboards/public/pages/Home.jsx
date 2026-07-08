@@ -45,129 +45,106 @@ const LIQUID_CSS = `
 .liquid-summary {
   isolation: isolate;
   transform-style: preserve-3d;
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.105), rgba(255,255,255,0.026) 44%, rgba(255,255,255,0.055)),
-    radial-gradient(circle at 18% 8%, rgba(255,255,255,0.18), transparent 32%),
-    radial-gradient(circle at 88% 92%, rgba(125,211,252,0.075), transparent 42%);
-  border-color: rgba(255,255,255,0.62);
-  -webkit-backdrop-filter: blur(64px) saturate(190%) contrast(106%);
-  backdrop-filter: blur(64px) saturate(190%) contrast(106%);
+  background: rgba(255,255,255,0.055);
+  border-color: rgba(255,255,255,0.72);
+  -webkit-backdrop-filter: blur(22px) saturate(190%) contrast(116%) brightness(1.04);
+  backdrop-filter: blur(22px) saturate(190%) contrast(116%) brightness(1.04);
   box-shadow:
-    0 34px 96px rgba(15, 23, 42, 0.16),
-    0 8px 28px rgba(14, 165, 233, 0.07),
-    inset 0 1px 0 rgba(255,255,255,0.74),
-    inset 1px 0 0 rgba(255,255,255,0.30),
-    inset 0 -26px 52px rgba(255,255,255,0.07),
-    inset 0 0 0 1px rgba(255,255,255,0.14);
+    0 36px 92px rgba(15,23,42,0.18),
+    0 12px 34px rgba(14,165,233,0.07),
+    inset 0 1px 0 rgba(255,255,255,0.88),
+    inset 0 0 0 1px rgba(255,255,255,0.22),
+    inset 0 -22px 46px rgba(255,255,255,0.045);
 }
 .liquid-summary.is-dark {
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.052), rgba(2,6,23,0.022) 45%, rgba(103,232,249,0.026)),
-    radial-gradient(circle at 18% 8%, rgba(255,255,255,0.075), transparent 32%),
-    radial-gradient(circle at 88% 92%, rgba(45,212,191,0.065), transparent 42%);
-  border-color: rgba(255,255,255,0.20);
-  -webkit-backdrop-filter: blur(68px) saturate(185%) contrast(112%);
-  backdrop-filter: blur(68px) saturate(185%) contrast(112%);
+  background: rgba(2,6,23,0.105);
+  border-color: rgba(255,255,255,0.22);
+  -webkit-backdrop-filter: blur(24px) saturate(195%) contrast(122%) brightness(1.08);
+  backdrop-filter: blur(24px) saturate(195%) contrast(122%) brightness(1.08);
   box-shadow:
-    0 42px 116px rgba(0,0,0,0.42),
-    0 12px 38px rgba(8,145,178,0.08),
-    inset 0 1px 0 rgba(255,255,255,0.20),
-    inset 1px 0 0 rgba(255,255,255,0.07),
-    inset 0 -28px 56px rgba(8,47,73,0.08),
-    inset 0 0 0 1px rgba(255,255,255,0.045);
+    0 42px 110px rgba(0,0,0,0.42),
+    0 12px 34px rgba(8,145,178,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.24),
+    inset 0 0 0 1px rgba(255,255,255,0.055),
+    inset 0 -24px 48px rgba(2,6,23,0.08);
 }
 .liquid-summary::before,
 .liquid-summary::after {
   content: '';
   position: absolute;
+  inset: 0;
   pointer-events: none;
-  border-radius: 999px;
-  z-index: -1;
+  border-radius: inherit;
 }
 .liquid-summary::before {
-  width: 230px;
-  height: 230px;
-  left: -62px;
-  top: -80px;
-  background: radial-gradient(circle, rgba(255,255,255,0.28), rgba(125,211,252,0.10) 42%, transparent 72%);
-  filter: blur(18px);
-  opacity: 0.52;
+  background:
+    radial-gradient(120% 85% at 50% -20%, rgba(255,255,255,0.30), transparent 44%),
+    linear-gradient(180deg, rgba(255,255,255,0.12), transparent 34%, rgba(255,255,255,0.035));
+  opacity: 0.55;
+  mix-blend-mode: screen;
+}
+.liquid-summary.is-dark::before {
+  background:
+    radial-gradient(120% 85% at 50% -20%, rgba(255,255,255,0.13), transparent 44%),
+    linear-gradient(180deg, rgba(255,255,255,0.055), transparent 34%, rgba(255,255,255,0.018));
+  opacity: 0.46;
 }
 .liquid-summary::after {
-  width: 230px;
-  height: 230px;
-  right: -68px;
-  bottom: -86px;
-  background: radial-gradient(circle, rgba(45,212,191,0.11), rgba(14,165,233,0.045) 45%, transparent 74%);
-  filter: blur(20px);
-  opacity: 0.48;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.26),
+    inset 0 18px 26px rgba(255,255,255,0.07),
+    inset 0 -20px 34px rgba(15,23,42,0.045);
 }
-.liquid-shine {
-  background:
-    linear-gradient(118deg, rgba(255,255,255,0.46) 0%, rgba(255,255,255,0.13) 9%, transparent 23%, transparent 67%, rgba(255,255,255,0.12) 76%, transparent 100%),
-    radial-gradient(ellipse at 20% 0%, rgba(255,255,255,0.38), rgba(255,255,255,0.055) 34%, transparent 58%),
-    radial-gradient(ellipse at 90% 100%, rgba(56,189,248,0.075), transparent 46%);
-  mix-blend-mode: screen;
-  opacity: 0.72;
+.liquid-summary.is-dark::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.075),
+    inset 0 18px 26px rgba(255,255,255,0.035),
+    inset 0 -20px 34px rgba(0,0,0,0.10);
 }
-.liquid-summary.is-dark .liquid-shine {
-  background:
-    linear-gradient(118deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.045) 9%, transparent 24%, transparent 67%, rgba(103,232,249,0.035) 76%, transparent 100%),
-    radial-gradient(ellipse at 20% 0%, rgba(255,255,255,0.10), rgba(255,255,255,0.022) 35%, transparent 60%),
-    radial-gradient(ellipse at 90% 100%, rgba(45,212,191,0.055), transparent 48%);
-  opacity: 0.68;
-}
-.liquid-refraction {
-  background-image:
-    linear-gradient(112deg, transparent 0 21%, rgba(255,255,255,0.28) 22%, rgba(255,255,255,0.07) 27%, transparent 34% 100%),
-    linear-gradient(292deg, transparent 0 58%, rgba(255,255,255,0.10) 61%, transparent 71% 100%),
-    radial-gradient(circle at 70% 16%, rgba(255,255,255,0.13), transparent 18%);
-  opacity: 0.50;
-}
-.liquid-summary.is-dark .liquid-refraction { opacity: 0.32; }
+.liquid-shine { display: none; }
+.liquid-refraction { display: none; }
 .liquid-row {
   position: relative;
   overflow: hidden;
   transform: translateZ(12px);
-  -webkit-backdrop-filter: blur(54px) saturate(180%) contrast(104%);
-  backdrop-filter: blur(54px) saturate(180%) contrast(104%);
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.028) 48%, rgba(255,255,255,0.065)),
-    radial-gradient(circle at 18% 10%, rgba(255,255,255,0.12), transparent 32%);
+  background: rgba(255,255,255,0.065);
+  -webkit-backdrop-filter: blur(20px) saturate(180%) contrast(114%) brightness(1.03);
+  backdrop-filter: blur(20px) saturate(180%) contrast(114%) brightness(1.03);
 }
 .liquid-row.is-dark {
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.055), rgba(2,6,23,0.018) 48%, rgba(103,232,249,0.026)),
-    radial-gradient(circle at 18% 10%, rgba(255,255,255,0.045), transparent 32%);
+  background: rgba(255,255,255,0.045);
+  -webkit-backdrop-filter: blur(22px) saturate(190%) contrast(120%) brightness(1.06);
+  backdrop-filter: blur(22px) saturate(190%) contrast(120%) brightness(1.06);
 }
 .liquid-row::before {
   content: '';
   position: absolute;
-  inset: -1px;
+  inset: 0;
   border-radius: inherit;
-  background:
-    linear-gradient(120deg, rgba(255,255,255,0.34), transparent 32%, rgba(255,255,255,0.09) 58%, transparent 86%),
-    radial-gradient(circle at 14% 8%, rgba(255,255,255,0.18), transparent 25%);
-  opacity: 0.48;
   pointer-events: none;
+  background:
+    radial-gradient(100% 70% at 50% -25%, rgba(255,255,255,0.24), transparent 46%),
+    linear-gradient(180deg, rgba(255,255,255,0.10), transparent 42%);
+  opacity: 0.44;
 }
+.liquid-row.is-dark::before { opacity: 0.26; }
 .liquid-row::after {
   content: '';
   position: absolute;
-  width: 128px;
-  height: 128px;
-  right: -54px;
-  bottom: -68px;
-  border-radius: 999px;
-  background: rgba(56,189,248,0.055);
-  filter: blur(18px);
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 -14px 26px rgba(15,23,42,0.04),
+    inset 0 0 0 1px rgba(255,255,255,0.16);
 }
-.liquid-row.is-dark::before { opacity: 0.22; }
-.liquid-row.is-dark::after { background: rgba(45,212,191,0.038); }
-@media (prefers-reduced-motion:no-preference){.liquid-summary::before{animation:liquidFloatA 10s ease-in-out infinite}.liquid-summary::after{animation:liquidFloatB 12s ease-in-out infinite}}
-@keyframes liquidFloatA{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(22px,18px,0) scale(1.08)}}
-@keyframes liquidFloatB{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-24px,-14px,0) scale(1.12)}}
+.liquid-row.is-dark::after {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.16),
+    inset 0 -14px 26px rgba(0,0,0,0.10),
+    inset 0 0 0 1px rgba(255,255,255,0.055);
+}
 `;
 
 function cx(...classes) { return classes.filter(Boolean).join(' '); }
@@ -178,7 +155,7 @@ function getLatestUpdatedAt(projects = []) { return projects.reduce((latest, pro
 function getForecastPeriodLabel(activeDate) { const start = parsePublicDate(activeDate); if (!start) return 'Latest available forecast period'; const end = new Date(start); end.setUTCDate(end.getUTCDate() + 1); return `${formatDate(start, { month: 'short', day: 'numeric' })} - ${formatDate(end, { month: 'short', day: 'numeric', year: 'numeric' })}`; }
 function panel(isDarkMode, extra = '') { return cx('rounded-[2rem] border backdrop-blur-xl transition-colors duration-300', isDarkMode ? 'border-white/10 bg-slate-950/[0.62] shadow-[0_24px_80px_rgba(0,0,0,0.38)]' : 'border-white/70 bg-white/[0.78] shadow-[0_24px_70px_rgba(15,23,42,0.10)]', extra); }
 function LiquidBackdrop({ isDarkMode }) { return <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"><div className={cx('absolute -left-44 top-24 h-[560px] w-[560px] rounded-full blur-3xl', isDarkMode ? 'bg-blue-900/35' : 'bg-sky-200/55')} /><div className={cx('absolute -right-40 top-40 h-[520px] w-[520px] rounded-full blur-3xl', isDarkMode ? 'bg-cyan-900/35' : 'bg-cyan-200/55')} /><div className={cx('absolute bottom-0 left-1/3 h-[460px] w-[460px] rounded-full blur-3xl', isDarkMode ? 'bg-teal-900/30' : 'bg-teal-100/70')} /></div>; }
-function SummaryGlassRow({ icon: Icon, label, value, isDarkMode }) { return <div className={cx('liquid-row group flex items-center gap-4 rounded-[1.45rem] border px-4 py-3.5 transition duration-300 hover:-translate-y-0.5', isDarkMode ? 'is-dark border-white/[0.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-18px_34px_rgba(8,47,73,0.08),0_18px_38px_rgba(0,0,0,0.18)]' : 'border-white/[0.66] shadow-[inset_0_1px_0_rgba(255,255,255,0.66),inset_0_-18px_34px_rgba(255,255,255,0.08),0_18px_40px_rgba(15,23,42,0.08)]')}><span className={cx('relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-inner', isDarkMode ? 'bg-white/[0.075] text-cyan-200' : 'bg-white/[0.24] text-blue-700')}><Icon size={20} aria-hidden="true" /></span><span className="relative z-10 min-w-0 flex-1"><span className={cx('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{label}</span><span className={cx('mt-0.5 block truncate text-sm font-semibold', isDarkMode ? 'text-slate-200/90' : 'text-slate-700')}>{value}</span></span></div>; }
+function SummaryGlassRow({ icon: Icon, label, value, isDarkMode }) { return <div className={cx('liquid-row group flex items-center gap-4 rounded-[1.45rem] border px-4 py-3.5 transition duration-300 hover:-translate-y-0.5', isDarkMode ? 'is-dark border-white/[0.16] shadow-[0_18px_36px_rgba(0,0,0,0.14)]' : 'border-white/[0.62] shadow-[0_18px_36px_rgba(15,23,42,0.07)]')}><span className={cx('relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-inner', isDarkMode ? 'bg-white/[0.055] text-cyan-200' : 'bg-white/[0.18] text-blue-700')}><Icon size={20} aria-hidden="true" /></span><span className="relative z-10 min-w-0 flex-1"><span className={cx('block text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{label}</span><span className={cx('mt-0.5 block truncate text-sm font-semibold', isDarkMode ? 'text-slate-200/90' : 'text-slate-700')}>{value}</span></span></div>; }
 function PublicLandingHeader({ lastUpdated, menuOpen, onToggleMenu, onCloseMenu, isDarkMode, setIsDarkMode }) { const navLinks = [{ label: 'Latest Forecast', href: '#latest' }, { label: 'Charts', to: '/charts' }, { label: 'Archive', to: '/charts' }, { label: 'About', href: '#about' }]; const navClass = cx('rounded-xl px-1 py-2 transition focus:outline-none focus:ring-2 focus:ring-blue-500/70', isDarkMode ? 'text-slate-200 hover:text-cyan-200' : 'text-slate-700 hover:text-blue-700'); const mobileNavClass = cx('rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/70', isDarkMode ? 'text-slate-100 hover:bg-white/[0.07]' : 'text-slate-800 hover:bg-blue-50'); const nav = (item) => item.to ? <Link key={item.label} to={item.to} className={navClass}>{item.label}</Link> : <a key={item.label} href={item.href} className={navClass}>{item.label}</a>; const mobileNav = (item) => item.to ? <Link key={item.label} to={item.to} onClick={onCloseMenu} className={mobileNavClass}>{item.label}</Link> : <a key={item.label} href={item.href} onClick={onCloseMenu} className={mobileNavClass}>{item.label}</a>; return <header className={cx('sticky top-0 z-40 border-b shadow-sm backdrop-blur-2xl transition-colors duration-300', isDarkMode ? 'border-white/10 bg-slate-950/[0.84]' : 'border-white/60 bg-white/[0.88]')}><nav className="mx-auto flex min-h-20 max-w-[1500px] items-center justify-between gap-5 px-4 sm:px-6 lg:px-8" aria-label="Wavelab Public navigation"><Link to="/" className="flex min-w-0 items-center gap-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:ring-offset-2" onClick={onCloseMenu}><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-700 text-white shadow-lg shadow-blue-900/20"><Waves size={27} aria-hidden="true" /></span><span className="min-w-0 leading-tight"><span className="flex flex-wrap items-center gap-2"><span className={cx('text-xl font-black tracking-tight sm:text-2xl', isDarkMode ? 'text-white' : 'text-slate-950')}>Wavelab</span><span className={cx('rounded-full px-2.5 py-1 text-[11px] font-black uppercase tracking-wide', isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-blue-700')}>Public</span></span><span className={cx('hidden text-xs font-bold sm:block', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>Published marine wave forecasts</span></span></Link><div className="hidden items-center gap-8 text-sm font-black lg:flex">{navLinks.map(nav)}</div><div className="hidden items-center gap-3 lg:flex"><div className={cx('hidden items-center gap-3 rounded-2xl border px-4 py-2.5 text-right xl:flex', isDarkMode ? 'border-white/10 bg-white/[0.06]' : 'border-blue-100 bg-blue-50/70')}><Clock size={18} className={isDarkMode ? 'text-cyan-200' : 'text-blue-700'} aria-hidden="true" /><div><p className={cx('text-[11px] font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>Last updated</p><p className={cx('text-sm font-black', isDarkMode ? 'text-cyan-200' : 'text-blue-700')}>{lastUpdated ? formatDateTime(lastUpdated) : 'When charts publish'}</p></div></div><Link to="/login" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-700 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:ring-offset-2"><User size={18} aria-hidden="true" /> Staff Dashboard</Link><button type="button" aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={isDarkMode} onClick={() => setIsDarkMode((prev) => !prev)} className={cx('inline-flex h-12 w-12 items-center justify-center rounded-2xl border shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:ring-offset-2', isDarkMode ? 'border-white/10 bg-white/[0.07] text-cyan-100 hover:bg-white/[0.12]' : 'border-slate-200 bg-white text-slate-800 hover:border-blue-200 hover:bg-blue-50')}>{isDarkMode ? <Sun size={22} aria-hidden="true" /> : <Moon size={22} aria-hidden="true" />}</button></div><button type="button" className={cx('inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500/70 lg:hidden', isDarkMode ? 'border-white/10 bg-white/[0.07] text-white hover:bg-white/[0.12]' : 'border-slate-200 bg-white text-slate-800 hover:bg-blue-50')} aria-expanded={menuOpen} aria-controls="wavelab-public-mobile-menu" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} onClick={onToggleMenu}>{menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}</button></nav>{menuOpen ? <div id="wavelab-public-mobile-menu" className={cx('border-t px-4 py-4 shadow-lg backdrop-blur-xl lg:hidden', isDarkMode ? 'border-white/10 bg-slate-950/[0.95]' : 'border-slate-200 bg-white/[0.95]')}><div className="mx-auto grid max-w-7xl gap-2 text-sm font-black">{navLinks.map(mobileNav)}<div className={cx('mt-2 rounded-2xl px-4 py-3', isDarkMode ? 'bg-white/[0.07] text-cyan-100' : 'bg-blue-50 text-blue-800')}>Last updated: {lastUpdated ? formatDateTime(lastUpdated) : 'When charts publish'}</div><Link to="/login" onClick={onCloseMenu} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-700 px-4 py-3 text-white shadow-lg shadow-blue-900/20"><User size={18} aria-hidden="true" /> Staff Dashboard</Link><button type="button" aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={isDarkMode} onClick={() => setIsDarkMode((prev) => !prev)} className={cx('inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 shadow-sm', isDarkMode ? 'border-white/10 bg-white/[0.07] text-cyan-100' : 'border-slate-200 bg-white text-slate-800')}>{isDarkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}{isDarkMode ? 'Light mode' : 'Dark mode'}</button></div></div> : null}</header>; }
 function PublicLandingFooter({ lastUpdated }) { return <footer className="border-t border-blue-900/20 bg-slate-950 text-white"><div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr] lg:px-8"><div><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100 text-blue-700"><Waves size={25} aria-hidden="true" /></span><div><span className="text-2xl font-black">Wavelab</span> <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-black uppercase">Public</span></div></div><p className="mt-4 max-w-md text-sm font-medium leading-relaxed text-slate-300">Public access to published wave forecast charts for communities, agencies, researchers, and marine users.</p><p className="mt-3 text-xs font-bold text-slate-400">Last updated: {lastUpdated ? formatDateTime(lastUpdated) : 'Unavailable'}</p></div><div><h2 className="text-sm font-black uppercase tracking-wide text-cyan-100">Navigate</h2><div className="mt-4 grid gap-2 text-sm text-slate-300"><a href="#latest" className="hover:text-white">Latest Forecasts</a><Link to="/charts" className="hover:text-white">Charts</Link><Link to="/charts" className="hover:text-white">Archive</Link><a href="#about" className="hover:text-white">About</a></div></div><div><h2 className="text-sm font-black uppercase tracking-wide text-cyan-100">Data notice</h2><p className="mt-4 text-sm leading-relaxed text-slate-300">Forecast information is provided for guidance and situational awareness. Always refer to official marine advisories and local conditions.</p></div></div></footer>; }
 function StateNotice({ title, children, tone = 'slate', action, isDarkMode }) { const toneClass = tone === 'red' ? (isDarkMode ? 'border-red-400/20 bg-red-950/55 text-red-100' : 'border-red-200 bg-red-50/90 text-red-700') : tone === 'amber' ? (isDarkMode ? 'border-amber-300/20 bg-amber-950/45 text-amber-100' : 'border-amber-200 bg-amber-50/90 text-amber-800') : (isDarkMode ? 'border-white/10 bg-slate-950/60 text-slate-200' : 'border-slate-200 bg-white/[0.86] text-slate-700'); return <div className={cx('rounded-3xl border p-6 text-center shadow-sm backdrop-blur-xl', toneClass)}><p className="text-sm font-black uppercase tracking-[0.16em]">{title}</p><div className="mt-2 text-sm font-semibold leading-relaxed">{children}</div>{action ? <div className="mt-5 flex justify-center">{action}</div> : null}</div>; }
