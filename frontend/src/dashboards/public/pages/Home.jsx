@@ -35,8 +35,8 @@ import {
 
 const RECENT_FETCH_LIMIT = 80;
 const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
-const PUBLIC_HERO_IMAGE_URL = '/images/wavelab-coastal-hero.svg';
-const PUBLIC_DARK_HERO_IMAGE_URL = '/images/wavelab-coastal-hero-night.svg';
+const PUBLIC_HERO_IMAGE_URL = '/images/WavelabPublicHero.png';
+const PUBLIC_DARK_HERO_IMAGE_URL = '/images/WavelabPublicHeroNight.png';
 
 const LIQUID_CSS = `
 .hero-bg-layer { transition: opacity 900ms ease, filter 900ms ease; }
