@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
-import { ArrowRight, BarChart3, Building2, CheckCircle2, CloudSun, Compass, Layers, ShieldCheck, Target, Waves } from 'lucide-react';
+import { ArrowRight, BarChart3, Building2, CheckCircle2, Compass, Layers, ShieldCheck, Target, Waves } from 'lucide-react';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import useAboutSettings from '@dashboards/public/hooks/useAboutSettings';
 
 const FALLBACK_STATS = [
-  { label: 'Operational Focus', value: '24/7', description: 'Marine weather awareness and coastal forecast support.' },
-  { label: 'Chart Categories', value: '4', description: 'Public wave chart products prepared for daily review.' },
-  { label: 'Program Partners', value: 'PAGASA', description: 'Science-led collaboration for public service delivery.' },
+  { label: 'Operational focus', value: '24/7', description: 'Marine weather awareness and coastal forecast support.' },
+  { label: 'Chart categories', value: '4', description: 'Public wave chart products prepared for daily review.' },
+  { label: 'Program partners', value: 'PAGASA', description: 'Science-led collaboration for public service delivery.' },
 ];
 
 const FALLBACK_HIGHLIGHTS = [
@@ -22,7 +22,7 @@ const FALLBACK_HIGHLIGHTS = [
     icon: Compass,
   },
   {
-    title: 'Public Service',
+    title: 'Public service',
     description: 'Keep published outputs professional, traceable, and aligned with official bulletins, warnings, and advisories.',
     icon: ShieldCheck,
   },
@@ -36,9 +36,9 @@ const FALLBACK_OBJECTIVES = [
 ];
 
 const FALLBACK_FOCUS_AREAS = [
-  { title: 'Forecast Preparation', description: 'Map-based tools for organizing wave, wind, and annotation outputs before publication.' },
-  { title: 'Operational Review', description: 'Structured review states that help teams approve, return, and publish chart packages.' },
-  { title: 'Public Access', description: 'A public portal where users can browse the latest published WaveLab chart sets.' },
+  { title: 'Forecast preparation', description: 'Map-based tools for organizing wave, wind, and annotation outputs before publication.' },
+  { title: 'Operational review', description: 'Structured review states that help teams approve, return, and publish chart packages.' },
+  { title: 'Public access', description: 'A public portal where users can browse the latest published WaveLab chart sets.' },
 ];
 
 const FALLBACK_PARTNERS = ['DOST-PAGASA', 'MECO-TECO-VOTE III', 'WaveLab Research and Operations'];
@@ -57,27 +57,26 @@ function LiquidBackdrop({ isDark }) {
   );
 }
 
-function SectionHeading({ isDark, eyebrow, title, description, centered = false }) {
+function SectionHeading({ isDark, eyebrow, title, description }) {
   return (
-    <div className={centered ? 'mx-auto max-w-3xl text-center' : 'max-w-3xl'}>
+    <div className="flex flex-col gap-2">
       <p className={`text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-cyan-300/80' : 'text-blue-600'}`}>{eyebrow}</p>
-      <h2 className={`mt-3 text-3xl font-black tracking-tight sm:text-4xl ${isDark ? 'text-white' : 'text-slate-950'}`}>{title}</h2>
-      {description ? <p className={`mt-3 text-sm font-semibold leading-relaxed sm:text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p> : null}
+      <h2 className={`text-2xl font-black tracking-tight sm:text-3xl ${isDark ? 'text-white' : 'text-slate-950'}`}>{title}</h2>
+      {description ? <p className={`max-w-3xl text-sm font-semibold leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p> : null}
     </div>
   );
 }
 
 function getText(value, fallback = '') {
-  if (typeof value === 'string') return value;
-  return fallback;
+  return typeof value === 'string' && value.trim() ? value : fallback;
 }
 
 function normalizeStat(stat, index) {
   if (typeof stat === 'string') return { label: `Metric ${index + 1}`, value: stat, description: 'WaveLab public portal indicator.' };
   return {
     label: stat?.label || stat?.title || `Metric ${index + 1}`,
-    value: stat?.value || stat?.number || stat?.count || '—',
-    description: stat?.description || stat?.caption || 'Operational wave forecast support indicator.',
+    value: stat?.value || stat?.number || stat?.count || '-',
+    description: stat?.description || stat?.sublabel || stat?.caption || 'Operational wave forecast support indicator.',
   };
 }
 
@@ -99,11 +98,7 @@ const AboutUs = () => {
     document.title = 'About Us | WaveLab';
   }, []);
 
-  const heroTitle = [
-    getText(settings.titlePrefix, 'About'),
-    getText(settings.titleHighlight, 'WaveLab'),
-    getText(settings.titleSuffix, ''),
-  ].filter(Boolean).join(' ');
+  const title = getText(settings.title, 'About WaveLab');
   const subtitle = getText(
     settings.subtitle,
     'WaveLab is a DOST-PAGASA public forecasting portal for preparing, reviewing, and sharing operational wave chart guidance with clarity and consistency.'
@@ -120,38 +115,35 @@ const AboutUs = () => {
     <div className={`relative min-h-screen overflow-hidden px-4 py-24 sm:px-6 lg:px-8 ${isDarkMode ? 'bg-slate-950' : 'bg-slate-50'}`}>
       <LiquidBackdrop isDark={isDarkMode} />
 
-      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-7">
-        <section className={glassPanel(isDarkMode, 'mx-auto w-full max-w-5xl p-7 text-center sm:p-9')}>
-          <div className="mb-4">
-            <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-100/80 text-blue-700'}`}>
-              <CloudSun size={15} />
-              {settings.badgeText || 'DOST-PAGASA WaveLab'}
-            </div>
+      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-6">
+        <header className="flex flex-col gap-4 pt-5 sm:pt-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className={`text-xs font-black uppercase tracking-[0.22em] ${isDarkMode ? 'text-cyan-300/80' : 'text-blue-600'}`}>Public portal</p>
+            <h1 className={`mt-3 text-4xl font-black leading-tight tracking-tight sm:text-5xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{title}</h1>
+            <p className={`mt-4 text-base font-semibold leading-relaxed sm:text-lg ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{subtitle}</p>
           </div>
-          <h1 className={`text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{heroTitle}</h1>
-          <p className={`mx-auto mt-4 max-w-3xl text-base font-semibold leading-relaxed sm:text-lg ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{subtitle}</p>
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <a href={settings.ctaPrimaryLink || '/charts'} className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60">
-              {settings.ctaPrimaryLabel || 'View Wave Charts'} <ArrowRight size={16} />
+          <div className="flex flex-wrap gap-3">
+            <a href={settings.ctaSecondaryLink || '/charts'} className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60">
+              {settings.ctaSecondaryLabel || 'View charts'} <ArrowRight size={16} />
             </a>
-            <a href={settings.ctaSecondaryLink || '/contact'} className={`inline-flex items-center gap-2 rounded-2xl border px-5 py-3 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-blue-400/60 ${isDarkMode ? 'border-white/10 bg-white/5 text-slate-100 hover:bg-white/10' : 'border-slate-200 bg-white/80 text-slate-700 hover:bg-white'}`}>
-              {settings.ctaSecondaryLabel || 'Contact WaveLab'}
+            <a href={settings.ctaPrimaryLink || '/contact'} className={`inline-flex items-center gap-2 rounded-2xl border px-5 py-3 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-blue-400/60 ${isDarkMode ? 'border-white/10 bg-white/5 text-slate-100 hover:bg-white/10' : 'border-slate-200 bg-white/70 text-slate-700 hover:bg-white'}`}>
+              {settings.ctaPrimaryLabel || 'Contact team'}
             </a>
           </div>
-        </section>
+        </header>
 
         {loading ? (
           <section className="grid gap-5 md:grid-cols-3">
-            {[0, 1, 2].map((item) => <div key={item} className={glassPanel(isDarkMode, 'h-44 animate-pulse')} />)}
+            {[0, 1, 2].map((item) => <div key={item} className={glassPanel(isDarkMode, 'h-36 animate-pulse')} />)}
           </section>
         ) : (
           <>
             <section className="grid gap-5 md:grid-cols-3">
-              {stats.map((stat) => (
-                <article key={`${stat.label}-${stat.value}`} className={glassPanel(isDarkMode, 'p-6')}>
-                  <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{stat.label}</p>
-                  <p className={`mt-3 text-4xl font-black tracking-tight ${isDarkMode ? 'text-cyan-100' : 'text-blue-700'}`}>{stat.value}</p>
-                  <p className={`mt-3 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{stat.description}</p>
+              {stats.slice(0, 3).map((stat) => (
+                <article key={`${stat.label}-${stat.value}`} className={glassPanel(isDarkMode, 'p-5')}>
+                  <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{stat.label}</p>
+                  <p className={`mt-2 text-3xl font-black tracking-tight ${isDarkMode ? 'text-cyan-100' : 'text-blue-700'}`}>{stat.value}</p>
+                  <p className={`mt-2 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{stat.description}</p>
                 </article>
               ))}
             </section>
@@ -160,17 +152,17 @@ const AboutUs = () => {
               <SectionHeading
                 isDark={isDarkMode}
                 eyebrow="Purpose"
-                title="A public portal for clearer marine forecast communication"
+                title="Clear marine forecast communication"
                 description="WaveLab connects forecast preparation, technical review, and public access into one consistent experience for published wave products."
               />
-              <div className="mt-7 grid gap-5 lg:grid-cols-3">
-                {highlights.map(({ title, description, icon: Icon }) => (
-                  <article key={title} className={`rounded-3xl border p-6 ${isDarkMode ? 'border-white/10 bg-slate-950/45' : 'border-slate-200/80 bg-white/65'}`}>
-                    <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/20">
-                      <Icon size={22} />
+              <div className="mt-6 grid gap-5 lg:grid-cols-3">
+                {highlights.map(({ title: cardTitle, description, icon: Icon }) => (
+                  <article key={cardTitle} className={`rounded-3xl border p-5 ${isDarkMode ? 'border-white/10 bg-slate-950/45' : 'border-slate-200/80 bg-white/65'}`}>
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/20">
+                      <Icon size={20} />
                     </div>
-                    <h3 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{title}</h3>
-                    <p className={`mt-3 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
+                    <h3 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{cardTitle}</h3>
+                    <p className={`mt-2 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
                   </article>
                 ))}
               </div>
@@ -180,11 +172,11 @@ const AboutUs = () => {
               <div className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
                 <SectionHeading
                   isDark={isDarkMode}
-                  eyebrow="MECO-TECO-VOTE III Program"
-                  title="Program objectives"
+                  eyebrow="Program"
+                  title="Objectives"
                   description="The platform is designed around practical forecasting work: prepare accurate chart outputs, review them responsibly, and publish them with confidence."
                 />
-                <div className="mt-7 grid gap-3">
+                <div className="mt-6 grid gap-3">
                   {objectives.map((objective, index) => (
                     <div key={`${objective}-${index}`} className={`flex gap-3 rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/70 text-slate-700'}`}>
                       <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-cyan-500" />
@@ -197,17 +189,17 @@ const AboutUs = () => {
               <div className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
                 <SectionHeading
                   isDark={isDarkMode}
-                  eyebrow="Focus Areas"
-                  title="Built for operational clarity"
+                  eyebrow="Focus"
+                  title="Operational clarity"
                   description="Each public page should feel connected to the same WaveLab product system."
                 />
-                <div className="mt-7 space-y-4">
-                  {focusAreas.map(({ title, description, icon: Icon }) => (
-                    <article key={title} className={`rounded-2xl border p-5 ${isDarkMode ? 'border-white/10 bg-slate-950/45' : 'border-slate-200/80 bg-white/65'}`}>
+                <div className="mt-6 space-y-4">
+                  {focusAreas.map(({ title: cardTitle, description, icon: Icon }) => (
+                    <article key={cardTitle} className={`rounded-2xl border p-5 ${isDarkMode ? 'border-white/10 bg-slate-950/45' : 'border-slate-200/80 bg-white/65'}`}>
                       <div className="flex items-start gap-4">
                         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/20"><Icon size={18} /></div>
                         <div>
-                          <h3 className={`text-base font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{title}</h3>
+                          <h3 className={`text-base font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{cardTitle}</h3>
                           <p className={`mt-1 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
                         </div>
                       </div>
@@ -220,20 +212,20 @@ const AboutUs = () => {
             <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
               <div className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
                 <SectionHeading isDark={isDarkMode} eyebrow="Partners" title="Program collaboration" description="WaveLab reflects joint work across forecasting, research, and public service teams." />
-                <div className="mt-6 flex flex-wrap gap-3">
+                <div className="mt-5 flex flex-wrap gap-3">
                   {partners.map((partner) => {
-                    const label = typeof partner === 'string' ? partner : partner?.name || partner?.title || 'Program Partner';
+                    const label = typeof partner === 'string' ? partner : partner?.name || partner?.title || 'Program partner';
                     return <span key={label} className={`rounded-full border px-4 py-2 text-xs font-black ${isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600'}`}>{label}</span>;
                   })}
                 </div>
               </div>
 
               <div className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
-                <SectionHeading isDark={isDarkMode} eyebrow="Governance" title="Responsible publication workflow" description="Published charts are treated as reviewed public outputs and should be read alongside official DOST-PAGASA bulletins, warnings, and advisories." />
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <SectionHeading isDark={isDarkMode} eyebrow="Governance" title="Responsible publication workflow" description="Published charts are reviewed public outputs and should be read alongside official DOST-PAGASA bulletins, warnings, and advisories." />
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   {(leaders.length ? leaders.slice(0, 4) : [
-                    { name: 'Forecast Operations', role: 'Chart preparation and technical review' },
-                    { name: 'Public Portal', role: 'Published chart access and communication' },
+                    { name: 'Forecast operations', role: 'Chart preparation and technical review' },
+                    { name: 'Public portal', role: 'Published chart access and communication' },
                   ]).map((leader) => (
                     <article key={`${leader.name}-${leader.role}`} className={`rounded-2xl border p-5 ${isDarkMode ? 'border-white/10 bg-slate-950/45' : 'border-slate-200/80 bg-white/65'}`}>
                       <Building2 className="mb-3 h-5 w-5 text-cyan-500" />
@@ -247,8 +239,8 @@ const AboutUs = () => {
 
             {faqs.length ? (
               <section className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
-                <SectionHeading isDark={isDarkMode} eyebrow="FAQ" title="Common questions" centered />
-                <div className="mt-7 grid gap-4 md:grid-cols-2">
+                <SectionHeading isDark={isDarkMode} eyebrow="FAQ" title="Common questions" />
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
                   {faqs.slice(0, 6).map((faq, index) => (
                     <article key={`${faq.question}-${index}`} className={`rounded-2xl border p-5 ${isDarkMode ? 'border-white/10 bg-slate-950/45' : 'border-slate-200/80 bg-white/65'}`}>
                       <h3 className={`text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{faq.question}</h3>
@@ -258,15 +250,6 @@ const AboutUs = () => {
                 </div>
               </section>
             ) : null}
-
-            <section className={glassPanel(isDarkMode, 'p-7 text-center sm:p-9')}>
-              <p className={`text-xs font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-cyan-300/80' : 'text-blue-600'}`}>Next step</p>
-              <h2 className={`mt-3 text-3xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{settings.ctaTitle || 'Explore the latest public WaveLab charts'}</h2>
-              <p className={`mx-auto mt-3 max-w-2xl text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{settings.ctaDescription || 'Review recently published operational wave products and use them together with official DOST-PAGASA information.'}</p>
-              <a href={settings.ctaButtonLink || '/charts'} className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60">
-                {settings.ctaButtonLabel || 'Open Wave Charts'} <ArrowRight size={16} />
-              </a>
-            </section>
           </>
         )}
       </div>
