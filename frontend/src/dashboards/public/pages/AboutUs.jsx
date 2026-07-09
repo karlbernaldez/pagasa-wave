@@ -22,26 +22,28 @@ import {
 import { useTheme } from '@/app/providers/ThemeProvider';
 import useAboutSettings from '@dashboards/public/hooks/useAboutSettings';
 
+const ABOUT_HERO_IMAGE_URL = '/images/WavelabAboutHero.png';
+
 const FALLBACK_STATS = [
   { label: 'Chart products', value: '4', description: 'Daily public wave chart slots grouped by forecast package.' },
-  { label: 'Publication workflow', value: 'Reviewed', description: 'Outputs move through preparation, review, approval, and publishing.' },
-  { label: 'Forecast archive', value: 'Public', description: 'Published charts are available by date, chart type, and package.' },
+  { label: 'Publication workflow', value: 'Reviewed', description: 'Preparation, review, approval, and publishing in one flow.' },
+  { label: 'Forecast archive', value: 'Public', description: 'Published charts organized by date, type, and package.' },
 ];
 
 const FALLBACK_HIGHLIGHTS = [
   {
     title: 'Clear preparation',
-    description: 'Support forecast teams with a consistent workspace for preparing map-based wave chart outputs and annotations.',
+    description: 'A consistent workspace for preparing map-based wave chart outputs and annotations.',
     icon: PenTool,
   },
   {
     title: 'Responsible review',
-    description: 'Help reviewers check chart packages before they become public products.',
+    description: 'Chart packages are checked before becoming public forecast products.',
     icon: ClipboardCheck,
   },
   {
     title: 'Public access',
-    description: 'Make published wave forecast information easier to find, scan, and understand.',
+    description: 'Published wave forecast information becomes easier to find and scan.',
     icon: Globe2,
   },
 ];
@@ -49,14 +51,14 @@ const FALLBACK_HIGHLIGHTS = [
 const FALLBACK_OBJECTIVES = [
   'Improve the clarity and consistency of wave forecast chart publication.',
   'Support forecasters with review-ready workflows and map-based annotation tools.',
-  'Provide the public portal with accessible, easy-to-scan coastal forecast products.',
+  'Provide an accessible public portal for coastal forecast products.',
   'Strengthen collaboration between research, operations, and public information teams.',
 ];
 
 const FALLBACK_FOCUS_AREAS = [
-  { title: 'Forecast preparation', description: 'Map-based tools for organizing wave, wind, and annotation outputs before publication.' },
-  { title: 'Operational review', description: 'Structured review states that help teams approve, return, and publish chart packages.' },
-  { title: 'Public access', description: 'A public portal where users can browse the latest published WaveLab chart sets.' },
+  { title: 'Forecast preparation', description: 'Map-based tools for organizing wave, wind, and annotation outputs.' },
+  { title: 'Operational review', description: 'Structured states for approving, returning, and publishing chart packages.' },
+  { title: 'Public access', description: 'A public portal for browsing the latest published WaveLab chart sets.' },
 ];
 
 const FALLBACK_PARTNERS = ['DOST-PAGASA', 'MECO-TECO-VOTE III', 'WaveLab Research and Operations'];
@@ -64,22 +66,22 @@ const FALLBACK_PARTNERS = ['DOST-PAGASA', 'MECO-TECO-VOTE III', 'WaveLab Researc
 const WORKFLOW_STEPS = [
   {
     label: 'Prepare',
-    description: 'Forecasters create wave forecast outputs using map-based tools and annotations.',
+    description: 'Forecasters create wave forecast outputs using map-based tools.',
     icon: PenTool,
   },
   {
     label: 'Review',
-    description: 'Chart packages are checked for quality, completeness, and publication readiness.',
+    description: 'Chart packages are checked for quality and completeness.',
     icon: SearchCheck,
   },
   {
     label: 'Publish',
-    description: 'Approved outputs are released as official published wave chart sets.',
+    description: 'Approved outputs are released as published chart sets.',
     icon: CloudUpload,
   },
   {
     label: 'Access',
-    description: 'The public can browse current and previous chart sets by date and type.',
+    description: 'The public browses charts by date and type.',
     icon: Globe2,
   },
 ];
@@ -87,17 +89,17 @@ const WORKFLOW_STEPS = [
 const AUDIENCE_CARDS = [
   {
     title: 'Forecast teams',
-    description: 'Prepare and organize forecast chart outputs using specialized tools and workflows.',
+    description: 'Prepare and organize forecast chart outputs.',
     icon: Users,
   },
   {
     title: 'Reviewers and admins',
-    description: 'Ensure quality through review, approval, publication, and package management.',
+    description: 'Review, approve, publish, and manage packages.',
     icon: ShieldCheck,
   },
   {
     title: 'Public users',
-    description: 'Access reliable wave forecast products for marine safety, planning, and awareness.',
+    description: 'Access wave forecasts for safety and awareness.',
     icon: Globe2,
   },
 ];
@@ -162,6 +164,12 @@ function getText(value, fallback = '') {
   return typeof value === 'string' && value.trim() ? value : fallback;
 }
 
+function getBriefText(value, fallback = '', maxLength = 118) {
+  const text = getText(value, fallback).replace(/\s+/g, ' ').trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trim()}...`;
+}
+
 function normalizeStat(stat, index) {
   if (typeof stat === 'string') return { label: `Metric ${index + 1}`, value: stat, description: 'WaveLab public portal indicator.' };
   return {
@@ -210,50 +218,51 @@ const AboutUs = () => {
         <section className={glassPanel(isDarkMode, 'overflow-hidden p-0')}>
           <div className="relative grid min-h-[520px] gap-8 overflow-hidden p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_520px] lg:p-10">
             <div className="absolute inset-0" aria-hidden="true">
-              <div className={cx('absolute inset-0 transition-opacity duration-700', isDarkMode ? 'bg-[radial-gradient(circle_at_16%_18%,rgba(56,189,248,0.18),transparent_28%),radial-gradient(circle_at_74%_26%,rgba(45,212,191,0.12),transparent_24%)]' : 'bg-[radial-gradient(circle_at_16%_18%,rgba(14,165,233,0.16),transparent_28%),radial-gradient(circle_at_74%_26%,rgba(6,182,212,0.10),transparent_24%)]')} />
-              <div className={cx('absolute inset-x-0 bottom-0 h-56', isDarkMode ? 'bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent' : 'bg-gradient-to-t from-white/90 via-white/20 to-transparent')} />
-              <div className={cx('absolute bottom-0 left-0 right-0 h-44', isDarkMode ? 'bg-[linear-gradient(135deg,rgba(14,165,233,0.18),transparent_45%),repeating-linear-gradient(165deg,rgba(255,255,255,0.08)_0_1px,transparent_1px_22px)]' : 'bg-[linear-gradient(135deg,rgba(37,99,235,0.14),transparent_45%),repeating-linear-gradient(165deg,rgba(14,165,233,0.12)_0_1px,transparent_1px_22px)]')} />
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${ABOUT_HERO_IMAGE_URL})` }} />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/58 to-slate-950/20" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(56,189,248,0.20),transparent_30%),radial-gradient(circle_at_78%_26%,rgba(45,212,191,0.14),transparent_24%)]" />
+              <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
             </div>
 
             <div className="relative z-10 flex max-w-3xl flex-col justify-center py-8">
-              <p className={cx('w-fit rounded-2xl border px-4 py-2 text-xs font-black uppercase tracking-[0.2em]', isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-blue-200 bg-white/70 text-blue-700')}>Public marine forecasting platform</p>
-              <h1 className={cx('mt-6 text-4xl font-black leading-tight tracking-tight sm:text-6xl', isDarkMode ? 'text-white drop-shadow-[0_8px_34px_rgba(0,0,0,0.35)]' : 'text-slate-950')}>
+              <p className="w-fit rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-cyan-100">Public marine forecasting platform</p>
+              <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight text-white drop-shadow-[0_8px_34px_rgba(0,0,0,0.35)] sm:text-6xl">
                 {title.includes('WaveLab') ? (
                   <>
-                    About <span className="bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent">WaveLab</span>
+                    About <span className="bg-gradient-to-r from-blue-300 to-cyan-200 bg-clip-text text-transparent">WaveLab</span>
                   </>
                 ) : title}
               </h1>
-              <p className={cx('mt-5 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{subtitle}</p>
+              <p className="mt-5 max-w-2xl text-base font-semibold leading-relaxed text-slate-100 sm:text-lg">{subtitle}</p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                 <Link to={settings.ctaSecondaryLink || '/charts'} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60">
                   <BarChart3 size={17} /> {settings.ctaSecondaryLabel || 'View Published Charts'}
                 </Link>
-                <Link to={settings.ctaPrimaryLink || '/contact'} className={cx('inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-black transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-400/60', isDarkMode ? 'border-white/10 bg-white/5 text-slate-100 hover:bg-white/10' : 'border-slate-200 bg-white/75 text-slate-700 hover:bg-white')}>
+                <Link to={settings.ctaPrimaryLink || '/contact'} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-slate-100 backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-400/60">
                   <Mail size={17} /> {settings.ctaPrimaryLabel || 'Contact Team'}
                 </Link>
               </div>
             </div>
 
-            <div className={cx('relative z-10 self-center rounded-[2rem] border p-5 backdrop-blur-2xl', isDarkMode ? 'border-white/10 bg-white/[0.06]' : 'border-white/70 bg-white/55')}>
+            <div className="relative z-10 self-center rounded-[2rem] border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-slate-950/20 backdrop-blur-2xl">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div>
-                  <p className={cx('text-xs font-black uppercase tracking-[0.18em]', isDarkMode ? 'text-cyan-200' : 'text-blue-700')}>The WaveLab workflow</p>
-                  <h2 className={cx('mt-1 text-2xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>From forecast work to public access</h2>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100">The WaveLab workflow</p>
+                  <h2 className="mt-1 text-2xl font-black text-white">From forecast work to public access</h2>
                 </div>
-                <Map className={cx('h-9 w-9', isDarkMode ? 'text-cyan-200' : 'text-blue-700')} />
+                <Map className="h-9 w-9 text-cyan-100" />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {WORKFLOW_STEPS.map(({ label, description, icon: Icon }, index) => (
-                  <article key={label} className={innerCard(isDarkMode, 'p-4')}>
+                  <article key={label} className="rounded-3xl border border-white/10 bg-slate-950/40 p-4 transition-all duration-300">
                     <div className="flex items-center gap-3">
                       <IconBubble icon={Icon} tone={index === 2 ? 'green' : index === 3 ? 'violet' : 'blue'} />
                       <div>
-                        <p className={cx('text-xs font-black uppercase tracking-[0.14em]', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>Step {index + 1}</p>
-                        <h3 className={cx('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{label}</h3>
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Step {index + 1}</p>
+                        <h3 className="text-base font-black text-white">{label}</h3>
                       </div>
                     </div>
-                    <p className={cx('mt-3 text-xs font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{description}</p>
+                    <p className="mt-3 text-xs font-semibold leading-relaxed text-slate-300">{description}</p>
                   </article>
                 ))}
               </div>
@@ -275,7 +284,7 @@ const AboutUs = () => {
                     <div>
                       <p className={cx('text-3xl font-black tracking-tight', isDarkMode ? 'text-cyan-100' : 'text-blue-700')}>{stat.value}</p>
                       <h2 className={cx('mt-1 text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{stat.label}</h2>
-                      <p className={cx('mt-2 text-sm font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{stat.description}</p>
+                      <p className={cx('mt-2 text-sm font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{getBriefText(stat.description, '', 105)}</p>
                     </div>
                   </div>
                 </article>
@@ -287,7 +296,7 @@ const AboutUs = () => {
                 isDark={isDarkMode}
                 eyebrow="How it works"
                 title="A clear path from preparation to publication"
-                description="WaveLab is designed around the real work behind public forecast products: prepare the output, review it responsibly, publish it, and make it easy to access."
+                description="WaveLab is designed around the real work behind public forecast products."
                 centered
               />
               <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -383,34 +392,6 @@ const AboutUs = () => {
               </div>
             </section>
 
-            <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
-                <SectionHeading isDark={isDarkMode} eyebrow="Partners" title="Program collaboration" description="WaveLab reflects joint work across forecasting, research, and public service teams." />
-                <div className="mt-5 flex flex-wrap gap-3">
-                  {partners.map((partner) => {
-                    const label = typeof partner === 'string' ? partner : partner?.name || partner?.title || 'Program partner';
-                    return <span key={label} className={cx('rounded-full border px-4 py-2 text-xs font-black', isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600')}>{label}</span>;
-                  })}
-                </div>
-              </div>
-
-              <div className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
-                <SectionHeading isDark={isDarkMode} eyebrow="Governance" title="Responsible publication workflow" description="Published charts are reviewed public outputs and should be read alongside official DOST-PAGASA bulletins, warnings, and advisories." />
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  {(leaders.length ? leaders.slice(0, 4) : [
-                    { name: 'Forecast operations', role: 'Chart preparation and technical review' },
-                    { name: 'Public portal', role: 'Published chart access and communication' },
-                  ]).map((leader) => (
-                    <article key={`${leader.name}-${leader.role}`} className={innerCard(isDarkMode, 'p-5')}>
-                      <Building2 className="mb-3 h-5 w-5 text-cyan-500" />
-                      <p className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{leader.name}</p>
-                      <p className={cx('mt-1 text-xs font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{leader.role || leader.description}</p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            </section>
-
             <section className={glassPanel(isDarkMode, 'grid gap-5 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center')}>
               <div>
                 <p className={cx('text-xs font-black uppercase tracking-[0.2em]', isDarkMode ? 'text-cyan-300/80' : 'text-blue-600')}>Next step</p>
@@ -424,12 +405,12 @@ const AboutUs = () => {
 
             {objectives.length ? (
               <section className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
-                <SectionHeading isDark={isDarkMode} eyebrow="Program" title="Objectives" description="The platform is designed around practical forecasting work and public communication." />
+                <SectionHeading isDark={isDarkMode} eyebrow="Program" title="Objectives" description="Practical goals for forecasting work and public communication." />
                 <div className="mt-6 grid gap-3 md:grid-cols-2">
                   {objectives.map((objective, index) => (
                     <div key={`${objective}-${index}`} className={cx('flex gap-3 rounded-2xl border p-4', isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/70 text-slate-700')}>
                       <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-cyan-500" />
-                      <p className="text-sm font-semibold leading-relaxed">{typeof objective === 'string' ? objective : objective?.description || objective?.title}</p>
+                      <p className="text-sm font-semibold leading-relaxed">{getBriefText(typeof objective === 'string' ? objective : objective?.description || objective?.title, '', 105)}</p>
                     </div>
                   ))}
                 </div>
@@ -438,17 +419,52 @@ const AboutUs = () => {
 
             {faqs.length ? (
               <section className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
-                <SectionHeading isDark={isDarkMode} eyebrow="FAQ" title="Common questions" />
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
-                  {faqs.slice(0, 6).map((faq, index) => (
+                <SectionHeading isDark={isDarkMode} eyebrow="FAQ" title="Quick questions" description="Short answers only, so the page stays easy to scan." />
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  {faqs.slice(0, 3).map((faq, index) => (
                     <article key={`${faq.question}-${index}`} className={innerCard(isDarkMode, 'p-5')}>
-                      <h3 className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{faq.question}</h3>
-                      <p className={cx('mt-2 text-sm font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{faq.answer}</p>
+                      <h3 className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{getBriefText(faq.question, 'Question', 70)}</h3>
+                      <p className={cx('mt-2 text-sm font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{getBriefText(faq.answer, 'Answer will be added soon.', 120)}</p>
                     </article>
                   ))}
                 </div>
               </section>
             ) : null}
+
+            <section className={cx('relative overflow-hidden rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl', isDarkMode ? 'border-white/10 bg-slate-900/76' : 'border-white/70 bg-white/82')}>
+              <div className="absolute bottom-0 right-0 h-full w-1/2 opacity-80" aria-hidden="true">
+                <div className={cx('absolute inset-0', isDarkMode ? 'bg-gradient-to-l from-cyan-500/10 via-slate-900/20 to-transparent' : 'bg-gradient-to-l from-blue-100 via-white/30 to-transparent')} />
+                <div className={cx('absolute bottom-0 right-6 h-32 w-52 rounded-t-[2rem] border', isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-100/80')} />
+                <div className={cx('absolute bottom-0 right-20 h-44 w-28 rounded-t-[1.5rem] border', isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-100/70')} />
+              </div>
+              <div className="relative z-10 grid gap-7 p-6 sm:p-8 lg:grid-cols-[0.95fr_1.05fr]">
+                <div>
+                  <SectionHeading isDark={isDarkMode} eyebrow="Our partners" title="Program collaboration" description="WaveLab is developed and operated with forecasting, research, and public service teams." />
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    {partners.map((partner) => {
+                      const label = typeof partner === 'string' ? partner : partner?.name || partner?.title || 'Program partner';
+                      return <span key={label} className={cx('rounded-full border px-4 py-2 text-xs font-black', isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600')}>{label}</span>;
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <SectionHeading isDark={isDarkMode} eyebrow="Governance" title="Responsible publication" description="WaveLab follows DOST-PAGASA review, quality, and operational procedures for public forecast products." />
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    {(leaders.length ? leaders.slice(0, 4) : [
+                      { name: 'Forecast operations', role: 'Chart preparation and technical review' },
+                      { name: 'Public portal', role: 'Published chart access and communication' },
+                    ]).map((leader) => (
+                      <article key={`${leader.name}-${leader.role}`} className={innerCard(isDarkMode, 'p-5')}>
+                        <Building2 className="mb-3 h-5 w-5 text-cyan-500" />
+                        <p className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{leader.name}</p>
+                        <p className={cx('mt-1 text-xs font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{getBriefText(leader.role || leader.description, '', 90)}</p>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
           </>
         )}
       </div>
