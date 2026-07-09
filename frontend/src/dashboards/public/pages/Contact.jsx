@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CheckCircle2, Clock, Globe, Mail, MapPin, MessageCircle, Phone, Send, Shield, Users, Waves, Zap } from 'lucide-react';
+import { ArrowRight, Clock, Globe, Mail, MapPin, MessageCircle, Phone, Send, Shield, Users, Waves, Zap } from 'lucide-react';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import useContactSettings from '@/dashboards/public/hooks/useContactSettings';
@@ -19,19 +19,19 @@ const ICON_MAP = {
 
 const DEFAULT_CONTACT_CARDS = [
   {
-    title: 'Operations Email',
+    title: 'Operations email',
     description: 'For WaveLab chart access, published output questions, and operational coordination.',
     value: 'pagasa.wavelab@example.com',
     icon: 'mail',
   },
   {
-    title: 'Forecast Desk',
+    title: 'Forecast desk',
     description: 'For time-sensitive coastal and marine weather coordination with PAGASA teams.',
     value: '+63 (02) 8123-9999',
     icon: 'phone',
   },
   {
-    title: 'Forecast Hub',
+    title: 'Forecast hub',
     description: 'DOST-PAGASA operational support and public portal coordination.',
     value: 'Agham Road, Diliman, Quezon City',
     icon: 'map-pin',
@@ -71,10 +71,10 @@ function resolveIcon(icon, fallback = Mail) {
 
 function SectionHeading({ isDark, eyebrow, title, description }) {
   return (
-    <div>
+    <div className="flex flex-col gap-2">
       <p className={`text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-cyan-300/80' : 'text-blue-600'}`}>{eyebrow}</p>
-      <h2 className={`mt-3 text-2xl font-black tracking-tight sm:text-3xl ${isDark ? 'text-white' : 'text-slate-950'}`}>{title}</h2>
-      {description ? <p className={`mt-3 text-sm font-semibold leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p> : null}
+      <h2 className={`text-2xl font-black tracking-tight sm:text-3xl ${isDark ? 'text-white' : 'text-slate-950'}`}>{title}</h2>
+      {description ? <p className={`max-w-3xl text-sm font-semibold leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p> : null}
     </div>
   );
 }
@@ -116,41 +116,35 @@ const Contact = () => {
     <div className={`relative min-h-screen overflow-hidden px-4 py-24 sm:px-6 lg:px-8 ${isDarkMode ? 'bg-slate-950' : 'bg-slate-50'}`}>
       <LiquidBackdrop isDark={isDarkMode} />
 
-      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-7">
-        <section className={glassPanel(isDarkMode, 'mx-auto w-full max-w-5xl p-7 text-center sm:p-9')}>
-          <div className="mb-4">
-            <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-100/80 text-blue-700'}`}>
-              <Globe size={15} />
-              {settings.heroBadgeText || 'WaveLab Public Support'}
-            </div>
+      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-6">
+        <header className="flex flex-col gap-4 pt-5 sm:pt-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className={`text-xs font-black uppercase tracking-[0.22em] ${isDarkMode ? 'text-cyan-300/80' : 'text-blue-600'}`}>Public support</p>
+            <h1 className={`mt-3 text-4xl font-black leading-tight tracking-tight sm:text-5xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Contact WaveLab</h1>
+            <p className={`mt-4 text-base font-semibold leading-relaxed sm:text-lg ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+              {settings.heroDescription || 'Reach the WaveLab/PAGASA team for published chart questions, operational coordination, public portal feedback, and partnership requests.'}
+            </p>
           </div>
-          <h1 className={`text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-            {settings.heroTitlePrefix || 'Contact'}{' '}
-            <span className={`bg-gradient-to-r bg-clip-text text-transparent ${isDarkMode ? 'from-blue-400 via-cyan-300 to-emerald-300' : 'from-blue-700 via-cyan-600 to-emerald-600'}`}>
-              {settings.heroTitleHighlight || 'WaveLab'}
-            </span>{' '}
-            {settings.heroTitleSuffix || 'Support'}
-          </h1>
-          <p className={`mx-auto mt-4 max-w-3xl text-base font-semibold leading-relaxed sm:text-lg ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-            {settings.heroDescription || 'Reach the WaveLab/PAGASA team for published chart questions, operational coordination, public portal feedback, and partnership requests.'}
-          </p>
-        </section>
+          <a href="/charts" className="inline-flex w-fit items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60">
+            View wave charts <ArrowRight size={16} />
+          </a>
+        </header>
 
         <section className="grid gap-5 md:grid-cols-3">
           {contactCards.map(({ title, description, value, Icon }) => (
-            <article key={title} className={`${glassPanel(isDarkMode, 'group p-6 transition duration-300')} ${isDarkMode ? 'hover:border-cyan-300/30' : 'hover:border-blue-200'}`}>
-              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/20 transition group-hover:scale-105">
-                <Icon size={22} />
+            <article key={title} className={`${glassPanel(isDarkMode, 'group p-5 transition duration-300')} ${isDarkMode ? 'hover:border-cyan-300/30' : 'hover:border-blue-200'}`}>
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/20 transition group-hover:scale-105">
+                <Icon size={20} />
               </div>
-              <h2 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{title}</h2>
-              <p className={`mt-3 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
-              <p className={`mt-4 break-words text-sm font-black ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>{value}</p>
+              <h2 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{title}</h2>
+              <p className={`mt-2 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
+              <p className={`mt-3 break-words text-sm font-black ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>{value}</p>
             </article>
           ))}
         </section>
 
         <section className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
-          <div className="grid gap-7 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <SectionHeading
               isDark={isDarkMode}
               eyebrow="Response targets"
@@ -171,12 +165,12 @@ const Contact = () => {
 
         <section className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
           <form className={glassPanel(isDarkMode, 'p-6 sm:p-8')} onSubmit={(event) => event.preventDefault()}>
-            <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/20">
-                <Send size={23} />
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/20">
+                <Send size={21} />
               </div>
               <div>
-                <h2 className={`text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Send a Request</h2>
+                <h2 className={`text-2xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Send a request</h2>
                 <p className={`mt-1 text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Tell us your organization, location, urgency, and the WaveLab product or public portal issue you need help with.</p>
               </div>
             </div>
@@ -225,7 +219,7 @@ const Contact = () => {
                 </label>
 
                 <button type="submit" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60">
-                  Send Request <ArrowRight size={16} />
+                  Send request <ArrowRight size={16} />
                 </button>
               </div>
             </div>
@@ -234,7 +228,7 @@ const Contact = () => {
           <aside className="flex flex-col gap-5">
             <section className={glassPanel(isDarkMode, 'p-6 sm:p-7')}>
               <SectionHeading isDark={isDarkMode} eyebrow="Support scope" title="How we can assist" description="Choose the closest request type so the team can route your message properly." />
-              <div className="mt-6 space-y-4">
+              <div className="mt-5 space-y-4">
                 {assistanceItems.map(({ title, description, Icon }) => (
                   <article key={title} className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/45' : 'border-slate-200/80 bg-white/65'}`}>
                     <div className="flex gap-4">
@@ -250,12 +244,12 @@ const Contact = () => {
             </section>
 
             <section className={glassPanel(isDarkMode, 'p-6 sm:p-7')}>
-              <SectionHeading isDark={isDarkMode} eyebrow="Operations Center" title="WaveLab Forecast Hub" />
-              <div className="mt-6 space-y-5 text-sm">
+              <SectionHeading isDark={isDarkMode} eyebrow="Operations center" title="WaveLab Forecast Hub" />
+              <div className="mt-5 space-y-5 text-sm">
                 {[
                   { Icon: MapPin, title: 'Location', body: settings.operationsLocation || 'Agham Road, Diliman, Quezon City, Philippines' },
                   { Icon: Clock, title: 'Hours', body: settings.operationsHours || 'Monday to Friday · 08:00 AM - 06:00 PM (GMT+8)' },
-                  { Icon: Phone, title: 'Urgent Coordination', body: settings.operationsPhone || '+63 (02) 8123-9999' },
+                  { Icon: Phone, title: 'Urgent coordination', body: settings.operationsPhone || '+63 (02) 8123-9999' },
                 ].map(({ Icon, title, body }) => (
                   <div key={title} className="flex items-start gap-4">
                     <Icon className="mt-1 h-5 w-5 flex-shrink-0 text-cyan-500" />
@@ -273,7 +267,7 @@ const Contact = () => {
         {teamMembers.length ? (
           <section className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
             <SectionHeading isDark={isDarkMode} eyebrow="Team" title="WaveLab public support contacts" description="Selected team contacts for coordination and public portal support." />
-            <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {teamMembers.slice(0, 4).map((member) => (
                 <article key={member.email || member.name} className={`rounded-2xl border p-5 ${isDarkMode ? 'border-white/10 bg-slate-950/45' : 'border-slate-200/80 bg-white/65'}`}>
                   {member.avatar ? <img src={member.avatar} alt={`${member.name} profile`} className="mb-4 h-14 w-14 rounded-2xl object-cover shadow-md" loading="lazy" /> : <Users className="mb-4 h-8 w-8 text-cyan-500" />}
