@@ -21,8 +21,8 @@ import useAboutSettings from '@dashboards/public/hooks/useAboutSettings';
 
 const ABOUT_HERO_IMAGE_DARK_URL = '/images/WavelabAboutHeroDark.png';
 const ABOUT_HERO_IMAGE_LIGHT_URL = '/images/WavelabAboutHeroLight.png';
-const GOVERNANCE_SECTION_IMAGE_LIGHT_URL = '/images/PAGASA_RADAR_FLIPPED.png';
-const GOVERNANCE_SECTION_IMAGE_DARK_URL = '/images/PAGASA_RADAR_FLIPPED_DARK.png';
+const GOVERNANCE_SECTION_IMAGE_LIGHT_URL = '/images/PWS.png';
+const GOVERNANCE_SECTION_IMAGE_DARK_URL = '/images/PWS_night.png';
 
 const FALLBACK_STATS = [
   { label: 'Chart products', value: '4', description: 'Daily public wave chart slots grouped by forecast package.' },
