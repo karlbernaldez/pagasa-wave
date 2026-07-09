@@ -112,7 +112,7 @@ function CompletenessBadge({ completeness, isDark }) {
 
 function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) {
   return (
-    <section className={glassPanel(isDark, 'sticky top-[4.75rem] z-30 grid w-full gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_420px]')}>
+    <section className={glassPanel(isDark, 'sticky top-[4.75rem] z-30 mt-4 grid w-full gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_420px]')}>
       <label className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/10 bg-slate-950/55' : 'border-slate-200/80 bg-white/70'}`}>
         <Search size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
         <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search wave charts, date, or description" className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'text-white placeholder:text-slate-600' : 'text-slate-950 placeholder:text-slate-400'}`} />
@@ -433,7 +433,7 @@ export default function Charts() {
         />
       ) : null)}
 
-      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-5">
+      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-6">
         <section className={glassPanel(isDark, 'grid gap-5 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_330px_auto] lg:items-center')}>
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Published forecast archive</p>
