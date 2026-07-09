@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ClipboardCheck,
   CloudUpload,
-  FileText,
   Globe2,
   Layers,
   Mail,
