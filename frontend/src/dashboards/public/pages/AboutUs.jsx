@@ -21,7 +21,8 @@ import useAboutSettings from '@dashboards/public/hooks/useAboutSettings';
 
 const ABOUT_HERO_IMAGE_DARK_URL = '/images/WavelabAboutHeroDark.png';
 const ABOUT_HERO_IMAGE_LIGHT_URL = '/images/WavelabAboutHeroLight.png';
-const GOVERNANCE_SECTION_IMAGE_URL = '/images/PAGASA_RADAR_FLIPPED.png';
+const GOVERNANCE_SECTION_IMAGE_LIGHT_URL = '/images/PAGASA_RADAR_FLIPPED.png';
+const GOVERNANCE_SECTION_IMAGE_DARK_URL = '/images/PAGASA_RADAR_FLIPPED_DARK.png';
 
 const FALLBACK_STATS = [
   { label: 'Chart products', value: '4', description: 'Daily public wave chart slots grouped by forecast package.' },
@@ -132,6 +133,7 @@ const AboutUs = () => {
   const { isDarkMode } = useTheme();
   const { settings = {}, loading } = useAboutSettings();
   const heroImage = isDarkMode ? ABOUT_HERO_IMAGE_DARK_URL : ABOUT_HERO_IMAGE_LIGHT_URL;
+  const governanceImage = isDarkMode ? GOVERNANCE_SECTION_IMAGE_DARK_URL : GOVERNANCE_SECTION_IMAGE_LIGHT_URL;
 
   useEffect(() => {
     document.title = 'About Us | WaveLab';
@@ -303,9 +305,9 @@ const AboutUs = () => {
 
             <section className={cx('relative overflow-hidden rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-900/78' : 'border-white/80 bg-white/90 ring-1 ring-sky-100/70')}>
               <div className="absolute inset-y-0 right-0 hidden w-[42%] lg:block" aria-hidden="true">
-                <img src={GOVERNANCE_SECTION_IMAGE_URL} alt="" className="h-full w-full object-cover object-right" />
-                <div className={cx('absolute inset-0', isDarkMode ? 'bg-gradient-to-r from-slate-900 via-slate-900/72 to-slate-900/18' : 'bg-gradient-to-r from-white via-white/72 to-white/12')} />
-                <div className={cx('absolute inset-0', isDarkMode ? 'bg-cyan-950/20 mix-blend-screen' : 'bg-sky-100/20')} />
+                <img src={governanceImage} alt="" className="h-full w-full object-cover object-right transition-opacity duration-500" />
+                <div className={cx('absolute inset-0', isDarkMode ? 'bg-gradient-to-r from-slate-900 via-slate-900/64 to-slate-900/10' : 'bg-gradient-to-r from-white via-white/72 to-white/12')} />
+                <div className={cx('absolute inset-0', isDarkMode ? 'bg-cyan-950/10 mix-blend-screen' : 'bg-sky-100/20')} />
               </div>
               <div className="relative z-10 grid gap-7 p-6 sm:p-8 lg:grid-cols-[0.95fr_1.05fr] lg:pr-[32%]">
                 <div>
@@ -331,7 +333,7 @@ const AboutUs = () => {
                 </div>
               </div>
               <div className="relative block lg:hidden" aria-hidden="true">
-                <img src={GOVERNANCE_SECTION_IMAGE_URL} alt="" className="h-48 w-full object-cover object-right opacity-80" />
+                <img src={governanceImage} alt="" className="h-48 w-full object-cover object-right opacity-80 transition-opacity duration-500" />
               </div>
             </section>
           </>
