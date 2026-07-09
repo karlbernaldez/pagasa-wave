@@ -303,14 +303,14 @@ const AboutUs = () => {
               </section>
             ) : null}
 
-            <section className={cx('relative overflow-hidden rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-900/78' : 'border-white/80 bg-white/90 ring-1 ring-sky-100/70')}>
+            <section className={cx('relative min-h-[430px] overflow-hidden rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-900/78' : 'border-white/80 bg-white/90 ring-1 ring-sky-100/70')}>
               <div className="absolute inset-0" aria-hidden="true">
-                <img src={governanceImage} alt="" className="h-full w-full object-cover object-right transition-opacity duration-500" />
-                <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-[linear-gradient(90deg,rgba(2,6,23,0.96)_0%,rgba(2,6,23,0.90)_34%,rgba(2,6,23,0.76)_64%,rgba(2,6,23,0.56)_100%)]' : 'bg-[linear-gradient(90deg,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.90)_34%,rgba(255,255,255,0.74)_64%,rgba(255,255,255,0.48)_100%)]')} />
-                <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-cyan-950/12' : 'bg-sky-100/18')} />
+                <img src={governanceImage} alt="" className="absolute inset-y-0 right-0 h-full w-full object-cover object-[80%_center] opacity-90 transition-all duration-500 sm:object-[78%_center] lg:w-[68%] lg:object-[72%_center] lg:opacity-100" />
+                <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-[linear-gradient(90deg,rgba(2,6,23,0.98)_0%,rgba(2,6,23,0.94)_38%,rgba(2,6,23,0.82)_64%,rgba(2,6,23,0.60)_100%)]' : 'bg-[linear-gradient(90deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.94)_38%,rgba(255,255,255,0.80)_64%,rgba(255,255,255,0.58)_100%)]')} />
+                <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-cyan-950/10' : 'bg-sky-100/14')} />
               </div>
-              <div className="relative z-10 grid gap-8 p-6 sm:p-8 lg:grid-cols-2">
-                <div>
+              <div className="relative z-10 grid gap-8 p-6 sm:p-8 lg:grid-cols-[0.9fr_1fr]">
+                <div className="max-w-xl">
                   <SectionHeading isDark={isDarkMode} eyebrow="Our partners" title="Program collaboration" description="WaveLab is developed and operated with forecasting, research, and public service teams." />
                   <div className="mt-5 flex flex-wrap gap-3">
                     {partners.map((partner) => {
@@ -319,11 +319,11 @@ const AboutUs = () => {
                     })}
                   </div>
                 </div>
-                <div>
+                <div className="max-w-2xl">
                   <SectionHeading isDark={isDarkMode} eyebrow="Governance" title="Responsible publication" description="WaveLab follows DOST-PAGASA review, quality, and operational procedures for public forecast products." />
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     {(leaders.length ? leaders.slice(0, 4) : [{ name: 'Forecast operations', role: 'Chart preparation and technical review' }, { name: 'Public portal', role: 'Published chart access and communication' }]).map((leader) => (
-                      <article key={`${leader.name}-${leader.role}`} className={innerCard(isDarkMode, isDarkMode ? 'p-5 bg-slate-950/55' : 'p-5 bg-white/82')}>
+                      <article key={`${leader.name}-${leader.role}`} className={innerCard(isDarkMode, isDarkMode ? 'p-5 bg-slate-950/58' : 'p-5 bg-white/84')}>
                         <Building2 className="mb-3 h-5 w-5 text-cyan-500" />
                         <p className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{leader.name}</p>
                         <p className={cx('mt-1 text-xs font-semibold leading-relaxed', isDarkMode ? 'text-slate-300' : 'text-slate-600')}>{getBriefText(leader.role || leader.description, '', 90)}</p>
