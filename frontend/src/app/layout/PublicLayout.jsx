@@ -14,7 +14,7 @@ const publicPageOverrides = `
 const publicChartsOverrides = `
 .wavelab-home {
   isolation: isolate;
-  background-color: #f8fbff !important;
+  background-color: #f4f9ff !important;
 }
 
 .wavelab-home.bg-slate-950 {
@@ -28,19 +28,20 @@ const publicChartsOverrides = `
   z-index: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(circle at 8% 28%, rgba(37, 99, 235, 0.14), transparent 24rem),
-    radial-gradient(circle at 92% 34%, rgba(34, 211, 238, 0.18), transparent 28rem),
-    radial-gradient(circle at 82% 78%, rgba(59, 130, 246, 0.10), transparent 24rem),
-    url("data:image/svg+xml,%3Csvg width='1440' height='520' viewBox='0 0 1440 520' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%232563eb' stroke-opacity='0.075' stroke-width='1.8'%3E%3Cpath d='M-80 135C70 72 182 189 340 129C503 67 622 185 780 128C947 67 1063 184 1228 128C1324 96 1386 91 1500 120'/%3E%3Cpath d='M-80 205C76 145 198 260 352 199C512 135 636 255 792 198C954 139 1078 254 1238 198C1337 164 1397 162 1500 188'/%3E%3Cpath d='M-80 275C82 219 201 327 363 268C518 212 648 320 804 268C964 214 1088 318 1248 268C1342 238 1404 238 1500 258'/%3E%3Cpath d='M-80 345C78 291 203 394 366 338C525 283 655 388 812 338C974 286 1094 386 1254 338C1348 310 1408 308 1500 328'/%3E%3C/g%3E%3Cg fill='%230ea5e9' fill-opacity='0.075'%3E%3Ccircle cx='142' cy='156' r='3.2'/%3E%3Ccircle cx='192' cy='178' r='2.2'/%3E%3Ccircle cx='244' cy='146' r='2.5'/%3E%3Ccircle cx='1180' cy='156' r='3.5'/%3E%3Ccircle cx='1225' cy='190' r='2.2'/%3E%3Ccircle cx='1282' cy='170' r='2.7'/%3E%3Ccircle cx='1196' cy='372' r='3.1'/%3E%3Ccircle cx='1252' cy='402' r='2.3'/%3E%3Ccircle cx='1310' cy='378' r='2.6'/%3E%3C/g%3E%3C/svg%3E");
-  background-repeat: no-repeat, no-repeat, no-repeat, repeat-y;
-  background-size: auto, auto, auto, 1440px 520px;
-  background-position: left top, right top, right bottom, center 5.5rem;
+    linear-gradient(90deg, rgba(219, 234, 254, 0.82) 0%, rgba(248, 251, 255, 0.72) 28%, rgba(248, 251, 255, 0.82) 64%, rgba(207, 250, 254, 0.88) 100%),
+    radial-gradient(circle at 7% 26%, rgba(37, 99, 235, 0.22), transparent 25rem),
+    radial-gradient(circle at 94% 38%, rgba(34, 211, 238, 0.28), transparent 31rem),
+    url("data:image/svg+xml,%3Csvg width='1500' height='540' viewBox='0 0 1500 540' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%232563eb' stroke-opacity='0.16' stroke-width='2.2'%3E%3Cpath d='M-120 125C40 66 167 188 337 126C511 63 635 188 804 126C972 65 1097 188 1265 126C1370 88 1435 90 1580 118'/%3E%3Cpath d='M-120 193C46 136 178 254 348 194C520 132 648 254 816 194C982 136 1110 254 1275 194C1381 158 1446 158 1580 184'/%3E%3Cpath d='M-120 261C54 207 182 320 358 261C526 205 660 319 826 261C994 206 1118 318 1284 261C1388 228 1450 226 1580 252'/%3E%3Cpath d='M-120 329C50 279 186 386 365 329C536 275 665 385 834 329C1004 277 1128 384 1290 329C1394 297 1454 297 1580 322'/%3E%3Cpath d='M-120 397C56 348 188 452 369 396C540 344 670 452 840 396C1012 346 1132 451 1298 396C1400 365 1458 366 1580 390'/%3E%3C/g%3E%3Cg fill='%230ea5e9' fill-opacity='0.16'%3E%3Ccircle cx='118' cy='152' r='3.8'/%3E%3Ccircle cx='164' cy='187' r='2.8'/%3E%3Ccircle cx='222' cy='148' r='3.1'/%3E%3Ccircle cx='262' cy='206' r='2.5'/%3E%3Ccircle cx='1190' cy='150' r='4'/%3E%3Ccircle cx='1242' cy='188' r='2.8'/%3E%3Ccircle cx='1304' cy='160' r='3.1'/%3E%3Ccircle cx='1344' cy='212' r='2.6'/%3E%3Ccircle cx='1168' cy='374' r='3.8'/%3E%3Ccircle cx='1224' cy='410' r='2.8'/%3E%3Ccircle cx='1288' cy='382' r='3.1'/%3E%3Ccircle cx='1328' cy='432' r='2.6'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg width='320' height='320' viewBox='0 0 320 320' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%230ea5e9' fill-opacity='0.13'%3E%3Ccircle cx='18' cy='24' r='2'/%3E%3Ccircle cx='58' cy='45' r='1.7'/%3E%3Ccircle cx='104' cy='28' r='1.9'/%3E%3Ccircle cx='144' cy='58' r='1.5'/%3E%3Ccircle cx='196' cy='34' r='1.8'/%3E%3Ccircle cx='244' cy='64' r='1.6'/%3E%3Ccircle cx='286' cy='38' r='1.9'/%3E%3Ccircle cx='40' cy='126' r='1.7'/%3E%3Ccircle cx='92' cy='156' r='1.5'/%3E%3Ccircle cx='138' cy='128' r='1.8'/%3E%3Ccircle cx='184' cy='164' r='1.6'/%3E%3Ccircle cx='236' cy='134' r='1.9'/%3E%3Ccircle cx='278' cy='168' r='1.6'/%3E%3Ccircle cx='24' cy='236' r='1.9'/%3E%3Ccircle cx='78' cy='264' r='1.6'/%3E%3Ccircle cx='128' cy='236' r='1.9'/%3E%3Ccircle cx='178' cy='278' r='1.5'/%3E%3Ccircle cx='230' cy='246' r='1.8'/%3E%3Ccircle cx='288' cy='278' r='1.7'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat-y, repeat;
+  background-size: cover, auto, auto, 1500px 540px, 320px 320px;
+  background-position: center, left 4rem top 9rem, right 2rem top 11rem, center 5.5rem, left top;
   opacity: 1;
 }
 
 .wavelab-home.bg-slate-950::before {
-  opacity: 0.42;
-  filter: saturate(0.9) brightness(0.75);
+  opacity: 0.48;
+  filter: saturate(0.9) brightness(0.72);
 }
 
 .wavelab-home > div.relative.z-10 {
