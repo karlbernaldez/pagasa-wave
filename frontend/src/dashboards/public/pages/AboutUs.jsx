@@ -86,6 +86,17 @@ function IconBubble({ icon: Icon, tone = 'blue', compact = false }) {
   );
 }
 
+function PageBackground({ isDark }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div className={cx('absolute inset-0 transition-colors duration-500', isDark ? 'bg-[radial-gradient(circle_at_16%_8%,rgba(14,165,233,0.14),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(37,99,235,0.11),transparent_30%),linear-gradient(180deg,#020617_0%,#06111f_42%,#020617_100%)]' : 'bg-[radial-gradient(circle_at_14%_8%,rgba(59,130,246,0.14),transparent_28%),radial-gradient(circle_at_86%_22%,rgba(6,182,212,0.18),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef8ff_45%,#f8fafc_100%)]')} />
+      <div className={cx('absolute left-1/2 top-24 h-[680px] w-[680px] -translate-x-1/2 rounded-full blur-3xl transition-colors duration-500', isDark ? 'bg-cyan-500/5' : 'bg-white/70')} />
+      <div className={cx('absolute -left-40 top-64 h-[520px] w-[520px] rounded-full blur-3xl transition-colors duration-500', isDark ? 'bg-cyan-500/10' : 'bg-blue-300/18')} />
+      <div className={cx('absolute -right-32 top-[520px] h-[520px] w-[520px] rounded-full blur-3xl transition-colors duration-500', isDark ? 'bg-blue-700/10' : 'bg-cyan-200/24')} />
+    </div>
+  );
+}
+
 function SectionHeading({ isDark, eyebrow, title, description, centered = false }) {
   return (
     <div className={cx('flex flex-col gap-2', centered && 'items-center text-center')}>
@@ -98,27 +109,21 @@ function SectionHeading({ isDark, eyebrow, title, description, centered = false 
 
 function glassPanel(isDark, extra = '') {
   return cx(
-    'rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-colors duration-500',
-    isDark ? 'border-white/10 bg-slate-900/72 shadow-cyan-950/20' : 'border-white/70 bg-white/84 shadow-blue-100/70',
+    'rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all duration-500',
+    isDark
+      ? 'border-white/10 bg-slate-900/78 shadow-cyan-950/20 ring-1 ring-white/[0.03]'
+      : 'border-white/80 bg-white/88 shadow-blue-100/80 ring-1 ring-sky-100/70',
     extra
   );
 }
 
 function innerCard(isDark, extra = '') {
   return cx(
-    'rounded-3xl border transition-all duration-300',
-    isDark ? 'border-white/10 bg-slate-950/45' : 'border-slate-200/80 bg-white/74',
+    'rounded-3xl border shadow-[0_16px_42px_rgba(15,23,42,0.06)] transition-all duration-300',
+    isDark
+      ? 'border-white/10 bg-slate-950/46 shadow-black/10'
+      : 'border-slate-200/90 bg-white/86 shadow-blue-100/70',
     extra
-  );
-}
-
-function LiquidBackdrop({ isDark }) {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <div className={cx('absolute -left-40 top-60 h-[520px] w-[520px] rounded-full blur-3xl', isDark ? 'bg-cyan-500/10' : 'bg-blue-300/20')} />
-      <div className={cx('absolute -right-32 top-[520px] h-[520px] w-[520px] rounded-full blur-3xl', isDark ? 'bg-blue-700/10' : 'bg-cyan-200/25')} />
-      <div className={cx('absolute bottom-[-220px] left-1/3 h-[520px] w-[520px] rounded-full blur-3xl', isDark ? 'bg-sky-400/5' : 'bg-indigo-200/20')} />
-    </div>
   );
 }
 
@@ -142,44 +147,45 @@ const AboutUs = () => {
   const faqs = Array.isArray(settings.faqs) ? settings.faqs : [];
 
   return (
-    <main className={cx('relative min-h-screen overflow-hidden px-4 pb-16 pt-24 transition-colors duration-500 sm:px-6 lg:px-8', isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-950')}>
-      <LiquidBackdrop isDark={isDarkMode} />
+    <main className={cx('relative min-h-screen overflow-hidden px-4 pb-16 pt-24 transition-colors duration-500 sm:px-6 lg:px-8', isDarkMode ? 'text-white' : 'text-slate-950')}>
+      <PageBackground isDark={isDarkMode} />
 
       <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-7">
-        <section className={cx('relative overflow-hidden rounded-[2rem] border shadow-[0_30px_90px_rgba(15,23,42,0.18)] transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-900' : 'border-white/70 bg-white')}>
+        <section className={cx('relative overflow-hidden rounded-[2.25rem] border shadow-[0_32px_90px_rgba(15,23,42,0.16)] transition-all duration-500', isDarkMode ? 'border-white/10 bg-slate-900/90 ring-1 ring-white/[0.04]' : 'border-white/85 bg-white/90 ring-1 ring-sky-100/80')}>
           <div className="absolute inset-0" aria-hidden="true">
             <div className="absolute inset-0 bg-cover bg-center transition-opacity duration-500" style={{ backgroundImage: `url(${heroImage})` }} />
-            <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-gradient-to-r from-slate-950/96 via-slate-950/82 to-slate-950/42' : 'bg-gradient-to-r from-white/96 via-white/84 to-white/36')} />
-            <div className={cx('absolute inset-0 transition-opacity duration-500', isDarkMode ? 'bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.12),transparent_28%)]' : 'bg-[radial-gradient(circle_at_18%_20%,rgba(14,165,233,0.10),transparent_28%)]')} />
+            <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-gradient-to-r from-slate-950/96 via-slate-950/84 to-slate-950/48' : 'bg-gradient-to-r from-white/97 via-white/88 to-sky-50/42')} />
+            <div className={cx('absolute inset-0 transition-opacity duration-500', isDarkMode ? 'bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.14),transparent_30%)]' : 'bg-[radial-gradient(circle_at_18%_18%,rgba(14,165,233,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.42))]')} />
+            <div className={cx('absolute inset-x-0 bottom-0 h-28 transition-colors duration-500', isDarkMode ? 'bg-gradient-to-t from-slate-950/60 to-transparent' : 'bg-gradient-to-t from-white/58 to-transparent')} />
           </div>
 
-          <div className="relative z-10 grid min-h-[460px] gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:p-10">
+          <div className="relative z-10 grid min-h-[440px] gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:p-10">
             <div className="flex max-w-3xl flex-col justify-center py-4">
-              <p className={cx('w-fit rounded-2xl border px-4 py-2 text-xs font-black uppercase tracking-[0.2em] backdrop-blur-xl', isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-blue-200/80 bg-white/70 text-blue-700')}>
+              <p className={cx('w-fit rounded-2xl border px-4 py-2 text-xs font-black uppercase tracking-[0.2em] backdrop-blur-xl', isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-blue-200/90 bg-white/80 text-blue-700 shadow-sm shadow-blue-100/60')}>
                 Public marine forecasting platform
               </p>
               <h1 className={cx('mt-6 text-4xl font-black leading-tight tracking-tight sm:text-6xl', isDarkMode ? 'text-white' : 'text-slate-950')}>
-                About <span className={cx('bg-clip-text text-transparent', isDarkMode ? 'bg-gradient-to-r from-blue-300 to-cyan-200' : 'bg-gradient-to-r from-blue-600 to-cyan-500')}>WaveLab</span>
+                About <span className={cx('bg-clip-text text-transparent', isDarkMode ? 'bg-gradient-to-r from-blue-300 to-cyan-200' : 'bg-gradient-to-r from-blue-700 to-cyan-500')}>WaveLab</span>
               </h1>
               <p className={cx('mt-5 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{subtitle}</p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                 <Link to={settings.ctaSecondaryLink || '/charts'} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60">
                   <BarChart3 size={17} /> {settings.ctaSecondaryLabel || 'View Published Charts'}
                 </Link>
-                <Link to={settings.ctaPrimaryLink || '/contact'} className={cx('inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-black backdrop-blur-xl transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-400/60', isDarkMode ? 'border-white/15 bg-white/10 text-slate-100 hover:bg-white/15' : 'border-slate-200/90 bg-white/72 text-slate-700 hover:bg-white')}>
+                <Link to={settings.ctaPrimaryLink || '/contact'} className={cx('inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-black backdrop-blur-xl transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-400/60', isDarkMode ? 'border-white/15 bg-white/10 text-slate-100 hover:bg-white/15' : 'border-slate-200/90 bg-white/78 text-slate-700 shadow-sm shadow-blue-100/50 hover:bg-white')}>
                   <Mail size={17} /> {settings.ctaPrimaryLabel || 'Contact Team'}
                 </Link>
               </div>
             </div>
 
-            <aside className={cx('self-center rounded-[1.75rem] border p-5 shadow-2xl backdrop-blur-2xl transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-950/45 shadow-slate-950/20' : 'border-white/70 bg-white/68 shadow-blue-200/20')}>
+            <aside className={cx('self-center rounded-[1.75rem] border p-5 shadow-2xl backdrop-blur-2xl transition-all duration-500', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-slate-950/20 ring-1 ring-white/[0.03]' : 'border-white/85 bg-white/78 shadow-blue-200/30 ring-1 ring-sky-100/80')}>
               <div className="mb-4">
                 <p className={cx('text-xs font-black uppercase tracking-[0.18em]', isDarkMode ? 'text-cyan-300/80' : 'text-blue-600')}>How WaveLab works</p>
                 <h2 className={cx('mt-1 text-xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>Prepare, review, publish, access</h2>
               </div>
               <div className="space-y-3">
                 {WORKFLOW_STEPS.map(({ label, description, icon: Icon }, index) => (
-                  <article key={label} className={cx('flex gap-3 rounded-2xl border p-3 transition-colors duration-500', isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200/80 bg-white/70')}>
+                  <article key={label} className={cx('flex gap-3 rounded-2xl border p-3 transition-colors duration-500', isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200/80 bg-white/78 shadow-sm shadow-blue-100/40')}>
                     <IconBubble icon={Icon} compact tone={index === 2 ? 'green' : index === 3 ? 'violet' : 'blue'} />
                     <div>
                       <p className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{label}</p>
@@ -200,7 +206,8 @@ const AboutUs = () => {
           <>
             <section className="grid gap-4 md:grid-cols-3">
               {stats.slice(0, 3).map((stat, index) => (
-                <article key={`${stat.label}-${stat.value}`} className={cx('rounded-3xl border p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-900/82' : 'border-white/80 bg-white/90')}>
+                <article key={`${stat.label}-${stat.value}`} className={cx('relative overflow-hidden rounded-3xl border p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-500', isDarkMode ? 'border-white/10 bg-slate-900/82' : 'border-white/85 bg-white/92 ring-1 ring-sky-100/80')}>
+                  <div className={cx('absolute inset-x-0 top-0 h-1', index === 1 ? 'bg-gradient-to-r from-emerald-400 to-teal-400' : index === 2 ? 'bg-gradient-to-r from-violet-400 to-indigo-400' : 'bg-gradient-to-r from-blue-500 to-cyan-400')} />
                   <div className="flex items-start gap-4">
                     <IconBubble icon={index === 0 ? Layers : index === 1 ? ClipboardCheck : Globe2} tone={index === 1 ? 'green' : index === 2 ? 'violet' : 'blue'} />
                     <div>
@@ -246,7 +253,7 @@ const AboutUs = () => {
               </div>
             </section>
 
-            <section className={cx('rounded-[2rem] border p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500 sm:p-8', isDarkMode ? 'border-amber-300/20 bg-amber-300/10' : 'border-amber-200 bg-amber-50/80')}>
+            <section className={cx('rounded-[2rem] border p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500 sm:p-8', isDarkMode ? 'border-amber-300/20 bg-amber-300/10' : 'border-amber-200 bg-amber-50/85 ring-1 ring-amber-100/70')}>
               <div className="flex flex-col gap-5 md:flex-row md:items-center">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/20"><ShieldAlert size={32} /></div>
                 <div className="min-w-0 flex-1">
@@ -270,7 +277,7 @@ const AboutUs = () => {
                 <SectionHeading isDark={isDarkMode} eyebrow="Program" title="Objectives" description="Practical goals for forecasting work and public communication." />
                 <div className="mt-6 grid gap-3 md:grid-cols-2">
                   {objectives.map((objective, index) => (
-                    <div key={`${objective}-${index}`} className={cx('flex gap-3 rounded-2xl border p-4', isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/70 text-slate-700')}>
+                    <div key={`${objective}-${index}`} className={cx('flex gap-3 rounded-2xl border p-4', isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/76 text-slate-700')}>
                       <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-cyan-500" />
                       <p className="text-sm font-semibold leading-relaxed">{getBriefText(typeof objective === 'string' ? objective : objective?.description || objective?.title, '', 105)}</p>
                     </div>
@@ -293,14 +300,14 @@ const AboutUs = () => {
               </section>
             ) : null}
 
-            <section className={cx('relative overflow-hidden rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-900/76' : 'border-white/70 bg-white/86')}>
+            <section className={cx('relative overflow-hidden rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-900/76' : 'border-white/80 bg-white/88 ring-1 ring-sky-100/70')}>
               <div className="relative z-10 grid gap-7 p-6 sm:p-8 lg:grid-cols-[0.95fr_1.05fr]">
                 <div>
                   <SectionHeading isDark={isDarkMode} eyebrow="Our partners" title="Program collaboration" description="WaveLab is developed and operated with forecasting, research, and public service teams." />
                   <div className="mt-5 flex flex-wrap gap-3">
                     {partners.map((partner) => {
                       const label = typeof partner === 'string' ? partner : partner?.name || partner?.title || 'Program partner';
-                      return <span key={label} className={cx('rounded-full border px-4 py-2 text-xs font-black', isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600')}>{label}</span>;
+                      return <span key={label} className={cx('rounded-full border px-4 py-2 text-xs font-black', isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/84 text-slate-600')}>{label}</span>;
                     })}
                   </div>
                 </div>
