@@ -304,18 +304,18 @@ const AboutUs = () => {
             ) : null}
 
             <section className={cx('relative overflow-hidden rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-900/78' : 'border-white/80 bg-white/90 ring-1 ring-sky-100/70')}>
-              <div className="absolute inset-y-0 right-0 hidden w-[42%] lg:block" aria-hidden="true">
+              <div className="absolute inset-0" aria-hidden="true">
                 <img src={governanceImage} alt="" className="h-full w-full object-cover object-right transition-opacity duration-500" />
-                <div className={cx('absolute inset-0', isDarkMode ? 'bg-gradient-to-r from-slate-900 via-slate-900/64 to-slate-900/10' : 'bg-gradient-to-r from-white via-white/72 to-white/12')} />
-                <div className={cx('absolute inset-0', isDarkMode ? 'bg-cyan-950/10 mix-blend-screen' : 'bg-sky-100/20')} />
+                <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-[linear-gradient(90deg,rgba(2,6,23,0.96)_0%,rgba(2,6,23,0.90)_34%,rgba(2,6,23,0.76)_64%,rgba(2,6,23,0.56)_100%)]' : 'bg-[linear-gradient(90deg,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.90)_34%,rgba(255,255,255,0.74)_64%,rgba(255,255,255,0.48)_100%)]')} />
+                <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-cyan-950/12' : 'bg-sky-100/18')} />
               </div>
-              <div className="relative z-10 grid gap-7 p-6 sm:p-8 lg:grid-cols-[0.95fr_1.05fr] lg:pr-[32%]">
+              <div className="relative z-10 grid gap-8 p-6 sm:p-8 lg:grid-cols-2">
                 <div>
                   <SectionHeading isDark={isDarkMode} eyebrow="Our partners" title="Program collaboration" description="WaveLab is developed and operated with forecasting, research, and public service teams." />
                   <div className="mt-5 flex flex-wrap gap-3">
                     {partners.map((partner) => {
                       const label = typeof partner === 'string' ? partner : partner?.name || partner?.title || 'Program partner';
-                      return <span key={label} className={cx('rounded-full border px-4 py-2 text-xs font-black backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/84 text-slate-600')}>{label}</span>;
+                      return <span key={label} className={cx('rounded-full border px-4 py-2 text-xs font-black backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-white/6 text-slate-300' : 'border-slate-200/80 bg-white/78 text-slate-700')}>{label}</span>;
                     })}
                   </div>
                 </div>
@@ -323,17 +323,14 @@ const AboutUs = () => {
                   <SectionHeading isDark={isDarkMode} eyebrow="Governance" title="Responsible publication" description="WaveLab follows DOST-PAGASA review, quality, and operational procedures for public forecast products." />
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     {(leaders.length ? leaders.slice(0, 4) : [{ name: 'Forecast operations', role: 'Chart preparation and technical review' }, { name: 'Public portal', role: 'Published chart access and communication' }]).map((leader) => (
-                      <article key={`${leader.name}-${leader.role}`} className={innerCard(isDarkMode, 'p-5')}>
+                      <article key={`${leader.name}-${leader.role}`} className={innerCard(isDarkMode, isDarkMode ? 'p-5 bg-slate-950/55' : 'p-5 bg-white/82')}>
                         <Building2 className="mb-3 h-5 w-5 text-cyan-500" />
                         <p className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{leader.name}</p>
-                        <p className={cx('mt-1 text-xs font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{getBriefText(leader.role || leader.description, '', 90)}</p>
+                        <p className={cx('mt-1 text-xs font-semibold leading-relaxed', isDarkMode ? 'text-slate-300' : 'text-slate-600')}>{getBriefText(leader.role || leader.description, '', 90)}</p>
                       </article>
                     ))}
                   </div>
                 </div>
-              </div>
-              <div className="relative block lg:hidden" aria-hidden="true">
-                <img src={governanceImage} alt="" className="h-48 w-full object-cover object-right opacity-80 transition-opacity duration-500" />
               </div>
             </section>
           </>
