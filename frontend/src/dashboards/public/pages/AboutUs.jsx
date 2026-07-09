@@ -265,8 +265,10 @@ const AboutUs = () => {
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-[-1px] z-20 h-32 overflow-hidden" aria-hidden="true">
-          <div className="absolute left-1/2 top-0 h-56 w-[145vw] -translate-x-1/2 rounded-[0_0_50%_50%] bg-slate-50" />
+        <div className="absolute inset-x-0 bottom-[-1px] z-20 h-40 overflow-hidden" aria-hidden="true">
+          <svg className="h-full w-full" viewBox="0 0 1440 160" preserveAspectRatio="none" focusable="false">
+            <path d="M0 78 C190 122 382 142 574 114 C750 88 874 36 1046 30 C1198 24 1326 46 1440 82 L1440 160 L0 160 Z" fill="#f8fafc" />
+          </svg>
         </div>
       </section>
 
