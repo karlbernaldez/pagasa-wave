@@ -211,65 +211,65 @@ const AboutUs = () => {
   const faqs = Array.isArray(settings.faqs) ? settings.faqs : [];
 
   return (
-    <main className={cx('relative min-h-screen overflow-hidden px-4 pb-16 pt-28 transition-colors duration-500 sm:px-6 lg:px-8', isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-950')}>
+    <main className={cx('relative min-h-screen overflow-hidden pb-16 transition-colors duration-500', isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-950')}>
       <LiquidBackdrop isDark={isDarkMode} />
 
-      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-7">
-        <section className={glassPanel(isDarkMode, 'overflow-hidden p-0')}>
-          <div className="relative grid min-h-[520px] gap-8 overflow-hidden p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_520px] lg:p-10">
-            <div className="absolute inset-0" aria-hidden="true">
-              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${ABOUT_HERO_IMAGE_URL})` }} />
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/58 to-slate-950/20" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(56,189,248,0.20),transparent_30%),radial-gradient(circle_at_78%_26%,rgba(45,212,191,0.14),transparent_24%)]" />
-              <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
-            </div>
+      <section className="relative isolate min-h-[680px] overflow-hidden pt-28">
+        <div className="absolute inset-0" aria-hidden="true">
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${ABOUT_HERO_IMAGE_URL})` }} />
+          <div className={cx('absolute inset-0', isDarkMode ? 'bg-gradient-to-r from-slate-950/94 via-slate-950/62 to-slate-950/28' : 'bg-gradient-to-r from-slate-950/82 via-slate-900/45 to-blue-900/10')} />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(56,189,248,0.22),transparent_30%),radial-gradient(circle_at_78%_26%,rgba(45,212,191,0.16),transparent_24%)]" />
+          <div className={cx('absolute inset-x-0 bottom-0 h-64', isDarkMode ? 'bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent' : 'bg-gradient-to-t from-slate-50 via-slate-50/65 to-transparent')} />
+        </div>
 
-            <div className="relative z-10 flex max-w-3xl flex-col justify-center py-8">
-              <p className="w-fit rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-cyan-100">Public marine forecasting platform</p>
-              <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight text-white drop-shadow-[0_8px_34px_rgba(0,0,0,0.35)] sm:text-6xl">
-                {title.includes('WaveLab') ? (
-                  <>
-                    About <span className="bg-gradient-to-r from-blue-300 to-cyan-200 bg-clip-text text-transparent">WaveLab</span>
-                  </>
-                ) : title}
-              </h1>
-              <p className="mt-5 max-w-2xl text-base font-semibold leading-relaxed text-slate-100 sm:text-lg">{subtitle}</p>
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <Link to={settings.ctaSecondaryLink || '/charts'} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60">
-                  <BarChart3 size={17} /> {settings.ctaSecondaryLabel || 'View Published Charts'}
-                </Link>
-                <Link to={settings.ctaPrimaryLink || '/contact'} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-slate-100 backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-400/60">
-                  <Mail size={17} /> {settings.ctaPrimaryLabel || 'Contact Team'}
-                </Link>
-              </div>
-            </div>
-
-            <div className="relative z-10 self-center rounded-[2rem] border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-slate-950/20 backdrop-blur-2xl">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100">The WaveLab workflow</p>
-                  <h2 className="mt-1 text-2xl font-black text-white">From forecast work to public access</h2>
-                </div>
-                <Map className="h-9 w-9 text-cyan-100" />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {WORKFLOW_STEPS.map(({ label, description, icon: Icon }, index) => (
-                  <article key={label} className="rounded-3xl border border-white/10 bg-slate-950/40 p-4 transition-all duration-300">
-                    <div className="flex items-center gap-3">
-                      <IconBubble icon={Icon} tone={index === 2 ? 'green' : index === 3 ? 'violet' : 'blue'} />
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Step {index + 1}</p>
-                        <h3 className="text-base font-black text-white">{label}</h3>
-                      </div>
-                    </div>
-                    <p className="mt-3 text-xs font-semibold leading-relaxed text-slate-300">{description}</p>
-                  </article>
-                ))}
-              </div>
+        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 px-4 pb-24 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_520px] lg:px-8 lg:pt-16">
+          <div className="flex max-w-3xl flex-col justify-center py-8">
+            <p className="w-fit rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-cyan-100 backdrop-blur-xl">Public marine forecasting platform</p>
+            <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight text-white drop-shadow-[0_8px_34px_rgba(0,0,0,0.35)] sm:text-6xl lg:text-7xl">
+              {title.includes('WaveLab') ? (
+                <>
+                  About <span className="bg-gradient-to-r from-blue-300 to-cyan-200 bg-clip-text text-transparent">WaveLab</span>
+                </>
+              ) : title}
+            </h1>
+            <p className="mt-5 max-w-2xl text-base font-semibold leading-relaxed text-slate-100 sm:text-lg">{subtitle}</p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Link to={settings.ctaSecondaryLink || '/charts'} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60">
+                <BarChart3 size={17} /> {settings.ctaSecondaryLabel || 'View Published Charts'}
+              </Link>
+              <Link to={settings.ctaPrimaryLink || '/contact'} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-slate-100 backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-400/60">
+                <Mail size={17} /> {settings.ctaPrimaryLabel || 'Contact Team'}
+              </Link>
             </div>
           </div>
-        </section>
 
+          <div className="self-center rounded-[2rem] border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-slate-950/20 backdrop-blur-2xl">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100">The WaveLab workflow</p>
+                <h2 className="mt-1 text-2xl font-black text-white">From forecast work to public access</h2>
+              </div>
+              <Map className="h-9 w-9 text-cyan-100" />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {WORKFLOW_STEPS.map(({ label, description, icon: Icon }, index) => (
+                <article key={label} className="rounded-3xl border border-white/10 bg-slate-950/40 p-4 transition-all duration-300">
+                  <div className="flex items-center gap-3">
+                    <IconBubble icon={Icon} tone={index === 2 ? 'green' : index === 3 ? 'violet' : 'blue'} />
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Step {index + 1}</p>
+                      <h3 className="text-base font-black text-white">{label}</h3>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs font-semibold leading-relaxed text-slate-300">{description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="relative z-10 mx-auto -mt-20 flex max-w-7xl flex-col gap-7 px-4 sm:px-6 lg:px-8">
         {loading ? (
           <section className="grid gap-5 md:grid-cols-3">
             {[0, 1, 2].map((item) => <div key={item} className={glassPanel(isDarkMode, 'h-40 animate-pulse')} />)}
