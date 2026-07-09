@@ -305,7 +305,7 @@ const AboutUs = () => {
 
             <section className={cx('relative min-h-[430px] overflow-hidden rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-colors duration-500', isDarkMode ? 'border-white/10 bg-slate-900/78' : 'border-white/80 bg-white/90 ring-1 ring-sky-100/70')}>
               <div className="absolute inset-0" aria-hidden="true">
-                <img src={governanceImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[82%_center] opacity-75 transition-all duration-500 sm:object-[80%_center] lg:object-[76%_center] lg:opacity-88" />
+                <img src={governanceImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[82%_68%] opacity-75 transition-all duration-500 sm:object-[80%_70%] lg:object-[76%_72%] lg:opacity-[0.88]" />
                 <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-[linear-gradient(90deg,rgba(2,6,23,0.98)_0%,rgba(2,6,23,0.94)_36%,rgba(2,6,23,0.84)_58%,rgba(2,6,23,0.68)_78%,rgba(2,6,23,0.50)_100%)]' : 'bg-[linear-gradient(90deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.94)_36%,rgba(255,255,255,0.84)_58%,rgba(255,255,255,0.68)_78%,rgba(255,255,255,0.50)_100%)]')} />
                 <div className={cx('absolute inset-0 transition-colors duration-500', isDarkMode ? 'bg-cyan-950/10' : 'bg-sky-100/14')} />
               </div>
