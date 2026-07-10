@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+  <title id="title">WaveLab public mobile app wireframes</title>
+  <desc id="desc">Five low-fidelity mobile wireframes for Latest, Chart Detail, History, Historical Package, and About screens.</desc>
+  <defs>
+    <style>
+      .bg{fill:#eef3f8}.phone{fill:#fff;stroke:#0f2942;stroke-width:3}.bar{fill:#dbe7f0}.surface{fill:#f7fafc;stroke:#9fb2c3;stroke-width:1.5}.map{fill:#c9e5eb;stroke:#4f8294;stroke-width:1.5}.primary{fill:#0f67a5}.muted{fill:#718394}.ink{fill:#102a43}.line{stroke:#718394;stroke-width:2;stroke-linecap:round}.thin{stroke:#9fb2c3;stroke-width:1.5}.t1{font:700 18px Arial,sans-serif;fill:#102a43}.t2{font:700 13px Arial,sans-serif;fill:#102a43}.t3{font:400 11px Arial,sans-serif;fill:#486581}.tiny{font:700 9px Arial,sans-serif;fill:#486581}.white{fill:#fff}.nav{font:700 9px Arial,sans-serif}.label{font:700 12px Arial,sans-serif;fill:#0f67a5}.dash{stroke:#4f8294;stroke-width:1.5;stroke-dasharray:6 5;fill:none}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="1100"/>
+  <text x="60" y="58" class="t1" style="font-size:28px">WaveLab Mobile — Public Charts Viewer</text>
+  <text x="60" y="86" class="t3" style="font-size:14px">Low-fidelity wireframes · read-only published charts · no forecaster or admin functions</text>
+
+  <!-- SCREEN 1 -->
+  <g transform="translate(55 125)">
+    <text x="0" y="-18" class="label">1. LATEST</text>
+    <rect class="phone" rx="34" width="270" height="850"/>
+    <rect class="bar" x="1" y="1" width="268" height="58" rx="32"/>
+    <text x="20" y="36" class="t2">WaveLab</text><circle cx="242" cy="30" r="13" class="surface"/><path d="M238 30h8M242 26v8" class="line"/>
+    <text x="18" y="91" class="t1">Latest wave charts</text><text x="18" y="111" class="t3">Published Jul 10, 2026 · 8:00 AM</text>
+    <rect x="18" y="128" width="234" height="34" rx="17" class="surface"/><rect x="21" y="131" width="82" height="28" rx="14" class="primary"/><text x="34" y="149" class="tiny white">WAVE + WIND</text><text x="112" y="149" class="tiny">WAVE ONLY</text><text x="190" y="149" class="tiny">ACCESSIBLE</text>
+    <rect x="18" y="178" width="234" height="204" rx="18" class="surface"/><rect x="18" y="178" width="234" height="126" rx="18" class="map"/><path d="M35 280c35-35 52-12 83-44s64 5 110-36" class="dash"/><rect x="30" y="190" width="55" height="20" rx="10" class="primary"/><text x="40" y="204" class="tiny white">DAY 1 AM</text><text x="30" y="330" class="t2">Morning wave forecast</text><text x="30" y="350" class="t3">Valid Jul 10 · 6 AM–12 PM</text><text x="30" y="369" class="label">View chart →</text>
+    <text x="18" y="414" class="t2">Other published charts</text>
+    <rect x="18" y="430" width="111" height="135" rx="16" class="surface"/><rect x="18" y="430" width="111" height="72" rx="16" class="map"/><text x="29" y="525" class="t2">Day 1 PM</text><text x="29" y="544" class="t3">12 PM–6 PM</text>
+    <rect x="141" y="430" width="111" height="135" rx="16" class="surface"/><rect x="141" y="430" width="111" height="72" rx="16" class="map"/><text x="152" y="525" class="t2">Day 2 AM</text><text x="152" y="544" class="t3">Tomorrow</text>
+    <rect x="18" y="578" width="234" height="74" rx="16" class="surface"/><text x="31" y="602" class="t2">Official guidance</text><text x="31" y="621" class="t3">Use with PAGASA bulletins,</text><text x="31" y="638" class="t3">warnings, and advisories.</text>
+    <rect x="1" y="775" width="268" height="74" rx="0" class="bar"/><circle cx="49" cy="801" r="9" class="primary"/><text x="35" y="826" class="nav primary">LATEST</text><circle cx="135" cy="801" r="9" class="surface"/><text x="117" y="826" class="nav muted">HISTORY</text><circle cx="221" cy="801" r="9" class="surface"/><text x="208" y="826" class="nav muted">ABOUT</text>
+  </g>
+
+  <!-- SCREEN 2 -->
+  <g transform="translate(365 125)">
+    <text x="0" y="-18" class="label">2. CHART DETAIL</text>
+    <rect class="phone" rx="34" width="270" height="850"/>
+    <rect class="bar" x="1" y="1" width="268" height="58" rx="32"/><text x="18" y="36" class="t2">‹ Back</text><text x="92" y="36" class="t2">Day 1 AM</text><text x="223" y="36" class="t2">Share</text>
+    <rect x="10" y="70" width="250" height="475" rx="20" class="map"/><path d="M30 450c20-95 62-44 98-145s72 45 112-115" class="dash"/><circle cx="112" cy="267" r="24" fill="none" stroke="#0f67a5" stroke-width="3"/><path d="M100 267h24M112 255v24" class="line"/><rect x="24" y="88" width="96" height="28" rx="14" class="surface"/><text x="37" y="106" class="tiny">RESET VIEW</text>
+    <rect x="21" y="505" width="228" height="36" rx="18" class="surface"/><rect x="24" y="508" width="76" height="30" rx="15" class="primary"/><text x="34" y="527" class="tiny white">WAVE + WIND</text><text x="112" y="527" class="tiny">WAVE ONLY</text><text x="190" y="527" class="tiny">A11Y</text>
+    <rect x="1" y="565" width="268" height="284" rx="28" class="surface"/><rect x="111" y="578" width="48" height="5" rx="3" class="muted"/><text x="20" y="614" class="t1">Morning wave forecast</text><text x="20" y="639" class="t3">Valid Jul 10 · 6 AM–12 PM</text><line x1="20" y1="657" x2="250" y2="657" class="thin"/><text x="20" y="683" class="t2">Legend & chart details</text><text x="20" y="708" class="t2">Official guidance</text><text x="20" y="730" class="t3">Supplementary guidance only. Check</text><text x="20" y="747" class="t3">official bulletins and warnings.</text><rect x="20" y="770" width="230" height="48" rx="14" class="primary"/><text x="83" y="799" class="t2 white">Download PDF</text>
+  </g>
+
+  <!-- SCREEN 3 -->
+  <g transform="translate(675 125)">
+    <text x="0" y="-18" class="label">3. HISTORY</text>
+    <rect class="phone" rx="34" width="270" height="850"/>
+    <rect class="bar" x="1" y="1" width="268" height="58" rx="32"/><text x="20" y="36" class="t2">WaveLab</text>
+    <text x="18" y="93" class="t1">Chart history</text><text x="18" y="115" class="t3">Browse previous publication dates.</text>
+    <text x="18" y="153" class="t2">July 2026</text>
+    <rect x="18" y="168" width="234" height="78" rx="16" class="surface"/><text x="32" y="198" class="t2">Jul 10, 2026</text><text x="32" y="220" class="t3">4 charts available · Complete</text><text x="229" y="209" class="t1">›</text>
+    <rect x="18" y="258" width="234" height="78" rx="16" class="surface"/><text x="32" y="288" class="t2">Jul 9, 2026</text><text x="32" y="310" class="t3">3 charts available</text><text x="229" y="299" class="t1">›</text>
+    <rect x="18" y="348" width="234" height="78" rx="16" class="surface"/><text x="32" y="378" class="t2">Jul 8, 2026</text><text x="32" y="400" class="t3">4 charts available · Complete</text><text x="229" y="389" class="t1">›</text>
+    <text x="18" y="466" class="t2">June 2026</text>
+    <rect x="18" y="481" width="234" height="78" rx="16" class="surface"/><text x="32" y="511" class="t2">Jun 30, 2026</text><text x="32" y="533" class="t3">4 charts available · Complete</text><text x="229" y="522" class="t1">›</text>
+    <rect x="1" y="775" width="268" height="74" class="bar"/><circle cx="49" cy="801" r="9" class="surface"/><text x="35" y="826" class="nav muted">LATEST</text><circle cx="135" cy="801" r="9" class="primary"/><text x="117" y="826" class="nav primary">HISTORY</text><circle cx="221" cy="801" r="9" class="surface"/><text x="208" y="826" class="nav muted">ABOUT</text>
+  </g>
+
+  <!-- SCREEN 4 -->
+  <g transform="translate(985 125)">
+    <text x="0" y="-18" class="label">4. HISTORICAL PACKAGE</text>
+    <rect class="phone" rx="34" width="270" height="850"/>
+    <rect class="bar" x="1" y="1" width="268" height="58" rx="32"/><text x="18" y="36" class="t2">‹ History</text><text x="207" y="36" class="t2">Latest</text>
+    <text x="18" y="92" class="t1">July 9 charts</text><text x="18" y="113" class="t3">3 of 4 charts are available.</text>
+    <rect x="18" y="132" width="234" height="34" rx="17" class="surface"/><rect x="21" y="135" width="82" height="28" rx="14" class="primary"/><text x="34" y="153" class="tiny white">WAVE + WIND</text><text x="112" y="153" class="tiny">WAVE ONLY</text><text x="190" y="153" class="tiny">ACCESSIBLE</text>
+    <rect x="18" y="184" width="234" height="166" rx="18" class="surface"/><rect x="18" y="184" width="234" height="96" rx="18" class="map"/><text x="31" y="309" class="t2">Day 1 AM</text><text x="31" y="331" class="t3">Published Jul 9 · View chart →</text>
+    <rect x="18" y="365" width="234" height="166" rx="18" class="surface"/><rect x="18" y="365" width="234" height="96" rx="18" class="map"/><text x="31" y="490" class="t2">Day 1 PM</text><text x="31" y="512" class="t3">Published Jul 9 · View chart →</text>
+    <rect x="18" y="546" width="234" height="74" rx="16" class="surface"/><text x="31" y="574" class="t2">Availability note</text><text x="31" y="596" class="t3">Only public charts are shown.</text>
+    <rect x="18" y="642" width="234" height="48" rx="14" class="primary"/><text x="80" y="671" class="t2 white">Return to latest</text>
+    <rect x="1" y="775" width="268" height="74" class="bar"/><circle cx="49" cy="801" r="9" class="surface"/><text x="35" y="826" class="nav muted">LATEST</text><circle cx="135" cy="801" r="9" class="primary"/><text x="117" y="826" class="nav primary">HISTORY</text><circle cx="221" cy="801" r="9" class="surface"/><text x="208" y="826" class="nav muted">ABOUT</text>
+  </g>
+
+  <!-- SCREEN 5 -->
+  <g transform="translate(1295 125)">
+    <text x="0" y="-18" class="label">5. ABOUT</text>
+    <rect class="phone" rx="34" width="250" height="850"/>
+    <rect class="bar" x="1" y="1" width="248" height="58" rx="32"/><text x="18" y="36" class="t2">WaveLab</text>
+    <text x="18" y="92" class="t1">About these charts</text><text x="18" y="118" class="t3">Public wave forecast guidance</text><text x="18" y="135" class="t3">from DOST-PAGASA.</text>
+    <rect x="18" y="158" width="214" height="85" rx="16" class="surface"/><text x="31" y="187" class="t2">What the charts show</text><text x="31" y="210" class="t3">Wave conditions, wind, valid</text><text x="31" y="227" class="t3">periods, and annotations.</text>
+    <rect x="18" y="255" width="214" height="70" rx="16" class="surface"/><text x="31" y="284" class="t2">Chart legend</text><text x="31" y="305" class="label">Open legend →</text>
+    <rect x="18" y="337" width="214" height="85" rx="16" class="surface"/><text x="31" y="366" class="t2">Accessible viewing</text><text x="31" y="389" class="t3">Higher-contrast labels and</text><text x="31" y="406" class="t3">descriptive chart information.</text>
+    <rect x="18" y="434" width="214" height="116" rx="16" class="surface"/><text x="31" y="463" class="t2">Safety guidance</text><text x="31" y="486" class="t3">These charts supplement official</text><text x="31" y="503" class="t3">bulletins, warnings, and</text><text x="31" y="520" class="t3">advisories.</text>
+    <rect x="18" y="562" width="214" height="50" rx="14" class="surface"/><text x="31" y="592" class="t2">Contact PAGASA  ›</text>
+    <text x="18" y="657" class="t3">Version 1.0 · Privacy</text>
+    <rect x="1" y="775" width="248" height="74" class="bar"/><circle cx="45" cy="801" r="9" class="surface"/><text x="31" y="826" class="nav muted">LATEST</text><circle cx="125" cy="801" r="9" class="surface"/><text x="107" y="826" class="nav muted">HISTORY</text><circle cx="205" cy="801" r="9" class="primary"/><text x="192" y="826" class="nav primary">ABOUT</text>
+  </g>
+</svg>
