@@ -88,4 +88,6 @@ export const darkColors = {
   divider: 'rgba(255,255,255,0.10)',
 } as const;
 
-export type WaveLabColors = typeof lightColors;
+export type WaveLabColors = {
+  [Key in keyof typeof lightColors]: string;
+};
