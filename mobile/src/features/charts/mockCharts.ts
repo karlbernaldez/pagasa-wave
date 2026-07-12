@@ -8,6 +8,10 @@ export type MockChart = {
   windSpeed: string;
   summary: string;
   colors: readonly [string, string, string];
+  source?: 'mock' | 'live';
+  imageUrl?: string;
+  forecastDate?: string;
+  publishedAtRaw?: string;
 };
 
 export const mockCharts: MockChart[] = [
@@ -21,6 +25,7 @@ export const mockCharts: MockChart[] = [
     windSpeed: '10–20 km/h',
     summary: 'Generally slight waves with light to moderate winds across most coastal areas.',
     colors: ['#0A2B66', '#057CC1', '#42D7C8'],
+    source: 'mock',
   },
   {
     id: 'day-1-pm',
@@ -32,6 +37,7 @@ export const mockCharts: MockChart[] = [
     windSpeed: '15–25 km/h',
     summary: 'Moderate conditions may develop along exposed eastern coastal waters.',
     colors: ['#08245E', '#168FDB', '#72E2B8'],
+    source: 'mock',
   },
   {
     id: 'day-2-am',
@@ -43,6 +49,7 @@ export const mockCharts: MockChart[] = [
     windSpeed: '10–20 km/h',
     summary: 'Higher-contrast chart mode for easier interpretation of coastal wave conditions.',
     colors: ['#04142F', '#075EA8', '#E6C84B'],
+    source: 'mock',
   },
 ];
 
