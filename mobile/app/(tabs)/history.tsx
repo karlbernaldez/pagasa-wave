@@ -1,16 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { GlassSurface } from '@/components/ui/GlassSurface';
 import { ScreenBackground } from '@/components/ui/ScreenBackground';
 import { publicationHistory } from '@/features/charts/mockCharts';
+import { usePublicCharts } from '@/features/charts/usePublicCharts';
 import { useWaveLabTheme } from '@/theme/ThemeProvider';
 
 export default function HistoryScreen() {
   const theme = useWaveLabTheme();
+  const { projects, loading, usingFallback, refresh } = usePublicCharts(theme.isDark);
+
+  const liveHistory = Object.values(projects.reduce<Record<string, { date: string; time: string; count: number; latest?: boolean }>>((groups, project) => {
+    const rawDate = project.forecastDate || project.publishedAt;
+    const parsed = rawDate ? new Date(rawDate) : null;
+    const validDate = parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+    const key = validDate ? validDate.toISOString().slice(0, 10) : 'unknown';
+    const label = validDate ? validDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date unavailable';
+    const time = validDate ? validDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'Time unavailable';
+    groups[key] = groups[key] ?? { date: label, time, count: 0 };
+    groups[key].count += 1;
+    return groups;
+  }, {})).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((item, index) => ({ ...item, latest: index === 0 }));
+
+  const history = liveHistory.length ? liveHistory : publicationHistory;
+
   return (
     <ScreenBackground>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={theme.colors.accent} />}
+      >
         <Text style={[styles.eyebrow, { color: theme.colors.accent }]}>PUBLIC ARCHIVE</Text>
         <Text style={[styles.title, { color: theme.colors.text }]}>Publication history</Text>
         <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>Browse previous official chart releases.</Text>
@@ -19,14 +40,14 @@ export default function HistoryScreen() {
           <Ionicons name="time-outline" size={24} color={theme.colors.accent} />
           <View style={styles.summaryCopy}>
             <Text style={[styles.summaryTitle, { color: theme.colors.text }]}>Recent publications</Text>
-            <Text style={[styles.summaryText, { color: theme.colors.textMuted }]}>Select a date to review the charts published for that release.</Text>
+            <Text style={[styles.summaryText, { color: theme.colors.textMuted }]}>{usingFallback ? 'Preview archive shown until the live API returns published charts.' : 'Live public releases from the WaveLab API.'}</Text>
           </View>
         </GlassSurface>
 
-        <Text style={[styles.month, { color: theme.colors.textMuted }]}>JULY 2026</Text>
+        <Text style={[styles.month, { color: theme.colors.textMuted }]}>RECENT RELEASES</Text>
         <GlassSurface style={styles.list}>
-          {publicationHistory.map((item, index) => (
-            <View key={item.date} style={[styles.row, index < publicationHistory.length - 1 && { borderBottomColor: theme.colors.divider, borderBottomWidth: StyleSheet.hairlineWidth }]}> 
+          {history.map((item, index) => (
+            <View key={`${item.date}-${index}`} style={[styles.row, index < history.length - 1 && { borderBottomColor: theme.colors.divider, borderBottomWidth: StyleSheet.hairlineWidth }]}> 
               <View style={[styles.calendar, { backgroundColor: theme.colors.glassFillStrong }]}>
                 <Ionicons name="calendar-outline" size={20} color={theme.colors.accent} />
               </View>
@@ -35,7 +56,7 @@ export default function HistoryScreen() {
                   <Text style={[styles.rowTitle, { color: theme.colors.text }]}>{item.date}</Text>
                   {item.latest ? <Text style={[styles.latest, { color: theme.colors.success }]}>LATEST</Text> : null}
                 </View>
-                <Text style={[styles.rowMeta, { color: theme.colors.textMuted }]}>{item.time} · {item.count} charts</Text>
+                <Text style={[styles.rowMeta, { color: theme.colors.textMuted }]}>{item.time} · {item.count} chart{item.count === 1 ? '' : 's'}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
             </View>
