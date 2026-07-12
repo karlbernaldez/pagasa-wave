@@ -272,7 +272,7 @@ const Contact = () => {
           </aside>
 
           <form id="contact-request" className={glassPanel(isDarkMode, 'p-6 sm:p-8 scroll-mt-24')} onSubmit={(event) => event.preventDefault()}>
-            <div className="mb-7 flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-center sm:justify-between sm:gap-6 lg:pb-7">
+            <div className={cx('mb-7 flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-center sm:justify-between sm:gap-6 lg:pb-7', isDarkMode ? 'border-white/10' : 'border-slate-200/80')}>
               <div className="flex items-start gap-4">
                 <IconBubble icon={Send} />
                 <div>
@@ -294,50 +294,28 @@ const Contact = () => {
                 ].map(({ label, key, type, placeholder }) => (
                   <label key={key} className="flex flex-col gap-2 text-sm font-black">
                     <span className={isDarkMode ? 'text-slate-200' : 'text-slate-700'}>{label}</span>
-                    <input
-                      type={type}
-                      placeholder={placeholder}
-                      value={formData[key]}
-                      onChange={(event) => handleInputChange(key, event.target.value)}
-                      className={inputCls}
-                    />
+                    <input type={type} placeholder={placeholder} value={formData[key]} onChange={(event) => handleInputChange(key, event.target.value)} className={inputCls} />
                   </label>
                 ))}
               </div>
 
               <label className="flex flex-col gap-2 text-sm font-black">
                 <span className={isDarkMode ? 'text-slate-200' : 'text-slate-700'}>Request type</span>
-                <select
-                  value={formData.requestType}
-                  onChange={(event) => handleInputChange('requestType', event.target.value)}
-                  className={inputCls}
-                >
+                <select value={formData.requestType} onChange={(event) => handleInputChange('requestType', event.target.value)} className={inputCls}>
                   {REQUEST_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
                 </select>
               </label>
 
               <label className="flex flex-col gap-2 text-sm font-black">
                 <span className={isDarkMode ? 'text-slate-200' : 'text-slate-700'}>How can we help?</span>
-                <textarea
-                  rows="7"
-                  placeholder="Share the coastal area, chart date, urgency, and preferred response channel."
-                  value={formData.message}
-                  onChange={(event) => handleInputChange('message', event.target.value)}
-                  className={cx(inputCls, 'resize-none')}
-                />
+                <textarea rows={7} placeholder="Share the coastal area, chart date, urgency, and preferred response channel." value={formData.message} onChange={(event) => handleInputChange('message', event.target.value)} className={cx(inputCls, 'resize-none')} />
               </label>
 
-              <div className="flex flex-col items-stretch justify-between gap-4 rounded-3xl border p-4 sm:flex-row sm:items-center sm:p-5">
+              <div className={cx('flex flex-col items-stretch justify-between gap-4 rounded-3xl border p-4 sm:flex-row sm:items-center sm:p-5', isDarkMode ? 'border-white/10 bg-slate-950/25' : 'border-slate-200/80 bg-white/55')}>
                 <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold">
-                  <input
-                    type="checkbox"
-                    checked={formData.subscribe}
-                    onChange={(event) => handleInputChange('subscribe', event.target.checked)}
-                    className="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-2 focus:ring-cyan-400/50"
-                  />
+                  <input type="checkbox" checked={formData.subscribe} onChange={(event) => handleInputChange('subscribe', event.target.checked)} className="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-2 focus:ring-cyan-400/50" />
                   <span className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>Subscribe to WaveLab operational updates</span>
                 </label>
-
                 <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:w-auto">
                   Send request <ArrowRight size={16} />
                 </button>
@@ -363,29 +341,31 @@ const Contact = () => {
               </div>
             </section>
 
-            <section className={cx('relative overflow-hidden rounded-[2rem] border p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:p-6', SURFACE_TRANSITION, isDarkMode ? 'border-white/10 bg-slate-900/78' : 'border-white/80 bg-white/90 ring-1 ring-sky-100/70')}>
+            <section className={cx('relative min-h-[430px] overflow-hidden rounded-[2rem] border p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:p-6', SURFACE_TRANSITION, isDarkMode ? 'border-white/10 bg-slate-900/78' : 'border-white/80 bg-white/90 ring-1 ring-sky-100/70')}>
               <div className="absolute inset-0" aria-hidden="true">
-                <ThemeImagePair
-                  lightSrc={OPERATIONS_IMAGE_LIGHT_URL}
-                  darkSrc={OPERATIONS_IMAGE_DARK_URL}
-                  isDark={isDarkMode}
-                  className="absolute inset-0 h-full w-full object-cover object-[80%_70%]"
-                />
-                <div className={cx('absolute inset-0', SURFACE_TRANSITION, isDarkMode ? 'bg-slate-950/82' : 'bg-white/80')} />
+                <ThemeImagePair lightSrc={OPERATIONS_IMAGE_LIGHT_URL} darkSrc={OPERATIONS_IMAGE_DARK_URL} isDark={isDarkMode} className="absolute inset-0 h-full w-full object-cover object-[82%_70%]" />
+                <div className={cx('absolute inset-0', SURFACE_TRANSITION, isDarkMode ? 'bg-slate-950/82' : 'bg-white/58')} />
+                <div className={cx('absolute inset-0', SURFACE_TRANSITION, isDarkMode ? 'bg-gradient-to-r from-slate-950/96 via-slate-950/84 to-slate-950/42' : 'bg-gradient-to-r from-white/96 via-white/88 to-white/46')} />
+                <div className={cx('absolute inset-x-0 top-0 h-36', SURFACE_TRANSITION, isDarkMode ? 'bg-gradient-to-b from-slate-950/70 to-transparent' : 'bg-gradient-to-b from-white/75 to-transparent')} />
               </div>
-              <div className="relative z-10">
-                <SectionHeading isDark={isDarkMode} eyebrow="Operations center" title="Forecast Hub" />
-                <div className="mt-5 space-y-5 text-sm">
+
+              <div className="relative z-10 flex h-full min-h-[382px] flex-col justify-between gap-5">
+                <div className={cx('rounded-[1.6rem] border p-4 shadow-[0_18px_45px_rgba(15,23,42,0.14)] backdrop-blur-2xl', SURFACE_TRANSITION, isDarkMode ? 'border-white/12 bg-slate-950/62' : 'border-white/85 bg-white/82 shadow-blue-100/70')}>
+                  <p className={cx('text-xs font-black uppercase tracking-[0.22em]', isDarkMode ? 'text-cyan-200' : 'text-blue-700')}>Operations center</p>
+                  <h2 className={cx('mt-2 text-2xl font-black leading-tight tracking-tight drop-shadow-sm', isDarkMode ? 'text-white' : 'text-slate-950')}>WaveLab Forecast Hub</h2>
+                </div>
+
+                <div className="space-y-3 text-sm">
                   {[
                     { Icon: MapPin, title: 'Location', body: settings.operationsLocation || 'Agham Road, Diliman, Quezon City, Philippines' },
                     { Icon: Clock, title: 'Hours', body: settings.operationsHours || 'Monday to Friday · 08:00 AM - 06:00 PM (GMT+8)' },
                     { Icon: Phone, title: 'Urgent coordination', body: settings.operationsPhone || '+63 (02) 8123-9999' },
                   ].map(({ Icon, title, body }) => (
-                    <div key={title} className="flex items-start gap-4">
-                      <Icon className="mt-1 h-5 w-5 flex-shrink-0 text-cyan-500" />
-                      <div>
+                    <div key={title} className={cx('flex items-start gap-3 rounded-2xl border p-3 backdrop-blur-xl', SURFACE_TRANSITION, isDarkMode ? 'border-white/10 bg-slate-950/58' : 'border-white/80 bg-white/76 shadow-sm shadow-blue-100/60')}>
+                      <Icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-cyan-500" />
+                      <div className="min-w-0">
                         <p className={cx('font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</p>
-                        <p className={cx('mt-1 font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{body}</p>
+                        <p className={cx('mt-1 break-words font-semibold leading-relaxed', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{body}</p>
                       </div>
                     </div>
                   ))}
