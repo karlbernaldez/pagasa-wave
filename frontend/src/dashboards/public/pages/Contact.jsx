@@ -341,28 +341,25 @@ const Contact = () => {
               </div>
             </section>
 
-            <section className={cx('relative min-h-[430px] overflow-hidden rounded-[2rem] border p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:p-6', SURFACE_TRANSITION, isDarkMode ? 'border-white/10 bg-slate-900/78' : 'border-white/80 bg-white/90 ring-1 ring-sky-100/70')}>
+            <section className={cx('relative overflow-hidden rounded-[2rem] border p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:p-6', SURFACE_TRANSITION, isDarkMode ? 'border-white/10 bg-slate-900/78' : 'border-white/80 bg-white/90 ring-1 ring-sky-100/70')}>
               <div className="absolute inset-0" aria-hidden="true">
                 <ThemeImagePair lightSrc={OPERATIONS_IMAGE_LIGHT_URL} darkSrc={OPERATIONS_IMAGE_DARK_URL} isDark={isDarkMode} className="absolute inset-0 h-full w-full object-cover object-[82%_70%]" />
-                <div className={cx('absolute inset-0', SURFACE_TRANSITION, isDarkMode ? 'bg-slate-950/82' : 'bg-white/58')} />
-                <div className={cx('absolute inset-0', SURFACE_TRANSITION, isDarkMode ? 'bg-gradient-to-r from-slate-950/96 via-slate-950/84 to-slate-950/42' : 'bg-gradient-to-r from-white/96 via-white/88 to-white/46')} />
-                <div className={cx('absolute inset-x-0 top-0 h-36', SURFACE_TRANSITION, isDarkMode ? 'bg-gradient-to-b from-slate-950/70 to-transparent' : 'bg-gradient-to-b from-white/75 to-transparent')} />
+                <div className={cx('absolute inset-0', SURFACE_TRANSITION, isDarkMode ? 'bg-slate-950/78' : 'bg-white/74')} />
+                <div className={cx('absolute inset-0', SURFACE_TRANSITION, isDarkMode ? 'bg-gradient-to-r from-slate-950/95 via-slate-950/82 to-slate-950/38' : 'bg-gradient-to-r from-white/98 via-white/90 to-white/50')} />
               </div>
 
-              <div className="relative z-10 flex h-full min-h-[382px] flex-col justify-between gap-5">
-                <div className={cx('rounded-[1.6rem] border p-4 shadow-[0_18px_45px_rgba(15,23,42,0.14)] backdrop-blur-2xl', SURFACE_TRANSITION, isDarkMode ? 'border-white/12 bg-slate-950/62' : 'border-white/85 bg-white/82 shadow-blue-100/70')}>
-                  <p className={cx('text-xs font-black uppercase tracking-[0.22em]', isDarkMode ? 'text-cyan-200' : 'text-blue-700')}>Operations center</p>
-                  <h2 className={cx('mt-2 text-2xl font-black leading-tight tracking-tight drop-shadow-sm', isDarkMode ? 'text-white' : 'text-slate-950')}>WaveLab Forecast Hub</h2>
-                </div>
+              <div className="relative z-10">
+                <p className={cx('text-xs font-black uppercase tracking-[0.2em]', isDarkMode ? 'text-cyan-200' : 'text-blue-700')}>Operations center</p>
+                <h2 className={cx('mt-2 text-2xl font-black leading-tight tracking-tight sm:text-3xl', isDarkMode ? 'text-white' : 'text-slate-950')}>WaveLab Forecast Hub</h2>
 
-                <div className="space-y-3 text-sm">
+                <div className="mt-6 space-y-5 text-sm">
                   {[
                     { Icon: MapPin, title: 'Location', body: settings.operationsLocation || 'Agham Road, Diliman, Quezon City, Philippines' },
                     { Icon: Clock, title: 'Hours', body: settings.operationsHours || 'Monday to Friday · 08:00 AM - 06:00 PM (GMT+8)' },
                     { Icon: Phone, title: 'Urgent coordination', body: settings.operationsPhone || '+63 (02) 8123-9999' },
                   ].map(({ Icon, title, body }) => (
-                    <div key={title} className={cx('flex items-start gap-3 rounded-2xl border p-3 backdrop-blur-xl', SURFACE_TRANSITION, isDarkMode ? 'border-white/10 bg-slate-950/58' : 'border-white/80 bg-white/76 shadow-sm shadow-blue-100/60')}>
-                      <Icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-cyan-500" />
+                    <div key={title} className="flex items-start gap-4">
+                      <Icon className="mt-1 h-5 w-5 flex-shrink-0 text-cyan-500" />
                       <div className="min-w-0">
                         <p className={cx('font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</p>
                         <p className={cx('mt-1 break-words font-semibold leading-relaxed', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{body}</p>
@@ -405,13 +402,13 @@ const Contact = () => {
         {teamMembers.length ? (
           <section className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
             <SectionHeading isDark={isDarkMode} eyebrow="Team" title="WaveLab public support contacts" description="Selected team contacts for coordination and public portal support." />
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {teamMembers.slice(0, 4).map((member) => (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {teamMembers.map((member) => (
                 <article key={member.email || member.name} className={cx(innerCard(isDarkMode, 'h-full p-5'), HOVER_LIFT)}>
                   {member.avatar ? <img src={member.avatar} alt={`${member.name} profile`} className="mb-4 h-14 w-14 rounded-2xl object-cover shadow-md" loading="lazy" /> : <Users className="mb-4 h-8 w-8 text-cyan-500" />}
                   <p className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{member.name}</p>
                   <p className={cx('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{member.role}</p>
-                  {member.email ? <p className={cx('mt-4 truncate text-xs font-black', isDarkMode ? 'text-cyan-200' : 'text-blue-700')}>{member.email}</p> : null}
+                  {member.email ? <p className={cx('mt-4 break-words text-xs font-black', isDarkMode ? 'text-cyan-200' : 'text-blue-700')}>{member.email}</p> : null}
                 </article>
               ))}
             </div>
