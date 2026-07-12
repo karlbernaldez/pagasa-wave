@@ -5,15 +5,35 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-nati
 
 import { GlassSurface } from '@/components/ui/GlassSurface';
 import { ScreenBackground } from '@/components/ui/ScreenBackground';
-import { mockCharts } from '@/features/charts/mockCharts';
+import { mockCharts, type MockChart } from '@/features/charts/mockCharts';
 import { useWaveLabTheme } from '@/theme/ThemeProvider';
 
 const displayModes = ['Wave & Wind', 'Wave Only', 'Accessible'];
 
+function first(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default function ChartDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<Record<string, string | string[]>>();
+  const id = first(params.id) ?? '';
   const theme = useWaveLabTheme();
-  const chart = mockCharts.find((item) => item.id === id) ?? mockCharts[0];
+  const fallback = mockCharts.find((item) => item.id === id) ?? mockCharts[0];
+  const routeColors = first(params.colors)?.split(',').filter(Boolean);
+
+  const chart: MockChart = {
+    id,
+    title: first(params.title) ?? fallback.title,
+    shortTitle: first(params.shortTitle) ?? fallback.shortTitle,
+    validPeriod: first(params.validPeriod) ?? fallback.validPeriod,
+    publishedAt: first(params.publishedAt) ?? fallback.publishedAt,
+    waveHeight: first(params.waveHeight) ?? fallback.waveHeight,
+    windSpeed: first(params.windSpeed) ?? fallback.windSpeed,
+    summary: first(params.summary) ?? fallback.summary,
+    colors: routeColors?.length === 3
+      ? [routeColors[0], routeColors[1], routeColors[2]]
+      : fallback.colors,
+  };
 
   const handleShare = async () => {
     await Share.share({
@@ -76,7 +96,7 @@ export default function ChartDetailScreen() {
           <Text style={[styles.title, { color: theme.colors.text }]}>{chart.title}</Text>
           <Text style={[styles.validPeriod, { color: theme.colors.textMuted }]}>{chart.validPeriod}</Text>
 
-          <View style={[styles.metrics, { borderColor: theme.colors.divider }]}>
+          <View style={[styles.metrics, { borderColor: theme.colors.divider }]}> 
             <View style={styles.metric}>
               <Text style={[styles.metricLabel, { color: theme.colors.textMuted }]}>WAVE HEIGHT</Text>
               <Text style={[styles.metricValue, { color: theme.colors.text }]}>{chart.waveHeight}</Text>
@@ -95,7 +115,7 @@ export default function ChartDetailScreen() {
             <Text style={[styles.noticeText, { color: theme.colors.textMuted }]}>Supplementary public guidance only. Always check current PAGASA bulletins, warnings, and local conditions.</Text>
           </GlassSurface>
 
-          <Pressable accessibilityRole="button" style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]}>
+          <Pressable accessibilityRole="button" style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]}> 
             <Ionicons name="download-outline" size={20} color="#FFFFFF" />
             <Text style={styles.primaryButtonText}>Download PDF</Text>
           </Pressable>
