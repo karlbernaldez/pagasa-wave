@@ -82,7 +82,7 @@ function parsePublicDate(value) {
   if (!value) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
   const match = String(value).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (match) return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 16, 0, 0));
+  if (match) return new Date(`${match[1]}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}T00:00:00+08:00`);
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
