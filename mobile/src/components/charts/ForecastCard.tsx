@@ -10,11 +10,28 @@ import { useWaveLabTheme } from '@/theme/ThemeProvider';
 export function ForecastCard({ chart, featured = false }: { chart: MockChart; featured?: boolean }) {
   const theme = useWaveLabTheme();
 
+  const openChart = () => {
+    router.push({
+      pathname: '/chart/[id]',
+      params: {
+        id: chart.id,
+        title: chart.title,
+        shortTitle: chart.shortTitle,
+        validPeriod: chart.validPeriod,
+        publishedAt: chart.publishedAt,
+        waveHeight: chart.waveHeight,
+        windSpeed: chart.windSpeed,
+        summary: chart.summary,
+        colors: chart.colors.join(','),
+      },
+    });
+  };
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Open ${chart.title}`}
-      onPress={() => router.push(`/chart/${chart.id}`)}
+      onPress={openChart}
       style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
     >
       <GlassSurface elevated={featured} strong={featured} style={styles.card}>
