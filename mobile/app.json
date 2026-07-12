@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "WaveLab",
+    "slug": "wavelab-mobile",
+    "scheme": "wavelab",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "ph.gov.pagasa.wavelab" },
+    "android": { "package": "ph.gov.pagasa.wavelab", "adaptiveIcon": { "backgroundColor": "#081a33" } },
+    "web": { "bundler": "metro" }
+  }
+}
