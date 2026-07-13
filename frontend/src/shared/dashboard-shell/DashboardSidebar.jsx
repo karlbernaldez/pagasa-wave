@@ -26,8 +26,8 @@ const getNavClasses = ({ disabled, isActive, isDarkMode }) => {
 
   if (isActive) {
     return isDarkMode
-      ? 'border border-cyan-300/15 bg-white/[0.10] text-white shadow-lg shadow-cyan-950/25'
-      : 'border border-white/90 bg-white/85 text-slate-950 shadow-lg shadow-slate-200/70';
+      ? 'border border-cyan-300/20 bg-[linear-gradient(90deg,rgba(14,165,233,.34),rgba(37,99,235,.24))] text-white shadow-lg shadow-cyan-950/30'
+      : 'border border-white/90 bg-[linear-gradient(90deg,rgba(255,255,255,.94),rgba(224,242,254,.84))] text-slate-950 shadow-lg shadow-slate-300/55';
   }
 
   return isDarkMode
@@ -65,7 +65,7 @@ const DashboardSidebar = ({
   const closeMobile = () => setIsMobileOpen(false);
   const navGroups = Array.isArray(groups) && groups.length > 0
     ? groups
-    : [{ label: 'Navigation', items }];
+    : [{ label: backgroundVariant === 'ocean' ? 'Workspace' : 'Navigation', items }];
 
   const renderActiveMark = (isActive) =>
     isActive ? (
@@ -227,33 +227,33 @@ const DashboardSidebar = ({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh flex-col overflow-hidden border-r transition-all duration-300 ${
-          isSidebarCollapsed ? 'w-[86px]' : 'w-[292px]'
-        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
+        className={`fixed inset-y-1 left-1 z-40 flex h-[calc(100dvh-0.5rem)] max-h-[calc(100dvh-0.5rem)] flex-col overflow-hidden rounded-2xl border transition-all duration-300 ${
+          isSidebarCollapsed ? 'w-[82px]' : 'w-[266px]'
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-[calc(100%+0.5rem)] lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
         style={backgroundVariant === 'ocean' ? {
           backgroundImage: isDarkMode
-            ? "linear-gradient(180deg,rgba(1,20,39,.62) 0%,rgba(2,38,70,.76) 50%,rgba(0,17,35,.94) 100%), url('/images/WavelabPublicHero.png')"
-            : "linear-gradient(180deg,rgba(225,244,252,.72) 0%,rgba(207,234,246,.84) 56%,rgba(235,247,252,.95) 100%), url('/images/WavelabPublicHero.png')",
-          backgroundPosition: '72% center',
+            ? "linear-gradient(180deg,rgba(1,18,37,.66) 0%,rgba(2,36,67,.78) 48%,rgba(0,17,35,.94) 100%), url('/images/WavelabSidebarDark.png'), url('/images/WavelabPublicHero.png')"
+            : "linear-gradient(180deg,rgba(231,247,253,.76) 0%,rgba(211,238,248,.84) 52%,rgba(238,249,253,.95) 100%), url('/images/WavelabSidebarLight.png'), url('/images/WavelabPublicHero.png')",
+          backgroundPosition: 'center, center, 72% center',
           backgroundRepeat: 'no-repeat',
-          backgroundSize: 'auto 118%',
+          backgroundSize: 'cover, cover, auto 118%',
         } : undefined}
       >
-        <div className={`border-b px-4 py-4 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
+        <div className={`border-b px-4 py-5 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${
+              <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl border ${
                 isDarkMode ? 'border-white/10 bg-white/[0.06] shadow-inner shadow-white/[0.04]' : 'border-white/80 bg-white/70 shadow-sm shadow-slate-200/70'
               }`}>
-                {backgroundVariant === 'ocean' ? <Waves className="text-cyan-400" size={28} aria-hidden="true" /> : <img src="/pagasa-logo.png" alt="PAGASA Logo" className="h-7 w-7 object-contain" />}
+                {backgroundVariant === 'ocean' ? <Waves className="text-cyan-400" size={34} aria-hidden="true" /> : <img src="/pagasa-logo.png" alt="PAGASA Logo" className="h-8 w-8 object-contain" />}
               </span>
 
               {!isSidebarCollapsed && (
                 <div className="min-w-0">
-                  <h1 className={`truncate text-base font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+                  <h1 className={`truncate text-xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
                     {title}
                   </h1>
-                  <p className={`truncate text-xs font-bold ${isDarkMode ? 'text-slate-300/70' : 'text-slate-600'}`}>
+                  <p className={`truncate text-[13px] font-bold ${isDarkMode ? 'text-cyan-200/85' : 'text-cyan-700'}`}>
                     {label}
                   </p>
                 </div>
@@ -280,11 +280,11 @@ const DashboardSidebar = ({
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
           {navGroups.map(renderNavGroup)}
         </nav>
 
-        <div className={`border-t p-3 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
+        <div className={`border-t p-3 backdrop-blur-sm ${isDarkMode ? 'border-white/10 bg-gradient-to-t from-[#01182f]/65 to-transparent' : 'border-white/70 bg-gradient-to-t from-white/55 to-transparent'}`}>
           <div className="mb-1 space-y-1">
             {utilityItems.map(renderNavItem)}
           </div>
@@ -292,7 +292,7 @@ const DashboardSidebar = ({
           <button
             type="button"
             title="Help & Support"
-            className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${
+            className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
               isSidebarCollapsed ? '' : 'justify-start'
             } ${isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-100' : 'text-slate-500 hover:bg-white/65 hover:text-slate-950'}`}
           >
