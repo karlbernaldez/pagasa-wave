@@ -34,7 +34,12 @@ export function getLatestMapInstance(mapRef) {
 }
 
 export function registerMapInstance(map) {
-  if (typeof window !== 'undefined' && map && typeof map.getStyle === 'function') {
+  if (typeof window === 'undefined') return;
+
+  if (map && typeof map.getStyle === 'function') {
     window.__latestMap = map;
+    return;
   }
+
+  delete window.__latestMap;
 }
