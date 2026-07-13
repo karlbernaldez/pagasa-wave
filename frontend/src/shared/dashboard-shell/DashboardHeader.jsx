@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, LogOut, Menu, Moon, Settings, Sun, UserRound, Waves } from 'lucide-react';
+import { ChevronDown, LogOut, Menu, Moon, Settings, Sun, Waves } from 'lucide-react';
 import NotificationBell from '@/shared/notifications/NotificationBell';
 import { logoutUser } from '@/api/auth';
 
@@ -50,14 +50,9 @@ const DashboardHeader = ({
     setIsUserMenuOpen((current) => !current);
   }, [onUserClick]);
 
-  const goToProfile = useCallback(() => {
+  const goToAccountSettings = useCallback(() => {
     closeUserMenu();
     navigate('/profile');
-  }, [closeUserMenu, navigate]);
-
-  const goToEditProfile = useCallback(() => {
-    closeUserMenu();
-    navigate('/edit-profile');
   }, [closeUserMenu, navigate]);
 
   const handleLogout = useCallback(async () => {
@@ -206,24 +201,13 @@ const DashboardHeader = ({
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={goToProfile}
-                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold transition-colors ${
-                        isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-white' : 'text-slate-500 hover:bg-white/65 hover:text-slate-950'
-                      }`}
-                    >
-                      <UserRound size={15} />
-                      View Profile
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={goToEditProfile}
+                      onClick={goToAccountSettings}
                       className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold transition-colors ${
                         isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-white' : 'text-slate-500 hover:bg-white/65 hover:text-slate-950'
                       }`}
                     >
                       <Settings size={15} />
-                      Edit Account Settings
+                      Account Settings
                     </button>
                   </div>
 
@@ -253,4 +237,3 @@ const DashboardHeader = ({
 };
 
 export default DashboardHeader;
-
