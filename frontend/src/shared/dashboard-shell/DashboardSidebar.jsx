@@ -1,8 +1,12 @@
-import { ChevronLeft, ChevronRight, CircleHelp, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleHelp, Waves, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
-const getShellClasses = (isDarkMode) =>
-  isDarkMode
+const getShellClasses = (isDarkMode, backgroundVariant) =>
+  backgroundVariant === 'ocean'
+    ? isDarkMode
+      ? 'border-cyan-300/20 bg-[#032445]/82 text-slate-100 shadow-2xl shadow-black/35 backdrop-blur-2xl'
+      : 'border-white/80 bg-white/76 text-slate-950 shadow-xl shadow-slate-300/50 backdrop-blur-2xl'
+    : isDarkMode
     ? 'border-white/10 bg-slate-950/72 text-slate-100 shadow-2xl shadow-black/35 backdrop-blur-2xl'
     : 'border-white/70 bg-white/72 text-slate-950 shadow-xl shadow-slate-300/50 backdrop-blur-2xl';
 
@@ -43,6 +47,7 @@ const getSubNavClasses = ({ isActive, isDarkMode }) => {
 
 const DashboardSidebar = ({
   activeId,
+  backgroundVariant = 'default',
   footerText = 'Philippine Atmospheric, Geophysical and Astronomical Services Administration',
   groups,
   isDarkMode,
@@ -223,7 +228,7 @@ const DashboardSidebar = ({
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh flex-col overflow-hidden border-r transition-all duration-300 ${
           isSidebarCollapsed ? 'w-[86px]' : 'w-[292px]'
-        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode)}`}
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
       >
         <div className={`border-b px-4 py-4 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
           <div className="flex items-center justify-between gap-3">
@@ -231,7 +236,7 @@ const DashboardSidebar = ({
               <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${
                 isDarkMode ? 'border-white/10 bg-white/[0.06] shadow-inner shadow-white/[0.04]' : 'border-white/80 bg-white/70 shadow-sm shadow-slate-200/70'
               }`}>
-                <img src="/pagasa-logo.png" alt="PAGASA Logo" className="h-7 w-7 object-contain" />
+                {backgroundVariant === 'ocean' ? <Waves className="text-cyan-400" size={28} aria-hidden="true" /> : <img src="/pagasa-logo.png" alt="PAGASA Logo" className="h-7 w-7 object-contain" />}
               </span>
 
               {!isSidebarCollapsed && (
@@ -283,9 +288,10 @@ const DashboardSidebar = ({
           </button>
 
           {!isSidebarCollapsed && (
-            <p className={`mt-3 px-3 pb-1 text-[10px] font-semibold leading-snug ${getMutedText(isDarkMode)}`}>
-              {footerText}
-            </p>
+            <div className="mt-3 flex items-start gap-3 px-3 pb-1">
+              {backgroundVariant === 'ocean' && <img src="/pagasa-logo.png" alt="" className="h-8 w-8 shrink-0 object-contain" />}
+              <p className={`text-[10px] font-semibold leading-snug ${getMutedText(isDarkMode)}`}>{footerText}</p>
+            </div>
           )}
         </div>
       </aside>
@@ -294,3 +300,4 @@ const DashboardSidebar = ({
 };
 
 export default DashboardSidebar;
+
