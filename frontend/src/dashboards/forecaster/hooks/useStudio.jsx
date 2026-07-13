@@ -205,6 +205,7 @@ export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLaye
   const refreshTimerRef = useRef(null);
   const refreshInFlightRef = useRef(false);
   const queuedRefreshRef = useRef(false);
+  const styleLoadListenerRef = useRef(null);
   const applyFeaturesToMap = useCallback(async () => {
     const map = mapRef.current;
     if (!map || !projectId) return;
@@ -225,21 +226,38 @@ export const useMapLoader = (projectId, logger, isDarkMode, setupFeaturesAndLaye
     socket.on(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate);
     return () => { if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current); socket.emit("forecast:leave_project", projectId); socket.off(FORECAST_CHART_UPDATED_EVENT, handleForecastChartUpdate); };
   }, [projectId, scheduleFeatureRefresh]);
+  const handleStyleLoad = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const features = await setupFeaturesAndLayers({ syncMap: false });
+    cleanupRef.current?.();
+    cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
+    applyAnnotationStylesToMap(map, features);
+  }, [setupFeaturesAndLayers, logger, isDarkMode, mapRef, cleanupRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, selectedToolRef, setCapturedImages, setIsLoading]);
+  const bindStyleLoadListener = useCallback((map) => {
+    const previous = styleLoadListenerRef.current;
+    if (previous) map.off("style.load", previous);
+    map.on("style.load", handleStyleLoad);
+    styleLoadListenerRef.current = handleStyleLoad;
+  }, [handleStyleLoad]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    bindStyleLoadListener(map);
+    return () => {
+      if (styleLoadListenerRef.current === handleStyleLoad) {
+        map.off("style.load", handleStyleLoad);
+        styleLoadListenerRef.current = null;
+      }
+    };
+  }, [bindStyleLoadListener, handleStyleLoad, mapRef, projectId]);
   const handleMapLoad = useCallback(async (map) => {
     mapRef.current = map;
     const filteredFeatures = await setupFeaturesAndLayers({ syncMap: false });
     cleanupRef.current?.();
     cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features: filteredFeatures }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
     applyAnnotationStylesToMap(map, filteredFeatures);
-    if (!map._hasStyleLoadListener) {
-      map.on("style.load", async () => {
-        const features = await setupFeaturesAndLayers({ syncMap: false });
-        cleanupRef.current?.();
-        cleanupRef.current = await setupMap({ map, mapRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, initialFeatures: { type: "FeatureCollection", features }, logger, setLoading: setIsLoading, selectedToolRef, setCapturedImages, isDarkMode });
-        applyAnnotationStylesToMap(map, features);
-      });
-      map._hasStyleLoadListener = true;
-    }
-  }, [setupFeaturesAndLayers, logger, isDarkMode, mapRef, cleanupRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, selectedToolRef, setCapturedImages, setIsLoading]);
+    bindStyleLoadListener(map);
+  }, [setupFeaturesAndLayers, logger, isDarkMode, mapRef, cleanupRef, setDrawInstance, setMapLoaded, setSelectedPoint, setShowTitleModal, setLineCount, selectedToolRef, setCapturedImages, setIsLoading, bindStyleLoadListener]);
   return handleMapLoad;
 };
