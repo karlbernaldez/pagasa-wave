@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import OnlyUserModal from '@/components/ui/modals/OnlyUserModal';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
-const ALLOWED_ROLES = ['user', 'forecaster'];
+const ALLOWED_ROLES = ['forecaster'];
 const ADMIN_ROLES = ['admin'];
 
 const resolveAuthenticatedRedirect = (role, fallback = '/studio') => {
