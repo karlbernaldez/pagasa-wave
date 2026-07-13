@@ -53,7 +53,7 @@ const DashboardShell = ({
 
       <div
         className={`relative z-10 flex min-h-screen min-w-0 flex-1 flex-col transition-[margin] duration-300 ${
-          isSidebarCollapsed ? 'lg:ml-[86px]' : 'lg:ml-[292px]'
+          isSidebarCollapsed ? 'lg:ml-[90px]' : 'lg:ml-[274px]'
         }`}
       >
         <DashboardHeader
