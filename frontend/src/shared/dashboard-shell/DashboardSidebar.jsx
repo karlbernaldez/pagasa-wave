@@ -289,8 +289,11 @@ const DashboardSidebar = ({
 
           {!isSidebarCollapsed && (
             <div className="mt-3 flex items-start gap-3 px-3 pb-1">
-              {backgroundVariant === 'ocean' && <img src="/pagasa-logo.png" alt="" className="h-8 w-8 shrink-0 object-contain" />}
-              <p className={`text-[10px] font-semibold leading-snug ${getMutedText(isDarkMode)}`}>{footerText}</p>
+              {backgroundVariant === 'ocean' && <img src="/pagasa-logo.png" alt="" className="h-10 w-10 shrink-0 object-contain" />}
+              <div className="min-w-0">
+                {backgroundVariant === 'ocean' && <p className={`text-sm font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>PAGASA</p>}
+                <p className={`mt-0.5 text-[9px] font-semibold leading-snug ${getMutedText(isDarkMode)}`}>{footerText}</p>
+              </div>
             </div>
           )}
         </div>
@@ -300,4 +303,3 @@ const DashboardSidebar = ({
 };
 
 export default DashboardSidebar;
-
