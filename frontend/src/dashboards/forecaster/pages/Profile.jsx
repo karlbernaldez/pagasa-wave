@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -7,6 +7,7 @@ import {
   Briefcase,
   Building2,
   Calendar,
+  Camera,
   CheckCircle2,
   Clock,
   Edit3,
@@ -68,6 +69,7 @@ function toInputDate(value) {
 
 function createProfileForm(user = {}) {
   return {
+    username: user.username || '',
     firstName: user.firstName || '',
     lastName: user.lastName || '',
     email: user.email || '',
@@ -76,7 +78,37 @@ function createProfileForm(user = {}) {
     agency: user.agency || '',
     position: user.position || '',
     birthday: toInputDate(user.birthday),
+    avatarUrl: user.avatarUrl || '',
   };
+}
+
+function resizeProfileImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the selected image.'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('The selected file is not a valid image.'));
+      image.onload = () => {
+        const maxSize = 512;
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) {
+          reject(new Error('Image processing is not available in this browser.'));
+          return;
+        }
+        context.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/webp', 0.82));
+      };
+      image.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function getGlassClass(isDarkMode) {
@@ -163,6 +195,7 @@ export default function ProfilePage() {
   const [saveSuccess, setSaveSuccess] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [form, setForm] = useState(() => createProfileForm());
+  const avatarInputRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -210,10 +243,35 @@ export default function ProfilePage() {
     setIsEditing(false);
   };
 
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setFieldErrors((current) => ({ ...current, avatarUrl: 'Choose a JPG, PNG, or WebP image.' }));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setFieldErrors((current) => ({ ...current, avatarUrl: 'Image must be smaller than 5 MB.' }));
+      return;
+    }
+    try {
+      const avatarUrl = await resizeProfileImage(file);
+      setForm((current) => ({ ...current, avatarUrl }));
+      setFieldErrors((current) => ({ ...current, avatarUrl: undefined }));
+      setSaveError('');
+      setSaveSuccess('');
+    } catch (imageError) {
+      setFieldErrors((current) => ({ ...current, avatarUrl: imageError?.message || 'Could not process the selected image.' }));
+    }
+  };
+
   const handleSaveProfile = async () => {
     const validationErrors = {};
     if (!form.firstName.trim()) validationErrors.firstName = 'First name is required.';
     if (!form.lastName.trim()) validationErrors.lastName = 'Last name is required.';
+    if (!form.username.trim()) validationErrors.username = 'Username is required.';
+    else if (!/^[a-zA-Z0-9._-]{3,30}$/.test(form.username.trim())) validationErrors.username = 'Use 3–30 letters, numbers, dots, underscores, or hyphens.';
     if (!form.email.trim()) validationErrors.email = 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) validationErrors.email = 'Enter a valid email address.';
     if (form.contact && !/^[\d\s\-+()]{7,15}$/.test(form.contact)) validationErrors.contact = 'Enter a valid contact number.';
@@ -228,6 +286,7 @@ export default function ProfilePage() {
     setSaveSuccess('');
     try {
       const payload = {
+        username: form.username.trim().toLowerCase(),
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim(),
@@ -236,6 +295,7 @@ export default function ProfilePage() {
         agency: form.agency.trim(),
         position: form.position.trim(),
         birthday: form.birthday || null,
+        avatarUrl: form.avatarUrl || null,
       };
       const response = await updateUserDetailsAPI(user?.id || user?._id, payload);
       const updatedUser = response?.user || response || {};
@@ -247,7 +307,7 @@ export default function ProfilePage() {
     } catch (saveProfileError) {
       const message = saveProfileError?.message || 'Failed to update profile.';
       if (message.toLowerCase().includes('email or username')) {
-        setFieldErrors((current) => ({ ...current, email: 'This email is already in use.' }));
+        setFieldErrors((current) => ({ ...current, email: 'This email or username is already in use.', username: 'This email or username is already in use.' }));
       }
       setSaveError(message);
     } finally {
@@ -305,9 +365,16 @@ export default function ProfilePage() {
             <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
               <div className="relative w-fit shrink-0">
                 <div className={`grid h-24 w-24 place-items-center overflow-hidden rounded-2xl border-2 ${isActive ? isDarkMode ? 'border-lime-300/55 shadow-[0_0_28px_rgba(163,230,53,0.12)]' : 'border-emerald-300 shadow-[0_12px_32px_rgba(5,150,105,0.14)]' : isDarkMode ? 'border-cyan-300/35' : 'border-cyan-200'} ${isDarkMode ? 'bg-slate-950/45' : 'bg-white/70'}`}>
-                  {user?.avatarUrl ? <img src={user.avatarUrl} alt={fullName} className="h-full w-full object-cover" /> : <User size={38} className={isDarkMode ? 'text-slate-400' : 'text-slate-500'} />}
+                  {(isEditing ? form.avatarUrl : user?.avatarUrl) ? <img src={isEditing ? form.avatarUrl : user.avatarUrl} alt={fullName} className="h-full w-full object-cover" /> : <User size={38} className={isDarkMode ? 'text-slate-400' : 'text-slate-500'} />}
                 </div>
                 <span className={`absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 ${isDarkMode ? 'border-[#07335b]' : 'border-white'} ${isActive ? 'bg-emerald-400' : 'bg-slate-400'}`} aria-label={`Account status: ${statusLabel}`} />
+                {isEditing && (
+                  <>
+                    <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarChange} className="sr-only" />
+                    <button type="button" onClick={() => avatarInputRef.current?.click()} className={`absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-2xl text-xs font-black opacity-0 backdrop-blur-sm transition hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${isDarkMode ? 'bg-slate-950/70 text-white' : 'bg-white/75 text-slate-900'}`}><Camera size={20} />Change photo</button>
+                  </>
+                )}
+                {isEditing && fieldErrors.avatarUrl && <p className="absolute left-0 top-full mt-2 w-48 text-xs font-semibold text-red-400">{fieldErrors.avatarUrl}</p>}
               </div>
 
               <div className="min-w-0">
@@ -329,7 +396,18 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 )}
-                <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>@{user?.username || 'forecaster'}</p>
+                {isEditing ? (
+                  <label className="mt-3 block max-w-sm">
+                    <span className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300/75' : 'text-slate-500'}`}>Username</span>
+                    <div className={`mt-1.5 flex min-h-10 items-center rounded-lg border px-3 focus-within:ring-2 focus-within:ring-cyan-300 ${fieldErrors.username ? 'border-red-400' : isDarkMode ? 'border-white/15 bg-slate-950/35' : 'border-slate-200 bg-white/80'}`}>
+                      <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>@</span>
+                      <input name="username" value={form.username} onChange={handleFieldChange} aria-invalid={Boolean(fieldErrors.username)} className={`min-w-0 flex-1 bg-transparent px-1 text-sm font-bold outline-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`} />
+                    </div>
+                    {fieldErrors.username && <span className="mt-1 block text-xs font-semibold text-red-400">{fieldErrors.username}</span>}
+                  </label>
+                ) : (
+                  <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>@{user?.username || 'forecaster'}</p>
+                )}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'border-cyan-300/25 bg-cyan-400/10 text-cyan-300' : 'border-cyan-200 bg-cyan-50/90 text-cyan-700'}`}><BadgeCheck size={13} />{user?.position || 'Forecaster'}</span>
                   <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'border-violet-300/20 bg-violet-400/10 text-violet-300' : 'border-violet-200 bg-violet-50/90 text-violet-700'}`}><Shield size={13} />{user?.role || 'Forecaster'}</span>
