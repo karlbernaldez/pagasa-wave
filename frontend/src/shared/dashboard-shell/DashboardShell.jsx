@@ -29,6 +29,14 @@ const DashboardShell = ({
   return (
     <div
       className={`relative flex min-h-screen overflow-x-hidden transition-colors duration-500 ${backgroundClass}`}
+      style={isOceanBackground ? {
+        backgroundImage: isDarkMode
+          ? "linear-gradient(145deg,rgba(3,24,47,.88),rgba(5,46,85,.82) 54%,rgba(2,21,44,.92)), url('/login_bg.png')"
+          : "linear-gradient(145deg,rgba(240,249,255,.86),rgba(232,244,248,.80) 55%,rgba(238,246,255,.88)), url('/login_bg.png')",
+        backgroundAttachment: 'fixed',
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+      } : undefined}
     >
       {isOceanBackground && <div className={`pointer-events-none fixed inset-0 z-0 opacity-30 ${isDarkMode ? 'mix-blend-screen' : 'mix-blend-multiply'}`} style={{ backgroundImage: 'repeating-radial-gradient(ellipse at 92% 110%, transparent 0 22px, rgba(56,189,248,.15) 23px 24px), linear-gradient(180deg, rgba(255,255,255,.05), transparent 24%)' }} aria-hidden="true" />}
       <DashboardSidebar
@@ -62,4 +70,3 @@ const DashboardShell = ({
 };
 
 export default DashboardShell;
-
