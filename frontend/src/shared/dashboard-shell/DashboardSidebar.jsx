@@ -292,12 +292,15 @@ const DashboardSidebar = ({
           <button
             type="button"
             title="Help & Support"
-            className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
-              isSidebarCollapsed ? '' : 'justify-start'
-            } ${isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-100' : 'text-slate-500 hover:bg-white/65 hover:text-slate-950'}`}
+            className={`relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+              isSidebarCollapsed ? 'justify-center' : ''
+            } ${getNavClasses({ isActive: false, isDarkMode })}`}
           >
-            <CircleHelp size={18} />
-            {!isSidebarCollapsed && <span>Help & Support</span>}
+            {renderItemContent({
+              Icon: CircleHelp,
+              isActive: false,
+              label: 'Help & Support',
+            })}
           </button>
 
           {!isSidebarCollapsed && (
