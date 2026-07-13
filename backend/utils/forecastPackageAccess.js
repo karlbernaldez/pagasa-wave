@@ -13,13 +13,14 @@ export async function canAccessProject(user, project) {
   if (!user || !project) return false;
   if (user.role === 'admin') return true;
 
+  const sharedForecastChart = await isForecastPackageChartProject(project._id || project.id);
+  if (sharedForecastChart) {
+    // Forecast-package charts are shared operational workspaces. Every authenticated
+    // forecaster may collaborate, but ordinary user accounts must not retain access
+    // even if they originally owned a project before it entered the package.
+    return user.role === 'forecaster';
+  }
+
   const projectOwner = project.owner?._id || project.owner;
-  if (String(projectOwner) === String(user.id)) return true;
-
-  // Forecast-package charts are shared operational workspaces. Every authenticated
-  // forecaster may collaborate, but ordinary user accounts must never inherit
-  // access merely because a project is linked to a package.
-  if (user.role !== 'forecaster') return false;
-
-  return isForecastPackageChartProject(project._id || project.id);
+  return String(projectOwner) === String(user.id);
 }
