@@ -295,8 +295,7 @@ function getNextAction(packageData, completion, isEditable, pendingRevisionChart
 function StatusPill({ status, isDarkMode }) {
   const isSuccessful = ['Submitted', 'Approved', 'Published'].includes(status);
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${isSuccessful ? isDarkMode ? 'bg-lime-400/10 text-lime-300 ring-1 ring-lime-300/20' : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : isDarkMode ? 'bg-cyan-400/10 text-cyan-200 ring-1 ring-cyan-300/20' : 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'}`}>
-      {isSuccessful && <CheckCircle2 size={14} aria-hidden="true" />}
+    <span className={`inline-flex items-center text-base font-black uppercase tracking-wide ${isSuccessful ? isDarkMode ? 'text-lime-300' : 'text-emerald-700' : isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>
       {status || 'Draft'}
     </span>
   );
@@ -413,36 +412,48 @@ function PackageSummary({ chartSequenceHelper, completion, hasPendingRevisionAct
 
   return (
     <section className={`overflow-hidden rounded-2xl border shadow-xl ${isDarkMode ? 'border-cyan-300/30 bg-[#07335b]/80 shadow-black/20' : 'border-blue-200 bg-white/90 shadow-blue-950/5'}`}>
-      <div className="grid xl:grid-cols-[200px_minmax(280px,1.55fr)_minmax(250px,0.9fr)_minmax(250px,0.9fr)]">
-        <div className={`flex items-center gap-4 p-5 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border ${statusIsComplete ? isDarkMode ? 'border-lime-300/50 bg-lime-400/10 text-lime-300' : 'border-emerald-200 bg-emerald-50 text-emerald-600' : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
-            <CheckCircle2 size={24} />
+      <div className="grid xl:grid-cols-[220px_minmax(320px,1.45fr)_minmax(250px,0.85fr)_minmax(270px,0.9fr)] xl:grid-rows-[1fr_auto]">
+        <div className={`flex items-center gap-4 border-b p-5 xl:col-start-1 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+          <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-full border ${statusIsComplete ? isDarkMode ? 'border-lime-300/50 bg-lime-400/10 text-lime-300' : 'border-emerald-200 bg-emerald-50 text-emerald-600' : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+            <CheckCircle2 size={25} aria-hidden="true" />
           </span>
-          <div><p className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Status</p><div className="mt-2"><StatusPill status={packageData.status} isDarkMode={isDarkMode} /></div></div>
+          <div className="min-w-0">
+            <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Status</p>
+            <div className="mt-1"><StatusPill status={packageData.status} isDarkMode={isDarkMode} /></div>
+          </div>
         </div>
 
-        <div className={`border-t p-5 xl:border-r xl:border-t-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <dl className="grid gap-3 sm:grid-cols-2">
-            <div><dt className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Date</dt><dd className={`mt-1 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatForecastDate(packageData.forecastDate)}</dd></div>
-            <div className="sm:col-span-2"><dt className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Package title</dt><dd className={`mt-1 text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{packageTitle}</dd></div>
-            <div className="sm:col-span-2"><dt className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Message</dt><dd className={`mt-1 text-xs font-semibold leading-5 ${isDarkMode ? 'text-slate-200' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</dd></div>
+        <div className={`border-b p-5 xl:col-start-2 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(170px,0.65fr)_minmax(0,1.35fr)]">
+            <div>
+              <dt className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Date</dt>
+              <dd className={`mt-1 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatForecastDate(packageData.forecastDate)}</dd>
+            </div>
+            <div>
+              <dt className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Package title</dt>
+              <dd className={`mt-1 truncate text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`} title={packageTitle}>{packageTitle}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Message</dt>
+              <dd className={`mt-1 text-xs font-semibold leading-5 ${isDarkMode ? 'text-slate-200' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</dd>
+            </div>
           </dl>
         </div>
 
-        <div className={`border-t p-5 xl:border-r xl:border-t-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+        <div className={`border-b p-5 xl:col-start-3 xl:row-span-2 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
           <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Completion</p>
           <div className="mt-2 flex items-end gap-2"><span className={`text-4xl font-black leading-none ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{completion.percentage}%</span><span className={`pb-0.5 text-base font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>{completion.completed}/{completion.required} charts</span></div>
           <div className={`mt-5 h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-950/60' : 'bg-slate-200'}`} role="progressbar" aria-label="Forecast package completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow={completion.percentage}><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-cyan-300" style={{ width: `${completion.percentage}%` }} /></div>
         </div>
 
-        <div className={`flex flex-col items-center justify-center border-t p-5 text-center xl:border-t-0 ${!isEditable ? isDarkMode ? 'bg-amber-400/[0.03]' : 'bg-amber-50/40' : ''} ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+        <div className={`flex flex-col items-center justify-center border-b p-5 text-center xl:col-start-4 xl:row-span-2 xl:row-start-1 xl:border-b-0 ${!isEditable ? isDarkMode ? 'bg-amber-400/[0.03]' : 'bg-amber-50/40' : ''} ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
           <span className={`grid h-16 w-16 place-items-center rounded-full border ${!isEditable ? isDarkMode ? 'border-amber-300/70 bg-slate-950/20 text-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.14)]' : 'border-amber-300 bg-amber-50 text-amber-600' : completion.isComplete ? 'border-emerald-300/50 bg-emerald-400/10 text-emerald-400' : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}><ReadinessIcon size={30} /></span>
           <p className={`mt-3 text-base font-black ${!isEditable ? 'text-amber-400' : isDarkMode ? 'text-white' : 'text-slate-950'}`}>{submitReadiness.title}</p>
-          <p className={`mt-1 max-w-[260px] text-xs font-semibold leading-5 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{submitReadiness.detail}</p>
+          <p className={`mt-1 max-w-[270px] text-xs font-semibold leading-5 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{submitReadiness.detail}</p>
         </div>
-      </div>
 
-      {!isEditable && <div className={`flex items-start gap-3 border-t px-5 py-3 text-xs font-bold ${isDarkMode ? 'border-amber-300/20 bg-amber-400/[0.07] text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-800'}`}><LockKeyhole className="mt-0.5 shrink-0" size={16} /><p>{lockedPackageCopy.lockedNotice}</p></div>}
+        {!isEditable && <div className={`flex items-start gap-3 border-t px-5 py-3 text-xs font-bold xl:col-span-2 xl:col-start-1 xl:row-start-2 ${isDarkMode ? 'border-amber-300/20 bg-amber-400/[0.07] text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-800'}`}><LockKeyhole className="mt-0.5 shrink-0" size={16} /><p>{lockedPackageCopy.lockedNotice}</p></div>}
+      </div>
     </section>
   );
 }
@@ -586,3 +597,4 @@ export default function ForecasterProjectLibraryPage() {
     </div>
   );
 }
+
