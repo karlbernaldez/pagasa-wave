@@ -342,35 +342,33 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen, sequenc
   const isSubmittedChart = displayChartStatus === 'Submitted';
   const isWarningChart = ['Revision Requested', 'Under Review'].includes(displayChartStatus) && !isReCertifiedRevision;
   const isPositiveState = isApprovedChart || isSubmittedChart || isComplete || isReCertifiedRevision;
-  const accentClass = isPositiveState ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : isWarningChart || hasActiveEditors ? 'bg-amber-400' : 'bg-cyan-400';
   const statusLabel = isQueued && !displayChartStatus ? 'Queued' : displayChartStatus || (isComplete ? 'Ready for review' : 'In production');
-  const statusClass = isApprovedChart || isSubmittedChart || isReCertifiedRevision
-    ? isDarkMode ? 'bg-lime-400/10 text-lime-300' : 'bg-emerald-50 text-emerald-700'
-    : isWarningChart
-      ? isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'
-      : isQueued
-        ? isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
-        : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700';
   const certificationText = revisionActionPending
     ? 'Revision needs re-certification'
     : isComplete
       ? readyEditorText ? `Certified by ${readyEditorText}` : 'Certified'
       : hasActiveEditors ? `Editing by ${activeEditorText}` : 'Not yet certified';
   const checkpointText = revisionActionPending
-    ? 'Open this chart, apply the requested changes, then certify it again.'
+    ? 'Revision required before resubmission'
     : isQueued
-      ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} first.`
+      ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} first`
       : hasActiveEditors && !isComplete
-        ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.`
+        ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing`
         : metadata.checkpoint;
+  const statusTextClass = isApprovedChart || isSubmittedChart || isReCertifiedRevision
+    ? isDarkMode ? 'text-lime-300' : 'text-emerald-700'
+    : isWarningChart
+      ? 'text-amber-400'
+      : isQueued
+        ? 'text-slate-500'
+        : isDarkMode ? 'text-cyan-300' : 'text-blue-700';
 
   return (
-    <article className={`group relative min-h-[174px] overflow-hidden rounded-2xl border shadow-lg transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-cyan-300/25 bg-[#062b50]/82 shadow-black/20 hover:border-cyan-300/50' : 'border-blue-200 bg-white/92 shadow-blue-950/5 hover:border-blue-300'}`}>
-      <div className={`absolute inset-x-0 top-0 h-1 ${accentClass}`} />
-      <div className="grid gap-4 p-4 pt-5 sm:grid-cols-[32px_1fr] xl:grid-cols-[32px_72px_minmax(0,1fr)_205px] xl:items-center">
-        <span className={`grid h-8 w-8 place-items-center rounded-md border text-sm font-black ${isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-white' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>{sequenceNumber}</span>
+    <article className={`group min-h-[156px] overflow-hidden rounded-xl border shadow-lg transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-cyan-300/30 bg-[#062b50]/78 shadow-black/20 hover:border-cyan-300/55' : 'border-blue-200 bg-white/92 shadow-blue-950/5 hover:border-blue-300'}`}>
+      <div className="grid min-h-[156px] gap-3 p-4 sm:grid-cols-[28px_1fr] xl:grid-cols-[28px_68px_minmax(0,1fr)_172px] xl:items-center">
+        <span className={`grid h-7 w-7 place-items-center self-start rounded-md border text-sm font-black xl:mt-0 ${isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-white' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>{sequenceNumber}</span>
 
-        <div className={`grid h-[68px] w-[68px] place-items-center rounded-full border ${isPositiveState ? isDarkMode ? 'border-cyan-200/45 bg-white/[0.04] text-white' : 'border-blue-200 bg-blue-50 text-blue-800' : isQueued ? 'border-slate-500/30 text-slate-500' : isDarkMode ? 'border-cyan-300/35 bg-cyan-400/[0.06] text-cyan-100' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+        <div className={`grid h-16 w-16 place-items-center rounded-full border ${isPositiveState ? isDarkMode ? 'border-cyan-100/45 bg-white/[0.03] text-white' : 'border-blue-200 bg-blue-50 text-blue-800' : isQueued ? 'border-slate-500/30 text-slate-500' : isDarkMode ? 'border-cyan-300/35 bg-cyan-400/[0.05] text-cyan-100' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
           <div className="text-center">
             <Waves className="mx-auto" size={28} aria-hidden="true" />
             <span className="block text-[9px] font-black leading-none">{metadata.code}</span>
@@ -378,28 +376,25 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen, sequenc
         </div>
 
         <div className="min-w-0 sm:col-span-2 xl:col-span-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h3 className={`text-lg font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{REQUIRED_CHART_LABELS[chartType] || chartType}</h3>
-            <span className={`text-xs font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-cyan-300' : 'text-blue-700'}`}>{metadata.code}</span>
-          </div>
-          <p className={`mt-2 max-w-xl text-sm leading-5 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{metadata.mandate}</p>
-          <p className={`mt-3 inline-flex items-start gap-1.5 text-xs font-semibold ${revisionActionPending ? 'text-amber-400' : isComplete ? isDarkMode ? 'text-cyan-300' : 'text-cyan-700' : isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+          <h3 className={`text-base font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{REQUIRED_CHART_LABELS[chartType] || chartType}</h3>
+          <p className={`mt-0.5 text-xs font-black uppercase tracking-[0.08em] ${isDarkMode ? 'text-cyan-300' : 'text-blue-700'}`}>{metadata.code}</p>
+          <p className={`mt-3 max-w-[290px] text-sm leading-[1.35] ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{metadata.mandate}</p>
+          <p className={`mt-3 inline-flex items-start gap-1.5 text-xs font-medium ${revisionActionPending ? 'text-amber-400' : isComplete ? isDarkMode ? 'text-cyan-300' : 'text-cyan-700' : isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
             <CheckCircle2 className="mt-0.5 shrink-0" size={14} aria-hidden="true" />
             <span>Readiness checkpoint: {checkpointText}</span>
           </p>
         </div>
 
-        <div className={`flex flex-col gap-3 border-t pt-4 sm:col-span-2 xl:col-span-1 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${statusClass}`}><CheckCircle2 size={14} />{statusLabel}</span>
-            <span className="group/certification relative inline-flex" tabIndex={0} aria-label={isComplete ? certificationText : 'Not yet certified'}>
-              <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-wide ${isComplete ? isDarkMode ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-300' : 'border-cyan-200 bg-cyan-50 text-cyan-700' : isDarkMode ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><ShieldCheck className="shrink-0" size={13} />{isComplete ? 'Certified' : 'Not certified'}</span>
-              <span role="tooltip" className={`pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-max max-w-[240px] translate-y-1 rounded-lg border px-3 py-2 text-[11px] font-semibold normal-case tracking-normal opacity-0 shadow-xl transition duration-150 group-hover/certification:translate-y-0 group-hover/certification:opacity-100 group-focus-within/certification:translate-y-0 group-focus-within/certification:opacity-100 ${isDarkMode ? 'border-cyan-300/20 bg-slate-950 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}`}>{certificationText}</span>
-            </span>
-          </div>
-          <Button className="w-full" size="sm" variant="secondary" icon={Eye} disabled={!canOpen} onClick={() => canOpen && onOpen(projectId)}>
-            {isQueued ? 'Waiting for prerequisite' : isComplete ? 'Review chart' : 'Open chart'}
-          </Button>
+        <div className={`flex min-h-[126px] flex-col border-t pt-4 sm:col-span-2 xl:col-span-1 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-1 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+          <span className={`inline-flex w-fit items-center gap-1.5 text-xs font-black uppercase tracking-wide ${statusTextClass}`}><CheckCircle2 size={16} />{statusLabel}</span>
+          <span className="group/certification relative mt-3 inline-flex w-fit" tabIndex={0} aria-label={isComplete ? certificationText : 'Not yet certified'}>
+            <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide ${isComplete ? isDarkMode ? 'border-cyan-300/25 bg-cyan-400/[0.07] text-cyan-300' : 'border-cyan-200 bg-cyan-50 text-cyan-700' : isDarkMode ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><ShieldCheck size={14} />{isComplete ? 'Certified' : 'Not certified'}</span>
+            <span role="tooltip" className={`pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-max max-w-[240px] translate-y-1 rounded-lg border px-3 py-2 text-[11px] font-semibold normal-case tracking-normal opacity-0 shadow-xl transition duration-150 group-hover/certification:translate-y-0 group-hover/certification:opacity-100 group-focus-within/certification:translate-y-0 group-focus-within/certification:opacity-100 ${isDarkMode ? 'border-cyan-300/20 bg-slate-950 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}`}>{certificationText}</span>
+          </span>
+          <button type="button" disabled={!canOpen} onClick={() => canOpen && onOpen(projectId)} className={`mt-auto inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border px-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isDarkMode ? 'border-white/15 bg-white/[0.04] text-white hover:border-cyan-300/30 hover:bg-white/[0.08]' : 'border-slate-200 bg-slate-50 text-slate-800 hover:border-blue-300 hover:bg-white'}`}>
+            <Eye size={17} aria-hidden="true" />
+            {isQueued ? 'Waiting' : isComplete ? 'Review chart' : 'Open chart'}
+          </button>
         </div>
       </div>
     </article>
@@ -586,8 +581,8 @@ export default function ForecasterProjectLibraryPage() {
               <NextActionCard packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} pendingRevisionChartTypes={pendingRevisionChartTypes} />
 
               <section>
-                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><h2 className={`text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Forecast charts</h2><p className={`text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Four required charts · Complete in sequence</p></div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4"><h2 className={`text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Forecast charts</h2><p className={`text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Four required charts · Complete in sequence</p></div>
+                <div className="grid gap-3 md:grid-cols-2">
                   {orderedCharts.map((chart, index) => (
                     <ChartCard key={chart.chartType} chart={chart} packageData={packageData} isDarkMode={isDarkMode} isEditable={isEditable} onOpen={(projectId) => navigate(`/studio/${projectId}`)} sequenceNumber={index + 1} />
                   ))}
@@ -599,5 +594,6 @@ export default function ForecasterProjectLibraryPage() {
     </div>
   );
 }
+
 
 
