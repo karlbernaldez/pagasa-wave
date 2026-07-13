@@ -167,6 +167,11 @@ export default function ProfilePage() {
     <div className="relative min-h-full bg-transparent">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_42%_at_36%_8%,rgba(14,165,233,0.10),transparent_72%)]" aria-hidden="true" />
       <div className="relative mx-auto max-w-[1540px] space-y-5 p-4 sm:p-6 lg:px-8">
+        <div>
+          <h1 className={`text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Account Settings</h1>
+          <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Review your profile, contact details, role, and account activity.</p>
+        </div>
+
         <section className={`relative overflow-hidden rounded-2xl border p-5 backdrop-blur-3xl sm:p-6 ${getGlassClass(isDarkMode)}`}>
           <div className={`pointer-events-none absolute inset-0 ${isDarkMode ? 'bg-[radial-gradient(90%_110%_at_88%_-20%,rgba(34,211,238,0.12),transparent_52%)]' : 'bg-[radial-gradient(90%_110%_at_88%_-20%,rgba(255,255,255,0.85),transparent_54%)]'}`} aria-hidden="true" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
