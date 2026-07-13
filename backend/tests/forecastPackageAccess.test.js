@@ -10,9 +10,15 @@ const project = {
   owner: OWNER_ID,
 };
 
-test('admins and project owners retain project access', async () => {
-  assert.equal(await canAccessProject({ id: 'admin-1', role: 'admin' }, project), true);
-  assert.equal(await canAccessProject({ id: OWNER_ID, role: 'user' }, project), true);
+test('admins and owners of non-package projects retain access', async () => {
+  const originalExists = ForecastPackage.exists;
+  try {
+    ForecastPackage.exists = async () => null;
+    assert.equal(await canAccessProject({ id: 'admin-1', role: 'admin' }, project), true);
+    assert.equal(await canAccessProject({ id: OWNER_ID, role: 'user' }, project), true);
+  } finally {
+    ForecastPackage.exists = originalExists;
+  }
 });
 
 test('all forecasters may collaborate on forecast-package charts', async () => {
@@ -40,7 +46,7 @@ test('ordinary users do not inherit access from forecast-package membership', as
       await canAccessProject({ id: 'user-2', role: 'user' }, project),
       false,
     );
-    assert.equal(packageLookupCount, 0);
+    assert.equal(packageLookupCount, 1);
   } finally {
     ForecastPackage.exists = originalExists;
   }
