@@ -16,11 +16,14 @@ import {
   Mail,
   MapPin,
   Phone,
+  Save,
   Shield,
   User,
   UserCheck,
+  X,
 } from 'lucide-react';
 
+import { updateUserDetailsAPI } from '@/api/userAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { loadHeaderUser } from '@shared/layouts/components/header/utils/userCache';
 
@@ -56,6 +59,26 @@ function timeAgo(value) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+function toInputDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
+function createProfileForm(user = {}) {
+  return {
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
+    email: user.email || '',
+    contact: user.contact || '',
+    address: user.address || '',
+    agency: user.agency || '',
+    position: user.position || '',
+    birthday: toInputDate(user.birthday),
+  };
+}
+
 function getGlassClass(isDarkMode) {
   return isDarkMode
     ? 'border-cyan-300/30 bg-[#07335b]/54 shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_22px_54px_rgba(0,0,0,0.24)]'
@@ -73,6 +96,28 @@ function InfoItem({ icon: Icon, label, value, isDarkMode, accent = false }) {
         <dd className={`mt-1 break-words text-sm font-bold leading-5 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{value || '—'}</dd>
       </div>
     </div>
+  );
+}
+
+function EditableField({ error, icon: Icon, isDarkMode, label, name, onChange, type = 'text', value }) {
+  return (
+    <label className="flex min-w-0 items-start gap-3 rounded-xl p-3">
+      <span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-300' : 'border-cyan-200 bg-cyan-50/90 text-cyan-700'}`}>
+        <Icon size={17} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300/75' : 'text-slate-500'}`}>{label}</span>
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          aria-invalid={Boolean(error)}
+          className={`mt-1.5 min-h-10 w-full rounded-lg border px-3 text-sm font-semibold outline-none transition focus:ring-2 focus:ring-cyan-300 ${error ? 'border-red-400' : isDarkMode ? 'border-white/15' : 'border-slate-200'} ${isDarkMode ? 'bg-slate-950/35 text-white placeholder:text-slate-500' : 'bg-white/80 text-slate-900 placeholder:text-slate-400'}`}
+        />
+        {error && <span className="mt-1 block text-xs font-semibold text-red-400">{error}</span>}
+      </span>
+    </label>
   );
 }
 
@@ -112,6 +157,12 @@ export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [form, setForm] = useState(() => createProfileForm());
 
   useEffect(() => {
     let cancelled = false;
@@ -123,6 +174,7 @@ export default function ProfilePage() {
           return;
         }
         setUser(currentUser);
+        setForm(createProfileForm(currentUser));
       })
       .catch(() => {
         if (!cancelled) setError('Failed to load profile.');
@@ -134,6 +186,74 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [navigate]);
+
+  const handleFieldChange = (event) => {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+    setFieldErrors((current) => ({ ...current, [name]: undefined }));
+    setSaveError('');
+    setSaveSuccess('');
+  };
+
+  const handleStartEditing = () => {
+    setForm(createProfileForm(user));
+    setFieldErrors({});
+    setSaveError('');
+    setSaveSuccess('');
+    setIsEditing(true);
+  };
+
+  const handleCancelEditing = () => {
+    setForm(createProfileForm(user));
+    setFieldErrors({});
+    setSaveError('');
+    setIsEditing(false);
+  };
+
+  const handleSaveProfile = async () => {
+    const validationErrors = {};
+    if (!form.firstName.trim()) validationErrors.firstName = 'First name is required.';
+    if (!form.lastName.trim()) validationErrors.lastName = 'Last name is required.';
+    if (!form.email.trim()) validationErrors.email = 'Email is required.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) validationErrors.email = 'Enter a valid email address.';
+    if (form.contact && !/^[\d\s\-+()]{7,15}$/.test(form.contact)) validationErrors.contact = 'Enter a valid contact number.';
+
+    if (Object.keys(validationErrors).length) {
+      setFieldErrors(validationErrors);
+      return;
+    }
+
+    setSaving(true);
+    setSaveError('');
+    setSaveSuccess('');
+    try {
+      const payload = {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email: form.email.trim(),
+        contact: form.contact.trim(),
+        address: form.address.trim(),
+        agency: form.agency.trim(),
+        position: form.position.trim(),
+        birthday: form.birthday || null,
+      };
+      const response = await updateUserDetailsAPI(user?.id || user?._id, payload);
+      const updatedUser = response?.user || response || {};
+      const mergedUser = { ...user, ...payload, ...updatedUser };
+      setUser(mergedUser);
+      setForm(createProfileForm(mergedUser));
+      setIsEditing(false);
+      setSaveSuccess('Profile updated successfully.');
+    } catch (saveProfileError) {
+      const message = saveProfileError?.message || 'Failed to update profile.';
+      if (message.toLowerCase().includes('email or username')) {
+        setFieldErrors((current) => ({ ...current, email: 'This email is already in use.' }));
+      }
+      setSaveError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -172,6 +292,13 @@ export default function ProfilePage() {
           <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Review your profile, contact details, role, and account activity.</p>
         </div>
 
+        {(saveError || saveSuccess) && (
+          <div role={saveError ? 'alert' : 'status'} className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm font-bold backdrop-blur-2xl ${saveError ? isDarkMode ? 'border-red-400/30 bg-red-950/35 text-red-200' : 'border-red-200 bg-red-50/90 text-red-700' : isDarkMode ? 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50/90 text-emerald-700'}`}>
+            <span>{saveError || saveSuccess}</span>
+            <button type="button" aria-label="Dismiss message" onClick={() => { setSaveError(''); setSaveSuccess(''); }} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"><X size={15} /></button>
+          </div>
+        )}
+
         <section className={`relative overflow-hidden rounded-2xl border p-5 backdrop-blur-3xl sm:p-6 ${getGlassClass(isDarkMode)}`}>
           <div className={`pointer-events-none absolute inset-0 ${isDarkMode ? 'bg-[radial-gradient(90%_110%_at_88%_-20%,rgba(34,211,238,0.12),transparent_52%)]' : 'bg-[radial-gradient(90%_110%_at_88%_-20%,rgba(255,255,255,0.85),transparent_54%)]'}`} aria-hidden="true" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -184,12 +311,24 @@ export default function ProfilePage() {
               </div>
 
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className={`truncate text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{fullName}</h1>
-                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${isActive ? isDarkMode ? 'border-lime-300/30 bg-lime-400/10 text-lime-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700' : isDarkMode ? 'border-white/15 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
-                    <CheckCircle2 size={13} aria-hidden="true" />{statusLabel}
-                  </span>
-                </div>
+                {isEditing ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {['firstName', 'lastName'].map((name) => (
+                      <label key={name} className="min-w-0">
+                        <span className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-300/75' : 'text-slate-500'}`}>{name === 'firstName' ? 'First name' : 'Last name'}</span>
+                        <input name={name} value={form[name]} onChange={handleFieldChange} aria-invalid={Boolean(fieldErrors[name])} className={`mt-1.5 min-h-10 w-full rounded-lg border px-3 text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-300 ${fieldErrors[name] ? 'border-red-400' : isDarkMode ? 'border-white/15 bg-slate-950/35 text-white' : 'border-slate-200 bg-white/80 text-slate-900'}`} />
+                        {fieldErrors[name] && <span className="mt-1 block text-xs font-semibold text-red-400">{fieldErrors[name]}</span>}
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className={`truncate text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{fullName}</h1>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${isActive ? isDarkMode ? 'border-lime-300/30 bg-lime-400/10 text-lime-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700' : isDarkMode ? 'border-white/15 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
+                      <CheckCircle2 size={13} aria-hidden="true" />{statusLabel}
+                    </span>
+                  </div>
+                )}
                 <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>@{user?.username || 'forecaster'}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'border-cyan-300/25 bg-cyan-400/10 text-cyan-300' : 'border-cyan-200 bg-cyan-50/90 text-cyan-700'}`}><BadgeCheck size={13} />{user?.position || 'Forecaster'}</span>
@@ -200,7 +339,14 @@ export default function ProfilePage() {
 
             <div className="flex shrink-0 flex-wrap gap-2">
               <button type="button" onClick={() => navigate(-1)} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold backdrop-blur-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${isDarkMode ? 'border-white/15 bg-white/[0.05] text-slate-200 hover:bg-white/[0.09]' : 'border-white/85 bg-white/65 text-slate-800 hover:bg-white/90'}`}><ArrowLeft size={16} />Back</button>
-              <button type="button" onClick={() => navigate('/edit-profile')} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black backdrop-blur-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${isDarkMode ? 'border-cyan-300/30 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/15' : 'border-cyan-200 bg-cyan-50/90 text-cyan-700 hover:bg-white'}`}><Edit3 size={16} />Edit Profile</button>
+              {isEditing ? (
+                <>
+                  <button type="button" onClick={handleCancelEditing} disabled={saving} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:opacity-50 ${isDarkMode ? 'border-white/15 bg-white/[0.05] text-slate-200 hover:bg-white/[0.09]' : 'border-white/85 bg-white/65 text-slate-800 hover:bg-white/90'}`}><X size={16} />Cancel</button>
+                  <button type="button" onClick={handleSaveProfile} disabled={saving} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:cursor-wait disabled:opacity-60 ${isDarkMode ? 'border-cyan-300/30 bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/20' : 'border-cyan-300 bg-cyan-600 text-white hover:bg-cyan-700'}`}><Save size={16} />{saving ? 'Saving…' : 'Save Profile'}</button>
+                </>
+              ) : (
+                <button type="button" onClick={handleStartEditing} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black backdrop-blur-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${isDarkMode ? 'border-cyan-300/30 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/15' : 'border-cyan-200 bg-cyan-50/90 text-cyan-700 hover:bg-white'}`}><Edit3 size={16} />Edit Profile</button>
+              )}
             </div>
           </div>
 
@@ -218,16 +364,16 @@ export default function ProfilePage() {
 
         <div className="grid gap-4 xl:grid-cols-2">
           <DetailCard title="Contact information" icon={Mail} isDarkMode={isDarkMode}>
-            <InfoItem icon={Mail} label="Email address" value={user?.email} accent isDarkMode={isDarkMode} />
-            <InfoItem icon={Phone} label="Contact number" value={user?.contact} accent isDarkMode={isDarkMode} />
-            <InfoItem icon={MapPin} label="Address" value={user?.address} isDarkMode={isDarkMode} />
-            <InfoItem icon={Building2} label="Agency" value={user?.agency} isDarkMode={isDarkMode} />
+            {isEditing ? <EditableField icon={Mail} label="Email address" name="email" type="email" value={form.email} error={fieldErrors.email} onChange={handleFieldChange} isDarkMode={isDarkMode} /> : <InfoItem icon={Mail} label="Email address" value={user?.email} accent isDarkMode={isDarkMode} />}
+            {isEditing ? <EditableField icon={Phone} label="Contact number" name="contact" value={form.contact} error={fieldErrors.contact} onChange={handleFieldChange} isDarkMode={isDarkMode} /> : <InfoItem icon={Phone} label="Contact number" value={user?.contact} accent isDarkMode={isDarkMode} />}
+            {isEditing ? <EditableField icon={MapPin} label="Address" name="address" value={form.address} onChange={handleFieldChange} isDarkMode={isDarkMode} /> : <InfoItem icon={MapPin} label="Address" value={user?.address} isDarkMode={isDarkMode} />}
+            {isEditing ? <EditableField icon={Building2} label="Agency" name="agency" value={form.agency} onChange={handleFieldChange} isDarkMode={isDarkMode} /> : <InfoItem icon={Building2} label="Agency" value={user?.agency} isDarkMode={isDarkMode} />}
           </DetailCard>
 
           <DetailCard title="Professional details" icon={Briefcase} isDarkMode={isDarkMode}>
-            <InfoItem icon={Briefcase} label="Position" value={user?.position} accent isDarkMode={isDarkMode} />
+            {isEditing ? <EditableField icon={Briefcase} label="Position" name="position" value={form.position} onChange={handleFieldChange} isDarkMode={isDarkMode} /> : <InfoItem icon={Briefcase} label="Position" value={user?.position} accent isDarkMode={isDarkMode} />}
             <InfoItem icon={Shield} label="Role" value={user?.role} isDarkMode={isDarkMode} />
-            <InfoItem icon={Calendar} label="Birthday" value={formatDate(user?.birthday)} isDarkMode={isDarkMode} />
+            {isEditing ? <EditableField icon={Calendar} label="Birthday" name="birthday" type="date" value={form.birthday} onChange={handleFieldChange} isDarkMode={isDarkMode} /> : <InfoItem icon={Calendar} label="Birthday" value={formatDate(user?.birthday)} isDarkMode={isDarkMode} />}
             <InfoItem icon={UserCheck} label="Member since" value={formatDate(user?.activatedAt)} accent isDarkMode={isDarkMode} />
             <InfoItem icon={Clock} label="Last login" value={formatDateTime(user?.lastLogin)} isDarkMode={isDarkMode} />
           </DetailCard>
