@@ -7,6 +7,7 @@ import { logoutUser } from '@/api/auth';
 const DashboardHeader = ({
   description,
   eyebrow,
+  hideContext = false,
   isDarkMode,
   onMobileMenuToggle,
   onThemeToggle,
@@ -81,8 +82,9 @@ const DashboardHeader = ({
             <Menu size={20} />
           </button>
 
-          <div className="min-w-0 flex-1">
-            <div className="hidden items-center gap-2 min-[420px]:flex">
+          {!hideContext && (
+            <div className="min-w-0 flex-1">
+              <div className="hidden items-center gap-2 min-[420px]:flex">
               <Waves size={12} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-600'} aria-hidden="true" />
               <span className={`truncate text-[10px] font-black uppercase tracking-[0.16em] ${
                 isDarkMode ? 'text-slate-500' : 'text-slate-400'
@@ -110,8 +112,9 @@ const DashboardHeader = ({
                   {description}
                 </p>
               )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
