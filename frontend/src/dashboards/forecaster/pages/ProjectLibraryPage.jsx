@@ -305,7 +305,7 @@ function NextActionCard({ packageData, completion, isEditable, isDarkMode, pendi
   const nextAction = getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes);
 
   return (
-    <section className={`relative overflow-hidden rounded-2xl border px-5 py-4 ${isDarkMode ? 'border-cyan-300/35 bg-cyan-400/[0.08]' : 'border-blue-200 bg-blue-50/90 shadow-sm'}`}>
+    <section className={`relative overflow-hidden rounded-2xl border px-5 py-4 backdrop-blur-2xl ${isDarkMode ? 'border-cyan-300/35 bg-cyan-400/[0.08]' : 'border-white/80 bg-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_16px_38px_rgba(15,74,105,0.12)]'}`}>
       <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/3 opacity-20 sm:block" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(34,211,238,.8), transparent 38%), repeating-radial-gradient(ellipse at 100% 120%, transparent 0 14px, rgba(125,211,252,.5) 15px 16px)' }} />
       <div className="flex min-w-0 items-start gap-3">
         <span className={`relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border ${isDarkMode ? 'border-cyan-300/50 bg-cyan-300/10 text-cyan-300' : 'border-blue-200 bg-white text-blue-700 shadow-sm'}`}>
@@ -364,7 +364,7 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen, sequenc
         : isDarkMode ? 'text-cyan-300' : 'text-blue-700';
 
   return (
-    <article className={`group min-h-[156px] overflow-hidden rounded-xl border shadow-lg transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-cyan-300/30 bg-[#062b50]/78 shadow-black/20 hover:border-cyan-300/55' : 'border-blue-200 bg-white/92 shadow-blue-950/5 hover:border-blue-300'}`}>
+    <article className={`group min-h-[156px] overflow-hidden rounded-xl border shadow-lg backdrop-blur-xl transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-cyan-300/30 bg-[#062b50]/78 shadow-black/20 hover:border-cyan-300/55' : 'border-white/80 bg-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.80),0_14px_34px_rgba(15,74,105,0.10)] hover:border-cyan-200'}`}>
       <div className="grid min-h-[156px] gap-3 p-4 sm:grid-cols-[28px_1fr] xl:grid-cols-[28px_68px_minmax(0,1fr)_172px] xl:items-center">
         <span className={`grid h-7 w-7 place-items-center self-start rounded-md border text-sm font-black xl:mt-0 ${isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-white' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>{sequenceNumber}</span>
 
@@ -407,8 +407,9 @@ function PackageSummary({ chartSequenceHelper, completion, hasPendingRevisionAct
   const lockedDescription = 'The package is locked and cannot be edited until the Admin completes the review.';
 
   return (
-    <section className={`min-h-[192px] overflow-hidden rounded-xl border shadow-xl ${isDarkMode ? 'border-cyan-300/30 bg-[#07335b]/78 shadow-black/20' : 'border-blue-200 bg-white/90 shadow-blue-950/5'}`}>
-      <div className="grid min-h-[192px] xl:grid-cols-[18%_33%_27%_22%] xl:grid-rows-[1fr_auto]">
+    <section className={`relative min-h-[192px] overflow-hidden rounded-xl border backdrop-blur-2xl ${isDarkMode ? 'border-cyan-300/30 bg-[#07335b]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_55px_rgba(0,0,0,0.24)]' : 'border-white/[0.85] bg-white/[0.65] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_0_rgba(255,255,255,0.35),0_24px_55px_rgba(15,74,105,0.16)]'}`}>
+      <div className={`pointer-events-none absolute inset-0 ${isDarkMode ? 'bg-[radial-gradient(120%_90%_at_50%_-20%,rgba(255,255,255,0.09),transparent_45%)]' : 'bg-[radial-gradient(120%_90%_at_50%_-20%,rgba(255,255,255,0.70),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.10),transparent_55%)]'}`} aria-hidden="true" />
+      <div className="relative grid min-h-[192px] xl:grid-cols-[18%_33%_27%_22%] xl:grid-rows-[1fr_auto]">
         <div className={`flex items-start gap-4 border-b p-6 xl:col-start-1 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
           <span className={`mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-full border ${statusIsComplete ? isDarkMode ? 'border-lime-300/60 bg-lime-400/10 text-lime-300 shadow-[0_0_18px_rgba(163,230,53,0.10)]' : 'border-emerald-200 bg-emerald-50 text-emerald-600' : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
             <CheckCircle2 size={24} aria-hidden="true" />
@@ -604,5 +605,3 @@ export default function ForecasterProjectLibraryPage() {
     </div>
   );
 }
-
-
