@@ -5,12 +5,12 @@ const getShellClasses = (isDarkMode, backgroundVariant) =>
   backgroundVariant === 'ocean'
     ? isDarkMode
       ? 'border-cyan-300/20 bg-[#032445]/82 text-slate-100 shadow-2xl shadow-black/35 backdrop-blur-2xl'
-      : 'border-white/80 bg-white/76 text-slate-950 shadow-xl shadow-slate-300/50 backdrop-blur-2xl'
+      : 'border-white/[0.85] bg-white/80 text-slate-950 shadow-xl shadow-slate-400/30 backdrop-blur-2xl'
     : isDarkMode
     ? 'border-white/10 bg-slate-950/72 text-slate-100 shadow-2xl shadow-black/35 backdrop-blur-2xl'
     : 'border-white/70 bg-white/72 text-slate-950 shadow-xl shadow-slate-300/50 backdrop-blur-2xl';
 
-const getMutedText = (isDarkMode) => (isDarkMode ? 'text-slate-500' : 'text-slate-400');
+const getMutedText = (isDarkMode) => (isDarkMode ? 'text-slate-500' : 'text-slate-500');
 
 const getControlClasses = (isDarkMode) =>
   isDarkMode
@@ -21,7 +21,7 @@ const getNavClasses = ({ disabled, isActive, isDarkMode }) => {
   if (disabled) {
     return isDarkMode
       ? 'text-slate-600 hover:bg-white/[0.03]'
-      : 'text-slate-400 hover:bg-white/55';
+      : 'text-slate-500/80 hover:bg-white/70';
   }
 
   if (isActive) {
@@ -74,7 +74,7 @@ const DashboardSidebar = ({
   const renderSoonBadge = (disabled) =>
     !isSidebarCollapsed && disabled ? (
       <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] ${
-        isDarkMode ? 'bg-white/[0.04] text-slate-600' : 'bg-white/70 text-slate-400'
+        isDarkMode ? 'bg-white/[0.04] text-slate-600' : 'bg-white/80 text-slate-500'
       }`}>
         Soon
       </span>
@@ -232,7 +232,7 @@ const DashboardSidebar = ({
         style={backgroundVariant === 'ocean' ? {
           backgroundImage: isDarkMode
             ? "linear-gradient(rgba(3,36,69,.70), rgba(3,30,59,.84)), url('/images/WavelabPublicHeroNight.png')"
-            : "linear-gradient(rgba(255,255,255,.68), rgba(239,248,252,.82)), url('/images/WavelabPublicHero.png')",
+            : "linear-gradient(rgba(235,247,253,.88), rgba(222,240,248,.92)), url('/images/WavelabPublicHero.png')",
           backgroundPosition: 'center left',
           backgroundSize: 'cover',
         } : undefined}
