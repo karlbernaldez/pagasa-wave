@@ -558,7 +558,17 @@ export default function ForecasterProjectLibraryPage() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             {packageData && isEditable && <Button icon={Send} loading={submitting} disabled={!canSubmit} onClick={handleSubmitPackage}>{submitButtonLabel}</Button>}
-            <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>Refresh</Button>
+            <button
+              type="button"
+              onClick={() => loadCurrentPackage()}
+              disabled={loading}
+              className={`group relative inline-flex min-h-11 items-center justify-center gap-2 overflow-hidden rounded-xl border px-4 text-sm font-bold backdrop-blur-2xl transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${isDarkMode ? 'border-white/20 bg-white/[0.07] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_28px_rgba(1,15,35,0.28)] hover:border-cyan-200/40 hover:bg-white/[0.11]' : 'border-white/80 bg-white/55 text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_28px_rgba(15,65,90,0.12)] hover:border-cyan-200 hover:bg-white/75'}`}
+            >
+              <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+              <span className="pointer-events-none absolute -top-3 left-3 h-8 w-2/3 rounded-full bg-white/10 blur-xl transition-transform duration-300 group-hover:translate-x-2" />
+              <RefreshCw className={`relative ${loading ? 'animate-spin' : 'transition-transform duration-300 group-hover:rotate-45'}`} size={17} aria-hidden="true" />
+              <span className="relative">Refresh</span>
+            </button>
           </div>
         </div>
 
@@ -594,6 +604,5 @@ export default function ForecasterProjectLibraryPage() {
     </div>
   );
 }
-
 
 
