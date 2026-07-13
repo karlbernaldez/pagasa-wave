@@ -17,9 +17,23 @@ import {
   setHimawariSatelliteVisibility,
 } from '@dashboards/forecaster/map/layers/satelliteLayer';
 
+const isUsableMap = (map) => {
+  if (!map || typeof map.getContainer !== 'function') return false;
+  try {
+    return Boolean(map.getContainer()?.isConnected);
+  } catch {
+    return false;
+  }
+};
+
 const safeSetLayoutVisibility = (map, layerId, visible) => {
-  if (map?.getLayer?.(layerId)) {
-    map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+  if (!isUsableMap(map)) return;
+  try {
+    if (map.getLayer?.(layerId)) {
+      map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+    }
+  } catch {
+    // The map may be tearing down between navigation and this queued update.
   }
 };
 
@@ -118,7 +132,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     setSatelliteLayer(saved.satellite);
 
     const map = mapRef.current;
-    if (!map) return;
+    if (!isUsableMap(map)) return undefined;
 
     const apply = () => {
       // Domains
@@ -168,8 +182,14 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
       }
     };
 
-    map.isStyleLoaded() ? apply() : map.once('load', apply);
-  }, [mapRef]);
+    if (map.isStyleLoaded()) {
+      apply();
+      return undefined;
+    }
+
+    map.once('load', apply);
+    return () => map.off('load', apply);
+  }, [mapRef, projectId]);
 
   useEffect(() => {
     if (!utilitiesLayers.PAGASA_NWP_RASTER) return;
