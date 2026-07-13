@@ -31,11 +31,6 @@ const HEADER_BY_PATH = {
   '/profile': {
     hideContext: true,
   },
-  '/edit-profile': {
-    eyebrow: 'Forecaster account',
-    title: 'Edit Profile',
-    description: 'Update your personal details, contact information, and password',
-  },
   '/pdf': {
     eyebrow: 'Forecaster studio',
     title: 'Report Builder',
@@ -53,8 +48,6 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
   const userOptions = useMemo(() => ({ roleOverride: 'Forecaster' }), []);
   const { user } = useCurrentDashboardUser(fallbackUser, userOptions);
   const activeId = useMemo(() => {
-    if (location.pathname === '/edit-profile') return 'account-settings';
-
     const activeItem = [...NAV_ITEMS, ACCOUNT_ITEM].find((item) => {
       if (item.disabled || !item.path) return false;
 
