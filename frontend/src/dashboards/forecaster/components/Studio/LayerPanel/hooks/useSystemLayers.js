@@ -27,7 +27,7 @@ const safeSetLayoutVisibility = (map, layerId, visible) => {
  * Manages domain, utility, and satellite layer state.
  * Reads initial values from localStorage, then applies them to the map once loaded.
  */
-export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
+export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId }) => {
   const [domainLayers, setDomainLayers] = useState({
     PAR: false, TCID: false, TCAD: false,
   });
@@ -43,7 +43,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
 
   // ── Project guard ───────────────────────────────────────────────────────────
   const checkProjectId = () => {
-    if (localStorage.getItem('projectId')) return true;
+    if (projectId) return true;
     Swal.fire({
       toast: true, position: 'top-end', icon: 'warning',
       title: 'Please select or create a project first.',
