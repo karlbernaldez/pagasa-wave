@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw, Send } from 'lucide-react';
+import { AlertCircle, CalendarDays, CheckCircle2, Loader2, Plus, RefreshCw, Send } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import {
@@ -300,21 +300,6 @@ function StatusPill({ status, isDarkMode }) {
   );
 }
 
-function MetricCard({ label, value, detail, icon: Icon, isDarkMode }) {
-  return (
-    <div className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-slate-50'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className={`text-[11px] font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{label}</p>
-          <p className={`mt-2 text-2xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{value}</p>
-        </div>
-        {Icon && <Icon className={isDarkMode ? 'text-cyan-300' : 'text-blue-600'} size={20} />}
-      </div>
-      {detail && <p className={`mt-2 text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{detail}</p>}
-    </div>
-  );
-}
-
 function SubmitReadinessCard({ readiness, canSubmit, isDarkMode }) {
   const toneClass = readiness.tone === 'ready'
     ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-800'
@@ -338,43 +323,21 @@ function SubmitReadinessCard({ readiness, canSubmit, isDarkMode }) {
   );
 }
 
-function WorkflowStep({ number, title, description, active, done, isDarkMode }) {
-  return (
-    <div className="flex gap-3">
-      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black ${done ? 'bg-emerald-500 text-white' : active ? 'bg-cyan-500 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-        {done ? <CheckCircle2 size={16} /> : number}
-      </div>
-      <div>
-        <p className={`text-sm font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{title}</p>
-        <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
-      </div>
-    </div>
-  );
-}
-
-function OperationsPanel({ packageData, completion, isEditable, isDarkMode, workspaceSettings, pendingRevisionChartTypes }) {
+function NextActionCard({ packageData, completion, isEditable, isDarkMode, pendingRevisionChartTypes }) {
   const nextAction = getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes);
-  const isSubmittedOrLater = packageData && !isEditable;
 
   return (
-    <aside className="space-y-4">
-      <ForecastReminderCard packageData={packageData} settings={workspaceSettings} isDarkMode={isDarkMode} />
-
-      <section className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-        <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>Operations Brief</p>
-        <h3 className={`mt-3 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Next best action</h3>
-        <p className={`mt-2 text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{nextAction}</p>
-      </section>
-
-      <section className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-        <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Workflow</p>
-        <div className="mt-4 space-y-5">
-          <WorkflowStep number="1" title="Analyze current seas" description="Finish Wave Analysis before opening the forecast horizons." active={isEditable && getNextIncompleteChartType(packageData) === 'analysis'} done={isChartComplete(packageData, 'analysis') || isSubmittedOrLater} isDarkMode={isDarkMode} />
-          <WorkflowStep number="2" title="Build forecast sequence" description="Certify 24h, then 36h, then 48h so each frame has a verified baseline." active={isEditable && !completion.isComplete && getNextIncompleteChartType(packageData) !== 'analysis'} done={completion.isComplete || isSubmittedOrLater} isDarkMode={isDarkMode} />
-          <WorkflowStep number="3" title="Submit package" description="Submit once all four charts are complete, no requested revision is pending, and no forecaster is still editing." active={isEditable && completion.isComplete && pendingRevisionChartTypes.length === 0} done={isSubmittedOrLater} isDarkMode={isDarkMode} />
+    <section className={`flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-cyan-300/15 bg-cyan-400/[0.06]' : 'border-blue-100 bg-blue-50/70'}`}>
+      <div className="flex min-w-0 items-start gap-3">
+        <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${isDarkMode ? 'bg-cyan-300/10 text-cyan-200' : 'bg-white text-blue-700 shadow-sm'}`}>
+          <CheckCircle2 size={18} />
+        </span>
+        <div className="min-w-0">
+          <p className={`text-[11px] font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>Next action</p>
+          <p className={`mt-1 text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{nextAction}</p>
         </div>
-      </section>
-    </aside>
+      </div>
+    </section>
   );
 }
 
@@ -564,12 +527,11 @@ export default function ForecasterProjectLibraryPage() {
       <div className="mx-auto max-w-[1440px] space-y-5 p-4 sm:space-y-6 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>Forecaster Workspace</p>
-            <h1 className={`mt-2 text-2xl font-black sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Current Forecast Package</h1>
+            <h1 className={`text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Current Forecast Package</h1>
             <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Complete the daily forecast sequence from analysis through the 48-hour outlook.</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            {packageData && <Button icon={Send} loading={submitting} disabled={!canSubmit} onClick={handleSubmitPackage}>{submitButtonLabel}</Button>}
+            {packageData && isEditable && <Button icon={Send} loading={submitting} disabled={!canSubmit} onClick={handleSubmitPackage}>{submitButtonLabel}</Button>}
             <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>Refresh</Button>
           </div>
         </div>
@@ -586,8 +548,7 @@ export default function ForecasterProjectLibraryPage() {
         ) : !packageData ? (
           <EmptyPackageState isCreating={creating} isDarkMode={isDarkMode} onCreate={handleCreatePackage} message={workspaceSettings.emptyPackageMessage} />
         ) : (
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="space-y-5">
+          <div className="space-y-5">
               <section className={`rounded-3xl border p-5 shadow-sm sm:p-6 ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
@@ -596,34 +557,34 @@ export default function ForecasterProjectLibraryPage() {
                     <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</p>
                     {!isEditable && <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>{lockedPackageCopy.lockedNotice}</p>}
                   </div>
-                  <div className="w-full space-y-3 lg:max-w-[280px]">
-                    <div className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
-                      <p className={`text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Completion</p>
-                      <div className="mt-2 flex items-end gap-2"><span className={`text-3xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{completion.percentage}%</span><span className={`pb-1 text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{completion.completed}/{completion.required} charts</span></div>
-                      <div className={`mt-3 h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}><div className="h-full rounded-full bg-cyan-500" style={{ width: `${completion.percentage}%` }} /></div>
+                  <div className={`w-full rounded-2xl border p-4 lg:max-w-[360px] ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Package progress</p>
+                        <div className="mt-1 flex items-end gap-2"><span className={`text-3xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{completion.percentage}%</span><span className={`pb-1 text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{completion.completed}/{completion.required} charts</span></div>
+                      </div>
+                      <CheckCircle2 size={20} className={completion.isComplete ? 'text-emerald-500' : isDarkMode ? 'text-cyan-300' : 'text-blue-600'} />
                     </div>
-                    <SubmitReadinessCard readiness={submitReadiness} canSubmit={canSubmit} isDarkMode={isDarkMode} />
+                    <div className={`mt-3 h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}><div className="h-full rounded-full bg-cyan-500" style={{ width: `${completion.percentage}%` }} /></div>
+                    <div className={`mt-4 border-t pt-4 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+                      <p className={`text-sm font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{submitReadiness.title}</p>
+                      <p className={`mt-1 text-xs font-semibold leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{submitReadiness.detail}</p>
+                    </div>
                   </div>
                 </div>
               </section>
 
-              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <MetricCard label="Forecast date" value={formatForecastDateKey(packageData.forecastDate) || 'Today'} detail="Philippines operational day" icon={CalendarDays} isDarkMode={isDarkMode} />
-                <MetricCard label="Current step" value={pendingRevisionChartTypes.length ? 'Resolve Revision' : !isEditable ? lockedPackageCopy.currentStep : REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || packageData.status || 'Submit'} detail={pendingRevisionChartTypes.length ? 'Open and re-certify revision chart first' : !isEditable ? lockedPackageCopy.reviewGateDetail : completion.isComplete ? `Package is ${packageData.status}` : 'Next chart in sequence'} icon={CheckCircle2} isDarkMode={isDarkMode} />
-                <MetricCard label="Chart deadlines" value="On track" detail="No chart deadline warnings" icon={ClipboardList} isDarkMode={isDarkMode} />
-                <MetricCard label="Review gate" value={hasPendingRevisionAction || !completion.isComplete || !isEditable ? 'Blocked' : 'Open'} detail={hasPendingRevisionAction ? 'Revision action required' : !isEditable ? lockedPackageCopy.reviewGateDetail : completion.isComplete ? 'Sequence complete' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
-              </section>
+              <ForecastReminderCard packageData={packageData} settings={operationsSettings} isDarkMode={isDarkMode} />
+              <NextActionCard packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} pendingRevisionChartTypes={pendingRevisionChartTypes} />
 
               <section>
-                <div className="mb-3 flex items-center justify-between gap-3"><div><p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Required Charts</p><h3 className={`mt-1 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Sequential forecast production board</h3></div></div>
+                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><h2 className={`text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Forecast charts</h2><p className={`text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Four required charts · Complete in sequence</p></div>
                 <div className="grid gap-4 md:grid-cols-2">
                   {orderedCharts.map((chart) => (
                     <ChartCard key={chart.chartType} chart={chart} packageData={packageData} isDarkMode={isDarkMode} isEditable={isEditable} onOpen={(projectId) => navigate(`/studio/${projectId}`)} />
                   ))}
                 </div>
               </section>
-            </div>
-            <OperationsPanel packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} workspaceSettings={operationsSettings} pendingRevisionChartTypes={pendingRevisionChartTypes} />
           </div>
         )}
       </div>
