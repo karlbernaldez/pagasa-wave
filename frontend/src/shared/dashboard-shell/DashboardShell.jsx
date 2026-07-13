@@ -31,8 +31,8 @@ const DashboardShell = ({
       className={`relative flex min-h-screen overflow-x-hidden transition-colors duration-500 ${backgroundClass}`}
       style={isOceanBackground ? {
         backgroundImage: isDarkMode
-          ? "linear-gradient(145deg,rgba(3,24,47,.88),rgba(5,46,85,.82) 54%,rgba(2,21,44,.92)), url('/login_bg.png')"
-          : "linear-gradient(145deg,rgba(240,249,255,.86),rgba(232,244,248,.80) 55%,rgba(238,246,255,.88)), url('/login_bg.png')",
+          ? "linear-gradient(145deg,rgba(3,24,47,.86),rgba(5,46,85,.76) 54%,rgba(2,21,44,.88)), url('/images/WavelabPublicHeroNight.png')"
+          : "linear-gradient(145deg,rgba(240,249,255,.82),rgba(232,244,248,.74) 55%,rgba(238,246,255,.84)), url('/images/WavelabPublicHero.png')",
         backgroundAttachment: 'fixed',
         backgroundPosition: 'center',
         backgroundSize: 'cover',
