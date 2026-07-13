@@ -77,6 +77,7 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
   return (
     <DashboardShell
       activeId={activeId}
+      backgroundVariant="ocean"
       isDarkMode={isDarkMode}
       isMobileOpen={isMobileOpen}
       isSidebarCollapsed={isSidebarCollapsed}
@@ -97,3 +98,4 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
     </DashboardShell>
   );
 }
+
