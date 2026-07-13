@@ -16,5 +16,10 @@ export async function canAccessProject(user, project) {
   const projectOwner = project.owner?._id || project.owner;
   if (String(projectOwner) === String(user.id)) return true;
 
+  // Forecast-package charts are shared operational workspaces. Every authenticated
+  // forecaster may collaborate, but ordinary user accounts must never inherit
+  // access merely because a project is linked to a package.
+  if (user.role !== 'forecaster') return false;
+
   return isForecastPackageChartProject(project._id || project.id);
 }
