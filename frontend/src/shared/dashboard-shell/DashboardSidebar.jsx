@@ -231,8 +231,10 @@ const DashboardSidebar = ({
         } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
         style={backgroundVariant === 'ocean' ? {
           backgroundImage: isDarkMode
-            ? 'linear-gradient(rgba(3,36,69,.86), rgba(3,30,59,.92)), repeating-radial-gradient(ellipse at 120% 110%, transparent 0 22px, rgba(56,189,248,.20) 23px 24px), radial-gradient(circle at 10% 8%, rgba(14,165,233,.20), transparent 34%)'
-            : 'linear-gradient(rgba(255,255,255,.82), rgba(239,248,252,.90)), repeating-radial-gradient(ellipse at 120% 110%, transparent 0 22px, rgba(14,116,144,.16) 23px 24px), radial-gradient(circle at 10% 8%, rgba(14,165,233,.16), transparent 34%)',
+            ? "linear-gradient(rgba(3,36,69,.76), rgba(3,30,59,.88)), repeating-radial-gradient(ellipse at 120% 110%, transparent 0 22px, rgba(56,189,248,.14) 23px 24px), url('/login_bg.png')"
+            : "linear-gradient(rgba(255,255,255,.74), rgba(239,248,252,.86)), repeating-radial-gradient(ellipse at 120% 110%, transparent 0 22px, rgba(14,116,144,.12) 23px 24px), url('/login_bg.png')",
+          backgroundPosition: 'center',
+          backgroundSize: 'cover',
         } : undefined}
       >
         <div className={`border-b px-4 py-4 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
