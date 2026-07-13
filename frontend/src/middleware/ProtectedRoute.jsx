@@ -12,7 +12,7 @@ const ADMIN_ROLES = ['admin'];
 const resolveAuthenticatedRedirect = (role, fallback = '/studio') => {
   if (role === 'admin') return '/dashboard';
   if (role === 'forecaster') return '/studio';
-  if (role === 'user') return fallback;
+  if (role === 'user') return '/';
   return fallback;
 };
 
