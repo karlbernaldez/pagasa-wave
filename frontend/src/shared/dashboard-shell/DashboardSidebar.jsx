@@ -59,6 +59,7 @@ const DashboardSidebar = ({
   setIsMobileOpen,
   setIsSidebarCollapsed,
   title = 'WaveLab',
+  utilityItems = [],
 }) => {
   const toggleCollapse = () => setIsSidebarCollapsed((prev) => !prev);
   const closeMobile = () => setIsMobileOpen(false);
@@ -231,10 +232,11 @@ const DashboardSidebar = ({
         } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
         style={backgroundVariant === 'ocean' ? {
           backgroundImage: isDarkMode
-            ? "linear-gradient(rgba(3,36,69,.70), rgba(3,30,59,.84)), url('/images/WavelabPublicHeroNight.png')"
-            : "linear-gradient(rgba(235,247,253,.88), rgba(222,240,248,.92)), url('/images/WavelabPublicHero.png')",
-          backgroundPosition: 'center left',
-          backgroundSize: 'cover',
+            ? "linear-gradient(180deg,rgba(1,20,39,.62) 0%,rgba(2,38,70,.76) 50%,rgba(0,17,35,.94) 100%), url('/images/WavelabPublicHero.png')"
+            : "linear-gradient(180deg,rgba(225,244,252,.72) 0%,rgba(207,234,246,.84) 56%,rgba(235,247,252,.95) 100%), url('/images/WavelabPublicHero.png')",
+          backgroundPosition: '72% center',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'auto 118%',
         } : undefined}
       >
         <div className={`border-b px-4 py-4 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
@@ -283,6 +285,10 @@ const DashboardSidebar = ({
         </nav>
 
         <div className={`border-t p-3 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
+          <div className="mb-1 space-y-1">
+            {utilityItems.map(renderNavItem)}
+          </div>
+
           <button
             type="button"
             title="Help & Support"
@@ -310,4 +316,3 @@ const DashboardSidebar = ({
 };
 
 export default DashboardSidebar;
-
