@@ -23,8 +23,9 @@ const NAV_ITEMS = [
   { id: 'analytics', label: 'Analytics', path: '/studio?section=analytics', icon: BarChart3, disabled: true },
   { id: 'map-viewer', label: 'Map Viewer', path: '/studio?section=map-viewer', icon: Map, disabled: true },
   { id: 'report-builder', label: 'Report Builder', path: '/pdf', icon: Waves, disabled: true },
-  { id: 'account-settings', label: 'Account Settings', path: '/profile', icon: Settings },
 ];
+
+const ACCOUNT_ITEM = { id: 'account-settings', label: 'Account Settings', path: '/profile', icon: Settings };
 
 const HEADER_BY_PATH = {
   '/profile': {
@@ -56,7 +57,7 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
   const activeId = useMemo(() => {
     if (location.pathname === '/edit-profile') return 'account-settings';
 
-    const activeItem = NAV_ITEMS.find((item) => {
+    const activeItem = [...NAV_ITEMS, ACCOUNT_ITEM].find((item) => {
       if (item.disabled || !item.path) return false;
 
       const [pathname] = item.path.split('?');
@@ -87,6 +88,7 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
       onThemeToggle={toggleDarkMode}
       sidebar={{
         items: NAV_ITEMS,
+        utilityItems: [ACCOUNT_ITEM],
         label: 'Marine Forecasting',
       }}
       header={{
@@ -98,4 +100,3 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
     </DashboardShell>
   );
 }
-
