@@ -300,29 +300,6 @@ function StatusPill({ status, isDarkMode }) {
   );
 }
 
-function SubmitReadinessCard({ readiness, canSubmit, isDarkMode }) {
-  const toneClass = readiness.tone === 'ready'
-    ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-800'
-    : readiness.tone === 'warning'
-      ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-800'
-      : readiness.tone === 'locked'
-        ? isDarkMode ? 'border-white/10 bg-slate-950/55 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'
-        : isDarkMode ? 'border-blue-300/20 bg-blue-400/10 text-blue-100' : 'border-blue-200 bg-blue-50 text-blue-800';
-
-  return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 shrink-0">{canSubmit ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}</div>
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.14em]">Submit readiness</p>
-          <p className="mt-1 text-sm font-black">{readiness.title}</p>
-          <p className="mt-1 text-xs font-semibold leading-5 opacity-90">{readiness.detail}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function NextActionCard({ packageData, completion, isEditable, isDarkMode, pendingRevisionChartTypes }) {
   const nextAction = getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes);
 
@@ -555,7 +532,7 @@ export default function ForecasterProjectLibraryPage() {
                     <div className="flex flex-wrap items-center gap-2"><StatusPill status={packageData.status} isDarkMode={isDarkMode} /><span className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{formatForecastDate(packageData.forecastDate)}</span></div>
                     <h2 className={`mt-3 text-xl font-black sm:text-2xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{packageTitle}</h2>
                     <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</p>
-                    {!isEditable && <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>{lockedPackageCopy.lockedNotice}</p>}
+                    {!isEditable && <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>{lockedPackageCopy.lockedNotice}</p>}
                   </div>
                   <div className={`w-full rounded-2xl border p-4 lg:max-w-[360px] ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
                     <div className="flex items-end justify-between gap-3">
