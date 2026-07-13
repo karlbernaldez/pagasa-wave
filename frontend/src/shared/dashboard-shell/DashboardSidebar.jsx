@@ -229,6 +229,11 @@ const DashboardSidebar = ({
         className={`fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh flex-col overflow-hidden border-r transition-all duration-300 ${
           isSidebarCollapsed ? 'w-[86px]' : 'w-[292px]'
         } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
+        style={backgroundVariant === 'ocean' ? {
+          backgroundImage: isDarkMode
+            ? 'linear-gradient(rgba(3,36,69,.86), rgba(3,30,59,.92)), repeating-radial-gradient(ellipse at 120% 110%, transparent 0 22px, rgba(56,189,248,.20) 23px 24px), radial-gradient(circle at 10% 8%, rgba(14,165,233,.20), transparent 34%)'
+            : 'linear-gradient(rgba(255,255,255,.82), rgba(239,248,252,.90)), repeating-radial-gradient(ellipse at 120% 110%, transparent 0 22px, rgba(14,116,144,.16) 23px 24px), radial-gradient(circle at 10% 8%, rgba(14,165,233,.16), transparent 34%)',
+        } : undefined}
       >
         <div className={`border-b px-4 py-4 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
           <div className="flex items-center justify-between gap-3">
