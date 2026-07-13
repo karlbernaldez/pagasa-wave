@@ -29,9 +29,7 @@ const ACCOUNT_ITEM = { id: 'account-settings', label: 'Account Settings', path: 
 
 const HEADER_BY_PATH = {
   '/profile': {
-    eyebrow: 'Forecaster account',
-    title: 'Account Settings',
-    description: 'Review your profile, contact details, role, and account activity',
+    hideContext: true,
   },
   '/edit-profile': {
     eyebrow: 'Forecaster account',
