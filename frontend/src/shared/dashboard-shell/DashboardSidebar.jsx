@@ -227,9 +227,9 @@ const DashboardSidebar = ({
       )}
 
       <aside
-        className={`fixed inset-y-1 left-1 z-40 flex h-[calc(100dvh-0.5rem)] max-h-[calc(100dvh-0.5rem)] flex-col overflow-hidden rounded-2xl border transition-all duration-300 ${
-          isSidebarCollapsed ? 'w-[82px]' : 'w-[266px]'
-        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-[calc(100%+0.5rem)] lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
+        className={`fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh flex-col overflow-hidden border-r transition-all duration-300 ${
+          isSidebarCollapsed ? 'w-[86px]' : 'w-[292px]'
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
         style={backgroundVariant === 'ocean' ? {
           backgroundImage: isDarkMode
             ? "linear-gradient(180deg,rgba(1,18,37,.66) 0%,rgba(2,36,67,.78) 48%,rgba(0,17,35,.94) 100%), url('/images/WavelabSidebarDark.png'), url('/images/WavelabPublicHero.png')"
