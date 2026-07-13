@@ -368,7 +368,7 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen, sequenc
   return (
     <article className={`group relative min-h-[174px] overflow-hidden rounded-2xl border shadow-lg transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-cyan-300/25 bg-[#062b50]/82 shadow-black/20 hover:border-cyan-300/50' : 'border-blue-200 bg-white/92 shadow-blue-950/5 hover:border-blue-300'}`}>
       <div className={`absolute inset-x-0 top-0 h-1 ${accentClass}`} />
-      <div className="grid gap-4 p-4 pt-5 sm:grid-cols-[32px_1fr] xl:grid-cols-[32px_72px_minmax(0,1fr)_190px] xl:items-center">
+      <div className="grid gap-4 p-4 pt-5 sm:grid-cols-[32px_1fr] xl:grid-cols-[32px_72px_minmax(0,1fr)_205px] xl:items-center">
         <span className={`grid h-8 w-8 place-items-center rounded-md border text-sm font-black ${isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-white' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>{sequenceNumber}</span>
 
         <div className={`grid h-[68px] w-[68px] place-items-center rounded-full border ${isPositiveState ? isDarkMode ? 'border-cyan-200/45 bg-white/[0.04] text-white' : 'border-blue-200 bg-blue-50 text-blue-800' : isQueued ? 'border-slate-500/30 text-slate-500' : isDarkMode ? 'border-cyan-300/35 bg-cyan-400/[0.06] text-cyan-100' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
@@ -391,8 +391,13 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen, sequenc
         </div>
 
         <div className={`flex flex-col gap-3 border-t pt-4 sm:col-span-2 xl:col-span-1 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${statusClass}`}><CheckCircle2 size={14} />{statusLabel}</span>
-          <span className={`inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-wide ${isComplete ? isDarkMode ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-300' : 'border-cyan-200 bg-cyan-50 text-cyan-700' : isDarkMode ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`} title={certificationText}><ShieldCheck className="shrink-0" size={13} /><span className="truncate">{certificationText}</span></span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${statusClass}`}><CheckCircle2 size={14} />{statusLabel}</span>
+            <span className="group/certification relative inline-flex" tabIndex={0} aria-label={isComplete ? certificationText : 'Not yet certified'}>
+              <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-wide ${isComplete ? isDarkMode ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-300' : 'border-cyan-200 bg-cyan-50 text-cyan-700' : isDarkMode ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><ShieldCheck className="shrink-0" size={13} />{isComplete ? 'Certified' : 'Not certified'}</span>
+              <span role="tooltip" className={`pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-max max-w-[240px] translate-y-1 rounded-lg border px-3 py-2 text-[11px] font-semibold normal-case tracking-normal opacity-0 shadow-xl transition duration-150 group-hover/certification:translate-y-0 group-hover/certification:opacity-100 group-focus-within/certification:translate-y-0 group-focus-within/certification:opacity-100 ${isDarkMode ? 'border-cyan-300/20 bg-slate-950 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}`}>{certificationText}</span>
+            </span>
+          </div>
           <Button className="w-full" size="sm" variant="secondary" icon={Eye} disabled={!canOpen} onClick={() => canOpen && onOpen(projectId)}>
             {isQueued ? 'Waiting for prerequisite' : isComplete ? 'Review chart' : 'Open chart'}
           </Button>
@@ -581,4 +586,3 @@ export default function ForecasterProjectLibraryPage() {
     </div>
   );
 }
-
