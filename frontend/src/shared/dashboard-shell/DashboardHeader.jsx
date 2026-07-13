@@ -66,7 +66,7 @@ const DashboardHeader = ({
   }, [closeUserMenu]);
 
   return (
-    <header className={`sticky top-0 z-50 border-b backdrop-blur-2xl transition-colors ${panelClass}`}>
+    <header className={`sticky top-0 z-50 border-b transition-colors ${hideContext ? 'border-transparent bg-transparent' : `backdrop-blur-2xl ${panelClass}`}`}>
       <div className="flex h-16 items-center justify-between gap-3 px-3 sm:px-4 md:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
@@ -253,3 +253,4 @@ const DashboardHeader = ({
 };
 
 export default DashboardHeader;
+
