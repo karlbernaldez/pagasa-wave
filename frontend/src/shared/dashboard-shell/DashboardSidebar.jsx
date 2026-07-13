@@ -231,9 +231,9 @@ const DashboardSidebar = ({
         } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
         style={backgroundVariant === 'ocean' ? {
           backgroundImage: isDarkMode
-            ? "linear-gradient(rgba(3,36,69,.76), rgba(3,30,59,.88)), repeating-radial-gradient(ellipse at 120% 110%, transparent 0 22px, rgba(56,189,248,.14) 23px 24px), url('/login_bg.png')"
-            : "linear-gradient(rgba(255,255,255,.74), rgba(239,248,252,.86)), repeating-radial-gradient(ellipse at 120% 110%, transparent 0 22px, rgba(14,116,144,.12) 23px 24px), url('/login_bg.png')",
-          backgroundPosition: 'center',
+            ? "linear-gradient(rgba(3,36,69,.70), rgba(3,30,59,.84)), url('/images/WavelabPublicHeroNight.png')"
+            : "linear-gradient(rgba(255,255,255,.68), rgba(239,248,252,.82)), url('/images/WavelabPublicHero.png')",
+          backgroundPosition: 'center left',
           backgroundSize: 'cover',
         } : undefined}
       >
