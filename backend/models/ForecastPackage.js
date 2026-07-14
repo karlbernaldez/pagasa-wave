@@ -208,6 +208,17 @@ ForecastPackageSchema.pre('validate', function syncLegacyCreator(next) {
   next();
 });
 
+ForecastPackageSchema.pre(/^find/, function populateContributorIdentities(next) {
+  this.populate([
+    { path: 'charts.participants.user', select: 'firstName lastName username email' },
+    { path: 'charts.activeEditors.user', select: 'firstName lastName username email' },
+    { path: 'charts.readyEditors.user', select: 'firstName lastName username email' },
+    { path: 'charts.readyBy', select: 'firstName lastName username email' },
+    { path: 'chartCompletion.completedBy', select: 'firstName lastName username email' },
+  ]);
+  next();
+});
+
 ForecastPackageSchema.index({ forecastDate: 1 }, { unique: true });
 ForecastPackageSchema.index({ status: 1, updatedAt: -1 });
 ForecastPackageSchema.index({ forecastDate: -1, updatedAt: -1 });
