@@ -5,6 +5,7 @@ import NotificationBell from '@/shared/notifications/NotificationBell';
 import { logoutUser } from '@/api/auth';
 
 const DashboardHeader = ({
+  accountSettingsPath = '/profile',
   description,
   eyebrow,
   hideContext = false,
@@ -52,8 +53,8 @@ const DashboardHeader = ({
 
   const goToAccountSettings = useCallback(() => {
     closeUserMenu();
-    navigate('/profile');
-  }, [closeUserMenu, navigate]);
+    navigate(accountSettingsPath);
+  }, [accountSettingsPath, closeUserMenu, navigate]);
 
   const handleLogout = useCallback(async () => {
     closeUserMenu();
@@ -80,33 +81,33 @@ const DashboardHeader = ({
           {!hideContext && (
             <div className="min-w-0 flex-1">
               <div className="hidden items-center gap-2 min-[420px]:flex">
-              <Waves size={12} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-600'} aria-hidden="true" />
-              <span className={`truncate text-[10px] font-black uppercase tracking-[0.16em] ${
-                isDarkMode ? 'text-slate-500' : 'text-slate-400'
-              }`}>
-                {eyebrow}
-              </span>
-            </div>
-
-            <div className="mt-0.5 flex min-w-0 items-center gap-3">
-              <h2
-                className={`truncate text-base font-black tracking-tight sm:text-xl ${
-                  isDarkMode ? 'text-white' : 'text-slate-950'
-                }`}
-                title={title}
-              >
-                {title}
-              </h2>
-
-              <span className={`hidden h-5 w-px sm:block ${isDarkMode ? 'bg-white/10' : 'bg-slate-200/80'}`} />
-
-              {description && (
-                <p className={`hidden max-w-md truncate text-xs font-semibold md:block ${
-                  isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                <Waves size={12} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-600'} aria-hidden="true" />
+                <span className={`truncate text-[10px] font-black uppercase tracking-[0.16em] ${
+                  isDarkMode ? 'text-slate-500' : 'text-slate-400'
                 }`}>
-                  {description}
-                </p>
-              )}
+                  {eyebrow}
+                </span>
+              </div>
+
+              <div className="mt-0.5 flex min-w-0 items-center gap-3">
+                <h2
+                  className={`truncate text-base font-black tracking-tight sm:text-xl ${
+                    isDarkMode ? 'text-white' : 'text-slate-950'
+                  }`}
+                  title={title}
+                >
+                  {title}
+                </h2>
+
+                <span className={`hidden h-5 w-px sm:block ${isDarkMode ? 'bg-white/10' : 'bg-slate-200/80'}`} />
+
+                {description && (
+                  <p className={`hidden max-w-md truncate text-xs font-semibold md:block ${
+                    isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                  }`}>
+                    {description}
+                  </p>
+                )}
               </div>
             </div>
           )}
