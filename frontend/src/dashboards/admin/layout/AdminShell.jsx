@@ -6,9 +6,9 @@ import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
 const ACCOUNT_ITEM = {
-  id: 'account-settings',
+  id: ADMIN_TABS.ACCOUNT,
   label: 'Account Settings',
-  path: '/profile',
+  path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ACCOUNT],
   icon: Settings,
 };
 
@@ -67,6 +67,7 @@ const AdminShell = ({
         label: 'Administration',
       }}
       header={{
+        accountSettingsPath: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ACCOUNT],
         description: activeMeta?.description,
         eyebrow: 'Admin Dashboard',
         title: activeMeta?.title ?? 'Dashboard Overview',
