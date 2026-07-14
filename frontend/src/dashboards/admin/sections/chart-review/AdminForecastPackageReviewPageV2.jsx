@@ -213,15 +213,6 @@ export default function AdminForecastPackageReviewPageV2() {
   return (
     <div className="min-h-full bg-transparent">
       <div className="mx-auto max-w-[1500px] space-y-4 p-4 sm:p-6">
-        <section className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-cyan-200/80' : 'text-cyan-700'}`}>Review queue</p>
-            <h1 className={`mt-1 text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Forecast Packages</h1>
-            <p className={`mt-1 max-w-2xl text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Prioritize submitted work, continue active reviews, and publish packages only after all required charts are approved.</p>
-          </div>
-          <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{total} package{total === 1 ? '' : 's'} in the current result</p>
-        </section>
-
         {feedbackError && (
           <div role="alert" className={`rounded-xl border px-4 py-3 text-sm font-semibold backdrop-blur-xl ${isDarkMode ? 'border-red-400/25 bg-red-950/30 text-red-200' : 'border-red-200 bg-red-50/85 text-red-700'}`}>
             <AlertCircle className="mr-2 inline" size={17} />
