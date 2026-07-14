@@ -1,6 +1,9 @@
 name: WaveLab AlmaLinux Production Deploy
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -50,6 +53,7 @@ jobs:
 
   deploy:
     name: Deploy to production AlmaLinux server
+    if: github.event_name != 'pull_request'
     needs: validate
     runs-on:
       - self-hosted
