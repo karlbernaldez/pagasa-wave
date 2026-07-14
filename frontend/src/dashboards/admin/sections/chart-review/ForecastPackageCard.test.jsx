@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';
 
 import ForecastPackageCard from './ForecastPackageCard';
@@ -138,9 +138,10 @@ describe('ForecastPackageCard', () => {
     }));
 
     fireEvent.click(screen.getByRole('button', { name: /continue review/i }));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
 
-    const continueReview = screen.getByText(/^continue review$/i).closest('button');
+    const continueReview = within(dialog).getByText(/^continue review$/i).closest('button');
     fireEvent.click(continueReview);
     expect(handlers.onOpenChart).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'Under Review' }),
