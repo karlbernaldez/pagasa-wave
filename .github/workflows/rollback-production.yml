@@ -86,7 +86,7 @@ jobs:
           TARGET_SHA: ${{ needs.validate-request.outputs.target_sha }}
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
         run: |
-          test "$(git -C /home/wavelab/app rev-parse HEAD)" = "$TARGET_SHA"
+          test "$(git -c safe.directory=/home/wavelab/app -C /home/wavelab/app rev-parse HEAD)" = "$TARGET_SHA"
           systemctl is-active --quiet wavelab-backend
           curl -fsS --max-time 10 http://127.0.0.1:5000/status >/dev/null
           curl -fsSI --max-time 10 -H "Host: $PUBLIC_HOST" http://127.0.0.1/ >/dev/null
