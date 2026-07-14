@@ -5,6 +5,7 @@ DEPLOY_SHA="${1:-}"
 PUBLIC_HOST="${2:-}"
 APP_USER="${APP_USER:-wavelab}"
 APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Run this deployment entrypoint with sudo/root."
@@ -40,8 +41,8 @@ if [[ -n "$(run_git status --porcelain)" ]]; then
   exit 1
 fi
 
-run_git fetch --prune origin dev
-run_git checkout dev
+run_git fetch --prune origin "$DEPLOY_BRANCH"
+run_git checkout "$DEPLOY_BRANCH"
 run_git merge --ff-only "$DEPLOY_SHA"
 
 if [[ "$(run_git rev-parse HEAD)" != "$DEPLOY_SHA" ]]; then
