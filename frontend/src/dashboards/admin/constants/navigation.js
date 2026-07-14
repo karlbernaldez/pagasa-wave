@@ -57,7 +57,7 @@ export const MENU_GROUPS = [
     items: [
       { id: ADMIN_TABS.ANALYTICS, label: 'Analytics', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ANALYTICS], icon: BarChart3 },
       { id: ADMIN_TABS.CALENDAR, label: 'Calendar', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CALENDAR], icon: CalendarDays },
-      { id: ADMIN_TABS.SETTINGS, label: 'Settings', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS], icon: Settings },
+      { id: ADMIN_TABS.SETTINGS, label: 'Public Content', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS], icon: Settings },
     ],
   },
 ];
