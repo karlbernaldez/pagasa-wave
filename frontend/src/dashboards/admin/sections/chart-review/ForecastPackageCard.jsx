@@ -20,7 +20,7 @@ const STATUS_STYLES = {
   Archived: { dark: 'border-white/10 bg-white/[0.05] text-slate-300', light: 'border-slate-200 bg-slate-100 text-slate-600' },
 };
 
-function SummaryStat({ icon: Icon, label, value, isDarkMode }) {
+function SummaryStat({ icon: Icon, label, value, title, isDarkMode }) {
   return (
     <div className={`flex items-center gap-3 rounded-xl border p-4 backdrop-blur-xl ${isDarkMode ? 'border-cyan-200/15 bg-white/[0.035]' : 'border-white/80 bg-white/58'}`}>
       <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-200' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}>
@@ -28,7 +28,7 @@ function SummaryStat({ icon: Icon, label, value, isDarkMode }) {
       </span>
       <div className="min-w-0">
         <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
-        <p className={`mt-1 truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{value}</p>
+        <p className={`mt-1 truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`} title={title || value}>{value}</p>
       </div>
     </div>
   );
@@ -38,6 +38,8 @@ function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart
   const dateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
   const isReviewablePackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status);
   const chartCount = forecastPackage.chartCount || forecastPackage.charts?.length || 0;
+  const contributorLabel = forecastPackage.contributorLabel || 'No recorded contributors';
+  const contributorTitle = (forecastPackage.contributorNames || []).join(', ') || contributorLabel;
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -65,7 +67,7 @@ function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart
         <div className="relative p-5 sm:p-7">
           <div className="grid gap-3 sm:grid-cols-3">
             <SummaryStat icon={CheckCircle2} label="Status" value={forecastPackage.status} isDarkMode={isDarkMode} />
-            <SummaryStat icon={UsersRound} label="Workspace" value="Shared by all forecasters" isDarkMode={isDarkMode} />
+            <SummaryStat icon={UsersRound} label="Contributors" value={contributorLabel} title={contributorTitle} isDarkMode={isDarkMode} />
             <SummaryStat icon={BarChart3} label="Charts" value={`${chartCount} available`} isDarkMode={isDarkMode} />
           </div>
 
@@ -75,7 +77,7 @@ function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart
             <Waves size={22} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} />
             <div>
               <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Package charts</p>
-              <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{isReviewablePackage ? 'Choose the chart you want to review.' : 'Choose the chart you want to view.'}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{isReviewablePackage ? 'Choose the chart you want to review.' : 'Choose the chart you want to view.'}</p>
             </div>
           </div>
 
@@ -89,7 +91,7 @@ function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart
                   <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-200' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}><Icon size={22} /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-base font-black">{CHART_LABELS[chartRow.chartType] || chartRow.chartType || 'Forecast chart'}</span>
-                    <span className={`mt-1 block truncate text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{chart?.name || chart?.title || 'Chart unavailable'}</span>
+                    <span className="mt-1 block truncate text-xs font-semibold text-slate-500">{chart?.name || chart?.title || 'Chart unavailable'}</span>
                     {chartId && <span className={`mt-3 block text-xs font-black ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{isReviewablePackage ? 'Review chart' : 'View chart'}</span>}
                   </span>
                   {chartId && <ArrowRight size={18} className={`${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} transition-transform group-hover:translate-x-1`} />}
@@ -120,6 +122,8 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
   const dateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
   const actionLabel = canPublish ? 'Publish package' : canReview ? (forecastPackage.status === 'Submitted' ? 'Start review' : 'Continue review') : canViewPublished ? 'View package' : forecastPackage.status;
   const statusStyle = STATUS_STYLES[forecastPackage.status] || STATUS_STYLES.Draft;
+  const contributorLabel = forecastPackage.contributorLabel || 'No recorded contributors';
+  const contributorTitle = (forecastPackage.contributorNames || []).join(', ') || contributorLabel;
 
   const handleAction = () => {
     if (canPublish) return onPublishPackage?.(forecastPackage);
@@ -131,7 +135,7 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
       <article className={`grid gap-4 rounded-xl border px-4 py-4 backdrop-blur-xl transition sm:grid-cols-[minmax(0,1fr)_8.5rem_12rem_10rem] sm:items-center xl:col-span-2 ${isDarkMode ? 'border-white/10 bg-slate-950/42 hover:border-cyan-300/20 hover:bg-slate-950/55' : 'border-white/75 bg-white/64 hover:border-cyan-200 hover:bg-white/78'}`}>
         <div className="min-w-0"><div className="flex items-center gap-3"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-white/10 bg-white/[0.04] text-cyan-200' : 'border-slate-200 bg-white/80 text-cyan-700'}`}><CalendarDays size={18} /></span><div className="min-w-0"><h3 className={`truncate text-sm font-black sm:text-base ${isDarkMode ? 'text-white' : 'text-slate-950'}`} title={forecastPackage.title}>{dateLabel}</h3><p className="truncate text-xs font-semibold text-slate-500" title={forecastPackage.title}>{forecastPackage.title}</p></div></div></div>
         <div className="sm:justify-self-start"><span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${isDarkMode ? statusStyle.dark : statusStyle.light}`}>{forecastPackage.status}</span></div>
-        <div className="min-w-0"><p className="text-xs font-bold text-slate-500">Shared workspace</p><p className={`truncate text-sm font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>All forecasters</p><p className="mt-1 text-xs font-semibold text-slate-500">{reviewedCount}/{REQUIRED_CHART_COUNT} reviewed</p></div>
+        <div className="min-w-0"><p className="text-xs font-bold text-slate-500">Contributors</p><p className={`truncate text-sm font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`} title={contributorTitle}>{contributorLabel}</p><p className="mt-1 text-xs font-semibold text-slate-500">{reviewedCount}/{REQUIRED_CHART_COUNT} reviewed</p></div>
         <div className="sm:justify-self-end"><Button size="sm" className="w-full sm:w-40" variant={canReview || canPublish ? 'primary' : 'secondary'} icon={canPublish ? PackageCheck : ArrowRight} disabled={isPublishing || (!canReview && !canPublish && !canViewPublished)} onClick={handleAction}>{isPublishing ? 'Publishing...' : actionLabel}</Button></div>
       </article>
       {showPackageSummary && <PackageSummaryModal forecastPackage={forecastPackage} isDarkMode={isDarkMode} onClose={() => setShowPackageSummary(false)} onOpenChart={onOpenChart} />}
