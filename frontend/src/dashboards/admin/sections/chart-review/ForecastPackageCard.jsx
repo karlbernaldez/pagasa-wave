@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight, BarChart3, CalendarDays, CheckCircle2, Clock3, PackageCheck, UserRound, Waves, X } from 'lucide-react';
+import { ArrowRight, BarChart3, CalendarDays, CheckCircle2, Clock3, PackageCheck, UsersRound, Waves, X } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import { CHART_LABELS, formatPackageDate } from '@/features/projects/utils/forecastPackageGrouping';
@@ -65,7 +65,7 @@ function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart
         <div className="relative p-5 sm:p-7">
           <div className="grid gap-3 sm:grid-cols-3">
             <SummaryStat icon={CheckCircle2} label="Status" value={forecastPackage.status} isDarkMode={isDarkMode} />
-            <SummaryStat icon={UserRound} label="Owner" value={forecastPackage.ownerLabel || 'Forecast team'} isDarkMode={isDarkMode} />
+            <SummaryStat icon={UsersRound} label="Workspace" value="Shared by all forecasters" isDarkMode={isDarkMode} />
             <SummaryStat icon={BarChart3} label="Charts" value={`${chartCount} available`} isDarkMode={isDarkMode} />
           </div>
 
@@ -131,7 +131,7 @@ export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpe
       <article className={`grid gap-4 rounded-xl border px-4 py-4 backdrop-blur-xl transition sm:grid-cols-[minmax(0,1fr)_8.5rem_12rem_10rem] sm:items-center xl:col-span-2 ${isDarkMode ? 'border-white/10 bg-slate-950/42 hover:border-cyan-300/20 hover:bg-slate-950/55' : 'border-white/75 bg-white/64 hover:border-cyan-200 hover:bg-white/78'}`}>
         <div className="min-w-0"><div className="flex items-center gap-3"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-white/10 bg-white/[0.04] text-cyan-200' : 'border-slate-200 bg-white/80 text-cyan-700'}`}><CalendarDays size={18} /></span><div className="min-w-0"><h3 className={`truncate text-sm font-black sm:text-base ${isDarkMode ? 'text-white' : 'text-slate-950'}`} title={forecastPackage.title}>{dateLabel}</h3><p className="truncate text-xs font-semibold text-slate-500" title={forecastPackage.title}>{forecastPackage.title}</p></div></div></div>
         <div className="sm:justify-self-start"><span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${isDarkMode ? statusStyle.dark : statusStyle.light}`}>{forecastPackage.status}</span></div>
-        <div className="min-w-0"><p className="text-xs font-bold text-slate-500">Owner</p><p className={`truncate text-sm font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{forecastPackage.ownerLabel || 'Forecast team'}</p><p className="mt-1 text-xs font-semibold text-slate-500">{reviewedCount}/{REQUIRED_CHART_COUNT} reviewed</p></div>
+        <div className="min-w-0"><p className="text-xs font-bold text-slate-500">Shared workspace</p><p className={`truncate text-sm font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>All forecasters</p><p className="mt-1 text-xs font-semibold text-slate-500">{reviewedCount}/{REQUIRED_CHART_COUNT} reviewed</p></div>
         <div className="sm:justify-self-end"><Button size="sm" className="w-full sm:w-40" variant={canReview || canPublish ? 'primary' : 'secondary'} icon={canPublish ? PackageCheck : ArrowRight} disabled={isPublishing || (!canReview && !canPublish && !canViewPublished)} onClick={handleAction}>{isPublishing ? 'Publishing...' : actionLabel}</Button></div>
       </article>
       {showPackageSummary && <PackageSummaryModal forecastPackage={forecastPackage} isDarkMode={isDarkMode} onClose={() => setShowPackageSummary(false)} onOpenChart={onOpenChart} />}
