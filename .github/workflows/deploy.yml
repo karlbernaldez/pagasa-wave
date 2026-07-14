@@ -1,16 +1,16 @@
-name: WaveLab AlmaLinux Deploy
+name: WaveLab AlmaLinux Production Deploy
 
 on:
   push:
     branches:
-      - dev
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: wavelab-almalinux-dev
+  group: wavelab-almalinux-production
   cancel-in-progress: false
 
 jobs:
@@ -49,15 +49,15 @@ jobs:
           pnpm build
 
   deploy:
-    name: Deploy on AlmaLinux server
+    name: Deploy to production AlmaLinux server
     needs: validate
     runs-on:
       - self-hosted
       - linux
       - x64
-      - wavelab-dev
+      - wavelab-production
     timeout-minutes: 40
-    environment: development
+    environment: production
     steps:
       - name: Checkout validated commit
         uses: actions/checkout@v4
@@ -67,11 +67,10 @@ jobs:
 
       - name: Deploy validated commit
         env:
-          APP_ROOT: /home/wavelab/app
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
         run: |
           test -n "$PUBLIC_HOST"
-          sudo env APP_ROOT="$APP_ROOT" bash "$GITHUB_WORKSPACE/deploy/almalinux/ci-deploy.sh" "$GITHUB_SHA" "$PUBLIC_HOST"
+          sudo -n /usr/local/sbin/wavelab-deploy "$GITHUB_SHA" "$PUBLIC_HOST"
 
       - name: Verify services
         run: |
