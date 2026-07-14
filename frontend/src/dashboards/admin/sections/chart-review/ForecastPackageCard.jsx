@@ -34,6 +34,15 @@ function SummaryStat({ icon: Icon, label, value, title, isDarkMode }) {
   );
 }
 
+function getChartActionLabel(status, isReviewablePackage) {
+  if (status === 'Approved') return 'View approved chart';
+  if (status === 'Published') return 'View published chart';
+  if (status === 'Revision Requested') return 'Review requested changes';
+  if (status === 'Under Review') return 'Continue review';
+  if (status === 'Submitted') return 'Start review';
+  return isReviewablePackage ? 'Review chart' : 'View chart';
+}
+
 function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart }) {
   const dateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
   const isReviewablePackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status);
@@ -85,14 +94,21 @@ function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart
             {(forecastPackage.charts || []).map((chartRow) => {
               const chart = chartRow.project;
               const chartId = chart?._id || chart?.id;
+              const chartStatus = chart?.status || 'Draft';
+              const chartStatusStyle = STATUS_STYLES[chartStatus] || STATUS_STYLES.Draft;
+              const actionLabel = getChartActionLabel(chartStatus, isReviewablePackage);
               const Icon = chartRow.chartType === 'analysis' ? Waves : Clock3;
+
               return (
                 <button key={chartId || chartRow.chartType} type="button" disabled={!chartId} onClick={() => { if (!chartId) return; onClose(); onOpenChart?.(chart, forecastPackage); }} className={`group flex items-center gap-4 rounded-xl border p-4 text-left transition ${chartId ? isDarkMode ? 'border-cyan-200/15 bg-white/[0.035] hover:border-cyan-300/40 hover:bg-cyan-300/[0.08]' : 'border-white/80 bg-white/55 hover:border-cyan-200 hover:bg-white/85' : 'cursor-not-allowed border-transparent opacity-45'}`}>
                   <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-200' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}><Icon size={22} /></span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-base font-black">{CHART_LABELS[chartRow.chartType] || chartRow.chartType || 'Forecast chart'}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-base font-black">{CHART_LABELS[chartRow.chartType] || chartRow.chartType || 'Forecast chart'}</span>
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] ${isDarkMode ? chartStatusStyle.dark : chartStatusStyle.light}`}>{chartStatus}</span>
+                    </span>
                     <span className="mt-1 block truncate text-xs font-semibold text-slate-500">{chart?.name || chart?.title || 'Chart unavailable'}</span>
-                    {chartId && <span className={`mt-3 block text-xs font-black ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{isReviewablePackage ? 'Review chart' : 'View chart'}</span>}
+                    {chartId && <span className={`mt-3 block text-xs font-black ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{actionLabel}</span>}
                   </span>
                   {chartId && <ArrowRight size={18} className={`${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} transition-transform group-hover:translate-x-1`} />}
                 </button>
