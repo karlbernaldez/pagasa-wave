@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">WaveLab logo mark</title>
+  <desc id="desc">A layered ocean wave with marine forecast data points inside a glass orb.</desc>
+  <defs>
+    <linearGradient id="orb" x1="20" y1="16" x2="104" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9F8FF" stop-opacity=".82"/>
+      <stop offset=".22" stop-color="#38D6FF" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#0756D8" stop-opacity=".18"/>
+    </linearGradient>
+    <linearGradient id="waveA" x1="17" y1="48" x2="108" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67F3FF"/>
+      <stop offset=".48" stop-color="#15C8F3"/>
+      <stop offset="1" stop-color="#1378F5"/>
+    </linearGradient>
+    <linearGradient id="waveB" x1="28" y1="70" x2="105" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#28D7FF"/>
+      <stop offset=".55" stop-color="#116BE7"/>
+      <stop offset="1" stop-color="#082E91"/>
+    </linearGradient>
+    <linearGradient id="waveC" x1="37" y1="86" x2="99" y2="111" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1598F4"/>
+      <stop offset="1" stop-color="#071C68"/>
+    </linearGradient>
+    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="clip"><circle cx="64" cy="64" r="52"/></clipPath>
+  </defs>
+
+  <circle cx="64" cy="64" r="53" fill="#041A3A" fill-opacity=".72" stroke="url(#orb)" stroke-width="2.5"/>
+  <circle cx="64" cy="64" r="49" fill="none" stroke="#7EEBFF" stroke-opacity=".12"/>
+
+  <g clip-path="url(#clip)">
+    <g opacity=".74" fill="#33D8FF">
+      <circle cx="29" cy="30" r="1.2"/><circle cx="41" cy="30" r="1.2"/><circle cx="53" cy="30" r="1.2"/><circle cx="65" cy="30" r="1.2"/>
+      <circle cx="29" cy="42" r="1.2"/><circle cx="41" cy="42" r="1.2"/><circle cx="53" cy="42" r="1.2"/><circle cx="65" cy="42" r="1.2"/>
+      <circle cx="29" cy="54" r="1.2"/><circle cx="41" cy="54" r="1.2"/><circle cx="53" cy="54" r="1.2"/>
+    </g>
+    <path d="M22 58C34 54 41 48 50 42C62 34 74 31 95 24" fill="none" stroke="#35DFFF" stroke-width="1.8" stroke-linecap="round" filter="url(#glow)"/>
+    <g fill="#E7FCFF" stroke="#35DFFF" stroke-width="1.4" filter="url(#glow)">
+      <circle cx="26" cy="56" r="2.5"/><circle cx="49" cy="43" r="2.5"/><circle cx="71" cy="33" r="2.5"/><circle cx="95" cy="24" r="3"/>
+    </g>
+
+    <path d="M7 75C24 86 39 84 51 71C63 58 74 48 89 47C101 46 111 51 119 62C108 57 99 58 92 64C83 72 79 84 65 88C46 94 23 90 7 75Z" fill="url(#waveA)"/>
+    <path d="M13 85C31 96 52 99 68 89C80 81 84 70 94 65C101 61 108 61 115 66C107 68 102 73 99 80C94 92 85 103 66 106C44 110 24 100 13 85Z" fill="url(#waveB)"/>
+    <path d="M27 101C43 108 58 111 72 106C84 102 91 94 96 86C94 99 88 109 77 116C58 127 37 117 27 101Z" fill="url(#waveC)"/>
+  </g>
+
+  <path d="M27 22C43 8 70 7 89 19" fill="none" stroke="#E7FCFF" stroke-opacity=".72" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="64" cy="64" r="54" fill="none" stroke="#23D4FF" stroke-opacity=".22" filter="url(#glow)"/>
+</svg>
