@@ -4,7 +4,7 @@ import Button from '@/components/ui/Button';
 
 const NO_PUBLICATION_REASON = 'Operational exception / no verified publication';
 
-function ActionHint({ isReviewable, isUnderReview, isApproved, hasRemarks, isDarkMode }) {
+function ActionHint({ isReviewable, isUnderReview, isApproved, hasRemarks, canPublish, isDarkMode }) {
   if (!isReviewable && !isApproved) return null;
 
   const surface = isDarkMode
@@ -14,7 +14,9 @@ function ActionHint({ isReviewable, isUnderReview, isApproved, hasRemarks, isDar
   if (isApproved) {
     return (
       <div className={`rounded-xl border px-3 py-2 text-xs font-semibold leading-5 backdrop-blur-xl ${surface}`}>
-        This chart is approved and ready to publish.
+        {canPublish
+          ? 'This chart is approved and ready to publish.'
+          : 'This chart is approved. Complete the remaining package charts before publishing the package.'}
       </div>
     );
   }
@@ -47,6 +49,8 @@ export default function ReviewActionsFooter({
   onPublish,
   onClose,
 }) {
+  const canPublish = typeof onPublish === 'function';
+
   return (
     <div className={`mx-3 mb-3 mt-1 shrink-0 rounded-2xl border p-3 shadow-2xl backdrop-blur-2xl sm:mx-4 sm:mb-4 xl:sticky xl:bottom-0 xl:mx-0 xl:mb-0 xl:mt-0 xl:rounded-none xl:border-x-0 xl:border-b-0 ${
       isDarkMode
@@ -64,7 +68,7 @@ export default function ReviewActionsFooter({
           </div>
         )}
 
-        <ActionHint isReviewable={isReviewable} isUnderReview={isUnderReview} isApproved={isApproved} hasRemarks={hasRemarks} isDarkMode={isDarkMode} />
+        <ActionHint isReviewable={isReviewable} isUnderReview={isUnderReview} isApproved={isApproved} hasRemarks={hasRemarks} canPublish={canPublish} isDarkMode={isDarkMode} />
 
         {isReviewable && (
           <>
@@ -111,7 +115,7 @@ export default function ReviewActionsFooter({
           </>
         )}
 
-        {isApproved && (
+        {isApproved && canPublish && (
           <Button className="min-h-11 w-full" icon={Send} loading={busyAction === 'publish'} disabled={Boolean(busyAction)} onClick={onPublish}>
             Publish chart
           </Button>
