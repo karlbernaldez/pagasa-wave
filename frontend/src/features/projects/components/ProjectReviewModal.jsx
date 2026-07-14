@@ -154,8 +154,6 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
     return () => { mounted = false; };
   }, [projectId]);
 
-  if (!currentProject) return null;
-
   const hasRemarks = remarks.trim().length > 0;
   const statusLabel = getProjectStatusLabel(currentProject?.status);
   const chartMetadata = getChartMetadata(currentProject);
@@ -178,6 +176,8 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
   const handlers = useProjectReviewActionHandlers({ projectId, currentProject, remarks, runAction, onApprove, onReject, onNoPublication, onPublish });
   const canUseGallery = !busyAction && canMoveGallery;
   const muted = isDarkMode ? 'text-slate-400' : 'text-slate-500';
+
+  if (!currentProject) return null;
 
   const modal = (
     <div className={`fixed inset-0 z-[200] flex items-center justify-center overflow-hidden p-2 backdrop-blur-xl sm:p-4 ${isDarkMode ? 'bg-[radial-gradient(circle_at_50%_0%,rgba(14,165,233,.13),transparent_38%),rgba(1,10,24,.80)]' : 'bg-[radial-gradient(circle_at_50%_0%,rgba(14,165,233,.16),transparent_40%),rgba(226,240,248,.74)]'}`} role="dialog" aria-modal="true" aria-label="Forecast chart review">
