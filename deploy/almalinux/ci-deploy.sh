@@ -57,6 +57,16 @@ fi
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 PREVIOUS_SHA="$(run_git rev-parse HEAD)"
 LOG_FILE="$LOG_DIR/deploy-$(date -u +%Y%m%dT%H%M%SZ)-${TARGET_SHA:0:12}.log"
+SMOKE_COPY="$(mktemp /tmp/wavelab-smoke.XXXXXX)"
+trap 'rm -f "$SMOKE_COPY"' EXIT
+
+if [[ -f "$APP_ROOT/deploy/almalinux/smoke-test.sh" ]]; then
+  cp "$APP_ROOT/deploy/almalinux/smoke-test.sh" "$SMOKE_COPY"
+  chmod 700 "$SMOKE_COPY"
+else
+  : > "$SMOKE_COPY"
+fi
+
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 on_failure() {
@@ -72,15 +82,16 @@ echo "Starting action=$ACTION target=$TARGET_SHA previous=$PREVIOUS_SHA at $STAR
 run_git fetch --prune origin "$DEPLOY_BRANCH"
 run_git cat-file -e "$TARGET_SHA^{commit}"
 
+if ! run_git merge-base --is-ancestor "$TARGET_SHA" "origin/$DEPLOY_BRANCH"; then
+  echo "Target commit is not reachable from origin/$DEPLOY_BRANCH."
+  exit 1
+fi
+
 if [[ "$ACTION" == "deploy" ]]; then
-  if ! run_git merge-base --is-ancestor "$TARGET_SHA" "origin/$DEPLOY_BRANCH"; then
-    echo "Target commit is not reachable from origin/$DEPLOY_BRANCH."
-    exit 1
-  fi
   run_git checkout "$DEPLOY_BRANCH"
   run_git merge --ff-only "$TARGET_SHA"
 else
-  # Rollback intentionally checks out an exact historical commit in detached HEAD.
+  # Rollback intentionally checks out an exact historical main commit in detached HEAD.
   # A later normal deployment returns the checkout to DEPLOY_BRANCH.
   run_git checkout --detach "$TARGET_SHA"
 fi
@@ -96,7 +107,13 @@ printf '%s\n' "$ACTION" > "$STATE_DIR/last-action"
 printf '%s\n' "$STARTED_AT" > "$STATE_DIR/started-at"
 
 APP_USER="$APP_USER" APP_ROOT="$APP_ROOT" bash "$APP_ROOT/deploy/almalinux/deploy.sh" "$PUBLIC_HOST"
-bash "$APP_ROOT/deploy/almalinux/smoke-test.sh" "$PUBLIC_HOST"
+if [[ -s "$SMOKE_COPY" ]]; then
+  bash "$SMOKE_COPY" "$PUBLIC_HOST"
+else
+  systemctl is-active --quiet wavelab-backend
+  curl -fsS --max-time 10 http://127.0.0.1:5000/status >/dev/null
+  curl -fsSI --max-time 10 -H "Host: $PUBLIC_HOST" http://127.0.0.1/ >/dev/null
+fi
 
 FINISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 printf '%s\n' "$FINISHED_AT" > "$STATE_DIR/finished-at"
