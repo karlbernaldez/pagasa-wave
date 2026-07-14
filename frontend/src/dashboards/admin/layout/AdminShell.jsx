@@ -1,10 +1,16 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Settings } from 'lucide-react';
 
 import { ADMIN_ROUTE_BY_TAB, ADMIN_TABS, MENU_GROUPS } from '@dashboards/admin/constants/navigation';
 import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
+const ACCOUNT_ITEM = {
+  id: 'account-settings',
+  label: 'Account Settings',
+  path: '/profile',
+  icon: Settings,
+};
 
 const enhanceAdminItem = (item) => {
   if (item.id !== ADMIN_TABS.USERS) return item;
@@ -46,6 +52,7 @@ const AdminShell = ({
   return (
     <DashboardShell
       activeId={activeTab}
+      backgroundVariant="ocean"
       isDarkMode={isDarkMode}
       isMobileOpen={isMobileOpen}
       isSidebarCollapsed={isSidebarCollapsed}
@@ -56,7 +63,8 @@ const AdminShell = ({
       setIsSidebarCollapsed={setIsSidebarCollapsed}
       sidebar={{
         groups: adminSidebarGroups,
-        label: 'Admin Dashboard',
+        utilityItems: [ACCOUNT_ITEM],
+        label: 'Administration',
       }}
       header={{
         description: activeMeta?.description,
