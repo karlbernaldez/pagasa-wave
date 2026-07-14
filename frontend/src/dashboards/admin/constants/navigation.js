@@ -57,7 +57,7 @@ export const MENU_GROUPS = [
     items: [
       { id: ADMIN_TABS.ANALYTICS, label: 'Analytics', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ANALYTICS], icon: BarChart3 },
       { id: ADMIN_TABS.CALENDAR, label: 'Calendar', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CALENDAR], icon: CalendarDays },
-      { id: ADMIN_TABS.SETTINGS, label: 'Public Content', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS], icon: Settings },
+      { id: ADMIN_TABS.SETTINGS, label: 'System Settings', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS], icon: Settings },
     ],
   },
 ];
@@ -94,7 +94,7 @@ export const PAGE_META = {
     description: 'Track forecast package dates, review events, publication milestones, and admin notes.',
   },
   [ADMIN_TABS.SETTINGS]: {
-    title: 'Public Content Settings',
-    description: 'Configure WaveLab public page content, contact details, and system-facing copy.',
+    title: 'System Settings',
+    description: 'Configure WaveLab public content, contact information, and other system-wide settings.',
   },
 };
