@@ -65,14 +65,13 @@ jobs:
           ref: ${{ github.sha }}
           clean: true
 
-      - name: Deploy through AlmaLinux script
+      - name: Deploy validated commit
         env:
           APP_ROOT: /home/wavelab/app
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
         run: |
           test -n "$PUBLIC_HOST"
-          test "$GITHUB_WORKSPACE" = "$APP_ROOT"
-          bash deploy/almalinux/deploy.sh "$PUBLIC_HOST"
+          sudo env APP_ROOT="$APP_ROOT" bash "$GITHUB_WORKSPACE/deploy/almalinux/ci-deploy.sh" "$GITHUB_SHA" "$PUBLIC_HOST"
 
       - name: Verify services
         run: |
