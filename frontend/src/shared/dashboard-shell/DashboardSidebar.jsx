@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, CircleHelp, Waves, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleHelp, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const getShellClasses = (isDarkMode, backgroundVariant) =>
@@ -242,10 +242,12 @@ const DashboardSidebar = ({
         <div className={`border-b px-4 py-5 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl border ${
-                isDarkMode ? 'border-white/10 bg-white/[0.06] shadow-inner shadow-white/[0.04]' : 'border-white/80 bg-white/70 shadow-sm shadow-slate-200/70'
+              <span className={`grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl border ${
+                isDarkMode
+                  ? 'border-cyan-300/20 bg-[#061c38]/72 shadow-[0_5px_22px_rgba(14,165,233,.2)]'
+                  : 'border-white/85 bg-white/72 shadow-[0_5px_20px_rgba(14,116,144,.16)]'
               }`}>
-                {backgroundVariant === 'ocean' ? <Waves className="text-cyan-400" size={34} aria-hidden="true" /> : <img src="/pagasa-logo.png" alt="PAGASA Logo" className="h-8 w-8 object-contain" />}
+                <img src="/wavelab-mark.svg" alt="" aria-hidden="true" className="h-12 w-12 object-contain" draggable={false} />
               </span>
 
               {!isSidebarCollapsed && (
