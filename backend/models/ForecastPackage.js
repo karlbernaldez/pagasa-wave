@@ -8,111 +8,39 @@ import {
 const { Schema } = mongoose;
 
 const ForecastPackageChartEditorSchema = new Schema({
-  user: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  startedAt: {
-    type: Date,
-    default: Date.now,
-  },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  startedAt: { type: Date, default: Date.now },
 }, { _id: false });
 
 const ForecastPackageChartReadyVoteSchema = new Schema({
-  user: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  readyAt: {
-    type: Date,
-    default: Date.now,
-  },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  readyAt: { type: Date, default: Date.now },
 }, { _id: false });
 
 const ForecastPackageChartParticipantSchema = new Schema({
-  user: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  firstJoinedAt: {
-    type: Date,
-    default: Date.now,
-  },
-  lastJoinedAt: {
-    type: Date,
-    default: Date.now,
-  },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  firstJoinedAt: { type: Date, default: Date.now },
+  lastJoinedAt: { type: Date, default: Date.now },
 }, { _id: false });
 
 const ForecastPackageChartSchema = new Schema({
-  chartType: {
-    type: String,
-    enum: REQUIRED_FORECAST_CHART_TYPES,
-    required: true,
-  },
-  project: {
-    type: Schema.Types.ObjectId,
-    ref: 'Project',
-    required: true,
-  },
-  sortOrder: {
-    type: Number,
-    required: true,
-  },
-  activeEditors: {
-    type: [ForecastPackageChartEditorSchema],
-    default: [],
-  },
-  participants: {
-    type: [ForecastPackageChartParticipantSchema],
-    default: [],
-  },
-  readyEditors: {
-    type: [ForecastPackageChartReadyVoteSchema],
-    default: [],
-  },
-  claimedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
-  },
-  claimedAt: {
-    type: Date,
-    default: null,
-  },
-  readyBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
-  },
-  readyAt: {
-    type: Date,
-    default: null,
-  },
+  chartType: { type: String, enum: REQUIRED_FORECAST_CHART_TYPES, required: true },
+  project: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
+  sortOrder: { type: Number, required: true },
+  activeEditors: { type: [ForecastPackageChartEditorSchema], default: [] },
+  participants: { type: [ForecastPackageChartParticipantSchema], default: [] },
+  readyEditors: { type: [ForecastPackageChartReadyVoteSchema], default: [] },
+  claimedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  claimedAt: { type: Date, default: null },
+  readyBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  readyAt: { type: Date, default: null },
 }, { _id: false });
 
 const ForecastPackageCompletionSchema = new Schema({
-  chartType: {
-    type: String,
-    enum: REQUIRED_FORECAST_CHART_TYPES,
-    required: true,
-  },
-  isComplete: {
-    type: Boolean,
-    default: false,
-  },
-  completedAt: {
-    type: Date,
-    default: null,
-  },
-  completedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
-  },
+  chartType: { type: String, enum: REQUIRED_FORECAST_CHART_TYPES, required: true },
+  isComplete: { type: Boolean, default: false },
+  completedAt: { type: Date, default: null },
+  completedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
 }, { _id: false });
 
 const ForecastPackageAuditLogSchema = new Schema({
@@ -133,11 +61,7 @@ const ForecastPackageAuditLogSchema = new Schema({
     ],
     required: true,
   },
-  performedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
+  performedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   previousStatus: String,
   newStatus: String,
   comment: String,
@@ -145,53 +69,32 @@ const ForecastPackageAuditLogSchema = new Schema({
 }, { _id: false });
 
 const ForecastPackageSchema = new Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  forecastDate: {
-    type: Date,
-    required: true,
-  },
+  name: { type: String, required: true, trim: true },
+  forecastDate: { type: Date, required: true },
   status: {
     type: String,
     enum: Object.values(FORECAST_PACKAGE_STATUS),
     default: FORECAST_PACKAGE_STATUS.DRAFT,
   },
-  createdBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
-  },
-  // Legacy compatibility field. Forecast packages are shared operational
-  // workspaces; this field must not be presented as business ownership.
-  owner: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  // Legacy compatibility only. Forecast Packages are shared operational
+  // workspaces and this field must never be used as business ownership.
+  owner: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   charts: {
     type: [ForecastPackageChartSchema],
     validate: {
       validator(value) {
         if (!Array.isArray(value)) return false;
         if (value.length !== REQUIRED_FORECAST_CHART_TYPES.length) return false;
-
         const chartTypes = value.map((item) => item?.chartType);
         const uniqueChartTypes = new Set(chartTypes);
-
         if (uniqueChartTypes.size !== REQUIRED_FORECAST_CHART_TYPES.length) return false;
-
         return REQUIRED_FORECAST_CHART_TYPES.every((chartType) => uniqueChartTypes.has(chartType));
       },
       message: 'Forecast Package must include exactly one project for each required forecast chart type.',
     },
   },
-  chartCompletion: {
-    type: [ForecastPackageCompletionSchema],
-    default: [],
-  },
+  chartCompletion: { type: [ForecastPackageCompletionSchema], default: [] },
   submittedAt: Date,
   reviewStartedAt: Date,
   reviewStartedBy: { type: Schema.Types.ObjectId, ref: 'User' },
