@@ -78,7 +78,7 @@ export default function ForecastPackageCard({
   };
 
   return (
-    <article className={`grid gap-4 rounded-xl border px-4 py-4 backdrop-blur-xl transition sm:grid-cols-[minmax(0,1.4fr)_auto_auto_auto] sm:items-center xl:col-span-2 ${
+    <article className={`grid gap-4 rounded-xl border px-4 py-4 backdrop-blur-xl transition sm:grid-cols-[minmax(0,1fr)_8.5rem_12rem_10.5rem] sm:items-center xl:col-span-2 ${
       isDarkMode
         ? 'border-white/10 bg-slate-950/42 hover:border-cyan-300/20 hover:bg-slate-950/55'
         : 'border-white/75 bg-white/64 hover:border-cyan-200 hover:bg-white/78'
@@ -101,15 +101,15 @@ export default function ForecastPackageCard({
         </div>
       </div>
 
-      <div>
-        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${isDarkMode ? statusStyle.dark : statusStyle.light}`}>
+      <div className="flex sm:justify-center">
+        <span className={`inline-flex justify-center whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${isDarkMode ? statusStyle.dark : statusStyle.light}`}>
           {forecastPackage.status}
         </span>
       </div>
 
-      <div className="min-w-0">
+      <div className="min-w-0 sm:px-2">
         <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Owner</p>
-        <p className={`truncate text-sm font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+        <p className={`truncate text-sm font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`} title={forecastPackage.ownerLabel || 'Forecast team'}>
           {forecastPackage.ownerLabel || 'Forecast team'}
         </p>
         <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
@@ -117,15 +117,18 @@ export default function ForecastPackageCard({
         </p>
       </div>
 
-      <Button
-        size="sm"
-        variant={canReview || canPublish ? 'primary' : 'secondary'}
-        icon={canPublish ? PackageCheck : ArrowRight}
-        disabled={isPublishing || (!canReview && !canPublish && !canViewPublished)}
-        onClick={handleAction}
-      >
-        {isPublishing ? 'Publishing...' : actionLabel}
-      </Button>
+      <div className="sm:flex sm:justify-end">
+        <Button
+          size="sm"
+          variant={canReview || canPublish ? 'primary' : 'secondary'}
+          icon={canPublish ? PackageCheck : ArrowRight}
+          disabled={isPublishing || (!canReview && !canPublish && !canViewPublished)}
+          onClick={handleAction}
+          className="w-full justify-center sm:w-[10.5rem]"
+        >
+          {isPublishing ? 'Publishing...' : actionLabel}
+        </Button>
+      </div>
     </article>
   );
 }
