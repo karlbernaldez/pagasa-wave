@@ -8,14 +8,38 @@ const PUBLISHABLE_PACKAGE_STATUSES = new Set(['Approved']);
 const REQUIRED_CHART_COUNT = 4;
 
 const STATUS_STYLES = {
-  Submitted: 'border-sky-300/25 bg-sky-400/10 text-sky-200',
-  'Under Review': 'border-amber-300/25 bg-amber-400/10 text-amber-200',
-  Approved: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200',
-  Published: 'border-teal-300/25 bg-teal-400/10 text-teal-200',
-  'Revision Requested': 'border-rose-300/25 bg-rose-400/10 text-rose-200',
-  Rejected: 'border-rose-300/25 bg-rose-400/10 text-rose-200',
-  Archived: 'border-white/10 bg-white/[0.05] text-slate-300',
-  Draft: 'border-white/10 bg-white/[0.05] text-slate-300',
+  Submitted: {
+    dark: 'border-sky-300/25 bg-sky-400/10 text-sky-200',
+    light: 'border-sky-200 bg-sky-50 text-sky-700',
+  },
+  'Under Review': {
+    dark: 'border-amber-300/25 bg-amber-400/10 text-amber-200',
+    light: 'border-amber-200 bg-amber-50 text-amber-700',
+  },
+  Approved: {
+    dark: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200',
+    light: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  },
+  Published: {
+    dark: 'border-teal-300/25 bg-teal-400/10 text-teal-200',
+    light: 'border-teal-200 bg-teal-50 text-teal-700',
+  },
+  'Revision Requested': {
+    dark: 'border-rose-300/25 bg-rose-400/10 text-rose-200',
+    light: 'border-rose-200 bg-rose-50 text-rose-700',
+  },
+  Rejected: {
+    dark: 'border-rose-300/25 bg-rose-400/10 text-rose-200',
+    light: 'border-rose-200 bg-rose-50 text-rose-700',
+  },
+  Archived: {
+    dark: 'border-white/10 bg-white/[0.05] text-slate-300',
+    light: 'border-slate-200 bg-slate-100 text-slate-600',
+  },
+  Draft: {
+    dark: 'border-white/10 bg-white/[0.05] text-slate-300',
+    light: 'border-slate-200 bg-slate-100 text-slate-600',
+  },
 };
 
 export default function ForecastPackageCard({
@@ -27,6 +51,7 @@ export default function ForecastPackageCard({
 }) {
   const canReview = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status) && Boolean(forecastPackage.primaryChart);
   const canPublish = PUBLISHABLE_PACKAGE_STATUSES.has(forecastPackage.status);
+  const canViewPublished = forecastPackage.status === 'Published' && Boolean(forecastPackage.primaryChart);
   const isPublishing = publishingPackageId === forecastPackage.id;
   const reviewedCount = Math.min(
     REQUIRED_CHART_COUNT,
@@ -39,18 +64,21 @@ export default function ForecastPackageCard({
     ? 'Publish package'
     : canReview
       ? forecastPackage.status === 'Submitted' ? 'Start review' : 'Continue review'
-      : forecastPackage.status === 'Published' ? 'View package' : forecastPackage.status;
+      : canViewPublished ? 'View package' : forecastPackage.status;
+  const statusStyle = STATUS_STYLES[forecastPackage.status] || STATUS_STYLES.Draft;
 
   const handleAction = () => {
     if (canPublish) {
       onPublishPackage?.(forecastPackage);
       return;
     }
-    if (canReview) onOpenChart?.(forecastPackage.primaryChart, forecastPackage);
+    if (canReview || canViewPublished) {
+      onOpenChart?.(forecastPackage.primaryChart, forecastPackage);
+    }
   };
 
   return (
-    <article className={`grid gap-4 rounded-xl border px-4 py-4 backdrop-blur-xl transition sm:grid-cols-[minmax(0,1.4fr)_auto_auto_auto] sm:items-center ${
+    <article className={`grid gap-4 rounded-xl border px-4 py-4 backdrop-blur-xl transition sm:grid-cols-[minmax(0,1.4fr)_auto_auto_auto] sm:items-center xl:col-span-2 ${
       isDarkMode
         ? 'border-white/10 bg-slate-950/42 hover:border-cyan-300/20 hover:bg-slate-950/55'
         : 'border-white/75 bg-white/64 hover:border-cyan-200 hover:bg-white/78'
@@ -74,9 +102,7 @@ export default function ForecastPackageCard({
       </div>
 
       <div>
-        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${
-          STATUS_STYLES[forecastPackage.status] || STATUS_STYLES.Draft
-        }`}>
+        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${isDarkMode ? statusStyle.dark : statusStyle.light}`}>
           {forecastPackage.status}
         </span>
       </div>
@@ -95,7 +121,7 @@ export default function ForecastPackageCard({
         size="sm"
         variant={canReview || canPublish ? 'primary' : 'secondary'}
         icon={canPublish ? PackageCheck : ArrowRight}
-        disabled={isPublishing || (!canReview && !canPublish && forecastPackage.status !== 'Published')}
+        disabled={isPublishing || (!canReview && !canPublish && !canViewPublished)}
         onClick={handleAction}
       >
         {isPublishing ? 'Publishing...' : actionLabel}
