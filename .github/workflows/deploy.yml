@@ -57,13 +57,25 @@ jobs:
       - x64
       - wavelab-production
     timeout-minutes: 40
-    environment: production
+    environment:
+      name: production
+      url: ${{ vars.PUBLIC_URL }}
     steps:
       - name: Checkout validated commit
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           clean: true
+
+      - name: Record deployment context
+        run: |
+          {
+            echo "### Production deployment"
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Actor: \`$GITHUB_ACTOR\`"
+            echo "- Runner: \`$RUNNER_NAME\`"
+            echo "- Started: \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Deploy validated commit
         env:
@@ -72,8 +84,38 @@ jobs:
           test -n "$PUBLIC_HOST"
           sudo -n /usr/local/sbin/wavelab-deploy "$GITHUB_SHA" "$PUBLIC_HOST"
 
-      - name: Verify services
+      - name: Verify deployed revision
+        env:
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
         run: |
+          test "$(git -C /home/wavelab/app rev-parse HEAD)" = "$GITHUB_SHA"
           systemctl is-active --quiet wavelab-backend
-          curl -fsS http://127.0.0.1:5000/status >/dev/null
-          curl -fsSI http://127.0.0.1/ >/dev/null
+          curl -fsS --max-time 10 http://127.0.0.1:5000/status >/dev/null
+          curl -fsSI --max-time 10 -H "Host: $PUBLIC_HOST" http://127.0.0.1/ >/dev/null
+          echo "- Result: deployment and smoke tests passed" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect failure diagnostics
+        if: failure()
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/deployment-diagnostics"
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "runner=$RUNNER_NAME"
+            echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            systemctl --no-pager --full status wavelab-backend nginx redis || true
+            echo
+            journalctl --no-pager -u wavelab-backend -n 200 || true
+            echo
+            tail -n 200 /var/log/nginx/error.log || true
+          } > "$GITHUB_WORKSPACE/deployment-diagnostics/production-deploy.txt" 2>&1
+          echo "- Result: failed; sanitized service diagnostics attached" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-deploy-diagnostics-${{ github.run_id }}
+          path: deployment-diagnostics/
+          retention-days: 14
+          if-no-files-found: error
