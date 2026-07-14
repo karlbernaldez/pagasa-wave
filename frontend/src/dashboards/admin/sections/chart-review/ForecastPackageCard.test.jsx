@@ -1,76 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';
 
 import ForecastPackageCard from './ForecastPackageCard';
 
 const testTheme = {
   tokens: {
-    spacing: {
-      2: '0.5rem',
-      3: '0.75rem',
-      4: '1rem',
-      5: '1.25rem',
-    },
-    radius: {
-      lg: '0.75rem',
-      xl: '1rem',
-    },
-    typography: {
-      scale: {
-        sm: '0.875rem',
-        md: '1rem',
-      },
-      weight: {
-        semibold: 600,
-        bold: 700,
-      },
-    },
-    motion: {
-      duration: {
-        fast: '150ms',
-      },
-      easing: {
-        standard: 'ease',
-      },
-    },
-    shadows: {
-      focus: '0 0 0 3px rgba(59, 130, 246, 0.35)',
-    },
+    spacing: { 2: '0.5rem', 3: '0.75rem', 4: '1rem', 5: '1.25rem' },
+    radius: { lg: '0.75rem', xl: '1rem' },
+    typography: { scale: { sm: '0.875rem', md: '1rem' }, weight: { semibold: 600, bold: 700 } },
+    motion: { duration: { fast: '150ms' }, easing: { standard: 'ease' } },
+    shadows: { focus: '0 0 0 3px rgba(59, 130, 246, 0.35)' },
     colors: {
-      action: {
-        primary: '#2563eb',
-        primaryHover: '#1d4ed8',
-        secondary: '#f8fafc',
-        secondaryHover: '#e2e8f0',
-        danger: '#dc2626',
-        dangerHover: '#b91c1c',
-      },
-      text: {
-        dark: {
-          primary: '#ffffff',
-        },
-        light: {
-          primary: '#0f172a',
-          secondary: '#475569',
-        },
-      },
-      surface: {
-        light: {
-          raised: '#ffffff',
-          muted: '#f8fafc',
-        },
-      },
-      brand: {
-        primary: '#0057b8',
-        secondary: '#0f172a',
-      },
-      border: {
-        light: {
-          default: '#e2e8f0',
-          strong: '#cbd5e1',
-        },
-      },
+      action: { primary: '#2563eb', primaryHover: '#1d4ed8', secondary: '#f8fafc', secondaryHover: '#e2e8f0', danger: '#dc2626', dangerHover: '#b91c1c' },
+      text: { dark: { primary: '#ffffff' }, light: { primary: '#0f172a', secondary: '#475569' } },
+      surface: { light: { raised: '#ffffff', muted: '#f8fafc' } },
+      brand: { primary: '#0057b8', secondary: '#0f172a' },
+      border: { light: { default: '#e2e8f0', strong: '#cbd5e1' } },
     },
   },
 };
@@ -130,24 +76,28 @@ function renderCard(forecastPackage, handlers = {}) {
 }
 
 describe('ForecastPackageCard', () => {
-  it('shows approved packages as ready to publish with reviewed chart progress', () => {
-    renderCard(createPackage());
+  it('shows approved packages as publishable with reviewed progress', () => {
+    const handlers = renderCard(createPackage());
+    const publishButton = screen.getByRole('button', { name: /publish package/i });
 
-    expect(screen.getByRole('button', { name: /publish package/i })).toBeEnabled();
-    expect(screen.getAllByText(/ready to publish/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/all required charts are approved/i)).toBeInTheDocument();
-    expect(screen.getByText(/4\/4 required charts already reviewed or returned/i)).toBeInTheDocument();
-    expect(screen.getByText(/approved\/published/i)).toBeInTheDocument();
+    expect(publishButton).toBeEnabled();
+    expect(screen.getByText(/^approved$/i)).toBeInTheDocument();
+    expect(screen.getByText(/4\/4 reviewed/i)).toBeInTheDocument();
+
+    fireEvent.click(publishButton);
+    expect(handlers.onPublishPackage).toHaveBeenCalledWith(expect.objectContaining({ status: 'Approved' }));
   });
 
-  it('does not render a duplicate package stage chip when the stage repeats the status', () => {
+  it('shows one published status and opens the package summary', () => {
     renderCard(createPackage({ status: 'Published' }));
 
     expect(screen.getAllByText(/^published$/i)).toHaveLength(1);
-    expect(screen.getByText(/final output is available/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /view package/i }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText(/choose the chart you want to view/i)).toBeInTheDocument();
   });
 
-  it('renders a distinct workflow stage chip when it adds information beyond the status', () => {
+  it('uses Start review for submitted packages', () => {
     renderCard(createPackage({
       status: 'Submitted',
       charts: [
@@ -158,12 +108,11 @@ describe('ForecastPackageCard', () => {
       ],
     }));
 
-    expect(screen.getAllByText(/^submitted$/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/ready to start review/i)).toBeInTheDocument();
-    expect(screen.getByText(/open a submitted chart to move this package into under review/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /start review/i })).toBeEnabled();
+    expect(screen.getByText(/^submitted$/i)).toBeInTheDocument();
   });
 
-  it('uses status-specific disabled labels for non-reviewable chart rows', () => {
+  it('uses status-specific chart actions in the package summary', () => {
     renderCard(createPackage({
       status: 'Revision Requested',
       charts: [
@@ -174,14 +123,10 @@ describe('ForecastPackageCard', () => {
       ],
     }));
 
-    expect(screen.getByRole('button', { name: /waiting for revision/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /needs revision/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /^approved$/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /published output/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /closed/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /revision requested/i })).toBeDisabled();
   });
 
-  it('opens only reviewable submitted or under-review charts', () => {
+  it('opens submitted and under-review charts from the package summary', () => {
     const handlers = renderCard(createPackage({
       status: 'Under Review',
       charts: [
@@ -192,15 +137,15 @@ describe('ForecastPackageCard', () => {
       ],
     }));
 
-    const reviewButtons = screen.getAllByRole('button', { name: /review chart/i });
-    expect(reviewButtons).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: /continue review/i }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
 
-    fireEvent.click(reviewButtons[0]);
-    fireEvent.click(reviewButtons[1]);
-    fireEvent.click(screen.getByRole('button', { name: /^approved$/i }));
-
-    expect(handlers.onOpenChart).toHaveBeenCalledTimes(2);
-    expect(handlers.onOpenChart).toHaveBeenNthCalledWith(1, expect.objectContaining({ status: 'Under Review' }), expect.any(Object));
-    expect(handlers.onOpenChart).toHaveBeenNthCalledWith(2, expect.objectContaining({ status: 'Submitted' }), expect.any(Object));
+    const continueReview = within(dialog).getByText(/^continue review$/i).closest('button');
+    fireEvent.click(continueReview);
+    expect(handlers.onOpenChart).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Under Review' }),
+      expect.objectContaining({ status: 'Under Review' })
+    );
   });
 });

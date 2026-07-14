@@ -6,12 +6,14 @@ const ADMIN_ID = 'admin-1';
 const PARTICIPANT_ID = 'forecaster-2';
 
 async function loadModules() {
+  const mongoose = await import('mongoose');
   const workflow = await import('../utils/' + 'forecast' + 'Package.js');
   const packageController = await import('../controllers/forecastPackageSubmitController.js');
   const reviewController = await import('../controllers/' + 'forecast' + 'PackageController.js');
   const packageModel = await import('../models/' + 'Forecast' + 'Package.js');
   const projectModel = await import('../models/Project.js');
   return {
+    mongoose: mongoose.default,
     workflow,
     controller: {
       submitForecastPackage: packageController.submitForecastPackage,
@@ -105,11 +107,20 @@ async function run(handler, request) {
   });
 }
 
-async function withMockedModels({ ForecastPackage, Project, packageFactory, updateMany = async () => ({ modifiedCount: 0 }) }, fn) {
+async function withMockedModels({ mongoose, ForecastPackage, Project, packageFactory, updateMany = async () => ({ modifiedCount: 0 }) }, fn) {
+  const originalStartSession = mongoose.startSession;
   const originalFindById = ForecastPackage.findById;
   const originalUpdateMany = Project.updateMany;
   let findByIdCalls = 0;
 
+  const session = {
+    async withTransaction(callback) {
+      return callback();
+    },
+    async endSession() {},
+  };
+
+  mongoose.startSession = async () => session;
   ForecastPackage.findById = () => {
     findByIdCalls += 1;
     const forecastPackage = packageFactory();
@@ -120,17 +131,19 @@ async function withMockedModels({ ForecastPackage, Project, packageFactory, upda
   try {
     return await fn();
   } finally {
+    mongoose.startSession = originalStartSession;
     ForecastPackage.findById = originalFindById;
     Project.updateMany = originalUpdateMany;
   }
 }
 
 test('forecast package can move from forecaster submission to admin review without exposing draft package state', async () => {
-  const { workflow, controller, ForecastPackage, Project } = await loadModules();
+  const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
   let updateManyPayload;
 
   await withMockedModels({
+    mongoose,
     ForecastPackage,
     Project,
     packageFactory: () => pkg,
@@ -161,10 +174,11 @@ test('forecast package can move from forecaster submission to admin review witho
 });
 
 test('admin cannot start review until a package has been submitted by a forecaster', async () => {
-  const { workflow, controller, ForecastPackage, Project } = await loadModules();
+  const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
 
   await withMockedModels({
+    mongoose,
     ForecastPackage,
     Project,
     packageFactory: () => pkg,
@@ -184,12 +198,13 @@ test('admin cannot start review until a package has been submitted by a forecast
 });
 
 test('participating forecaster can resubmit a revision-requested package and relock linked chart projects', async () => {
-  const { workflow, controller, ForecastPackage, Project } = await loadModules();
+  const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
   pkg.chartCompletion[1].completedBy = PARTICIPANT_ID;
   let updateManyPayload;
 
   await withMockedModels({
+    mongoose,
     ForecastPackage,
     Project,
     packageFactory: () => pkg,
@@ -214,12 +229,13 @@ test('participating forecaster can resubmit a revision-requested package and rel
 });
 
 test('admin revision request returns package and linked submitted chart projects to revision requested', async () => {
-  const { workflow, controller, ForecastPackage, Project } = await loadModules();
+  const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
   const comment = 'Update the 36h forecast notes before resubmission.';
   let updateManyPayload;
 
   await withMockedModels({
+    mongoose,
     ForecastPackage,
     Project,
     packageFactory: () => pkg,
