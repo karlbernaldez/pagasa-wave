@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { LayoutDashboard, Menu, X } from 'lucide-react';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
@@ -14,6 +14,17 @@ import { ChartDropdown } from './ChartDropdown';
 import { UserDropdown } from './UserDropdown';
 import { MobileMenu } from './MobileMenu';
 
+const DASHBOARD_BY_ROLE = {
+    admin: {
+        label: 'Admin Dashboard',
+        path: '/dashboard',
+    },
+    forecaster: {
+        label: 'Forecaster Dashboard',
+        path: '/studio',
+    },
+};
+
 const Header = ({ isStudioProjectPage, showAccountControls = false }) => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -23,6 +34,7 @@ const Header = ({ isStudioProjectPage, showAccountControls = false }) => {
     const { currentUser, isLoggedIn } = useHeaderUser();
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const dashboard = isLoggedIn ? DASHBOARD_BY_ROLE[currentUser?.role] : null;
 
     const isActiveRoute = useCallback((href) => {
         if (href.startsWith('#')) {
@@ -112,6 +124,14 @@ const Header = ({ isStudioProjectPage, showAccountControls = false }) => {
                             onToggle={() => setIsDarkMode((prev) => !prev)}
                         />
 
+                        {showAccountControls && dashboard && (
+                            <DashboardButton
+                                dashboard={dashboard}
+                                isDarkMode={isDarkMode}
+                                onClick={() => handleNavigate(dashboard.path)}
+                            />
+                        )}
+
                         {showAccountControls && (
                             isLoggedIn ? (
                                 <UserDropdown
@@ -178,6 +198,29 @@ const Header = ({ isStudioProjectPage, showAccountControls = false }) => {
 };
 
 export default Header;
+
+function DashboardButton({ dashboard, isDarkMode, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label={`Open ${dashboard.label}`}
+            className={`
+                hidden md:inline-flex h-10 items-center gap-2 rounded-xl border px-3
+                text-sm font-bold shadow-[0_4px_18px_rgba(0,0,0,0.12)]
+                backdrop-blur-xl transition-all duration-200
+                hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70
+                ${isDarkMode
+                    ? 'border-sky-300/20 bg-sky-400/10 text-sky-100 hover:border-sky-300/35 hover:bg-sky-400/16'
+                    : 'border-sky-200/80 bg-white/65 text-sky-800 hover:border-sky-300 hover:bg-white/90'}
+            `}
+        >
+            <LayoutDashboard size={17} aria-hidden="true" />
+            <span className="hidden xl:inline">{dashboard.label}</span>
+            <span className="xl:hidden">Dashboard</span>
+        </button>
+    );
+}
 
 function Logo({ isDarkMode, onClick }) {
     return (
