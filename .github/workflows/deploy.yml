@@ -18,7 +18,6 @@ jobs:
     name: Validate application
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout exact commit
         uses: actions/checkout@v4
@@ -30,10 +29,53 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
-      - name: Install backend dependencies
+      - name: Install and test backend
         working-directory: backend
-        run: npm ci
+        run: |
+          npm ci
+          npm test
+          npm run test:workflow
 
-      - name: Run backend tests
-        working-directory: backend
-        run: npm test
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.17.1 --activate
+
+      - name: Install, test, and build frontend
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+          pnpm build
+
+  deploy:
+    name: Deploy on AlmaLinux server
+    needs: validate
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - wavelab-dev
+    timeout-minutes: 40
+    environment: development
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          clean: true
+
+      - name: Deploy through AlmaLinux script
+        env:
+          APP_ROOT: /home/wavelab/app
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+        run: |
+          test -n "$PUBLIC_HOST"
+          test "$GITHUB_WORKSPACE" = "$APP_ROOT"
+          bash deploy/almalinux/deploy.sh "$PUBLIC_HOST"
+
+      - name: Verify services
+        run: |
+          systemctl is-active --quiet wavelab-backend
+          curl -fsS http://127.0.0.1:5000/status >/dev/null
+          curl -fsSI http://127.0.0.1/ >/dev/null
