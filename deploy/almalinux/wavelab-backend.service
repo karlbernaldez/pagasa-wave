@@ -6,9 +6,9 @@ Wants=network-online.target redis.service
 
 [Service]
 Type=simple
-User=wavelab
-Group=wavelab
-WorkingDirectory=/opt/wavelab/app/backend
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_ROOT__/backend
 EnvironmentFile=/etc/wavelab/backend.env
 ExecStart=/usr/bin/node server.js
 Restart=always
@@ -21,8 +21,8 @@ SyslogIdentifier=wavelab-backend
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ProtectHome=true
-ReadWritePaths=/opt/wavelab/app/backend/logs /opt/wavelab/app/backend/frames /opt/wavelab/app/backend/public /opt/wavelab/app/backend/tmp
+ProtectHome=false
+ReadWritePaths=__APP_ROOT__/backend/logs __APP_ROOT__/backend/frames __APP_ROOT__/backend/public __APP_ROOT__/backend/tmp
 
 [Install]
 WantedBy=multi-user.target

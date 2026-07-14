@@ -9,6 +9,7 @@ export const ADMIN_TABS = {
   ANALYTICS: 'analytics',
   CALENDAR: 'calendar',
   SETTINGS: 'settings',
+  ACCOUNT: 'account',
 };
 
 export const ADMIN_ROUTE_BY_TAB = {
@@ -20,6 +21,7 @@ export const ADMIN_ROUTE_BY_TAB = {
   [ADMIN_TABS.ANALYTICS]: '/dashboard/analytics',
   [ADMIN_TABS.CALENDAR]: '/dashboard/calendar',
   [ADMIN_TABS.SETTINGS]: '/dashboard/settings',
+  [ADMIN_TABS.ACCOUNT]: '/dashboard/account',
 };
 
 export const ADMIN_TAB_BY_ROUTE = Object.entries(ADMIN_ROUTE_BY_TAB).reduce(
@@ -57,7 +59,7 @@ export const MENU_GROUPS = [
     items: [
       { id: ADMIN_TABS.ANALYTICS, label: 'Analytics', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ANALYTICS], icon: BarChart3 },
       { id: ADMIN_TABS.CALENDAR, label: 'Calendar', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CALENDAR], icon: CalendarDays },
-      { id: ADMIN_TABS.SETTINGS, label: 'Settings', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS], icon: Settings },
+      { id: ADMIN_TABS.SETTINGS, label: 'System Settings', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS], icon: Settings },
     ],
   },
 ];
@@ -94,7 +96,11 @@ export const PAGE_META = {
     description: 'Track forecast package dates, review events, publication milestones, and admin notes.',
   },
   [ADMIN_TABS.SETTINGS]: {
-    title: 'Public Content Settings',
-    description: 'Configure WaveLab public page content, contact details, and system-facing copy.',
+    title: 'System Settings',
+    description: 'Configure WaveLab public content, contact information, and other system-wide settings.',
+  },
+  [ADMIN_TABS.ACCOUNT]: {
+    title: 'Account Settings',
+    description: 'Review and update your administrator profile and account information.',
   },
 };

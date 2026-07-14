@@ -3,7 +3,7 @@ set -euo pipefail
 
 PUBLIC_HOST="${1:-}"
 APP_USER="${APP_USER:-wavelab}"
-APP_ROOT="${APP_ROOT:-/opt/wavelab/app}"
+APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
 BACKEND_ENV="${BACKEND_ENV:-/etc/wavelab/backend.env}"
 NGINX_CONF="${NGINX_CONF:-/etc/nginx/conf.d/wavelab.conf}"
 SERVICE_FILE="${SERVICE_FILE:-/etc/systemd/system/wavelab-backend.service}"
@@ -29,11 +29,21 @@ fi
 if [[ ! -d "$APP_ROOT" ]]; then
   echo "App root not found: $APP_ROOT"
   echo "Clone the repo first, for example:"
-  echo "  sudo -u $APP_USER git clone -b main https://github.com/karlbernaldez/pagasa-wave.git $APP_ROOT"
+  echo "  sudo -u $APP_USER git clone -b dev https://github.com/karlbernaldez/pagasa-wave.git $APP_ROOT"
   exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FRONTEND_DIST="$APP_ROOT/frontend/dist"
+WAVETILES_ROOT="$APP_ROOT/wavetiles/tiles"
+
+make_path_traversable() {
+  local path="$1"
+  while [[ "$path" != "/" && -n "$path" ]]; do
+    chmod o+x "$path" 2>/dev/null || true
+    path="$(dirname "$path")"
+  done
+}
 
 if ! id "$APP_USER" >/dev/null 2>&1; then
   useradd --system --create-home --shell /bin/bash "$APP_USER"
@@ -41,6 +51,7 @@ fi
 
 mkdir -p /etc/wavelab
 mkdir -p "$APP_ROOT/backend/logs" "$APP_ROOT/backend/frames" "$APP_ROOT/backend/public" "$APP_ROOT/backend/tmp"
+mkdir -p "$WAVETILES_ROOT"
 
 # Do not chown the whole repository. That changes .git ownership and prevents
 # the deployment operator from running git fetch/pull after a deploy. Restrict
@@ -49,7 +60,8 @@ chown -R "$APP_USER:$APP_USER" \
   "$APP_ROOT/backend/logs" \
   "$APP_ROOT/backend/frames" \
   "$APP_ROOT/backend/public" \
-  "$APP_ROOT/backend/tmp"
+  "$APP_ROOT/backend/tmp" \
+  "$WAVETILES_ROOT"
 
 if [[ ! -f "$BACKEND_ENV" ]]; then
   cp "$SCRIPT_DIR/backend.env.example" "$BACKEND_ENV"
@@ -75,13 +87,32 @@ if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]];
 fi
 
 # Frontend env is intentionally not created with secrets. It must contain only public values.
-FRONTEND_ENV="$APP_ROOT/frontend/.env.production"
+FRONTEND_ENV="$APP_ROOT/frontend/.env"
 if [[ ! -f "$FRONTEND_ENV" ]]; then
-  cp "$SCRIPT_DIR/frontend.env.example" "$FRONTEND_ENV"
-  sed -i "s|__PUBLIC_ORIGIN__|$PUBLIC_ORIGIN|g" "$FRONTEND_ENV"
+  if [[ -f "$SCRIPT_DIR/frontend.env.example" ]]; then
+    cp "$SCRIPT_DIR/frontend.env.example" "$FRONTEND_ENV"
+    sed -i "s|__PUBLIC_ORIGIN__|$PUBLIC_ORIGIN|g" "$FRONTEND_ENV"
+  else
+    cat > "$FRONTEND_ENV" <<EOF
+VITE_API_URL=$PUBLIC_ORIGIN
+VITE_WW3_TILE_BASE=$PUBLIC_ORIGIN/wavetiles
+VITE_MAPBOX_ACCESS_TOKEN=replace-with-public-mapbox-token
+EOF
+  fi
   chown "$APP_USER:$APP_USER" "$FRONTEND_ENV"
   chmod 600 "$FRONTEND_ENV"
   echo "Created $FRONTEND_ENV. Edit VITE_MAPBOX_ACCESS_TOKEN before building if needed."
+fi
+
+if ! grep -q "^VITE_WW3_TILE_BASE=" "$FRONTEND_ENV"; then
+  printf '\nVITE_WW3_TILE_BASE=%s/wavetiles\n' "$PUBLIC_ORIGIN" >> "$FRONTEND_ENV"
+  chown "$APP_USER:$APP_USER" "$FRONTEND_ENV"
+  chmod 600 "$FRONTEND_ENV"
+fi
+
+if grep -q "replace-with-public-mapbox-token" "$FRONTEND_ENV"; then
+  echo "$FRONTEND_ENV still contains the placeholder Mapbox token. Edit it before deploying."
+  exit 2
 fi
 
 sudo -u "$APP_USER" bash -lc "
@@ -103,7 +134,6 @@ sudo -u "$APP_USER" bash -lc "
   pnpm build
 "
 
-FRONTEND_DIST="$APP_ROOT/frontend/dist"
 if [[ ! -d "$FRONTEND_DIST" ]]; then
   echo "Frontend build output not found: $FRONTEND_DIST"
   exit 1
@@ -118,16 +148,21 @@ fi
 # served path must be world-traversable. Apply ownership first, then chmod, so
 # restrictive umasks from the build cannot leave files as 660/770.
 chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIST"
-chmod o+x /opt /opt/wavelab "$APP_ROOT" "$APP_ROOT/frontend" "$FRONTEND_DIST"
+make_path_traversable "$FRONTEND_DIST"
+make_path_traversable "$WAVETILES_ROOT"
 find "$FRONTEND_DIST" -type d -exec chmod 755 {} \;
 find "$FRONTEND_DIST" -type f -exec chmod 644 {} \;
+find "$WAVETILES_ROOT" -type d -exec chmod 755 {} \;
+find "$WAVETILES_ROOT" -type f -exec chmod 644 {} \;
 
 if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]]; then
   if command -v semanage >/dev/null 2>&1; then
     semanage fcontext -a -t httpd_sys_content_t "$FRONTEND_DIST(/.*)?" 2>/dev/null \
       || semanage fcontext -m -t httpd_sys_content_t "$FRONTEND_DIST(/.*)?"
+    semanage fcontext -a -t httpd_sys_content_t "$WAVETILES_ROOT(/.*)?" 2>/dev/null \
+      || semanage fcontext -m -t httpd_sys_content_t "$WAVETILES_ROOT(/.*)?"
   fi
-  restorecon -Rv "$FRONTEND_DIST"
+  restorecon -Rv "$FRONTEND_DIST" "$WAVETILES_ROOT"
 fi
 
 if [[ -f "$FRONTEND_DIST/pagasa-logo.png" ]]; then
@@ -139,7 +174,15 @@ fi
 
 cp "$SCRIPT_DIR/wavelab-backend.service" "$SERVICE_FILE"
 cp "$SCRIPT_DIR/nginx.conf" "$NGINX_CONF"
-sed -i "s/__PUBLIC_HOST__/$PUBLIC_HOST/g" "$NGINX_CONF"
+sed -i \
+  -e "s|__APP_USER__|$APP_USER|g" \
+  -e "s|__APP_ROOT__|$APP_ROOT|g" \
+  "$SERVICE_FILE"
+sed -i \
+  -e "s|__PUBLIC_HOST__|$PUBLIC_HOST|g" \
+  -e "s|__FRONTEND_ROOT__|$FRONTEND_DIST|g" \
+  -e "s|__APP_ROOT__|$APP_ROOT|g" \
+  "$NGINX_CONF"
 
 nginx -t
 systemctl daemon-reload
@@ -153,4 +196,6 @@ curl -fsSI "http://127.0.0.1/pagasa-logo.png" >/dev/null
 
 echo "WaveLab deploy completed."
 echo "Public origin used for this deployment: $PUBLIC_ORIGIN"
+echo "App root used for this deployment: $APP_ROOT"
+echo "WW3 tile base used for this deployment: $PUBLIC_ORIGIN/wavetiles"
 echo "When a domain is available, update /etc/wavelab/backend.env and frontend/.env.production, rebuild frontend, then enable TLS with certbot."

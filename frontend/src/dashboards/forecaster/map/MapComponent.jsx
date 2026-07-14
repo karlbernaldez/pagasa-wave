@@ -225,7 +225,7 @@ async function loadStudioMapViewSettings() {
   }
 }
 
-const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
+const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode, mapRef: externalMapRef }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
 
@@ -279,6 +279,7 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
 
       map.on('load', () => {
         mapRef.current = map;
+        if (externalMapRef) externalMapRef.current = map;
         map.resize();
 
         registerMapInstance(map);
@@ -296,6 +297,9 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode }) => {
       cancelled = true;
       if (resizeFrame) cancelAnimationFrame(resizeFrame);
       resizeObserver?.disconnect();
+      if (externalMapRef?.current === map) externalMapRef.current = null;
+      if (window.map === map) delete window.map;
+      registerMapInstance(null);
       map?.remove();
       mapRef.current = null;
       if (setMapInstance) setMapInstance(null);

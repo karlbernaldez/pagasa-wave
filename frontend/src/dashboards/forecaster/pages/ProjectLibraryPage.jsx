@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw, Send } from 'lucide-react';
+import { AlertCircle, CalendarDays, CheckCircle2, Eye, Info, Loader2, LockKeyhole, Plus, RefreshCw, Send, ShieldCheck, Waves } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import {
@@ -30,44 +30,44 @@ const REQUIRED_CHART_LABELS = {
 
 const LOCKED_PACKAGE_COPY = {
   Submitted: {
-    nextAction: 'Package has been submitted. Wait for Admin to start review or request revisions before editing again.',
-    lockedNotice: 'Submitted package: charts are locked while Admin queues the review.',
+    nextAction: 'No action is needed right now. You will be notified if Admin requests revisions.',
+    lockedNotice: 'Submitted to the Admin review queue.',
     currentStep: 'Submitted',
     reviewGateDetail: 'Waiting for Admin review',
   },
   'Under Review': {
-    nextAction: 'Admin review is in progress. Keep the package unchanged unless revisions are requested.',
-    lockedNotice: 'Under review: charts are locked while Admin checks this forecast package.',
+    nextAction: 'No action is needed while Admin reviews the package. You will be notified of the decision.',
+    lockedNotice: 'Admin review is in progress.',
     currentStep: 'Under Review',
     reviewGateDetail: 'Admin review in progress',
   },
   Approved: {
-    nextAction: 'Package is approved and ready for publication. Charts remain locked to preserve the reviewed output.',
-    lockedNotice: 'Approved package: reviewed charts are locked and ready for publishing.',
+    nextAction: 'The package is approved. Monitor its publication status here.',
+    lockedNotice: 'Approved and ready for publication.',
     currentStep: 'Approved',
     reviewGateDetail: 'Ready for publication',
   },
   Published: {
-    nextAction: 'Package has been published. Use the public chart output for sharing and archiving decisions.',
-    lockedNotice: 'Published package: final charts are locked as operational outputs.',
+    nextAction: 'Use the published chart output for sharing and operational decisions.',
+    lockedNotice: 'Published as a final operational output.',
     currentStep: 'Published',
     reviewGateDetail: 'Published output',
   },
   Rejected: {
-    nextAction: 'Package was rejected by Admin. Create or wait for a new package instead of editing this one.',
-    lockedNotice: 'Rejected package: this review cycle is closed and charts are locked.',
+    nextAction: 'This review cycle is closed. Create or wait for the next forecast package.',
+    lockedNotice: 'Rejected by Admin; review cycle closed.',
     currentStep: 'Rejected',
     reviewGateDetail: 'Review closed',
   },
   'No Publication': {
-    nextAction: 'Package was marked no publication. Charts are locked because this output will not be published.',
-    lockedNotice: 'No publication package: output is closed and charts are locked.',
+    nextAction: 'No further action is needed for this package.',
+    lockedNotice: 'Closed with no publication decision.',
     currentStep: 'No Publication',
     reviewGateDetail: 'No publication decision',
   },
   Archived: {
-    nextAction: 'Package is archived and read-only. Create or open the current active package to continue forecasting.',
-    lockedNotice: 'Archived package: charts are read-only.',
+    nextAction: 'Open the current active package to continue forecasting.',
+    lockedNotice: 'Archived as a read-only record.',
     currentStep: 'Archived',
     reviewGateDetail: 'Archived record',
   },
@@ -76,27 +76,27 @@ const LOCKED_PACKAGE_COPY = {
 const CHART_METADATA = {
   analysis: {
     code: 'ANL',
-    horizon: 'Current state',
-    mandate: 'Establish observed sea-state baseline and active wave systems.',
-    checkpoint: 'Validate latest analysis before forecast progression.',
+    horizon: 'Analysis',
+    mandate: 'Analysis of observed wave conditions, including significant wave height, direction, and period.',
+    checkpoint: 'Analysis complete',
   },
   forecast_24h: {
     code: '+24H',
-    horizon: 'Day 1 outlook',
-    mandate: 'Prepare near-term operational guidance for the next 24 hours.',
-    checkpoint: 'Confirm timing, extent, and intensity of expected wave conditions.',
+    horizon: '24-hour outlook',
+    mandate: '24-hour wave height and direction forecast based on latest model guidance and analysis.',
+    checkpoint: '24h forecast complete',
   },
   forecast_36h: {
     code: '+36H',
-    horizon: 'Extended outlook',
-    mandate: 'Extend the forecast package through the intermediate marine window.',
-    checkpoint: 'Check continuity against the 24h and 48h forecast frames.',
+    horizon: '36-hour outlook',
+    mandate: '36-hour wave height and direction forecast extending the 24-hour outlook with model guidance.',
+    checkpoint: '36h forecast complete',
   },
   forecast_48h: {
     code: '+48H',
-    horizon: 'Day 2 outlook',
-    mandate: 'Finalize the two-day operational forecast horizon.',
-    checkpoint: 'Confirm downstream hazards and publication readiness.',
+    horizon: '48-hour outlook',
+    mandate: '48-hour wave height and direction forecast for extended marine operations planning.',
+    checkpoint: '48h forecast complete',
   },
 };
 
@@ -293,92 +293,34 @@ function getNextAction(packageData, completion, isEditable, pendingRevisionChart
 }
 
 function StatusPill({ status, isDarkMode }) {
+  const isSuccessful = ['Submitted', 'Approved', 'Published'].includes(status);
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${isDarkMode ? 'bg-cyan-400/10 text-cyan-200 ring-1 ring-cyan-300/20' : 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'}`}>
+    <span className={`inline-flex items-center text-base font-black uppercase tracking-wide ${isSuccessful ? isDarkMode ? 'text-lime-300' : 'text-emerald-700' : isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>
       {status || 'Draft'}
     </span>
   );
 }
 
-function MetricCard({ label, value, detail, icon: Icon, isDarkMode }) {
-  return (
-    <div className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-slate-50'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className={`text-[11px] font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{label}</p>
-          <p className={`mt-2 text-2xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{value}</p>
-        </div>
-        {Icon && <Icon className={isDarkMode ? 'text-cyan-300' : 'text-blue-600'} size={20} />}
-      </div>
-      {detail && <p className={`mt-2 text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{detail}</p>}
-    </div>
-  );
-}
-
-function SubmitReadinessCard({ readiness, canSubmit, isDarkMode }) {
-  const toneClass = readiness.tone === 'ready'
-    ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-800'
-    : readiness.tone === 'warning'
-      ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-800'
-      : readiness.tone === 'locked'
-        ? isDarkMode ? 'border-white/10 bg-slate-950/55 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'
-        : isDarkMode ? 'border-blue-300/20 bg-blue-400/10 text-blue-100' : 'border-blue-200 bg-blue-50 text-blue-800';
-
-  return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 shrink-0">{canSubmit ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}</div>
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.14em]">Submit readiness</p>
-          <p className="mt-1 text-sm font-black">{readiness.title}</p>
-          <p className="mt-1 text-xs font-semibold leading-5 opacity-90">{readiness.detail}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WorkflowStep({ number, title, description, active, done, isDarkMode }) {
-  return (
-    <div className="flex gap-3">
-      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black ${done ? 'bg-emerald-500 text-white' : active ? 'bg-cyan-500 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-        {done ? <CheckCircle2 size={16} /> : number}
-      </div>
-      <div>
-        <p className={`text-sm font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{title}</p>
-        <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
-      </div>
-    </div>
-  );
-}
-
-function OperationsPanel({ packageData, completion, isEditable, isDarkMode, workspaceSettings, pendingRevisionChartTypes }) {
+function NextActionCard({ packageData, completion, isEditable, isDarkMode, pendingRevisionChartTypes }) {
   const nextAction = getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes);
-  const isSubmittedOrLater = packageData && !isEditable;
 
   return (
-    <aside className="space-y-4">
-      <ForecastReminderCard packageData={packageData} settings={workspaceSettings} isDarkMode={isDarkMode} />
-
-      <section className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-        <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>Operations Brief</p>
-        <h3 className={`mt-3 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Next best action</h3>
-        <p className={`mt-2 text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{nextAction}</p>
-      </section>
-
-      <section className={`rounded-3xl border p-5 shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-        <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Workflow</p>
-        <div className="mt-4 space-y-5">
-          <WorkflowStep number="1" title="Analyze current seas" description="Finish Wave Analysis before opening the forecast horizons." active={isEditable && getNextIncompleteChartType(packageData) === 'analysis'} done={isChartComplete(packageData, 'analysis') || isSubmittedOrLater} isDarkMode={isDarkMode} />
-          <WorkflowStep number="2" title="Build forecast sequence" description="Certify 24h, then 36h, then 48h so each frame has a verified baseline." active={isEditable && !completion.isComplete && getNextIncompleteChartType(packageData) !== 'analysis'} done={completion.isComplete || isSubmittedOrLater} isDarkMode={isDarkMode} />
-          <WorkflowStep number="3" title="Submit package" description="Submit once all four charts are complete, no requested revision is pending, and no forecaster is still editing." active={isEditable && completion.isComplete && pendingRevisionChartTypes.length === 0} done={isSubmittedOrLater} isDarkMode={isDarkMode} />
+    <section className={`relative overflow-hidden rounded-2xl border px-5 py-4 backdrop-blur-3xl ${isDarkMode ? 'border-cyan-300/35 bg-[#07335b]/48 shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_18px_42px_rgba(0,0,0,0.20)]' : 'border-white/85 bg-white/64 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_18px_42px_rgba(15,74,105,0.14)]'}`}>
+      <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/3 opacity-20 sm:block" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(34,211,238,.8), transparent 38%), repeating-radial-gradient(ellipse at 100% 120%, transparent 0 14px, rgba(125,211,252,.5) 15px 16px)' }} />
+      <div className="flex min-w-0 items-start gap-3">
+        <span className={`relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border ${isDarkMode ? 'border-cyan-300/50 bg-cyan-300/10 text-cyan-300' : 'border-blue-200 bg-white text-blue-700 shadow-sm'}`}>
+          <Info size={18} />
+        </span>
+        <div className="relative min-w-0">
+          <p className={`text-base font-black ${isDarkMode ? 'text-cyan-300' : 'text-blue-700'}`}>Next action</p>
+          <p className={`mt-0.5 text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{nextAction}</p>
         </div>
-      </section>
-    </aside>
+      </div>
+    </section>
   );
 }
 
-function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen }) {
+function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen, sequenceNumber }) {
   const chartType = chart?.chartType;
   const completion = getChartCompletion(packageData, chartType);
   const projectId = getChartProjectId(chart);
@@ -397,72 +339,120 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen }) {
   const hasActiveEditors = activeEditorNames.length > 0;
   const canOpen = Boolean(projectId && !isQueued);
   const isApprovedChart = APPROVED_CHART_STATUSES.has(displayChartStatus);
-  const isWarningChart = WARNING_CHART_STATUSES.has(displayChartStatus) && !isReCertifiedRevision;
-  const accentClass = isApprovedChart || isComplete || isReCertifiedRevision ? 'bg-emerald-400' : isQueued ? 'bg-slate-600' : isWarningChart || hasActiveEditors ? 'bg-amber-400' : 'bg-cyan-400';
+  const isSubmittedChart = displayChartStatus === 'Submitted';
+  const isWarningChart = ['Revision Requested', 'Under Review'].includes(displayChartStatus) && !isReCertifiedRevision;
+  const isPositiveState = isApprovedChart || isSubmittedChart || isComplete || isReCertifiedRevision;
   const statusLabel = isQueued && !displayChartStatus ? 'Queued' : displayChartStatus || (isComplete ? 'Ready for review' : 'In production');
-  const statusClass = isApprovedChart || isReCertifiedRevision
-    ? 'bg-emerald-500/10 text-emerald-500'
-    : isWarningChart
-      ? isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'
-      : isQueued
-        ? isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
-        : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700';
-  const collaborationLabel = revisionActionPending
+  const certificationText = revisionActionPending
     ? 'Revision needs re-certification'
     : isComplete
-      ? readyEditorText ? `Certified by ${readyEditorText}` : 'Certified ready'
-      : hasActiveEditors ? `Editing by ${activeEditorText}` : 'No active editors';
-  const collaborationClass = revisionActionPending
-    ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
-    : isComplete
-      ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : hasActiveEditors
-        ? isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
-        : isDarkMode ? 'border-white/10 bg-slate-950/50 text-slate-400' : 'border-slate-200 bg-white text-slate-600';
-  const passiveActionText = isComplete
-    ? isReCertifiedRevision ? 'Ready for resubmission' : 'Ready for admin review'
+      ? readyEditorText ? `Certified by ${readyEditorText}` : 'Certified'
+      : hasActiveEditors ? `Editing by ${activeEditorText}` : 'Not yet certified';
+  const checkpointText = revisionActionPending
+    ? 'Revision required before resubmission'
     : isQueued
-      ? 'Locked by sequence'
-      : isEditable ? 'Certify inside Studio' : 'View only';
+      ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} first`
+      : hasActiveEditors && !isComplete
+        ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing`
+        : metadata.checkpoint;
+  const statusTextClass = isApprovedChart || isSubmittedChart || isReCertifiedRevision
+    ? isDarkMode ? 'text-lime-300' : 'text-emerald-700'
+    : isWarningChart
+      ? 'text-amber-400'
+      : isQueued
+        ? 'text-slate-500'
+        : isDarkMode ? 'text-cyan-300' : 'text-blue-700';
 
   return (
-    <article className={`group relative overflow-hidden rounded-3xl border shadow-sm transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-white/10 bg-slate-900/85 hover:border-cyan-300/30' : 'border-slate-200 bg-white hover:border-blue-200'}`}>
-      <div className={`h-1 w-full ${accentClass}`} />
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black tracking-[0.14em] ${isDarkMode ? 'bg-slate-950 text-cyan-200 ring-1 ring-white/10' : 'bg-slate-100 text-blue-700'}`}>{metadata.code}</span>
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${statusClass}`}>{statusLabel}</span>
-            </div>
-            <h4 className={`mt-4 text-lg font-black tracking-tight ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>{REQUIRED_CHART_LABELS[chartType] || chartType}</h4>
-            <p className={`mt-1 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{metadata.horizon}</p>
-          </div>
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isComplete ? 'bg-emerald-500/10 text-emerald-500' : isQueued ? isDarkMode ? 'bg-slate-800 text-slate-500' : 'bg-slate-100 text-slate-500' : isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}>
-            {isComplete ? <CheckCircle2 size={22} /> : <ClipboardList size={22} />}
+    <article className={`group min-h-[156px] overflow-hidden rounded-xl border shadow-lg backdrop-blur-2xl transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-cyan-300/30 bg-[#062b50]/62 shadow-black/20 hover:border-cyan-300/55' : 'border-white/85 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_14px_34px_rgba(15,74,105,0.12)] hover:border-cyan-200'}`}>
+      <div className="grid min-h-[156px] gap-3 p-4 sm:grid-cols-[28px_1fr] xl:grid-cols-[28px_68px_minmax(0,1fr)_172px] xl:items-center">
+        <span className={`grid h-7 w-7 place-items-center self-start rounded-md border text-sm font-black xl:mt-0 ${isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-white' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>{sequenceNumber}</span>
+
+        <div className={`grid h-16 w-16 place-items-center rounded-full border ${isPositiveState ? isDarkMode ? 'border-cyan-100/45 bg-white/[0.03] text-white' : 'border-blue-200 bg-blue-50 text-blue-800' : isQueued ? 'border-slate-500/30 text-slate-500' : isDarkMode ? 'border-cyan-300/35 bg-cyan-400/[0.05] text-cyan-100' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+          <div className="text-center">
+            <Waves className="mx-auto" size={28} aria-hidden="true" />
+            <span className="block text-[9px] font-black leading-none">{metadata.code}</span>
           </div>
         </div>
 
-        <div className={`mt-5 rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/55' : 'border-slate-100 bg-slate-50'}`}>
-          <div className={`mb-4 inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-black ${collaborationClass}`}><span className="truncate">{collaborationLabel}</span></div>
-          <p className={`text-sm leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{metadata.mandate}</p>
-          <div className={`mt-4 border-t pt-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-            <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{revisionActionPending ? 'Revision required' : isQueued ? 'Prerequisite required' : hasActiveEditors && !isComplete ? 'Active editors' : isReCertifiedRevision ? 'Revision re-certified' : isApprovedChart && isComplete ? 'Review completed' : 'Readiness checkpoint'}</p>
-            <p className={`mt-1 text-xs leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{revisionActionPending ? 'Open this chart in Studio, apply the requested changes, then certify it again before resubmitting.' : isQueued ? `Complete ${REQUIRED_CHART_LABELS[blockingChartType]} before starting this chart.` : hasActiveEditors && !isComplete ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing this chart.` : isReCertifiedRevision ? 'This revision is certified. Submit the package again for admin review.' : isApprovedChart && isComplete ? 'This chart was approved as part of the forecast package review.' : metadata.checkpoint}</p>
-          </div>
+        <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+          <h3 className={`text-base font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{REQUIRED_CHART_LABELS[chartType] || chartType}</h3>
+          <p className={`mt-0.5 text-xs font-black uppercase tracking-[0.08em] ${isDarkMode ? 'text-cyan-300' : 'text-blue-700'}`}>{metadata.code}</p>
+          <p className={`mt-3 max-w-[290px] text-sm leading-[1.35] ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{metadata.mandate}</p>
+          <p className={`mt-3 inline-flex items-start gap-1.5 text-xs font-medium ${revisionActionPending ? 'text-amber-400' : isComplete ? isDarkMode ? 'text-cyan-300' : 'text-cyan-700' : isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            <CheckCircle2 className="mt-0.5 shrink-0" size={14} aria-hidden="true" />
+            <span>Readiness checkpoint: {checkpointText}</span>
+          </p>
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Button className="w-full sm:w-auto" size="sm" variant={isQueued ? 'secondary' : 'primary'} disabled={!canOpen} onClick={() => canOpen && onOpen(projectId)}>
-            {isQueued ? `Waiting for ${REQUIRED_CHART_LABELS[blockingChartType]}` : isComplete ? 'Review chart' : 'Open chart'}
-          </Button>
-          <span className={`inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-black ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-            <CheckCircle2 size={15} />
-            {passiveActionText}
+        <div className={`flex min-h-[126px] flex-col border-t pt-4 sm:col-span-2 xl:col-span-1 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-1 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+          <span className={`inline-flex w-fit items-center gap-1.5 text-xs font-black uppercase tracking-wide ${statusTextClass}`}><CheckCircle2 size={16} />{statusLabel}</span>
+          <span className="group/certification relative mt-3 inline-flex w-fit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent" tabIndex={0} aria-label={isComplete ? certificationText : 'Not yet certified'}>
+            <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide ${isComplete ? isDarkMode ? 'border-cyan-300/25 bg-cyan-400/[0.07] text-cyan-300' : 'border-cyan-200 bg-cyan-50 text-cyan-700' : isDarkMode ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><ShieldCheck size={14} />{isComplete ? 'Certified' : 'Not certified'}</span>
+            <span role="tooltip" className={`pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-max max-w-[240px] translate-y-1 rounded-lg border px-3 py-2 text-[11px] font-semibold normal-case tracking-normal opacity-0 shadow-xl transition duration-150 group-hover/certification:translate-y-0 group-hover/certification:opacity-100 group-focus-within/certification:translate-y-0 group-focus-within/certification:opacity-100 ${isDarkMode ? 'border-cyan-300/20 bg-slate-950 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}`}>{certificationText}</span>
           </span>
+          <button type="button" disabled={!canOpen} onClick={() => canOpen && onOpen(projectId)} className={`mt-auto inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border px-3 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:cursor-not-allowed disabled:opacity-50 ${isDarkMode ? 'border-white/15 bg-white/[0.06] text-white hover:border-cyan-300/30 hover:bg-white/[0.10]' : 'border-slate-200 bg-white/78 text-slate-900 hover:border-blue-300 hover:bg-white'}`}>
+            <Eye size={17} aria-hidden="true" />
+            {isQueued ? 'Waiting' : isComplete ? 'Review chart' : 'Open chart'}
+          </button>
         </div>
       </div>
     </article>
+  );
+}
+
+function PackageSummary({ chartSequenceHelper, completion, hasPendingRevisionAction, isDarkMode, isEditable, lockedPackageCopy, packageData, packageTitle, submitReadiness }) {
+  const ReadinessIcon = !isEditable ? LockKeyhole : completion.isComplete ? ShieldCheck : Waves;
+  const statusIsComplete = ['Submitted', 'Approved', 'Published'].includes(packageData.status);
+  const lockedDescription = 'The package is locked and cannot be edited until the Admin completes the review.';
+
+  return (
+    <section className={`relative min-h-[192px] overflow-hidden rounded-xl border backdrop-blur-3xl ${isDarkMode ? 'border-cyan-300/35 bg-[#07335b]/54 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(8,47,73,0.35),0_26px_64px_rgba(0,0,0,0.28)]' : 'border-white/[0.90] bg-white/[0.62] shadow-[inset_0_1px_0_rgba(255,255,255,0.98),inset_0_-1px_0_rgba(255,255,255,0.40),0_26px_64px_rgba(15,74,105,0.18)]'}`}>
+      <div className={`pointer-events-none absolute inset-0 ${isDarkMode ? 'bg-[radial-gradient(100%_90%_at_34%_-15%,rgba(125,211,252,0.16),transparent_48%),linear-gradient(120deg,rgba(255,255,255,0.04),transparent_46%,rgba(34,211,238,0.04))]' : 'bg-[radial-gradient(100%_90%_at_34%_-15%,rgba(255,255,255,0.92),transparent_50%),linear-gradient(120deg,rgba(255,255,255,0.22),transparent_46%,rgba(56,189,248,0.06))]'}`} aria-hidden="true" />
+      <div className="relative grid min-h-[192px] xl:grid-cols-[18%_33%_27%_22%] xl:grid-rows-[1fr_auto]">
+        <div className={`flex items-start gap-4 border-b p-6 xl:col-start-1 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+          <span className={`mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-full border ${statusIsComplete ? isDarkMode ? 'border-lime-300/60 bg-lime-400/10 text-lime-300 shadow-[0_0_18px_rgba(163,230,53,0.10)]' : 'border-emerald-200 bg-emerald-50 text-emerald-600' : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+            <CheckCircle2 size={24} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Status</p>
+            <div className="mt-1"><StatusPill status={packageData.status} isDarkMode={isDarkMode} /></div>
+          </div>
+        </div>
+
+        <div className={`border-b p-6 xl:col-start-2 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+          <dl className="space-y-3">
+            <div>
+              <dt className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Date</dt>
+              <dd className={`mt-1 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatForecastDate(packageData.forecastDate)}</dd>
+            </div>
+            <div>
+              <dt className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Package title</dt>
+              <dd className={`mt-1 truncate text-lg font-bold ${isDarkMode ? 'text-white' : 'text-slate-950'}`} title={packageTitle}>{packageTitle}</dd>
+            </div>
+            <div>
+              <dt className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Message</dt>
+              <dd className={`mt-1 text-xs font-medium leading-5 ${isDarkMode ? 'text-slate-200' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className={`border-b p-6 xl:col-start-3 xl:row-span-2 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+          <p className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Completion</p>
+          <p className={`mt-2 text-4xl font-black leading-none ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{completion.percentage}%</p>
+          <p className={`mt-3 text-base font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>{completion.completed}/{completion.required} charts</p>
+          <div className={`mt-5 h-2 w-full max-w-[310px] overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-950/60' : 'bg-slate-200'}`} role="progressbar" aria-label="Forecast package completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow={completion.percentage}><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-cyan-300" style={{ width: `${completion.percentage}%` }} /></div>
+        </div>
+
+        <div className={`flex flex-col items-center justify-center border-b p-5 text-center xl:col-start-4 xl:row-span-2 xl:row-start-1 xl:border-b-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+          <span className={`grid h-16 w-16 place-items-center rounded-full border ${!isEditable ? isDarkMode ? 'border-amber-300/80 bg-slate-950/15 text-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.14)]' : 'border-amber-300 bg-amber-50 text-amber-600' : completion.isComplete ? 'border-emerald-300/50 bg-emerald-400/10 text-emerald-400' : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}><ReadinessIcon size={29} /></span>
+          <p className={`mt-3 text-base font-black ${!isEditable ? 'text-amber-400' : isDarkMode ? 'text-white' : 'text-slate-950'}`}>{submitReadiness.title}</p>
+          <p className={`mt-2 max-w-[260px] text-xs font-medium leading-5 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{!isEditable ? lockedDescription : submitReadiness.detail}</p>
+        </div>
+
+        {!isEditable && <div className={`flex items-center gap-3 px-7 pb-5 pt-1 text-xs font-bold xl:col-span-2 xl:col-start-1 xl:row-start-2 ${isDarkMode ? 'text-amber-300' : 'text-amber-800'}`}><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border ${isDarkMode ? 'border-amber-300/45 bg-amber-400/[0.06]' : 'border-amber-300 bg-amber-50'}`}><LockKeyhole size={15} /></span><p>{lockedPackageCopy.lockedNotice}</p></div>}
+      </div>
+    </section>
   );
 }
 
@@ -560,17 +550,27 @@ export default function ForecasterProjectLibraryPage() {
   };
 
   return (
-    <div className={`min-h-full transition-colors ${isDarkMode ? 'bg-[#0d1117]' : 'bg-slate-50'}`}>
-      <div className="mx-auto max-w-[1440px] space-y-5 p-4 sm:space-y-6 sm:p-6">
+    <div className="relative min-h-full bg-transparent transition-colors">
+      <div className="pointer-events-none absolute inset-0" style={{ background: isDarkMode ? 'radial-gradient(ellipse 72% 46% at 36% 16%, rgba(2, 20, 39, 0.42), transparent 72%)' : 'radial-gradient(ellipse 78% 50% at 38% 14%, rgba(245, 251, 255, 0.50), transparent 74%)' }} aria-hidden="true" />
+      <div className="relative mx-auto max-w-[1540px] space-y-5 p-4 sm:space-y-6 sm:p-6 lg:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>Forecaster Workspace</p>
-            <h1 className={`mt-2 text-2xl font-black sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Current Forecast Package</h1>
-            <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Complete the daily forecast sequence from analysis through the 48-hour outlook.</p>
+            <h1 className={`text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Current Forecast Package</h1>
+            <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Complete the daily forecast sequence from analysis through the 48-hour outlook.</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            {packageData && <Button icon={Send} loading={submitting} disabled={!canSubmit} onClick={handleSubmitPackage}>{submitButtonLabel}</Button>}
-            <Button variant="secondary" icon={RefreshCw} onClick={() => loadCurrentPackage()} disabled={loading}>Refresh</Button>
+            {packageData && isEditable && <Button icon={Send} loading={submitting} disabled={!canSubmit} onClick={handleSubmitPackage}>{submitButtonLabel}</Button>}
+            <button
+              type="button"
+              onClick={() => loadCurrentPackage()}
+              disabled={loading}
+              className={`group relative inline-flex min-h-11 items-center justify-center gap-2 overflow-hidden rounded-xl border px-4 text-sm font-bold backdrop-blur-2xl transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:cursor-not-allowed disabled:opacity-50 ${isDarkMode ? 'border-white/20 bg-white/[0.07] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_28px_rgba(1,15,35,0.28)] hover:border-cyan-200/40 hover:bg-white/[0.11]' : 'border-white/85 bg-white/62 text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_28px_rgba(15,65,90,0.14)] hover:border-cyan-200 hover:bg-white/82'}`}
+            >
+              <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+              <span className="pointer-events-none absolute -top-3 left-3 h-8 w-2/3 rounded-full bg-white/10 blur-xl transition-transform duration-300 group-hover:translate-x-2" />
+              <RefreshCw className={`relative ${loading ? 'animate-spin' : 'transition-transform duration-300 group-hover:rotate-45'}`} size={17} aria-hidden="true" />
+              <span className="relative">Refresh</span>
+            </button>
           </div>
         </div>
 
@@ -586,47 +586,24 @@ export default function ForecasterProjectLibraryPage() {
         ) : !packageData ? (
           <EmptyPackageState isCreating={creating} isDarkMode={isDarkMode} onCreate={handleCreatePackage} message={workspaceSettings.emptyPackageMessage} />
         ) : (
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="space-y-5">
-              <section className={`rounded-3xl border p-5 shadow-sm sm:p-6 ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2"><StatusPill status={packageData.status} isDarkMode={isDarkMode} /><span className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{formatForecastDate(packageData.forecastDate)}</span></div>
-                    <h2 className={`mt-3 text-xl font-black sm:text-2xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{packageTitle}</h2>
-                    <p className={`mt-1 max-w-3xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</p>
-                    {!isEditable && <p className={`mt-2 text-xs font-bold ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}>{lockedPackageCopy.lockedNotice}</p>}
-                  </div>
-                  <div className="w-full space-y-3 lg:max-w-[280px]">
-                    <div className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
-                      <p className={`text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Completion</p>
-                      <div className="mt-2 flex items-end gap-2"><span className={`text-3xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{completion.percentage}%</span><span className={`pb-1 text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{completion.completed}/{completion.required} charts</span></div>
-                      <div className={`mt-3 h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}><div className="h-full rounded-full bg-cyan-500" style={{ width: `${completion.percentage}%` }} /></div>
-                    </div>
-                    <SubmitReadinessCard readiness={submitReadiness} canSubmit={canSubmit} isDarkMode={isDarkMode} />
-                  </div>
-                </div>
-              </section>
+          <div className="space-y-5">
+              <PackageSummary chartSequenceHelper={chartSequenceHelper} completion={completion} hasPendingRevisionAction={hasPendingRevisionAction} isDarkMode={isDarkMode} isEditable={isEditable} lockedPackageCopy={lockedPackageCopy} packageData={packageData} packageTitle={packageTitle} submitReadiness={submitReadiness} />
 
-              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <MetricCard label="Forecast date" value={formatForecastDateKey(packageData.forecastDate) || 'Today'} detail="Philippines operational day" icon={CalendarDays} isDarkMode={isDarkMode} />
-                <MetricCard label="Current step" value={pendingRevisionChartTypes.length ? 'Resolve Revision' : !isEditable ? lockedPackageCopy.currentStep : REQUIRED_CHART_LABELS[getNextIncompleteChartType(packageData)] || packageData.status || 'Submit'} detail={pendingRevisionChartTypes.length ? 'Open and re-certify revision chart first' : !isEditable ? lockedPackageCopy.reviewGateDetail : completion.isComplete ? `Package is ${packageData.status}` : 'Next chart in sequence'} icon={CheckCircle2} isDarkMode={isDarkMode} />
-                <MetricCard label="Chart deadlines" value="On track" detail="No chart deadline warnings" icon={ClipboardList} isDarkMode={isDarkMode} />
-                <MetricCard label="Review gate" value={hasPendingRevisionAction || !completion.isComplete || !isEditable ? 'Blocked' : 'Open'} detail={hasPendingRevisionAction ? 'Revision action required' : !isEditable ? lockedPackageCopy.reviewGateDetail : completion.isComplete ? 'Sequence complete' : 'Complete sequence first'} icon={Send} isDarkMode={isDarkMode} />
-              </section>
+              {isEditable && <ForecastReminderCard packageData={packageData} settings={operationsSettings} isDarkMode={isDarkMode} />}
+              <NextActionCard packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} pendingRevisionChartTypes={pendingRevisionChartTypes} />
 
               <section>
-                <div className="mb-3 flex items-center justify-between gap-3"><div><p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Required Charts</p><h3 className={`mt-1 text-lg font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Sequential forecast production board</h3></div></div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {orderedCharts.map((chart) => (
-                    <ChartCard key={chart.chartType} chart={chart} packageData={packageData} isDarkMode={isDarkMode} isEditable={isEditable} onOpen={(projectId) => navigate(`/studio/${projectId}`)} />
+                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4"><h2 className={`text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Forecast charts</h2><p className={`text-xs font-semibold ${isDarkMode ? 'text-slate-300/80' : 'text-slate-600'}`}>Four required charts · Complete in sequence</p></div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {orderedCharts.map((chart, index) => (
+                    <ChartCard key={chart.chartType} chart={chart} packageData={packageData} isDarkMode={isDarkMode} isEditable={isEditable} onOpen={(projectId) => navigate(`/studio/${projectId}`)} sequenceNumber={index + 1} />
                   ))}
                 </div>
               </section>
-            </div>
-            <OperationsPanel packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} workspaceSettings={operationsSettings} pendingRevisionChartTypes={pendingRevisionChartTypes} />
           </div>
         )}
       </div>
     </div>
   );
 }
+

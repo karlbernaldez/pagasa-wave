@@ -17,9 +17,23 @@ import {
   setHimawariSatelliteVisibility,
 } from '@dashboards/forecaster/map/layers/satelliteLayer';
 
+const isUsableMap = (map) => {
+  if (!map || typeof map.getContainer !== 'function') return false;
+  try {
+    return Boolean(map.getContainer()?.isConnected);
+  } catch {
+    return false;
+  }
+};
+
 const safeSetLayoutVisibility = (map, layerId, visible) => {
-  if (map?.getLayer?.(layerId)) {
-    map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+  if (!isUsableMap(map)) return;
+  try {
+    if (map.getLayer?.(layerId)) {
+      map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+    }
+  } catch {
+    // The map may be tearing down between navigation and this queued update.
   }
 };
 
@@ -27,7 +41,7 @@ const safeSetLayoutVisibility = (map, layerId, visible) => {
  * Manages domain, utility, and satellite layer state.
  * Reads initial values from localStorage, then applies them to the map once loaded.
  */
-export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
+export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId }) => {
   const [domainLayers, setDomainLayers] = useState({
     PAR: false, TCID: false, TCAD: false,
   });
@@ -43,7 +57,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
 
   // ── Project guard ───────────────────────────────────────────────────────────
   const checkProjectId = () => {
-    if (localStorage.getItem('projectId')) return true;
+    if (projectId) return true;
     Swal.fire({
       toast: true, position: 'top-end', icon: 'warning',
       title: 'Please select or create a project first.',
@@ -118,7 +132,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
     setSatelliteLayer(saved.satellite);
 
     const map = mapRef.current;
-    if (!map) return;
+    if (!isUsableMap(map)) return undefined;
 
     const apply = () => {
       // Domains
@@ -168,8 +182,14 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate }) => {
       }
     };
 
-    map.isStyleLoaded() ? apply() : map.once('load', apply);
-  }, [mapRef]);
+    if (map.isStyleLoaded()) {
+      apply();
+      return undefined;
+    }
+
+    map.once('load', apply);
+    return () => map.off('load', apply);
+  }, [mapRef, projectId]);
 
   useEffect(() => {
     if (!utilitiesLayers.PAGASA_NWP_RASTER) return;

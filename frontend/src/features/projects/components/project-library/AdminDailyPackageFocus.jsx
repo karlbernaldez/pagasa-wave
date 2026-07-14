@@ -1,25 +1,26 @@
-import { Archive, BarChart3, CalendarCheck2, CheckCircle2, Clock3, XCircle } from 'lucide-react';
+import {
+  ArrowRight,
+  BarChart3,
+  Check,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  PackageOpen,
+  Waves,
+} from 'lucide-react';
 
+import Button from '@/components/ui/Button';
 import {
   CHART_LABELS,
+  formatPackageDate,
   getDateKey,
   groupForecastPackages,
   isDailyForecastPackage,
 } from '@/features/projects/utils/forecastPackageGrouping';
 
 const DAILY_CHART_TYPES = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
-
-const STATUS_TONE = {
-  Draft: 'slate',
-  Submitted: 'amber',
-  'Under Review': 'cyan',
-  'Revision Requested': 'rose',
-  Approved: 'emerald',
-  Published: 'emerald',
-  Rejected: 'rose',
-  Archived: 'slate',
-  Missing: 'slate',
-};
+const COMPLETE_STATUSES = new Set(['Approved', 'Published']);
+const REVIEWABLE_STATUSES = new Set(['Submitted', 'Under Review']);
 
 function getRows({ packages = [], projects = [] }) {
   return packages.length > 0 ? packages : groupForecastPackages(projects);
@@ -32,76 +33,71 @@ function getDailyFocus({ packages = [], projects = [] }) {
   const chartRows = dailyPackage?.charts || [];
   const chartByType = new Map(chartRows.map((chart) => [chart.chartType || chart.project?.chartType, chart]));
 
+  const charts = DAILY_CHART_TYPES.map((chartType) => {
+    const row = chartByType.get(chartType);
+    const project = row?.project || row;
+    return {
+      chartType,
+      label: CHART_LABELS[chartType] || chartType,
+      status: project?.status || 'Missing',
+      projectName: project?.name || project?.title || 'Not submitted yet',
+      project,
+    };
+  });
+
   return {
-    todayKey,
     dailyPackage,
+    charts,
+    completeCount: charts.filter((chart) => COMPLETE_STATUSES.has(chart.status)).length,
     historyCount: rows.filter((forecastPackage) => forecastPackage.dateKey && forecastPackage.dateKey !== todayKey).length,
-    chartTiles: DAILY_CHART_TYPES.map((chartType) => {
-      const row = chartByType.get(chartType);
-      const project = row?.project || row;
-      return {
-        chartType,
-        label: CHART_LABELS[chartType] || chartType,
-        status: project?.status || 'Missing',
-        projectName: project?.name || project?.title || 'No chart project linked for today yet',
-        project,
-      };
-    }),
   };
 }
 
-function getToneClasses(tone, isDarkMode) {
-  const classes = {
-    cyan: isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-200 bg-cyan-50 text-cyan-700',
-    amber: isDarkMode ? 'border-amber-300/20 bg-amber-300/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-700',
-    emerald: isDarkMode ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    rose: isDarkMode ? 'border-rose-300/20 bg-rose-300/10 text-rose-100' : 'border-rose-200 bg-rose-50 text-rose-700',
-    slate: isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-700',
-  };
-
-  return classes[tone] || classes.slate;
-}
-
-function ChartFocusTile({ chart, dailyPackage, isDarkMode, onOpenChart }) {
-  const tone = STATUS_TONE[chart.status] || 'slate';
-  const icon = tone === 'emerald' ? CheckCircle2 : tone === 'rose' ? XCircle : tone === 'amber' || tone === 'cyan' ? Clock3 : BarChart3;
-  const Icon = icon;
-  const isClickable = Boolean(chart.project && chart.project._id);
-  const baseClass = `rounded-2xl border p-4 text-left shadow-sm transition ${isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/70'}`;
-  const interactiveClass = isClickable
-    ? isDarkMode
-      ? 'cursor-pointer hover:border-cyan-300/30 hover:bg-cyan-300/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/40'
-      : 'cursor-pointer hover:border-cyan-200 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-200'
-    : 'cursor-not-allowed opacity-70';
-  const content = (
-    <>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={`truncate text-xs font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-            {chart.label}
-          </p>
-          <p className={`mt-2 truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`} title={chart.projectName}>
-            {chart.projectName}
-          </p>
-        </div>
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${getToneClasses(tone, isDarkMode)}`}>
-          <Icon size={18} />
-        </span>
-      </div>
-      <span className={`mt-4 inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${getToneClasses(tone, isDarkMode)}`}>
-        {chart.status}
-      </span>
-    </>
-  );
-
-  if (!isClickable) {
-    return <div className={`${baseClass} ${interactiveClass}`}>{content}</div>;
-  }
+function ChartTile({ chart, dailyPackage, isDarkMode, onOpenChart }) {
+  const complete = COMPLETE_STATUSES.has(chart.status);
+  const reviewable = REVIEWABLE_STATUSES.has(chart.status);
+  const available = Boolean(chart.project && (chart.project._id || chart.project.id));
+  const Icon = chart.chartType === 'analysis' ? Waves : Clock3;
 
   return (
-    <button type="button" className={`${baseClass} ${interactiveClass}`} onClick={() => onOpenChart?.(chart.project, dailyPackage)}>
-      {content}
-    </button>
+    <article className={`rounded-xl border p-4 backdrop-blur-xl ${
+      isDarkMode ? 'border-white/10 bg-white/[0.045]' : 'border-white/75 bg-white/62'
+    }`}>
+      <div className="flex items-start gap-3">
+        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${
+          isDarkMode ? 'border-cyan-300/15 bg-cyan-300/10 text-cyan-200' : 'border-cyan-100 bg-cyan-50 text-cyan-700'
+        }`}>
+          <Icon size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className={`truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{chart.label}</h3>
+          <div className="mt-1 flex items-center gap-1.5">
+            {complete ? <CheckCircle2 size={13} className="text-emerald-400" /> : <Clock3 size={13} className={reviewable ? 'text-amber-400' : 'text-slate-500'} />}
+            <span className={`text-xs font-bold ${
+              complete ? 'text-emerald-400' : reviewable ? 'text-amber-400' : isDarkMode ? 'text-slate-500' : 'text-slate-500'
+            }`}>
+              {chart.status}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        disabled={!available}
+        onClick={() => available && onOpenChart?.(chart.project, dailyPackage)}
+        className={`mt-4 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-xs font-black transition ${
+          available
+            ? isDarkMode
+              ? 'border-white/10 bg-white/[0.045] text-slate-200 hover:border-cyan-300/25 hover:bg-cyan-300/10'
+              : 'border-slate-200 bg-white/70 text-slate-700 hover:border-cyan-200 hover:bg-cyan-50'
+            : 'cursor-not-allowed border-transparent bg-transparent text-slate-500'
+        }`}
+      >
+        <span>{available ? (reviewable ? 'Review chart' : 'View chart') : chart.projectName}</span>
+        {available && <ArrowRight size={14} />}
+      </button>
+    </article>
   );
 }
 
@@ -110,48 +106,98 @@ export default function AdminDailyPackageFocus({
   packages = [],
   projects = [],
   onOpenChart,
-  total = 0,
+  onPublishPackage,
+  publishingPackageId,
 }) {
-  const { chartTiles, dailyPackage, historyCount } = getDailyFocus({ packages, projects });
-  const formattedDate = new Intl.DateTimeFormat(undefined, {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'Asia/Manila',
-  }).format(new Date());
+  const { charts, completeCount, dailyPackage } = getDailyFocus({ packages, projects });
+  const dateLabel = dailyPackage?.dateKey
+    ? formatPackageDate(dailyPackage.dateKey)
+    : new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' }).format(new Date());
+  const isReadyToPublish = dailyPackage?.status === 'Approved';
+  const isPublishing = publishingPackageId === dailyPackage?.id;
+  const primaryChart = dailyPackage?.primaryChart;
+  const canOpen = Boolean(primaryChart);
+
+  const runPrimaryAction = () => {
+    if (isReadyToPublish) {
+      onPublishPackage?.(dailyPackage);
+      return;
+    }
+    if (canOpen) onOpenChart?.(primaryChart, dailyPackage);
+  };
 
   return (
-    <section className={`overflow-hidden rounded-3xl border shadow-xl backdrop-blur-xl ${isDarkMode ? 'border-cyan-300/15 bg-cyan-950/20 shadow-black/20' : 'border-cyan-100 bg-cyan-50/75 shadow-cyan-100/60'}`}>
-      <div className="p-4 sm:p-5">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-200 bg-white/75 text-cyan-700'}`}>
-              <CalendarCheck2 size={14} />
-              Daily focus
-            </span>
-            <span className={`text-xs font-bold ${isDarkMode ? 'text-cyan-100/70' : 'text-cyan-800/70'}`}>{formattedDate}</span>
+    <section className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-2xl ${
+      isDarkMode ? 'border-cyan-300/15 bg-slate-950/48 shadow-black/25' : 'border-white/80 bg-white/68 shadow-slate-300/35'
+    }`}>
+      <div className="grid lg:grid-cols-[1.35fr_0.65fr]">
+        <div className="relative overflow-hidden p-5 sm:p-7">
+          <div className={`pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full blur-3xl ${isDarkMode ? 'bg-cyan-400/10' : 'bg-cyan-200/35'}`} />
+          <div className="relative grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-200/80' : 'text-cyan-700'}`}>Today&apos;s forecast package</p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <h2 className={`text-3xl font-black tracking-tight sm:text-4xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{dateLabel}</h2>
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black ${
+                  isReadyToPublish
+                    ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-200' : 'border-cyan-200 bg-cyan-50 text-cyan-700'
+                }`}>
+                  {isReadyToPublish && <Check size={13} />}
+                  {dailyPackage?.status || 'Not submitted'}
+                </span>
+              </div>
+              <p className={`mt-3 max-w-xl text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                {dailyPackage
+                  ? 'Review today’s required charts and complete the package before publication.'
+                  : 'Today’s package has not been submitted yet. Required chart slots will update as forecasts arrive.'}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-5 text-xs font-bold">
+                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Owner <strong className={isDarkMode ? 'text-slate-100' : 'text-slate-800'}>{dailyPackage?.ownerLabel || 'Forecast team'}</strong></span>
+                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Package <strong className={isDarkMode ? 'text-slate-100' : 'text-slate-800'}>{dailyPackage?.title || 'Awaiting submission'}</strong></span>
+              </div>
+            </div>
+
+            <div className={`grid h-40 w-40 place-items-center rounded-full border-[3px] text-center shadow-[0_0_38px_rgba(34,211,238,0.18)] ${
+              isDarkMode ? 'border-cyan-300/70 bg-cyan-400/[0.06]' : 'border-cyan-400 bg-cyan-50/70'
+            }`}>
+              <div>
+                <CheckCircle2 className={`mx-auto ${completeCount === 4 ? 'text-emerald-400' : 'text-cyan-400'}`} size={28} />
+                <p className={`mt-2 text-3xl font-black tabular-nums ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{completeCount} / 4</p>
+                <p className={`text-xs font-black ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Charts complete</p>
+              </div>
+            </div>
           </div>
-          <h2 className={`mt-3 text-xl font-black tracking-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
-            Today&apos;s Analysis and Forecast Charts
-          </h2>
-          <p className={`mt-1 max-w-3xl text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-            {dailyPackage?.title || 'No ForecastPackage is linked to today yet'} is the primary review target. Package history stays available below through the main filters and pagination.
+        </div>
+
+        <aside className={`border-t p-5 sm:p-7 lg:border-l lg:border-t-0 ${isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-white/70 bg-white/35'}`}>
+          <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Today&apos;s package action</p>
+          <h3 className={`mt-3 text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+            {isReadyToPublish ? 'Publish today’s package' : dailyPackage ? 'Review today’s package' : 'Await today’s package'}
+          </h3>
+          <p className={`mt-2 text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            {isReadyToPublish
+              ? 'All required charts are approved. Publish the package to make the outputs available.'
+              : 'Open the current review workspace and resolve the remaining chart decisions.'}
           </p>
+          <div className="mt-5">
+            <Button icon={isReadyToPublish ? PackageOpen : Eye} disabled={!dailyPackage || (!isReadyToPublish && !canOpen) || isPublishing} onClick={runPrimaryAction}>
+              {isPublishing ? 'Publishing...' : isReadyToPublish ? 'Publish today’s package' : 'Review today’s package'}
+            </Button>
+          </div>
+        </aside>
+      </div>
+
+      <div className={`border-t px-5 pt-4 sm:px-7 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
+        <div className="flex items-center gap-2">
+          <BarChart3 size={15} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} />
+          <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Required daily charts</p>
         </div>
       </div>
-
-      <div className={`grid gap-3 border-t p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4 ${isDarkMode ? 'border-white/10' : 'border-cyan-100'}`}>
-        {chartTiles.map((chart) => (
-          <ChartFocusTile key={chart.chartType} chart={chart} dailyPackage={dailyPackage} isDarkMode={isDarkMode} onOpenChart={onOpenChart} />
+      <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-7 lg:grid-cols-4">
+        {charts.map((chart) => (
+          <ChartTile key={chart.chartType} chart={chart} dailyPackage={dailyPackage} isDarkMode={isDarkMode} onOpenChart={onOpenChart} />
         ))}
-      </div>
-
-      <div className={`flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 text-xs font-bold sm:px-5 ${isDarkMode ? 'border-white/10 text-slate-400' : 'border-cyan-100 text-slate-500'}`}>
-        <span className="inline-flex items-center gap-2">
-          <Archive size={14} />
-          {historyCount} past package{historyCount === 1 ? '' : 's'} visible in history
-        </span>
-        <span>{total || packages.length} total package{(total || packages.length) === 1 ? '' : 's'} matching current filters</span>
       </div>
     </section>
   );

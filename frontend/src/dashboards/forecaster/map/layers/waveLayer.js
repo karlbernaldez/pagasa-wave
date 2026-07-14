@@ -26,7 +26,8 @@ import { getCachedForecastPackageContext, resolveWW3ForecastRun } from '@dashboa
 
 const MRI3_TIMESTEP = '012';
 const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
-const LOCAL_WW3_TILE_BASE = 'http://127.0.0.1:8081';
+const DEFAULT_WW3_TILE_BASE = '/wavetiles';
+const LOCAL_WW3_TILE_BASE = import.meta.env.VITE_WW3_TILE_BASE || DEFAULT_WW3_TILE_BASE;
 
 // ── Module-level singletons ───────────────────────────────────────────────────
 
@@ -44,6 +45,8 @@ const getWavePopup = () => {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const normalizeModel = (model = '') => model.trim().toUpperCase();
+
+const normalizeBaseUrl = (base = '') => String(base).replace(/\/+$/, '');
 
 const resolveDate = (model, forecastPackage = {}) => {
   switch (model) {
@@ -64,7 +67,7 @@ const resolveTileBase = (model) => (
 const buildTileUrl = (model, theme, forecastPackage = {}) => {
   const m = normalizeModel(model);
   const date = resolveDate(m, forecastPackage);
-  const base = `${resolveTileBase(m)}/${m}/${theme}/${date}`;
+  const base = `${normalizeBaseUrl(resolveTileBase(m))}/${m}/${theme}/${date}`;
   return m === 'MRI3'
     ? `${base}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`
     : `${base}/{z}/{x}/{y}.png`;

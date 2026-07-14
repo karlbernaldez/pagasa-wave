@@ -128,6 +128,7 @@ const StudioPanel = ({
   onSave,
   onView,
   readOnly = false,
+  projectId,
 }) => {
 
   // ── Panel & menu state ───────────────────────────────────────────────────────
@@ -177,7 +178,7 @@ const StudioPanel = ({
     domainLayers, utilitiesLayers, satelliteLayer,
     activeCount: systemActiveCount,
     toggleDomainLayer, toggleUtilityLayer, toggleSatelliteLayer,
-  } = useSystemLayers({ mapRef, isDarkMode, forecastDate });
+  } = useSystemLayers({ mapRef, isDarkMode, forecastDate, projectId });
 
   const { windConfig, toggleWindLayer, setWindElement, toggleWindModel, setWindBarbStyle } = useWindConfig({ mapRef, isDarkMode });
   const { waveConfig, toggleWaveLayer, setWaveElement, toggleWaveModel, setDirectionStyle } = useWaveConfig({ mapRef, isDarkMode });

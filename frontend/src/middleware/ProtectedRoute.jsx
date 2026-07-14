@@ -6,13 +6,13 @@ import { useAuth } from '@/hooks/useAuth';
 import OnlyUserModal from '@/components/ui/modals/OnlyUserModal';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
-const ALLOWED_ROLES = ['user', 'forecaster'];
+const ALLOWED_ROLES = ['forecaster'];
 const ADMIN_ROLES = ['admin'];
 
 const resolveAuthenticatedRedirect = (role, fallback = '/studio') => {
   if (role === 'admin') return '/dashboard';
   if (role === 'forecaster') return '/studio';
-  if (role === 'user') return fallback;
+  if (role === 'user') return '/';
   return fallback;
 };
 

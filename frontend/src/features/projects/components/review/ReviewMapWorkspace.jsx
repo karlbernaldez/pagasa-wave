@@ -11,14 +11,18 @@ export default function ReviewMapWorkspace({
   featureLoadError = '',
   isDarkMode = false,
 }) {
-  const panel = isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-slate-200 bg-white';
-  const softPanel = isDarkMode ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-slate-50';
+  const panel = isDarkMode
+    ? 'border-white/10 bg-white/[0.035] shadow-black/15'
+    : 'border-white/80 bg-white/52 shadow-slate-900/5';
+  const softPanel = isDarkMode
+    ? 'border-white/10 bg-white/[0.025]'
+    : 'border-white/75 bg-white/48';
   const labelText = isDarkMode ? 'text-slate-500' : 'text-slate-400';
 
   return (
-    <section className={`overflow-visible p-3 sm:p-4 xl:min-h-0 xl:overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-slate-100'}`}>
-      <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm sm:rounded-3xl xl:h-full ${panel}`}>
-        <div className={`flex shrink-0 flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+    <section className="overflow-visible bg-transparent p-3 sm:p-4 xl:min-h-0 xl:overflow-hidden">
+      <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-xl backdrop-blur-2xl xl:h-full ${panel}`}>
+        <div className={`flex shrink-0 flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 ${isDarkMode ? 'border-white/10 bg-white/[0.02]' : 'border-white/70 bg-white/36'}`}>
           <div>
             <p className={`text-xs font-black uppercase tracking-[0.16em] ${labelText}`}>Annotation Preview</p>
             <p className={`mt-1 text-xs font-semibold sm:text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
@@ -27,21 +31,17 @@ export default function ReviewMapWorkspace({
           </div>
 
           <div className="flex flex-col gap-2 sm:items-end">
-            <div className={`grid grid-cols-2 rounded-2xl border p-1 shadow-inner sm:flex sm:shrink-0 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
-              <button
-                type="button"
-                onClick={() => onMapModeChange('preview')}
-                className={`rounded-xl px-4 py-2 text-xs font-black transition ${mapMode === 'preview' ? (isDarkMode ? 'bg-slate-800 text-blue-300 shadow-sm ring-1 ring-white/10' : 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200') : (isDarkMode ? 'text-slate-400 hover:text-slate-100' : 'text-slate-500 hover:text-slate-800')}`}
-              >
-                Preview
-              </button>
-              <button
-                type="button"
-                onClick={() => onMapModeChange('diff')}
-                className={`rounded-xl px-4 py-2 text-xs font-black transition ${mapMode === 'diff' ? (isDarkMode ? 'bg-slate-800 text-blue-300 shadow-sm ring-1 ring-white/10' : 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200') : (isDarkMode ? 'text-slate-400 hover:text-slate-100' : 'text-slate-500 hover:text-slate-800')}`}
-              >
-                Diff
-              </button>
+            <div className={`grid grid-cols-2 rounded-xl border p-1 shadow-inner backdrop-blur-xl sm:flex sm:shrink-0 ${isDarkMode ? 'border-white/10 bg-slate-950/28' : 'border-white/80 bg-white/46'}`}>
+              {['preview', 'diff'].map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => onMapModeChange(mode)}
+                  className={`rounded-lg px-4 py-2 text-xs font-black capitalize transition ${mapMode === mode ? (isDarkMode ? 'bg-white/[0.09] text-cyan-200 shadow-sm ring-1 ring-white/10' : 'bg-white/90 text-cyan-700 shadow-sm ring-1 ring-white') : (isDarkMode ? 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100' : 'text-slate-500 hover:bg-white/60 hover:text-slate-800')}`}
+                >
+                  {mode}
+                </button>
+              ))}
             </div>
             {mapMode === 'diff' && <DiffLegend isDarkMode={isDarkMode} />}
           </div>
@@ -53,14 +53,14 @@ export default function ReviewMapWorkspace({
           </div>
         )}
 
-        <div className="min-h-0 flex-1 overflow-visible p-3 sm:p-4 xl:overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-visible bg-transparent p-3 sm:p-4 xl:overflow-hidden">
           {mapMode === 'preview' ? (
             <ProjectPreviewMap
               projectId={projectId}
               features={currentFeatureSource}
               featureScope="admin"
               isDarkMode={isDarkMode}
-              className={`h-[310px] rounded-2xl sm:h-[460px] xl:h-full ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
+              className={`h-[310px] rounded-xl border shadow-lg sm:h-[460px] xl:h-full ${isDarkMode ? 'border-white/10 shadow-black/20' : 'border-white/80 shadow-slate-900/10'}`}
               height={null}
               emptyLabel={isLoadingCurrentFeatures ? 'Loading current annotations…' : 'No current annotations yet'}
               lazy={false}
@@ -68,8 +68,8 @@ export default function ReviewMapWorkspace({
             />
           ) : (
             <div className="grid gap-3 xl:h-full xl:min-h-0 xl:grid-cols-2 xl:gap-4">
-              <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${softPanel}`}>
-                <div className={`shrink-0 border-b px-4 py-3 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-white/10 bg-slate-950/60 text-slate-500' : 'border-slate-200 bg-white/70 text-slate-400'}`}>
+              <div className={`flex min-h-0 flex-col overflow-hidden rounded-xl border shadow-lg backdrop-blur-xl ${softPanel}`}>
+                <div className={`shrink-0 border-b px-4 py-3 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-white/10 bg-white/[0.025] text-slate-500' : 'border-white/70 bg-white/42 text-slate-400'}`}>
                   Previous Snapshot
                 </div>
                 <ProjectPreviewMap
@@ -84,8 +84,8 @@ export default function ReviewMapWorkspace({
                   fixedBounds
                 />
               </div>
-              <div className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${isDarkMode ? 'border-blue-400/20 bg-blue-500/5' : 'border-blue-100 bg-blue-50/40'}`}>
-                <div className={`shrink-0 border-b px-4 py-3 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-blue-400/20 bg-slate-950/60 text-blue-300' : 'border-blue-100 bg-white/80 text-blue-500'}`}>
+              <div className={`flex min-h-0 flex-col overflow-hidden rounded-xl border shadow-lg backdrop-blur-xl ${isDarkMode ? 'border-cyan-300/15 bg-cyan-300/[0.035]' : 'border-cyan-100 bg-cyan-50/32'}`}>
+                <div className={`shrink-0 border-b px-4 py-3 text-xs font-black uppercase tracking-[0.14em] ${isDarkMode ? 'border-cyan-300/15 bg-white/[0.025] text-cyan-300' : 'border-cyan-100 bg-white/46 text-cyan-600'}`}>
                   Current Submission
                 </div>
                 <ProjectPreviewMap

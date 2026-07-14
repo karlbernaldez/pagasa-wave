@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, CalendarDays, CheckCircle2, Download, Eye, Layers, RefreshCw, Search, Waves, Wind } from 'lucide-react';
+import { ArrowRight, CalendarDays, CheckCircle2, Download, Eye, RefreshCw, Search, Waves, Wind } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import Button from '@/components/ui/Button';
@@ -30,6 +30,10 @@ const CHART_STYLES = [
   { id: 'wave-only', label: 'Wave Only', shortLabel: 'Wave Only', icon: Waves, description: 'Annotation-focused chart without raster.', color: '#0891b2' },
   { id: 'visually-impaired', label: 'Accessible', shortLabel: 'Accessible', icon: Eye, description: 'Higher contrast labels and viewing mode.', color: '#059669' },
 ];
+
+function cx(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
 
 function formatDate(value, options = {}) {
   if (!value) return '-';
@@ -68,15 +72,14 @@ function getPersonName(person, fallback = 'DOST-PAGASA') {
 }
 
 function glassPanel(isDark, extra = '') {
-  return `rounded-[2rem] border shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur-2xl ${isDark ? 'border-white/10 bg-slate-900/72 shadow-cyan-950/20' : 'border-white/70 bg-white/78 shadow-blue-100/70'} ${extra}`;
+  return `home-liquid rounded-[1.85rem] border backdrop-blur-2xl ${isDark ? 'is-dark border-white/10 bg-slate-900/60 shadow-[0_24px_64px_rgba(0,0,0,0.25)]' : 'border-white/70 bg-white/70 shadow-[0_22px_60px_rgba(15,23,42,0.09)]'} ${extra}`;
 }
 
 function LiquidBackdrop({ isDark }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <div className={`absolute -left-36 -top-36 h-[540px] w-[540px] rounded-full blur-3xl ${isDark ? 'bg-cyan-500/10' : 'bg-blue-300/25'}`} />
-      <div className={`absolute -right-32 top-64 h-[500px] w-[500px] rounded-full blur-3xl ${isDark ? 'bg-blue-700/10' : 'bg-cyan-200/30'}`} />
-      <div className={`absolute bottom-[-200px] left-1/3 h-[520px] w-[520px] rounded-full blur-3xl ${isDark ? 'bg-sky-400/5' : 'bg-indigo-200/20'}`} />
+      <div className={`absolute -left-40 top-20 h-[520px] w-[520px] rounded-full blur-3xl ${isDark ? 'bg-cyan-500/10' : 'bg-blue-300/25'}`} />
+      <div className={`absolute -right-36 top-72 h-[500px] w-[500px] rounded-full blur-3xl ${isDark ? 'bg-blue-700/10' : 'bg-cyan-200/30'}`} />
     </div>
   );
 }
@@ -98,14 +101,18 @@ function StateNotice({ isDark, tone = 'slate', title, children, action }) {
 }
 
 function CompletenessBadge({ completeness, isDark }) {
-  if (completeness.isComplete) return <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black ${isDark ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}><CheckCircle2 size={13} /> Complete</span>;
-  if (completeness.isEmpty) return <span className={`rounded-full border px-3 py-1 text-xs font-black ${isDark ? 'border-white/10 bg-white/5 text-slate-400' : 'border-slate-200 bg-white/70 text-slate-500'}`}>No charts</span>;
+  if (completeness.isComplete) {
+    return <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black ${isDark ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}><CheckCircle2 size={13} /> Complete</span>;
+  }
+  if (completeness.isEmpty) {
+    return <span className={`rounded-full border px-3 py-1 text-xs font-black ${isDark ? 'border-white/10 bg-white/5 text-slate-400' : 'border-slate-200 bg-white/70 text-slate-500'}`}>No charts</span>;
+  }
   return <span className={`rounded-full border px-3 py-1 text-xs font-black ${isDark ? 'border-amber-400/20 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>Incomplete</span>;
 }
 
 function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) {
   return (
-    <section className={glassPanel(isDark, 'mx-auto grid w-full max-w-5xl gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_390px]')}>
+    <section className={glassPanel(isDark, 'sticky top-[4.75rem] z-30 mt-4 grid w-full gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_420px]')}>
       <label className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/10 bg-slate-950/55' : 'border-slate-200/80 bg-white/70'}`}>
         <Search size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
         <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search wave charts, date, or description" className={`min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'text-white placeholder:text-slate-600' : 'text-slate-950 placeholder:text-slate-400'}`} />
@@ -115,7 +122,7 @@ function ChartControls({ activeStyle, onChange, query, onQueryChange, isDark }) 
           const Icon = style.icon;
           const active = style.id === activeStyle;
           return (
-            <button key={style.id} type="button" onClick={() => onChange(style.id)} aria-pressed={active} title={style.description} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black transition-all focus:outline-none focus:ring-2 focus:ring-blue-400/60 ${active ? (isDark ? 'bg-cyan-300/15 text-cyan-50 shadow-lg shadow-cyan-950/20' : 'bg-white text-blue-700 shadow-sm') : (isDark ? 'text-slate-400 hover:bg-white/5 hover:text-slate-100' : 'text-slate-500 hover:bg-white/80 hover:text-slate-900')}`}>
+            <button key={style.id} type="button" onClick={() => onChange(style.id)} aria-pressed={active} title={style.description} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black transition-all focus:outline-none focus:ring-2 focus:ring-blue-400/60 ${active ? (isDark ? 'bg-cyan-300/15 text-cyan-50 shadow-lg shadow-cyan-950/20' : 'solid-blue shadow-sm') : (isDark ? 'text-slate-400 hover:bg-white/5 hover:text-slate-100' : 'text-slate-500 hover:bg-white/80 hover:text-slate-900')}`}>
               <Icon size={15} />
               <span className="hidden sm:inline">{style.shortLabel}</span>
             </button>
@@ -139,24 +146,24 @@ function ChartSlotCard({ slot, chart, activeStyle, isDark, onOpen, showStaffInfo
     : 'This slot is empty for the selected date';
 
   return (
-    <article className={`${glassPanel(isDark, 'group relative flex min-h-[415px] flex-col overflow-hidden transition duration-300')} ${isDark ? 'hover:border-cyan-300/30' : 'hover:border-blue-200'}`}>
+    <article className={`${glassPanel(isDark, 'group relative flex min-h-[350px] flex-col overflow-hidden rounded-[1.65rem] transition duration-300 hover:-translate-y-1')} ${isDark ? 'hover:border-cyan-300/30' : 'hover:border-blue-200'}`}>
       <div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${style.color}88, transparent)` }} aria-hidden="true" />
-      <div className="relative h-60 overflow-hidden text-left md:h-64">
+      <div className="relative h-44 overflow-hidden text-left xl:h-48">
         {hasChart ? (
           <PublicPublishedChartPreviewMap projectId={chart._id} initialRaster={chart.raster} isDarkMode={isDark} height={null} className="h-full w-full rounded-none border-0" onClick={() => onOpen(chart)} />
         ) : (
           <div className={`h-full w-full ${isDark ? 'bg-slate-950/80' : 'bg-slate-100/80'}`} />
         )}
         <div className="absolute left-4 top-4 z-20"><span className="rounded-xl px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20" style={{ background: style.color }}>{slot.badge}</span></div>
-        {hasChart ? <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/35 opacity-0 transition-opacity duration-200 group-hover:opacity-100"><span className="flex items-center gap-2 rounded-full bg-black/55 px-5 py-3 text-sm font-black text-white backdrop-blur-sm"><ArrowRight size={15} /> Open chart</span></div> : <div className="absolute inset-x-4 bottom-4 rounded-2xl bg-black/50 px-4 py-3 text-xs font-bold text-white backdrop-blur-sm">Awaiting publication</div>}
+        {hasChart ? <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-slate-950/25 opacity-0 transition-opacity duration-200 group-hover:opacity-100"><span className="flex items-center gap-2 rounded-full bg-slate-950/55 px-5 py-3 text-sm font-black text-white backdrop-blur-sm"><ArrowRight size={15} /> Open chart</span></div> : <div className="absolute inset-x-4 bottom-4 rounded-2xl bg-black/50 px-4 py-3 text-xs font-bold text-white backdrop-blur-sm">Awaiting publication</div>}
       </div>
-      <div className="flex flex-1 flex-col justify-between p-5">
+      <div className="flex flex-1 flex-col justify-between p-4">
         <div>
-          <h2 className={`text-xl font-black leading-tight tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h2>
+          <h2 className={`text-base font-black leading-tight tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h2>
           <p className={`mt-2 text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{metaText}</p>
           <p className={`mt-3 line-clamp-2 text-sm font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
         </div>
-        <div className={`mt-5 flex items-center justify-between border-t pt-4 ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
+        <div className={`mt-4 flex items-center justify-between border-t pt-3 ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
           <span className={`rounded-full border px-3 py-1 text-xs font-black ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/70 text-slate-600'}`}>{style.label}</span>
           <Button size="sm" icon={ArrowRight} disabled={!hasChart} onClick={() => onOpen(chart)}>View</Button>
         </div>
@@ -169,14 +176,14 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
   const grouped = useMemo(() => groupPublicChartHistory(projects), [projects]);
   if (!grouped.length) return null;
   return (
-    <section className={glassPanel(isDark, 'p-5')}>
+    <section className={glassPanel(isDark, 'p-4')}>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div><p className={`text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Past 10 days</p><h2 className={`mt-1 text-xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Recent chart dates</h2></div>
+        <div><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Recent chart dates</p><h2 className={`mt-1 text-xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>Browse previous packages</h2></div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="flex gap-3 overflow-x-auto pb-1">
         {grouped.map((item) => {
           const active = item.dateKey === selectedDate;
-          return <button key={item.dateKey} type="button" onClick={() => onSelectDate(item.dateKey)} className={`rounded-2xl border p-4 text-left transition-all focus:outline-none focus:ring-2 focus:ring-blue-400/60 ${active ? (isDark ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-100' : 'border-blue-300 bg-blue-50 text-blue-900') : (isDark ? 'border-white/10 bg-slate-950/45 text-slate-300 hover:border-white/20' : 'border-slate-200/80 bg-white/60 text-slate-700 hover:border-blue-200 hover:bg-white')}`}><p className="text-sm font-black">{formatDate(item.dateKey)}</p><p className={`mt-2 text-xs font-black ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.availableCount}/4 charts</p></button>;
+          return <button key={item.dateKey} type="button" onClick={() => onSelectDate(item.dateKey)} className={`min-w-[160px] rounded-2xl border p-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-blue-400/60 ${active ? (isDark ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-100' : 'border-blue-300 bg-blue-50 text-blue-900') : (isDark ? 'border-white/10 bg-slate-950/45 text-slate-300 hover:border-white/20' : 'border-slate-200/80 bg-white/60 text-slate-700 hover:border-blue-200 hover:bg-white')}`}><p className="text-sm font-black">{formatDate(item.dateKey)}</p><p className={`mt-2 text-xs font-black ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.availableCount}/4 charts</p></button>;
         })}
       </div>
     </section>
@@ -184,7 +191,6 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
 }
 
 function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, chartEntries, showStaffInfo, logoSrc, pdfNote }) {
-  if (!printWindow || printWindow.closed) return;
   const dateLabel = formatDate(activeDate);
   const safeLogoSrc = logoSrc || '/pagasa-logo.png';
   const note = String(pdfNote || DEFAULT_PUBLIC_CHART_PDF_NOTE).trim();
@@ -239,7 +245,6 @@ function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, cha
           .chart-card footer { display: flex; align-items: center; justify-content: space-between; gap: 3mm; min-height: 3.5mm; color: #64748b; font-size: 6.2pt; font-weight: 800; }
           .footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4mm; align-items: center; padding-top: 1mm; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 5.2pt; font-weight: 600; line-height: 1.15; }
           .footer strong { color: #64748b; font-weight: 800; }
-          .note { max-width: 225mm; color: #94a3b8; }
           .generated { white-space: nowrap; text-align: right; color: #94a3b8; font-weight: 700; }
           @media print { html, body { width: 297mm; height: 210mm; overflow: hidden; background: #fff; } }
         </style>
@@ -255,7 +260,7 @@ function writeChartSetPdfWindow({ printWindow, activeDate, activeStyleLabel, cha
           </section>
           <section class="chart-grid">${cardsHtml}</section>
           <footer class="footer">
-            <div><strong>Note:</strong> <span class="note">${escapeHtml(note)}</span></div>
+            <div><strong>Note:</strong> ${escapeHtml(note)}</div>
             <div class="generated">Generated ${escapeHtml(new Date().toLocaleString('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE }))}</div>
           </footer>
         </main>
@@ -281,6 +286,8 @@ export default function Charts() {
   const [pdfReadyCount, setPdfReadyCount] = useState(0);
   const showStaffInfo = publicSettings.showPublicStaffInfo !== false;
 
+  useEffect(() => { document.title = 'Wavelab | Published Wave Charts'; }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     setState((prev) => ({ ...prev, loading: true, error: '' }));
@@ -303,6 +310,7 @@ export default function Charts() {
   const pdfTotalCount = exportState.entries.length;
   const isPdfReady = Boolean(!exportState.loading && pdfTotalCount && pdfReadyCount >= pdfTotalCount);
   const pdfButtonLabel = exportState.loading ? 'Preparing PDF' : isPdfReady ? 'Download PDF' : 'Preparing PDF';
+  const forecastPeriodLabel = activeDate ? `${formatDate(activeDate, { month: 'short', day: 'numeric' })} - ${formatDate(new Date(new Date(activeDate).getTime() + 24 * 60 * 60 * 1000), { month: 'short', day: 'numeric', year: 'numeric' })}` : 'Latest available period';
   const pdfStatusText = availableCount
     ? isPdfReady
       ? `PDF export is ready. ${availableCount} of 4 published charts will be included; empty slots are marked unavailable.`
@@ -334,9 +342,7 @@ export default function Charts() {
     }))
       .then((entries) => setExportState({ loading: false, error: '', entries }))
       .catch((error) => {
-        if (error?.name !== 'AbortError') {
-          setExportState({ loading: false, error: error?.message || 'Failed to preload chart set PDF.', entries: [] });
-        }
+        if (error?.name !== 'AbortError') setExportState({ loading: false, error: error?.message || 'Failed to preload chart set PDF.', entries: [] });
       });
 
     return () => controller.abort();
@@ -345,7 +351,6 @@ export default function Charts() {
   useEffect(() => {
     exportImageCacheRef.current = {};
     setPdfReadyCount(0);
-
     if (!exportState.entries.length) return undefined;
 
     const totalCount = exportState.entries.length;
@@ -369,18 +374,12 @@ export default function Charts() {
         }
       }).length;
 
-      setPdfReadyCount((current) => {
-        if (readyCount >= totalCount) return totalCount;
-        return Math.max(current, readyCount);
-      });
-
+      setPdfReadyCount((current) => readyCount >= totalCount ? totalCount : Math.max(current, readyCount));
       return readyCount >= totalCount;
     };
 
     if (updateReadyCount()) return undefined;
-    const timer = window.setInterval(() => {
-      if (updateReadyCount()) window.clearInterval(timer);
-    }, 500);
+    const timer = window.setInterval(() => { if (updateReadyCount()) window.clearInterval(timer); }, 500);
     return () => window.clearInterval(timer);
   }, [activeStyleMode, exportState.entries]);
 
@@ -421,26 +420,32 @@ export default function Charts() {
   };
 
   return (
-    <div className={`relative min-h-screen overflow-hidden px-4 py-24 sm:px-6 lg:px-8 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+    <main className={`wavelab-home relative min-h-screen overflow-hidden px-4 pb-14 pt-24 sm:px-6 lg:px-8 ${isDark ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-950'}`}>
       <LiquidBackdrop isDark={isDark} />
 
       {exportState.entries.map((entry) => entry.project?._id && hasExportableOutput(entry.output) ? (
         <PublishedForecastExportMap
           key={`export-${entry.project._id}-${activeStyleMode}`}
-          ref={(instance) => {
-            if (instance) exportRefs.current[entry.slot.chartType] = instance;
-          }}
+          ref={(instance) => { if (instance) exportRefs.current[entry.slot.chartType] = instance; }}
           features={entry.output.featureCollection}
           chartStyleMode={activeStyleMode}
           raster={entry.output.raster || entry.project.raster}
         />
       ) : null)}
 
-      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-7">
-        <section className={glassPanel(isDark, 'mx-auto w-full max-w-5xl p-7 text-center sm:p-9')}>
-          <div className="mb-4"><div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.14em] ${isDark ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-100/80 text-blue-700'}`}><Layers size={15} />{activeStyle.label} - {activeDate ? formatDate(activeDate) : 'Latest available'}</div></div>
-          <h1 className={`text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl ${isDark ? 'text-white' : 'text-slate-900'}`}>Wave Charts</h1>
-          <p className={`mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Browse the latest public WaveLab chart set and review recently published operational wave outputs.</p>
+      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-6">
+        <section className={glassPanel(isDark, 'grid gap-5 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_330px_auto] lg:items-center')}>
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Published forecast archive</p>
+            <h1 className={`mt-3 text-4xl font-black leading-tight tracking-tight sm:text-5xl ${isDark ? 'text-white' : 'text-slate-950'}`}>Published Wave Charts</h1>
+            <p className={`mt-3 max-w-2xl text-base font-semibold leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Browse official published wave chart sets by date, chart style, and release package.</p>
+          </div>
+          <div className={cx('rounded-[1.45rem] border p-4', isDark ? 'border-white/10 bg-white/[0.055]' : 'border-white/60 bg-white/55')}>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-700">Current chart set</p>
+            <h2 className={`mt-3 flex items-center gap-2 text-3xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}><CalendarDays size={27} className="text-blue-700" /> {activeDate ? formatDate(activeDate) : 'Latest available'}</h2>
+            <div className="mt-4 flex flex-wrap gap-2"><CompletenessBadge completeness={completeness} isDark={isDark} /><span className={cx('rounded-full px-3 py-1 text-xs font-black', isDark ? 'bg-blue-400/10 text-cyan-100' : 'bg-blue-50 text-blue-800')}>{forecastPeriodLabel}</span></div>
+          </div>
+          <Button size="lg" icon={Download} loading={exportState.loading || (!isPdfReady && !!availableCount)} disabled={!availableCount || exportState.loading || !isPdfReady} onClick={handleDownloadChartSetPdf}>{pdfButtonLabel}</Button>
         </section>
 
         <ChartControls activeStyle={activeChartType} onChange={setActiveChartType} query={query} onQueryChange={setQuery} isDark={isDark} />
@@ -448,17 +453,12 @@ export default function Charts() {
         {state.loading && (
           <section className="space-y-4">
             <StateNotice isDark={isDark} title="Loading latest chart set">Fetching published charts and preparing the public chart cards.</StateNotice>
-            <div className="grid gap-5 lg:grid-cols-2">{PUBLIC_CHART_SLOTS.map((slot) => <div key={slot.chartType} className={glassPanel(isDark, 'h-[415px] animate-pulse')} />)}</div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{PUBLIC_CHART_SLOTS.map((slot) => <div key={slot.chartType} className={glassPanel(isDark, 'h-[350px] animate-pulse')} />)}</div>
           </section>
         )}
 
         {!state.loading && state.error && (
-          <StateNotice
-            isDark={isDark}
-            tone="red"
-            title="Charts could not be loaded"
-            action={<Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => setReloadToken((value) => value + 1)}>Retry</Button>}
-          >
+          <StateNotice isDark={isDark} tone="red" title="Charts could not be loaded" action={<Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => setReloadToken((value) => value + 1)}>Retry</Button>}>
             <p>{state.error}</p>
             <p className="mt-1">Refresh the chart list or try again later.</p>
           </StateNotice>
@@ -473,10 +473,10 @@ export default function Charts() {
         )}
 
         {!state.loading && !state.error && recentProjects.length > 0 && <>
-          <section className="space-y-5">
-            <div className={glassPanel(isDark, 'flex flex-wrap items-start justify-between gap-3 p-5')}>
+          <section className="space-y-4">
+            <div className={glassPanel(isDark, 'grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center')}>
               <div>
-                <p className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}><CalendarDays size={15} /> Current chart set</p>
+                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-blue-700"><CalendarDays size={15} /> Current chart set summary</p>
                 <h2 className={`mt-2 text-3xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}>{formatDate(activeDate)}</h2>
                 <p className={`mt-2 max-w-2xl text-xs font-semibold leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{pdfStatusText}</p>
               </div>
@@ -486,12 +486,15 @@ export default function Charts() {
                 <Button size="sm" variant="secondary" icon={Download} loading={exportState.loading || (!isPdfReady && !!availableCount)} disabled={!availableCount || exportState.loading || !isPdfReady} onClick={handleDownloadChartSetPdf}>{pdfButtonLabel}</Button>
               </div>
             </div>
-            <div className="grid gap-5 lg:grid-cols-2">{PUBLIC_CHART_SLOTS.map((slot) => <ChartSlotCard key={`${activeDate}-${slot.chartType}`} slot={slot} chart={chartByType.get(slot.chartType)} activeStyle={activeChartType} isDark={isDark} onOpen={openChart} showStaffInfo={showStaffInfo} />)}</div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{PUBLIC_CHART_SLOTS.map((slot) => <ChartSlotCard key={`${activeDate}-${slot.chartType}`} slot={slot} chart={chartByType.get(slot.chartType)} activeStyle={activeChartType} isDark={isDark} onOpen={openChart} showStaffInfo={showStaffInfo} />)}</div>
           </section>
           <RecentHistory projects={recentProjects} selectedDate={activeDate} onSelectDate={setSelectedDate} isDark={isDark} />
         </>}
-        <p className={`text-center text-xs font-semibold tabular-nums ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Data: DOST-PAGASA - WaveLab - Published charts only</p>
+        <div className={glassPanel(isDark, 'flex flex-col gap-3 p-4 text-xs font-semibold sm:flex-row sm:items-center sm:justify-between')}>
+          <p className={isDark ? 'text-slate-400' : 'text-slate-600'}><span className="font-black text-blue-700">Important Notice:</span> Wave forecast charts are guidance products. Always check official marine advisories and local conditions.</p>
+          <p className={`tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Data: DOST-PAGASA - WaveLab - Published charts only</p>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

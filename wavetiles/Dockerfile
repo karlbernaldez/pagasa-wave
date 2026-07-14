@@ -1,25 +1,27 @@
-FROM ghcr.io/osgeo/gdal:ubuntu-small-3.10.2
+FROM mambaorg/micromamba:1.5.10
+
+USER root
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    MAMBA_DOCKERFILE_ACTIVATE=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        python3 \
-        python3-pip \
-        python3-venv \
-        python3-gdal \
-        gdal-bin \
+        bash \
+        ca-certificates \
+        tini \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m pip install --break-system-packages --no-cache-dir \
-    numpy \
-    scipy \
-    xarray \
-    netCDF4 \
-    rasterio
+COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/environment.yml
+
+USER $MAMBA_USER
+
+RUN micromamba install -y -n base -f /tmp/environment.yml \
+    && micromamba clean -a -y
 
 WORKDIR /app/wavetiles
 
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["bash", "scripts/build_ww3.sh"]
