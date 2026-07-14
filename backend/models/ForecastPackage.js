@@ -159,6 +159,13 @@ const ForecastPackageSchema = new Schema({
     enum: Object.values(FORECAST_PACKAGE_STATUS),
     default: FORECAST_PACKAGE_STATUS.DRAFT,
   },
+  createdBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  // Legacy compatibility field. Forecast packages are shared operational
+  // workspaces; this field must not be presented as business ownership.
   owner: {
     type: Schema.Types.ObjectId,
     ref: 'User',
@@ -195,6 +202,22 @@ const ForecastPackageSchema = new Schema({
   publishedAt: Date,
   auditLogs: [ForecastPackageAuditLogSchema],
 }, { timestamps: true });
+
+ForecastPackageSchema.pre('validate', function syncLegacyCreator(next) {
+  if (!this.createdBy && this.owner) this.createdBy = this.owner;
+  next();
+});
+
+ForecastPackageSchema.pre(/^find/, function populateContributorIdentities(next) {
+  this.populate([
+    { path: 'charts.participants.user', select: 'firstName lastName username email' },
+    { path: 'charts.activeEditors.user', select: 'firstName lastName username email' },
+    { path: 'charts.readyEditors.user', select: 'firstName lastName username email' },
+    { path: 'charts.readyBy', select: 'firstName lastName username email' },
+    { path: 'chartCompletion.completedBy', select: 'firstName lastName username email' },
+  ]);
+  next();
+});
 
 ForecastPackageSchema.index({ forecastDate: 1 }, { unique: true });
 ForecastPackageSchema.index({ status: 1, updatedAt: -1 });

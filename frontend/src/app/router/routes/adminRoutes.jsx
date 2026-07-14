@@ -15,6 +15,7 @@ export default [
       { path: '/dashboard/analytics', element: <Dashboard /> },
       { path: '/dashboard/calendar', element: <Dashboard /> },
       { path: '/dashboard/settings', element: <Dashboard /> },
+      { path: '/dashboard/account', element: <Dashboard /> },
     ],
   },
 ];

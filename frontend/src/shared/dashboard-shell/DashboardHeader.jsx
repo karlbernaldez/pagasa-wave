@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, LogOut, Menu, Moon, Settings, Sun, UserRound, Waves } from 'lucide-react';
+import { ChevronDown, LogOut, Menu, Moon, Settings, Sun, Waves } from 'lucide-react';
 import NotificationBell from '@/shared/notifications/NotificationBell';
 import { logoutUser } from '@/api/auth';
 
 const DashboardHeader = ({
+  accountSettingsPath = '/profile',
   description,
   eyebrow,
+  hideContext = false,
   isDarkMode,
   onMobileMenuToggle,
   onThemeToggle,
@@ -49,15 +51,10 @@ const DashboardHeader = ({
     setIsUserMenuOpen((current) => !current);
   }, [onUserClick]);
 
-  const goToProfile = useCallback(() => {
+  const goToAccountSettings = useCallback(() => {
     closeUserMenu();
-    navigate('/profile');
-  }, [closeUserMenu, navigate]);
-
-  const goToEditProfile = useCallback(() => {
-    closeUserMenu();
-    navigate('/edit-profile');
-  }, [closeUserMenu, navigate]);
+    navigate(accountSettingsPath);
+  }, [accountSettingsPath, closeUserMenu, navigate]);
 
   const handleLogout = useCallback(async () => {
     closeUserMenu();
@@ -65,7 +62,7 @@ const DashboardHeader = ({
   }, [closeUserMenu]);
 
   return (
-    <header className={`sticky top-0 z-50 border-b backdrop-blur-2xl transition-colors ${panelClass}`}>
+    <header className={`sticky top-0 z-50 border-b transition-colors ${hideContext ? 'border-transparent bg-transparent' : `backdrop-blur-2xl ${panelClass}`}`}>
       <div className="flex h-16 items-center justify-between gap-3 px-3 sm:px-4 md:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
@@ -81,37 +78,39 @@ const DashboardHeader = ({
             <Menu size={20} />
           </button>
 
-          <div className="min-w-0 flex-1">
-            <div className="hidden items-center gap-2 min-[420px]:flex">
-              <Waves size={12} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-600'} aria-hidden="true" />
-              <span className={`truncate text-[10px] font-black uppercase tracking-[0.16em] ${
-                isDarkMode ? 'text-slate-500' : 'text-slate-400'
-              }`}>
-                {eyebrow}
-              </span>
-            </div>
-
-            <div className="mt-0.5 flex min-w-0 items-center gap-3">
-              <h2
-                className={`truncate text-base font-black tracking-tight sm:text-xl ${
-                  isDarkMode ? 'text-white' : 'text-slate-950'
-                }`}
-                title={title}
-              >
-                {title}
-              </h2>
-
-              <span className={`hidden h-5 w-px sm:block ${isDarkMode ? 'bg-white/10' : 'bg-slate-200/80'}`} />
-
-              {description && (
-                <p className={`hidden max-w-md truncate text-xs font-semibold md:block ${
-                  isDarkMode ? 'text-slate-500' : 'text-slate-500'
+          {!hideContext && (
+            <div className="min-w-0 flex-1">
+              <div className="hidden items-center gap-2 min-[420px]:flex">
+                <Waves size={12} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-600'} aria-hidden="true" />
+                <span className={`truncate text-[10px] font-black uppercase tracking-[0.16em] ${
+                  isDarkMode ? 'text-slate-500' : 'text-slate-400'
                 }`}>
-                  {description}
-                </p>
-              )}
+                  {eyebrow}
+                </span>
+              </div>
+
+              <div className="mt-0.5 flex min-w-0 items-center gap-3">
+                <h2
+                  className={`truncate text-base font-black tracking-tight sm:text-xl ${
+                    isDarkMode ? 'text-white' : 'text-slate-950'
+                  }`}
+                  title={title}
+                >
+                  {title}
+                </h2>
+
+                <span className={`hidden h-5 w-px sm:block ${isDarkMode ? 'bg-white/10' : 'bg-slate-200/80'}`} />
+
+                {description && (
+                  <p className={`hidden max-w-md truncate text-xs font-semibold md:block ${
+                    isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                  }`}>
+                    {description}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -203,24 +202,13 @@ const DashboardHeader = ({
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={goToProfile}
-                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold transition-colors ${
-                        isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-white' : 'text-slate-500 hover:bg-white/65 hover:text-slate-950'
-                      }`}
-                    >
-                      <UserRound size={15} />
-                      View Profile
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={goToEditProfile}
+                      onClick={goToAccountSettings}
                       className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold transition-colors ${
                         isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-white' : 'text-slate-500 hover:bg-white/65 hover:text-slate-950'
                       }`}
                     >
                       <Settings size={15} />
-                      Edit Account Settings
+                      Account Settings
                     </button>
                   </div>
 

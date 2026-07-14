@@ -1,12 +1,16 @@
 import { ChevronLeft, ChevronRight, CircleHelp, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
-const getShellClasses = (isDarkMode) =>
-  isDarkMode
+const getShellClasses = (isDarkMode, backgroundVariant) =>
+  backgroundVariant === 'ocean'
+    ? isDarkMode
+      ? 'border-cyan-300/20 bg-[#032445]/82 text-slate-100 shadow-2xl shadow-black/35 backdrop-blur-2xl'
+      : 'border-white/[0.85] bg-white/80 text-slate-950 shadow-xl shadow-slate-400/30 backdrop-blur-2xl'
+    : isDarkMode
     ? 'border-white/10 bg-slate-950/72 text-slate-100 shadow-2xl shadow-black/35 backdrop-blur-2xl'
     : 'border-white/70 bg-white/72 text-slate-950 shadow-xl shadow-slate-300/50 backdrop-blur-2xl';
 
-const getMutedText = (isDarkMode) => (isDarkMode ? 'text-slate-500' : 'text-slate-400');
+const getMutedText = (isDarkMode) => (isDarkMode ? 'text-slate-300/70' : 'text-slate-600');
 
 const getControlClasses = (isDarkMode) =>
   isDarkMode
@@ -16,14 +20,14 @@ const getControlClasses = (isDarkMode) =>
 const getNavClasses = ({ disabled, isActive, isDarkMode }) => {
   if (disabled) {
     return isDarkMode
-      ? 'text-slate-600 hover:bg-white/[0.03]'
-      : 'text-slate-400 hover:bg-white/55';
+      ? 'text-slate-400/70 hover:bg-white/[0.03]'
+      : 'text-slate-600/80 hover:bg-white/70';
   }
 
   if (isActive) {
     return isDarkMode
-      ? 'border border-cyan-300/15 bg-white/[0.10] text-white shadow-lg shadow-cyan-950/25'
-      : 'border border-white/90 bg-white/85 text-slate-950 shadow-lg shadow-slate-200/70';
+      ? 'border border-cyan-300/20 bg-[linear-gradient(90deg,rgba(14,165,233,.34),rgba(37,99,235,.24))] text-white shadow-lg shadow-cyan-950/30'
+      : 'border border-white/90 bg-[linear-gradient(90deg,rgba(255,255,255,.94),rgba(224,242,254,.84))] text-slate-950 shadow-lg shadow-slate-300/55';
   }
 
   return isDarkMode
@@ -43,6 +47,7 @@ const getSubNavClasses = ({ isActive, isDarkMode }) => {
 
 const DashboardSidebar = ({
   activeId,
+  backgroundVariant = 'default',
   footerText = 'Philippine Atmospheric, Geophysical and Astronomical Services Administration',
   groups,
   isDarkMode,
@@ -54,12 +59,13 @@ const DashboardSidebar = ({
   setIsMobileOpen,
   setIsSidebarCollapsed,
   title = 'WaveLab',
+  utilityItems = [],
 }) => {
   const toggleCollapse = () => setIsSidebarCollapsed((prev) => !prev);
   const closeMobile = () => setIsMobileOpen(false);
   const navGroups = Array.isArray(groups) && groups.length > 0
     ? groups
-    : [{ label: 'Navigation', items }];
+    : [{ label: backgroundVariant === 'ocean' ? 'Workspace' : 'Navigation', items }];
 
   const renderActiveMark = (isActive) =>
     isActive ? (
@@ -69,7 +75,7 @@ const DashboardSidebar = ({
   const renderSoonBadge = (disabled) =>
     !isSidebarCollapsed && disabled ? (
       <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] ${
-        isDarkMode ? 'bg-white/[0.04] text-slate-600' : 'bg-white/70 text-slate-400'
+        isDarkMode ? 'bg-white/[0.06] text-slate-400/80' : 'bg-white/85 text-slate-600'
       }`}>
         Soon
       </span>
@@ -104,7 +110,7 @@ const DashboardSidebar = ({
     const hasChildren = Array.isArray(item.children) && item.children.length > 0;
     const isExpanded = item.isExpanded?.(activeId) ?? (hasChildren && item.children.some((child) => child.id === activeId));
     const stateActive = isActive || isExpanded;
-    const itemClass = `relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
+    const itemClass = `relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
       isSidebarCollapsed ? 'justify-center' : 'justify-between'
     } ${getNavClasses({ disabled: item.disabled, isActive: stateActive, isDarkMode })}`;
     const shouldMatchExact = item.end ?? item.path === '/dashboard';
@@ -117,7 +123,7 @@ const DashboardSidebar = ({
             end={shouldMatchExact}
             title={isSidebarCollapsed ? item.label : undefined}
             className={({ isActive: routeActive }) =>
-              `relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
+              `relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
                 isSidebarCollapsed ? 'justify-center' : ''
               } ${getNavClasses({ isActive: routeActive || stateActive, isDarkMode })}`
             }
@@ -223,23 +229,33 @@ const DashboardSidebar = ({
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh flex-col overflow-hidden border-r transition-all duration-300 ${
           isSidebarCollapsed ? 'w-[86px]' : 'w-[292px]'
-        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode)}`}
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${getShellClasses(isDarkMode, backgroundVariant)}`}
+        style={backgroundVariant === 'ocean' ? {
+          backgroundImage: isDarkMode
+            ? "linear-gradient(180deg,rgba(1,18,37,.66) 0%,rgba(2,36,67,.78) 48%,rgba(0,17,35,.94) 100%), url('/images/WavelabSidebarDark.png'), url('/images/WavelabPublicHero.png')"
+            : "linear-gradient(180deg,rgba(231,247,253,.76) 0%,rgba(211,238,248,.84) 52%,rgba(238,249,253,.95) 100%), url('/images/WavelabSidebarLight.png'), url('/images/WavelabPublicHero.png')",
+          backgroundPosition: 'center, center, 72% center',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover, cover, auto 118%',
+        } : undefined}
       >
-        <div className={`border-b px-4 py-4 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
+        <div className={`border-b px-4 py-5 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${
-                isDarkMode ? 'border-white/10 bg-white/[0.06] shadow-inner shadow-white/[0.04]' : 'border-white/80 bg-white/70 shadow-sm shadow-slate-200/70'
+              <span className={`grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl border ${
+                isDarkMode
+                  ? 'border-cyan-300/20 bg-[#061c38]/72 shadow-[0_5px_22px_rgba(14,165,233,.2)]'
+                  : 'border-white/85 bg-white/72 shadow-[0_5px_20px_rgba(14,116,144,.16)]'
               }`}>
-                <img src="/pagasa-logo.png" alt="PAGASA Logo" className="h-7 w-7 object-contain" />
+                <img src="/wavelab-mark.svg" alt="" aria-hidden="true" className="h-12 w-12 object-contain" draggable={false} />
               </span>
 
               {!isSidebarCollapsed && (
                 <div className="min-w-0">
-                  <h1 className={`truncate text-base font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+                  <h1 className={`truncate text-xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
                     {title}
                   </h1>
-                  <p className={`truncate text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                  <p className={`truncate text-[13px] font-bold ${isDarkMode ? 'text-cyan-200/85' : 'text-cyan-700'}`}>
                     {label}
                   </p>
                 </div>
@@ -266,26 +282,37 @@ const DashboardSidebar = ({
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
           {navGroups.map(renderNavGroup)}
         </nav>
 
-        <div className={`border-t p-3 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
+        <div className={`border-t p-3 backdrop-blur-sm ${isDarkMode ? 'border-white/10 bg-gradient-to-t from-[#01182f]/65 to-transparent' : 'border-white/70 bg-gradient-to-t from-white/55 to-transparent'}`}>
+          <div className="mb-1 space-y-1">
+            {utilityItems.map(renderNavItem)}
+          </div>
+
           <button
             type="button"
             title="Help & Support"
-            className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${
-              isSidebarCollapsed ? '' : 'justify-start'
-            } ${isDarkMode ? 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-100' : 'text-slate-500 hover:bg-white/65 hover:text-slate-950'}`}
+            className={`relative flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+              isSidebarCollapsed ? 'justify-center' : ''
+            } ${getNavClasses({ isActive: false, isDarkMode })}`}
           >
-            <CircleHelp size={18} />
-            {!isSidebarCollapsed && <span>Help & Support</span>}
+            {renderItemContent({
+              Icon: CircleHelp,
+              isActive: false,
+              label: 'Help & Support',
+            })}
           </button>
 
           {!isSidebarCollapsed && (
-            <p className={`mt-3 px-3 pb-1 text-[10px] font-semibold leading-snug ${getMutedText(isDarkMode)}`}>
-              {footerText}
-            </p>
+            <div className="mt-3 flex items-start gap-3 px-3 pb-1">
+              {backgroundVariant === 'ocean' && <img src="/pagasa-logo.png" alt="" className="h-10 w-10 shrink-0 object-contain" />}
+              <div className="min-w-0">
+                {backgroundVariant === 'ocean' && <p className={`text-sm font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>PAGASA</p>}
+                <p className={`mt-0.5 text-[9px] font-semibold leading-snug ${getMutedText(isDarkMode)}`}>{footerText}</p>
+              </div>
+            </div>
           )}
         </div>
       </aside>

@@ -1,237 +1,160 @@
-import { CheckCircle2, Clock3, ExternalLink, PackageCheck, RotateCcw, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ArrowRight, BarChart3, CalendarDays, CheckCircle2, Clock3, PackageCheck, UsersRound, Waves, X } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
-import { CHART_LABELS, formatPackageDate, isDailyForecastPackage } from '@/features/projects/utils/forecastPackageGrouping';
-import { getProjectStatusLabel, getProjectStatusStyle } from '@/features/projects/projectStatuses';
+import { CHART_LABELS, formatPackageDate } from '@/features/projects/utils/forecastPackageGrouping';
 
 const REVIEWABLE_PACKAGE_STATUSES = new Set(['Submitted', 'Under Review']);
-const REVIEWABLE_PROJECT_STATUSES = new Set(['Submitted', 'Under Review']);
 const PUBLISHABLE_PACKAGE_STATUSES = new Set(['Approved']);
 const REQUIRED_CHART_COUNT = 4;
 
-const PACKAGE_STATUS_STYLES = {
-  Submitted: {
-    light: 'border-slate-200 bg-slate-100 text-slate-700',
-    dark: 'border-white/10 bg-white/[0.05] text-slate-300',
-  },
-  'Under Review': {
-    light: 'border-amber-200 bg-amber-50 text-amber-700',
-    dark: 'border-amber-400/30 bg-amber-400/10 text-amber-200',
-  },
-  Approved: {
-    light: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    dark: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200',
-  },
-  Published: {
-    light: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    dark: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200',
-  },
-  Rejected: {
-    light: 'border-rose-200 bg-rose-50 text-rose-700',
-    dark: 'border-rose-400/30 bg-rose-400/10 text-rose-200',
-  },
-  'Revision Requested': {
-    light: 'border-rose-200 bg-rose-50 text-rose-700',
-    dark: 'border-rose-400/30 bg-rose-400/10 text-rose-200',
-  },
-  Archived: {
-    light: 'border-slate-200 bg-slate-100 text-slate-600',
-    dark: 'border-white/10 bg-white/[0.05] text-slate-300',
-  },
-  Draft: {
-    light: 'border-blue-200 bg-blue-50 text-blue-700',
-    dark: 'border-blue-400/30 bg-blue-400/10 text-blue-200',
-  },
+const STATUS_STYLES = {
+  Submitted: { dark: 'border-sky-300/25 bg-sky-400/10 text-sky-200', light: 'border-sky-200 bg-sky-50 text-sky-700' },
+  'Under Review': { dark: 'border-amber-300/25 bg-amber-400/10 text-amber-200', light: 'border-amber-200 bg-amber-50 text-amber-700' },
+  Approved: { dark: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200', light: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  Published: { dark: 'border-teal-300/25 bg-teal-400/10 text-teal-200', light: 'border-teal-200 bg-teal-50 text-teal-700' },
+  'Revision Requested': { dark: 'border-rose-300/25 bg-rose-400/10 text-rose-200', light: 'border-rose-200 bg-rose-50 text-rose-700' },
+  Rejected: { dark: 'border-rose-300/25 bg-rose-400/10 text-rose-200', light: 'border-rose-200 bg-rose-50 text-rose-700' },
+  Draft: { dark: 'border-white/10 bg-white/[0.05] text-slate-300', light: 'border-slate-200 bg-slate-100 text-slate-600' },
+  Archived: { dark: 'border-white/10 bg-white/[0.05] text-slate-300', light: 'border-slate-200 bg-slate-100 text-slate-600' },
 };
 
-const PACKAGE_NEXT_STEP = {
-  Submitted: 'Start admin review for the submitted charts.',
-  'Under Review': 'Continue reviewing the remaining submitted charts.',
-  Approved: 'All required charts are approved. This package is ready to publish.',
-  Published: 'All package charts have been published as final outputs.',
-  'Revision Requested': 'Waiting for forecaster revisions before review can continue.',
-  Rejected: 'Package closed by review decision. No publication is expected.',
-  Archived: 'Package is archived and no longer active in the review desk.',
-  Draft: 'Package is still in production and should not be reviewed yet.',
-};
-
-const PACKAGE_REVIEW_STAGE = {
-  Submitted: {
-    label: 'Ready to start review',
-    helper: 'Open a submitted chart to move this package into Under Review.',
-  },
-  'Under Review': {
-    label: 'Review in progress',
-    helper: 'Review submitted or under-review charts until each chart is approved or returned.',
-  },
-  Approved: {
-    label: 'Ready to publish',
-    helper: 'Publishing will publish approved charts first, then publish the package.',
-  },
-  Published: {
-    label: 'Published',
-    helper: 'Final output is available. No review action is needed.',
-  },
-  'Revision Requested': {
-    label: 'Returned to forecaster',
-    helper: 'This package will reappear for review after forecasters resubmit.',
-  },
-  Rejected: {
-    label: 'Closed',
-    helper: 'The package has been rejected and is not publishable.',
-  },
-  Archived: {
-    label: 'Archived',
-    helper: 'Archived packages are retained for record keeping only.',
-  },
-  Draft: {
-    label: 'In production',
-    helper: 'Draft packages should not be visible in the admin review queue.',
-  },
-};
-
-const LOCKED_CHART_ACTION = {
-  Approved: 'Approved',
-  Published: 'Published output',
-  'Revision Requested': 'Needs revision',
-  Rejected: 'Closed',
-  'No Publication': 'No publication',
-  Archived: 'Archived',
-  Draft: 'In production',
-};
-
-function getChartActionLabel(status) {
-  if (REVIEWABLE_PROJECT_STATUSES.has(status)) return 'Review chart';
-  return LOCKED_CHART_ACTION[status] || 'Not reviewable';
-}
-
-function PackageMetric({ icon: Icon, label, value, isDarkMode }) {
+function SummaryStat({ icon: Icon, label, value, title, isDarkMode }) {
   return (
-    <div className={`rounded-2xl border p-3 ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/70'}`}>
-      <div className="flex items-center justify-between gap-2">
-        <span className={`text-xs font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{label}</span>
-        <Icon size={15} className={isDarkMode ? 'text-slate-400' : 'text-slate-500'} />
-      </div>
-      <p className={`mt-2 text-2xl font-black tabular-nums ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{value}</p>
-    </div>
-  );
-}
-
-function ChartRow({ chartRow, isDarkMode, onOpenChart }) {
-  const chart = chartRow.project;
-  const statusClass = getProjectStatusStyle(chart?.status);
-  const canReviewChart = REVIEWABLE_PROJECT_STATUSES.has(chart?.status);
-
-  return (
-    <div className={`flex flex-col gap-3 rounded-2xl border p-3 sm:flex-row sm:items-center sm:justify-between ${isDarkMode ? 'border-white/10 bg-slate-950/35' : 'border-slate-200 bg-slate-50/80'}`}>
+    <div className={`flex items-center gap-3 rounded-xl border p-4 backdrop-blur-xl ${isDarkMode ? 'border-cyan-200/15 bg-white/[0.035]' : 'border-white/80 bg-white/58'}`}>
+      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-200' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}>
+        <Icon size={20} />
+      </span>
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className={`text-sm font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-            {CHART_LABELS[chartRow.chartType] || chartRow.chartType || 'Forecast Chart'}
-          </p>
-          <span className={`inline-flex max-w-full shrink-0 truncate rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusClass}`}>
-            {getProjectStatusLabel(chart?.status)}
-          </span>
-        </div>
-        <p className={`mt-1 truncate text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`} title={chart?.name || chart?.title}>
-          {chart?.name || chart?.title || 'Untitled chart'}
-        </p>
+        <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
+        <p className={`mt-1 truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`} title={title || value}>{value}</p>
       </div>
-
-      <Button size="sm" variant="secondary" icon={ExternalLink} disabled={!canReviewChart} onClick={() => canReviewChart && onOpenChart?.(chart)}>
-        {getChartActionLabel(chart?.status)}
-      </Button>
     </div>
   );
+}
+
+function getChartActionLabel(status, isReviewablePackage) {
+  if (status === 'Approved') return 'View approved chart';
+  if (status === 'Published') return 'View published chart';
+  if (status === 'Revision Requested') return 'Review requested changes';
+  if (status === 'Under Review') return 'Continue review';
+  if (status === 'Submitted') return 'Start review';
+  return isReviewablePackage ? 'Review chart' : 'View chart';
+}
+
+function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart }) {
+  const dateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
+  const isReviewablePackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status);
+  const chartCount = forecastPackage.chartCount || forecastPackage.charts?.length || 0;
+  const contributorLabel = forecastPackage.contributorLabel || 'No recorded contributors';
+  const contributorTitle = (forecastPackage.contributorNames || []).join(', ') || contributorLabel;
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, []);
+
+  const modal = (
+    <div className={`fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-xl ${isDarkMode ? 'bg-[radial-gradient(circle_at_50%_0%,rgba(14,165,233,.15),transparent_40%),rgba(1,10,24,.78)]' : 'bg-[radial-gradient(circle_at_50%_0%,rgba(14,165,233,.14),transparent_42%),rgba(226,240,248,.72)]'}`} role="dialog" aria-modal="true" aria-labelledby={`package-${forecastPackage.id}-title`}>
+      <div className={`relative w-full max-w-5xl overflow-hidden rounded-2xl border shadow-2xl ring-1 backdrop-blur-3xl ${isDarkMode ? 'border-cyan-200/20 bg-[#06203a]/84 text-white shadow-black/50 ring-white/[0.06]' : 'border-white/85 bg-white/76 text-slate-950 shadow-slate-900/20 ring-slate-900/[0.04]'}`}>
+        <div className={`pointer-events-none absolute inset-x-0 top-0 h-40 ${isDarkMode ? 'bg-[radial-gradient(circle_at_70%_0%,rgba(56,189,248,.16),transparent_45%)]' : 'bg-[radial-gradient(circle_at_70%_0%,rgba(14,165,233,.12),transparent_45%)]'}`} />
+
+        <header className={`relative flex items-start justify-between gap-4 border-b px-5 py-5 sm:px-7 sm:py-6 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
+          <div className="flex min-w-0 items-start gap-4">
+            <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-200' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}><Waves size={24} /></span>
+            <div className="min-w-0">
+              <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>Forecast package</p>
+              <h2 id={`package-${forecastPackage.id}-title`} className="mt-2 truncate text-3xl font-black tracking-tight">{dateLabel}</h2>
+              <p className={`mt-1 truncate text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{forecastPackage.title}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close package summary" className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border transition ${isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300 hover:border-cyan-200/30 hover:bg-white/[0.1] hover:text-white' : 'border-white/80 bg-white/65 text-slate-500 hover:bg-white'}`}><X size={20} /></button>
+        </header>
+
+        <div className="relative p-5 sm:p-7">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <SummaryStat icon={CheckCircle2} label="Status" value={forecastPackage.status} isDarkMode={isDarkMode} />
+            <SummaryStat icon={UsersRound} label="Contributors" value={contributorLabel} title={contributorTitle} isDarkMode={isDarkMode} />
+            <SummaryStat icon={BarChart3} label="Charts" value={`${chartCount} available`} isDarkMode={isDarkMode} />
+          </div>
+
+          <div className={`my-6 h-px ${isDarkMode ? 'bg-white/10' : 'bg-white/80'}`} />
+
+          <div className="mb-4 flex items-center gap-3">
+            <Waves size={22} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} />
+            <div>
+              <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Package charts</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{isReviewablePackage ? 'Choose the chart you want to review.' : 'Choose the chart you want to view.'}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(forecastPackage.charts || []).map((chartRow) => {
+              const chart = chartRow.project;
+              const chartId = chart?._id || chart?.id;
+              const chartStatus = chart?.status || 'Draft';
+              const chartStatusStyle = STATUS_STYLES[chartStatus] || STATUS_STYLES.Draft;
+              const actionLabel = getChartActionLabel(chartStatus, isReviewablePackage);
+              const Icon = chartRow.chartType === 'analysis' ? Waves : Clock3;
+
+              return (
+                <button key={chartId || chartRow.chartType} type="button" disabled={!chartId} onClick={() => { if (!chartId) return; onClose(); onOpenChart?.(chart, forecastPackage); }} className={`group flex items-center gap-4 rounded-xl border p-4 text-left transition ${chartId ? isDarkMode ? 'border-cyan-200/15 bg-white/[0.035] hover:border-cyan-300/40 hover:bg-cyan-300/[0.08]' : 'border-white/80 bg-white/55 hover:border-cyan-200 hover:bg-white/85' : 'cursor-not-allowed border-transparent opacity-45'}`}>
+                  <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-200' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}><Icon size={22} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-base font-black">{CHART_LABELS[chartRow.chartType] || chartRow.chartType || 'Forecast chart'}</span>
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] ${isDarkMode ? chartStatusStyle.dark : chartStatusStyle.light}`}>{chartStatus}</span>
+                    </span>
+                    <span className="mt-1 block truncate text-xs font-semibold text-slate-500">{chart?.name || chart?.title || 'Chart unavailable'}</span>
+                    {chartId && <span className={`mt-3 block text-xs font-black ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>{actionLabel}</span>}
+                  </span>
+                  {chartId && <ArrowRight size={18} className={`${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} transition-transform group-hover:translate-x-1`} />}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={`mt-6 flex items-center gap-3 border-t pt-4 text-xs font-semibold ${isDarkMode ? 'border-white/10 text-slate-500' : 'border-white/80 text-slate-500'}`}>
+            <PackageCheck size={16} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} />
+            <span>PAGASA · Philippine Atmospheric, Geophysical and Astronomical Services Administration</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return typeof document === 'undefined' ? modal : createPortal(modal, document.body);
 }
 
 export default function ForecastPackageCard({ forecastPackage, isDarkMode, onOpenChart, onPublishPackage, publishingPackageId }) {
-  const isDaily = isDailyForecastPackage(forecastPackage);
-  const statusStyle = PACKAGE_STATUS_STYLES[forecastPackage.status] ?? PACKAGE_STATUS_STYLES.Draft;
-  const reviewStage = PACKAGE_REVIEW_STAGE[forecastPackage.status] ?? PACKAGE_REVIEW_STAGE.Draft;
-  const showReviewStageChip = reviewStage.label !== forecastPackage.status;
-  const packageDateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
-  const canReviewPackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status) && Boolean(forecastPackage.primaryChart);
-  const canPublishPackage = PUBLISHABLE_PACKAGE_STATUSES.has(forecastPackage.status);
+  const [showPackageSummary, setShowPackageSummary] = useState(false);
+  const canReview = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status) && Boolean(forecastPackage.primaryChart);
+  const canPublish = PUBLISHABLE_PACKAGE_STATUSES.has(forecastPackage.status);
+  const canViewPublished = forecastPackage.status === 'Published' && (forecastPackage.charts || []).some((row) => row.project?._id || row.project?.id);
   const isPublishing = publishingPackageId === forecastPackage.id;
-  const nextStep = PACKAGE_NEXT_STEP[forecastPackage.status] || 'Review package chart statuses before taking action.';
-  const readyChartCount = Math.min(REQUIRED_CHART_COUNT, (forecastPackage.approvedCount || 0) + (forecastPackage.returnedCount || 0));
-  const primaryActionLabel = canPublishPackage
-    ? 'Publish package'
-    : canReviewPackage
-      ? 'Review package'
-      : forecastPackage.status === 'Published'
-        ? 'Published output'
-        : forecastPackage.status === 'Revision Requested'
-          ? 'Waiting for revision'
-          : forecastPackage.status === 'Rejected'
-            ? 'Closed package'
-            : 'Not reviewable';
+  const reviewedCount = Math.min(REQUIRED_CHART_COUNT, (forecastPackage.approvedCount || 0) + (forecastPackage.returnedCount || 0));
+  const dateLabel = forecastPackage.dateKey ? formatPackageDate(forecastPackage.dateKey) : 'Unscheduled';
+  const actionLabel = canPublish ? 'Publish package' : canReview ? (forecastPackage.status === 'Submitted' ? 'Start review' : 'Continue review') : canViewPublished ? 'View package' : forecastPackage.status;
+  const statusStyle = STATUS_STYLES[forecastPackage.status] || STATUS_STYLES.Draft;
+  const contributorLabel = forecastPackage.contributorLabel || 'No recorded contributors';
+  const contributorTitle = (forecastPackage.contributorNames || []).join(', ') || contributorLabel;
+
+  const handleAction = () => {
+    if (canPublish) return onPublishPackage?.(forecastPackage);
+    if (canReview || canViewPublished) setShowPackageSummary(true);
+  };
 
   return (
-    <article className={`overflow-hidden rounded-3xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-      isDarkMode
-        ? isDaily ? 'border-cyan-300/30 bg-slate-900/90 ring-2 ring-cyan-300/15' : 'border-white/10 bg-slate-900/80'
-        : isDaily ? 'border-cyan-200 bg-white ring-2 ring-cyan-100' : 'border-slate-200 bg-white'
-    }`}>
-      <div className={`border-b p-4 ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              {isDaily && (
-                <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${isDarkMode ? 'bg-cyan-300/10 text-cyan-100' : 'bg-cyan-100 text-cyan-700'}`}>
-                  Today's package
-                </span>
-              )}
-              <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${isDarkMode ? statusStyle.dark : statusStyle.light}`}>
-                {forecastPackage.status}
-              </span>
-              {showReviewStageChip && (
-                <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-100 bg-cyan-50 text-cyan-700'}`}>
-                  {reviewStage.label}
-                </span>
-              )}
-            </div>
-            <h3 className={`mt-3 text-lg font-black leading-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
-              {forecastPackage.title}
-            </h3>
-            <p className={`mt-1 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              {packageDateLabel} · {forecastPackage.ownerLabel} · {forecastPackage.chartCount} chart{forecastPackage.chartCount === 1 ? '' : 's'}
-            </p>
-            <p className={`mt-2 text-sm font-bold leading-6 ${isDarkMode ? 'text-cyan-100/80' : 'text-slate-700'}`}>
-              {nextStep}
-            </p>
-            <p className={`mt-1 text-xs font-semibold leading-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              {reviewStage.helper}
-            </p>
-            <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-              {readyChartCount}/{REQUIRED_CHART_COUNT} required charts already reviewed or returned.
-            </p>
-          </div>
-
-          <Button icon={PackageCheck} disabled={isPublishing || (!canReviewPackage && !canPublishPackage)} onClick={() => {
-            if (canPublishPackage) {
-              onPublishPackage?.(forecastPackage);
-              return;
-            }
-            if (canReviewPackage) onOpenChart?.(forecastPackage.primaryChart, forecastPackage);
-          }}>
-            {isPublishing ? 'Publishing...' : primaryActionLabel}
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-3 p-4 sm:grid-cols-3">
-        <PackageMetric icon={Clock3} label="To review" value={forecastPackage.pendingCount} isDarkMode={isDarkMode} />
-        <PackageMetric icon={CheckCircle2} label="Approved/Published" value={forecastPackage.approvedCount} isDarkMode={isDarkMode} />
-        <PackageMetric icon={forecastPackage.returnedCount > 0 ? XCircle : RotateCcw} label="Returned" value={forecastPackage.returnedCount} isDarkMode={isDarkMode} />
-      </div>
-
-      <div className="space-y-2 px-4 pb-4">
-        {forecastPackage.charts.map((chartRow) => (
-          <ChartRow key={chartRow.project?._id || chartRow.project?.id || chartRow.chartType} chartRow={chartRow} isDarkMode={isDarkMode} onOpenChart={(chart) => onOpenChart?.(chart, forecastPackage)} />
-        ))}
-      </div>
-    </article>
+    <>
+      <article className={`grid gap-4 rounded-xl border px-4 py-4 backdrop-blur-xl transition sm:grid-cols-[minmax(0,1fr)_8.5rem_12rem_10rem] sm:items-center xl:col-span-2 ${isDarkMode ? 'border-white/10 bg-slate-950/42 hover:border-cyan-300/20 hover:bg-slate-950/55' : 'border-white/75 bg-white/64 hover:border-cyan-200 hover:bg-white/78'}`}>
+        <div className="min-w-0"><div className="flex items-center gap-3"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${isDarkMode ? 'border-white/10 bg-white/[0.04] text-cyan-200' : 'border-slate-200 bg-white/80 text-cyan-700'}`}><CalendarDays size={18} /></span><div className="min-w-0"><h3 className={`truncate text-sm font-black sm:text-base ${isDarkMode ? 'text-white' : 'text-slate-950'}`} title={forecastPackage.title}>{dateLabel}</h3><p className="truncate text-xs font-semibold text-slate-500" title={forecastPackage.title}>{forecastPackage.title}</p></div></div></div>
+        <div className="sm:justify-self-start"><span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${isDarkMode ? statusStyle.dark : statusStyle.light}`}>{forecastPackage.status}</span></div>
+        <div className="min-w-0"><p className="text-xs font-bold text-slate-500">Contributors</p><p className={`truncate text-sm font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`} title={contributorTitle}>{contributorLabel}</p><p className="mt-1 text-xs font-semibold text-slate-500">{reviewedCount}/{REQUIRED_CHART_COUNT} reviewed</p></div>
+        <div className="sm:justify-self-end"><Button size="sm" className="w-full sm:w-40" variant={canReview || canPublish ? 'primary' : 'secondary'} icon={canPublish ? PackageCheck : ArrowRight} disabled={isPublishing || (!canReview && !canPublish && !canViewPublished)} onClick={handleAction}>{isPublishing ? 'Publishing...' : actionLabel}</Button></div>
+      </article>
+      {showPackageSummary && <PackageSummaryModal forecastPackage={forecastPackage} isDarkMode={isDarkMode} onClose={() => setShowPackageSummary(false)} onOpenChart={onOpenChart} />}
+    </>
   );
 }

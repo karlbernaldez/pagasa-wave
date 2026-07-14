@@ -4,33 +4,30 @@ import Button from '@/components/ui/Button';
 
 const NO_PUBLICATION_REASON = 'Operational exception / no verified publication';
 
-function ActionImpactGuide({ isReviewable, isUnderReview, isApproved, hasRemarks, isDarkMode }) {
+function ActionHint({ isReviewable, isUnderReview, isApproved, hasRemarks, canPublish, isDarkMode }) {
   if (!isReviewable && !isApproved) return null;
 
-  const surfaceClass = isDarkMode
-    ? 'border-white/10 bg-white/[0.04] text-slate-300'
-    : 'border-slate-200 bg-slate-50 text-slate-700';
-  const mutedClass = isDarkMode ? 'text-slate-500' : 'text-slate-500';
+  const surface = isDarkMode
+    ? 'border-white/10 bg-white/[0.035] text-slate-300'
+    : 'border-white/75 bg-white/58 text-slate-700';
 
   if (isApproved) {
     return (
-      <div className={`rounded-2xl border px-3 py-2 text-xs font-semibold ${surfaceClass}`}>
-        <p className="font-black uppercase tracking-[0.14em]">Publish action</p>
-        <p className="mt-1 leading-5">Publish finalizes this approved chart as an operational output. Use it only after confirming the reviewed package is ready for release.</p>
+      <div className={`rounded-xl border px-3 py-2 text-xs font-semibold leading-5 backdrop-blur-xl ${surface}`}>
+        {canPublish
+          ? 'This chart is approved and ready to publish.'
+          : 'This chart is approved. Complete the remaining package charts before publishing the package.'}
       </div>
     );
   }
 
   return (
-    <div className={`rounded-2xl border px-3 py-2 text-xs font-semibold ${surfaceClass}`}>
-      <p className="font-black uppercase tracking-[0.14em]">Review action impact</p>
-      <ul className="mt-1 space-y-1 leading-5">
-        <li><span className="font-black">Approve</span> moves this chart to Approved and counts toward package approval.</li>
-        <li><span className="font-black">Request Revision</span> returns this chart and package to the forecaster with your remarks.</li>
-        <li><span className="font-black">No Publication</span> closes this chart with an operational exception note.</li>
-      </ul>
-      {!isUnderReview && <p className={`mt-2 ${mutedClass}`}>Start review before making approval, revision, or no-publication decisions.</p>}
-      {!hasRemarks && <p className={`mt-2 ${mutedClass}`}>Remarks are required before comment, revision, or no-publication actions are enabled.</p>}
+    <div className={`rounded-xl border px-3 py-2 text-xs font-semibold leading-5 backdrop-blur-xl ${surface}`}>
+      {!isUnderReview
+        ? 'Start review before making a decision.'
+        : hasRemarks
+          ? 'Approve the chart or return it with your remarks.'
+          : 'Approve now, or add remarks to enable revision and no-publication actions.'}
     </div>
   );
 }
@@ -52,90 +49,87 @@ export default function ReviewActionsFooter({
   onPublish,
   onClose,
 }) {
-  const disabledReviewButton = isDarkMode ? 'opacity-45' : 'opacity-50';
+  const canPublish = typeof onPublish === 'function';
 
   return (
-    <div className={`mx-3 mb-3 mt-1 shrink-0 rounded-2xl border p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] sm:mx-5 sm:mb-5 sm:p-4 xl:sticky xl:bottom-0 xl:mx-0 xl:mb-0 xl:mt-0 xl:rounded-none xl:border-x-0 xl:border-b-0 ${isDarkMode ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95'}`}>
-      <div className="flex flex-col gap-2">
+    <div className={`mx-3 mb-3 mt-1 shrink-0 rounded-2xl border p-3 shadow-2xl backdrop-blur-2xl sm:mx-4 sm:mb-4 xl:sticky xl:bottom-0 xl:mx-0 xl:mb-0 xl:mt-0 xl:rounded-none xl:border-x-0 xl:border-b-0 ${
+      isDarkMode
+        ? 'border-white/10 bg-[#06182b]/82 shadow-black/25'
+        : 'border-white/80 bg-white/74 shadow-slate-900/10'
+    }`}>
+      <div className="space-y-3">
         {actionError && (
-          <div className={`flex items-start justify-between gap-3 rounded-2xl border px-3 py-2 text-xs font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`} role="alert">
+          <div className={`flex items-start justify-between gap-3 rounded-xl border px-3 py-2 text-xs font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`} role="alert">
             <span className="inline-flex items-start gap-2">
               <AlertCircle className="mt-0.5 shrink-0" size={14} />
               {actionError}
             </span>
-            <button
-              type="button"
-              className={`shrink-0 font-black uppercase tracking-wide ${isDarkMode ? 'text-red-200 hover:text-white' : 'text-red-700 hover:text-red-900'}`}
-              onClick={onClearActionError}
-            >
-              Dismiss
-            </button>
+            <button type="button" className="shrink-0 font-black uppercase tracking-wide" onClick={onClearActionError}>Dismiss</button>
           </div>
         )}
 
-        <ActionImpactGuide isReviewable={isReviewable} isUnderReview={isUnderReview} isApproved={isApproved} hasRemarks={hasRemarks} isDarkMode={isDarkMode} />
+        <ActionHint isReviewable={isReviewable} isUnderReview={isUnderReview} isApproved={isApproved} hasRemarks={hasRemarks} canPublish={canPublish} isDarkMode={isDarkMode} />
 
         {isReviewable && (
-          <div className="grid grid-cols-2 gap-2 [&>button]:min-h-10 [&>button]:w-full">
+          <>
             <Button
-              variant={hasRemarks ? 'secondary' : 'ghost'}
-              icon={MessageSquareText}
-              loading={busyAction === 'comment'}
-              disabled={!hasRemarks || Boolean(busyAction)}
-              onClick={onAddComment}
-            >
-              Add Comment
-            </Button>
-            <Button
-              variant={hasRemarks && isUnderReview ? 'secondary' : 'ghost'}
-              icon={AlertCircle}
-              loading={busyAction === 'revision'}
-              disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
-              onClick={onRequestRevision}
-            >
-              Request Revision
-            </Button>
-            <Button
+              className="min-h-11 w-full"
               icon={Check}
               loading={busyAction === 'approve'}
               disabled={!isUnderReview || Boolean(busyAction)}
               onClick={onApprove}
             >
-              Approve
+              Approve chart
             </Button>
+
+            <div className="grid grid-cols-2 gap-2 [&>button]:min-h-10 [&>button]:w-full">
+              <Button
+                variant="secondary"
+                icon={MessageSquareText}
+                loading={busyAction === 'comment'}
+                disabled={!hasRemarks || Boolean(busyAction)}
+                onClick={onAddComment}
+              >
+                Comment
+              </Button>
+              <Button
+                variant="secondary"
+                icon={AlertCircle}
+                loading={busyAction === 'revision'}
+                disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
+                onClick={onRequestRevision}
+              >
+                Request revision
+              </Button>
+            </div>
+
             <Button
-              variant={hasRemarks && isUnderReview ? 'secondary' : 'ghost'}
+              variant="ghost"
               icon={ShieldAlert}
               loading={busyAction === 'noPublication'}
               disabled={!hasRemarks || !isUnderReview || Boolean(busyAction)}
               onClick={() => onNoPublication?.(NO_PUBLICATION_REASON)}
             >
-              No Publication
+              Mark as no publication
             </Button>
-          </div>
+          </>
         )}
 
-        {isApproved && (
-          <Button
-            icon={Send}
-            loading={busyAction === 'publish'}
-            disabled={Boolean(busyAction)}
-            onClick={onPublish}
-          >
-            Publish
+        {isApproved && canPublish && (
+          <Button className="min-h-11 w-full" icon={Send} loading={busyAction === 'publish'} disabled={Boolean(busyAction)} onClick={onPublish}>
+            Publish chart
           </Button>
         )}
 
-        <Button variant="ghost" disabled={Boolean(busyAction)} onClick={onClose}>
+        <button
+          type="button"
+          disabled={Boolean(busyAction)}
+          onClick={onClose}
+          className={`w-full rounded-lg py-2 text-xs font-black uppercase tracking-[0.12em] transition disabled:opacity-50 ${isDarkMode ? 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}
+        >
           Close
-        </Button>
+        </button>
       </div>
-
-      {!hasRemarks && isReviewable && (
-        <p className={`mt-2 text-center text-[11px] font-semibold ${isDarkMode ? 'text-slate-600' : 'text-slate-400'} ${disabledReviewButton}`}>
-          Add remarks to enable comment, revision, or no-publication actions.
-        </p>
-      )}
     </div>
   );
 }

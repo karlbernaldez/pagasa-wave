@@ -11,8 +11,8 @@ const DEFAULT_LIMIT = 5;
 const ALLOWED_STATUSES = ['pending', 'active', 'locked', 'suspended', 'inactive'];
 
 // Fields each role is allowed to update
-const OWNER_FIELDS = ['firstName', 'lastName', 'contact', 'address', 'birthday', 'email', 'agency', 'position'];
-const ADMIN_FIELDS = [...OWNER_FIELDS, 'username', 'role'];
+const OWNER_FIELDS = ['username', 'firstName', 'lastName', 'contact', 'address', 'birthday', 'email', 'agency', 'position', 'avatarUrl'];
+const ADMIN_FIELDS = [...OWNER_FIELDS, 'role'];
 
 // Fields returned by list / detail queries (no password, no __v)
 const LIST_FIELDS = 'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
@@ -254,6 +254,22 @@ export const updateUserDetails = async (req, res) => {
 
     if (!Object.keys(updates).length) {
       return res.status(400).json({ message: 'No permitted fields provided' });
+    }
+
+    if (updates.username !== undefined) {
+      updates.username = String(updates.username).trim().toLowerCase();
+      if (!/^[a-z0-9._-]{3,30}$/.test(updates.username)) {
+        return res.status(400).json({ message: 'Username must be 3-30 characters and use only letters, numbers, dots, underscores, or hyphens' });
+      }
+    }
+
+    if (updates.avatarUrl !== undefined && updates.avatarUrl !== null) {
+      const avatarUrl = String(updates.avatarUrl).trim();
+      const isSupportedAvatar = /^(https?:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(avatarUrl);
+      if (!isSupportedAvatar || avatarUrl.length > 1000000) {
+        return res.status(400).json({ message: 'Avatar must be a supported image URL or an image smaller than 750 KB' });
+      }
+      updates.avatarUrl = avatarUrl;
     }
 
     // Duplicate email / username guard
