@@ -3,6 +3,7 @@ set -euo pipefail
 
 DEPLOY_SHA="${1:-}"
 PUBLIC_HOST="${2:-}"
+APP_USER="${APP_USER:-wavelab}"
 APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
 
 if [[ "${EUID}" -ne 0 ]]; then
@@ -20,25 +21,32 @@ if [[ ! "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]; then
   exit 1
 fi
 
+if ! id "$APP_USER" >/dev/null 2>&1; then
+  echo "Application user not found: $APP_USER"
+  exit 1
+fi
+
 if [[ ! -d "$APP_ROOT/.git" ]]; then
   echo "WaveLab repository not found at $APP_ROOT"
   exit 1
 fi
 
-cd "$APP_ROOT"
+run_git() {
+  sudo -u "$APP_USER" git -C "$APP_ROOT" "$@"
+}
 
-if [[ -n "$(git status --porcelain)" ]]; then
+if [[ -n "$(run_git status --porcelain)" ]]; then
   echo "Deployment checkout contains uncommitted changes. Refusing to overwrite them."
   exit 1
 fi
 
-git fetch --prune origin dev
-git checkout dev
-git merge --ff-only "$DEPLOY_SHA"
+run_git fetch --prune origin dev
+run_git checkout dev
+run_git merge --ff-only "$DEPLOY_SHA"
 
-if [[ "$(git rev-parse HEAD)" != "$DEPLOY_SHA" ]]; then
+if [[ "$(run_git rev-parse HEAD)" != "$DEPLOY_SHA" ]]; then
   echo "Deployment checkout does not match requested commit."
   exit 1
 fi
 
-APP_ROOT="$APP_ROOT" bash deploy/almalinux/deploy.sh "$PUBLIC_HOST"
+APP_USER="$APP_USER" APP_ROOT="$APP_ROOT" bash "$APP_ROOT/deploy/almalinux/deploy.sh" "$PUBLIC_HOST"
