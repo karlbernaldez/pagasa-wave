@@ -50,6 +50,7 @@ function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart
   const dateLabel = forecastPackage.dateKey
     ? formatPackageDate(forecastPackage.dateKey)
     : 'Unscheduled';
+  const isReviewablePackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby={`package-${forecastPackage.id}-title`}>
@@ -85,7 +86,15 @@ function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart
             </div>
           </div>
 
-          <p className={`mb-3 text-xs font-black uppercase tracking-[0.15em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Package charts</p>
+          <div className="mb-3 flex items-end justify-between gap-4">
+            <div>
+              <p className={`text-xs font-black uppercase tracking-[0.15em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Package charts</p>
+              <p className={`mt-1 text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                {isReviewablePackage ? 'Choose the chart you want to review.' : 'Choose the chart you want to view.'}
+              </p>
+            </div>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             {(forecastPackage.charts || []).map((chartRow) => {
               const chart = chartRow.project;
@@ -116,6 +125,11 @@ function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-black">{CHART_LABELS[chartRow.chartType] || chartRow.chartType || 'Forecast chart'}</span>
                     <span className={`mt-1 block truncate text-xs font-semibold ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{chart?.name || chart?.title || 'Chart unavailable'}</span>
+                    {chartId && (
+                      <span className={`mt-2 block text-[11px] font-black ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>
+                        {isReviewablePackage ? 'Review chart' : 'View chart'}
+                      </span>
+                    )}
                   </span>
                   {chartId && <ArrowRight size={16} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} />}
                 </button>
@@ -159,11 +173,7 @@ export default function ForecastPackageCard({
       onPublishPackage?.(forecastPackage);
       return;
     }
-    if (canReview) {
-      onOpenChart?.(forecastPackage.primaryChart, forecastPackage);
-      return;
-    }
-    if (canViewPublished) setShowPackageSummary(true);
+    if (canReview || canViewPublished) setShowPackageSummary(true);
   };
 
   return (
