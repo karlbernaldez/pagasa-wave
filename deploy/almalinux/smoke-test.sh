@@ -43,18 +43,13 @@ systemctl is-active --quiet redis
 
 curl -fsS --max-time 10 http://127.0.0.1:5000/status | grep -q '"status":"OK"'
 
-# Load the same root-owned environment file used by the systemd service. Keep it
-# unreadable to the application and runner users; do not print environment values.
-set -a
-# shellcheck disable=SC1090
-source "$BACKEND_ENV"
-set +a
-
 cd "$APP_ROOT/backend"
-node --input-type=module <<'NODE'
+BACKEND_ENV="$BACKEND_ENV" node --input-type=module <<'NODE'
+import dotenv from "dotenv";
 import mongoose from "mongoose";
 import Redis from "ioredis";
 
+dotenv.config({ path: process.env.BACKEND_ENV });
 if (!process.env.MONGO_URI) throw new Error("MONGO_URI is not configured");
 await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 });
 await mongoose.connection.db.admin().command({ ping: 1 });
