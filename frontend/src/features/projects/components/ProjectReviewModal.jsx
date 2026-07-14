@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, X } from 'lucide-react';
 
 import ReviewActionsFooter from '@/features/projects/components/review/ReviewActionsFooter';
@@ -85,11 +86,11 @@ function getStatusTone(status) {
 
 function getToneClasses(tone, isDarkMode) {
   const classes = {
-    cyan: isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-200 bg-cyan-50 text-cyan-700',
-    amber: isDarkMode ? 'border-amber-300/20 bg-amber-300/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-700',
-    emerald: isDarkMode ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    rose: isDarkMode ? 'border-rose-300/20 bg-rose-300/10 text-rose-100' : 'border-rose-200 bg-rose-50 text-rose-700',
-    slate: isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-700',
+    cyan: isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100' : 'border-cyan-200 bg-cyan-50/85 text-cyan-700',
+    amber: isDarkMode ? 'border-amber-300/20 bg-amber-300/10 text-amber-100' : 'border-amber-200 bg-amber-50/85 text-amber-700',
+    emerald: isDarkMode ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50/85 text-emerald-700',
+    rose: isDarkMode ? 'border-rose-300/20 bg-rose-300/10 text-rose-100' : 'border-rose-200 bg-rose-50/85 text-rose-700',
+    slate: isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200/80 bg-white/65 text-slate-700',
   };
 
   return classes[tone] || classes.slate;
@@ -105,13 +106,13 @@ function GalleryButton({ direction, disabled, isDarkMode, onClick }) {
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`inline-flex h-14 w-14 items-center justify-center rounded-full border shadow-2xl backdrop-blur-xl transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${
+      className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border shadow-2xl backdrop-blur-2xl transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:scale-100 sm:h-14 sm:w-14 ${
         isDarkMode
-          ? 'border-cyan-300/40 bg-slate-950/95 text-cyan-100 hover:bg-cyan-500/20'
-          : 'border-cyan-200 bg-white/95 text-cyan-700 hover:bg-cyan-50'
+          ? 'border-cyan-200/20 bg-slate-950/65 text-cyan-100 shadow-black/30 ring-1 ring-white/[0.04] hover:border-cyan-200/40 hover:bg-cyan-400/15'
+          : 'border-white/80 bg-white/72 text-cyan-700 shadow-slate-900/15 ring-1 ring-slate-900/[0.04] hover:border-cyan-200 hover:bg-cyan-50/90'
       }`}
     >
-      <Icon size={30} />
+      <Icon size={26} />
     </button>
   );
 }
@@ -125,6 +126,14 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
   const [remarks, setRemarks] = useState('');
   const [mapMode, setMapMode] = useState('preview');
   const [autoReviewQueue, setAutoReviewQueue] = useState([]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 
   useEffect(() => {
     const incomingProjectId = getProjectId(project);
@@ -266,13 +275,24 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
   const currentFeatureSource = currentFeatureCollection;
   const diff = buildAnnotationDiff(previousFeatureSource, currentFeatureSource);
 
-  const surface = isDarkMode ? 'border-white/10 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-950';
+  const surface = isDarkMode
+    ? 'border-cyan-200/15 bg-[#06182b]/88 text-slate-100 shadow-black/50 ring-white/[0.06]'
+    : 'border-white/80 bg-white/76 text-slate-950 shadow-slate-900/20 ring-slate-900/[0.05]';
   const mutedText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
   const canUseGalleryControls = !busyAction && canMoveGallery;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-slate-950/80 p-1 backdrop-blur-sm sm:p-4 xl:items-center xl:p-6">
-      <div className="pointer-events-none fixed inset-y-0 left-4 right-4 z-[120] flex items-center justify-between sm:left-8 sm:right-8 xl:left-14 xl:right-14">
+  const modal = (
+    <div
+      className={`fixed inset-0 z-[200] flex items-stretch justify-center overflow-hidden p-2 backdrop-blur-xl sm:p-4 xl:items-center xl:p-6 ${
+        isDarkMode
+          ? 'bg-[radial-gradient(circle_at_50%_0%,rgba(14,165,233,.14),transparent_38%),rgba(1,10,24,.78)]'
+          : 'bg-[radial-gradient(circle_at_50%_0%,rgba(14,165,233,.16),transparent_40%),rgba(226,240,248,.72)]'
+      }`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Forecast chart review"
+    >
+      <div className="pointer-events-none fixed inset-y-0 left-3 right-3 z-[220] flex items-center justify-between sm:left-6 sm:right-6 xl:left-10 xl:right-10">
         <div className="pointer-events-auto">
           <GalleryButton direction="previous" disabled={!gallery.previousProject || !canUseGalleryControls} isDarkMode={isDarkMode} onClick={() => selectGalleryProject(gallery.previousProject)} />
         </div>
@@ -281,18 +301,24 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
         </div>
       </div>
 
-      <div className={`relative flex h-full w-full max-w-[1480px] flex-col overflow-hidden rounded-2xl border shadow-2xl ring-1 ring-white/10 sm:h-[min(94vh,940px)] sm:rounded-[28px] ${surface}`}>
-        <header className={`flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
+      <div className={`relative z-[210] flex h-full w-full max-w-[1480px] flex-col overflow-hidden rounded-2xl border shadow-2xl ring-1 backdrop-blur-3xl sm:h-[min(94vh,940px)] ${surface}`}>
+        <div className={`pointer-events-none absolute inset-x-0 top-0 h-32 ${isDarkMode ? 'bg-gradient-to-b from-cyan-300/[0.06] to-transparent' : 'bg-gradient-to-b from-white/80 to-transparent'}`} aria-hidden="true" />
+
+        <header className={`relative flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 backdrop-blur-2xl sm:gap-4 sm:px-6 sm:py-4 ${
+          isDarkMode ? 'border-white/10 bg-slate-950/38' : 'border-white/70 bg-white/46'
+        }`}>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500 sm:text-xs">Forecast Chart Review</p>
+              <p className={`text-[10px] font-black uppercase tracking-[0.18em] sm:text-xs ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>Forecast Chart Review</p>
               <span className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${getToneClasses(statusTone, isDarkMode)}`}>{statusLabel}</span>
-              <span className={`${isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>Chart {gallery.currentNumber} of {gallery.total}</span>
+              <span className={`${isDarkMode ? 'border-white/10 bg-white/[0.05] text-slate-300' : 'border-white/80 bg-white/65 text-slate-600'} rounded-full border px-2.5 py-1 text-[11px] font-black`}>Chart {gallery.currentNumber} of {gallery.total}</span>
             </div>
 
-            <div className={`mt-3 rounded-2xl border p-3 ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-slate-100 bg-slate-50'}`}>
+            <div className={`mt-3 rounded-xl border p-3 shadow-inner backdrop-blur-xl ${
+              isDarkMode ? 'border-white/10 bg-white/[0.035] shadow-white/[0.02]' : 'border-white/80 bg-white/54 shadow-white'
+            }`}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-black tracking-[0.14em] ${isDarkMode ? 'bg-slate-950 text-cyan-200 ring-1 ring-white/10' : 'bg-slate-100 text-blue-700'}`}>{chartMetadata.code}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-black tracking-[0.14em] ${isDarkMode ? 'bg-slate-950/60 text-cyan-200 ring-1 ring-white/10' : 'bg-cyan-50/80 text-cyan-700 ring-1 ring-cyan-100'}`}>{chartMetadata.code}</span>
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${getToneClasses(statusTone, isDarkMode)}`}>{statusLabel}</span>
               </div>
               <h2 className={`mt-3 truncate text-lg font-black leading-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{chartMetadata.label}</h2>
@@ -301,12 +327,26 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
               <p className={`mt-2 truncate text-xs font-semibold ${mutedText}`} title={getProjectName(currentProject)}>{getProjectName(currentProject)} · {getOwner(currentProject)} · Forecast {formatDate(currentProject.forecastDate)}</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} disabled={Boolean(busyAction)} className={`rounded-2xl border border-transparent p-2 transition disabled:cursor-not-allowed disabled:opacity-50 ${isDarkMode ? 'text-slate-400 hover:border-white/10 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:border-slate-200 hover:bg-slate-100 hover:text-slate-900'}`} aria-label="Close review modal"><X size={20} /></button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={Boolean(busyAction)}
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              isDarkMode
+                ? 'border-white/10 bg-white/[0.04] text-slate-400 hover:border-cyan-200/20 hover:bg-white/[0.08] hover:text-white'
+                : 'border-white/80 bg-white/62 text-slate-500 shadow-sm hover:border-cyan-200 hover:bg-white/90 hover:text-slate-900'
+            }`}
+            aria-label="Close review modal"
+          >
+            <X size={20} />
+          </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 overflow-y-auto xl:grid-cols-[minmax(0,1.6fr)_430px] xl:overflow-hidden">
+        <div className="relative grid min-h-0 flex-1 overflow-y-auto xl:grid-cols-[minmax(0,1.6fr)_410px] xl:overflow-hidden">
           <ReviewMapWorkspace projectId={projectId} currentFeatureSource={currentFeatureSource} diff={diff} mapMode={mapMode} onMapModeChange={setMapMode} isLoadingCurrentFeatures={isLoadingCurrentFeatures} featureLoadError={featureLoadError} isDarkMode={isDarkMode} />
-          <aside className={`min-h-0 border-t xl:flex xl:flex-col xl:border-l xl:border-t-0 ${isDarkMode ? 'border-white/10 bg-slate-950' : 'border-slate-200 bg-white'}`}>
+          <aside className={`min-h-0 border-t backdrop-blur-2xl xl:flex xl:flex-col xl:border-l xl:border-t-0 ${
+            isDarkMode ? 'border-white/10 bg-slate-950/36' : 'border-white/70 bg-white/42'
+          }`}>
             <ReviewSidebar project={currentProject} statusLabel={statusLabel} diff={diff} remarks={remarks} onRemarksChange={setRemarks} isReviewable={isReviewable} busyAction={busyAction} reviewer={reviewer} previousRemarks={previousRemarks} timeline={timeline} isDarkMode={isDarkMode} />
             <ReviewActionsFooter isReviewable={isReviewable} isUnderReview={isUnderReview} isApproved={isApproved} hasRemarks={hasRemarks} busyAction={busyAction} actionError={actionError} onClearActionError={clearActionError} isDarkMode={isDarkMode} {...reviewActionHandlers} onClose={onClose} />
           </aside>
@@ -314,4 +354,6 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
       </div>
     </div>
   );
+
+  return typeof document === 'undefined' ? modal : createPortal(modal, document.body);
 }
