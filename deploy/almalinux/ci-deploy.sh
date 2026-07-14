@@ -57,14 +57,14 @@ fi
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 PREVIOUS_SHA="$(run_git rev-parse HEAD)"
 LOG_FILE="$LOG_DIR/deploy-$(date -u +%Y%m%dT%H%M%SZ)-${TARGET_SHA:0:12}.log"
-SMOKE_COPY="$(mktemp /tmp/wavelab-smoke.XXXXXX)"
-trap 'rm -f "$SMOKE_COPY"' EXIT
+ROLLBACK_SMOKE_COPY="$(mktemp /tmp/wavelab-smoke.XXXXXX)"
+trap 'rm -f "$ROLLBACK_SMOKE_COPY"' EXIT
 
 if [[ -f "$APP_ROOT/deploy/almalinux/smoke-test.sh" ]]; then
-  cp "$APP_ROOT/deploy/almalinux/smoke-test.sh" "$SMOKE_COPY"
-  chmod 700 "$SMOKE_COPY"
+  cp "$APP_ROOT/deploy/almalinux/smoke-test.sh" "$ROLLBACK_SMOKE_COPY"
+  chmod 700 "$ROLLBACK_SMOKE_COPY"
 else
-  : > "$SMOKE_COPY"
+  : > "$ROLLBACK_SMOKE_COPY"
 fi
 
 exec > >(tee -a "$LOG_FILE") 2>&1
@@ -107,8 +107,11 @@ printf '%s\n' "$ACTION" > "$STATE_DIR/last-action"
 printf '%s\n' "$STARTED_AT" > "$STATE_DIR/started-at"
 
 APP_USER="$APP_USER" APP_ROOT="$APP_ROOT" bash "$APP_ROOT/deploy/almalinux/deploy.sh" "$PUBLIC_HOST"
-if [[ -s "$SMOKE_COPY" ]]; then
-  bash "$SMOKE_COPY" "$PUBLIC_HOST"
+
+if [[ "$ACTION" == "deploy" && -f "$APP_ROOT/deploy/almalinux/smoke-test.sh" ]]; then
+  bash "$APP_ROOT/deploy/almalinux/smoke-test.sh" "$PUBLIC_HOST"
+elif [[ "$ACTION" == "rollback" && -s "$ROLLBACK_SMOKE_COPY" ]]; then
+  bash "$ROLLBACK_SMOKE_COPY" "$PUBLIC_HOST"
 else
   systemctl is-active --quiet wavelab-backend
   curl -fsS --max-time 10 http://127.0.0.1:5000/status >/dev/null
