@@ -9,6 +9,7 @@ export const ADMIN_TABS = {
   ANALYTICS: 'analytics',
   CALENDAR: 'calendar',
   SETTINGS: 'settings',
+  ACCOUNT: 'account',
 };
 
 export const ADMIN_ROUTE_BY_TAB = {
@@ -20,6 +21,7 @@ export const ADMIN_ROUTE_BY_TAB = {
   [ADMIN_TABS.ANALYTICS]: '/dashboard/analytics',
   [ADMIN_TABS.CALENDAR]: '/dashboard/calendar',
   [ADMIN_TABS.SETTINGS]: '/dashboard/settings',
+  [ADMIN_TABS.ACCOUNT]: '/dashboard/account',
 };
 
 export const ADMIN_TAB_BY_ROUTE = Object.entries(ADMIN_ROUTE_BY_TAB).reduce(
@@ -96,5 +98,9 @@ export const PAGE_META = {
   [ADMIN_TABS.SETTINGS]: {
     title: 'System Settings',
     description: 'Configure WaveLab public content, contact information, and other system-wide settings.',
+  },
+  [ADMIN_TABS.ACCOUNT]: {
+    title: 'Account Settings',
+    description: 'Review and update your administrator profile and account information.',
   },
 };
