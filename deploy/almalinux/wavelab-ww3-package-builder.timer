@@ -1,0 +1,12 @@
+[Unit]
+Description=Check for new WaveLab WW3 model archives hourly
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+RandomizedDelaySec=5min
+Persistent=true
+Unit=wavelab-ww3-package-builder.service
+
+[Install]
+WantedBy=timers.target
