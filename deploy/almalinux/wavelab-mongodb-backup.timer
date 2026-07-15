@@ -1,0 +1,11 @@
+[Unit]
+Description=Run WaveLab MongoDB backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=15m
+Persistent=true
+Unit=wavelab-mongodb-backup.service
+
+[Install]
+WantedBy=timers.target
