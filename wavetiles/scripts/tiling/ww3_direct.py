@@ -194,7 +194,7 @@ def generate_tiles(lat: np.ndarray, lon: np.ndarray, data: np.ndarray, output: P
                 if not np.any(rgba[..., 3]):
                     continue
                 target.parent.mkdir(parents=True, exist_ok=True)
-                Image.fromarray(rgba, "RGBA").save(target, format="PNG", optimize=True)
+                Image.fromarray(rgba).save(target, format="PNG", optimize=True)
                 count += 1
     return count
 
