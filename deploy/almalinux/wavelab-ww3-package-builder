@@ -1,0 +1,271 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
+WAVETILES_ROOT="${WAVETILES_ROOT:-$APP_ROOT/wavetiles}"
+SOURCE_ARCHIVE_DIR="${SOURCE_ARCHIVE_DIR:-/home/darwin/ww3_nc}"
+INPUT_ROOT="${INPUT_ROOT:-$WAVETILES_ROOT/input/ww3}"
+TILE_ROOT="${TILE_ROOT:-$WAVETILES_ROOT/tiles/WW3}"
+STATE_ROOT="${STATE_ROOT:-/var/lib/wavelab-ww3}"
+LOCK_FILE="${LOCK_FILE:-/run/lock/wavelab-ww3-package-builder.lock}"
+ARCHIVE_STABILITY_MINUTES="${ARCHIVE_STABILITY_MINUTES:-10}"
+SOURCE_ARCHIVE_RETENTION_DAYS="${SOURCE_ARCHIVE_RETENTION_DAYS:-10}"
+INPUT_CYCLE_RETENTION_DAYS="${INPUT_CYCLE_RETENTION_DAYS:-10}"
+TILE_PACKAGE_RETENTION_DAYS="${TILE_PACKAGE_RETENTION_DAYS:-10}"
+MIN_TILE_PACKAGES_TO_KEEP="${MIN_TILE_PACKAGES_TO_KEEP:-3}"
+MAX_PACKAGE_AGE_DAYS="${MAX_PACKAGE_AGE_DAYS:-3}"
+FAILED_BUILD_RETENTION_DAYS="${FAILED_BUILD_RETENTION_DAYS:-2}"
+CLEANUP_DRY_RUN="${CLEANUP_DRY_RUN:-1}"
+WW3_VAR="${WW3_VAR:-hs}"
+WW3_SIGMA="${WW3_SIGMA:-1.5}"
+WW3_BUILD_TIMEOUT="${WW3_BUILD_TIMEOUT:-4h}"
+WW3_BUILD_EXTRA_ARGS="${WW3_BUILD_EXTRA_ARGS:---skip-existing}"
+
+log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+fail() { log "ERROR: $*" >&2; exit 1; }
+
+send_alert() {
+  local status="$1" message="$2" payload
+  [[ -n "${DISCORD_WEBHOOK_URL:-}" ]] || return 0
+  payload="$(python3 - "$status" "$message" <<'PY'
+import json, sys
+status, message = sys.argv[1:]
+icon = "✅" if status == "SUCCESS" else "🚨"
+print(json.dumps({"content": f"{icon} WaveLab WW3 automation {status}\n{message}"}))
+PY
+  )"
+  curl -fsS --max-time 30 -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL" >/dev/null || true
+}
+
+on_error() {
+  local rc=$? line=${BASH_LINENO[0]:-unknown} message
+  printf -v message 'Host: %s\nExit: %s\nLine: %s\nReview: journalctl -u wavelab-ww3-package-builder.service' \
+    "$(hostname -f 2>/dev/null || hostname)" "$rc" "$line"
+  send_alert FAILURE "$message"
+  exit "$rc"
+}
+trap on_error ERR
+
+for value in "$ARCHIVE_STABILITY_MINUTES" "$SOURCE_ARCHIVE_RETENTION_DAYS" "$INPUT_CYCLE_RETENTION_DAYS" \
+  "$TILE_PACKAGE_RETENTION_DAYS" "$MIN_TILE_PACKAGES_TO_KEEP" "$MAX_PACKAGE_AGE_DAYS" "$FAILED_BUILD_RETENTION_DAYS"; do
+  [[ "$value" =~ ^[0-9]+$ ]] || fail "retention and age settings must be non-negative integers"
+done
+[[ "$CLEANUP_DRY_RUN" == 0 || "$CLEANUP_DRY_RUN" == 1 ]] || fail "CLEANUP_DRY_RUN must be 0 or 1"
+
+for cmd in curl find flock python3 tar timeout; do
+  command -v "$cmd" >/dev/null || fail "$cmd is not installed"
+done
+[[ -d "$APP_ROOT/.git" ]] || fail "application checkout not found at $APP_ROOT"
+[[ -d "$SOURCE_ARCHIVE_DIR" ]] || fail "source archive directory not found: $SOURCE_ARCHIVE_DIR"
+[[ -x "$WAVETILES_ROOT/.venv/bin/python" ]] || fail "WW3 Python runtime is missing"
+[[ -f "$WAVETILES_ROOT/scripts/build_ww3_package.sh" ]] || fail "WW3 package helper is missing"
+
+install -d -m 0755 "$INPUT_ROOT" "$TILE_ROOT"
+install -d -m 0700 "$STATE_ROOT" "$STATE_ROOT/imported" "$STATE_ROOT/built" "$STATE_ROOT/failed"
+exec 9>"$LOCK_FILE"
+flock -n 9 || { log "another WW3 automation run is active; exiting"; exit 0; }
+
+safe_extract_archive() {
+  local archive="$1" cycle="$2" destination="$3"
+  python3 - "$archive" "$cycle" "$destination" <<'PY'
+import os
+import sys
+import tarfile
+from pathlib import Path, PurePosixPath
+
+archive, cycle, destination = sys.argv[1:]
+destination = Path(destination)
+destination.mkdir(parents=True, exist_ok=False)
+with tarfile.open(archive, "r:gz") as tf:
+    members = tf.getmembers()
+    if not members:
+        raise SystemExit("archive is empty")
+    for member in members:
+        path = PurePosixPath(member.name)
+        if path.is_absolute() or ".." in path.parts:
+            raise SystemExit(f"unsafe archive member: {member.name}")
+        if not path.parts or path.parts[0] != cycle:
+            raise SystemExit(f"unexpected top-level path: {member.name}")
+        if member.issym() or member.islnk() or member.isdev():
+            raise SystemExit(f"unsupported archive member type: {member.name}")
+        if not (member.isdir() or member.isfile()):
+            raise SystemExit(f"unsupported archive member: {member.name}")
+    tf.extractall(destination, members=members, filter="data")
+cycle_dir = destination / cycle
+if not cycle_dir.is_dir():
+    raise SystemExit(f"expected cycle folder missing: {cycle}
+")
+nc_files = list(cycle_dir.glob("ww3_grdo.*.nc"))
+if not nc_files:
+    raise SystemExit("archive contains no WW3 NetCDF files")
+for path in destination.rglob("*"):
+    if path.is_symlink():
+        raise SystemExit(f"symlink found after extraction: {path}")
+PY
+}
+
+import_archives() {
+  local archive name cycle marker temp extracted
+  while IFS= read -r -d '' archive; do
+    name=${archive##*/}
+    [[ "$name" =~ ^ww3_([0-9]{10})\.tar\.gz$ ]] || continue
+    cycle=${BASH_REMATCH[1]}
+    marker="$STATE_ROOT/imported/$cycle"
+    [[ -e "$marker" ]] && continue
+    if find "$archive" -mmin "+$ARCHIVE_STABILITY_MINUTES" -print -quit | grep -q .; then
+      :
+    else
+      log "archive is not stable yet: $name"
+      continue
+    fi
+    tar -tzf "$archive" >/dev/null
+    if [[ -d "$INPUT_ROOT/$cycle" ]] && find "$INPUT_ROOT/$cycle" -maxdepth 1 -type f -name 'ww3_grdo.*.nc' -print -quit | grep -q .; then
+      log "cycle already exists; recording import marker: $cycle"
+      printf 'archive=%s\nimported_utc=%s\n' "$name" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$marker"
+      continue
+    fi
+    temp="$INPUT_ROOT/.import-$cycle-$$"
+    rm -rf -- "$temp"
+    safe_extract_archive "$archive" "$cycle" "$temp"
+    extracted="$temp/$cycle"
+    [[ ! -e "$INPUT_ROOT/$cycle" ]] || fail "destination appeared during import: $INPUT_ROOT/$cycle"
+    mv -- "$extracted" "$INPUT_ROOT/$cycle"
+    rm -rf -- "$temp"
+    find "$INPUT_ROOT/$cycle" -type d -exec chmod 0755 {} +
+    find "$INPUT_ROOT/$cycle" -type f -exec chmod 0644 {} +
+    printf 'archive=%s\nimported_utc=%s\n' "$name" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$marker"
+    log "imported WW3 cycle $cycle from $name"
+  done < <(find "$SOURCE_ARCHIVE_DIR" -maxdepth 1 -type f -name 'ww3_??????????.tar.gz' -print0 | sort -z)
+}
+
+find_newest_complete_package() {
+  python3 - "$INPUT_ROOT" "$MAX_PACKAGE_AGE_DAYS" <<'PY'
+import re
+import sys
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+
+root = Path(sys.argv[1])
+max_age = int(sys.argv[2])
+stamps = set()
+for path in root.glob("*/ww3_grdo.*.nc"):
+    match = re.fullmatch(r"ww3_grdo\.(\d{8})T(\d{2})\.nc", path.name)
+    if match:
+        stamps.add(match.group(1) + match.group(2))
+
+today = datetime.now(timezone.utc).date()
+candidates = set()
+for stamp in stamps:
+    d = datetime.strptime(stamp[:8], "%Y%m%d").date()
+    candidates.update((d, d + timedelta(days=1), d - timedelta(days=1)))
+for package_date in sorted(candidates, reverse=True):
+    if package_date > today + timedelta(days=1):
+        continue
+    if (today - package_date).days > max_age:
+        continue
+    required = {
+        (package_date - timedelta(days=1)).strftime("%Y%m%d") + "18",
+        package_date.strftime("%Y%m%d") + "18",
+        (package_date + timedelta(days=1)).strftime("%Y%m%d") + "06",
+        (package_date + timedelta(days=1)).strftime("%Y%m%d") + "18",
+    }
+    if required.issubset(stamps):
+        print(package_date.isoformat())
+        break
+PY
+}
+
+build_package() {
+  local package_date="$1" marker output_tag output_count message
+  marker="$STATE_ROOT/built/$package_date"
+  if [[ -e "$marker" ]]; then
+    log "package already built successfully: $package_date"
+    return 0
+  fi
+  output_tag="$(python3 - "$package_date" <<'PY'
+import sys
+from datetime import date
+value = date.fromisoformat(sys.argv[1])
+months = ("JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC")
+print(f"{value.year}{months[value.month-1]}{value.day:02d}")
+PY
+  )"
+  log "building newest complete WW3 package: $package_date"
+  read -r -a extra_args <<< "$WW3_BUILD_EXTRA_ARGS"
+  if ! timeout "$WW3_BUILD_TIMEOUT" env \
+      WW3_PYTHON="$WAVETILES_ROOT/.venv/bin/python" \
+      WW3_VAR="$WW3_VAR" WW3_SIGMA="$WW3_SIGMA" WW3_NO_PAUSE=1 \
+      bash "$WAVETILES_ROOT/scripts/build_ww3_package.sh" "$package_date" "$WW3_VAR" "$WW3_SIGMA" "${extra_args[@]}"; then
+    printf 'failed_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$STATE_ROOT/failed/$package_date"
+    return 1
+  fi
+  output_count=$(find "$TILE_ROOT" -mindepth 3 -type f -path "*/$output_tag/*" -name '*.png' | wc -l)
+  (( output_count > 0 )) || fail "build completed without PNG tiles for $output_tag"
+  printf 'package_date=%s\noutput_tag=%s\npng_count=%s\nbuilt_utc=%s\n' \
+    "$package_date" "$output_tag" "$output_count" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$marker"
+  rm -f -- "$STATE_ROOT/failed/$package_date"
+  printf -v message 'Host: %s\nPackage: %s\nTile folder: %s\nPNG files: %s' \
+    "$(hostname -f 2>/dev/null || hostname)" "$package_date" "$output_tag" "$output_count"
+  send_alert SUCCESS "$message"
+  log "WW3 package build completed: $package_date ($output_count PNG files)"
+}
+
+remove_path() {
+  local path="$1" reason="$2"
+  if [[ "$CLEANUP_DRY_RUN" == 1 ]]; then
+    log "cleanup dry-run: would remove $path ($reason)"
+  else
+    rm -rf --one-file-system -- "$path"
+    log "removed $path ($reason)"
+  fi
+}
+
+cleanup_retention() {
+  local cutoff archive name cycle folder tag package_date path
+  cutoff=$(date -u -d "$SOURCE_ARCHIVE_RETENTION_DAYS days ago" +%Y%m%d%H)
+  while IFS= read -r -d '' archive; do
+    name=${archive##*/}
+    [[ "$name" =~ ^ww3_([0-9]{10})\.tar\.gz$ ]] || continue
+    cycle=${BASH_REMATCH[1]}
+    [[ "$cycle" < "$cutoff" ]] && remove_path "$archive" "source archive older than $SOURCE_ARCHIVE_RETENTION_DAYS days"
+  done < <(find "$SOURCE_ARCHIVE_DIR" -maxdepth 1 -type f -name 'ww3_??????????.tar.gz' -print0)
+
+  cutoff=$(date -u -d "$INPUT_CYCLE_RETENTION_DAYS days ago" +%Y%m%d%H)
+  while IFS= read -r -d '' folder; do
+    name=${folder##*/}
+    [[ "$name" =~ ^[0-9]{10}$ ]] || continue
+    [[ -L "$folder" ]] && continue
+    [[ "$name" < "$cutoff" ]] && remove_path "$folder" "input cycle older than $INPUT_CYCLE_RETENTION_DAYS days"
+  done < <(find "$INPUT_ROOT" -mindepth 1 -maxdepth 1 -type d -print0)
+
+  mapfile -t successful_packages < <(find "$STATE_ROOT/built" -maxdepth 1 -type f -printf '%f\n' | sort -r)
+  for package_date in "${successful_packages[@]:$MIN_TILE_PACKAGES_TO_KEEP}"; do
+    [[ "$package_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || continue
+    if (( $(date -u -d "today" +%s) - $(date -u -d "$package_date" +%s) > TILE_PACKAGE_RETENTION_DAYS * 86400 )); then
+      tag=$(python3 - "$package_date" <<'PY'
+import sys
+from datetime import date
+v=date.fromisoformat(sys.argv[1]); m=("JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC")
+print(f"{v.year}{m[v.month-1]}{v.day:02d}")
+PY
+      )
+      while IFS= read -r -d '' path; do
+        [[ -L "$path" ]] && continue
+        remove_path "$path" "tile package older than $TILE_PACKAGE_RETENTION_DAYS days"
+      done < <(find "$TILE_ROOT" -mindepth 2 -maxdepth 2 -type d -name "$tag" -print0)
+    fi
+  done
+
+  find "$STATE_ROOT/failed" -maxdepth 1 -type f -mtime "+$FAILED_BUILD_RETENTION_DAYS" -delete 2>/dev/null || true
+}
+
+import_archives
+package_date="$(find_newest_complete_package)"
+if [[ -n "$package_date" ]]; then
+  build_package "$package_date"
+else
+  log "no complete WW3 package within the newest $MAX_PACKAGE_AGE_DAYS days"
+fi
+cleanup_retention
+trap - ERR
+log "WW3 import, readiness check, build, and retention pass completed"
