@@ -34,4 +34,51 @@ checksum="${archive}.sha256"
 )
 
 stamp="$(basename "$archive" .archive.gz)"
-bundle="$BACKUP_ROOT/${stamp}.backup.tar
+bundle="$BACKUP_ROOT/${stamp}.backup.tar"
+encrypted="$bundle.age"
+encrypted_checksum="$encrypted.sha256"
+partial="$encrypted.partial"
+
+[[ ! -e "$encrypted" && ! -e "$encrypted_checksum" ]] || fail "encrypted output already exists"
+trap 'rm -f "$bundle" "$partial"' EXIT
+umask 077
+
+tar -C "$BACKUP_ROOT" -cf "$bundle" \
+  "$(basename "$archive")" \
+  "$(basename "$checksum")" \
+  "$(basename "$manifest")"
+
+age -r "$AGE_RECIPIENT" -o "$partial" "$bundle"
+mv -f "$partial" "$encrypted"
+sha256sum "$encrypted" > "$encrypted_checksum"
+chmod 0600 "$encrypted" "$encrypted_checksum"
+
+payload="$(python3 - "$stamp" "$encrypted" "$encrypted_checksum" <<'PY'
+import json, os, sys
+stamp, encrypted, checksum = sys.argv[1:]
+size = os.path.getsize(encrypted)
+sha = open(checksum, encoding='utf-8').read().split()[0]
+content = (
+    "🔐 WaveLab MongoDB encrypted backup copy\n"
+    f"Backup: {stamp}\n"
+    f"Encrypted file: {os.path.basename(encrypted)}\n"
+    f"Size: {size} bytes\n"
+    f"SHA-256: {sha}\n"
+    "Restore verification: pending\n"
+    "Consistency: logical dump, not point-in-time consistent"
+)
+print(json.dumps({"content": content}))
+PY
+)"
+
+curl -fsS --max-time 120 \
+  -F "payload_json=$payload" \
+  -F "files[0]=@$encrypted;type=application/octet-stream" \
+  -F "files[1]=@$encrypted_checksum;type=text/plain" \
+  "$DISCORD_WEBHOOK_URL" >/dev/null
+
+printf 'result: SUCCESS_ENCRYPTED_COPY_UPLOADED\n'
+printf 'encrypted_file: %s\n' "$encrypted"
+printf 'encrypted_checksum: %s\n' "$encrypted_checksum"
+printf 'next_required_gate: download on a separate trusted machine, verify checksum, decrypt, and perform isolated restore testing\n'
+printf 'The private age identity was not used or stored on this server.\n'
