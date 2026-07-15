@@ -1,0 +1,16 @@
+[Unit]
+Description=WaveLab production health monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=/etc/wavelab/monitor.env
+ExecStart=/usr/local/sbin/wavelab-health-monitor
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/wavelab-monitor
