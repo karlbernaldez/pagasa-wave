@@ -25,8 +25,13 @@ PY
 }
 
 on_error() {
-  local rc=$? line=${BASH_LINENO[0]:-unknown}
-  send_alert FAILURE "Host: $(hostname -f 2>/dev/null || hostname)\nExit: $rc\nLine: $line\nLocal backup artifacts were not deleted."
+  local rc=$? line=${BASH_LINENO[0]:-unknown} message
+  printf -v message \
+    'Host: %s\nExit: %s\nLine: %s\nLocal backup artifacts were not deleted.' \
+    "$(hostname -f 2>/dev/null || hostname)" \
+    "$rc" \
+    "$line"
+  send_alert FAILURE "$message"
   exit "$rc"
 }
 trap on_error ERR
@@ -127,5 +132,10 @@ fi
 trap - ERR
 cleanup
 trap - EXIT
-send_alert SUCCESS "Host: $(hostname -f 2>/dev/null || hostname)\nBackup: $stem\nDiscord upload confirmed.\nRetention: newest $RETENTION_COUNT successfully uploaded daily backups."
+printf -v success_message \
+  'Host: %s\nBackup: %s\nDiscord upload confirmed.\nRetention: newest %s successfully uploaded daily backups.' \
+  "$(hostname -f 2>/dev/null || hostname)" \
+  "$stem" \
+  "$RETENTION_COUNT"
+send_alert SUCCESS "$success_message"
 log "backup, encryption, upload, and retention completed: $stem"
