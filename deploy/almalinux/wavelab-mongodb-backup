@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/wavelab/mongodb}"
+BACKEND_ENV="${BACKEND_ENV:-/etc/wavelab/backend.env}"
+MONITOR_ENV="${MONITOR_ENV:-/etc/wavelab/monitor.env}"
+LOCK_FILE="${LOCK_FILE:-/run/lock/wavelab-mongodb-backup.lock}"
+RETENTION_COUNT="${RETENTION_COUNT:-14}"
+MIN_FREE_KIB="${MIN_FREE_KIB:-1048576}"
+AGE_RECIPIENT="${AGE_RECIPIENT:-}"
+DIS
