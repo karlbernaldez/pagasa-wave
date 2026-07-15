@@ -8,6 +8,7 @@ Type=oneshot
 User=wavelab
 Group=wavelab
 EnvironmentFile=/etc/wavelab/ww3-package-builder.env
+Environment=LOCK_FILE=/run/wavelab-ww3/package-builder.lock
 ExecStart=/usr/local/sbin/wavelab-ww3-package-builder
 UMask=0022
 TimeoutStartSec=5h
@@ -29,7 +30,7 @@ ReadWritePaths=/home/wavelab/app/wavetiles/input/ww3
 ReadWritePaths=/home/wavelab/app/wavetiles/tiles/WW3
 ReadWritePaths=/home/darwin/ww3_nc
 ReadWritePaths=/var/lib/wavelab-ww3
-ReadWritePaths=/run/lock
+ReadWritePaths=/run/wavelab-ww3
 
 [Install]
 WantedBy=multi-user.target
