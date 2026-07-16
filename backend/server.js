@@ -22,10 +22,12 @@ import projectRoutes from './routes/projectRoutes.js';
 import forecastPackageRoutes from './routes/forecastPackageRoutes.js';
 import pdfRoutes from './routes/pdfRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import { errorLogger } from './utils/errorLogger.js';
+import { logger } from './utils/logger.js';
 import { fileURLToPath } from 'url';
 import 'module-alias/register';
 const app = express();
-try { await connectDB(); } catch (err) { console.error('DB connection failed:', err); process.exit(1); }
+try { await connectDB(); } catch (err) { logger.error('DB connection failed', { message: err.message, stack: err.stack }); process.exit(1); }
 setStore(new RedisPendingAuthStore(), new RedisOtpStore());
 await checkRedisHealth();
 app.set('trust proxy', 1);
@@ -57,10 +59,11 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/public', express.static(path.join(__dirname, 'public')));
 app.use('/api/frames', express.static(path.join(__dirname, 'frames')));
 app.use((req, res) => { res.status(404).json({ success: false, message: 'Route not found' }); });
+app.use(errorLogger);
 app.use((err, req, res, next) => { const isProd = process.env.NODE_ENV === 'production'; res.status(err.status || 500).json({ success: false, message: err.message || 'Internal Server Error', ...(isProd ? {} : { stack: err.stack }) }); });
 const httpServer = http.createServer(app);
 initSocket(httpServer)
   .then((io) => { setIo(io); })
-  .catch((err) => { console.error('Socket initialization failed:', err); });
+  .catch((err) => { logger.error('Socket initialization failed', { message: err.message, stack: err.stack }); });
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT);
