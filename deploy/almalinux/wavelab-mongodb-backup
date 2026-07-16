@@ -57,12 +57,18 @@ available_kib="$(df -Pk "$BACKUP_ROOT" | awk 'NR==2 {print $4}')"
 [[ "$available_kib" =~ ^[0-9]+$ ]] || fail "cannot determine free disk space"
 (( available_kib >= MIN_FREE_KIB )) || fail "less than ${MIN_FREE_KIB} KiB free"
 
-probe='const h=db.hello(); print(JSON.stringify({database:db.getName(),topology:h.setName?"replicaSet":(h.msg==="isdbgrid"?"sharded":"standalone"),isWritablePrimary:h.isWritablePrimary===true}));'
+probe='const h=db.hello(); print(JSON.stringify({database:db.getName(),topology:h.setName?"replicaSet":(h.msg==="isdbgrid"?"sharded":"standalone"),setName:h.setName||null,isWritablePrimary:h.isWritablePrimary===true}));'
 probe_json="$(timeout 30 mongosh "$MONGO_URI" --quiet --norc --eval "$probe" 2>/dev/null)"
-grep -q '"topology":"standalone"' <<<"$probe_json" || fail "automation is approved only for standalone topology"
+grep -Eq '"topology":"(standalone|replicaSet)"' <<<"$probe_json" || fail "automation supports only standalone or replica-set topology"
 grep -q '"isWritablePrimary":true' <<<"$probe_json" || fail "MongoDB is not writable primary"
 database="$(sed -n 's/.*"database":"\([^"]*\)".*/\1/p' <<<"$probe_json")"
+topology="$(sed -n 's/.*"topology":"\([^"]*\)".*/\1/p' <<<"$probe_json")"
+set_name="$(sed -n 's/.*"setName":"\([^"]*\)".*/\1/p' <<<"$probe_json")"
 [[ "$database" =~ ^[A-Za-z0-9_-]+$ ]] || fail "unsupported database name"
+[[ "$topology" == standalone || "$topology" == replicaSet ]] || fail "unsupported MongoDB topology"
+if [[ "$topology" == replicaSet ]]; then
+  [[ "$set_name" =~ ^[A-Za-z0-9._-]+$ ]] || fail "invalid replica-set name"
+fi
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 stem="wavelab-${database}-${timestamp}"
@@ -79,7 +85,7 @@ cleanup() { rm -f -- "$partial" "$bundle" "$encrypted_partial"; }
 trap cleanup EXIT
 
 started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-log "creating logical dump for $database"
+log "creating logical dump for $database from $topology${set_name:+/$set_name}"
 timeout 30m mongodump --uri="$MONGO_URI" --db="$database" --archive="$partial" --gzip
 [[ -s "$partial" ]] || fail "mongodump produced an empty archive"
 mv -- "$partial" "$archive"
@@ -90,7 +96,8 @@ cat > "$manifest" <<EOF
 backup_status=UNVERIFIED_PENDING_RESTORE_TEST
 source_host=$(hostname -f 2>/dev/null || hostname)
 source_database=$database
-source_topology=standalone
+source_topology=$topology
+source_replica_set=${set_name:-none}
 consistency=logical_dump_not_point_in_time_consistent
 archive_file=$(basename "$archive")
 archive_size_bytes=$(stat -c '%s' "$archive")
