@@ -76,16 +76,22 @@ if missing:
     raise SystemExit("Missing direct WW3 tiler dependencies:\n  " + "\n  ".join(missing))
 PY
 
-MANIFEST_ARGS=(manifest "$INPUT_ROOT" "$PACKAGE_DATE")
-[[ -z "$SOURCE_CYCLE" ]] || MANIFEST_ARGS+=(--source-cycle "$SOURCE_CYCLE")
-if ! mapfile -t PACKAGE_RUNS < <("$PYTHON_BIN" "$SELECTOR" "${MANIFEST_ARGS[@]}"); then
-  if [[ "${WW3_NO_INPUT_CHECK:-0}" == "1" ]]; then
-    echo "No complete source cycle found; WW3_NO_INPUT_CHECK does not permit cross-cycle input mixing" >&2
-  else
+if [[ -z "$SOURCE_CYCLE" ]]; then
+  if ! SOURCE_CYCLE="$($PYTHON_BIN "$SELECTOR" select "$INPUT_ROOT" "$PACKAGE_DATE")"; then
     echo "No single source cycle contains all exact required valid-time files for package $PACKAGE_DATE" >&2
+    exit 1
+  fi
+fi
+
+if ! MANIFEST="$($PYTHON_BIN "$SELECTOR" manifest "$INPUT_ROOT" "$PACKAGE_DATE" --source-cycle "$SOURCE_CYCLE")"; then
+  if [[ "${WW3_NO_INPUT_CHECK:-0}" == "1" ]]; then
+    echo "Selected source cycle is incomplete; WW3_NO_INPUT_CHECK does not permit cross-cycle input mixing" >&2
+  else
+    echo "Source cycle $SOURCE_CYCLE does not contain all exact required valid-time files for package $PACKAGE_DATE" >&2
   fi
   exit 1
 fi
+mapfile -t PACKAGE_RUNS <<<"$MANIFEST"
 [[ ${#PACKAGE_RUNS[@]} -eq 4 ]] || { echo "Expected four WW3 package inputs, got ${#PACKAGE_RUNS[@]}" >&2; exit 1; }
 
 IFS='|' read -r _ _ _ _ _ RESOLVED_SOURCE_CYCLE <<<"${PACKAGE_RUNS[0]}"
