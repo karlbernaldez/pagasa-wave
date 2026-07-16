@@ -5,12 +5,5 @@ import RegisterForm from './components/RegisterForm.jsx';
 
 export default function RegisterPage() {
   return (
-    <AuthPageShell
-      description="Create your official forecasting workspace account for secure marine data analysis, collaboration, and forecast preparation."
-    >
-      <AuthCard className="max-w-3xl">
-        <RegisterForm />
-      </AuthCard>
-    </AuthPageShell>
-  );
-}
+    <AuthPageShell>
+      <AuthCard className="max-w-4xl border-white/70 bg-white/95 p-6
