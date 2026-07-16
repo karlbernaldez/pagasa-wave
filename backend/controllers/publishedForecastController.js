@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 import asyncHandler from '../utils/asyncHandler.js';
 import { throwError } from '../utils/errorHelper.js';
 import Project from '../models/Project.js';
@@ -24,6 +26,12 @@ function canViewPublishedForecast(project, user) {
   if (!project || !user) return false;
   if (user.role === 'admin') return true;
   return getProjectOwnerId(project) === String(user.id);
+}
+
+function assertValidProjectId(projectId) {
+  if (!mongoose.isValidObjectId(projectId)) {
+    throwError('Invalid published chart ID', 400);
+  }
 }
 
 function getStableFeatureId(feature) {
@@ -196,11 +204,11 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
     cycle: runHourToken,
   };
 
-  const defaultLocalTileTemplate = process.env.NODE_ENV === 'production'
-    ? ''
+  const defaultTileTemplate = process.env.NODE_ENV === 'production'
+    ? '/wavetiles/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png'
     : 'http://127.0.0.1:8081/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png';
   const cogUrl = asset.cogUrl || asset.url || interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
-  const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultLocalTileTemplate, tokenValues);
+  const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultTileTemplate, tokenValues);
   const cogTileTemplate = process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
   const tileUrl = directTileUrl || (cogUrl && cogTileTemplate
     ? interpolateTemplate(cogTileTemplate, { ...tokenValues, cogUrl, url: cogUrl })
@@ -248,6 +256,8 @@ function populatePublishedProject(query) {
 }
 
 async function findPublicPublishedProject(projectId) {
+  assertValidProjectId(projectId);
+
   const project = await Project.findOne({
     _id: projectId,
     status: PROJECT_STATUS.PUBLISHED,
@@ -261,6 +271,8 @@ async function findPublicPublishedProject(projectId) {
 }
 
 async function findPublishedProject(projectId) {
+  assertValidProjectId(projectId);
+
   const project = await populatePublishedProject(Project.findOne({
     _id: projectId,
     status: { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] },
