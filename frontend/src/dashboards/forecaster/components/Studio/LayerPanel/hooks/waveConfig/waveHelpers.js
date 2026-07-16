@@ -10,7 +10,8 @@ export const getSelectedModels = (models = []) =>
 
 // ── Tile URL builder ──────────────────────────────────────────────────────────
 
-const LOCAL_WW3_TILE_BASE = 'http://127.0.0.1:8081';
+const WW3_TILE_BASE =
+  import.meta.env.VITE_WW3_TILE_BASE_URL?.replace(/\/$/, '') || '/wavetiles';
 
 const TILE_URL_BUILDERS = {
   MRI3: ({ theme, date }) =>
@@ -20,7 +21,7 @@ const TILE_URL_BUILDERS = {
       ? { forecastDate, chartType }
       : getCachedForecastPackageContext();
     const { runTag } = resolveWW3ForecastRun(context);
-    return `${LOCAL_WW3_TILE_BASE}/WW3/${theme}/${runTag}/{z}/{x}/{y}.png`;
+    return `${WW3_TILE_BASE}/WW3/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
   BMKG: () =>
     "https://peta-maritim.bmkg.go.id/api21/mpl_req/w3g_global/swh/0/202606020000/202606031200/{z}/{x}/{y}.png?ci=1&overlays=,contourf&conc=snow",
