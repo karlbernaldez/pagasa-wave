@@ -7,6 +7,8 @@ import { logger } from '#utils/logger';
 const isOtpDebugLoggingEnabled = () =>
   process.env.LOG_OTP_FOR_TESTING === 'true' && process.env.NODE_ENV !== 'production';
 
+const isOtpRequired = () => process.env.OTP_REQUIRED !== 'false';
+
 const buildOtpLogMeta = (user, ip, otp) => {
   const otpDebugEnabled = isOtpDebugLoggingEnabled();
   return {
@@ -25,10 +27,10 @@ export const handleTrustedDevice = async (user, coordinates, req, res, geoMeta) 
   user.lastLoginUserAgent = ua;
   if (coordinates) user.lastLoginLocation = coordinates;
   await user.save();
-  logger.info('Trusted device detected — skipping OTP', { userId: user._id, ip });
-  await createAuditLog({ user: user._id, action: 'login_success', resourceType: 'User', resourceId: user._id, ip, userAgent: ua, meta: { note: 'OTP skipped — trusted device', ...geoMeta } }).catch((e) => logger.error('Audit log failed', { error: e.message }));
+  logger.info('Login completed without OTP challenge', { userId: user._id, ip, otpRequired: isOtpRequired() });
+  await createAuditLog({ user: user._id, action: 'login_success', resourceType: 'User', resourceId: user._id, ip, userAgent: ua, meta: { note: isOtpRequired() ? 'OTP skipped — trusted device' : 'OTP disabled by server configuration', ...geoMeta } }).catch((e) => logger.error('Audit log failed', { error: e.message }));
   await issueTokens(user, req, res);
-  return res.status(200).json({ user: { id: user._id, username: user.username, firstName: user.firstName, lastName: user.lastName, email: user.email, role: user.role, lastLogin: user.lastLogin, status: user.status }, trustedDevice: true });
+  return res.status(200).json({ user: { id: user._id, username: user.username, firstName: user.firstName, lastName: user.lastName, email: user.email, role: user.role, lastLogin: user.lastLogin, status: user.status }, trustedDevice: true, otpRequired: false });
 };
 
 export const handleOtpChallenge = async (user, emailNorm, req, res, geoMeta) => {
@@ -52,6 +54,11 @@ export const handleOtpChallenge = async (user, emailNorm, req, res, geoMeta) => 
 export const handleSession = (user, emailNorm, coordinates, req, res, geoMeta) => {
   const ip = req.ip;
   const ua = req.headers['user-agent'] ?? '';
+
+  if (!isOtpRequired()) {
+    return handleTrustedDevice(user, coordinates, req, res, geoMeta);
+  }
+
   return isTrustedDevice(ip, ua, user.lastLoginIP, user.lastLoginUserAgent)
     ? handleTrustedDevice(user, coordinates, req, res, geoMeta)
     : handleOtpChallenge(user, emailNorm, req, res, geoMeta);
