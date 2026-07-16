@@ -183,13 +183,22 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
   const forecastDate = formatForecastDateToken(project?.forecastDate);
   const packageDate = asset.packageDate || formatPackageDateToken(project?.forecastDate);
   const chartDefaults = getChartRunDefaults(project?.chartType);
-  const runHour = getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', chartDefaults.hour);
-  const runDayOffset = getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', chartDefaults.days);
-  const runDate = asset.runDate || shiftDateToken(forecastDate, runDayOffset);
-  const runHourToken = padDatePart(runHour);
-  const runDateTime = asset.runDateTime || `${runDate}${runHourToken}`;
   const rasterTheme = normalizeRasterTheme(asset.theme || theme);
   const model = asset.model || process.env.PUBLIC_WAVE_COG_MODEL || 'WW3';
+  const isWw3Raster = String(model).trim().toUpperCase() === 'WW3';
+  const runHour = isWw3Raster
+    ? chartDefaults.hour
+    : getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', chartDefaults.hour);
+  const runDayOffset = isWw3Raster
+    ? chartDefaults.days
+    : getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', chartDefaults.days);
+  const runDate = isWw3Raster
+    ? shiftDateToken(forecastDate, runDayOffset)
+    : asset.runDate || shiftDateToken(forecastDate, runDayOffset);
+  const runHourToken = padDatePart(runHour);
+  const runDateTime = isWw3Raster
+    ? `${runDate}${runHourToken}`
+    : asset.runDateTime || `${runDate}${runHourToken}`;
   const tokenValues = {
     projectId: String(project?._id || ''),
     chartType: project?.chartType || '',
