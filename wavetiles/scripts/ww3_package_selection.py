@@ -44,15 +44,22 @@ def package_tag(package_date: date) -> str:
 def cycle_is_complete(cycle_dir: Path, package_date: date) -> bool:
     if not cycle_dir.is_dir() or not CYCLE_RE.fullmatch(cycle_dir.name):
         return False
-    return all((cycle_dir / f"ww3_grdo.{stamp[:8]}T{stamp[8:]}.nc").is_file() for stamp in required_valid_times(package_date))
+    return all(
+        (cycle_dir / f"ww3_grdo.{stamp[:8]}T{stamp[8:]}.nc").is_file()
+        for stamp in required_valid_times(package_date)
+    )
 
 
 def select_source_cycle(input_root: Path, package_date: date) -> Path | None:
-    cycles = sorted(
-        (path for path in input_root.iterdir() if path.is_dir() and CYCLE_RE.fullmatch(path.name)),
-        key=lambda path: path.name,
-        reverse=True,
-    ) if input_root.is_dir() else []
+    cycles = (
+        sorted(
+            (path for path in input_root.iterdir() if path.is_dir() and CYCLE_RE.fullmatch(path.name)),
+            key=lambda path: path.name,
+            reverse=True,
+        )
+        if input_root.is_dir()
+        else []
+    )
     return next((path for path in cycles if cycle_is_complete(path, package_date)), None)
 
 
@@ -62,9 +69,10 @@ def print_manifest(input_root: Path, package_date: date, source_cycle: str | Non
         return 1
     labels = ("analysis", "24h", "36h", "48h")
     tag = package_tag(package_date)
-    for label, stamp in zip(labels, required_valid_times(package_date), strict=True):
+    for label, stamp in zip(labels, required_valid_times(package_date)):
         timestamp = f"{stamp[:8]}T{stamp[8:]}"
-        print(f"{label}|{stamp}|{timestamp}|{tag}|{cycle_dir / f'ww3_grdo.{timestamp}.nc'}|{cycle_dir.name}")
+        ncfile = cycle_dir / f"ww3_grdo.{timestamp}.nc"
+        print(f"{label}|{stamp}|{timestamp}|{tag}|{ncfile}|{cycle_dir.name}")
     return 0
 
 
