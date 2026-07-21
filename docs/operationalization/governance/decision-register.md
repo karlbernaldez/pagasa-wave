@@ -1,8 +1,8 @@
 # WaveLab operationalization decision register
 
-**Status:** In review  
-**Version:** 0.2  
-**Prepared:** 2026-07-21  
+**Status:** In review
+**Version:** 0.2
+**Prepared:** 2026-07-21
 **Purpose:** Present complete recommendations for organizational decision; this is not a blank appointment or approval form.
 
 ## Decision method
