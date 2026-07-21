@@ -1,9 +1,11 @@
-import { Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 
 import HeaderNavbar from '@shared/layouts/components/header/Header';
 import Footer from '@shared/layouts/components/Footer';
-import Chatbot from '@/components/Chatbot/index';
+import { isChatbotEnabled } from '@/config/featureFlags';
+
+const Chatbot = lazy(() => import('@/components/Chatbot/index'));
 
 const publicPageOverrides = `
 .wavelab-home > header {
@@ -77,6 +79,7 @@ const PublicLayout = () => {
   const location = useLocation();
   const isPublicHome = location.pathname === '/';
   const isPublicCharts = location.pathname === '/charts';
+  const chatbotEnabled = isChatbotEnabled();
 
   return (
     <>
@@ -92,7 +95,7 @@ const PublicLayout = () => {
 
       <Suspense fallback={<div style={{ height: 100 }} />}>
         <Footer />
-        <Chatbot />
+        {chatbotEnabled && <Chatbot />}
       </Suspense>
     </>
   );
