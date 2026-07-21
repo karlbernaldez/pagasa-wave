@@ -1,8 +1,9 @@
 # WaveLab engineering quality standard
 
-**Status:** Draft  
+**Status:** In review — active R&D engineering baseline  
+**Version:** 0.2  
 **Applies to:** Application, tests, scripts, deployment, data processing, and documentation  
-**Technical authority:** TBD
+**Technical authority:** Organizational appointment required before pilot; Karl Santiago Bernaldez applies the standard during R&D
 
 ## Quality objectives
 
