@@ -112,12 +112,12 @@ For Mapbox, email, Discord/alerting, data/model sources, package registries, and
 
 ## Finding management
 
-| Severity | Default release treatment |
-|---|---|
-| Critical | Blocks pilot/production; immediate containment and owner notification. |
-| High | Blocks release unless the system owner and security authority accept a time-bound exception with compensating controls. |
-| Medium | Remediate within an approved period and track to closure. |
-| Low | Prioritize through normal maintenance. |
+| Severity | Default release treatment                                                                                               |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Critical | Blocks pilot/production; immediate containment and owner notification.                                                  |
+| High     | Blocks release unless the system owner and security authority accept a time-bound exception with compensating controls. |
+| Medium   | Remediate within an approved period and track to closure.                                                               |
+| Low      | Prioritize through normal maintenance.                                                                                  |
 
 Severity definitions and remediation timelines must be approved by the security authority.
 
