@@ -1,8 +1,10 @@
 # WaveLab AI-assisted development standard
 
-**Status:** Draft  
+**Status:** In review — active R&D control baseline  
+**Version:** 0.2  
 **Applies to:** AI coding agents, chat assistants, code-completion tools, automated reviewers, and agentic development workflows  
-**Accountable owner:** Technical authority, TBD
+**Current accountable human contributor:** Karl Santiago Bernaldez for repository changes  
+**Policy owner:** Technical/security/privacy authority appointment required before pilot
 
 ## Purpose
 
