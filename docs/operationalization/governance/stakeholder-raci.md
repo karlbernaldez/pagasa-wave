@@ -37,9 +37,20 @@ R = Responsible, A = Accountable, C = Consulted, I = Informed.
 | Operate and support service | I | A | I | C | C | C | C | C | R |
 | Accept residual risk | I | A | C | R | C | I | C | R | C |
 
+## Current solo-maintainer arrangement
+
+The repository is private and Karl Santiago Bernaldez is currently the sole software developer and repository maintainer. Until another qualified maintainer is appointed:
+
+- Karl is Responsible and Accountable for development implementation and repository maintenance.
+- Pull requests, automated checks, a completed PR template, and a documented self-review are required even though an independent code approval is not currently available.
+- CI is an independent mechanical control, not a substitute for meteorological, security/privacy, legal, or organizational authority.
+- Forecast-integrity, production, security/privacy, destructive data, or other high-risk changes must remain Draft, be limited to R&D use, or obtain the appropriate external/domain/organizational review before operational release.
+- The developer cannot accept PAGASA organizational risk, sign meteorological validation, or authorize operational use merely by merging code.
+- The appointment of a second maintainer/reviewer remains a production-readiness action.
+
 ## Separation-of-duties rules
 
-- A developer must not be the sole approver of their own operational change.
+- A developer must not be the sole organizational approver of their own operational release. During the declared solo-maintainer R&D phase, documented self-review plus CI may approve development integration, but not operational authorization.
 - A forecaster must not approve their own forecast product where policy requires independent review.
 - Production access and publication authority must use named accounts, not shared credentials.
 - Security/privacy residual risk requires the system owner and appropriate authority; it cannot be accepted by the developer alone.
