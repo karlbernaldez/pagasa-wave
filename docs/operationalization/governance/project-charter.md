@@ -67,17 +67,17 @@ ADR-0001 records the decision to modernize incrementally rather than rebuild fro
 
 ## Deliverables and acceptance evidence
 
-| Deliverable | Acceptance evidence |
-|---|---|
-| Governance baseline | Approved charter, SDLC, RACI appointments, risk/decision records, and change process. |
-| Requirements baseline | Reviewed SRS with priorities, stable IDs, and traceability to implementation/test/validation evidence. |
-| Architecture baseline | Current/target views, data/trust flows, interface contracts, and approved ADRs. |
-| Security/privacy/legal assessment | Threat/access model, data inventory, dependency/SBOM/license review, provider decisions, and remediation/exception records. |
-| Software verification | Reproducible unit, integration, frontend, API, E2E, security, performance, accessibility, and recovery evidence. |
-| Forecast validation | Approved cases, independent references, tolerances, representative cycles, defect disposition, and authorized signatures. |
-| Service readiness | Staging evidence, immutable release, deployment/rollback, monitoring, incident, backup/restore, fallback, targets, and support ownership. |
-| Handover | Additional trained personnel, controlled access, training record, and demonstrated critical procedures. |
-| Pilot and decision | Pilot report, metrics, known limitations, residual risks, and release-specific go/no-go record. |
+| Deliverable                       | Acceptance evidence                                                                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Governance baseline               | Approved charter, SDLC, RACI appointments, risk/decision records, and change process.                                                     |
+| Requirements baseline             | Reviewed SRS with priorities, stable IDs, and traceability to implementation/test/validation evidence.                                    |
+| Architecture baseline             | Current/target views, data/trust flows, interface contracts, and approved ADRs.                                                           |
+| Security/privacy/legal assessment | Threat/access model, data inventory, dependency/SBOM/license review, provider decisions, and remediation/exception records.               |
+| Software verification             | Reproducible unit, integration, frontend, API, E2E, security, performance, accessibility, and recovery evidence.                          |
+| Forecast validation               | Approved cases, independent references, tolerances, representative cycles, defect disposition, and authorized signatures.                 |
+| Service readiness                 | Staging evidence, immutable release, deployment/rollback, monitoring, incident, backup/restore, fallback, targets, and support ownership. |
+| Handover                          | Additional trained personnel, controlled access, training record, and demonstrated critical procedures.                                   |
+| Pilot and decision                | Pilot report, metrics, known limitations, residual risks, and release-specific go/no-go record.                                           |
 
 ## Success criteria
 
@@ -101,17 +101,17 @@ ADR-0001 records the decision to modernize incrementally rather than rebuild fro
 
 ## Initial risk position
 
-| Risk | Rating | Current position | Required treatment |
-|---|---|---|---|
-| Incorrect or misleading chart/product | Critical | Operationally unacceptable | Independent reference validation, explicit provenance/time/unit rules, audit, and authorized human approval. |
-| Unauthorized review/publication | Critical | Operationally unacceptable | Server enforcement, separation of duties, negative tests, immutable history, and access review. |
-| Data loss or unrecoverable history | High | Not yet demonstrated | Approved RPO/RTO, encrypted backup, isolated restore, integrity checks, and fallback. |
-| Known vulnerable dependency | High/Critical by finding | Open remediation work | Remove/upgrade/isolate or authorize a time-bound exception; no critical baseline acceptance. |
-| Service outage during forecast work | High | Service targets unapproved | Monitoring, capacity, incident escalation, fallback, and recovery exercises. |
-| Prototype configuration used operationally | High | Possible without governance | Environment separation, configuration baseline, release control, and visible prototype designation. |
-| Single-person dependency | High | Confirmed | Additional appointments, training, access handover, runbooks, and supervised procedure performance. |
-| Unapproved personal-data or provider use | High | Assessment incomplete | Data inventory, purpose/basis/retention, provider review, security controls, and authorized privacy/legal determination. |
-| Licensing conflict | High for transfer/release | MIT/ISC conflict identified | Resolve component/project license and third-party rights before pilot artifact approval. |
+| Risk                                       | Rating                    | Current position            | Required treatment                                                                                                       |
+| ------------------------------------------ | ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Incorrect or misleading chart/product      | Critical                  | Operationally unacceptable  | Independent reference validation, explicit provenance/time/unit rules, audit, and authorized human approval.             |
+| Unauthorized review/publication            | Critical                  | Operationally unacceptable  | Server enforcement, separation of duties, negative tests, immutable history, and access review.                          |
+| Data loss or unrecoverable history         | High                      | Not yet demonstrated        | Approved RPO/RTO, encrypted backup, isolated restore, integrity checks, and fallback.                                    |
+| Known vulnerable dependency                | High/Critical by finding  | Open remediation work       | Remove/upgrade/isolate or authorize a time-bound exception; no critical baseline acceptance.                             |
+| Service outage during forecast work        | High                      | Service targets unapproved  | Monitoring, capacity, incident escalation, fallback, and recovery exercises.                                             |
+| Prototype configuration used operationally | High                      | Possible without governance | Environment separation, configuration baseline, release control, and visible prototype designation.                      |
+| Single-person dependency                   | High                      | Confirmed                   | Additional appointments, training, access handover, runbooks, and supervised procedure performance.                      |
+| Unapproved personal-data or provider use   | High                      | Assessment incomplete       | Data inventory, purpose/basis/retention, provider review, security controls, and authorized privacy/legal determination. |
+| Licensing conflict                         | High for transfer/release | MIT/ISC conflict identified | Resolve component/project license and third-party rights before pilot artifact approval.                                 |
 
 ## Review decision requested
 
