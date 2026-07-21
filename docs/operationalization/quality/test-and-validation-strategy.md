@@ -1,9 +1,9 @@
 # WaveLab test and validation strategy
 
-**Status:** In review — candidate validation baseline  
-**Version:** 0.2  
-**Review date:** 2026-07-21  
-**QA lead:** Appointment required before pilot  
+**Status:** In review — candidate validation baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**QA lead:** Appointment required before pilot
 **Operational forecasting validation lead:** Appointment required before pilot
 
 ## Purpose
