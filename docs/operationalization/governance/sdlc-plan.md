@@ -80,6 +80,21 @@ A change is done only when:
 - the traceability matrix links the evidence; and
 - release notes describe user and operator impact.
 
+## AI-assisted development
+
+AI coding agents and assistants participate under the same lifecycle controls as human contributors and do not replace accountable roles or independent review.
+
+- Repository-root `AGENTS.md` and `CONTRIBUTING.md` are the practical instructions for every task.
+- AI output is untrusted draft material and must be understood, reviewed, and tested by a named human.
+- Only approved tools and approved data/context may be used.
+- Secrets, personal data, restricted operational information, unpublished forecast products, and unsanitized production evidence must not be provided to unapproved AI services.
+- Material AI assistance is disclosed in the pull request.
+- AI cannot approve/merge its own work, accept risk, sign UAT/domain evidence, deploy, or publish products.
+- Generated code, tests, dependencies, calculations, citations, and legal claims require independent verification.
+- Critical forecast/time rules require authoritative expected values or approved reference products rather than tests generated from the same implementation assumption.
+
+See the AI-assisted development and engineering quality standards under `docs/operationalization/development/`.
+
 ## Repository controls to configure
 
 - Protect `main`; disallow direct and force pushes.
