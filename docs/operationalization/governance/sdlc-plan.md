@@ -1,8 +1,10 @@
 # WaveLab software development life cycle plan
 
-**Status:** Draft  
-**Version:** 0.1  
-**Lifecycle model:** Controlled iterative development with stage gates
+**Status:** In review — active candidate R&D lifecycle  
+**Version:** 0.2  
+**Review date:** 2026-07-21  
+**Lifecycle model:** Controlled iterative development with risk-based stage gates  
+**Approval requested:** Accept for continued R&D development; pilot and operational gates still require named authorities
 
 ## Principles
 
