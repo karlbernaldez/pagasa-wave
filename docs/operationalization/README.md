@@ -20,6 +20,9 @@ Until a designated PAGASA authority completes and signs the production-readiness
 | Governance | [Stakeholder RACI](governance/stakeholder-raci.md) | Assigns role-based accountability pending named appointments. |
 | Governance | [Change and release management](governance/change-release-management.md) | Defines how changes progress from issue to controlled release. |
 | Governance | [Production-readiness checklist](governance/production-readiness-checklist.md) | Provides the go/no-go evidence gate. |
+| Development | [AI-assisted development standard](development/ai-assisted-development-standard.md) | Governs safe and accountable use of AI coding agents. |
+| Development | [Engineering quality standard](development/engineering-quality-standard.md) | Defines clean-code, architecture, dependency, review, and automated quality expectations. |
+| Compliance | [Data protection and legal compliance](compliance/data-protection-and-legal-compliance.md) | Provides a Philippine DPA-first and GDPR-applicability framework. |
 | Requirements | [Software Requirements Specification](requirements/software-requirements-specification.md) | Establishes the initial functional and nonfunctional baseline. |
 | Requirements | [Traceability matrix](requirements/requirements-traceability-matrix.csv) | Links requirements to implementation and verification evidence. |
 | Architecture | [System architecture](architecture/system-architecture.md) | Records current components, boundaries, risks, and target improvements. |
@@ -29,6 +32,12 @@ Until a designated PAGASA authority completes and signs the production-readiness
 | Operations | [Service operations plan](operations/service-operations-plan.md) | Defines service ownership, monitoring, incident, recovery, and support controls. |
 
 Existing deployment, backup, troubleshooting, module, and user-manual documents remain valid supporting references. This set does not replace those runbooks.
+
+## Daily development entry points
+
+Developers and AI coding agents shall begin with the repository-root `AGENTS.md` and `CONTRIBUTING.md`. Those files convert this governance baseline into practical instructions for scoping, implementation, testing, review, AI disclosure, and safe handling of data and forecast logic.
+
+The development standards are requirements for future work, not claims that every current file already conforms. Missing automated linting, formatting, contract, security, license, and documentation checks are tracked as operationalization work.
 
 ## Document control
 
