@@ -67,6 +67,18 @@ List commands, CI runs, test cases, screenshots, comparison products, or drill r
 - [ ] AI assistance was reviewed under the AI-assisted development standard.
 - [ ] Applicable privacy/legal sources and notices were reviewed; no unsupported compliance claim is made.
 
+## Solo-maintainer self-review
+
+Complete this section while the repository has only one developer.
+
+- [ ] I reviewed the complete diff after the final AI/manual edit.
+- [ ] I verified the requirement rather than assuming current code is correct.
+- [ ] I checked denied, failure, rollback, security/privacy, and forecast/time paths.
+- [ ] I did not treat CI or self-approval as operational authorization.
+- [ ] A high-risk change is R&D-only/Draft or has the required external/domain/organizational review.
+
+Self-review notes:
+
 ## Required review
 
 - [ ] Code owner

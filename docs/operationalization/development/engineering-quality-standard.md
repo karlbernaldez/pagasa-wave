@@ -83,20 +83,33 @@ WaveLab code shall be understandable, testable, secure, observable, maintainable
 - Coverage is a diagnostic, not the acceptance criterion. Establish a baseline and ratchet critical-path coverage; do not adopt an arbitrary percentage as proof of quality.
 - A test may be skipped only with a tracked reason, owner, and removal date.
 
+## Current incremental quality baseline
+
+Implementation is tracked in [issue #179](https://github.com/karlbernaldez/pagasa-wave/issues/179) and introduced by [PR #181](https://github.com/karlbernaldez/pagasa-wave/pull/181).
+
+The initial quality-gate implementation checks only new and changed files so the legacy repository can improve without a repository-wide formatting/refactoring change. It provides pinned root ESLint/Prettier tooling, repository hygiene checks, selected high-confidence secret patterns, changed JSON and Markdown-link checks, Git whitespace validation, frontend/backend lockfile policy, and a dedicated pull-request workflow.
+
+The root commands are:
+
+```bash
+npm ci --ignore-scripts
+npm run quality
+```
+
+Warnings and known historical debt should be ratcheted deliberately. A passing incremental check does not prove the untouched legacy codebase is fully compliant with this standard.
+
 ## Automated quality gates to introduce
 
-The current repository tests and build remain required. Add these through separately reviewed work:
+The current repository tests, build, and incremental quality workflow remain required. Add the remaining controls through separately reviewed work:
 
-1. ESLint or an approved equivalent for backend and frontend.
-2. Prettier or an approved formatting check.
-3. Validation of Markdown links, issue forms, YAML, and configuration.
-4. Secret scanning and dependency review.
-5. Static application security analysis appropriate to JavaScript/Node.
-6. Test coverage reporting focused on critical modules.
-7. API contract validation.
-8. License and dependency inventory/SBOM.
-9. End-to-end tests for critical workflows.
-10. Path-aware CI so documentation-only changes validate documentation without deploying the application.
+1. Full YAML and GitHub issue-form/configuration validation beyond GitHub's workflow parser.
+2. Repository-wide secret scanning and dependency review.
+3. Static application security analysis appropriate to JavaScript/Node.
+4. Test coverage reporting focused on critical modules.
+5. API and Socket.IO contract validation.
+6. License and dependency inventory/SBOM.
+7. End-to-end tests for critical workflows.
+8. Incremental lint/format rule ratcheting and an approved legacy-debt baseline.
 
 The quality gate must be introduced incrementally: record the baseline, fix high-risk findings, prevent new violations, then ratchet expectations.
 

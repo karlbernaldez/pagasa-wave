@@ -16,17 +16,17 @@
 
 ## Lifecycle and gates
 
-| Stage | Required activities | Minimum evidence | Exit authority |
-|---|---|---|---|
-| Initiation | Confirm purpose, scope, stakeholders, constraints, risk classification | Approved charter and initial risk register | Sponsor and system owner |
-| Requirements | Define functional, data, interface, security, operational, and quality requirements | Approved SRS and traceability matrix | Product and operational owners |
-| Design | Review architecture, data flows, failure modes, access model, and alternatives | Architecture documents, threat model, ADRs | Technical and security authorities |
-| Implementation | Use issues, branches, reviewed PRs, standards, and dependency controls | Linked issue/PR, review, automated checks | Code owner |
-| Verification | Test requirements, negative paths, security, performance, recovery, and compatibility | Test reports linked to requirement IDs | QA lead |
-| Validation | Conduct forecaster UAT, forecast-product comparison, and operational exercises | Signed UAT and meteorological validation report | Operational forecasting authority |
-| Release | Create a versioned release, review changes and risk, approve deployment and fallback | Release record, artifact manifest, approvals | Change/release authority |
-| Operations | Monitor, support, audit, patch, back up, restore, and review service health | Dashboards, logs, incident/change records, drills | Service owner |
-| Retirement | Export/retain data, revoke access, archive evidence, and decommission safely | Approved retirement and data-disposition record | System and data owners |
+| Stage          | Required activities                                                                   | Minimum evidence                                  | Exit authority                     |
+| -------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------- |
+| Initiation     | Confirm purpose, scope, stakeholders, constraints, risk classification                | Approved charter and initial risk register        | Sponsor and system owner           |
+| Requirements   | Define functional, data, interface, security, operational, and quality requirements   | Approved SRS and traceability matrix              | Product and operational owners     |
+| Design         | Review architecture, data flows, failure modes, access model, and alternatives        | Architecture documents, threat model, ADRs        | Technical and security authorities |
+| Implementation | Use issues, branches, reviewed PRs, standards, and dependency controls                | Linked issue/PR, review, automated checks         | Code owner                         |
+| Verification   | Test requirements, negative paths, security, performance, recovery, and compatibility | Test reports linked to requirement IDs            | QA lead                            |
+| Validation     | Conduct forecaster UAT, forecast-product comparison, and operational exercises        | Signed UAT and meteorological validation report   | Operational forecasting authority  |
+| Release        | Create a versioned release, review changes and risk, approve deployment and fallback  | Release record, artifact manifest, approvals      | Change/release authority           |
+| Operations     | Monitor, support, audit, patch, back up, restore, and review service health           | Dashboards, logs, incident/change records, drills | Service owner                      |
+| Retirement     | Export/retain data, revoke access, archive evidence, and decommission safely          | Approved retirement and data-disposition record   | System and data owners             |
 
 A gate may be conditional only when the approving authority records the condition, owner, due date, compensating control, and residual risk.
 
@@ -46,13 +46,13 @@ A gate may be conditional only when the approving authority records the conditio
 
 ## Change classification
 
-| Class | Examples | Minimum control |
-|---|---|---|
-| Standard | Low-risk documentation correction or pre-approved routine maintenance | Issue, review, automated checks where applicable |
-| Normal | Feature, defect, dependency, configuration, or operational change | Impact/risk analysis, independent review, tests, release approval |
-| Forecast integrity | Valid-time calculation, model input, chart generation, annotation semantics, publish workflow | Domain reviewer, independent reference comparison, regression evidence, explicit release approval |
-| Security/privacy | Authentication, authorization, PII, secrets, logging, external integrations | Security/privacy review, negative tests, threat-model update |
-| Emergency | Active incident mitigation | Named incident/change authority, minimal safe checks, rollback plan, retrospective within five working days |
+| Class              | Examples                                                                                      | Minimum control                                                                                             |
+| ------------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Standard           | Low-risk documentation correction or pre-approved routine maintenance                         | Issue, review, automated checks where applicable                                                            |
+| Normal             | Feature, defect, dependency, configuration, or operational change                             | Impact/risk analysis, independent review, tests, release approval                                           |
+| Forecast integrity | Valid-time calculation, model input, chart generation, annotation semantics, publish workflow | Domain reviewer, independent reference comparison, regression evidence, explicit release approval           |
+| Security/privacy   | Authentication, authorization, PII, secrets, logging, external integrations                   | Security/privacy review, negative tests, threat-model update                                                |
+| Emergency          | Active incident mitigation                                                                    | Named incident/change authority, minimal safe checks, rollback plan, retrospective within five working days |
 
 ## Definition of ready
 
@@ -98,10 +98,10 @@ See the AI-assisted development and engineering quality standards under `docs/op
 ## Repository controls to configure
 
 - Protect `main`; disallow direct and force pushes.
-- Require pull requests, resolved conversations, and at least one independent approval.
+- Require pull requests, resolved conversations, and automated checks. Require independent approval when another qualified reviewer is available. During the declared solo-maintainer R&D phase, require documented self-review and obtain external/domain approval for high-risk or operational release decisions.
 - Require backend tests, frontend tests, production build, and other approved checks.
 - Require CODEOWNERS review for forecast logic, authentication, workflows, deployment, and documentation control files.
-- Protect the production environment with required reviewers and prevent self-review where available.
+- Protect the production environment with manual approval. Prevent self-review when another authorized reviewer is available; until then, treat same-person approval as an interim R&D control that does not constitute operational authorization.
 - Use signed or otherwise attributable releases and immutable release artifacts.
 - Enable secret, dependency, and code scanning appropriate to the repository and organization.
 - Review administrator and deploy permissions at least quarterly.
