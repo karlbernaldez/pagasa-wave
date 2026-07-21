@@ -21,9 +21,61 @@ jobs:
     name: Validate application
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      deploy_required: ${{ steps.changes.outputs.deploy_required }}
     steps:
       - name: Checkout exact commit
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect whether the application must be deployed
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          zero_sha="0000000000000000000000000000000000000000"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_sha="$PR_BASE_SHA"
+          else
+            base_sha="$BEFORE_SHA"
+          fi
+
+          # Fail safe: deploy when GitHub does not provide a usable comparison base.
+          deploy_required=true
+
+          if [[ -n "$base_sha" && "$base_sha" != "$zero_sha" ]] &&
+             git cat-file -e "$base_sha^{commit}" 2>/dev/null; then
+            deploy_required=false
+
+            # Disable rename detection so removing or moving an application file
+            # cannot be hidden by a documentation-only destination path.
+            while IFS= read -r path; do
+              [[ -z "$path" ]] && continue
+
+              case "$path" in
+                docs/*|*.md|.github/*)
+                  ;;
+                *)
+                  deploy_required=true
+                  break
+                  ;;
+              esac
+            done < <(git diff --name-only --no-renames "$base_sha" "$GITHUB_SHA")
+          fi
+
+          echo "deploy_required=$deploy_required" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Change classification"
+            echo "- Base commit: $base_sha"
+            echo "- Head commit: $GITHUB_SHA"
+            echo "- Application deployment required: $deploy_required"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -53,7 +105,7 @@ jobs:
 
   deploy:
     name: Deploy to production AlmaLinux server
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && needs.validate.outputs.deploy_required == 'true'
     needs: validate
     runs-on:
       - self-hosted
