@@ -1,10 +1,10 @@
 # WaveLab operationalization documentation
 
-**Document status:** In review — candidate baseline  
-**Version:** 0.2  
-**Review snapshot:** 2026-07-21  
-**Applies to:** PAGASA:VOTE WaveLab at `main` commit `ab6d8d5` plus explicitly identified pending changes  
-**Current lifecycle state:** Research and development prototype  
+**Document status:** In review — candidate baseline
+**Version:** 0.2
+**Review snapshot:** 2026-07-21
+**Applies to:** PAGASA:VOTE WaveLab at `main` commit `ab6d8d5` plus explicitly identified pending changes
+**Current lifecycle state:** Research and development prototype
 **Operational authorization:** Not granted
 
 This documentation package describes the WaveLab system that exists today, the controls already implemented, the verified gaps, the recommended decisions, and the evidence required before a supervised pilot or operational authorization. It is written for PAGASA project, forecasting, technical, security/privacy, quality, and service reviewers.
