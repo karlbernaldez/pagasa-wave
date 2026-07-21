@@ -1,10 +1,10 @@
 # WaveLab operationalization reviewer package
 
-**Status:** In review  
-**Version:** 0.2  
-**Prepared:** 2026-07-21  
-**Prepared by:** Karl Santiago Bernaldez, sole developer and repository maintainer  
-**System classification:** R&D prototype — not authorized for official operational forecast issuance  
+**Status:** In review
+**Version:** 0.2
+**Prepared:** 2026-07-21
+**Prepared by:** Karl Santiago Bernaldez, sole developer and repository maintainer
+**System classification:** R&D prototype — not authorized for official operational forecast issuance
 **Repository baseline:** `karlbernaldez/pagasa-wave`, `main` commit `ab6d8d5`
 
 ## 1. Review purpose
