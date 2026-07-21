@@ -21,7 +21,7 @@ import userRoutes from './routes/userRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import forecastPackageRoutes from './routes/forecastPackageRoutes.js';
 import pdfRoutes from './routes/pdfRoutes.js';
-import { isChatbotEnabled } from './config/featureFlags.js';
+import chatRoutes from './routes/chatRoutes.js';
 import { errorLogger } from './utils/errorLogger.js';
 import { logger } from './utils/logger.js';
 import { fileURLToPath } from 'url';
@@ -55,10 +55,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/forecast-packages', forecastPackageRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/pdf', pdfRoutes);
-if (isChatbotEnabled()) {
-  const { default: chatRoutes } = await import('./routes/chatRoutes.js');
-  app.use('/api/chat', chatRoutes);
-}
+app.use('/api/chat', chatRoutes);
 app.use('/api/public', express.static(path.join(__dirname, 'public')));
 app.use('/api/frames', express.static(path.join(__dirname, 'frames')));
 app.use((req, res) => { res.status(404).json({ success: false, message: 'Route not found' }); });
