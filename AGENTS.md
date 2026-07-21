@@ -65,6 +65,15 @@ Read `docs/operationalization/development/ai-assisted-development-standard.md` f
 
 Run checks in proportion to impact and report exact commands and results.
 
+### Repository quality
+
+```bash
+npm ci --ignore-scripts
+npm run quality
+```
+
+The repository quality command checks the branch diff against `origin/main` when available and otherwise uses the current commit's parent. CI supplies the exact pull-request comparison range.
+
 ### Backend
 
 ```bash
