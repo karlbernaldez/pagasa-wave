@@ -15,9 +15,8 @@ const requireChatbotEnabled = (req, res, next) => {
 
 const proxyChatCompletion = async (req, res, next) => {
   try {
-    const { proxyChatCompletion: handleChatCompletion } = await import(
-      '../controllers/chatController.js'
-    );
+    const { proxyChatCompletion: handleChatCompletion } =
+      await import('../controllers/chatController.js');
     return handleChatCompletion(req, res, next);
   } catch (error) {
     return next(error);
