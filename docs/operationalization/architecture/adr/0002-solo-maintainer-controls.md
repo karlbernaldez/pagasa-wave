@@ -1,9 +1,9 @@
 # ADR-0002: Interim controls for the solo-maintainer R&D phase
 
-**Status:** Proposed for review  
-**Date:** 2026-07-21  
-**Current maintainer:** Karl Santiago Bernaldez  
-**Related:** CONTRIBUTING.md; AGENTS.md; PR #181; engineering and AI standards  
+**Status:** Proposed for review
+**Date:** 2026-07-21
+**Current maintainer:** Karl Santiago Bernaldez
+**Related:** CONTRIBUTING.md; AGENTS.md; PR #181; engineering and AI standards
 **Operational authorization impact:** This decision does not permit self-authorization of operational use.
 
 ## Context
