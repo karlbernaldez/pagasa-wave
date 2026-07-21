@@ -12,37 +12,37 @@ This document separates work Karl currently performs as the sole developer from 
 
 ## Role accountabilities
 
-| Role | Accountability | Current state |
-|---|---|---|
-| Project sponsor | Sponsors the operationalization program and resolves organizational blockers. | Appointment required. |
-| System owner | Approves scope, accepts service risk, and records pilot/operational decisions. | Appointment required. |
-| Product owner | Prioritizes and accepts functional requirements. | Appointment required. |
-| Operational forecasting authority | Approves forecast workflow, validation method, supervised pilot, and official use. | Appointment required. |
-| Technical authority | Approves architecture, technical standards, and technical risk treatment. | Appointment required. |
-| Development lead | Coordinates design, implementation, repository maintenance, review evidence, and technical documentation. | Karl performs this function during R&D; organizational confirmation pending. |
-| QA/validation lead | Maintains verification evidence, traceability, defect management, and validation independence. | Appointment required. |
-| Security/privacy authority | Reviews access, security, privacy, external services, incidents, and residual risk. | Appointment required. |
-| Service owner | Owns service targets, monitoring, incidents, recovery, continuity, capacity, and support. | Appointment required. |
-| Forecaster representative | Defines workflow needs and performs UAT/domain validation. | Appointment required. |
-| Change/release authority | Approves release scope, deployment timing, and conditions. | Appointment required. |
+| Role                              | Accountability                                                                                            | Current state                                                                |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Project sponsor                   | Sponsors the operationalization program and resolves organizational blockers.                             | Appointment required.                                                        |
+| System owner                      | Approves scope, accepts service risk, and records pilot/operational decisions.                            | Appointment required.                                                        |
+| Product owner                     | Prioritizes and accepts functional requirements.                                                          | Appointment required.                                                        |
+| Operational forecasting authority | Approves forecast workflow, validation method, supervised pilot, and official use.                        | Appointment required.                                                        |
+| Technical authority               | Approves architecture, technical standards, and technical risk treatment.                                 | Appointment required.                                                        |
+| Development lead                  | Coordinates design, implementation, repository maintenance, review evidence, and technical documentation. | Karl performs this function during R&D; organizational confirmation pending. |
+| QA/validation lead                | Maintains verification evidence, traceability, defect management, and validation independence.            | Appointment required.                                                        |
+| Security/privacy authority        | Reviews access, security, privacy, external services, incidents, and residual risk.                       | Appointment required.                                                        |
+| Service owner                     | Owns service targets, monitoring, incidents, recovery, continuity, capacity, and support.                 | Appointment required.                                                        |
+| Forecaster representative         | Defines workflow needs and performs UAT/domain validation.                                                | Appointment required.                                                        |
+| Change/release authority          | Approves release scope, deployment timing, and conditions.                                                | Appointment required.                                                        |
 
 ## Target RACI
 
 R = Responsible, A = Accountable, C = Consulted, I = Informed. The matrix becomes active for pilot/operations after named appointments are approved.
 
-| Activity | Sponsor | System owner | Product owner | Forecast authority | Technical authority | Development | QA | Security/privacy | Service owner |
-|---|---|---|---|---|---|---|---|---|---|
-| Approve charter/program | A | R | C | C | C | I | I | I | I |
-| Approve requirements | I | A | R | R | C | C | C | C | C |
-| Approve architecture | I | C | C | C | A | R | C | C | C |
-| Approve security/privacy treatment | I | A | I | C | C | C | C | R | C |
-| Implement/review changes | I | I | C | C | A | R | C | C | C |
-| Verify software requirements | I | I | C | C | C | C | A/R | C | C |
-| Validate forecast products | I | I | C | A/R | C | C | R | I | C |
-| Approve release content | I | A | C | R | R | C | C | C | R |
-| Authorize operational use | C | A | C | R | C | I | C | C | C |
-| Operate/support service | I | A | I | C | C | C | C | C | R |
-| Accept residual risk | I | A | C | R | C | I | C | R | C |
+| Activity                           | Sponsor | System owner | Product owner | Forecast authority | Technical authority | Development | QA  | Security/privacy | Service owner |
+| ---------------------------------- | ------- | ------------ | ------------- | ------------------ | ------------------- | ----------- | --- | ---------------- | ------------- |
+| Approve charter/program            | A       | R            | C             | C                  | C                   | I           | I   | I                | I             |
+| Approve requirements               | I       | A            | R             | R                  | C                   | C           | C   | C                | C             |
+| Approve architecture               | I       | C            | C             | C                  | A                   | R           | C   | C                | C             |
+| Approve security/privacy treatment | I       | A            | I             | C                  | C                   | C           | C   | R                | C             |
+| Implement/review changes           | I       | I            | C             | C                  | A                   | R           | C   | C                | C             |
+| Verify software requirements       | I       | I            | C             | C                  | C                   | C           | A/R | C                | C             |
+| Validate forecast products         | I       | I            | C             | A/R                | C                   | C           | R   | I                | C             |
+| Approve release content            | I       | A            | C             | R                  | R                   | C           | C   | C                | R             |
+| Authorize operational use          | C       | A            | C             | R                  | C                   | I           | C   | C                | C             |
+| Operate/support service            | I       | A            | I             | C                  | C                   | C           | C   | C                | R             |
+| Accept residual risk               | I       | A            | C             | R                  | C                   | I           | C   | R                | C             |
 
 ## Interim solo-maintainer R&D arrangement
 
@@ -66,13 +66,13 @@ Until additional appointments are made:
 
 ## Appointment actions before pilot
 
-| Appointment | Minimum required record | Pilot impact if absent |
-|---|---|---|
-| System owner | Written designation and authority scope | Pilot cannot be authorized. |
-| Operational forecasting authority and forecaster representatives | Written designation and validation/publication authority | UAT/domain validation cannot be accepted. |
-| Technical authority and additional maintainer | Designation, repository/access handover, demonstrated procedures | Independent technical review and continuity remain inadequate. |
-| QA/validation lead | Designation and evidence/defect procedure | Verification/validation acceptance lacks ownership. |
-| Security/privacy authority | Designation and assessment/risk process | Security/privacy risks cannot be accepted. |
-| Service and change/release owners | Designation, targets, support/escalation, and release authority | Pilot service/deployment cannot be controlled. |
+| Appointment                                                      | Minimum required record                                          | Pilot impact if absent                                         |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------- |
+| System owner                                                     | Written designation and authority scope                          | Pilot cannot be authorized.                                    |
+| Operational forecasting authority and forecaster representatives | Written designation and validation/publication authority         | UAT/domain validation cannot be accepted.                      |
+| Technical authority and additional maintainer                    | Designation, repository/access handover, demonstrated procedures | Independent technical review and continuity remain inadequate. |
+| QA/validation lead                                               | Designation and evidence/defect procedure                        | Verification/validation acceptance lacks ownership.            |
+| Security/privacy authority                                       | Designation and assessment/risk process                          | Security/privacy risks cannot be accepted.                     |
+| Service and change/release owners                                | Designation, targets, support/escalation, and release authority  | Pilot service/deployment cannot be controlled.                 |
 
 Names, alternates, effective dates, and authority references shall be added after written organizational confirmation. Their absence is tracked as a governance gap, not hidden behind a generic template.
