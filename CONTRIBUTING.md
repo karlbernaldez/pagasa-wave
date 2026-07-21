@@ -39,6 +39,15 @@ Important repository rules:
 
 ## 4. Test locally
 
+Repository quality checks:
+
+```bash
+npm ci --ignore-scripts
+npm run quality
+```
+
+These checks lint and format-check new or changed files, validate repository hygiene, check changed JSON and local Markdown links, scan for selected high-confidence secret patterns, and enforce the package-manager lockfile policy.
+
 Backend:
 
 ```bash
