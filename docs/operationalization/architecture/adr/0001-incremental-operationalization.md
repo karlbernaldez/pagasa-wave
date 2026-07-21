@@ -1,9 +1,9 @@
 # ADR-0001: Evolve the existing prototype incrementally
 
-**Status:** Proposed for review  
-**Date:** 2026-07-21  
-**Decision owner:** Technical authority, appointment required  
-**Related:** Project charter; issue #178; SRS; readiness assessment  
+**Status:** Proposed for review
+**Date:** 2026-07-21
+**Decision owner:** Technical authority, appointment required
+**Related:** Project charter; issue #178; SRS; readiness assessment
 **Forecast-domain review:** Required for components affecting forecast meaning
 
 ## Context
