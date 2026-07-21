@@ -1,9 +1,9 @@
 # ADR-0003: Keep the experimental chatbot outside the core operational boundary
 
-**Status:** Proposed; implementation pending in PR #185  
-**Date:** 2026-07-21  
-**Related:** Issues #182 and #184; closed PR #183; draft PR #185  
-**Security/privacy review:** Required before any enabled environment  
+**Status:** Proposed; implementation pending in PR #185
+**Date:** 2026-07-21
+**Related:** Issues #182 and #184; closed PR #183; draft PR #185
+**Security/privacy review:** Required before any enabled environment
 **Forecast-domain review:** Not required for containment; required if future output affects forecast decisions
 
 ## Context
