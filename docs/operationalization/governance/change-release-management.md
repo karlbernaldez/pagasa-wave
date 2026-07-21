@@ -66,12 +66,12 @@ No operational deployment may proceed when:
 
 ## Environments
 
-| Environment | Purpose | Data | Deployment |
-|---|---|---|---|
-| Development | Local implementation and automated tests | Synthetic or approved non-sensitive data | Developer controlled |
-| Test | Integrated verification | Synthetic or masked data | CI controlled |
-| Pilot/staging | UAT, validation, training, and operational exercises | Approved representative data | Release-controlled |
-| Production | Authorized operational service | Approved operational data | Independently approved, controlled deployment |
+| Environment   | Purpose                                              | Data                                     | Deployment                                    |
+| ------------- | ---------------------------------------------------- | ---------------------------------------- | --------------------------------------------- |
+| Development   | Local implementation and automated tests             | Synthetic or approved non-sensitive data | Developer controlled                          |
+| Test          | Integrated verification                              | Synthetic or masked data                 | CI controlled                                 |
+| Pilot/staging | UAT, validation, training, and operational exercises | Approved representative data             | Release-controlled                            |
+| Production    | Authorized operational service                       | Approved operational data                | Independently approved, controlled deployment |
 
 Do not use production as the first place to test behavior, migrations, or configuration.
 
