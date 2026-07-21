@@ -24,7 +24,17 @@
 
 ## Normal deployment
 
-A push to `main` runs backend and frontend validation. The deploy job then waits for approval from the GitHub `production` environment before using the self-hosted production runner.
+A pull request or push to `main` always runs backend and frontend validation. On a push to `main`, the deploy job runs only when the compared change set includes an application, deployment, data-processing, dependency, or other runtime path.
+
+Changes limited to the following are validated but do not start the AlmaLinux deployment job:
+
+- `docs/**`
+- Markdown files in any directory
+- `.github/**`, including issue/PR templates, CODEOWNERS, and workflow-control files
+
+The classifier disables Git rename detection so deleting or moving a runtime file into a documentation path still requires deployment. If the comparison base is missing or invalid, the workflow fails safe and requires deployment.
+
+When deployment is required, the deploy job waits for approval from the GitHub `production` environment before using the self-hosted production runner.
 
 The wrapper records the previous and current revisions under `/var/lib/wavelab/deployments`, writes a timestamped log under `/var/log/wavelab`, rebuilds using the existing deployment script, restarts services, and runs dependency and route smoke tests.
 
