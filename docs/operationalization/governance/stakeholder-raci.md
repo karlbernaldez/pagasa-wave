@@ -1,9 +1,9 @@
 # WaveLab stakeholder and RACI baseline
 
-**Status:** In review — interim R&D model documented  
-**Version:** 0.2  
-**Review date:** 2026-07-21  
-**Current repository maintainer/developer:** Karl Santiago Bernaldez  
+**Status:** In review — interim R&D model documented
+**Version:** 0.2
+**Review date:** 2026-07-21
+**Current repository maintainer/developer:** Karl Santiago Bernaldez
 **Organizational appointments:** Required before supervised pilot as recorded below
 
 ## Purpose
