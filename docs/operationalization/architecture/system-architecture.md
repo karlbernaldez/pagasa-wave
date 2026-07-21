@@ -1,8 +1,10 @@
 # WaveLab system architecture baseline
 
-**Status:** Draft current-state assessment  
-**Source:** Repository documentation and configuration  
-**Architecture approval:** Pending
+**Status:** In review — current-state candidate baseline  
+**Version:** 0.2  
+**Review date:** 2026-07-21  
+**Source:** Repository code, manifests, workflows, runbooks, and documentation  
+**Architecture approval:** Requested for continued R&D development; not operational authorization
 
 ## Context
 
@@ -22,6 +24,7 @@ WaveLab supports internal forecast preparation and review and exposes authorized
 | Service manager | Runs and restarts backend | systemd |
 | Delivery pipeline | Tests, builds, deploys, verifies, and rolls back | GitHub Actions, self-hosted runner, scripts |
 | External services | Maps, email, alerts, data/model sources | Provider-specific integrations |
+| Experimental chatbot/RAG | Optional research-only chat, retrieval, and model/provider integration | Proposed disabled-by-default boundary in PR #185; excluded from core operational scope |
 
 ## Current deployment view
 
@@ -107,9 +110,13 @@ Each boundary requires documented authentication, authorization, encryption, all
 - Monitor user-visible service, critical dependencies, forecast freshness, and publication integrity.
 - Maintain a tested manual fallback independent of WaveLab.
 
-## ADR requirements
+## Recorded architecture decisions
 
-Create an ADR for decisions affecting architecture, data schema/migration, authentication, authorization, forecast/time calculation, publication, external services, deployment, backup/recovery, logging/audit, or operational support. Use the repository ADR template.
+- [ADR-0001](adr/0001-incremental-operationalization.md): evolve the existing prototype incrementally rather than rewrite it without evidence.
+- [ADR-0002](adr/0002-solo-maintainer-controls.md): apply honest interim PR/CI/self-review controls during the one-maintainer R&D phase.
+- [ADR-0003](adr/0003-experimental-chatbot-boundary.md): keep chatbot/RAG outside the core boundary and disabled by default.
+
+Additional ADRs are required for significant data schema/migration, authentication/session, authorization, forecast/time calculation, publication, audit, external service, immutable artifact, backup/recovery, or operational-support decisions.
 
 ## Required follow-up diagrams
 
