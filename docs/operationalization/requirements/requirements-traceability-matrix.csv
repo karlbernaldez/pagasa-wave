@@ -1,0 +1,32 @@
+Requirement ID,Requirement summary,Source,Priority,Risk class,Implementation evidence,Verification evidence,Validation evidence,Owner,Status
+FR-AUTH-001,Authenticate users with unique identities,SRS,Must,Security,backend authentication modules,TBD,TBD,TBD,Partially evidenced
+FR-AUTH-002,Enforce server-side authorization,SRS,Must,Security,backend middleware and controllers,TBD,TBD,TBD,Needs assessment
+FR-AUTH-004,Prevent prohibited self-review,SRS,Must,Forecast integrity,project workflow implementation,backend workflow tests,TBD,TBD,Partially evidenced
+FR-PKG-001,Create uniquely identified forecast packages,SRS,Must,Forecast integrity,package model/controller,package controller tests,TBD,TBD,Partially evidenced
+FR-PKG-003,Validate package completeness before submission,SRS,Must,Forecast integrity,package workflow implementation,package workflow tests,TBD,TBD,Partially evidenced
+FR-PKG-006,Migrate legacy projects safely,SRS,Must,Data integrity,GitHub issue WL-110,TBD,TBD,TBD,Planned
+FR-STD-003,Lock non-editable workflow states,SRS,Must,Forecast integrity,frontend and backend status enforcement,workflow tests,TBD,TBD,Partially evidenced
+FR-STD-005,Preserve semantic rendering across views,SRS,Must,Forecast integrity,Studio review export and public map components,TBD,TBD,TBD,Needs assessment
+FR-DAT-001,Record source cycle valid time units and processing provenance,SRS,Must,Forecast integrity,TBD,TBD,TBD,TBD,Gap
+FR-DAT-002,Report missing delayed stale duplicate or corrupt inputs,SRS,Must,Forecast integrity,TBD,TBD,TBD,TBD,Gap
+FR-DAT-004,Apply approved model-to-valid-time mapping,SRS,Must,Forecast integrity,published forecast controller and WW3 integration,TBD,TBD,TBD,Needs assessment
+FR-WFL-001,Enforce approved workflow transitions,SRS,Must,Forecast integrity,workflow utilities/controllers,backend workflow tests,TBD,TBD,Partially evidenced
+FR-WFL-002,Preserve attributable workflow history,SRS,Must,Audit,project review/activity models,TBD,TBD,TBD,Needs assessment
+FR-WFL-005,Publish only complete approved unmodified package,SRS,Must,Forecast integrity,publish controller and UI,TBD,TBD,TBD,Needs assessment
+FR-WFL-006,Invalidate approval after material change,SRS,Must,Forecast integrity,TBD,TBD,TBD,TBD,Gap
+FR-WFL-007,Correct or withdraw erroneous published product,SRS,Must,Forecast integrity,TBD,TBD,TBD,TBD,Gap
+FR-PUB-001,Show only authorized published products,SRS,Must,Forecast integrity,public charts implementation,TBD,TBD,TBD,Needs assessment
+FR-PUB-002,Display issue and valid-time provenance,SRS,Must,Forecast integrity,public chart UI,TBD,TBD,TBD,Needs assessment
+FR-ADM-002,Record privileged audit events,SRS,Must,Audit,TBD,TBD,TBD,TBD,Gap
+FR-OPS-001,Expose safe health signals,SRS,Must,Operations,status endpoint and smoke tests,CI and deployment smoke tests,TBD,TBD,Partially evidenced
+FR-OPS-002,Controlled deployment and rollback,SRS,Must,Operations,GitHub workflows and AlmaLinux scripts,workflow review and staging drill,TBD,TBD,Partially evidenced
+FR-OPS-003,Back up restore and verify data,SRS,Must,Data integrity,backup and restore runbooks,TBD,TBD,TBD,Partially evidenced
+FR-OPS-005,Provide manual operational fallback,SRS,Must,Continuity,TBD,TBD,TBD,TBD,Gap
+NFR-AVL-001,Define and measure availability target,SRS,Must,Operations,TBD,TBD,TBD,TBD,Target TBD
+NFR-REC-001,Approve and demonstrate RTO and RPO,SRS,Must,Continuity,backup and rollback procedures,TBD,TBD,TBD,Target TBD
+NFR-PER-001,Define and test critical response targets,SRS,Should,Performance,TBD,TBD,TBD,TBD,Target TBD
+NFR-SEC-001,Apply baseline security controls,SRS,Must,Security,Helmet rate limiting sanitization and deployment configuration,TBD,TBD,TBD,Needs assessment
+NFR-PRV-001,Govern personal data,SRS,Must,Privacy,TBD,TBD,TBD,TBD,Gap
+NFR-AUD-001,Protect attribution and audit integrity,SRS,Must,Audit,TBD,TBD,TBD,TBD,Gap
+NFR-MNT-001,Support maintenance by multiple trained personnel,SRS,Must,Service continuity,repository docs and runbooks,TBD,TBD,TBD,Needs assessment
+NFR-LIC-001,Review operational licenses,SRS,Must,Legal/operational,README MIT and backend ISC declarations,TBD,TBD,TBD,Conflict identified

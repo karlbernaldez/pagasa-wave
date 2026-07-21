@@ -1,0 +1,96 @@
+name: WaveLab operationalization work item
+description: Track an SDLC, production-readiness, security, validation, or operations requirement.
+title: "[OPS] "
+labels:
+  - operationalization
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for prototype-to-operations work. Do not include secrets, credentials, sensitive personal data, or restricted operational data.
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement or risk ID
+      description: Enter the SRS, risk, incident, or audit identifier.
+      placeholder: FR-DAT-001
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Governance
+        - Requirements
+        - Architecture
+        - Forecast integrity
+        - Security/privacy
+        - Quality/UAT
+        - Deployment/recovery
+        - Service operations
+        - Documentation/training
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Change classification
+      options:
+        - Standard
+        - Normal
+        - Forecast integrity
+        - Security/privacy
+        - Emergency
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and desired outcome
+      description: State current behavior, operational risk, users affected, and measurable outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and exclusions
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use measurable checks, including denied and failure behavior.
+      placeholder: |
+        - [ ] Criterion one
+        - [ ] Criterion two
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact assessment
+      description: Cover forecast/time, security/privacy, data/migration, dependencies, configuration, availability, and users.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification and validation evidence required
+    validations:
+      required: true
+  - type: textarea
+    id: release
+    attributes:
+      label: Deployment, monitoring, and rollback
+      description: Describe intended environment, monitoring changes, backup needs, and recovery plan.
+    validations:
+      required: true
+  - type: textarea
+    id: owners
+    attributes:
+      label: Owners and required reviewers
+      description: Identify delivery owner and required code, forecast, security/privacy, data, QA, and service reviewers.
+    validations:
+      required: true

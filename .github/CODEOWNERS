@@ -1,0 +1,28 @@
+# Initial WaveLab code-ownership baseline.
+# Replace or add organization teams when they are created. CODEOWNERS does not
+# enforce review until branch-protection rules require code-owner approval.
+
+* @karlbernaldez
+
+# Forecast/model ingestion, rendering, valid-time, review, and publication paths
+/wavetiles/ @karlbernaldez
+/backend/controllers/publishedForecastController.js @karlbernaldez
+/backend/controllers/ @karlbernaldez
+/backend/models/ @karlbernaldez
+/backend/routes/ @karlbernaldez
+/frontend/src/dashboards/forecaster/ @karlbernaldez
+/frontend/src/features/projects/ @karlbernaldez
+/frontend/src/dashboards/public/ @karlbernaldez
+
+# Authentication, authorization, configuration, and integrations
+/backend/controllers/auth/ @karlbernaldez
+/backend/middleware/ @karlbernaldez
+/backend/config/ @karlbernaldez
+/backend/services/ @karlbernaldez
+
+# Delivery, deployment, operations, and controlled documentation
+/.github/ @karlbernaldez
+/deploy/ @karlbernaldez
+/docs/operationalization/ @karlbernaldez
+/docs/production-deployment-runbook.md @karlbernaldez
+/docs/mongodb-backup-restore-runbook.md @karlbernaldez
