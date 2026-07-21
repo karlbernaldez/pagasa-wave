@@ -56,9 +56,9 @@ State the conditions that should trigger a new decision.
 
 ## Approval
 
-| Role | Name | Decision | Date |
-|---|---|---|---|
-| Technical authority | TBD | Pending | TBD |
-| Operational forecasting authority, if required | TBD | Pending | TBD |
-| Security/privacy authority, if required | TBD | Pending | TBD |
-| Service owner, if required | TBD | Pending | TBD |
+| Role                                           | Name | Decision | Date |
+| ---------------------------------------------- | ---- | -------- | ---- |
+| Technical authority                            | TBD  | Pending  | TBD  |
+| Operational forecasting authority, if required | TBD  | Pending  | TBD  |
+| Security/privacy authority, if required        | TBD  | Pending  | TBD  |
+| Service owner, if required                     | TBD  | Pending  | TBD  |
