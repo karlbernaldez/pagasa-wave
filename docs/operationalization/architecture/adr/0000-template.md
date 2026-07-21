@@ -1,11 +1,11 @@
 # ADR authoring aid — not a controlled project decision
 
-**Document use:** Authoring aid only; reviewers should use ADR-0001 and later numbered records as decision evidence  
-**Status:** Not applicable until copied into a numbered ADR  
-**Date:** YYYY-MM-DD  
-**Decision owners:** TBD  
-**Related requirements/issues:** TBD  
-**Security/privacy review:** Required / Not required  
+**Document use:** Authoring aid only; reviewers should use ADR-0001 and later numbered records as decision evidence
+**Status:** Not applicable until copied into a numbered ADR
+**Date:** YYYY-MM-DD
+**Decision owners:** TBD
+**Related requirements/issues:** TBD
+**Security/privacy review:** Required / Not required
 **Forecast-domain review:** Required / Not required
 
 ## Context
