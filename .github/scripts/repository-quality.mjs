@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import { dirname, extname, resolve } from 'node:path';
-import { getChangedFiles } from './changed-files.mjs';
+import { getChangedFiles, getComparisonRange } from './changed-files.mjs';
 
 function git(args, options = {}) {
   return execFileSync('git', args, {
@@ -138,12 +138,9 @@ for (const file of changed) {
 }
 
 try {
-  git([
-    'diff',
-    '--check',
-    process.env.QUALITY_BASE_SHA || 'HEAD^',
-    process.env.QUALITY_HEAD_SHA || 'HEAD',
-  ]);
+  const range = getComparisonRange();
+  const args = range ? ['diff', '--check', range.base, range.head] : ['diff', '--check'];
+  git(args);
 } catch (error) {
   fail(`Git whitespace check failed:\n${error.stderr || error.message}`);
 }
