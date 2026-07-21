@@ -1,6 +1,9 @@
 # WaveLab change and release management
 
-**Status:** Draft
+**Status:** In review — active R&D change-control baseline  
+**Version:** 0.2  
+**Review date:** 2026-07-21  
+**Current application:** The solo maintainer uses issues, branches, PRs, required CI, self-review, and documented impact; pilot/operational releases require appointed authorities
 
 ## Purpose
 
