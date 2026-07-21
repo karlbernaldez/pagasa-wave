@@ -1,107 +1,105 @@
-# WaveLab production-readiness review
+# WaveLab current production-readiness assessment
 
-**Status:** Draft checklist  
-**Decision:** Not reviewed  
-**Rule:** An unchecked item requires a documented exception, compensating control, owner, due date, and residual-risk acceptance.
+**Assessment status:** In review  
+**Assessment date:** 2026-07-21  
+**Assessed baseline:** `main` commit `ab6d8d5` and explicitly identified pending PRs  
+**Current decision:** **NO-GO for official operational use**  
+**Permitted status:** Controlled R&D development and demonstrations using approved non-production data  
+**Reassessment trigger:** Completion of owned remediation work, approved validation, recovery exercises, and supervised pilot evidence
+
+This is a current-state assessment, not an empty checklist. Status values are Evidenced, Partial, Gap, Decision required, or Not applicable. “Evidenced” means repository evidence exists; it does not substitute for organizational approval where approval is required.
 
 ## 1. Governance and ownership
 
-- [ ] Charter and scope approved.
-- [ ] System, product, forecast, technical, QA, security/privacy, service, and release owners appointed.
-- [ ] Operational use and publication authority documented.
-- [ ] RACI and separation of duties approved.
-- [ ] Risk register reviewed with no unaccepted critical risk.
-- [ ] Prototype/pilot/production status communicated accurately.
+| Control | Status | Evidence/finding | Required disposition |
+|---|---|---|---|
+| Prototype status is explicit | Evidenced | README, AGENTS.md, contributor guidance, and operationalization index state R&D/not authorized. | Retain until formal authorization. |
+| Charter and SDLC exist | Partial | Candidate charter and controlled iterative SDLC are versioned. | Organizational review and approval required. |
+| Named accountable authorities | Gap | Karl is the sole developer/maintainer; system, product, forecasting, QA, security/privacy, service, and release authorities are not confirmed. | Appoint roles before pilot. |
+| Solo-maintainer development controls | Evidenced for R&D | PR, CI, self-review, AI disclosure, and high-risk escalation rules exist. | Accept only as interim R&D control. |
+| Risk acceptance | Gap | Initial risks are documented; no authorized residual-risk record exists. | System/forecast/security authorities decide before pilot. |
 
 ## 2. Requirements and architecture
 
-- [ ] Functional and nonfunctional requirements approved and baselined.
-- [ ] Traceability matrix links mandatory requirements to evidence.
-- [ ] Current and target architecture reviewed.
-- [ ] Data flows, trust boundaries, external dependencies, and failure modes documented.
-- [ ] Significant decisions recorded as ADRs.
-- [ ] API and data contracts documented and versioned.
-- [ ] Data migration and backward compatibility verified.
+| Control | Status | Evidence/finding | Required disposition |
+|---|---|---|---|
+| Candidate requirements baseline | Partial | SRS has stable functional/nonfunctional IDs. | Stakeholder review and priority assignment required. |
+| Requirement traceability | Partial | Matrix links selected requirements to current evidence and gaps. | Expand to all mandatory requirements and attach reproducible evidence. |
+| Current architecture | Partial | Logical components, deployment view, trust boundaries, and risks are documented. | Validate actual network/data flows and approve target architecture. |
+| Architecture decisions | Partial | ADRs record incremental evolution, solo-maintainer controls, and experimental chatbot boundary. | Review and add decisions for auth/session, data/provenance, release artifact, audit, and recovery. |
+| Machine-readable interfaces | Gap | No approved OpenAPI/Socket.IO contract baseline is evidenced. | Create and version contracts before pilot. |
 
 ## 3. Forecast and product integrity
 
-- [ ] Authoritative sources, model cycles, units, time zones, valid times, and staleness rules approved.
-- [ ] Missing, partial, delayed, duplicate, and corrupt-input behavior tested.
-- [ ] Chart symbols, annotations, layers, legends, exports, and public views validated.
-- [ ] Workflow locking, revision, approval, publishing, and self-review prevention tested.
-- [ ] Independent comparison against approved reference products completed.
-- [ ] Authorized forecasters sign the meteorological validation report.
-- [ ] Manual fallback and correction/withdrawal procedure tested.
-
-## 4. Security and privacy
-
-- [ ] Data classification and privacy assessment completed.
-- [ ] Threat model and access-control matrix approved.
-- [ ] Unique accounts, least privilege, session controls, and account lifecycle tested.
-- [ ] Secrets are outside source control and rotated according to policy.
-- [ ] Dependency, code, and secret scans reviewed.
-- [ ] Critical/high vulnerabilities resolved or formally accepted.
-- [ ] Audit logs capture privileged, review, publication, and configuration actions.
-- [ ] External service, map, email, alerting, and model-data risks approved.
-- [ ] Security incident contacts and response procedure exercised.
-
-## 5. Quality and acceptance
-
-- [ ] Unit, integration, API, frontend, E2E, negative, regression, accessibility, and compatibility suites meet approved criteria.
-- [ ] Performance and capacity tests cover representative forecast cycles.
-- [ ] Forecaster and administrator UAT completed with signed results.
-- [ ] Defects are triaged and release blockers are closed.
-- [ ] Test environments, data, versions, and evidence are reproducible.
-- [ ] Training and user/admin documentation are accepted.
-
-## 6. Deployment and recovery
-
-- [ ] Protected branch and production-environment approvals verified.
-- [ ] Versioned immutable artifact and manifest used.
-- [ ] Environment configuration baseline reviewed.
-- [ ] Deployment and smoke tests demonstrated in pilot/staging.
-- [ ] Rollback drill completed.
-- [ ] Backup monitoring and retention approved.
-- [ ] Restore drill meets approved RPO and RTO.
-- [ ] Database migration rollback or forward-recovery tested.
-- [ ] Server, certificate, dependency, registry, disk, and capacity risks reviewed.
-
-## 7. Operations and support
-
-- [ ] Availability, latency, support hours, RTO, RPO, and retention targets approved.
-- [ ] Monitoring covers service health, dependencies, jobs, data freshness, publication, errors, capacity, certificates, and backups.
-- [ ] Alerts have owners, severity, acknowledgement, and escalation rules.
-- [ ] Incident, communications, status, and escalation procedures tested.
-- [ ] On-call/support roster and fallback contacts are current.
-- [ ] Maintenance, patch, access review, log review, and restore-test schedules approved.
-- [ ] Continuity and manual fallback exercise completed.
-- [ ] Knowledge transfer removes single-person dependency.
-
-## 8. Pilot and authorization
-
-- [ ] Supervised parallel operation completed for an approved period.
-- [ ] Pilot metrics, defects, user feedback, and corrective actions reviewed.
-- [ ] Known limitations and residual risks documented.
-- [ ] Operational forecasting authority recommends go/no-go.
-- [ ] Security/privacy authority recommends go/no-go.
-- [ ] Service and technical owners recommend go/no-go.
-- [ ] System owner records final decision, scope, conditions, and effective date.
-
-## Decision record
-
-| Field | Value |
-|---|---|
-| Candidate release | TBD |
-| Review date | TBD |
-| Decision | Not reviewed |
-| Authorized scope | TBD |
-| Conditions/exceptions | TBD |
-| Next review | TBD |
-
-| Authority | Name | Decision | Date |
+| Control | Status | Evidence/finding | Required disposition |
 |---|---|---|---|
-| System owner | TBD | Pending | TBD |
-| Operational forecasting authority | TBD | Pending | TBD |
-| Technical authority | TBD | Pending | TBD |
-| Security/privacy authority | TBD | Pending | TBD |
-| Service owner | TBD | Pending | TBD |
+| Workflow states and edit locking | Partial | Source, README, user manual, and backend workflow tests provide evidence. | Complete API/E2E authorization and concurrency coverage. |
+| Self-review prevention | Partial | Documented behavior and workflow tests exist. | Validate with authorized roles and representative data. |
+| Source/cycle/time/unit provenance | Gap | SRS requires it; complete persistence/display evidence is not established. | Implement/verify FR-DAT requirements. |
+| Rendering consistency | Gap | Studio, review, export, and public views exist; approved semantic/visual tolerance evidence is absent. | Run reference comparisons across all product views. |
+| Publication integrity | Partial | Approval/publish workflow exists; immutable complete audit evidence is not established. | Verify approved/unmodified package, actor attribution, correction, and withdrawal. |
+| Meteorological validation | Gap | Strategy exists; no authorized signed validation report is evidenced. | Release blocker. |
+| Manual fallback | Gap | Required in plans; exercised end-to-end fallback evidence is absent. | Document and exercise before pilot. |
+
+## 4. Security, privacy, and supply chain
+
+| Control | Status | Evidence/finding | Required disposition |
+|---|---|---|---|
+| Baseline web controls | Partial | Authentication, JWT, Helmet, rate limiting, sanitization, and server authorization patterns are present. | Complete threat model, negative tests, and access-control review. |
+| Secret/repository checks | Partial | Incremental high-confidence secret and repository-quality checks are active. | Add full repository secret scanning and response process. |
+| Dependency risk | Gap | Frontend remediation issue #182 and experimental chatbot dependency issue #184 remain open. | Resolve installed critical/high findings or authorize time-bound exceptions before pilot. |
+| Experimental chatbot exposure | Pending improvement | Draft PR #185 disables routes/widget and loading by default. | Merge only after manual containment validation; keep disabled in core environments. |
+| Personal-data inventory | Gap | Compliance framework exists; system-specific inventory, purpose, basis, retention, recipients, and deletion rules are incomplete. | Complete issue #180 with authorized DPO/legal review. |
+| GDPR applicability | Decision required | Applicability cannot be inferred solely from public accessibility. | Document actual processing and territorial facts; obtain legal determination if needed. |
+| Licensing | Gap | Root MIT and backend ISC declarations conflict; third-party inventory is incomplete. | Resolve before transfer/pilot artifact approval. |
+
+## 5. Verification, validation, and usability
+
+| Control | Status | Evidence/finding | Required disposition |
+|---|---|---|---|
+| Backend automated tests | Evidenced | CI runs backend and workflow tests. | Maintain and expand critical API/data coverage. |
+| Frontend tests/build | Evidenced | CI runs frontend tests and production build. | Add critical browser E2E and accessibility coverage. |
+| Incremental lint/format/hygiene | Evidenced | Quality workflow checks changed files. | Ratchet toward repository-wide coverage. |
+| Security/static analysis | Gap | Complete SAST/dependency/license/SBOM gates are not evidenced. | Implement under security/quality backlog. |
+| Performance/capacity | Gap | No approved targets or representative result report is evidenced. | Define targets, execute, and record results. |
+| Forecaster/admin UAT | Gap for operational use | User manual exists; signed scenario evidence is absent. | Execute approved UAT in pilot/staging. |
+| Meteorological comparison | Gap | No signed representative-cycle comparison report is evidenced. | Release blocker. |
+
+## 6. Deployment, recovery, and operations
+
+| Control | Status | Evidence/finding | Required disposition |
+|---|---|---|---|
+| Automated validation/deployment | Partial | GitHub workflow, AlmaLinux scripts, smoke checks, and rollback procedures exist. Documentation-only deployment classification is implemented. | Verify environment protection and controlled staging execution. |
+| Immutable release artifact | Gap | Current runbook identifies artifact-based delivery as future work. | Build once/deploy same checksum before pilot. |
+| Environment separation | Gap | Development/test/pilot/production model is documented; complete independent staging evidence is absent. | Establish approved pilot/staging environment. |
+| Backup design | Partial | Detailed staged runbook and read-only inspection exist. | Approve RPO/RTO, storage, identity, encryption, and schedule. |
+| Restore demonstration | Gap | Production restore remains intentionally disabled; no isolated restore evidence is recorded. | Release blocker. |
+| Monitoring and alerts | Partial | Deployment diagnostics and proposed service monitoring exist. | Implement service/data-freshness/publication/backup coverage with owners. |
+| Incident response and support | Gap | Plans exist; named contacts, support hours, severity response, and exercise evidence are absent. | Approve and exercise before pilot. |
+| Knowledge transfer | Gap | Documentation reduces dependency, but one developer remains. | Train at least one additional maintainer/operator. |
+
+## 7. Pilot and authorization
+
+| Control | Status | Evidence/finding | Required disposition |
+|---|---|---|---|
+| Approved pilot scope | Decision required | Internal supervised parallel operation is recommended. | System and forecasting authorities approve scope/users/data/duration. |
+| Pilot evidence | Gap | No completed pilot report is evidenced. | Execute after entry criteria pass. |
+| Known limitations/residual risks | Partial | Major gaps are recorded in this assessment and linked issues. | Assign owners/dates and obtain authorized acceptance. |
+| Operational go/no-go | Gap | No release-specific signed decision exists. | Required after pilot; current conclusion remains no-go. |
+
+## Release-blocking gaps
+
+The following are blockers, not optional documentation enhancements:
+
+1. Unappointed organizational authorities and no approved operational scope.
+2. No authorized meteorological validation or signed forecaster UAT.
+3. Incomplete forecast provenance, time/unit, rendering, audit, correction, and fallback evidence.
+4. Open dependency/security/privacy/licensing work.
+5. No approved performance, capacity, service, RPO, or RTO targets.
+6. No isolated restore drill or complete continuity exercise.
+7. No controlled staging/pilot evidence or immutable-artifact release process.
+8. No supervised parallel pilot and release-specific go/no-go decision.
+
+## Current recommendation
+
+Approve this assessment as the development baseline, continue controlled remediation and feature work through the SDLC, and schedule another readiness review only when the release blockers have objective evidence. Do not describe WaveLab as operational, production-ready, compliant, secure, or meteorologically validated based solely on this document or passing CI.
