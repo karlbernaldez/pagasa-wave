@@ -16,11 +16,25 @@ Describe what changed and why.
 - [ ] Security/privacy
 - [ ] Emergency
 
+## AI assistance
+
+- [ ] No material AI assistance
+- [ ] Material AI assistance used and described below
+
+- Tool/agent category:
+- Tasks/files assisted:
+- Human verification performed:
+- Sensitive or restricted data shared: No / approved exception reference
+- Generated dependency, substantial content, or known uncertainty:
+
+Do not include confidential prompts, credentials, personal data, restricted operational data, or unpublished forecast material.
+
 ## Impact
 
 - User/operational impact:
 - Forecast-product or valid-time impact:
 - Security/privacy impact:
+- Philippine DPA/NPC, GDPR, records, accessibility, licensing, or other compliance impact:
 - Data/schema/migration impact:
 - External dependency impact:
 - Configuration/secrets impact:
@@ -50,6 +64,8 @@ List commands, CI runs, test cases, screenshots, comparison products, or drill r
 - [ ] User, API, operations, security, and release documentation updated.
 - [ ] Monitoring/alerting changes included.
 - [ ] Known limitations and residual risks recorded.
+- [ ] AI assistance was reviewed under the AI-assisted development standard.
+- [ ] Applicable privacy/legal sources and notices were reviewed; no unsupported compliance claim is made.
 
 ## Required review
 
