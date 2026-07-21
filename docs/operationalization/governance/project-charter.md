@@ -1,12 +1,12 @@
 # WaveLab operationalization project charter
 
-**Status:** In review — candidate development baseline  
-**Version:** 0.2  
-**Review date:** 2026-07-21  
-**Project sponsor:** Organizational appointment required before pilot  
-**System owner:** Organizational appointment required before pilot  
-**Operational forecasting authority:** Organizational appointment required before pilot  
-**Development lead:** Karl Santiago Bernaldez for the current R&D phase  
+**Status:** In review — candidate development baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**Project sponsor:** Organizational appointment required before pilot
+**System owner:** Organizational appointment required before pilot
+**Operational forecasting authority:** Organizational appointment required before pilot
+**Development lead:** Karl Santiago Bernaldez for the current R&D phase
 **Authorization boundary:** Approval of this charter permits controlled operationalization work only; it does not authorize official forecast issuance.
 
 ## Purpose
