@@ -1,9 +1,9 @@
 # WaveLab service operations plan
 
-**Status:** In review — proposed service-control baseline  
-**Version:** 0.2  
-**Review date:** 2026-07-21  
-**Service owner:** Organizational appointment required before pilot  
+**Status:** In review — proposed service-control baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**Service owner:** Organizational appointment required before pilot
 **Proposed support model:** Named support roster for supervised pilot, with the existing authoritative/manual workflow retained as fallback
 
 ## Service definition
