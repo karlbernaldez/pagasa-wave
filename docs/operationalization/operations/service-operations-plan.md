@@ -1,8 +1,10 @@
 # WaveLab service operations plan
 
-**Status:** Draft  
-**Service owner:** TBD  
-**Support model:** TBD
+**Status:** In review — proposed service-control baseline  
+**Version:** 0.2  
+**Review date:** 2026-07-21  
+**Service owner:** Organizational appointment required before pilot  
+**Proposed support model:** Named support roster for supervised pilot, with the existing authoritative/manual workflow retained as fallback
 
 ## Service definition
 
@@ -12,15 +14,15 @@ WaveLab provides approved users with forecast chart preparation, review, publica
 
 | Target | Proposed value |
 |---|---|
-| Service hours and critical forecast windows | TBD |
-| Availability and measurement method | TBD |
-| Save/review/publish/public-view performance | TBD |
-| Incident acknowledgement and restoration targets | TBD |
-| Recovery time objective (RTO) | TBD |
-| Recovery point objective (RPO) | TBD |
-| Audit, application, forecast, and backup retention | TBD |
-| Planned maintenance window and notice | TBD |
-| Capacity and growth forecast | TBD |
+| Service hours and critical forecast windows | Decision required under DEC-016 before pilot. |
+| Availability and measurement method | Decision required under DEC-016 before pilot. |
+| Save/review/publish/public-view performance | Define representative percentile targets and workload under DEC-016. |
+| Incident acknowledgement and restoration targets | Align severity, staffing, fallback, and escalation under DEC-016. |
+| Recovery time objective (RTO) | Approve under DEC-015/016, then demonstrate by restore and fallback exercise. |
+| Recovery point objective (RPO) | Approve under DEC-015/016, then design backup frequency/retention to meet it. |
+| Audit, application, forecast, and backup retention | Decide from operational, records, privacy, incident, and recovery needs. |
+| Planned maintenance window and notice | Decide from forecast schedule, fallback, dependency, and staffing constraints. |
+| Capacity and growth forecast | Define representative users, cycles, charts, annotations, exports, data volume, and retention before testing. |
 
 Targets must reflect real operational needs, staffing, infrastructure, cost, and fallback capability.
 
