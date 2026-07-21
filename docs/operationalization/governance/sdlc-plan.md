@@ -98,10 +98,10 @@ See the AI-assisted development and engineering quality standards under `docs/op
 ## Repository controls to configure
 
 - Protect `main`; disallow direct and force pushes.
-- Require pull requests, resolved conversations, and at least one independent approval.
+- Require pull requests, resolved conversations, and automated checks. Require independent approval when another qualified reviewer is available. During the declared solo-maintainer R&D phase, require documented self-review and obtain external/domain approval for high-risk or operational release decisions.
 - Require backend tests, frontend tests, production build, and other approved checks.
 - Require CODEOWNERS review for forecast logic, authentication, workflows, deployment, and documentation control files.
-- Protect the production environment with required reviewers and prevent self-review where available.
+- Protect the production environment with manual approval. Prevent self-review when another authorized reviewer is available; until then, treat same-person approval as an interim R&D control that does not constitute operational authorization.
 - Use signed or otherwise attributable releases and immutable release artifacts.
 - Enable secret, dependency, and code scanning appropriate to the repository and organization.
 - Review administrator and deploy permissions at least quarterly.
