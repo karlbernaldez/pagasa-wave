@@ -48,18 +48,18 @@ Automated tests establish software evidence only. They do not establish meteorol
 
 ## 4. Current control assessment
 
-| Area | Current assessment | Evidence or finding | Disposition |
-|---|---|---|---|
-| Lifecycle governance | Partially evidenced | SDLC, charter, RACI, PR template, agent instructions, and change controls exist. Organizational authorities are not appointed. | Accept for R&D; appointment required before pilot. |
-| Development quality | Partially evidenced | Backend/frontend CI and changed-file quality gates pass on recent PRs. Legacy code is not yet fully covered by lint, format, security, contract, or E2E gates. | Continue incremental ratcheting under issue #179. |
-| Requirements | Partially evidenced | Candidate SRS and traceability IDs exist; many requirements lack implementation or validation evidence. | Review and baseline for development, then close evidence gaps. |
-| Forecast integrity | Gap for operational use | Workflow tests exist, but authoritative valid-time, source, unit, rendering, and reference-product validation is not signed. | Release blocker; require authorized forecaster validation. |
-| Security | Gap for operational use | Baseline controls exist, but dependency and frontend findings remain and a complete threat/access review is not approved. | Remediate and assess before pilot. |
-| Privacy/legal | Gap for operational use | DPA/GDPR applicability framework exists; data inventory, processing basis, retention, provider, and license decisions are incomplete. | Complete issue #180 before pilot use of personal data. |
-| Deployment | Partially evidenced | Automated validation, AlmaLinux deployment, smoke checks, and rollback procedures exist. Immutable artifact and staging/pilot evidence are incomplete. | Demonstrate in controlled staging before pilot. |
-| Recovery | Gap for operational use | Runbook and read-only inspection script exist; scheduled backup and isolated restore evidence do not. | Release blocker; complete supervised backup/restore exercise. |
-| Operations | Gap for operational use | Proposed monitoring and incident controls exist; owners, service targets, on-call coverage, and exercised fallback are not approved. | Decide and test before pilot. |
-| Human resources | High continuity risk | Karl is the sole developer/maintainer. Documentation and CI reduce risk but do not provide independent technical/domain coverage. | Appoint/train additional maintainers and reviewers before operations. |
+| Area                 | Current assessment      | Evidence or finding                                                                                                                                            | Disposition                                                           |
+| -------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Lifecycle governance | Partially evidenced     | SDLC, charter, RACI, PR template, agent instructions, and change controls exist. Organizational authorities are not appointed.                                 | Accept for R&D; appointment required before pilot.                    |
+| Development quality  | Partially evidenced     | Backend/frontend CI and changed-file quality gates pass on recent PRs. Legacy code is not yet fully covered by lint, format, security, contract, or E2E gates. | Continue incremental ratcheting under issue #179.                     |
+| Requirements         | Partially evidenced     | Candidate SRS and traceability IDs exist; many requirements lack implementation or validation evidence.                                                        | Review and baseline for development, then close evidence gaps.        |
+| Forecast integrity   | Gap for operational use | Workflow tests exist, but authoritative valid-time, source, unit, rendering, and reference-product validation is not signed.                                   | Release blocker; require authorized forecaster validation.            |
+| Security             | Gap for operational use | Baseline controls exist, but dependency and frontend findings remain and a complete threat/access review is not approved.                                      | Remediate and assess before pilot.                                    |
+| Privacy/legal        | Gap for operational use | DPA/GDPR applicability framework exists; data inventory, processing basis, retention, provider, and license decisions are incomplete.                          | Complete issue #180 before pilot use of personal data.                |
+| Deployment           | Partially evidenced     | Automated validation, AlmaLinux deployment, smoke checks, and rollback procedures exist. Immutable artifact and staging/pilot evidence are incomplete.         | Demonstrate in controlled staging before pilot.                       |
+| Recovery             | Gap for operational use | Runbook and read-only inspection script exist; scheduled backup and isolated restore evidence do not.                                                          | Release blocker; complete supervised backup/restore exercise.         |
+| Operations           | Gap for operational use | Proposed monitoring and incident controls exist; owners, service targets, on-call coverage, and exercised fallback are not approved.                           | Decide and test before pilot.                                         |
+| Human resources      | High continuity risk    | Karl is the sole developer/maintainer. Documentation and CI reduce risk but do not provide independent technical/domain coverage.                              | Appoint/train additional maintainers and reviewers before operations. |
 
 ## 5. Principal risks
 
