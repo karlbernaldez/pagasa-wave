@@ -1,9 +1,9 @@
 # WaveLab system architecture baseline
 
-**Status:** In review — current-state candidate baseline  
-**Version:** 0.2  
-**Review date:** 2026-07-21  
-**Source:** Repository code, manifests, workflows, runbooks, and documentation  
+**Status:** In review — current-state candidate baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**Source:** Repository code, manifests, workflows, runbooks, and documentation
 **Architecture approval:** Requested for continued R&D development; not operational authorization
 
 ## Context
