@@ -88,7 +88,9 @@ Complete every applicable section of the PR template. A reviewable PR includes:
 
 ## 7. Review and merge
 
-- Authors do not provide the only approval for their own operational changes.
+- The repository is currently in a declared solo-maintainer R&D phase. The sole developer uses a pull request, required CI, the completed PR checklist, and a documented self-review before integration.
+- Solo self-review permits development integration only; it does not grant meteorological validation, legal/security risk acceptance, or operational authorization.
+- High-risk forecast, production, security/privacy, destructive data, or migration changes remain Draft/R&D-only or obtain the appropriate external/domain/organizational review.
 - All required checks and review conversations must be complete.
 - Forecast-integrity changes require an authorized domain review and comparison evidence.
 - Security/privacy changes require the appropriate review.
