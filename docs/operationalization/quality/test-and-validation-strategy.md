@@ -1,8 +1,10 @@
 # WaveLab test and validation strategy
 
-**Status:** Draft  
-**QA lead:** TBD  
-**Operational forecasting validation lead:** TBD
+**Status:** In review — candidate validation baseline  
+**Version:** 0.2  
+**Review date:** 2026-07-21  
+**QA lead:** Appointment required before pilot  
+**Operational forecasting validation lead:** Appointment required before pilot
 
 ## Purpose
 
@@ -14,6 +16,12 @@ Provide reproducible evidence that WaveLab:
 4. is suitable for its specifically authorized operational scope.
 
 Software verification does not substitute for meteorological validation.
+
+## Current evidence and gaps
+
+Current CI runs backend tests, workflow-focused backend tests, frontend tests, a production frontend build, and incremental changed-file quality checks. Recent operationalization and containment PRs passed these mechanical gates. This is useful development evidence but does not demonstrate complete API/E2E/security/performance/recovery/accessibility coverage.
+
+No signed forecaster UAT, approved meteorological comparison report, representative performance report, isolated restore drill, or supervised-pilot report is evidenced in the repository baseline. These remain explicit release blockers rather than blank test placeholders.
 
 ## Test levels
 
