@@ -85,6 +85,8 @@ WaveLab code shall be understandable, testable, secure, observable, maintainable
 
 ## Current incremental quality baseline
 
+Implementation is tracked in [issue #179](https://github.com/karlbernaldez/pagasa-wave/issues/179) and introduced by [PR #181](https://github.com/karlbernaldez/pagasa-wave/pull/181).
+
 The initial quality-gate implementation checks only new and changed files so the legacy repository can improve without a repository-wide formatting/refactoring change. It provides pinned root ESLint/Prettier tooling, repository hygiene checks, selected high-confidence secret patterns, changed JSON and Markdown-link checks, Git whitespace validation, frontend/backend lockfile policy, and a dedicated pull-request workflow.
 
 The root commands are:
