@@ -1,10 +1,10 @@
 # WaveLab current production-readiness assessment
 
-**Assessment status:** In review  
-**Assessment date:** 2026-07-21  
-**Assessed baseline:** `main` commit `ab6d8d5` and explicitly identified pending PRs  
-**Current decision:** **NO-GO for official operational use**  
-**Permitted status:** Controlled R&D development and demonstrations using approved non-production data  
+**Assessment status:** In review
+**Assessment date:** 2026-07-21
+**Assessed baseline:** `main` commit `ab6d8d5` and explicitly identified pending PRs
+**Current decision:** **NO-GO for official operational use**
+**Permitted status:** Controlled R&D development and demonstrations using approved non-production data
 **Reassessment trigger:** Completion of owned remediation work, approved validation, recovery exercises, and supervised pilot evidence
 
 This is a current-state assessment, not an empty checklist. Status values are Evidenced, Partial, Gap, Decision required, or Not applicable. “Evidenced” means repository evidence exists; it does not substitute for organizational approval where approval is required.
