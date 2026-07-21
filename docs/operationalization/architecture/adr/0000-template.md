@@ -1,6 +1,7 @@
-# ADR-NNNN: Decision title
+# ADR authoring aid — not a controlled project decision
 
-**Status:** Proposed  
+**Document use:** Authoring aid only; reviewers should use ADR-0001 and later numbered records as decision evidence  
+**Status:** Not applicable until copied into a numbered ADR  
 **Date:** YYYY-MM-DD  
 **Decision owners:** TBD  
 **Related requirements/issues:** TBD  
