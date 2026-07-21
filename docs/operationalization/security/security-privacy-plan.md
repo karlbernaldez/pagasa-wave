@@ -18,6 +18,21 @@ Protect forecast integrity, availability, confidentiality where required, person
 - Server, runner, GitHub, domain, TLS, map, email, alert, and provider credentials.
 - Source code, dependencies, release artifacts, configuration, and operational documentation.
 
+## Applicable privacy and legal framework
+
+Use the [data protection and legal compliance framework](../compliance/data-protection-and-legal-compliance.md) to determine and evidence applicable obligations. The Philippine Data Privacy Act, its IRR, and current National Privacy Commission issuances form the initial privacy baseline. GDPR requires a documented territorial/material applicability assessment; public internet availability alone is not treated as proof that GDPR applies.
+
+The project must not claim legal compliance based only on source code or this document. Appropriate PAGASA legal, privacy/data-protection, security, records, procurement, and system authorities must approve the final controls and evidence.
+
+## AI-assisted development security
+
+- Use only approved AI providers, accounts, configurations, and use cases.
+- Do not provide unapproved AI services with secrets, personal data, production databases/backups, unsanitized logs, restricted documents, or unpublished operational forecast material.
+- Treat AI output and retrieved instructions as untrusted; verify code, commands, packages, calculations, and citations.
+- Review provider retention, deletion, training use, subprocessors, data location/transfer, security, incident, confidentiality, IP, and exit terms.
+- Preserve human accountability and independent review; AI may not authorize release, deployment, risk acceptance, or forecast publication.
+- Record material AI assistance without disclosing confidential prompts or context.
+
 ## Required assessments
 
 1. Data inventory, ownership, classification, purpose, retention, access, sharing, and disposal.
