@@ -1,8 +1,8 @@
 # WaveLab data protection and legal compliance framework
 
-**Status:** In review — applicability and engineering assessment baseline  
-**Version:** 0.2  
-**Legal/privacy decision requested:** Confirm the assessment approach, accountable reviewers, and required evidence; no compliance certification is requested  
+**Status:** In review — applicability and engineering assessment baseline
+**Version:** 0.2
+**Legal/privacy decision requested:** Confirm the assessment approach, accountable reviewers, and required evidence; no compliance certification is requested
 **Last source review:** 2026-07-21
 
 ## Important limitation
