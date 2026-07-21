@@ -1,10 +1,10 @@
 # WaveLab security and privacy plan
 
-**Status:** In review — current risk-treatment baseline  
-**Version:** 0.2  
-**Review date:** 2026-07-21  
-**Security authority:** Organizational appointment required before pilot  
-**Privacy/data protection authority:** Organizational appointment required before pilot  
+**Status:** In review — current risk-treatment baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**Security authority:** Organizational appointment required before pilot
+**Privacy/data protection authority:** Organizational appointment required before pilot
 **Current conclusion:** Baseline controls exist, but complete threat, access, dependency, incident, and privacy evidence is not yet sufficient for operational authorization
 
 ## Objectives
