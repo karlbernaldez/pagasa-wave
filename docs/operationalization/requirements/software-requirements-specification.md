@@ -1,9 +1,9 @@
 # WaveLab Software Requirements Specification
 
-**Status:** In review — candidate development baseline  
-**Version:** 0.2  
-**Review date:** 2026-07-21  
-**Source:** Existing repository behavior, README, user manual, workflows, tests, and operationalization assessment  
+**Status:** In review — candidate development baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**Source:** Existing repository behavior, README, user manual, workflows, tests, and operationalization assessment
 **Approval requested:** Approve, approve with conditions, revise, or reject for controlled development; this is not operational authorization
 
 ## 1. Purpose and system context
