@@ -68,16 +68,16 @@ If GDPR is not applicable, its privacy-by-design practices may still be adopted 
 
 The authoritative inventory remains TBD. Assess at minimum:
 
-| Processing area | Possible personal/regulated data | Required decisions |
-|---|---|---|
-| Accounts and profiles | Name, email, role, affiliation, status | Purpose, lawful basis, required fields, retention, access, rights |
-| Authentication and recovery | Credential hashes, tokens, OTP/recovery events, IP/device/security logs | Security, lifetime, revocation, disclosure, retention |
-| Forecast workflow | Creator/reviewer identity, comments, decisions, timestamps | Accountability, visibility, retention, correction |
-| Notifications and email | Address, content, delivery metadata | Provider role, disclosure, retention, opt-out where applicable |
-| Support and incidents | Reporter identity, messages, attachments, logs | Minimization, sensitive content, access, retention |
-| Audit and operations | Actor, IP/device, action, object, result, diagnostics | Purpose, integrity, access, retention, monitoring |
-| Backups | Copies of the above | Encryption, access, location, retention, restoration, deletion |
-| AI development tools | Prompts, source/context, logs, generated output, user identifiers | Tool approval, prohibited data, provider terms, retention/training, transfer |
+| Processing area             | Possible personal/regulated data                                        | Required decisions                                                           |
+| --------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Accounts and profiles       | Name, email, role, affiliation, status                                  | Purpose, lawful basis, required fields, retention, access, rights            |
+| Authentication and recovery | Credential hashes, tokens, OTP/recovery events, IP/device/security logs | Security, lifetime, revocation, disclosure, retention                        |
+| Forecast workflow           | Creator/reviewer identity, comments, decisions, timestamps              | Accountability, visibility, retention, correction                            |
+| Notifications and email     | Address, content, delivery metadata                                     | Provider role, disclosure, retention, opt-out where applicable               |
+| Support and incidents       | Reporter identity, messages, attachments, logs                          | Minimization, sensitive content, access, retention                           |
+| Audit and operations        | Actor, IP/device, action, object, result, diagnostics                   | Purpose, integrity, access, retention, monitoring                            |
+| Backups                     | Copies of the above                                                     | Encryption, access, location, retention, restoration, deletion               |
+| AI development tools        | Prompts, source/context, logs, generated output, user identifiers       | Tool approval, prohibited data, provider terms, retention/training, transfer |
 
 ## Privacy-by-design engineering requirements
 
