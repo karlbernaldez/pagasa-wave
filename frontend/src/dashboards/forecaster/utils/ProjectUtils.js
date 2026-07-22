@@ -1,3 +1,4 @@
+import Swal from 'sweetalert2';
 import { createProject, deleteProjectById } from '@/api/projectAPI';
 
 // --- Project Creation ---
