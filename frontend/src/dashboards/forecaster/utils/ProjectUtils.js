@@ -1,5 +1,5 @@
-import Swal from "sweetalert2";
-import { createProject, deleteProjectById } from "@/api/projectAPI";
+import Swal from 'sweetalert2';
+import { createProject, deleteProjectById } from '@/api/projectAPI';
 
 // --- Project Creation ---
 export const handleCreateProject = async ({
@@ -13,9 +13,9 @@ export const handleCreateProject = async ({
   if (!projectName.trim()) {
     Swal.fire({
       toast: true,
-      position: "top-end",
-      icon: "error",
-      title: "Project Name is required!",
+      position: 'top-end',
+      icon: 'error',
+      title: 'Project Name is required!',
       showConfirmButton: false,
       timer: 3000,
       timerProgressBar: true,
@@ -57,8 +57,8 @@ export const handleCreateProject = async ({
 
     Swal.fire({
       toast: true,
-      position: "top-end",
-      icon: "success",
+      position: 'top-end',
+      icon: 'success',
       title: `Project "${projectName}" created successfully`,
       showConfirmButton: false,
       timer: 2000,
@@ -70,8 +70,8 @@ export const handleCreateProject = async ({
   } catch (err) {
     Swal.fire({
       toast: true,
-      position: "top-end",
-      icon: "error",
+      position: 'top-end',
+      icon: 'error',
       title: err.message,
       showConfirmButton: false,
       timer: 3000,
@@ -79,17 +79,13 @@ export const handleCreateProject = async ({
   }
 };
 
-export const handleDeleteProject = async ({
-  projectId,
-  onDelete,
-  navigateAfterDelete = true,
-}) => {
+export const handleDeleteProject = async ({ projectId, onDelete, navigateAfterDelete = true }) => {
   if (!projectId) {
     return Swal.fire({
       toast: true,
-      position: "top-end",
-      icon: "error",
-      title: "No project selected!",
+      position: 'top-end',
+      icon: 'error',
+      title: 'No project selected!',
       showConfirmButton: false,
       timer: 3000,
     });
@@ -98,20 +94,20 @@ export const handleDeleteProject = async ({
   try {
     await deleteProjectById(projectId);
 
-    ["projectId", "projectName", "chartType", "forecastDate"].forEach((key) =>
-      localStorage.removeItem(key),
+    ['projectId', 'projectName', 'chartType', 'forecastDate'].forEach((key) =>
+      localStorage.removeItem(key)
     );
 
     Swal.fire({
       toast: true,
-      position: "top-end",
-      icon: "success",
-      title: "Project deleted successfully",
+      position: 'top-end',
+      icon: 'success',
+      title: 'Project deleted successfully',
       showConfirmButton: false,
       timer: 2000,
     });
 
-    if (typeof onDelete === "function") onDelete(projectId);
+    if (typeof onDelete === 'function') onDelete(projectId);
 
     if (navigateAfterDelete) {
       setTimeout(() => window.location.reload(), 1200);
@@ -119,9 +115,9 @@ export const handleDeleteProject = async ({
   } catch (error) {
     Swal.fire({
       toast: true,
-      position: "top-end",
-      icon: "error",
-      title: error.message || "Failed to delete project",
+      position: 'top-end',
+      icon: 'error',
+      title: error.message || 'Failed to delete project',
       showConfirmButton: false,
       timer: 3000,
     });
