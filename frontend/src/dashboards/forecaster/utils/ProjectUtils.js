@@ -1,8 +1,4 @@
-import Swal from 'sweetalert2';
 import { createProject, deleteProjectById } from '@/api/projectAPI';
-
-// --- Logout ---
-export const logout = () => logoutUser();
 
 // --- Project Creation ---
 export const handleCreateProject = async ({
@@ -99,7 +95,7 @@ export const handleDeleteProject = async ({
   }
 
   try {
-    const result = await deleteProjectById(projectId);
+    await deleteProjectById(projectId);
 
     ['projectId', 'projectName', 'chartType', 'forecastDate'].forEach((key) =>
       localStorage.removeItem(key)
