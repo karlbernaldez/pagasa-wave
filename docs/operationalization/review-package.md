@@ -29,7 +29,7 @@ WaveLab is a web-based marine forecast chart platform. Its demonstrated reposito
 - backend tests, frontend tests/build validation, and incremental repository quality gates; and
 - deployment, rollback, troubleshooting, user, and staged database-recovery documentation.
 
-The chatbot/RAG capability is experimental and outside the core operationalization scope. Draft PR [#185](https://github.com/karlbernaldez/pagasa-wave/pull/185) proposes explicit opt-in backend/frontend flags so normal core deployments do not expose or initialize it.
+The chatbot/RAG capability is experimental and outside the core operationalization scope. PR [#185](https://github.com/karlbernaldez/pagasa-wave/pull/185) proposed explicit opt-in backend/frontend flags, but it was closed without merge. The current `main` branch still mounts the backend routes and renders the public widget by default, so issue [#184](https://github.com/karlbernaldez/pagasa-wave/issues/184) remains open to implement and validate containment.
 
 ## 3. Evidence reviewed
 
@@ -78,7 +78,7 @@ Reviewers should decide the items in the [decision register](governance/decision
 - accept or revise the charter and R&D-to-pilot scope;
 - accept incremental operationalization rather than a rewrite;
 - approve the interim solo-maintainer development controls;
-- confirm that chatbot/RAG remains experimental and disabled by default;
+- confirm that chatbot/RAG remains experimental and require issue #184 containment before any pilot artifact or approved experiment;
 - nominate organizational authorities and reviewers;
 - select the target pilot mode and entry criteria;
 - approve the validation protocol owner and evidence method;
