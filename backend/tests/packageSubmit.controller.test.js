@@ -10,11 +10,18 @@ async function loadModules() {
   const submitController = await import('../controllers/forecastPackageSubmitController.js');
   const packageModel = await import('../models/' + 'Forecast' + 'Package.js');
   const projectModel = await import('../models/Project.js');
+  const mongooseModule = await import('mongoose');
+  const testSession = {
+    async withTransaction(work) { return work(); },
+    async endSession() {},
+  };
+  mongooseModule.default.startSession = async () => testSession;
   return {
     workflow,
     controller: { ...packageController, submitForecastPackage: submitController.submitForecastPackage },
     PackageModel: packageModel.default,
     Project: projectModel.default,
+    testSession,
   };
 }
 
@@ -208,7 +215,7 @@ test('package submit action blocks while a chart still has active editors', asyn
 });
 
 test('package submit action submits and locks linked chart projects when every required chart is ready', async () => {
-  const { workflow, controller, PackageModel, Project } = await loadModules();
+  const { workflow, controller, PackageModel, Project, testSession } = await loadModules();
   const originalFindById = PackageModel.findById;
   const originalUpdateMany = Project.updateMany;
   const pkg = createPkg(workflow, true);
@@ -216,7 +223,7 @@ test('package submit action submits and locks linked chart projects when every r
   let updateManyPayload;
   try {
     PackageModel.findById = () => { calls += 1; return calls === 1 ? pkg : createQuery(pkg); };
-    Project.updateMany = async (filter, update) => { updateManyPayload = { filter, update }; return { modifiedCount: 4 }; };
+    Project.updateMany = async (filter, update, options) => { updateManyPayload = { filter, update, options }; return { modifiedCount: 4 }; };
     const res = await run(controller.submitForecastPackage, req());
     assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
     assert.ok(pkg.submittedAt instanceof Date);
@@ -225,6 +232,7 @@ test('package submit action submits and locks linked chart projects when every r
     assert.deepEqual(updateManyPayload.filter._id.$in, ['project-1', 'project-2', 'project-3', 'project-4']);
     assert.equal(updateManyPayload.update.$set.status, 'Submitted');
     assert.equal(updateManyPayload.update.$push.auditLogs.action, 'submitted');
+    assert.equal(updateManyPayload.options.session, testSession);
     assert.equal(res.body.completion.completed, 4);
     assert.equal(res.body.completion.isComplete, true);
   } finally {

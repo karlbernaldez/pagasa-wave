@@ -80,6 +80,12 @@ const shiftDate = (date, days) => {
   return shifted;
 };
 
+const formatCompactDate = (date) => [
+  date.getUTCFullYear(),
+  pad2(date.getUTCMonth() + 1),
+  pad2(date.getUTCDate()),
+].join('');
+
 export const formatWW3PackageDate = (forecastDate) => {
   const date = parseForecastDate(forecastDate);
   return `${date.getUTCFullYear()}${MONTH_TOKENS[date.getUTCMonth()]}${pad2(date.getUTCDate())}`;
@@ -89,11 +95,7 @@ export const resolveWW3ForecastRun = ({ forecastDate, chartType } = {}) => {
   const offset = resolveOffset(chartType);
   const packageDate = formatWW3PackageDate(forecastDate);
   const date = shiftDate(parseForecastDate(forecastDate), offset.days);
-  const yyyymmdd = [
-    date.getUTCFullYear(),
-    pad2(date.getUTCMonth() + 1),
-    pad2(date.getUTCDate()),
-  ].join('');
+  const yyyymmdd = formatCompactDate(date);
   const runDateTime = `${yyyymmdd}${offset.hour}`;
 
   return {
@@ -101,6 +103,17 @@ export const resolveWW3ForecastRun = ({ forecastDate, chartType } = {}) => {
     runDateTime,
     filenameTimestamp: `${yyyymmdd}T${offset.hour}`,
     packageDate,
+  };
+};
+
+export const resolveBMKGForecastRun = ({ forecastDate, chartType } = {}) => {
+  const packageDate = parseForecastDate(forecastDate);
+  const modelRunDate = shiftDate(packageDate, -1);
+  const { runDateTime } = resolveWW3ForecastRun({ forecastDate, chartType });
+
+  return {
+    modelRunDateTime: `${formatCompactDate(modelRunDate)}0000`,
+    validDateTime: `${runDateTime}00`,
   };
 };
 

@@ -1,7 +1,8 @@
 numpy
+scipy
 pandas
 xarray
-netcdf4
+netCDF4
 matplotlib
 shapely
 pyproj

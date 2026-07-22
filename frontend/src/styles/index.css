@@ -6,7 +6,6 @@ body,
   height: 100%;
   font-family: Arial, sans-serif;
   overflow: auto;
-  /* Allow page to scroll */
   overflow-x: hidden;
 }
 
@@ -14,7 +13,6 @@ body,
   z-index: 9999 !important;
 }
 
-/* Blue main button for Swal */
 .swal-main-btn {
   background-color: #1d4ed8 !important;
   color: white !important;
@@ -37,7 +35,6 @@ body,
   font-weight: 600 !important;
   border: none !important;
   margin-left: 10px !important;
-  /* ← ADD THIS */
   transition: 0.2s ease-in-out;
 }
 
@@ -45,7 +42,6 @@ body,
   background-color: #c62828 !important;
 }
 
-/* Cancel button */
 .swal-cancel-btn {
   background-color: #1976d2 !important;
   color: white !important;
@@ -54,7 +50,6 @@ body,
   font-weight: 600 !important;
   border: none !important;
   margin-right: 10px !important;
-  /* ← ADD THIS */
   transition: 0.2s ease-in-out;
 }
 
@@ -67,13 +62,13 @@ body,
   justify-content: center;
 }
 
-/* styles.css or tailwind.css */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;     /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @tailwind base;
@@ -118,8 +113,7 @@ body,
 }
 
 .studio-liquid-dark {
-  background:
-    linear-gradient(145deg, rgba(2, 6, 23, 0.78), rgba(8, 27, 47, 0.62) 55%, rgba(6, 78, 96, 0.44));
+  background: linear-gradient(145deg, rgba(2, 6, 23, 0.78), rgba(8, 27, 47, 0.62) 55%, rgba(6, 78, 96, 0.44));
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow:
     0 24px 70px rgba(2, 6, 23, 0.42),
@@ -127,8 +121,7 @@ body,
 }
 
 .studio-liquid-light {
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(239, 249, 255, 0.74) 52%, rgba(224, 242, 254, 0.62));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(239, 249, 255, 0.74) 52%, rgba(224, 242, 254, 0.62));
   border-color: rgba(255, 255, 255, 0.78);
   box-shadow:
     0 22px 55px rgba(15, 23, 42, 0.14),
@@ -148,7 +141,6 @@ body,
   mix-blend-mode: soft-light;
 }
 
-/* Published chart detail: keep the compact header clear of the public navbar. */
 main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
   padding-top: 5rem !important;
 }
@@ -156,5 +148,178 @@ main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
 @media (min-width: 1024px) {
   main.relative.min-h-screen.overflow-hidden > div.relative.z-10.mx-auto.grid {
     padding-top: 5.75rem !important;
+  }
+}
+
+/* Public landing: move the latest forecast card slightly closer to the hero fade. */
+.wavelab-home > div.relative.z-10 > section:nth-of-type(2) {
+  margin-top: -2.25rem !important;
+}
+
+/* Public landing: make the fixed header read as soft liquid glass instead of a hard strip. */
+html body main.wavelab-home > header.sticky {
+  border: 0 !important;
+  border-bottom: 0 !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.040), rgba(255, 255, 255, 0.010) 72%, rgba(255, 255, 255, 0)) !important;
+  -webkit-backdrop-filter: blur(9px) saturate(170%) contrast(104%) brightness(1.03) !important;
+  backdrop-filter: blur(9px) saturate(170%) contrast(104%) brightness(1.03) !important;
+  box-shadow:
+    0 16px 46px rgba(15, 23, 42, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12) !important;
+  overflow: hidden !important;
+}
+
+html body main.wavelab-home > header.sticky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(520px 64px at 22% 0%, rgba(255, 255, 255, 0.16), transparent 70%),
+    radial-gradient(480px 70px at 82% 8%, rgba(125, 211, 252, 0.10), transparent 72%),
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.085) 48%, transparent 100%);
+  opacity: 0.72;
+  mix-blend-mode: screen;
+}
+
+html body main.wavelab-home > header.sticky::after {
+  content: "";
+  position: absolute;
+  left: 1.5rem;
+  right: 1.5rem;
+  bottom: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.36), transparent);
+  opacity: 0.48;
+}
+
+html body main.wavelab-home.bg-slate-950 > header.sticky {
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.10), rgba(2, 6, 23, 0.025) 72%, rgba(2, 6, 23, 0)) !important;
+  box-shadow:
+    0 18px 52px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.045) !important;
+}
+
+html body main.wavelab-home > header.sticky > nav {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 1023px) {
+  html body main.wavelab-home > header.sticky {
+    border-radius: 0 !important;
+  }
+}
+
+/* Public landing: icy transparent liquid-glass GeoJSON Philippines map. */
+@media (min-width: 1024px) {
+  html body .wavelab-home .hero-ph-map {
+    justify-self: end !important;
+    width: min(42vw, 500px) !important;
+    min-height: clamp(500px, 58vh, 680px) !important;
+    transform: translate(3.15rem, -0.55rem) !important;
+    mix-blend-mode: normal !important;
+  }
+
+  html body .wavelab-home .hero-ph-map::before {
+    inset: 5% -8% 1% -12% !important;
+    background:
+      radial-gradient(circle at 48% 42%, rgba(248, 250, 252, 0.28), rgba(219, 234, 254, 0.12) 38%, transparent 69%) !important;
+    filter: blur(22px) !important;
+    opacity: 0.48 !important;
+  }
+
+  html body .wavelab-home .ph-map-shape {
+    width: min(100%, 475px) !important;
+    height: clamp(500px, 58vh, 670px) !important;
+    opacity: 0.98 !important;
+    transform: scale(1.02) !important;
+    overflow: visible !important;
+    filter:
+      drop-shadow(0 22px 26px rgba(15, 23, 42, 0.18))
+      drop-shadow(0 0 9px rgba(255, 255, 255, 0.36)) !important;
+  }
+
+  html body .wavelab-home .ph-map-shape g[filter] {
+    filter: none !important;
+  }
+
+  html body .wavelab-home .ph-map-shape > g:nth-of-type(2) {
+    display: none !important;
+  }
+
+  html body .wavelab-home .ph-map-path {
+    fill: rgba(255, 255, 255, 0.055) !important;
+    stroke: rgba(250, 253, 255, 0.95) !important;
+    stroke-width: 3.15px !important;
+    stroke-linejoin: round !important;
+    stroke-linecap: round !important;
+    paint-order: stroke fill !important;
+    opacity: 0.98 !important;
+    vector-effect: non-scaling-stroke;
+    filter: none !important;
+    shape-rendering: geometricPrecision;
+  }
+
+  html body .wavelab-home .ph-map-path:nth-child(2n) {
+    fill: rgba(226, 238, 251, 0.075) !important;
+    stroke: rgba(246, 251, 255, 0.90) !important;
+  }
+
+  html body .wavelab-home .ph-map-path:nth-child(3n) {
+    fill: rgba(255, 255, 255, 0.035) !important;
+    stroke: rgba(219, 236, 250, 0.92) !important;
+  }
+
+  html body .wavelab-home .ph-map-shape > g:first-of-type {
+    filter:
+      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.78))
+      drop-shadow(1px 1px 0 rgba(48, 83, 112, 0.58))
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.50))
+      drop-shadow(0 12px 13px rgba(15, 23, 42, 0.16)) !important;
+  }
+
+  html body .wavelab-home.bg-slate-950 .hero-ph-map {
+    mix-blend-mode: normal !important;
+  }
+
+  html body .wavelab-home.bg-slate-950 .hero-ph-map::before {
+    background:
+      radial-gradient(circle at 48% 42%, rgba(255, 255, 255, 0.22), rgba(186, 230, 253, 0.18) 36%, rgba(103, 232, 249, 0.08) 56%, transparent 72%) !important;
+    filter: blur(24px) !important;
+    opacity: 0.78 !important;
+  }
+
+  html body .wavelab-home.bg-slate-950 .ph-map-shape {
+    filter:
+      drop-shadow(0 0 18px rgba(255, 255, 255, 0.24))
+      drop-shadow(0 0 36px rgba(186, 230, 253, 0.18))
+      drop-shadow(0 26px 34px rgba(0, 0, 0, 0.42)) !important;
+  }
+
+  html body .wavelab-home.bg-slate-950 .ph-map-path {
+    fill: rgba(236, 254, 255, 0.055) !important;
+    stroke: rgba(245, 251, 255, 0.94) !important;
+  }
+
+  html body .wavelab-home.bg-slate-950 .ph-map-path:nth-child(2n) {
+    fill: rgba(186, 230, 253, 0.065) !important;
+    stroke: rgba(224, 242, 254, 0.90) !important;
+  }
+
+  html body .wavelab-home.bg-slate-950 .ph-map-shape > g:first-of-type {
+    filter:
+      drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.38))
+      drop-shadow(1px 1px 0 rgba(8, 47, 73, 0.62))
+      drop-shadow(0 0 10px rgba(255, 255, 255, 0.30))
+      drop-shadow(0 0 22px rgba(186, 230, 253, 0.28))
+      drop-shadow(0 13px 16px rgba(0, 0, 0, 0.34)) !important;
   }
 }

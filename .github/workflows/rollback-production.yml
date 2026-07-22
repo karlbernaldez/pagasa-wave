@@ -1,0 +1,118 @@
+name: WaveLab Production Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Full 40-character main-branch commit SHA to restore
+        required: true
+        type: string
+      confirmation:
+        description: Type ROLLBACK to confirm
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wavelab-almalinux-production
+  cancel-in-progress: false
+
+jobs:
+  validate-request:
+    name: Validate rollback request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      target_sha: ${{ steps.validate.outputs.target_sha }}
+    steps:
+      - name: Validate explicit confirmation and SHA
+        id: validate
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$CONFIRMATION" = "ROLLBACK"
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify target belongs to main history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check target ancestry
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          git cat-file -e "$TARGET_SHA^{commit}"
+          git merge-base --is-ancestor "$TARGET_SHA" origin/main
+
+  rollback:
+    name: Roll back production AlmaLinux server
+    needs: validate-request
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - wavelab-production
+    timeout-minutes: 40
+    environment:
+      name: production
+      url: ${{ vars.PUBLIC_URL }}
+    steps:
+      - name: Record rollback context
+        env:
+          TARGET_SHA: ${{ needs.validate-request.outputs.target_sha }}
+        run: |
+          {
+            echo "### Production rollback"
+            echo "- Target: \`$TARGET_SHA\`"
+            echo "- Requested by: \`$GITHUB_ACTOR\`"
+            echo "- Runner: \`$RUNNER_NAME\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Execute guarded rollback
+        env:
+          TARGET_SHA: ${{ needs.validate-request.outputs.target_sha }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+        run: |
+          test -n "$PUBLIC_HOST"
+          sudo -n /usr/local/sbin/wavelab-deploy rollback "$TARGET_SHA" "$PUBLIC_HOST"
+
+      - name: Verify restored revision
+        env:
+          TARGET_SHA: ${{ needs.validate-request.outputs.target_sha }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+        run: |
+          test "$(git -c safe.directory=/home/wavelab/app -C /home/wavelab/app rev-parse HEAD)" = "$TARGET_SHA"
+          systemctl is-active --quiet wavelab-backend
+          curl -fsS --max-time 10 http://127.0.0.1:5000/status >/dev/null
+          curl -fsSI --max-time 10 -H "Host: $PUBLIC_HOST" http://127.0.0.1/ >/dev/null
+          echo "- Result: rollback and smoke tests passed" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect rollback failure diagnostics
+        if: failure()
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/rollback-diagnostics"
+          {
+            echo "target=${{ needs.validate-request.outputs.target_sha }}"
+            echo "runner=$RUNNER_NAME"
+            echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            systemctl --no-pager --full status wavelab-backend nginx redis || true
+            echo
+            journalctl --no-pager -u wavelab-backend -n 200 || true
+            echo
+            tail -n 200 /var/log/nginx/error.log || true
+          } > "$GITHUB_WORKSPACE/rollback-diagnostics/production-rollback.txt" 2>&1
+
+      - name: Upload rollback failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-rollback-diagnostics-${{ github.run_id }}
+          path: rollback-diagnostics/
+          retention-days: 14
+          if-no-files-found: error

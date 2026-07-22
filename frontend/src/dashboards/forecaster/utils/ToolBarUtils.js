@@ -84,14 +84,9 @@ function makeSafeSourceId(type, name) {
 }
 
 function getActiveProjectId(projectId) {
-  const explicitProjectId = String(projectId || '').trim();
-  if (explicitProjectId) return explicitProjectId;
-
-  try {
-    return String(window.localStorage.getItem('projectId') || '').trim();
-  } catch {
-    return '';
-  }
+  // The route-owned project ID is the only safe mutation target. Falling back to
+  // localStorage can write annotations into a previously opened project.
+  return String(projectId || '').trim();
 }
 
 function getLowWaveNumberFromName(value) {

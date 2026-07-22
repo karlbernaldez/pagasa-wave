@@ -1,73 +1,177 @@
-name: WaveLab Deploy Pipeline
+name: WaveLab AlmaLinux Production Deploy
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-      - staging
-      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wavelab-almalinux-production
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  validate:
+    name: Validate application
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
+    outputs:
+      deploy_required: ${{ steps.changes.outputs.deploy_required }}
     steps:
-      - name: Checkout Repository
+      - name: Checkout exact commit
         uses: actions/checkout@v4
-
-      - name: Deploy to Server
-        uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          fetch-depth: 0
 
-          script: |
-            if [ "${{ github.ref_name }}" = "main" ]; then
-              echo "Deploying PRODUCTION..."
+      - name: Detect whether the application must be deployed
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
 
-              cd /var/www/wavelab/pagasa-wave
-              git pull origin main
+          zero_sha="0000000000000000000000000000000000000000"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_sha="$PR_BASE_SHA"
+          else
+            base_sha="$BEFORE_SHA"
+          fi
 
-              cd frontend
-              npm install
-              npm run build
+          # Fail safe: deploy when GitHub does not provide a usable comparison base.
+          deploy_required=true
 
-              cd ../backend
-              npm install
+          if [[ -n "$base_sha" && "$base_sha" != "$zero_sha" ]] &&
+             git cat-file -e "$base_sha^{commit}" 2>/dev/null; then
+            deploy_required=false
 
-              pm2 restart wavelab-api
-            fi
+            # Disable rename detection so removing or moving an application file
+            # cannot be hidden by a documentation-only destination path.
+            while IFS= read -r path; do
+              [[ -z "$path" ]] && continue
 
-            if [ "${{ github.ref_name }}" = "staging" ]; then
-              echo "Deploying STAGING..."
+              case "$path" in
+                docs/*|*.md|.github/*)
+                  ;;
+                *)
+                  deploy_required=true
+                  break
+                  ;;
+              esac
+            done < <(git diff --name-only --no-renames "$base_sha" "$GITHUB_SHA")
+          fi
 
-              cd /var/www/wavelab/staging
-              git pull origin staging
+          echo "deploy_required=$deploy_required" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Change classification"
+            echo "- Base commit: $base_sha"
+            echo "- Head commit: $GITHUB_SHA"
+            echo "- Application deployment required: $deploy_required"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-              cd frontend
-              npm install
-              npm run build
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
-              cd ../backend
-              npm install
+      - name: Install and test backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm test
+          npm run test:workflow
 
-              pm2 restart wavelab-staging
-            fi
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.17.1 --activate
 
-            if [ "${{ github.ref_name }}" = "dev" ]; then
-              echo "Deploying DEV..."
+      - name: Install, test, and build frontend
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+          pnpm build
 
-              cd /var/www/wavelab/dev
-              git pull origin dev
+  deploy:
+    name: Deploy to production AlmaLinux server
+    if: github.event_name != 'pull_request' && needs.validate.outputs.deploy_required == 'true'
+    needs: validate
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - wavelab-production
+    timeout-minutes: 40
+    environment:
+      name: production
+      url: ${{ vars.PUBLIC_URL }}
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          clean: true
 
-              cd frontend
-              npm install
+      - name: Record deployment context
+        run: |
+          {
+            echo "### Production deployment"
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Actor: \`$GITHUB_ACTOR\`"
+            echo "- Runner: \`$RUNNER_NAME\`"
+            echo "- Started: \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-              pm2 restart wavelab-dev-frontend
+      - name: Deploy validated commit
+        env:
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+        run: |
+          test -n "$PUBLIC_HOST"
+          sudo -n /usr/local/sbin/wavelab-deploy "$GITHUB_SHA" "$PUBLIC_HOST"
 
-              cd ../backend
-              npm install
+      - name: Verify deployed revision
+        env:
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+        run: |
+          test "$(git -c safe.directory=/home/wavelab/app -C /home/wavelab/app rev-parse HEAD)" = "$GITHUB_SHA"
+          systemctl is-active --quiet wavelab-backend
+          curl -fsS --max-time 10 http://127.0.0.1:5000/status >/dev/null
+          curl -fsSI --max-time 10 -H "Host: $PUBLIC_HOST" http://127.0.0.1/ >/dev/null
+          echo "- Result: deployment and smoke tests passed" >> "$GITHUB_STEP_SUMMARY"
 
-              pm2 restart wavelab-dev-api
-            fi
+      - name: Collect failure diagnostics
+        if: failure()
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/deployment-diagnostics"
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "runner=$RUNNER_NAME"
+            echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            systemctl --no-pager --full status wavelab-backend nginx redis || true
+            echo
+            journalctl --no-pager -u wavelab-backend -n 200 || true
+            echo
+            tail -n 200 /var/log/nginx/error.log || true
+          } > "$GITHUB_WORKSPACE/deployment-diagnostics/production-deploy.txt" 2>&1
+          echo "- Result: failed; sanitized service diagnostics attached" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-deploy-diagnostics-${{ github.run_id }}
+          path: deployment-diagnostics/
+          retention-days: 14
+          if-no-files-found: error

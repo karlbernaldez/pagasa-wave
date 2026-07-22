@@ -1,0 +1,28 @@
+[Unit]
+Description=WaveLab Backend API
+Documentation=https://github.com/karlbernaldez/pagasa-wave
+After=network-online.target redis.service
+Wants=network-online.target redis.service
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_ROOT__/backend
+EnvironmentFile=/etc/wavelab/backend.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+SyslogIdentifier=wavelab-backend
+
+# Basic hardening. Keep write access only where the app needs runtime files.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=__APP_ROOT__/backend/logs __APP_ROOT__/backend/frames __APP_ROOT__/backend/public __APP_ROOT__/backend/tmp
+
+[Install]
+WantedBy=multi-user.target

@@ -60,3 +60,5 @@ frontend/*.log
 # Local dev logs
 *.log
 frontend/*.log
+frontend/.env.production
+

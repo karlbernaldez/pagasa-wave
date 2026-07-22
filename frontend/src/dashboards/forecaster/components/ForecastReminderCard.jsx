@@ -180,74 +180,17 @@ export default function ForecastReminderCard({ packageData, settings, isDarkMode
   const Icon = ['critical', 'overdue'].includes(state.tone) ? AlertTriangle : state.tone === 'warning' ? Clock3 : BellRing;
 
   return (
-    <section className={`wavelab-reminder-card relative overflow-hidden rounded-[2rem] border p-5 shadow-2xl ${getToneClasses(state.tone, isDarkMode)}`}>
-      <style>{`
-        @keyframes wavelabReminderBellRing {
-          0%, 82%, 100% { transform: rotate(0deg); }
-          86% { transform: rotate(-13deg); }
-          90% { transform: rotate(11deg); }
-          94% { transform: rotate(-7deg); }
-          98% { transform: rotate(4deg); }
-        }
-
-        @keyframes wavelabReminderIconPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.42); }
-          55% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); }
-        }
-
-        @keyframes wavelabReminderCardPulse {
-          0%, 100% { transform: translateY(0); filter: brightness(1); }
-          50% { transform: translateY(-1px); filter: brightness(1.08); }
-        }
-
-        @keyframes wavelabReminderShimmer {
-          0% { transform: translateX(-110%); }
-          100% { transform: translateX(110%); }
-        }
-
-        .wavelab-reminder-card {
-          animation: wavelabReminderCardPulse 4.8s ease-in-out infinite;
-        }
-
-        .wavelab-reminder-icon {
-          animation: wavelabReminderIconPulse 2.8s ease-out infinite;
-        }
-
-        .wavelab-reminder-bell {
-          animation: wavelabReminderBellRing 3.6s ease-in-out infinite;
-          transform-origin: 50% 12%;
-        }
-
-        .wavelab-reminder-shimmer::after {
-          animation: wavelabReminderShimmer 2.8s ease-in-out infinite;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
-          content: '';
-          inset: 0;
-          position: absolute;
-          width: 45%;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .wavelab-reminder-card,
-          .wavelab-reminder-icon,
-          .wavelab-reminder-bell,
-          .wavelab-reminder-shimmer::after {
-            animation: none !important;
-          }
-        }
-      `}</style>
-      <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
-      <div className="wavelab-reminder-shimmer pointer-events-none absolute bottom-0 left-0 h-1.5 w-full overflow-hidden bg-gradient-to-r from-amber-300 via-orange-400 to-red-300" />
-      <div className="relative flex gap-4">
-        <span className={`wavelab-reminder-icon grid h-14 w-14 shrink-0 place-items-center rounded-2xl shadow-lg ${getIconClasses(state.tone, isDarkMode)}`}>
-          <Icon className="wavelab-reminder-bell" size={24} />
+    <section className={`relative overflow-hidden rounded-2xl border px-4 py-4 shadow-sm ${getToneClasses(state.tone, isDarkMode)}`}>
+      <div className="relative flex items-start gap-3">
+        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${getIconClasses(state.tone, isDarkMode)}`}>
+          <Icon size={19} />
         </span>
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <p className={`text-[11px] font-black uppercase tracking-[0.22em] ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{state.label}</p>
-            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${getBadgeClasses(state.tone, isDarkMode)}`}>{state.badge}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className={`text-[11px] font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{state.label}</p>
+            <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${getBadgeClasses(state.tone, isDarkMode)}`}>{state.badge}</span>
           </div>
-          <p className={`text-base font-black leading-7 ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{state.message}</p>
+          <p className={`mt-1 text-sm font-semibold leading-6 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{state.message}</p>
         </div>
       </div>
     </section>

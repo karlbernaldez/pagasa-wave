@@ -16,26 +16,20 @@ import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const NAV_ITEMS = [
-  { id: 'project-library', label: 'Project Library', path: '/studio', icon: FolderKanban },
+  { id: 'project-library', label: 'Forecast Package', path: '/studio', icon: FolderKanban },
   { id: 'models', label: 'Models', path: '/studio?section=models', icon: Box, disabled: true },
   { id: 'observations', label: 'Observations', path: '/studio?section=observations', icon: CloudSun, disabled: true },
   { id: 'nowcast', label: 'Nowcast', path: '/studio?section=nowcast', icon: RadioTower, disabled: true },
   { id: 'analytics', label: 'Analytics', path: '/studio?section=analytics', icon: BarChart3, disabled: true },
   { id: 'map-viewer', label: 'Map Viewer', path: '/studio?section=map-viewer', icon: Map, disabled: true },
   { id: 'report-builder', label: 'Report Builder', path: '/pdf', icon: Waves, disabled: true },
-  { id: 'account-settings', label: 'Account Settings', path: '/profile', icon: Settings },
 ];
+
+const ACCOUNT_ITEM = { id: 'account-settings', label: 'Account Settings', path: '/profile', icon: Settings };
 
 const HEADER_BY_PATH = {
   '/profile': {
-    eyebrow: 'Forecaster account',
-    title: 'Account Settings',
-    description: 'Review your profile, contact details, role, and account activity',
-  },
-  '/edit-profile': {
-    eyebrow: 'Forecaster account',
-    title: 'Edit Profile',
-    description: 'Update your personal details, contact information, and password',
+    hideContext: true,
   },
   '/pdf': {
     eyebrow: 'Forecaster studio',
@@ -45,9 +39,7 @@ const HEADER_BY_PATH = {
 };
 
 const DEFAULT_HEADER = {
-  eyebrow: 'Forecaster Studio',
-  title: 'WaveLab Operations',
-  description: 'Track, manage, and continue active marine forecast projects',
+  hideContext: true,
 };
 
 export default function ForecasterShell({ children, user: fallbackUser = null }) {
@@ -56,9 +48,7 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
   const userOptions = useMemo(() => ({ roleOverride: 'Forecaster' }), []);
   const { user } = useCurrentDashboardUser(fallbackUser, userOptions);
   const activeId = useMemo(() => {
-    if (location.pathname === '/edit-profile') return 'account-settings';
-
-    const activeItem = NAV_ITEMS.find((item) => {
+    const activeItem = [...NAV_ITEMS, ACCOUNT_ITEM].find((item) => {
       if (item.disabled || !item.path) return false;
 
       const [pathname] = item.path.split('?');
@@ -79,6 +69,7 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
   return (
     <DashboardShell
       activeId={activeId}
+      backgroundVariant="ocean"
       isDarkMode={isDarkMode}
       isMobileOpen={isMobileOpen}
       isSidebarCollapsed={isSidebarCollapsed}
@@ -88,7 +79,8 @@ export default function ForecasterShell({ children, user: fallbackUser = null })
       onThemeToggle={toggleDarkMode}
       sidebar={{
         items: NAV_ITEMS,
-        label: 'Forecaster Studio',
+        utilityItems: [ACCOUNT_ITEM],
+        label: 'Marine Forecasting',
       }}
       header={{
         ...headerContent,

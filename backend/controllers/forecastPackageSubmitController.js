@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 import asyncHandler from '../utils/asyncHandler.js';
 import { throwError } from '../utils/errorHelper.js';
 import Project from '../models/Project.js';
@@ -111,7 +113,7 @@ function canUserSubmitPackage(user, forecastPackage) {
   return hasPackageSubmitParticipation(user, forecastPackage);
 }
 
-async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) {
+async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, session) {
   const projectIds = getLinkedProjectIds(forecastPackage);
   if (!projectIds.length) return;
 
@@ -138,48 +140,59 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) 
             : 'Submitted as part of Forecast Package submission',
         },
       },
-    }
+    },
+    { session }
   );
 }
 
 export const submitForecastPackage = asyncHandler(async (req, res) => {
   assertAuthenticated(req);
 
-  const forecastPackage = await ForecastPackage.findById(req.params.id);
-  if (!forecastPackage) throwError('Forecast Package not found', 404);
+  const session = await mongoose.startSession();
+  let packageId = null;
 
-  if (!canUserSubmitPackage(req.user, forecastPackage)) {
-    throwError('Only the package owner or a participating forecaster can submit this package', 403);
+  try {
+    await session.withTransaction(async () => {
+      const forecastPackage = await ForecastPackage.findById(req.params.id, null, { session });
+      if (!forecastPackage) throwError('Forecast Package not found', 404);
+
+      if (!canUserSubmitPackage(req.user, forecastPackage)) {
+        throwError('Only the package owner or a participating forecaster can submit this package', 403);
+      }
+
+      if (!canSubmitPackage(forecastPackage.status)) {
+        throwError(`Package cannot be submitted while it is ${forecastPackage.status}`, 403);
+      }
+
+      const completion = getPackageCompletion(forecastPackage.chartCompletion || []);
+      if (!completion.isComplete) {
+        throwError('All required charts must be marked complete before submitting', 400);
+      }
+
+      const activeEditingChart = getActiveEditingChartLabel(forecastPackage);
+      if (activeEditingChart) {
+        throwError(`${activeEditingChart} still has active editors. Release the chart before submitting`, 409);
+      }
+
+      const previousStatus = forecastPackage.status;
+      forecastPackage.status = FORECAST_PACKAGE_STATUS.SUBMITTED;
+      forecastPackage.submittedAt = new Date();
+      forecastPackage.auditLogs.push({
+        action: 'submitted',
+        performedBy: req.user.id,
+        previousStatus,
+        newStatus: FORECAST_PACKAGE_STATUS.SUBMITTED,
+        comment: 'Forecast Package submitted for admin review',
+      });
+
+      await forecastPackage.save({ session });
+      await lockLinkedChartProjects(forecastPackage, req.user.id, previousStatus, session);
+      packageId = forecastPackage._id;
+    });
+  } finally {
+    await session.endSession();
   }
 
-  if (!canSubmitPackage(forecastPackage.status)) {
-    throwError(`Package cannot be submitted while it is ${forecastPackage.status}`, 403);
-  }
-
-  const completion = getPackageCompletion(forecastPackage.chartCompletion || []);
-  if (!completion.isComplete) {
-    throwError('All required charts must be marked complete before submitting', 400);
-  }
-
-  const activeEditingChart = getActiveEditingChartLabel(forecastPackage);
-  if (activeEditingChart) {
-    throwError(`${activeEditingChart} still has active editors. Release the chart before submitting`, 409);
-  }
-
-  const previousStatus = forecastPackage.status;
-  forecastPackage.status = FORECAST_PACKAGE_STATUS.SUBMITTED;
-  forecastPackage.submittedAt = new Date();
-  forecastPackage.auditLogs.push({
-    action: 'submitted',
-    performedBy: req.user.id,
-    previousStatus,
-    newStatus: FORECAST_PACKAGE_STATUS.SUBMITTED,
-    comment: 'Forecast Package submitted for admin review',
-  });
-
-  await forecastPackage.save();
-  await lockLinkedChartProjects(forecastPackage, req.user.id, previousStatus);
-
-  const populated = await populateForecastPackageById(forecastPackage._id);
+  const populated = await populateForecastPackageById(packageId);
   res.json(serializePackage(populated));
 });

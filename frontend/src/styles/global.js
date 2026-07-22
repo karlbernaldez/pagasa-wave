@@ -48,6 +48,83 @@ export const GlobalStyle = createGlobalStyle`
   a {
     text-decoration: none;
   }
+
+  .wavelab-home {
+    transition: background-color 360ms cubic-bezier(0.4, 0, 0.2, 1), color 360ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .wavelab-home > header.sticky,
+  .wavelab-home .home-liquid,
+  .wavelab-home .home-liquid::before,
+  .wavelab-home .home-liquid-row,
+  .wavelab-home .hero-ph-map::before,
+  .wavelab-home .ph-map-shape,
+  .wavelab-home .secondary-action,
+  .wavelab-home .section-heading,
+  .wavelab-home .muted-copy {
+    transition-property: background-color, border-color, color, box-shadow, opacity, filter, -webkit-backdrop-filter, backdrop-filter;
+    transition-duration: 360ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .wavelab-home .hero-bg-layer {
+    transition: opacity 420ms cubic-bezier(0.4, 0, 0.2, 1), filter 420ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity;
+  }
+
+  .wavelab-home .hero-bottom-fade {
+    background: transparent !important;
+    overflow: hidden;
+  }
+
+  .wavelab-home .hero-bottom-fade::before,
+  .wavelab-home .hero-bottom-fade::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    transition: opacity 420ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity;
+  }
+
+  .wavelab-home .hero-bottom-fade::before {
+    background: linear-gradient(180deg, rgba(248,250,252,0), rgba(248,250,252,0.92) 78%, rgba(248,250,252,1));
+    opacity: 1;
+  }
+
+  .wavelab-home .hero-bottom-fade::after {
+    background: linear-gradient(180deg, rgba(2,6,23,0), rgba(2,6,23,0.86) 78%, rgba(2,6,23,1));
+    opacity: 0;
+  }
+
+  .wavelab-home.bg-slate-950 .hero-bottom-fade::before {
+    opacity: 0;
+  }
+
+  .wavelab-home.bg-slate-950 .hero-bottom-fade::after {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wavelab-home,
+    .wavelab-home > header.sticky,
+    .wavelab-home .home-liquid,
+    .wavelab-home .home-liquid::before,
+    .wavelab-home .home-liquid-row,
+    .wavelab-home .hero-bg-layer,
+    .wavelab-home .hero-bottom-fade::before,
+    .wavelab-home .hero-bottom-fade::after,
+    .wavelab-home .hero-ph-map::before,
+    .wavelab-home .ph-map-shape,
+    .wavelab-home .secondary-action,
+    .wavelab-home .section-heading,
+    .wavelab-home .muted-copy {
+      transition-duration: 1ms !important;
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
 `;
 
 export const AppContainer = styled.div`

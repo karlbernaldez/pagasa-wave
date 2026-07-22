@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 import asyncHandler from '../utils/asyncHandler.js';
 import { throwError } from '../utils/errorHelper.js';
 import Project from '../models/Project.js';
@@ -24,6 +26,12 @@ function canViewPublishedForecast(project, user) {
   if (!project || !user) return false;
   if (user.role === 'admin') return true;
   return getProjectOwnerId(project) === String(user.id);
+}
+
+function assertValidProjectId(projectId) {
+  if (!mongoose.isValidObjectId(projectId)) {
+    throwError('Invalid published chart ID', 400);
+  }
 }
 
 function getStableFeatureId(feature) {
@@ -83,8 +91,22 @@ function getPublicProjectPayload(project) {
     description: project.description,
     chartType: project.chartType,
     forecastDate: project.forecastDate,
+    status: PROJECT_STATUS.PUBLISHED,
+    publishedAt: project.publishedAt,
+    updatedAt: project.updatedAt,
+  };
+}
+
+function getPublishedProjectPayload(project) {
+  return {
+    _id: project._id,
+    name: project.name,
+    description: project.description,
+    chartType: project.chartType,
+    forecastDate: project.forecastDate,
     status: project.status,
     publishedAt: project.publishedAt,
+    updatedAt: project.updatedAt,
     owner: project.owner,
     approvedBy: project.approvedBy,
     auditLogs: project.auditLogs,
@@ -161,13 +183,22 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
   const forecastDate = formatForecastDateToken(project?.forecastDate);
   const packageDate = asset.packageDate || formatPackageDateToken(project?.forecastDate);
   const chartDefaults = getChartRunDefaults(project?.chartType);
-  const runHour = getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', chartDefaults.hour);
-  const runDayOffset = getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', chartDefaults.days);
-  const runDate = asset.runDate || shiftDateToken(forecastDate, runDayOffset);
-  const runHourToken = padDatePart(runHour);
-  const runDateTime = asset.runDateTime || `${runDate}${runHourToken}`;
   const rasterTheme = normalizeRasterTheme(asset.theme || theme);
   const model = asset.model || process.env.PUBLIC_WAVE_COG_MODEL || 'WW3';
+  const isWw3Raster = String(model).trim().toUpperCase() === 'WW3';
+  const runHour = isWw3Raster
+    ? chartDefaults.hour
+    : getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', chartDefaults.hour);
+  const runDayOffset = isWw3Raster
+    ? chartDefaults.days
+    : getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', chartDefaults.days);
+  const runDate = isWw3Raster
+    ? shiftDateToken(forecastDate, runDayOffset)
+    : asset.runDate || shiftDateToken(forecastDate, runDayOffset);
+  const runHourToken = padDatePart(runHour);
+  const runDateTime = isWw3Raster
+    ? `${runDate}${runHourToken}`
+    : asset.runDateTime || `${runDate}${runHourToken}`;
   const tokenValues = {
     projectId: String(project?._id || ''),
     chartType: project?.chartType || '',
@@ -182,11 +213,11 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
     cycle: runHourToken,
   };
 
-  const defaultLocalTileTemplate = process.env.NODE_ENV === 'production'
-    ? ''
+  const defaultTileTemplate = process.env.NODE_ENV === 'production'
+    ? '/wavetiles/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png'
     : 'http://127.0.0.1:8081/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png';
   const cogUrl = asset.cogUrl || asset.url || interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
-  const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultLocalTileTemplate, tokenValues);
+  const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultTileTemplate, tokenValues);
   const cogTileTemplate = process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
   const tileUrl = directTileUrl || (cogUrl && cogTileTemplate
     ? interpolateTemplate(cogTileTemplate, { ...tokenValues, cogUrl, url: cogUrl })
@@ -212,12 +243,12 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
   };
 }
 
-async function buildPublishedForecastPayload(project, { canArchive = false, theme = 'light' } = {}) {
+async function buildPublishedForecastPayload(project, { canArchive = false, theme = 'light', publicSafe = false } = {}) {
   const versionFeatureCollection = getPublishedFeatureCollectionFromVersions(project);
   const featureCollection = versionFeatureCollection || await getCurrentFeatureCollection(project._id);
 
   return {
-    project: getPublicProjectPayload(project),
+    project: publicSafe ? getPublicProjectPayload(project) : getPublishedProjectPayload(project),
     featureCollection,
     raster: resolveCogRaster(project, { theme }),
     canArchive,
@@ -234,10 +265,12 @@ function populatePublishedProject(query) {
 }
 
 async function findPublicPublishedProject(projectId) {
-  const project = await populatePublishedProject(Project.findOne({
+  assertValidProjectId(projectId);
+
+  const project = await Project.findOne({
     _id: projectId,
     status: PROJECT_STATUS.PUBLISHED,
-  }));
+  }).select('name description chartType forecastDate status publishedAt updatedAt publishedRaster raster versions');
 
   if (!project) {
     throwError('Published chart not found. Archived charts require an access request.', 404);
@@ -247,6 +280,8 @@ async function findPublicPublishedProject(projectId) {
 }
 
 async function findPublishedProject(projectId) {
+  assertValidProjectId(projectId);
+
   const project = await populatePublishedProject(Project.findOne({
     _id: projectId,
     status: { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] },
@@ -299,9 +334,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
 
   const [projects, total] = await Promise.all([
     Project.find(query)
-      .select('name description chartType forecastDate status publishedAt owner approvedBy reviewComment publishedRaster')
-      .populate('owner', 'firstName lastName username')
-      .populate('approvedBy', 'firstName lastName username')
+      .select('name description chartType forecastDate status publishedAt updatedAt publishedRaster raster versions')
       .sort({ forecastDate: -1, publishedAt: -1, updatedAt: -1, _id: -1 })
       .skip(skip)
       .limit(limit)
@@ -310,7 +343,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
   ]);
 
   res.json({
-    projects: projects.map((project) => ({ ...project, raster: resolveCogRaster(project, { theme }) })),
+    projects: projects.map((project) => ({ ...getPublicProjectPayload(project), raster: resolveCogRaster(project, { theme }) })),
     total,
     page,
     limit,
@@ -322,8 +355,7 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
 
 export const getPublicPublishedForecastOutput = asyncHandler(async (req, res) => {
   const project = await findPublicPublishedProject(req.params.id);
-  const canArchive = req.user?.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED;
-  res.json(await buildPublishedForecastPayload(project, { canArchive, theme: normalizeRasterTheme(req.query.theme) }));
+  res.json(await buildPublishedForecastPayload(project, { publicSafe: true, theme: normalizeRasterTheme(req.query.theme) }));
 });
 
 export const getPublishedForecastOutput = asyncHandler(async (req, res) => {

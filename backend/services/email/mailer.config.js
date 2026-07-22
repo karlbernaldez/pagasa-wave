@@ -7,13 +7,17 @@ export const {
   EMAIL_PASS,
   EMAIL_FROM,
   APP_NAME      = 'WaveLab',
-  APP_URL       = 'https://wavelab.adovelopers.com',
+  APP_URL,
   SUPPORT_EMAIL = 'support@adovelopers.com',
   NODE_ENV,
 } = process.env;
 
 if (NODE_ENV === 'production' && (!EMAIL_USER || !EMAIL_PASS)) {
   throw new Error('[Mailer] EMAIL_USER and EMAIL_PASS must be set in production.');
+}
+
+if (NODE_ENV === 'production' && !APP_URL) {
+  throw new Error('[Mailer] APP_URL must be set in production.');
 }
 
 // If credentials are missing (e.g. local dev without .env), mark the mailer as

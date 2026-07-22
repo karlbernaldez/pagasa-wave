@@ -1,0 +1,24 @@
+{
+  "name": "wavelab-repository-quality",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Repository-wide quality tooling for WaveLab.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "quality": "npm run quality:repository && npm run lint:changed && npm run format:changed",
+    "quality:repository": "node .github/scripts/repository-quality.mjs",
+    "lint:changed": "node .github/scripts/run-changed.mjs eslint",
+    "format:changed": "node .github/scripts/run-changed.mjs prettier"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.7.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.3",
+    "globals": "17.7.0",
+    "prettier": "3.9.5"
+  }
+}
