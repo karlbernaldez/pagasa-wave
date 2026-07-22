@@ -1,8 +1,10 @@
 # WaveLab system architecture baseline
 
-**Status:** Draft current-state assessment  
-**Source:** Repository documentation and configuration  
-**Architecture approval:** Pending
+**Status:** In review — current-state candidate baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**Source:** Repository code, manifests, workflows, runbooks, and documentation
+**Architecture approval:** Requested for continued R&D development; not operational authorization
 
 ## Context
 
@@ -10,18 +12,19 @@ WaveLab supports internal forecast preparation and review and exposes authorized
 
 ## Current logical components
 
-| Component | Responsibility | Principal technologies |
-|---|---|---|
-| Web client | Public pages, Forecaster Studio, review/admin interfaces, exports | React, Vite, Mapbox GL, Konva |
-| API service | Authentication, workflow, projects/packages, publication, notifications, administration | Node.js, Express |
-| Real-time service | User and workflow events | Socket.IO, Redis adapter |
-| Primary database | Users, projects/packages, annotations, review state and application records | MongoDB/Mongoose |
-| Cache/message dependency | Real-time coordination and related runtime needs | Redis |
-| Wave processing/tile utilities | Prepare and render wave/model data for presentation | Python and repository utilities |
-| Edge/web server | TLS termination when configured, static frontend, API and Socket.IO proxy | Nginx |
-| Service manager | Runs and restarts backend | systemd |
-| Delivery pipeline | Tests, builds, deploys, verifies, and rolls back | GitHub Actions, self-hosted runner, scripts |
-| External services | Maps, email, alerts, data/model sources | Provider-specific integrations |
+| Component                      | Responsibility                                                                          | Principal technologies                                                                 |
+| ------------------------------ | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Web client                     | Public pages, Forecaster Studio, review/admin interfaces, exports                       | React, Vite, Mapbox GL, Konva                                                          |
+| API service                    | Authentication, workflow, projects/packages, publication, notifications, administration | Node.js, Express                                                                       |
+| Real-time service              | User and workflow events                                                                | Socket.IO, Redis adapter                                                               |
+| Primary database               | Users, projects/packages, annotations, review state and application records             | MongoDB/Mongoose                                                                       |
+| Cache/message dependency       | Real-time coordination and related runtime needs                                        | Redis                                                                                  |
+| Wave processing/tile utilities | Prepare and render wave/model data for presentation                                     | Python and repository utilities                                                        |
+| Edge/web server                | TLS termination when configured, static frontend, API and Socket.IO proxy               | Nginx                                                                                  |
+| Service manager                | Runs and restarts backend                                                               | systemd                                                                                |
+| Delivery pipeline              | Tests, builds, deploys, verifies, and rolls back                                        | GitHub Actions, self-hosted runner, scripts                                            |
+| External services              | Maps, email, alerts, data/model sources                                                 | Provider-specific integrations                                                         |
+| Experimental chatbot/RAG       | Optional research-only chat, retrieval, and model/provider integration                  | Proposed disabled-by-default boundary in PR #185; excluded from core operational scope |
 
 ## Current deployment view
 
@@ -81,18 +84,18 @@ Each boundary requires documented authentication, authorization, encryption, all
 
 ## Architectural risks and required decisions
 
-| Decision/risk | Current observation | Required action |
-|---|---|---|
-| Artifact integrity | Deployment rebuilds/installs on the target server | Adopt an immutable, checksummed release artifact after staging validation. |
-| API contract | No OpenAPI contract found | Document and test versioned API and Socket.IO contracts. |
-| Forecast provenance | Requirements are not fully baselined | Persist and expose model cycle, valid time, units, source, processing version, and freshness. |
-| Audit integrity | Workflow history exists but full privileged audit coverage is unverified | Define immutable audit events, retention, access, and review. |
-| Role boundaries | Forecaster and Admin roles exist | Define granular reviewer, publisher, user-admin, auditor, and operator privileges. |
-| External dependencies | Map, mail, alerts, and data sources are present | Record owner, license, privacy, outage behavior, limits, and fallback for each. |
-| Availability | Single-host characteristics may exist | Approve target availability and evaluate redundancy only against real needs. |
-| Configuration | Environment files and public build variables are used | Establish versioned configuration inventory, validation, ownership, and rotation. |
-| Dependency consistency | Frontend repository contains pnpm and npm lockfile evidence | Select and enforce one authoritative package-manager policy per application. |
-| Licensing | Root README states MIT while backend package metadata states ISC | Resolve authoritative project and component licensing before transfer/release. |
+| Decision/risk          | Current observation                                                      | Required action                                                                               |
+| ---------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Artifact integrity     | Deployment rebuilds/installs on the target server                        | Adopt an immutable, checksummed release artifact after staging validation.                    |
+| API contract           | No OpenAPI contract found                                                | Document and test versioned API and Socket.IO contracts.                                      |
+| Forecast provenance    | Requirements are not fully baselined                                     | Persist and expose model cycle, valid time, units, source, processing version, and freshness. |
+| Audit integrity        | Workflow history exists but full privileged audit coverage is unverified | Define immutable audit events, retention, access, and review.                                 |
+| Role boundaries        | Forecaster and Admin roles exist                                         | Define granular reviewer, publisher, user-admin, auditor, and operator privileges.            |
+| External dependencies  | Map, mail, alerts, and data sources are present                          | Record owner, license, privacy, outage behavior, limits, and fallback for each.               |
+| Availability           | Single-host characteristics may exist                                    | Approve target availability and evaluate redundancy only against real needs.                  |
+| Configuration          | Environment files and public build variables are used                    | Establish versioned configuration inventory, validation, ownership, and rotation.             |
+| Dependency consistency | Frontend repository contains pnpm and npm lockfile evidence              | Select and enforce one authoritative package-manager policy per application.                  |
+| Licensing              | Root README states MIT while backend package metadata states ISC         | Resolve authoritative project and component licensing before transfer/release.                |
 
 ## Target architecture principles
 
@@ -107,9 +110,13 @@ Each boundary requires documented authentication, authorization, encryption, all
 - Monitor user-visible service, critical dependencies, forecast freshness, and publication integrity.
 - Maintain a tested manual fallback independent of WaveLab.
 
-## ADR requirements
+## Recorded architecture decisions
 
-Create an ADR for decisions affecting architecture, data schema/migration, authentication, authorization, forecast/time calculation, publication, external services, deployment, backup/recovery, logging/audit, or operational support. Use the repository ADR template.
+- [ADR-0001](adr/0001-incremental-operationalization.md): evolve the existing prototype incrementally rather than rewrite it without evidence.
+- [ADR-0002](adr/0002-solo-maintainer-controls.md): apply honest interim PR/CI/self-review controls during the one-maintainer R&D phase.
+- [ADR-0003](adr/0003-experimental-chatbot-boundary.md): keep chatbot/RAG outside the core boundary and disabled by default.
+
+Additional ADRs are required for significant data schema/migration, authentication/session, authorization, forecast/time calculation, publication, audit, external service, immutable artifact, backup/recovery, or operational-support decisions.
 
 ## Required follow-up diagrams
 

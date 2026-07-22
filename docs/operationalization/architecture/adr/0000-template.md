@@ -1,10 +1,11 @@
-# ADR-NNNN: Decision title
+# ADR authoring aid — not a controlled project decision
 
-**Status:** Proposed  
-**Date:** YYYY-MM-DD  
-**Decision owners:** TBD  
-**Related requirements/issues:** TBD  
-**Security/privacy review:** Required / Not required  
+**Document use:** Authoring aid only; reviewers should use ADR-0001 and later numbered records as decision evidence
+**Status:** Not applicable until copied into a numbered ADR
+**Date:** YYYY-MM-DD
+**Decision owners:** TBD
+**Related requirements/issues:** TBD
+**Security/privacy review:** Required / Not required
 **Forecast-domain review:** Required / Not required
 
 ## Context
@@ -55,9 +56,9 @@ State the conditions that should trigger a new decision.
 
 ## Approval
 
-| Role | Name | Decision | Date |
-|---|---|---|---|
-| Technical authority | TBD | Pending | TBD |
-| Operational forecasting authority, if required | TBD | Pending | TBD |
-| Security/privacy authority, if required | TBD | Pending | TBD |
-| Service owner, if required | TBD | Pending | TBD |
+| Role                                           | Name | Decision | Date |
+| ---------------------------------------------- | ---- | -------- | ---- |
+| Technical authority                            | TBD  | Pending  | TBD  |
+| Operational forecasting authority, if required | TBD  | Pending  | TBD  |
+| Security/privacy authority, if required        | TBD  | Pending  | TBD  |
+| Service owner, if required                     | TBD  | Pending  | TBD  |

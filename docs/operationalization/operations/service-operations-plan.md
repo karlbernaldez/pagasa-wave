@@ -1,8 +1,10 @@
 # WaveLab service operations plan
 
-**Status:** Draft  
-**Service owner:** TBD  
-**Support model:** TBD
+**Status:** In review — proposed service-control baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**Service owner:** Organizational appointment required before pilot
+**Proposed support model:** Named support roster for supervised pilot, with the existing authoritative/manual workflow retained as fallback
 
 ## Service definition
 
@@ -10,17 +12,17 @@ WaveLab provides approved users with forecast chart preparation, review, publica
 
 ## Service targets to approve
 
-| Target | Proposed value |
-|---|---|
-| Service hours and critical forecast windows | TBD |
-| Availability and measurement method | TBD |
-| Save/review/publish/public-view performance | TBD |
-| Incident acknowledgement and restoration targets | TBD |
-| Recovery time objective (RTO) | TBD |
-| Recovery point objective (RPO) | TBD |
-| Audit, application, forecast, and backup retention | TBD |
-| Planned maintenance window and notice | TBD |
-| Capacity and growth forecast | TBD |
+| Target                                             | Proposed value                                                                                                |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Service hours and critical forecast windows        | Decision required under DEC-016 before pilot.                                                                 |
+| Availability and measurement method                | Decision required under DEC-016 before pilot.                                                                 |
+| Save/review/publish/public-view performance        | Define representative percentile targets and workload under DEC-016.                                          |
+| Incident acknowledgement and restoration targets   | Align severity, staffing, fallback, and escalation under DEC-016.                                             |
+| Recovery time objective (RTO)                      | Approve under DEC-015/016, then demonstrate by restore and fallback exercise.                                 |
+| Recovery point objective (RPO)                     | Approve under DEC-015/016, then design backup frequency/retention to meet it.                                 |
+| Audit, application, forecast, and backup retention | Decide from operational, records, privacy, incident, and recovery needs.                                      |
+| Planned maintenance window and notice              | Decide from forecast schedule, fallback, dependency, and staffing constraints.                                |
+| Capacity and growth forecast                       | Define representative users, cycles, charts, annotations, exports, data volume, and retention before testing. |
 
 Targets must reflect real operational needs, staffing, infrastructure, cost, and fallback capability.
 
@@ -36,26 +38,26 @@ Targets must reflect real operational needs, staffing, infrastructure, cost, and
 
 ## Monitoring baseline
 
-| Area | Required signals |
-|---|---|
-| User experience | Public and authenticated route success, critical workflow synthetic checks where safe, latency and error rate |
-| Application | API errors, process health/restarts, queue/job failures, Socket.IO/Redis state, export/render failures |
+| Area               | Required signals                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| User experience    | Public and authenticated route success, critical workflow synthetic checks where safe, latency and error rate            |
+| Application        | API errors, process health/restarts, queue/job failures, Socket.IO/Redis state, export/render failures                   |
 | Forecast integrity | Input arrival, model cycle, valid-time mapping, freshness/age, missing/partial processing, latest authorized publication |
-| Data | MongoDB health, connection saturation, storage, replication if used, backup age, restore-test status |
-| Infrastructure | CPU, memory, disk/inodes, network, Nginx, systemd, Redis, certificate and domain expiry |
-| Security | Authentication abuse, privileged changes, role changes, denied operations, secret/dependency findings |
-| Delivery | CI status, deployed commit/artifact, deployment/rollback outcome, configuration version |
+| Data               | MongoDB health, connection saturation, storage, replication if used, backup age, restore-test status                     |
+| Infrastructure     | CPU, memory, disk/inodes, network, Nginx, systemd, Redis, certificate and domain expiry                                  |
+| Security           | Authentication abuse, privileged changes, role changes, denied operations, secret/dependency findings                    |
+| Delivery           | CI status, deployed commit/artifact, deployment/rollback outcome, configuration version                                  |
 
 Every alert requires a severity, threshold, owner, acknowledgement target, escalation path, runbook, and test schedule. Discord or email alone must not be the sole durable incident record.
 
 ## Incident severity baseline
 
-| Severity | Definition | Examples |
-|---|---|---|
-| SEV-1 | Official-product integrity, security, data loss, or complete critical service failure | Incorrect/unauthorized product, compromise, unrecoverable data, service unavailable during critical window without fallback |
-| SEV-2 | Major degradation with significant operational impact | Submit/review/publish unavailable; delayed/stale data with safe fallback |
-| SEV-3 | Limited impact with workaround | Noncritical feature unavailable or isolated user issue |
-| SEV-4 | Minor request or defect | Cosmetic, documentation, low-impact improvement |
+| Severity | Definition                                                                            | Examples                                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| SEV-1    | Official-product integrity, security, data loss, or complete critical service failure | Incorrect/unauthorized product, compromise, unrecoverable data, service unavailable during critical window without fallback |
+| SEV-2    | Major degradation with significant operational impact                                 | Submit/review/publish unavailable; delayed/stale data with safe fallback                                                    |
+| SEV-3    | Limited impact with workaround                                                        | Noncritical feature unavailable or isolated user issue                                                                      |
+| SEV-4    | Minor request or defect                                                               | Cosmetic, documentation, low-impact improvement                                                                             |
 
 Notification and restoration times remain TBD.
 
@@ -99,15 +101,15 @@ Exercise the fallback before pilot and at an approved recurring interval.
 
 ## Routine schedule
 
-| Frequency | Activity |
-|---|---|
-| Per forecast cycle | Confirm input freshness, critical service health, and current authorized publication |
-| Daily | Review critical alerts, backup status, disk/capacity, failed jobs, and unresolved incidents |
-| Weekly | Review error trends, dependency/provider health, support backlog, and pending changes |
-| Monthly | Test selected alerts/runbooks, review storage/log retention, patch status, and access changes |
-| Quarterly | Privileged access review, restore exercise, capacity review, dependency/license review |
-| At least annually | Full continuity/DR exercise, security assessment, architecture and operational-readiness review |
-| After major change/incident | Targeted recovery, fallback, validation, and documentation review |
+| Frequency                   | Activity                                                                                        |
+| --------------------------- | ----------------------------------------------------------------------------------------------- |
+| Per forecast cycle          | Confirm input freshness, critical service health, and current authorized publication            |
+| Daily                       | Review critical alerts, backup status, disk/capacity, failed jobs, and unresolved incidents     |
+| Weekly                      | Review error trends, dependency/provider health, support backlog, and pending changes           |
+| Monthly                     | Test selected alerts/runbooks, review storage/log retention, patch status, and access changes   |
+| Quarterly                   | Privileged access review, restore exercise, capacity review, dependency/license review          |
+| At least annually           | Full continuity/DR exercise, security assessment, architecture and operational-readiness review |
+| After major change/incident | Targeted recovery, fallback, validation, and documentation review                               |
 
 ## Handover requirements
 

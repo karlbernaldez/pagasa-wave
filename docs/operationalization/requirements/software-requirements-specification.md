@@ -1,9 +1,10 @@
 # WaveLab Software Requirements Specification
 
-**Status:** Draft initial baseline  
-**Version:** 0.1  
-**Source:** Existing repository behavior, README, user manual, workflows, and operationalization assessment  
-**Approval:** Pending stakeholder review
+**Status:** In review — candidate development baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**Source:** Existing repository behavior, README, user manual, workflows, tests, and operationalization assessment
+**Approval requested:** Approve, approve with conditions, revise, or reject for controlled development; this is not operational authorization
 
 ## 1. Purpose and system context
 
@@ -24,6 +25,10 @@ Combining roles is permitted only when approved policy preserves required separa
 ## 3. Assumptions and dependencies
 
 The service depends on approved model and observational data, Mapbox or configured map services, MongoDB, Redis, email/notification services, the hosting platform, network connectivity, and supported browsers. Each external dependency requires an owner, approved use, failure behavior, and continuity assessment.
+
+## 3.1 Scope classification
+
+Core requirements cover forecast data/provenance, chart preparation, review, approval, publishing, export, public display, identity/access, audit, deployment, recovery, and service operations. Chatbot/RAG is experimental, excluded from this SRS operational scope, and governed separately by ADR-0003. A future chatbot requirement needs a product decision, security/privacy/provider assessment, and separate acceptance criteria.
 
 ## 4. Functional requirements
 
@@ -94,7 +99,7 @@ The service depends on approved model and observational data, Mapbox or configur
 
 ## 5. Nonfunctional requirements
 
-Numeric targets remain TBD until approved by the accountable owners.
+Numeric targets are open organizational decisions under DEC-016. The requirements below are reviewable now; measurable values and methods must be approved before pilot entry and recorded in the traceability matrix.
 
 - **NFR-AVL-001:** Approved availability target, maintenance windows, and measurement method shall be defined.
 - **NFR-REC-001:** Recovery time objective and recovery point objective shall be approved and demonstrated.

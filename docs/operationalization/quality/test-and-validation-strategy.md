@@ -1,8 +1,10 @@
 # WaveLab test and validation strategy
 
-**Status:** Draft  
-**QA lead:** TBD  
-**Operational forecasting validation lead:** TBD
+**Status:** In review — candidate validation baseline
+**Version:** 0.2
+**Review date:** 2026-07-21
+**QA lead:** Appointment required before pilot
+**Operational forecasting validation lead:** Appointment required before pilot
 
 ## Purpose
 
@@ -15,21 +17,27 @@ Provide reproducible evidence that WaveLab:
 
 Software verification does not substitute for meteorological validation.
 
+## Current evidence and gaps
+
+Current CI runs backend tests, workflow-focused backend tests, frontend tests, a production frontend build, and incremental changed-file quality checks. Recent operationalization and containment PRs passed these mechanical gates. This is useful development evidence but does not demonstrate complete API/E2E/security/performance/recovery/accessibility coverage.
+
+No signed forecaster UAT, approved meteorological comparison report, representative performance report, isolated restore drill, or supervised-pilot report is evidenced in the repository baseline. These remain explicit release blockers rather than blank test placeholders.
+
 ## Test levels
 
-| Level | Scope | Typical evidence |
-|---|---|---|
-| Static quality | Formatting, linting, type/schema checks, dependency and secret scanning | CI reports |
-| Unit | Pure rules, valid-time mapping, transformations, validation, authorization helpers | Automated results |
-| Component | Frontend behavior, map/view models, review controls, forms | Automated results and snapshots where useful |
-| API/integration | Routes, database state, Redis/Socket.IO, authorization, workflow concurrency | Automated results with isolated test data |
-| End-to-end | User-critical browser workflows | Automated and manual reports |
-| Security | Access control, session, input, abuse, dependency, configuration, infrastructure | Assessment and remediation evidence |
-| Performance | Load, latency, memory, export/rendering, package size, concurrent use | Test report against approved targets |
-| Recovery | Backup/restore, rollback, dependency outage, restart, data integrity | Drill record |
-| UAT | Forecaster, reviewer, publisher, administrator, and operator tasks | Signed scenario results |
-| Meteorological validation | Source/cycle/time/units, rendering, comparison with approved reference products | Signed domain-validation report |
-| Pilot | Supervised parallel operation and service behavior | Pilot report and metrics |
+| Level                     | Scope                                                                              | Typical evidence                             |
+| ------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------- |
+| Static quality            | Formatting, linting, type/schema checks, dependency and secret scanning            | CI reports                                   |
+| Unit                      | Pure rules, valid-time mapping, transformations, validation, authorization helpers | Automated results                            |
+| Component                 | Frontend behavior, map/view models, review controls, forms                         | Automated results and snapshots where useful |
+| API/integration           | Routes, database state, Redis/Socket.IO, authorization, workflow concurrency       | Automated results with isolated test data    |
+| End-to-end                | User-critical browser workflows                                                    | Automated and manual reports                 |
+| Security                  | Access control, session, input, abuse, dependency, configuration, infrastructure   | Assessment and remediation evidence          |
+| Performance               | Load, latency, memory, export/rendering, package size, concurrent use              | Test report against approved targets         |
+| Recovery                  | Backup/restore, rollback, dependency outage, restart, data integrity               | Drill record                                 |
+| UAT                       | Forecaster, reviewer, publisher, administrator, and operator tasks                 | Signed scenario results                      |
+| Meteorological validation | Source/cycle/time/units, rendering, comparison with approved reference products    | Signed domain-validation report              |
+| Pilot                     | Supervised parallel operation and service behavior                                 | Pilot report and metrics                     |
 
 ## Critical automated scenarios
 
@@ -109,9 +117,9 @@ At minimum:
 
 ## Defect severity
 
-| Severity | Example |
-|---|---|
+| Severity | Example                                                                                                                    |
+| -------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Critical | Wrong or unauthorized published product, incorrect valid time, data loss, security compromise, or no operational fallback. |
-| High | Critical workflow unavailable or materially incorrect with a limited workaround. |
-| Medium | Noncritical function impaired with a safe workaround. |
-| Low | Cosmetic, documentation, or minor usability problem without material operational impact. |
+| High     | Critical workflow unavailable or materially incorrect with a limited workaround.                                           |
+| Medium   | Noncritical function impaired with a safe workaround.                                                                      |
+| Low      | Cosmetic, documentation, or minor usability problem without material operational impact.                                   |
