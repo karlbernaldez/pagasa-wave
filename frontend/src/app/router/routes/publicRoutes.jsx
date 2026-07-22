@@ -6,8 +6,8 @@ import PublicLayout from '@/app/layout/PublicLayout';
 import AuthLayout from '@/app/layout/AuthLayout';
 
 const Home = lazy(() => import('@/dashboards/public/pages/Home'));
-const Login = lazy(() => import('@/pages/Login'));
-const Register = lazy(() => import('@/pages/Register'));
+const Login = lazy(() => import('@/features/auth/login/LoginPage'));
+const Register = lazy(() => import('@/features/auth/register/RegisterPage'));
 const VerifyEmail = lazy(() => import('@/pages/VerifyEmail'));
 const Charts = lazy(() => import('@/dashboards/public/pages/Charts'));
 const AboutUs = lazy(() => import('@/dashboards/public/pages/AboutUs'));

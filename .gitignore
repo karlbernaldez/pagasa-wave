@@ -4,10 +4,10 @@ backend/public/himawari.mp4
 backend/public/himawari.gif
 backend/logs/
 backend/tmp/
+backend/temp/
 
 frontend/Dockerfile
 scripts/era5_ph_wind_wave.geojson
-scripts/__pycache__
 scripts/era5_ph_wind_wave.grib
 scripts/era5_ph_wind_wave.grib.5b7b6.idx
 scripts/grib_files/
@@ -41,7 +41,6 @@ scripts/wind_solarstorm.tif
 
 scripts/.env
 
-
 wavetiles/cog
 wavetiles/wavelab
 wavetiles/scripts/geojson_output/
@@ -52,13 +51,20 @@ wavetiles/utils/shp
 wavetiles/render
 wavetiles/venv
 wavetiles/wave3data
-wavetiles/__pycache__
-# Local dev logs
-*.log
-frontend/*.log
+
+# Wind processing runtime and generated output
+wind_scripts/venv/
+wind_scripts/AIFS-SINGLE/
+wind_scripts/TIFF/
+wind_scripts/COLORIZED/
+wind_scripts/GEOJSON/
+
+# Python cache artifacts
+__pycache__/
+*.pyc
+*.pyo
 
 # Local dev logs
 *.log
 frontend/*.log
 frontend/.env.production
-
