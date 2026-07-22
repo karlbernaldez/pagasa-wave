@@ -123,6 +123,7 @@ JWT_SECRET=...
 JWT_REFRESH_SECRET=...
 ADMIN_KEY=...
 CORS_ALLOWED_ORIGINS=http://SERVER_IP
+WAVELAB_CHAT_ENABLED=false
 ```
 
 Do not put `JWT_SECRET` or `JWT_REFRESH_SECRET` in frontend env files.
@@ -143,9 +144,12 @@ Expected values for IP-only deployment:
 ```text
 VITE_API_URL=http://SERVER_IP
 VITE_MAPBOX_ACCESS_TOKEN=...
+VITE_WAVELAB_CHAT_ENABLED=false
 ```
 
 Only public browser-safe values should be placed here.
+
+The chatbot/RAG capability is experimental and excluded from the core operational scope. Keep both chatbot flags absent or set to `false`. Enabling the backend API or frontend widget requires an explicit experimental deployment decision and must not be interpreted as operational authorization.
 
 ## Deploy without a domain
 
