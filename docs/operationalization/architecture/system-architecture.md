@@ -12,18 +12,18 @@ WaveLab supports internal forecast preparation and review and exposes authorized
 
 ## Current logical components
 
-| Component                      | Responsibility                                                                          | Principal technologies                                                                 |
-| ------------------------------ | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Web client                     | Public pages, Forecaster Studio, review/admin interfaces, exports                       | React, Vite, Mapbox GL, Konva                                                          |
-| API service                    | Authentication, workflow, projects/packages, publication, notifications, administration | Node.js, Express                                                                       |
-| Real-time service              | User and workflow events                                                                | Socket.IO, Redis adapter                                                               |
-| Primary database               | Users, projects/packages, annotations, review state and application records             | MongoDB/Mongoose                                                                       |
-| Cache/message dependency       | Real-time coordination and related runtime needs                                        | Redis                                                                                  |
-| Wave processing/tile utilities | Prepare and render wave/model data for presentation                                     | Python and repository utilities                                                        |
-| Edge/web server                | TLS termination when configured, static frontend, API and Socket.IO proxy               | Nginx                                                                                  |
-| Service manager                | Runs and restarts backend                                                               | systemd                                                                                |
-| Delivery pipeline              | Tests, builds, deploys, verifies, and rolls back                                        | GitHub Actions, self-hosted runner, scripts                                            |
-| External services              | Maps, email, alerts, data/model sources                                                 | Provider-specific integrations                                                         |
+| Component                      | Responsibility                                                                          | Principal technologies                                                                                |
+| ------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Web client                     | Public pages, Forecaster Studio, review/admin interfaces, exports                       | React, Vite, Mapbox GL, Konva                                                                         |
+| API service                    | Authentication, workflow, projects/packages, publication, notifications, administration | Node.js, Express                                                                                      |
+| Real-time service              | User and workflow events                                                                | Socket.IO, Redis adapter                                                                              |
+| Primary database               | Users, projects/packages, annotations, review state and application records             | MongoDB/Mongoose                                                                                      |
+| Cache/message dependency       | Real-time coordination and related runtime needs                                        | Redis                                                                                                 |
+| Wave processing/tile utilities | Prepare and render wave/model data for presentation                                     | Python and repository utilities                                                                       |
+| Edge/web server                | TLS termination when configured, static frontend, API and Socket.IO proxy               | Nginx                                                                                                 |
+| Service manager                | Runs and restarts backend                                                               | systemd                                                                                               |
+| Delivery pipeline              | Tests, builds, deploys, verifies, and rolls back                                        | GitHub Actions, self-hosted runner, scripts                                                           |
+| External services              | Maps, email, alerts, data/model sources                                                 | Provider-specific integrations                                                                        |
 | Experimental chatbot/RAG       | Optional research-only chat, retrieval, and model/provider integration                  | ADR-0003 proposes containment; PR #185 closed unmerged, so current runtime remains enabled by default |
 
 ## Current deployment view
