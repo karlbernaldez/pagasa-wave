@@ -29,7 +29,7 @@ function manualChunks(id) {
     return 'vendor-mapbox';
   }
 
-  if (id.includes('@turf') || id.includes('shp-write')) {
+  if (id.includes('@turf')) {
     return 'vendor-geo';
   }
 
@@ -41,7 +41,7 @@ function manualChunks(id) {
     return 'vendor-alerts';
   }
 
-  if (id.includes('jspdf') || id.includes('pdf') || id.includes('gif.js') || id.includes('jszip')) {
+  if (id.includes('gif.js.optimized')) {
     return 'vendor-export';
   }
 
