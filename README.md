@@ -100,9 +100,11 @@ pagasa-wave/
 
 Install the following before running the project locally:
 
-- Node.js
-- npm or pnpm
+- Node.js (a maintained LTS release is recommended)
+- npm for the root and backend workspaces
+- Corepack with the frontend's pinned pnpm release
 - MongoDB connection string
+- Redis for real-time features
 - Mapbox access token
 
 ### Backend setup
@@ -122,24 +124,33 @@ npm start
 
 ### Frontend setup
 
+Create `frontend/.env.local` and provide the browser-safe Mapbox token required by the map views:
+
+```dotenv
+VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
+```
+
+Install and start the frontend with the pnpm release pinned in `frontend/package.json`:
+
 ```bash
 cd frontend
-npm install
-npm run dev
+corepack enable
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 Build the frontend for production:
 
 ```bash
 cd frontend
-npm run build
+pnpm build
 ```
 
 Preview the production build:
 
 ```bash
 cd frontend
-npm run preview
+pnpm preview
 ```
 
 ## Testing
@@ -158,6 +169,13 @@ cd backend
 npm run test:workflow
 ```
 
+Run frontend tests:
+
+```bash
+cd frontend
+pnpm test
+```
+
 Recommended release validation:
 
 ```bash
@@ -167,7 +185,8 @@ npm run test:workflow
 
 ```bash
 cd frontend
-npm run build
+pnpm test
+pnpm build
 ```
 
 ## User Roles
