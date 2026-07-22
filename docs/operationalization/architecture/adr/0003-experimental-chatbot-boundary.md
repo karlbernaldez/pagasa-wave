@@ -1,14 +1,16 @@
 # ADR-0003: Keep the experimental chatbot outside the core operational boundary
 
-**Status:** Proposed; implementation pending in PR #185
+**Status:** Proposed; not implemented — PR #185 was closed without merge
 **Date:** 2026-07-21
-**Related:** Issues #182 and #184; closed PR #183; draft PR #185
+**Related:** Issues #182 and #184; closed-unmerged PRs #183 and #185
 **Security/privacy review:** Required before any enabled environment
 **Forecast-domain review:** Not required for containment; required if future output affects forecast decisions
 
 ## Context
 
 WaveLab contains an experimental chatbot/RAG feature with provider, retrieval, embedding, and public-widget code. The feature is not a priority for core forecast operations. Its dependencies and external-processing implications increase security, privacy, supply-chain, startup, and support scope even when the feature is not intentionally used.
+
+PR #185 attempted to implement the containment described below, but it was closed without merge. On the current `main` branch, the chatbot remains mounted in the backend and rendered by the public frontend by default. The controls in this ADR therefore describe a proposed boundary, not current runtime behavior; issue #184 remains the implementation tracker.
 
 ## Considered options
 
@@ -26,7 +28,7 @@ Contain the feature behind exact opt-in backend and frontend flags, avoid loadin
 
 ## Decision
 
-Adopt disabled-by-default containment:
+Propose disabled-by-default containment:
 
 - backend chat routes return unavailable unless `WAVELAB_CHAT_ENABLED=true`;
 - chatbot controllers/providers/model stack load only after the backend flag is enabled;
@@ -51,7 +53,7 @@ Adopt disabled-by-default containment:
 
 ## Verification
 
-Before merging PR #185:
+Before merging any future containment implementation that resolves issue #184:
 
 - confirm chat API is unavailable with the backend flag absent and false;
 - confirm the widget is absent and not loaded with the frontend flag absent and false;
