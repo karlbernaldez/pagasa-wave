@@ -219,16 +219,16 @@ Admins cannot review their own projects.
 
 ## Project Status Workflow
 
-| Status | Meaning | Editable by Forecaster? | Typical next action |
-|---|---|---:|---|
-| Draft | Project is being prepared. | Yes | Forecaster edits and submits. |
-| Submitted | Project has been submitted for review. | No | Admin starts review. |
-| Under Review | Admin is reviewing the project. | No | Admin comments, approves, rejects, or requests revision. |
-| Revision Requested / Needs Revision | Admin requested changes. | Yes | Forecaster revises and resubmits. |
-| Approved | Project passed review. | No | Admin publishes. |
-| Rejected | Project was rejected. | Yes, when allowed | Forecaster revises or resubmits if appropriate. |
-| Published | Project is finalized and published. | No | No editing. |
-| Archived | Project is archived. | No | No editing. |
+| Status                              | Meaning                                | Editable by Forecaster? | Typical next action                                      |
+| ----------------------------------- | -------------------------------------- | ----------------------: | -------------------------------------------------------- |
+| Draft                               | Project is being prepared.             |                     Yes | Forecaster edits and submits.                            |
+| Submitted                           | Project has been submitted for review. |                      No | Admin starts review.                                     |
+| Under Review                        | Admin is reviewing the project.        |                      No | Admin comments, approves, rejects, or requests revision. |
+| Revision Requested / Needs Revision | Admin requested changes.               |                     Yes | Forecaster revises and resubmits.                        |
+| Approved                            | Project passed review.                 |                      No | Admin publishes.                                         |
+| Rejected                            | Project was rejected.                  |       Yes, when allowed | Forecaster revises or resubmits if appropriate.          |
+| Published                           | Project is finalized and published.    |                      No | No editing.                                              |
+| Archived                            | Project is archived.                   |                      No | No editing.                                              |
 
 ## Documentation
 
