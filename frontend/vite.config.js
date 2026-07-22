@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import path from 'path';
 
 function manualChunks(id) {
@@ -21,7 +21,11 @@ function manualChunks(id) {
     return 'vendor-ui';
   }
 
-  if (id.includes('@tanstack/react-query') || id.includes('axios') || id.includes('socket.io-client')) {
+  if (
+    id.includes('@tanstack/react-query') ||
+    id.includes('axios') ||
+    id.includes('socket.io-client')
+  ) {
     return 'vendor-data';
   }
 
@@ -29,7 +33,7 @@ function manualChunks(id) {
     return 'vendor-mapbox';
   }
 
-  if (id.includes('@turf') || id.includes('shp-write')) {
+  if (id.includes('@turf')) {
     return 'vendor-geo';
   }
 
@@ -41,7 +45,7 @@ function manualChunks(id) {
     return 'vendor-alerts';
   }
 
-  if (id.includes('jspdf') || id.includes('pdf') || id.includes('gif.js') || id.includes('jszip')) {
+  if (id.includes('gif.js.optimized')) {
     return 'vendor-export';
   }
 
@@ -52,7 +56,7 @@ function manualChunks(id) {
 export default defineConfig({
   plugins: [react()],
   json: {
-    stringify: false // Import as object
+    stringify: false, // Import as object
   },
   resolve: {
     alias: {
@@ -69,14 +73,10 @@ export default defineConfig({
     },
   },
   server: {
-    allowedHosts: [
-      "dev.wavelab.adovelopers.com"
-    ]
+    allowedHosts: ['dev.wavelab.adovelopers.com'],
   },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setupTests.js'],
   },
-})
-
-
+});
