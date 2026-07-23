@@ -3,19 +3,27 @@ import {
   REFRESH_COOKIE_MAX_AGE_MS,
 } from '../constants/auth.js';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Base options shared by both cookies
-// ─────────────────────────────────────────────────────────────────────────────
+const secure = process.env.NODE_ENV === 'production'
+  ? true
+  : process.env.COOKIE_SECURE === 'true';
+
+const sameSite = String(process.env.COOKIE_SAME_SITE || 'strict').toLowerCase();
+
+if (!['strict', 'lax', 'none'].includes(sameSite)) {
+  throw new Error('COOKIE_SAME_SITE must be strict, lax, or none.');
+}
+
+if (sameSite === 'none' && !secure) {
+  throw new Error('COOKIE_SAME_SITE=none requires secure cookies.');
+}
+
 const baseOptions = {
   httpOnly: true,
-  secure:   process.env.COOKIE_SECURE === 'true',
-  sameSite: 'Strict',
-  path:     '/',
+  secure,
+  sameSite,
+  path: '/',
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Public API
-// ─────────────────────────────────────────────────────────────────────────────
 export const setAccessCookie = (res, accessToken) => {
   res.cookie('accessToken', accessToken, { ...baseOptions, maxAge: ACCESS_COOKIE_MAX_AGE_MS });
 };
@@ -26,6 +34,6 @@ export const setAuthCookies = (res, accessToken, refreshToken) => {
 };
 
 export const clearAuthCookies = (res) => {
-  res.clearCookie('accessToken',  baseOptions);
+  res.clearCookie('accessToken', baseOptions);
   res.clearCookie('refreshToken', baseOptions);
 };
