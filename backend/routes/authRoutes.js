@@ -1,6 +1,14 @@
 import express from 'express';
 
 import authenticate from '../middleware/authMiddleware.js';
+import {
+  loginLimiter,
+  otpSendLimiter,
+  otpVerifyLimiter,
+  refreshLimiter,
+  registrationLimiter,
+  verificationEmailLimiter,
+} from '../middleware/authRateLimits.js';
 
 import {
   registerUser,
@@ -16,17 +24,17 @@ import {
 
 const router = express.Router();
 
-router.post('/refresh-token', refreshAccessToken);
-router.post('/register', registerUser);
-router.post('/login', loginUser);
+router.post('/refresh-token', refreshLimiter, refreshAccessToken);
+router.post('/register', registrationLimiter, registerUser);
+router.post('/login', loginLimiter, loginUser);
 router.post('/logout', logoutUser);
 router.post('/logout-all', authenticate, logoutAllDevices);
 
-router.post('/otp/send', sendOtp);
-router.post('/otp/verify', verifyOtp);
+router.post('/otp/send', otpSendLimiter, sendOtp);
+router.post('/otp/verify', otpVerifyLimiter, verifyOtp);
 
 router.get('/verify-email', verifyEmail);
-router.post('/resend-verification', resendVerification);
+router.post('/resend-verification', verificationEmailLimiter, resendVerification);
 
 router.get('/check', authenticate, (req, res) => {
   res.status(200).json({
