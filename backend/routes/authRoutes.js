@@ -7,6 +7,7 @@ import {
   loginUser,
   refreshAccessToken,
   logoutUser,
+  logoutAllDevices,
   sendOtp,
   verifyOtp,
   verifyEmail,
@@ -19,6 +20,7 @@ router.post('/refresh-token', refreshAccessToken);
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/logout', logoutUser);
+router.post('/logout-all', authenticate, logoutAllDevices);
 
 router.post('/otp/send', sendOtp);
 router.post('/otp/verify', verifyOtp);
