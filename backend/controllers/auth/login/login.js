@@ -9,7 +9,7 @@ import { verifyCredentials, resetFailedAttempts } from './loginCredentials.js';
 import { handleSession } from './loginSession.js';
 
 const USER_FIELDS =
-  '+password status role emailVerified lockUntil failedLoginAttempts ' +
+  '+password +sessionVersion status role emailVerified lockUntil failedLoginAttempts ' +
   'firstName username lastLoginIP lastLoginUserAgent';
 
 export const loginUser = async (req, res) => {
@@ -24,7 +24,6 @@ export const loginUser = async (req, res) => {
 
     const geoMeta = coordinates ? { geo: coordinates } : {};
 
-    // ── User lookup ──────────────────────────────────────────────────────────
     const user = await User.findOne({ email: emailNorm, deletedAt: null }).select(USER_FIELDS);
 
     if (!user) {
@@ -39,19 +38,14 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
-    // ── Pre-credential guards (lock / status / email-verified) ───────────────
     const guardResponse = await runLoginGuards(user, req, res, geoMeta);
     if (guardResponse) return guardResponse;
 
-    // ── Credential check ─────────────────────────────────────────────────────
     const credError = await verifyCredentials(user, password, req, res, geoMeta);
     if (credError) return credError;
 
     await resetFailedAttempts(user);
-
-    // ── Issue session (trusted device or OTP challenge) ──────────────────────
     return await handleSession(user, emailNorm, coordinates, req, res, geoMeta);
-
   } catch (err) {
     logger.error('[loginUser] Unhandled error', { error: err.message, stack: err.stack });
     return res.status(500).json({ message: 'Server error.' });
