@@ -90,7 +90,7 @@ export const verifyEmail = async (token) => {
     throw { message: error.message || 'Verification failed.', expired: false };
   }
 
-  return response.json(); // e.g. { message: 'Email verified.', email: 'user@example.com' }
+  return response.json();
 };
 
 export const resendVerificationEmail = async (email) => {
@@ -98,24 +98,19 @@ export const resendVerificationEmail = async (email) => {
 
   try {
     response = await fetch(`${AUTH_API_BASE_URL}/resend-verification`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
-      credentials: "include",
+      credentials: 'include',
     });
-  } catch (networkErr) {
-    // fetch itself threw — network is down or CORS blocked
-    throw new Error("Network error. Please check your connection and try again.");
+  } catch {
+    throw new Error('Network error. Please check your connection and try again.');
   }
 
-  // Parse body regardless of status so we can surface the server's message
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(
-      data.message
-      || `Request failed with status ${response.status}.`
-    );
+    throw new Error(data.message || `Request failed with status ${response.status}.`);
   }
 
   return data;
@@ -173,16 +168,16 @@ export const refreshAccessToken = async () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Failed to refresh access token. ${errorData.message || response.statusText}`);
+        clearAuthCache();
+        return false;
       }
 
-      const data = await response.json();
+      await response.json().catch(() => ({}));
       clearAuthCache();
-      return data.accessToken || true;
-    } catch (err) {
-      console.error('Error refreshing access token:', err);
-      return null;
+      return true;
+    } catch {
+      clearAuthCache();
+      return false;
     } finally {
       refreshInFlight = null;
     }
@@ -208,7 +203,7 @@ export const checkAuthSession = async ({ force = false } = {}) => {
       });
     }
 
-    if (initial.status === 401 || initial.status === 403) {
+    if (initial.status === 401) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
         const retried = await fetchAuthCheck();
@@ -242,10 +237,10 @@ export const fetchWithAuth = async (url, options = {}) => {
 
   let response = await request();
 
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     const refreshed = await refreshAccessToken();
     if (!refreshed) {
-      throw new Error('Unable to refresh token. Please log in again.');
+      throw new Error('Your session has expired. Please log in again.');
     }
 
     response = await request();
