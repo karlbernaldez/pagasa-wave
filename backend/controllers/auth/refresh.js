@@ -41,8 +41,10 @@ export const refreshAccessToken = async (req, res) => {
       return res.status(401).json({ message: 'Refresh session not found.' });
     }
 
+    const familyId = existingSession.familyId || existingSession.jti;
+
     if (existingSession.revokedAt) {
-      await revokeSessionFamily(userId, existingSession.familyId, 'refresh_token_reuse');
+      await revokeSessionFamily(userId, familyId, 'refresh_token_reuse');
       clearAuthCookies(res);
       return res.status(401).json({ message: 'Refresh token reuse detected. Session family revoked.' });
     }
@@ -51,13 +53,13 @@ export const refreshAccessToken = async (req, res) => {
     const statusError = user ? getStatusError(user.status) : 'User not found.';
 
     if (statusError) {
-      await revokeSessionFamily(userId, existingSession.familyId, 'account_unavailable');
+      await revokeSessionFamily(userId, familyId, 'account_unavailable');
       clearAuthCookies(res);
       return res.status(403).json({ message: statusError });
     }
 
     if (decoded.iat && user.passwordChangedAt && decoded.iat * 1000 < user.passwordChangedAt.getTime()) {
-      await revokeSessionFamily(userId, existingSession.familyId, 'password_changed');
+      await revokeSessionFamily(userId, familyId, 'password_changed');
       clearAuthCookies(res);
       return res.status(401).json({ message: 'Session expired after password change.' });
     }
@@ -75,7 +77,7 @@ export const refreshAccessToken = async (req, res) => {
     });
 
     if (!consumed) {
-      await revokeSessionFamily(userId, existingSession.familyId, 'refresh_token_reuse');
+      await revokeSessionFamily(userId, familyId, 'refresh_token_reuse');
       clearAuthCookies(res);
       return res.status(401).json({ message: 'Refresh token already used or expired.' });
     }
@@ -84,7 +86,7 @@ export const refreshAccessToken = async (req, res) => {
       refreshToken: replacementRefreshToken,
       userId,
       jti: replacementJti,
-      familyId: existingSession.familyId,
+      familyId,
       req,
     });
 
