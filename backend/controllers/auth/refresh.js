@@ -49,13 +49,19 @@ export const refreshAccessToken = async (req, res) => {
       return res.status(401).json({ message: 'Refresh token reuse detected. Session family revoked.' });
     }
 
-    const user = await User.findOne({ _id: userId, deletedAt: null });
+    const user = await User.findOne({ _id: userId, deletedAt: null }).select('+sessionVersion');
     const statusError = user ? getStatusError(user.status) : 'User not found.';
 
     if (statusError) {
       await revokeSessionFamily(userId, familyId, 'account_unavailable');
       clearAuthCookies(res);
       return res.status(403).json({ message: statusError });
+    }
+
+    if ((decoded.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) {
+      await revokeSessionFamily(userId, familyId, 'session_version_changed');
+      clearAuthCookies(res);
+      return res.status(401).json({ message: 'Session has been revoked.' });
     }
 
     if (decoded.iat && user.passwordChangedAt && decoded.iat * 1000 < user.passwordChangedAt.getTime()) {
