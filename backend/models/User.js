@@ -122,41 +122,53 @@ userSchema.virtual("fullName").get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
-userSchema.pre("save", function (next) {
+userSchema.pre("save", async function () {
   if (this.email) this.email = this.email.toLowerCase().trim();
   if (this.username) this.username = this.username.toLowerCase().trim();
 
-  if (!this.isNew) {
-    const passwordChanged = this.isModified("password");
-    const authorizationChanged = this.isModified("role") || this.isModified("status");
+  if (this.isNew) return;
 
-    if (passwordChanged) this.passwordChangedAt = new Date();
-    if (passwordChanged || authorizationChanged) {
-      this.sessionVersion = (this.sessionVersion ?? 0) + 1;
-    }
-  }
+  const passwordChanged = this.isModified("password");
+  const authorizationChanged = this.isModified("role") || this.isModified("status");
 
-  next();
+  if (!passwordChanged && !authorizationChanged) return;
+
+  if (passwordChanged) this.passwordChangedAt = new Date();
+
+  const current = await this.constructor
+    .findById(this._id)
+    .select("+sessionVersion")
+    .lean();
+
+  this.sessionVersion = (current?.sessionVersion ?? 0) + 1;
 });
 
-userSchema.pre("findOneAndUpdate", function (next) {
+userSchema.pre("findOneAndUpdate", function () {
   const update = this.getUpdate() || {};
-  const set = update.$set || update;
+  const usesOperators = Object.keys(update).some((key) => key.startsWith("$"));
+  const set = usesOperators ? (update.$set || {}) : update;
+
   const passwordChanged = Object.prototype.hasOwnProperty.call(set, "password");
   const authorizationChanged =
     Object.prototype.hasOwnProperty.call(set, "role") ||
     Object.prototype.hasOwnProperty.call(set, "status");
 
+  if (!passwordChanged && !authorizationChanged) return;
+
+  const normalizedUpdate = usesOperators
+    ? { ...update, $set: { ...(update.$set || {}) } }
+    : { $set: { ...update } };
+
   if (passwordChanged) {
-    update.$set = { ...(update.$set || {}), passwordChangedAt: new Date() };
+    normalizedUpdate.$set.passwordChangedAt = new Date();
   }
 
-  if (passwordChanged || authorizationChanged) {
-    update.$inc = { ...(update.$inc || {}), sessionVersion: 1 };
-  }
+  normalizedUpdate.$inc = {
+    ...(update.$inc || {}),
+    sessionVersion: 1,
+  };
 
-  this.setUpdate(update);
-  next();
+  this.setUpdate(normalizedUpdate);
 });
 
 userSchema.methods.createEmailVerificationToken = function () {
