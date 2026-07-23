@@ -125,6 +125,37 @@ userSchema.virtual("fullName").get(function () {
 userSchema.pre("save", function (next) {
   if (this.email) this.email = this.email.toLowerCase().trim();
   if (this.username) this.username = this.username.toLowerCase().trim();
+
+  if (!this.isNew) {
+    const passwordChanged = this.isModified("password");
+    const authorizationChanged = this.isModified("role") || this.isModified("status");
+
+    if (passwordChanged) this.passwordChangedAt = new Date();
+    if (passwordChanged || authorizationChanged) {
+      this.sessionVersion = (this.sessionVersion ?? 0) + 1;
+    }
+  }
+
+  next();
+});
+
+userSchema.pre("findOneAndUpdate", function (next) {
+  const update = this.getUpdate() || {};
+  const set = update.$set || update;
+  const passwordChanged = Object.prototype.hasOwnProperty.call(set, "password");
+  const authorizationChanged =
+    Object.prototype.hasOwnProperty.call(set, "role") ||
+    Object.prototype.hasOwnProperty.call(set, "status");
+
+  if (passwordChanged) {
+    update.$set = { ...(update.$set || {}), passwordChangedAt: new Date() };
+  }
+
+  if (passwordChanged || authorizationChanged) {
+    update.$inc = { ...(update.$inc || {}), sessionVersion: 1 };
+  }
+
+  this.setUpdate(update);
   next();
 });
 
