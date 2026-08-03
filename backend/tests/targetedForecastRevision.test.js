@@ -175,10 +175,7 @@ test('revision by project resets only the selected chart and records the true pr
 
     assert.equal(bulkWrites.length, 1);
     assert.equal(bulkWrites[0].length, 1);
-    assert.equal(
-      bulkWrites[0][0].updateOne.update.$push.auditLogs.previousStatus,
-      'Under Review'
-    );
+    assert.equal(bulkWrites[0][0].updateOne.update.$push.auditLogs.previousStatus, 'Under Review');
   });
 });
 

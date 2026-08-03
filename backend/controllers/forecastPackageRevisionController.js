@@ -162,7 +162,9 @@ function buildProjectRevisionOperations(projects, affectedProjectIds, userId, co
   const affected = new Set(affectedProjectIds.map(getId));
 
   return projects
-    .filter((project) => affected.has(getId(project)) && REVISION_PROJECT_STATUSES.has(project.status))
+    .filter(
+      (project) => affected.has(getId(project)) && REVISION_PROJECT_STATUSES.has(project.status)
+    )
     .map((project) => ({
       updateOne: {
         filter: { _id: project._id, status: project.status },
