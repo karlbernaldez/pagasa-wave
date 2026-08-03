@@ -2,7 +2,6 @@
 import express from 'express';
 import {
   createFeature,
-  getAllFeatures,
   getFeaturesByUserAndProject,
   getFeatureBySourceId,
   deleteFeature,
