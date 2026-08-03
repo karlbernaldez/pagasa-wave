@@ -1,9 +1,25 @@
 import express from 'express';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+
+import authenticate from '../middleware/authMiddleware.js';
+import { requireRole } from '../middleware/adminMiddleware.js';
 import { createStyledPdfBuffer } from '../utils/pdfGenerator.js';
 
 const router = express.Router();
 
-router.get('/generate', async (req, res, next) => {
+const pdfGenerationLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id || ipKeyGenerator(req),
+  message: { message: 'Too many PDF generation requests. Try again later.' },
+});
+
+router.use(authenticate);
+router.use(requireRole('forecaster', 'admin'));
+
+router.get('/generate', pdfGenerationLimiter, async (req, res, next) => {
   try {
     const pdfBuffer = await createStyledPdfBuffer({
       reportTitle: req.query.reportTitle || req.query.title || 'Wave Charts Report',
