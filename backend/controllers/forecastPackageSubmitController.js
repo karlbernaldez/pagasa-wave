@@ -123,7 +123,7 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
       if (!forecastPackage) throwError('Forecast Package not found', 404);
 
       if (!canUserSubmitPackage(req.user)) {
-        throwError('Only forecasters can submit a forecast package', 403);
+        throwError('Only the package owner or a participating forecaster can submit this package', 403);
       }
 
       if (!canSubmitPackage(forecastPackage.status)) {
