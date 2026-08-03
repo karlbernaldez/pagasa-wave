@@ -131,6 +131,22 @@ function resetChartAndDependents(forecastPackage, chartType) {
   return resetCount;
 }
 
+function resetForecastPackageForRevision(forecastPackage) {
+  forecastPackage.chartCompletion?.forEach((row) => {
+    row.isComplete = false;
+    row.completedAt = null;
+    row.completedBy = null;
+  });
+
+  forecastPackage.charts?.forEach((chart) => {
+    chart.readyAt = null;
+    chart.readyBy = null;
+    chart.activeEditors = [];
+    chart.claimedBy = null;
+    chart.claimedAt = null;
+  });
+}
+
 function getChartRowByType(forecastPackage, chartType) {
   return forecastPackage.charts?.find((chart) => chart.chartType === chartType);
 }
@@ -758,6 +774,7 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
   forecastPackage.reviewedAt = new Date();
   forecastPackage.rejectedBy = req.user.id;
   forecastPackage.reviewComment = comment;
+  resetForecastPackageForRevision(forecastPackage);
   forecastPackage.auditLogs.push({
     action: 'revision_requested',
     performedBy: req.user.id,
