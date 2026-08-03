@@ -11,7 +11,10 @@ import {
   startForecastPackageReview,
   updateForecastChartCompletion,
 } from '../controllers/forecastPackageController.js';
-import { requestTargetedForecastPackageRevision } from '../controllers/forecastPackageRevisionController.js';
+import {
+  requestForecastChartRevisionByProject,
+  requestTargetedForecastPackageRevision,
+} from '../controllers/forecastPackageRevisionController.js';
 import { submitForecastPackage } from '../controllers/forecastPackageSubmitController.js';
 import { getCurrentForecastPackage } from '../controllers/currentForecastPackageController.js';
 import {
@@ -340,6 +343,12 @@ router.post('/', emitForecastPackageWorkflowAfterResponse('created'), createFore
 router.get('/', getUserForecastPackages);
 router.get('/current', getCurrentForecastPackage);
 router.get('/charts/project/:projectId/context', getForecastPackageChartContextByProject);
+router.patch(
+  '/charts/project/:projectId/request-revision',
+  isAdmin,
+  emitForecastPackageWorkflowAfterResponse('revision_requested'),
+  requestForecastChartRevisionByProject
+);
 router.patch(
   '/charts/project/:projectId/claim',
   emitForecastPackageWorkflowAfterResponse('chart_claimed'),
