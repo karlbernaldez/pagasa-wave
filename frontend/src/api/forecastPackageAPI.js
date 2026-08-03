@@ -61,6 +61,12 @@ export const requestForecastPackageRevision = (id, comment = '', chartTypes = []
     body: JSON.stringify({ comment, chartTypes }),
   });
 
+export const requestForecastChartRevisionByProject = (projectId, comment = '') =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/charts/project/${projectId}/request-revision`, {
+    method: 'PATCH',
+    body: JSON.stringify({ comment }),
+  });
+
 export const approveForecastPackage = (id) =>
   request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/approve`, { method: 'PATCH' });
 
