@@ -33,7 +33,9 @@ function getRequestedChartTypes(value) {
   }
 
   const chartTypes = [...new Set(value.map((item) => String(item || '').trim()).filter(Boolean))];
-  const invalidChartTypes = chartTypes.filter((chartType) => !REQUIRED_FORECAST_CHART_TYPES.includes(chartType));
+  const invalidChartTypes = chartTypes.filter(
+    (chartType) => !REQUIRED_FORECAST_CHART_TYPES.includes(chartType)
+  );
 
   if (invalidChartTypes.length) {
     throwError(`Unsupported forecast chart type: ${invalidChartTypes.join(', ')}`, 400);
@@ -66,7 +68,7 @@ function resetAffectedCharts(forecastPackage, affectedChartTypes) {
 function restoreUnaffectedSubmittedCharts(forecastPackage, affectedChartTypes, projectsById) {
   const affected = new Set(affectedChartTypes);
   const completionByType = new Map(
-    (forecastPackage.chartCompletion || []).map((row) => [row.chartType, row]),
+    (forecastPackage.chartCompletion || []).map((row) => [row.chartType, row])
   );
 
   for (const chart of forecastPackage.charts || []) {
@@ -74,7 +76,13 @@ function restoreUnaffectedSubmittedCharts(forecastPackage, affectedChartTypes, p
 
     const project = projectsById.get(getId(chart.project));
     const completion = completionByType.get(chart.chartType);
-    if (!project || project.status !== PROJECT_STATUS.SUBMITTED || !completion || completion.isComplete) continue;
+    if (
+      !project ||
+      project.status !== PROJECT_STATUS.SUBMITTED ||
+      !completion ||
+      completion.isComplete
+    )
+      continue;
 
     const restoredAt = project.submittedAt || forecastPackage.submittedAt || new Date();
     const restoredBy = chart.readyBy || project.owner || forecastPackage.owner;
@@ -92,9 +100,8 @@ function restoreUnaffectedSubmittedCharts(forecastPackage, affectedChartTypes, p
 }
 
 function serializePackage(forecastPackage) {
-  const plain = typeof forecastPackage.toObject === 'function'
-    ? forecastPackage.toObject()
-    : forecastPackage;
+  const plain =
+    typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage;
 
   return {
     ...plain,
@@ -128,13 +135,21 @@ export const requestTargetedForecastPackageRevision = asyncHandler(async (req, r
 
   if (!forecastPackage) throwError('Forecast Package not found', 404);
   if (!REVISION_SOURCE_STATUSES.has(forecastPackage.status)) {
-    throwError('Only packages under review, rejected, or already in revision can request chart revisions', 403);
+    throwError(
+      'Only packages under review, rejected, or already in revision can request chart revisions',
+      403
+    );
   }
 
   const packageChartTypes = new Set((forecastPackage.charts || []).map((chart) => chart.chartType));
-  const missingChartTypes = affectedChartTypes.filter((chartType) => !packageChartTypes.has(chartType));
+  const missingChartTypes = affectedChartTypes.filter(
+    (chartType) => !packageChartTypes.has(chartType)
+  );
   if (missingChartTypes.length) {
-    throwError(`Forecast Package does not contain: ${missingChartTypes.map(getForecastChartLabel).join(', ')}`, 400);
+    throwError(
+      `Forecast Package does not contain: ${missingChartTypes.map(getForecastChartLabel).join(', ')}`,
+      400
+    );
   }
 
   const projectIds = (forecastPackage.charts || []).map((chart) => chart.project).filter(Boolean);
@@ -169,11 +184,13 @@ export const requestTargetedForecastPackageRevision = asyncHandler(async (req, r
   await Project.updateMany(
     {
       _id: { $in: affectedProjectIds },
-      status: { $in: [
-        PROJECT_STATUS.SUBMITTED,
-        PROJECT_STATUS.UNDER_REVIEW,
-        PROJECT_STATUS.REVISION_REQUESTED,
-      ] },
+      status: {
+        $in: [
+          PROJECT_STATUS.SUBMITTED,
+          PROJECT_STATUS.UNDER_REVIEW,
+          PROJECT_STATUS.REVISION_REQUESTED,
+        ],
+      },
     },
     {
       $set: {
@@ -190,7 +207,7 @@ export const requestTargetedForecastPackageRevision = asyncHandler(async (req, r
           comment,
         },
       },
-    },
+    }
   );
 
   const populated = await populateForecastPackage(forecastPackage._id);

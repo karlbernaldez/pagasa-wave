@@ -51,9 +51,8 @@ function getLinkedProjectIds(forecastPackage) {
 }
 
 function serializePackage(forecastPackage) {
-  const plain = typeof forecastPackage.toObject === 'function'
-    ? forecastPackage.toObject()
-    : forecastPackage;
+  const plain =
+    typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage;
 
   return {
     ...plain,
@@ -86,7 +85,9 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, 
   await Project.updateMany(
     {
       _id: { $in: projectIds },
-      status: { $in: [PROJECT_STATUS.DRAFT, PROJECT_STATUS.REVISION_REQUESTED, PROJECT_STATUS.REJECTED] },
+      status: {
+        $in: [PROJECT_STATUS.DRAFT, PROJECT_STATUS.REVISION_REQUESTED, PROJECT_STATUS.REJECTED],
+      },
     },
     {
       $set: {
@@ -97,13 +98,15 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, 
         auditLogs: {
           action: 'submitted',
           performedBy: userId,
-          previousStatus: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
-            ? PROJECT_STATUS.REVISION_REQUESTED
-            : PROJECT_STATUS.DRAFT,
+          previousStatus:
+            previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
+              ? PROJECT_STATUS.REVISION_REQUESTED
+              : PROJECT_STATUS.DRAFT,
           newStatus: PROJECT_STATUS.SUBMITTED,
-          comment: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
-            ? 'Revision resubmitted as part of Forecast Package submission'
-            : 'Submitted as part of Forecast Package submission',
+          comment:
+            previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
+              ? 'Revision resubmitted as part of Forecast Package submission'
+              : 'Submitted as part of Forecast Package submission',
         },
       },
     },
@@ -123,7 +126,10 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
       if (!forecastPackage) throwError('Forecast Package not found', 404);
 
       if (!canUserSubmitPackage(req.user)) {
-        throwError('Only the package owner or a participating forecaster can submit this package', 403);
+        throwError(
+          'Only the package owner or a participating forecaster can submit this package',
+          403
+        );
       }
 
       if (!canSubmitPackage(forecastPackage.status)) {
@@ -137,7 +143,10 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
 
       const activeEditingChart = getActiveEditingChartLabel(forecastPackage);
       if (activeEditingChart) {
-        throwError(`${activeEditingChart} still has active editors. Release the chart before submitting`, 409);
+        throwError(
+          `${activeEditingChart} still has active editors. Release the chart before submitting`,
+          409
+        );
       }
 
       const previousStatus = forecastPackage.status;

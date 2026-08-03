@@ -65,7 +65,10 @@ function canSubmitPackage(status) {
 
 function assertEditablePackage(forecastPackage) {
   if (!EDITABLE_PACKAGE_STATUSES.includes(forecastPackage.status)) {
-    throwError('Chart workflow can only be changed while the package is Draft or Revision Requested', 403);
+    throwError(
+      'Chart workflow can only be changed while the package is Draft or Revision Requested',
+      403
+    );
   }
 }
 
@@ -78,10 +81,12 @@ function getPreviousIncompleteChartType(chartCompletion = [], chartType) {
   if (chartIndex <= 0) return null;
 
   const previousChartTypes = REQUIRED_FORECAST_CHART_TYPES.slice(0, chartIndex);
-  return previousChartTypes.find((previousChartType) => {
-    const row = chartCompletion.find((item) => item.chartType === previousChartType);
-    return !row?.isComplete;
-  }) || null;
+  return (
+    previousChartTypes.find((previousChartType) => {
+      const row = chartCompletion.find((item) => item.chartType === previousChartType);
+      return !row?.isComplete;
+    }) || null
+  );
 }
 
 function getActiveEditors(chart = {}) {
@@ -175,10 +180,15 @@ async function syncForecastPackageDisplayNames(forecastPackage) {
 
   const canonicalPackageName = buildForecastPackageName(forecastPackage.forecastDate);
   const currentPackageName = String(forecastPackage.name || '');
-  const shouldRenamePackage = !currentPackageName || AUTO_PACKAGE_NAME_PATTERN.test(currentPackageName);
+  const shouldRenamePackage =
+    !currentPackageName || AUTO_PACKAGE_NAME_PATTERN.test(currentPackageName);
   let changed = false;
 
-  if (canonicalPackageName && shouldRenamePackage && forecastPackage.name !== canonicalPackageName) {
+  if (
+    canonicalPackageName &&
+    shouldRenamePackage &&
+    forecastPackage.name !== canonicalPackageName
+  ) {
     forecastPackage.name = canonicalPackageName;
     changed = true;
   }
@@ -187,14 +197,22 @@ async function syncForecastPackageDisplayNames(forecastPackage) {
     const project = chart.project;
     if (!project || typeof project === 'string') continue;
     const currentProjectName = String(project.name || '');
-    const shouldRenameChart = !currentProjectName || AUTO_CHART_NAME_PATTERN.test(currentProjectName);
-    const nextProjectName = canonicalPackageName && shouldRenameChart
-      ? buildForecastChartProjectName(forecastPackage.forecastDate, getForecastChartLabel(chart.chartType))
-      : null;
+    const shouldRenameChart =
+      !currentProjectName || AUTO_CHART_NAME_PATTERN.test(currentProjectName);
+    const nextProjectName =
+      canonicalPackageName && shouldRenameChart
+        ? buildForecastChartProjectName(
+            forecastPackage.forecastDate,
+            getForecastChartLabel(chart.chartType)
+          )
+        : null;
 
     if (nextProjectName && project.name !== nextProjectName) {
       project.name = nextProjectName;
-      await Project.updateOne({ _id: project._id }, { $set: { name: nextProjectName, forecastDate: forecastPackage.forecastDate } });
+      await Project.updateOne(
+        { _id: project._id },
+        { $set: { name: nextProjectName, forecastDate: forecastPackage.forecastDate } }
+      );
       changed = true;
     }
   }
@@ -207,9 +225,8 @@ async function syncForecastPackageDisplayNames(forecastPackage) {
 }
 
 function serializePackage(forecastPackage) {
-  const plain = typeof forecastPackage.toObject === 'function'
-    ? forecastPackage.toObject()
-    : forecastPackage;
+  const plain =
+    typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage;
 
   return {
     ...plain,
@@ -220,12 +237,17 @@ function serializePackage(forecastPackage) {
 function serializeChartContext(forecastPackage, chart, user) {
   const serializedPackage = serializePackage(forecastPackage);
   const plainChart = typeof chart?.toObject === 'function' ? chart.toObject() : chart;
-  const completionRow = serializedPackage.chartCompletion?.find((item) => item.chartType === plainChart?.chartType);
+  const completionRow = serializedPackage.chartCompletion?.find(
+    (item) => item.chartType === plainChart?.chartType
+  );
   const activeEditors = getActiveEditors(plainChart);
   const activeEditorLabels = getActiveEditorLabels(plainChart);
   const blockingChartType = completionRow?.isComplete
     ? null
-    : getPreviousIncompleteChartType(serializedPackage.chartCompletion || [], plainChart?.chartType);
+    : getPreviousIncompleteChartType(
+        serializedPackage.chartCompletion || [],
+        plainChart?.chartType
+      );
   const editable = EDITABLE_PACKAGE_STATUSES.includes(serializedPackage.status);
   const ownerOrAdmin = isPackageOwnerOrAdmin(user, serializedPackage);
   const activeEditorCurrentUser = activeEditors.some((editor) => isSameId(editor.user, user?.id));
@@ -246,7 +268,12 @@ function serializeChartContext(forecastPackage, chart, user) {
       activeEditorLabels,
       canClaim: editable && !isReady && !blockingChartType && !activeEditorCurrentUser,
       canRelease: editable && activeEditorCurrentUser,
-      canCertify: editable && !isReady && !blockingChartType && (activeEditorCurrentUser || ownerOrAdmin) && activeEditors.length <= 1,
+      canCertify:
+        editable &&
+        !isReady &&
+        !blockingChartType &&
+        (activeEditorCurrentUser || ownerOrAdmin) &&
+        activeEditors.length <= 1,
     },
   };
 }
@@ -296,7 +323,9 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) 
   await Project.updateMany(
     {
       _id: { $in: projectIds },
-      status: { $in: [PROJECT_STATUS.DRAFT, PROJECT_STATUS.REVISION_REQUESTED, PROJECT_STATUS.REJECTED] },
+      status: {
+        $in: [PROJECT_STATUS.DRAFT, PROJECT_STATUS.REVISION_REQUESTED, PROJECT_STATUS.REJECTED],
+      },
     },
     {
       $set: {
@@ -307,13 +336,15 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) 
         auditLogs: {
           action: 'submitted',
           performedBy: userId,
-          previousStatus: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
-            ? PROJECT_STATUS.REVISION_REQUESTED
-            : PROJECT_STATUS.DRAFT,
+          previousStatus:
+            previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
+              ? PROJECT_STATUS.REVISION_REQUESTED
+              : PROJECT_STATUS.DRAFT,
           newStatus: PROJECT_STATUS.SUBMITTED,
-          comment: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
-            ? 'Revision resubmitted as part of Forecast Package submission'
-            : 'Submitted as part of Forecast Package submission',
+          comment:
+            previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
+              ? 'Revision resubmitted as part of Forecast Package submission'
+              : 'Submitted as part of Forecast Package submission',
         },
       },
     }
@@ -379,11 +410,17 @@ function updateForecastChartCompletionState(forecastPackage, chartType, isComple
   }
 
   if (isComplete && !activeEditorCurrentUser && !ownerOrAdmin) {
-    throwError(`${getForecastChartLabel(chartType)} must be joined for editing before it can be certified ready`, 409);
+    throwError(
+      `${getForecastChartLabel(chartType)} must be joined for editing before it can be certified ready`,
+      409
+    );
   }
 
   if (isComplete && activeEditors.length > 1) {
-    throwError(`${getForecastChartLabel(chartType)} still has ${activeEditors.length} active editors. Ask other forecasters to release before certifying ready`, 409);
+    throwError(
+      `${getForecastChartLabel(chartType)} still has ${activeEditors.length} active editors. Ask other forecasters to release before certifying ready`,
+      409
+    );
   }
 
   let comment;
@@ -399,9 +436,10 @@ function updateForecastChartCompletionState(forecastPackage, chartType, isComple
     comment = `${getForecastChartLabel(chartType)} marked complete`;
   } else {
     const resetCount = resetChartAndDependents(forecastPackage, chartType);
-    comment = resetCount > 1
-      ? `${getForecastChartLabel(chartType)} and downstream charts marked incomplete`
-      : `${getForecastChartLabel(chartType)} marked incomplete`;
+    comment =
+      resetCount > 1
+        ? `${getForecastChartLabel(chartType)} and downstream charts marked incomplete`
+        : `${getForecastChartLabel(chartType)} marked incomplete`;
   }
 
   forecastPackage.auditLogs.push({
@@ -422,7 +460,9 @@ export const createForecastPackage = asyncHandler(async (req, res) => {
   const name = String(req.body?.name || buildForecastPackageName(forecastDate) || '').trim();
   if (!name) throwError('name is required', 400);
 
-  const existingPackage = await ForecastPackage.findOne({ forecastDate: getForecastDateQuery(forecastDate) }).lean();
+  const existingPackage = await ForecastPackage.findOne({
+    forecastDate: getForecastDateQuery(forecastDate),
+  }).lean();
 
   if (existingPackage) {
     throwError('A Forecast Package already exists for this forecast date', 409);
@@ -501,11 +541,7 @@ export const createForecastPackage = asyncHandler(async (req, res) => {
 export const getUserForecastPackages = asyncHandler(async (req, res) => {
   assertAuthenticated(req);
 
-  const {
-    page = 1,
-    limit = 10,
-    status = '',
-  } = req.query;
+  const { page = 1, limit = 10, status = '' } = req.query;
 
   const pageNumber = Math.max(Number(page) || 1, 1);
   const limitNumber = Math.min(Math.max(Number(limit) || 10, 1), 100);
@@ -553,7 +589,10 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
   );
 
   if (!forecastPackage) {
-    return res.json({ package: null, message: 'No Forecast Package found for the current Philippines operational day' });
+    return res.json({
+      package: null,
+      message: 'No Forecast Package found for the current Philippines operational day',
+    });
   }
 
   await syncForecastPackageDisplayNames(forecastPackage);
@@ -573,7 +612,9 @@ export const getForecastPackageById = asyncHandler(async (req, res) => {
 export const getForecastPackageChartContextByProject = asyncHandler(async (req, res) => {
   assertAuthenticated(req);
 
-  const forecastPackage = await populateForecastPackage(findForecastPackageByChartProjectId(req.params.projectId));
+  const forecastPackage = await populateForecastPackage(
+    findForecastPackageByChartProjectId(req.params.projectId)
+  );
   if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
 
   await syncForecastPackageDisplayNames(forecastPackage);
@@ -594,9 +635,13 @@ export const claimForecastPackageChartByProject = asyncHandler(async (req, res) 
   if (!chart) throwError('Forecast Package chart context not found', 404);
 
   const completionRow = getCompletionRow(forecastPackage, chart.chartType);
-  if (completionRow?.isComplete) throwError(`${getForecastChartLabel(chart.chartType)} is already certified ready`, 400);
+  if (completionRow?.isComplete)
+    throwError(`${getForecastChartLabel(chart.chartType)} is already certified ready`, 400);
 
-  const blockingChartType = getPreviousIncompleteChartType(forecastPackage.chartCompletion || [], chart.chartType);
+  const blockingChartType = getPreviousIncompleteChartType(
+    forecastPackage.chartCompletion || [],
+    chart.chartType
+  );
   if (blockingChartType) {
     throwError(
       `${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chart.chartType)} can be joined for editing`,
@@ -635,7 +680,9 @@ export const releaseForecastPackageChartByProject = asyncHandler(async (req, res
   if (!chart) throwError('Forecast Package chart context not found', 404);
 
   syncLegacyClaimFields(chart);
-  chart.activeEditors = getActiveEditors(chart).filter((editor) => !isSameId(editor.user, req.user.id));
+  chart.activeEditors = getActiveEditors(chart).filter(
+    (editor) => !isSameId(editor.user, req.user.id)
+  );
   syncLegacyClaimFields(chart);
 
   forecastPackage.auditLogs.push({
@@ -708,7 +755,10 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
 
   const activeEditingChart = getActiveEditingChartLabel(forecastPackage);
   if (activeEditingChart) {
-    throwError(`${activeEditingChart} still has active editors. Release the chart before submitting`, 409);
+    throwError(
+      `${activeEditingChart} still has active editors. Release the chart before submitting`,
+      409
+    );
   }
 
   const previousStatus = forecastPackage.status;
@@ -765,7 +815,11 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-  if (![FORECAST_PACKAGE_STATUS.UNDER_REVIEW, FORECAST_PACKAGE_STATUS.REJECTED].includes(forecastPackage.status)) {
+  if (
+    ![FORECAST_PACKAGE_STATUS.UNDER_REVIEW, FORECAST_PACKAGE_STATUS.REJECTED].includes(
+      forecastPackage.status
+    )
+  ) {
     throwError('Only packages under review or rejected packages can request revision', 403);
   }
 
@@ -797,7 +851,11 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-  if (![FORECAST_PACKAGE_STATUS.UNDER_REVIEW, FORECAST_PACKAGE_STATUS.REVISION_REQUESTED].includes(forecastPackage.status)) {
+  if (
+    ![FORECAST_PACKAGE_STATUS.UNDER_REVIEW, FORECAST_PACKAGE_STATUS.REVISION_REQUESTED].includes(
+      forecastPackage.status
+    )
+  ) {
     throwError('Only packages under review or revision requested can be approved', 403);
   }
 

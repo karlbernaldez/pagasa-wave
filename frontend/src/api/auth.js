@@ -227,13 +227,14 @@ export const checkAuthSession = async ({ force = false } = {}) => {
 };
 
 export const fetchWithAuth = async (url, options = {}) => {
-  const request = () => fetch(url, {
-    ...options,
-    headers: {
-      ...options.headers,
-    },
-    credentials: 'include',
-  });
+  const request = () =>
+    fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+      },
+      credentials: 'include',
+    });
 
   let response = await request();
 

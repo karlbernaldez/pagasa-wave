@@ -3,17 +3,19 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
 const ACCESS_TOKEN_ALGORITHMS = ['HS512'];
-const AUTH_USER_FIELDS = '_id role status email username firstName lastName passwordChangedAt deletedAt +sessionVersion';
+const AUTH_USER_FIELDS =
+  '_id role status email username firstName lastName passwordChangedAt deletedAt +sessionVersion';
 
 const tokenWasIssuedBeforePasswordChange = (decoded, passwordChangedAt) => {
   if (!decoded?.iat || !passwordChangedAt) return false;
   return decoded.iat * 1000 < new Date(passwordChangedAt).getTime();
 };
 
-const verifyAccessToken = (token) => jwt.verify(token, process.env.JWT_SECRET, {
-  algorithms: ACCESS_TOKEN_ALGORITHMS,
-  clockTolerance: 5,
-});
+const verifyAccessToken = (token) =>
+  jwt.verify(token, process.env.JWT_SECRET, {
+    algorithms: ACCESS_TOKEN_ALGORITHMS,
+    clockTolerance: 5,
+  });
 
 export const authenticate = async (req, res, next) => {
   const token = req.cookies?.accessToken;
@@ -43,7 +45,9 @@ export const authenticate = async (req, res, next) => {
     }
 
     if (tokenWasIssuedBeforePasswordChange(decoded, user.passwordChangedAt)) {
-      return res.status(401).json({ message: 'Authentication session expired after password change.' });
+      return res
+        .status(401)
+        .json({ message: 'Authentication session expired after password change.' });
     }
 
     if ((decoded.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) {

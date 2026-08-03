@@ -17,9 +17,12 @@ import {
   markProjectNoPublication,
   publishProject,
   archiveProject,
-  renameProject
+  renameProject,
 } from '../controllers/projectController.js';
-import { getAdminForecastPackage, getAdminProjects } from '../controllers/adminProjectController.js';
+import {
+  getAdminForecastPackage,
+  getAdminProjects,
+} from '../controllers/adminProjectController.js';
 import {
   getPublishedForecastOutput,
   getPublicPublishedForecastOutput,
@@ -42,7 +45,8 @@ function getId(value) {
   if (typeof value === 'string') return value;
   if (value._id) return String(value._id);
   if (value.id) return String(value.id);
-  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString());
+  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString)
+    return String(value.toString());
   return '';
 }
 
@@ -123,14 +127,62 @@ router.use(requireRole('forecaster', 'admin'));
 router.get('/admin/projects', isAdmin, getAdminProjects);
 router.get('/admin/projects/:id/package', isAdmin, getAdminForecastPackage);
 
-router.patch('/:id/start-review', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('review_started'), startReviewProject);
-router.post('/:id/review-comment', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('comment_added'), addReviewComment);
-router.patch('/:id/request-revision', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('revision_requested'), requestProjectRevision);
-router.patch('/:id/approve', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('approved'), approveProject);
-router.patch('/:id/reject', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('rejected'), rejectProject);
-router.patch('/:id/no-publication', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('marked_no_publication'), markProjectNoPublication);
-router.patch('/:id/publish', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('published'), publishProject);
-router.patch('/:id/archive', isAdmin, preventAdminSelfReview, emitProjectWorkflowAfterResponse('archived'), archiveProject);
+router.patch(
+  '/:id/start-review',
+  isAdmin,
+  preventAdminSelfReview,
+  emitProjectWorkflowAfterResponse('review_started'),
+  startReviewProject
+);
+router.post(
+  '/:id/review-comment',
+  isAdmin,
+  preventAdminSelfReview,
+  emitProjectWorkflowAfterResponse('comment_added'),
+  addReviewComment
+);
+router.patch(
+  '/:id/request-revision',
+  isAdmin,
+  preventAdminSelfReview,
+  emitProjectWorkflowAfterResponse('revision_requested'),
+  requestProjectRevision
+);
+router.patch(
+  '/:id/approve',
+  isAdmin,
+  preventAdminSelfReview,
+  emitProjectWorkflowAfterResponse('approved'),
+  approveProject
+);
+router.patch(
+  '/:id/reject',
+  isAdmin,
+  preventAdminSelfReview,
+  emitProjectWorkflowAfterResponse('rejected'),
+  rejectProject
+);
+router.patch(
+  '/:id/no-publication',
+  isAdmin,
+  preventAdminSelfReview,
+  emitProjectWorkflowAfterResponse('marked_no_publication'),
+  markProjectNoPublication
+);
+router.patch(
+  '/:id/publish',
+  isAdmin,
+  preventAdminSelfReview,
+  emitProjectWorkflowAfterResponse('published'),
+  publishProject
+);
+router.patch(
+  '/:id/archive',
+  isAdmin,
+  preventAdminSelfReview,
+  emitProjectWorkflowAfterResponse('archived'),
+  archiveProject
+);
 
 router.get('/:id/published-output', getPublishedForecastOutput);
 

@@ -14,8 +14,8 @@ const USER_FIELDS =
 
 export const loginUser = async (req, res) => {
   try {
-    const emailNorm   = normalizeEmail(req.body.email);
-    const password    = req.body.password || '';
+    const emailNorm = normalizeEmail(req.body.email);
+    const password = req.body.password || '';
     const coordinates = parseCoordinates(req.body.coordinates);
 
     if (!emailNorm || !password) {
@@ -30,8 +30,12 @@ export const loginUser = async (req, res) => {
       logger.warn('Login attempt for unknown email', { email: emailNorm, ip: req.ip });
 
       await createAuditLog({
-        user: null, action: 'login_failed', resourceType: 'User', resourceId: null,
-        ip: req.ip, userAgent: req.headers['user-agent'],
+        user: null,
+        action: 'login_failed',
+        resourceType: 'User',
+        resourceId: null,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
         meta: { reason: 'Unknown email', email: emailNorm, ...geoMeta },
       }).catch((e) => logger.error('Audit log failed', { error: e.message }));
 

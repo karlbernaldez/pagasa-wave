@@ -9,7 +9,9 @@ export const requireRole = (...allowedRoles) => {
     }
 
     if (!roles.has(req.user.role)) {
-      return res.status(403).json({ message: 'You do not have permission to perform this action.' });
+      return res
+        .status(403)
+        .json({ message: 'You do not have permission to perform this action.' });
     }
 
     return next();

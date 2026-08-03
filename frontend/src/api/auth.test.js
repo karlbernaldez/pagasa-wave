@@ -19,9 +19,11 @@ describe('authenticated API retries', () => {
   });
 
   it('does not refresh after a 403 authorization denial', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(403, {
-      message: 'Access denied.',
-    }));
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(403, {
+        message: 'Access denied.',
+      })
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const { fetchWithAuth } = await loadAuthApi();
@@ -32,7 +34,8 @@ describe('authenticated API retries', () => {
   });
 
   it('refreshes once after a 401 and retries the original request', async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(jsonResponse(401, { message: 'Expired.' }))
       .mockResolvedValueOnce(jsonResponse(200, { message: 'Session refreshed.' }))
       .mockResolvedValueOnce(jsonResponse(200, { data: 'ok' }));

@@ -1,11 +1,6 @@
-import {
-  ACCESS_COOKIE_MAX_AGE_MS,
-  REFRESH_COOKIE_MAX_AGE_MS,
-} from '../constants/auth.js';
+import { ACCESS_COOKIE_MAX_AGE_MS, REFRESH_COOKIE_MAX_AGE_MS } from '../constants/auth.js';
 
-const secure = process.env.NODE_ENV === 'production'
-  ? true
-  : process.env.COOKIE_SECURE === 'true';
+const secure = process.env.NODE_ENV === 'production' ? true : process.env.COOKIE_SECURE === 'true';
 
 const sameSite = String(process.env.COOKIE_SAME_SITE || 'strict').toLowerCase();
 

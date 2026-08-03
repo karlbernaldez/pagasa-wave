@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
-import crypto from "crypto";
+import mongoose from 'mongoose';
+import crypto from 'crypto';
 
 const userSchema = new mongoose.Schema(
   {
@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       minlength: 3,
       maxlength: 30,
-      index: true
+      index: true,
     },
 
     firstName: { type: String, required: true, trim: true },
@@ -21,9 +21,9 @@ const userSchema = new mongoose.Schema(
       type: Date,
       required: true,
       validate: {
-        validator: v => v < new Date(),
-        message: "Birthday cannot be in the future"
-      }
+        validator: (v) => v < new Date(),
+        message: 'Birthday cannot be in the future',
+      },
     },
 
     address: { type: String, required: true, trim: true },
@@ -37,14 +37,14 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-      index: true
+      index: true,
     },
 
     contact: {
       type: String,
       required: true,
       match: /^(\+63|0)9\d{9}$/,
-      index: true
+      index: true,
     },
 
     avatarUrl: { type: String, default: null, trim: true },
@@ -53,7 +53,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 8,
-      select: false
+      select: false,
     },
 
     passwordChangedAt: { type: Date, default: null },
@@ -62,7 +62,7 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
-      select: false
+      select: false,
     },
 
     emailVerified: { type: Boolean, default: false },
@@ -74,23 +74,23 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["user", "forecaster", "admin"],
-      default: "user",
-      index: true
+      enum: ['user', 'forecaster', 'admin'],
+      default: 'user',
+      index: true,
     },
 
     status: {
       type: String,
-      enum: ["pending", "active", "locked", "suspended", "inactive"],
-      default: "pending",
-      index: true
+      enum: ['pending', 'active', 'locked', 'suspended', 'inactive'],
+      default: 'pending',
+      index: true,
     },
 
     activatedAt: { type: Date, default: null, index: true },
     activatedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null
+      ref: 'User',
+      default: null,
     },
 
     failedLoginAttempts: { type: Number, default: 0, min: 0 },
@@ -109,49 +109,46 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
-    deletedAt: { type: Date, default: null, index: true }
+    deletedAt: { type: Date, default: null, index: true },
   },
   {
     timestamps: true,
     toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+    toObject: { virtuals: true },
   }
 );
 
-userSchema.virtual("fullName").get(function () {
+userSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
-userSchema.pre("save", async function () {
+userSchema.pre('save', async function () {
   if (this.email) this.email = this.email.toLowerCase().trim();
   if (this.username) this.username = this.username.toLowerCase().trim();
 
   if (this.isNew) return;
 
-  const passwordChanged = this.isModified("password");
-  const authorizationChanged = this.isModified("role") || this.isModified("status");
+  const passwordChanged = this.isModified('password');
+  const authorizationChanged = this.isModified('role') || this.isModified('status');
 
   if (!passwordChanged && !authorizationChanged) return;
 
   if (passwordChanged) this.passwordChangedAt = new Date();
 
-  const current = await this.constructor
-    .findById(this._id)
-    .select("+sessionVersion")
-    .lean();
+  const current = await this.constructor.findById(this._id).select('+sessionVersion').lean();
 
   this.sessionVersion = (current?.sessionVersion ?? 0) + 1;
 });
 
-userSchema.pre("findOneAndUpdate", function () {
+userSchema.pre('findOneAndUpdate', function () {
   const update = this.getUpdate() || {};
-  const usesOperators = Object.keys(update).some((key) => key.startsWith("$"));
-  const set = usesOperators ? (update.$set || {}) : update;
+  const usesOperators = Object.keys(update).some((key) => key.startsWith('$'));
+  const set = usesOperators ? update.$set || {} : update;
 
-  const passwordChanged = Object.prototype.hasOwnProperty.call(set, "password");
+  const passwordChanged = Object.prototype.hasOwnProperty.call(set, 'password');
   const authorizationChanged =
-    Object.prototype.hasOwnProperty.call(set, "role") ||
-    Object.prototype.hasOwnProperty.call(set, "status");
+    Object.prototype.hasOwnProperty.call(set, 'role') ||
+    Object.prototype.hasOwnProperty.call(set, 'status');
 
   if (!passwordChanged && !authorizationChanged) return;
 
@@ -172,24 +169,18 @@ userSchema.pre("findOneAndUpdate", function () {
 });
 
 userSchema.methods.createEmailVerificationToken = function () {
-  const rawToken = crypto.randomBytes(32).toString("hex");
+  const rawToken = crypto.randomBytes(32).toString('hex');
 
-  this.emailVerificationToken = crypto
-    .createHash("sha256")
-    .update(rawToken)
-    .digest("hex");
+  this.emailVerificationToken = crypto.createHash('sha256').update(rawToken).digest('hex');
 
   this.emailVerificationExpires = Date.now() + 1000 * 60 * 60;
   return rawToken;
 };
 
 userSchema.methods.createPasswordResetToken = function () {
-  const rawToken = crypto.randomBytes(32).toString("hex");
+  const rawToken = crypto.randomBytes(32).toString('hex');
 
-  this.passwordResetToken = crypto
-    .createHash("sha256")
-    .update(rawToken)
-    .digest("hex");
+  this.passwordResetToken = crypto.createHash('sha256').update(rawToken).digest('hex');
 
   this.passwordResetExpires = Date.now() + 1000 * 60 * 30;
   return rawToken;
@@ -200,4 +191,4 @@ userSchema.methods.isLocked = function () {
   return this.lockUntil > Date.now();
 };
 
-export default mongoose.model("User", userSchema);
+export default mongoose.model('User', userSchema);

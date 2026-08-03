@@ -13,10 +13,11 @@ import {
 import { getStatusError } from './_helpers.js';
 import { generateAccessToken, generateRefreshToken } from '#controllers/auth/utils/jwtUtils';
 
-const verifyRefreshToken = (token) => jwt.verify(token, process.env.JWT_REFRESH_SECRET, {
-  algorithms: ['HS512'],
-  clockTolerance: 5,
-});
+const verifyRefreshToken = (token) =>
+  jwt.verify(token, process.env.JWT_REFRESH_SECRET, {
+    algorithms: ['HS512'],
+    clockTolerance: 5,
+  });
 
 export const refreshAccessToken = async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
@@ -46,7 +47,9 @@ export const refreshAccessToken = async (req, res) => {
     if (existingSession.revokedAt) {
       await revokeSessionFamily(userId, familyId, 'refresh_token_reuse');
       clearAuthCookies(res);
-      return res.status(401).json({ message: 'Refresh token reuse detected. Session family revoked.' });
+      return res
+        .status(401)
+        .json({ message: 'Refresh token reuse detected. Session family revoked.' });
     }
 
     const user = await User.findOne({ _id: userId, deletedAt: null }).select('+sessionVersion');
@@ -64,7 +67,11 @@ export const refreshAccessToken = async (req, res) => {
       return res.status(401).json({ message: 'Session has been revoked.' });
     }
 
-    if (decoded.iat && user.passwordChangedAt && decoded.iat * 1000 < user.passwordChangedAt.getTime()) {
+    if (
+      decoded.iat &&
+      user.passwordChangedAt &&
+      decoded.iat * 1000 < user.passwordChangedAt.getTime()
+    ) {
       await revokeSessionFamily(userId, familyId, 'password_changed');
       clearAuthCookies(res);
       return res.status(401).json({ message: 'Session expired after password change.' });
@@ -101,9 +108,8 @@ export const refreshAccessToken = async (req, res) => {
   } catch (error) {
     clearAuthCookies(res);
     return res.status(401).json({
-      message: error?.name === 'TokenExpiredError'
-        ? 'Refresh token expired.'
-        : 'Invalid refresh token.',
+      message:
+        error?.name === 'TokenExpiredError' ? 'Refresh token expired.' : 'Invalid refresh token.',
     });
   }
 };

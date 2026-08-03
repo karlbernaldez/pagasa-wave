@@ -7,11 +7,24 @@ const PAGE_OPTIONS = [5, 10, 25, 50];
 const DEFAULT_LIMIT = 5;
 
 const ALLOWED_STATUSES = ['pending', 'active', 'locked', 'suspended', 'inactive'];
-const OWNER_FIELDS = ['username', 'firstName', 'lastName', 'contact', 'address', 'birthday', 'email', 'agency', 'position', 'avatarUrl'];
+const OWNER_FIELDS = [
+  'username',
+  'firstName',
+  'lastName',
+  'contact',
+  'address',
+  'birthday',
+  'email',
+  'agency',
+  'position',
+  'avatarUrl',
+];
 const ADMIN_FIELDS = [...OWNER_FIELDS, 'role'];
 
-const LIST_FIELDS = 'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
-const DETAIL_FIELDS = 'username firstName lastName birthday address agency position email contact role status avatarUrl createdAt lastLogin activatedAt';
+const LIST_FIELDS =
+  'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
+const DETAIL_FIELDS =
+  'username firstName lastName birthday address agency position email contact role status avatarUrl createdAt lastLogin activatedAt';
 
 const clampInt = (value, min, max, fallback) => {
   const n = Math.trunc(Number(value));
@@ -22,8 +35,8 @@ const snapToPageOption = (limit) =>
   PAGE_OPTIONS.includes(limit)
     ? limit
     : PAGE_OPTIONS.reduce((best, cur) =>
-      Math.abs(cur - limit) < Math.abs(best - limit) ? cur : best
-    );
+        Math.abs(cur - limit) < Math.abs(best - limit) ? cur : best
+      );
 
 const generateDefaultPassword = (username) =>
   `${username}@${Math.floor(1000 + Math.random() * 9000)}`;
@@ -50,12 +63,7 @@ const buildUserFilter = ({ search, status, role } = {}) => {
 
   if (search?.trim()) {
     const regex = new RegExp(search.trim(), 'i');
-    filter.$or = [
-      { username: regex },
-      { firstName: regex },
-      { lastName: regex },
-      { email: regex },
-    ];
+    filter.$or = [{ username: regex }, { firstName: regex }, { lastName: regex }, { email: regex }];
   }
 
   if (status) filter.status = status;
@@ -97,9 +105,7 @@ export const getAllUsers = async (req, res) => {
 
 export const getUserDetails = async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId)
-      .select(DETAIL_FIELDS)
-      .lean();
+    const user = await User.findById(req.params.userId).select(DETAIL_FIELDS).lean();
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -114,13 +120,30 @@ export const getUserDetails = async (req, res) => {
 export const createUserByAdmin = async (req, res) => {
   try {
     const {
-      username, firstName, lastName, birthday, address,
-      agency, position, email, contact, role, status,
+      username,
+      firstName,
+      lastName,
+      birthday,
+      address,
+      agency,
+      position,
+      email,
+      contact,
+      role,
+      status,
     } = req.body;
 
-    const missing = ['username', 'firstName', 'lastName', 'birthday', 'address',
-      'agency', 'position', 'email', 'contact']
-      .filter((f) => !req.body[f]);
+    const missing = [
+      'username',
+      'firstName',
+      'lastName',
+      'birthday',
+      'address',
+      'agency',
+      'position',
+      'email',
+      'contact',
+    ].filter((f) => !req.body[f]);
 
     if (missing.length) {
       return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
@@ -137,8 +160,15 @@ export const createUserByAdmin = async (req, res) => {
     const isActive = safeStatus === 'active';
 
     const user = await User.create({
-      username, firstName, lastName, birthday, address,
-      agency, position, email, contact,
+      username,
+      firstName,
+      lastName,
+      birthday,
+      address,
+      agency,
+      position,
+      email,
+      contact,
       role: role || 'user',
       status: safeStatus,
       password: hashedPassword,
@@ -213,9 +243,7 @@ export const updateUserDetails = async (req, res) => {
 
     const allowedFields = isAdmin ? ADMIN_FIELDS : OWNER_FIELDS;
     const updates = Object.fromEntries(
-      allowedFields
-        .filter((f) => req.body[f] !== undefined)
-        .map((f) => [f, req.body[f]])
+      allowedFields.filter((f) => req.body[f] !== undefined).map((f) => [f, req.body[f]])
     );
 
     if (!Object.keys(updates).length) {
@@ -225,15 +253,22 @@ export const updateUserDetails = async (req, res) => {
     if (updates.username !== undefined) {
       updates.username = String(updates.username).trim().toLowerCase();
       if (!/^[a-z0-9._-]{3,30}$/.test(updates.username)) {
-        return res.status(400).json({ message: 'Username must be 3-30 characters and use only letters, numbers, dots, underscores, or hyphens' });
+        return res.status(400).json({
+          message:
+            'Username must be 3-30 characters and use only letters, numbers, dots, underscores, or hyphens',
+        });
       }
     }
 
     if (updates.avatarUrl !== undefined && updates.avatarUrl !== null) {
       const avatarUrl = String(updates.avatarUrl).trim();
-      const isSupportedAvatar = /^(https?:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(avatarUrl);
+      const isSupportedAvatar = /^(https?:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(
+        avatarUrl
+      );
       if (!isSupportedAvatar || avatarUrl.length > 1000000) {
-        return res.status(400).json({ message: 'Avatar must be a supported image URL or an image smaller than 750 KB' });
+        return res.status(400).json({
+          message: 'Avatar must be a supported image URL or an image smaller than 750 KB',
+        });
       }
       updates.avatarUrl = avatarUrl;
     }
@@ -281,7 +316,9 @@ export const updateUserStatus = async (req, res) => {
     const { status } = req.body;
 
     if (!ALLOWED_STATUSES.includes(status)) {
-      return res.status(400).json({ message: `Invalid status. Allowed: ${ALLOWED_STATUSES.join(', ')}` });
+      return res
+        .status(400)
+        .json({ message: `Invalid status. Allowed: ${ALLOWED_STATUSES.join(', ')}` });
     }
 
     const user = await User.findById(userId).select('+sessionVersion');

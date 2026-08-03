@@ -2,10 +2,7 @@ import jwt from 'jsonwebtoken';
 
 import User from '#models/User';
 import { clearAuthCookies } from '#controllers/auth/utils/cookies';
-import {
-  revokeAllUserSessions,
-  revokeSessionByJti,
-} from '#controllers/auth/utils/session';
+import { revokeAllUserSessions, revokeSessionByJti } from '#controllers/auth/utils/session';
 
 export const logoutUser = async (req, res) => {
   try {
@@ -38,7 +35,7 @@ export const logoutAllDevices = async (req, res) => {
     const user = await User.findOneAndUpdate(
       { _id: userId, deletedAt: null },
       { $inc: { sessionVersion: 1 } },
-      { new: true },
+      { new: true }
     ).select('+sessionVersion');
 
     if (!user) {

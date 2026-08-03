@@ -2,8 +2,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import Session from '#models/Session';
 
-export const hashToken = (token) =>
-  crypto.createHash('sha256').update(token).digest('hex');
+export const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 export const buildAuthPayload = ({ _id, email, username, role, sessionVersion = 0 }) => ({
   id: _id,
@@ -38,19 +37,19 @@ export const revokeSession = (session, reason = 'revoked') => {
 export const revokeSessionByJti = (userId, jti, reason = 'logout') =>
   Session.updateOne(
     { user: userId, jti, revokedAt: null },
-    { $set: { revokedAt: new Date(), revokedReason: reason } },
+    { $set: { revokedAt: new Date(), revokedReason: reason } }
   );
 
 export const revokeSessionFamily = (userId, familyId, reason = 'refresh_token_reuse') =>
   Session.updateMany(
     { user: userId, familyId, revokedAt: null },
-    { $set: { revokedAt: new Date(), revokedReason: reason } },
+    { $set: { revokedAt: new Date(), revokedReason: reason } }
   );
 
 export const revokeAllUserSessions = (userId, reason = 'logout_all') =>
   Session.updateMany(
     { user: userId, revokedAt: null },
-    { $set: { revokedAt: new Date(), revokedReason: reason } },
+    { $set: { revokedAt: new Date(), revokedReason: reason } }
   );
 
 export const consumeRefreshSession = async ({ userId, jti, refreshToken, replacementJti }) =>
@@ -69,5 +68,5 @@ export const consumeRefreshSession = async ({ userId, jti, refreshToken, replace
         replacedByJti: replacementJti,
       },
     },
-    { new: false },
+    { new: false }
   );

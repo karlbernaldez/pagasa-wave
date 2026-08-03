@@ -26,9 +26,8 @@ function getForecastDateQuery(value) {
 }
 
 function serializePackage(forecastPackage) {
-  const plain = typeof forecastPackage.toObject === 'function'
-    ? forecastPackage.toObject()
-    : forecastPackage;
+  const plain =
+    typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage;
 
   return {
     ...plain,
@@ -66,7 +65,8 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
     $set: { status: nextStatus },
     $push: {
       auditLogs: {
-        action: nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ? 'approved' : 'chart_completion_updated',
+        action:
+          nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ? 'approved' : 'chart_completion_updated',
         performedBy: userId,
         previousStatus: forecastPackage.status,
         newStatus: nextStatus,
@@ -85,8 +85,12 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
     update.$set.approvedBy = userId;
   }
 
-  const updatedPackage = await ForecastPackage.findByIdAndUpdate(forecastPackage._id, update, { new: true });
-  return populateForecastPackage(ForecastPackage.findById(updatedPackage?._id || forecastPackage._id));
+  const updatedPackage = await ForecastPackage.findByIdAndUpdate(forecastPackage._id, update, {
+    new: true,
+  });
+  return populateForecastPackage(
+    ForecastPackage.findById(updatedPackage?._id || forecastPackage._id)
+  );
 }
 
 async function ensureDailyChartProject({ forecastDate, user, requiredChart, packageName }) {
@@ -159,7 +163,12 @@ async function createDailyForecastPackage({ forecastDate, user }) {
   const charts = [];
 
   for (const requiredChart of REQUIRED_FORECAST_CHARTS) {
-    const project = await ensureDailyChartProject({ forecastDate, user, requiredChart, packageName: name });
+    const project = await ensureDailyChartProject({
+      forecastDate,
+      user,
+      requiredChart,
+      packageName: name,
+    });
     charts.push({
       chartType: requiredChart.chartType,
       project: project._id,
@@ -216,10 +225,12 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
   if (!requestedDate) throwError('forecastDate must be a valid date', 400);
 
   const existingPackage = await findPackageForDate(requestedDate);
-  const forecastPackage = existingPackage || await createDailyForecastPackage({
-    forecastDate: requestedDate,
-    user: req.user,
-  });
+  const forecastPackage =
+    existingPackage ||
+    (await createDailyForecastPackage({
+      forecastDate: requestedDate,
+      user: req.user,
+    }));
 
   const syncedPackage = await syncPackageStatusFromCharts(forecastPackage, req.user.id);
   res.json(serializePackage(syncedPackage));

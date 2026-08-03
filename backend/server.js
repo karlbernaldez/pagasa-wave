@@ -16,10 +16,7 @@ import connectDB from './config/db.js';
 import { validateSecurityConfig } from './config/securityConfig.js';
 import { setStore } from '#controllers/auth/otp';
 import { checkRedisHealth } from '#lib/redis';
-import {
-  RedisOtpStore,
-  RedisPendingAuthStore,
-} from '#lib/redisOtpStore';
+import { RedisOtpStore, RedisPendingAuthStore } from '#lib/redisOtpStore';
 import authenticate from './middleware/authMiddleware.js';
 import { requireRole } from './middleware/adminMiddleware.js';
 import { csrfProtection } from './middleware/csrfMiddleware.js';
@@ -115,7 +112,7 @@ const createApp = () => {
     express.urlencoded({
       limit: '5mb',
       extended: true,
-    }),
+    })
   );
   app.use(cookieParser());
   app.use(csrfProtection);
@@ -150,21 +147,15 @@ const createApp = () => {
     '/api/forecast-packages',
     authenticate,
     requireRole('forecaster', 'admin'),
-    forecastPackageRoutes,
+    forecastPackageRoutes
   );
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
   app.use('/api/chat', chatRoutes);
 
-  app.use(
-    '/api/public',
-    express.static(path.join(__dirname, 'public')),
-  );
+  app.use('/api/public', express.static(path.join(__dirname, 'public')));
 
-  app.use(
-    '/api/frames',
-    express.static(path.join(__dirname, 'frames')),
-  );
+  app.use('/api/frames', express.static(path.join(__dirname, 'frames')));
 
   app.use((_req, res) => {
     res.status(404).json({
@@ -176,9 +167,7 @@ const createApp = () => {
   app.use(errorLogger);
 
   app.use((err, _req, res, _next) => {
-    const status = Number.isInteger(err.status)
-      ? err.status
-      : 500;
+    const status = Number.isInteger(err.status) ? err.status : 500;
 
     res.status(status).json({
       success: false,
@@ -194,11 +183,7 @@ const getPort = () => {
   const rawPort = process.env.PORT ?? '5000';
   const port = Number.parseInt(rawPort, 10);
 
-  if (
-    !Number.isInteger(port) ||
-    port < 1 ||
-    port > 65_535
-  ) {
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new Error(`Invalid PORT value: ${rawPort}`);
   }
 
@@ -228,10 +213,7 @@ const startServer = async () => {
 
   await connectDB();
 
-  setStore(
-    new RedisPendingAuthStore(),
-    new RedisOtpStore(),
-  );
+  setStore(new RedisPendingAuthStore(), new RedisOtpStore());
 
   await checkRedisHealth();
 

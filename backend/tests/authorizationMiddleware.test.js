@@ -24,7 +24,9 @@ const makeRes = () => ({
 const runMiddleware = (middleware, req) => {
   const res = makeRes();
   let nextCalled = false;
-  middleware(req, res, () => { nextCalled = true; });
+  middleware(req, res, () => {
+    nextCalled = true;
+  });
   return { res, nextCalled };
 };
 
