@@ -74,31 +74,27 @@ function createPackage() {
   };
 }
 
-function createResponse() {
-  return {
-    statusCode: 200,
-    body: null,
-    status(code) {
-      this.statusCode = code;
-      return this;
-    },
-    json(body) {
-      this.body = body;
-      return this;
-    },
-  };
-}
+function run(handler, req) {
+  return new Promise((resolve, reject) => {
+    const res = {
+      statusCode: 200,
+      body: null,
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(body) {
+        this.body = body;
+        resolve(this);
+        return this;
+      },
+    };
 
-async function run(handler, req) {
-  const res = createResponse();
-  await new Promise((resolve, reject) => {
-    const maybePromise = handler(req, res, (error) => {
+    handler(req, res, (error) => {
       if (error) reject(error);
-      else resolve();
+      else resolve(res);
     });
-    Promise.resolve(maybePromise).then(resolve, reject);
   });
-  return res;
 }
 
 async function loadModules() {
