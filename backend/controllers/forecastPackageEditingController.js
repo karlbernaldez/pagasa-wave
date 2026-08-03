@@ -1,14 +1,12 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import { throwError } from '../utils/errorHelper.js';
 import ForecastPackage from '../models/ForecastPackage.js';
-import Project from '../models/Project.js';
 import {
   FORECAST_PACKAGE_STATUS,
   getForecastChartLabel,
   getPackageCompletion,
   REQUIRED_FORECAST_CHART_TYPES,
 } from '../utils/forecastPackage.js';
-import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 import { emitForecastChartUpdated, emitForecastPackageUpdated } from '../socket/socketEmitter.js';
 
 const EDITABLE_PACKAGE_STATUSES = [FORECAST_PACKAGE_STATUS.DRAFT, FORECAST_PACKAGE_STATUS.REVISION_REQUESTED];
@@ -142,37 +140,6 @@ function updateChartCompletionState(forecastPackage, chart, isComplete, user) {
   forecastPackage.auditLogs.push({ action: 'chart_completion_updated', performedBy: user.id, previousStatus: forecastPackage.status, newStatus: forecastPackage.status, comment });
 }
 
-async function syncRevisionProjectStatusAfterCompletion(forecastPackage, chart, isComplete, userId) {
-  const projectId = chart?.project;
-  if (!projectId || forecastPackage?.status !== FORECAST_PACKAGE_STATUS.REVISION_REQUESTED) return;
-
-  const nextStatus = isComplete ? PROJECT_STATUS.SUBMITTED : PROJECT_STATUS.REVISION_REQUESTED;
-  const currentStatuses = isComplete
-    ? [PROJECT_STATUS.REVISION_REQUESTED]
-    : [PROJECT_STATUS.SUBMITTED, PROJECT_STATUS.UNDER_REVIEW];
-
-  await Project.updateOne(
-    { _id: projectId, status: { $in: currentStatuses } },
-    {
-      $set: {
-        status: nextStatus,
-        ...(isComplete ? { submittedAt: new Date() } : {}),
-      },
-      $push: {
-        auditLogs: {
-          action: isComplete ? 'submitted' : 'revision_reopened',
-          performedBy: userId,
-          previousStatus: isComplete ? PROJECT_STATUS.REVISION_REQUESTED : PROJECT_STATUS.SUBMITTED,
-          newStatus: nextStatus,
-          comment: isComplete
-            ? 'Revision chart re-certified and returned to admin review queue'
-            : 'Revision chart reopened for additional edits',
-        },
-      },
-    }
-  );
-}
-
 async function getPackageByProject(projectId) { const forecastPackage = await ForecastPackage.findOne({ 'charts.project': projectId }); if (!forecastPackage) throwError('Forecast Package chart context not found', 404); return forecastPackage; }
 async function joinChartIfAllowedByProject(projectId, user, { emit = true, audit = true, strict = false } = {}) {
   const forecastPackage = await getPackageByProject(projectId);
@@ -242,8 +209,6 @@ export const updateForecastChartCompletionByProject = asyncHandler(async (req, r
   const isComplete = Boolean(req.body?.isComplete);
   updateChartCompletionState(forecastPackage, chart, isComplete, req.user);
   await forecastPackage.save();
-  const completionRow = getCompletionRow(forecastPackage, chart.chartType);
-  await syncRevisionProjectStatusAfterCompletion(forecastPackage, chart, Boolean(completionRow?.isComplete), req.user.id);
   emitChartWorkflowUpdate(forecastPackage, req.params.projectId, { action: 'chart_completion_updated', actorUserId: String(req.user.id) });
   const populated = await populateForecastPackageById(forecastPackage._id);
   const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
