@@ -83,6 +83,10 @@ export function deriveForecastPackageStatusFromCharts(forecastPackage) {
     return FORECAST_PACKAGE_STATUS.ARCHIVED;
   }
 
+  if (forecastPackage?.status === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED) {
+    return FORECAST_PACKAGE_STATUS.REVISION_REQUESTED;
+  }
+
   const statuses = getRequiredChartStatuses(forecastPackage);
   if (statuses.length === 0) return FORECAST_PACKAGE_STATUS.DRAFT;
 
