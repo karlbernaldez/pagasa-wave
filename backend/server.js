@@ -13,12 +13,15 @@ import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 
 import connectDB from './config/db.js';
+import { validateSecurityConfig } from './config/securityConfig.js';
 import { setStore } from '#controllers/auth/otp';
 import { checkRedisHealth } from '#lib/redis';
 import {
   RedisOtpStore,
   RedisPendingAuthStore,
 } from '#lib/redisOtpStore';
+import authenticate from './middleware/authMiddleware.js';
+import { requireRole } from './middleware/adminMiddleware.js';
 import { csrfProtection } from './middleware/csrfMiddleware.js';
 import authRoutes from './routes/authRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
@@ -45,12 +48,6 @@ const parseCsv = (value = '') =>
     .map((item) => item.trim())
     .filter(Boolean);
 
-/**
- * Overrides Node's resolver only when explicitly configured locally.
- *
- * Production remains on the operating system's configured DNS because
- * DEV_DNS_SERVERS is ignored when NODE_ENV=production.
- */
 const configureRuntimeDns = () => {
   const developmentDnsServers = parseCsv(process.env.DEV_DNS_SERVERS);
 
@@ -72,7 +69,6 @@ const createCorsOptions = () => {
     credentials: true,
 
     origin(origin, callback) {
-      // Allow same-origin, health checks, CLI tools, and server requests.
       if (!origin) {
         return callback(null, true);
       }
@@ -81,7 +77,6 @@ const createCorsOptions = () => {
         return callback(null, true);
       }
 
-      // Preserve the current permissive local-development behavior.
       if (!isProduction && allowedOrigins.length === 0) {
         return callback(null, true);
       }
@@ -100,18 +95,6 @@ const createGlobalLimiter = () =>
     skip: (req) => req.method === 'OPTIONS',
     message: {
       message: 'Too many requests, slow down.',
-    },
-  });
-
-const createAuthLimiter = () =>
-  rateLimit({
-    windowMs: 15 * 60_000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: (req) => req.method === 'OPTIONS',
-    message: {
-      message: 'Too many login attempts. Try again later.',
     },
   });
 
@@ -161,13 +144,16 @@ const createApp = () => {
   app.use('/api/settings', settingsRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/features', featureRoutes);
-  app.use('/api/auth', createAuthLimiter(), authRoutes);
+  app.use('/api/auth', authRoutes);
   app.use('/api/projects', projectRoutes);
-  app.use('/api/forecast-packages', forecastPackageRoutes);
+  app.use(
+    '/api/forecast-packages',
+    authenticate,
+    requireRole('forecaster', 'admin'),
+    forecastPackageRoutes,
+  );
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
-
-  // Preserved for compatibility with the current application.
   app.use('/api/chat', chatRoutes);
 
   app.use(
@@ -237,7 +223,7 @@ const listen = (server, port) =>
   });
 
 const startServer = async () => {
-  // This runs before Mongoose performs its SRV DNS query.
+  validateSecurityConfig();
   configureRuntimeDns();
 
   await connectDB();
