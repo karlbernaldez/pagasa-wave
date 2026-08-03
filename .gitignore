@@ -68,3 +68,5 @@ __pycache__/
 *.log
 frontend/*.log
 frontend/.env.production
+
+node_modules/
