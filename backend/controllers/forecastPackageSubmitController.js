@@ -16,12 +16,6 @@ const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
 ];
 
-const SUBMIT_PARTICIPATION_AUDIT_ACTIONS = new Set([
-  'chart_claimed',
-  'chart_released',
-  'chart_completion_updated',
-]);
-
 function assertAuthenticated(req) {
   if (!req.user) throwError('Unauthorized', 401);
 }
@@ -57,9 +51,8 @@ function getLinkedProjectIds(forecastPackage) {
 }
 
 function serializePackage(forecastPackage) {
-  const plain = typeof forecastPackage.toObject === 'function'
-    ? forecastPackage.toObject()
-    : forecastPackage;
+  const plain =
+    typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage;
 
   return {
     ...plain,
@@ -81,36 +74,8 @@ async function populateForecastPackageById(id) {
     .populate('auditLogs.performedBy', 'firstName lastName email username');
 }
 
-function hasPackageSubmitParticipation(user, forecastPackage) {
-  const userId = user?.id;
-  if (!userId) return false;
-
-  if (isSameId(forecastPackage.owner, userId)) return true;
-
-  const charts = Array.isArray(forecastPackage.charts) ? forecastPackage.charts : [];
-  if (charts.some((chart) => (
-    getActiveEditors(chart).some((editor) => isSameId(editor.user, userId))
-    || isSameId(chart.claimedBy, userId)
-    || isSameId(chart.readyBy, userId)
-  ))) {
-    return true;
-  }
-
-  const chartCompletion = Array.isArray(forecastPackage.chartCompletion) ? forecastPackage.chartCompletion : [];
-  if (chartCompletion.some((row) => isSameId(row.completedBy, userId))) {
-    return true;
-  }
-
-  const auditLogs = Array.isArray(forecastPackage.auditLogs) ? forecastPackage.auditLogs : [];
-  return auditLogs.some((log) => (
-    SUBMIT_PARTICIPATION_AUDIT_ACTIONS.has(log?.action)
-    && isSameId(log?.performedBy, userId)
-  ));
-}
-
-function canUserSubmitPackage(user, forecastPackage) {
-  if (!user?.id || user.role === 'admin') return false;
-  return hasPackageSubmitParticipation(user, forecastPackage);
+function canUserSubmitPackage(user) {
+  return user?.role === 'forecaster';
 }
 
 async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, session) {
@@ -120,7 +85,9 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, 
   await Project.updateMany(
     {
       _id: { $in: projectIds },
-      status: { $in: [PROJECT_STATUS.DRAFT, PROJECT_STATUS.REVISION_REQUESTED, PROJECT_STATUS.REJECTED] },
+      status: {
+        $in: [PROJECT_STATUS.DRAFT, PROJECT_STATUS.REVISION_REQUESTED, PROJECT_STATUS.REJECTED],
+      },
     },
     {
       $set: {
@@ -131,13 +98,15 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, 
         auditLogs: {
           action: 'submitted',
           performedBy: userId,
-          previousStatus: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
-            ? PROJECT_STATUS.REVISION_REQUESTED
-            : PROJECT_STATUS.DRAFT,
+          previousStatus:
+            previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
+              ? PROJECT_STATUS.REVISION_REQUESTED
+              : PROJECT_STATUS.DRAFT,
           newStatus: PROJECT_STATUS.SUBMITTED,
-          comment: previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
-            ? 'Revision resubmitted as part of Forecast Package submission'
-            : 'Submitted as part of Forecast Package submission',
+          comment:
+            previousStatus === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED
+              ? 'Revision resubmitted as part of Forecast Package submission'
+              : 'Submitted as part of Forecast Package submission',
         },
       },
     },
@@ -156,8 +125,11 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
       const forecastPackage = await ForecastPackage.findById(req.params.id, null, { session });
       if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-      if (!canUserSubmitPackage(req.user, forecastPackage)) {
-        throwError('Only the package owner or a participating forecaster can submit this package', 403);
+      if (!canUserSubmitPackage(req.user)) {
+        throwError(
+          'Only the package owner or a participating forecaster can submit this package',
+          403
+        );
       }
 
       if (!canSubmitPackage(forecastPackage.status)) {
@@ -171,7 +143,10 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
 
       const activeEditingChart = getActiveEditingChartLabel(forecastPackage);
       if (activeEditingChart) {
-        throwError(`${activeEditingChart} still has active editors. Release the chart before submitting`, 409);
+        throwError(
+          `${activeEditingChart} still has active editors. Release the chart before submitting`,
+          409
+        );
       }
 
       const previousStatus = forecastPackage.status;

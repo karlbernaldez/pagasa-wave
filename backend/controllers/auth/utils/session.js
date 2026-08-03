@@ -1,69 +1,72 @@
 import crypto from 'crypto';
-import jwt    from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import Session from '#models/Session';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Token helpers
-// ─────────────────────────────────────────────────────────────────────────────
+export const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
-/** One-way hash used for token binding in the Session document. */
-export const hashToken = (token) =>
-  crypto.createHash('sha256').update(token).digest('hex');
-
-/** Builds the minimal JWT payload from a user document. */
-export const buildAuthPayload = ({ _id, email, username, role }) => ({
+export const buildAuthPayload = ({ _id, email, username, role, sessionVersion = 0 }) => ({
   id: _id,
   email,
   username,
   role,
+  sessionVersion,
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Session helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Persists a new Session document tied to the given refresh token.
- *
- * @param {object} opts
- * @param {string}  opts.refreshToken - Raw (signed) refresh JWT
- * @param {*}       opts.userId       - MongoDB ObjectId of the owner
- * @param {string}  opts.jti          - UUID used as the JWT ID
- * @param {Request} opts.req          - Express request (for IP / user-agent)
- */
-export const createSession = async ({ refreshToken, userId, jti, req }) => {
+export const createSession = async ({ refreshToken, userId, jti, req, familyId = jti }) => {
   const decoded = jwt.decode(refreshToken);
-
-  if (!decoded?.exp) {
-    throw new Error('Invalid refresh token: missing expiry claim.');
-  }
+  if (!decoded?.exp) throw new Error('Invalid refresh token: missing expiry claim.');
 
   return Session.create({
-    user:      userId,
+    user: userId,
     jti,
+    familyId,
     tokenHash: hashToken(refreshToken),
     userAgent: req.get('user-agent') || '',
-    ip:        req.ip || '',
+    ip: req.ip || '',
     expiresAt: new Date(decoded.exp * 1000),
     revokedAt: null,
   });
 };
 
-/**
- * Revokes a single session by setting revokedAt = now.
- * Returns the result of the update operation.
- */
-export const revokeSession = (session) => {
+export const revokeSession = (session, reason = 'revoked') => {
   session.revokedAt = new Date();
+  session.revokedReason = reason;
   return session.save();
 };
 
-/**
- * Revokes a session by user + jti without requiring the document to be
- * fetched first (fire-and-forget safe for logout).
- */
-export const revokeSessionByJti = (userId, jti) =>
+export const revokeSessionByJti = (userId, jti, reason = 'logout') =>
   Session.updateOne(
     { user: userId, jti, revokedAt: null },
-    { $set: { revokedAt: new Date() } },
+    { $set: { revokedAt: new Date(), revokedReason: reason } }
+  );
+
+export const revokeSessionFamily = (userId, familyId, reason = 'refresh_token_reuse') =>
+  Session.updateMany(
+    { user: userId, familyId, revokedAt: null },
+    { $set: { revokedAt: new Date(), revokedReason: reason } }
+  );
+
+export const revokeAllUserSessions = (userId, reason = 'logout_all') =>
+  Session.updateMany(
+    { user: userId, revokedAt: null },
+    { $set: { revokedAt: new Date(), revokedReason: reason } }
+  );
+
+export const consumeRefreshSession = async ({ userId, jti, refreshToken, replacementJti }) =>
+  Session.findOneAndUpdate(
+    {
+      user: userId,
+      jti,
+      tokenHash: hashToken(refreshToken),
+      revokedAt: null,
+      expiresAt: { $gt: new Date() },
+    },
+    {
+      $set: {
+        revokedAt: new Date(),
+        revokedReason: 'rotated',
+        replacedByJti: replacementJti,
+      },
+    },
+    { new: false }
   );

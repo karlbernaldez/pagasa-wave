@@ -1,24 +1,28 @@
 import express from 'express';
-import { getAllUsers, getUserDetails, updateUserDetails, deleteUser, updateUserStatus, createUserByAdmin, changePassword  } from '../controllers/userController.js';
-import { isAdmin, isOwnerOrAdmin, isOwnerOnly } from '../middleware/adminMiddleware.js';
-import { authenticateToken } from '../middleware/authenticateToken.js';
+
+import {
+  getAllUsers,
+  getUserDetails,
+  updateUserDetails,
+  deleteUser,
+  updateUserStatus,
+  createUserByAdmin,
+  changePassword,
+} from '../controllers/userController.js';
+import authenticate from '../middleware/authMiddleware.js';
+import { isAdmin, isOwnerOrAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 
-router.get('/', isAdmin, getAllUsers); // Only accessible by admins -- CHECKED PASSED
+router.use(authenticate);
 
-router.get('/:userId',  authenticateToken, isOwnerOrAdmin, getUserDetails); // Route to get user details -- CHECKED PASSED
+router.get('/', isAdmin, getAllUsers);
+router.post('/', isAdmin, createUserByAdmin);
 
-router.put('/:userId', authenticateToken, isOwnerOrAdmin, updateUserDetails); // Route to update user details -- CHECKED PASSED
-
-router.put('/:userId/change-password', authenticateToken, isOwnerOrAdmin, changePassword);
-
-router.put('/:userId/status', authenticateToken, isAdmin, updateUserStatus); // Route to update user status -- CHECKED PASSED
-
-// Route to create user (admin only)
-router.post('/', authenticateToken, isAdmin, createUserByAdmin); // Route to create user
-
-// Route to delete user
-router.delete('/:userId', authenticateToken, isAdmin, deleteUser); // Optional: protect delete user as well -- CHECKED PASSED
+router.get('/:userId', isOwnerOrAdmin, getUserDetails);
+router.put('/:userId', isOwnerOrAdmin, updateUserDetails);
+router.put('/:userId/change-password', isOwnerOrAdmin, changePassword);
+router.put('/:userId/status', isAdmin, updateUserStatus);
+router.delete('/:userId', isAdmin, deleteUser);
 
 export default router;
