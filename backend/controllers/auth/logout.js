@@ -25,7 +25,7 @@ export const logoutUser = async (req, res) => {
 
     clearAuthCookies(res);
     return res.status(200).json({ message: 'Logged out successfully.' });
-  } catch (error) {
+  } catch {
     clearAuthCookies(res);
     return res.status(500).json({ message: 'Failed to log out.' });
   }
