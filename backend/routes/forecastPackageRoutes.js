@@ -8,10 +8,10 @@ import {
   getForecastPackageById,
   getUserForecastPackages,
   publishForecastPackage,
-  requestForecastPackageRevision,
   startForecastPackageReview,
   updateForecastChartCompletion,
 } from '../controllers/forecastPackageController.js';
+import { requestTargetedForecastPackageRevision } from '../controllers/forecastPackageRevisionController.js';
 import { submitForecastPackage } from '../controllers/forecastPackageSubmitController.js';
 import { getCurrentForecastPackage } from '../controllers/currentForecastPackageController.js';
 import {
@@ -293,7 +293,7 @@ router.use(protect);
 
 router.get('/admin/packages', isAdmin, getAdminForecastPackages);
 router.patch('/:id/start-review', isAdmin, emitForecastPackageWorkflowAfterResponse('review_started'), startForecastPackageReview);
-router.patch('/:id/request-revision', isAdmin, emitForecastPackageWorkflowAfterResponse('revision_requested'), requestForecastPackageRevision);
+router.patch('/:id/request-revision', isAdmin, emitForecastPackageWorkflowAfterResponse('revision_requested'), requestTargetedForecastPackageRevision);
 router.patch('/:id/approve', isAdmin, emitForecastPackageWorkflowAfterResponse('approved'), approveForecastPackage);
 router.patch('/:id/publish', isAdmin, emitForecastPackageWorkflowAfterResponse('published'), publishForecastPackage);
 
