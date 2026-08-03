@@ -150,7 +150,7 @@ export const loginUser = async (credentials) => {
     return await response.json();
   } catch (error) {
     console.error('Login Error:', error);
-    throw new Error(error.message || 'Something went wrong during login.');
+    throw new Error(error.message || 'Something went wrong during login.', { cause: error });
   }
 };
 
