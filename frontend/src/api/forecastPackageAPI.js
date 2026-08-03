@@ -58,10 +58,10 @@ export const fetchForecastPackageById = (id, { signal } = {}) =>
 export const startForecastPackageReview = (id) =>
   request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/start-review`, { method: 'PATCH' });
 
-export const requestForecastPackageRevision = (id, comment = '') =>
+export const requestForecastPackageRevision = (id, comment = '', chartTypes = []) =>
   request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/request-revision`, {
     method: 'PATCH',
-    body: JSON.stringify({ comment }),
+    body: JSON.stringify({ comment, chartTypes }),
   });
 
 export const approveForecastPackage = (id) =>
