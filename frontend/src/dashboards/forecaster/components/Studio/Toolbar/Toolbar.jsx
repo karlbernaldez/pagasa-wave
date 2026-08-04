@@ -135,7 +135,26 @@ const DrawToolbar = ({ draw, drawInstance, onToggleCanvas, onToggleFlagCanvas, t
     openModals,
   });
 
-  useEffect(() => { try { const saved = window.localStorage.getItem(STORAGE_KEY); const next = saved ? JSON.parse(saved) : getDefaultPosition(isCollapsed); if (Number.isFinite(next?.x) && Number.isFinite(next?.y)) { const safe = getSafePosition(next, dockWidth); positionRef.current = safe; setPosition(safe); } } catch { const safe = getDefaultPosition(isCollapsed); positionRef.current = safe; setPosition(safe); } }, [dockWidth, isCollapsed]);
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      try {
+        const saved = window.localStorage.getItem(STORAGE_KEY);
+        const next = saved ? JSON.parse(saved) : getDefaultPosition(isCollapsed);
+        if (Number.isFinite(next?.x) && Number.isFinite(next?.y)) {
+          const safe = getSafePosition(next, dockWidth);
+          positionRef.current = safe;
+          setPosition(safe);
+        }
+      } catch {
+        const safe = getDefaultPosition(isCollapsed);
+        positionRef.current = safe;
+        setPosition(safe);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [dockWidth, isCollapsed]);
+
   useEffect(() => { const handleResize = () => { const safe = getSafePosition(positionRef.current, dockWidth); positionRef.current = safe; setPosition(safe); }; window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, [dockWidth]);
   const persistPosition = useCallback((nextPosition) => { try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextPosition)); } catch { /* ignore */ } }, []);
   const handleDragStart = useCallback((event) => { if (event.button !== undefined && event.button !== 0) return; event.preventDefault(); setIsDragging(true); dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: positionRef.current.x, originY: positionRef.current.y, width: dockWidth }; event.currentTarget.setPointerCapture?.(event.pointerId); }, [dockWidth]);
