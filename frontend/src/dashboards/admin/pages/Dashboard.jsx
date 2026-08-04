@@ -7,7 +7,6 @@ import UserManagementSection from '@dashboards/admin/sections/user-management/Us
 import AnalyticsSection from '@dashboards/admin/sections/Analytics';
 import CalendarSection from '@dashboards/admin/sections/Calendar';
 import SettingsSection from '@dashboards/admin/sections/Settings';
-import Profile from '@dashboards/forecaster/pages/Profile';
 import { ADMIN_TABS } from '@dashboards/admin/constants/navigation';
 
 const SECTION_MAP = {
@@ -18,15 +17,11 @@ const SECTION_MAP = {
   [ADMIN_TABS.ANALYTICS]: (dark) => <AnalyticsSection isDarkMode={dark} />,
   [ADMIN_TABS.CALENDAR]: (dark) => <CalendarSection isDarkMode={dark} />,
   [ADMIN_TABS.SETTINGS]: (dark) => <SettingsSection isDarkMode={dark} />,
-  [ADMIN_TABS.ACCOUNT]: () => <Profile />,
 };
 
 const renderSection = (tab, isDarkMode, setActiveTab) =>
   (SECTION_MAP[tab]?.(isDarkMode)) ?? (
-    <DashboardOverview
-      isDarkMode={isDarkMode}
-      onSelectTab={setActiveTab}
-    />
+    <DashboardOverview isDarkMode={isDarkMode} onSelectTab={setActiveTab} />
   );
 
 const AdminDashboard = () => {
