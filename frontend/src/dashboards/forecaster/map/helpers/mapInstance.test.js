@@ -1,6 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getLatestMapInstance, registerMapInstance } from './mapInstance';
+import {
+  getLatestMapInstance,
+  MAP_INSTANCE_READY_EVENT,
+  registerMapInstance,
+} from './mapInstance';
 
 describe('shared Mapbox instance registry', () => {
   afterEach(() => {
@@ -13,6 +17,17 @@ describe('shared Mapbox instance registry', () => {
     registerMapInstance(map);
 
     expect(getLatestMapInstance()).toBe(map);
+  });
+
+  it('notifies listeners when the Studio map becomes ready', () => {
+    const listener = vi.fn();
+    const map = { getStyle: () => ({ layers: [] }) };
+    window.addEventListener(MAP_INSTANCE_READY_EVENT, listener);
+
+    registerMapInstance(map);
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    window.removeEventListener(MAP_INSTANCE_READY_EVENT, listener);
   });
 
   it('clears a destroyed map during Studio teardown', () => {
