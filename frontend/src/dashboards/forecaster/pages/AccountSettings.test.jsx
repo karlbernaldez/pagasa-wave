@@ -27,7 +27,7 @@ function renderPage() {
   return render(
     <MemoryRouter>
       <AccountSettingsPage />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 

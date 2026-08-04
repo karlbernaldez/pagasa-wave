@@ -33,15 +33,23 @@ export default function AccountSettingsPage() {
   };
 
   return (
-    <main className={`min-h-full px-4 py-8 sm:px-6 lg:px-8 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+    <main
+      className={`min-h-full px-4 py-8 sm:px-6 lg:px-8 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}
+    >
       <div className="mx-auto max-w-4xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>
+            <p
+              className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}
+            >
               Account
             </p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Account settings</h1>
-            <p className={`mt-2 max-w-2xl text-sm leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">
+              Account settings
+            </h1>
+            <p
+              className={`mt-2 max-w-2xl text-sm leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+            >
               Manage account-level security controls for your WaveLab access.
             </p>
           </div>
@@ -61,31 +69,47 @@ export default function AccountSettingsPage() {
         </header>
 
         {error && (
-          <div role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-400">
+          <div
+            role="alert"
+            className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-400"
+          >
             {error}
           </div>
         )}
 
-        <section className={`overflow-hidden rounded-2xl border backdrop-blur-3xl ${getPanelClass(isDarkMode)}`}>
-          <div className={`flex items-center gap-3 border-b px-5 py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-200/80'}`}>
-            <span className={`grid h-9 w-9 place-items-center rounded-xl ${isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-cyan-50 text-cyan-700'}`}>
+        <section
+          className={`overflow-hidden rounded-2xl border backdrop-blur-3xl ${getPanelClass(isDarkMode)}`}
+        >
+          <div
+            className={`flex items-center gap-3 border-b px-5 py-4 ${isDarkMode ? 'border-white/10' : 'border-slate-200/80'}`}
+          >
+            <span
+              className={`grid h-9 w-9 place-items-center rounded-xl ${isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-cyan-50 text-cyan-700'}`}
+            >
               <ShieldCheck size={17} aria-hidden="true" />
             </span>
             <div>
               <h2 className="text-sm font-black uppercase tracking-[0.12em]">Session security</h2>
-              <p className={`mt-1 text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Control active sign-ins for your account.</p>
+              <p className={`mt-1 text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Control active sign-ins for your account.
+              </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">
-              <span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl ${isDarkMode ? 'bg-red-400/10 text-red-300' : 'bg-red-50 text-red-600'}`}>
+              <span
+                className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl ${isDarkMode ? 'bg-red-400/10 text-red-300' : 'bg-red-50 text-red-600'}`}
+              >
                 <KeyRound size={18} aria-hidden="true" />
               </span>
               <div>
                 <h3 className="text-sm font-extrabold">Log out of all devices</h3>
-                <p className={`mt-1 max-w-2xl text-sm leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  End every active WaveLab session associated with your account, including this browser. You will need to sign in again on each device.
+                <p
+                  className={`mt-1 max-w-2xl text-sm leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+                >
+                  End every active WaveLab session associated with your account, including this
+                  browser. You will need to sign in again on each device.
                 </p>
               </div>
             </div>
@@ -126,9 +150,14 @@ export default function AccountSettingsPage() {
               </button>
             </div>
 
-            <h2 id="logout-all-title" className="mt-5 text-lg font-black">Log out of all devices?</h2>
-            <p className={`mt-2 text-sm leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              This immediately invalidates every active session, including the one you are using now.
+            <h2 id="logout-all-title" className="mt-5 text-lg font-black">
+              Log out of all devices?
+            </h2>
+            <p
+              className={`mt-2 text-sm leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+            >
+              This immediately invalidates every active session, including the one you are using
+              now.
             </p>
 
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
