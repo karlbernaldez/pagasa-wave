@@ -1,6 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const DEFAULT_LIMIT = 50;
+const historyByProject = new Map();
+
+function getProjectKey(projectId) {
+  return String(projectId || '__no_project__');
+}
+
+function getProjectHistory(projectId) {
+  const key = getProjectKey(projectId);
+  if (!historyByProject.has(key)) {
+    historyByProject.set(key, {
+      undoStack: [],
+      redoStack: [],
+      queue: Promise.resolve(),
+    });
+  }
+  return historyByProject.get(key);
+}
 
 function validateCommand(command) {
   if (!command || typeof command.undo !== 'function' || typeof command.redo !== 'function') {
@@ -9,34 +26,48 @@ function validateCommand(command) {
 }
 
 export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError } = {}) {
-  const undoStackRef = useRef([]);
-  const redoStackRef = useRef([]);
-  const queueRef = useRef(Promise.resolve());
-  const projectIdRef = useRef(projectId);
-  const [state, setState] = useState({ canUndo: false, canRedo: false, isApplying: false });
+  const projectKey = getProjectKey(projectId);
+  const historyRef = useRef(getProjectHistory(projectId));
+  const projectKeyRef = useRef(projectKey);
+  const [state, setState] = useState(() => {
+    const history = getProjectHistory(projectId);
+    return {
+      canUndo: history.undoStack.length > 0,
+      canRedo: history.redoStack.length > 0,
+      isApplying: false,
+    };
+  });
 
   const publishState = useCallback((isApplying = false) => {
+    const history = historyRef.current;
     setState({
-      canUndo: undoStackRef.current.length > 0,
-      canRedo: redoStackRef.current.length > 0,
+      canUndo: history.undoStack.length > 0,
+      canRedo: history.redoStack.length > 0,
       isApplying,
     });
   }, []);
 
+  useEffect(() => {
+    if (projectKeyRef.current === projectKey) {
+      publishState(false);
+      return;
+    }
+
+    projectKeyRef.current = projectKey;
+    historyRef.current = getProjectHistory(projectId);
+    publishState(false);
+  }, [projectId, projectKey, publishState]);
+
   const clear = useCallback(() => {
-    undoStackRef.current = [];
-    redoStackRef.current = [];
+    const history = historyRef.current;
+    history.undoStack = [];
+    history.redoStack = [];
     publishState(false);
   }, [publishState]);
 
-  useEffect(() => {
-    if (projectIdRef.current === projectId) return;
-    projectIdRef.current = projectId;
-    clear();
-  }, [clear, projectId]);
-
   const enqueue = useCallback(
     (operation) => {
+      const history = historyRef.current;
       const run = async () => {
         publishState(true);
         try {
@@ -49,8 +80,8 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
         }
       };
 
-      const next = queueRef.current.then(run, run);
-      queueRef.current = next.catch(() => undefined);
+      const next = history.queue.then(run, run);
+      history.queue = next.catch(() => undefined);
       return next;
     },
     [onError, publishState]
@@ -59,34 +90,37 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
   const record = useCallback(
     (command) => {
       validateCommand(command);
-      undoStackRef.current = [...undoStackRef.current, command].slice(-Math.max(1, limit));
-      redoStackRef.current = [];
+      const history = historyRef.current;
+      history.undoStack = [...history.undoStack, command].slice(-Math.max(1, limit));
+      history.redoStack = [];
       publishState(false);
     },
     [limit, publishState]
   );
 
   const undo = useCallback(() => {
-    if (!undoStackRef.current.length) return Promise.resolve(false);
+    const history = historyRef.current;
+    if (!history.undoStack.length) return Promise.resolve(false);
 
     return enqueue(async () => {
-      const command = undoStackRef.current.at(-1);
+      const command = history.undoStack.at(-1);
       await command.undo();
-      undoStackRef.current = undoStackRef.current.slice(0, -1);
-      redoStackRef.current = [...redoStackRef.current, command];
+      history.undoStack = history.undoStack.slice(0, -1);
+      history.redoStack = [...history.redoStack, command];
       publishState(false);
       return true;
     });
   }, [enqueue, publishState]);
 
   const redo = useCallback(() => {
-    if (!redoStackRef.current.length) return Promise.resolve(false);
+    const history = historyRef.current;
+    if (!history.redoStack.length) return Promise.resolve(false);
 
     return enqueue(async () => {
-      const command = redoStackRef.current.at(-1);
+      const command = history.redoStack.at(-1);
       await command.redo();
-      redoStackRef.current = redoStackRef.current.slice(0, -1);
-      undoStackRef.current = [...undoStackRef.current, command].slice(-Math.max(1, limit));
+      history.redoStack = history.redoStack.slice(0, -1);
+      history.undoStack = [...history.undoStack, command].slice(-Math.max(1, limit));
       publishState(false);
       return true;
     });
