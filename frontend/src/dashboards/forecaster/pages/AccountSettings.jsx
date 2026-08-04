@@ -11,7 +11,7 @@ function getPanelClass(isDarkMode) {
     : 'border-white/80 bg-white/75 text-slate-900 shadow-[0_24px_70px_rgba(15,23,42,0.14)]';
 }
 
-export default function AccountSettingsPage() {
+export default function AccountSettingsPage({ backPath = '/account' }) {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -56,7 +56,7 @@ export default function AccountSettingsPage() {
 
           <button
             type="button"
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate(backPath)}
             className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
               isDarkMode
                 ? 'border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/[0.09]'
