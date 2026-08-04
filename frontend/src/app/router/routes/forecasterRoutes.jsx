@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import { Navigate } from 'react-router-dom';
+import AccountLayout from '@/dashboards/forecaster/layout/AccountLayout';
 import ForecasterRouteLayout from '@/dashboards/forecaster/layout/ForecasterRouteLayout';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 import StudioLayout from '@/app/layout/StudioLayout';
@@ -15,8 +16,13 @@ export default [
     element: <ForecasterRouteLayout />,
     children: [
       { path: '/studio', element: <ProjectLibraryPage /> },
-      { path: '/account', element: <Profile /> },
-      { path: '/account/security', element: <AccountSettings /> },
+      {
+        element: <AccountLayout />,
+        children: [
+          { path: '/account', element: <Profile /> },
+          { path: '/account/security', element: <AccountSettings /> },
+        ],
+      },
       { path: '/profile', element: <Navigate to="/account" replace /> },
       { path: '/settings', element: <Navigate to="/account/security" replace /> },
       { path: '/account-settings', element: <Navigate to="/account/security" replace /> },
