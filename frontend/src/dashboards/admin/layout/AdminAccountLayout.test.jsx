@@ -17,7 +17,7 @@ function renderLayout(initialEntry = '/dashboard/account') {
           <Route path="/dashboard/account/security" element={<div>Admin security</div>} />
         </Route>
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -27,11 +27,11 @@ describe('AdminAccountLayout', () => {
 
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute(
       'href',
-      '/dashboard/account',
+      '/dashboard/account'
     );
     expect(screen.getByRole('link', { name: 'Security' })).toHaveAttribute(
       'href',
-      '/dashboard/account/security',
+      '/dashboard/account/security'
     );
     expect(screen.getByText('Admin profile')).toBeInTheDocument();
   });
@@ -40,9 +40,6 @@ describe('AdminAccountLayout', () => {
     renderLayout('/dashboard/account/security');
 
     expect(screen.getByText('Admin security')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Security' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    expect(screen.getByRole('link', { name: 'Security' })).toHaveAttribute('aria-current', 'page');
   });
 });

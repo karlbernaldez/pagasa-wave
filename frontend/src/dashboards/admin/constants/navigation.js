@@ -29,7 +29,7 @@ export const ADMIN_TAB_BY_ROUTE = Object.entries(ADMIN_ROUTE_BY_TAB).reduce(
     ...routes,
     [path]: tab,
   }),
-  {},
+  {}
 );
 
 export function getAdminRouteForTab(tab) {
@@ -37,7 +37,10 @@ export function getAdminRouteForTab(tab) {
 }
 
 export function getAdminTabForPath(pathname) {
-  if (pathname === ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ACCOUNT] || pathname.startsWith('/dashboard/account/')) {
+  if (
+    pathname === ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ACCOUNT] ||
+    pathname.startsWith('/dashboard/account/')
+  ) {
     return ADMIN_TABS.ACCOUNT;
   }
 
@@ -48,22 +51,52 @@ export const MENU_GROUPS = [
   {
     label: 'Review',
     items: [
-      { id: ADMIN_TABS.DASHBOARD, label: 'Overview', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.DASHBOARD], icon: LayoutDashboard },
-      { id: ADMIN_TABS.CHARTS, label: 'Forecast Packages', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CHARTS], icon: Waves },
+      {
+        id: ADMIN_TABS.DASHBOARD,
+        label: 'Overview',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.DASHBOARD],
+        icon: LayoutDashboard,
+      },
+      {
+        id: ADMIN_TABS.CHARTS,
+        label: 'Forecast Packages',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CHARTS],
+        icon: Waves,
+      },
     ],
   },
   {
     label: 'Management',
     items: [
-      { id: ADMIN_TABS.USERS, label: 'Users', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS], icon: Users },
+      {
+        id: ADMIN_TABS.USERS,
+        label: 'Users',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS],
+        icon: Users,
+      },
     ],
   },
   {
     label: 'System',
     items: [
-      { id: ADMIN_TABS.ANALYTICS, label: 'Analytics', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ANALYTICS], icon: BarChart3 },
-      { id: ADMIN_TABS.CALENDAR, label: 'Calendar', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CALENDAR], icon: CalendarDays },
-      { id: ADMIN_TABS.SETTINGS, label: 'System Settings', path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS], icon: Settings },
+      {
+        id: ADMIN_TABS.ANALYTICS,
+        label: 'Analytics',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ANALYTICS],
+        icon: BarChart3,
+      },
+      {
+        id: ADMIN_TABS.CALENDAR,
+        label: 'Calendar',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CALENDAR],
+        icon: CalendarDays,
+      },
+      {
+        id: ADMIN_TABS.SETTINGS,
+        label: 'System Settings',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS],
+        icon: Settings,
+      },
     ],
   },
 ];
@@ -73,11 +106,13 @@ export const MENU_ITEMS = MENU_GROUPS.flatMap((group) => group.items);
 export const PAGE_META = {
   [ADMIN_TABS.DASHBOARD]: {
     title: 'Admin Overview',
-    description: 'Monitor today\'s forecast package review workflow, users, and publication readiness.',
+    description:
+      "Monitor today's forecast package review workflow, users, and publication readiness.",
   },
   [ADMIN_TABS.CHARTS]: {
     title: 'Review Forecast Packages',
-    description: 'Prioritize today\'s analysis and forecast charts while keeping approved, rejected, and past packages available.',
+    description:
+      "Prioritize today's analysis and forecast charts while keeping approved, rejected, and past packages available.",
   },
   [ADMIN_TABS.USERS]: {
     title: 'User Management',
@@ -97,11 +132,13 @@ export const PAGE_META = {
   },
   [ADMIN_TABS.CALENDAR]: {
     title: 'Forecast Operations Calendar',
-    description: 'Track forecast package dates, review events, publication milestones, and admin notes.',
+    description:
+      'Track forecast package dates, review events, publication milestones, and admin notes.',
   },
   [ADMIN_TABS.SETTINGS]: {
     title: 'System Settings',
-    description: 'Configure WaveLab public content, contact information, and other system-wide settings.',
+    description:
+      'Configure WaveLab public content, contact information, and other system-wide settings.',
   },
   [ADMIN_TABS.ACCOUNT]: {
     title: 'Account Settings',

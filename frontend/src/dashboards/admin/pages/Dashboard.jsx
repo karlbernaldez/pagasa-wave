@@ -20,7 +20,7 @@ const SECTION_MAP = {
 };
 
 const renderSection = (tab, isDarkMode, setActiveTab) =>
-  (SECTION_MAP[tab]?.(isDarkMode)) ?? (
+  SECTION_MAP[tab]?.(isDarkMode) ?? (
     <DashboardOverview isDarkMode={isDarkMode} onSelectTab={setActiveTab} />
   );
 
@@ -29,7 +29,7 @@ const AdminDashboard = () => {
 
   return useMemo(
     () => renderSection(activeTab, isDarkMode, setActiveTab),
-    [activeTab, isDarkMode, setActiveTab],
+    [activeTab, isDarkMode, setActiveTab]
   );
 };
 
