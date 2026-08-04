@@ -55,3 +55,17 @@ jobs:
 
       - name: Run incremental quality gates
         run: npm run quality
+
+      - name: Inspect Studio and preview style contracts
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== FILES CONTAINING lineDash ==='
+          grep -RIl --include='*.js' --include='*.jsx' 'lineDash' frontend/src | sort || true
+          echo '=== STYLE CONTRACT REFERENCES ==='
+          grep -RInE --include='*.js' --include='*.jsx' 'lineDash|lineCasing|lineOpacity|textHalo|iconOpacity|pointStroke' \
+            frontend/src/dashboards/forecaster/components/Studio \
+            frontend/src/features/projects | head -n 600 || true
+          echo '=== TEST FILES NEAR PROJECT PREVIEW ==='
+          find frontend/src/features/projects -type f \( -name '*.test.js' -o -name '*.test.jsx' \) | sort || true
