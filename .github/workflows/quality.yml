@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: wavelab-quality-${{ github.workflow }}-${{ github.ref }}
@@ -20,11 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout feature branch
+      - name: Checkout exact commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: fix/chart-rendering-style-parity
 
       - name: Select comparison range
         shell: bash
@@ -40,10 +39,9 @@ jobs:
           else
             base_sha="$BEFORE_SHA"
           fi
-          head_sha="$(git rev-parse HEAD)"
 
           echo "QUALITY_BASE_SHA=$base_sha" >> "$GITHUB_ENV"
-          echo "QUALITY_HEAD_SHA=$head_sha" >> "$GITHUB_ENV"
+          echo "QUALITY_HEAD_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -55,57 +53,5 @@ jobs:
       - name: Install locked quality tools
         run: npm ci --ignore-scripts
 
-      - name: Validate current branch quality
+      - name: Run incremental quality gates
         run: npm run quality
-
-      - name: Apply guarded renderer patch
-        run: python .github/scripts/apply-style-parity-patch.py
-
-      - name: Refactor preview effect state
-        run: python .github/scripts/refactor-preview-hook-state.py
-
-      - name: Format changed implementation and tests
-        run: |
-          npx prettier --write \
-            frontend/src/features/projects/components/ProjectPreviewMap.jsx \
-            frontend/src/features/projects/components/PublishedForecastExportMap.jsx \
-            frontend/src/features/projects/utils/annotationStyleExpressions.js \
-            frontend/src/features/projects/utils/annotationStyleExpressions.test.js \
-            frontend/src/features/projects/utils/normalizeFeatureCollection.test.js
-
-      - name: Install frontend test dependencies
-        run: npm install --prefix frontend --ignore-scripts --no-audit --no-fund
-
-      - name: Run targeted style parity tests
-        run: |
-          npm --prefix frontend test -- \
-            src/features/projects/utils/annotationStyleExpressions.test.js \
-            src/features/projects/utils/normalizeFeatureCollection.test.js
-
-      - name: Lint generated implementation
-        run: |
-          npx eslint \
-            frontend/src/features/projects/components/ProjectPreviewMap.jsx \
-            frontend/src/features/projects/components/PublishedForecastExportMap.jsx \
-            frontend/src/features/projects/utils/annotationStyleExpressions.js \
-            frontend/src/features/projects/utils/annotationStyleExpressions.test.js \
-            frontend/src/features/projects/utils/normalizeFeatureCollection.test.js
-
-      - name: Commit validated renderer changes
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            frontend/src/features/projects/components/ProjectPreviewMap.jsx \
-            frontend/src/features/projects/components/PublishedForecastExportMap.jsx \
-            frontend/src/features/projects/utils/annotationStyleExpressions.js \
-            frontend/src/features/projects/utils/annotationStyleExpressions.test.js \
-            frontend/src/features/projects/utils/normalizeFeatureCollection.test.js
-          if git diff --cached --quiet; then
-            echo 'No renderer changes to commit.'
-            exit 0
-          fi
-          git commit -m 'fix: preserve saved annotation styles in chart output'
-          git push origin HEAD:fix/chart-rendering-style-parity
