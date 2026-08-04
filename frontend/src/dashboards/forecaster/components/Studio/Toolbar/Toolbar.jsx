@@ -10,6 +10,7 @@ import ManualInputModal from '@/components/ui/modals/ManualInputModal';
 import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable';
 
 import { useDrawToolbar } from './hooks/useDrawToolbar';
+import { useSpacebarPan } from './hooks/useSpacebarPan';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -124,6 +125,15 @@ const DrawToolbar = ({ draw, drawInstance, onToggleCanvas, onToggleFlagCanvas, t
 
   const waveActive = isCanvasActive || isDrawing;
   const dockWidth = getDockWidth(isCollapsed);
+
+  useSpacebarPan({
+    disabled,
+    isWaveActive: waveActive,
+    isFrontActive: isFlagDrawing,
+    onToggleCanvas: effectiveToggleCanvas,
+    onToggleFlagCanvas: effectiveToggleFlagCanvas,
+    openModals,
+  });
 
   useEffect(() => { try { const saved = window.localStorage.getItem(STORAGE_KEY); const next = saved ? JSON.parse(saved) : getDefaultPosition(isCollapsed); if (Number.isFinite(next?.x) && Number.isFinite(next?.y)) { const safe = getSafePosition(next, dockWidth); positionRef.current = safe; setPosition(safe); } } catch { const safe = getDefaultPosition(isCollapsed); positionRef.current = safe; setPosition(safe); } }, [dockWidth, isCollapsed]);
   useEffect(() => { const handleResize = () => { const safe = getSafePosition(positionRef.current, dockWidth); positionRef.current = safe; setPosition(safe); }; window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, [dockWidth]);
