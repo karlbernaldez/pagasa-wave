@@ -1,3 +1,5 @@
+const mapInstanceListeners = new Set();
+
 export function getLatestMapInstance(mapRef) {
   try {
     // 1. Direct Mapbox map instance
@@ -22,7 +24,11 @@ export function getLatestMapInstance(mapRef) {
     }
 
     // 4. Global cache fallback
-    if (typeof window !== 'undefined' && window.__latestMap && typeof window.__latestMap.getStyle === 'function') {
+    if (
+      typeof window !== 'undefined' &&
+      window.__latestMap &&
+      typeof window.__latestMap.getStyle === 'function'
+    ) {
       return window.__latestMap;
     }
 
@@ -33,13 +39,36 @@ export function getLatestMapInstance(mapRef) {
   }
 }
 
-export function registerMapInstance(map) {
-  if (typeof window === 'undefined') return;
+export function subscribeToMapInstance(listener) {
+  if (typeof listener !== 'function') return () => {};
 
-  if (map && typeof map.getStyle === 'function') {
-    window.__latestMap = map;
-    return;
+  mapInstanceListeners.add(listener);
+  listener(getLatestMapInstance());
+
+  return () => {
+    mapInstanceListeners.delete(listener);
+  };
+}
+
+export function registerMapInstance(map) {
+  let registeredMap = null;
+
+  if (typeof window !== 'undefined') {
+    if (map && typeof map.getStyle === 'function') {
+      window.__latestMap = map;
+      registeredMap = map;
+    } else {
+      delete window.__latestMap;
+    }
+  } else if (map && typeof map.getStyle === 'function') {
+    registeredMap = map;
   }
 
-  delete window.__latestMap;
+  mapInstanceListeners.forEach((listener) => {
+    try {
+      listener(registeredMap);
+    } catch (error) {
+      console.error('Error notifying map instance listener:', error);
+    }
+  });
 }
