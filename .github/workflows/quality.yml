@@ -61,6 +61,9 @@ jobs:
       - name: Apply guarded renderer patch
         run: python .github/scripts/apply-style-parity-patch.py
 
+      - name: Refactor preview effect state
+        run: python .github/scripts/refactor-preview-hook-state.py
+
       - name: Format changed implementation and tests
         run: |
           npx prettier --write \
