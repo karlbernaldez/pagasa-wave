@@ -1,9 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  registerMapInstance,
-} from '@dashboards/forecaster/map/helpers/mapInstance';
+import { registerMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
 import { useWaveConfig } from './useWaveConfig';
 
 const mocks = vi.hoisted(() => ({
@@ -75,7 +73,7 @@ describe('useWaveConfig hydration', () => {
         expect.objectContaining({
           chartType: 'analysis',
           forecastDate: '2026-08-04',
-        }),
+        })
       );
     });
 
@@ -88,7 +86,7 @@ describe('useWaveConfig hydration', () => {
         expect.objectContaining({
           chartType: 'analysis',
           forecastDate: '2026-08-04',
-        }),
+        })
       );
     });
   });
@@ -119,11 +117,6 @@ describe('useWaveConfig hydration', () => {
       await Promise.resolve();
     });
 
-    expect(mocks.addWaveLayer).toHaveBeenCalledWith(
-      map,
-      true,
-      ['WW3'],
-      expect.any(Object),
-    );
+    expect(mocks.addWaveLayer).toHaveBeenCalledWith(map, true, ['WW3'], expect.any(Object));
   });
 });
