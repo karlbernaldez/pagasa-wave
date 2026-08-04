@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getLatestMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
+import {
+  getLatestMapInstance,
+  MAP_INSTANCE_READY_EVENT,
+} from '@dashboards/forecaster/map/helpers/mapInstance';
 import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
 import { WAVE_ELEMENTS, OFF_ELEMENTS, DEFAULT_DIRECTION_STYLE } from '../constants/layerConstants';
 import { normalizeModelName } from './waveConfig/waveHelpers';
@@ -8,14 +11,13 @@ import { useWaveStorage } from './waveConfig/useWaveStorage';
 import { useProjectData } from '../../Menu/hooks/useProjectData';
 
 const INITIAL_STATE = {
-  enabled:        false,
-  models:         ['WW3'],
-  elements:       OFF_ELEMENTS,
+  enabled: false,
+  models: ['WW3'],
+  elements: OFF_ELEMENTS,
   directionStyle: DEFAULT_DIRECTION_STYLE,
 };
 
 export const useWaveConfig = ({ mapRef, isDarkMode }) => {
-  const map          = getLatestMapInstance(mapRef);
   const prevThemeRef = useRef(isDarkMode ? 'dark' : 'light');
   const { chartType, forecastDate } = useProjectData();
   const forecastPackage = { chartType, forecastDate };
@@ -36,13 +38,26 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
 
   // ── Hydrate ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
     const saved = readWaveStorage();
     setWaveConfig(saved);
 
-    const currentMap = getLatestMapInstance(mapRef);
-    if (currentMap && saved.enabled) {
-      addWaveLayer(currentMap, isDarkMode, saved.models, forecastPackage).then(() => applyLayers(saved));
-    }
+    const restoreSavedLayers = () => {
+      const currentMap = getLatestMapInstance(mapRef);
+      if (!currentMap || !saved.enabled) return;
+
+      addWaveLayer(currentMap, isDarkMode, saved.models, forecastPackage).then(() => {
+        if (!cancelled) applyLayers(saved);
+      });
+    };
+
+    restoreSavedLayers();
+    window.addEventListener(MAP_INSTANCE_READY_EVENT, restoreSavedLayers);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(MAP_INSTANCE_READY_EVENT, restoreSavedLayers);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Dark-mode / forecast package change ─────────────────────────────────────
@@ -93,8 +108,8 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const toggleWaveModel = useCallback((model) => {
     setWaveConfig((prev) => {
       const normalized = normalizeModelName(model);
-      const isAdding   = !prev.models.includes(normalized);
-      const models     = isAdding
+      const isAdding = !prev.models.includes(normalized);
+      const models = isAdding
         ? [...prev.models, normalized]
         : prev.models.filter((id) => id !== normalized);
 
