@@ -22,13 +22,8 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const { chartType, forecastDate } = useProjectData();
   const forecastPackage = useMemo(() => ({ chartType, forecastDate }), [chartType, forecastDate]);
 
-  const {
-    readWaveStorage,
-    saveEnabled,
-    saveModels,
-    saveElements,
-    saveDirectionStyle,
-  } = useWaveStorage();
+  const { readWaveStorage, saveEnabled, saveModels, saveElements, saveDirectionStyle } =
+    useWaveStorage();
   const [waveConfig, setWaveConfig] = useState(() => readWaveStorage() || INITIAL_STATE);
   const waveConfigRef = useRef(waveConfig);
 
