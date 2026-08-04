@@ -4,6 +4,7 @@ import ForecasterRouteLayout from '@/dashboards/forecaster/layout/ForecasterRout
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 import StudioLayout from '@/app/layout/StudioLayout';
 
+const AccountSettings = lazy(() => import('@/dashboards/forecaster/pages/AccountSettings'));
 const ProjectLibraryPage = lazy(() => import('@/dashboards/forecaster/pages/ProjectLibraryPage'));
 const Studio = lazy(() => import('@/dashboards/forecaster/pages/Studio'));
 const Profile = lazy(() => import('@/dashboards/forecaster/pages/Profile'));
@@ -15,6 +16,8 @@ export default [
     children: [
       { path: '/studio', element: <ProjectLibraryPage /> },
       { path: '/profile', element: <Profile /> },
+      { path: '/settings', element: <AccountSettings /> },
+      { path: '/account-settings', element: <AccountSettings /> },
       { path: '/edit-profile', element: <Navigate to="/profile" replace /> },
       { path: '/pdf', element: <PdfGenerator /> },
     ],
