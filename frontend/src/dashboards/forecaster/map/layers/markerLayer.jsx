@@ -1,11 +1,101 @@
-import { makeMarkerDraggable } from '@dashboards/forecaster/map/helpers/markerDrag';
-import { updateFeatureCoordinates } from '@/api/featureServices';
+import { fetchFeatures, updateFeatureCoordinates } from '@/api/featureServices';
 import {
   publishAnnotationHistoryCommand,
   requestAnnotationHistoryRefresh,
 } from '@dashboards/forecaster/history/annotationHistoryEvents';
+import { makeMarkerDraggable } from '@dashboards/forecaster/map/helpers/markerDrag';
 
 const dragCleanupRegistry = new Map();
+
+function getSourceData(map, sourceId) {
+  const source = map.getSource?.(sourceId);
+  return source?._data || map.getStyle?.()?.sources?.[sourceId]?.data || null;
+}
+
+function getFirstFeature(data) {
+  if (data?.type === 'Feature') return data;
+  if (data?.type === 'FeatureCollection') return data.features?.[0] || null;
+  return null;
+}
+
+function normalizeName(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function coordinatesMatch(left, right, tolerance = 0.000001) {
+  return (
+    Array.isArray(left) &&
+    Array.isArray(right) &&
+    left.length >= 2 &&
+    right.length >= 2 &&
+    Math.abs(Number(left[0]) - Number(right[0])) <= tolerance &&
+    Math.abs(Number(left[1]) - Number(right[1])) <= tolerance
+  );
+}
+
+function removeDuplicateMarkerArtifacts(map, targetLayerId, targetSourceId, markerType, displayName, coordinates) {
+  const layers = map.getStyle?.()?.layers || [];
+  const expectedName = normalizeName(displayName);
+
+  layers.forEach((layer) => {
+    if (layer?.type !== 'symbol' || typeof layer.source !== 'string') return;
+    if (layer.id === targetLayerId && layer.source === targetSourceId) return;
+
+    const sourceFeature = getFirstFeature(getSourceData(map, layer.source));
+    const properties = sourceFeature?.properties || {};
+    const sourceMarkerType = properties.markerType || properties.type;
+    const sourceName = normalizeName(
+      properties.displayName || properties.name || properties.title || properties.labelValue
+    );
+    const sourceCoordinates = sourceFeature?.geometry?.coordinates;
+
+    if (
+      sourceMarkerType !== markerType ||
+      sourceName !== expectedName ||
+      !coordinatesMatch(sourceCoordinates, coordinates)
+    ) {
+      return;
+    }
+
+    dragCleanupRegistry.get(layer.source)?.();
+    dragCleanupRegistry.delete(layer.source);
+    if (map.getLayer?.(layer.id)) map.removeLayer(layer.id);
+    if (map.getSource?.(layer.source)) map.removeSource(layer.source);
+  });
+}
+
+async function resolvePersistedSourceId({ projectId, markerType, displayName, previousCoordinates, fallback }) {
+  if (!projectId) return fallback;
+
+  try {
+    const features = await fetchFeatures(projectId);
+    const expectedName = normalizeName(displayName);
+    const candidates = (Array.isArray(features) ? features : []).filter((feature) => {
+      const properties = feature?.properties || {};
+      const featureType = properties.markerType || properties.type;
+      const featureName = normalizeName(
+        properties.displayName || feature?.name || properties.name || properties.title || properties.labelValue
+      );
+
+      return featureType === markerType && featureName === expectedName;
+    });
+
+    const coordinateMatch = candidates.find((feature) =>
+      coordinatesMatch(feature?.geometry?.coordinates, previousCoordinates)
+    );
+    const matchedFeature = coordinateMatch || (candidates.length === 1 ? candidates[0] : null);
+
+    return (
+      matchedFeature?.sourceId ||
+      matchedFeature?.properties?.sourceId ||
+      matchedFeature?.properties?.stableId ||
+      fallback
+    );
+  } catch (error) {
+    console.warn('[MARKER ID RESOLUTION ERROR]', error);
+    return fallback;
+  }
+}
 
 export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (title, options = {}) => {
   if (!selectedPoint) return;
@@ -35,6 +125,7 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
   const labelValue = options.labelValue || title || defaultTitles[markerType];
   const displayName = options.displayName || title || defaultTitles[markerType];
   const projectId = options.projectId || localStorage.getItem('projectId') || '';
+  const coordinates = [lng, lat];
   const aliases = Array.from(
     new Set(
       [
@@ -51,7 +142,7 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
 
   const feature = {
     type: 'Feature',
-    geometry: { type: 'Point', coordinates: [lng, lat] },
+    geometry: { type: 'Point', coordinates },
     properties: {
       title: labelValue,
       name: displayName,
@@ -72,7 +163,12 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
   const map = mapRef?.current ?? mapRef;
   if (!map) return;
 
-  if (!map.getSource(sourceId)) {
+  removeDuplicateMarkerArtifacts(map, layerId, sourceId, markerType, displayName, coordinates);
+
+  const existingSource = map.getSource(sourceId);
+  if (existingSource?.setData) {
+    existingSource.setData(feature);
+  } else {
     try {
       map.addSource(sourceId, { type: 'geojson', data: feature });
     } catch (err) {
@@ -169,30 +265,36 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
     map,
     layerId,
     sourceId,
-    async ({ coordinates, previousCoordinates }) => {
+    async ({ coordinates: nextCoordinates, previousCoordinates }) => {
+      const persistedSourceId = await resolvePersistedSourceId({
+        projectId,
+        markerType,
+        displayName,
+        previousCoordinates,
+        fallback: sourceId,
+      });
+
       try {
-        await updateFeatureCoordinates(sourceId, coordinates);
+        await updateFeatureCoordinates(persistedSourceId, nextCoordinates);
 
         publishAnnotationHistoryCommand({
           label: `Move ${displayName || 'annotation'}`,
           undo: async () => {
-            await updateFeatureCoordinates(sourceId, previousCoordinates);
+            await updateFeatureCoordinates(persistedSourceId, previousCoordinates);
             requestAnnotationHistoryRefresh(projectId);
           },
           redo: async () => {
-            await updateFeatureCoordinates(sourceId, coordinates);
+            await updateFeatureCoordinates(persistedSourceId, nextCoordinates);
             requestAnnotationHistoryRefresh(projectId);
           },
         });
       } catch (err) {
         console.error('Failed to persist marker position:', err);
         const source = map.getSource(sourceId);
-        if (source) {
-          source.setData({
-            ...feature,
-            geometry: { type: 'Point', coordinates: previousCoordinates },
-          });
-        }
+        source?.setData({
+          ...feature,
+          geometry: { type: 'Point', coordinates: previousCoordinates },
+        });
       }
     }
   );
