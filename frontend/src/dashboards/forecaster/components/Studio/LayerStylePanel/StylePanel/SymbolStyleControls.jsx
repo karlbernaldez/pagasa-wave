@@ -1,11 +1,41 @@
 import { Section, PropColor, PropSlider, PropSelect } from '../LayerStylePanel';
 import { queuePersistAnnotationStyle } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
 
+const SYMBOL_STYLE_DEFAULTS = {
+    iconSize: 0.07,
+    iconOpacity: 1,
+    iconRotate: 0,
+    textTransform: 'none',
+    textLetterSpacing: 0,
+    textSize: 12,
+    textColor: '#ffffff',
+    textHaloColor: '#000000',
+    textHaloWidth: 1,
+};
+
 export function SymbolStyleControls({ layerIds, layerInfo, style, onChange, setPaint, setLayout, isDarkMode, tab = 'symbol' }) {
     const update = (patch) => {
+        const changedKeys = Object.keys(patch);
+        const beforeStyle = { ...style };
+
+        changedKeys.forEach((key) => {
+            if (beforeStyle[key] === undefined && key in SYMBOL_STYLE_DEFAULTS) {
+                beforeStyle[key] = SYMBOL_STYLE_DEFAULTS[key];
+            }
+        });
+
         const nextStyle = { ...style, ...patch };
         onChange(nextStyle);
-        queuePersistAnnotationStyle(layerInfo, nextStyle);
+        queuePersistAnnotationStyle(
+            {
+                ...layerInfo,
+                properties: {
+                    ...(layerInfo?.properties || {}),
+                    style: beforeStyle,
+                },
+            },
+            nextStyle
+        );
         return nextStyle;
     };
     const l = (key, prop, val) => { update({ [key]: val }); setLayout(layerIds, prop, val); };
