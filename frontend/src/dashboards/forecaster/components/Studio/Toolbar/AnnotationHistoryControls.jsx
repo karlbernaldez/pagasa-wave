@@ -18,6 +18,7 @@ const FRONT_TYPE_LABELS = {
   stationary: 'Stationary Front',
   occluded: 'Occluded Front',
 };
+const HISTORY_MARKER_TYPES = new Set(['less_1', 'text_note']);
 
 function resolveLayerType(feature) {
   const properties = feature?.properties || {};
@@ -51,6 +52,81 @@ function toLayer(feature) {
   };
 }
 
+function getMarkerArtifactIds(feature) {
+  const properties = feature?.properties || {};
+  const type = properties.markerType || properties.type;
+  const name =
+    properties.displayName || feature?.name || properties.name || properties.title || properties.labelValue;
+
+  return new Set(
+    [
+      feature?.sourceId,
+      properties.sourceId,
+      properties.stableId,
+      properties.annotationId,
+      properties.mapLayerId,
+      type && name ? `${type}_${name}` : null,
+    ]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+  );
+}
+
+function getSourceFeature(map, sourceId) {
+  const source = map.getSource?.(sourceId);
+  const sourceData = source?._data || map.getStyle?.()?.sources?.[sourceId]?.data;
+
+  if (sourceData?.type === 'Feature') return sourceData;
+  if (sourceData?.type === 'FeatureCollection') return sourceData.features?.[0] || null;
+  return null;
+}
+
+function removeStaleHistoryMarkers(map, projectFeatures) {
+  const currentArtifactIds = new Set();
+  projectFeatures.forEach((feature) => {
+    getMarkerArtifactIds(feature).forEach((id) => currentArtifactIds.add(id));
+  });
+
+  const style = map.getStyle?.();
+  const layers = Array.isArray(style?.layers) ? style.layers : [];
+  const staleLayers = [];
+  const staleSources = new Set();
+
+  layers.forEach((layer) => {
+    if (layer?.type !== 'symbol' || typeof layer.source !== 'string') return;
+
+    const sourceFeature = getSourceFeature(map, layer.source);
+    const properties = sourceFeature?.properties || {};
+    const markerType = properties.markerType || properties.type;
+    if (!HISTORY_MARKER_TYPES.has(markerType)) return;
+
+    const aliases = new Set([
+      layer.id,
+      layer.source,
+      properties.sourceId,
+      properties.stableId,
+      properties.annotationId,
+      properties.mapLayerId,
+      markerType && (properties.displayName || properties.name || properties.title || properties.labelValue)
+        ? `${markerType}_${properties.displayName || properties.name || properties.title || properties.labelValue}`
+        : null,
+    ].map((value) => String(value || '').trim()).filter(Boolean));
+
+    const isCurrent = Array.from(aliases).some((id) => currentArtifactIds.has(id));
+    if (!isCurrent) {
+      staleLayers.push(layer.id);
+      staleSources.add(layer.source);
+    }
+  });
+
+  staleLayers.forEach((layerId) => {
+    if (map.getLayer?.(layerId)) map.removeLayer(layerId);
+  });
+  staleSources.forEach((sourceId) => {
+    if (map.getSource?.(sourceId)) map.removeSource(sourceId);
+  });
+}
+
 export default function AnnotationHistoryControls({
   disabled = false,
   isDarkMode,
@@ -81,6 +157,7 @@ export default function AnnotationHistoryControls({
 
           const map = getLatestMapInstance(mapRef);
           if (map) {
+            removeStaleHistoryMarkers(map, projectFeatures);
             const effectiveMapRef = mapRef?.current ? mapRef : { current: map };
             await syncAnnotationFeaturesToMap(map, projectFeatures, {
               isDarkMode,
