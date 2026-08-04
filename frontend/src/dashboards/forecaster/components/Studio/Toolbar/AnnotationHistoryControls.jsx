@@ -7,6 +7,7 @@ import {
   subscribeToAnnotationHistoryRefresh,
 } from '@dashboards/forecaster/history/annotationHistoryEvents';
 import { useAnnotationHistory } from '@dashboards/forecaster/hooks/useAnnotationHistory';
+import { getLatestMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
 import { syncAnnotationFeaturesToMap } from '@dashboards/forecaster/utils/mapSetup';
 import { applyAnnotationStylesToMap } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
 
@@ -78,12 +79,14 @@ export default function AnnotationHistoryControls({
 
           setLayers?.(projectFeatures.map(toLayer).filter((layer) => Boolean(layer.id)));
 
-          if (mapRef?.current) {
-            await syncAnnotationFeaturesToMap(mapRef.current, projectFeatures, {
+          const map = getLatestMapInstance(mapRef);
+          if (map) {
+            const effectiveMapRef = mapRef?.current ? mapRef : { current: map };
+            await syncAnnotationFeaturesToMap(map, projectFeatures, {
               isDarkMode,
-              mapRef,
+              mapRef: effectiveMapRef,
             });
-            applyAnnotationStylesToMap(mapRef.current, projectFeatures);
+            applyAnnotationStylesToMap(map, projectFeatures);
           }
         } catch (error) {
           console.error('[ANNOTATION HISTORY REFRESH ERROR]', error);
