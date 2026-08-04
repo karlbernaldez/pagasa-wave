@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  getLatestMapInstance,
-  registerMapInstance,
-  subscribeToMapInstance,
-} from './mapInstance';
+import { getLatestMapInstance, registerMapInstance, subscribeToMapInstance } from './mapInstance';
 
 describe('shared Mapbox instance registry', () => {
   afterEach(() => {
