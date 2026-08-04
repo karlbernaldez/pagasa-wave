@@ -37,6 +37,10 @@ export function getAdminRouteForTab(tab) {
 }
 
 export function getAdminTabForPath(pathname) {
+  if (pathname === ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ACCOUNT] || pathname.startsWith('/dashboard/account/')) {
+    return ADMIN_TABS.ACCOUNT;
+  }
+
   return ADMIN_TAB_BY_ROUTE[pathname] ?? ADMIN_TABS.DASHBOARD;
 }
 
@@ -101,6 +105,6 @@ export const PAGE_META = {
   },
   [ADMIN_TABS.ACCOUNT]: {
     title: 'Account Settings',
-    description: 'Review and update your administrator profile and account information.',
+    description: 'Review and update your administrator profile, sessions, and account security.',
   },
 };
