@@ -1,8 +1,11 @@
 import { lazy } from 'react';
 
+import AdminAccountLayout from '@dashboards/admin/layout/AdminAccountLayout';
 import AdminRouteLayout from '@dashboards/admin/layout/AdminRouteLayout';
 
+const AccountSettings = lazy(() => import('@dashboards/forecaster/pages/AccountSettings'));
 const Dashboard = lazy(() => import('@dashboards/admin/pages/Dashboard'));
+const Profile = lazy(() => import('@dashboards/forecaster/pages/Profile'));
 
 export default [
   {
@@ -15,7 +18,16 @@ export default [
       { path: '/dashboard/analytics', element: <Dashboard /> },
       { path: '/dashboard/calendar', element: <Dashboard /> },
       { path: '/dashboard/settings', element: <Dashboard /> },
-      { path: '/dashboard/account', element: <Dashboard /> },
+      {
+        element: <AdminAccountLayout />,
+        children: [
+          { path: '/dashboard/account', element: <Profile /> },
+          {
+            path: '/dashboard/account/security',
+            element: <AccountSettings backPath="/dashboard/account" />,
+          },
+        ],
+      },
     ],
   },
 ];
