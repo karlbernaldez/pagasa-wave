@@ -12,18 +12,18 @@ import {
 } from 'lucide-react';
 
 import l1 from '@/assets/draw_icons/L1.png';
-
+import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable';
 import PointInputChoiceModal from '@/components/ui/modals/MarkerChoice';
 import MarkerTitleModal from '@/components/ui/modals/MarkerTitleModal';
 import ManualInputModal from '@/components/ui/modals/ManualInputModal';
-import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable';
 
+import AnnotationHistoryControls from './AnnotationHistoryControls';
 import { useDrawToolbar } from './hooks/useDrawToolbar';
 import { useSpacebarPan } from './hooks/useSpacebarPan';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-const EXPANDED_WIDTH = 700;
+const EXPANDED_WIDTH = 812;
 const COLLAPSED_WIDTH = 176;
 const DOCK_HEIGHT = 74;
 const STORAGE_KEY = 'wavelab-draw-tools-position';
@@ -241,13 +241,15 @@ const DrawToolbar = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [dockWidth]);
+
   const persistPosition = useCallback((nextPosition) => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextPosition));
     } catch {
-      /* ignore */
+      // Ignore unavailable storage.
     }
   }, []);
+
   const handleDragStart = useCallback(
     (event) => {
       if (event.button !== undefined && event.button !== 0) return;
@@ -265,6 +267,7 @@ const DrawToolbar = ({
     },
     [dockWidth]
   );
+
   const handleDragMove = useCallback((event) => {
     const drag = dragRef.current;
     if (!drag) return;
@@ -278,6 +281,7 @@ const DrawToolbar = ({
     positionRef.current = next;
     setPosition(next);
   }, []);
+
   const handleDragEnd = useCallback(
     (event) => {
       if (!dragRef.current) return;
@@ -288,12 +292,14 @@ const DrawToolbar = ({
     },
     [persistPosition]
   );
+
   const handleResetPosition = useCallback(() => {
     const safe = getDefaultPosition(isCollapsed);
     positionRef.current = safe;
     setPosition(safe);
     persistPosition(safe);
   }, [isCollapsed, persistPosition]);
+
   const dragHandleProps = {
     onPointerDown: handleDragStart,
     onPointerMove: handleDragMove,
@@ -414,6 +420,8 @@ const DrawToolbar = ({
               theme={theme}
               icon={<Flag size={16} aria-hidden="true" />}
             />
+            <Divider theme={theme} />
+            <AnnotationHistoryControls disabled={disabled} projectId={projectId} theme={theme} />
             <Divider theme={theme} />
             <IconButton
               label="Reset draw tools position"
