@@ -51,8 +51,7 @@ export function useSpacebarPan({
   const suspendDrawingInteraction = useCallback(() => {
     if (pausedInteractionRef.current) return false;
 
-    const { isWaveActive: waveWasActive, isFrontActive: frontWasActive } =
-      activeStateRef.current;
+    const { isWaveActive: waveWasActive, isFrontActive: frontWasActive } = activeStateRef.current;
 
     if (!waveWasActive && !frontWasActive) return false;
 
