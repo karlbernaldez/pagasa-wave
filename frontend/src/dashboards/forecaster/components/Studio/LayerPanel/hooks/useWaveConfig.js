@@ -40,7 +40,11 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     () => readWaveStorage() || INITIAL_STATE,
   );
   const waveConfigRef = useRef(waveConfig);
-  waveConfigRef.current = waveConfig;
+
+  const commitWaveConfig = useCallback((nextConfig) => {
+    waveConfigRef.current = nextConfig;
+    setWaveConfig(nextConfig);
+  }, []);
 
   const applyLayersToMap = useCallback(
     (map, config) => {
@@ -125,27 +129,28 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   }, [applyLayersToMap, forecastPackage, isDarkMode, mapRef]);
 
   const toggleWaveLayer = useCallback(() => {
-    setWaveConfig((prev) => {
-      const next = { ...prev, enabled: !prev.enabled };
-      saveEnabled(next.enabled);
-      const currentMap = getLatestMapInstance(mapRef);
+    const previous = waveConfigRef.current;
+    const next = { ...previous, enabled: !previous.enabled };
+    commitWaveConfig(next);
+    saveEnabled(next.enabled);
 
-      if (!currentMap) return next;
+    const currentMap = getLatestMapInstance(mapRef);
+    if (!currentMap) return;
 
-      if (!next.enabled) {
-        applyLayers({ ...next, elements: OFF_ELEMENTS });
-      } else {
-        addWaveLayer(
-          currentMap,
-          isDarkMode,
-          next.models,
-          forecastPackage,
-        ).then(() => applyLayers(next));
-      }
-      return next;
-    });
+    if (!next.enabled) {
+      applyLayers({ ...next, elements: OFF_ELEMENTS });
+      return;
+    }
+
+    addWaveLayer(
+      currentMap,
+      isDarkMode,
+      next.models,
+      forecastPackage,
+    ).then(() => applyLayers(next));
   }, [
     applyLayers,
+    commitWaveConfig,
     forecastPackage,
     isDarkMode,
     mapRef,
@@ -154,50 +159,49 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
 
   const setWaveElement = useCallback(
     (elementId) => {
-      setWaveConfig((prev) => {
-        const elements = WAVE_ELEMENTS.reduce(
-          (acc, { id }) => ({ ...acc, [id]: id === elementId }),
-          {},
-        );
-        const next = { ...prev, elements };
-        saveElements(next.elements);
-        applyLayers(next);
-        return next;
-      });
+      const elements = WAVE_ELEMENTS.reduce(
+        (acc, { id }) => ({ ...acc, [id]: id === elementId }),
+        {},
+      );
+      const next = { ...waveConfigRef.current, elements };
+      commitWaveConfig(next);
+      saveElements(next.elements);
+      applyLayers(next);
     },
-    [applyLayers, saveElements],
+    [applyLayers, commitWaveConfig, saveElements],
   );
 
   const toggleWaveModel = useCallback(
     (model) => {
-      setWaveConfig((prev) => {
-        const normalized = normalizeModelName(model);
-        const isAdding = !prev.models.includes(normalized);
-        const models = isAdding
-          ? [...prev.models, normalized]
-          : prev.models.filter((id) => id !== normalized);
+      const previous = waveConfigRef.current;
+      const normalized = normalizeModelName(model);
+      const isAdding = !previous.models.includes(normalized);
+      const models = isAdding
+        ? [...previous.models, normalized]
+        : previous.models.filter((id) => id !== normalized);
+      const next = { ...previous, models };
 
-        const next = { ...prev, models };
-        saveModels(models);
-        const currentMap = getLatestMapInstance(mapRef);
+      commitWaveConfig(next);
+      saveModels(models);
 
-        if (!currentMap) return next;
+      const currentMap = getLatestMapInstance(mapRef);
+      if (!currentMap) return;
 
-        if (isAdding && next.enabled) {
-          addWaveLayer(
-            currentMap,
-            isDarkMode,
-            [normalized],
-            forecastPackage,
-          ).then(() => applyLayers(next));
-        } else {
-          applyLayers(next);
-        }
-        return next;
-      });
+      if (isAdding && next.enabled) {
+        addWaveLayer(
+          currentMap,
+          isDarkMode,
+          [normalized],
+          forecastPackage,
+        ).then(() => applyLayers(next));
+        return;
+      }
+
+      applyLayers(next);
     },
     [
       applyLayers,
+      commitWaveConfig,
       forecastPackage,
       isDarkMode,
       mapRef,
@@ -207,17 +211,16 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
 
   const setDirectionStyle = useCallback(
     (patch) => {
-      setWaveConfig((prev) => {
-        const next = {
-          ...prev,
-          directionStyle: { ...prev.directionStyle, ...patch },
-        };
-        saveDirectionStyle(next.directionStyle);
-        applyLayers(next);
-        return next;
-      });
+      const previous = waveConfigRef.current;
+      const next = {
+        ...previous,
+        directionStyle: { ...previous.directionStyle, ...patch },
+      };
+      commitWaveConfig(next);
+      saveDirectionStyle(next.directionStyle);
+      applyLayers(next);
     },
-    [applyLayers, saveDirectionStyle],
+    [applyLayers, commitWaveConfig, saveDirectionStyle],
   );
 
   return {
