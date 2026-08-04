@@ -1,18 +1,96 @@
 import { useEffect } from 'react';
 import { LoaderCircle, Redo2, Undo2 } from 'lucide-react';
 
+import { fetchFeatures } from '@/api/featureServices';
+import {
+  subscribeToAnnotationHistoryCommands,
+  subscribeToAnnotationHistoryRefresh,
+} from '@dashboards/forecaster/history/annotationHistoryEvents';
 import { useAnnotationHistory } from '@dashboards/forecaster/hooks/useAnnotationHistory';
-import { subscribeToAnnotationHistoryCommands } from '@dashboards/forecaster/history/annotationHistoryEvents';
+import { syncAnnotationFeaturesToMap } from '@dashboards/forecaster/utils/mapSetup';
+import { applyAnnotationStylesToMap } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
+const FRONT_TYPE_LABELS = {
+  cold: 'Cold Front',
+  warm: 'Warm Front',
+  stationary: 'Stationary Front',
+  occluded: 'Occluded Front',
+};
 
-export default function AnnotationHistoryControls({ disabled = false, projectId, theme }) {
+function resolveLayerType(feature) {
+  const properties = feature?.properties || {};
+  if (properties.isFront) {
+    return FRONT_TYPE_LABELS[properties.frontType] || feature?.name || 'Surface Front';
+  }
+  return properties.type || properties.markerType || 'Wave Height';
+}
+
+function toLayer(feature) {
+  const properties = feature?.properties || {};
+  const type = resolveLayerType(feature);
+  const id = feature.sourceId || properties.sourceId || properties.stableId;
+  const isMarker = ['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note'].includes(type);
+  const name = properties.displayName || feature.name || properties.name || properties.title || type;
+
+  return {
+    id,
+    sourceID: id,
+    name,
+    visible: true,
+    locked: false,
+    type,
+    markerType: properties.markerType || (isMarker ? type : undefined),
+    mapLayerId: properties.mapLayerId || (isMarker ? `${type}_${name}` : undefined),
+    owner: properties.owner,
+    canEdit: properties.canEdit !== false,
+    frontSymbolSide: properties.frontSymbolSide || properties.style?.frontSymbolSide,
+    style: properties.style || {},
+    properties: { ...properties, displayName: name },
+  };
+}
+
+export default function AnnotationHistoryControls({
+  disabled = false,
+  isDarkMode,
+  mapRef,
+  projectId,
+  setLayers,
+  theme,
+}) {
   const { canUndo, canRedo, isApplying, record, undo, redo } = useAnnotationHistory({
     projectId,
     onError: (error) => console.error('[ANNOTATION HISTORY ERROR]', error),
   });
 
   useEffect(() => subscribeToAnnotationHistoryCommands(record), [record]);
+
+  useEffect(
+    () =>
+      subscribeToAnnotationHistoryRefresh(async ({ projectId: refreshedProjectId } = {}) => {
+        if (!projectId || String(refreshedProjectId || '') !== String(projectId)) return;
+
+        try {
+          const features = await fetchFeatures(projectId);
+          const projectFeatures = (Array.isArray(features) ? features : []).filter(
+            (feature) => String(feature?.properties?.project || feature?.project || '') === String(projectId)
+          );
+
+          setLayers?.(projectFeatures.map(toLayer).filter((layer) => Boolean(layer.id)));
+
+          if (mapRef?.current) {
+            await syncAnnotationFeaturesToMap(mapRef.current, projectFeatures, {
+              isDarkMode,
+              mapRef,
+            });
+            applyAnnotationStylesToMap(mapRef.current, projectFeatures);
+          }
+        } catch (error) {
+          console.error('[ANNOTATION HISTORY REFRESH ERROR]', error);
+        }
+      }),
+    [isDarkMode, mapRef, projectId, setLayers]
+  );
 
   const controlsDisabled = disabled || isApplying;
 
