@@ -11,7 +11,6 @@ import {
   toggleCollapse,
 } from '@dashboards/forecaster/utils/ToolBarUtils';
 import { MAP_CLICK_TYPES, MARKER_LABEL_MAP, TOOL_IDS } from '../config/toolbarConfig';
-import { useSpacebarPan } from './useSpacebarPan';
 
 export function useDrawToolbar({
   draw,
@@ -23,6 +22,7 @@ export function useDrawToolbar({
   onToggleFlagCanvas,
   projectId,
 }) {
+  // ── State ────────────────────────────────────────────────
   const [isDrawing, setIsDrawing] = useState(false);
   const [isFlagDrawing, setIsFlagDrawing] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -36,24 +36,19 @@ export function useDrawToolbar({
     markerTitle: false,
   });
 
+  // ── Helpers ──────────────────────────────────────────────
   const toggleModal = useCallback((modalKey, isOpen) => {
     setOpenModals((prev) => ({ ...prev, [modalKey]: isOpen }));
   }, []);
 
-  useSpacebarPan({
-    isWaveActive: isDrawing,
-    isFrontActive: isFlagDrawing,
-    onToggleCanvas,
-    onToggleFlagCanvas,
-    openModals,
-  });
-
+  // Keep setLayersRef in sync
   useEffect(() => {
     if (setLayersRef?.current !== setLayers) {
       setLayersRef.current = setLayers;
     }
   }, [setLayersRef, setLayers]);
 
+  // Clear transient toolbar marker state when changing projects.
   useEffect(() => {
     setPendingMapClick(null);
     setSelectedToolType(null);
@@ -66,6 +61,7 @@ export function useDrawToolbar({
     });
   }, [projectId]);
 
+  // ── Tool selection ───────────────────────────────────────
   const handleToolClick = useCallback((tool) => {
     selectedToolRef.current = tool.id;
     setSelectedToolType(tool.id);
@@ -109,6 +105,7 @@ export function useDrawToolbar({
     );
   }, []);
 
+  // ── Save helpers ─────────────────────────────────────────
   const savePoint = useCallback(async ({ lat, lng, coords, title, selectedType, map }) => {
     const savedFeature = await savePointFeature({ coords, title, selectedType, setLayersRef, projectId });
     if (!savedFeature?.sourceId) return;
@@ -121,6 +118,7 @@ export function useDrawToolbar({
     });
   }, [setLayersRef, projectId]);
 
+  // ── Map click flow ───────────────────────────────────────
   const handlePointInputChoice = useCallback((method) => {
     toggleModal('pointInputChoice', false);
     const selectedType = selectedToolRef.current || TOOL_IDS.LESS_1;
@@ -131,7 +129,9 @@ export function useDrawToolbar({
     }
 
     if (method === 'map' && MAP_CLICK_TYPES.includes(selectedType)) {
+      console.log('Enabling map click for point input');
       const map = getLatestMapInstance();
+      console.log('Latest map instance:', map);
       if (!map) {
         console.warn('Map is not ready yet.');
         return;
@@ -140,6 +140,7 @@ export function useDrawToolbar({
       handleDrawModeChange('draw_point', draw, setLayersRef);
 
       map.once('click', (e) => {
+        console.log('Map clicked at:', e.lngLat);
         const lng = e.lngLat.lng;
         const lat = e.lngLat.lat;
         const coords = [lng, lat];
@@ -150,6 +151,7 @@ export function useDrawToolbar({
           const title = MARKER_LABEL_MAP.less_1;
           savePoint({ lat, lng, coords, title, selectedType, map });
         } else {
+          console.log('Storing pending map click for marker title input');
           setPendingMapClick({ lat, lng, coords });
           toggleModal('markerTitle', true);
         }
@@ -157,6 +159,7 @@ export function useDrawToolbar({
     }
   }, [draw, setLayersRef, selectedToolRef, toggleModal, savePoint]);
 
+  // ── MarkerTitleModal submit (map click flow) ─────────────
   const handleMarkerTitleSubmit = useCallback((title) => {
     if (!pendingMapClick) return;
     const { lat, lng, coords } = pendingMapClick;
@@ -168,6 +171,7 @@ export function useDrawToolbar({
     toggleModal('markerTitle', false);
   }, [pendingMapClick, selectedToolRef, savePoint, toggleModal]);
 
+  // ── ManualInputModal submit ──────────────────────────────
   const handleManualInputSubmit = useCallback(async (data) => {
     const selectedType = selectedToolRef.current || TOOL_IDS.LESS_1;
     setType?.(selectedType);
@@ -182,6 +186,7 @@ export function useDrawToolbar({
     toggleModal('manualInput', false);
   }, [selectedToolRef, setType, savePoint, toggleModal]);
 
+  // ── Drawing toggles ──────────────────────────────────────
   const handleToggleDrawing = useCallback(() => {
     if (isFlagDrawing) stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
     toggleDrawing(isDrawing, setIsDrawing, onToggleCanvas);
@@ -213,6 +218,7 @@ export function useDrawToolbar({
   }, []);
 
   return {
+    // State
     isDrawing,
     isFlagDrawing,
     isCollapsed,
@@ -220,6 +226,7 @@ export function useDrawToolbar({
     pendingMapClick,
     showTitleModal,
     openModals,
+    // Handlers
     toggleModal,
     handleToolClick,
     handleSelectMode,
