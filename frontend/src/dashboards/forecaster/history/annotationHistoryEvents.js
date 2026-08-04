@@ -15,6 +15,12 @@ export function subscribeToAnnotationHistoryCommands(listener) {
   return () => window.removeEventListener(ANNOTATION_HISTORY_RECORD_EVENT, handleCommand);
 }
 
+export function subscribeToAnnotationHistoryRefresh(listener) {
+  const handleRefresh = (event) => listener(event.detail || {});
+  window.addEventListener(ANNOTATION_HISTORY_REFRESH_EVENT, handleRefresh);
+  return () => window.removeEventListener(ANNOTATION_HISTORY_REFRESH_EVENT, handleRefresh);
+}
+
 export function requestAnnotationHistoryRefresh(projectId) {
   window.dispatchEvent(
     new CustomEvent(ANNOTATION_HISTORY_REFRESH_EVENT, {
