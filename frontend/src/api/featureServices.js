@@ -1,10 +1,19 @@
 import axios from 'axios';
 import { showSessionModal } from '@/components/ui/modals/SessionModal';
+import {
+  publishAnnotationHistoryCommand,
+  requestAnnotationHistoryRefresh,
+} from '@dashboards/forecaster/history/annotationHistoryEvents';
 
 const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/features`;
 
 function getCanonicalProjectId(projectId) {
   return String(projectId || '').split(':')[0];
+}
+
+function cloneFeaturePayload(feature) {
+  if (typeof structuredClone === 'function') return structuredClone(feature);
+  return JSON.parse(JSON.stringify(feature));
 }
 
 async function getErrorMessage(response, fallback) {
@@ -99,7 +108,10 @@ export const declineFeatureChangeRequest = async (notificationId) => {
   return response.json();
 };
 
-export const createFeature = async (feature) => {
+export const createFeature = async (feature, options = {}) => {
+  const suppressHistory =
+    typeof options === 'object' && options !== null && options.suppressHistory === true;
+
   try {
     const response = await fetch(`${API_BASE_URL}`, {
       method: 'POST',
@@ -114,6 +126,24 @@ export const createFeature = async (feature) => {
 
     if (!response.ok) {
       throw new Error(data.error || data.message || 'Failed to save feature');
+    }
+
+    if (!suppressHistory && typeof window !== 'undefined' && feature?.sourceId) {
+      const snapshot = cloneFeaturePayload(feature);
+      const sourceId = snapshot.sourceId;
+      const projectId = snapshot.properties?.project || snapshot.project;
+
+      publishAnnotationHistoryCommand({
+        label: `Create ${snapshot.name || 'annotation'}`,
+        undo: async () => {
+          await deleteFeature(sourceId);
+          requestAnnotationHistoryRefresh(projectId);
+        },
+        redo: async () => {
+          await createFeature(snapshot, { suppressHistory: true });
+          requestAnnotationHistoryRefresh(projectId);
+        },
+      });
     }
 
     return data;
