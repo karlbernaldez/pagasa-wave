@@ -8,10 +8,13 @@ import {
   getForecastPackageById,
   getUserForecastPackages,
   publishForecastPackage,
-  requestForecastPackageRevision,
   startForecastPackageReview,
   updateForecastChartCompletion,
 } from '../controllers/forecastPackageController.js';
+import {
+  requestForecastChartRevisionByProject,
+  requestTargetedForecastPackageRevision,
+} from '../controllers/forecastPackageRevisionController.js';
 import { submitForecastPackage } from '../controllers/forecastPackageSubmitController.js';
 import { getCurrentForecastPackage } from '../controllers/currentForecastPackageController.js';
 import {
@@ -61,7 +64,10 @@ const STATUS_FILTER_ALIASES = Object.freeze({
 });
 
 const CHART_LABEL_BY_TYPE = Object.freeze(
-  REQUIRED_FORECAST_CHARTS.reduce((memo, chart) => ({ ...memo, [chart.chartType]: chart.label }), {}),
+  REQUIRED_FORECAST_CHARTS.reduce(
+    (memo, chart) => ({ ...memo, [chart.chartType]: chart.label }),
+    {}
+  )
 );
 
 function getId(value) {
@@ -69,7 +75,8 @@ function getId(value) {
   if (typeof value === 'string') return value;
   if (value._id) return String(value._id);
   if (value.id) return String(value.id);
-  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) return String(value.toString());
+  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString)
+    return String(value.toString());
   return '';
 }
 
@@ -87,7 +94,10 @@ function getTimeValue(value) {
 
 function getActiveEditors(chart = {}) {
   const activeEditors = Array.isArray(chart.activeEditors) ? [...chart.activeEditors] : [];
-  if (chart.claimedBy && !activeEditors.some((editor) => getId(editor.user) === getId(chart.claimedBy))) {
+  if (
+    chart.claimedBy &&
+    !activeEditors.some((editor) => getId(editor.user) === getId(chart.claimedBy))
+  ) {
     activeEditors.push({ user: chart.claimedBy, startedAt: chart.claimedAt || null });
   }
   return activeEditors;
@@ -143,11 +153,15 @@ async function requireJoinedChartBeforeCompletion(req, res, next) {
     const forecastPackage = await ForecastPackage.findById(req.params.id).lean();
     if (!forecastPackage) return next();
 
-    const chart = (forecastPackage.charts || []).find((row) => row.chartType === req.params.chartType);
+    const chart = (forecastPackage.charts || []).find(
+      (row) => row.chartType === req.params.chartType
+    );
     if (!chart) return next();
 
     const activeEditors = getActiveEditors(chart);
-    const currentUserJoined = activeEditors.some((editor) => getId(editor.user) === getId(req.user?.id));
+    const currentUserJoined = activeEditors.some(
+      (editor) => getId(editor.user) === getId(req.user?.id)
+    );
     if (!currentUserJoined) {
       return res.status(409).json({
         success: false,
@@ -164,14 +178,19 @@ async function requireJoinedChartBeforeCompletion(req, res, next) {
 async function requireResolvedRevisionBeforeSubmit(req, res, next) {
   try {
     const forecastPackage = await ForecastPackage.findById(req.params.id).lean();
-    if (!forecastPackage || forecastPackage.status !== FORECAST_PACKAGE_STATUS.REVISION_REQUESTED) return next();
+    if (!forecastPackage || forecastPackage.status !== FORECAST_PACKAGE_STATUS.REVISION_REQUESTED)
+      return next();
 
-    const revisionRequestedAt = getTimeValue(forecastPackage.reviewedAt || forecastPackage.updatedAt);
+    const revisionRequestedAt = getTimeValue(
+      forecastPackage.reviewedAt || forecastPackage.updatedAt
+    );
     const charts = Array.isArray(forecastPackage.charts) ? forecastPackage.charts : [];
     const projectIds = getChartProjectIds(forecastPackage);
     if (!projectIds.length) return next();
 
-    const projects = await Project.find({ _id: { $in: projectIds } }).select('_id status').lean();
+    const projects = await Project.find({ _id: { $in: projectIds } })
+      .select('_id status')
+      .lean();
     const projectStatusById = new Map(projects.map((project) => [getId(project), project.status]));
     const pendingChartLabels = [];
 
@@ -179,12 +198,16 @@ async function requireResolvedRevisionBeforeSubmit(req, res, next) {
       const projectId = getId(chart.project);
       if (projectStatusById.get(projectId) !== PROJECT_STATUS.REVISION_REQUESTED) return;
 
-      const completion = (forecastPackage.chartCompletion || []).find((row) => row.chartType === chart.chartType);
+      const completion = (forecastPackage.chartCompletion || []).find(
+        (row) => row.chartType === chart.chartType
+      );
       if (!completion?.isComplete) return;
 
       const completedAt = getTimeValue(completion.completedAt || chart.readyAt);
       if (!revisionRequestedAt || !completedAt || completedAt <= revisionRequestedAt) {
-        pendingChartLabels.push(CHART_LABEL_BY_TYPE[chart.chartType] || chart.chartType || 'Forecast chart');
+        pendingChartLabels.push(
+          CHART_LABEL_BY_TYPE[chart.chartType] || chart.chartType || 'Forecast chart'
+        );
       }
     });
 
@@ -211,7 +234,8 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
     },
     $push: {
       auditLogs: {
-        action: nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ? 'approved' : 'chart_completion_updated',
+        action:
+          nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ? 'approved' : 'chart_completion_updated',
         performedBy: userId,
         previousStatus: forecastPackage.status,
         newStatus: nextStatus,
@@ -230,11 +254,9 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
     update.$set.approvedBy = userId;
   }
 
-  const updatedPackage = await ForecastPackage.findByIdAndUpdate(
-    forecastPackage._id,
-    update,
-    { new: true },
-  )
+  const updatedPackage = await ForecastPackage.findByIdAndUpdate(forecastPackage._id, update, {
+    new: true,
+  })
     .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
     .lean();
@@ -263,19 +285,19 @@ async function getAdminForecastPackages(req, res, next) {
       .lean();
 
     const syncedPackages = await Promise.all(
-      allPackages.map((forecastPackage) => syncPackageStatusFromCharts(forecastPackage, req.user.id)),
+      allPackages.map((forecastPackage) =>
+        syncPackageStatusFromCharts(forecastPackage, req.user.id)
+      )
     );
-    const visiblePackages = syncedPackages.filter((forecastPackage) => (
+    const visiblePackages = syncedPackages.filter((forecastPackage) =>
       ADMIN_VISIBLE_PACKAGE_STATUSES.includes(forecastPackage.status)
-    ));
+    );
     const filteredPackages = status
       ? visiblePackages.filter((forecastPackage) => forecastPackage.status === status)
       : visiblePackages;
     const total = filteredPackages.length;
     const skip = (pageNumber - 1) * limitNumber;
-    const packages = filteredPackages
-      .slice(skip, skip + limitNumber)
-      .map(serializeAdminPackage);
+    const packages = filteredPackages.slice(skip, skip + limitNumber).map(serializeAdminPackage);
 
     res.json({
       packages,
@@ -292,20 +314,68 @@ async function getAdminForecastPackages(req, res, next) {
 router.use(protect);
 
 router.get('/admin/packages', isAdmin, getAdminForecastPackages);
-router.patch('/:id/start-review', isAdmin, emitForecastPackageWorkflowAfterResponse('review_started'), startForecastPackageReview);
-router.patch('/:id/request-revision', isAdmin, emitForecastPackageWorkflowAfterResponse('revision_requested'), requestForecastPackageRevision);
-router.patch('/:id/approve', isAdmin, emitForecastPackageWorkflowAfterResponse('approved'), approveForecastPackage);
-router.patch('/:id/publish', isAdmin, emitForecastPackageWorkflowAfterResponse('published'), publishForecastPackage);
+router.patch(
+  '/:id/start-review',
+  isAdmin,
+  emitForecastPackageWorkflowAfterResponse('review_started'),
+  startForecastPackageReview
+);
+router.patch(
+  '/:id/request-revision',
+  isAdmin,
+  emitForecastPackageWorkflowAfterResponse('revision_requested'),
+  requestTargetedForecastPackageRevision
+);
+router.patch(
+  '/:id/approve',
+  isAdmin,
+  emitForecastPackageWorkflowAfterResponse('approved'),
+  approveForecastPackage
+);
+router.patch(
+  '/:id/publish',
+  isAdmin,
+  emitForecastPackageWorkflowAfterResponse('published'),
+  publishForecastPackage
+);
 
 router.post('/', emitForecastPackageWorkflowAfterResponse('created'), createForecastPackage);
 router.get('/', getUserForecastPackages);
 router.get('/current', getCurrentForecastPackage);
 router.get('/charts/project/:projectId/context', getForecastPackageChartContextByProject);
-router.patch('/charts/project/:projectId/claim', emitForecastPackageWorkflowAfterResponse('chart_claimed'), joinForecastPackageChartEditingByProject);
-router.patch('/charts/project/:projectId/release', emitForecastPackageWorkflowAfterResponse('chart_released'), releaseForecastPackageChartEditingByProject);
-router.patch('/charts/project/:projectId/completion', emitForecastPackageWorkflowAfterResponse('chart_completion_updated'), updateForecastChartCompletionByProject);
+router.patch(
+  '/charts/project/:projectId/request-revision',
+  isAdmin,
+  emitForecastPackageWorkflowAfterResponse('revision_requested'),
+  requestForecastChartRevisionByProject
+);
+router.patch(
+  '/charts/project/:projectId/claim',
+  emitForecastPackageWorkflowAfterResponse('chart_claimed'),
+  joinForecastPackageChartEditingByProject
+);
+router.patch(
+  '/charts/project/:projectId/release',
+  emitForecastPackageWorkflowAfterResponse('chart_released'),
+  releaseForecastPackageChartEditingByProject
+);
+router.patch(
+  '/charts/project/:projectId/completion',
+  emitForecastPackageWorkflowAfterResponse('chart_completion_updated'),
+  updateForecastChartCompletionByProject
+);
 router.get('/:id', getForecastPackageById);
-router.patch('/:id/charts/:chartType/completion', requireJoinedChartBeforeCompletion, emitForecastPackageWorkflowAfterResponse('chart_completion_updated'), updateForecastChartCompletion);
-router.patch('/:id/submit', requireResolvedRevisionBeforeSubmit, emitForecastPackageWorkflowAfterResponse('submitted'), submitForecastPackage);
+router.patch(
+  '/:id/charts/:chartType/completion',
+  requireJoinedChartBeforeCompletion,
+  emitForecastPackageWorkflowAfterResponse('chart_completion_updated'),
+  updateForecastChartCompletion
+);
+router.patch(
+  '/:id/submit',
+  requireResolvedRevisionBeforeSubmit,
+  emitForecastPackageWorkflowAfterResponse('submitted'),
+  submitForecastPackage
+);
 
 export default router;

@@ -2,23 +2,29 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { sendUserUpdateEmail } from '#services/email/sendUserUpdateEmail';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const SALT_ROUNDS = 10;
 const PAGE_OPTIONS = [5, 10, 25, 50];
 const DEFAULT_LIMIT = 5;
 
 const ALLOWED_STATUSES = ['pending', 'active', 'locked', 'suspended', 'inactive'];
-
-// Fields each role is allowed to update
-const OWNER_FIELDS = ['username', 'firstName', 'lastName', 'contact', 'address', 'birthday', 'email', 'agency', 'position', 'avatarUrl'];
+const OWNER_FIELDS = [
+  'username',
+  'firstName',
+  'lastName',
+  'contact',
+  'address',
+  'birthday',
+  'email',
+  'agency',
+  'position',
+  'avatarUrl',
+];
 const ADMIN_FIELDS = [...OWNER_FIELDS, 'role'];
 
-// Fields returned by list / detail queries (no password, no __v)
-const LIST_FIELDS = 'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
-const DETAIL_FIELDS = 'username firstName lastName birthday address agency position email contact role status avatarUrl createdAt lastLogin activatedAt';
-
-// ─── Pure helpers (no side-effects, easy to unit-test) ────────────────────────
+const LIST_FIELDS =
+  'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
+const DETAIL_FIELDS =
+  'username firstName lastName birthday address agency position email contact role status avatarUrl createdAt lastLogin activatedAt';
 
 const clampInt = (value, min, max, fallback) => {
   const n = Math.trunc(Number(value));
@@ -29,13 +35,12 @@ const snapToPageOption = (limit) =>
   PAGE_OPTIONS.includes(limit)
     ? limit
     : PAGE_OPTIONS.reduce((best, cur) =>
-      Math.abs(cur - limit) < Math.abs(best - limit) ? cur : best
-    );
+        Math.abs(cur - limit) < Math.abs(best - limit) ? cur : best
+      );
 
 const generateDefaultPassword = (username) =>
   `${username}@${Math.floor(1000 + Math.random() * 9000)}`;
 
-/** Strips sensitive fields and normalises _id → id. */
 const formatUser = (u) => ({
   id: u._id.toString(),
   username: u.username,
@@ -53,18 +58,12 @@ const formatUser = (u) => ({
   createdAt: u.createdAt,
 });
 
-/** Builds a Mongoose filter from validated query params. */
 const buildUserFilter = ({ search, status, role } = {}) => {
   const filter = {};
 
   if (search?.trim()) {
     const regex = new RegExp(search.trim(), 'i');
-    filter.$or = [
-      { username: regex },
-      { firstName: regex },
-      { lastName: regex },
-      { email: regex },
-    ];
+    filter.$or = [{ username: regex }, { firstName: regex }, { lastName: regex }, { email: regex }];
   }
 
   if (status) filter.status = status;
@@ -73,12 +72,6 @@ const buildUserFilter = ({ search, status, role } = {}) => {
   return filter;
 };
 
-// ─── Controllers ──────────────────────────────────────────────────────────────
-
-/**
- * GET /api/users?page=&limit=&search=&status=&role=
- * Returns a paginated, filterable user list.
- */
 export const getAllUsers = async (req, res) => {
   try {
     const page = clampInt(req.query.page, 1, Number.MAX_SAFE_INTEGER, 1);
@@ -87,13 +80,12 @@ export const getAllUsers = async (req, res) => {
 
     const total = await User.countDocuments(filter);
     const totalPages = Math.max(1, Math.ceil(total / limit));
-
     const safePage = Math.min(page, totalPages);
     const skip = (safePage - 1) * limit;
 
     const users = await User.find(filter)
       .select(LIST_FIELDS)
-      .sort({ createdAt: -1, _id: -1 }) // ✅ stable sort
+      .sort({ createdAt: -1, _id: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
@@ -105,25 +97,18 @@ export const getAllUsers = async (req, res) => {
       limit,
       totalPages,
     });
-
   } catch (err) {
     console.error('[getAllUsers]', err);
     return res.status(500).json({ message: 'Error fetching users', error: err.message });
   }
 };
 
-/**
- * GET /api/users/:userId
- */
 export const getUserDetails = async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId)
-      .select(DETAIL_FIELDS)
-      .lean();
+    const user = await User.findById(req.params.userId).select(DETAIL_FIELDS).lean();
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Normalise _id → id before sending
     const { _id, ...rest } = user;
     return res.status(200).json({ id: _id.toString(), ...rest });
   } catch (err) {
@@ -132,27 +117,38 @@ export const getUserDetails = async (req, res) => {
   }
 };
 
-/**
- * POST /api/users
- * Admin-only user creation with auto-generated default password.
- */
 export const createUserByAdmin = async (req, res) => {
   try {
     const {
-      username, firstName, lastName, birthday, address,
-      agency, position, email, contact, role, status,
+      username,
+      firstName,
+      lastName,
+      birthday,
+      address,
+      agency,
+      position,
+      email,
+      contact,
+      role,
+      status,
     } = req.body;
 
-    // Required field check
-    const missing = ['username', 'firstName', 'lastName', 'birthday', 'address',
-      'agency', 'position', 'email', 'contact']
-      .filter((f) => !req.body[f]);
+    const missing = [
+      'username',
+      'firstName',
+      'lastName',
+      'birthday',
+      'address',
+      'agency',
+      'position',
+      'email',
+      'contact',
+    ].filter((f) => !req.body[f]);
 
     if (missing.length) {
       return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
     }
 
-    // Duplicate check
     const exists = await User.findOne({ $or: [{ email }, { username }] }).lean();
     if (exists) {
       return res.status(409).json({ message: 'A user with this email or username already exists' });
@@ -164,8 +160,15 @@ export const createUserByAdmin = async (req, res) => {
     const isActive = safeStatus === 'active';
 
     const user = await User.create({
-      username, firstName, lastName, birthday, address,
-      agency, position, email, contact,
+      username,
+      firstName,
+      lastName,
+      birthday,
+      address,
+      agency,
+      position,
+      email,
+      contact,
       role: role || 'user',
       status: safeStatus,
       password: hashedPassword,
@@ -178,7 +181,7 @@ export const createUserByAdmin = async (req, res) => {
     return res.status(201).json({
       message: 'User created successfully',
       user: safeUser,
-      defaultPassword: rawPassword, // returned once — never stored in plain text
+      defaultPassword: rawPassword,
     });
   } catch (err) {
     console.error('[createUserByAdmin]', err);
@@ -189,9 +192,6 @@ export const createUserByAdmin = async (req, res) => {
   }
 };
 
-/**
- * PUT /api/users/:userId/change-password
- */
 export const changePassword = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -211,7 +211,7 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({ message: 'New password must be at least 8 characters.' });
     }
 
-    const user = await User.findById(userId).select('+password');
+    const user = await User.findById(userId).select('+password +sessionVersion');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const match = await bcrypt.compare(currentPassword, user.password);
@@ -227,10 +227,6 @@ export const changePassword = async (req, res) => {
   }
 };
 
-/**
- * PUT /api/users/:userId
- * Owners can update their own profile fields; admins get additional fields.
- */
 export const updateUserDetails = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -247,9 +243,7 @@ export const updateUserDetails = async (req, res) => {
 
     const allowedFields = isAdmin ? ADMIN_FIELDS : OWNER_FIELDS;
     const updates = Object.fromEntries(
-      allowedFields
-        .filter((f) => req.body[f] !== undefined)
-        .map((f) => [f, req.body[f]])
+      allowedFields.filter((f) => req.body[f] !== undefined).map((f) => [f, req.body[f]])
     );
 
     if (!Object.keys(updates).length) {
@@ -259,20 +253,26 @@ export const updateUserDetails = async (req, res) => {
     if (updates.username !== undefined) {
       updates.username = String(updates.username).trim().toLowerCase();
       if (!/^[a-z0-9._-]{3,30}$/.test(updates.username)) {
-        return res.status(400).json({ message: 'Username must be 3-30 characters and use only letters, numbers, dots, underscores, or hyphens' });
+        return res.status(400).json({
+          message:
+            'Username must be 3-30 characters and use only letters, numbers, dots, underscores, or hyphens',
+        });
       }
     }
 
     if (updates.avatarUrl !== undefined && updates.avatarUrl !== null) {
       const avatarUrl = String(updates.avatarUrl).trim();
-      const isSupportedAvatar = /^(https?:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(avatarUrl);
+      const isSupportedAvatar = /^(https?:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(
+        avatarUrl
+      );
       if (!isSupportedAvatar || avatarUrl.length > 1000000) {
-        return res.status(400).json({ message: 'Avatar must be a supported image URL or an image smaller than 750 KB' });
+        return res.status(400).json({
+          message: 'Avatar must be a supported image URL or an image smaller than 750 KB',
+        });
       }
       updates.avatarUrl = avatarUrl;
     }
 
-    // Duplicate email / username guard
     if (updates.email || updates.username) {
       const conflict = await User.findOne({
         _id: { $ne: userId },
@@ -287,38 +287,45 @@ export const updateUserDetails = async (req, res) => {
       }
     }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
-      new: true,
-      runValidators: true,
-    }).select('-password');
+    const user = await User.findById(userId).select('+sessionVersion');
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    if (!updatedUser) return res.status(404).json({ message: 'User not found' });
+    for (const [field, value] of Object.entries(updates)) {
+      user.set(field, value);
+    }
 
-    return res.status(200).json(updatedUser);
+    await user.save();
+
+    const safeUser = user.toObject();
+    delete safeUser.password;
+    delete safeUser.sessionVersion;
+
+    return res.status(200).json(safeUser);
   } catch (err) {
     console.error('[updateUserDetails]', err);
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ message: err.message });
+    }
     return res.status(500).json({ message: 'Error updating user', error: err.message });
   }
 };
 
-/**
- * PUT /api/users/:userId/status
- */
 export const updateUserStatus = async (req, res) => {
   try {
     const { userId } = req.params;
     const { status } = req.body;
 
     if (!ALLOWED_STATUSES.includes(status)) {
-      return res.status(400).json({ message: `Invalid status. Allowed: ${ALLOWED_STATUSES.join(', ')}` });
+      return res
+        .status(400)
+        .json({ message: `Invalid status. Allowed: ${ALLOWED_STATUSES.join(', ')}` });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select('+sessionVersion');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const previousStatus = user.status;
 
-    // First-time activation audit
     if (status === 'active' && !user.activatedAt) {
       user.activatedAt = new Date();
       user.activatedBy = req.user._id;
@@ -327,8 +334,6 @@ export const updateUserStatus = async (req, res) => {
     user.status = status;
     await user.save();
 
-    // Notify the user of their status change — fire-and-forget so a
-    // failed email never rolls back a successful status update.
     sendUserUpdateEmail(user.email, user.firstName, [
       { field: 'Status', from: previousStatus, to: status },
     ]).catch((err) => console.warn('[updateUserStatus] Email notification failed:', err.message));
@@ -343,9 +348,6 @@ export const updateUserStatus = async (req, res) => {
   }
 };
 
-/**
- * DELETE /api/users/:userId
- */
 export const deleteUser = async (req, res) => {
   try {
     const deleted = await User.findByIdAndDelete(req.params.userId);

@@ -60,7 +60,9 @@ const PROJECT_STATUSES = Object.freeze({
 });
 
 export function getForecastChartLabel(chartType) {
-  return REQUIRED_FORECAST_CHARTS.find((chart) => chart.chartType === chartType)?.label || chartType;
+  return (
+    REQUIRED_FORECAST_CHARTS.find((chart) => chart.chartType === chartType)?.label || chartType
+  );
 }
 
 function getChartProjectStatus(chart) {
@@ -83,6 +85,10 @@ export function deriveForecastPackageStatusFromCharts(forecastPackage) {
     return FORECAST_PACKAGE_STATUS.ARCHIVED;
   }
 
+  if (forecastPackage?.status === FORECAST_PACKAGE_STATUS.REVISION_REQUESTED) {
+    return FORECAST_PACKAGE_STATUS.REVISION_REQUESTED;
+  }
+
   const statuses = getRequiredChartStatuses(forecastPackage);
   if (statuses.length === 0) return FORECAST_PACKAGE_STATUS.DRAFT;
 
@@ -90,7 +96,11 @@ export function deriveForecastPackageStatusFromCharts(forecastPackage) {
     return FORECAST_PACKAGE_STATUS.PUBLISHED;
   }
 
-  if (statuses.every((status) => [PROJECT_STATUSES.APPROVED, PROJECT_STATUSES.PUBLISHED].includes(status))) {
+  if (
+    statuses.every((status) =>
+      [PROJECT_STATUSES.APPROVED, PROJECT_STATUSES.PUBLISHED].includes(status)
+    )
+  ) {
     return FORECAST_PACKAGE_STATUS.APPROVED;
   }
 
@@ -147,10 +157,17 @@ function getTimeZoneDateParts(value, timeZone = FORECAST_TIME_ZONE) {
 }
 
 function parseDateKey(value) {
-  const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const match = String(value || '')
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!match) return null;
   const [, year, month, day] = match;
-  return { year: Number(year), month: Number(month), day: Number(day), key: `${year}-${month}-${day}` };
+  return {
+    year: Number(year),
+    month: Number(month),
+    day: Number(day),
+    key: `${year}-${month}-${day}`,
+  };
 }
 
 function makePhilippinesOperationalDate({ year, month, day }) {
@@ -159,9 +176,10 @@ function makePhilippinesOperationalDate({ year, month, day }) {
 }
 
 export function normalizeForecastDate(value) {
-  const parts = typeof value === 'string'
-    ? (parseDateKey(value) || getTimeZoneDateParts(value))
-    : getTimeZoneDateParts(value || new Date());
+  const parts =
+    typeof value === 'string'
+      ? parseDateKey(value) || getTimeZoneDateParts(value)
+      : getTimeZoneDateParts(value || new Date());
 
   if (!parts) return null;
   return makePhilippinesOperationalDate(parts);

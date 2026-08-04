@@ -25,16 +25,9 @@ function getForecastDateQuery(value) {
   return { $gte: start, $lt: new Date(start.getTime() + ONE_DAY_MS) };
 }
 
-function getTimeValue(value) {
-  if (!value) return 0;
-  const time = new Date(value).getTime();
-  return Number.isNaN(time) ? 0 : time;
-}
-
 function serializePackage(forecastPackage) {
-  const plain = typeof forecastPackage.toObject === 'function'
-    ? forecastPackage.toObject()
-    : forecastPackage;
+  const plain =
+    typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage;
 
   return {
     ...plain,
@@ -64,70 +57,25 @@ async function findPackageForDate(forecastDate) {
   );
 }
 
-async function repairReCertifiedRevisionChartProjects(forecastPackage, userId) {
-  if (!forecastPackage || forecastPackage.status !== FORECAST_PACKAGE_STATUS.REVISION_REQUESTED) return forecastPackage;
-
-  const revisionRequestedAt = getTimeValue(forecastPackage.reviewedAt || forecastPackage.updatedAt);
-  if (!revisionRequestedAt) return forecastPackage;
-
-  const projectIdsToSubmit = [];
-  const completionByType = new Map((forecastPackage.chartCompletion || []).map((row) => [row.chartType, row]));
-
-  for (const chart of forecastPackage.charts || []) {
-    const project = chart.project;
-    if (!project || typeof project !== 'object') continue;
-    if (project.status !== PROJECT_STATUS.REVISION_REQUESTED) continue;
-
-    const completion = completionByType.get(chart.chartType);
-    const completedAt = getTimeValue(completion?.completedAt || chart.readyAt);
-    if (!completion?.isComplete || !completedAt || completedAt <= revisionRequestedAt) continue;
-
-    projectIdsToSubmit.push(project._id || project.id);
-  }
-
-  if (!projectIdsToSubmit.length) return forecastPackage;
-
-  await Project.updateMany(
-    { _id: { $in: projectIdsToSubmit }, status: PROJECT_STATUS.REVISION_REQUESTED },
-    {
-      $set: {
-        status: PROJECT_STATUS.SUBMITTED,
-        submittedAt: new Date(),
-      },
-      $push: {
-        auditLogs: {
-          action: 'submitted',
-          performedBy: userId,
-          previousStatus: PROJECT_STATUS.REVISION_REQUESTED,
-          newStatus: PROJECT_STATUS.SUBMITTED,
-          comment: 'Re-certified revision chart returned to admin review queue',
-        },
-      },
-    }
-  );
-
-  return populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
-}
-
 async function syncPackageStatusFromCharts(forecastPackage, userId) {
-  const repairedPackage = await repairReCertifiedRevisionChartProjects(forecastPackage, userId);
-  const nextStatus = deriveForecastPackageStatusFromCharts(repairedPackage);
-  if (!nextStatus || nextStatus === repairedPackage?.status) return repairedPackage;
+  const nextStatus = deriveForecastPackageStatusFromCharts(forecastPackage);
+  if (!nextStatus || nextStatus === forecastPackage?.status) return forecastPackage;
 
   const update = {
     $set: { status: nextStatus },
     $push: {
       auditLogs: {
-        action: nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ? 'approved' : 'chart_completion_updated',
+        action:
+          nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ? 'approved' : 'chart_completion_updated',
         performedBy: userId,
-        previousStatus: repairedPackage.status,
+        previousStatus: forecastPackage.status,
         newStatus: nextStatus,
         comment: 'Forecast Package status synced from chart project statuses',
       },
     },
   };
 
-  if (nextStatus === FORECAST_PACKAGE_STATUS.UNDER_REVIEW && !repairedPackage.reviewStartedAt) {
+  if (nextStatus === FORECAST_PACKAGE_STATUS.UNDER_REVIEW && !forecastPackage.reviewStartedAt) {
     update.$set.reviewStartedAt = new Date();
     update.$set.reviewStartedBy = userId;
   }
@@ -137,8 +85,12 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
     update.$set.approvedBy = userId;
   }
 
-  const updatedPackage = await ForecastPackage.findByIdAndUpdate(repairedPackage._id, update, { new: true });
-  return populateForecastPackage(ForecastPackage.findById(updatedPackage?._id || repairedPackage._id));
+  const updatedPackage = await ForecastPackage.findByIdAndUpdate(forecastPackage._id, update, {
+    new: true,
+  });
+  return populateForecastPackage(
+    ForecastPackage.findById(updatedPackage?._id || forecastPackage._id)
+  );
 }
 
 async function ensureDailyChartProject({ forecastDate, user, requiredChart, packageName }) {
@@ -211,7 +163,12 @@ async function createDailyForecastPackage({ forecastDate, user }) {
   const charts = [];
 
   for (const requiredChart of REQUIRED_FORECAST_CHARTS) {
-    const project = await ensureDailyChartProject({ forecastDate, user, requiredChart, packageName: name });
+    const project = await ensureDailyChartProject({
+      forecastDate,
+      user,
+      requiredChart,
+      packageName: name,
+    });
     charts.push({
       chartType: requiredChart.chartType,
       project: project._id,
@@ -268,10 +225,12 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
   if (!requestedDate) throwError('forecastDate must be a valid date', 400);
 
   const existingPackage = await findPackageForDate(requestedDate);
-  const forecastPackage = existingPackage || await createDailyForecastPackage({
-    forecastDate: requestedDate,
-    user: req.user,
-  });
+  const forecastPackage =
+    existingPackage ||
+    (await createDailyForecastPackage({
+      forecastDate: requestedDate,
+      user: req.user,
+    }));
 
   const syncedPackage = await syncPackageStatusFromCharts(forecastPackage, req.user.id);
   res.json(serializePackage(syncedPackage));
