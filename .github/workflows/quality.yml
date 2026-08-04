@@ -55,3 +55,9 @@ jobs:
 
       - name: Run incremental quality gates
         run: npm run quality
+
+      - name: Show exact Prettier diff
+        if: failure()
+        run: |
+          npx prettier --write frontend/src/dashboards/forecaster/components/Studio/LayerPanel/hooks/useWaveConfig.js
+          git diff -- frontend/src/dashboards/forecaster/components/Studio/LayerPanel/hooks/useWaveConfig.js
