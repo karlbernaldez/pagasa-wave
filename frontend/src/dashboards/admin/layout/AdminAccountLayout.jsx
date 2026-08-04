@@ -22,14 +22,14 @@ export default function AdminAccountLayout() {
 
   return (
     <div className="min-h-full">
-      <div className="mx-auto flex max-w-4xl justify-end px-4 pt-5 sm:px-6 lg:px-8">
+      <div
+        className={`border-b ${
+          isDarkMode ? 'border-white/10 bg-slate-950/15' : 'border-slate-200/70 bg-white/20'
+        }`}
+      >
         <nav
           aria-label="Administrator account settings"
-          className={`inline-flex w-full rounded-xl border p-1 backdrop-blur-3xl sm:w-auto ${
-            isDarkMode
-              ? 'border-white/10 bg-slate-950/45 shadow-[0_14px_34px_rgba(0,0,0,0.22)]'
-              : 'border-white/85 bg-white/65 shadow-[0_14px_34px_rgba(15,23,42,0.10)]'
-          }`}
+          className="mx-auto flex max-w-7xl gap-6 px-6 lg:px-8"
         >
           {ACCOUNT_LINKS.map(({ to, end, label, icon: Icon }) => (
             <NavLink
@@ -37,19 +37,31 @@ export default function AdminAccountLayout() {
               to={to}
               end={end}
               className={({ isActive }) =>
-                `inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:flex-none ${
+                `relative inline-flex min-h-12 items-center gap-2 px-1 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 ${
                   isActive
                     ? isDarkMode
-                      ? 'bg-cyan-400/14 text-cyan-100 shadow-sm'
-                      : 'bg-white text-cyan-800 shadow-sm'
+                      ? 'text-cyan-200'
+                      : 'text-cyan-800'
                     : isDarkMode
-                      ? 'text-slate-400 hover:bg-white/[0.05] hover:text-white'
-                      : 'text-slate-500 hover:bg-white/70 hover:text-slate-900'
+                      ? 'text-slate-400 hover:text-white'
+                      : 'text-slate-500 hover:text-slate-900'
                 }`
               }
             >
-              <Icon size={15} aria-hidden="true" />
-              {label}
+              {({ isActive }) => (
+                <>
+                  <Icon size={15} aria-hidden="true" />
+                  <span>{label}</span>
+                  {isActive && (
+                    <span
+                      aria-hidden="true"
+                      className={`absolute inset-x-0 bottom-0 h-0.5 rounded-full ${
+                        isDarkMode ? 'bg-cyan-300' : 'bg-cyan-600'
+                      }`}
+                    />
+                  )}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
