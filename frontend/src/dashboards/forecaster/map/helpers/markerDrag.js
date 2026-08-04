@@ -16,19 +16,18 @@
  * @param {mapboxgl.Map}  map        - The Mapbox GL map instance
  * @param {string}        layerId    - The symbol layer id to make draggable
  * @param {string}        sourceId   - The GeoJSON source id backing the layer
- * @param {Function}      onDragEnd  - Called with { lng, lat } when drag ends
+ * @param {Function}      onDragEnd  - Called with previous and next coordinates when drag ends
  * @returns {Function}               - Cleanup function
  */
 export function makeMarkerDraggable(map, layerId, sourceId, onDragEnd) {
   let isDragging = false;
+  let dragStartCoordinates = null;
   let dragFeatureCoords = null;
 
-  // ── Cursor helpers ────────────────────────────────────────
   const setCursor = (cursor) => {
     map.getCanvas().style.cursor = cursor;
   };
 
-  // ── Mouse enter / leave ───────────────────────────────────
   const onMouseEnter = () => {
     if (!isDragging) setCursor('grab');
   };
@@ -37,28 +36,52 @@ export function makeMarkerDraggable(map, layerId, sourceId, onDragEnd) {
     if (!isDragging) setCursor('');
   };
 
-  // ── Drag start ────────────────────────────────────────────
-  const onMouseDown = (e) => {
-    if (!e.features?.length) return;
-
-    e.preventDefault();                      // prevent map pan
+  const beginDrag = (coordinates) => {
+    dragStartCoordinates = Array.isArray(coordinates) ? coordinates.slice() : null;
+    dragFeatureCoords = dragStartCoordinates?.slice() || null;
     isDragging = true;
-    dragFeatureCoords = e.features[0].geometry.coordinates.slice();
+  };
 
+  const finishDrag = () => {
+    if (!dragFeatureCoords || !dragStartCoordinates) return;
+
+    const coordinates = dragFeatureCoords.slice();
+    const previousCoordinates = dragStartCoordinates.slice();
+    dragStartCoordinates = null;
+    dragFeatureCoords = null;
+
+    if (
+      coordinates[0] === previousCoordinates[0] &&
+      coordinates[1] === previousCoordinates[1]
+    ) {
+      return;
+    }
+
+    onDragEnd?.({
+      lng: coordinates[0],
+      lat: coordinates[1],
+      coordinates,
+      previousCoordinates,
+    });
+  };
+
+  const onMouseDown = (event) => {
+    if (!event.features?.length) return;
+
+    event.preventDefault();
+    beginDrag(event.features[0].geometry.coordinates);
     setCursor('grabbing');
 
     map.on('mousemove', onMouseMove);
     map.once('mouseup', onMouseUp);
   };
 
-  // ── Dragging ──────────────────────────────────────────────
-  const onMouseMove = (e) => {
+  const onMouseMove = (event) => {
     if (!isDragging) return;
 
-    const { lng, lat } = e.lngLat;
+    const { lng, lat } = event.lngLat;
     dragFeatureCoords = [lng, lat];
 
-    // Live-update the source so the icon follows the cursor
     const source = map.getSource(sourceId);
     if (!source) return;
 
@@ -69,36 +92,29 @@ export function makeMarkerDraggable(map, layerId, sourceId, onDragEnd) {
     });
   };
 
-  // ── Drag end ──────────────────────────────────────────────
   const onMouseUp = () => {
     if (!isDragging) return;
 
     isDragging = false;
     setCursor('grab');
-
     map.off('mousemove', onMouseMove);
-
-    if (dragFeatureCoords) {
-      const [lng, lat] = dragFeatureCoords;
-      onDragEnd?.({ lng, lat });
-    }
+    finishDrag();
   };
 
-  // ── Touch support ─────────────────────────────────────────
-  const onTouchStart = (e) => {
-    if (!e.features?.length || e.points.length !== 1) return;
+  const onTouchStart = (event) => {
+    if (!event.features?.length || event.points.length !== 1) return;
 
-    e.preventDefault();
-    isDragging = true;
+    event.preventDefault();
+    beginDrag(event.features[0].geometry.coordinates);
 
     map.on('touchmove', onTouchMove);
     map.once('touchend', onTouchEnd);
   };
 
-  const onTouchMove = (e) => {
-    if (!isDragging || e.points.length !== 1) return;
+  const onTouchMove = (event) => {
+    if (!isDragging || event.points.length !== 1) return;
 
-    const touch = e.lngLat;
+    const touch = event.lngLat;
     dragFeatureCoords = [touch.lng, touch.lat];
 
     const source = map.getSource(sourceId);
@@ -112,31 +128,30 @@ export function makeMarkerDraggable(map, layerId, sourceId, onDragEnd) {
   };
 
   const onTouchEnd = () => {
+    if (!isDragging) return;
+
     isDragging = false;
     map.off('touchmove', onTouchMove);
-
-    if (dragFeatureCoords) {
-      const [lng, lat] = dragFeatureCoords;
-      onDragEnd?.({ lng, lat });
-    }
+    finishDrag();
   };
 
-  // ── Register listeners ────────────────────────────────────
   map.on('mouseenter', layerId, onMouseEnter);
   map.on('mouseleave', layerId, onMouseLeave);
   map.on('mousedown', layerId, onMouseDown);
   map.on('touchstart', layerId, onTouchStart);
 
-  // Disable map drag while hovering the marker
-  map.on('mouseenter', layerId, () => map.dragPan.disable());
-  map.on('mouseleave', layerId, () => map.dragPan.enable());
+  const disableMapDrag = () => map.dragPan.disable();
+  const enableMapDrag = () => map.dragPan.enable();
+  map.on('mouseenter', layerId, disableMapDrag);
+  map.on('mouseleave', layerId, enableMapDrag);
 
-  // ── Return cleanup ────────────────────────────────────────
   return function cleanup() {
     map.off('mouseenter', layerId, onMouseEnter);
     map.off('mouseleave', layerId, onMouseLeave);
     map.off('mousedown', layerId, onMouseDown);
     map.off('touchstart', layerId, onTouchStart);
+    map.off('mouseenter', layerId, disableMapDrag);
+    map.off('mouseleave', layerId, enableMapDrag);
     map.off('mousemove', onMouseMove);
     map.off('touchmove', onTouchMove);
     map.dragPan.enable();
