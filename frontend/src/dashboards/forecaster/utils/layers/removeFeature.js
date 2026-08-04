@@ -1,4 +1,8 @@
-import { deleteFeature } from '@/api/featureServices';
+import { createFeature, deleteFeature, fetchFeatures } from '@/api/featureServices';
+import {
+  publishAnnotationHistoryCommand,
+  requestAnnotationHistoryRefresh,
+} from '@dashboards/forecaster/history/annotationHistoryEvents';
 
 function normalizePersistedSourceId(layerOrId) {
   const sourceId =
@@ -20,23 +24,73 @@ function normalizePersistedSourceId(layerOrId) {
   return sourceId;
 }
 
+function getProjectId(layerOrId) {
+  return (
+    layerOrId?.project ||
+    layerOrId?.properties?.project ||
+    layerOrId?.properties?.projectId ||
+    localStorage.getItem('projectId') ||
+    ''
+  );
+}
+
+function toCreateFeaturePayload(feature) {
+  if (!feature?.geometry || !feature?.sourceId) return null;
+
+  return {
+    geometry: feature.geometry,
+    properties: { ...(feature.properties || {}) },
+    name: feature.name || feature.properties?.displayName || 'Annotation',
+    sourceId: feature.sourceId,
+  };
+}
+
+async function loadFeatureSnapshot(projectId, sourceId) {
+  if (!projectId || !sourceId) return null;
+
+  const features = await fetchFeatures(projectId);
+  const persistedFeature = (Array.isArray(features) ? features : []).find(
+    (feature) => normalizePersistedSourceId(feature) === sourceId
+  );
+
+  return toCreateFeaturePayload(persistedFeature);
+}
+
 export async function removeFeature(drawOrLayerOrId, maybeLayerOrId) {
   const hasExplicitDrawArg = maybeLayerOrId !== undefined;
   const draw = hasExplicitDrawArg ? drawOrLayerOrId : null;
   const layerOrId = hasExplicitDrawArg ? maybeLayerOrId : drawOrLayerOrId;
   const persistedSourceId = normalizePersistedSourceId(layerOrId);
   const drawLayerId = layerOrId?.id || layerOrId;
+  const projectId = getProjectId(layerOrId);
+
+  if (!persistedSourceId) return;
+
+  let snapshot = null;
+  try {
+    snapshot = await loadFeatureSnapshot(projectId, persistedSourceId);
+  } catch (error) {
+    console.warn(`Could not load deletion snapshot for "${persistedSourceId}".`, error);
+  }
+
+  await deleteFeature(persistedSourceId);
 
   if (draw?.delete) {
     if (drawLayerId) draw.delete(drawLayerId);
     else draw.trash();
   }
 
-  if (!persistedSourceId) return;
+  if (!snapshot || typeof window === 'undefined') return;
 
-  try {
-    await deleteFeature(persistedSourceId);
-  } catch (err) {
-    console.error(`Failed to delete feature "${persistedSourceId}" from backend.`, err);
-  }
+  publishAnnotationHistoryCommand({
+    label: `Delete ${snapshot.name || 'annotation'}`,
+    undo: async () => {
+      await createFeature(snapshot, { suppressHistory: true });
+      requestAnnotationHistoryRefresh(projectId);
+    },
+    redo: async () => {
+      await deleteFeature(persistedSourceId);
+      requestAnnotationHistoryRefresh(projectId);
+    },
+  });
 }
