@@ -1,3 +1,5 @@
+export const MAP_INSTANCE_READY_EVENT = 'wavelab:map-instance-ready';
+
 export function getLatestMapInstance(mapRef) {
   try {
     // 1. Direct Mapbox map instance
@@ -38,6 +40,7 @@ export function registerMapInstance(map) {
 
   if (map && typeof map.getStyle === 'function') {
     window.__latestMap = map;
+    window.dispatchEvent(new CustomEvent(MAP_INSTANCE_READY_EVENT));
     return;
   }
 
