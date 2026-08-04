@@ -1,6 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getLatestMapInstance, registerMapInstance } from './mapInstance';
+import {
+  getLatestMapInstance,
+  registerMapInstance,
+  subscribeToMapInstance,
+} from './mapInstance';
 
 describe('shared Mapbox instance registry', () => {
   afterEach(() => {
@@ -22,5 +26,29 @@ describe('shared Mapbox instance registry', () => {
     registerMapInstance(null);
 
     expect(getLatestMapInstance()).toBeNull();
+  });
+
+  it('notifies subscribers when a map becomes available after mount', () => {
+    const listener = vi.fn();
+    const map = { getStyle: () => ({ layers: [] }) };
+    const unsubscribe = subscribeToMapInstance(listener);
+
+    expect(listener).toHaveBeenLastCalledWith(null);
+
+    registerMapInstance(map);
+
+    expect(listener).toHaveBeenLastCalledWith(map);
+    unsubscribe();
+  });
+
+  it('stops notifying a subscriber after cleanup', () => {
+    const listener = vi.fn();
+    const map = { getStyle: () => ({ layers: [] }) };
+    const unsubscribe = subscribeToMapInstance(listener);
+
+    unsubscribe();
+    registerMapInstance(map);
+
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
