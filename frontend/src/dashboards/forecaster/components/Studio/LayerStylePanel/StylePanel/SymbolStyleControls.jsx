@@ -1,5 +1,6 @@
 import { Section, PropColor, PropSlider, PropSelect } from '../LayerStylePanel';
 import { queuePersistAnnotationStyle } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
+import { applyRuntimeMarkerStyle } from '@dashboards/forecaster/map/layers/markerLayer';
 
 const SYMBOL_STYLE_DEFAULTS = {
     iconSize: 0.07,
@@ -13,41 +14,17 @@ const SYMBOL_STYLE_DEFAULTS = {
     textHaloWidth: 1,
 };
 
-function getCandidateLayerIds(map, layerIds, layerInfo) {
-    const props = layerInfo?.properties || {};
-    const sourceIds = new Set([
-        layerInfo?.sourceID,
-        layerInfo?.sourceId,
-        layerInfo?.source,
-        props.sourceId,
-        props.stableId,
-        props.annotationId,
-    ].filter(Boolean));
+const TEXT_NOTE_STYLE_DEFAULTS = {
+    ...SYMBOL_STYLE_DEFAULTS,
+    textSize: 16,
+    textColor: '#0f172a',
+    textHaloColor: '#ffffff',
+    textHaloWidth: 1.5,
+};
 
-    const directIds = new Set([
-        ...(layerIds || []),
-        props.mapLayerId,
-        layerInfo?.mapLayerId,
-        ...(props.layerAliases || []),
-    ].filter(Boolean));
-
-    const markerType = props.markerType || props.type || layerInfo?.type;
-    const name = layerInfo?.name || props.displayName || props.name || props.title || props.labelValue;
-    if (markerType && name) directIds.add(`${markerType}_${name}`);
-
-    const resolved = new Set();
-    const styleLayers = map?.getStyle?.()?.layers || [];
-
-    directIds.forEach((id) => {
-        if (map?.getLayer?.(id)) resolved.add(id);
-    });
-
-    styleLayers.forEach((layer) => {
-        if (layer?.type !== 'symbol') return;
-        if (sourceIds.has(layer.source) || directIds.has(layer.id)) resolved.add(layer.id);
-    });
-
-    return Array.from(resolved);
+function getDefaults(layerInfo) {
+    const markerType = layerInfo?.properties?.markerType || layerInfo?.properties?.type || layerInfo?.type;
+    return markerType === 'text_note' ? TEXT_NOTE_STYLE_DEFAULTS : SYMBOL_STYLE_DEFAULTS;
 }
 
 export function SymbolStyleControls({
@@ -61,14 +38,12 @@ export function SymbolStyleControls({
     isDarkMode,
     tab = 'symbol',
 }) {
-    const update = (patch) => {
-        const changedKeys = Object.keys(patch);
-        const beforeStyle = { ...style };
+    const defaults = getDefaults(layerInfo);
 
-        changedKeys.forEach((key) => {
-            if (beforeStyle[key] === undefined && key in SYMBOL_STYLE_DEFAULTS) {
-                beforeStyle[key] = SYMBOL_STYLE_DEFAULTS[key];
-            }
+    const update = (patch) => {
+        const beforeStyle = { ...style };
+        Object.keys(patch).forEach((key) => {
+            if (beforeStyle[key] === undefined && key in defaults) beforeStyle[key] = defaults[key];
         });
 
         const nextStyle = { ...style, ...patch };
@@ -86,35 +61,37 @@ export function SymbolStyleControls({
         return nextStyle;
     };
 
-    const getTargets = () => getCandidateLayerIds(mapRef?.current, layerIds, layerInfo);
-    const l = (key, prop, val) => {
-        update({ [key]: val });
-        setLayout(getTargets(), prop, val);
+    const apply = (kind, key, property, value) => {
+        const nextStyle = update({ [key]: value });
+        const applied = applyRuntimeMarkerStyle(mapRef?.current, layerInfo, nextStyle);
+        if (applied) return;
+
+        if (kind === 'layout') setLayout(layerIds, property, value);
+        else setPaint(layerIds, property, value);
     };
-    const p = (key, prop, val) => {
-        update({ [key]: val });
-        setPaint(getTargets(), prop, val);
-    };
+
+    const l = (key, property, value) => apply('layout', key, property, value);
+    const p = (key, property, value) => apply('paint', key, property, value);
 
     const iconSection = (
         <Section title="Icon" isDarkMode={isDarkMode} compact>
             <PropSlider
                 label="Size" min={0.01} max={0.5} step={0.005} isDarkMode={isDarkMode}
-                value={style.iconSize ?? 0.07}
-                display={`${Math.round((style.iconSize ?? 0.07) * 100)}%`}
-                onChange={(v) => l('iconSize', 'icon-size', v)}
+                value={style.iconSize ?? defaults.iconSize}
+                display={`${Math.round((style.iconSize ?? defaults.iconSize) * 100)}%`}
+                onChange={(value) => l('iconSize', 'icon-size', value)}
             />
             <PropSlider
                 label="Opacity" min={0} max={1} step={0.01} isDarkMode={isDarkMode}
-                value={style.iconOpacity ?? 1}
-                display={`${Math.round((style.iconOpacity ?? 1) * 100)}%`}
-                onChange={(v) => p('iconOpacity', 'icon-opacity', v)}
+                value={style.iconOpacity ?? defaults.iconOpacity}
+                display={`${Math.round((style.iconOpacity ?? defaults.iconOpacity) * 100)}%`}
+                onChange={(value) => p('iconOpacity', 'icon-opacity', value)}
             />
             <PropSlider
                 label="Rotation" min={0} max={360} step={1} isDarkMode={isDarkMode}
-                value={style.iconRotate ?? 0}
-                display={`${style.iconRotate ?? 0} deg`}
-                onChange={(v) => l('iconRotate', 'icon-rotate', v)}
+                value={style.iconRotate ?? defaults.iconRotate}
+                display={`${style.iconRotate ?? defaults.iconRotate} deg`}
+                onChange={(value) => l('iconRotate', 'icon-rotate', value)}
             />
         </Section>
     );
@@ -123,41 +100,41 @@ export function SymbolStyleControls({
         <Section title="Label" isDarkMode={isDarkMode} compact>
             <PropSelect
                 label="Transform" isDarkMode={isDarkMode}
-                value={style.textTransform ?? 'none'}
+                value={style.textTransform ?? defaults.textTransform}
                 options={[
                     { value: 'none', label: 'None' },
                     { value: 'uppercase', label: 'Uppercase' },
                     { value: 'lowercase', label: 'Lowercase' },
                 ]}
-                onChange={(v) => l('textTransform', 'text-transform', v)}
+                onChange={(value) => l('textTransform', 'text-transform', value)}
             />
             <PropSlider
                 label="Letter spacing" min={0} max={0.5} step={0.01} isDarkMode={isDarkMode}
-                value={Math.max(style.textLetterSpacing ?? 0, 0)}
-                display={`${Math.max(style.textLetterSpacing ?? 0, 0)}em`}
-                onChange={(v) => l('textLetterSpacing', 'text-letter-spacing', v)}
+                value={Math.max(style.textLetterSpacing ?? defaults.textLetterSpacing, 0)}
+                display={`${Math.max(style.textLetterSpacing ?? defaults.textLetterSpacing, 0)}em`}
+                onChange={(value) => l('textLetterSpacing', 'text-letter-spacing', value)}
             />
             <PropSlider
                 label="Text size" min={8} max={32} step={1} isDarkMode={isDarkMode}
-                value={style.textSize ?? 12}
-                display={`${style.textSize ?? 12}px`}
-                onChange={(v) => l('textSize', 'text-size', v)}
+                value={style.textSize ?? defaults.textSize}
+                display={`${style.textSize ?? defaults.textSize}px`}
+                onChange={(value) => l('textSize', 'text-size', value)}
             />
             <PropColor
                 label="Text color" isDarkMode={isDarkMode}
-                value={style.textColor ?? '#ffffff'}
-                onChange={(v) => p('textColor', 'text-color', v)}
+                value={style.textColor ?? defaults.textColor}
+                onChange={(value) => p('textColor', 'text-color', value)}
             />
             <PropColor
                 label="Halo color" isDarkMode={isDarkMode}
-                value={style.textHaloColor ?? '#000000'}
-                onChange={(v) => p('textHaloColor', 'text-halo-color', v)}
+                value={style.textHaloColor ?? defaults.textHaloColor}
+                onChange={(value) => p('textHaloColor', 'text-halo-color', value)}
             />
             <PropSlider
                 label="Halo width" min={0} max={4} step={0.5} isDarkMode={isDarkMode}
-                value={style.textHaloWidth ?? 1}
-                display={`${style.textHaloWidth ?? 1}px`}
-                onChange={(v) => p('textHaloWidth', 'text-halo-width', v)}
+                value={style.textHaloWidth ?? defaults.textHaloWidth}
+                display={`${style.textHaloWidth ?? defaults.textHaloWidth}px`}
+                onChange={(value) => p('textHaloWidth', 'text-halo-width', value)}
             />
         </Section>
     );
