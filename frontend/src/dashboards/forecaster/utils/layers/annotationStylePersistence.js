@@ -116,13 +116,23 @@ export function queuePersistAnnotationStyle(layerInfo, style) {
 }
 
 function safeSetPaint(map, layerId, prop, value) {
-  if (value === undefined || value === null || !map?.getLayer(layerId)) return;
-  try { map.setPaintProperty(layerId, prop, value); } catch { }
+  if (value === undefined || value === null || !map?.getLayer(layerId)) return false;
+  try {
+    map.setPaintProperty(layerId, prop, value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function safeSetLayout(map, layerId, prop, value) {
-  if (value === undefined || value === null || !map?.getLayer(layerId)) return;
-  try { map.setLayoutProperty(layerId, prop, value); } catch { }
+  if (value === undefined || value === null || !map?.getLayer(layerId)) return false;
+  try {
+    map.setLayoutProperty(layerId, prop, value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function markerLayerId(feature) {
