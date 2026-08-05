@@ -22,7 +22,7 @@ describe('useAnnotationHistory', () => {
     const calls = [];
     const first = createCommand('first', calls);
     const second = createCommand('second', calls);
-    const { result } = renderHook(() => useAnnotationHistory({ projectId: 'project-1' }));
+    const { result } = renderHook(() => useAnnotationHistory({ projectId: 'history-order' }));
 
     act(() => {
       result.current.record(first);
@@ -46,7 +46,7 @@ describe('useAnnotationHistory', () => {
 
   it('clears redo history after recording a new command', async () => {
     const calls = [];
-    const { result } = renderHook(() => useAnnotationHistory({ projectId: 'project-1' }));
+    const { result } = renderHook(() => useAnnotationHistory({ projectId: 'history-redo-clear' }));
 
     act(() => result.current.record(createCommand('first', calls)));
     await act(async () => result.current.undo());
@@ -60,13 +60,13 @@ describe('useAnnotationHistory', () => {
     const calls = [];
     const { result, rerender } = renderHook(
       ({ projectId }) => useAnnotationHistory({ projectId }),
-      { initialProps: { projectId: 'project-1' } }
+      { initialProps: { projectId: 'history-project-a' } }
     );
 
     act(() => result.current.record(createCommand('first', calls)));
     expect(result.current.canUndo).toBe(true);
 
-    rerender({ projectId: 'project-2' });
+    rerender({ projectId: 'history-project-b' });
     expect(result.current.canUndo).toBe(false);
     expect(result.current.canRedo).toBe(false);
   });
@@ -74,7 +74,7 @@ describe('useAnnotationHistory', () => {
   it('keeps only the configured number of commands', async () => {
     const calls = [];
     const { result } = renderHook(() =>
-      useAnnotationHistory({ projectId: 'project-1', limit: 2 })
+      useAnnotationHistory({ projectId: 'history-limit', limit: 2 })
     );
 
     act(() => {
@@ -98,7 +98,7 @@ describe('useAnnotationHistory', () => {
     const onError = vi.fn();
     const command = createCommand('first', calls, { undoError: error });
     const { result } = renderHook(() =>
-      useAnnotationHistory({ projectId: 'project-1', onError })
+      useAnnotationHistory({ projectId: 'history-failed-command', onError })
     );
 
     act(() => result.current.record(command));
