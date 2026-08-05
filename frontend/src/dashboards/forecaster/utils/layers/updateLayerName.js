@@ -1,12 +1,37 @@
 import { updateFeatureNameAPI } from '@/api/featureServices';
 import Swal from 'sweetalert2';
-import { getCandidateIds, getLayerAliases, getLiveMapboxLayerIds, markerLayerId, matchesLayerIdentity } from './layerIdentity';
+import {
+  publishAnnotationHistoryCommand,
+  requestAnnotationHistoryRefresh,
+} from '@dashboards/forecaster/history/annotationHistoryEvents';
+import {
+  getCandidateIds,
+  getLayerAliases,
+  getLiveMapboxLayerIds,
+  markerLayerId,
+  matchesLayerIdentity,
+} from './layerIdentity';
 
 const toast = (icon, title, text) =>
-  Swal.fire({ icon, title, text, toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+  Swal.fire({
+    icon,
+    title,
+    text,
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 1500,
+  });
 
 function getStableLayerId(layer) {
-  return layer?.sourceID || layer?.sourceId || layer?.source || layer?.id || layer?.properties?.sourceId || layer?.properties?.stableId;
+  return (
+    layer?.sourceID ||
+    layer?.sourceId ||
+    layer?.source ||
+    layer?.id ||
+    layer?.properties?.sourceId ||
+    layer?.properties?.stableId
+  );
 }
 
 function getLayerIdsForFeature(layer) {
@@ -23,7 +48,13 @@ function getGeoJsonSourceData(source) {
 }
 
 function getLayerType(layer) {
-  return layer?.markerType || layer?.type || layer?.properties?.markerType || layer?.properties?.type || '';
+  return (
+    layer?.markerType ||
+    layer?.type ||
+    layer?.properties?.markerType ||
+    layer?.properties?.type ||
+    ''
+  );
 }
 
 function uniqueAliases(values = []) {
@@ -60,21 +91,19 @@ function getRenameAliases(layer, stableId) {
 function updateGeoJsonLabelFields(data, newName, layer, stableId) {
   if (!data) return data;
 
-  const layerType = getLayerType(layer);
-  const isLowWaveMarker = layerType === 'less_1';
+  const isLowWaveMarker = getLayerType(layer) === 'less_1';
   const aliases = getRenameAliases(layer, stableId);
-
   const updateFeature = (feature) => {
     const existingProps = feature.properties || {};
     return {
       ...feature,
       properties: {
         ...existingProps,
-        title: isLowWaveMarker ? (existingProps.title || '<1') : newName,
+        title: isLowWaveMarker ? existingProps.title || '<1' : newName,
         name: newName,
         displayName: newName,
         text: newName,
-        labelValue: isLowWaveMarker ? (existingProps.labelValue || '<1') : newName,
+        labelValue: isLowWaveMarker ? existingProps.labelValue || '<1' : newName,
         sourceId: existingProps.sourceId || stableId,
         stableId: existingProps.stableId || stableId,
         annotationId: existingProps.annotationId || stableId,
@@ -85,36 +114,23 @@ function updateGeoJsonLabelFields(data, newName, layer, stableId) {
   };
 
   if (data.type === 'FeatureCollection') {
-    return {
-      ...data,
-      features: (data.features || []).map(updateFeature),
-    };
+    return { ...data, features: (data.features || []).map(updateFeature) };
   }
-
-  if (data.type === 'Feature') {
-    return updateFeature(data);
-  }
-
+  if (data.type === 'Feature') return updateFeature(data);
   return data;
 }
 
 function updateSourceDataLabel(map, sourceId, newName, layer, stableId) {
   const source = sourceId ? map?.getSource(sourceId) : null;
   if (!source?.setData) return false;
-
   const data = getGeoJsonSourceData(source);
   if (!data) return false;
-
   source.setData(updateGeoJsonLabelFields(data, newName, layer, stableId));
   return true;
 }
 
 function updateLayerTextField(map, layerId, newName, layer) {
-  if (!map?.getLayer(layerId)) return false;
-
-  const layerType = getLayerType(layer);
-  if (layerType === 'less_1') return false;
-
+  if (!map?.getLayer(layerId) || getLayerType(layer) === 'less_1') return false;
   try {
     map.setLayoutProperty(layerId, 'text-field', newName);
     return true;
@@ -126,19 +142,70 @@ function updateLayerTextField(map, layerId, newName, layer) {
 function syncMapLabel(map, layer, newName, stableId) {
   if (!map || !layer) return;
 
-  const candidateIds = getLiveMapboxLayerIds(map, layer);
-
-  candidateIds.forEach((candidateId) => {
+  getLiveMapboxLayerIds(map, layer).forEach((candidateId) => {
     const sourceId = getMapSourceId(map, candidateId);
     updateSourceDataLabel(map, sourceId, newName, layer, stableId);
     updateLayerTextField(map, candidateId, newName, layer);
 
-    // Wave-height lines use separate label sources/layers with numeric suffixes.
     for (const suffix of ['-0', '-1']) {
       updateSourceDataLabel(map, `${sourceId}${suffix}`, newName, layer, stableId);
       updateLayerTextField(map, `${candidateId}${suffix}`, newName, layer);
     }
   });
+}
+
+function renameLayerSnapshot(layer, newName, stableId, aliases, previousName) {
+  const isLowWaveMarker = getLayerType(layer) === 'less_1';
+  return {
+    ...layer,
+    name: newName,
+    id: layer.id || stableId,
+    sourceID: layer.sourceID || stableId,
+    sourceId: layer.sourceId || stableId,
+    source: layer.source || stableId,
+    mapLayerId: layer.mapLayerId || stableId,
+    properties: {
+      ...(layer.properties || {}),
+      name: newName,
+      title: isLowWaveMarker ? layer.properties?.title || '<1' : newName,
+      displayName: newName,
+      labelValue: isLowWaveMarker ? layer.properties?.labelValue || '<1' : newName,
+      sourceId: layer.properties?.sourceId || stableId,
+      stableId: layer.properties?.stableId || stableId,
+      annotationId: layer.properties?.annotationId || stableId,
+      mapLayerId: layer.properties?.mapLayerId || stableId,
+      previousName,
+      previousMapLayerId:
+        layer.properties?.previousMapLayerId || layer.mapLayerId || markerLayerId(layer),
+      layerAliases: uniqueAliases([...(layer.properties?.layerAliases || []), ...aliases]),
+    },
+  };
+}
+
+function applyLayerName(setLayers, targetLayer, newName, stableId, aliases, previousName) {
+  setLayers((prev) =>
+    prev.map((layer) =>
+      matchesLayerIdentity(targetLayer, layer)
+        ? renameLayerSnapshot(layer, newName, stableId, aliases, previousName)
+        : layer
+    )
+  );
+}
+
+async function replayLayerName({
+  stableId,
+  name,
+  previousName,
+  targetLayer,
+  aliases,
+  setLayers,
+  map,
+  projectId,
+}) {
+  await updateFeatureNameAPI(stableId, name);
+  applyLayerName(setLayers, targetLayer, name, stableId, aliases, previousName);
+  syncMapLabel(map, targetLayer, name, stableId);
+  requestAnnotationHistoryRefresh(projectId);
 }
 
 export async function updateLayerName(layerId, newName, setLayers, map) {
@@ -153,88 +220,70 @@ export async function updateLayerName(layerId, newName, setLayers, map) {
   let aliases = [];
 
   setLayers((prev) => {
-    targetLayer = prev.find((l) => getLayerIdsForFeature(l).includes(layerId));
+    targetLayer = prev.find((layer) => getLayerIdsForFeature(layer).includes(layerId));
     stableId = getStableLayerId(targetLayer);
     aliases = getRenameAliases(targetLayer, stableId);
 
     if (!targetLayer) return prev;
-
     if (targetLayer.name === trimmedName) {
       toast('info', 'No change', 'The annotation name is already the same.');
       return prev;
     }
 
-    return prev.map((l) =>
-      matchesLayerIdentity(targetLayer, l)
-        ? {
-            ...l,
-            name: trimmedName,
-            id: l.id || stableId,
-            sourceID: l.sourceID || stableId,
-            sourceId: l.sourceId || stableId,
-            source: l.source || stableId,
-            mapLayerId: l.mapLayerId || stableId,
-            properties: {
-              ...(l.properties || {}),
-              name: trimmedName,
-              title: getLayerType(l) === 'less_1' ? (l.properties?.title || '<1') : trimmedName,
-              displayName: trimmedName,
-              labelValue: getLayerType(l) === 'less_1' ? (l.properties?.labelValue || '<1') : trimmedName,
-              sourceId: l.properties?.sourceId || stableId,
-              stableId: l.properties?.stableId || stableId,
-              annotationId: l.properties?.annotationId || stableId,
-              mapLayerId: l.properties?.mapLayerId || stableId,
-              previousName: targetLayer.name,
-              previousMapLayerId: targetLayer.mapLayerId || markerLayerId(targetLayer),
-              layerAliases: uniqueAliases([...(l.properties?.layerAliases || []), ...aliases]),
-            },
-          }
-        : l
+    return prev.map((layer) =>
+      matchesLayerIdentity(targetLayer, layer)
+        ? renameLayerSnapshot(layer, trimmedName, stableId, aliases, targetLayer.name)
+        : layer
     );
   });
 
-  if (!targetLayer || !stableId) return;
+  if (!targetLayer || !stableId || targetLayer.name === trimmedName) return;
 
-  // Update visible Mapbox labels immediately. The backend update below makes the
-  // same label survive refresh/reload. Keep old live IDs as aliases because
-  // current-session marker layers may have been created from the pre-rename title.
+  const previousName = targetLayer.name;
+  const projectId =
+    targetLayer?.project ||
+    targetLayer?.properties?.project ||
+    targetLayer?.properties?.projectId ||
+    localStorage.getItem('projectId') ||
+    '';
+
   syncMapLabel(map, targetLayer, trimmedName, stableId);
 
   try {
     await updateFeatureNameAPI(stableId, trimmedName);
+    applyLayerName(setLayers, targetLayer, trimmedName, stableId, aliases, previousName);
 
-    setLayers((prev) => prev.map((l) => {
-      if (!matchesLayerIdentity(targetLayer, l)) return l;
-
-      // Rename is display-only. Never replace the stable IDs with a name-derived
-      // ID from a backend response; hide/style/delete depend on stable identity.
-      return {
-        ...l,
-        name: trimmedName,
-        id: l.id || stableId,
-        sourceID: l.sourceID || stableId,
-        sourceId: l.sourceId || stableId,
-        source: l.source || stableId,
-        mapLayerId: l.mapLayerId || stableId,
-        properties: {
-          ...(l.properties || {}),
+    publishAnnotationHistoryCommand({
+      label: `Rename ${previousName || 'annotation'}`,
+      undo: () =>
+        replayLayerName({
+          stableId,
+          name: previousName,
+          previousName: trimmedName,
+          targetLayer,
+          aliases,
+          setLayers,
+          map,
+          projectId,
+        }),
+      redo: () =>
+        replayLayerName({
+          stableId,
           name: trimmedName,
-          title: getLayerType(l) === 'less_1' ? (l.properties?.title || '<1') : trimmedName,
-          displayName: trimmedName,
-          labelValue: getLayerType(l) === 'less_1' ? (l.properties?.labelValue || '<1') : trimmedName,
-          sourceId: l.properties?.sourceId || stableId,
-          stableId: l.properties?.stableId || stableId,
-          annotationId: l.properties?.annotationId || stableId,
-          mapLayerId: l.properties?.mapLayerId || stableId,
-          previousName: l.properties?.previousName || targetLayer.name,
-          previousMapLayerId: l.properties?.previousMapLayerId || targetLayer.mapLayerId || markerLayerId(targetLayer),
-          layerAliases: uniqueAliases([...(l.properties?.layerAliases || []), ...aliases]),
-        },
-      };
-    }));
+          previousName,
+          targetLayer,
+          aliases,
+          setLayers,
+          map,
+          projectId,
+        }),
+    });
 
     toast('success', 'Name Updated', `Annotation renamed to "${trimmedName}".`);
   } catch (error) {
+    applyLayerName(setLayers, targetLayer, previousName, stableId, aliases, trimmedName);
+    syncMapLabel(map, targetLayer, previousName, stableId);
+    requestAnnotationHistoryRefresh(projectId);
     toast('error', 'Update Failed', error?.message || 'Could not update the annotation name.');
   }
 }

@@ -1,6 +1,10 @@
 import { updateFeatureStyle } from '@/api/featureServices';
+import {
+  publishAnnotationHistoryCommand,
+  requestAnnotationHistoryRefresh,
+} from '@dashboards/forecaster/history/annotationHistoryEvents';
 
-const pendingStyleTimers = new Map();
+const pendingStyleChanges = new Map();
 const STYLE_SAVE_DEBOUNCE_MS = 250;
 const COLORS = { cold: '#1d4ed8', warm: '#ef4444', occluded: '#7c3aed' };
 const FRONT_SYMBOL_RADIUS = 6;
@@ -9,11 +13,51 @@ const STATIONARY_SEGMENT_LENGTH = 26;
 const FRONT_TYPES = {
   cold: { spacing: 40, symbols: [{ kind: 'triangle', color: COLORS.cold, side: -1 }] },
   warm: { spacing: 40, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }] },
-  stationary: { spacing: 38, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }] },
-  occluded: { spacing: 38, symbols: [{ kind: 'semicircle', color: COLORS.occluded, side: -1 }, { kind: 'triangle', color: COLORS.occluded, side: -1 }] },
+  stationary: {
+    spacing: 38,
+    symbols: [
+      { kind: 'semicircle', color: COLORS.warm, side: -1 },
+      { kind: 'triangle', color: COLORS.cold, side: 1 },
+    ],
+  },
+  occluded: {
+    spacing: 38,
+    symbols: [
+      { kind: 'semicircle', color: COLORS.occluded, side: -1 },
+      { kind: 'triangle', color: COLORS.occluded, side: -1 },
+    ],
+  },
 };
 const STATIONARY_SEGMENT_SYMBOLS = FRONT_TYPES.stationary.symbols;
 const DASH_PATTERNS = { solid: [1], dashed: [4, 2], dotted: [1, 2] };
+
+function cloneStyle(style) {
+  if (typeof structuredClone === 'function') return structuredClone(style || {});
+  return JSON.parse(JSON.stringify(style || {}));
+}
+
+function stylesEqual(left, right) {
+  return JSON.stringify(left || {}) === JSON.stringify(right || {});
+}
+
+function getProjectId(layerInfo) {
+  return (
+    layerInfo?.projectId ||
+    layerInfo?.project ||
+    layerInfo?.properties?.project ||
+    localStorage.getItem('projectId') ||
+    ''
+  );
+}
+
+function getLayerLabel(layerInfo) {
+  return (
+    layerInfo?.name ||
+    layerInfo?.properties?.displayName ||
+    layerInfo?.properties?.name ||
+    'annotation'
+  );
+}
 
 export function getLayerSourceId(layerInfo) {
   return layerInfo?.sourceID || layerInfo?.sourceId || layerInfo?.source || layerInfo?.id;
@@ -24,38 +68,71 @@ export function getPersistedStyle(featureOrLayer) {
 }
 
 export function getMergedStyle(featureOrLayer, runtimeStyle = {}) {
-  return {
-    ...getPersistedStyle(featureOrLayer),
-    ...runtimeStyle,
-  };
+  return { ...getPersistedStyle(featureOrLayer), ...runtimeStyle };
 }
 
 export function queuePersistAnnotationStyle(layerInfo, style) {
   const sourceId = getLayerSourceId(layerInfo);
   if (!sourceId || layerInfo?.canEdit === false) return;
 
-  if (pendingStyleTimers.has(sourceId)) {
-    window.clearTimeout(pendingStyleTimers.get(sourceId));
-  }
+  const existing = pendingStyleChanges.get(sourceId);
+  if (existing?.timerId) window.clearTimeout(existing.timerId);
 
-  pendingStyleTimers.set(sourceId, window.setTimeout(async () => {
-    pendingStyleTimers.delete(sourceId);
+  const beforeStyle = existing?.beforeStyle || cloneStyle(getPersistedStyle(layerInfo));
+  const afterStyle = cloneStyle(style);
+  const projectId = existing?.projectId || getProjectId(layerInfo);
+  const label = existing?.label || getLayerLabel(layerInfo);
+
+  const timerId = window.setTimeout(async () => {
+    pendingStyleChanges.delete(sourceId);
+    if (stylesEqual(beforeStyle, afterStyle)) return;
+
     try {
-      await updateFeatureStyle(sourceId, style || {});
+      await updateFeatureStyle(sourceId, afterStyle);
+      publishAnnotationHistoryCommand({
+        label: `Style ${label}`,
+        undo: async () => {
+          await updateFeatureStyle(sourceId, beforeStyle);
+          requestAnnotationHistoryRefresh(projectId);
+        },
+        redo: async () => {
+          await updateFeatureStyle(sourceId, afterStyle);
+          requestAnnotationHistoryRefresh(projectId);
+        },
+      });
     } catch (error) {
       console.error('[STYLE SAVE ERROR]', error);
+      requestAnnotationHistoryRefresh(projectId);
     }
-  }, STYLE_SAVE_DEBOUNCE_MS));
+  }, STYLE_SAVE_DEBOUNCE_MS);
+
+  pendingStyleChanges.set(sourceId, {
+    beforeStyle,
+    afterStyle,
+    projectId,
+    label,
+    timerId,
+  });
 }
 
 function safeSetPaint(map, layerId, prop, value) {
-  if (value === undefined || value === null || !map?.getLayer(layerId)) return;
-  try { map.setPaintProperty(layerId, prop, value); } catch { }
+  if (value === undefined || value === null || !map?.getLayer(layerId)) return false;
+  try {
+    map.setPaintProperty(layerId, prop, value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function safeSetLayout(map, layerId, prop, value) {
-  if (value === undefined || value === null || !map?.getLayer(layerId)) return;
-  try { map.setLayoutProperty(layerId, prop, value); } catch { }
+  if (value === undefined || value === null || !map?.getLayer(layerId)) return false;
+  try {
+    map.setLayoutProperty(layerId, prop, value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function markerLayerId(feature) {
@@ -73,19 +150,31 @@ function getAnnotationSourceId(feature) {
 
 function frontLayerIds(feature) {
   const sourceId = getAnnotationSourceId(feature);
-  return sourceId ? [`${sourceId}_dash`, `${sourceId}_secondary`, `${sourceId}_frontSymbols`, `${sourceId}_frontSymbolOutline`, sourceId] : [];
+  return sourceId
+    ? [
+        `${sourceId}_dash`,
+        `${sourceId}_secondary`,
+        `${sourceId}_frontSymbols`,
+        `${sourceId}_frontSymbolOutline`,
+        sourceId,
+      ]
+    : [];
 }
 
 function genericLayerIds(feature) {
   const props = feature?.properties || {};
   const sourceId = getAnnotationSourceId(feature);
-  return Array.from(new Set([
-    props.mapLayerId,
-    markerLayerId(feature),
-    sourceId,
-    sourceId ? `${sourceId}-0` : null,
-    sourceId ? `${sourceId}-1` : null,
-  ].filter(Boolean)));
+  return Array.from(
+    new Set(
+      [
+        props.mapLayerId,
+        markerLayerId(feature),
+        sourceId,
+        sourceId ? `${sourceId}-0` : null,
+        sourceId ? `${sourceId}-1` : null,
+      ].filter(Boolean)
+    )
+  );
 }
 
 function normalizeFrontType(frontType) {
@@ -110,23 +199,31 @@ function toLngLat(map, x, y) {
 
 function triangleCoordinates(map, x, y, ux, uy, nx, ny, side) {
   const size = FRONT_TRIANGLE_SIZE;
-  return [[
-    toLngLat(map, x - ux * size, y - uy * size),
-    toLngLat(map, x + ux * size, y + uy * size),
-    toLngLat(map, x + nx * side * size * 1.35, y + ny * side * size * 1.35),
-    toLngLat(map, x - ux * size, y - uy * size),
-  ]];
+  return [
+    [
+      toLngLat(map, x - ux * size, y - uy * size),
+      toLngLat(map, x + ux * size, y + uy * size),
+      toLngLat(map, x + nx * side * size * 1.35, y + ny * side * size * 1.35),
+      toLngLat(map, x - ux * size, y - uy * size),
+    ],
+  ];
 }
 
 function semicircleCoordinates(map, x, y, ux, uy, nx, ny, side) {
   const points = [];
   for (let i = 0; i <= 12; i += 1) {
     const theta = Math.PI - (Math.PI * i) / 12;
-    points.push(toLngLat(
-      map,
-      x + ux * FRONT_SYMBOL_RADIUS * Math.cos(theta) + nx * side * FRONT_SYMBOL_RADIUS * Math.sin(theta),
-      y + uy * FRONT_SYMBOL_RADIUS * Math.cos(theta) + ny * side * FRONT_SYMBOL_RADIUS * Math.sin(theta)
-    ));
+    points.push(
+      toLngLat(
+        map,
+        x +
+          ux * FRONT_SYMBOL_RADIUS * Math.cos(theta) +
+          nx * side * FRONT_SYMBOL_RADIUS * Math.sin(theta),
+        y +
+          uy * FRONT_SYMBOL_RADIUS * Math.cos(theta) +
+          ny * side * FRONT_SYMBOL_RADIUS * Math.sin(theta)
+      )
+    );
   }
   points.push(toLngLat(map, x - ux * FRONT_SYMBOL_RADIUS, y - uy * FRONT_SYMBOL_RADIUS));
   return [points];
@@ -134,10 +231,15 @@ function semicircleCoordinates(map, x, y, ux, uy, nx, ny, side) {
 
 function buildShapeFeature(map, symbol, sideMultiplier, x, y, ux, uy, nx, ny) {
   const side = symbol.side * sideMultiplier;
-  const coordinates = symbol.kind === 'triangle'
-    ? triangleCoordinates(map, x, y, ux, uy, nx, ny, side)
-    : semicircleCoordinates(map, x, y, ux, uy, nx, ny, side);
-  return { type: 'Feature', geometry: { type: 'Polygon', coordinates }, properties: { color: symbol.color } };
+  const coordinates =
+    symbol.kind === 'triangle'
+      ? triangleCoordinates(map, x, y, ux, uy, nx, ny, side)
+      : semicircleCoordinates(map, x, y, ux, uy, nx, ny, side);
+  return {
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates },
+    properties: { color: symbol.color },
+  };
 }
 
 function buildScreenPath(map, coordinates) {
@@ -162,7 +264,9 @@ function buildScreenPath(map, coordinates) {
 function pointAtDistance(path, distance) {
   if (!path.segments.length) return null;
   const clamped = Math.min(Math.max(distance, 0), path.total);
-  const segment = path.segments.find((item) => clamped <= item.startDistance + item.len) || path.segments[path.segments.length - 1];
+  const segment =
+    path.segments.find((item) => clamped <= item.startDistance + item.len) ||
+    path.segments[path.segments.length - 1];
   const local = Math.min(Math.max(clamped - segment.startDistance, 0), segment.len);
   const t = segment.len ? local / segment.len : 0;
   const ux = segment.dx / segment.len;
@@ -188,7 +292,21 @@ function buildFrontSymbolFeatures(map, coordinates, frontType, sideMultiplier) {
   for (let distance = frontStyle.spacing; distance < path.total; distance += frontStyle.spacing) {
     const point = pointAtDistance(path, distance);
     const symbol = frontStyle.symbols[symbolIndex % frontStyle.symbols.length];
-    if (point) features.push(buildShapeFeature(map, symbol, sideMultiplier, point.x, point.y, point.ux, point.uy, point.nx, point.ny));
+    if (point) {
+      features.push(
+        buildShapeFeature(
+          map,
+          symbol,
+          sideMultiplier,
+          point.x,
+          point.y,
+          point.ux,
+          point.uy,
+          point.nx,
+          point.ny
+        )
+      );
+    }
     symbolIndex += 1;
   }
 
@@ -200,12 +318,30 @@ function buildStationarySymbolFeatures(map, coordinates, sideMultiplier) {
   const features = [];
   if (!path.total) return features;
 
-  for (let startDistance = 0, index = 0; startDistance < path.total; startDistance += STATIONARY_SEGMENT_LENGTH, index += 1) {
+  for (
+    let startDistance = 0, index = 0;
+    startDistance < path.total;
+    startDistance += STATIONARY_SEGMENT_LENGTH, index += 1
+  ) {
     const endDistance = Math.min(path.total, startDistance + STATIONARY_SEGMENT_LENGTH);
     if (endDistance - startDistance < STATIONARY_SEGMENT_LENGTH * 0.5) continue;
     const point = pointAtDistance(path, (startDistance + endDistance) / 2);
     const symbol = STATIONARY_SEGMENT_SYMBOLS[index % STATIONARY_SEGMENT_SYMBOLS.length];
-    if (point) features.push(buildShapeFeature(map, symbol, sideMultiplier, point.x, point.y, point.ux, point.uy, point.nx, point.ny));
+    if (point) {
+      features.push(
+        buildShapeFeature(
+          map,
+          symbol,
+          sideMultiplier,
+          point.x,
+          point.y,
+          point.ux,
+          point.uy,
+          point.nx,
+          point.ny
+        )
+      );
+    }
   }
 
   return features;
@@ -225,9 +361,10 @@ function applyFrontSymbolSide(map, feature, style) {
 
   symbolSource.setData({
     type: 'FeatureCollection',
-    features: frontType === 'stationary'
-      ? buildStationarySymbolFeatures(map, coordinates, sideMultiplier)
-      : buildFrontSymbolFeatures(map, coordinates, frontType, sideMultiplier),
+    features:
+      frontType === 'stationary'
+        ? buildStationarySymbolFeatures(map, coordinates, sideMultiplier)
+        : buildFrontSymbolFeatures(map, coordinates, frontType, sideMultiplier),
   });
 }
 
@@ -261,7 +398,9 @@ export function applyAnnotationStyleToMap(map, feature) {
       safeSetPaint(map, layerId, 'line-color', style.lineColor);
       safeSetPaint(map, layerId, 'line-width', style.lineWidth);
       safeSetPaint(map, layerId, 'line-opacity', style.lineOpacity);
-      if (style.lineDash && DASH_PATTERNS[style.lineDash]) safeSetPaint(map, layerId, 'line-dasharray', DASH_PATTERNS[style.lineDash]);
+      if (style.lineDash && DASH_PATTERNS[style.lineDash]) {
+        safeSetPaint(map, layerId, 'line-dasharray', DASH_PATTERNS[style.lineDash]);
+      }
     }
 
     if (layer.type === 'fill') {
