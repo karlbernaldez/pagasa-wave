@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const fetchFeatures = vi.fn();
-const updateFeatureCoordinates = vi.fn();
-const makeMarkerDraggable = vi.fn(() => vi.fn());
+const {
+  fetchFeatures,
+  updateFeatureCoordinates,
+  makeMarkerDraggable,
+} = vi.hoisted(() => ({
+  fetchFeatures: vi.fn(),
+  updateFeatureCoordinates: vi.fn(),
+  makeMarkerDraggable: vi.fn(() => vi.fn()),
+}));
 
 vi.mock('@/api/featureServices', () => ({
   fetchFeatures,
