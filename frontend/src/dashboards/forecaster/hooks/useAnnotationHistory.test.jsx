@@ -56,19 +56,46 @@ describe('useAnnotationHistory', () => {
     expect(result.current.canRedo).toBe(false);
   });
 
-  it('clears history when the project changes', () => {
+  it('isolates history across project changes and clears stale commands', async () => {
     const calls = [];
+    const projectACommand = createCommand('project-a', calls);
+    const projectBCommand = createCommand('project-b', calls);
     const { result, rerender } = renderHook(
       ({ projectId }) => useAnnotationHistory({ projectId }),
       { initialProps: { projectId: 'history-project-a' } }
     );
 
-    act(() => result.current.record(createCommand('first', calls)));
+    act(() => result.current.record(projectACommand));
     expect(result.current.canUndo).toBe(true);
 
     rerender({ projectId: 'history-project-b' });
     expect(result.current.canUndo).toBe(false);
     expect(result.current.canRedo).toBe(false);
+
+    await act(async () => {
+      expect(await result.current.undo()).toBe(false);
+      expect(await result.current.redo()).toBe(false);
+    });
+    expect(projectACommand.undo).not.toHaveBeenCalled();
+    expect(projectACommand.redo).not.toHaveBeenCalled();
+
+    act(() => result.current.record(projectBCommand));
+    expect(result.current.canUndo).toBe(true);
+
+    rerender({ projectId: 'history-project-a' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+
+    await act(async () => {
+      expect(await result.current.undo()).toBe(false);
+      expect(await result.current.redo()).toBe(false);
+    });
+
+    expect(projectACommand.undo).not.toHaveBeenCalled();
+    expect(projectACommand.redo).not.toHaveBeenCalled();
+    expect(projectBCommand.undo).not.toHaveBeenCalled();
+    expect(projectBCommand.redo).not.toHaveBeenCalled();
+    expect(calls).toEqual([]);
   });
 
   it('keeps only the configured number of commands', async () => {
