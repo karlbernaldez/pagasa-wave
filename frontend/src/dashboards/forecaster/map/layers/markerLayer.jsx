@@ -6,6 +6,14 @@ import {
 import { makeMarkerDraggable } from '@dashboards/forecaster/map/helpers/markerDrag';
 
 const dragCleanupRegistry = new Map();
+const TEXT_STYLE_DEFAULTS = {
+  textSize: 16,
+  textColor: '#0f172a',
+  textHaloColor: '#ffffff',
+  textHaloWidth: 1.5,
+  textLetterSpacing: 0,
+  textTransform: 'none',
+};
 
 function getSourceData(map, sourceId) {
   const source = map.getSource?.(sourceId);
@@ -31,6 +39,63 @@ function coordinatesMatch(left, right, tolerance = 0.000001) {
     Math.abs(Number(left[0]) - Number(right[0])) <= tolerance &&
     Math.abs(Number(left[1]) - Number(right[1])) <= tolerance
   );
+}
+
+function getPersistedMarkerId(feature) {
+  const properties = feature?.properties || {};
+  return (
+    feature?.sourceId ||
+    properties.sourceId ||
+    properties.stableId ||
+    properties.annotationId ||
+    feature?._id ||
+    feature?.id ||
+    ''
+  );
+}
+
+function getPersistedMarkerStyle(feature) {
+  return feature?.properties?.style || feature?.style || {};
+}
+
+function applyMarkerStyle(map, layerId, markerType, style = {}) {
+  if (!map?.getLayer?.(layerId)) return;
+
+  const mergedStyle = markerType === 'text_note'
+    ? { ...TEXT_STYLE_DEFAULTS, ...style }
+    : style;
+
+  const layoutProperties = {
+    'icon-size': mergedStyle.iconSize,
+    'icon-rotate': mergedStyle.iconRotate,
+    'text-size': mergedStyle.textSize,
+    'text-letter-spacing': mergedStyle.textLetterSpacing,
+    'text-transform': mergedStyle.textTransform,
+  };
+  const paintProperties = {
+    'icon-opacity': mergedStyle.iconOpacity,
+    'text-color': mergedStyle.textColor,
+    'text-halo-color': mergedStyle.textHaloColor,
+    'text-halo-width': mergedStyle.textHaloWidth,
+  };
+
+  Object.entries(layoutProperties).forEach(([property, value]) => {
+    if (value === undefined || value === null) return;
+    try {
+      map.setLayoutProperty(layerId, property, value);
+    } catch (error) {
+      console.warn('[MARKER STYLE LAYOUT ERROR]', { layerId, property, value, error });
+    }
+  });
+
+  Object.entries(paintProperties).forEach(([property, value]) => {
+    if (value === undefined || value === null) return;
+    try {
+      map.setPaintProperty(layerId, property, value);
+    } catch (error) {
+      console.warn('[MARKER STYLE PAINT ERROR]', { layerId, property, value, error });
+    }
+  });
 }
 
 function removeDuplicateMarkerArtifacts(map, targetLayerId, targetSourceId, markerType, displayName, coordinates) {
@@ -64,37 +129,46 @@ function removeDuplicateMarkerArtifacts(map, targetLayerId, targetSourceId, mark
   });
 }
 
-async function resolvePersistedSourceId({ projectId, markerType, displayName, previousCoordinates, fallback }) {
-  if (!projectId) return fallback;
+async function findPersistedMarker({ projectId, markerType, displayName, coordinates }) {
+  if (!projectId) return null;
 
   try {
-    const features = await fetchFeatures(projectId);
+    const response = await fetchFeatures(projectId);
+    const features = Array.isArray(response)
+      ? response
+      : Array.isArray(response?.features)
+        ? response.features
+        : Array.isArray(response?.data)
+          ? response.data
+          : [];
     const expectedName = normalizeName(displayName);
-    const candidates = (Array.isArray(features) ? features : []).filter((feature) => {
+    const candidates = features.filter((feature) => {
       const properties = feature?.properties || {};
       const featureType = properties.markerType || properties.type;
       const featureName = normalizeName(
         properties.displayName || feature?.name || properties.name || properties.title || properties.labelValue
       );
-
       return featureType === markerType && featureName === expectedName;
     });
 
-    const coordinateMatch = candidates.find((feature) =>
-      coordinatesMatch(feature?.geometry?.coordinates, previousCoordinates)
-    );
-    const matchedFeature = coordinateMatch || (candidates.length === 1 ? candidates[0] : null);
-
     return (
-      matchedFeature?.sourceId ||
-      matchedFeature?.properties?.sourceId ||
-      matchedFeature?.properties?.stableId ||
-      fallback
+      candidates.find((feature) => coordinatesMatch(feature?.geometry?.coordinates, coordinates)) ||
+      (candidates.length === 1 ? candidates[0] : null)
     );
   } catch (error) {
-    console.warn('[MARKER ID RESOLUTION ERROR]', error);
-    return fallback;
+    console.warn('[MARKER HYDRATION ERROR]', error);
+    return null;
   }
+}
+
+async function resolvePersistedSourceId({ projectId, markerType, displayName, previousCoordinates, fallback }) {
+  const matchedFeature = await findPersistedMarker({
+    projectId,
+    markerType,
+    displayName,
+    coordinates: previousCoordinates,
+  });
+  return getPersistedMarkerId(matchedFeature) || fallback;
 }
 
 export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (title, options = {}) => {
@@ -126,6 +200,9 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
   const displayName = options.displayName || title || defaultTitles[markerType];
   const projectId = options.projectId || localStorage.getItem('projectId') || '';
   const coordinates = [lng, lat];
+  const initialStyle = markerType === 'text_note'
+    ? { ...TEXT_STYLE_DEFAULTS, ...(options.style || {}) }
+    : { ...(options.style || {}) };
   const aliases = Array.from(
     new Set(
       [
@@ -152,11 +229,12 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
       type: markerType,
       icon: iconName,
       sourceId,
-      stableId: sourceId,
-      annotationId: sourceId,
+      stableId: options.stableId || sourceId,
+      annotationId: options.annotationId || sourceId,
       mapLayerId: layerId,
       layerAliases: aliases,
       project: projectId,
+      style: initialStyle,
     },
   };
 
@@ -177,29 +255,30 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
     }
   }
 
-  const layout =
-    markerType === 'text_note'
-      ? {
-          'text-field': ['get', 'title'],
-          'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
-          'text-anchor': 'center',
-          'text-allow-overlap': true,
-          'text-size': 16,
-        }
-      : {
-          'icon-image': ['get', 'icon'],
-          'icon-size': [
-            'case',
-            ['==', ['get', 'markerType'], 'low_pressure'],
-            0.015,
-            ['==', ['get', 'markerType'], 'high_pressure'],
-            0.015,
-            ['==', ['get', 'markerType'], 'less_1'],
-            0.28,
-            0.03,
-          ],
-          'icon-allow-overlap': true,
-        };
+  const layout = markerType === 'text_note'
+    ? {
+        'text-field': ['get', 'title'],
+        'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+        'text-anchor': 'center',
+        'text-allow-overlap': true,
+        'text-size': initialStyle.textSize,
+        'text-letter-spacing': initialStyle.textLetterSpacing,
+        'text-transform': initialStyle.textTransform,
+      }
+    : {
+        'icon-image': ['get', 'icon'],
+        'icon-size': [
+          'case',
+          ['==', ['get', 'markerType'], 'low_pressure'],
+          0.015,
+          ['==', ['get', 'markerType'], 'high_pressure'],
+          0.015,
+          ['==', ['get', 'markerType'], 'less_1'],
+          0.28,
+          0.03,
+        ],
+        'icon-allow-overlap': true,
+      };
 
   if (markerType !== 'less_1' && markerType !== 'text_note') {
     layout['text-field'] = ['get', 'title'];
@@ -212,21 +291,14 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
     ];
     layout['text-anchor'] = 'top';
     layout['text-allow-overlap'] = true;
-    layout['text-size'] = [
-      'case',
-      ['==', ['get', 'markerType'], 'low_pressure'],
-      12,
-      ['==', ['get', 'markerType'], 'high_pressure'],
-      12,
-      12,
-    ];
+    layout['text-size'] = 12;
   }
 
   const paint = {};
   if (markerType === 'text_note') {
-    paint['text-color'] = '#0f172a';
-    paint['text-halo-color'] = '#ffffff';
-    paint['text-halo-width'] = 1.5;
+    paint['text-color'] = initialStyle.textColor;
+    paint['text-halo-color'] = initialStyle.textHaloColor;
+    paint['text-halo-width'] = initialStyle.textHaloWidth;
   } else if (markerType !== 'less_1') {
     paint['text-color'] = [
       'case',
@@ -258,6 +330,37 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
       return;
     }
   }
+
+  applyMarkerStyle(map, layerId, markerType, initialStyle);
+
+  void findPersistedMarker({ projectId, markerType, displayName, coordinates }).then((persistedFeature) => {
+    if (!persistedFeature) return;
+    const persistedProperties = persistedFeature.properties || {};
+    const persistedId = getPersistedMarkerId(persistedFeature) || sourceId;
+    const persistedStyle = markerType === 'text_note'
+      ? { ...TEXT_STYLE_DEFAULTS, ...getPersistedMarkerStyle(persistedFeature) }
+      : getPersistedMarkerStyle(persistedFeature);
+    const hydratedFeature = {
+      ...feature,
+      properties: {
+        ...feature.properties,
+        ...persistedProperties,
+        sourceId: persistedId,
+        stableId: persistedProperties.stableId || persistedId,
+        annotationId: persistedProperties.annotationId || persistedId,
+        mapLayerId: layerId,
+        layerAliases: Array.from(new Set([
+          ...aliases,
+          persistedId,
+          persistedProperties.mapLayerId,
+          ...(persistedProperties.layerAliases || []),
+        ].filter(Boolean))),
+        style: persistedStyle,
+      },
+    };
+    map.getSource(sourceId)?.setData?.(hydratedFeature);
+    applyMarkerStyle(map, layerId, markerType, persistedStyle);
+  });
 
   dragCleanupRegistry.get(sourceId)?.();
 
