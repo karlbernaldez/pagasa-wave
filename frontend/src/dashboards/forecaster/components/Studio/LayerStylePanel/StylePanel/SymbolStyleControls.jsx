@@ -13,7 +13,54 @@ const SYMBOL_STYLE_DEFAULTS = {
     textHaloWidth: 1,
 };
 
-export function SymbolStyleControls({ layerIds, layerInfo, style, onChange, setPaint, setLayout, isDarkMode, tab = 'symbol' }) {
+function getCandidateLayerIds(map, layerIds, layerInfo) {
+    const props = layerInfo?.properties || {};
+    const sourceIds = new Set([
+        layerInfo?.sourceID,
+        layerInfo?.sourceId,
+        layerInfo?.source,
+        props.sourceId,
+        props.stableId,
+        props.annotationId,
+    ].filter(Boolean));
+
+    const directIds = new Set([
+        ...(layerIds || []),
+        props.mapLayerId,
+        layerInfo?.mapLayerId,
+        ...(props.layerAliases || []),
+    ].filter(Boolean));
+
+    const markerType = props.markerType || props.type || layerInfo?.type;
+    const name = layerInfo?.name || props.displayName || props.name || props.title || props.labelValue;
+    if (markerType && name) directIds.add(`${markerType}_${name}`);
+
+    const resolved = new Set();
+    const styleLayers = map?.getStyle?.()?.layers || [];
+
+    directIds.forEach((id) => {
+        if (map?.getLayer?.(id)) resolved.add(id);
+    });
+
+    styleLayers.forEach((layer) => {
+        if (layer?.type !== 'symbol') return;
+        if (sourceIds.has(layer.source) || directIds.has(layer.id)) resolved.add(layer.id);
+    });
+
+    return Array.from(resolved);
+}
+
+export function SymbolStyleControls({
+    layerIds,
+    layerInfo,
+    style,
+    onChange,
+    setPaint,
+    setLayout,
+    mapRef,
+    isDarkMode,
+    tab = 'symbol',
+}) {
     const update = (patch) => {
         const changedKeys = Object.keys(patch);
         const beforeStyle = { ...style };
@@ -38,8 +85,16 @@ export function SymbolStyleControls({ layerIds, layerInfo, style, onChange, setP
         );
         return nextStyle;
     };
-    const l = (key, prop, val) => { update({ [key]: val }); setLayout(layerIds, prop, val); };
-    const p = (key, prop, val) => { update({ [key]: val }); setPaint(layerIds, prop, val); };
+
+    const getTargets = () => getCandidateLayerIds(mapRef?.current, layerIds, layerInfo);
+    const l = (key, prop, val) => {
+        update({ [key]: val });
+        setLayout(getTargets(), prop, val);
+    };
+    const p = (key, prop, val) => {
+        update({ [key]: val });
+        setPaint(getTargets(), prop, val);
+    };
 
     const iconSection = (
         <Section title="Icon" isDarkMode={isDarkMode} compact>
