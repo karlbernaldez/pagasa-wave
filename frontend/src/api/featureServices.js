@@ -81,11 +81,14 @@ export const requestFeatureChange = async (sourceId, payload) => {
 };
 
 export const approveFeatureChangeRequest = async (notificationId) => {
-  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/approve`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/approve`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    }
+  );
 
   if (!response.ok) {
     await throwFeatureRequestError(response, 'Failed to approve annotation request');
@@ -95,11 +98,14 @@ export const approveFeatureChangeRequest = async (notificationId) => {
 };
 
 export const declineFeatureChangeRequest = async (notificationId) => {
-  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/decline`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/decline`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    }
+  );
 
   if (!response.ok) {
     await throwFeatureRequestError(response, 'Failed to decline annotation request');
@@ -183,13 +189,10 @@ export const fetchProjectFeatureCollection = async (projectId) => {
   }
 
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/admin/project/${canonicalProjectId}/features`,
-      {
-        method: 'GET',
-        credentials: 'include',
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/admin/project/${canonicalProjectId}/features`, {
+      method: 'GET',
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       await throwFeatureRequestError(response, 'Failed to fetch project features');

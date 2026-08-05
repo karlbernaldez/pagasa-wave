@@ -50,10 +50,7 @@ export function makeMarkerDraggable(map, layerId, sourceId, onDragEnd) {
     dragStartCoordinates = null;
     dragFeatureCoords = null;
 
-    if (
-      coordinates[0] === previousCoordinates[0] &&
-      coordinates[1] === previousCoordinates[1]
-    ) {
+    if (coordinates[0] === previousCoordinates[0] && coordinates[1] === previousCoordinates[1]) {
       return;
     }
 

@@ -36,10 +36,7 @@ function getFeatureSourceId(feature) {
 function getProjectId(feature) {
   const properties = feature?.properties || {};
   return String(
-    properties.project ||
-      feature?.project ||
-      localStorage.getItem('projectId') ||
-      ''
+    properties.project || feature?.project || localStorage.getItem('projectId') || ''
   ).split(':')[0];
 }
 
@@ -107,7 +104,11 @@ function installGeometryHistory(map, draw) {
 
       geometrySnapshots.set(sourceId, nextCoordinates);
 
-      if (!sourceId || !previousCoordinates || coordinatesEqual(previousCoordinates, nextCoordinates)) {
+      if (
+        !sourceId ||
+        !previousCoordinates ||
+        coordinatesEqual(previousCoordinates, nextCoordinates)
+      ) {
         continue;
       }
 

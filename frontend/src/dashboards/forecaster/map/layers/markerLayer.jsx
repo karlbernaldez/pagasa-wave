@@ -28,7 +28,9 @@ function getFirstFeature(data) {
 }
 
 function normalizeName(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function coordinatesMatch(left, right, tolerance = 0.000001) {
@@ -46,12 +48,12 @@ function getPersistedMarkerId(feature) {
   const properties = feature?.properties || {};
   return String(
     feature?.sourceId ||
-    properties.sourceId ||
-    properties.stableId ||
-    properties.annotationId ||
-    feature?._id ||
-    feature?.id ||
-    ''
+      properties.sourceId ||
+      properties.stableId ||
+      properties.annotationId ||
+      feature?._id ||
+      feature?.id ||
+      ''
   );
 }
 
@@ -82,21 +84,30 @@ function fetchProjectFeatures(projectId) {
 
 function getMarkerIdentity(layerInfo) {
   const properties = layerInfo?.properties || {};
-  const sourceIds = new Set([
-    layerInfo?.sourceID,
-    layerInfo?.sourceId,
-    layerInfo?.source,
-    properties.sourceId,
-    properties.stableId,
-    properties.annotationId,
-  ].filter(Boolean).map(String));
-  const layerIds = new Set([
-    layerInfo?.mapLayerId,
-    properties.mapLayerId,
-    ...(properties.layerAliases || []),
-  ].filter(Boolean).map(String));
+  const sourceIds = new Set(
+    [
+      layerInfo?.sourceID,
+      layerInfo?.sourceId,
+      layerInfo?.source,
+      properties.sourceId,
+      properties.stableId,
+      properties.annotationId,
+    ]
+      .filter(Boolean)
+      .map(String)
+  );
+  const layerIds = new Set(
+    [layerInfo?.mapLayerId, properties.mapLayerId, ...(properties.layerAliases || [])]
+      .filter(Boolean)
+      .map(String)
+  );
   const markerType = properties.markerType || properties.type || layerInfo?.type;
-  const displayName = layerInfo?.name || properties.displayName || properties.name || properties.title || properties.labelValue;
+  const displayName =
+    layerInfo?.name ||
+    properties.displayName ||
+    properties.name ||
+    properties.title ||
+    properties.labelValue;
 
   if (markerType && displayName) layerIds.add(`${markerType}_${displayName}`);
   return { sourceIds, layerIds, markerType };
@@ -105,9 +116,7 @@ function getMarkerIdentity(layerInfo) {
 function applyMarkerStyle(map, layerId, markerType, style = {}) {
   if (!map?.getLayer?.(layerId)) return false;
 
-  const mergedStyle = markerType === 'text_note'
-    ? { ...TEXT_STYLE_DEFAULTS, ...style }
-    : style;
+  const mergedStyle = markerType === 'text_note' ? { ...TEXT_STYLE_DEFAULTS, ...style } : style;
   const layoutProperties = {
     'icon-size': mergedStyle.iconSize,
     'icon-rotate': mergedStyle.iconRotate,
@@ -181,14 +190,18 @@ export function applyRuntimeMarkerStyle(map, layerInfo, style = {}) {
 
 function getFeatureIdentityIds(feature) {
   const properties = feature?.properties || {};
-  return new Set([
-    getPersistedMarkerId(feature),
-    properties.sourceId,
-    properties.stableId,
-    properties.annotationId,
-    properties.mapLayerId,
-    ...(properties.layerAliases || []),
-  ].filter(Boolean).map(String));
+  return new Set(
+    [
+      getPersistedMarkerId(feature),
+      properties.sourceId,
+      properties.stableId,
+      properties.annotationId,
+      properties.mapLayerId,
+      ...(properties.layerAliases || []),
+    ]
+      .filter(Boolean)
+      .map(String)
+  );
 }
 
 function removeMarkerArtifacts(map, layerId, sourceId) {
@@ -198,7 +211,12 @@ function removeMarkerArtifacts(map, layerId, sourceId) {
   if (sourceId && map.getSource?.(sourceId)) map.removeSource(sourceId);
 }
 
-function removeDuplicateMarkerArtifacts(map, canonicalLayerId, canonicalSourceId, canonicalFeature) {
+function removeDuplicateMarkerArtifacts(
+  map,
+  canonicalLayerId,
+  canonicalSourceId,
+  canonicalFeature
+) {
   const canonicalIds = getFeatureIdentityIds(canonicalFeature);
   canonicalIds.add(String(canonicalLayerId));
   canonicalIds.add(String(canonicalSourceId));
@@ -206,7 +224,10 @@ function removeDuplicateMarkerArtifacts(map, canonicalLayerId, canonicalSourceId
   const canonicalProperties = canonicalFeature?.properties || {};
   const canonicalType = canonicalProperties.markerType || canonicalProperties.type;
   const canonicalName = normalizeName(
-    canonicalProperties.displayName || canonicalProperties.name || canonicalProperties.title || canonicalProperties.labelValue
+    canonicalProperties.displayName ||
+      canonicalProperties.name ||
+      canonicalProperties.title ||
+      canonicalProperties.labelValue
   );
   const canonicalCoordinates = canonicalFeature?.geometry?.coordinates;
 
@@ -224,13 +245,15 @@ function removeDuplicateMarkerArtifacts(map, canonicalLayerId, canonicalSourceId
     const sharesIdentity = Array.from(candidateIds).some((id) => canonicalIds.has(id));
     const candidateType = candidateProperties.markerType || candidateProperties.type;
     const candidateName = normalizeName(
-      candidateProperties.displayName || candidateProperties.name || candidateProperties.title || candidateProperties.labelValue
+      candidateProperties.displayName ||
+        candidateProperties.name ||
+        candidateProperties.title ||
+        candidateProperties.labelValue
     );
-    const sameLegacyMarker = (
+    const sameLegacyMarker =
       candidateType === canonicalType &&
       candidateName === canonicalName &&
-      coordinatesMatch(candidateFeature.geometry?.coordinates, canonicalCoordinates)
-    );
+      coordinatesMatch(candidateFeature.geometry?.coordinates, canonicalCoordinates);
 
     if (sharesIdentity || sameLegacyMarker) {
       removeMarkerArtifacts(map, layer.id, layer.source);
@@ -248,7 +271,11 @@ async function findPersistedMarker({ projectId, markerType, displayName, coordin
       const properties = feature?.properties || {};
       const featureType = properties.markerType || properties.type;
       const featureName = normalizeName(
-        properties.displayName || feature?.name || properties.name || properties.title || properties.labelValue
+        properties.displayName ||
+          feature?.name ||
+          properties.name ||
+          properties.title ||
+          properties.labelValue
       );
       return featureType === markerType && featureName === expectedName;
     });
@@ -263,7 +290,13 @@ async function findPersistedMarker({ projectId, markerType, displayName, coordin
   }
 }
 
-async function resolvePersistedSourceId({ projectId, markerType, displayName, previousCoordinates, fallback }) {
+async function resolvePersistedSourceId({
+  projectId,
+  markerType,
+  displayName,
+  previousCoordinates,
+  fallback,
+}) {
   const matchedFeature = await findPersistedMarker({
     projectId,
     markerType,
@@ -273,197 +306,223 @@ async function resolvePersistedSourceId({ projectId, markerType, displayName, pr
   return getPersistedMarkerId(matchedFeature) || fallback;
 }
 
-export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => async (title, options = {}) => {
-  if (!selectedPoint) return;
+export const saveMarker =
+  (selectedPoint, mapRef, setShowTitleModal, type) =>
+  async (title, options = {}) => {
+    if (!selectedPoint) return;
 
-  const { lng, lat } = selectedPoint;
-  const iconMap = {
-    typhoon: 'typhoon',
-    low_pressure: 'low_pressure',
-    high_pressure: 'high_pressure',
-    less_1: 'less_1',
-    text_note: null,
-  };
-  const defaultTitles = {
-    typhoon: 'Typhoon',
-    low_pressure: 'LPA',
-    high_pressure: 'HPA',
-    less_1: '<1',
-    text_note: 'Text Label',
-  };
+    const { lng, lat } = selectedPoint;
+    const iconMap = {
+      typhoon: 'typhoon',
+      low_pressure: 'low_pressure',
+      high_pressure: 'high_pressure',
+      less_1: 'less_1',
+      text_note: null,
+    };
+    const defaultTitles = {
+      typhoon: 'Typhoon',
+      low_pressure: 'LPA',
+      high_pressure: 'HPA',
+      less_1: '<1',
+      text_note: 'Text Label',
+    };
 
-  const markerType = type;
-  const iconName = iconMap[markerType];
-  const labelValue = options.labelValue || title || defaultTitles[markerType];
-  const displayName = options.displayName || title || defaultTitles[markerType];
-  const projectId = options.projectId || localStorage.getItem('projectId') || '';
-  const coordinates = [lng, lat];
-  const persistedFeature = options.persistedFeature || (
-    options.skipHydration
-      ? null
-      : await findPersistedMarker({ projectId, markerType, displayName, coordinates })
-  );
-  const persistedProperties = persistedFeature?.properties || {};
-  const persistedId = getPersistedMarkerId(persistedFeature);
-  const fallbackId = `${markerType}_${title}`;
-  const sourceId = String(options.sourceId || persistedId || fallbackId);
-  const layerId = String(options.layerId || persistedProperties.mapLayerId || sourceId);
-  const persistedStyle = getPersistedMarkerStyle(persistedFeature);
-  const initialStyle = markerType === 'text_note'
-    ? { ...TEXT_STYLE_DEFAULTS, ...persistedStyle, ...(options.style || {}) }
-    : { ...persistedStyle, ...(options.style || {}) };
-  const aliases = Array.from(new Set([
-    sourceId,
-    layerId,
-    fallbackId,
-    `${markerType}_${displayName}`,
-    persistedProperties.mapLayerId,
-    ...(persistedProperties.layerAliases || []),
-    ...(options.layerAliases || []),
-  ].filter(Boolean).map(String)));
+    const markerType = type;
+    const iconName = iconMap[markerType];
+    const labelValue = options.labelValue || title || defaultTitles[markerType];
+    const displayName = options.displayName || title || defaultTitles[markerType];
+    const projectId = options.projectId || localStorage.getItem('projectId') || '';
+    const coordinates = [lng, lat];
+    const persistedFeature =
+      options.persistedFeature ||
+      (options.skipHydration
+        ? null
+        : await findPersistedMarker({ projectId, markerType, displayName, coordinates }));
+    const persistedProperties = persistedFeature?.properties || {};
+    const persistedId = getPersistedMarkerId(persistedFeature);
+    const fallbackId = `${markerType}_${title}`;
+    const sourceId = String(options.sourceId || persistedId || fallbackId);
+    const layerId = String(options.layerId || persistedProperties.mapLayerId || sourceId);
+    const persistedStyle = getPersistedMarkerStyle(persistedFeature);
+    const initialStyle =
+      markerType === 'text_note'
+        ? { ...TEXT_STYLE_DEFAULTS, ...persistedStyle, ...(options.style || {}) }
+        : { ...persistedStyle, ...(options.style || {}) };
+    const aliases = Array.from(
+      new Set(
+        [
+          sourceId,
+          layerId,
+          fallbackId,
+          `${markerType}_${displayName}`,
+          persistedProperties.mapLayerId,
+          ...(persistedProperties.layerAliases || []),
+          ...(options.layerAliases || []),
+        ]
+          .filter(Boolean)
+          .map(String)
+      )
+    );
 
-  const feature = {
-    type: 'Feature',
-    geometry: { type: 'Point', coordinates },
-    properties: {
-      ...persistedProperties,
-      title: labelValue,
-      name: displayName,
-      displayName,
-      labelValue,
-      markerType,
-      type: markerType,
-      icon: iconName,
-      sourceId,
-      stableId: persistedProperties.stableId || options.stableId || sourceId,
-      annotationId: persistedProperties.annotationId || options.annotationId || sourceId,
-      mapLayerId: layerId,
-      layerAliases: aliases,
-      project: projectId,
-      style: initialStyle,
-    },
-  };
-
-  const map = mapRef?.current ?? mapRef;
-  if (!map) return;
-
-  removeDuplicateMarkerArtifacts(map, layerId, sourceId, feature);
-
-  const existingSource = map.getSource(sourceId);
-  if (existingSource?.setData) existingSource.setData(feature);
-  else {
-    try {
-      map.addSource(sourceId, { type: 'geojson', data: feature });
-    } catch (error) {
-      console.error(`Failed to add source "${sourceId}":`, error);
-      return;
-    }
-  }
-
-  const layout = markerType === 'text_note'
-    ? {
-        'text-field': ['get', 'title'],
-        'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
-        'text-anchor': 'center',
-        'text-allow-overlap': true,
-        'text-size': initialStyle.textSize,
-        'text-letter-spacing': initialStyle.textLetterSpacing,
-        'text-transform': initialStyle.textTransform,
-      }
-    : {
-        'icon-image': ['get', 'icon'],
-        'icon-size': [
-          'case',
-          ['==', ['get', 'markerType'], 'low_pressure'], 0.015,
-          ['==', ['get', 'markerType'], 'high_pressure'], 0.015,
-          ['==', ['get', 'markerType'], 'less_1'], 0.28,
-          0.03,
-        ],
-        'icon-allow-overlap': true,
-      };
-
-  if (markerType !== 'less_1' && markerType !== 'text_note') {
-    layout['text-field'] = ['get', 'title'];
-    layout['text-font'] = ['Open Sans Semibold', 'Arial Unicode MS Bold'];
-    layout['text-offset'] = ['case', ['==', ['get', 'markerType'], 'low_pressure'], [0, 1.0], [0, 1.25]];
-    layout['text-anchor'] = 'top';
-    layout['text-allow-overlap'] = true;
-    layout['text-size'] = 12;
-  }
-
-  const paint = {};
-  if (markerType === 'text_note') {
-    paint['text-color'] = initialStyle.textColor;
-    paint['text-halo-color'] = initialStyle.textHaloColor;
-    paint['text-halo-width'] = initialStyle.textHaloWidth;
-  } else if (markerType !== 'less_1') {
-    paint['text-color'] = [
-      'case',
-      ['==', ['get', 'markerType'], 'low_pressure'], 'red',
-      ['==', ['get', 'markerType'], 'high_pressure'], 'blue',
-      'purple',
-    ];
-    paint['text-halo-color'] = '#FFFFFF';
-    paint['text-halo-width'] = 1;
-    paint['text-opacity'] = [
-      'case',
-      ['any', ['==', ['get', 'markerType'], 'low_pressure'], ['==', ['get', 'markerType'], 'high_pressure']],
-      0,
-      1,
-    ];
-  }
-
-  if (!map.getLayer(layerId)) {
-    try {
-      map.addLayer({ id: layerId, type: 'symbol', source: sourceId, slot: 'top', layout, paint });
-    } catch (error) {
-      console.error(`Failed to add layer "${layerId}":`, error);
-      return;
-    }
-  }
-
-  applyMarkerStyle(map, layerId, markerType, initialStyle);
-
-  dragCleanupRegistry.get(sourceId)?.();
-  const cleanup = makeMarkerDraggable(
-    map,
-    layerId,
-    sourceId,
-    async ({ coordinates: nextCoordinates, previousCoordinates }) => {
-      const persistedSourceId = persistedId || await resolvePersistedSourceId({
-        projectId,
-        markerType,
+    const feature = {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates },
+      properties: {
+        ...persistedProperties,
+        title: labelValue,
+        name: displayName,
         displayName,
-        previousCoordinates,
-        fallback: sourceId,
-      });
+        labelValue,
+        markerType,
+        type: markerType,
+        icon: iconName,
+        sourceId,
+        stableId: persistedProperties.stableId || options.stableId || sourceId,
+        annotationId: persistedProperties.annotationId || options.annotationId || sourceId,
+        mapLayerId: layerId,
+        layerAliases: aliases,
+        project: projectId,
+        style: initialStyle,
+      },
+    };
 
+    const map = mapRef?.current ?? mapRef;
+    if (!map) return;
+
+    removeDuplicateMarkerArtifacts(map, layerId, sourceId, feature);
+
+    const existingSource = map.getSource(sourceId);
+    if (existingSource?.setData) existingSource.setData(feature);
+    else {
       try {
-        await updateFeatureCoordinates(persistedSourceId, nextCoordinates);
-        publishAnnotationHistoryCommand({
-          label: `Move ${displayName || 'annotation'}`,
-          undo: async () => {
-            await updateFeatureCoordinates(persistedSourceId, previousCoordinates);
-            requestAnnotationHistoryRefresh(projectId);
-          },
-          redo: async () => {
-            await updateFeatureCoordinates(persistedSourceId, nextCoordinates);
-            requestAnnotationHistoryRefresh(projectId);
-          },
-        });
+        map.addSource(sourceId, { type: 'geojson', data: feature });
       } catch (error) {
-        console.error('Failed to persist marker position:', error);
-        map.getSource(sourceId)?.setData?.({
-          ...feature,
-          geometry: { type: 'Point', coordinates: previousCoordinates },
-        });
+        console.error(`Failed to add source "${sourceId}":`, error);
+        return;
       }
     }
-  );
 
-  dragCleanupRegistry.set(sourceId, cleanup);
-  setShowTitleModal(false);
-};
+    const layout =
+      markerType === 'text_note'
+        ? {
+            'text-field': ['get', 'title'],
+            'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+            'text-anchor': 'center',
+            'text-allow-overlap': true,
+            'text-size': initialStyle.textSize,
+            'text-letter-spacing': initialStyle.textLetterSpacing,
+            'text-transform': initialStyle.textTransform,
+          }
+        : {
+            'icon-image': ['get', 'icon'],
+            'icon-size': [
+              'case',
+              ['==', ['get', 'markerType'], 'low_pressure'],
+              0.015,
+              ['==', ['get', 'markerType'], 'high_pressure'],
+              0.015,
+              ['==', ['get', 'markerType'], 'less_1'],
+              0.28,
+              0.03,
+            ],
+            'icon-allow-overlap': true,
+          };
+
+    if (markerType !== 'less_1' && markerType !== 'text_note') {
+      layout['text-field'] = ['get', 'title'];
+      layout['text-font'] = ['Open Sans Semibold', 'Arial Unicode MS Bold'];
+      layout['text-offset'] = [
+        'case',
+        ['==', ['get', 'markerType'], 'low_pressure'],
+        [0, 1.0],
+        [0, 1.25],
+      ];
+      layout['text-anchor'] = 'top';
+      layout['text-allow-overlap'] = true;
+      layout['text-size'] = 12;
+    }
+
+    const paint = {};
+    if (markerType === 'text_note') {
+      paint['text-color'] = initialStyle.textColor;
+      paint['text-halo-color'] = initialStyle.textHaloColor;
+      paint['text-halo-width'] = initialStyle.textHaloWidth;
+    } else if (markerType !== 'less_1') {
+      paint['text-color'] = [
+        'case',
+        ['==', ['get', 'markerType'], 'low_pressure'],
+        'red',
+        ['==', ['get', 'markerType'], 'high_pressure'],
+        'blue',
+        'purple',
+      ];
+      paint['text-halo-color'] = '#FFFFFF';
+      paint['text-halo-width'] = 1;
+      paint['text-opacity'] = [
+        'case',
+        [
+          'any',
+          ['==', ['get', 'markerType'], 'low_pressure'],
+          ['==', ['get', 'markerType'], 'high_pressure'],
+        ],
+        0,
+        1,
+      ];
+    }
+
+    if (!map.getLayer(layerId)) {
+      try {
+        map.addLayer({ id: layerId, type: 'symbol', source: sourceId, slot: 'top', layout, paint });
+      } catch (error) {
+        console.error(`Failed to add layer "${layerId}":`, error);
+        return;
+      }
+    }
+
+    applyMarkerStyle(map, layerId, markerType, initialStyle);
+
+    dragCleanupRegistry.get(sourceId)?.();
+    const cleanup = makeMarkerDraggable(
+      map,
+      layerId,
+      sourceId,
+      async ({ coordinates: nextCoordinates, previousCoordinates }) => {
+        const persistedSourceId =
+          persistedId ||
+          (await resolvePersistedSourceId({
+            projectId,
+            markerType,
+            displayName,
+            previousCoordinates,
+            fallback: sourceId,
+          }));
+
+        try {
+          await updateFeatureCoordinates(persistedSourceId, nextCoordinates);
+          publishAnnotationHistoryCommand({
+            label: `Move ${displayName || 'annotation'}`,
+            undo: async () => {
+              await updateFeatureCoordinates(persistedSourceId, previousCoordinates);
+              requestAnnotationHistoryRefresh(projectId);
+            },
+            redo: async () => {
+              await updateFeatureCoordinates(persistedSourceId, nextCoordinates);
+              requestAnnotationHistoryRefresh(projectId);
+            },
+          });
+        } catch (error) {
+          console.error('Failed to persist marker position:', error);
+          map.getSource(sourceId)?.setData?.({
+            ...feature,
+            geometry: { type: 'Point', coordinates: previousCoordinates },
+          });
+        }
+      }
+    );
+
+    dragCleanupRegistry.set(sourceId, cleanup);
+    setShowTitleModal(false);
+  };
 
 export function removeMarkerDrag(sourceId) {
   dragCleanupRegistry.get(sourceId)?.();

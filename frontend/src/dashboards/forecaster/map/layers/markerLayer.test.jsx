@@ -128,12 +128,7 @@ describe('markerLayer canonical rendering', () => {
       type: 'symbol',
     });
 
-    await saveMarker(
-      { lng: 120, lat: 15 },
-      { current: map },
-      vi.fn(),
-      'text_note'
-    )('test');
+    await saveMarker({ lng: 120, lat: 15 }, { current: map }, vi.fn(), 'text_note')('test');
 
     expect(map.removeLayer).toHaveBeenCalledWith('text_note_test');
     expect(map.removeSource).toHaveBeenCalledWith('text_note_test');

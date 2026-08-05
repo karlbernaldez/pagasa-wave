@@ -1,14 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-  updateFeatureNameAPI,
-  publishAnnotationHistoryCommand,
-  requestAnnotationHistoryRefresh,
-} = vi.hoisted(() => ({
-  updateFeatureNameAPI: vi.fn(),
-  publishAnnotationHistoryCommand: vi.fn(),
-  requestAnnotationHistoryRefresh: vi.fn(),
-}));
+const { updateFeatureNameAPI, publishAnnotationHistoryCommand, requestAnnotationHistoryRefresh } =
+  vi.hoisted(() => ({
+    updateFeatureNameAPI: vi.fn(),
+    publishAnnotationHistoryCommand: vi.fn(),
+    requestAnnotationHistoryRefresh: vi.fn(),
+  }));
 
 vi.mock('@/api/featureServices', () => ({ updateFeatureNameAPI }));
 vi.mock('sweetalert2', () => ({ default: { fire: vi.fn() } }));

@@ -165,13 +165,15 @@ function genericLayerIds(feature) {
   const props = feature?.properties || {};
   const sourceId = getAnnotationSourceId(feature);
   return Array.from(
-    new Set([
-      props.mapLayerId,
-      markerLayerId(feature),
-      sourceId,
-      sourceId ? `${sourceId}-0` : null,
-      sourceId ? `${sourceId}-1` : null,
-    ].filter(Boolean))
+    new Set(
+      [
+        props.mapLayerId,
+        markerLayerId(feature),
+        sourceId,
+        sourceId ? `${sourceId}-0` : null,
+        sourceId ? `${sourceId}-1` : null,
+      ].filter(Boolean)
+    )
   );
 }
 
@@ -197,12 +199,14 @@ function toLngLat(map, x, y) {
 
 function triangleCoordinates(map, x, y, ux, uy, nx, ny, side) {
   const size = FRONT_TRIANGLE_SIZE;
-  return [[
-    toLngLat(map, x - ux * size, y - uy * size),
-    toLngLat(map, x + ux * size, y + uy * size),
-    toLngLat(map, x + nx * side * size * 1.35, y + ny * side * size * 1.35),
-    toLngLat(map, x - ux * size, y - uy * size),
-  ]];
+  return [
+    [
+      toLngLat(map, x - ux * size, y - uy * size),
+      toLngLat(map, x + ux * size, y + uy * size),
+      toLngLat(map, x + nx * side * size * 1.35, y + ny * side * size * 1.35),
+      toLngLat(map, x - ux * size, y - uy * size),
+    ],
+  ];
 }
 
 function semicircleCoordinates(map, x, y, ux, uy, nx, ny, side) {
@@ -212,8 +216,12 @@ function semicircleCoordinates(map, x, y, ux, uy, nx, ny, side) {
     points.push(
       toLngLat(
         map,
-        x + ux * FRONT_SYMBOL_RADIUS * Math.cos(theta) + nx * side * FRONT_SYMBOL_RADIUS * Math.sin(theta),
-        y + uy * FRONT_SYMBOL_RADIUS * Math.cos(theta) + ny * side * FRONT_SYMBOL_RADIUS * Math.sin(theta)
+        x +
+          ux * FRONT_SYMBOL_RADIUS * Math.cos(theta) +
+          nx * side * FRONT_SYMBOL_RADIUS * Math.sin(theta),
+        y +
+          uy * FRONT_SYMBOL_RADIUS * Math.cos(theta) +
+          ny * side * FRONT_SYMBOL_RADIUS * Math.sin(theta)
       )
     );
   }
@@ -227,7 +235,11 @@ function buildShapeFeature(map, symbol, sideMultiplier, x, y, ux, uy, nx, ny) {
     symbol.kind === 'triangle'
       ? triangleCoordinates(map, x, y, ux, uy, nx, ny, side)
       : semicircleCoordinates(map, x, y, ux, uy, nx, ny, side);
-  return { type: 'Feature', geometry: { type: 'Polygon', coordinates }, properties: { color: symbol.color } };
+  return {
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates },
+    properties: { color: symbol.color },
+  };
 }
 
 function buildScreenPath(map, coordinates) {
@@ -282,7 +294,17 @@ function buildFrontSymbolFeatures(map, coordinates, frontType, sideMultiplier) {
     const symbol = frontStyle.symbols[symbolIndex % frontStyle.symbols.length];
     if (point) {
       features.push(
-        buildShapeFeature(map, symbol, sideMultiplier, point.x, point.y, point.ux, point.uy, point.nx, point.ny)
+        buildShapeFeature(
+          map,
+          symbol,
+          sideMultiplier,
+          point.x,
+          point.y,
+          point.ux,
+          point.uy,
+          point.nx,
+          point.ny
+        )
       );
     }
     symbolIndex += 1;
@@ -307,7 +329,17 @@ function buildStationarySymbolFeatures(map, coordinates, sideMultiplier) {
     const symbol = STATIONARY_SEGMENT_SYMBOLS[index % STATIONARY_SEGMENT_SYMBOLS.length];
     if (point) {
       features.push(
-        buildShapeFeature(map, symbol, sideMultiplier, point.x, point.y, point.ux, point.uy, point.nx, point.ny)
+        buildShapeFeature(
+          map,
+          symbol,
+          sideMultiplier,
+          point.x,
+          point.y,
+          point.ux,
+          point.uy,
+          point.nx,
+          point.ny
+        )
       );
     }
   }

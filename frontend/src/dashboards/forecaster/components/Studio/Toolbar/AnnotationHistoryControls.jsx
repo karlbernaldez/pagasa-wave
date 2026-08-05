@@ -32,8 +32,11 @@ function toLayer(feature) {
   const properties = feature?.properties || {};
   const type = resolveLayerType(feature);
   const id = feature.sourceId || properties.sourceId || properties.stableId;
-  const isMarker = ['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note'].includes(type);
-  const name = properties.displayName || feature.name || properties.name || properties.title || type;
+  const isMarker = ['typhoon', 'low_pressure', 'high_pressure', 'less_1', 'text_note'].includes(
+    type
+  );
+  const name =
+    properties.displayName || feature.name || properties.name || properties.title || type;
 
   return {
     id,
@@ -56,7 +59,11 @@ function getMarkerArtifactIds(feature) {
   const properties = feature?.properties || {};
   const type = properties.markerType || properties.type;
   const name =
-    properties.displayName || feature?.name || properties.name || properties.title || properties.labelValue;
+    properties.displayName ||
+    feature?.name ||
+    properties.name ||
+    properties.title ||
+    properties.labelValue;
 
   return new Set(
     [
@@ -100,17 +107,22 @@ function removeStaleHistoryMarkers(map, projectFeatures) {
     const markerType = properties.markerType || properties.type;
     if (!HISTORY_MARKER_TYPES.has(markerType)) return;
 
-    const aliases = new Set([
-      layer.id,
-      layer.source,
-      properties.sourceId,
-      properties.stableId,
-      properties.annotationId,
-      properties.mapLayerId,
-      markerType && (properties.displayName || properties.name || properties.title || properties.labelValue)
-        ? `${markerType}_${properties.displayName || properties.name || properties.title || properties.labelValue}`
-        : null,
-    ].map((value) => String(value || '').trim()).filter(Boolean));
+    const aliases = new Set(
+      [
+        layer.id,
+        layer.source,
+        properties.sourceId,
+        properties.stableId,
+        properties.annotationId,
+        properties.mapLayerId,
+        markerType &&
+        (properties.displayName || properties.name || properties.title || properties.labelValue)
+          ? `${markerType}_${properties.displayName || properties.name || properties.title || properties.labelValue}`
+          : null,
+      ]
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+    );
 
     const isCurrent = Array.from(aliases).some((id) => currentArtifactIds.has(id));
     if (!isCurrent) {
@@ -150,7 +162,8 @@ export default function AnnotationHistoryControls({
         try {
           const features = await fetchFeatures(projectId);
           const projectFeatures = (Array.isArray(features) ? features : []).filter(
-            (feature) => String(feature?.properties?.project || feature?.project || '') === String(projectId)
+            (feature) =>
+              String(feature?.properties?.project || feature?.project || '') === String(projectId)
           );
 
           setLayers?.(projectFeatures.map(toLayer).filter((layer) => Boolean(layer.id)));
