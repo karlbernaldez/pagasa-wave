@@ -224,7 +224,9 @@ export async function updateFeatureNameAPI(layerId, newName) {
     } else {
       console.error('Error:', err.message);
     }
-    throw new Error(err.response?.data?.message || 'Failed to update feature name');
+    throw new Error(err.response?.data?.message || 'Failed to update feature name', {
+      cause: err,
+    });
   }
 }
 
