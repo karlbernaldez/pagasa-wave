@@ -1,25 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-  fetchFeatures,
-  updateFeatureCoordinates,
-  makeMarkerDraggable,
-} = vi.hoisted(() => ({
+const mocks = vi.hoisted(() => ({
   fetchFeatures: vi.fn(),
   updateFeatureCoordinates: vi.fn(),
   makeMarkerDraggable: vi.fn(() => vi.fn()),
 }));
 
 vi.mock('@/api/featureServices', () => ({
-  fetchFeatures,
-  updateFeatureCoordinates,
+  fetchFeatures: mocks.fetchFeatures,
+  updateFeatureCoordinates: mocks.updateFeatureCoordinates,
 }));
 vi.mock('@dashboards/forecaster/history/annotationHistoryEvents', () => ({
   publishAnnotationHistoryCommand: vi.fn(),
   requestAnnotationHistoryRefresh: vi.fn(),
 }));
 vi.mock('@dashboards/forecaster/map/helpers/markerDrag', () => ({
-  makeMarkerDraggable,
+  makeMarkerDraggable: mocks.makeMarkerDraggable,
 }));
 
 import { applyRuntimeMarkerStyle, saveMarker } from './markerLayer';
@@ -83,7 +79,7 @@ describe('markerLayer canonical rendering', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.setItem('projectId', 'project-1');
-    fetchFeatures.mockResolvedValue([persistedTextFeature()]);
+    mocks.fetchFeatures.mockResolvedValue([persistedTextFeature()]);
   });
 
   it('hydrates persisted identity before rendering and creates only one symbol layer', async () => {
@@ -97,7 +93,7 @@ describe('markerLayer canonical rendering', () => {
       'text_note'
     )('test');
 
-    expect(fetchFeatures).toHaveBeenCalledWith('project-1');
+    expect(mocks.fetchFeatures).toHaveBeenCalledWith('project-1');
     expect(map.addSource).toHaveBeenCalledTimes(1);
     expect(map.addSource).toHaveBeenCalledWith(
       'annotation-1',
@@ -144,7 +140,7 @@ describe('markerLayer canonical rendering', () => {
     expect(map.layers.has('annotation-1')).toBe(true);
   });
 
-  it('applies only the changed text size to the canonical live layer', () => {
+  it('applies the changed text size to the canonical live layer and synchronizes style metadata', () => {
     const map = createMap();
     map.sources.set('annotation-1', {
       _data: persistedTextFeature(),
@@ -177,7 +173,9 @@ describe('markerLayer canonical rendering', () => {
 
     expect(applied).toBe(true);
     expect(map.setLayoutProperty).toHaveBeenCalledWith('annotation-1', 'text-size', 28);
-    expect(map.setPaintProperty).not.toHaveBeenCalled();
+    expect(map.setPaintProperty).toHaveBeenCalledWith('annotation-1', 'text-color', '#0f172a');
+    expect(map.setPaintProperty).toHaveBeenCalledWith('annotation-1', 'text-halo-color', '#ffffff');
+    expect(map.setPaintProperty).toHaveBeenCalledWith('annotation-1', 'text-halo-width', 1.5);
     expect(map.sources.get('annotation-1')._data.properties.style.textSize).toBe(28);
   });
 });
