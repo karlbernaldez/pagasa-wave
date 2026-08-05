@@ -19,6 +19,13 @@ function getProjectHistory(projectId) {
   return historyByProject.get(key);
 }
 
+function resetHistory(history) {
+  history.undoStack = [];
+  history.redoStack = [];
+  history.queue = Promise.resolve();
+  return history;
+}
+
 function validateCommand(command) {
   if (!command || typeof command.undo !== 'function' || typeof command.redo !== 'function') {
     throw new TypeError('History commands require async undo and redo functions.');
@@ -54,14 +61,12 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
     }
 
     projectKeyRef.current = projectKey;
-    historyRef.current = getProjectHistory(projectId);
+    historyRef.current = resetHistory(getProjectHistory(projectId));
     publishState(false);
   }, [projectId, projectKey, publishState]);
 
   const clear = useCallback(() => {
-    const history = historyRef.current;
-    history.undoStack = [];
-    history.redoStack = [];
+    resetHistory(historyRef.current);
     publishState(false);
   }, [publishState]);
 
