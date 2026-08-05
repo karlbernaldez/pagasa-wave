@@ -103,12 +103,16 @@ describe('useAnnotationHistory', () => {
 
     act(() => result.current.record(command));
 
-    await expect(
-      act(async () => {
+    let caughtError;
+    await act(async () => {
+      try {
         await result.current.undo();
-      })
-    ).rejects.toThrow('request failed');
+      } catch (caught) {
+        caughtError = caught;
+      }
+    });
 
+    expect(caughtError).toBe(error);
     expect(onError).toHaveBeenCalledWith(error);
     expect(result.current.canUndo).toBe(true);
     expect(result.current.canRedo).toBe(false);
