@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Section, PropColor, PropSlider, PropSelect } from '../LayerStylePanel';
 import { queuePersistAnnotationStyle } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
 import { applyRuntimeMarkerStyle } from '@dashboards/forecaster/map/layers/markerLayer';
@@ -22,6 +23,8 @@ const TEXT_NOTE_STYLE_DEFAULTS = {
     textHaloWidth: 1.5,
 };
 
+const LIVE_STYLE_FRAME_MS = 32;
+
 function getDefaults(layerInfo) {
     const markerType = layerInfo?.properties?.markerType || layerInfo?.properties?.type || layerInfo?.type;
     return markerType === 'text_note' ? TEXT_NOTE_STYLE_DEFAULTS : SYMBOL_STYLE_DEFAULTS;
@@ -39,6 +42,27 @@ export function SymbolStyleControls({
     tab = 'symbol',
 }) {
     const defaults = getDefaults(layerInfo);
+    const pendingLiveUpdateRef = useRef(null);
+    const liveUpdateTimerRef = useRef(null);
+
+    const flushLiveUpdate = () => {
+        if (liveUpdateTimerRef.current) {
+            window.clearTimeout(liveUpdateTimerRef.current);
+            liveUpdateTimerRef.current = null;
+        }
+
+        const pending = pendingLiveUpdateRef.current;
+        pendingLiveUpdateRef.current = null;
+        if (!pending) return;
+
+        const applied = applyRuntimeMarkerStyle(mapRef?.current, layerInfo, pending.nextStyle);
+        if (applied) return;
+
+        if (pending.kind === 'layout') setLayout(layerIds, pending.property, pending.value);
+        else setPaint(layerIds, pending.property, pending.value);
+    };
+
+    useEffect(() => () => flushLiveUpdate(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const update = (patch) => {
         const beforeStyle = { ...style };
@@ -61,13 +85,19 @@ export function SymbolStyleControls({
         return nextStyle;
     };
 
+    const scheduleLiveUpdate = (kind, property, value, nextStyle) => {
+        pendingLiveUpdateRef.current = { kind, property, value, nextStyle };
+        if (liveUpdateTimerRef.current) return;
+
+        liveUpdateTimerRef.current = window.setTimeout(() => {
+            liveUpdateTimerRef.current = null;
+            flushLiveUpdate();
+        }, LIVE_STYLE_FRAME_MS);
+    };
+
     const apply = (kind, key, property, value) => {
         const nextStyle = update({ [key]: value });
-        const applied = applyRuntimeMarkerStyle(mapRef?.current, layerInfo, nextStyle);
-        if (applied) return;
-
-        if (kind === 'layout') setLayout(layerIds, property, value);
-        else setPaint(layerIds, property, value);
+        scheduleLiveUpdate(kind, property, value, nextStyle);
     };
 
     const l = (key, property, value) => apply('layout', key, property, value);
