@@ -6,7 +6,6 @@ import {
 import { makeMarkerDraggable } from '@dashboards/forecaster/map/helpers/markerDrag';
 
 const dragCleanupRegistry = new Map();
-const markerStyleRevisions = new Map();
 const projectFeatureRequests = new Map();
 const TEXT_STYLE_DEFAULTS = {
   textSize: 16,
@@ -45,7 +44,7 @@ function coordinatesMatch(left, right, tolerance = 0.000001) {
 
 function getPersistedMarkerId(feature) {
   const properties = feature?.properties || {};
-  return (
+  return String(
     feature?.sourceId ||
     properties.sourceId ||
     properties.stableId ||
@@ -58,16 +57,6 @@ function getPersistedMarkerId(feature) {
 
 function getPersistedMarkerStyle(feature) {
   return feature?.properties?.style || feature?.style || {};
-}
-
-function getMarkerRevision(sourceId) {
-  return markerStyleRevisions.get(sourceId) || 0;
-}
-
-function bumpMarkerRevision(sourceId) {
-  const nextRevision = getMarkerRevision(sourceId) + 1;
-  markerStyleRevisions.set(sourceId, nextRevision);
-  return nextRevision;
 }
 
 function normalizeFeatureResponse(response) {
@@ -100,12 +89,12 @@ function getMarkerIdentity(layerInfo) {
     properties.sourceId,
     properties.stableId,
     properties.annotationId,
-  ].filter(Boolean));
+  ].filter(Boolean).map(String));
   const layerIds = new Set([
     layerInfo?.mapLayerId,
     properties.mapLayerId,
     ...(properties.layerAliases || []),
-  ].filter(Boolean));
+  ].filter(Boolean).map(String));
   const markerType = properties.markerType || properties.type || layerInfo?.type;
   const displayName = layerInfo?.name || properties.displayName || properties.name || properties.title || properties.labelValue;
 
@@ -162,9 +151,9 @@ export function applyRuntimeMarkerStyle(map, layerInfo, style = {}) {
   const styleLayers = map.getStyle?.()?.layers || [];
   styleLayers.forEach((layer) => {
     if (layer?.type !== 'symbol') return;
-    if (sourceIds.has(layer.source) || layerIds.has(layer.id)) {
-      layerIds.add(layer.id);
-      if (layer.source) sourceIds.add(layer.source);
+    if (sourceIds.has(String(layer.source)) || layerIds.has(String(layer.id))) {
+      layerIds.add(String(layer.id));
+      if (layer.source) sourceIds.add(String(layer.source));
     }
   });
 
@@ -174,10 +163,8 @@ export function applyRuntimeMarkerStyle(map, layerInfo, style = {}) {
   });
 
   sourceIds.forEach((sourceId) => {
-    bumpMarkerRevision(sourceId);
     const source = map.getSource?.(sourceId);
-    const data = getSourceData(map, sourceId);
-    const feature = getFirstFeature(data);
+    const feature = getFirstFeature(getSourceData(map, sourceId));
     if (!source?.setData || !feature) return;
 
     source.setData({
@@ -192,33 +179,62 @@ export function applyRuntimeMarkerStyle(map, layerInfo, style = {}) {
   return applied;
 }
 
-function removeDuplicateMarkerArtifacts(map, targetLayerId, targetSourceId, markerType, displayName, coordinates) {
-  const layers = map.getStyle?.()?.layers || [];
-  const expectedName = normalizeName(displayName);
+function getFeatureIdentityIds(feature) {
+  const properties = feature?.properties || {};
+  return new Set([
+    getPersistedMarkerId(feature),
+    properties.sourceId,
+    properties.stableId,
+    properties.annotationId,
+    properties.mapLayerId,
+    ...(properties.layerAliases || []),
+  ].filter(Boolean).map(String));
+}
 
-  layers.forEach((layer) => {
+function removeMarkerArtifacts(map, layerId, sourceId) {
+  dragCleanupRegistry.get(sourceId)?.();
+  dragCleanupRegistry.delete(sourceId);
+  if (layerId && map.getLayer?.(layerId)) map.removeLayer(layerId);
+  if (sourceId && map.getSource?.(sourceId)) map.removeSource(sourceId);
+}
+
+function removeDuplicateMarkerArtifacts(map, canonicalLayerId, canonicalSourceId, canonicalFeature) {
+  const canonicalIds = getFeatureIdentityIds(canonicalFeature);
+  canonicalIds.add(String(canonicalLayerId));
+  canonicalIds.add(String(canonicalSourceId));
+
+  const canonicalProperties = canonicalFeature?.properties || {};
+  const canonicalType = canonicalProperties.markerType || canonicalProperties.type;
+  const canonicalName = normalizeName(
+    canonicalProperties.displayName || canonicalProperties.name || canonicalProperties.title || canonicalProperties.labelValue
+  );
+  const canonicalCoordinates = canonicalFeature?.geometry?.coordinates;
+
+  (map.getStyle?.()?.layers || []).forEach((layer) => {
     if (layer?.type !== 'symbol' || typeof layer.source !== 'string') return;
-    if (layer.id === targetLayerId && layer.source === targetSourceId) return;
+    if (layer.id === canonicalLayerId && layer.source === canonicalSourceId) return;
 
-    const sourceFeature = getFirstFeature(getSourceData(map, layer.source));
-    const properties = sourceFeature?.properties || {};
-    const sourceMarkerType = properties.markerType || properties.type;
-    const sourceName = normalizeName(
-      properties.displayName || properties.name || properties.title || properties.labelValue
+    const candidateFeature = getFirstFeature(getSourceData(map, layer.source));
+    if (!candidateFeature) return;
+
+    const candidateProperties = candidateFeature.properties || {};
+    const candidateIds = getFeatureIdentityIds(candidateFeature);
+    candidateIds.add(String(layer.id));
+    candidateIds.add(String(layer.source));
+    const sharesIdentity = Array.from(candidateIds).some((id) => canonicalIds.has(id));
+    const candidateType = candidateProperties.markerType || candidateProperties.type;
+    const candidateName = normalizeName(
+      candidateProperties.displayName || candidateProperties.name || candidateProperties.title || candidateProperties.labelValue
     );
-    const sourceCoordinates = sourceFeature?.geometry?.coordinates;
+    const sameLegacyMarker = (
+      candidateType === canonicalType &&
+      candidateName === canonicalName &&
+      coordinatesMatch(candidateFeature.geometry?.coordinates, canonicalCoordinates)
+    );
 
-    if (
-      sourceMarkerType !== markerType ||
-      sourceName !== expectedName ||
-      !coordinatesMatch(sourceCoordinates, coordinates)
-    ) return;
-
-    dragCleanupRegistry.get(layer.source)?.();
-    dragCleanupRegistry.delete(layer.source);
-    markerStyleRevisions.delete(layer.source);
-    if (map.getLayer?.(layer.id)) map.removeLayer(layer.id);
-    if (map.getSource?.(layer.source)) map.removeSource(layer.source);
+    if (sharesIdentity || sameLegacyMarker) {
+      removeMarkerArtifacts(map, layer.id, layer.source);
+    }
   });
 }
 
@@ -257,7 +273,7 @@ async function resolvePersistedSourceId({ projectId, markerType, displayName, pr
   return getPersistedMarkerId(matchedFeature) || fallback;
 }
 
-export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (title, options = {}) => {
+export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => async (title, options = {}) => {
   if (!selectedPoint) return;
 
   const { lng, lat } = selectedPoint;
@@ -278,27 +294,39 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
 
   const markerType = type;
   const iconName = iconMap[markerType];
-  const sourceId = options.sourceId || `${markerType}_${title}`;
-  const layerId = options.layerId || sourceId;
   const labelValue = options.labelValue || title || defaultTitles[markerType];
   const displayName = options.displayName || title || defaultTitles[markerType];
   const projectId = options.projectId || localStorage.getItem('projectId') || '';
   const coordinates = [lng, lat];
+  const persistedFeature = options.persistedFeature || (
+    options.skipHydration
+      ? null
+      : await findPersistedMarker({ projectId, markerType, displayName, coordinates })
+  );
+  const persistedProperties = persistedFeature?.properties || {};
+  const persistedId = getPersistedMarkerId(persistedFeature);
+  const fallbackId = `${markerType}_${title}`;
+  const sourceId = String(options.sourceId || persistedId || fallbackId);
+  const layerId = String(options.layerId || persistedProperties.mapLayerId || sourceId);
+  const persistedStyle = getPersistedMarkerStyle(persistedFeature);
   const initialStyle = markerType === 'text_note'
-    ? { ...TEXT_STYLE_DEFAULTS, ...(options.style || {}) }
-    : { ...(options.style || {}) };
+    ? { ...TEXT_STYLE_DEFAULTS, ...persistedStyle, ...(options.style || {}) }
+    : { ...persistedStyle, ...(options.style || {}) };
   const aliases = Array.from(new Set([
     sourceId,
     layerId,
-    `${markerType}_${title}`,
+    fallbackId,
     `${markerType}_${displayName}`,
+    persistedProperties.mapLayerId,
+    ...(persistedProperties.layerAliases || []),
     ...(options.layerAliases || []),
-  ].map((value) => String(value || '').trim()).filter(Boolean)));
+  ].filter(Boolean).map(String)));
 
   const feature = {
     type: 'Feature',
     geometry: { type: 'Point', coordinates },
     properties: {
+      ...persistedProperties,
       title: labelValue,
       name: displayName,
       displayName,
@@ -307,8 +335,8 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
       type: markerType,
       icon: iconName,
       sourceId,
-      stableId: options.stableId || sourceId,
-      annotationId: options.annotationId || sourceId,
+      stableId: persistedProperties.stableId || options.stableId || sourceId,
+      annotationId: persistedProperties.annotationId || options.annotationId || sourceId,
       mapLayerId: layerId,
       layerAliases: aliases,
       project: projectId,
@@ -319,7 +347,7 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
   const map = mapRef?.current ?? mapRef;
   if (!map) return;
 
-  removeDuplicateMarkerArtifacts(map, layerId, sourceId, markerType, displayName, coordinates);
+  removeDuplicateMarkerArtifacts(map, layerId, sourceId, feature);
 
   const existingSource = map.getSource(sourceId);
   if (existingSource?.setData) existingSource.setData(feature);
@@ -395,40 +423,6 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
   }
 
   applyMarkerStyle(map, layerId, markerType, initialStyle);
-  const hydrationRevision = getMarkerRevision(sourceId);
-
-  if (!options.skipHydration) {
-    void findPersistedMarker({ projectId, markerType, displayName, coordinates }).then((persistedFeature) => {
-      if (!persistedFeature || getMarkerRevision(sourceId) !== hydrationRevision) return;
-
-      const persistedProperties = persistedFeature.properties || {};
-      const persistedId = getPersistedMarkerId(persistedFeature) || sourceId;
-      const persistedStyle = markerType === 'text_note'
-        ? { ...TEXT_STYLE_DEFAULTS, ...getPersistedMarkerStyle(persistedFeature) }
-        : getPersistedMarkerStyle(persistedFeature);
-      const hydratedFeature = {
-        ...feature,
-        properties: {
-          ...feature.properties,
-          ...persistedProperties,
-          sourceId: persistedId,
-          stableId: persistedProperties.stableId || persistedId,
-          annotationId: persistedProperties.annotationId || persistedId,
-          mapLayerId: layerId,
-          layerAliases: Array.from(new Set([
-            ...aliases,
-            persistedId,
-            persistedProperties.mapLayerId,
-            ...(persistedProperties.layerAliases || []),
-          ].filter(Boolean))),
-          style: persistedStyle,
-        },
-      };
-
-      map.getSource(sourceId)?.setData?.(hydratedFeature);
-      applyMarkerStyle(map, layerId, markerType, persistedStyle);
-    });
-  }
 
   dragCleanupRegistry.get(sourceId)?.();
   const cleanup = makeMarkerDraggable(
@@ -436,7 +430,7 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
     layerId,
     sourceId,
     async ({ coordinates: nextCoordinates, previousCoordinates }) => {
-      const persistedSourceId = await resolvePersistedSourceId({
+      const persistedSourceId = persistedId || await resolvePersistedSourceId({
         projectId,
         markerType,
         displayName,
@@ -474,5 +468,4 @@ export const saveMarker = (selectedPoint, mapRef, setShowTitleModal, type) => (t
 export function removeMarkerDrag(sourceId) {
   dragCleanupRegistry.get(sourceId)?.();
   dragCleanupRegistry.delete(sourceId);
-  markerStyleRevisions.delete(sourceId);
 }
