@@ -20,25 +20,31 @@ function createCommand(label, calls, { undoError, redoError } = {}) {
 function createDeferredCommand(label, calls) {
   let resolveUndo;
   let resolveRedo;
+  let rejectUndo;
+  let rejectRedo;
 
   return {
     command: {
       label,
       undo: vi.fn(() => {
         calls.push(`undo:${label}`);
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           resolveUndo = resolve;
+          rejectUndo = reject;
         });
       }),
       redo: vi.fn(() => {
         calls.push(`redo:${label}`);
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           resolveRedo = resolve;
+          rejectRedo = reject;
         });
       }),
     },
     resolveUndo: () => resolveUndo?.(),
     resolveRedo: () => resolveRedo?.(),
+    rejectUndo: (error) => rejectUndo?.(error),
+    rejectRedo: (error) => rejectRedo?.(error),
   };
 }
 
@@ -211,6 +217,119 @@ describe('useAnnotationHistory', () => {
     });
 
     expect(result.current.isApplying).toBe(false);
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(true);
+  });
+
+  it('ignores an in-flight undo failure after switching projects', async () => {
+    const calls = [];
+    const error = new Error('project-a undo failed');
+    const onError = vi.fn();
+    const projectADeferred = createDeferredCommand('project-a', calls);
+    const projectBCommand = createCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId, onError }),
+      { initialProps: { projectId: 'history-failed-inflight-undo-a' } }
+    );
+
+    act(() => result.current.record(projectADeferred.command));
+
+    let projectAUndo;
+    await act(async () => {
+      projectAUndo = result.current.undo();
+      await Promise.resolve();
+    });
+    expect(result.current.isApplying).toBe(true);
+
+    rerender({ projectId: 'history-failed-inflight-undo-b' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    let caughtError;
+    await act(async () => {
+      projectADeferred.rejectUndo(error);
+      try {
+        await projectAUndo;
+      } catch (caught) {
+        caughtError = caught;
+      }
+    });
+
+    expect(caughtError).toBe(error);
+    expect(onError).not.toHaveBeenCalled();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectBCommand));
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+      expect(await result.current.redo()).toBe(true);
+    });
+
+    expect(projectBCommand.undo).toHaveBeenCalledOnce();
+    expect(projectBCommand.redo).toHaveBeenCalledOnce();
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+  });
+
+  it('ignores an in-flight redo failure after switching projects', async () => {
+    const calls = [];
+    const error = new Error('project-a redo failed');
+    const onError = vi.fn();
+    const projectADeferred = createDeferredCommand('project-a', calls);
+    const projectBCommand = createCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId, onError }),
+      { initialProps: { projectId: 'history-failed-inflight-redo-a' } }
+    );
+
+    act(() => result.current.record(projectADeferred.command));
+
+    let projectAUndo;
+    await act(async () => {
+      projectAUndo = result.current.undo();
+      await Promise.resolve();
+      projectADeferred.resolveUndo();
+      expect(await projectAUndo).toBe(true);
+    });
+    expect(result.current.canRedo).toBe(true);
+
+    let projectARedo;
+    await act(async () => {
+      projectARedo = result.current.redo();
+      await Promise.resolve();
+    });
+    expect(result.current.isApplying).toBe(true);
+
+    rerender({ projectId: 'history-failed-inflight-redo-b' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    let caughtError;
+    await act(async () => {
+      projectADeferred.rejectRedo(error);
+      try {
+        await projectARedo;
+      } catch (caught) {
+        caughtError = caught;
+      }
+    });
+
+    expect(caughtError).toBe(error);
+    expect(onError).not.toHaveBeenCalled();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectBCommand));
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+    });
+
+    expect(projectBCommand.undo).toHaveBeenCalledOnce();
     expect(result.current.canUndo).toBe(false);
     expect(result.current.canRedo).toBe(true);
   });
