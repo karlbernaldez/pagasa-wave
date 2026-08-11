@@ -17,6 +17,31 @@ function createCommand(label, calls, { undoError, redoError } = {}) {
   };
 }
 
+function createDeferredCommand(label, calls) {
+  let resolveUndo;
+  let resolveRedo;
+
+  return {
+    command: {
+      label,
+      undo: vi.fn(() => {
+        calls.push(`undo:${label}`);
+        return new Promise((resolve) => {
+          resolveUndo = resolve;
+        });
+      }),
+      redo: vi.fn(() => {
+        calls.push(`redo:${label}`);
+        return new Promise((resolve) => {
+          resolveRedo = resolve;
+        });
+      }),
+    },
+    resolveUndo: () => resolveUndo?.(),
+    resolveRedo: () => resolveRedo?.(),
+  };
+}
+
 describe('useAnnotationHistory', () => {
   it('undoes newest commands first and redoes them in order', async () => {
     const calls = [];
@@ -96,6 +121,98 @@ describe('useAnnotationHistory', () => {
     expect(projectBCommand.undo).not.toHaveBeenCalled();
     expect(projectBCommand.redo).not.toHaveBeenCalled();
     expect(calls).toEqual([]);
+  });
+
+  it('ignores an in-flight undo completion after switching projects', async () => {
+    const calls = [];
+    const projectADeferred = createDeferredCommand('project-a', calls);
+    const projectBCommand = createCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId }),
+      { initialProps: { projectId: 'history-inflight-project-a' } }
+    );
+
+    act(() => result.current.record(projectADeferred.command));
+
+    let projectAUndo;
+    await act(async () => {
+      projectAUndo = result.current.undo();
+      await Promise.resolve();
+    });
+    expect(result.current.isApplying).toBe(true);
+    expect(projectADeferred.command.undo).toHaveBeenCalledOnce();
+
+    rerender({ projectId: 'history-inflight-project-b' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    await act(async () => {
+      projectADeferred.resolveUndo();
+      expect(await projectAUndo).toBe(true);
+    });
+
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectBCommand));
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+    });
+
+    expect(projectBCommand.undo).toHaveBeenCalledOnce();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(true);
+  });
+
+  it('does not let a stale project completion clear the active project applying state', async () => {
+    const calls = [];
+    const projectADeferred = createDeferredCommand('project-a', calls);
+    const projectBDeferred = createDeferredCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId }),
+      { initialProps: { projectId: 'history-overlap-project-a' } }
+    );
+
+    act(() => result.current.record(projectADeferred.command));
+
+    let projectAUndo;
+    await act(async () => {
+      projectAUndo = result.current.undo();
+      await Promise.resolve();
+    });
+
+    rerender({ projectId: 'history-overlap-project-b' });
+    act(() => result.current.record(projectBDeferred.command));
+
+    let projectBUndo;
+    await act(async () => {
+      projectBUndo = result.current.undo();
+      await Promise.resolve();
+    });
+    expect(result.current.isApplying).toBe(true);
+
+    await act(async () => {
+      projectADeferred.resolveUndo();
+      expect(await projectAUndo).toBe(true);
+    });
+
+    expect(result.current.isApplying).toBe(true);
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+
+    await act(async () => {
+      projectBDeferred.resolveUndo();
+      expect(await projectBUndo).toBe(true);
+    });
+
+    expect(result.current.isApplying).toBe(false);
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(true);
   });
 
   it('keeps only the configured number of commands', async () => {
