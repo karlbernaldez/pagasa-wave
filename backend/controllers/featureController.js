@@ -8,7 +8,10 @@ import {
   validateGeometry,
   buildNewSourceIdAndUpdateData,
 } from '../utils/dbHelpers.js';
-import { isForecastPackageChartProject } from '../utils/forecastPackageAccess.js';
+import {
+  assertForecastPackageChartMutationAllowed,
+  isForecastPackageChartProject,
+} from '../utils/forecastPackageAccess.js';
 import { canEditProjectStatus, getProjectEditLockMessage } from '../utils/projectWorkflow.js';
 import { emitForecastChartUpdated } from '../socket/socketEmitter.js';
 import { createNotification } from '../services/notification/notificationService.js';
@@ -17,6 +20,11 @@ function ensureProjectIsEditable(project) {
   if (!canEditProjectStatus(project.status)) {
     throwError(getProjectEditLockMessage(project.status), 403);
   }
+}
+
+async function ensureProjectMutationAllowed(project) {
+  ensureProjectIsEditable(project);
+  await assertForecastPackageChartMutationAllowed(project._id || project.id);
 }
 
 function buildFeatureProperties(properties, owner, sourceId) {
@@ -69,7 +77,7 @@ async function ensureFeatureMutationAllowed(sourceId, user) {
   const feature = await ensureFeatureExists(sourceId);
   const projectId = getFeatureProjectId(feature);
   const project = await ensureProjectExists(projectId, user.id);
-  ensureProjectIsEditable(project);
+  await ensureProjectMutationAllowed(project);
   if (!featureCanEdit(feature, user)) {
     throwError('Only the annotation owner or an admin can change this annotation. Send a request to the owner instead.', 403);
   }
@@ -104,7 +112,7 @@ export const createFeature = asyncHandler(async (req, res) => {
   if (!sourceId || !owner || !projectId) throwError('Missing required fields: sourceId or properties.project.', 400);
 
   const project = await ensureProjectExists(projectId, owner);
-  ensureProjectIsEditable(project);
+  await ensureProjectMutationAllowed(project);
 
   const fullProperties = buildFeatureProperties(properties, owner, sourceId);
   const result = await Feature.updateOne(
@@ -224,6 +232,7 @@ export const requestFeatureChange = asyncHandler(async (req, res) => {
   const feature = await ensureFeatureExists(sourceId);
   const projectId = getFeatureProjectId(feature);
   const project = await ensureProjectExists(projectId, req.user.id);
+  await ensureProjectMutationAllowed(project);
   const owner = getFeatureOwner(feature);
   if (isSameId(owner, req.user.id)) throwError('You own this annotation and can edit it directly.', 400);
 
@@ -260,7 +269,7 @@ export const approveFeatureChangeRequest = asyncHandler(async (req, res) => {
   const feature = await ensureFeatureExists(sourceId);
   const projectId = getFeatureProjectId(feature);
   const project = await ensureProjectExists(projectId, req.user.id);
-  ensureProjectIsEditable(project);
+  await ensureProjectMutationAllowed(project);
   if (!featureCanEdit(feature, req.user)) throwError('Only the annotation owner or an admin can approve this request.', 403);
 
   let newSourceId = sourceId;
