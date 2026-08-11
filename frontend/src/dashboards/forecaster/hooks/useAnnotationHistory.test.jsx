@@ -221,6 +221,113 @@ describe('useAnnotationHistory', () => {
     expect(result.current.canRedo).toBe(true);
   });
 
+  it('drops queued project operations after switching projects', async () => {
+    const calls = [];
+    const projectAFirst = createCommand('project-a-first', calls);
+    const projectASecond = createDeferredCommand('project-a-second', calls);
+    const projectBCommand = createCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId }),
+      { initialProps: { projectId: 'history-queued-project-a' } }
+    );
+
+    act(() => {
+      result.current.record(projectAFirst);
+      result.current.record(projectASecond.command);
+    });
+
+    let firstUndo;
+    let queuedUndo;
+    await act(async () => {
+      firstUndo = result.current.undo();
+      queuedUndo = result.current.undo();
+      await Promise.resolve();
+    });
+
+    expect(projectASecond.command.undo).toHaveBeenCalledOnce();
+    expect(projectAFirst.undo).not.toHaveBeenCalled();
+    expect(result.current.isApplying).toBe(true);
+
+    rerender({ projectId: 'history-queued-project-b' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    await act(async () => {
+      projectASecond.resolveUndo();
+      expect(await firstUndo).toBe(true);
+      expect(await queuedUndo).toBe(false);
+    });
+
+    expect(projectAFirst.undo).not.toHaveBeenCalled();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectBCommand));
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+      expect(await result.current.redo()).toBe(true);
+    });
+
+    expect(projectBCommand.undo).toHaveBeenCalledOnce();
+    expect(projectBCommand.redo).toHaveBeenCalledOnce();
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+  });
+
+  it('invalidates queued project operations when returning to the original project', async () => {
+    const calls = [];
+    const projectAFirst = createCommand('project-a-first', calls);
+    const projectASecond = createDeferredCommand('project-a-second', calls);
+    const projectANew = createCommand('project-a-new', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId }),
+      { initialProps: { projectId: 'history-queued-return-a' } }
+    );
+
+    act(() => {
+      result.current.record(projectAFirst);
+      result.current.record(projectASecond.command);
+    });
+
+    let firstUndo;
+    let queuedUndo;
+    await act(async () => {
+      firstUndo = result.current.undo();
+      queuedUndo = result.current.undo();
+      await Promise.resolve();
+    });
+
+    rerender({ projectId: 'history-queued-return-b' });
+    rerender({ projectId: 'history-queued-return-a' });
+
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectANew));
+    expect(result.current.canUndo).toBe(true);
+
+    await act(async () => {
+      projectASecond.resolveUndo();
+      expect(await firstUndo).toBe(true);
+      expect(await queuedUndo).toBe(false);
+    });
+
+    expect(projectAFirst.undo).not.toHaveBeenCalled();
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+    });
+
+    expect(projectANew.undo).toHaveBeenCalledOnce();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(true);
+  });
+
   it('ignores an in-flight undo failure after switching projects', async () => {
     const calls = [];
     const error = new Error('project-a undo failed');
