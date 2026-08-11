@@ -45,8 +45,9 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
     };
   });
 
-  const publishState = useCallback((isApplying = false) => {
-    const history = historyRef.current;
+  const publishState = useCallback((history = historyRef.current, isApplying = false) => {
+    if (historyRef.current !== history) return;
+
     setState({
       canUndo: history.undoStack.length > 0,
       canRedo: history.redoStack.length > 0,
@@ -56,29 +57,29 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
 
   useEffect(() => {
     if (projectKeyRef.current === projectKey) {
-      publishState(false);
+      publishState(historyRef.current, false);
       return;
     }
 
     projectKeyRef.current = projectKey;
     historyRef.current = resetHistory(getProjectHistory(projectId));
-    publishState(false);
+    publishState(historyRef.current, false);
   }, [projectId, projectKey, publishState]);
 
   const clear = useCallback(() => {
-    resetHistory(historyRef.current);
-    publishState(false);
+    const history = resetHistory(historyRef.current);
+    publishState(history, false);
   }, [publishState]);
 
   const enqueue = useCallback(
     (operation) => {
       const history = historyRef.current;
       const run = async () => {
-        publishState(true);
+        publishState(history, true);
         try {
           return await operation();
         } finally {
-          publishState(false);
+          publishState(history, false);
         }
       };
 
@@ -95,7 +96,7 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
       const history = historyRef.current;
       history.undoStack = [...history.undoStack, command].slice(-Math.max(1, limit));
       history.redoStack = [];
-      publishState(false);
+      publishState(history, false);
     },
     [limit, publishState]
   );
@@ -114,7 +115,7 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
       }
       history.undoStack = history.undoStack.slice(0, -1);
       history.redoStack = [...history.redoStack, command];
-      publishState(false);
+      publishState(history, false);
       return true;
     });
   }, [enqueue, onError, publishState]);
@@ -133,7 +134,7 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
       }
       history.redoStack = history.redoStack.slice(0, -1);
       history.undoStack = [...history.undoStack, command].slice(-Math.max(1, limit));
-      publishState(false);
+      publishState(history, false);
       return true;
     });
   }, [enqueue, limit, onError, publishState]);
