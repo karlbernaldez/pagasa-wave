@@ -123,6 +123,8 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
 
     return enqueue(async (queuedHistory, generation) => {
       const command = queuedHistory.undoStack.at(-1);
+      if (!command) return false;
+
       try {
         await command.undo();
       } catch (error) {
@@ -145,6 +147,8 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
 
     return enqueue(async (queuedHistory, generation) => {
       const command = queuedHistory.redoStack.at(-1);
+      if (!command) return false;
+
       try {
         await command.redo();
       } catch (error) {
