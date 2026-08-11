@@ -16,7 +16,10 @@ const project = {
   owner: OWNER_ID,
 };
 
-function createForecastPackage({ status = FORECAST_PACKAGE_STATUS.DRAFT, isComplete = false } = {}) {
+function createForecastPackage({
+  status = FORECAST_PACKAGE_STATUS.DRAFT,
+  isComplete = false,
+} = {}) {
   return {
     status,
     charts: [
@@ -60,10 +63,7 @@ test('all forecasters may collaborate on forecast-package charts', async () => {
   const originalExists = ForecastPackage.exists;
   try {
     ForecastPackage.exists = async () => ({ _id: 'package-1' });
-    assert.equal(
-      await canAccessProject({ id: 'forecaster-2', role: 'forecaster' }, project),
-      true,
-    );
+    assert.equal(await canAccessProject({ id: 'forecaster-2', role: 'forecaster' }, project), true);
   } finally {
     ForecastPackage.exists = originalExists;
   }
@@ -77,10 +77,7 @@ test('ordinary users do not inherit access from forecast-package membership', as
       packageLookupCount += 1;
       return { _id: 'package-1' };
     };
-    assert.equal(
-      await canAccessProject({ id: 'user-2', role: 'user' }, project),
-      false,
-    );
+    assert.equal(await canAccessProject({ id: 'user-2', role: 'user' }, project), false);
     assert.equal(packageLookupCount, 1);
   } finally {
     ForecastPackage.exists = originalExists;
@@ -109,14 +106,11 @@ test('forecast chart annotations remain mutable while package is editable and ch
 
 test('certified forecast charts reject annotation mutations until reopened', async () => {
   await withMockedForecastPackageFindOne(createForecastPackage({ isComplete: true }), async () => {
-    await assert.rejects(
-      () => assertForecastPackageChartMutationAllowed(PROJECT_ID),
-      {
-        message:
-          'Wave Analysis is certified ready and view only. Reopen the chart before editing annotations.',
-        status: 403,
-      },
-    );
+    await assert.rejects(() => assertForecastPackageChartMutationAllowed(PROJECT_ID), {
+      message:
+        'Wave Analysis is certified ready and view only. Reopen the chart before editing annotations.',
+      status: 403,
+    });
   });
 });
 
@@ -124,13 +118,10 @@ test('forecast chart annotations reject mutations after package leaves editing',
   await withMockedForecastPackageFindOne(
     createForecastPackage({ status: FORECAST_PACKAGE_STATUS.SUBMITTED }),
     async () => {
-      await assert.rejects(
-        () => assertForecastPackageChartMutationAllowed(PROJECT_ID),
-        {
-          message: 'Forecast chart annotations are view only after the package leaves editing.',
-          status: 403,
-        },
-      );
-    },
+      await assert.rejects(() => assertForecastPackageChartMutationAllowed(PROJECT_ID), {
+        message: 'Forecast chart annotations are view only after the package leaves editing.',
+        status: 403,
+      });
+    }
   );
 });
