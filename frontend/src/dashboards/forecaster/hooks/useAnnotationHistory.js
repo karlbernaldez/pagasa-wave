@@ -48,8 +48,7 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
   });
 
   const isCurrentHistory = useCallback(
-    (history, generation) =>
-      historyRef.current === history && history.generation === generation,
+    (history, generation) => historyRef.current === history && history.generation === generation,
     []
   );
 

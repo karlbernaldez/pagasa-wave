@@ -32,9 +32,7 @@ describe('useAnnotationHistory queue draining', () => {
   it('returns false for a queued undo after an earlier undo drains the stack', async () => {
     const calls = [];
     const deferred = createDeferredCommand('single', calls);
-    const { result } = renderHook(() =>
-      useAnnotationHistory({ projectId: 'history-double-undo' })
-    );
+    const { result } = renderHook(() => useAnnotationHistory({ projectId: 'history-double-undo' }));
 
     act(() => result.current.record(deferred.command));
 
@@ -63,9 +61,7 @@ describe('useAnnotationHistory queue draining', () => {
   it('returns false for a queued redo after an earlier redo drains the stack', async () => {
     const calls = [];
     const deferred = createDeferredCommand('single', calls);
-    const { result } = renderHook(() =>
-      useAnnotationHistory({ projectId: 'history-double-redo' })
-    );
+    const { result } = renderHook(() => useAnnotationHistory({ projectId: 'history-double-redo' }));
 
     act(() => result.current.record(deferred.command));
 
