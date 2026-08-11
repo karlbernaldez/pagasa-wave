@@ -110,7 +110,7 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
       try {
         await command.undo();
       } catch (error) {
-        onError?.(error);
+        if (historyRef.current === history) onError?.(error);
         throw error;
       }
       history.undoStack = history.undoStack.slice(0, -1);
@@ -129,7 +129,7 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
       try {
         await command.redo();
       } catch (error) {
-        onError?.(error);
+        if (historyRef.current === history) onError?.(error);
         throw error;
       }
       history.redoStack = history.redoStack.slice(0, -1);
