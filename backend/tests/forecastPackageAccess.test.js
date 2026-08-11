@@ -2,13 +2,48 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import ForecastPackage from '../models/ForecastPackage.js';
-import { canAccessProject } from '../utils/forecastPackageAccess.js';
+import {
+  assertForecastPackageChartMutationAllowed,
+  canAccessProject,
+  getForecastPackageChartAccess,
+} from '../utils/forecastPackageAccess.js';
+import { FORECAST_PACKAGE_STATUS } from '../utils/forecastPackage.js';
 
 const OWNER_ID = 'owner-1';
+const PROJECT_ID = '507f1f77bcf86cd799439011';
 const project = {
-  _id: '507f1f77bcf86cd799439011',
+  _id: PROJECT_ID,
   owner: OWNER_ID,
 };
+
+function createForecastPackage({ status = FORECAST_PACKAGE_STATUS.DRAFT, isComplete = false } = {}) {
+  return {
+    status,
+    charts: [
+      {
+        project: PROJECT_ID,
+        chartType: 'analysis',
+      },
+    ],
+    chartCompletion: [
+      {
+        chartType: 'analysis',
+        isComplete,
+      },
+    ],
+  };
+}
+
+async function withMockedForecastPackageFindOne(result, fn) {
+  const originalFindOne = ForecastPackage.findOne;
+  ForecastPackage.findOne = async () => result;
+
+  try {
+    return await fn();
+  } finally {
+    ForecastPackage.findOne = originalFindOne;
+  }
+}
 
 test('admins and owners of non-package projects retain access', async () => {
   const originalExists = ForecastPackage.exists;
@@ -50,4 +85,52 @@ test('ordinary users do not inherit access from forecast-package membership', as
   } finally {
     ForecastPackage.exists = originalExists;
   }
+});
+
+test('forecast chart access returns null for projects outside forecast packages', async () => {
+  await withMockedForecastPackageFindOne(null, async () => {
+    assert.equal(await getForecastPackageChartAccess(PROJECT_ID), null);
+    await assert.doesNotReject(() => assertForecastPackageChartMutationAllowed(PROJECT_ID));
+  });
+});
+
+test('forecast chart annotations remain mutable while package is editable and chart is incomplete', async () => {
+  const forecastPackage = createForecastPackage();
+
+  await withMockedForecastPackageFindOne(forecastPackage, async () => {
+    const access = await getForecastPackageChartAccess(PROJECT_ID);
+
+    assert.equal(access.forecastPackage, forecastPackage);
+    assert.equal(access.chart.chartType, 'analysis');
+    assert.equal(access.completion.isComplete, false);
+    await assert.doesNotReject(() => assertForecastPackageChartMutationAllowed(PROJECT_ID));
+  });
+});
+
+test('certified forecast charts reject annotation mutations until reopened', async () => {
+  await withMockedForecastPackageFindOne(createForecastPackage({ isComplete: true }), async () => {
+    await assert.rejects(
+      () => assertForecastPackageChartMutationAllowed(PROJECT_ID),
+      {
+        message:
+          'Wave Analysis is certified ready and view only. Reopen the chart before editing annotations.',
+        status: 403,
+      },
+    );
+  });
+});
+
+test('forecast chart annotations reject mutations after package leaves editing', async () => {
+  await withMockedForecastPackageFindOne(
+    createForecastPackage({ status: FORECAST_PACKAGE_STATUS.SUBMITTED }),
+    async () => {
+      await assert.rejects(
+        () => assertForecastPackageChartMutationAllowed(PROJECT_ID),
+        {
+          message: 'Forecast chart annotations are view only after the package leaves editing.',
+          status: 403,
+        },
+      );
+    },
+  );
 });
