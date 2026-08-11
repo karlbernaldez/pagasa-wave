@@ -17,6 +17,37 @@ function createCommand(label, calls, { undoError, redoError } = {}) {
   };
 }
 
+function createDeferredCommand(label, calls) {
+  let resolveUndo;
+  let resolveRedo;
+  let rejectUndo;
+  let rejectRedo;
+
+  return {
+    command: {
+      label,
+      undo: vi.fn(() => {
+        calls.push(`undo:${label}`);
+        return new Promise((resolve, reject) => {
+          resolveUndo = resolve;
+          rejectUndo = reject;
+        });
+      }),
+      redo: vi.fn(() => {
+        calls.push(`redo:${label}`);
+        return new Promise((resolve, reject) => {
+          resolveRedo = resolve;
+          rejectRedo = reject;
+        });
+      }),
+    },
+    resolveUndo: () => resolveUndo?.(),
+    resolveRedo: () => resolveRedo?.(),
+    rejectUndo: (error) => rejectUndo?.(error),
+    rejectRedo: (error) => rejectRedo?.(error),
+  };
+}
+
 describe('useAnnotationHistory', () => {
   it('undoes newest commands first and redoes them in order', async () => {
     const calls = [];
@@ -96,6 +127,318 @@ describe('useAnnotationHistory', () => {
     expect(projectBCommand.undo).not.toHaveBeenCalled();
     expect(projectBCommand.redo).not.toHaveBeenCalled();
     expect(calls).toEqual([]);
+  });
+
+  it('ignores an in-flight undo completion after switching projects', async () => {
+    const calls = [];
+    const projectADeferred = createDeferredCommand('project-a', calls);
+    const projectBCommand = createCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId }),
+      { initialProps: { projectId: 'history-inflight-project-a' } }
+    );
+
+    act(() => result.current.record(projectADeferred.command));
+
+    let projectAUndo;
+    await act(async () => {
+      projectAUndo = result.current.undo();
+      await Promise.resolve();
+    });
+    expect(result.current.isApplying).toBe(true);
+    expect(projectADeferred.command.undo).toHaveBeenCalledOnce();
+
+    rerender({ projectId: 'history-inflight-project-b' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    await act(async () => {
+      projectADeferred.resolveUndo();
+      expect(await projectAUndo).toBe(true);
+    });
+
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectBCommand));
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+    });
+
+    expect(projectBCommand.undo).toHaveBeenCalledOnce();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(true);
+  });
+
+  it('does not let a stale project completion clear the active project applying state', async () => {
+    const calls = [];
+    const projectADeferred = createDeferredCommand('project-a', calls);
+    const projectBDeferred = createDeferredCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId }),
+      { initialProps: { projectId: 'history-overlap-project-a' } }
+    );
+
+    act(() => result.current.record(projectADeferred.command));
+
+    let projectAUndo;
+    await act(async () => {
+      projectAUndo = result.current.undo();
+      await Promise.resolve();
+    });
+
+    rerender({ projectId: 'history-overlap-project-b' });
+    act(() => result.current.record(projectBDeferred.command));
+
+    let projectBUndo;
+    await act(async () => {
+      projectBUndo = result.current.undo();
+      await Promise.resolve();
+    });
+    expect(result.current.isApplying).toBe(true);
+
+    await act(async () => {
+      projectADeferred.resolveUndo();
+      expect(await projectAUndo).toBe(true);
+    });
+
+    expect(result.current.isApplying).toBe(true);
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+
+    await act(async () => {
+      projectBDeferred.resolveUndo();
+      expect(await projectBUndo).toBe(true);
+    });
+
+    expect(result.current.isApplying).toBe(false);
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(true);
+  });
+
+  it('drops queued project operations after switching projects', async () => {
+    const calls = [];
+    const projectAFirst = createCommand('project-a-first', calls);
+    const projectASecond = createDeferredCommand('project-a-second', calls);
+    const projectBCommand = createCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId }),
+      { initialProps: { projectId: 'history-queued-project-a' } }
+    );
+
+    act(() => {
+      result.current.record(projectAFirst);
+      result.current.record(projectASecond.command);
+    });
+
+    let firstUndo;
+    let queuedUndo;
+    await act(async () => {
+      firstUndo = result.current.undo();
+      queuedUndo = result.current.undo();
+      await Promise.resolve();
+    });
+
+    expect(projectASecond.command.undo).toHaveBeenCalledOnce();
+    expect(projectAFirst.undo).not.toHaveBeenCalled();
+    expect(result.current.isApplying).toBe(true);
+
+    rerender({ projectId: 'history-queued-project-b' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    await act(async () => {
+      projectASecond.resolveUndo();
+      expect(await firstUndo).toBe(true);
+      expect(await queuedUndo).toBe(false);
+    });
+
+    expect(projectAFirst.undo).not.toHaveBeenCalled();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectBCommand));
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+      expect(await result.current.redo()).toBe(true);
+    });
+
+    expect(projectBCommand.undo).toHaveBeenCalledOnce();
+    expect(projectBCommand.redo).toHaveBeenCalledOnce();
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+  });
+
+  it('invalidates queued project operations when returning to the original project', async () => {
+    const calls = [];
+    const projectAFirst = createCommand('project-a-first', calls);
+    const projectASecond = createDeferredCommand('project-a-second', calls);
+    const projectANew = createCommand('project-a-new', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId }),
+      { initialProps: { projectId: 'history-queued-return-a' } }
+    );
+
+    act(() => {
+      result.current.record(projectAFirst);
+      result.current.record(projectASecond.command);
+    });
+
+    let firstUndo;
+    let queuedUndo;
+    await act(async () => {
+      firstUndo = result.current.undo();
+      queuedUndo = result.current.undo();
+      await Promise.resolve();
+    });
+
+    rerender({ projectId: 'history-queued-return-b' });
+    rerender({ projectId: 'history-queued-return-a' });
+
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectANew));
+    expect(result.current.canUndo).toBe(true);
+
+    await act(async () => {
+      projectASecond.resolveUndo();
+      expect(await firstUndo).toBe(true);
+      expect(await queuedUndo).toBe(false);
+    });
+
+    expect(projectAFirst.undo).not.toHaveBeenCalled();
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+    });
+
+    expect(projectANew.undo).toHaveBeenCalledOnce();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(true);
+  });
+
+  it('ignores an in-flight undo failure after switching projects', async () => {
+    const calls = [];
+    const error = new Error('project-a undo failed');
+    const onError = vi.fn();
+    const projectADeferred = createDeferredCommand('project-a', calls);
+    const projectBCommand = createCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId, onError }),
+      { initialProps: { projectId: 'history-failed-inflight-undo-a' } }
+    );
+
+    act(() => result.current.record(projectADeferred.command));
+
+    let projectAUndo;
+    await act(async () => {
+      projectAUndo = result.current.undo();
+      await Promise.resolve();
+    });
+    expect(result.current.isApplying).toBe(true);
+
+    rerender({ projectId: 'history-failed-inflight-undo-b' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    let caughtError;
+    await act(async () => {
+      projectADeferred.rejectUndo(error);
+      try {
+        await projectAUndo;
+      } catch (caught) {
+        caughtError = caught;
+      }
+    });
+
+    expect(caughtError).toBe(error);
+    expect(onError).not.toHaveBeenCalled();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectBCommand));
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+      expect(await result.current.redo()).toBe(true);
+    });
+
+    expect(projectBCommand.undo).toHaveBeenCalledOnce();
+    expect(projectBCommand.redo).toHaveBeenCalledOnce();
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+  });
+
+  it('ignores an in-flight redo failure after switching projects', async () => {
+    const calls = [];
+    const error = new Error('project-a redo failed');
+    const onError = vi.fn();
+    const projectADeferred = createDeferredCommand('project-a', calls);
+    const projectBCommand = createCommand('project-b', calls);
+    const { result, rerender } = renderHook(
+      ({ projectId }) => useAnnotationHistory({ projectId, onError }),
+      { initialProps: { projectId: 'history-failed-inflight-redo-a' } }
+    );
+
+    act(() => result.current.record(projectADeferred.command));
+
+    let projectAUndo;
+    await act(async () => {
+      projectAUndo = result.current.undo();
+      await Promise.resolve();
+      projectADeferred.resolveUndo();
+      expect(await projectAUndo).toBe(true);
+    });
+    expect(result.current.canRedo).toBe(true);
+
+    let projectARedo;
+    await act(async () => {
+      projectARedo = result.current.redo();
+      await Promise.resolve();
+    });
+    expect(result.current.isApplying).toBe(true);
+
+    rerender({ projectId: 'history-failed-inflight-redo-b' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    let caughtError;
+    await act(async () => {
+      projectADeferred.rejectRedo(error);
+      try {
+        await projectARedo;
+      } catch (caught) {
+        caughtError = caught;
+      }
+    });
+
+    expect(caughtError).toBe(error);
+    expect(onError).not.toHaveBeenCalled();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.isApplying).toBe(false);
+
+    act(() => result.current.record(projectBCommand));
+    await act(async () => {
+      expect(await result.current.undo()).toBe(true);
+    });
+
+    expect(projectBCommand.undo).toHaveBeenCalledOnce();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(true);
   });
 
   it('keeps only the configured number of commands', async () => {
