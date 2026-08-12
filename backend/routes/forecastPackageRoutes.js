@@ -228,9 +228,10 @@ async function requireResolvedRevisionBeforeSubmit(req, res, next) {
   }
 }
 
-async function syncPackageStatusFromCharts(forecastPackage, userId) {
+export async function syncPackageStatusFromCharts(forecastPackage, userId) {
+  const previousStatus = forecastPackage?.status;
   const nextStatus = deriveForecastPackageStatusFromCharts(forecastPackage);
-  if (!nextStatus || nextStatus === forecastPackage?.status) return forecastPackage;
+  if (!nextStatus || nextStatus === previousStatus) return forecastPackage;
 
   const update = {
     $set: {
@@ -241,7 +242,7 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
         action:
           nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ? 'approved' : 'chart_completion_updated',
         performedBy: userId,
-        previousStatus: forecastPackage.status,
+        previousStatus,
         newStatus: nextStatus,
         comment: 'Forecast Package status synced from chart project statuses',
       },
@@ -258,18 +259,26 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
     update.$set.approvedBy = userId;
   }
 
-  const updatedPackage = await ForecastPackage.findByIdAndUpdate(forecastPackage._id, update, {
-    new: true,
-  })
+  const updatedPackage = await ForecastPackage.findOneAndUpdate(
+    { _id: forecastPackage._id, status: previousStatus },
+    update,
+    { new: true }
+  )
     .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
     .lean();
 
   if (updatedPackage) {
     emitForecastPackageUpdated(updatedPackage, { action: 'status_synced' });
+    return updatedPackage;
   }
 
-  return updatedPackage || { ...forecastPackage, status: nextStatus };
+  const currentPackage = await ForecastPackage.findById(forecastPackage._id)
+    .populate('owner', 'firstName lastName email username')
+    .populate('charts.project')
+    .lean();
+
+  return currentPackage || forecastPackage;
 }
 
 async function getAdminForecastPackages(req, res, next) {
