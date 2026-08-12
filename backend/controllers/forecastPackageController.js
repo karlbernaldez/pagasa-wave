@@ -6,12 +6,12 @@ import {
   FORECAST_PACKAGE_STATUS,
   REQUIRED_FORECAST_CHARTS,
   REQUIRED_FORECAST_CHART_TYPES,
-  buildForecastChartProjectName,
   buildForecastPackageName,
   getForecastChartLabel,
   getPackageCompletion,
   normalizeForecastDate,
 } from '../utils/forecastPackage.js';
+import { applyForecastPackageDisplayNames } from '../utils/forecastPackageDisplayNames.js';
 import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
@@ -19,8 +19,6 @@ const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.DRAFT,
   FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
 ];
-const AUTO_PACKAGE_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2}$/;
-const AUTO_CHART_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2} - /;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function assertAuthenticated(req) {
@@ -155,62 +153,15 @@ function getActiveEditingChartLabel(forecastPackage) {
   return chart ? getForecastChartLabel(chart.chartType) : null;
 }
 
-async function syncForecastPackageDisplayNames(forecastPackage) {
-  if (!forecastPackage?.forecastDate) return forecastPackage;
-
-  const canonicalPackageName = buildForecastPackageName(forecastPackage.forecastDate);
-  const currentPackageName = String(forecastPackage.name || '');
-  const shouldRenamePackage =
-    !currentPackageName || AUTO_PACKAGE_NAME_PATTERN.test(currentPackageName);
-  let changed = false;
-
-  if (
-    canonicalPackageName &&
-    shouldRenamePackage &&
-    forecastPackage.name !== canonicalPackageName
-  ) {
-    forecastPackage.name = canonicalPackageName;
-    changed = true;
-  }
-
-  for (const chart of forecastPackage.charts || []) {
-    const project = chart.project;
-    if (!project || typeof project === 'string') continue;
-    const currentProjectName = String(project.name || '');
-    const shouldRenameChart =
-      !currentProjectName || AUTO_CHART_NAME_PATTERN.test(currentProjectName);
-    const nextProjectName =
-      canonicalPackageName && shouldRenameChart
-        ? buildForecastChartProjectName(
-            forecastPackage.forecastDate,
-            getForecastChartLabel(chart.chartType)
-          )
-        : null;
-
-    if (nextProjectName && project.name !== nextProjectName) {
-      project.name = nextProjectName;
-      await Project.updateOne(
-        { _id: project._id },
-        { $set: { name: nextProjectName, forecastDate: forecastPackage.forecastDate } }
-      );
-      changed = true;
-    }
-  }
-
-  if (changed && typeof forecastPackage.save === 'function') {
-    await forecastPackage.save();
-  }
-
-  return forecastPackage;
-}
-
 function serializePackage(forecastPackage) {
   const plain =
     typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage;
 
+  const displayPackage = applyForecastPackageDisplayNames(plain);
+
   return {
-    ...plain,
-    completion: getPackageCompletion(plain.chartCompletion || []),
+    ...displayPackage,
+    completion: getPackageCompletion(displayPackage.chartCompletion || []),
   };
 }
 
@@ -244,8 +195,7 @@ function getLinkedProjectIds(forecastPackage) {
 }
 
 async function populateForecastPackageById(id) {
-  const forecastPackage = await populateForecastPackage(ForecastPackage.findById(id));
-  return syncForecastPackageDisplayNames(forecastPackage);
+  return populateForecastPackage(ForecastPackage.findById(id));
 }
 
 async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) {
@@ -494,10 +444,6 @@ export const getUserForecastPackages = asyncHandler(async (req, res) => {
     ForecastPackage.countDocuments(query),
   ]);
 
-  for (const forecastPackage of packages) {
-    await syncForecastPackageDisplayNames(forecastPackage);
-  }
-
   res.json({
     packages: packages.map(serializePackage),
     total,
@@ -527,7 +473,6 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
     });
   }
 
-  await syncForecastPackageDisplayNames(forecastPackage);
   res.json({ package: serializePackage(forecastPackage) });
 });
 
@@ -537,7 +482,6 @@ export const getForecastPackageById = asyncHandler(async (req, res) => {
   const forecastPackage = await populateForecastPackage(ForecastPackage.findById(req.params.id));
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-  await syncForecastPackageDisplayNames(forecastPackage);
   res.json(serializePackage(forecastPackage));
 });
 
