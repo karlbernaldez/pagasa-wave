@@ -140,13 +140,26 @@ export const verifyCredentials = async (user, password, req, res, geoMeta) => {
 };
 
 /**
- * Clear the failed-attempt counter after a successful credential check.
- * Only writes to DB if there is actually something to reset.
+ * Clear stale failure metadata after a correct password without saving the
+ * caller's whole User snapshot. A concurrent lock/suspension wins the race.
  */
 export const resetFailedAttempts = async (user) => {
-  if (user.failedLoginAttempts > 0) {
-    user.failedLoginAttempts = 0;
-    user.lockUntil = null;
-    await user.save();
-  }
+  if (user.failedLoginAttempts <= 0 && user.lockUntil === null) return;
+
+  await User.updateOne(
+    {
+      _id: user._id,
+      deletedAt: null,
+      status: 'active',
+    },
+    {
+      $set: {
+        failedLoginAttempts: 0,
+        lockUntil: null,
+      },
+    }
+  );
+
+  user.failedLoginAttempts = 0;
+  user.lockUntil = null;
 };
