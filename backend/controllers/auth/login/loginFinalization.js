@@ -5,7 +5,8 @@ import User from '#models/User';
  * receive a session. Returns the freshly persisted user state used for token
  * issuance, including sessionVersion.
  */
-export const finalizeLoginUser = ({ userId, ip, userAgent, coordinates = null }) => {
+export const finalizeLoginUser = ({ userId, email, ip, userAgent, coordinates = null }) => {
+  const identity = userId ? { _id: userId } : { email };
   const set = {
     failedLoginAttempts: 0,
     lockUntil: null,
@@ -18,7 +19,7 @@ export const finalizeLoginUser = ({ userId, ip, userAgent, coordinates = null })
 
   return User.findOneAndUpdate(
     {
-      _id: userId,
+      ...identity,
       deletedAt: null,
       status: 'active',
       emailVerified: true,
