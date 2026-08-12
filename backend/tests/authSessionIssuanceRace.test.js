@@ -5,6 +5,12 @@ import User from '../models/User.js';
 import { finalizeLoginUser } from '../controllers/auth/login/loginFinalization.js';
 import { resetFailedAttempts } from '../controllers/auth/login/loginCredentials.js';
 import { autoUnlockIfExpired } from '../controllers/auth/login/loginGuards.js';
+import {
+  generateAndStoreOtp,
+  markCredentialsVerified,
+  setStore,
+  verifyOtp,
+} from '../controllers/auth/otp.js';
 
 async function withUserMocks({ findOneAndUpdate, updateOne }, work) {
   const originalFindOneAndUpdate = User.findOneAndUpdate;
@@ -26,6 +32,47 @@ function queryReturning(value, onSelect) {
     select(selection) {
       onSelect?.(selection);
       return Promise.resolve(value);
+    },
+  };
+}
+
+class TestStore {
+  constructor() {
+    this.map = new Map();
+  }
+
+  async get(key) {
+    return this.map.get(key);
+  }
+
+  async set(key, value) {
+    this.map.set(key, value);
+  }
+
+  async delete(key) {
+    this.map.delete(key);
+  }
+
+  async incrementAttempts(key) {
+    const record = this.map.get(key);
+    if (!record) return null;
+    const updated = { ...record, attempts: (record.attempts ?? 0) + 1 };
+    this.map.set(key, updated);
+    return updated;
+  }
+}
+
+function responseRecorder() {
+  return {
+    statusCode: 200,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
     },
   };
 }
@@ -213,4 +260,36 @@ test('expired lock cleanup leaves the stale object non-active when a concurrent 
 
   assert.equal(user.status, 'locked');
   assert.equal(user.failedLoginAttempts, 5);
+});
+
+test('valid OTP is denied when the final authorization gate loses a concurrent status race', async () => {
+  const email = 'forecaster@example.com';
+  const pendingStore = new TestStore();
+  const otpStore = new TestStore();
+  setStore(pendingStore, otpStore);
+
+  await markCredentialsVerified(email);
+  const otp = await generateAndStoreOtp(email);
+
+  await withUserMocks(
+    {
+      findOneAndUpdate: () => queryReturning(null),
+    },
+    async () => {
+      const req = {
+        body: { email, otp },
+        ip: '10.0.0.8',
+        headers: { 'user-agent': 'otp-agent' },
+      };
+      const res = responseRecorder();
+
+      await verifyOtp(req, res);
+
+      assert.equal(res.statusCode, 403);
+      assert.equal(res.body.message, 'Account is not available for login.');
+    }
+  );
+
+  assert.equal(await pendingStore.get(email), undefined);
+  assert.equal(await otpStore.get(email), undefined);
 });
