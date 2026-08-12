@@ -111,7 +111,9 @@ export const refreshAccessToken = async (req, res) => {
         { $set: { revokedAt: new Date(), revokedReason: 'refresh_token_reuse' } }
       );
       clearAuthCookies(res);
-      return res.status(401).json({ message: 'Refresh token reuse detected. Session family revoked.' });
+      return res
+        .status(401)
+        .json({ message: 'Refresh token reuse detected. Session family revoked.' });
     }
 
     setAuthCookies(res, accessToken, replacementRefreshToken);
