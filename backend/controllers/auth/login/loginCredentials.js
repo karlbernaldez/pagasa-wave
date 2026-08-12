@@ -12,7 +12,7 @@ const buildAttemptsMessage = (attemptsLeft) => {
   return `${attemptsLeft} ${attemptsLeft === 1 ? 'try' : 'tries'} remaining before account lock.`;
 };
 
-const recordFailedLogin = async (userId) => {
+export const recordFailedLogin = async (userId) => {
   const lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
 
   return User.findOneAndUpdate(
