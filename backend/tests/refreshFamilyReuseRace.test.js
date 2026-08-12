@@ -134,9 +134,9 @@ test('family compromise lookup is durable across replacement-session timing', as
 });
 
 test('refresh winner revokes its replacement when concurrent reuse compromises the family before delivery', async () => {
-  const originalAccessSecret = process.env.JWT_ACCESS_SECRET;
+  const originalAccessSecret = process.env.JWT_SECRET;
   const originalRefreshSecret = process.env.JWT_REFRESH_SECRET;
-  process.env.JWT_ACCESS_SECRET = ACCESS_SECRET;
+  process.env.JWT_SECRET = ACCESS_SECRET;
   process.env.JWT_REFRESH_SECRET = REFRESH_SECRET;
 
   const oldJti = 'old-refresh-jti';
@@ -209,8 +209,8 @@ test('refresh winner revokes its replacement when concurrent reuse compromises t
       }
     );
   } finally {
-    if (originalAccessSecret === undefined) delete process.env.JWT_ACCESS_SECRET;
-    else process.env.JWT_ACCESS_SECRET = originalAccessSecret;
+    if (originalAccessSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalAccessSecret;
     if (originalRefreshSecret === undefined) delete process.env.JWT_REFRESH_SECRET;
     else process.env.JWT_REFRESH_SECRET = originalRefreshSecret;
   }
