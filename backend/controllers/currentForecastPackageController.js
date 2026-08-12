@@ -11,6 +11,7 @@ import {
   getPackageCompletion,
   normalizeForecastDate,
 } from '../utils/forecastPackage.js';
+import { applyForecastPackageDisplayNames } from '../utils/forecastPackageDisplayNames.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -29,9 +30,11 @@ function serializePackage(forecastPackage) {
   const plain =
     typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage;
 
+  const displayPackage = applyForecastPackageDisplayNames(plain);
+
   return {
-    ...plain,
-    completion: getPackageCompletion(plain.chartCompletion || []),
+    ...displayPackage,
+    completion: getPackageCompletion(displayPackage.chartCompletion || []),
   };
 }
 
@@ -104,7 +107,6 @@ async function ensureDailyChartProject({ forecastDate, user, requiredChart, pack
   const existing = await Project.findOne(query).sort({ updatedAt: -1 });
   if (existing) {
     const patch = {};
-    if (existing.name !== name) patch.name = name;
     if (!existing.status) patch.status = PROJECT_STATUS.DRAFT;
     if (Object.keys(patch).length) {
       await Project.updateOne({ _id: existing._id }, { $set: patch });
