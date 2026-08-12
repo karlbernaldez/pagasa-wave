@@ -273,7 +273,7 @@ export const verifyOtp = async (req, res) => {
     const currentIP = req.ip;
     const currentUA = req.headers['user-agent'] ?? '';
     const user = await finalizeLoginUser({
-      userId: record.userId,
+      email,
       ip: currentIP,
       userAgent: currentUA,
     });
