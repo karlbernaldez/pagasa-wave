@@ -10,6 +10,7 @@ import {
   getForecastChartLabel,
   getPackageCompletion,
 } from '../utils/forecastPackage.js';
+import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const REVISION_SOURCE_STATUSES = new Set([
@@ -239,6 +240,7 @@ async function applyTargetedRevision({
     .filter(Boolean);
   const reviewedAt = new Date();
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   const snapshot = compensateOnFailure ? cloneRevisionSnapshot(forecastPackage) : null;
 
   forecastPackage.status = FORECAST_PACKAGE_STATUS.REVISION_REQUESTED;
@@ -257,7 +259,14 @@ async function applyTargetedRevision({
     comment: `${comment} Affected charts: ${affectedChartTypes.map(getForecastChartLabel).join(', ')}.`,
   });
 
-  await forecastPackage.save(session ? { session } : undefined);
+  await saveForecastPackageSnapshot(forecastPackage, {
+    session,
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package changed while the revision request was in progress. Reload and try again.',
+  });
+  const revisionUpdatedAt = forecastPackage.updatedAt;
 
   const projectOperations = buildProjectRevisionOperations(
     projects,
@@ -275,7 +284,12 @@ async function applyTargetedRevision({
     if (snapshot) {
       try {
         restoreRevisionSnapshot(forecastPackage, snapshot);
-        await forecastPackage.save();
+        await saveForecastPackageSnapshot(forecastPackage, {
+          expectedStatus: FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
+          expectedUpdatedAt: revisionUpdatedAt,
+          conflictMessage:
+            'Forecast Package changed before revision rollback completed. Reload before making further changes.',
+        });
       } catch (rollbackError) {
         console.error('[ForecastPackageRevision] Compensation failed:', rollbackError);
       }
