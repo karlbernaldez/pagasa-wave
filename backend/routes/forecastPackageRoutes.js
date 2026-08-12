@@ -26,6 +26,10 @@ import {
 import protect from '../middleware/authMiddleware.js';
 import { isAdmin } from '../middleware/adminMiddleware.js';
 import {
+  lockPackageChartMutation,
+  lockProjectParamMutation,
+} from '../middleware/projectMutationLockMiddleware.js';
+import {
   ADMIN_DRAFT_PACKAGE_LABEL,
   FORECAST_PACKAGE_STATUS,
   REQUIRED_FORECAST_CHARTS,
@@ -361,12 +365,14 @@ router.patch(
 );
 router.patch(
   '/charts/project/:projectId/completion',
+  lockProjectParamMutation,
   emitForecastPackageWorkflowAfterResponse('chart_completion_updated'),
   updateForecastChartCompletionByProject
 );
 router.get('/:id', getForecastPackageById);
 router.patch(
   '/:id/charts/:chartType/completion',
+  lockPackageChartMutation,
   requireJoinedChartBeforeCompletion,
   emitForecastPackageWorkflowAfterResponse('chart_completion_updated'),
   updateForecastChartCompletion
