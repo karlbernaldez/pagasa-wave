@@ -16,8 +16,12 @@ function removeRange(source, startMarker, endMarker, label) {
   return source.slice(0, start) + source.slice(end);
 }
 
+function readNormalized(path) {
+  return fs.readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
+}
+
 const packageControllerPath = 'backend/controllers/forecastPackageController.js';
-let packageController = fs.readFileSync(packageControllerPath, 'utf8');
+let packageController = readNormalized(packageControllerPath);
 
 packageController = replaceOnce(
   packageController,
@@ -82,7 +86,7 @@ if (packageController.includes('AUTO_PACKAGE_NAME_PATTERN'))
 fs.writeFileSync(packageControllerPath, packageController);
 
 const currentControllerPath = 'backend/controllers/currentForecastPackageController.js';
-let currentController = fs.readFileSync(currentControllerPath, 'utf8');
+let currentController = readNormalized(currentControllerPath);
 
 currentController = replaceOnce(
   currentController,
