@@ -397,11 +397,21 @@ export const getProjectById = asyncHandler(async (req, res) => {
 
   await project.populate('owner', 'firstName lastName email position');
 
-  project.lastOpenedAt = new Date();
-  project.lastOpenedBy = req.user.id;
-  project.openCount += 1;
+  const openedAt = new Date();
+  await Project.updateOne(
+    { _id: project._id },
+    {
+      $set: {
+        lastOpenedAt: openedAt,
+        lastOpenedBy: req.user.id,
+      },
+      $inc: { openCount: 1 },
+    }
+  );
 
-  await project.save();
+  project.lastOpenedAt = openedAt;
+  project.lastOpenedBy = req.user.id;
+  project.openCount = (project.openCount || 0) + 1;
 
   res.json(project);
 });
@@ -426,6 +436,8 @@ export const renameProject = asyncHandler(async (req, res) => {
     return res.json(project);
   }
 
+  const expectedStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
   await ensureUniqueProjectName(name.trim(), req.user.id, project._id);
 
   const previousName = project.name;
@@ -439,7 +451,11 @@ export const renameProject = asyncHandler(async (req, res) => {
     comment: `Renamed from "${previousName}" to "${name.trim()}"`,
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus,
+    expectedUpdatedAt,
+    conflictMessage: 'Project changed while the rename was in progress. Reload and try again.',
+  });
 
   res.json(project);
 });
@@ -460,6 +476,8 @@ export const updateProject = asyncHandler(async (req, res) => {
     throwError('All fields are required', 400);
   }
 
+  const expectedStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
   await ensureUniqueProjectName(name, req.user.id, project._id);
 
   project.name = name.trim();
@@ -475,7 +493,11 @@ export const updateProject = asyncHandler(async (req, res) => {
     comment: 'Project edited',
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus,
+    expectedUpdatedAt,
+    conflictMessage: 'Project changed while the edit was in progress. Reload and try again.',
+  });
 
   res.json(project);
 });
@@ -581,6 +603,8 @@ export const addReviewComment = asyncHandler(async (req, res) => {
     throwError('Comments can only be added while a project is submitted or under review', 400);
   }
 
+  const expectedStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
   project.auditLogs.push({
     action: 'comment_added',
     performedBy: req.user.id,
@@ -589,7 +613,12 @@ export const addReviewComment = asyncHandler(async (req, res) => {
     comment,
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Project review state changed while the comment was being added. Reload and try again.',
+  });
   await notifyProjectOwner(project, req.user.id, 'comment_added', comment);
   return sendProject(project, res);
 });
