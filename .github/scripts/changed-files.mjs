@@ -28,12 +28,20 @@ function mergeBase(left, right) {
   }
 }
 
+function getLocalFallbackBase(head) {
+  for (const ref of ['origin/dev', 'origin/main']) {
+    const base = mergeBase(head, ref);
+    if (commitExists(base)) return base;
+  }
+
+  return `${head}^`;
+}
+
 export function getComparisonRange() {
   const head = process.env.QUALITY_HEAD_SHA || process.env.GITHUB_SHA || 'HEAD';
   let base = process.env.QUALITY_BASE_SHA;
 
-  if (!commitExists(base)) base = mergeBase(head, 'origin/main');
-  if (!commitExists(base)) base = `${head}^`;
+  if (!commitExists(base)) base = getLocalFallbackBase(head);
 
   return commitExists(base) && commitExists(head) ? { base, head } : null;
 }
