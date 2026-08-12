@@ -812,6 +812,7 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.UNDER_REVIEW;
   forecastPackage.reviewStartedAt = new Date();
   forecastPackage.reviewStartedBy = req.user.id;
@@ -823,7 +824,12 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
     comment: 'Forecast Package moved to review',
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -845,6 +851,7 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.REVISION_REQUESTED;
   forecastPackage.reviewedAt = new Date();
   forecastPackage.rejectedBy = req.user.id;
@@ -858,7 +865,12 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
     comment,
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   await requestLinkedChartProjectRevisions(forecastPackage, req.user.id, comment);
 
   const populated = await populateForecastPackageById(forecastPackage._id);
@@ -881,6 +893,7 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.APPROVED;
   forecastPackage.approvedBy = req.user.id;
   forecastPackage.auditLogs.push({
@@ -891,7 +904,12 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
     comment: 'Forecast Package approved by admin',
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -909,6 +927,7 @@ export const rejectForecastPackage = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.REJECTED;
   forecastPackage.reviewedAt = new Date();
   forecastPackage.rejectedBy = req.user.id;
@@ -921,7 +940,12 @@ export const rejectForecastPackage = asyncHandler(async (req, res) => {
     comment,
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -938,6 +962,7 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.PUBLISHED;
   forecastPackage.publishedAt = new Date();
   forecastPackage.auditLogs.push({
@@ -948,7 +973,12 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
     comment: 'Forecast Package published',
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -961,6 +991,7 @@ export const archiveForecastPackage = asyncHandler(async (req, res) => {
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.ARCHIVED;
   forecastPackage.auditLogs.push({
     action: 'archived',
@@ -970,7 +1001,12 @@ export const archiveForecastPackage = asyncHandler(async (req, res) => {
     comment: 'Forecast Package archived',
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
