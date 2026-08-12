@@ -208,7 +208,7 @@ async function sendProject(project, res) {
 
 /* =========================================================
    ADMIN: GET ALL PROJECTS
-========================================================= */
+--------------------------------------------------------- */
 export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
   if (!req.user || req.user.role !== 'admin') {
     throwError('Admin access required', 403);
@@ -258,7 +258,7 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
 
 /* =========================================================
    CREATE PROJECT
-========================================================= */
+--------------------------------------------------------- */
 export const createProject = asyncHandler(async (req, res) => {
   const { name, description, chartType, forecastDate } = req.body;
 
@@ -293,7 +293,7 @@ export const createProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    GET USER PROJECTS
-========================================================= */
+--------------------------------------------------------- */
 export const getUserProjects = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
@@ -373,7 +373,7 @@ export const getUserProjects = asyncHandler(async (req, res) => {
 
 /* =========================================================
    GET LATEST USER PROJECT
-========================================================= */
+--------------------------------------------------------- */
 export const getLatestUserProject = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
@@ -391,7 +391,7 @@ export const getLatestUserProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    GET PROJECT BY ID
-========================================================= */
+--------------------------------------------------------- */
 export const getProjectById = asyncHandler(async (req, res) => {
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
@@ -408,7 +408,7 @@ export const getProjectById = asyncHandler(async (req, res) => {
 
 /* =========================================================
    UPDATE PROJECT NAME
-========================================================= */
+--------------------------------------------------------- */
 export const renameProject = asyncHandler(async (req, res) => {
   const { name } = req.body;
 
@@ -446,7 +446,7 @@ export const renameProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    UPDATE PROJECT (DRAFT, REJECTED, OR REVISION REQUESTED)
-========================================================= */
+--------------------------------------------------------- */
 export const updateProject = asyncHandler(async (req, res) => {
   const { name, description, chartType, forecastDate } = req.body;
 
@@ -482,7 +482,7 @@ export const updateProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    SUBMIT PROJECT (OWNER)
-========================================================= */
+--------------------------------------------------------- */
 export const submitProject = asyncHandler(async (req, res) => {
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
@@ -524,7 +524,7 @@ export const submitProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    START PROJECT REVIEW (ADMIN)
-========================================================= */
+--------------------------------------------------------- */
 export const startReviewProject = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     throwError('Admin access required', 403);
@@ -567,7 +567,7 @@ export const startReviewProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    ADD REVIEW COMMENT (ADMIN)
-========================================================= */
+--------------------------------------------------------- */
 export const addReviewComment = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     throwError('Admin access required', 403);
@@ -596,7 +596,7 @@ export const addReviewComment = asyncHandler(async (req, res) => {
 
 /* =========================================================
    REQUEST REVISION (ADMIN)
-========================================================= */
+--------------------------------------------------------- */
 export const requestProjectRevision = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     throwError('Admin access required', 403);
@@ -642,7 +642,7 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
 
 /* =========================================================
    APPROVE PROJECT (ADMIN)
-========================================================= */
+--------------------------------------------------------- */
 export const approveProject = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     throwError('Admin access required', 403);
@@ -686,7 +686,7 @@ export const approveProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    REJECT PROJECT (ADMIN)
-========================================================= */
+--------------------------------------------------------- */
 export const rejectProject = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     throwError('Admin access required', 403);
@@ -729,7 +729,7 @@ export const rejectProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    MARK NO PUBLICATION (ADMIN)
-========================================================= */
+--------------------------------------------------------- */
 export const markProjectNoPublication = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     throwError('Admin access required', 403);
@@ -774,7 +774,7 @@ export const markProjectNoPublication = asyncHandler(async (req, res) => {
 
 /* =========================================================
    PUBLISH PROJECT (ADMIN)
-========================================================= */
+--------------------------------------------------------- */
 export const publishProject = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     throwError('Admin access required', 403);
@@ -818,7 +818,7 @@ export const publishProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    DELETE PROJECT
-========================================================= */
+--------------------------------------------------------- */
 export const deleteProject = asyncHandler(async (req, res) => {
   const deletedFeaturesCount = await deleteProjectAndFeatures(req.params.id, req.user.id);
 
@@ -830,7 +830,7 @@ export const deleteProject = asyncHandler(async (req, res) => {
 
 /* =========================================================
    ARCHIVE PROJECT (ADMIN)
-========================================================= */
+--------------------------------------------------------- */
 export const archiveProject = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     throwError('Admin access required', 403);
