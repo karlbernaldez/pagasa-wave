@@ -8,6 +8,7 @@ import {
   deleteProjectAndFeatures,
 } from '../utils/dbHelpers.js';
 import Project from '../models/Project.js';
+import { saveProjectSnapshot } from '../utils/projectSnapshot.js';
 import Feature from '../models/Feature.js';
 import { createNotification } from '../services/notification/notificationService.js';
 import {
@@ -73,13 +74,16 @@ function getDateRangeFilter(dateRange) {
 }
 
 function buildStatusCounts(rows) {
-  return Object.values(PROJECT_STATUS).reduce((counts, status) => {
-    counts[status] = 0;
-    return counts;
-  }, rows.reduce((counts, row) => {
-    if (row?._id) counts[row._id] = row.count;
-    return counts;
-  }, {}));
+  return Object.values(PROJECT_STATUS).reduce(
+    (counts, status) => {
+      counts[status] = 0;
+      return counts;
+    },
+    rows.reduce((counts, row) => {
+      if (row?._id) counts[row._id] = row.count;
+      return counts;
+    }, {})
+  );
 }
 
 function getRequiredComment(value, label = 'Comment') {
@@ -105,7 +109,12 @@ function getNoPublicationPayload(body = {}) {
 }
 
 function getStableFeatureId(feature) {
-  return feature.properties?.stableId || feature.properties?.annotationId || feature.properties?.sourceId || feature.sourceId;
+  return (
+    feature.properties?.stableId ||
+    feature.properties?.annotationId ||
+    feature.properties?.sourceId ||
+    feature.sourceId
+  );
 }
 
 function toFeatureSnapshot(feature) {
@@ -160,8 +169,8 @@ async function createProjectVersionSnapshot(project, userId, reason = 'submit') 
   const projectId = project?._id;
   const features = mongoose.isValidObjectId(projectId)
     ? await Feature.find({
-      'properties.project': projectId,
-    }).lean()
+        'properties.project': projectId,
+      }).lean()
     : [];
 
   const featureCollection = {
@@ -213,13 +222,13 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
     PROJECT_STATUS.PUBLISHED,
     PROJECT_STATUS.REJECTED,
     PROJECT_STATUS.NO_PUBLICATION,
-    PROJECT_STATUS.ARCHIVED
+    PROJECT_STATUS.ARCHIVED,
   ];
 
   const { status } = req.query;
 
   const filter = {
-    status: { $in: allowedAdminStatuses }
+    status: { $in: allowedAdminStatuses },
   };
 
   if (status) {
@@ -240,7 +249,7 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
       lastOpenedAt: -1,
       updatedAt: -1,
       submittedAt: -1,
-      createdAt: -1
+      createdAt: -1,
     })
     .lean();
 
@@ -329,10 +338,7 @@ export const getUserProjects = asyncHandler(async (req, res) => {
   if (cutoffDate) {
     const dateQuery = { $gte: cutoffDate };
     filters.push({
-      $or: [
-        { updatedAt: dateQuery },
-        { forecastDate: dateQuery },
-      ],
+      $or: [{ updatedAt: dateQuery }, { forecastDate: dateQuery }],
     });
   }
 
@@ -350,16 +356,9 @@ export const getUserProjects = asyncHandler(async (req, res) => {
   };
 
   const [projects, total, statusCountRows] = await Promise.all([
-    Project.find(query)
-      .sort(sortQuery)
-      .skip(skip)
-      .limit(limitNumber)
-      .lean(),
+    Project.find(query).sort(sortQuery).skip(skip).limit(limitNumber).lean(),
     Project.countDocuments(query),
-    Project.aggregate([
-      { $match: query },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]),
+    Project.aggregate([{ $match: query }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
   ]);
 
   res.json({
@@ -378,14 +377,12 @@ export const getUserProjects = asyncHandler(async (req, res) => {
 export const getLatestUserProject = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
-  const project = await Project.findOne({ owner: req.user.id })
-    .sort({ updatedAt: -1 })
-    .lean();
+  const project = await Project.findOne({ owner: req.user.id }).sort({ updatedAt: -1 }).lean();
 
   if (!project) {
     return res.json({
       project: null,
-      message: 'No projects found for this user'
+      message: 'No projects found for this user',
     });
   }
 
@@ -494,6 +491,7 @@ export const submitProject = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
   await createProjectVersionSnapshot(
     project,
     req.user.id,
@@ -508,12 +506,18 @@ export const submitProject = asyncHandler(async (req, res) => {
     performedBy: req.user.id,
     previousStatus,
     newStatus: PROJECT_STATUS.SUBMITTED,
-    comment: previousStatus === PROJECT_STATUS.REVISION_REQUESTED
-      ? 'Revision resubmitted for review'
-      : 'Submitted for review',
+    comment:
+      previousStatus === PROJECT_STATUS.REVISION_REQUESTED
+        ? 'Revision resubmitted for review'
+        : 'Submitted for review',
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Project workflow changed while this operation was in progress. Reload and try again.',
+  });
 
   res.json(project);
 });
@@ -538,6 +542,7 @@ export const startReviewProject = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
   project.status = PROJECT_STATUS.UNDER_REVIEW;
   project.reviewStartedAt = new Date();
   project.reviewStartedBy = req.user.id;
@@ -550,7 +555,12 @@ export const startReviewProject = asyncHandler(async (req, res) => {
     comment: 'Project review started',
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Project workflow changed while this operation was in progress. Reload and try again.',
+  });
 
   return sendProject(project, res);
 });
@@ -601,6 +611,7 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
 
   if (getLatestVersionReason(project) !== 'revision_baseline') {
     await createProjectVersionSnapshot(project, req.user.id, 'revision_baseline');
@@ -619,7 +630,12 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
     comment,
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Project workflow changed while this operation was in progress. Reload and try again.',
+  });
   await notifyProjectOwner(project, req.user.id, 'revision_requested', comment);
   return sendProject(project, res);
 });
@@ -644,6 +660,7 @@ export const approveProject = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
   project.status = PROJECT_STATUS.APPROVED;
   project.reviewedAt = new Date();
   project.approvedBy = req.user.id;
@@ -656,7 +673,12 @@ export const approveProject = asyncHandler(async (req, res) => {
     comment: 'Project approved',
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Project workflow changed while this operation was in progress. Reload and try again.',
+  });
   await notifyProjectOwner(project, req.user.id, 'approved');
 
   return sendProject(project, res);
@@ -680,6 +702,7 @@ export const rejectProject = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
   project.status = PROJECT_STATUS.REJECTED;
   project.rejectedBy = req.user.id;
   project.reviewComment = comment;
@@ -693,7 +716,12 @@ export const rejectProject = asyncHandler(async (req, res) => {
     comment,
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Project workflow changed while this operation was in progress. Reload and try again.',
+  });
   await notifyProjectOwner(project, req.user.id, 'rejected', comment);
 
   return sendProject(project, res);
@@ -716,6 +744,7 @@ export const markProjectNoPublication = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
   project.status = PROJECT_STATUS.NO_PUBLICATION;
   project.noPublicationAt = new Date();
   project.noPublicationBy = req.user.id;
@@ -732,7 +761,12 @@ export const markProjectNoPublication = asyncHandler(async (req, res) => {
     comment,
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Project workflow changed while this operation was in progress. Reload and try again.',
+  });
   await notifyProjectOwner(project, req.user.id, 'marked_no_publication', comment);
 
   return sendProject(project, res);
@@ -754,6 +788,7 @@ export const publishProject = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
 
   if (getLatestVersionReason(project) !== 'publish') {
     await createProjectVersionSnapshot(project, req.user.id, 'publish');
@@ -770,7 +805,12 @@ export const publishProject = asyncHandler(async (req, res) => {
     comment: 'Project published',
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Project workflow changed while this operation was in progress. Reload and try again.',
+  });
   await notifyProjectOwner(project, req.user.id, 'published');
 
   return sendProject(project, res);
@@ -780,10 +820,7 @@ export const publishProject = asyncHandler(async (req, res) => {
    DELETE PROJECT
 ========================================================= */
 export const deleteProject = asyncHandler(async (req, res) => {
-  const deletedFeaturesCount = await deleteProjectAndFeatures(
-    req.params.id,
-    req.user.id
-  );
+  const deletedFeaturesCount = await deleteProjectAndFeatures(req.params.id, req.user.id);
 
   res.json({
     message: 'Project and related features deleted successfully',
@@ -807,6 +844,7 @@ export const archiveProject = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = project.status;
+  const expectedUpdatedAt = project.updatedAt;
   project.status = PROJECT_STATUS.ARCHIVED;
 
   project.auditLogs.push({
@@ -817,7 +855,12 @@ export const archiveProject = asyncHandler(async (req, res) => {
     comment: 'Project archived',
   });
 
-  await project.save();
+  await saveProjectSnapshot(project, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Project workflow changed while this operation was in progress. Reload and try again.',
+  });
 
   return sendProject(project, res);
 });
