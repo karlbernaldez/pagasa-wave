@@ -46,6 +46,33 @@ export const revokeSessionFamily = (userId, familyId, reason = 'refresh_token_re
     { $set: { revokedAt: new Date(), revokedReason: reason } }
   );
 
+export const markRefreshFamilyCompromised = async (
+  userId,
+  familyId,
+  reason = 'refresh_token_reuse'
+) => {
+  const compromisedAt = new Date();
+
+  await Session.updateMany(
+    { user: userId, familyId },
+    { $set: { familyCompromisedAt: compromisedAt } }
+  );
+
+  await Session.updateMany(
+    { user: userId, familyId, revokedAt: null },
+    { $set: { revokedAt: compromisedAt, revokedReason: reason } }
+  );
+
+  return compromisedAt;
+};
+
+export const isRefreshFamilyCompromised = (userId, familyId) =>
+  Session.exists({
+    user: userId,
+    familyId,
+    familyCompromisedAt: { $ne: null },
+  });
+
 export const revokeAllUserSessions = (userId, reason = 'logout_all') =>
   Session.updateMany(
     { user: userId, revokedAt: null },
