@@ -176,7 +176,11 @@ test('concurrent chart join retries from the newer snapshot and preserves every 
   assert.equal(writes.length, 2);
   assert.equal(writes[0].filter.updatedAt, T1);
   assert.equal(writes[1].filter.updatedAt, T2);
-  assert.deepEqual(users(writes[1].update.$set['charts.$.activeEditors']), [USER_A, USER_B, USER_C]);
+  assert.deepEqual(users(writes[1].update.$set['charts.$.activeEditors']), [
+    USER_A,
+    USER_B,
+    USER_C,
+  ]);
   assert.deepEqual(users(writes[1].update.$set['charts.$.participants']), [USER_A, USER_B, USER_C]);
 });
 
