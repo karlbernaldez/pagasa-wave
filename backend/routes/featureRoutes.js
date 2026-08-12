@@ -27,7 +27,11 @@ router.use(requireRole('forecaster', 'admin'));
 router.post('/', authenticateToken, lockFeatureProjectMutation, createFeature);
 router.get('/admin/project/:projectId/features', isOwnerOrAdmin, getProjectFeatureCollection);
 router.get('/my-projects/:projectId', isOwnerOrAdmin, getFeaturesByUserAndProject);
-router.post('/requests/:notificationId/approve', lockFeatureProjectMutation, approveFeatureChangeRequest);
+router.post(
+  '/requests/:notificationId/approve',
+  lockFeatureProjectMutation,
+  approveFeatureChangeRequest
+);
 router.post('/requests/:notificationId/decline', declineFeatureChangeRequest);
 router.post('/:sourceId/request-change', lockFeatureProjectMutation, requestFeatureChange);
 router.get('/:sourceId', isFeatureOwnerOrAdmin, getFeatureBySourceId);
@@ -38,7 +42,12 @@ router.patch(
   lockFeatureProjectMutation,
   updateFeatureCoordinates
 );
-router.patch('/:sourceId/style', isFeatureOwnerOrAdmin, lockFeatureProjectMutation, updateFeatureStyle);
+router.patch(
+  '/:sourceId/style',
+  isFeatureOwnerOrAdmin,
+  lockFeatureProjectMutation,
+  updateFeatureStyle
+);
 router.patch('/:sourceId', isFeatureOwnerOrAdmin, lockFeatureProjectMutation, updateFeatureName);
 
 export default router;

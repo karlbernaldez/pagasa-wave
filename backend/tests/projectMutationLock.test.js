@@ -134,10 +134,8 @@ test('both chart certification routes share the project mutation boundary', () =
     ).includes('lockProjectParamMutation')
   );
   assert.ok(
-    routeHandlerNames(
-      forecastPackageRoutes,
-      '/:id/charts/:chartType/completion',
-      'patch'
-    ).includes('lockPackageChartMutation')
+    routeHandlerNames(forecastPackageRoutes, '/:id/charts/:chartType/completion', 'patch').includes(
+      'lockPackageChartMutation'
+    )
   );
 });
