@@ -12,6 +12,7 @@ import {
   getPackageCompletion,
   normalizeForecastDate,
 } from '../utils/forecastPackage.js';
+import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const EDITABLE_PACKAGE_STATUSES = [
@@ -663,7 +664,12 @@ export const claimForecastPackageChartByProject = asyncHandler(async (req, res) 
     comment: `${getForecastChartLabel(chart.chartType)} joined for editing`,
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: forecastPackage.status,
+    expectedUpdatedAt: forecastPackage.updatedAt,
+    conflictMessage:
+      'Forecast Package chart state changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
   res.json(serializeChartContext(populated, populatedChart, req.user));
@@ -693,7 +699,12 @@ export const releaseForecastPackageChartByProject = asyncHandler(async (req, res
     comment: `${getForecastChartLabel(chart.chartType)} editing session released`,
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: forecastPackage.status,
+    expectedUpdatedAt: forecastPackage.updatedAt,
+    conflictMessage:
+      'Forecast Package chart state changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
   res.json(serializeChartContext(populated, populatedChart, req.user));
@@ -710,7 +721,12 @@ export const updateForecastChartCompletion = asyncHandler(async (req, res) => {
 
   updateForecastChartCompletionState(forecastPackage, chartType, isComplete, req.user);
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: forecastPackage.status,
+    expectedUpdatedAt: forecastPackage.updatedAt,
+    conflictMessage:
+      'Forecast Package chart state changed while this operation was in progress. Reload and try again.',
+  });
 
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
@@ -728,7 +744,12 @@ export const updateForecastChartCompletionByProject = asyncHandler(async (req, r
 
   updateForecastChartCompletionState(forecastPackage, chart.chartType, isComplete, req.user);
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: forecastPackage.status,
+    expectedUpdatedAt: forecastPackage.updatedAt,
+    conflictMessage:
+      'Forecast Package chart state changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
   res.json(serializeChartContext(populated, populatedChart, req.user));
