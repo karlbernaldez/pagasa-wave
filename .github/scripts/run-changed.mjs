@@ -15,17 +15,7 @@ const definitions = {
     prefix: [],
   },
   prettier: {
-    extensions: new Set([
-      '.cjs',
-      '.css',
-      '.js',
-      '.json',
-      '.jsx',
-      '.md',
-      '.mjs',
-      '.yaml',
-      '.yml',
-    ]),
+    extensions: new Set(['.cjs', '.css', '.js', '.json', '.jsx', '.md', '.mjs', '.yaml', '.yml']),
     packageName: 'prettier',
     executable: 'prettier',
     prefix: ['--check'],
@@ -41,8 +31,7 @@ if (!definition) {
 function resolvePackageCli({ packageName, executable }) {
   const packageJsonPath = require.resolve(`${packageName}/package.json`);
   const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-  const bin =
-    typeof packageJson.bin === 'string' ? packageJson.bin : packageJson.bin?.[executable];
+  const bin = typeof packageJson.bin === 'string' ? packageJson.bin : packageJson.bin?.[executable];
 
   if (!bin) {
     throw new Error(`Unable to resolve ${executable} CLI from ${packageName}/package.json`);
