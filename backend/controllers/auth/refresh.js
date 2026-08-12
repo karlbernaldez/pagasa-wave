@@ -10,7 +10,6 @@ import {
   createSession,
   isRefreshFamilyCompromised,
   markRefreshFamilyCompromised,
-  revokeSessionByJti,
   revokeSessionFamily,
 } from '#controllers/auth/utils/session';
 import { getStatusError } from './_helpers.js';
@@ -107,7 +106,10 @@ export const refreshAccessToken = async (req, res) => {
     });
 
     if (await isRefreshFamilyCompromised(userId, familyId)) {
-      await revokeSessionByJti(userId, replacementJti, 'refresh_token_reuse');
+      await Session.updateOne(
+        { user: userId, jti: replacementJti, revokedAt: null },
+        { $set: { revokedAt: new Date(), revokedReason: 'refresh_token_reuse' } }
+      );
       clearAuthCookies(res);
       return res.status(401).json({ message: 'Refresh token reuse detected. Session family revoked.' });
     }
