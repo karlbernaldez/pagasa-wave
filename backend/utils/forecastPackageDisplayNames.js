@@ -13,4 +13,41 @@ function shouldUseCanonicalPackageName(name) {
 }
 
 function shouldUseCanonicalChartName(name) {
-  const
+  const currentName = String(name || '');
+  return !currentName || AUTO_CHART_NAME_PATTERN.test(currentName);
+}
+
+export function applyForecastPackageDisplayNames(forecastPackage) {
+  if (!forecastPackage?.forecastDate) return forecastPackage;
+
+  const canonicalPackageName = buildForecastPackageName(forecastPackage.forecastDate);
+  const normalizedPackage = {
+    ...forecastPackage,
+    name:
+      canonicalPackageName && shouldUseCanonicalPackageName(forecastPackage.name)
+        ? canonicalPackageName
+        : forecastPackage.name,
+  };
+
+  normalizedPackage.charts = (forecastPackage.charts || []).map((chart) => {
+    const project = chart?.project;
+    if (!project || typeof project !== 'object') return chart;
+
+    const canonicalProjectName = buildForecastChartProjectName(
+      forecastPackage.forecastDate,
+      getForecastChartLabel(chart.chartType)
+    );
+
+    if (!canonicalProjectName || !shouldUseCanonicalChartName(project.name)) return chart;
+
+    return {
+      ...chart,
+      project: {
+        ...project,
+        name: canonicalProjectName,
+      },
+    };
+  });
+
+  return normalizedPackage;
+}
