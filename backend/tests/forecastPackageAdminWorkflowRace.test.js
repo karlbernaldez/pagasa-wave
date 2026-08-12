@@ -139,14 +139,11 @@ for (const scenario of cases) {
         return { modifiedCount: 4 };
       };
 
-      await assert.rejects(
-        () => run(controller[scenario.handler], request(scenario.body)),
-        {
-          status: 409,
-          message:
-            'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
-        }
-      );
+      await assert.rejects(() => run(controller[scenario.handler], request(scenario.body)), {
+        status: 409,
+        message:
+          'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+      });
 
       assert.deepEqual(getGuardedConditions(), {
         status: scenario.sourceStatus,
