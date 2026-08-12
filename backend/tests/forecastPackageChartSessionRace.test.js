@@ -141,11 +141,7 @@ test('chart certification rejects a stale package snapshot instead of overwritin
 
   await withPackageMock(ForecastPackage, pkg, async () => {
     await assert.rejects(
-      () =>
-        run(
-          controller.updateForecastChartCompletionByProject,
-          request({ isComplete: true })
-        ),
+      () => run(controller.updateForecastChartCompletionByProject, request({ isComplete: true })),
       (error) => assertSnapshotConflict(error, pkg)
     );
   });
