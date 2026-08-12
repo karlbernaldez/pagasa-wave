@@ -8,6 +8,7 @@ const sessionSchema = new mongoose.Schema(
     tokenHash: { type: String, required: true },
     revokedAt: { type: Date, default: null, index: true },
     revokedReason: { type: String, default: null },
+    familyCompromisedAt: { type: Date, default: null, index: true },
     replacedByJti: { type: String, default: null },
     userAgent: { type: String, default: '' },
     ip: { type: String, default: '' },
