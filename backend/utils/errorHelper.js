@@ -8,6 +8,7 @@
 export const throwError = (message, status = 400) => {
   const err = new Error(message);
   err.status = status;
+  err.statusCode = status;
 
   // Optional: log in dev
   if (process.env.NODE_ENV === 'development') {
