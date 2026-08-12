@@ -8,6 +8,9 @@ import {
   buildAuthPayload,
   consumeRefreshSession,
   createSession,
+  isRefreshFamilyCompromised,
+  markRefreshFamilyCompromised,
+  revokeSessionByJti,
   revokeSessionFamily,
 } from '#controllers/auth/utils/session';
 import { getStatusError } from './_helpers.js';
@@ -45,7 +48,7 @@ export const refreshAccessToken = async (req, res) => {
     const familyId = existingSession.familyId || existingSession.jti;
 
     if (existingSession.revokedAt) {
-      await revokeSessionFamily(userId, familyId, 'refresh_token_reuse');
+      await markRefreshFamilyCompromised(userId, familyId, 'refresh_token_reuse');
       clearAuthCookies(res);
       return res
         .status(401)
@@ -90,7 +93,7 @@ export const refreshAccessToken = async (req, res) => {
     });
 
     if (!consumed) {
-      await revokeSessionFamily(userId, familyId, 'refresh_token_reuse');
+      await markRefreshFamilyCompromised(userId, familyId, 'refresh_token_reuse');
       clearAuthCookies(res);
       return res.status(401).json({ message: 'Refresh token already used or expired.' });
     }
@@ -102,6 +105,12 @@ export const refreshAccessToken = async (req, res) => {
       familyId,
       req,
     });
+
+    if (await isRefreshFamilyCompromised(userId, familyId)) {
+      await revokeSessionByJti(userId, replacementJti, 'refresh_token_reuse');
+      clearAuthCookies(res);
+      return res.status(401).json({ message: 'Refresh token reuse detected. Session family revoked.' });
+    }
 
     setAuthCookies(res, accessToken, replacementRefreshToken);
     return res.status(200).json({ message: 'Session refreshed.' });
