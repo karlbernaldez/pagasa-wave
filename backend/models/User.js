@@ -40,6 +40,17 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
 
+    pendingEmail: {
+      type: String,
+      default: undefined,
+      lowercase: true,
+      trim: true,
+      match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    },
+    pendingEmailVerificationToken: { type: String, select: false },
+    pendingEmailVerificationExpires: Date,
+    pendingEmailRequestedAt: Date,
+
     contact: {
       type: String,
       required: true,
@@ -118,12 +129,15 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+userSchema.index({ pendingEmail: 1 }, { unique: true, sparse: true });
+
 userSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
 userSchema.pre('save', async function () {
   if (this.email) this.email = this.email.toLowerCase().trim();
+  if (this.pendingEmail) this.pendingEmail = this.pendingEmail.toLowerCase().trim();
   if (this.username) this.username = this.username.toLowerCase().trim();
 
   if (this.isNew) return;
@@ -174,6 +188,16 @@ userSchema.methods.createEmailVerificationToken = function () {
   this.emailVerificationToken = crypto.createHash('sha256').update(rawToken).digest('hex');
 
   this.emailVerificationExpires = Date.now() + 1000 * 60 * 60;
+  return rawToken;
+};
+
+userSchema.methods.createPendingEmailVerificationToken = function () {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+
+  this.pendingEmailVerificationToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+  this.pendingEmailVerificationExpires = Date.now() + 1000 * 60 * 60;
+  this.pendingEmailRequestedAt = new Date();
+
   return rawToken;
 };
 
