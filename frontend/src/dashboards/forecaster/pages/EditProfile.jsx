@@ -349,7 +349,8 @@ export default function EditProfilePage() {
     agency: '',
     position: '',
     birthday: '',
-    currentPassword: '',
+    emailCurrentPassword: '',
+    passwordCurrentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
@@ -407,15 +408,16 @@ export default function EditProfilePage() {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email.';
     if (form.contact && !/^[\d\s+()-]{7,15}$/.test(form.contact))
       e.contact = 'Enter a valid contact number.';
-    if (emailRequestNeeded && !form.currentPassword) {
-      e.currentPassword = 'Current password is required to request an email change.';
+    if (emailRequestNeeded && !form.emailCurrentPassword) {
+      e.emailCurrentPassword = 'Enter your current password to verify this email change.';
     }
     if (emailRequestNeeded && form.newPassword) {
       e.email = 'Save the email change separately from a password change.';
     }
     if (form.newPassword) {
-      if (!form.currentPassword)
-        e.currentPassword = 'Current password is required to set a new one.';
+      if (!form.passwordCurrentPassword) {
+        e.passwordCurrentPassword = 'Current password is required to set a new one.';
+      }
       if (form.newPassword.length < 8) e.newPassword = 'Password must be at least 8 characters.';
       if (form.newPassword !== form.confirmPassword) e.confirmPassword = 'Passwords do not match.';
     }
@@ -434,14 +436,14 @@ export default function EditProfilePage() {
       if (form.newPassword) {
         try {
           await changePasswordAPI(user.id, {
-            currentPassword: form.currentPassword,
+            currentPassword: form.passwordCurrentPassword,
             newPassword: form.newPassword,
           });
         } catch (pwErr) {
           const msg = pwErr.message?.toLowerCase();
           setErrors((e) => ({
             ...e,
-            currentPassword:
+            passwordCurrentPassword:
               msg?.includes('incorrect') || msg?.includes('wrong') || msg?.includes('invalid')
                 ? 'Incorrect current password.'
                 : pwErr.message,
@@ -466,10 +468,10 @@ export default function EditProfilePage() {
       if (emailRequestNeeded) {
         const pending = await requestEmailChangeAPI(user.id, {
           newEmail: enteredEmail,
-          currentPassword: form.currentPassword,
+          currentPassword: form.emailCurrentPassword,
         });
 
-        nextUser = {
+        nextUser = pending.user ?? {
           ...nextUser,
           pendingEmail: pending.pendingEmail,
           pendingEmailVerificationExpires: pending.pendingEmailVerificationExpires,
@@ -487,7 +489,8 @@ export default function EditProfilePage() {
         agency: nextUser.agency ?? f.agency,
         position: nextUser.position ?? f.position,
         birthday: toInputDate(nextUser.birthday) || f.birthday,
-        currentPassword: '',
+        emailCurrentPassword: '',
+        passwordCurrentPassword: '',
         newPassword: '',
         confirmPassword: '',
       }));
@@ -511,7 +514,7 @@ export default function EditProfilePage() {
         setErrors((e) => ({ ...e, email: 'This email address is already in use.' }));
       }
       if (message.includes('incorrect current password')) {
-        setErrors((e) => ({ ...e, currentPassword: 'Incorrect current password.' }));
+        setErrors((e) => ({ ...e, emailCurrentPassword: 'Incorrect current password.' }));
       }
       setToast({ message: err.message, type: 'error' });
     } finally {
@@ -524,11 +527,7 @@ export default function EditProfilePage() {
     setEmailAction('resend');
     try {
       const data = await resendEmailChangeAPI(user.id);
-      setUser((prev) => ({
-        ...prev,
-        pendingEmail: data.pendingEmail,
-        pendingEmailVerificationExpires: data.pendingEmailVerificationExpires,
-      }));
+      setUser(data.user ?? user);
       setToast({ message: 'Verification email resent.', type: 'success' });
     } catch (err) {
       setToast({ message: err.message, type: 'error' });
@@ -541,13 +540,18 @@ export default function EditProfilePage() {
     if (!user?.pendingEmail || emailAction) return;
     setEmailAction('cancel');
     try {
-      await cancelEmailChangeAPI(user.id);
-      setUser((prev) => ({
-        ...prev,
+      const data = await cancelEmailChangeAPI(user.id);
+      const nextUser = data.user ?? {
+        ...user,
         pendingEmail: null,
         pendingEmailVerificationExpires: null,
+      };
+      setUser(nextUser);
+      setForm((prev) => ({
+        ...prev,
+        email: nextUser.email ?? '',
+        emailCurrentPassword: '',
       }));
-      setForm((prev) => ({ ...prev, email: user.email ?? '' }));
       setDirty(false);
       setToast({ message: 'Pending email change cancelled.', type: 'success' });
     } catch (err) {
@@ -1053,6 +1057,22 @@ export default function EditProfilePage() {
                 error={errors.contact}
                 t={t}
               />
+              {emailRequestNeeded && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <FormInput
+                    icon={Lock}
+                    label="Confirm Current Password"
+                    name="emailCurrentPassword"
+                    value={form.emailCurrentPassword}
+                    onChange={handleChange}
+                    type="password"
+                    placeholder="Enter current password"
+                    error={errors.emailCurrentPassword}
+                    hint="Required only to authorize this email change. Your current email stays active until the new address is verified."
+                    t={t}
+                  />
+                </div>
+              )}
               {user?.pendingEmail && (
                 <div
                   style={{
@@ -1154,13 +1174,13 @@ export default function EditProfilePage() {
               <FormInput
                 icon={Lock}
                 label="Current Password"
-                name="currentPassword"
-                value={form.currentPassword}
+                name="passwordCurrentPassword"
+                value={form.passwordCurrentPassword}
                 onChange={handleChange}
                 type="password"
                 placeholder="Enter current password"
-                error={errors.currentPassword}
-                hint="Required when changing your email or password."
+                error={errors.passwordCurrentPassword}
+                hint="Required only when changing your password."
                 t={t}
               />
               <FormInput
