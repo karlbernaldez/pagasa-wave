@@ -7,12 +7,22 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { loadHeaderUser } from "@shared/layouts/components/header/utils/userCache";
-import { updateUserDetailsAPI, changePasswordAPI } from "@/api/userAPI";
+import {
+  updateUserDetailsAPI,
+  changePasswordAPI,
+  requestEmailChangeAPI,
+  resendEmailChangeAPI,
+  cancelEmailChangeAPI,
+} from "@/api/userAPI";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function toInputDate(iso) {
   if (!iso) return "";
   return iso.slice(0, 10);
+}
+
+function normalizeEmail(value) {
+  return String(value ?? "").trim().toLowerCase();
 }
 
 // ── Theme tokens ──────────────────────────────────────────────────────────────
@@ -129,7 +139,7 @@ function FormInput({ icon: Icon, label, name, value, onChange, type = "text",
   );
 }
 
-// ── SectionCard ───────────────────────────────────────────────────────────────
+// ── SectionCard ────────────────────────────────────────────────────────────────
 function SectionCard({ title, icon: TitleIcon, children, delay = 0, t }) {
   return (
     <AnimatedIn delay={delay}>
@@ -189,6 +199,7 @@ export default function EditProfilePage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [emailAction, setEmailAction] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
@@ -214,7 +225,7 @@ export default function EditProfilePage() {
           ...f,
           firstName: currentUser.firstName ?? "",
           lastName: currentUser.lastName ?? "",
-          email: currentUser.email ?? "",
+          email: currentUser.pendingEmail ?? currentUser.email ?? "",
           contact: currentUser.contact ?? "",
           address: currentUser.address ?? "",
           agency: currentUser.agency ?? "",
@@ -234,6 +245,13 @@ export default function EditProfilePage() {
     setDirty(true);
   }
 
+  const currentEmail = normalizeEmail(user?.email);
+  const pendingEmail = normalizeEmail(user?.pendingEmail);
+  const enteredEmail = normalizeEmail(form.email);
+  const emailRequestNeeded = Boolean(
+    currentEmail && enteredEmail && enteredEmail !== currentEmail && enteredEmail !== pendingEmail
+  );
+
   function validate() {
     const e = {};
     if (!form.firstName.trim()) e.firstName = "First name is required.";
@@ -241,6 +259,12 @@ export default function EditProfilePage() {
     if (!form.email.trim()) e.email = "Email is required.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Enter a valid email.";
     if (form.contact && !/^[\d\s\-\+\(\)]{7,15}$/.test(form.contact)) e.contact = "Enter a valid contact number.";
+    if (emailRequestNeeded && !form.currentPassword) {
+      e.currentPassword = "Current password is required to request an email change.";
+    }
+    if (emailRequestNeeded && form.newPassword) {
+      e.email = "Save the email change separately from a password change.";
+    }
     if (form.newPassword) {
       if (!form.currentPassword) e.currentPassword = "Current password is required to set a new one.";
       if (form.newPassword.length < 8) e.newPassword = "Password must be at least 8 characters.";
@@ -255,7 +279,6 @@ export default function EditProfilePage() {
 
     setSaving(true);
     try {
-      // Step 1 — verify password FIRST; abort everything if it fails
       if (form.newPassword) {
         try {
           await changePasswordAPI(user.id, {
@@ -275,11 +298,9 @@ export default function EditProfilePage() {
         }
       }
 
-      // Step 2 — save profile (only if password step passed or was skipped)
       const updated = await updateUserDetailsAPI(user.id, {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
-        email: form.email.trim(),
         contact: form.contact.trim(),
         address: form.address.trim(),
         agency: form.agency.trim(),
@@ -287,34 +308,97 @@ export default function EditProfilePage() {
         birthday: form.birthday || null,
       });
 
-      setUser(prev => ({ ...prev, ...updated }));
+      let nextUser = { ...user, ...updated };
+
+      if (emailRequestNeeded) {
+        const pending = await requestEmailChangeAPI(user.id, {
+          newEmail: enteredEmail,
+          currentPassword: form.currentPassword,
+        });
+
+        nextUser = {
+          ...nextUser,
+          pendingEmail: pending.pendingEmail,
+          pendingEmailVerificationExpires: pending.pendingEmailVerificationExpires,
+        };
+      }
+
+      setUser(nextUser);
       setForm(f => ({
         ...f,
-        firstName: updated.firstName ?? f.firstName,
-        lastName: updated.lastName ?? f.lastName,
-        email: updated.email ?? f.email,
-        contact: updated.contact ?? f.contact,
-        address: updated.address ?? f.address,
-        agency: updated.agency ?? f.agency,
-        position: updated.position ?? f.position,
-        birthday: toInputDate(updated.birthday) || f.birthday,
+        firstName: nextUser.firstName ?? f.firstName,
+        lastName: nextUser.lastName ?? f.lastName,
+        email: nextUser.pendingEmail ?? nextUser.email ?? f.email,
+        contact: nextUser.contact ?? f.contact,
+        address: nextUser.address ?? f.address,
+        agency: nextUser.agency ?? f.agency,
+        position: nextUser.position ?? f.position,
+        birthday: toInputDate(nextUser.birthday) || f.birthday,
         currentPassword: "", newPassword: "", confirmPassword: "",
       }));
       setDirty(false);
-      setToast({ message: "Profile updated successfully!", type: "success" });
 
-      // redirect to profile after toast
-      setTimeout(() => {
-        navigate("/profile");
-      }, 1200);
+      if (emailRequestNeeded) {
+        setToast({
+          message: "Profile saved. Verify the link sent to your new email before it becomes your login email.",
+          type: "success",
+        });
+      } else {
+        setToast({ message: "Profile updated successfully!", type: "success" });
+        setTimeout(() => {
+          navigate("/profile");
+        }, 1200);
+      }
 
     } catch (err) {
-      if (err.message?.toLowerCase().includes("email or username")) {
-        setErrors(e => ({ ...e, email: "This email or username is already in use." }));
+      const message = err.message?.toLowerCase() ?? "";
+      if (message.includes("email") && message.includes("use")) {
+        setErrors(e => ({ ...e, email: "This email address is already in use." }));
+      }
+      if (message.includes("incorrect current password")) {
+        setErrors(e => ({ ...e, currentPassword: "Incorrect current password." }));
       }
       setToast({ message: err.message, type: "error" });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleResendEmailChange() {
+    if (!user?.pendingEmail || emailAction) return;
+    setEmailAction("resend");
+    try {
+      const data = await resendEmailChangeAPI(user.id);
+      setUser(prev => ({
+        ...prev,
+        pendingEmail: data.pendingEmail,
+        pendingEmailVerificationExpires: data.pendingEmailVerificationExpires,
+      }));
+      setToast({ message: "Verification email resent.", type: "success" });
+    } catch (err) {
+      setToast({ message: err.message, type: "error" });
+    } finally {
+      setEmailAction(null);
+    }
+  }
+
+  async function handleCancelEmailChange() {
+    if (!user?.pendingEmail || emailAction) return;
+    setEmailAction("cancel");
+    try {
+      await cancelEmailChangeAPI(user.id);
+      setUser(prev => ({
+        ...prev,
+        pendingEmail: null,
+        pendingEmailVerificationExpires: null,
+      }));
+      setForm(prev => ({ ...prev, email: user.email ?? "" }));
+      setDirty(false);
+      setToast({ message: "Pending email change cancelled.", type: "success" });
+    } catch (err) {
+      setToast({ message: err.message, type: "error" });
+    } finally {
+      setEmailAction(null);
     }
   }
 
@@ -368,7 +452,6 @@ export default function EditProfilePage() {
         }
       `}</style>
 
-      {/* Background */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0 }}>
         <div style={{ position: "absolute", inset: 0, background: isDarkMode ? "radial-gradient(ellipse 80% 60% at 50% 0%,#051428 0%,#020816 60%)" : "radial-gradient(ellipse 80% 60% at 50% 0%,#dbeafe 0%,#f1f5f9 60%)" }} />
         <div style={{ position: "absolute", top: "5%", left: "15%", width: 600, height: 400, borderRadius: "50%", background: `radial-gradient(circle,${t.aurora1} 0%,transparent 70%)`, animation: "aurora 12s ease-in-out infinite", filter: "blur(40px)" }} />
@@ -377,8 +460,6 @@ export default function EditProfilePage() {
       </div>
 
       <div style={{ position: "relative", zIndex: 1 }}>
-
-        {/* Banner */}
         <AnimatedIn delay={0}>
           <div style={{ height: 160, position: "relative", overflow: "hidden", background: t.bannerBg }}>
             {[120, 220, 320].map((s, i) => (
@@ -393,13 +474,9 @@ export default function EditProfilePage() {
         </AnimatedIn>
 
         <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 24px" }}>
-
-          {/* Header */}
           <AnimatedIn delay={80}>
             <div style={{ marginTop: -52, marginBottom: 32, display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-
               <div style={{ display: "flex", alignItems: "flex-end", gap: 20 }}>
-                {/* Avatar */}
                 <div style={{ position: "relative" }}>
                   <div style={{ position: "absolute", inset: -4, borderRadius: 26, background: "conic-gradient(from 180deg,rgba(56,189,248,0.5),transparent,rgba(56,189,248,0.2),transparent)", filter: "blur(4px)" }} />
                   <div className="avatar-upload" onClick={() => fileRef.current?.click()} style={{ position: "relative", cursor: "pointer" }}>
@@ -432,7 +509,6 @@ export default function EditProfilePage() {
                 </div>
               </div>
 
-              {/* Buttons — dynamically switch between Discard and Back to Profile */}
               <div style={{ display: "flex", gap: 8, paddingBottom: 4 }}>
                 <button className="nav-btn" onClick={() => navigate("/profile")}
                   style={{
@@ -456,9 +532,7 @@ export default function EditProfilePage() {
             </div>
           </AnimatedIn>
 
-          {/* Form sections */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 80 }}>
-
             <SectionCard title="Personal Information" icon={User} delay={160} t={t}>
               <FormInput icon={User} label="First Name" name="firstName" value={form.firstName} onChange={handleChange} placeholder="Juan" error={errors.firstName} t={t} />
               <FormInput icon={User} label="Last Name" name="lastName" value={form.lastName} onChange={handleChange} placeholder="dela Cruz" error={errors.lastName} t={t} />
@@ -467,8 +541,49 @@ export default function EditProfilePage() {
             </SectionCard>
 
             <SectionCard title="Contact Information" icon={Mail} delay={240} t={t}>
-              <FormInput icon={Mail} label="Email Address" name="email" value={form.email} onChange={handleChange} type="email" placeholder="you@example.com" error={errors.email} t={t} />
+              <FormInput
+                icon={Mail}
+                label="Email Address"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                type="email"
+                placeholder="you@example.com"
+                error={errors.email}
+                hint={user?.pendingEmail
+                  ? `Current verified email: ${user.email}. The address above is pending verification.`
+                  : "Changing your login email requires your current password and verification of the new address."}
+                t={t}
+              />
               <FormInput icon={Phone} label="Contact No." name="contact" value={form.contact} onChange={handleChange} placeholder="09XXXXXXXXX" error={errors.contact} t={t} />
+              {user?.pendingEmail && (
+                <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(245,158,11,0.25)", background: "rgba(245,158,11,0.06)" }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#f59e0b" }}>Verification pending</p>
+                    <p style={{ margin: "4px 0 0", fontSize: 11, color: t.textSecondary }}>
+                      Check {user.pendingEmail}. Your current email stays active until confirmation.
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={handleResendEmailChange}
+                      disabled={Boolean(emailAction)}
+                      style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid rgba(56,189,248,0.25)", background: "rgba(56,189,248,0.08)", color: "#38bdf8", fontSize: 11, fontWeight: 700, cursor: emailAction ? "not-allowed" : "pointer" }}
+                    >
+                      {emailAction === "resend" ? "Sending…" : "Resend"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelEmailChange}
+                      disabled={Boolean(emailAction)}
+                      style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.25)", background: "rgba(248,113,113,0.06)", color: "#f87171", fontSize: 11, fontWeight: 700, cursor: emailAction ? "not-allowed" : "pointer" }}
+                    >
+                      {emailAction === "cancel" ? "Cancelling…" : "Cancel"}
+                    </button>
+                  </div>
+                </div>
+              )}
               <div style={{ gridColumn: "1 / -1" }}>
                 <FormInput icon={MapPin} label="Address" name="address" value={form.address} onChange={handleChange} placeholder="Street, City, Province" error={errors.address} t={t} />
               </div>
@@ -480,14 +595,13 @@ export default function EditProfilePage() {
             </SectionCard>
 
             <SectionCard title="Change Password" icon={Lock} delay={400} t={t}>
-              <FormInput icon={Lock} label="Current Password" name="currentPassword" value={form.currentPassword} onChange={handleChange} type="password" placeholder="Enter current password" error={errors.currentPassword} hint="Only required if setting a new password." t={t} />
+              <FormInput icon={Lock} label="Current Password" name="currentPassword" value={form.currentPassword} onChange={handleChange} type="password" placeholder="Enter current password" error={errors.currentPassword} hint="Required when changing your email or password." t={t} />
               <FormInput icon={Lock} label="New Password" name="newPassword" value={form.newPassword} onChange={handleChange} type="password" placeholder="Min. 8 characters" error={errors.newPassword} t={t} />
               <div style={{ gridColumn: "1 / -1" }}>
                 <FormInput icon={Lock} label="Confirm New Password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} type="password" placeholder="Repeat new password" error={errors.confirmPassword} t={t} />
               </div>
             </SectionCard>
 
-            {/* Bottom save row */}
             <AnimatedIn delay={460}>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 4 }}>
                 <button className="nav-btn" onClick={() => navigate("/profile")}
@@ -510,7 +624,6 @@ export default function EditProfilePage() {
                 </button>
               </div>
             </AnimatedIn>
-
           </div>
         </div>
       </div>
