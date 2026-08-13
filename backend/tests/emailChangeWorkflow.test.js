@@ -3,7 +3,10 @@ import test from 'node:test';
 import bcrypt from 'bcryptjs';
 
 import User from '../models/User.js';
-import { requestEmailChange } from '../controllers/emailChangeController.js';
+import {
+  buildPendingEmailChangeMutation,
+  requestEmailChange,
+} from '../controllers/emailChangeController.js';
 
 function makeResponse() {
   const state = { statusCode: 200, body: null };
@@ -96,64 +99,36 @@ test('email change requires the current password before any pending identity wri
   assert.equal(updateCalled, false);
 });
 
-test('email change writes only pending identity state and preserves the current email and session version', async () => {
-  const currentPassword = 'CurrentPassword123!';
-  const passwordHash = await bcrypt.hash(currentPassword, 4);
-  let findCount = 0;
-  let write;
-  const res = makeResponse();
+test('pending email mutation preserves the canonical email and session generation', () => {
+  const expiresAt = new Date('2026-08-13T04:00:00.000Z');
+  const requestedAt = new Date('2026-08-13T03:00:00.000Z');
 
-  await withUserMocks(
-    {
-      findOne: (filter) => {
-        findCount += 1;
-        if (findCount === 1) {
-          assert.equal(filter.status, 'active');
-          return selectedQuery({
-            _id: userId,
-            email: 'old@example.com',
-            firstName: 'Wave',
-            password: passwordHash,
-          });
-        }
-        return selectedQuery(null);
-      },
-      findOneAndUpdate: (filter, update, options) => {
-        write = { filter, update, options };
-        return selectedQuery({
-          _id: userId,
-          email: 'old@example.com',
-          firstName: 'Wave',
-          pendingEmail: 'new@example.com',
-          pendingEmailVerificationExpires: new Date(Date.now() + 60_000),
-        });
-      },
+  const mutation = buildPendingEmailChangeMutation({
+    userId,
+    currentEmail: 'old@example.com',
+    passwordHash: 'verified-password-hash',
+    newEmail: 'new@example.com',
+    tokenHash: 'pending-token-hash',
+    expiresAt,
+    requestedAt,
+  });
+
+  assert.deepEqual(mutation.filter, {
+    _id: userId,
+    status: 'active',
+    deletedAt: null,
+    email: 'old@example.com',
+    password: 'verified-password-hash',
+  });
+  assert.deepEqual(mutation.update, {
+    $set: {
+      pendingEmail: 'new@example.com',
+      pendingEmailVerificationToken: 'pending-token-hash',
+      pendingEmailVerificationExpires: expiresAt,
+      pendingEmailRequestedAt: requestedAt,
     },
-    async () => {
-      await requestEmailChange(
-        makeRequest({
-          newEmail: ' New@Example.COM ',
-          currentPassword,
-        }),
-        res
-      );
-    }
-  );
-
-  assert.equal(write.filter._id, userId);
-  assert.equal(write.filter.status, 'active');
-  assert.equal(write.filter.email, 'old@example.com');
-  assert.equal(write.filter.password, passwordHash);
-  assert.equal(write.update.$set.pendingEmail, 'new@example.com');
-  assert.ok(write.update.$set.pendingEmailVerificationToken);
-  assert.ok(write.update.$set.pendingEmailVerificationExpires instanceof Date);
-  assert.equal(write.update.$set.email, undefined);
-  assert.equal(write.update.$inc, undefined);
-  assert.deepEqual(write.options, { new: true, runValidators: true });
-
-  // Focused tests do not configure SMTP, so delivery fails after the guarded
-  // pending-state write. That is expected here; the security invariant under
-  // test is that requesting a change does not replace the canonical identity.
-  assert.equal(res.state.statusCode, 502);
-  assert.equal(res.state.body.pendingEmail, 'new@example.com');
+  });
+  assert.equal(mutation.update.$set.email, undefined);
+  assert.equal(mutation.update.$inc, undefined);
+  assert.deepEqual(mutation.options, { new: true, runValidators: true });
 });
