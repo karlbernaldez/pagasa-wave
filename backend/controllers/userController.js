@@ -275,6 +275,10 @@ export const updateUserDetails = async (req, res) => {
       }
     }
 
+    if (updates.email !== undefined) {
+      updates.email = String(updates.email).trim().toLowerCase();
+    }
+
     if (updates.avatarUrl !== undefined && updates.avatarUrl !== null) {
       const avatarUrl = String(updates.avatarUrl).trim();
       const isSupportedAvatar = /^(https?:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(
@@ -302,18 +306,52 @@ export const updateUserDetails = async (req, res) => {
       }
     }
 
-    if (updates.role !== undefined) {
-      const user = await User.findOneAndUpdate(
-        { _id: userId, deletedAt: null },
-        { $set: updates },
-        { new: true, runValidators: true }
-      ).select('+sessionVersion');
+    let currentEmail = null;
+    let emailChanged = false;
 
-      if (!user) return res.status(404).json({ message: 'User not found' });
+    if (updates.email !== undefined) {
+      const currentUser = await User.findById(userId).select('email').lean();
+      if (!currentUser) return res.status(404).json({ message: 'User not found' });
+
+      currentEmail = currentUser.email;
+      emailChanged = updates.email !== currentEmail;
+    }
+
+    if (updates.role !== undefined || emailChanged) {
+      const updateDocument = { $set: { ...updates } };
+      const filter = { _id: userId, deletedAt: null };
+
+      if (emailChanged) {
+        filter.email = currentEmail;
+        updateDocument.$set.emailVerified = false;
+        updateDocument.$unset = {
+          emailVerificationToken: '',
+          emailVerificationExpires: '',
+          passwordResetToken: '',
+          passwordResetExpires: '',
+        };
+        updateDocument.$inc = { sessionVersion: 1 };
+      }
+
+      const user = await User.findOneAndUpdate(filter, updateDocument, {
+        new: true,
+        runValidators: true,
+      }).select('+sessionVersion');
+
+      if (!user) {
+        if (emailChanged) {
+          return res.status(409).json({
+            message: 'Email changed concurrently. Reload your profile and try again.',
+          });
+        }
+        return res.status(404).json({ message: 'User not found' });
+      }
 
       const safeUser = user.toObject();
       delete safeUser.password;
       delete safeUser.sessionVersion;
+
+      if (emailChanged) safeUser.emailVerificationRequired = true;
 
       return res.status(200).json(safeUser);
     }
