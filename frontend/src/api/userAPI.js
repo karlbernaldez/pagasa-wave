@@ -9,9 +9,11 @@ function normalizeUserPayload(user) {
 
 function broadcastUserUpdate(user) {
   if (typeof window === 'undefined' || !user) return;
-  window.dispatchEvent(new CustomEvent(USER_UPDATED_EVENT, {
-    detail: { user, updatedAt: Date.now() },
-  }));
+  window.dispatchEvent(
+    new CustomEvent(USER_UPDATED_EVENT, {
+      detail: { user, updatedAt: Date.now() },
+    })
+  );
 }
 
 const request = async (url, options = {}) => {
@@ -86,10 +88,12 @@ export const cancelEmailChangeAPI = (userId) =>
   });
 
 export const updateUserDetailsAPI = async (userId, payload, { broadcast = true } = {}) => {
-  const updated = normalizeUserPayload(await request(`${USER_API_BASE_URL}/${userId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  }));
+  const updated = normalizeUserPayload(
+    await request(`${USER_API_BASE_URL}/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  );
 
   if (broadcast) broadcastUserUpdate(updated);
   return updated;

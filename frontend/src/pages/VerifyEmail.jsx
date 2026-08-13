@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ArrowLeft, ShieldCheck } from 'lucide-react';
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Mail,
+  RefreshCw,
+  ArrowLeft,
+  ShieldCheck,
+} from 'lucide-react';
 
 import { verifyEmail, resendVerificationEmail } from '@/api/auth';
 
@@ -169,7 +177,8 @@ const STATUS_CONFIG = {
   success: {
     icon: <CheckCircle size={44} color="#34d399" />,
     title: 'Email Verified!',
-    subtitle: 'Your email is verified. You can sign in once your WaveLab account has been activated.',
+    subtitle:
+      'Your email is verified. You can sign in once your WaveLab account has been activated.',
     accent: '#34d399',
   },
   expired: {
@@ -430,8 +439,7 @@ export default function VerifyEmailPage() {
             backdropFilter: 'blur(24px)',
             borderRadius: 28,
             border: '1px solid rgba(255,255,255,0.09)',
-            boxShadow:
-              '0 32px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+            boxShadow: '0 32px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
             overflow: 'hidden',
             position: 'relative',
           }}
@@ -642,7 +650,8 @@ export default function VerifyEmailPage() {
                 >
                   {resending ? (
                     <>
-                      <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Sending…
+                      <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />{' '}
+                      Sending…
                     </>
                   ) : resent ? (
                     <>

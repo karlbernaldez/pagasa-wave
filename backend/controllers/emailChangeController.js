@@ -12,7 +12,10 @@ import { logger } from '#utils/logger';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_CHANGE_TTL_MS = 60 * 60_000;
 
-const normalizeEmail = (value) => String(value ?? '').trim().toLowerCase();
+const normalizeEmail = (value) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase();
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 const createRawToken = () => crypto.randomBytes(32).toString('hex');
 
@@ -69,7 +72,9 @@ export const requestEmailChange = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'Active user not found.' });
 
     if (newEmail === user.email) {
-      return res.status(400).json({ message: 'New email must be different from your current email.' });
+      return res
+        .status(400)
+        .json({ message: 'New email must be different from your current email.' });
     }
 
     const passwordMatches = await bcrypt.compare(currentPassword, user.password);
@@ -110,7 +115,8 @@ export const requestEmailChange = async (req, res) => {
 
     if (!updated) {
       return res.status(409).json({
-        message: 'Your account changed while this request was being processed. Reload and try again.',
+        message:
+          'Your account changed while this request was being processed. Reload and try again.',
       });
     }
 
@@ -144,13 +150,15 @@ export const requestEmailChange = async (req, res) => {
         error: error.message,
       });
       return res.status(502).json({
-        message: 'Email change saved, but the verification email could not be sent. Please resend it.',
+        message:
+          'Email change saved, but the verification email could not be sent. Please resend it.',
         pendingEmail: updated.pendingEmail,
       });
     }
 
     return res.status(202).json({
-      message: 'Verification sent to your new email. Your current email remains active until confirmed.',
+      message:
+        'Verification sent to your new email. Your current email remains active until confirmed.',
       email: updated.email,
       pendingEmail: updated.pendingEmail,
       pendingEmailVerificationExpires: updated.pendingEmailVerificationExpires,
@@ -203,7 +211,9 @@ export const resendPendingEmailChange = async (req, res) => {
     ).select('firstName pendingEmail pendingEmailVerificationExpires');
 
     if (!updated) {
-      return res.status(409).json({ message: 'Pending email changed concurrently. Reload and try again.' });
+      return res
+        .status(409)
+        .json({ message: 'Pending email changed concurrently. Reload and try again.' });
     }
 
     await sendEmailChangeVerificationEmail({
@@ -262,7 +272,9 @@ export const cancelPendingEmailChange = async (req, res) => {
       userAgent: req.headers['user-agent'],
     });
 
-    return res.status(200).json({ message: 'Pending email change cancelled.', email: updated.email });
+    return res
+      .status(200)
+      .json({ message: 'Pending email change cancelled.', email: updated.email });
   } catch (error) {
     logger.error('Pending email cancellation failed', { userId, error: error.message });
     return res.status(500).json({ message: 'Unable to cancel pending email change.' });
