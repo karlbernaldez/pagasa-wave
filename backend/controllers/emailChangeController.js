@@ -2,7 +2,10 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 import User from '../models/User.js';
-import { sendEmailChangeSecurityNotice, sendEmailChangeVerificationEmail } from '#services/email/sendEmailChangeEmails';
+import {
+  sendEmailChangeSecurityNotice,
+  sendEmailChangeVerificationEmail,
+} from '#services/email/sendEmailChangeEmails';
 import { createAuditLog } from '#services/auditLog';
 import { logger } from '#utils/logger';
 
@@ -32,11 +35,11 @@ export const requestEmailChange = async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ _id: userId, deletedAt: null })
+    const user = await User.findOne({ _id: userId, status: 'active', deletedAt: null })
       .select('+password email firstName pendingEmail')
       .lean();
 
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'Active user not found.' });
 
     if (newEmail === user.email) {
       return res.status(400).json({ message: 'New email must be different from your current email.' });
@@ -65,6 +68,7 @@ export const requestEmailChange = async (req, res) => {
     const updated = await User.findOneAndUpdate(
       {
         _id: userId,
+        status: 'active',
         deletedAt: null,
         email: user.email,
         password: user.password,
@@ -86,23 +90,6 @@ export const requestEmailChange = async (req, res) => {
       });
     }
 
-    try {
-      await sendEmailChangeVerificationEmail({
-        email: updated.pendingEmail,
-        firstName: updated.firstName,
-        token: rawToken,
-      });
-    } catch (error) {
-      logger.error('Email change verification delivery failed', {
-        userId,
-        error: error.message,
-      });
-      return res.status(502).json({
-        message: 'Email change saved, but the verification email could not be sent. Please resend it.',
-        pendingEmail: updated.pendingEmail,
-      });
-    }
-
     sendEmailChangeSecurityNotice({
       email: updated.email,
       firstName: updated.firstName,
@@ -120,6 +107,23 @@ export const requestEmailChange = async (req, res) => {
       userAgent: req.headers['user-agent'],
       meta: { pendingEmail: updated.pendingEmail },
     });
+
+    try {
+      await sendEmailChangeVerificationEmail({
+        email: updated.pendingEmail,
+        firstName: updated.firstName,
+        token: rawToken,
+      });
+    } catch (error) {
+      logger.error('Email change verification delivery failed', {
+        userId,
+        error: error.message,
+      });
+      return res.status(502).json({
+        message: 'Email change saved, but the verification email could not be sent. Please resend it.',
+        pendingEmail: updated.pendingEmail,
+      });
+    }
 
     return res.status(202).json({
       message: 'Verification sent to your new email. Your current email remains active until confirmed.',
@@ -143,6 +147,7 @@ export const resendPendingEmailChange = async (req, res) => {
   try {
     const current = await User.findOne({
       _id: userId,
+      status: 'active',
       deletedAt: null,
       pendingEmail: { $exists: true, $ne: null },
     })
@@ -157,7 +162,12 @@ export const resendPendingEmailChange = async (req, res) => {
     const expiresAt = new Date(Date.now() + EMAIL_CHANGE_TTL_MS);
 
     const updated = await User.findOneAndUpdate(
-      { _id: userId, deletedAt: null, pendingEmail: current.pendingEmail },
+      {
+        _id: userId,
+        status: 'active',
+        deletedAt: null,
+        pendingEmail: current.pendingEmail,
+      },
       {
         $set: {
           pendingEmailVerificationToken: hashToken(rawToken),
