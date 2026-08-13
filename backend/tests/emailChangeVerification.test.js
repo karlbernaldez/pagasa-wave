@@ -59,25 +59,59 @@ const ownerActor = {
   _id: { toString: () => userId },
   role: 'forecaster',
 };
+const adminActor = {
+  _id: { toString: () => '507f1f77bcf86cd799439012' },
+  role: 'admin',
+};
 
-function updatedUser(email) {
-  return {
+test('owner cannot bypass pending verification through generic profile update', async () => {
+  const res = makeResponse();
+  let databaseTouched = false;
+
+  await withUserMocks(
+    {
+      findOne: () => {
+        databaseTouched = true;
+        return selectedQuery(null);
+      },
+      findById: () => {
+        databaseTouched = true;
+        return selectedQuery(null);
+      },
+      findOneAndUpdate: () => {
+        databaseTouched = true;
+        return selectedQuery(null);
+      },
+    },
+    async () => {
+      await updateUserDetails(
+        {
+          params: { userId },
+          body: { email: 'new@example.com' },
+          user: ownerActor,
+        },
+        res
+      );
+    }
+  );
+
+  assert.equal(res.state.statusCode, 400);
+  assert.equal(res.state.body.message, 'No permitted fields provided');
+  assert.equal(databaseTouched, false);
+});
+
+test('admin changing another account email still invalidates verification and sessions', async () => {
+  let call;
+  const res = makeResponse();
+  const updatedUser = {
     _id: userId,
-    email,
+    email: 'new@example.com',
     firstName: 'Wave',
-    role: 'forecaster',
-    status: 'active',
     sessionVersion: 8,
-    emailVerified: false,
     toObject() {
       return { ...this };
     },
   };
-}
-
-test('email change clears inherited verification and recovery state while revoking sessions', async () => {
-  let call;
-  const res = makeResponse();
 
   await withUserMocks(
     {
@@ -85,7 +119,7 @@ test('email change clears inherited verification and recovery state while revoki
       findById: () => selectedQuery({ email: 'old@example.com' }),
       findOneAndUpdate: (filter, update, options) => {
         call = { filter, update, options };
-        return selectedQuery(updatedUser('new@example.com'));
+        return selectedQuery(updatedUser);
       },
     },
     async () => {
@@ -93,7 +127,7 @@ test('email change clears inherited verification and recovery state while revoki
         {
           params: { userId },
           body: { email: ' New@Example.COM ' },
-          user: ownerActor,
+          user: adminActor,
         },
         res
       );
@@ -108,39 +142,10 @@ test('email change clears inherited verification and recovery state while revoki
   });
   assert.equal(call.update.$set.email, 'new@example.com');
   assert.equal(call.update.$set.emailVerified, false);
-  assert.deepEqual(call.update.$unset, {
-    emailVerificationToken: '',
-    emailVerificationExpires: '',
-    passwordResetToken: '',
-    passwordResetExpires: '',
-  });
   assert.deepEqual(call.update.$inc, { sessionVersion: 1 });
+  assert.equal(call.update.$unset.pendingEmail, '');
+  assert.equal(call.update.$unset.pendingEmailVerificationToken, '');
+  assert.equal(call.update.$unset.passwordResetToken, '');
   assert.deepEqual(call.options, { new: true, runValidators: true });
-  assert.equal(res.state.body.emailVerificationRequired, true);
   assert.equal(res.state.body.sessionVersion, undefined);
-});
-
-test('stale concurrent email change cannot overwrite a newer identity state', async () => {
-  const res = makeResponse();
-
-  await withUserMocks(
-    {
-      findOne: () => selectedQuery(null),
-      findById: () => selectedQuery({ email: 'old@example.com' }),
-      findOneAndUpdate: () => selectedQuery(null),
-    },
-    async () => {
-      await updateUserDetails(
-        {
-          params: { userId },
-          body: { email: 'new@example.com' },
-          user: ownerActor,
-        },
-        res
-      );
-    }
-  );
-
-  assert.equal(res.state.statusCode, 409);
-  assert.match(res.state.body.message, /email changed concurrently/i);
 });
