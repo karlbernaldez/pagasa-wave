@@ -302,6 +302,22 @@ export const updateUserDetails = async (req, res) => {
       }
     }
 
+    if (updates.role !== undefined) {
+      const user = await User.findOneAndUpdate(
+        { _id: userId, deletedAt: null },
+        { $set: updates },
+        { new: true, runValidators: true }
+      ).select('+sessionVersion');
+
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      const safeUser = user.toObject();
+      delete safeUser.password;
+      delete safeUser.sessionVersion;
+
+      return res.status(200).json(safeUser);
+    }
+
     const user = await User.findById(userId).select('+sessionVersion');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -336,18 +352,24 @@ export const updateUserStatus = async (req, res) => {
         .json({ message: `Invalid status. Allowed: ${ALLOWED_STATUSES.join(', ')}` });
     }
 
-    const user = await User.findById(userId).select('+sessionVersion');
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const currentUser = await User.findById(userId).select('status activatedAt').lean();
+    if (!currentUser) return res.status(404).json({ message: 'User not found' });
 
-    const previousStatus = user.status;
+    const previousStatus = currentUser.status;
+    const update = { status };
 
-    if (status === 'active' && !user.activatedAt) {
-      user.activatedAt = new Date();
-      user.activatedBy = req.user._id;
+    if (status === 'active' && !currentUser.activatedAt) {
+      update.activatedAt = new Date();
+      update.activatedBy = req.user._id;
     }
 
-    user.status = status;
-    await user.save();
+    const user = await User.findOneAndUpdate(
+      { _id: userId, deletedAt: null },
+      { $set: update },
+      { new: true, runValidators: true }
+    ).select('+sessionVersion');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     sendUserUpdateEmail(user.email, user.firstName, [
       { field: 'Status', from: previousStatus, to: status },
