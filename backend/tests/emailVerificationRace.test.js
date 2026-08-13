@@ -6,12 +6,16 @@ import User from '../models/User.js';
 import { verifyEmail } from '../controllers/auth/verifyEmail.js';
 
 function makeResponse() {
-  const state = { statusCode: 200, body: null };
+  const state = { statusCode: 200, body: null, clearedCookies: [] };
 
   return {
     state,
     status(code) {
       state.statusCode = code;
+      return this;
+    },
+    clearCookie(name) {
+      state.clearedCookies.push(name);
       return this;
     },
     json(body) {
@@ -93,6 +97,7 @@ test('registration verification atomically consumes the still-current token', as
     },
   });
   assert.deepEqual(call.options, { new: true });
+  assert.deepEqual(res.state.clearedCookies, []);
 });
 
 test('pending email verification promotes only the exact active pending identity', async () => {
@@ -128,6 +133,7 @@ test('pending email verification promotes only the exact active pending identity
   assert.equal(res.state.body.kind, 'email_change');
   assert.equal(res.state.body.email, 'new@example.com');
   assert.equal(res.state.body.sessionRevoked, true);
+  assert.deepEqual(res.state.clearedCookies.sort(), ['accessToken', 'refreshToken']);
   assert.equal(pendingLookup.status, 'active');
   assert.equal(pendingLookup.pendingEmailVerificationToken, hashedToken);
 
