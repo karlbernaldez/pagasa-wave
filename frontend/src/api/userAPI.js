@@ -52,6 +52,12 @@ export const fetchUserDetails = async (userId) => {
   return normalizeUserPayload(user);
 };
 
+async function refreshAndBroadcastUser(userId) {
+  const user = await fetchUserDetails(userId);
+  broadcastUserUpdate(user);
+  return user;
+}
+
 export const createUserAPI = async (payload) => {
   const data = await request(USER_API_BASE_URL, {
     method: 'POST',
@@ -71,21 +77,33 @@ export const changePasswordAPI = (userId, { currentPassword, newPassword }) =>
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 
-export const requestEmailChangeAPI = (userId, { newEmail, currentPassword }) =>
-  request(`${USER_API_BASE_URL}/${userId}/email-change/request`, {
+export const requestEmailChangeAPI = async (userId, { newEmail, currentPassword }) => {
+  const data = await request(`${USER_API_BASE_URL}/${userId}/email-change/request`, {
     method: 'POST',
     body: JSON.stringify({ newEmail, currentPassword }),
   });
 
-export const resendEmailChangeAPI = (userId) =>
-  request(`${USER_API_BASE_URL}/${userId}/email-change/resend`, {
+  const user = await refreshAndBroadcastUser(userId);
+  return { ...data, user };
+};
+
+export const resendEmailChangeAPI = async (userId) => {
+  const data = await request(`${USER_API_BASE_URL}/${userId}/email-change/resend`, {
     method: 'POST',
   });
 
-export const cancelEmailChangeAPI = (userId) =>
-  request(`${USER_API_BASE_URL}/${userId}/email-change`, {
+  const user = await refreshAndBroadcastUser(userId);
+  return { ...data, user };
+};
+
+export const cancelEmailChangeAPI = async (userId) => {
+  const data = await request(`${USER_API_BASE_URL}/${userId}/email-change`, {
     method: 'DELETE',
   });
+
+  const user = await refreshAndBroadcastUser(userId);
+  return { ...data, user };
+};
 
 export const updateUserDetailsAPI = async (userId, payload, { broadcast = true } = {}) => {
   const updated = normalizeUserPayload(
