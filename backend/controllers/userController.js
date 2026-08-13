@@ -226,7 +226,15 @@ export const changePassword = async (req, res) => {
         password: verifiedPasswordHash,
         deletedAt: null,
       },
-      { $set: { password: hashedPassword } },
+      {
+        $set: { password: hashedPassword },
+        $unset: {
+          pendingEmail: '',
+          pendingEmailVerificationToken: '',
+          pendingEmailVerificationExpires: '',
+          pendingEmailRequestedAt: '',
+        },
+      },
       { new: true }
     ).select('+sessionVersion');
 
