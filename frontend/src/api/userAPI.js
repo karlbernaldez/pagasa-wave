@@ -69,6 +69,22 @@ export const changePasswordAPI = (userId, { currentPassword, newPassword }) =>
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 
+export const requestEmailChangeAPI = (userId, { newEmail, currentPassword }) =>
+  request(`${USER_API_BASE_URL}/${userId}/email-change/request`, {
+    method: 'POST',
+    body: JSON.stringify({ newEmail, currentPassword }),
+  });
+
+export const resendEmailChangeAPI = (userId) =>
+  request(`${USER_API_BASE_URL}/${userId}/email-change/resend`, {
+    method: 'POST',
+  });
+
+export const cancelEmailChangeAPI = (userId) =>
+  request(`${USER_API_BASE_URL}/${userId}/email-change`, {
+    method: 'DELETE',
+  });
+
 export const updateUserDetailsAPI = async (userId, payload, { broadcast = true } = {}) => {
   const updated = normalizeUserPayload(await request(`${USER_API_BASE_URL}/${userId}`, {
     method: 'PUT',
