@@ -21,6 +21,33 @@ const audit = (payload) =>
     logger.error('Email change audit log failed', { error: error.message })
   );
 
+export const buildPendingEmailChangeMutation = ({
+  userId,
+  currentEmail,
+  passwordHash,
+  newEmail,
+  tokenHash,
+  expiresAt,
+  requestedAt,
+}) => ({
+  filter: {
+    _id: userId,
+    status: 'active',
+    deletedAt: null,
+    email: currentEmail,
+    password: passwordHash,
+  },
+  update: {
+    $set: {
+      pendingEmail: newEmail,
+      pendingEmailVerificationToken: tokenHash,
+      pendingEmailVerificationExpires: expiresAt,
+      pendingEmailRequestedAt: requestedAt,
+    },
+  },
+  options: { new: true, runValidators: true },
+});
+
 export const requestEmailChange = async (req, res) => {
   const userId = req.params.userId;
   const newEmail = normalizeEmail(req.body?.newEmail);
@@ -63,25 +90,22 @@ export const requestEmailChange = async (req, res) => {
     }
 
     const rawToken = createRawToken();
-    const expiresAt = new Date(Date.now() + EMAIL_CHANGE_TTL_MS);
+    const requestedAt = new Date();
+    const expiresAt = new Date(requestedAt.getTime() + EMAIL_CHANGE_TTL_MS);
+    const mutation = buildPendingEmailChangeMutation({
+      userId,
+      currentEmail: user.email,
+      passwordHash: user.password,
+      newEmail,
+      tokenHash: hashToken(rawToken),
+      expiresAt,
+      requestedAt,
+    });
 
     const updated = await User.findOneAndUpdate(
-      {
-        _id: userId,
-        status: 'active',
-        deletedAt: null,
-        email: user.email,
-        password: user.password,
-      },
-      {
-        $set: {
-          pendingEmail: newEmail,
-          pendingEmailVerificationToken: hashToken(rawToken),
-          pendingEmailVerificationExpires: expiresAt,
-          pendingEmailRequestedAt: new Date(),
-        },
-      },
-      { new: true, runValidators: true }
+      mutation.filter,
+      mutation.update,
+      mutation.options
     ).select('email firstName pendingEmail pendingEmailVerificationExpires');
 
     if (!updated) {
