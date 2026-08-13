@@ -135,6 +135,13 @@ userSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
+const clearPendingEmailChangeOnDocument = (doc) => {
+  doc.pendingEmail = undefined;
+  doc.pendingEmailVerificationToken = undefined;
+  doc.pendingEmailVerificationExpires = undefined;
+  doc.pendingEmailRequestedAt = undefined;
+};
+
 userSchema.pre('save', async function () {
   if (this.email) this.email = this.email.toLowerCase().trim();
   if (this.pendingEmail) this.pendingEmail = this.pendingEmail.toLowerCase().trim();
@@ -147,7 +154,10 @@ userSchema.pre('save', async function () {
 
   if (!passwordChanged && !authorizationChanged) return;
 
-  if (passwordChanged) this.passwordChangedAt = new Date();
+  if (passwordChanged) {
+    this.passwordChangedAt = new Date();
+    clearPendingEmailChangeOnDocument(this);
+  }
 
   const current = await this.constructor.findById(this._id).select('+sessionVersion').lean();
 
@@ -172,6 +182,13 @@ userSchema.pre('findOneAndUpdate', function () {
 
   if (passwordChanged) {
     normalizedUpdate.$set.passwordChangedAt = new Date();
+    normalizedUpdate.$unset = {
+      ...(update.$unset || {}),
+      pendingEmail: '',
+      pendingEmailVerificationToken: '',
+      pendingEmailVerificationExpires: '',
+      pendingEmailRequestedAt: '',
+    };
   }
 
   normalizedUpdate.$inc = {
