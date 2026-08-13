@@ -95,21 +95,24 @@ test('registration verification atomically consumes the still-current token', as
   assert.deepEqual(call.options, { new: true });
 });
 
-test('pending email verification promotes only the exact still-current pending address', async () => {
+test('pending email verification promotes only the exact active pending identity', async () => {
   const token = 'pending-email-token';
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
   const userId = '507f1f77bcf86cd799439011';
   const res = makeResponse();
   const updateCalls = [];
+  let pendingLookup;
 
   await withUserMocks(
     {
-      findOne: () =>
-        selectedQuery({
+      findOne: (filter) => {
+        pendingLookup = filter;
+        return selectedQuery({
           _id: userId,
           email: 'old@example.com',
           pendingEmail: 'new@example.com',
-        }),
+        });
+      },
       findOneAndUpdate: (filter, update, options) => {
         updateCalls.push({ filter, update, options });
         if (updateCalls.length === 1) return selectedQuery(null);
@@ -125,6 +128,8 @@ test('pending email verification promotes only the exact still-current pending a
   assert.equal(res.state.body.kind, 'email_change');
   assert.equal(res.state.body.email, 'new@example.com');
   assert.equal(res.state.body.sessionRevoked, true);
+  assert.equal(pendingLookup.status, 'active');
+  assert.equal(pendingLookup.pendingEmailVerificationToken, hashedToken);
 
   const promotion = updateCalls[1];
   assert.deepEqual(
@@ -133,6 +138,7 @@ test('pending email verification promotes only the exact still-current pending a
       email: promotion.filter.email,
       pendingEmail: promotion.filter.pendingEmail,
       pendingEmailVerificationToken: promotion.filter.pendingEmailVerificationToken,
+      status: promotion.filter.status,
       deletedAt: promotion.filter.deletedAt,
     },
     {
@@ -140,6 +146,7 @@ test('pending email verification promotes only the exact still-current pending a
       email: 'old@example.com',
       pendingEmail: 'new@example.com',
       pendingEmailVerificationToken: hashedToken,
+      status: 'active',
       deletedAt: null,
     }
   );
@@ -150,6 +157,33 @@ test('pending email verification promotes only the exact still-current pending a
   assert.equal(promotion.update.$unset.pendingEmailVerificationToken, '');
   assert.equal(promotion.update.$unset.passwordResetToken, '');
   assert.deepEqual(promotion.options, { new: true, runValidators: true });
+});
+
+test('pending email verification does not promote an unavailable account', async () => {
+  const res = makeResponse();
+  let pendingLookup;
+  let updateCount = 0;
+
+  await withUserMocks(
+    {
+      findOne: (filter) => {
+        pendingLookup = filter;
+        return selectedQuery(null);
+      },
+      findOneAndUpdate: () => {
+        updateCount += 1;
+        return selectedQuery(null);
+      },
+    },
+    async () => {
+      await verifyEmail(makeRequest('pending-token'), res);
+    }
+  );
+
+  assert.equal(pendingLookup.status, 'active');
+  assert.equal(updateCount, 1);
+  assert.equal(res.state.statusCode, 400);
+  assert.equal(res.state.body.message, 'Invalid or expired verification token.');
 });
 
 test('verification fails if the token is invalid, expired, cancelled, or already consumed', async () => {
