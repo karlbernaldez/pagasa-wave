@@ -45,12 +45,15 @@ test('email verification atomically consumes the still-current verification toke
   const verifiedUser = { _id: '507f1f77bcf86cd799439011' };
   const res = makeResponse();
 
-  await withFindOneAndUpdate(async (filter, update, options) => {
-    call = { filter, update, options };
-    return verifiedUser;
-  }, async () => {
-    await verifyEmail(makeRequest(token), res);
-  });
+  await withFindOneAndUpdate(
+    async (filter, update, options) => {
+      call = { filter, update, options };
+      return verifiedUser;
+    },
+    async () => {
+      await verifyEmail(makeRequest(token), res);
+    }
+  );
 
   assert.equal(res.state.statusCode, 200);
   assert.equal(call.filter.emailVerificationToken, hashedToken);
@@ -70,9 +73,12 @@ test('email verification atomically consumes the still-current verification toke
 test('email verification fails if a concurrent email change already cleared the token', async () => {
   const res = makeResponse();
 
-  await withFindOneAndUpdate(async () => null, async () => {
-    await verifyEmail(makeRequest('stale-token'), res);
-  });
+  await withFindOneAndUpdate(
+    async () => null,
+    async () => {
+      await verifyEmail(makeRequest('stale-token'), res);
+    }
+  );
 
   assert.equal(res.state.statusCode, 400);
   assert.equal(res.state.body.message, 'Invalid or expired verification token.');
