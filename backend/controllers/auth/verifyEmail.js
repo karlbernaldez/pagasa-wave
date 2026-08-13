@@ -61,6 +61,7 @@ export const verifyEmail = async (req, res) => {
       pendingEmailVerificationToken: hashedToken,
       pendingEmailVerificationExpires: { $gt: now },
       pendingEmail: { $exists: true, $ne: null },
+      status: 'active',
       deletedAt: null,
     })
       .select('_id email pendingEmail')
@@ -75,6 +76,7 @@ export const verifyEmail = async (req, res) => {
             pendingEmail: pending.pendingEmail,
             pendingEmailVerificationToken: hashedToken,
             pendingEmailVerificationExpires: { $gt: now },
+            status: 'active',
             deletedAt: null,
           },
           {
