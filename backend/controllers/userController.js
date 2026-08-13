@@ -214,11 +214,26 @@ export const changePassword = async (req, res) => {
     const user = await User.findById(userId).select('+password +sessionVersion');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const match = await bcrypt.compare(currentPassword, user.password);
+    const verifiedPasswordHash = user.password;
+    const match = await bcrypt.compare(currentPassword, verifiedPasswordHash);
     if (!match) return res.status(400).json({ message: 'Incorrect current password.' });
 
-    user.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
-    await user.save();
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    const updated = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        password: verifiedPasswordHash,
+        deletedAt: null,
+      },
+      { $set: { password: hashedPassword } },
+      { new: true }
+    ).select('+sessionVersion');
+
+    if (!updated) {
+      return res.status(409).json({
+        message: 'Password changed concurrently. Please retry with the current password.',
+      });
+    }
 
     return res.status(200).json({ message: 'Password updated successfully.' });
   } catch (err) {
