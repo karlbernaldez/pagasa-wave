@@ -169,7 +169,7 @@ const STATUS_CONFIG = {
   success: {
     icon: <CheckCircle size={44} color="#34d399" />,
     title: 'Email Verified!',
-    subtitle: 'Your WaveLab account is now active and ready to use.',
+    subtitle: 'Your email is verified. You can sign in once your WaveLab account has been activated.',
     accent: '#34d399',
   },
   expired: {
@@ -195,31 +195,22 @@ export default function VerifyEmailPage() {
 
   const emailFromState = location.state?.email ?? null;
 
-  const [status, setStatus] = useState('verifying');
+  const [status, setStatus] = useState(() => (token ? 'verifying' : 'error'));
   const [email, setEmail] = useState(emailFromState);
   const [verificationKind, setVerificationKind] = useState(null);
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
   const [resendErr, setResendErr] = useState(null);
-  const [mounted, setMounted] = useState(false);
 
   const verifyCalledRef = useRef(false);
 
   useEffect(() => {
     document.title = 'WaveLab – Verify Email';
   }, []);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
-    if (verifyCalledRef.current) return;
+    if (verifyCalledRef.current || !token) return;
     verifyCalledRef.current = true;
-
-    if (!token) {
-      setStatus('error');
-      return;
-    }
 
     const controller = new AbortController();
 
@@ -361,7 +352,7 @@ export default function VerifyEmailPage() {
           zIndex: 10,
           width: '100%',
           maxWidth: 460,
-          animation: mounted ? 'fadeUp 0.6s ease forwards' : 'none',
+          animation: 'fadeUp 0.6s ease forwards',
         }}
       >
         <header style={{ textAlign: 'center', marginBottom: 32 }}>
