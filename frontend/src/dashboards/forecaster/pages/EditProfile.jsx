@@ -15,7 +15,6 @@ import {
   cancelEmailChangeAPI,
 } from "@/api/userAPI";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function toInputDate(iso) {
   if (!iso) return "";
   return iso.slice(0, 10);
@@ -25,7 +24,6 @@ function normalizeEmail(value) {
   return String(value ?? "").trim().toLowerCase();
 }
 
-// ── Theme tokens ──────────────────────────────────────────────────────────────
 function makeTheme(dark) {
   return {
     pageBg: dark ? "#020816" : "#f1f5f9",
@@ -63,7 +61,6 @@ function makeTheme(dark) {
   };
 }
 
-// ── AnimatedIn ────────────────────────────────────────────────────────────────
 function AnimatedIn({ delay = 0, children }) {
   const [vis, setVis] = useState(false);
   useEffect(() => {
@@ -77,7 +74,6 @@ function AnimatedIn({ delay = 0, children }) {
   );
 }
 
-// ── FormInput ─────────────────────────────────────────────────────────────────
 function FormInput({ icon: Icon, label, name, value, onChange, type = "text",
   placeholder, error, readOnly, hint, t }) {
   const [focused, setFocused] = useState(false);
@@ -139,7 +135,6 @@ function FormInput({ icon: Icon, label, name, value, onChange, type = "text",
   );
 }
 
-// ── SectionCard ────────────────────────────────────────────────────────────────
 function SectionCard({ title, icon: TitleIcon, children, delay = 0, t }) {
   return (
     <AnimatedIn delay={delay}>
@@ -160,14 +155,15 @@ function SectionCard({ title, icon: TitleIcon, children, delay = 0, t }) {
   );
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
 function Toast({ message, type, onDone }) {
-  const [vis, setVis] = useState(false);
+  const [vis, setVis] = useState(true);
   useEffect(() => {
-    setVis(true);
-    const timer = setTimeout(() => { setVis(false); setTimeout(onDone, 400); }, 3200);
+    const timer = setTimeout(() => {
+      setVis(false);
+      setTimeout(onDone, 400);
+    }, 3200);
     return () => clearTimeout(timer);
-  }, []);
+  }, [onDone]);
   return (
     <div style={{
       position: "fixed", top: 88, right: 28,
@@ -190,7 +186,6 @@ function Toast({ message, type, onDone }) {
   );
 }
 
-// ── EditProfilePage ───────────────────────────────────────────────────────────
 export default function EditProfilePage() {
   const { isDarkMode } = useTheme();
   const navigate = useNavigate();
@@ -200,7 +195,7 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [emailAction, setEmailAction] = useState(null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const uploadingAvatar = false;
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -258,7 +253,7 @@ export default function EditProfilePage() {
     if (!form.lastName.trim()) e.lastName = "Last name is required.";
     if (!form.email.trim()) e.email = "Email is required.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Enter a valid email.";
-    if (form.contact && !/^[\d\s\-\+\(\)]{7,15}$/.test(form.contact)) e.contact = "Enter a valid contact number.";
+    if (form.contact && !/^[\d\s+()-]{7,15}$/.test(form.contact)) e.contact = "Enter a valid contact number.";
     if (emailRequestNeeded && !form.currentPassword) {
       e.currentPassword = "Current password is required to request an email change.";
     }
@@ -349,7 +344,6 @@ export default function EditProfilePage() {
           navigate("/profile");
         }, 1200);
       }
-
     } catch (err) {
       const message = err.message?.toLowerCase() ?? "";
       if (message.includes("email") && message.includes("use")) {
@@ -409,7 +403,6 @@ export default function EditProfilePage() {
     const reader = new FileReader();
     reader.onload = () => setAvatarPreview(reader.result);
     reader.readAsDataURL(file);
-    // TODO: wire up avatar upload endpoint when available
   }
 
   if (loading) return (
