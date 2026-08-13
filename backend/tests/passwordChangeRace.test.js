@@ -55,7 +55,7 @@ const makeRequest = (currentPassword, newPassword) => ({
   },
 });
 
-test('password change is conditional on the exact password hash that was verified', async () => {
+test('password change is conditional on the exact password hash and cancels pending email changes', async () => {
   const currentPassword = 'CurrentPassword123!';
   const verifiedPasswordHash = await bcrypt.hash(currentPassword, 4);
   const loadedUser = {
@@ -89,6 +89,12 @@ test('password change is conditional on the exact password hash that was verifie
   assert.equal(updateFilter.deletedAt, null);
   assert.notEqual(updateDocument.$set.password, verifiedPasswordHash);
   assert.equal(await bcrypt.compare('ReplacementPassword123!', updateDocument.$set.password), true);
+  assert.deepEqual(updateDocument.$unset, {
+    pendingEmail: '',
+    pendingEmailVerificationToken: '',
+    pendingEmailVerificationExpires: '',
+    pendingEmailRequestedAt: '',
+  });
 });
 
 test('stale concurrent password change is rejected after the verified password hash changes', async () => {
