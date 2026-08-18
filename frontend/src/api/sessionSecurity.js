@@ -1,9 +1,10 @@
+import { fetchWithAuth } from './auth';
+
 const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 
 export async function logoutAllDevices() {
-  const response = await fetch(`${AUTH_API_BASE_URL}/logout-all`, {
+  const response = await fetchWithAuth(`${AUTH_API_BASE_URL}/logout-all`, {
     method: 'POST',
-    credentials: 'include',
   });
 
   const data = await response.json().catch(() => ({}));
