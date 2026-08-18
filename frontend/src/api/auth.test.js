@@ -90,7 +90,10 @@ describe('authenticated API retries', () => {
   });
 
   it('reports a temporary auth-service failure as unavailable instead of logged out', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(503, { message: 'Unavailable' })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse(503, { message: 'Unavailable' }))
+    );
 
     const { checkAuthSession } = await loadAuthApi();
     const result = await checkAuthSession({ force: true });

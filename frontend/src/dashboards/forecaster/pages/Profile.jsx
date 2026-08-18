@@ -515,7 +515,9 @@ export default function ProfilePage() {
         <div
           className={`max-w-md rounded-2xl border p-6 text-center backdrop-blur-3xl ${getGlassClass(isDarkMode)}`}
         >
-          <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+          <p
+            className={`text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}
+          >
             {error}
           </p>
           <button
@@ -616,7 +618,8 @@ export default function ProfilePage() {
                       onClick={() => avatarInputRef.current?.click()}
                       className={`absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-2xl text-xs font-black opacity-0 backdrop-blur-sm transition hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${isDarkMode ? 'bg-slate-950/70 text-white' : 'bg-white/75 text-slate-900'}`}
                     >
-                      <Camera size={20} />Change photo
+                      <Camera size={20} />
+                      Change photo
                     </button>
                   </>
                 )}
@@ -688,7 +691,9 @@ export default function ProfilePage() {
                     )}
                   </label>
                 ) : (
-                  <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                  <p
+                    className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}
+                  >
                     @{user?.username || 'forecaster'}
                   </p>
                 )}
@@ -701,7 +706,8 @@ export default function ProfilePage() {
                 onClick={() => navigate(-1)}
                 className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold ${isDarkMode ? 'border-white/15 bg-white/[0.05] text-slate-200' : 'border-white/85 bg-white/65 text-slate-800'}`}
               >
-                <ArrowLeft size={16} />Back
+                <ArrowLeft size={16} />
+                Back
               </button>
               {isEditing ? (
                 <>
@@ -711,7 +717,8 @@ export default function ProfilePage() {
                     disabled={saving}
                     className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold disabled:opacity-50 ${isDarkMode ? 'border-white/15 bg-white/[0.05] text-slate-200' : 'border-white/85 bg-white/65 text-slate-800'}`}
                   >
-                    <X size={16} />Cancel
+                    <X size={16} />
+                    Cancel
                   </button>
                   <button
                     type="button"
@@ -719,7 +726,8 @@ export default function ProfilePage() {
                     disabled={saving}
                     className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black disabled:opacity-60 ${isDarkMode ? 'border-cyan-300/30 bg-cyan-400/15 text-cyan-100' : 'border-cyan-300 bg-cyan-600 text-white'}`}
                   >
-                    <Save size={16} />{saving ? 'Saving…' : 'Save Profile'}
+                    <Save size={16} />
+                    {saving ? 'Saving…' : 'Save Profile'}
                   </button>
                 </>
               ) : (
@@ -728,7 +736,8 @@ export default function ProfilePage() {
                   onClick={handleStartEditing}
                   className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black ${isDarkMode ? 'border-cyan-300/30 bg-cyan-400/10 text-cyan-200' : 'border-cyan-200 bg-cyan-50/90 text-cyan-700'}`}
                 >
-                  <Edit3 size={16} />Edit Profile
+                  <Edit3 size={16} />
+                  Edit Profile
                 </button>
               )}
             </div>
@@ -738,18 +747,37 @@ export default function ProfilePage() {
             className={`relative mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t pt-4 text-xs font-semibold ${isDarkMode ? 'border-white/10 text-slate-300/80' : 'border-white/80 text-slate-600'}`}
           >
             <span className="inline-flex items-center gap-1.5">
-              <UserCheck size={14} />Member since {formatDate(user?.activatedAt)}
+              <UserCheck size={14} />
+              Member since {formatDate(user?.activatedAt)}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Clock size={14} />Last seen {timeAgo(user?.lastLogin)}
+              <Clock size={14} />
+              Last seen {timeAgo(user?.lastLogin)}
             </span>
           </div>
         </section>
 
         <section className="grid gap-3 sm:grid-cols-3" aria-label="Account summary">
-          <StatCard icon={Activity} label="Status" value={statusLabel} tone="green" isDarkMode={isDarkMode} />
-          <StatCard icon={Layers} label="Years active" value={yearsActive} tone="violet" isDarkMode={isDarkMode} />
-          <StatCard icon={Globe} label="Agency" value={user?.agency || '—'} isDarkMode={isDarkMode} />
+          <StatCard
+            icon={Activity}
+            label="Status"
+            value={statusLabel}
+            tone="green"
+            isDarkMode={isDarkMode}
+          />
+          <StatCard
+            icon={Layers}
+            label="Years active"
+            value={yearsActive}
+            tone="violet"
+            isDarkMode={isDarkMode}
+          />
+          <StatCard
+            icon={Globe}
+            label="Agency"
+            value={user?.agency || '—'}
+            isDarkMode={isDarkMode}
+          />
         </section>
 
         {user?.pendingEmail && (
@@ -760,7 +788,8 @@ export default function ProfilePage() {
               <div>
                 <p className="text-sm font-black">Email verification pending</p>
                 <p className="mt-1 text-xs font-semibold opacity-80">
-                  Current verified email: {user.email}. Verify {user.pendingEmail} before it becomes your login email.
+                  Current verified email: {user.email}. Verify {user.pendingEmail} before it becomes
+                  your login email.
                 </p>
               </div>
               <div className="flex gap-2">
@@ -770,7 +799,8 @@ export default function ProfilePage() {
                   disabled={Boolean(emailAction)}
                   className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-cyan-300/30 px-3 text-xs font-black text-cyan-500 disabled:opacity-50"
                 >
-                  <RefreshCw size={14} />{emailAction === 'resend' ? 'Sending…' : 'Resend'}
+                  <RefreshCw size={14} />
+                  {emailAction === 'resend' ? 'Sending…' : 'Resend'}
                 </button>
                 <button
                   type="button"
@@ -778,7 +808,8 @@ export default function ProfilePage() {
                   disabled={Boolean(emailAction)}
                   className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-red-300/30 px-3 text-xs font-black text-red-500 disabled:opacity-50"
                 >
-                  <X size={14} />{emailAction === 'cancel' ? 'Cancelling…' : 'Cancel'}
+                  <X size={14} />
+                  {emailAction === 'cancel' ? 'Cancelling…' : 'Cancel'}
                 </button>
               </div>
             </div>
@@ -800,7 +831,13 @@ export default function ProfilePage() {
                 isDarkMode={isDarkMode}
               />
             ) : (
-              <InfoItem icon={Mail} label="Email address" value={user?.email} accent isDarkMode={isDarkMode} />
+              <InfoItem
+                icon={Mail}
+                label="Email address"
+                value={user?.email}
+                accent
+                isDarkMode={isDarkMode}
+              />
             )}
 
             {isEditing ? (
@@ -814,7 +851,13 @@ export default function ProfilePage() {
                 isDarkMode={isDarkMode}
               />
             ) : (
-              <InfoItem icon={Phone} label="Contact number" value={user?.contact} accent isDarkMode={isDarkMode} />
+              <InfoItem
+                icon={Phone}
+                label="Contact number"
+                value={user?.contact}
+                accent
+                isDarkMode={isDarkMode}
+              />
             )}
 
             {isEditing && emailChangeRequested && (
@@ -856,7 +899,12 @@ export default function ProfilePage() {
                 isDarkMode={isDarkMode}
               />
             ) : (
-              <InfoItem icon={MapPin} label="Address" value={user?.address} isDarkMode={isDarkMode} />
+              <InfoItem
+                icon={MapPin}
+                label="Address"
+                value={user?.address}
+                isDarkMode={isDarkMode}
+              />
             )}
 
             {isEditing ? (
@@ -869,7 +917,12 @@ export default function ProfilePage() {
                 isDarkMode={isDarkMode}
               />
             ) : (
-              <InfoItem icon={Building2} label="Agency" value={user?.agency} isDarkMode={isDarkMode} />
+              <InfoItem
+                icon={Building2}
+                label="Agency"
+                value={user?.agency}
+                isDarkMode={isDarkMode}
+              />
             )}
           </DetailCard>
 
@@ -884,7 +937,13 @@ export default function ProfilePage() {
                 isDarkMode={isDarkMode}
               />
             ) : (
-              <InfoItem icon={Briefcase} label="Position" value={user?.position} accent isDarkMode={isDarkMode} />
+              <InfoItem
+                icon={Briefcase}
+                label="Position"
+                value={user?.position}
+                accent
+                isDarkMode={isDarkMode}
+              />
             )}
             <InfoItem icon={Shield} label="Role" value={user?.role} isDarkMode={isDarkMode} />
             {isEditing ? (
@@ -898,7 +957,12 @@ export default function ProfilePage() {
                 isDarkMode={isDarkMode}
               />
             ) : (
-              <InfoItem icon={Calendar} label="Birthday" value={formatDate(user?.birthday)} isDarkMode={isDarkMode} />
+              <InfoItem
+                icon={Calendar}
+                label="Birthday"
+                value={formatDate(user?.birthday)}
+                isDarkMode={isDarkMode}
+              />
             )}
             <InfoItem
               icon={UserCheck}
@@ -941,7 +1005,8 @@ export default function ProfilePage() {
           <span
             className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}
           >
-            <BadgeCheck size={13} />Verified account
+            <BadgeCheck size={13} />
+            Verified account
           </span>
         </section>
       </div>
