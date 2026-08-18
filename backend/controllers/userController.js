@@ -316,19 +316,27 @@ export const updateUserDetails = async (req, res) => {
     }
 
     let currentEmail = null;
+    let currentRole = null;
     let emailChanged = false;
+    let roleChanged = false;
 
-    if (updates.email !== undefined) {
-      const currentUser = await User.findById(userId).select('email').lean();
+    if (updates.email !== undefined || updates.role !== undefined) {
+      const currentUser = await User.findById(userId).select('email role').lean();
       if (!currentUser) return res.status(404).json({ message: 'User not found' });
 
       currentEmail = currentUser.email;
-      emailChanged = updates.email !== currentEmail;
+      currentRole = currentUser.role;
+      emailChanged = updates.email !== undefined && updates.email !== currentEmail;
+      roleChanged = updates.role !== undefined && updates.role !== currentRole;
     }
 
-    if (updates.role !== undefined || emailChanged) {
+    if (roleChanged || emailChanged) {
       const updateDocument = { $set: { ...updates } };
       const filter = { _id: userId, deletedAt: null };
+
+      if (roleChanged) {
+        filter.role = currentRole;
+      }
 
       if (emailChanged) {
         filter.email = currentEmail;
@@ -352,12 +360,20 @@ export const updateUserDetails = async (req, res) => {
       }).select('+sessionVersion');
 
       if (!user) {
-        if (emailChanged) {
+        if (roleChanged && emailChanged) {
           return res.status(409).json({
-            message: 'Email changed concurrently. Reload the account and try again.',
+            message:
+              'Authorization details changed concurrently. Reload the account and try again.',
           });
         }
-        return res.status(404).json({ message: 'User not found' });
+        if (roleChanged) {
+          return res.status(409).json({
+            message: 'Role changed concurrently. Reload the account and try again.',
+          });
+        }
+        return res.status(409).json({
+          message: 'Email changed concurrently. Reload the account and try again.',
+        });
       }
 
       const safeUser = user.toObject();
@@ -413,12 +429,16 @@ export const updateUserStatus = async (req, res) => {
     }
 
     const user = await User.findOneAndUpdate(
-      { _id: userId, deletedAt: null },
+      { _id: userId, deletedAt: null, status: previousStatus },
       { $set: update },
       { new: true, runValidators: true }
     ).select('+sessionVersion');
 
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) {
+      return res.status(409).json({
+        message: 'Status changed concurrently. Reload the account and try again.',
+      });
+    }
 
     sendUserUpdateEmail(user.email, user.firstName, [
       { field: 'Status', from: previousStatus, to: status },

@@ -68,12 +68,13 @@ const updatedUser = {
   },
 };
 
-test('admin role change uses one atomic authorization update', async () => {
+test('admin role change guards the role snapshot in the atomic authorization update', async () => {
   let call;
   const res = makeResponse();
 
   await withUserMocks(
     {
+      findById: () => selectedQuery({ email: updatedUser.email, role: 'forecaster' }),
       findOneAndUpdate: (filter, update, options) => {
         call = { filter, update, options };
         return selectedQuery(updatedUser);
@@ -92,12 +93,43 @@ test('admin role change uses one atomic authorization update', async () => {
   );
 
   assert.equal(res.state.statusCode, 200);
-  assert.deepEqual(call.filter, { _id: updatedUser._id, deletedAt: null });
+  assert.deepEqual(call.filter, {
+    _id: updatedUser._id,
+    deletedAt: null,
+    role: 'forecaster',
+  });
   assert.deepEqual(call.update, { $set: { role: 'admin' } });
   assert.deepEqual(call.options, { new: true, runValidators: true });
 });
 
-test('admin status change uses one atomic authorization update', async () => {
+test('stale admin role change is rejected when another authorization update wins first', async () => {
+  const res = makeResponse();
+
+  await withUserMocks(
+    {
+      findById: () => selectedQuery({ email: updatedUser.email, role: 'forecaster' }),
+      findOneAndUpdate: () => selectedQuery(null),
+    },
+    async () => {
+      await updateUserDetails(
+        {
+          params: { userId: updatedUser._id },
+          body: { role: 'admin' },
+          user: adminActor,
+        },
+        res
+      );
+    }
+  );
+
+  assert.equal(res.state.statusCode, 409);
+  assert.equal(
+    res.state.body.message,
+    'Role changed concurrently. Reload the account and try again.'
+  );
+});
+
+test('admin status change guards the status snapshot in the atomic authorization update', async () => {
   let call;
   const res = makeResponse();
 
@@ -122,7 +154,38 @@ test('admin status change uses one atomic authorization update', async () => {
   );
 
   assert.equal(res.state.statusCode, 200);
-  assert.deepEqual(call.filter, { _id: updatedUser._id, deletedAt: null });
+  assert.deepEqual(call.filter, {
+    _id: updatedUser._id,
+    deletedAt: null,
+    status: 'active',
+  });
   assert.deepEqual(call.update, { $set: { status: 'suspended' } });
   assert.deepEqual(call.options, { new: true, runValidators: true });
+});
+
+test('stale admin status change is rejected when another authorization update wins first', async () => {
+  const res = makeResponse();
+
+  await withUserMocks(
+    {
+      findById: () => selectedQuery({ status: 'active', activatedAt: new Date() }),
+      findOneAndUpdate: () => selectedQuery(null),
+    },
+    async () => {
+      await updateUserStatus(
+        {
+          params: { userId: updatedUser._id },
+          body: { status: 'suspended' },
+          user: adminActor,
+        },
+        res
+      );
+    }
+  );
+
+  assert.equal(res.state.statusCode, 409);
+  assert.equal(
+    res.state.body.message,
+    'Status changed concurrently. Reload the account and try again.'
+  );
 });
