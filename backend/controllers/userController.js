@@ -362,7 +362,8 @@ export const updateUserDetails = async (req, res) => {
       if (!user) {
         if (roleChanged && emailChanged) {
           return res.status(409).json({
-            message: 'Authorization details changed concurrently. Reload the account and try again.',
+            message:
+              'Authorization details changed concurrently. Reload the account and try again.',
           });
         }
         if (roleChanged) {
