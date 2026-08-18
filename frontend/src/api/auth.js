@@ -175,6 +175,10 @@ export const refreshAccessToken = async () => {
         credentials: 'include',
       });
 
+      if (isTransientAuthStatus(response.status)) {
+        throw new Error('Unable to verify your session right now.');
+      }
+
       if (!response.ok) {
         clearAuthCache();
         return false;
@@ -184,7 +188,6 @@ export const refreshAccessToken = async () => {
       clearAuthCache();
       return true;
     } catch (error) {
-      clearAuthCache();
       throw new Error('Unable to verify your session right now.', { cause: error });
     } finally {
       refreshInFlight = null;
