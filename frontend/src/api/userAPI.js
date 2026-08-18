@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './auth';
+
 const USER_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/users`;
 
 export const USER_UPDATED_EVENT = 'wavelab:user-updated';
@@ -17,8 +19,7 @@ function broadcastUserUpdate(user) {
 }
 
 const request = async (url, options = {}) => {
-  const res = await fetch(url, {
-    credentials: 'include',
+  const res = await fetchWithAuth(url, {
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
