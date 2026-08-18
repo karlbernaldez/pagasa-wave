@@ -37,14 +37,18 @@ export async function loadHeaderUser() {
   return _inflightRequest;
 }
 
-
 export function invalidateHeaderUserCache() {
-  _cache            = null;
-  _inflightRequest  = null;
+  _cache = null;
+  _inflightRequest = null;
 }
 
 async function _fetchUser() {
-  const { authenticated, user } = await checkAuthSession();
+  const { authenticated, user, unavailable } = await checkAuthSession();
+
+  if (unavailable) {
+    throw new Error('Unable to verify the current session.');
+  }
+
   if (authenticated && user?.id) {
     const userDetails = await fetchUserDetails(user.id);
     _cache = { currentUser: userDetails, isLoggedIn: true };
