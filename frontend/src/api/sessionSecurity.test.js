@@ -23,7 +23,7 @@ describe('sessionSecurity API', () => {
     localStorage.setItem('authToken', 'legacy-token');
     localStorage.setItem('user', JSON.stringify({ id: 'user-1' }));
     fetchWithAuth.mockResolvedValue(
-      jsonResponse(200, { message: 'Logged out from all devices.' })
+      jsonResponse(200, { message: 'Logged out from all devices.' }),
     );
 
     const result = await logoutAllDevices();
@@ -32,7 +32,7 @@ describe('sessionSecurity API', () => {
       expect.stringContaining('/api/auth/logout-all'),
       {
         method: 'POST',
-      }
+      },
     );
     expect(result).toEqual({ message: 'Logged out from all devices.' });
     expect(localStorage.getItem('authToken')).toBeNull();
@@ -43,7 +43,7 @@ describe('sessionSecurity API', () => {
     localStorage.setItem('authToken', 'legacy-token');
     localStorage.setItem('user', JSON.stringify({ id: 'user-1' }));
     fetchWithAuth.mockResolvedValue(
-      jsonResponse(503, { message: 'Unable to revoke sessions.' })
+      jsonResponse(503, { message: 'Unable to revoke sessions.' }),
     );
 
     await expect(logoutAllDevices()).rejects.toThrow('Unable to revoke sessions.');
