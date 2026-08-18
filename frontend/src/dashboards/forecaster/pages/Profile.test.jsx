@@ -104,7 +104,11 @@ describe('ProfilePage email changes', () => {
       newEmail: 'new@example.com',
       currentPassword: 'correct horse battery staple',
     });
-    expect(await screen.findByText(/verify new@example.com before it becomes your login email/i)).toBeInTheDocument();
+
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent(
+      'Profile saved. Verify new@example.com before it becomes your login email.'
+    );
   });
 
   it('blocks submission when the confirmation email does not match', async () => {
