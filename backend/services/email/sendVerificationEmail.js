@@ -1,4 +1,5 @@
 import { transporter, FROM_ADDRESS, APP_NAME, APP_URL } from './mailer.config.js';
+import { buildVerificationUrl } from './verificationUrl.js';
 
 const buildEmailTemplate = ({ title, preheader, body, ctaText, ctaUrl }) => `
 <!DOCTYPE html>
@@ -30,7 +31,7 @@ const buildEmailTemplate = ({ title, preheader, body, ctaText, ctaUrl }) => `
 `;
 
 export const sendVerificationEmail = async (email, username, token) => {
-  const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+  const verifyUrl = buildVerificationUrl(APP_URL, token);
 
   const html = buildEmailTemplate({
     title: `Verify your ${APP_NAME} email`,

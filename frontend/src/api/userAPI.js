@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './auth';
+
 const USER_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/users`;
 
 export const USER_UPDATED_EVENT = 'wavelab:user-updated';
@@ -9,14 +11,15 @@ function normalizeUserPayload(user) {
 
 function broadcastUserUpdate(user) {
   if (typeof window === 'undefined' || !user) return;
-  window.dispatchEvent(new CustomEvent(USER_UPDATED_EVENT, {
-    detail: { user, updatedAt: Date.now() },
-  }));
+  window.dispatchEvent(
+    new CustomEvent(USER_UPDATED_EVENT, {
+      detail: { user, updatedAt: Date.now() },
+    })
+  );
 }
 
 const request = async (url, options = {}) => {
-  const res = await fetch(url, {
-    credentials: 'include',
+  const res = await fetchWithAuth(url, {
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
@@ -50,6 +53,12 @@ export const fetchUserDetails = async (userId) => {
   return normalizeUserPayload(user);
 };
 
+async function refreshAndBroadcastUser(userId) {
+  const user = await fetchUserDetails(userId);
+  broadcastUserUpdate(user);
+  return user;
+}
+
 export const createUserAPI = async (payload) => {
   const data = await request(USER_API_BASE_URL, {
     method: 'POST',
@@ -69,11 +78,41 @@ export const changePasswordAPI = (userId, { currentPassword, newPassword }) =>
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 
+export const requestEmailChangeAPI = async (userId, { newEmail, currentPassword }) => {
+  const data = await request(`${USER_API_BASE_URL}/${userId}/email-change/request`, {
+    method: 'POST',
+    body: JSON.stringify({ newEmail, currentPassword }),
+  });
+
+  const user = await refreshAndBroadcastUser(userId);
+  return { ...data, user };
+};
+
+export const resendEmailChangeAPI = async (userId) => {
+  const data = await request(`${USER_API_BASE_URL}/${userId}/email-change/resend`, {
+    method: 'POST',
+  });
+
+  const user = await refreshAndBroadcastUser(userId);
+  return { ...data, user };
+};
+
+export const cancelEmailChangeAPI = async (userId) => {
+  const data = await request(`${USER_API_BASE_URL}/${userId}/email-change`, {
+    method: 'DELETE',
+  });
+
+  const user = await refreshAndBroadcastUser(userId);
+  return { ...data, user };
+};
+
 export const updateUserDetailsAPI = async (userId, payload, { broadcast = true } = {}) => {
-  const updated = normalizeUserPayload(await request(`${USER_API_BASE_URL}/${userId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  }));
+  const updated = normalizeUserPayload(
+    await request(`${USER_API_BASE_URL}/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  );
 
   if (broadcast) broadcastUserUpdate(updated);
   return updated;

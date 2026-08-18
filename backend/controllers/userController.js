@@ -14,17 +14,16 @@ const OWNER_FIELDS = [
   'contact',
   'address',
   'birthday',
-  'email',
   'agency',
   'position',
   'avatarUrl',
 ];
-const ADMIN_FIELDS = [...OWNER_FIELDS, 'role'];
+const ADMIN_FIELDS = [...OWNER_FIELDS, 'email', 'role'];
 
 const LIST_FIELDS =
   'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
 const DETAIL_FIELDS =
-  'username firstName lastName birthday address agency position email contact role status avatarUrl createdAt lastLogin activatedAt';
+  'username firstName lastName birthday address agency position email pendingEmail pendingEmailVerificationExpires contact role status avatarUrl createdAt lastLogin activatedAt';
 
 const clampInt = (value, min, max, fallback) => {
   const n = Math.trunc(Number(value));
@@ -149,7 +148,9 @@ export const createUserByAdmin = async (req, res) => {
       return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
     }
 
-    const exists = await User.findOne({ $or: [{ email }, { username }] }).lean();
+    const exists = await User.findOne({
+      $or: [{ email }, { pendingEmail: email }, { username }],
+    }).lean();
     if (exists) {
       return res.status(409).json({ message: 'A user with this email or username already exists' });
     }
@@ -225,7 +226,15 @@ export const changePassword = async (req, res) => {
         password: verifiedPasswordHash,
         deletedAt: null,
       },
-      { $set: { password: hashedPassword } },
+      {
+        $set: { password: hashedPassword },
+        $unset: {
+          pendingEmail: '',
+          pendingEmailVerificationToken: '',
+          pendingEmailVerificationExpires: '',
+          pendingEmailRequestedAt: '',
+        },
+      },
       { new: true }
     ).select('+sessionVersion');
 
@@ -256,7 +265,7 @@ export const updateUserDetails = async (req, res) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
-    const allowedFields = isAdmin ? ADMIN_FIELDS : OWNER_FIELDS;
+    const allowedFields = isAdmin && !isOwner ? ADMIN_FIELDS : OWNER_FIELDS;
     const updates = Object.fromEntries(
       allowedFields.filter((f) => req.body[f] !== undefined).map((f) => [f, req.body[f]])
     );
@@ -296,7 +305,7 @@ export const updateUserDetails = async (req, res) => {
       const conflict = await User.findOne({
         _id: { $ne: userId },
         $or: [
-          ...(updates.email ? [{ email: updates.email }] : []),
+          ...(updates.email ? [{ email: updates.email }, { pendingEmail: updates.email }] : []),
           ...(updates.username ? [{ username: updates.username }] : []),
         ],
       }).lean();
@@ -327,6 +336,10 @@ export const updateUserDetails = async (req, res) => {
         updateDocument.$unset = {
           emailVerificationToken: '',
           emailVerificationExpires: '',
+          pendingEmail: '',
+          pendingEmailVerificationToken: '',
+          pendingEmailVerificationExpires: '',
+          pendingEmailRequestedAt: '',
           passwordResetToken: '',
           passwordResetExpires: '',
         };
@@ -341,7 +354,7 @@ export const updateUserDetails = async (req, res) => {
       if (!user) {
         if (emailChanged) {
           return res.status(409).json({
-            message: 'Email changed concurrently. Reload your profile and try again.',
+            message: 'Email changed concurrently. Reload the account and try again.',
           });
         }
         return res.status(404).json({ message: 'User not found' });
@@ -350,8 +363,6 @@ export const updateUserDetails = async (req, res) => {
       const safeUser = user.toObject();
       delete safeUser.password;
       delete safeUser.sessionVersion;
-
-      if (emailChanged) safeUser.emailVerificationRequired = true;
 
       return res.status(200).json(safeUser);
     }
