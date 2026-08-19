@@ -38,7 +38,7 @@ export const WIND_ELEMENTS = [
 
 export const WAVE_ELEMENTS = [
   { id: 'raster', name: 'Raster Map', icon: '🗾', storageKey: 'WAVE_RASTER' },
-  { id: 'waveDirection', name: 'Wave Direction', icon: '➡️', storageKey: 'WAVE_DIRECTION' },
+  { id: 'waveContours', name: 'Wave Height Contours', icon: '〰️', storageKey: 'WAVE_CONTOURS' },
   { id: 'wavePeriod', name: 'Mean Period', icon: '⏱️', storageKey: 'WAVE_PERIOD' },
 ];
 
@@ -65,6 +65,9 @@ export const SATELLITE_OVERLAY_LAYERS = [
 export const WAVE_RASTER_LAYER_PREFIX = 'wave-raster-model-';
 export const WAVE_RASTER_SOURCE_PREFIX = 'wave-source-model-';
 export const WAVE_RASTER_DATE = '2026011200';
+export const WW3_CONTOUR_SOURCE_ID = 'wave-contours-WW3';
+export const WW3_CONTOUR_LINE_LAYER_ID = 'wave-contours-line-WW3';
+export const WW3_CONTOUR_LABEL_LAYER_ID = 'wave-contours-label-WW3';
 
 // ── localStorage key helpers ─────────────────────────────────────────────────
 
@@ -79,7 +82,7 @@ export const STORAGE_KEYS = {
 export const OFF_ELEMENTS = {
   particles: false,
   raster: false,
-  waveDirection: false,
+  waveContours: false,
   wavePeriod: false,
 };
 
