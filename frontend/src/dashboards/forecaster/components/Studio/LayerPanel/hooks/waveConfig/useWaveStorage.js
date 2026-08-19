@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import { STORAGE_KEYS, WAVE_ELEMENTS, DEFAULT_DIRECTION_STYLE } from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
 import { parseStoredModels, readBoolStorage } from '../../utils/layerPanelUtils';
 
@@ -8,10 +7,10 @@ export const readWaveStorage = () => ({
   enabled: readBoolStorage(STORAGE_KEYS.WAVE_ENABLED),
   models:  parseStoredModels(localStorage.getItem(STORAGE_KEYS.WAVE_MODEL), 'WW3'),
   elements: {
-    particles:     readBoolStorage('WAVE_PARTICLES'),
-    raster:        readBoolStorage('WAVE_RASTER'),
-    waveDirection: readBoolStorage('WAVE_DIRECTION'),
-    wavePeriod:    readBoolStorage('WAVE_PERIOD'),
+    particles:    readBoolStorage('WAVE_PARTICLES'),
+    raster:       readBoolStorage('WAVE_RASTER'),
+    waveContours: readBoolStorage('WAVE_CONTOURS'),
+    wavePeriod:   readBoolStorage('WAVE_PERIOD'),
   },
   directionStyle: (() => {
     try {
@@ -40,11 +39,10 @@ export const persistDirectionStyle = (style) =>
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export const useWaveStorage = () => {
-  const saveEnabled        = useCallback(persistEnabled,        []);
-  const saveModels         = useCallback(persistModels,         []);
-  const saveElements       = useCallback(persistElements,       []);
-  const saveDirectionStyle = useCallback(persistDirectionStyle, []);
-
-  return { readWaveStorage, saveEnabled, saveModels, saveElements, saveDirectionStyle };
-};
+export const useWaveStorage = () => ({
+  readWaveStorage,
+  saveEnabled: persistEnabled,
+  saveModels: persistModels,
+  saveElements: persistElements,
+  saveDirectionStyle: persistDirectionStyle,
+});
