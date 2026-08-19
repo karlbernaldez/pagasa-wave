@@ -58,7 +58,7 @@ const removeStaleRasterSources = (map, targetSourceIds) => {
 
 const upsertRasterLayer = (
   map,
-  { model, theme, opacity, showRaster, themeChanged, forecastDate, chartType },
+  { model, theme, opacity, showRaster, themeChanged, forecastDate, chartType }
 ) => {
   const sourceId = `${WAVE_RASTER_SOURCE_PREFIX}${model}`;
   const layerId = `${WAVE_RASTER_LAYER_PREFIX}${model}`;
@@ -105,7 +105,7 @@ const upsertRasterLayer = (
         },
         layout: { visibility: showRaster ? 'visible' : 'none' },
       },
-      'graticules',
+      'graticules'
     );
   } else {
     map.setPaintProperty(layerId, 'raster-opacity', opacity);
@@ -119,7 +119,7 @@ export const syncWaveRasterLayers = (
   showRaster = false,
   isDarkMode = false,
   themeChanged = false,
-  forecastPackage = {},
+  forecastPackage = {}
 ) => {
   if (!map) return;
   const theme = isDarkMode ? 'dark' : 'light';
@@ -129,7 +129,7 @@ export const syncWaveRasterLayers = (
   removeLegacyLayers(map);
   removeStaleRasterSources(
     map,
-    new Set(selectedModels.map((model) => `${WAVE_RASTER_SOURCE_PREFIX}${model}`)),
+    new Set(selectedModels.map((model) => `${WAVE_RASTER_SOURCE_PREFIX}${model}`))
   );
 
   selectedModels.forEach((model) =>
@@ -141,7 +141,7 @@ export const syncWaveRasterLayers = (
       themeChanged,
       forecastDate: forecastPackage.forecastDate,
       chartType: forecastPackage.chartType,
-    }),
+    })
   );
 
   ['wave-glass-fill', 'wave-glass-depth'].forEach((id) => {
@@ -149,7 +149,7 @@ export const syncWaveRasterLayers = (
     map.setLayoutProperty(
       id,
       'visibility',
-      showRaster && selectedModels.length > 0 ? 'visible' : 'none',
+      showRaster && selectedModels.length > 0 ? 'visible' : 'none'
     );
   });
 };
@@ -166,7 +166,7 @@ export const syncWW3ContourLayers = (
   models = [],
   showContours = false,
   isDarkMode = false,
-  forecastPackage = {},
+  forecastPackage = {}
 ) => {
   if (!map) return;
   const selectedModels = getSelectedModels(models);
@@ -209,7 +209,7 @@ export const syncWW3ContourLayers = (
           'line-opacity': 0.95,
         },
       },
-      'graticules',
+      'graticules'
     );
   } else {
     map.setPaintProperty(WW3_CONTOUR_LINE_LAYER_ID, 'line-color', ['get', colorProperty]);
@@ -239,7 +239,7 @@ export const syncWW3ContourLayers = (
           'text-halo-blur': 0.4,
         },
       },
-      'graticules',
+      'graticules'
     );
   } else {
     map.setPaintProperty(WW3_CONTOUR_LABEL_LAYER_ID, 'text-color', ['get', colorProperty]);
@@ -301,7 +301,7 @@ export const syncAllWaveLayers = (map, config, isDarkMode, prevThemeRef, forecas
     enabled && models.length > 0 && Boolean(elements.raster),
     isDarkMode,
     themeChanged,
-    forecastPackage,
+    forecastPackage
   );
 
   syncWW3ContourLayers(
@@ -309,7 +309,7 @@ export const syncAllWaveLayers = (map, config, isDarkMode, prevThemeRef, forecas
     models,
     enabled && Boolean(elements.waveContours),
     isDarkMode,
-    forecastPackage,
+    forecastPackage
   );
 
   syncWaveSymbolLayers(map, config);

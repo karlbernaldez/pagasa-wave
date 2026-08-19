@@ -25,7 +25,6 @@ export const WAVE_MODELS = [
   { id: 'ECWAM', label: 'ECWAM' },
   { id: 'MRI3', label: 'MRI3' },
   { id: 'BMKG', label: 'BMKG' },
-
 ];
 
 // ── Element options ───────────────────────────────────────────────────────────
@@ -56,7 +55,11 @@ export const UTILITY_LAYERS = [
 ];
 
 export const SATELLITE_OVERLAY_LAYERS = [
-  { id: 'PAGASA_NWP_RASTER', name: 'PAGASA NWP Raster', subtitle: 'Panahon precipitation forecast raster' },
+  {
+    id: 'PAGASA_NWP_RASTER',
+    name: 'PAGASA NWP Raster',
+    subtitle: 'Panahon precipitation forecast raster',
+  },
   { id: 'CYCLONE_TRACK', name: 'Cyclone Track', subtitle: 'PAGASA tropical cyclone track' },
 ];
 
@@ -88,13 +91,13 @@ export const OFF_ELEMENTS = {
 
 export const DEFAULT_DIRECTION_STYLE = {
   theme: 'colored', // 'colored' | 'black'
-  size: 1.0,       // multiplier applied to all icon-size stops
+  size: 1.0, // multiplier applied to all icon-size stops
   opacity: 1.0,
 };
 
 // icon-size base stops — user size is a multiplier on top of these
 export const BASE_SIZE_STOPS = [
-  [0.0, 0.30],
+  [0.0, 0.3],
   [1.0, 0.45],
   [3.0, 0.65],
   [6.0, 0.85],
@@ -102,12 +105,19 @@ export const BASE_SIZE_STOPS = [
 
 // Colored ramp paint expression
 export const COLORED_ICON_COLOR = [
-  'interpolate', ['linear'], ['get', 'waveHeight'],
-  0.0, 'rgba(160, 220, 255, 0.70)',
-  1.0, 'rgba( 64, 196, 180, 0.80)',
-  2.5, 'rgba( 80, 200,  80, 0.85)',
-  4.0, 'rgba(255, 160,  40, 0.90)',
-  6.0, 'rgba(220,  40,  40, 0.95)',
+  'interpolate',
+  ['linear'],
+  ['get', 'waveHeight'],
+  0.0,
+  'rgba(160, 220, 255, 0.70)',
+  1.0,
+  'rgba( 64, 196, 180, 0.80)',
+  2.5,
+  'rgba( 80, 200,  80, 0.85)',
+  4.0,
+  'rgba(255, 160,  40, 0.90)',
+  6.0,
+  'rgba(220,  40,  40, 0.95)',
 ];
 
 export const BLACK_ICON_COLOR = 'rgba(20, 20, 20, 0.88)';
