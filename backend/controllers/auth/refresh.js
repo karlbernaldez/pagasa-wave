@@ -21,12 +21,22 @@ const verifyRefreshToken = (token) =>
     clockTolerance: 5,
   });
 
+const JWT_CREDENTIAL_ERROR_NAMES = new Set([
+  'JsonWebTokenError',
+  'NotBeforeError',
+  'TokenExpiredError',
+]);
+
+const isJwtCredentialError = (error) => JWT_CREDENTIAL_ERROR_NAMES.has(error?.name);
+
 export const refreshAccessToken = async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
 
   if (!refreshToken) {
     return res.status(401).json({ message: 'Refresh token required.' });
   }
+
+  let refreshMayBeConsumed = false;
 
   try {
     const decoded = verifyRefreshToken(refreshToken);
@@ -47,6 +57,7 @@ export const refreshAccessToken = async (req, res) => {
     const familyId = existingSession.familyId || existingSession.jti;
 
     if (existingSession.revokedAt) {
+      refreshMayBeConsumed = true;
       await markRefreshFamilyCompromised(userId, familyId, 'refresh_token_reuse');
       clearAuthCookies(res);
       return res
@@ -58,12 +69,14 @@ export const refreshAccessToken = async (req, res) => {
     const statusError = user ? getStatusError(user.status) : 'User not found.';
 
     if (statusError) {
+      refreshMayBeConsumed = true;
       await revokeSessionFamily(userId, familyId, 'account_unavailable');
       clearAuthCookies(res);
       return res.status(403).json({ message: statusError });
     }
 
     if ((decoded.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) {
+      refreshMayBeConsumed = true;
       await revokeSessionFamily(userId, familyId, 'session_version_changed');
       clearAuthCookies(res);
       return res.status(401).json({ message: 'Session has been revoked.' });
@@ -74,6 +87,7 @@ export const refreshAccessToken = async (req, res) => {
       user.passwordChangedAt &&
       decoded.iat * 1000 < user.passwordChangedAt.getTime()
     ) {
+      refreshMayBeConsumed = true;
       await revokeSessionFamily(userId, familyId, 'password_changed');
       clearAuthCookies(res);
       return res.status(401).json({ message: 'Session expired after password change.' });
@@ -84,6 +98,7 @@ export const refreshAccessToken = async (req, res) => {
     const accessToken = generateAccessToken(payload);
     const replacementRefreshToken = generateRefreshToken(payload, { jwtid: replacementJti });
 
+    refreshMayBeConsumed = true;
     const consumed = await consumeRefreshSession({
       userId,
       jti,
@@ -119,10 +134,22 @@ export const refreshAccessToken = async (req, res) => {
     setAuthCookies(res, accessToken, replacementRefreshToken);
     return res.status(200).json({ message: 'Session refreshed.' });
   } catch (error) {
-    clearAuthCookies(res);
-    return res.status(401).json({
-      message:
-        error?.name === 'TokenExpiredError' ? 'Refresh token expired.' : 'Invalid refresh token.',
+    if (isJwtCredentialError(error)) {
+      clearAuthCookies(res);
+      return res.status(401).json({
+        message:
+          error?.name === 'TokenExpiredError' ? 'Refresh token expired.' : 'Invalid refresh token.',
+      });
+    }
+
+    console.error('[refreshAccessToken] Operational failure:', error);
+
+    if (refreshMayBeConsumed) {
+      clearAuthCookies(res);
+    }
+
+    return res.status(503).json({
+      message: 'Unable to refresh the session right now. Please try again.',
     });
   }
 };
