@@ -58,22 +58,24 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PYTHON_BIN="${WW3_PYTHON:-$ROOT/.venv/bin/python}"
 INPUT_ROOT="${WW3_INPUT_ROOT:-$ROOT/input/ww3}"
 TILER="$SCRIPT_DIR/tiling/ww3_direct.py"
+CONTOUR_GENERATOR="$SCRIPT_DIR/tiling/ww3_contours.py"
 SELECTOR="$SCRIPT_DIR/ww3_package_selection.py"
 
 [[ -x "$PYTHON_BIN" || -f "$PYTHON_BIN" ]] || { echo "WW3 Python runtime not found: $PYTHON_BIN" >&2; exit 1; }
 [[ -f "$TILER" ]] || { echo "Direct WW3 tiler not found: $TILER" >&2; exit 1; }
+[[ -f "$CONTOUR_GENERATOR" ]] || { echo "WW3 contour generator not found: $CONTOUR_GENERATOR" >&2; exit 1; }
 [[ -f "$SELECTOR" ]] || { echo "WW3 package selector not found: $SELECTOR" >&2; exit 1; }
 [[ -z "$SOURCE_CYCLE" || "$SOURCE_CYCLE" =~ ^[0-9]{10}$ ]] || { echo "Invalid source cycle: $SOURCE_CYCLE" >&2; exit 2; }
 
 "$PYTHON_BIN" - <<'PY'
 missing = []
-for module in ("numpy", "scipy", "xarray", "netCDF4", "PIL"):
+for module in ("numpy", "scipy", "xarray", "netCDF4", "PIL", "contourpy"):
     try:
         __import__(module)
     except Exception as exc:
         missing.append(f"{module}: {exc}")
 if missing:
-    raise SystemExit("Missing direct WW3 tiler dependencies:\n  " + "\n  ".join(missing))
+    raise SystemExit("Missing direct WW3 dependencies:\n  " + "\n  ".join(missing))
 PY
 
 if [[ -z "$SOURCE_CYCLE" ]]; then
@@ -120,6 +122,13 @@ for line in "${PACKAGE_RUNS[@]}"; do
     "${EXTRA_ARGS[@]}"
 
   date_tag=${timestamp/T/}
+  contour_target="$ROOT/tiles/WW3/contours/$package_tag/$date_tag/contours.geojson"
+  "$PYTHON_BIN" "$CONTOUR_GENERATOR" "$ncfile" \
+    --var "$VARNAME" \
+    --sigma "$SIGMA" \
+    --output "$contour_target"
+  echo "   Package contours: $contour_target"
+
   shopt -s nullglob
   for source_dir in "$ROOT/tiles/WW3"/*/"$date_tag"; do
     style_dir=$(dirname "$source_dir")
@@ -137,4 +146,4 @@ find "$ROOT/tiles" -type f -exec chmod 644 {} \; 2>/dev/null || true
 
 echo
 echo "+ WW3 forecast package complete: $PACKAGE_DATE (source cycle $RESOLVED_SOURCE_CYCLE)"
-find "$ROOT/tiles/WW3" -type f -name '*.png' | head || true
+find "$ROOT/tiles/WW3" -type f \( -name '*.png' -o -name 'contours.geojson' \) | head || true
