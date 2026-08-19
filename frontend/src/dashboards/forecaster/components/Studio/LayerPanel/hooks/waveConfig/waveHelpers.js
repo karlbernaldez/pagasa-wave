@@ -51,6 +51,13 @@ export const buildWaveTileUrl = ({ model, theme, date, forecastDate, chartType }
     : `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}/{z}/{x}/{y}.png`;
 };
 
+export const buildWW3ContourUrl = ({ forecastDate, chartType } = {}) => {
+  const { runTag } = resolveWW3ForecastRun(
+    resolveForecastContext({ forecastDate, chartType }),
+  );
+  return `${WW3_TILE_BASE}/WW3/contours/${runTag}/contours.geojson`;
+};
+
 // ── Icon size expression ──────────────────────────────────────────────────────
 
 export const buildIconSize = (sizeMult = 1.0) => [
