@@ -122,7 +122,7 @@ import_archives() {
 }
 
 build_package() {
-  local package_date="$1" source_cycle="$2" marker tag count message
+  local package_date="$1" source_cycle="$2" marker tag png_count contour_count message
   marker="$STATE_ROOT/built/$package_date"
   [[ -e "$marker" ]] && { log "package already built: $package_date"; return 0; }
   tag="$(python3 - "$package_date" <<'PY'
@@ -139,15 +139,17 @@ PY
     printf 'package_date=%s\nsource_cycle=%s\nfailed_utc=%s\n' "$package_date" "$source_cycle" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$STATE_ROOT/failed/$package_date"
     return 1
   fi
-  count=$(find "$TILE_ROOT" -mindepth 3 -type f -path "*/$tag/*" -name '*.png' | wc -l)
-  (( count > 0 )) || fail "build produced no PNG tiles for $tag"
-  printf 'package_date=%s\nsource_cycle=%s\noutput_tag=%s\npng_count=%s\nbuilt_utc=%s\n' \
-    "$package_date" "$source_cycle" "$tag" "$count" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$marker"
+  png_count=$(find "$TILE_ROOT" -mindepth 3 -type f -path "*/$tag/*" -name '*.png' | wc -l)
+  (( png_count > 0 )) || fail "build produced no PNG tiles for $tag"
+  contour_count=$(find "$TILE_ROOT/contours/$tag" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
+  (( contour_count == 4 )) || fail "build produced $contour_count of 4 required contour files for $tag"
+  printf 'package_date=%s\nsource_cycle=%s\noutput_tag=%s\npng_count=%s\ncontour_count=%s\nbuilt_utc=%s\n' \
+    "$package_date" "$source_cycle" "$tag" "$png_count" "$contour_count" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$marker"
   rm -f -- "$STATE_ROOT/failed/$package_date"
-  printf -v message 'Host: %s\nPackage: %s\nSource cycle: %s\nTile folder: %s\nPNG files: %s' \
-    "$(hostname -f 2>/dev/null || hostname)" "$package_date" "$source_cycle" "$tag" "$count"
+  printf -v message 'Host: %s\nPackage: %s\nSource cycle: %s\nTile folder: %s\nPNG files: %s\nContour files: %s' \
+    "$(hostname -f 2>/dev/null || hostname)" "$package_date" "$source_cycle" "$tag" "$png_count" "$contour_count"
   send_alert SUCCESS "$message"
-  log "built WW3 package $package_date from source cycle $source_cycle with $count PNG files"
+  log "built WW3 package $package_date from source cycle $source_cycle with $png_count PNG files and $contour_count contour files"
 }
 
 remove_path() {
