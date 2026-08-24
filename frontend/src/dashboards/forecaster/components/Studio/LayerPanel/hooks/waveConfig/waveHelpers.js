@@ -1,4 +1,8 @@
-import { BASE_SIZE_STOPS, WAVE_BUCKET_BASE, MRI3_TIMESTEP } from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
+import {
+  BASE_SIZE_STOPS,
+  WAVE_BUCKET_BASE,
+  MRI3_TIMESTEP,
+} from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
 import {
   getCachedForecastPackageContext,
   resolveBMKGForecastRun,
@@ -9,35 +13,31 @@ import {
 
 export const normalizeModelName = (model = '') => model.trim().toUpperCase();
 
-export const getSelectedModels = (models = []) =>
-  [...new Set(models.map(normalizeModelName).filter(Boolean))];
+export const getSelectedModels = (models = []) => [
+  ...new Set(models.map(normalizeModelName).filter(Boolean)),
+];
 
 // ── Tile URL builder ──────────────────────────────────────────────────────────
 
-const WW3_TILE_BASE =
-  import.meta.env.VITE_WW3_TILE_BASE_URL?.replace(/\/$/, '') || '/wavetiles';
+const WW3_TILE_BASE = import.meta.env.VITE_WW3_TILE_BASE_URL?.replace(/\/$/, '') || '/wavetiles';
 
 const BMKG_TILE_BASE =
   import.meta.env.VITE_BMKG_TILE_BASE_URL?.replace(/\/$/, '') ||
   'https://peta-maritim.bmkg.go.id/api21/mpl_req/w3g_global/swh/0';
 
 const resolveForecastContext = ({ forecastDate, chartType }) =>
-  forecastDate || chartType
-    ? { forecastDate, chartType }
-    : getCachedForecastPackageContext();
+  forecastDate || chartType ? { forecastDate, chartType } : getCachedForecastPackageContext();
 
 const TILE_URL_BUILDERS = {
   MRI3: ({ theme, date }) =>
     `${WAVE_BUCKET_BASE}/MRI3/${theme}/${date}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`,
   WW3: ({ theme, forecastDate, chartType }) => {
-    const { runTag } = resolveWW3ForecastRun(
-      resolveForecastContext({ forecastDate, chartType }),
-    );
+    const { runTag } = resolveWW3ForecastRun(resolveForecastContext({ forecastDate, chartType }));
     return `${WW3_TILE_BASE}/WW3/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
   BMKG: ({ forecastDate, chartType }) => {
     const { modelRunDateTime, validDateTime } = resolveBMKGForecastRun(
-      resolveForecastContext({ forecastDate, chartType }),
+      resolveForecastContext({ forecastDate, chartType })
     );
     return `${BMKG_TILE_BASE}/${modelRunDateTime}/${validDateTime}/{z}/{x}/{y}.png?ci=1&overlays=,contourf&conc=snow`;
   },
@@ -51,9 +51,16 @@ export const buildWaveTileUrl = ({ model, theme, date, forecastDate, chartType }
     : `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}/{z}/{x}/{y}.png`;
 };
 
+export const buildWW3ContourUrl = ({ forecastDate, chartType } = {}) => {
+  const { runTag } = resolveWW3ForecastRun(resolveForecastContext({ forecastDate, chartType }));
+  return `${WW3_TILE_BASE}/WW3/contours/${runTag}/contours.geojson`;
+};
+
 // ── Icon size expression ──────────────────────────────────────────────────────
 
 export const buildIconSize = (sizeMult = 1.0) => [
-  'interpolate', ['linear'], ['get', 'waveHeight'],
+  'interpolate',
+  ['linear'],
+  ['get', 'waveHeight'],
   ...BASE_SIZE_STOPS.flatMap(([waveH, baseSize]) => [waveH, baseSize * sizeMult]),
 ];

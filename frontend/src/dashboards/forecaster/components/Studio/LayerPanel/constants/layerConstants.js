@@ -25,7 +25,6 @@ export const WAVE_MODELS = [
   { id: 'ECWAM', label: 'ECWAM' },
   { id: 'MRI3', label: 'MRI3' },
   { id: 'BMKG', label: 'BMKG' },
-
 ];
 
 // ── Element options ───────────────────────────────────────────────────────────
@@ -38,7 +37,7 @@ export const WIND_ELEMENTS = [
 
 export const WAVE_ELEMENTS = [
   { id: 'raster', name: 'Raster Map', icon: '🗾', storageKey: 'WAVE_RASTER' },
-  { id: 'waveDirection', name: 'Wave Direction', icon: '➡️', storageKey: 'WAVE_DIRECTION' },
+  { id: 'waveContours', name: 'Wave Height Contours', icon: '〰️', storageKey: 'WAVE_CONTOURS' },
   { id: 'wavePeriod', name: 'Mean Period', icon: '⏱️', storageKey: 'WAVE_PERIOD' },
 ];
 
@@ -56,7 +55,11 @@ export const UTILITY_LAYERS = [
 ];
 
 export const SATELLITE_OVERLAY_LAYERS = [
-  { id: 'PAGASA_NWP_RASTER', name: 'PAGASA NWP Raster', subtitle: 'Panahon precipitation forecast raster' },
+  {
+    id: 'PAGASA_NWP_RASTER',
+    name: 'PAGASA NWP Raster',
+    subtitle: 'Panahon precipitation forecast raster',
+  },
   { id: 'CYCLONE_TRACK', name: 'Cyclone Track', subtitle: 'PAGASA tropical cyclone track' },
 ];
 
@@ -65,6 +68,9 @@ export const SATELLITE_OVERLAY_LAYERS = [
 export const WAVE_RASTER_LAYER_PREFIX = 'wave-raster-model-';
 export const WAVE_RASTER_SOURCE_PREFIX = 'wave-source-model-';
 export const WAVE_RASTER_DATE = '2026011200';
+export const WW3_CONTOUR_SOURCE_ID = 'wave-contours-WW3';
+export const WW3_CONTOUR_LINE_LAYER_ID = 'wave-contours-line-WW3';
+export const WW3_CONTOUR_LABEL_LAYER_ID = 'wave-contours-label-WW3';
 
 // ── localStorage key helpers ─────────────────────────────────────────────────
 
@@ -79,19 +85,19 @@ export const STORAGE_KEYS = {
 export const OFF_ELEMENTS = {
   particles: false,
   raster: false,
-  waveDirection: false,
+  waveContours: false,
   wavePeriod: false,
 };
 
 export const DEFAULT_DIRECTION_STYLE = {
   theme: 'colored', // 'colored' | 'black'
-  size: 1.0,       // multiplier applied to all icon-size stops
+  size: 1.0, // multiplier applied to all icon-size stops
   opacity: 1.0,
 };
 
 // icon-size base stops — user size is a multiplier on top of these
 export const BASE_SIZE_STOPS = [
-  [0.0, 0.30],
+  [0.0, 0.3],
   [1.0, 0.45],
   [3.0, 0.65],
   [6.0, 0.85],
@@ -99,12 +105,19 @@ export const BASE_SIZE_STOPS = [
 
 // Colored ramp paint expression
 export const COLORED_ICON_COLOR = [
-  'interpolate', ['linear'], ['get', 'waveHeight'],
-  0.0, 'rgba(160, 220, 255, 0.70)',
-  1.0, 'rgba( 64, 196, 180, 0.80)',
-  2.5, 'rgba( 80, 200,  80, 0.85)',
-  4.0, 'rgba(255, 160,  40, 0.90)',
-  6.0, 'rgba(220,  40,  40, 0.95)',
+  'interpolate',
+  ['linear'],
+  ['get', 'waveHeight'],
+  0.0,
+  'rgba(160, 220, 255, 0.70)',
+  1.0,
+  'rgba( 64, 196, 180, 0.80)',
+  2.5,
+  'rgba( 80, 200,  80, 0.85)',
+  4.0,
+  'rgba(255, 160,  40, 0.90)',
+  6.0,
+  'rgba(220,  40,  40, 0.95)',
 ];
 
 export const BLACK_ICON_COLOR = 'rgba(20, 20, 20, 0.88)';
