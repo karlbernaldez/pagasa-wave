@@ -9,6 +9,7 @@ Usage:
 Examples:
   bash scripts/build_ecwam_package.sh 2026-08-24
   bash scripts/build_ecwam_package.sh 2026-08-24 swh 1.5 --source-cycle 2026082400 --skip-existing
+  ECWAM_OUTPUT_ROOT=/tmp/ecwam-package bash scripts/build_ecwam_package.sh 2026-08-24 swh 1.5 --source-cycle 2026082400
 
 Environment:
   ECWAM_PYTHON         Python executable. Defaults to wavetiles/.venv/bin/python.
@@ -16,6 +17,7 @@ Environment:
   ECWAM_SIGMA          Default smoothing sigma. Defaults to 1.5.
   ECWAM_GRID_POINTS    High-resolution grid point count. Defaults to 271051.
   ECWAM_INPUT_ROOT     Cycle-folder root. Defaults to /home/darwin/ecmwf/ecwam.
+  ECWAM_OUTPUT_ROOT    Output root. Defaults to wavetiles/tiles/ECWAM.
   ECWAM_SOURCE_CYCLE   Optional exact source cycle folder (YYYYMMDDHH).
 EOF
 }
@@ -56,6 +58,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PYTHON_BIN="${ECWAM_PYTHON:-$ROOT/.venv/bin/python}"
 INPUT_ROOT="${ECWAM_INPUT_ROOT:-/home/darwin/ecmwf/ecwam}"
+OUTPUT_ROOT="${ECWAM_OUTPUT_ROOT:-$ROOT/tiles/ECWAM}"
 GRID_POINTS="${ECWAM_GRID_POINTS:-271051}"
 TILER="$SCRIPT_DIR/tiling/ecwam_direct.py"
 CONTOUR_GENERATOR="$SCRIPT_DIR/tiling/ecwam_contours.py"
@@ -67,6 +70,7 @@ SELECTOR="$SCRIPT_DIR/ecwam_package_selection.py"
 [[ -f "$SELECTOR" ]] || { echo "ECWAM package selector not found: $SELECTOR" >&2; exit 1; }
 [[ -z "$SOURCE_CYCLE" || "$SOURCE_CYCLE" =~ ^[0-9]{10}$ ]] || { echo "Invalid ECWAM source cycle: $SOURCE_CYCLE" >&2; exit 2; }
 [[ "$GRID_POINTS" =~ ^[0-9]+$ ]] || { echo "Invalid ECWAM grid point count: $GRID_POINTS" >&2; exit 2; }
+[[ -n "$OUTPUT_ROOT" && "$OUTPUT_ROOT" != "/" ]] || { echo "Unsafe ECWAM output root: $OUTPUT_ROOT" >&2; exit 2; }
 
 "$PYTHON_BIN" - <<'PY'
 missing = []
@@ -101,11 +105,14 @@ echo "Running isolated ECWAM forecast package build"
 echo "  package date : $PACKAGE_DATE"
 echo "  source cycle : $RESOLVED_SOURCE_CYCLE"
 echo "  input root   : $INPUT_ROOT"
+echo "  output root  : $OUTPUT_ROOT"
 echo "  variable     : $VARNAME"
 echo "  grid points  : $GRID_POINTS"
 echo "  sigma        : $SIGMA"
 echo "  python       : $PYTHON_BIN"
 echo "  root         : $ROOT"
+
+mkdir -p "$OUTPUT_ROOT"
 
 for line in "${PACKAGE_RUNS[@]}"; do
   IFS='|' read -r label run_tag package_tag gribfile source_cycle <<<"$line"
@@ -124,10 +131,10 @@ for line in "${PACKAGE_RUNS[@]}"; do
     --var "$VARNAME" \
     --grid-points "$GRID_POINTS" \
     --sigma "$SIGMA" \
-    --tiles-dir "$ROOT/tiles/ECWAM" \
+    --tiles-dir "$OUTPUT_ROOT" \
     "${EXTRA_ARGS[@]}"
 
-  contour_target="$ROOT/tiles/ECWAM/contours/$package_tag/$run_tag/contours.geojson"
+  contour_target="$OUTPUT_ROOT/contours/$package_tag/$run_tag/contours.geojson"
   "$PYTHON_BIN" "$CONTOUR_GENERATOR" "$gribfile" \
     --var "$VARNAME" \
     --grid-points "$GRID_POINTS" \
@@ -139,7 +146,7 @@ for line in "${PACKAGE_RUNS[@]}"; do
   echo "   Package contours: $contour_target"
 
   shopt -s nullglob
-  for source_dir in "$ROOT/tiles/ECWAM"/*/"$run_tag"; do
+  for source_dir in "$OUTPUT_ROOT"/*/"$run_tag"; do
     style_dir=$(dirname "$source_dir")
     [[ "$(basename "$style_dir")" == "contours" ]] && continue
     target_dir="$style_dir/$package_tag/$run_tag"
@@ -153,10 +160,10 @@ for line in "${PACKAGE_RUNS[@]}"; do
   shopt -u nullglob
 done
 
-contour_count=$(find "$ROOT/tiles/ECWAM/contours/$PACKAGE_TAG" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
+contour_count=$(find "$OUTPUT_ROOT/contours/$PACKAGE_TAG" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
 [[ "$contour_count" -eq 4 ]] || { echo "Expected four non-empty ECWAM contour files for $PACKAGE_TAG, got $contour_count" >&2; exit 1; }
 
 echo
 echo "+ ECWAM forecast package complete: $PACKAGE_DATE (source cycle $RESOLVED_SOURCE_CYCLE)"
 echo "  Contour files: $contour_count"
-find "$ROOT/tiles/ECWAM" -type f \( -name '*.png' -o -name 'contours.geojson' \) | head || true
+find "$OUTPUT_ROOT" -type f \( -name '*.png' -o -name 'contours.geojson' \) | head || true
