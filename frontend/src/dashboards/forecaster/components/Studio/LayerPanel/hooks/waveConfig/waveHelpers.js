@@ -39,9 +39,7 @@ const TILE_URL_BUILDERS = {
     return `${WW3_TILE_BASE}/WW3/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
   ECWAM: ({ theme, forecastDate, chartType }) => {
-    const { runTag } = resolveECWAMForecastRun(
-      resolveForecastContext({ forecastDate, chartType })
-    );
+    const { runTag } = resolveECWAMForecastRun(resolveForecastContext({ forecastDate, chartType }));
     return `${ECWAM_TILE_BASE}/ECWAM/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
   BMKG: ({ forecastDate, chartType }) => {
@@ -66,9 +64,7 @@ const CONTOUR_URL_BUILDERS = {
     return `${WW3_TILE_BASE}/WW3/contours/${runTag}/contours.geojson`;
   },
   ECWAM: ({ forecastDate, chartType }) => {
-    const { runTag } = resolveECWAMForecastRun(
-      resolveForecastContext({ forecastDate, chartType })
-    );
+    const { runTag } = resolveECWAMForecastRun(resolveForecastContext({ forecastDate, chartType }));
     return `${ECWAM_TILE_BASE}/ECWAM/contours/${runTag}/contours.geojson`;
   },
 };

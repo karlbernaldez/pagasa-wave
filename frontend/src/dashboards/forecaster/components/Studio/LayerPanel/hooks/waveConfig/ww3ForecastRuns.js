@@ -1,21 +1,21 @@
 const WW3_FORECAST_OFFSETS = {
   analysis: { days: -1, hour: '18' },
   'wave analysis': { days: -1, hour: '18' },
-  'forecast_24h': { days: 0, hour: '18' },
+  forecast_24h: { days: 0, hour: '18' },
   'forecast 24h': { days: 0, hour: '18' },
   '24h': { days: 0, hour: '18' },
   '24h forecast': { days: 0, hour: '18' },
   '24hr forecast': { days: 0, hour: '18' },
   '24 hour forecast': { days: 0, hour: '18' },
   '24-hour forecast': { days: 0, hour: '18' },
-  'forecast_36h': { days: 1, hour: '06' },
+  forecast_36h: { days: 1, hour: '06' },
   'forecast 36h': { days: 1, hour: '06' },
   '36h': { days: 1, hour: '06' },
   '36h forecast': { days: 1, hour: '06' },
   '36hr forecast': { days: 1, hour: '06' },
   '36 hour forecast': { days: 1, hour: '06' },
   '36-hour forecast': { days: 1, hour: '06' },
-  'forecast_48h': { days: 1, hour: '18' },
+  forecast_48h: { days: 1, hour: '18' },
   'forecast 48h': { days: 1, hour: '18' },
   '48h': { days: 1, hour: '18' },
   '48h forecast': { days: 1, hour: '18' },
@@ -49,16 +49,25 @@ const ECWAM_FORECAST_OFFSETS = {
 
 const DEFAULT_WW3_OFFSET = WW3_FORECAST_OFFSETS.analysis;
 const DEFAULT_ECWAM_OFFSET = ECWAM_FORECAST_OFFSETS.analysis;
-const MONTH_TOKENS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const MONTH_TOKENS = [
+  'JAN',
+  'FEB',
+  'MAR',
+  'APR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AUG',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DEC',
+];
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
 const normalizeChartType = (chartType = '') =>
-  String(chartType)
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ');
+  String(chartType).trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
 
 const resolveOffset = (chartType) => {
   const normalized = normalizeChartType(chartType);
@@ -115,11 +124,8 @@ const shiftDate = (date, days) => {
   return shifted;
 };
 
-const formatCompactDate = (date) => [
-  date.getUTCFullYear(),
-  pad2(date.getUTCMonth() + 1),
-  pad2(date.getUTCDate()),
-].join('');
+const formatCompactDate = (date) =>
+  [date.getUTCFullYear(), pad2(date.getUTCMonth() + 1), pad2(date.getUTCDate())].join('');
 
 export const formatWW3PackageDate = (forecastDate) => {
   const date = parseForecastDate(forecastDate);
