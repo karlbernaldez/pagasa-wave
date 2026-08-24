@@ -31,6 +31,12 @@ const getCachedAuth = () => {
   return authCache.value;
 };
 
+const unavailableAuthState = () => ({
+  authenticated: false,
+  user: null,
+  unavailable: true,
+});
+
 const fetchAuthCheck = async () => {
   const res = await fetch(`${AUTH_API_BASE_URL}/check`, {
     method: 'GET',
@@ -44,6 +50,8 @@ const fetchAuthCheck = async () => {
   const data = await res.json();
   return { ok: true, status: res.status, data };
 };
+
+const isTransientAuthStatus = (status) => status === 429 || status >= 500;
 
 export const sendOtp = async ({ email }) => {
   const response = await fetch(`${AUTH_API_BASE_URL}/otp/send`, {
@@ -167,6 +175,10 @@ export const refreshAccessToken = async () => {
         credentials: 'include',
       });
 
+      if (isTransientAuthStatus(response.status)) {
+        throw new Error('Unable to verify your session right now.');
+      }
+
       if (!response.ok) {
         clearAuthCache();
         return false;
@@ -175,9 +187,8 @@ export const refreshAccessToken = async () => {
       await response.json().catch(() => ({}));
       clearAuthCache();
       return true;
-    } catch {
-      clearAuthCache();
-      return false;
+    } catch (error) {
+      throw new Error('Unable to verify your session right now.', { cause: error });
     } finally {
       refreshInFlight = null;
     }
@@ -194,29 +205,42 @@ export const checkAuthSession = async ({ force = false } = {}) => {
   }
 
   authCheckInFlight = (async () => {
-    const initial = await fetchAuthCheck();
+    try {
+      const initial = await fetchAuthCheck();
 
-    if (initial.ok) {
-      return setAuthCache({
-        authenticated: true,
-        user: initial.data?.user || null,
-      });
-    }
+      if (initial.ok) {
+        return setAuthCache({
+          authenticated: true,
+          user: initial.data?.user || null,
+          unavailable: false,
+        });
+      }
 
-    if (initial.status === 401) {
-      const refreshed = await refreshAccessToken();
-      if (refreshed) {
-        const retried = await fetchAuthCheck();
-        if (retried.ok) {
-          return setAuthCache({
-            authenticated: true,
-            user: retried.data?.user || null,
-          });
+      if (isTransientAuthStatus(initial.status)) {
+        return unavailableAuthState();
+      }
+
+      if (initial.status === 401) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          const retried = await fetchAuthCheck();
+          if (retried.ok) {
+            return setAuthCache({
+              authenticated: true,
+              user: retried.data?.user || null,
+              unavailable: false,
+            });
+          }
+          if (isTransientAuthStatus(retried.status)) {
+            return unavailableAuthState();
+          }
         }
       }
-    }
 
-    return setAuthCache({ authenticated: false, user: null });
+      return setAuthCache({ authenticated: false, user: null, unavailable: false });
+    } catch {
+      return unavailableAuthState();
+    }
   })();
 
   try {

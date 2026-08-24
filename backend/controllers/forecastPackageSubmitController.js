@@ -9,6 +9,7 @@ import {
   getForecastChartLabel,
   getPackageCompletion,
 } from '../utils/forecastPackage.js';
+import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const EDITABLE_PACKAGE_STATUSES = [
@@ -150,6 +151,7 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
       }
 
       const previousStatus = forecastPackage.status;
+      const expectedUpdatedAt = forecastPackage.updatedAt;
       forecastPackage.status = FORECAST_PACKAGE_STATUS.SUBMITTED;
       forecastPackage.submittedAt = new Date();
       forecastPackage.auditLogs.push({
@@ -160,7 +162,13 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
         comment: 'Forecast Package submitted for admin review',
       });
 
-      await forecastPackage.save({ session });
+      await saveForecastPackageSnapshot(forecastPackage, {
+        session,
+        expectedStatus: previousStatus,
+        expectedUpdatedAt,
+        conflictMessage:
+          'Forecast Package changed while submission was in progress. Reload and submit again.',
+      });
       await lockLinkedChartProjects(forecastPackage, req.user.id, previousStatus, session);
       packageId = forecastPackage._id;
     });

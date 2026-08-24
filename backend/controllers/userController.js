@@ -14,17 +14,16 @@ const OWNER_FIELDS = [
   'contact',
   'address',
   'birthday',
-  'email',
   'agency',
   'position',
   'avatarUrl',
 ];
-const ADMIN_FIELDS = [...OWNER_FIELDS, 'role'];
+const ADMIN_FIELDS = [...OWNER_FIELDS, 'email', 'role'];
 
 const LIST_FIELDS =
   'username firstName lastName contact email agency role position status avatarUrl lastLogin activatedAt createdAt';
 const DETAIL_FIELDS =
-  'username firstName lastName birthday address agency position email contact role status avatarUrl createdAt lastLogin activatedAt';
+  'username firstName lastName birthday address agency position email pendingEmail pendingEmailVerificationExpires contact role status avatarUrl createdAt lastLogin activatedAt';
 
 const clampInt = (value, min, max, fallback) => {
   const n = Math.trunc(Number(value));
@@ -149,7 +148,9 @@ export const createUserByAdmin = async (req, res) => {
       return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
     }
 
-    const exists = await User.findOne({ $or: [{ email }, { username }] }).lean();
+    const exists = await User.findOne({
+      $or: [{ email }, { pendingEmail: email }, { username }],
+    }).lean();
     if (exists) {
       return res.status(409).json({ message: 'A user with this email or username already exists' });
     }
@@ -214,11 +215,34 @@ export const changePassword = async (req, res) => {
     const user = await User.findById(userId).select('+password +sessionVersion');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const match = await bcrypt.compare(currentPassword, user.password);
+    const verifiedPasswordHash = user.password;
+    const match = await bcrypt.compare(currentPassword, verifiedPasswordHash);
     if (!match) return res.status(400).json({ message: 'Incorrect current password.' });
 
-    user.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
-    await user.save();
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    const updated = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        password: verifiedPasswordHash,
+        deletedAt: null,
+      },
+      {
+        $set: { password: hashedPassword },
+        $unset: {
+          pendingEmail: '',
+          pendingEmailVerificationToken: '',
+          pendingEmailVerificationExpires: '',
+          pendingEmailRequestedAt: '',
+        },
+      },
+      { new: true }
+    ).select('+sessionVersion');
+
+    if (!updated) {
+      return res.status(409).json({
+        message: 'Password changed concurrently. Please retry with the current password.',
+      });
+    }
 
     return res.status(200).json({ message: 'Password updated successfully.' });
   } catch (err) {
@@ -241,7 +265,7 @@ export const updateUserDetails = async (req, res) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
-    const allowedFields = isAdmin ? ADMIN_FIELDS : OWNER_FIELDS;
+    const allowedFields = isAdmin && !isOwner ? ADMIN_FIELDS : OWNER_FIELDS;
     const updates = Object.fromEntries(
       allowedFields.filter((f) => req.body[f] !== undefined).map((f) => [f, req.body[f]])
     );
@@ -258,6 +282,10 @@ export const updateUserDetails = async (req, res) => {
             'Username must be 3-30 characters and use only letters, numbers, dots, underscores, or hyphens',
         });
       }
+    }
+
+    if (updates.email !== undefined) {
+      updates.email = String(updates.email).trim().toLowerCase();
     }
 
     if (updates.avatarUrl !== undefined && updates.avatarUrl !== null) {
@@ -277,7 +305,7 @@ export const updateUserDetails = async (req, res) => {
       const conflict = await User.findOne({
         _id: { $ne: userId },
         $or: [
-          ...(updates.email ? [{ email: updates.email }] : []),
+          ...(updates.email ? [{ email: updates.email }, { pendingEmail: updates.email }] : []),
           ...(updates.username ? [{ username: updates.username }] : []),
         ],
       }).lean();
@@ -285,6 +313,74 @@ export const updateUserDetails = async (req, res) => {
       if (conflict) {
         return res.status(409).json({ message: 'Email or username already in use' });
       }
+    }
+
+    let currentEmail = null;
+    let currentRole = null;
+    let emailChanged = false;
+    let roleChanged = false;
+
+    if (updates.email !== undefined || updates.role !== undefined) {
+      const currentUser = await User.findById(userId).select('email role').lean();
+      if (!currentUser) return res.status(404).json({ message: 'User not found' });
+
+      currentEmail = currentUser.email;
+      currentRole = currentUser.role;
+      emailChanged = updates.email !== undefined && updates.email !== currentEmail;
+      roleChanged = updates.role !== undefined && updates.role !== currentRole;
+    }
+
+    if (roleChanged || emailChanged) {
+      const updateDocument = { $set: { ...updates } };
+      const filter = { _id: userId, deletedAt: null };
+
+      if (roleChanged) {
+        filter.role = currentRole;
+      }
+
+      if (emailChanged) {
+        filter.email = currentEmail;
+        updateDocument.$set.emailVerified = false;
+        updateDocument.$unset = {
+          emailVerificationToken: '',
+          emailVerificationExpires: '',
+          pendingEmail: '',
+          pendingEmailVerificationToken: '',
+          pendingEmailVerificationExpires: '',
+          pendingEmailRequestedAt: '',
+          passwordResetToken: '',
+          passwordResetExpires: '',
+        };
+        updateDocument.$inc = { sessionVersion: 1 };
+      }
+
+      const user = await User.findOneAndUpdate(filter, updateDocument, {
+        new: true,
+        runValidators: true,
+      }).select('+sessionVersion');
+
+      if (!user) {
+        if (roleChanged && emailChanged) {
+          return res.status(409).json({
+            message:
+              'Authorization details changed concurrently. Reload the account and try again.',
+          });
+        }
+        if (roleChanged) {
+          return res.status(409).json({
+            message: 'Role changed concurrently. Reload the account and try again.',
+          });
+        }
+        return res.status(409).json({
+          message: 'Email changed concurrently. Reload the account and try again.',
+        });
+      }
+
+      const safeUser = user.toObject();
+      delete safeUser.password;
+      delete safeUser.sessionVersion;
+
+      return res.status(200).json(safeUser);
     }
 
     const user = await User.findById(userId).select('+sessionVersion');
@@ -321,18 +417,28 @@ export const updateUserStatus = async (req, res) => {
         .json({ message: `Invalid status. Allowed: ${ALLOWED_STATUSES.join(', ')}` });
     }
 
-    const user = await User.findById(userId).select('+sessionVersion');
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const currentUser = await User.findById(userId).select('status activatedAt').lean();
+    if (!currentUser) return res.status(404).json({ message: 'User not found' });
 
-    const previousStatus = user.status;
+    const previousStatus = currentUser.status;
+    const update = { status };
 
-    if (status === 'active' && !user.activatedAt) {
-      user.activatedAt = new Date();
-      user.activatedBy = req.user._id;
+    if (status === 'active' && !currentUser.activatedAt) {
+      update.activatedAt = new Date();
+      update.activatedBy = req.user._id;
     }
 
-    user.status = status;
-    await user.save();
+    const user = await User.findOneAndUpdate(
+      { _id: userId, deletedAt: null, status: previousStatus },
+      { $set: update },
+      { new: true, runValidators: true }
+    ).select('+sessionVersion');
+
+    if (!user) {
+      return res.status(409).json({
+        message: 'Status changed concurrently. Reload the account and try again.',
+      });
+    }
 
     sendUserUpdateEmail(user.email, user.firstName, [
       { field: 'Status', from: previousStatus, to: status },

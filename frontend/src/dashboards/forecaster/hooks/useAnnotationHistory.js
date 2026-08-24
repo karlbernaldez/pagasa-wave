@@ -14,9 +14,18 @@ function getProjectHistory(projectId) {
       undoStack: [],
       redoStack: [],
       queue: Promise.resolve(),
+      generation: 0,
     });
   }
   return historyByProject.get(key);
+}
+
+function resetHistory(history) {
+  history.undoStack = [];
+  history.redoStack = [];
+  history.queue = Promise.resolve();
+  history.generation += 1;
+  return history;
 }
 
 function validateCommand(command) {
@@ -38,42 +47,61 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
     };
   });
 
-  const publishState = useCallback((isApplying = false) => {
-    const history = historyRef.current;
-    setState({
-      canUndo: history.undoStack.length > 0,
-      canRedo: history.redoStack.length > 0,
-      isApplying,
-    });
-  }, []);
+  const isCurrentHistory = useCallback(
+    (history, generation) => historyRef.current === history && history.generation === generation,
+    []
+  );
+
+  const publishState = useCallback(
+    (history = historyRef.current, generation = history.generation, isApplying = false) => {
+      if (historyRef.current !== history || history.generation !== generation) return;
+
+      setState({
+        canUndo: history.undoStack.length > 0,
+        canRedo: history.redoStack.length > 0,
+        isApplying,
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (projectKeyRef.current === projectKey) {
-      publishState(false);
+      const history = historyRef.current;
+      publishState(history, history.generation, false);
       return;
     }
 
     projectKeyRef.current = projectKey;
-    historyRef.current = getProjectHistory(projectId);
-    publishState(false);
+    const history = resetHistory(getProjectHistory(projectId));
+    historyRef.current = history;
+    publishState(history, history.generation, false);
   }, [projectId, projectKey, publishState]);
 
+  useEffect(
+    () => () => {
+      resetHistory(historyRef.current);
+    },
+    []
+  );
+
   const clear = useCallback(() => {
-    const history = historyRef.current;
-    history.undoStack = [];
-    history.redoStack = [];
-    publishState(false);
+    const history = resetHistory(historyRef.current);
+    publishState(history, history.generation, false);
   }, [publishState]);
 
   const enqueue = useCallback(
     (operation) => {
       const history = historyRef.current;
+      const generation = history.generation;
       const run = async () => {
-        publishState(true);
+        if (!isCurrentHistory(history, generation)) return false;
+
+        publishState(history, generation, true);
         try {
-          return await operation();
+          return await operation(history, generation);
         } finally {
-          publishState(false);
+          publishState(history, generation, false);
         }
       };
 
@@ -81,7 +109,7 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
       history.queue = next.catch(() => undefined);
       return next;
     },
-    [publishState]
+    [isCurrentHistory, publishState]
   );
 
   const record = useCallback(
@@ -90,7 +118,7 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
       const history = historyRef.current;
       history.undoStack = [...history.undoStack, command].slice(-Math.max(1, limit));
       history.redoStack = [];
-      publishState(false);
+      publishState(history, history.generation, false);
     },
     [limit, publishState]
   );
@@ -99,39 +127,49 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
     const history = historyRef.current;
     if (!history.undoStack.length) return Promise.resolve(false);
 
-    return enqueue(async () => {
-      const command = history.undoStack.at(-1);
+    return enqueue(async (queuedHistory, generation) => {
+      const command = queuedHistory.undoStack.at(-1);
+      if (!command) return false;
+
       try {
         await command.undo();
       } catch (error) {
-        onError?.(error);
+        if (isCurrentHistory(queuedHistory, generation)) onError?.(error);
         throw error;
       }
-      history.undoStack = history.undoStack.slice(0, -1);
-      history.redoStack = [...history.redoStack, command];
-      publishState(false);
+
+      if (!isCurrentHistory(queuedHistory, generation)) return true;
+
+      queuedHistory.undoStack = queuedHistory.undoStack.slice(0, -1);
+      queuedHistory.redoStack = [...queuedHistory.redoStack, command];
+      publishState(queuedHistory, generation, false);
       return true;
     });
-  }, [enqueue, onError, publishState]);
+  }, [enqueue, isCurrentHistory, onError, publishState]);
 
   const redo = useCallback(() => {
     const history = historyRef.current;
     if (!history.redoStack.length) return Promise.resolve(false);
 
-    return enqueue(async () => {
-      const command = history.redoStack.at(-1);
+    return enqueue(async (queuedHistory, generation) => {
+      const command = queuedHistory.redoStack.at(-1);
+      if (!command) return false;
+
       try {
         await command.redo();
       } catch (error) {
-        onError?.(error);
+        if (isCurrentHistory(queuedHistory, generation)) onError?.(error);
         throw error;
       }
-      history.redoStack = history.redoStack.slice(0, -1);
-      history.undoStack = [...history.undoStack, command].slice(-Math.max(1, limit));
-      publishState(false);
+
+      if (!isCurrentHistory(queuedHistory, generation)) return true;
+
+      queuedHistory.redoStack = queuedHistory.redoStack.slice(0, -1);
+      queuedHistory.undoStack = [...queuedHistory.undoStack, command].slice(-Math.max(1, limit));
+      publishState(queuedHistory, generation, false);
       return true;
     });
-  }, [enqueue, limit, onError, publishState]);
+  }, [enqueue, isCurrentHistory, limit, onError, publishState]);
 
   return {
     ...state,

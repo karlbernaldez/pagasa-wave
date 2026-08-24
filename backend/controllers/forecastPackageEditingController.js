@@ -7,12 +7,16 @@ import {
   getPackageCompletion,
   REQUIRED_FORECAST_CHART_TYPES,
 } from '../utils/forecastPackage.js';
+import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
 import { emitForecastChartUpdated, emitForecastPackageUpdated } from '../socket/socketEmitter.js';
 
 const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.DRAFT,
   FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
 ];
+const COLLABORATION_MUTATION_RETRIES = 3;
+const COLLABORATION_CONFLICT_MESSAGE =
+  'Forecast Package collaboration state changed while this operation was in progress. Reload and try again.';
 
 function isSameId(left, right) {
   return String(left?._id || left || '') === String(right?._id || right || '');
@@ -90,6 +94,11 @@ function removeReadyVote(chart, userId) {
 function addReadyVote(chart, userId) {
   removeReadyVote(chart, userId);
   chart.readyEditors.push({ user: userId, readyAt: new Date() });
+}
+function didSnapshotUpdateMatch(result) {
+  if (!result) return true;
+  if (result.matchedCount === undefined && result.modifiedCount === undefined) return true;
+  return Number(result.matchedCount || result.modifiedCount || 0) > 0;
 }
 
 async function populateForecastPackageById(id) {
@@ -291,49 +300,119 @@ async function joinChartIfAllowedByProject(
   user,
   { emit = true, audit = true, strict = false } = {}
 ) {
-  const forecastPackage = await getPackageByProject(projectId);
-  const chart = getChartRowByProjectId(forecastPackage, projectId);
-  if (!chart) throwError('Forecast Package chart context not found', 404);
-  if (!canAutoJoinChart(forecastPackage, chart, user)) {
-    if (strict && isUserReady(chart, user.id))
-      throwError(
-        `${getForecastChartLabel(chart.chartType)} is already marked ready by you. Reopen the chart from the package board before editing again.`,
-        409
-      );
-    return { forecastPackage, joined: false };
-  }
-  const activeEditors = getActiveEditors(chart);
-  const now = new Date();
-  if (!activeEditors.some((editor) => isSameId(editor.user, user.id)))
-    activeEditors.push({ user: user.id, startedAt: now });
-  ensureParticipant(chart, user.id);
-  const update = {
-    $set: {
-      'charts.$.activeEditors': activeEditors,
-      'charts.$.participants': chart.participants,
-      ...getLegacyClaimPatch(activeEditors),
-    },
-  };
-  if (audit)
-    update.$push = {
-      auditLogs: {
-        action: 'chart_claimed',
-        performedBy: user.id,
-        previousStatus: forecastPackage.status,
-        newStatus: forecastPackage.status,
-        comment: `${getForecastChartLabel(chart.chartType)} joined for editing`,
+  for (let attempt = 0; attempt < COLLABORATION_MUTATION_RETRIES; attempt += 1) {
+    const forecastPackage = await getPackageByProject(projectId);
+    const chart = getChartRowByProjectId(forecastPackage, projectId);
+    if (!chart) throwError('Forecast Package chart context not found', 404);
+    if (!canAutoJoinChart(forecastPackage, chart, user)) {
+      if (strict && isUserReady(chart, user.id))
+        throwError(
+          `${getForecastChartLabel(chart.chartType)} is already marked ready by you. Reopen the chart from the package board before editing again.`,
+          409
+        );
+      return { forecastPackage, joined: false };
+    }
+    const activeEditors = getActiveEditors(chart);
+    const now = new Date();
+    if (!activeEditors.some((editor) => isSameId(editor.user, user.id)))
+      activeEditors.push({ user: user.id, startedAt: now });
+    ensureParticipant(chart, user.id);
+    const update = {
+      $set: {
+        'charts.$.activeEditors': activeEditors,
+        'charts.$.participants': chart.participants,
+        ...getLegacyClaimPatch(activeEditors),
       },
     };
-  await ForecastPackage.updateOne(
-    { _id: forecastPackage._id, 'charts.project': projectId },
-    update
-  );
-  if (emit)
-    emitChartWorkflowUpdate(forecastPackage, projectId, {
-      action: 'chart_joined',
-      actorUserId: String(user.id),
-    });
-  return { forecastPackage, joined: true };
+    if (audit)
+      update.$push = {
+        auditLogs: {
+          action: 'chart_claimed',
+          performedBy: user.id,
+          previousStatus: forecastPackage.status,
+          newStatus: forecastPackage.status,
+          comment: `${getForecastChartLabel(chart.chartType)} joined for editing`,
+        },
+      };
+    const result = await ForecastPackage.updateOne(
+      {
+        _id: forecastPackage._id,
+        status: forecastPackage.status,
+        updatedAt: forecastPackage.updatedAt,
+        'charts.project': projectId,
+      },
+      update
+    );
+    if (!didSnapshotUpdateMatch(result)) continue;
+    if (emit)
+      emitChartWorkflowUpdate(forecastPackage, projectId, {
+        action: 'chart_joined',
+        actorUserId: String(user.id),
+      });
+    return { forecastPackage, joined: true };
+  }
+  throwError(COLLABORATION_CONFLICT_MESSAGE, 409);
+}
+
+async function releaseChartEditingByProject(projectId, user) {
+  for (let attempt = 0; attempt < COLLABORATION_MUTATION_RETRIES; attempt += 1) {
+    const forecastPackage = await getPackageByProject(projectId);
+    assertEditablePackage(forecastPackage);
+    const chart = getChartRowByProjectId(forecastPackage, projectId);
+    if (!chart) throwError('Forecast Package chart context not found', 404);
+    const remainingEditors = getActiveEditors(chart).filter(
+      (editor) => !isSameId(editor.user, user.id)
+    );
+    const result = await ForecastPackage.updateOne(
+      {
+        _id: forecastPackage._id,
+        status: forecastPackage.status,
+        updatedAt: forecastPackage.updatedAt,
+        'charts.project': projectId,
+      },
+      {
+        $set: {
+          'charts.$.activeEditors': remainingEditors,
+          ...getLegacyClaimPatch(remainingEditors),
+        },
+        $push: {
+          auditLogs: {
+            action: 'chart_released',
+            performedBy: user.id,
+            previousStatus: forecastPackage.status,
+            newStatus: forecastPackage.status,
+            comment: `${getForecastChartLabel(chart.chartType)} editing session released`,
+          },
+        },
+      }
+    );
+    if (!didSnapshotUpdateMatch(result)) continue;
+    return forecastPackage;
+  }
+  throwError(COLLABORATION_CONFLICT_MESSAGE, 409);
+}
+
+async function updateChartCompletionByProjectWithConcurrency(projectId, user, isComplete) {
+  const maxAttempts = isComplete ? COLLABORATION_MUTATION_RETRIES : 1;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const forecastPackage = await getPackageByProject(projectId);
+    const chart = getChartRowByProjectId(forecastPackage, projectId);
+    if (!chart) throwError('Forecast Package chart context not found', 404);
+    const expectedStatus = forecastPackage.status;
+    const expectedUpdatedAt = forecastPackage.updatedAt;
+    updateChartCompletionState(forecastPackage, chart, isComplete, user);
+    try {
+      await saveForecastPackageSnapshot(forecastPackage, {
+        expectedStatus,
+        expectedUpdatedAt,
+        conflictMessage: COLLABORATION_CONFLICT_MESSAGE,
+      });
+      return forecastPackage;
+    } catch (error) {
+      if (error?.statusCode !== 409 || !isComplete || attempt === maxAttempts - 1) throw error;
+    }
+  }
+  throwError(COLLABORATION_CONFLICT_MESSAGE, 409);
 }
 
 export const getForecastPackageChartContextByProject = asyncHandler(async (req, res) => {
@@ -377,31 +456,7 @@ export const joinForecastPackageChartEditingByProject = asyncHandler(async (req,
 
 export const releaseForecastPackageChartEditingByProject = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
-  const forecastPackage = await getPackageByProject(req.params.projectId);
-  assertEditablePackage(forecastPackage);
-  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
-  if (!chart) throwError('Forecast Package chart context not found', 404);
-  const remainingEditors = getActiveEditors(chart).filter(
-    (editor) => !isSameId(editor.user, req.user.id)
-  );
-  await ForecastPackage.updateOne(
-    { _id: forecastPackage._id, 'charts.project': req.params.projectId },
-    {
-      $set: {
-        'charts.$.activeEditors': remainingEditors,
-        ...getLegacyClaimPatch(remainingEditors),
-      },
-      $push: {
-        auditLogs: {
-          action: 'chart_released',
-          performedBy: req.user.id,
-          previousStatus: forecastPackage.status,
-          newStatus: forecastPackage.status,
-          comment: `${getForecastChartLabel(chart.chartType)} editing session released`,
-        },
-      },
-    }
-  );
+  const forecastPackage = await releaseChartEditingByProject(req.params.projectId, req.user);
   emitChartWorkflowUpdate(forecastPackage, req.params.projectId, {
     action: 'chart_released',
     actorUserId: String(req.user.id),
@@ -413,12 +468,12 @@ export const releaseForecastPackageChartEditingByProject = asyncHandler(async (r
 
 export const updateForecastChartCompletionByProject = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
-  const forecastPackage = await getPackageByProject(req.params.projectId);
-  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
-  if (!chart) throwError('Forecast Package chart context not found', 404);
   const isComplete = Boolean(req.body?.isComplete);
-  updateChartCompletionState(forecastPackage, chart, isComplete, req.user);
-  await forecastPackage.save();
+  const forecastPackage = await updateChartCompletionByProjectWithConcurrency(
+    req.params.projectId,
+    req.user,
+    isComplete
+  );
   emitChartWorkflowUpdate(forecastPackage, req.params.projectId, {
     action: 'chart_completion_updated',
     actorUserId: String(req.user.id),

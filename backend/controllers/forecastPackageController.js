@@ -6,20 +6,19 @@ import {
   FORECAST_PACKAGE_STATUS,
   REQUIRED_FORECAST_CHARTS,
   REQUIRED_FORECAST_CHART_TYPES,
-  buildForecastChartProjectName,
   buildForecastPackageName,
   getForecastChartLabel,
   getPackageCompletion,
   normalizeForecastDate,
 } from '../utils/forecastPackage.js';
+import { applyForecastPackageDisplayNames } from '../utils/forecastPackageDisplayNames.js';
+import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.DRAFT,
   FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
 ];
-const AUTO_PACKAGE_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2}$/;
-const AUTO_CHART_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2} - /;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function assertAuthenticated(req) {
@@ -43,13 +42,6 @@ function getForecastDateQuery(value) {
   const start = normalizeForecastDate(value || new Date());
   if (!start) return null;
   return { $gte: start, $lt: new Date(start.getTime() + ONE_DAY_MS) };
-}
-
-function getDisplayName(user) {
-  if (!user) return '';
-  if (typeof user === 'string') return '';
-  const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
-  return name || user.username || user.email || '';
 }
 
 function getRequiredComment(value, label = 'Comment') {
@@ -98,10 +90,6 @@ function getActiveEditors(chart = {}) {
   }
 
   return normalized;
-}
-
-function isUserActiveEditor(chart, userId) {
-  return getActiveEditors(chart).some((editor) => isSameId(editor.user, userId));
 }
 
 function syncLegacyClaimFields(chart) {
@@ -156,18 +144,8 @@ function getChartRowByType(forecastPackage, chartType) {
   return forecastPackage.charts?.find((chart) => chart.chartType === chartType);
 }
 
-function getChartRowByProjectId(forecastPackage, projectId) {
-  return forecastPackage.charts?.find((chart) => isSameId(chart.project, projectId));
-}
-
 function getCompletionRow(forecastPackage, chartType) {
   return forecastPackage.chartCompletion?.find((item) => item.chartType === chartType);
-}
-
-function getActiveEditorLabels(chart) {
-  return getActiveEditors(chart)
-    .map((editor) => getDisplayName(editor.user))
-    .filter(Boolean);
 }
 
 function getActiveEditingChartLabel(forecastPackage) {
@@ -175,106 +153,15 @@ function getActiveEditingChartLabel(forecastPackage) {
   return chart ? getForecastChartLabel(chart.chartType) : null;
 }
 
-async function syncForecastPackageDisplayNames(forecastPackage) {
-  if (!forecastPackage?.forecastDate) return forecastPackage;
-
-  const canonicalPackageName = buildForecastPackageName(forecastPackage.forecastDate);
-  const currentPackageName = String(forecastPackage.name || '');
-  const shouldRenamePackage =
-    !currentPackageName || AUTO_PACKAGE_NAME_PATTERN.test(currentPackageName);
-  let changed = false;
-
-  if (
-    canonicalPackageName &&
-    shouldRenamePackage &&
-    forecastPackage.name !== canonicalPackageName
-  ) {
-    forecastPackage.name = canonicalPackageName;
-    changed = true;
-  }
-
-  for (const chart of forecastPackage.charts || []) {
-    const project = chart.project;
-    if (!project || typeof project === 'string') continue;
-    const currentProjectName = String(project.name || '');
-    const shouldRenameChart =
-      !currentProjectName || AUTO_CHART_NAME_PATTERN.test(currentProjectName);
-    const nextProjectName =
-      canonicalPackageName && shouldRenameChart
-        ? buildForecastChartProjectName(
-            forecastPackage.forecastDate,
-            getForecastChartLabel(chart.chartType)
-          )
-        : null;
-
-    if (nextProjectName && project.name !== nextProjectName) {
-      project.name = nextProjectName;
-      await Project.updateOne(
-        { _id: project._id },
-        { $set: { name: nextProjectName, forecastDate: forecastPackage.forecastDate } }
-      );
-      changed = true;
-    }
-  }
-
-  if (changed && typeof forecastPackage.save === 'function') {
-    await forecastPackage.save();
-  }
-
-  return forecastPackage;
-}
-
 function serializePackage(forecastPackage) {
   const plain =
     typeof forecastPackage.toObject === 'function' ? forecastPackage.toObject() : forecastPackage;
 
-  return {
-    ...plain,
-    completion: getPackageCompletion(plain.chartCompletion || []),
-  };
-}
-
-function serializeChartContext(forecastPackage, chart, user) {
-  const serializedPackage = serializePackage(forecastPackage);
-  const plainChart = typeof chart?.toObject === 'function' ? chart.toObject() : chart;
-  const completionRow = serializedPackage.chartCompletion?.find(
-    (item) => item.chartType === plainChart?.chartType
-  );
-  const activeEditors = getActiveEditors(plainChart);
-  const activeEditorLabels = getActiveEditorLabels(plainChart);
-  const blockingChartType = completionRow?.isComplete
-    ? null
-    : getPreviousIncompleteChartType(
-        serializedPackage.chartCompletion || [],
-        plainChart?.chartType
-      );
-  const editable = EDITABLE_PACKAGE_STATUSES.includes(serializedPackage.status);
-  const ownerOrAdmin = isPackageOwnerOrAdmin(user, serializedPackage);
-  const activeEditorCurrentUser = activeEditors.some((editor) => isSameId(editor.user, user?.id));
-  const hasOtherActiveEditors = activeEditors.some((editor) => !isSameId(editor.user, user?.id));
-  const isReady = Boolean(completionRow?.isComplete);
+  const displayPackage = applyForecastPackageDisplayNames(plain);
 
   return {
-    package: serializedPackage,
-    chart: plainChart,
-    chartType: plainChart?.chartType,
-    completion: completionRow || null,
-    blockingChartType,
-    claim: {
-      claimedByCurrentUser: activeEditorCurrentUser,
-      claimedByOtherUser: hasOtherActiveEditors,
-      claimedByLabel: activeEditorLabels.join(', '),
-      activeEditorCount: activeEditors.length,
-      activeEditorLabels,
-      canClaim: editable && !isReady && !blockingChartType && !activeEditorCurrentUser,
-      canRelease: editable && activeEditorCurrentUser,
-      canCertify:
-        editable &&
-        !isReady &&
-        !blockingChartType &&
-        (activeEditorCurrentUser || ownerOrAdmin) &&
-        activeEditors.length <= 1,
-    },
+    ...displayPackage,
+    completion: getPackageCompletion(displayPackage.chartCompletion || []),
   };
 }
 
@@ -307,13 +194,8 @@ function getLinkedProjectIds(forecastPackage) {
     .filter(Boolean);
 }
 
-function findForecastPackageByChartProjectId(projectId) {
-  return ForecastPackage.findOne({ 'charts.project': projectId });
-}
-
 async function populateForecastPackageById(id) {
-  const forecastPackage = await populateForecastPackage(ForecastPackage.findById(id));
-  return syncForecastPackageDisplayNames(forecastPackage);
+  return populateForecastPackage(ForecastPackage.findById(id));
 }
 
 async function lockLinkedChartProjects(forecastPackage, userId, previousStatus) {
@@ -562,10 +444,6 @@ export const getUserForecastPackages = asyncHandler(async (req, res) => {
     ForecastPackage.countDocuments(query),
   ]);
 
-  for (const forecastPackage of packages) {
-    await syncForecastPackageDisplayNames(forecastPackage);
-  }
-
   res.json({
     packages: packages.map(serializePackage),
     total,
@@ -595,7 +473,6 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
     });
   }
 
-  await syncForecastPackageDisplayNames(forecastPackage);
   res.json({ package: serializePackage(forecastPackage) });
 });
 
@@ -605,98 +482,7 @@ export const getForecastPackageById = asyncHandler(async (req, res) => {
   const forecastPackage = await populateForecastPackage(ForecastPackage.findById(req.params.id));
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-  await syncForecastPackageDisplayNames(forecastPackage);
   res.json(serializePackage(forecastPackage));
-});
-
-export const getForecastPackageChartContextByProject = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-
-  const forecastPackage = await populateForecastPackage(
-    findForecastPackageByChartProjectId(req.params.projectId)
-  );
-  if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
-
-  await syncForecastPackageDisplayNames(forecastPackage);
-  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
-  if (!chart) throwError('Forecast Package chart context not found', 404);
-
-  res.json(serializeChartContext(forecastPackage, chart, req.user));
-});
-
-export const claimForecastPackageChartByProject = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-
-  const forecastPackage = await findForecastPackageByChartProjectId(req.params.projectId);
-  if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
-  assertEditablePackage(forecastPackage);
-
-  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
-  if (!chart) throwError('Forecast Package chart context not found', 404);
-
-  const completionRow = getCompletionRow(forecastPackage, chart.chartType);
-  if (completionRow?.isComplete)
-    throwError(`${getForecastChartLabel(chart.chartType)} is already certified ready`, 400);
-
-  const blockingChartType = getPreviousIncompleteChartType(
-    forecastPackage.chartCompletion || [],
-    chart.chartType
-  );
-  if (blockingChartType) {
-    throwError(
-      `${getForecastChartLabel(blockingChartType)} must be certified before ${getForecastChartLabel(chart.chartType)} can be joined for editing`,
-      400
-    );
-  }
-
-  syncLegacyClaimFields(chart);
-  if (!isUserActiveEditor(chart, req.user.id)) {
-    chart.activeEditors.push({ user: req.user.id, startedAt: new Date() });
-  }
-  syncLegacyClaimFields(chart);
-
-  forecastPackage.auditLogs.push({
-    action: 'chart_claimed',
-    performedBy: req.user.id,
-    previousStatus: forecastPackage.status,
-    newStatus: forecastPackage.status,
-    comment: `${getForecastChartLabel(chart.chartType)} joined for editing`,
-  });
-
-  await forecastPackage.save();
-  const populated = await populateForecastPackageById(forecastPackage._id);
-  const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
-  res.json(serializeChartContext(populated, populatedChart, req.user));
-});
-
-export const releaseForecastPackageChartByProject = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-
-  const forecastPackage = await findForecastPackageByChartProjectId(req.params.projectId);
-  if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
-  assertEditablePackage(forecastPackage);
-
-  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
-  if (!chart) throwError('Forecast Package chart context not found', 404);
-
-  syncLegacyClaimFields(chart);
-  chart.activeEditors = getActiveEditors(chart).filter(
-    (editor) => !isSameId(editor.user, req.user.id)
-  );
-  syncLegacyClaimFields(chart);
-
-  forecastPackage.auditLogs.push({
-    action: 'chart_released',
-    performedBy: req.user.id,
-    previousStatus: forecastPackage.status,
-    newStatus: forecastPackage.status,
-    comment: `${getForecastChartLabel(chart.chartType)} editing session released`,
-  });
-
-  await forecastPackage.save();
-  const populated = await populateForecastPackageById(forecastPackage._id);
-  const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
-  res.json(serializeChartContext(populated, populatedChart, req.user));
 });
 
 export const updateForecastChartCompletion = asyncHandler(async (req, res) => {
@@ -710,28 +496,15 @@ export const updateForecastChartCompletion = asyncHandler(async (req, res) => {
 
   updateForecastChartCompletionState(forecastPackage, chartType, isComplete, req.user);
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: forecastPackage.status,
+    expectedUpdatedAt: forecastPackage.updatedAt,
+    conflictMessage:
+      'Forecast Package chart state changed while this operation was in progress. Reload and try again.',
+  });
 
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
-});
-
-export const updateForecastChartCompletionByProject = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-
-  const isComplete = Boolean(req.body?.isComplete);
-  const forecastPackage = await findForecastPackageByChartProjectId(req.params.projectId);
-  if (!forecastPackage) throwError('Forecast Package chart context not found', 404);
-
-  const chart = getChartRowByProjectId(forecastPackage, req.params.projectId);
-  if (!chart) throwError('Forecast Package chart context not found', 404);
-
-  updateForecastChartCompletionState(forecastPackage, chart.chartType, isComplete, req.user);
-
-  await forecastPackage.save();
-  const populated = await populateForecastPackageById(forecastPackage._id);
-  const populatedChart = getChartRowByProjectId(populated, req.params.projectId);
-  res.json(serializeChartContext(populated, populatedChart, req.user));
 });
 
 export const submitForecastPackage = asyncHandler(async (req, res) => {
@@ -791,6 +564,7 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.UNDER_REVIEW;
   forecastPackage.reviewStartedAt = new Date();
   forecastPackage.reviewStartedBy = req.user.id;
@@ -802,7 +576,12 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
     comment: 'Forecast Package moved to review',
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -824,6 +603,7 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.REVISION_REQUESTED;
   forecastPackage.reviewedAt = new Date();
   forecastPackage.rejectedBy = req.user.id;
@@ -837,7 +617,12 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
     comment,
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   await requestLinkedChartProjectRevisions(forecastPackage, req.user.id, comment);
 
   const populated = await populateForecastPackageById(forecastPackage._id);
@@ -860,6 +645,7 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.APPROVED;
   forecastPackage.approvedBy = req.user.id;
   forecastPackage.auditLogs.push({
@@ -870,7 +656,12 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
     comment: 'Forecast Package approved by admin',
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -888,6 +679,7 @@ export const rejectForecastPackage = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.REJECTED;
   forecastPackage.reviewedAt = new Date();
   forecastPackage.rejectedBy = req.user.id;
@@ -900,7 +692,12 @@ export const rejectForecastPackage = asyncHandler(async (req, res) => {
     comment,
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -917,6 +714,7 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.PUBLISHED;
   forecastPackage.publishedAt = new Date();
   forecastPackage.auditLogs.push({
@@ -927,7 +725,12 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
     comment: 'Forecast Package published',
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -940,6 +743,7 @@ export const archiveForecastPackage = asyncHandler(async (req, res) => {
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
   const previousStatus = forecastPackage.status;
+  const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.ARCHIVED;
   forecastPackage.auditLogs.push({
     action: 'archived',
@@ -949,7 +753,12 @@ export const archiveForecastPackage = asyncHandler(async (req, res) => {
     comment: 'Forecast Package archived',
   });
 
-  await forecastPackage.save();
+  await saveForecastPackageSnapshot(forecastPackage, {
+    expectedStatus: previousStatus,
+    expectedUpdatedAt,
+    conflictMessage:
+      'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
+  });
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });

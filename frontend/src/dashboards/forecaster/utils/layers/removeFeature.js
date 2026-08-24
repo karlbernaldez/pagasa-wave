@@ -35,13 +35,14 @@ function getProjectId(layerOrId) {
 }
 
 function toCreateFeaturePayload(feature) {
-  if (!feature?.geometry || !feature?.sourceId) return null;
+  const sourceId = normalizePersistedSourceId(feature);
+  if (!feature?.geometry || !sourceId) return null;
 
   return {
     geometry: feature.geometry,
     properties: { ...(feature.properties || {}) },
     name: feature.name || feature.properties?.displayName || 'Annotation',
-    sourceId: feature.sourceId,
+    sourceId: String(sourceId),
   };
 }
 

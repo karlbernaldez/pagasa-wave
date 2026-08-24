@@ -25,7 +25,12 @@ const ProtectedRoute = ({
 }) => {
   const navigate = useNavigate();
   const { isLoggedIn, role: contextRole, setIsLoggedIn, setRole } = useAuth();
-  const [apiState, setApiState] = useState({ phase: 'loading', isAuthenticated: false, role: null });
+  const [retryCount, setRetryCount] = useState(0);
+  const [apiState, setApiState] = useState({
+    phase: 'loading',
+    isAuthenticated: false,
+    role: null,
+  });
 
   useEffect(() => {
     if (isLoggedIn && contextRole) return;
@@ -33,9 +38,18 @@ const ProtectedRoute = ({
     let cancelled = false;
 
     const verify = async () => {
+      setApiState((current) => ({ ...current, phase: 'loading' }));
+
       try {
-        const { authenticated, user } = await checkAuthSession();
+        const { authenticated, user, unavailable } = await checkAuthSession({
+          force: retryCount > 0,
+        });
         if (cancelled) return;
+
+        if (unavailable) {
+          setApiState({ phase: 'unavailable', isAuthenticated: false, role: null });
+          return;
+        }
 
         if (authenticated && user) {
           setIsLoggedIn(true);
@@ -49,27 +63,50 @@ const ProtectedRoute = ({
       } catch (err) {
         console.error('[ProtectedRoute] Auth check failed:', err);
         if (!cancelled) {
-          setIsLoggedIn(false);
-          setRole(null);
-          setApiState({ phase: 'resolved', isAuthenticated: false, role: null });
+          setApiState({ phase: 'unavailable', isAuthenticated: false, role: null });
         }
       }
     };
 
     verify();
-    return () => { cancelled = true; };
-  }, [isLoggedIn, contextRole, setIsLoggedIn, setRole]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, contextRole, retryCount, setIsLoggedIn, setRole]);
 
-  const phase = (isLoggedIn && contextRole) ? 'resolved' : apiState.phase;
-  const isAuthenticated = (isLoggedIn && contextRole) ? true : apiState.isAuthenticated;
-  const role = (isLoggedIn && contextRole) ? contextRole : apiState.role;
+  const phase = isLoggedIn && contextRole ? 'resolved' : apiState.phase;
+  const isAuthenticated = isLoggedIn && contextRole ? true : apiState.isAuthenticated;
+  const role = isLoggedIn && contextRole ? contextRole : apiState.role;
 
   if (phase === 'loading') return <LoadingScreen />;
 
+  if (phase === 'unavailable') {
+    return (
+      <div className="grid min-h-[320px] place-items-center p-6">
+        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <h2 className="text-lg font-black text-slate-900">Unable to verify your session</h2>
+          <p className="mt-2 text-sm font-medium text-slate-600">
+            WaveLab could not reach the authentication service. Your session has not been treated as
+            signed out.
+          </p>
+          <button
+            type="button"
+            onClick={() => setRetryCount((count) => count + 1)}
+            className="mt-4 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white hover:bg-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!requireAuth) {
-    return isAuthenticated
-      ? <Navigate to={resolveAuthenticatedRedirect(role, authenticatedRedirect)} replace />
-      : children;
+    return isAuthenticated ? (
+      <Navigate to={resolveAuthenticatedRedirect(role, authenticatedRedirect)} replace />
+    ) : (
+      children
+    );
   }
 
   if (!isAuthenticated) return <Navigate to={redirectTo} replace />;

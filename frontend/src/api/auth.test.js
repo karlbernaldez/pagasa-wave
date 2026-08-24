@@ -79,4 +79,67 @@ describe('authenticated API retries', () => {
     expect(second.status).toBe(200);
     expect(refreshCalls).toBe(1);
   });
+
+  it('reports auth verification as unavailable instead of logged out on a network failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+
+    const { checkAuthSession } = await loadAuthApi();
+    const result = await checkAuthSession({ force: true });
+
+    expect(result).toEqual({ authenticated: false, user: null, unavailable: true });
+  });
+
+  it('reports a temporary auth-service failure as unavailable instead of logged out', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse(503, { message: 'Unavailable' }))
+    );
+
+    const { checkAuthSession } = await loadAuthApi();
+    const result = await checkAuthSession({ force: true });
+
+    expect(result).toEqual({ authenticated: false, user: null, unavailable: true });
+  });
+
+  it('reports a transient refresh failure as unavailable after an expired access token', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(401, { message: 'Expired.' }))
+      .mockResolvedValueOnce(jsonResponse(503, { message: 'Temporarily unavailable.' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { checkAuthSession } = await loadAuthApi();
+    const result = await checkAuthSession({ force: true });
+
+    expect(result).toEqual({ authenticated: false, user: null, unavailable: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not report session expiry or retry the resource when refresh is transiently unavailable', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(401, { message: 'Expired.' }))
+      .mockResolvedValueOnce(jsonResponse(503, { message: 'Temporarily unavailable.' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { fetchWithAuth } = await loadAuthApi();
+
+    await expect(fetchWithAuth('/api/projects')).rejects.toThrow(
+      'Unable to verify your session right now.'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('still reports a definitively invalid session as logged out', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(401, { message: 'Expired.' }))
+      .mockResolvedValueOnce(jsonResponse(401, { message: 'Invalid refresh token.' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { checkAuthSession } = await loadAuthApi();
+    const result = await checkAuthSession({ force: true });
+
+    expect(result).toEqual({ authenticated: false, user: null, unavailable: false });
+  });
 });

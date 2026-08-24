@@ -96,6 +96,9 @@ async function loadCurrentUser() {
 
   userRequest = (async () => {
     const session = await checkAuthSession({ force: true });
+    if (session?.unavailable) {
+      throw new Error('Unable to verify the current session.');
+    }
     if (!session?.authenticated || !session?.user) return null;
 
     const sessionUser = session.user;
@@ -134,7 +137,7 @@ export default function useCurrentDashboardUser(fallbackUser = null, options = {
       })
       .catch((error) => {
         console.error('[useCurrentDashboardUser] Failed to load user:', error);
-        if (active) setRawUser(fallbackUser || null);
+        if (active && !userCache) setRawUser(fallbackUser || null);
       });
 
     return () => {
