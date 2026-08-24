@@ -96,8 +96,9 @@ fi
 mapfile -t PACKAGE_RUNS <<<"$MANIFEST"
 [[ ${#PACKAGE_RUNS[@]} -eq 4 ]] || { echo "Expected four WW3 package inputs, got ${#PACKAGE_RUNS[@]}" >&2; exit 1; }
 
-IFS='|' read -r _ _ _ _ _ RESOLVED_SOURCE_CYCLE <<<"${PACKAGE_RUNS[0]}"
+IFS='|' read -r _ _ _ PACKAGE_TAG _ RESOLVED_SOURCE_CYCLE <<<"${PACKAGE_RUNS[0]}"
 [[ -n "$RESOLVED_SOURCE_CYCLE" ]] || { echo "Source cycle was not resolved" >&2; exit 1; }
+[[ -n "$PACKAGE_TAG" ]] || { echo "Package tag was not resolved" >&2; exit 1; }
 
 echo "Running GDAL-free WW3 forecast package build"
 echo "  package date : $PACKAGE_DATE"
@@ -110,6 +111,7 @@ echo "  root         : $ROOT"
 for line in "${PACKAGE_RUNS[@]}"; do
   IFS='|' read -r label run_tag timestamp package_tag ncfile source_cycle <<<"$line"
   [[ "$source_cycle" == "$RESOLVED_SOURCE_CYCLE" ]] || { echo "Manifest mixed source cycles" >&2; exit 1; }
+  [[ "$package_tag" == "$PACKAGE_TAG" ]] || { echo "Manifest mixed package tags" >&2; exit 1; }
   [[ -f "$ncfile" ]] || { echo "Missing exact input for $label: $ncfile" >&2; exit 1; }
   echo
   echo "-> [$label] $run_tag"
@@ -127,6 +129,7 @@ for line in "${PACKAGE_RUNS[@]}"; do
     --var "$VARNAME" \
     --sigma "$SIGMA" \
     --output "$contour_target"
+  [[ -s "$contour_target" ]] || { echo "WW3 contour output is missing or empty: $contour_target" >&2; exit 1; }
   echo "   Package contours: $contour_target"
 
   shopt -s nullglob
@@ -141,9 +144,13 @@ for line in "${PACKAGE_RUNS[@]}"; do
   shopt -u nullglob
 done
 
+contour_count=$(find "$ROOT/tiles/WW3/contours/$PACKAGE_TAG" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
+[[ "$contour_count" -eq 4 ]] || { echo "Expected four non-empty WW3 contour files for $PACKAGE_TAG, got $contour_count" >&2; exit 1; }
+
 find "$ROOT/tiles" -type d -exec chmod 755 {} \; 2>/dev/null || true
 find "$ROOT/tiles" -type f -exec chmod 644 {} \; 2>/dev/null || true
 
 echo
 echo "+ WW3 forecast package complete: $PACKAGE_DATE (source cycle $RESOLVED_SOURCE_CYCLE)"
+echo "  Contour files: $contour_count"
 find "$ROOT/tiles/WW3" -type f \( -name '*.png' -o -name 'contours.geojson' \) | head || true
