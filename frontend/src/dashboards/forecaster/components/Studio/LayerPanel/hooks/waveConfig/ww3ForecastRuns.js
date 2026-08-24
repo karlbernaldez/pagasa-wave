@@ -24,7 +24,31 @@ const WW3_FORECAST_OFFSETS = {
   '48-hour forecast': { days: 1, hour: '18' },
 };
 
+const ECWAM_FORECAST_OFFSETS = {
+  analysis: { days: 0, hour: '00' },
+  'wave analysis': { days: 0, hour: '00' },
+  'forecast 24h': { days: 1, hour: '00' },
+  '24h': { days: 1, hour: '00' },
+  '24h forecast': { days: 1, hour: '00' },
+  '24hr forecast': { days: 1, hour: '00' },
+  '24 hour forecast': { days: 1, hour: '00' },
+  '24-hour forecast': { days: 1, hour: '00' },
+  'forecast 36h': { days: 1, hour: '12' },
+  '36h': { days: 1, hour: '12' },
+  '36h forecast': { days: 1, hour: '12' },
+  '36hr forecast': { days: 1, hour: '12' },
+  '36 hour forecast': { days: 1, hour: '12' },
+  '36-hour forecast': { days: 1, hour: '12' },
+  'forecast 48h': { days: 2, hour: '00' },
+  '48h': { days: 2, hour: '00' },
+  '48h forecast': { days: 2, hour: '00' },
+  '48hr forecast': { days: 2, hour: '00' },
+  '48 hour forecast': { days: 2, hour: '00' },
+  '48-hour forecast': { days: 2, hour: '00' },
+};
+
 const DEFAULT_WW3_OFFSET = WW3_FORECAST_OFFSETS.analysis;
+const DEFAULT_ECWAM_OFFSET = ECWAM_FORECAST_OFFSETS.analysis;
 const MONTH_TOKENS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 const pad2 = (value) => String(value).padStart(2, '0');
@@ -47,6 +71,17 @@ const resolveOffset = (chartType) => {
   return WW3_FORECAST_OFFSETS[`forecast ${hourMatch[1]}h`] ?? DEFAULT_WW3_OFFSET;
 };
 
+const resolveECWAMOffset = (chartType) => {
+  const normalized = normalizeChartType(chartType);
+  const directOffset = ECWAM_FORECAST_OFFSETS[normalized];
+  if (directOffset) return directOffset;
+
+  const hourMatch = normalized.match(/(?:forecast\s*)?(24|36|48)\s*(?:h|hr|hour)?/);
+  if (!hourMatch) return DEFAULT_ECWAM_OFFSET;
+
+  return ECWAM_FORECAST_OFFSETS[`forecast ${hourMatch[1]}h`] ?? DEFAULT_ECWAM_OFFSET;
+};
+
 const dateFromParts = (year, month, day) =>
   new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
 
@@ -59,7 +94,7 @@ const parseForecastDate = (forecastDate) => {
     return dateFromParts(
       forecastDate.getFullYear(),
       forecastDate.getMonth() + 1,
-      forecastDate.getDate(),
+      forecastDate.getDate()
     );
   }
 
@@ -102,6 +137,20 @@ export const resolveWW3ForecastRun = ({ forecastDate, chartType } = {}) => {
     runTag: `${packageDate}/${runDateTime}`,
     runDateTime,
     filenameTimestamp: `${yyyymmdd}T${offset.hour}`,
+    packageDate,
+  };
+};
+
+export const resolveECWAMForecastRun = ({ forecastDate, chartType } = {}) => {
+  const offset = resolveECWAMOffset(chartType);
+  const packageDate = formatWW3PackageDate(forecastDate);
+  const date = shiftDate(parseForecastDate(forecastDate), offset.days);
+  const yyyymmdd = formatCompactDate(date);
+  const runDateTime = `${yyyymmdd}${offset.hour}`;
+
+  return {
+    runTag: `${packageDate}/${runDateTime}`,
+    runDateTime,
     packageDate,
   };
 };
