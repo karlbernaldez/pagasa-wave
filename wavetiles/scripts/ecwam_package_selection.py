@@ -11,7 +11,9 @@ from zoneinfo import ZoneInfo
 
 CYCLE_RE = re.compile(r"\d{10}")
 PACKAGE_DATE_RE = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})")
-ECWAM_FILE_RE = re.compile(r"^W1P(?P<cycle_mmdd>\d{4})(?P<cycle_hhmm>\d{4})(?P<valid_mmddhh>\d{6})(?P<suffix>\d{3})$")
+ECWAM_FILE_RE = re.compile(
+    r"^W1P(?P<cycle_mmdd>\d{4})(?P<cycle_hhmm>\d{4})(?P<valid_mmddhh>\d{6})(?P<suffix>\d{3})$"
+)
 
 
 def parse_package_date(raw: str) -> date:
@@ -36,22 +38,30 @@ def package_tag(package_date: date) -> str:
     return f"{package_date.year}{months[package_date.month - 1]}{package_date.day:02d}"
 
 
-def valid_time_from_name(path: Path, cycle_year: int) -> datetime | None:
+def valid_time_from_name(path: Path, cycle_time: datetime) -> datetime | None:
     match = ECWAM_FILE_RE.fullmatch(path.name)
     if not match:
         return None
+
+    expected_cycle_mmdd = cycle_time.strftime("%m%d")
+    expected_cycle_hhmm = cycle_time.strftime("%H") + "00"
+    if (
+        match.group("cycle_mmdd") != expected_cycle_mmdd
+        or match.group("cycle_hhmm") != expected_cycle_hhmm
+    ):
+        return None
+
     raw = match.group("valid_mmddhh")
     month, day, hour = int(raw[:2]), int(raw[2:4]), int(raw[4:])
     candidates = []
-    for year in (cycle_year - 1, cycle_year, cycle_year + 1):
+    for year in (cycle_time.year - 1, cycle_time.year, cycle_time.year + 1):
         try:
             candidates.append(datetime(year, month, day, hour))
         except ValueError:
             pass
     if not candidates:
         return None
-    cycle_hint = datetime(cycle_year, 7, 1)
-    return min(candidates, key=lambda value: abs((value - cycle_hint).days))
+    return min(candidates, key=lambda value: abs(value - cycle_time))
 
 
 def files_by_valid_time(cycle_dir: Path) -> dict[datetime, Path]:
@@ -62,11 +72,11 @@ def files_by_valid_time(cycle_dir: Path) -> dict[datetime, Path]:
     for path in cycle_dir.iterdir():
         if not path.is_file() or ".idx" in path.name:
             continue
-        valid = valid_time_from_name(path, cycle_time.year)
+        valid = valid_time_from_name(path, cycle_time)
         if valid is None:
             continue
         previous = result.get(valid)
-        if previous is None or path.name.endswith("001"):
+        if previous is None or (not previous.name.endswith("001") and path.name.endswith("001")):
             result[valid] = path
     return result
 
