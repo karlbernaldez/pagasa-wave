@@ -2,9 +2,6 @@ import {
   WAVE_RASTER_LAYER_PREFIX,
   WAVE_RASTER_SOURCE_PREFIX,
   WAVE_RASTER_DATE,
-  WW3_CONTOUR_SOURCE_ID,
-  WW3_CONTOUR_LINE_LAYER_ID,
-  WW3_CONTOUR_LABEL_LAYER_ID,
   OFF_ELEMENTS,
   DEFAULT_DIRECTION_STYLE,
   COLORED_ICON_COLOR,
@@ -14,7 +11,7 @@ import {
 import {
   getSelectedModels,
   buildWaveTileUrl,
-  buildWW3ContourUrl,
+  buildWaveContourUrl,
   buildIconSize,
 } from './waveHelpers';
 
@@ -22,7 +19,13 @@ const MODEL_RASTER_CONFIG = {
   BMKG: { scheme: 'tms', bounds: [100, -5, 180, 50] },
   MRI3: { scheme: 'xyz', bounds: [100, -5, 180, 50] },
   WW3: { scheme: 'xyz', bounds: [100, -5, 180, 50] },
+  ECWAM: { scheme: 'xyz', bounds: [100, -5, 160, 40] },
 };
+
+const CONTOUR_MODELS = new Set(['WW3', 'ECWAM']);
+const CONTOUR_SOURCE_PREFIX = 'wave-contours-';
+const CONTOUR_LINE_PREFIX = 'wave-contours-line-';
+const CONTOUR_LABEL_PREFIX = 'wave-contours-label-';
 
 const getRasterConfig = (model) =>
   MODEL_RASTER_CONFIG[model] ?? { scheme: 'xyz', bounds: [100, -5, 180, 50] };
@@ -35,7 +38,7 @@ const SYMBOL_LAYER_MAP = [
 ];
 
 const rasterTileUrlBySource = new Map();
-let ww3ContourUrl = null;
+const contourUrlBySource = new Map();
 
 const removeLegacyLayers = (map) => {
   if (map.getLayer('wave-raster')) map.removeLayer('wave-raster');
@@ -154,55 +157,60 @@ export const syncWaveRasterLayers = (
   });
 };
 
-const removeWW3Contours = (map) => {
-  if (map.getLayer(WW3_CONTOUR_LABEL_LAYER_ID)) map.removeLayer(WW3_CONTOUR_LABEL_LAYER_ID);
-  if (map.getLayer(WW3_CONTOUR_LINE_LAYER_ID)) map.removeLayer(WW3_CONTOUR_LINE_LAYER_ID);
-  if (map.getSource(WW3_CONTOUR_SOURCE_ID)) map.removeSource(WW3_CONTOUR_SOURCE_ID);
-  ww3ContourUrl = null;
+const contourIds = (model) => ({
+  sourceId: `${CONTOUR_SOURCE_PREFIX}${model}`,
+  lineLayerId: `${CONTOUR_LINE_PREFIX}${model}`,
+  labelLayerId: `${CONTOUR_LABEL_PREFIX}${model}`,
+});
+
+const removeContourModel = (map, model) => {
+  const { sourceId, lineLayerId, labelLayerId } = contourIds(model);
+  if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
+  if (map.getLayer(lineLayerId)) map.removeLayer(lineLayerId);
+  if (map.getSource(sourceId)) map.removeSource(sourceId);
+  contourUrlBySource.delete(sourceId);
 };
 
-export const syncWW3ContourLayers = (
-  map,
-  models = [],
-  showContours = false,
-  isDarkMode = false,
-  forecastPackage = {}
-) => {
-  if (!map) return;
-  const selectedModels = getSelectedModels(models);
-  const shouldShow = showContours && selectedModels.includes('WW3');
+const removeStaleContourSources = (map, targetModels) => {
+  Object.keys(map.getStyle()?.sources || {})
+    .filter((id) => id.startsWith(CONTOUR_SOURCE_PREFIX))
+    .forEach((sourceId) => {
+      const model = sourceId.slice(CONTOUR_SOURCE_PREFIX.length);
+      if (targetModels.has(model)) return;
+      removeContourModel(map, model);
+    });
+};
 
-  if (!shouldShow) {
-    removeWW3Contours(map);
-    return;
-  }
-
-  const dataUrl = buildWW3ContourUrl({
+const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
+  const { sourceId, lineLayerId, labelLayerId } = contourIds(model);
+  const dataUrl = buildWaveContourUrl({
+    model,
     forecastDate: forecastPackage.forecastDate,
     chartType: forecastPackage.chartType,
   });
-
-  if (map.getSource(WW3_CONTOUR_SOURCE_ID) && ww3ContourUrl !== dataUrl) {
-    removeWW3Contours(map);
+  if (!dataUrl) {
+    removeContourModel(map, model);
+    return;
   }
 
-  if (!map.getSource(WW3_CONTOUR_SOURCE_ID)) {
-    map.addSource(WW3_CONTOUR_SOURCE_ID, {
-      type: 'geojson',
-      data: dataUrl,
-    });
-    ww3ContourUrl = dataUrl;
+  if (map.getSource(sourceId) && contourUrlBySource.get(sourceId) !== dataUrl) {
+    removeContourModel(map, model);
+  }
+
+  if (!map.getSource(sourceId)) {
+    map.addSource(sourceId, { type: 'geojson', data: dataUrl });
+    contourUrlBySource.set(sourceId, dataUrl);
   }
 
   const colorProperty = isDarkMode ? 'color_dark' : 'color_light';
   const haloColor = isDarkMode ? 'rgba(7, 18, 28, 0.92)' : 'rgba(255, 255, 255, 0.94)';
 
-  if (!map.getLayer(WW3_CONTOUR_LINE_LAYER_ID)) {
+  if (!map.getLayer(lineLayerId)) {
     map.addLayer(
       {
-        id: WW3_CONTOUR_LINE_LAYER_ID,
+        id: lineLayerId,
         type: 'line',
-        source: WW3_CONTOUR_SOURCE_ID,
+        source: sourceId,
         paint: {
           'line-color': ['get', colorProperty],
           'line-width': ['case', ['get', 'major'], 2.2, 1.35],
@@ -212,15 +220,15 @@ export const syncWW3ContourLayers = (
       'graticules'
     );
   } else {
-    map.setPaintProperty(WW3_CONTOUR_LINE_LAYER_ID, 'line-color', ['get', colorProperty]);
+    map.setPaintProperty(lineLayerId, 'line-color', ['get', colorProperty]);
   }
 
-  if (!map.getLayer(WW3_CONTOUR_LABEL_LAYER_ID)) {
+  if (!map.getLayer(labelLayerId)) {
     map.addLayer(
       {
-        id: WW3_CONTOUR_LABEL_LAYER_ID,
+        id: labelLayerId,
         type: 'symbol',
-        source: WW3_CONTOUR_SOURCE_ID,
+        source: sourceId,
         layout: {
           'symbol-placement': 'line',
           'symbol-spacing': 260,
@@ -242,10 +250,30 @@ export const syncWW3ContourLayers = (
       'graticules'
     );
   } else {
-    map.setPaintProperty(WW3_CONTOUR_LABEL_LAYER_ID, 'text-color', ['get', colorProperty]);
-    map.setPaintProperty(WW3_CONTOUR_LABEL_LAYER_ID, 'text-halo-color', haloColor);
+    map.setPaintProperty(labelLayerId, 'text-color', ['get', colorProperty]);
+    map.setPaintProperty(labelLayerId, 'text-halo-color', haloColor);
   }
 };
+
+export const syncWaveContourLayers = (
+  map,
+  models = [],
+  showContours = false,
+  isDarkMode = false,
+  forecastPackage = {}
+) => {
+  if (!map) return;
+  const selectedModels = getSelectedModels(models);
+  const targetModels = new Set(
+    showContours ? selectedModels.filter((model) => CONTOUR_MODELS.has(model)) : []
+  );
+
+  removeStaleContourSources(map, targetModels);
+  targetModels.forEach((model) => upsertContourModel(map, model, isDarkMode, forecastPackage));
+};
+
+// Backward-compatible export retained for existing imports/tests.
+export const syncWW3ContourLayers = syncWaveContourLayers;
 
 export const syncWaveSymbolLayers = (map, config) => {
   if (!map) return;
@@ -304,7 +332,7 @@ export const syncAllWaveLayers = (map, config, isDarkMode, prevThemeRef, forecas
     forecastPackage
   );
 
-  syncWW3ContourLayers(
+  syncWaveContourLayers(
     map,
     models,
     enabled && Boolean(elements.waveContours),
