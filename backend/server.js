@@ -22,6 +22,7 @@ import { requireRole } from './middleware/adminMiddleware.js';
 import { csrfProtection } from './middleware/csrfMiddleware.js';
 import authRoutes from './routes/authRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import ecwamFrameRoutes from './routes/ecwamFrameRoutes.js';
 import featureRoutes from './routes/featureRoutes.js';
 import forecastPackageRoutes from './routes/forecastPackageRoutes.js';
 import notificationRoutes from './routes/notificationRouter.js';
@@ -148,6 +149,12 @@ const createApp = () => {
     authenticate,
     requireRole('forecaster', 'admin'),
     forecastPackageRoutes
+  );
+  app.use(
+    '/api/ecwam/frames',
+    authenticate,
+    requireRole('forecaster', 'admin'),
+    ecwamFrameRoutes
   );
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
