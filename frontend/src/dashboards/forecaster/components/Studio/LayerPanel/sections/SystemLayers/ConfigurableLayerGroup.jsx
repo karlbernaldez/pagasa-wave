@@ -16,6 +16,7 @@ const ConfigurableLayerGroup = ({
   onToggleModel,
   onSetDirectionStyle,
   onSetBarbStyle,
+  afterModelSelector = null,
   isDarkMode,
 }) => {
   const { enabled } = config;
@@ -114,6 +115,8 @@ const ConfigurableLayerGroup = ({
             onToggle={onToggleModel}
             isDarkMode={isDarkMode}
           />
+
+          {afterModelSelector}
 
           <div className={`h-px ${isDarkMode ? 'bg-white/[0.08]' : 'bg-white/70'}`} />
 
