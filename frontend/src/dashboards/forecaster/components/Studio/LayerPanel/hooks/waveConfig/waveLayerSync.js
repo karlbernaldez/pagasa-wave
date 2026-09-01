@@ -136,7 +136,9 @@ export const syncWaveRasterLayers = (
     new Set(selectedModels.map((model) => `${WAVE_RASTER_SOURCE_PREFIX}${model}`))
   );
 
-  selectedModels.forEach((model) =>
+  selectedModels.forEach((model) => {
+    if (model === 'ECWAM' && forecastPackage.ecwamFrameReady === false) return;
+
     upsertRasterLayer(map, {
       model,
       theme,
@@ -146,8 +148,8 @@ export const syncWaveRasterLayers = (
       forecastDate: forecastPackage.forecastDate,
       chartType: forecastPackage.chartType,
       forecastHour: model === 'ECWAM' ? forecastPackage.ecwamForecastHour : undefined,
-    })
-  );
+    });
+  });
 
   ['wave-glass-fill', 'wave-glass-depth'].forEach((id) => {
     if (!map.getLayer(id)) return;
@@ -272,7 +274,10 @@ export const syncWaveContourLayers = (
   );
 
   removeStaleContourSources(map, targetModels);
-  targetModels.forEach((model) => upsertContourModel(map, model, isDarkMode, forecastPackage));
+  targetModels.forEach((model) => {
+    if (model === 'ECWAM' && forecastPackage.ecwamFrameReady === false) return;
+    upsertContourModel(map, model, isDarkMode, forecastPackage);
+  });
 };
 
 // Backward-compatible export retained for existing imports/tests.
