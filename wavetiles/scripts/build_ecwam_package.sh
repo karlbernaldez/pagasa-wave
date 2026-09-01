@@ -166,4 +166,3 @@ contour_count=$(find "$OUTPUT_ROOT/contours/$PACKAGE_TAG" -mindepth 2 -maxdepth 
 echo
 echo "+ ECWAM forecast package complete: $PACKAGE_DATE (source cycle $RESOLVED_SOURCE_CYCLE)"
 echo "  Contour files: $contour_count"
-find "$OUTPUT_ROOT" -type f \( -name '*.png' -o -name 'contours.geojson' \) | head || true
