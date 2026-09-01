@@ -146,8 +146,13 @@ function addWaveDirectionLayers(map, models = []) {
 
   const iconColor = savedStyle.theme === 'black' ? BLACK_ICON_COLOR : COLORED_ICON_COLOR;
   const iconSize = [
-    'interpolate', ['linear'], ['get', 'waveHeight'],
-    ...BASE_SIZE_STOPS.flatMap(([waveH, baseSize]) => [waveH, baseSize * (savedStyle.size ?? 1.0)]),
+    'interpolate',
+    ['linear'],
+    ['get', 'waveHeight'],
+    ...BASE_SIZE_STOPS.flatMap(([waveH, baseSize]) => [
+      waveH,
+      baseSize * (savedStyle.size ?? 1.0),
+    ]),
   ];
 
   models.forEach((model) => {
@@ -202,7 +207,7 @@ function loadWaveArrowImage(map) {
   ctx.lineWidth = 6;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(cx, SIZE * 0.80);
+  ctx.moveTo(cx, SIZE * 0.8);
   ctx.lineTo(cx, SIZE * 0.18);
   ctx.stroke();
 
