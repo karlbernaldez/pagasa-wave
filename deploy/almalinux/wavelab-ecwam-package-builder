@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+log() {
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+}
+
+APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
+WAVETILES_ROOT="${WAVETILES_ROOT:-$APP_ROOT/wavetiles}"
+INPUT_ROOT="${ECWAM_INPUT_ROOT:-/home/darwin/ecmwf/ecwam}"
+OUTPUT_ROOT="${ECWAM_OUTPUT_ROOT:-$WAVETILES_ROOT/tiles/ECWAM}"
+PACKAGE_TIMEZONE="${PACKAGE_TIMEZONE:-Asia/Manila}"
+PYTHON_BIN="${ECWAM_PYTHON:-$WAVETILES_ROOT/.venv/bin/python}"
+SELECTOR="$WAVETILES_ROOT/scripts/ecwam_package_selection.py"
+BUILDER="$WAVETILES_ROOT/scripts/build_ecwam_package.sh"
+LOCK_FILE="${LOCK_FILE:-/run/wavelab-ecwam/package-builder.lock}"
+
+[[ -x "$PYTHON_BIN" || -f "$PYTHON_BIN" ]] || { log "ECWAM Python runtime missing: $PYTHON_BIN"; exit 1; }
+[[ -f "$SELECTOR" ]] || { log "ECWAM package selector missing: $SELECTOR"; exit 1; }
+[[ -f "$BUILDER" ]] || { log "ECWAM package builder missing: $BUILDER"; exit 1; }
+[[ -d "$INPUT_ROOT" ]] || { log "ECWAM input root is not available yet: $INPUT_ROOT"; exit 0; }
+
+mkdir -p "$(dirname "$LOCK_FILE")"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  log "another ECWAM automation pass is already running; skipping"
+  exit 0
+fi
+
+package_date="$($PYTHON_BIN "$SELECTOR" today --timezone "$PACKAGE_TIMEZONE")"
+package_tag="$($PYTHON_BIN - "$package_date" <<'PY'
+import sys
+from datetime import date
+months = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+y, m, d = map(int, sys.argv[1].split("-"))
+value = date(y, m, d)
+print(f"{value.year}{months[value.month - 1]}{value.day:02d}")
+PY
+)"
+
+contour_root="$OUTPUT_ROOT/contours/$package_tag"
+if [[ -d "$contour_root" ]]; then
+  contour_count=$(find "$contour_root" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c 2>/dev/null | wc -l)
+  if [[ "$contour_count" -eq 4 ]]; then
+    log "ECWAM package already complete for Manila package date $package_date"
+    exit 0
+  fi
+fi
+
+if ! source_cycle="$($PYTHON_BIN "$SELECTOR" select "$INPUT_ROOT" "$package_date")"; then
+  newest_cycle=$(find "$INPUT_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | grep -E '^[0-9]{10}$' | sort -r | head -n 1 || true)
+  if [[ -n "$newest_cycle" ]]; then
+    log "ECWAM not ready for Manila package date $package_date; newest available cycle is $newest_cycle but no cycle is complete yet"
+  else
+    log "ECWAM not ready for Manila package date $package_date; no source cycles are available yet"
+  fi
+  exit 0
+fi
+
+log "selected Manila package date $package_date from newest complete ECWAM source cycle $source_cycle"
+
+if bash "$BUILDER" "$package_date" --source-cycle "$source_cycle" --skip-existing; then
+  log "ECWAM package build completed for $package_date from source cycle $source_cycle"
+else
+  status=$?
+  log "ECWAM package build failed for $package_date from source cycle $source_cycle with exit status $status"
+  exit "$status"
+fi
