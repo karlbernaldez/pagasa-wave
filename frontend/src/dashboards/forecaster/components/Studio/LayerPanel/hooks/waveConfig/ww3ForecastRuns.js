@@ -92,7 +92,9 @@ const resolveECWAMOffset = (chartType) => {
 };
 
 const normalizeECWAMForecastHour = (forecastHour) => {
-  if (forecastHour === undefined || forecastHour === null || forecastHour === '') return null;
+  if (forecastHour === undefined || forecastHour === null || forecastHour === '') {
+    return null;
+  }
   const hour = Number(forecastHour);
   return Number.isInteger(hour) && hour >= 0 && hour <= 48 ? hour : null;
 };
@@ -168,7 +170,9 @@ export const resolveECWAMForecastRun = ({ forecastDate, chartType, forecastHour 
     const offset = resolveECWAMOffset(chartType);
     validTime = shiftDate(packageBaseDate, offset.days);
     validTime.setUTCHours(Number(offset.hour), 0, 0, 0);
-    resolvedForecastHour = Math.round((validTime.getTime() - packageBaseDate.getTime()) / 3_600_000);
+    resolvedForecastHour = Math.round(
+      (validTime.getTime() - packageBaseDate.getTime()) / 3_600_000
+    );
   }
 
   const yyyymmdd = formatCompactDate(validTime);
