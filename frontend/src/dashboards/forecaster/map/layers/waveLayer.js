@@ -1,4 +1,4 @@
-import { fetchLatestGeoJSON, createWavePopup, getWaveSourceId } from '../../utils/mapHelpers';
+import { fetchLatestGeoJSON, createWavePopup } from '../../utils/mapHelpers';
 import {
   DEFAULT_DIRECTION_STYLE,
   BASE_SIZE_STOPS,
@@ -47,7 +47,7 @@ const modelFromLayerId = (layerId = '', prefix = 'wave-direction-') =>
 
 // ── Sources ───────────────────────────────────────────────────────────────────
 
-export async function addWaveSource(map, _isDarkMode, models) {
+export async function addWaveSource(map, models) {
   if (!map) return;
 
   for (const model of models) {
@@ -79,7 +79,7 @@ export async function addWaveLayer(map, isDarkMode, models) {
 
   const normalized = models.map(normalizeModel).filter(Boolean);
 
-  await addWaveSource(map, isDarkMode, normalized);
+  await addWaveSource(map, normalized);
   addWaveDirectionLayers(map, normalized);
   addSharedLayers(map, isDarkMode);
   setupPopup(map, isDarkMode, normalized);
