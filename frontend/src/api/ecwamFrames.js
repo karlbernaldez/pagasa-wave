@@ -18,7 +18,9 @@ export async function getEcwamFrameStatus(packageDate, forecastHour) {
     return data;
   } catch (error) {
     if (error?.response?.data?.state) return error.response.data;
-    throw new Error(apiMessage(error, 'Unable to check the ECWAM frame cache.'), { cause: error });
+    throw new Error(apiMessage(error, 'Unable to check the ECWAM frame cache.'), {
+      cause: error,
+    });
   }
 }
 
@@ -28,7 +30,9 @@ export async function requestEcwamFrameBuild(packageDate, forecastHour) {
     return data;
   } catch (error) {
     if (error?.response?.data?.state) return error.response.data;
-    throw new Error(apiMessage(error, 'Unable to request the ECWAM frame build.'), { cause: error });
+    throw new Error(apiMessage(error, 'Unable to request the ECWAM frame build.'), {
+      cause: error,
+    });
   }
 }
 
