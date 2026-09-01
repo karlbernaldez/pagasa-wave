@@ -28,8 +28,10 @@ const BMKG_TILE_BASE =
   import.meta.env.VITE_BMKG_TILE_BASE_URL?.replace(/\/$/, '') ||
   'https://peta-maritim.bmkg.go.id/api21/mpl_req/w3g_global/swh/0';
 
-const resolveForecastContext = ({ forecastDate, chartType }) =>
-  forecastDate || chartType ? { forecastDate, chartType } : getCachedForecastPackageContext();
+const resolveForecastContext = ({ forecastDate, chartType, forecastHour }) =>
+  forecastDate || chartType || forecastHour !== undefined
+    ? { forecastDate, chartType, forecastHour }
+    : getCachedForecastPackageContext();
 
 const TILE_URL_BUILDERS = {
   MRI3: ({ theme, date }) =>
@@ -38,8 +40,10 @@ const TILE_URL_BUILDERS = {
     const { runTag } = resolveWW3ForecastRun(resolveForecastContext({ forecastDate, chartType }));
     return `${WW3_TILE_BASE}/WW3/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
-  ECWAM: ({ theme, forecastDate, chartType }) => {
-    const { runTag } = resolveECWAMForecastRun(resolveForecastContext({ forecastDate, chartType }));
+  ECWAM: ({ theme, forecastDate, chartType, forecastHour }) => {
+    const { runTag } = resolveECWAMForecastRun(
+      resolveForecastContext({ forecastDate, chartType, forecastHour })
+    );
     return `${ECWAM_TILE_BASE}/ECWAM/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
   BMKG: ({ forecastDate, chartType }) => {
@@ -50,11 +54,11 @@ const TILE_URL_BUILDERS = {
   },
 };
 
-export const buildWaveTileUrl = ({ model, theme, date, forecastDate, chartType }) => {
+export const buildWaveTileUrl = ({ model, theme, date, forecastDate, chartType, forecastHour }) => {
   const m = normalizeModelName(model);
   const builder = TILE_URL_BUILDERS[m];
   return builder
-    ? builder({ theme, date, forecastDate, chartType })
+    ? builder({ theme, date, forecastDate, chartType, forecastHour })
     : `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}/{z}/{x}/{y}.png`;
 };
 
@@ -63,22 +67,24 @@ const CONTOUR_URL_BUILDERS = {
     const { runTag } = resolveWW3ForecastRun(resolveForecastContext({ forecastDate, chartType }));
     return `${WW3_TILE_BASE}/WW3/contours/${runTag}/contours.geojson`;
   },
-  ECWAM: ({ forecastDate, chartType }) => {
-    const { runTag } = resolveECWAMForecastRun(resolveForecastContext({ forecastDate, chartType }));
+  ECWAM: ({ forecastDate, chartType, forecastHour }) => {
+    const { runTag } = resolveECWAMForecastRun(
+      resolveForecastContext({ forecastDate, chartType, forecastHour })
+    );
     return `${ECWAM_TILE_BASE}/ECWAM/contours/${runTag}/contours.geojson`;
   },
 };
 
-export const buildWaveContourUrl = ({ model, forecastDate, chartType } = {}) => {
+export const buildWaveContourUrl = ({ model, forecastDate, chartType, forecastHour } = {}) => {
   const builder = CONTOUR_URL_BUILDERS[normalizeModelName(model)];
-  return builder ? builder({ forecastDate, chartType }) : null;
+  return builder ? builder({ forecastDate, chartType, forecastHour }) : null;
 };
 
 export const buildWW3ContourUrl = ({ forecastDate, chartType } = {}) =>
   buildWaveContourUrl({ model: 'WW3', forecastDate, chartType });
 
-export const buildECWAMContourUrl = ({ forecastDate, chartType } = {}) =>
-  buildWaveContourUrl({ model: 'ECWAM', forecastDate, chartType });
+export const buildECWAMContourUrl = ({ forecastDate, chartType, forecastHour } = {}) =>
+  buildWaveContourUrl({ model: 'ECWAM', forecastDate, chartType, forecastHour });
 
 // ── Icon size expression ──────────────────────────────────────────────────────
 
