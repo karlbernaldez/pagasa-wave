@@ -91,6 +91,12 @@ const resolveECWAMOffset = (chartType) => {
   return ECWAM_FORECAST_OFFSETS[`forecast ${hourMatch[1]}h`] ?? DEFAULT_ECWAM_OFFSET;
 };
 
+const normalizeECWAMForecastHour = (forecastHour) => {
+  if (forecastHour === undefined || forecastHour === null || forecastHour === '') return null;
+  const hour = Number(forecastHour);
+  return Number.isInteger(hour) && hour >= 0 && hour <= 48 ? hour : null;
+};
+
 const dateFromParts = (year, month, day) =>
   new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
 
@@ -147,17 +153,32 @@ export const resolveWW3ForecastRun = ({ forecastDate, chartType } = {}) => {
   };
 };
 
-export const resolveECWAMForecastRun = ({ forecastDate, chartType } = {}) => {
-  const offset = resolveECWAMOffset(chartType);
+export const resolveECWAMForecastRun = ({ forecastDate, chartType, forecastHour } = {}) => {
+  const packageBaseDate = parseForecastDate(forecastDate);
   const packageDate = formatWW3PackageDate(forecastDate);
-  const date = shiftDate(parseForecastDate(forecastDate), offset.days);
-  const yyyymmdd = formatCompactDate(date);
-  const runDateTime = `${yyyymmdd}${offset.hour}`;
+  const explicitHour = normalizeECWAMForecastHour(forecastHour);
+
+  let validTime;
+  let resolvedForecastHour;
+
+  if (explicitHour !== null) {
+    validTime = new Date(packageBaseDate.getTime() + explicitHour * 60 * 60 * 1000);
+    resolvedForecastHour = explicitHour;
+  } else {
+    const offset = resolveECWAMOffset(chartType);
+    validTime = shiftDate(packageBaseDate, offset.days);
+    validTime.setUTCHours(Number(offset.hour), 0, 0, 0);
+    resolvedForecastHour = Math.round((validTime.getTime() - packageBaseDate.getTime()) / 3_600_000);
+  }
+
+  const yyyymmdd = formatCompactDate(validTime);
+  const runDateTime = `${yyyymmdd}${pad2(validTime.getUTCHours())}`;
 
   return {
     runTag: `${packageDate}/${runDateTime}`,
     runDateTime,
     packageDate,
+    forecastHour: resolvedForecastHour,
   };
 };
 
