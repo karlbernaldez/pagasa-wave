@@ -33,6 +33,13 @@ def required_valid_times(package_date: date) -> tuple[datetime, ...]:
     )
 
 
+def forecast_valid_time(package_date: date, forecast_hour: int) -> datetime:
+    if not 0 <= forecast_hour <= 48:
+        raise ValueError("forecast hour must be between 0 and 48 inclusive")
+    start = datetime(package_date.year, package_date.month, package_date.day)
+    return start + timedelta(hours=forecast_hour)
+
+
 def package_tag(package_date: date) -> str:
     months = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
     return f"{package_date.year}{months[package_date.month - 1]}{package_date.day:02d}"
@@ -99,19 +106,45 @@ def select_source_cycle(input_root: Path, package_date: date) -> Path | None:
     return next((path for path in cycles if cycle_is_complete(path, package_date)), None)
 
 
-def print_manifest(input_root: Path, package_date: date, source_cycle: str | None) -> int:
+def resolve_cycle_dir(input_root: Path, package_date: date, source_cycle: str | None) -> Path | None:
     cycle_dir = input_root / source_cycle if source_cycle else select_source_cycle(input_root, package_date)
+    if cycle_dir is None or not cycle_is_complete(cycle_dir, package_date):
+        return None
+    return cycle_dir
+
+
+def print_manifest(input_root: Path, package_date: date, source_cycle: str | None) -> int:
+    cycle_dir = resolve_cycle_dir(input_root, package_date, source_cycle)
     if cycle_dir is None:
         return 1
     available = files_by_valid_time(cycle_dir)
     required = required_valid_times(package_date)
-    if not all(value in available for value in required):
-        return 1
     labels = ("analysis", "24h", "36h", "48h")
     tag = package_tag(package_date)
     for label, valid in zip(labels, required):
         stamp = valid.strftime("%Y%m%d%H")
         print(f"{label}|{stamp}|{tag}|{available[valid]}|{cycle_dir.name}")
+    return 0
+
+
+def print_frame(
+    input_root: Path,
+    package_date: date,
+    forecast_hour: int,
+    source_cycle: str | None,
+) -> int:
+    cycle_dir = resolve_cycle_dir(input_root, package_date, source_cycle)
+    if cycle_dir is None:
+        return 1
+
+    valid = forecast_valid_time(package_date, forecast_hour)
+    available = files_by_valid_time(cycle_dir)
+    gribfile = available.get(valid)
+    if gribfile is None:
+        return 1
+
+    stamp = valid.strftime("%Y%m%d%H")
+    print(f"{forecast_hour}h|{stamp}|{package_tag(package_date)}|{gribfile}|{cycle_dir.name}")
     return 0
 
 
@@ -127,10 +160,17 @@ def main() -> int:
     manifest_parser.add_argument("input_root", type=Path)
     manifest_parser.add_argument("package_date")
     manifest_parser.add_argument("--source-cycle")
+    frame_parser = subparsers.add_parser("frame")
+    frame_parser.add_argument("input_root", type=Path)
+    frame_parser.add_argument("package_date")
+    frame_parser.add_argument("--forecast-hour", required=True, type=int)
+    frame_parser.add_argument("--source-cycle")
     args = parser.parse_args()
+
     if args.command == "today":
         print(datetime.now(tz=ZoneInfo(args.timezone)).date().isoformat())
         return 0
+
     parsed_date = parse_package_date(args.package_date)
     if args.command == "select":
         selected = select_source_cycle(args.input_root, parsed_date)
@@ -138,7 +178,9 @@ def main() -> int:
             return 1
         print(selected.name)
         return 0
-    return print_manifest(args.input_root, parsed_date, args.source_cycle)
+    if args.command == "manifest":
+        return print_manifest(args.input_root, parsed_date, args.source_cycle)
+    return print_frame(args.input_root, parsed_date, args.forecast_hour, args.source_cycle)
 
 
 if __name__ == "__main__":
