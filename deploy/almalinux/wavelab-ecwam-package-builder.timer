@@ -1,0 +1,12 @@
+[Unit]
+Description=Retry WaveLab ECWAM package completion hourly
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+RandomizedDelaySec=5min
+Persistent=true
+Unit=wavelab-ecwam-package-builder.service
+
+[Install]
+WantedBy=timers.target
