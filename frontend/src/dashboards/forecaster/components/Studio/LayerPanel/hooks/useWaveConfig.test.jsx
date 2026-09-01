@@ -57,6 +57,23 @@ const defaultWaveStorage = () => ({
   directionStyle: {},
 });
 
+const ecwamWaveStorage = () => ({
+  enabled: true,
+  models: ['ECWAM'],
+  elements: { raster: true },
+  directionStyle: {},
+});
+
+const createReadyMap = () => ({
+  getStyle: () => ({ layers: [] }),
+  isStyleLoaded: () => true,
+});
+
+const hasReadyEcwamSync = () =>
+  mocks.syncAllWaveLayers.mock.calls.some(
+    ([, , , , forecastPackage]) => forecastPackage?.ecwamFrameReady === true
+  );
+
 describe('useWaveConfig hydration', () => {
   afterEach(() => {
     registerMapInstance(null);
@@ -68,10 +85,7 @@ describe('useWaveConfig hydration', () => {
   });
 
   it('restores an enabled saved wave layer when the map registers after mount', async () => {
-    const map = {
-      getStyle: () => ({ layers: [] }),
-      isStyleLoaded: () => true,
-    };
+    const map = createReadyMap();
     const mapRef = { current: null };
 
     renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
@@ -130,17 +144,9 @@ describe('useWaveConfig hydration', () => {
   });
 
   it('validates the default ECWAM frame before marking the package ready', async () => {
-    mocks.readWaveStorage.mockReturnValue({
-      enabled: true,
-      models: ['ECWAM'],
-      elements: { raster: true },
-      directionStyle: {},
-    });
+    mocks.readWaveStorage.mockReturnValue(ecwamWaveStorage());
 
-    const map = {
-      getStyle: () => ({ layers: [] }),
-      isStyleLoaded: () => true,
-    };
+    const map = createReadyMap();
     const mapRef = { current: map };
 
     const { result } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
@@ -153,25 +159,13 @@ describe('useWaveConfig hydration', () => {
       expect(result.current.waveConfig.ecwamFrame.state).toBe('ready');
     });
 
-    expect(
-      mocks.syncAllWaveLayers.mock.calls.some(
-        ([, , , , forecastPackage]) => forecastPackage?.ecwamFrameReady === true
-      )
-    ).toBe(true);
+    expect(hasReadyEcwamSync()).toBe(true);
   });
 
   it('revalidates the default ECWAM frame when the forecast package changes', async () => {
-    mocks.readWaveStorage.mockReturnValue({
-      enabled: true,
-      models: ['ECWAM'],
-      elements: { raster: true },
-      directionStyle: {},
-    });
+    mocks.readWaveStorage.mockReturnValue(ecwamWaveStorage());
 
-    const map = {
-      getStyle: () => ({ layers: [] }),
-      isStyleLoaded: () => true,
-    };
+    const map = createReadyMap();
     const mapRef = { current: map };
 
     const { rerender } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
@@ -187,5 +181,69 @@ describe('useWaveConfig hydration', () => {
     await waitFor(() => {
       expect(mocks.ensureEcwamFrameReady).toHaveBeenCalledWith('2026-08-05', 24);
     });
+  });
+
+  it.each([
+    ['busy', 'Another ECWAM frame is currently building.'],
+    ['failed', 'ECWAM frame generation failed.'],
+    ['rate_limited', 'Too many ECWAM frame requests.'],
+    ['unavailable', 'ECWAM T+0 is not available for this package.'],
+  ])('keeps ECWAM unapplied when default frame returns %s', async (state, message) => {
+    mocks.readWaveStorage.mockReturnValue(ecwamWaveStorage());
+    mocks.ensureEcwamFrameReady.mockResolvedValue({ state, message });
+
+    const map = createReadyMap();
+    const mapRef = { current: map };
+    const { result } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
+
+    await waitFor(() => {
+      expect(result.current.waveConfig.ecwamFrame.state).toBe(state);
+    });
+
+    expect(result.current.waveConfig.ecwamFrame.forecastHour).toBe(0);
+    expect(result.current.waveConfig.ecwamFrame.message).toBe(message);
+    expect(hasReadyEcwamSync()).toBe(false);
+  });
+
+  it('surfaces a thrown ECWAM readiness error as failed without applying the frame', async () => {
+    mocks.readWaveStorage.mockReturnValue(ecwamWaveStorage());
+    mocks.ensureEcwamFrameReady.mockRejectedValue(new Error('ECWAM backend unavailable'));
+
+    const map = createReadyMap();
+    const mapRef = { current: map };
+    const { result } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
+
+    await waitFor(() => {
+      expect(result.current.waveConfig.ecwamFrame.state).toBe('failed');
+    });
+
+    expect(result.current.waveConfig.ecwamFrame.message).toBe('ECWAM backend unavailable');
+    expect(hasReadyEcwamSync()).toBe(false);
+  });
+
+  it('allows retrying the same default hour after a terminal ECWAM failure', async () => {
+    mocks.readWaveStorage.mockReturnValue(ecwamWaveStorage());
+    mocks.ensureEcwamFrameReady
+      .mockResolvedValueOnce({ state: 'unavailable', message: 'Not available yet.' })
+      .mockResolvedValueOnce({ state: 'ready' });
+
+    const map = createReadyMap();
+    const mapRef = { current: map };
+    const { result } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
+
+    await waitFor(() => {
+      expect(result.current.waveConfig.ecwamFrame.state).toBe('unavailable');
+    });
+
+    await act(async () => {
+      await result.current.waveConfig.setEcwamForecastHour(0);
+    });
+
+    await waitFor(() => {
+      expect(result.current.waveConfig.ecwamFrame.state).toBe('ready');
+    });
+
+    expect(mocks.ensureEcwamFrameReady).toHaveBeenCalledTimes(2);
+    expect(hasReadyEcwamSync()).toBe(true);
   });
 });
