@@ -257,19 +257,32 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     [applyLayers, commitWaveConfig, saveDirectionStyle]
   );
 
+  const waveConfigView = useMemo(
+    () => ({
+      ...waveConfig,
+      ecwamFrame: {
+        forecastHour: ecwamForecastHour,
+        minHour: 0,
+        maxHour: 48,
+        ...ecwamFrameState,
+      },
+      setEcwamForecastHour,
+      stepEcwamForecastHour,
+    }),
+    [
+      waveConfig,
+      ecwamForecastHour,
+      ecwamFrameState,
+      setEcwamForecastHour,
+      stepEcwamForecastHour,
+    ]
+  );
+
   return {
-    waveConfig,
-    ecwamFrame: {
-      forecastHour: ecwamForecastHour,
-      minHour: 0,
-      maxHour: 48,
-      ...ecwamFrameState,
-    },
+    waveConfig: waveConfigView,
     toggleWaveLayer,
     setWaveElement,
     toggleWaveModel,
     setDirectionStyle,
-    setEcwamForecastHour,
-    stepEcwamForecastHour,
   };
 };
