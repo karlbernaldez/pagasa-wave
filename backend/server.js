@@ -150,12 +150,7 @@ const createApp = () => {
     requireRole('forecaster', 'admin'),
     forecastPackageRoutes
   );
-  app.use(
-    '/api/ecwam/frames',
-    authenticate,
-    requireRole('forecaster', 'admin'),
-    ecwamFrameRoutes
-  );
+  app.use('/api/ecwam/frames', authenticate, requireRole('forecaster', 'admin'), ecwamFrameRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
   app.use('/api/chat', chatRoutes);

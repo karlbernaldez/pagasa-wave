@@ -117,27 +117,9 @@ function frameKey(packageDate, forecastHour) {
 
 function framePaths(tag, validRunTag) {
   return {
-    contour: path.join(
-      ECWAM_OUTPUT_ROOT,
-      'contours',
-      tag,
-      validRunTag,
-      'contours.geojson'
-    ),
-    lightLegend: path.join(
-      ECWAM_OUTPUT_ROOT,
-      'light',
-      tag,
-      validRunTag,
-      'legend.json'
-    ),
-    darkLegend: path.join(
-      ECWAM_OUTPUT_ROOT,
-      'dark',
-      tag,
-      validRunTag,
-      'legend.json'
-    ),
+    contour: path.join(ECWAM_OUTPUT_ROOT, 'contours', tag, validRunTag, 'contours.geojson'),
+    lightLegend: path.join(ECWAM_OUTPUT_ROOT, 'light', tag, validRunTag, 'legend.json'),
+    darkLegend: path.join(ECWAM_OUTPUT_ROOT, 'dark', tag, validRunTag, 'legend.json'),
   };
 }
 
@@ -264,7 +246,11 @@ export function startEcwamFrameBuild(packageDate, forecastHour, requestedBy = nu
 
   const metadata = readPackageMetadata(status.packageTag);
   if (!metadata) {
-    return { ...status, state: 'unavailable', message: 'ECWAM package metadata is not available yet.' };
+    return {
+      ...status,
+      state: 'unavailable',
+      message: 'ECWAM package metadata is not available yet.',
+    };
   }
 
   if (!fs.existsSync(FRAME_BUILDER) || !fs.existsSync(ECWAM_PYTHON)) {
