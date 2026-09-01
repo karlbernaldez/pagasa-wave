@@ -207,8 +207,11 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       removeLoadListener = () => map.off?.('load', handleLoad);
     };
 
-    attachToMap(getLatestMapInstance(mapRef));
+    // subscribeToMapInstance immediately emits the global cached map, which may
+    // be null even when this hook already has a valid direct mapRef. Subscribe
+    // first, then let the direct ref win as the authoritative initial map.
     const unsubscribe = subscribeToMapInstance(attachToMap);
+    attachToMap(getLatestMapInstance(mapRef));
 
     return () => {
       disposed = true;
