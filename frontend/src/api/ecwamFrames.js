@@ -68,7 +68,8 @@ export async function ensureEcwamFrameReady(
     if (status.state === 'available' && Date.now() >= nextBuildAttemptAt) {
       status = await requestEcwamFrameBuild(packageDate, forecastHour);
       if (status.state === 'ready') return status;
-      if (['invalid', 'unavailable', 'failed', 'rate_limited'].includes(status.state)) return status;
+      if (['invalid', 'unavailable', 'failed', 'rate_limited'].includes(status.state))
+        return status;
       if (status.state === 'busy') {
         nextBuildAttemptAt = Date.now() + BUSY_RETRY_INTERVAL_MS;
       }

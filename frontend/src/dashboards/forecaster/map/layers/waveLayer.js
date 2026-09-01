@@ -149,10 +149,7 @@ function addWaveDirectionLayers(map, models = []) {
     'interpolate',
     ['linear'],
     ['get', 'waveHeight'],
-    ...BASE_SIZE_STOPS.flatMap(([waveH, baseSize]) => [
-      waveH,
-      baseSize * (savedStyle.size ?? 1.0),
-    ]),
+    ...BASE_SIZE_STOPS.flatMap(([waveH, baseSize]) => [waveH, baseSize * (savedStyle.size ?? 1.0)]),
   ];
 
   models.forEach((model) => {
@@ -168,11 +165,7 @@ function addWaveDirectionLayers(map, models = []) {
       source: sourceId,
       slot: 'middle',
 
-      filter: [
-        'all',
-        ['has', 'waveDirection'],
-        ['>', ['to-number', ['get', 'waveHeight'], 0], 0],
-      ],
+      filter: ['all', ['has', 'waveDirection'], ['>', ['to-number', ['get', 'waveHeight'], 0], 0]],
 
       layout: {
         visibility: 'visible',

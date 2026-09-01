@@ -20,8 +20,7 @@ export const getSelectedModels = (models = []) => [
 
 // ── Tile URL builder ──────────────────────────────────────────────────────────
 
-const WW3_TILE_BASE =
-  import.meta.env.VITE_WW3_TILE_BASE_URL?.replace(/\/$/, '') || '/wavetiles';
+const WW3_TILE_BASE = import.meta.env.VITE_WW3_TILE_BASE_URL?.replace(/\/$/, '') || '/wavetiles';
 const ECWAM_TILE_BASE =
   import.meta.env.VITE_ECWAM_TILE_BASE_URL?.replace(/\/$/, '') || WW3_TILE_BASE;
 
@@ -38,9 +37,7 @@ const TILE_URL_BUILDERS = {
   MRI3: ({ theme, date }) =>
     `${WAVE_BUCKET_BASE}/MRI3/${theme}/${date}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`,
   WW3: ({ theme, forecastDate, chartType }) => {
-    const { runTag } = resolveWW3ForecastRun(
-      resolveForecastContext({ forecastDate, chartType })
-    );
+    const { runTag } = resolveWW3ForecastRun(resolveForecastContext({ forecastDate, chartType }));
     return `${WW3_TILE_BASE}/WW3/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
   ECWAM: ({ theme, forecastDate, chartType, forecastHour }) => {
@@ -57,14 +54,7 @@ const TILE_URL_BUILDERS = {
   },
 };
 
-export const buildWaveTileUrl = ({
-  model,
-  theme,
-  date,
-  forecastDate,
-  chartType,
-  forecastHour,
-}) => {
+export const buildWaveTileUrl = ({ model, theme, date, forecastDate, chartType, forecastHour }) => {
   const m = normalizeModelName(model);
   const builder = TILE_URL_BUILDERS[m];
   return builder
@@ -74,9 +64,7 @@ export const buildWaveTileUrl = ({
 
 const CONTOUR_URL_BUILDERS = {
   WW3: ({ forecastDate, chartType }) => {
-    const { runTag } = resolveWW3ForecastRun(
-      resolveForecastContext({ forecastDate, chartType })
-    );
+    const { runTag } = resolveWW3ForecastRun(resolveForecastContext({ forecastDate, chartType }));
     return `${WW3_TILE_BASE}/WW3/contours/${runTag}/contours.geojson`;
   },
   ECWAM: ({ forecastDate, chartType, forecastHour }) => {

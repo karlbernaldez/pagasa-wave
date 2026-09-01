@@ -52,21 +52,21 @@ describe('resolveECWAMForecastRun', () => {
   });
 
   it('crosses UTC day boundaries correctly for hourly navigation', () => {
-    expect(
-      resolveECWAMForecastRun({ forecastDate: '2026-09-01', forecastHour: 23 })
-    ).toMatchObject({
-      runDateTime: '2026090123',
-    });
-    expect(
-      resolveECWAMForecastRun({ forecastDate: '2026-09-01', forecastHour: 25 })
-    ).toMatchObject({
-      runDateTime: '2026090201',
-    });
-    expect(
-      resolveECWAMForecastRun({ forecastDate: '2026-09-01', forecastHour: 48 })
-    ).toMatchObject({
-      runDateTime: '2026090300',
-    });
+    expect(resolveECWAMForecastRun({ forecastDate: '2026-09-01', forecastHour: 23 })).toMatchObject(
+      {
+        runDateTime: '2026090123',
+      }
+    );
+    expect(resolveECWAMForecastRun({ forecastDate: '2026-09-01', forecastHour: 25 })).toMatchObject(
+      {
+        runDateTime: '2026090201',
+      }
+    );
+    expect(resolveECWAMForecastRun({ forecastDate: '2026-09-01', forecastHour: 48 })).toMatchObject(
+      {
+        runDateTime: '2026090300',
+      }
+    );
   });
 
   it('falls back to chart-type resolution when an explicit hour is invalid', () => {
