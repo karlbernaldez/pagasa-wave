@@ -7,14 +7,15 @@ Usage:
   bash scripts/build_ecwam_frame.sh <PACKAGE_DATE> <FORECAST_HOUR> [VARNAME] [SIGMA] [--source-cycle YYYYMMDDHH] [tiler args]
 
 Examples:
-  bash scripts/build_ecwam_frame.sh 2026-09-01 7
+  bash scripts/build_ecwam_frame.sh 2026-09-02 7
   bash scripts/build_ecwam_frame.sh 2026-09-01 30 swh 1.5 --source-cycle 2026083118 --skip-existing
 
 Notes:
   - FORECAST_HOUR must be between 0 and 48 inclusive.
   - Required package frames remain 0h, 24h, 36h, and 48h.
   - Intermediate frames are generated only when requested and are cached in the normal package tree.
-  - When package metadata exists, its sourceCycle is reused so intermediate frames stay consistent with the required package frames.
+  - Package metadata is used to pin the same source cycle as the required package frames.
+  - For older packages without metadata, pass --source-cycle explicitly to avoid mixing model cycles.
 EOF
 }
 
@@ -96,11 +97,8 @@ PY
 fi
 
 if [[ -z "$SOURCE_CYCLE" ]]; then
-  if ! SOURCE_CYCLE="$($PYTHON_BIN "$SELECTOR" select "$INPUT_ROOT" "$PACKAGE_DATE")"; then
-    echo "No complete ECWAM source cycle is available for package $PACKAGE_DATE" >&2
-    exit 1
-  fi
-  echo "WARNING: package metadata is missing; using newest complete source cycle $SOURCE_CYCLE" >&2
+  echo "ECWAM package metadata is missing for $PACKAGE_DATE; pass --source-cycle explicitly to avoid mixing model cycles" >&2
+  exit 1
 fi
 
 if ! FRAME="$($PYTHON_BIN "$SELECTOR" frame "$INPUT_ROOT" "$PACKAGE_DATE" --forecast-hour "$FORECAST_HOUR" --source-cycle "$SOURCE_CYCLE")"; then
@@ -117,7 +115,16 @@ contour_target="$OUTPUT_ROOT/contours/$PACKAGE_TAG/$run_tag/contours.geojson"
 light_target="$OUTPUT_ROOT/light/$PACKAGE_TAG/$run_tag"
 dark_target="$OUTPUT_ROOT/dark/$PACKAGE_TAG/$run_tag"
 
-if [[ -s "$contour_target" && -d "$light_target" && -d "$dark_target" ]]; then
+has_pngs() {
+  local target=$1
+  [[ -d "$target" ]] && find "$target" -type f -name '*.png' -print -quit | grep -q .
+}
+
+frame_complete() {
+  [[ -s "$contour_target" ]] && has_pngs "$light_target" && has_pngs "$dark_target"
+}
+
+if frame_complete; then
   echo "ECWAM ${FORECAST_HOUR}h frame already cached for $PACKAGE_DATE at $run_tag"
   exit 0
 fi
@@ -131,7 +138,7 @@ if ! flock -n 9; then
   exit 0
 fi
 
-if [[ -s "$contour_target" && -d "$light_target" && -d "$dark_target" ]]; then
+if frame_complete; then
   echo "ECWAM ${FORECAST_HOUR}h frame already cached for $PACKAGE_DATE at $run_tag"
   exit 0
 fi
@@ -171,7 +178,7 @@ for style in light dark; do
     find "$target_dir" -type d -exec chmod 755 {} + 2>/dev/null || true
     find "$target_dir" -type f -exec chmod 644 {} + 2>/dev/null || true
   fi
-  [[ -d "$target_dir" ]] || { echo "ECWAM $style tiles are missing for $run_tag" >&2; exit 1; }
 done
 
+frame_complete || { echo "ECWAM on-demand frame outputs are incomplete for $run_tag" >&2; exit 1; }
 echo "+ ECWAM ${FORECAST_HOUR}h frame cached for $PACKAGE_DATE at $run_tag"
