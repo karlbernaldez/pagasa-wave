@@ -6,6 +6,11 @@ import { useWaveConfig } from './useWaveConfig';
 
 const mocks = vi.hoisted(() => ({
   addWaveLayer: vi.fn(() => Promise.resolve()),
+  ensureEcwamFrameReady: vi.fn(() => Promise.resolve({ state: 'ready' })),
+  projectData: {
+    chartType: 'analysis',
+    forecastDate: '2026-08-04',
+  },
   syncAllWaveLayers: vi.fn(),
   readWaveStorage: vi.fn(() => ({
     enabled: true,
@@ -23,6 +28,10 @@ vi.mock('@dashboards/forecaster/map/layers/waveLayer', () => ({
   addWaveLayer: mocks.addWaveLayer,
 }));
 
+vi.mock('@/api/ecwamFrames', () => ({
+  ensureEcwamFrameReady: mocks.ensureEcwamFrameReady,
+}));
+
 vi.mock('./waveConfig/waveLayerSync', () => ({
   syncAllWaveLayers: mocks.syncAllWaveLayers,
 }));
@@ -38,15 +47,23 @@ vi.mock('./waveConfig/useWaveStorage', () => ({
 }));
 
 vi.mock('../../Menu/hooks/useProjectData', () => ({
-  useProjectData: () => ({
-    chartType: 'analysis',
-    forecastDate: '2026-08-04',
-  }),
+  useProjectData: () => ({ ...mocks.projectData }),
 }));
+
+const defaultWaveStorage = () => ({
+  enabled: true,
+  models: ['WW3'],
+  elements: { height: true },
+  directionStyle: {},
+});
 
 describe('useWaveConfig hydration', () => {
   afterEach(() => {
     registerMapInstance(null);
+    mocks.projectData.chartType = 'analysis';
+    mocks.projectData.forecastDate = '2026-08-04';
+    mocks.readWaveStorage.mockReturnValue(defaultWaveStorage());
+    mocks.ensureEcwamFrameReady.mockResolvedValue({ state: 'ready' });
     vi.clearAllMocks();
   });
 
@@ -110,5 +127,65 @@ describe('useWaveConfig hydration', () => {
     });
 
     expect(mocks.addWaveLayer).toHaveBeenCalledWith(map, true, ['WW3']);
+  });
+
+  it('validates the default ECWAM frame before marking the package ready', async () => {
+    mocks.readWaveStorage.mockReturnValue({
+      enabled: true,
+      models: ['ECWAM'],
+      elements: { raster: true },
+      directionStyle: {},
+    });
+
+    const map = {
+      getStyle: () => ({ layers: [] }),
+      isStyleLoaded: () => true,
+    };
+    const mapRef = { current: map };
+
+    const { result } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
+
+    await waitFor(() => {
+      expect(mocks.ensureEcwamFrameReady).toHaveBeenCalledWith('2026-08-04', 0);
+    });
+
+    await waitFor(() => {
+      expect(result.current.waveConfig.ecwamFrame.state).toBe('ready');
+    });
+
+    expect(
+      mocks.syncAllWaveLayers.mock.calls.some(
+        ([, , , , forecastPackage]) => forecastPackage?.ecwamFrameReady === true
+      )
+    ).toBe(true);
+  });
+
+  it('revalidates the default ECWAM frame when the forecast package changes', async () => {
+    mocks.readWaveStorage.mockReturnValue({
+      enabled: true,
+      models: ['ECWAM'],
+      elements: { raster: true },
+      directionStyle: {},
+    });
+
+    const map = {
+      getStyle: () => ({ layers: [] }),
+      isStyleLoaded: () => true,
+    };
+    const mapRef = { current: map };
+
+    const { rerender } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
+
+    await waitFor(() => {
+      expect(mocks.ensureEcwamFrameReady).toHaveBeenCalledWith('2026-08-04', 0);
+    });
+
+    mocks.projectData.chartType = '24h forecast';
+    mocks.projectData.forecastDate = '2026-08-05';
+    rerender();
+
+    await waitFor(() => {
+      expect(mocks.ensureEcwamFrameReady).toHaveBeenCalledWith('2026-08-05', 24);
+    });
   });
 });
