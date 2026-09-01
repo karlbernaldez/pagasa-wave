@@ -66,15 +66,7 @@ describe('useWaveConfig hydration', () => {
     });
 
     await waitFor(() => {
-      expect(mocks.addWaveLayer).toHaveBeenCalledWith(
-        map,
-        false,
-        ['WW3'],
-        expect.objectContaining({
-          chartType: 'analysis',
-          forecastDate: '2026-08-04',
-        })
-      );
+      expect(mocks.addWaveLayer).toHaveBeenCalledWith(map, false, ['WW3']);
     });
 
     await waitFor(() => {
@@ -117,6 +109,6 @@ describe('useWaveConfig hydration', () => {
       await Promise.resolve();
     });
 
-    expect(mocks.addWaveLayer).toHaveBeenCalledWith(map, true, ['WW3'], expect.any(Object));
+    expect(mocks.addWaveLayer).toHaveBeenCalledWith(map, true, ['WW3']);
   });
 });
