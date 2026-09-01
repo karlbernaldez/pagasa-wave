@@ -5,7 +5,6 @@ import {
   BLACK_ICON_COLOR,
   COLORED_ICON_COLOR,
 } from '@dashboards/forecaster/components/Studio/LayerPanel/constants/layerConstants';
-import { getCachedForecastPackageContext, resolveWW3ForecastRun } from '@dashboards/forecaster/components/Studio/LayerPanel/hooks/waveConfig/ww3ForecastRuns';
 
 // ── Popup style injection (once) ──────────────────────────────────────────────
 
@@ -22,18 +21,10 @@ import { getCachedForecastPackageContext, resolveWW3ForecastRun } from '@dashboa
   document.head.appendChild(style);
 })();
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const MRI3_TIMESTEP = '012';
-const WAVE_BUCKET_BASE = 'https://storage.googleapis.com/wavelab-tiles';
-const DEFAULT_WW3_TILE_BASE = '/wavetiles';
-const LOCAL_WW3_TILE_BASE = import.meta.env.VITE_WW3_TILE_BASE || DEFAULT_WW3_TILE_BASE;
-
 // ── Module-level singletons ───────────────────────────────────────────────────
 
 let _wavePopup = null;
 const _popupListeners = new Set();
-const _tileUrlBySourceId = new Map();
 
 const getWavePopup = () => {
   if (!_wavePopup) {
@@ -46,50 +37,8 @@ const getWavePopup = () => {
 
 const normalizeModel = (model = '') => model.trim().toUpperCase();
 
-const normalizeBaseUrl = (base = '') => String(base).replace(/\/+$/, '');
-
-const resolveDate = (model, forecastPackage = {}) => {
-  switch (model) {
-    case 'WW3': {
-      const context = forecastPackage.forecastDate || forecastPackage.chartType
-        ? forecastPackage
-        : getCachedForecastPackageContext();
-      return resolveWW3ForecastRun(context).runTag;
-    }
-    default: return '2026011200';
-  }
-};
-
-const resolveTileBase = (model) => (
-  model === 'WW3' ? LOCAL_WW3_TILE_BASE : WAVE_BUCKET_BASE
-);
-
-const buildTileUrl = (model, theme, forecastPackage = {}) => {
-  const m = normalizeModel(model);
-  const date = resolveDate(m, forecastPackage);
-  const base = `${normalizeBaseUrl(resolveTileBase(m))}/${m}/${theme}/${date}`;
-  return m === 'MRI3'
-    ? `${base}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`
-    : `${base}/{z}/{x}/{y}.png`;
-};
-
 const ensureSource = (map, id, config) => {
   if (!map.getSource(id)) map.addSource(id, config);
-};
-
-const upsertRasterSource = (map, id, config) => {
-  const nextTileUrl = config.tiles?.[0];
-  const existing = Boolean(map.getSource(id));
-  const changed = existing && nextTileUrl && _tileUrlBySourceId.get(id) !== nextTileUrl;
-
-  if (changed) {
-    map.removeSource(id);
-  }
-
-  if (!existing || changed) {
-    map.addSource(id, config);
-    if (nextTileUrl) _tileUrlBySourceId.set(id, nextTileUrl);
-  }
 };
 
 // Extract model name from layer id — 'wave-direction-WW3' → 'WW3'
@@ -98,21 +47,10 @@ const modelFromLayerId = (layerId = '', prefix = 'wave-direction-') =>
 
 // ── Sources ───────────────────────────────────────────────────────────────────
 
-export async function addWaveSource(map, isDarkMode, models, forecastPackage = {}) {
+export async function addWaveSource(map, _isDarkMode, models) {
   if (!map) return;
 
-  const theme = isDarkMode ? 'dark' : 'light';
-
   for (const model of models) {
-    console.log(`[Wave] Adding source for model: ${model}`);
-    upsertRasterSource(map, `wave-source-${model}`, {
-      type: 'raster',
-      tiles: [buildTileUrl(model, theme, forecastPackage)],
-      tileSize: 256,
-      bounds: [100, -5, 180, 50],
-      scheme: 'xyz',
-    });
-
     const pointSourceId = `wave-points-${model}`;
     if (map.getSource(pointSourceId)) continue;
 
@@ -136,12 +74,12 @@ export async function addWaveSource(map, isDarkMode, models, forecastPackage = {
   });
 }
 
-export async function addWaveLayer(map, isDarkMode, models, forecastPackage = {}) {
+export async function addWaveLayer(map, isDarkMode, models) {
   if (!map) return;
 
   const normalized = models.map(normalizeModel).filter(Boolean);
 
-  await addWaveSource(map, isDarkMode, normalized, forecastPackage);
+  await addWaveSource(map, isDarkMode, normalized);
   addWaveDirectionLayers(map, normalized);
   addSharedLayers(map, isDarkMode);
   setupPopup(map, isDarkMode, normalized);
