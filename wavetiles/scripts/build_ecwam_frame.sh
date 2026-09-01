@@ -121,7 +121,11 @@ has_pngs() {
 }
 
 frame_complete() {
-  [[ -s "$contour_target" ]] && has_pngs "$light_target" && has_pngs "$dark_target"
+  [[ -s "$contour_target" ]] &&
+    [[ -s "$light_target/legend.json" ]] &&
+    [[ -s "$dark_target/legend.json" ]] &&
+    has_pngs "$light_target" &&
+    has_pngs "$dark_target"
 }
 
 if frame_complete; then
