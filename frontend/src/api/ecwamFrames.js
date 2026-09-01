@@ -1,6 +1,7 @@
 import api from './axios';
 
 const POLL_INTERVAL_MS = 1500;
+const BUSY_RETRY_INTERVAL_MS = 6000;
 const DEFAULT_TIMEOUT_MS = 180000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,6 +38,7 @@ export async function ensureEcwamFrameReady(
   { timeoutMs = DEFAULT_TIMEOUT_MS, pollIntervalMs = POLL_INTERVAL_MS } = {}
 ) {
   const startedAt = Date.now();
+  let nextBuildAttemptAt = startedAt;
   let status = await getEcwamFrameStatus(packageDate, forecastHour);
 
   if (status.state === 'ready') return status;
@@ -44,6 +46,9 @@ export async function ensureEcwamFrameReady(
 
   if (status.state === 'available' || status.state === 'failed') {
     status = await requestEcwamFrameBuild(packageDate, forecastHour);
+    if (status.state === 'busy') {
+      nextBuildAttemptAt = Date.now() + BUSY_RETRY_INTERVAL_MS;
+    }
   }
 
   if (status.state === 'ready') return status;
@@ -56,10 +61,13 @@ export async function ensureEcwamFrameReady(
     if (status.state === 'ready') return status;
     if (['invalid', 'unavailable', 'failed'].includes(status.state)) return status;
 
-    if (status.state === 'available') {
+    if (status.state === 'available' && Date.now() >= nextBuildAttemptAt) {
       status = await requestEcwamFrameBuild(packageDate, forecastHour);
       if (status.state === 'ready') return status;
       if (['invalid', 'unavailable', 'failed', 'rate_limited'].includes(status.state)) return status;
+      if (status.state === 'busy') {
+        nextBuildAttemptAt = Date.now() + BUSY_RETRY_INTERVAL_MS;
+      }
     }
   }
 
