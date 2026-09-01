@@ -38,22 +38,22 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     [chartType, forecastDate]
   );
   const [ecwamSelection, setEcwamSelection] = useState(() => ({
-    packageKey,
+    packageKey: null,
     forecastHour: defaultEcwamForecastHour,
   }));
   const [ecwamFrameState, setEcwamFrameState] = useState(() => ({
     packageKey,
     ...IDLE_ECWAM_FRAME,
   }));
-  const ecwamForecastHour =
-    ecwamSelection.packageKey === packageKey
-      ? ecwamSelection.forecastHour
-      : defaultEcwamForecastHour;
+  const ecwamFrameReady = ecwamSelection.packageKey === packageKey;
+  const ecwamForecastHour = ecwamFrameReady
+    ? ecwamSelection.forecastHour
+    : defaultEcwamForecastHour;
   const visibleEcwamFrameState =
     ecwamFrameState.packageKey === packageKey ? ecwamFrameState : IDLE_ECWAM_FRAME;
   const forecastPackage = useMemo(
-    () => ({ chartType, forecastDate, ecwamForecastHour }),
-    [chartType, forecastDate, ecwamForecastHour]
+    () => ({ chartType, forecastDate, ecwamForecastHour, ecwamFrameReady }),
+    [chartType, forecastDate, ecwamForecastHour, ecwamFrameReady]
   );
 
   const { readWaveStorage, saveEnabled, saveModels, saveElements, saveDirectionStyle } =
@@ -88,7 +88,9 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const setEcwamForecastHour = useCallback(
     async (nextValue) => {
       const nextHour = clampEcwamHour(nextValue);
-      if (nextHour === ecwamForecastHour) return { state: 'ready', forecastHour: nextHour };
+      if (nextHour === ecwamForecastHour && ecwamFrameReady) {
+        return { state: 'ready', forecastHour: nextHour };
+      }
 
       const packageDate = formatPackageDate(forecastDate);
       if (!packageDate) {
@@ -133,8 +135,23 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
         return result;
       }
     },
-    [ecwamForecastHour, forecastDate, packageKey]
+    [ecwamForecastHour, ecwamFrameReady, forecastDate, packageKey]
   );
+
+  const ecwamActive = waveConfig.enabled && waveConfig.models.includes('ECWAM');
+
+  useEffect(() => {
+    if (!ecwamActive || ecwamFrameReady) return undefined;
+
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) void setEcwamForecastHour(defaultEcwamForecastHour);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [defaultEcwamForecastHour, ecwamActive, ecwamFrameReady, setEcwamForecastHour]);
 
   const stepEcwamForecastHour = useCallback(
     (delta) => setEcwamForecastHour(ecwamForecastHour + delta),
