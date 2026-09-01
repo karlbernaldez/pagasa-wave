@@ -357,8 +357,11 @@ export function startEcwamFrameBuild(packageDate, forecastHour, requestedBy = nu
   });
 
   return {
-    ...status,
     state: 'building',
+    packageDate,
+    forecastHour: Number(forecastHour),
+    packageTag: status.packageTag,
+    runTag: status.runTag,
     startedAt,
     sourceCycle: metadata.sourceCycle,
   };
