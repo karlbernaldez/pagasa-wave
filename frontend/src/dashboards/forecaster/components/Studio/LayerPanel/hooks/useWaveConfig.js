@@ -20,6 +20,7 @@ const INITIAL_STATE = {
   directionStyle: DEFAULT_DIRECTION_STYLE,
 };
 
+const IDLE_ECWAM_FRAME = { state: 'idle', message: null };
 const clampEcwamHour = (value) => Math.min(48, Math.max(0, Math.trunc(Number(value) || 0)));
 
 const formatPackageDate = (forecastDate) => {
@@ -31,12 +32,25 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const prevThemeRef = useRef(isDarkMode ? 'dark' : 'light');
   const ecwamRequestRef = useRef(0);
   const { chartType, forecastDate } = useProjectData();
+  const packageKey = `${forecastDate ?? ''}|${chartType ?? ''}`;
   const defaultEcwamForecastHour = useMemo(
     () => resolveECWAMForecastRun({ chartType, forecastDate }).forecastHour,
     [chartType, forecastDate]
   );
-  const [ecwamForecastHour, setEcwamForecastHourState] = useState(defaultEcwamForecastHour);
-  const [ecwamFrameState, setEcwamFrameState] = useState({ state: 'idle', message: null });
+  const [ecwamSelection, setEcwamSelection] = useState(() => ({
+    packageKey,
+    forecastHour: defaultEcwamForecastHour,
+  }));
+  const [ecwamFrameState, setEcwamFrameState] = useState(() => ({
+    packageKey,
+    ...IDLE_ECWAM_FRAME,
+  }));
+  const ecwamForecastHour =
+    ecwamSelection.packageKey === packageKey
+      ? ecwamSelection.forecastHour
+      : defaultEcwamForecastHour;
+  const visibleEcwamFrameState =
+    ecwamFrameState.packageKey === packageKey ? ecwamFrameState : IDLE_ECWAM_FRAME;
   const forecastPackage = useMemo(
     () => ({ chartType, forecastDate, ecwamForecastHour }),
     [chartType, forecastDate, ecwamForecastHour]
@@ -69,9 +83,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
 
   useEffect(() => {
     ecwamRequestRef.current += 1;
-    setEcwamForecastHourState(defaultEcwamForecastHour);
-    setEcwamFrameState({ state: 'idle', message: null });
-  }, [defaultEcwamForecastHour, chartType, forecastDate]);
+  }, [packageKey]);
 
   const setEcwamForecastHour = useCallback(
     async (nextValue) => {
@@ -81,24 +93,30 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       const packageDate = formatPackageDate(forecastDate);
       if (!packageDate) {
         const result = { state: 'invalid', message: 'The forecast package date is not available.' };
-        setEcwamFrameState(result);
+        setEcwamFrameState({ packageKey, ...result });
         return result;
       }
 
       const requestId = ++ecwamRequestRef.current;
-      setEcwamFrameState({ state: 'checking', message: null, requestedHour: nextHour });
+      setEcwamFrameState({
+        packageKey,
+        state: 'checking',
+        message: null,
+        requestedHour: nextHour,
+      });
 
       try {
         const result = await ensureEcwamFrameReady(packageDate, nextHour);
         if (requestId !== ecwamRequestRef.current) return result;
 
         if (result.state === 'ready') {
-          setEcwamForecastHourState(nextHour);
-          setEcwamFrameState({ ...result, requestedHour: null });
+          setEcwamSelection({ packageKey, forecastHour: nextHour });
+          setEcwamFrameState({ packageKey, ...result, requestedHour: null });
           return result;
         }
 
         setEcwamFrameState({
+          packageKey,
           ...result,
           requestedHour: nextHour,
           message: result.message || `ECWAM T+${nextHour} is not ready yet.`,
@@ -111,11 +129,11 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
           requestedHour: nextHour,
           message: error?.message || 'Unable to load the requested ECWAM frame.',
         };
-        setEcwamFrameState(result);
+        setEcwamFrameState({ packageKey, ...result });
         return result;
       }
     },
-    [ecwamForecastHour, forecastDate]
+    [ecwamForecastHour, forecastDate, packageKey]
   );
 
   const stepEcwamForecastHour = useCallback(
@@ -260,7 +278,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
         forecastHour: ecwamForecastHour,
         minHour: 0,
         maxHour: 48,
-        ...ecwamFrameState,
+        ...visibleEcwamFrameState,
       },
       setEcwamForecastHour,
       stepEcwamForecastHour,
@@ -268,7 +286,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     [
       waveConfig,
       ecwamForecastHour,
-      ecwamFrameState,
+      visibleEcwamFrameState,
       setEcwamForecastHour,
       stepEcwamForecastHour,
     ]
