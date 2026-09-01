@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dayjs from 'dayjs';
 import {
   getLatestMapInstance,
   subscribeToMapInstance,
 } from '@dashboards/forecaster/map/helpers/mapInstance';
 import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
+import { ensureEcwamFrameReady } from '@/api/ecwamFrames';
 import { WAVE_ELEMENTS, OFF_ELEMENTS, DEFAULT_DIRECTION_STYLE } from '../constants/layerConstants';
 import { normalizeModelName } from './waveConfig/waveHelpers';
+import { resolveECWAMForecastRun } from './waveConfig/ww3ForecastRuns';
 import { syncAllWaveLayers } from './waveConfig/waveLayerSync';
 import { useWaveStorage } from './waveConfig/useWaveStorage';
 import { useProjectData } from '../../Menu/hooks/useProjectData';
@@ -17,10 +20,27 @@ const INITIAL_STATE = {
   directionStyle: DEFAULT_DIRECTION_STYLE,
 };
 
+const clampEcwamHour = (value) => Math.min(48, Math.max(0, Math.trunc(Number(value) || 0)));
+
+const formatPackageDate = (forecastDate) => {
+  const parsed = dayjs(forecastDate);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD') : null;
+};
+
 export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const prevThemeRef = useRef(isDarkMode ? 'dark' : 'light');
+  const ecwamRequestRef = useRef(0);
   const { chartType, forecastDate } = useProjectData();
-  const forecastPackage = useMemo(() => ({ chartType, forecastDate }), [chartType, forecastDate]);
+  const defaultEcwamForecastHour = useMemo(
+    () => resolveECWAMForecastRun({ chartType, forecastDate }).forecastHour,
+    [chartType, forecastDate]
+  );
+  const [ecwamForecastHour, setEcwamForecastHourState] = useState(defaultEcwamForecastHour);
+  const [ecwamFrameState, setEcwamFrameState] = useState({ state: 'idle', message: null });
+  const forecastPackage = useMemo(
+    () => ({ chartType, forecastDate, ecwamForecastHour }),
+    [chartType, forecastDate, ecwamForecastHour]
+  );
 
   const { readWaveStorage, saveEnabled, saveModels, saveElements, saveDirectionStyle } =
     useWaveStorage();
@@ -45,6 +65,62 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       applyLayersToMap(getLatestMapInstance(mapRef), config);
     },
     [applyLayersToMap, mapRef]
+  );
+
+  useEffect(() => {
+    ecwamRequestRef.current += 1;
+    setEcwamForecastHourState(defaultEcwamForecastHour);
+    setEcwamFrameState({ state: 'idle', message: null });
+  }, [defaultEcwamForecastHour, chartType, forecastDate]);
+
+  const setEcwamForecastHour = useCallback(
+    async (nextValue) => {
+      const nextHour = clampEcwamHour(nextValue);
+      if (nextHour === ecwamForecastHour) return { state: 'ready', forecastHour: nextHour };
+
+      const packageDate = formatPackageDate(forecastDate);
+      if (!packageDate) {
+        const result = { state: 'invalid', message: 'The forecast package date is not available.' };
+        setEcwamFrameState(result);
+        return result;
+      }
+
+      const requestId = ++ecwamRequestRef.current;
+      setEcwamFrameState({ state: 'checking', message: null, requestedHour: nextHour });
+
+      try {
+        const result = await ensureEcwamFrameReady(packageDate, nextHour);
+        if (requestId !== ecwamRequestRef.current) return result;
+
+        if (result.state === 'ready') {
+          setEcwamForecastHourState(nextHour);
+          setEcwamFrameState({ ...result, requestedHour: null });
+          return result;
+        }
+
+        setEcwamFrameState({
+          ...result,
+          requestedHour: nextHour,
+          message: result.message || `ECWAM T+${nextHour} is not ready yet.`,
+        });
+        return result;
+      } catch (error) {
+        if (requestId !== ecwamRequestRef.current) return { state: 'cancelled' };
+        const result = {
+          state: 'failed',
+          requestedHour: nextHour,
+          message: error?.message || 'Unable to load the requested ECWAM frame.',
+        };
+        setEcwamFrameState(result);
+        return result;
+      }
+    },
+    [ecwamForecastHour, forecastDate]
+  );
+
+  const stepEcwamForecastHour = useCallback(
+    (delta) => setEcwamForecastHour(ecwamForecastHour + delta),
+    [ecwamForecastHour, setEcwamForecastHour]
   );
 
   // Keep the saved wave state synchronized with whichever Studio map instance
@@ -183,9 +259,17 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
 
   return {
     waveConfig,
+    ecwamFrame: {
+      forecastHour: ecwamForecastHour,
+      minHour: 0,
+      maxHour: 48,
+      ...ecwamFrameState,
+    },
     toggleWaveLayer,
     setWaveElement,
     toggleWaveModel,
     setDirectionStyle,
+    setEcwamForecastHour,
+    stepEcwamForecastHour,
   };
 };
