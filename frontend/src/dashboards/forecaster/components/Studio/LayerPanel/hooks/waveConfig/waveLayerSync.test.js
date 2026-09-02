@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from 'vitest';
 
-import { syncWaveContourLayers, syncWaveRasterLayers } from "./waveLayerSync";
+import { syncWaveContourLayers, syncWaveRasterLayers } from './waveLayerSync';
 
 const createMap = () => {
   const sources = {};
@@ -14,13 +14,13 @@ const createMap = () => {
     addSource: vi.fn((id, source) => {
       const mockedSource = { ...source };
 
-      if (source.type === "raster") {
+      if (source.type === 'raster') {
         mockedSource.setTiles = vi.fn((tiles) => {
           mockedSource.tiles = tiles;
         });
       }
 
-      if (source.type === "geojson") {
+      if (source.type === 'geojson') {
         mockedSource.setData = vi.fn((data) => {
           mockedSource.data = data;
         });
@@ -59,8 +59,8 @@ const createMap = () => {
 };
 
 const pendingPackage = {
-  forecastDate: "2026-09-01",
-  chartType: "analysis",
+  forecastDate: '2026-09-01',
+  chartType: 'analysis',
   ecwamForecastHour: 0,
   ecwamFrameReady: false,
 };
@@ -70,162 +70,156 @@ const readyPackage = {
   ecwamFrameReady: true,
 };
 
-describe("ECWAM readiness gating", () => {
-  it("does not create an ECWAM raster source before the frame is ready", () => {
+describe('ECWAM readiness gating', () => {
+  it('does not create an ECWAM raster source before the frame is ready', () => {
     const map = createMap();
 
-    syncWaveRasterLayers(map, ["ECWAM"], true, false, false, pendingPackage);
+    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, pendingPackage);
 
     expect(map.addSource).not.toHaveBeenCalled();
   });
 
-  it("creates the first ECWAM raster in the active crossfade slot", () => {
+  it('creates the first ECWAM raster in the active crossfade slot', () => {
     const map = createMap();
 
-    syncWaveRasterLayers(map, ["ECWAM"], true, false, false, readyPackage);
+    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, readyPackage);
 
     expect(map.addSource).toHaveBeenCalledWith(
-      "ecwam-crossfade-source-a",
+      'ecwam-crossfade-source-a',
       expect.objectContaining({
-        type: "raster",
-        tiles: ["/wavetiles/ECWAM/light/2026SEP01/2026090100/{z}/{x}/{y}.png"],
-      }),
+        type: 'raster',
+        tiles: ['/wavetiles/ECWAM/light/2026SEP01/2026090100/{z}/{x}/{y}.png'],
+      })
     );
     expect(map.addLayer).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "ecwam-crossfade-layer-a",
-        paint: expect.objectContaining({ "raster-opacity": 1 }),
+        id: 'ecwam-crossfade-layer-a',
+        paint: expect.objectContaining({ 'raster-opacity': 1 }),
       }),
-      "graticules",
+      'graticules'
     );
   });
 
-  it("keeps the old ECWAM raster visible until the new frame is loaded, then crossfades", () => {
+  it('keeps the old ECWAM raster visible until the new frame is loaded, then crossfades', () => {
     vi.useFakeTimers();
     const map = createMap();
 
-    syncWaveRasterLayers(map, ["ECWAM"], true, false, false, readyPackage);
+    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, readyPackage);
     map.removeLayer.mockClear();
     map.removeSource.mockClear();
     map.setPaintProperty.mockClear();
 
-    syncWaveRasterLayers(map, ["ECWAM"], true, false, false, {
+    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, {
       ...readyPackage,
       ecwamForecastHour: 3,
     });
 
-    expect(map.getSource("ecwam-crossfade-source-a")).toBeTruthy();
-    expect(map.getSource("ecwam-crossfade-source-b")).toBeTruthy();
-    expect(map.removeSource).not.toHaveBeenCalledWith(
-      "ecwam-crossfade-source-a",
-    );
+    expect(map.getSource('ecwam-crossfade-source-a')).toBeTruthy();
+    expect(map.getSource('ecwam-crossfade-source-b')).toBeTruthy();
+    expect(map.removeSource).not.toHaveBeenCalledWith('ecwam-crossfade-source-a');
     expect(map.addLayer).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        id: "ecwam-crossfade-layer-b",
-        paint: expect.objectContaining({ "raster-opacity": 0 }),
+        id: 'ecwam-crossfade-layer-b',
+        paint: expect.objectContaining({ 'raster-opacity': 0 }),
       }),
-      "graticules",
+      'graticules'
     );
 
-    map.emit("sourcedata", {
-      sourceId: "ecwam-crossfade-source-b",
+    map.emit('sourcedata', {
+      sourceId: 'ecwam-crossfade-source-b',
       isSourceLoaded: true,
     });
 
     expect(map.setPaintProperty).toHaveBeenCalledWith(
-      "ecwam-crossfade-layer-a",
-      "raster-opacity",
-      0,
+      'ecwam-crossfade-layer-a',
+      'raster-opacity',
+      0
     );
     expect(map.setPaintProperty).toHaveBeenCalledWith(
-      "ecwam-crossfade-layer-b",
-      "raster-opacity",
-      1,
+      'ecwam-crossfade-layer-b',
+      'raster-opacity',
+      1
     );
 
     vi.advanceTimersByTime(500);
-    expect(map.removeSource).toHaveBeenCalledWith("ecwam-crossfade-source-a");
+    expect(map.removeSource).toHaveBeenCalledWith('ecwam-crossfade-source-a');
     vi.useRealTimers();
   });
 
-  it("does not create or replace ECWAM contours before the frame is ready", () => {
+  it('does not create or replace ECWAM contours before the frame is ready', () => {
     const map = createMap();
 
-    syncWaveContourLayers(map, ["ECWAM"], true, false, pendingPackage);
+    syncWaveContourLayers(map, ['ECWAM'], true, false, pendingPackage);
 
     expect(map.addSource).not.toHaveBeenCalled();
 
-    syncWaveContourLayers(map, ["ECWAM"], true, false, readyPackage);
+    syncWaveContourLayers(map, ['ECWAM'], true, false, readyPackage);
 
-    expect(map.addSource).toHaveBeenCalledWith("wave-contours-ECWAM", {
-      type: "geojson",
-      data: "/wavetiles/ECWAM/contours/2026SEP01/2026090100/contours.geojson",
+    expect(map.addSource).toHaveBeenCalledWith('wave-contours-ECWAM', {
+      type: 'geojson',
+      data: '/wavetiles/ECWAM/contours/2026SEP01/2026090100/contours.geojson',
     });
   });
 
-  it("updates ECWAM contour data in place when stepping to another ready frame", () => {
+  it('updates ECWAM contour data in place when stepping to another ready frame', () => {
     const map = createMap();
-    syncWaveContourLayers(map, ["ECWAM"], true, false, readyPackage);
+    syncWaveContourLayers(map, ['ECWAM'], true, false, readyPackage);
 
-    const source = map.getSource("wave-contours-ECWAM");
+    const source = map.getSource('wave-contours-ECWAM');
     map.removeSource.mockClear();
 
-    syncWaveContourLayers(map, ["ECWAM"], true, false, {
+    syncWaveContourLayers(map, ['ECWAM'], true, false, {
       ...readyPackage,
       ecwamForecastHour: 3,
     });
 
     expect(source.setData).toHaveBeenCalledWith(
-      "/wavetiles/ECWAM/contours/2026SEP01/2026090103/contours.geojson",
+      '/wavetiles/ECWAM/contours/2026SEP01/2026090103/contours.geojson'
     );
-    expect(map.removeSource).not.toHaveBeenCalledWith("wave-contours-ECWAM");
+    expect(map.removeSource).not.toHaveBeenCalledWith('wave-contours-ECWAM');
   });
 });
 
-describe("WW3 forecast navigation", () => {
+describe('WW3 forecast navigation', () => {
   const ww3Package = {
-    forecastDate: "2026-09-01",
-    chartType: "24h forecast",
+    forecastDate: '2026-09-01',
+    chartType: '24h forecast',
     ww3ForecastHour: 24,
   };
 
-  it("updates WW3 raster tiles in place when stepping to another frame", () => {
+  it('updates WW3 raster tiles in place when stepping to another frame', () => {
     const map = createMap();
-    syncWaveRasterLayers(map, ["WW3"], true, false, false, ww3Package);
+    syncWaveRasterLayers(map, ['WW3'], true, false, false, ww3Package);
 
-    const source = map.getSource("wave-source-model-WW3");
-    expect(source.tiles).toEqual([
-      "/wavetiles/WW3/light/2026SEP01/2026090118/{z}/{x}/{y}.png",
-    ]);
+    const source = map.getSource('wave-source-model-WW3');
+    expect(source.tiles).toEqual(['/wavetiles/WW3/light/2026SEP01/2026090118/{z}/{x}/{y}.png']);
 
-    syncWaveRasterLayers(map, ["WW3"], true, false, false, {
+    syncWaveRasterLayers(map, ['WW3'], true, false, false, {
       ...ww3Package,
       ww3ForecastHour: 27,
     });
 
     expect(source.setTiles).toHaveBeenCalledWith([
-      "/wavetiles/WW3/light/2026SEP01/2026090121/{z}/{x}/{y}.png",
+      '/wavetiles/WW3/light/2026SEP01/2026090121/{z}/{x}/{y}.png',
     ]);
-    expect(map.removeSource).not.toHaveBeenCalledWith("wave-source-model-WW3");
+    expect(map.removeSource).not.toHaveBeenCalledWith('wave-source-model-WW3');
   });
 
-  it("updates WW3 contour data in place when stepping to another frame", () => {
+  it('updates WW3 contour data in place when stepping to another frame', () => {
     const map = createMap();
-    syncWaveContourLayers(map, ["WW3"], true, false, ww3Package);
+    syncWaveContourLayers(map, ['WW3'], true, false, ww3Package);
 
-    const source = map.getSource("wave-contours-WW3");
-    expect(source.data).toBe(
-      "/wavetiles/WW3/contours/2026SEP01/2026090118/contours.geojson",
-    );
+    const source = map.getSource('wave-contours-WW3');
+    expect(source.data).toBe('/wavetiles/WW3/contours/2026SEP01/2026090118/contours.geojson');
 
-    syncWaveContourLayers(map, ["WW3"], true, false, {
+    syncWaveContourLayers(map, ['WW3'], true, false, {
       ...ww3Package,
       ww3ForecastHour: 27,
     });
 
     expect(source.setData).toHaveBeenCalledWith(
-      "/wavetiles/WW3/contours/2026SEP01/2026090121/contours.geojson",
+      '/wavetiles/WW3/contours/2026SEP01/2026090121/contours.geojson'
     );
-    expect(map.removeSource).not.toHaveBeenCalledWith("wave-contours-WW3");
+    expect(map.removeSource).not.toHaveBeenCalledWith('wave-contours-WW3');
   });
 });
