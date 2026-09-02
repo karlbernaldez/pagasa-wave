@@ -14,6 +14,7 @@ import {
   buildWaveContourUrl,
   buildIconSize,
 } from './waveHelpers';
+import { removeEcwamRasterCrossfade, syncEcwamRasterCrossfade } from './ecwamRasterCrossfade';
 
 const MODEL_RASTER_CONFIG = {
   BMKG: { scheme: 'tms', bounds: [100, -5, 180, 50] },
@@ -26,7 +27,7 @@ const CONTOUR_MODELS = new Set(['WW3', 'ECWAM']);
 const CONTOUR_SOURCE_PREFIX = 'wave-contours-';
 const CONTOUR_LINE_PREFIX = 'wave-contours-line-';
 const CONTOUR_LABEL_PREFIX = 'wave-contours-label-';
-const ECWAM_RASTER_FADE_MS = 320;
+const ECWAM_CONTOUR_FADE_MS = 320;
 
 const getRasterConfig = (model) =>
   MODEL_RASTER_CONFIG[model] ?? { scheme: 'xyz', bounds: [100, -5, 180, 50] };
@@ -93,9 +94,6 @@ const upsertRasterLayer = (
   const sourceUrlChanged = sourceExists && rasterTileUrlBySource.get(sourceId) !== tileUrl;
 
   if (sourceExists && (themeChanged || sourceUrlChanged)) {
-    // Keep the existing source/layer mounted while Mapbox loads the next ECWAM frame.
-    // This lets raster-fade-duration blend the old rendered tiles into the new tiles
-    // instead of flashing an empty map between forecast hours.
     if (!updateRasterTilesInPlace(map, sourceId, tileUrl)) {
       removeRasterSource(map, sourceId);
       sourceExists = false;
@@ -121,7 +119,7 @@ const upsertRasterLayer = (
         source: sourceId,
         paint: {
           'raster-opacity': opacity,
-          'raster-fade-duration': model === 'ECWAM' ? ECWAM_RASTER_FADE_MS : 0,
+          'raster-fade-duration': 0,
           'raster-resampling': 'linear',
         },
         layout: { visibility: showRaster ? 'visible' : 'none' },
@@ -130,13 +128,39 @@ const upsertRasterLayer = (
     );
   } else {
     map.setPaintProperty(layerId, 'raster-opacity', opacity);
-    map.setPaintProperty(
-      layerId,
-      'raster-fade-duration',
-      model === 'ECWAM' ? ECWAM_RASTER_FADE_MS : 0
-    );
     map.setLayoutProperty(layerId, 'visibility', showRaster ? 'visible' : 'none');
   }
+};
+
+const syncEcwamRaster = (map, { selectedModels, theme, opacity, showRaster, forecastPackage }) => {
+  const ecwamSelected = selectedModels.includes('ECWAM');
+  const frameReady = forecastPackage.ecwamFrameReady !== false;
+
+  // Remove the pre-crossfade ECWAM source if a deployment already created it.
+  removeRasterSource(map, `${WAVE_RASTER_SOURCE_PREFIX}ECWAM`);
+
+  if (!ecwamSelected || !frameReady) {
+    removeEcwamRasterCrossfade(map);
+    return;
+  }
+
+  const tileUrl = buildWaveTileUrl({
+    model: 'ECWAM',
+    theme,
+    date: WAVE_RASTER_DATE,
+    forecastDate: forecastPackage.forecastDate,
+    chartType: forecastPackage.chartType,
+    forecastHour: forecastPackage.ecwamForecastHour,
+  });
+  const { scheme, bounds } = getRasterConfig('ECWAM');
+
+  syncEcwamRasterCrossfade(map, {
+    tileUrl,
+    opacity,
+    showRaster,
+    scheme,
+    bounds,
+  });
 };
 
 export const syncWaveRasterLayers = (
@@ -151,16 +175,15 @@ export const syncWaveRasterLayers = (
   const theme = isDarkMode ? 'dark' : 'light';
   const selectedModels = getSelectedModels(models);
   const opacity = selectedModels.length > 0 ? Math.max(0.25, 1 / selectedModels.length) : 0;
+  const regularModels = selectedModels.filter((model) => model !== 'ECWAM');
 
   removeLegacyLayers(map);
   removeStaleRasterSources(
     map,
-    new Set(selectedModels.map((model) => `${WAVE_RASTER_SOURCE_PREFIX}${model}`))
+    new Set(regularModels.map((model) => `${WAVE_RASTER_SOURCE_PREFIX}${model}`))
   );
 
-  selectedModels.forEach((model) => {
-    if (model === 'ECWAM' && forecastPackage.ecwamFrameReady === false) return;
-
+  regularModels.forEach((model) => {
     upsertRasterLayer(map, {
       model,
       theme,
@@ -169,8 +192,15 @@ export const syncWaveRasterLayers = (
       themeChanged,
       forecastDate: forecastPackage.forecastDate,
       chartType: forecastPackage.chartType,
-      forecastHour: model === 'ECWAM' ? forecastPackage.ecwamForecastHour : undefined,
     });
+  });
+
+  syncEcwamRaster(map, {
+    selectedModels,
+    theme,
+    opacity,
+    showRaster,
+    forecastPackage,
   });
 
   ['wave-glass-fill', 'wave-glass-depth'].forEach((id) => {
@@ -211,8 +241,6 @@ const updateContourDataInPlace = (map, sourceId, dataUrl) => {
   const source = map.getSource(sourceId);
   if (typeof source?.setData !== 'function') return false;
 
-  // GeoJSONSource keeps the current rendered data until the replacement URL has
-  // been fetched and parsed, avoiding the old remove-source/add-source flicker.
   source.setData(dataUrl);
   contourUrlBySource.set(sourceId, dataUrl);
   map.triggerRepaint?.();
@@ -256,7 +284,7 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
           'line-color': ['get', colorProperty],
           'line-width': ['case', ['get', 'major'], 2.2, 1.35],
           'line-opacity': 0.95,
-          'line-opacity-transition': { duration: ECWAM_RASTER_FADE_MS, delay: 0 },
+          'line-opacity-transition': { duration: ECWAM_CONTOUR_FADE_MS, delay: 0 },
         },
       },
       'graticules'
@@ -287,14 +315,23 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
           'text-halo-color': haloColor,
           'text-halo-width': 1.5,
           'text-halo-blur': 0.4,
-          'text-opacity-transition': { duration: ECWAM_RASTER_FADE_MS, delay: 0 },
+          'text-opacity-transition': { duration: ECWAM_CONTOUR_FADE_MS, delay: 0 },
         },
       },
       'graticules'
     );
   } else {
+    map.setPaintProperty(lineLayerId, 'line-color', ['get', colorProperty]);
+    map.setPaintProperty(lineLayerId, 'line-opacity-transition', {
+      duration: ECWAM_CONTOUR_FADE_MS,
+      delay: 0,
+    });
     map.setPaintProperty(labelLayerId, 'text-color', ['get', colorProperty]);
     map.setPaintProperty(labelLayerId, 'text-halo-color', haloColor);
+    map.setPaintProperty(labelLayerId, 'text-opacity-transition', {
+      duration: ECWAM_CONTOUR_FADE_MS,
+      delay: 0,
+    });
   }
 };
 
@@ -318,7 +355,6 @@ export const syncWaveContourLayers = (
   });
 };
 
-// Backward-compatible export retained for existing imports/tests.
 export const syncWW3ContourLayers = syncWaveContourLayers;
 
 export const syncWaveSymbolLayers = (map, config) => {

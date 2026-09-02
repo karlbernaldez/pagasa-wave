@@ -5,8 +5,9 @@ import { syncWaveContourLayers, syncWaveRasterLayers } from './waveLayerSync';
 const createMap = () => {
   const sources = {};
   const layers = [];
+  const listeners = new Map();
 
-  return {
+  const map = {
     addLayer: vi.fn((layer) => {
       layers.push(layer);
     }),
@@ -40,7 +41,21 @@ const createMap = () => {
     setLayoutProperty: vi.fn(),
     setPaintProperty: vi.fn(),
     triggerRepaint: vi.fn(),
+    isSourceLoaded: vi.fn(() => false),
+    on: vi.fn((event, handler) => {
+      const handlers = listeners.get(event) ?? new Set();
+      handlers.add(handler);
+      listeners.set(event, handlers);
+    }),
+    off: vi.fn((event, handler) => {
+      listeners.get(event)?.delete(handler);
+    }),
+    emit(event, payload) {
+      listeners.get(event)?.forEach((handler) => handler(payload));
+    },
   };
+
+  return map;
 };
 
 const pendingPackage = {
@@ -56,22 +71,79 @@ const readyPackage = {
 };
 
 describe('ECWAM readiness gating', () => {
-  it('does not create or replace an ECWAM raster source before the frame is ready', () => {
+  it('does not create an ECWAM raster source before the frame is ready', () => {
     const map = createMap();
 
     syncWaveRasterLayers(map, ['ECWAM'], true, false, false, pendingPackage);
 
     expect(map.addSource).not.toHaveBeenCalled();
+  });
+
+  it('creates the first ECWAM raster in the active crossfade slot', () => {
+    const map = createMap();
 
     syncWaveRasterLayers(map, ['ECWAM'], true, false, false, readyPackage);
 
     expect(map.addSource).toHaveBeenCalledWith(
-      'wave-source-model-ECWAM',
+      'ecwam-crossfade-source-a',
       expect.objectContaining({
         type: 'raster',
         tiles: ['/wavetiles/ECWAM/light/2026SEP01/2026090100/{z}/{x}/{y}.png'],
       })
     );
+    expect(map.addLayer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'ecwam-crossfade-layer-a',
+        paint: expect.objectContaining({ 'raster-opacity': 1 }),
+      }),
+      'graticules'
+    );
+  });
+
+  it('keeps the old ECWAM raster visible until the new frame is loaded, then crossfades', () => {
+    vi.useFakeTimers();
+    const map = createMap();
+
+    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, readyPackage);
+    map.removeLayer.mockClear();
+    map.removeSource.mockClear();
+    map.setPaintProperty.mockClear();
+
+    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, {
+      ...readyPackage,
+      ecwamForecastHour: 3,
+    });
+
+    expect(map.getSource('ecwam-crossfade-source-a')).toBeTruthy();
+    expect(map.getSource('ecwam-crossfade-source-b')).toBeTruthy();
+    expect(map.removeSource).not.toHaveBeenCalledWith('ecwam-crossfade-source-a');
+    expect(map.addLayer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        id: 'ecwam-crossfade-layer-b',
+        paint: expect.objectContaining({ 'raster-opacity': 0 }),
+      }),
+      'graticules'
+    );
+
+    map.emit('sourcedata', {
+      sourceId: 'ecwam-crossfade-source-b',
+      isSourceLoaded: true,
+    });
+
+    expect(map.setPaintProperty).toHaveBeenCalledWith(
+      'ecwam-crossfade-layer-a',
+      'raster-opacity',
+      0
+    );
+    expect(map.setPaintProperty).toHaveBeenCalledWith(
+      'ecwam-crossfade-layer-b',
+      'raster-opacity',
+      1
+    );
+
+    vi.advanceTimersByTime(500);
+    expect(map.removeSource).toHaveBeenCalledWith('ecwam-crossfade-source-a');
+    vi.useRealTimers();
   });
 
   it('does not create or replace ECWAM contours before the frame is ready', () => {
@@ -87,24 +159,6 @@ describe('ECWAM readiness gating', () => {
       type: 'geojson',
       data: '/wavetiles/ECWAM/contours/2026SEP01/2026090100/contours.geojson',
     });
-  });
-
-  it('updates ECWAM raster tiles in place when stepping to another ready frame', () => {
-    const map = createMap();
-    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, readyPackage);
-
-    const source = map.getSource('wave-source-model-ECWAM');
-    map.removeSource.mockClear();
-
-    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, {
-      ...readyPackage,
-      ecwamForecastHour: 3,
-    });
-
-    expect(source.setTiles).toHaveBeenCalledWith([
-      '/wavetiles/ECWAM/light/2026SEP01/2026090103/{z}/{x}/{y}.png',
-    ]);
-    expect(map.removeSource).not.toHaveBeenCalledWith('wave-source-model-ECWAM');
   });
 
   it('updates ECWAM contour data in place when stepping to another ready frame', () => {
