@@ -18,7 +18,7 @@ export const createShutdownHandler = ({
 
     shuttingDown = true;
 
-    logger.info("WaveLab API shutdown requested", {
+    logger.info('WaveLab API shutdown requested', {
       signal,
     });
 
@@ -37,13 +37,13 @@ export const createShutdownHandler = ({
       }
 
       if (timedOut) {
-        logger.error("WaveLab API shutdown timed out");
+        logger.error('WaveLab API shutdown timed out');
         exit(1);
         return;
       }
 
       if (error) {
-        logger.error("WaveLab API shutdown failed", {
+        logger.error('WaveLab API shutdown failed', {
           message: error.message,
           stack: error.stack,
         });
@@ -51,14 +51,11 @@ export const createShutdownHandler = ({
         return;
       }
 
-      logger.info("WaveLab API stopped");
+      logger.info('WaveLab API stopped');
       exit(0);
     };
 
-    forceShutdownTimer = scheduleTimeout(
-      () => finish({ timedOut: true }),
-      timeoutMs,
-    );
+    forceShutdownTimer = scheduleTimeout(() => finish({ timedOut: true }), timeoutMs);
     forceShutdownTimer.unref?.();
 
     try {
