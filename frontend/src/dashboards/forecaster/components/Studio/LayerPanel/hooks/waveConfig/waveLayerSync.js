@@ -192,6 +192,7 @@ export const syncWaveRasterLayers = (
       themeChanged,
       forecastDate: forecastPackage.forecastDate,
       chartType: forecastPackage.chartType,
+      forecastHour: model === 'WW3' ? forecastPackage.ww3ForecastHour : undefined,
     });
   });
 
@@ -253,7 +254,12 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
     model,
     forecastDate: forecastPackage.forecastDate,
     chartType: forecastPackage.chartType,
-    forecastHour: model === 'ECWAM' ? forecastPackage.ecwamForecastHour : undefined,
+    forecastHour:
+      model === 'ECWAM'
+        ? forecastPackage.ecwamForecastHour
+        : model === 'WW3'
+          ? forecastPackage.ww3ForecastHour
+          : undefined,
   });
   if (!dataUrl) {
     removeContourModel(map, model);
