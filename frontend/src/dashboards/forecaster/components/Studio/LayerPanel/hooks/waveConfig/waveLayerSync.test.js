@@ -13,8 +13,10 @@ const createMap = () => {
     addSource: vi.fn((id, source) => {
       sources[id] = {
         ...source,
-        setTiles: source.type === 'raster' ? vi.fn((tiles) => (sources[id].tiles = tiles)) : undefined,
-        setData: source.type === 'geojson' ? vi.fn((data) => (sources[id].data = data)) : undefined,
+        setTiles:
+          source.type === 'raster' ? vi.fn((tiles) => (sources[id].tiles = tiles)) : undefined,
+        setData:
+          source.type === 'geojson' ? vi.fn((data) => (sources[id].data = data)) : undefined,
       };
     }),
     getLayer: vi.fn((id) => layers.find((layer) => layer.id === id)),
