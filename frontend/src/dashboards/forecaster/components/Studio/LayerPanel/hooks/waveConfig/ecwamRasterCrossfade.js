@@ -70,14 +70,7 @@ export const removeEcwamRasterCrossfade = (map) => {
 
 export const syncEcwamRasterCrossfade = (
   map,
-  {
-    tileUrl,
-    opacity,
-    showRaster,
-    scheme = 'xyz',
-    bounds,
-    beforeId = 'graticules',
-  }
+  { tileUrl, opacity, showRaster, scheme = 'xyz', bounds, beforeId = 'graticules' }
 ) => {
   if (!map || !tileUrl) return;
 

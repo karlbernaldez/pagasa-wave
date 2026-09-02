@@ -14,10 +14,7 @@ import {
   buildWaveContourUrl,
   buildIconSize,
 } from './waveHelpers';
-import {
-  removeEcwamRasterCrossfade,
-  syncEcwamRasterCrossfade,
-} from './ecwamRasterCrossfade';
+import { removeEcwamRasterCrossfade, syncEcwamRasterCrossfade } from './ecwamRasterCrossfade';
 
 const MODEL_RASTER_CONFIG = {
   BMKG: { scheme: 'tms', bounds: [100, -5, 180, 50] },
@@ -135,10 +132,7 @@ const upsertRasterLayer = (
   }
 };
 
-const syncEcwamRaster = (
-  map,
-  { selectedModels, theme, opacity, showRaster, forecastPackage }
-) => {
+const syncEcwamRaster = (map, { selectedModels, theme, opacity, showRaster, forecastPackage }) => {
   const ecwamSelected = selectedModels.includes('ECWAM');
   const frameReady = forecastPackage.ecwamFrameReady !== false;
 
