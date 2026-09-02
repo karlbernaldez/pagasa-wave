@@ -41,18 +41,32 @@ PY
 )"
 
 contour_root="$OUTPUT_ROOT/contours/$package_tag"
-if [[ -d "$contour_root" ]]; then
-  contour_count=$(find "$contour_root" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c 2>/dev/null | wc -l)
-  if [[ "$contour_count" -eq 4 ]]; then
-    log "ECWAM package already complete for Manila package date $package_date"
-    exit 0
-  fi
+if [[ -d "$contour_root" ]] && "$PYTHON_BIN" - "$contour_root" "$package_date" <<'PY'
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+root = Path(sys.argv[1])
+start = datetime.strptime(sys.argv[2], "%Y-%m-%d")
+required = tuple(range(0, 61, 3))
+for hour in required:
+    run_tag = (start + timedelta(hours=hour)).strftime("%Y%m%d%H")
+    target = root / run_tag / "contours.geojson"
+    if not target.is_file() or target.stat().st_size <= 0:
+        raise SystemExit(1)
+metadata = root / "package.json"
+if not metadata.is_file() or metadata.stat().st_size <= 0:
+    raise SystemExit(1)
+PY
+then
+  log "ECWAM package already complete for Manila package date $package_date (T+0 through T+60 every 3 hours)"
+  exit 0
 fi
 
 if ! source_cycle="$($PYTHON_BIN "$SELECTOR" select "$INPUT_ROOT" "$package_date")"; then
   newest_cycle=$(find "$INPUT_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | grep -E '^[0-9]{10}$' | sort -r | head -n 1 || true)
   if [[ -n "$newest_cycle" ]]; then
-    log "ECWAM not ready for Manila package date $package_date; newest available cycle is $newest_cycle but no cycle is complete yet"
+    log "ECWAM not ready for Manila package date $package_date; newest available cycle is $newest_cycle but no cycle contains all 3-hour frames through T+60 yet"
   else
     log "ECWAM not ready for Manila package date $package_date; no source cycles are available yet"
   fi
