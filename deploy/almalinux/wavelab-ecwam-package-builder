@@ -11,6 +11,8 @@ INPUT_ROOT="${ECWAM_INPUT_ROOT:-/home/darwin/ecmwf/ecwam}"
 OUTPUT_ROOT="${ECWAM_OUTPUT_ROOT:-$WAVETILES_ROOT/tiles/ECWAM}"
 PACKAGE_TIMEZONE="${PACKAGE_TIMEZONE:-Asia/Manila}"
 PYTHON_BIN="${ECWAM_PYTHON:-$WAVETILES_ROOT/.venv/bin/python}"
+VARNAME="${ECWAM_VAR:-swh}"
+SIGMA="${ECWAM_SIGMA:-1.5}"
 SELECTOR="$WAVETILES_ROOT/scripts/ecwam_package_selection.py"
 BUILDER="$WAVETILES_ROOT/scripts/build_ecwam_package.sh"
 LOCK_FILE="${LOCK_FILE:-/run/wavelab-ecwam/package-builder.lock}"
@@ -59,7 +61,7 @@ fi
 
 log "selected Manila package date $package_date from newest complete ECWAM source cycle $source_cycle"
 
-if bash "$BUILDER" "$package_date" --source-cycle "$source_cycle" --skip-existing; then
+if bash "$BUILDER" "$package_date" "$VARNAME" "$SIGMA" --source-cycle "$source_cycle" --skip-existing; then
   log "ECWAM package build completed for $package_date from source cycle $source_cycle"
 else
   status=$?

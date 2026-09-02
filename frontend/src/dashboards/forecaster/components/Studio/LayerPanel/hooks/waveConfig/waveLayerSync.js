@@ -61,7 +61,7 @@ const removeStaleRasterSources = (map, targetSourceIds) => {
 
 const upsertRasterLayer = (
   map,
-  { model, theme, opacity, showRaster, themeChanged, forecastDate, chartType }
+  { model, theme, opacity, showRaster, themeChanged, forecastDate, chartType, forecastHour }
 ) => {
   const sourceId = `${WAVE_RASTER_SOURCE_PREFIX}${model}`;
   const layerId = `${WAVE_RASTER_LAYER_PREFIX}${model}`;
@@ -71,6 +71,7 @@ const upsertRasterLayer = (
     date: WAVE_RASTER_DATE,
     forecastDate,
     chartType,
+    forecastHour,
   });
   const { scheme, bounds } = getRasterConfig(model);
 
@@ -135,7 +136,9 @@ export const syncWaveRasterLayers = (
     new Set(selectedModels.map((model) => `${WAVE_RASTER_SOURCE_PREFIX}${model}`))
   );
 
-  selectedModels.forEach((model) =>
+  selectedModels.forEach((model) => {
+    if (model === 'ECWAM' && forecastPackage.ecwamFrameReady === false) return;
+
     upsertRasterLayer(map, {
       model,
       theme,
@@ -144,8 +147,9 @@ export const syncWaveRasterLayers = (
       themeChanged,
       forecastDate: forecastPackage.forecastDate,
       chartType: forecastPackage.chartType,
-    })
-  );
+      forecastHour: model === 'ECWAM' ? forecastPackage.ecwamForecastHour : undefined,
+    });
+  });
 
   ['wave-glass-fill', 'wave-glass-depth'].forEach((id) => {
     if (!map.getLayer(id)) return;
@@ -187,6 +191,7 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
     model,
     forecastDate: forecastPackage.forecastDate,
     chartType: forecastPackage.chartType,
+    forecastHour: model === 'ECWAM' ? forecastPackage.ecwamForecastHour : undefined,
   });
   if (!dataUrl) {
     removeContourModel(map, model);
@@ -269,7 +274,10 @@ export const syncWaveContourLayers = (
   );
 
   removeStaleContourSources(map, targetModels);
-  targetModels.forEach((model) => upsertContourModel(map, model, isDarkMode, forecastPackage));
+  targetModels.forEach((model) => {
+    if (model === 'ECWAM' && forecastPackage.ecwamFrameReady === false) return;
+    upsertContourModel(map, model, isDarkMode, forecastPackage);
+  });
 };
 
 // Backward-compatible export retained for existing imports/tests.

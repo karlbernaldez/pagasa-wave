@@ -161,9 +161,24 @@ for line in "${PACKAGE_RUNS[@]}"; do
 done
 
 contour_count=$(find "$OUTPUT_ROOT/contours/$PACKAGE_TAG" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
-[[ "$contour_count" -eq 4 ]] || { echo "Expected four non-empty ECWAM contour files for $PACKAGE_TAG, got $contour_count" >&2; exit 1; }
+[[ "$contour_count" -ge 4 ]] || { echo "Expected at least four non-empty ECWAM contour files for $PACKAGE_TAG, got $contour_count" >&2; exit 1; }
+
+metadata_target="$OUTPUT_ROOT/contours/$PACKAGE_TAG/package.json"
+metadata_tmp="${metadata_target}.tmp.$$"
+cat >"$metadata_tmp" <<EOF
+{
+  "packageDate": "$PACKAGE_DATE",
+  "packageTag": "$PACKAGE_TAG",
+  "sourceCycle": "$RESOLVED_SOURCE_CYCLE",
+  "variable": "$VARNAME",
+  "sigma": "$SIGMA",
+  "requiredForecastHours": [0, 24, 36, 48]
+}
+EOF
+chmod 644 "$metadata_tmp" 2>/dev/null || true
+mv -f "$metadata_tmp" "$metadata_target"
 
 echo
 echo "+ ECWAM forecast package complete: $PACKAGE_DATE (source cycle $RESOLVED_SOURCE_CYCLE)"
 echo "  Contour files: $contour_count"
-find "$OUTPUT_ROOT" -type f \( -name '*.png' -o -name 'contours.geojson' \) | head || true
+echo "  Package metadata: $metadata_target"

@@ -1,6 +1,11 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { ModelSelector, ElementSelector, WaveDirectionStylePanel, WindBarbStylePanel } from './LayerSelectors';
+import {
+  ModelSelector,
+  ElementSelector,
+  WaveDirectionStylePanel,
+  WindBarbStylePanel,
+} from './LayerSelectors';
 import { getSelectedElement, getModelSummary } from '../../utils/layerPanelUtils';
 
 const ConfigurableLayerGroup = ({
@@ -16,6 +21,7 @@ const ConfigurableLayerGroup = ({
   onToggleModel,
   onSetDirectionStyle,
   onSetBarbStyle,
+  afterModelSelector = null,
   isDarkMode,
 }) => {
   const { enabled } = config;
@@ -39,24 +45,38 @@ const ConfigurableLayerGroup = ({
           onClick={enabled ? onToggleExpand : undefined}
           className={`
             flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors
-            ${enabled
-              ? isDarkMode ? 'hover:bg-white/[0.05]' : 'hover:bg-slate-50'
-              : 'cursor-default opacity-45'}
+            ${
+              enabled
+                ? isDarkMode
+                  ? 'hover:bg-white/[0.05]'
+                  : 'hover:bg-slate-50'
+                : 'cursor-default opacity-45'
+            }
           `}
         >
           <span
             className={`
               flex h-10 w-10 shrink-0 items-center justify-center rounded-xl
-              ${enabled
-                ? isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-600'
-              : isDarkMode ? 'bg-white/[0.06] text-white/25' : 'bg-white/70 text-slate-400'}
+              ${
+                enabled
+                  ? isDarkMode
+                    ? 'bg-cyan-400/10 text-cyan-300'
+                    : 'bg-blue-500/10 text-blue-600'
+                  : isDarkMode
+                    ? 'bg-white/[0.06] text-white/25'
+                    : 'bg-white/70 text-slate-400'
+              }
             `}
           >
             {icon}
           </span>
 
           <span className="min-w-0 flex-1">
-            <span className={`block truncate text-[14px] font-black ${isDarkMode ? 'text-white/85' : 'text-slate-800'}`}>
+            <span
+              className={`block truncate text-[14px] font-black ${
+                isDarkMode ? 'text-white/85' : 'text-slate-800'
+              }`}
+            >
               {title}
             </span>
             <span className={`block truncate text-[11px] font-semibold ${textSec}`}>
@@ -73,23 +93,27 @@ const ConfigurableLayerGroup = ({
             aria-label={`${enabled ? 'Disable' : 'Enable'} ${title}`}
             className={`
               relative flex h-10 w-[4.4rem] items-center rounded-full border px-1 transition-all duration-200
-              ${enabled
-                ? isDarkMode
-                  ? 'border-cyan-400/40 bg-cyan-400/20 shadow-[0_0_18px_rgba(34,211,238,0.18)]'
-                  : 'border-blue-400/45 bg-blue-500/15'
-                : isDarkMode
-                  ? 'border-white/10 bg-white/[0.08] hover:bg-white/[0.12]'
-                  : 'border-white/80 bg-white/65 hover:bg-white/90'}
+              ${
+                enabled
+                  ? isDarkMode
+                    ? 'border-cyan-400/40 bg-cyan-400/20 shadow-[0_0_18px_rgba(34,211,238,0.18)]'
+                    : 'border-blue-400/45 bg-blue-500/15'
+                  : isDarkMode
+                    ? 'border-white/10 bg-white/[0.08] hover:bg-white/[0.12]'
+                    : 'border-white/80 bg-white/65 hover:bg-white/90'
+              }
             `}
           >
             <span
               className={`
                 flex h-8 w-8 items-center justify-center rounded-full text-[9px] font-black shadow-sm transition-all duration-200
-                ${enabled
-                  ? 'translate-x-[1.9rem] bg-white text-slate-900'
-                  : isDarkMode
-                    ? 'translate-x-0 bg-slate-800 text-white/50'
-                    : 'translate-x-0 bg-white text-slate-400'}
+                ${
+                  enabled
+                    ? 'translate-x-[1.9rem] bg-white text-slate-900'
+                    : isDarkMode
+                      ? 'translate-x-0 bg-slate-800 text-white/50'
+                      : 'translate-x-0 bg-white text-slate-400'
+                }
               `}
             >
               {enabled ? 'ON' : 'OFF'}
@@ -97,9 +121,11 @@ const ConfigurableLayerGroup = ({
           </button>
 
           {enabled ? (
-            expanded
-              ? <ChevronDown size={16} strokeWidth={2.5} className={textSec} />
-              : <ChevronRight size={16} strokeWidth={2.5} className={textSec} />
+            expanded ? (
+              <ChevronDown size={16} strokeWidth={2.5} className={textSec} />
+            ) : (
+              <ChevronRight size={16} strokeWidth={2.5} className={textSec} />
+            )
           ) : (
             <ChevronRight size={16} strokeWidth={2.5} className={textTer} />
           )}
@@ -114,6 +140,8 @@ const ConfigurableLayerGroup = ({
             onToggle={onToggleModel}
             isDarkMode={isDarkMode}
           />
+
+          {afterModelSelector}
 
           <div className={`h-px ${isDarkMode ? 'bg-white/[0.08]' : 'bg-white/70'}`} />
 
