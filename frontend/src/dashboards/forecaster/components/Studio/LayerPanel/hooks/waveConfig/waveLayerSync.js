@@ -15,6 +15,7 @@ import {
   buildIconSize,
 } from './waveHelpers';
 import { removeEcwamRasterCrossfade, syncEcwamRasterCrossfade } from './ecwamRasterCrossfade';
+import { removeWw3RasterCrossfade, syncWw3RasterCrossfade } from './ww3RasterCrossfade';
 
 const MODEL_RASTER_CONFIG = {
   BMKG: { scheme: 'tms', bounds: [100, -5, 180, 50] },
@@ -132,6 +133,36 @@ const upsertRasterLayer = (
   }
 };
 
+const syncWw3Raster = (map, { selectedModels, theme, opacity, showRaster, forecastPackage }) => {
+  const ww3Selected = selectedModels.includes('WW3');
+
+  // Remove the pre-crossfade WW3 source if a deployment already created it.
+  removeRasterSource(map, `${WAVE_RASTER_SOURCE_PREFIX}WW3`);
+
+  if (!ww3Selected) {
+    removeWw3RasterCrossfade(map);
+    return;
+  }
+
+  const tileUrl = buildWaveTileUrl({
+    model: 'WW3',
+    theme,
+    date: WAVE_RASTER_DATE,
+    forecastDate: forecastPackage.forecastDate,
+    chartType: forecastPackage.chartType,
+    forecastHour: forecastPackage.ww3ForecastHour,
+  });
+  const { scheme, bounds } = getRasterConfig('WW3');
+
+  syncWw3RasterCrossfade(map, {
+    tileUrl,
+    opacity,
+    showRaster,
+    scheme,
+    bounds,
+  });
+};
+
 const syncEcwamRaster = (map, { selectedModels, theme, opacity, showRaster, forecastPackage }) => {
   const ecwamSelected = selectedModels.includes('ECWAM');
   const frameReady = forecastPackage.ecwamFrameReady !== false;
@@ -175,7 +206,7 @@ export const syncWaveRasterLayers = (
   const theme = isDarkMode ? 'dark' : 'light';
   const selectedModels = getSelectedModels(models);
   const opacity = selectedModels.length > 0 ? Math.max(0.25, 1 / selectedModels.length) : 0;
-  const regularModels = selectedModels.filter((model) => model !== 'ECWAM');
+  const regularModels = selectedModels.filter((model) => model !== 'ECWAM' && model !== 'WW3');
 
   removeLegacyLayers(map);
   removeStaleRasterSources(
@@ -192,8 +223,15 @@ export const syncWaveRasterLayers = (
       themeChanged,
       forecastDate: forecastPackage.forecastDate,
       chartType: forecastPackage.chartType,
-      forecastHour: model === 'WW3' ? forecastPackage.ww3ForecastHour : undefined,
     });
+  });
+
+  syncWw3Raster(map, {
+    selectedModels,
+    theme,
+    opacity,
+    showRaster,
+    forecastPackage,
   });
 
   syncEcwamRaster(map, {
