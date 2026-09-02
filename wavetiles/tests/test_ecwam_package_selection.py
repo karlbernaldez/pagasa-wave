@@ -26,11 +26,14 @@ class ECWAMPackageSelectionTests(unittest.TestCase):
             (cycle_dir / f"{prefix}{valid:%m%d%H}{suffix}").touch()
         return cycle_dir
 
-    def test_required_valid_times_match_operational_package(self) -> None:
-        self.assertEqual(
-            tuple(value.strftime("%Y%m%d%H") for value in selection.required_valid_times(self.package_date)),
-            ("2026082400", "2026082500", "2026082512", "2026082600"),
+    def test_required_valid_times_match_three_hour_operational_package(self) -> None:
+        values = tuple(
+            value.strftime("%Y%m%d%H") for value in selection.required_valid_times(self.package_date)
         )
+        self.assertEqual(len(values), 21)
+        self.assertEqual(values[0], "2026082400")
+        self.assertEqual(values[1], "2026082403")
+        self.assertEqual(values[-1], "2026082612")
 
     def test_newest_complete_cycle_selected(self) -> None:
         required = selection.required_valid_times(self.package_date)
@@ -60,7 +63,17 @@ class ECWAMPackageSelectionTests(unittest.TestCase):
             first = next(path for path in cycle.iterdir() if path.is_file())
             (cycle / f"{first.name}.47d85.idx").touch()
             available = selection.files_by_valid_time(cycle)
-            self.assertEqual(len(available), 4)
+            self.assertEqual(len(available), 21)
+
+    def test_rejects_off_cadence_and_out_of_range_forecast_hours(self) -> None:
+        with self.assertRaises(ValueError):
+            selection.forecast_valid_time(self.package_date, 25)
+        with self.assertRaises(ValueError):
+            selection.forecast_valid_time(self.package_date, 61)
+        self.assertEqual(
+            selection.forecast_valid_time(self.package_date, 60).strftime("%Y%m%d%H"),
+            "2026082612",
+        )
 
     def test_year_rollover_uses_year_nearest_cycle(self) -> None:
         package_date = selection.parse_package_date("2026-12-31")
@@ -69,7 +82,7 @@ class ECWAMPackageSelectionTests(unittest.TestCase):
             root = Path(tmp)
             cycle = self.make_cycle(root, "2026123100", required)
             available = selection.files_by_valid_time(cycle)
-            self.assertIn(datetime(2027, 1, 2, 0), available)
+            self.assertIn(datetime(2027, 1, 2, 12), available)
             self.assertTrue(selection.cycle_is_complete(cycle, package_date))
 
 

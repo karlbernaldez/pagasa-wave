@@ -3,15 +3,18 @@ import test from 'node:test';
 
 import { validateFrameRequest } from '../services/ecwamFrameService.js';
 
-test('accepts ECWAM forecast hours from 0 through 48', () => {
+test('accepts ECWAM forecast hours from 0 through 60 on the 3-hour cadence', () => {
   assert.equal(validateFrameRequest('2026-09-01', 0).valid, true);
-  assert.equal(validateFrameRequest('2026-09-01', 25).valid, true);
+  assert.equal(validateFrameRequest('2026-09-01', 27).valid, true);
   assert.equal(validateFrameRequest('2026-09-01', 48).valid, true);
+  assert.equal(validateFrameRequest('2026-09-01', 60).valid, true);
 });
 
-test('rejects ECWAM forecast hours outside the supported range', () => {
-  assert.equal(validateFrameRequest('2026-09-01', -1).valid, false);
-  assert.equal(validateFrameRequest('2026-09-01', 49).valid, false);
+test('rejects ECWAM forecast hours outside the supported cadence', () => {
+  assert.equal(validateFrameRequest('2026-09-01', -3).valid, false);
+  assert.equal(validateFrameRequest('2026-09-01', 1).valid, false);
+  assert.equal(validateFrameRequest('2026-09-01', 25).valid, false);
+  assert.equal(validateFrameRequest('2026-09-01', 61).valid, false);
   assert.equal(validateFrameRequest('2026-09-01', 2.5).valid, false);
 });
 

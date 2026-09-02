@@ -63,6 +63,7 @@ GRID_POINTS="${ECWAM_GRID_POINTS:-271051}"
 TILER="$SCRIPT_DIR/tiling/ecwam_direct.py"
 CONTOUR_GENERATOR="$SCRIPT_DIR/tiling/ecwam_contours.py"
 SELECTOR="$SCRIPT_DIR/ecwam_package_selection.py"
+REQUIRED_FRAME_COUNT=21
 
 [[ -x "$PYTHON_BIN" || -f "$PYTHON_BIN" ]] || { echo "ECWAM Python runtime not found: $PYTHON_BIN" >&2; exit 1; }
 [[ -f "$TILER" ]] || { echo "ECWAM tiler not found: $TILER" >&2; exit 1; }
@@ -85,7 +86,7 @@ PY
 
 if [[ -z "$SOURCE_CYCLE" ]]; then
   if ! SOURCE_CYCLE="$($PYTHON_BIN "$SELECTOR" select "$INPUT_ROOT" "$PACKAGE_DATE")"; then
-    echo "No single ECWAM source cycle contains all exact required valid times for package $PACKAGE_DATE" >&2
+    echo "No single ECWAM source cycle contains all required 3-hour frames through T+60 for package $PACKAGE_DATE" >&2
     exit 1
   fi
 fi
@@ -95,7 +96,7 @@ if ! MANIFEST="$($PYTHON_BIN "$SELECTOR" manifest "$INPUT_ROOT" "$PACKAGE_DATE" 
   exit 1
 fi
 mapfile -t PACKAGE_RUNS <<<"$MANIFEST"
-[[ ${#PACKAGE_RUNS[@]} -eq 4 ]] || { echo "Expected four ECWAM package inputs, got ${#PACKAGE_RUNS[@]}" >&2; exit 1; }
+[[ ${#PACKAGE_RUNS[@]} -eq $REQUIRED_FRAME_COUNT ]] || { echo "Expected $REQUIRED_FRAME_COUNT ECWAM package inputs, got ${#PACKAGE_RUNS[@]}" >&2; exit 1; }
 
 IFS='|' read -r _ _ PACKAGE_TAG _ RESOLVED_SOURCE_CYCLE <<<"${PACKAGE_RUNS[0]}"
 [[ -n "$RESOLVED_SOURCE_CYCLE" ]] || { echo "ECWAM source cycle was not resolved" >&2; exit 1; }
@@ -161,7 +162,7 @@ for line in "${PACKAGE_RUNS[@]}"; do
 done
 
 contour_count=$(find "$OUTPUT_ROOT/contours/$PACKAGE_TAG" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
-[[ "$contour_count" -ge 4 ]] || { echo "Expected at least four non-empty ECWAM contour files for $PACKAGE_TAG, got $contour_count" >&2; exit 1; }
+[[ "$contour_count" -ge $REQUIRED_FRAME_COUNT ]] || { echo "Expected at least $REQUIRED_FRAME_COUNT non-empty ECWAM contour files for $PACKAGE_TAG, got $contour_count" >&2; exit 1; }
 
 metadata_target="$OUTPUT_ROOT/contours/$PACKAGE_TAG/package.json"
 metadata_tmp="${metadata_target}.tmp.$$"
@@ -172,7 +173,7 @@ cat >"$metadata_tmp" <<EOF
   "sourceCycle": "$RESOLVED_SOURCE_CYCLE",
   "variable": "$VARNAME",
   "sigma": "$SIGMA",
-  "requiredForecastHours": [0, 24, 36, 48]
+  "requiredForecastHours": [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60]
 }
 EOF
 chmod 644 "$metadata_tmp" 2>/dev/null || true

@@ -60,7 +60,7 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
     ? `Preparing T+${requestedHour ?? frame.forecastHour}`
     : frame.state === 'ready'
       ? 'Frame ready'
-      : frame.message || 'Hourly ECWAM cache';
+      : frame.message || '3-hour ECWAM cadence';
 
   return (
     <div

@@ -67,8 +67,11 @@ export function validateFrameRequest(packageDate, forecastHour) {
     return { valid: false, message: 'packageDate must use YYYY-MM-DD and be a valid date.' };
   }
 
-  if (!Number.isInteger(hour) || hour < 0 || hour > 48) {
-    return { valid: false, message: 'forecastHour must be an integer from 0 through 48.' };
+  if (!Number.isInteger(hour) || hour < 0 || hour > 60 || hour % 3 !== 0) {
+    return {
+      valid: false,
+      message: 'forecastHour must be from 0 through 60 in 3-hour increments.',
+    };
   }
 
   return { valid: true, date, forecastHour: hour };

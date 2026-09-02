@@ -47,6 +47,17 @@ const ECWAM_FORECAST_OFFSETS = {
   '48-hour forecast': { days: 2, hour: '00' },
 };
 
+export const ECWAM_REQUIRED_FORECAST_HOURS = Object.freeze(
+  Array.from({ length: 21 }, (_, index) => index * 3)
+);
+
+const ECWAM_CHART_WINDOWS = Object.freeze({
+  analysis: [0],
+  '24h': ECWAM_REQUIRED_FORECAST_HOURS.filter((hour) => hour <= 35),
+  '36h': ECWAM_REQUIRED_FORECAST_HOURS.filter((hour) => hour >= 25 && hour <= 47),
+  '48h': ECWAM_REQUIRED_FORECAST_HOURS.filter((hour) => hour >= 37 && hour <= 60),
+});
+
 const DEFAULT_WW3_OFFSET = WW3_FORECAST_OFFSETS.analysis;
 const DEFAULT_ECWAM_OFFSET = ECWAM_FORECAST_OFFSETS.analysis;
 const MONTH_TOKENS = [
@@ -68,6 +79,15 @@ const pad2 = (value) => String(value).padStart(2, '0');
 
 const normalizeChartType = (chartType = '') =>
   String(chartType).trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+
+const chartWindowKey = (chartType) => {
+  const normalized = normalizeChartType(chartType);
+  if (!normalized || normalized.includes('analysis')) return 'analysis';
+  const hourMatch = normalized.match(/(?:forecast\s*)?(24|36|48)\s*(?:h|hr|hour)?/);
+  return hourMatch ? `${hourMatch[1]}h` : 'analysis';
+};
+
+export const getECWAMForecastHours = (chartType) => ECWAM_CHART_WINDOWS[chartWindowKey(chartType)];
 
 const resolveOffset = (chartType) => {
   const normalized = normalizeChartType(chartType);
@@ -96,7 +116,7 @@ const normalizeECWAMForecastHour = (forecastHour) => {
     return null;
   }
   const hour = Number(forecastHour);
-  return Number.isInteger(hour) && hour >= 0 && hour <= 48 ? hour : null;
+  return Number.isInteger(hour) && hour >= 0 && hour <= 60 && hour % 3 === 0 ? hour : null;
 };
 
 const dateFromParts = (year, month, day) =>
