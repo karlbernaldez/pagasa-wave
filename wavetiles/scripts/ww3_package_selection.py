@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 
 CYCLE_RE = re.compile(r"\d{10}")
 PACKAGE_DATE_RE = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})")
+REQUIRED_FORECAST_HOURS = tuple(range(0, 61, 3))
 
 
 def parse_package_date(raw: str) -> date:
@@ -28,11 +29,12 @@ def manila_today(now: datetime | None = None) -> date:
 
 
 def required_valid_times(package_date: date) -> tuple[str, ...]:
-    return (
-        (package_date - timedelta(days=1)).strftime("%Y%m%d") + "18",
-        package_date.strftime("%Y%m%d") + "18",
-        (package_date + timedelta(days=1)).strftime("%Y%m%d") + "06",
-        (package_date + timedelta(days=1)).strftime("%Y%m%d") + "18",
+    analysis_time = datetime.combine(
+        package_date - timedelta(days=1), datetime.min.time()
+    ).replace(hour=18)
+    return tuple(
+        (analysis_time + timedelta(hours=forecast_hour)).strftime("%Y%m%d%H")
+        for forecast_hour in REQUIRED_FORECAST_HOURS
     )
 
 
@@ -67,9 +69,11 @@ def print_manifest(input_root: Path, package_date: date, source_cycle: str | Non
     cycle_dir = input_root / source_cycle if source_cycle else select_source_cycle(input_root, package_date)
     if cycle_dir is None or not cycle_is_complete(cycle_dir, package_date):
         return 1
-    labels = ("analysis", "24h", "36h", "48h")
     tag = package_tag(package_date)
-    for label, stamp in zip(labels, required_valid_times(package_date)):
+    for forecast_hour, stamp in zip(
+        REQUIRED_FORECAST_HOURS, required_valid_times(package_date)
+    ):
+        label = "analysis" if forecast_hour == 0 else f"{forecast_hour}h"
         timestamp = f"{stamp[:8]}T{stamp[8:]}"
         ncfile = cycle_dir / f"ww3_grdo.{timestamp}.nc"
         print(f"{label}|{stamp}|{timestamp}|{tag}|{ncfile}|{cycle_dir.name}")

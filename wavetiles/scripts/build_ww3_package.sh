@@ -94,7 +94,11 @@ if ! MANIFEST="$($PYTHON_BIN "$SELECTOR" manifest "$INPUT_ROOT" "$PACKAGE_DATE" 
   exit 1
 fi
 mapfile -t PACKAGE_RUNS <<<"$MANIFEST"
-[[ ${#PACKAGE_RUNS[@]} -eq 4 ]] || { echo "Expected four WW3 package inputs, got ${#PACKAGE_RUNS[@]}" >&2; exit 1; }
+EXPECTED_FRAME_COUNT=21
+[[ ${#PACKAGE_RUNS[@]} -eq "$EXPECTED_FRAME_COUNT" ]] || {
+  echo "Expected $EXPECTED_FRAME_COUNT WW3 package inputs, got ${#PACKAGE_RUNS[@]}" >&2
+  exit 1
+}
 
 IFS='|' read -r _ _ _ PACKAGE_TAG _ RESOLVED_SOURCE_CYCLE <<<"${PACKAGE_RUNS[0]}"
 [[ -n "$RESOLVED_SOURCE_CYCLE" ]] || { echo "Source cycle was not resolved" >&2; exit 1; }
@@ -145,7 +149,10 @@ for line in "${PACKAGE_RUNS[@]}"; do
 done
 
 contour_count=$(find "$ROOT/tiles/WW3/contours/$PACKAGE_TAG" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
-[[ "$contour_count" -eq 4 ]] || { echo "Expected four non-empty WW3 contour files for $PACKAGE_TAG, got $contour_count" >&2; exit 1; }
+[[ "$contour_count" -eq "$EXPECTED_FRAME_COUNT" ]] || {
+  echo "Expected $EXPECTED_FRAME_COUNT non-empty WW3 contour files for $PACKAGE_TAG, got $contour_count" >&2
+  exit 1
+}
 
 find "$ROOT/tiles" -type d -exec chmod 755 {} \; 2>/dev/null || true
 find "$ROOT/tiles" -type f -exec chmod 644 {} \; 2>/dev/null || true

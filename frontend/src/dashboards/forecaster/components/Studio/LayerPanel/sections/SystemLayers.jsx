@@ -51,8 +51,8 @@ const SectionLabel = ({ label, count, isDarkMode, accent = false }) => (
   </div>
 );
 
-const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
-  if (!frame || !onStep) return null;
+const ForecastFrameNavigator = ({ model, frame, onStep, isDarkMode }) => {
+  if (!model || !frame || !onStep) return null;
 
   const busy = ['checking', 'building'].includes(frame.state);
   const requestedHour = frame.requestedHour;
@@ -60,7 +60,7 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
     ? `Preparing T+${requestedHour ?? frame.forecastHour}`
     : frame.state === 'ready'
       ? 'Frame ready'
-      : frame.message || '3-hour ECWAM cadence';
+      : frame.message || `3-hour ${model} cadence`;
 
   return (
     <div
@@ -77,7 +77,7 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
               isDarkMode ? 'text-cyan-200/70' : 'text-blue-700'
             )}
           >
-            ECWAM forecast hour
+            {model} forecast hour
           </div>
           <div
             className={cn(
@@ -100,7 +100,7 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
           type="button"
           onClick={() => onStep(-1)}
           disabled={busy || frame.forecastHour <= frame.minHour}
-          aria-label="Previous ECWAM forecast hour"
+          aria-label={`Previous ${model} forecast hour`}
           className={cn(
             'flex h-9 items-center justify-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-35',
             isDarkMode
@@ -126,7 +126,7 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
           type="button"
           onClick={() => onStep(1)}
           disabled={busy || frame.forecastHour >= frame.maxHour}
-          aria-label="Next ECWAM forecast hour"
+          aria-label={`Next ${model} forecast hour`}
           className={cn(
             'flex h-9 items-center justify-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-35',
             isDarkMode
@@ -172,6 +172,7 @@ const SystemLayersSection = ({
   const satelliteOverlayCount =
     (satelliteLayer ? 1 : 0) + countActiveByDefinition(SATELLITE_OVERLAY_LAYERS, utilitiesLayers);
   const referenceCount = domainCount + utilityCount + satelliteOverlayCount;
+  const showWW3Navigator = waveConfig?.models?.includes('WW3');
   const showEcwamNavigator = waveConfig?.models?.includes('ECWAM');
 
   if (!expanded) return null;
@@ -284,12 +285,25 @@ const SystemLayersSection = ({
             onToggleModel={onToggleWaveModel}
             onSetDirectionStyle={onSetWaveDirectionStyle}
             afterModelSelector={
-              showEcwamNavigator ? (
-                <EcwamFrameNavigator
-                  frame={waveConfig.ecwamFrame}
-                  onStep={waveConfig.stepEcwamForecastHour}
-                  isDarkMode={isDarkMode}
-                />
+              showWW3Navigator || showEcwamNavigator ? (
+                <div className="space-y-2">
+                  {showWW3Navigator && (
+                    <ForecastFrameNavigator
+                      model="WW3"
+                      frame={waveConfig.ww3Frame}
+                      onStep={waveConfig.stepWW3ForecastHour}
+                      isDarkMode={isDarkMode}
+                    />
+                  )}
+                  {showEcwamNavigator && (
+                    <ForecastFrameNavigator
+                      model="ECWAM"
+                      frame={waveConfig.ecwamFrame}
+                      onStep={waveConfig.stepEcwamForecastHour}
+                      isDarkMode={isDarkMode}
+                    />
+                  )}
+                </div>
               ) : null
             }
             isDarkMode={isDarkMode}

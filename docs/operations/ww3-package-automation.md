@@ -6,12 +6,9 @@
 2. The timer checks hourly and waits until the archive has not changed for 10 minutes.
 3. The archive is validated before extraction. Absolute paths, parent traversal, links, devices, unexpected top-level folders, and archives without `ww3_grdo.*.nc` files are rejected.
 4. The cycle is atomically installed under `wavetiles/input/ww3/YYYYMMDDHH`.
-5. The newest package date with all four required timestamps is built once:
-   - previous day 18Z analysis
-   - package day 18Z
-   - next day 06Z
-   - next day 18Z
-6. A successful build must contain PNG tiles before a success marker is written.
+5. The newest source cycle containing every required valid time is selected without mixing cycles.
+6. The package builds 21 frames at a three-hour cadence from analysis (T+0) through T+60. The existing chart anchors remain T+0, T+24, T+36, and T+48.
+7. A successful build must contain PNG tiles and 21 non-empty contour files before a success marker is written. A legacy marker with fewer frames is treated as incomplete and rebuilt.
 
 ## Retention
 
