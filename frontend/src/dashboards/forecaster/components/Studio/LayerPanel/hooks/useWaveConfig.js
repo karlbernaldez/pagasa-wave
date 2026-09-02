@@ -8,10 +8,7 @@ import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
 import { ensureEcwamFrameReady } from '@/api/ecwamFrames';
 import { WAVE_ELEMENTS, OFF_ELEMENTS, DEFAULT_DIRECTION_STYLE } from '../constants/layerConstants';
 import { normalizeModelName } from './waveConfig/waveHelpers';
-import {
-  getECWAMForecastHours,
-  resolveECWAMForecastRun,
-} from './waveConfig/ww3ForecastRuns';
+import { getECWAMForecastHours, resolveECWAMForecastRun } from './waveConfig/ww3ForecastRuns';
 import { syncAllWaveLayers } from './waveConfig/waveLayerSync';
 import { useWaveStorage } from './waveConfig/useWaveStorage';
 import { useProjectData } from '../../Menu/hooks/useProjectData';
