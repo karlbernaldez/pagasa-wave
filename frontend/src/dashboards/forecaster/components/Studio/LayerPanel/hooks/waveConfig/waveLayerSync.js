@@ -26,6 +26,7 @@ const CONTOUR_MODELS = new Set(['WW3', 'ECWAM']);
 const CONTOUR_SOURCE_PREFIX = 'wave-contours-';
 const CONTOUR_LINE_PREFIX = 'wave-contours-line-';
 const CONTOUR_LABEL_PREFIX = 'wave-contours-label-';
+const ECWAM_RASTER_FADE_MS = 320;
 
 const getRasterConfig = (model) =>
   MODEL_RASTER_CONFIG[model] ?? { scheme: 'xyz', bounds: [100, -5, 180, 50] };
@@ -47,16 +48,29 @@ const removeLegacyLayers = (map) => {
   });
 };
 
+const removeRasterSource = (map, sourceId) => {
+  const layerId = sourceId.replace(WAVE_RASTER_SOURCE_PREFIX, WAVE_RASTER_LAYER_PREFIX);
+  if (map.getLayer(layerId)) map.removeLayer(layerId);
+  if (map.getSource(sourceId)) map.removeSource(sourceId);
+  rasterTileUrlBySource.delete(sourceId);
+};
+
 const removeStaleRasterSources = (map, targetSourceIds) => {
   Object.keys(map.getStyle()?.sources || {})
     .filter((id) => id.startsWith(WAVE_RASTER_SOURCE_PREFIX))
     .forEach((sourceId) => {
-      if (targetSourceIds.has(sourceId)) return;
-      const layerId = sourceId.replace(WAVE_RASTER_SOURCE_PREFIX, WAVE_RASTER_LAYER_PREFIX);
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-      rasterTileUrlBySource.delete(sourceId);
+      if (!targetSourceIds.has(sourceId)) removeRasterSource(map, sourceId);
     });
+};
+
+const updateRasterTilesInPlace = (map, sourceId, tileUrl) => {
+  const source = map.getSource(sourceId);
+  if (typeof source?.setTiles !== 'function') return false;
+
+  source.setTiles([tileUrl]);
+  rasterTileUrlBySource.set(sourceId, tileUrl);
+  map.triggerRepaint?.();
+  return true;
 };
 
 const upsertRasterLayer = (
@@ -79,10 +93,13 @@ const upsertRasterLayer = (
   const sourceUrlChanged = sourceExists && rasterTileUrlBySource.get(sourceId) !== tileUrl;
 
   if (sourceExists && (themeChanged || sourceUrlChanged)) {
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
-    map.removeSource(sourceId);
-    rasterTileUrlBySource.delete(sourceId);
-    sourceExists = false;
+    // Keep the existing source/layer mounted while Mapbox loads the next ECWAM frame.
+    // This lets raster-fade-duration blend the old rendered tiles into the new tiles
+    // instead of flashing an empty map between forecast hours.
+    if (!updateRasterTilesInPlace(map, sourceId, tileUrl)) {
+      removeRasterSource(map, sourceId);
+      sourceExists = false;
+    }
   }
 
   if (!sourceExists) {
@@ -104,7 +121,7 @@ const upsertRasterLayer = (
         source: sourceId,
         paint: {
           'raster-opacity': opacity,
-          'raster-fade-duration': 0,
+          'raster-fade-duration': model === 'ECWAM' ? ECWAM_RASTER_FADE_MS : 0,
           'raster-resampling': 'linear',
         },
         layout: { visibility: showRaster ? 'visible' : 'none' },
@@ -113,6 +130,11 @@ const upsertRasterLayer = (
     );
   } else {
     map.setPaintProperty(layerId, 'raster-opacity', opacity);
+    map.setPaintProperty(
+      layerId,
+      'raster-fade-duration',
+      model === 'ECWAM' ? ECWAM_RASTER_FADE_MS : 0
+    );
     map.setLayoutProperty(layerId, 'visibility', showRaster ? 'visible' : 'none');
   }
 };
@@ -185,6 +207,18 @@ const removeStaleContourSources = (map, targetModels) => {
     });
 };
 
+const updateContourDataInPlace = (map, sourceId, dataUrl) => {
+  const source = map.getSource(sourceId);
+  if (typeof source?.setData !== 'function') return false;
+
+  // GeoJSONSource keeps the current rendered data until the replacement URL has
+  // been fetched and parsed, avoiding the old remove-source/add-source flicker.
+  source.setData(dataUrl);
+  contourUrlBySource.set(sourceId, dataUrl);
+  map.triggerRepaint?.();
+  return true;
+};
+
 const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
   const { sourceId, lineLayerId, labelLayerId } = contourIds(model);
   const dataUrl = buildWaveContourUrl({
@@ -199,7 +233,9 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
   }
 
   if (map.getSource(sourceId) && contourUrlBySource.get(sourceId) !== dataUrl) {
-    removeContourModel(map, model);
+    if (!updateContourDataInPlace(map, sourceId, dataUrl)) {
+      removeContourModel(map, model);
+    }
   }
 
   if (!map.getSource(sourceId)) {
@@ -220,6 +256,7 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
           'line-color': ['get', colorProperty],
           'line-width': ['case', ['get', 'major'], 2.2, 1.35],
           'line-opacity': 0.95,
+          'line-opacity-transition': { duration: ECWAM_RASTER_FADE_MS, delay: 0 },
         },
       },
       'graticules'
@@ -250,6 +287,7 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
           'text-halo-color': haloColor,
           'text-halo-width': 1.5,
           'text-halo-blur': 0.4,
+          'text-opacity-transition': { duration: ECWAM_RASTER_FADE_MS, delay: 0 },
         },
       },
       'graticules'
