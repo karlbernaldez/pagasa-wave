@@ -20,6 +20,7 @@ PACKAGE_TIMEZONE="${PACKAGE_TIMEZONE:-Asia/Manila}"
 WW3_VAR="${WW3_VAR:-hs}"
 WW3_SIGMA="${WW3_SIGMA:-1.5}"
 WW3_BUILD_TIMEOUT="${WW3_BUILD_TIMEOUT:-4h}"
+REQUIRED_FRAME_COUNT=21
 WW3_BUILD_EXTRA_ARGS="${WW3_BUILD_EXTRA_ARGS:---skip-existing}"
 SELECTOR="$WAVETILES_ROOT/scripts/ww3_package_selection.py"
 
@@ -124,7 +125,6 @@ import_archives() {
 build_package() {
   local package_date="$1" source_cycle="$2" marker tag png_count contour_count message
   marker="$STATE_ROOT/built/$package_date"
-  [[ -e "$marker" ]] && { log "package already built: $package_date"; return 0; }
   tag="$(python3 - "$package_date" <<'PY'
 import sys
 from datetime import date
@@ -132,6 +132,14 @@ v=date.fromisoformat(sys.argv[1]); m=("JAN","FEB","MAR","APR","MAY","JUN","JUL",
 print(f"{v.year}{m[v.month-1]}{v.day:02d}")
 PY
   )"
+  if [[ -e "$marker" ]]; then
+    contour_count=$(find "$TILE_ROOT/contours/$tag" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
+    if (( contour_count == REQUIRED_FRAME_COUNT )); then
+      log "package already built: $package_date"
+      return 0
+    fi
+    log "package marker exists but has $contour_count of $REQUIRED_FRAME_COUNT required frames; rebuilding"
+  fi
   read -r -a extra_args <<< "$WW3_BUILD_EXTRA_ARGS"
   if ! timeout "$WW3_BUILD_TIMEOUT" env WW3_PYTHON="$WAVETILES_ROOT/.venv/bin/python" WW3_INPUT_ROOT="$INPUT_ROOT" \
       WW3_SOURCE_CYCLE="$source_cycle" WW3_NO_PAUSE=1 \
@@ -142,7 +150,7 @@ PY
   png_count=$(find "$TILE_ROOT" -mindepth 3 -type f -path "*/$tag/*" -name '*.png' | wc -l)
   (( png_count > 0 )) || fail "build produced no PNG tiles for $tag"
   contour_count=$(find "$TILE_ROOT/contours/$tag" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
-  (( contour_count == 4 )) || fail "build produced $contour_count of 4 required contour files for $tag"
+  (( contour_count == REQUIRED_FRAME_COUNT )) || fail "build produced $contour_count of $REQUIRED_FRAME_COUNT required contour files for $tag"
   printf 'package_date=%s\nsource_cycle=%s\noutput_tag=%s\npng_count=%s\ncontour_count=%s\nbuilt_utc=%s\n' \
     "$package_date" "$source_cycle" "$tag" "$png_count" "$contour_count" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$marker"
   rm -f -- "$STATE_ROOT/failed/$package_date"
