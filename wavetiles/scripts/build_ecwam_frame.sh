@@ -7,14 +7,13 @@ Usage:
   bash scripts/build_ecwam_frame.sh <PACKAGE_DATE> <FORECAST_HOUR> [VARNAME] [SIGMA] [--source-cycle YYYYMMDDHH] [tiler args]
 
 Examples:
-  bash scripts/build_ecwam_frame.sh 2026-09-02 7
+  bash scripts/build_ecwam_frame.sh 2026-09-02 6
   bash scripts/build_ecwam_frame.sh 2026-09-01 30 swh 1.5 --source-cycle 2026083118 --skip-existing
 
 Notes:
-  - FORECAST_HOUR must be between 0 and 48 inclusive.
-  - Required package frames remain 0h, 24h, 36h, and 48h.
-  - Intermediate frames are generated only when requested and are cached in the normal package tree.
-  - Package metadata is used to pin the same source cycle as the required package frames.
+  - FORECAST_HOUR must be from 0 through 60 in 3-hour increments.
+  - Frames are cached in the normal ECWAM package tree.
+  - Package metadata pins the same source cycle used by the scheduled package builder.
   - For older packages without metadata, pass --source-cycle explicitly to avoid mixing model cycles.
 EOF
 }
@@ -28,8 +27,9 @@ PACKAGE_DATE=$1
 FORECAST_HOUR=$2
 shift 2
 
-[[ "$FORECAST_HOUR" =~ ^[0-9]+$ ]] || { echo "FORECAST_HOUR must be an integer between 0 and 48" >&2; exit 2; }
-(( FORECAST_HOUR >= 0 && FORECAST_HOUR <= 48 )) || { echo "FORECAST_HOUR must be between 0 and 48" >&2; exit 2; }
+[[ "$FORECAST_HOUR" =~ ^[0-9]+$ ]] || { echo "FORECAST_HOUR must be an integer from 0 through 60" >&2; exit 2; }
+(( FORECAST_HOUR >= 0 && FORECAST_HOUR <= 60 )) || { echo "FORECAST_HOUR must be from 0 through 60" >&2; exit 2; }
+(( FORECAST_HOUR % 3 == 0 )) || { echo "FORECAST_HOUR must use the 3-hour ECWAM cadence" >&2; exit 2; }
 
 VARNAME=${1:-${ECWAM_VAR:-swh}}
 if [[ $# -gt 0 && "${1:-}" != --* ]]; then shift; fi
