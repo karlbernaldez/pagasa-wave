@@ -238,16 +238,8 @@ describe('WW3 forecast navigation', () => {
       isSourceLoaded: true,
     });
 
-    expect(map.setPaintProperty).toHaveBeenCalledWith(
-      'ww3-crossfade-layer-a',
-      'raster-opacity',
-      0
-    );
-    expect(map.setPaintProperty).toHaveBeenCalledWith(
-      'ww3-crossfade-layer-b',
-      'raster-opacity',
-      1
-    );
+    expect(map.setPaintProperty).toHaveBeenCalledWith('ww3-crossfade-layer-a', 'raster-opacity', 0);
+    expect(map.setPaintProperty).toHaveBeenCalledWith('ww3-crossfade-layer-b', 'raster-opacity', 1);
 
     vi.advanceTimersByTime(500);
     expect(map.removeSource).toHaveBeenCalledWith('ww3-crossfade-source-a');
