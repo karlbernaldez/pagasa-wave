@@ -11,17 +11,21 @@ const createMap = () => {
       layers.push(layer);
     }),
     addSource: vi.fn((id, source) => {
-      sources[id] = {
-        ...source,
-        setTiles:
-          source.type === 'raster'
-            ? vi.fn((tiles) => (sources[id].tiles = tiles))
-            : undefined,
-        setData:
-          source.type === 'geojson'
-            ? vi.fn((data) => (sources[id].data = data))
-            : undefined,
-      };
+      const mockedSource = { ...source };
+
+      if (source.type === 'raster') {
+        mockedSource.setTiles = vi.fn((tiles) => {
+          mockedSource.tiles = tiles;
+        });
+      }
+
+      if (source.type === 'geojson') {
+        mockedSource.setData = vi.fn((data) => {
+          mockedSource.data = data;
+        });
+      }
+
+      sources[id] = mockedSource;
     }),
     getLayer: vi.fn((id) => layers.find((layer) => layer.id === id)),
     getSource: vi.fn((id) => sources[id]),
