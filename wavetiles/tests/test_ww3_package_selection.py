@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib.util
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "ww3_package_selection.py"
@@ -34,8 +34,9 @@ class WW3PackageSelectionTests(unittest.TestCase):
         self.assertEqual(required[-1], "2026071806")
         self.assertTrue(
             all(
-                datetime.strptime(later, "%Y%m%d%H") - datetime.strptime(earlier, "%Y%m%d%H")
-                == selection.timedelta(hours=3)
+                datetime.strptime(later, "%Y%m%d%H")
+                - datetime.strptime(earlier, "%Y%m%d%H")
+                == timedelta(hours=3)
                 for earlier, later in zip(required, required[1:])
             )
         )
