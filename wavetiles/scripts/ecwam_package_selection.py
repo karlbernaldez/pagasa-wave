@@ -14,6 +14,7 @@ PACKAGE_DATE_RE = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})")
 ECWAM_FILE_RE = re.compile(
     r"^W1P(?P<cycle_mmdd>\d{4})(?P<cycle_hhmm>\d{4})(?P<valid_mmddhh>\d{6})(?P<suffix>\d{3})$"
 )
+REQUIRED_FORECAST_HOURS = tuple(range(0, 61, 3))
 
 
 def parse_package_date(raw: str) -> date:
@@ -25,17 +26,12 @@ def parse_package_date(raw: str) -> date:
 
 def required_valid_times(package_date: date) -> tuple[datetime, ...]:
     start = datetime(package_date.year, package_date.month, package_date.day)
-    return (
-        start,
-        start + timedelta(hours=24),
-        start + timedelta(hours=36),
-        start + timedelta(hours=48),
-    )
+    return tuple(start + timedelta(hours=hour) for hour in REQUIRED_FORECAST_HOURS)
 
 
 def forecast_valid_time(package_date: date, forecast_hour: int) -> datetime:
-    if not 0 <= forecast_hour <= 48:
-        raise ValueError("forecast hour must be between 0 and 48 inclusive")
+    if forecast_hour not in REQUIRED_FORECAST_HOURS:
+        raise ValueError("forecast hour must be from 0 through 60 in 3-hour increments")
     start = datetime(package_date.year, package_date.month, package_date.day)
     return start + timedelta(hours=forecast_hour)
 
@@ -118,12 +114,12 @@ def print_manifest(input_root: Path, package_date: date, source_cycle: str | Non
     if cycle_dir is None:
         return 1
     available = files_by_valid_time(cycle_dir)
-    required = required_valid_times(package_date)
-    labels = ("analysis", "24h", "36h", "48h")
     tag = package_tag(package_date)
-    for label, valid in zip(labels, required):
+    start = datetime(package_date.year, package_date.month, package_date.day)
+    for forecast_hour in REQUIRED_FORECAST_HOURS:
+        valid = start + timedelta(hours=forecast_hour)
         stamp = valid.strftime("%Y%m%d%H")
-        print(f"{label}|{stamp}|{tag}|{available[valid]}|{cycle_dir.name}")
+        print(f"{forecast_hour}h|{stamp}|{tag}|{available[valid]}|{cycle_dir.name}")
     return 0
 
 
@@ -137,7 +133,10 @@ def print_frame(
     if cycle_dir is None:
         return 1
 
-    valid = forecast_valid_time(package_date, forecast_hour)
+    try:
+        valid = forecast_valid_time(package_date, forecast_hour)
+    except ValueError:
+        return 1
     available = files_by_valid_time(cycle_dir)
     gribfile = available.get(valid)
     if gribfile is None:
