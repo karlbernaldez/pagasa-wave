@@ -8,7 +8,10 @@ import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
 import { ensureEcwamFrameReady } from '@/api/ecwamFrames';
 import { WAVE_ELEMENTS, OFF_ELEMENTS, DEFAULT_DIRECTION_STYLE } from '../constants/layerConstants';
 import { normalizeModelName } from './waveConfig/waveHelpers';
-import { resolveECWAMForecastRun } from './waveConfig/ww3ForecastRuns';
+import {
+  getECWAMForecastHours,
+  resolveECWAMForecastRun,
+} from './waveConfig/ww3ForecastRuns';
 import { syncAllWaveLayers } from './waveConfig/waveLayerSync';
 import { useWaveStorage } from './waveConfig/useWaveStorage';
 import { useProjectData } from '../../Menu/hooks/useProjectData';
@@ -21,7 +24,6 @@ const INITIAL_STATE = {
 };
 
 const IDLE_ECWAM_FRAME = { state: 'idle', message: null };
-const clampEcwamHour = (value) => Math.min(48, Math.max(0, Math.trunc(Number(value) || 0)));
 
 const formatPackageDate = (forecastDate) => {
   const parsed = dayjs(forecastDate);
@@ -33,6 +35,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const ecwamRequestRef = useRef(0);
   const { chartType, forecastDate } = useProjectData();
   const packageKey = `${forecastDate ?? ''}|${chartType ?? ''}`;
+  const ecwamForecastHours = useMemo(() => getECWAMForecastHours(chartType), [chartType]);
   const defaultEcwamForecastHour = useMemo(
     () => resolveECWAMForecastRun({ chartType, forecastDate }).forecastHour,
     [chartType, forecastDate]
@@ -87,7 +90,16 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
 
   const setEcwamForecastHour = useCallback(
     async (nextValue) => {
-      const nextHour = clampEcwamHour(nextValue);
+      const nextHour = Number(nextValue);
+      if (!ecwamForecastHours.includes(nextHour)) {
+        const result = {
+          state: 'invalid',
+          message: 'This forecast hour is outside the ECWAM window for the current chart.',
+        };
+        setEcwamFrameState({ packageKey, ...result, requestedHour: nextHour });
+        return result;
+      }
+
       if (nextHour === ecwamForecastHour && ecwamFrameReady) {
         return { state: 'ready', forecastHour: nextHour };
       }
@@ -135,7 +147,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
         return result;
       }
     },
-    [ecwamForecastHour, ecwamFrameReady, forecastDate, packageKey]
+    [ecwamForecastHour, ecwamFrameReady, ecwamForecastHours, forecastDate, packageKey]
   );
 
   const ecwamActive = waveConfig.enabled && waveConfig.models.includes('ECWAM');
@@ -154,13 +166,21 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   }, [defaultEcwamForecastHour, ecwamActive, ecwamFrameReady, setEcwamForecastHour]);
 
   const stepEcwamForecastHour = useCallback(
-    (delta) => setEcwamForecastHour(ecwamForecastHour + delta),
-    [ecwamForecastHour, setEcwamForecastHour]
+    (direction) => {
+      const currentIndex = ecwamForecastHours.indexOf(ecwamForecastHour);
+      if (currentIndex < 0) return Promise.resolve({ state: 'invalid' });
+      const nextIndex = Math.min(
+        ecwamForecastHours.length - 1,
+        Math.max(0, currentIndex + Math.sign(direction))
+      );
+      if (nextIndex === currentIndex) {
+        return Promise.resolve({ state: 'ready', forecastHour: ecwamForecastHour });
+      }
+      return setEcwamForecastHour(ecwamForecastHours[nextIndex]);
+    },
+    [ecwamForecastHour, ecwamForecastHours, setEcwamForecastHour]
   );
 
-  // Keep the saved wave state synchronized with whichever Studio map instance
-  // is currently active. This also re-applies the layers when the theme or
-  // forecast package changes, without using an effect to mutate React state.
   useEffect(() => {
     let activeMap = null;
     let removeLoadListener = () => {};
@@ -207,9 +227,6 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       removeLoadListener = () => map.off?.('load', handleLoad);
     };
 
-    // subscribeToMapInstance immediately emits the global cached map, which may
-    // be null even when this hook already has a valid direct mapRef. Subscribe
-    // first, then let the direct ref win as the authoritative initial map.
     const unsubscribe = subscribeToMapInstance(attachToMap);
     attachToMap(getLatestMapInstance(mapRef));
 
@@ -296,8 +313,9 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       ...waveConfig,
       ecwamFrame: {
         forecastHour: ecwamForecastHour,
-        minHour: 0,
-        maxHour: 48,
+        availableHours: ecwamForecastHours,
+        minHour: ecwamForecastHours[0],
+        maxHour: ecwamForecastHours[ecwamForecastHours.length - 1],
         ...visibleEcwamFrameState,
       },
       setEcwamForecastHour,
@@ -306,6 +324,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     [
       waveConfig,
       ecwamForecastHour,
+      ecwamForecastHours,
       visibleEcwamFrameState,
       setEcwamForecastHour,
       stepEcwamForecastHour,
