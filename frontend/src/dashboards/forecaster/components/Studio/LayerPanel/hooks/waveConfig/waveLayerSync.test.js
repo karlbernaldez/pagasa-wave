@@ -11,7 +11,11 @@ const createMap = () => {
       layers.push(layer);
     }),
     addSource: vi.fn((id, source) => {
-      sources[id] = source;
+      sources[id] = {
+        ...source,
+        setTiles: source.type === 'raster' ? vi.fn((tiles) => (sources[id].tiles = tiles)) : undefined,
+        setData: source.type === 'geojson' ? vi.fn((data) => (sources[id].data = data)) : undefined,
+      };
     }),
     getLayer: vi.fn((id) => layers.find((layer) => layer.id === id)),
     getSource: vi.fn((id) => sources[id]),
@@ -25,6 +29,7 @@ const createMap = () => {
     }),
     setLayoutProperty: vi.fn(),
     setPaintProperty: vi.fn(),
+    triggerRepaint: vi.fn(),
   };
 };
 
@@ -72,5 +77,41 @@ describe('ECWAM readiness gating', () => {
       type: 'geojson',
       data: '/wavetiles/ECWAM/contours/2026SEP01/2026090100/contours.geojson',
     });
+  });
+
+  it('updates ECWAM raster tiles in place when stepping to another ready frame', () => {
+    const map = createMap();
+    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, readyPackage);
+
+    const source = map.getSource('wave-source-model-ECWAM');
+    map.removeSource.mockClear();
+
+    syncWaveRasterLayers(map, ['ECWAM'], true, false, false, {
+      ...readyPackage,
+      ecwamForecastHour: 3,
+    });
+
+    expect(source.setTiles).toHaveBeenCalledWith([
+      '/wavetiles/ECWAM/light/2026SEP01/2026090103/{z}/{x}/{y}.png',
+    ]);
+    expect(map.removeSource).not.toHaveBeenCalledWith('wave-source-model-ECWAM');
+  });
+
+  it('updates ECWAM contour data in place when stepping to another ready frame', () => {
+    const map = createMap();
+    syncWaveContourLayers(map, ['ECWAM'], true, false, readyPackage);
+
+    const source = map.getSource('wave-contours-ECWAM');
+    map.removeSource.mockClear();
+
+    syncWaveContourLayers(map, ['ECWAM'], true, false, {
+      ...readyPackage,
+      ecwamForecastHour: 3,
+    });
+
+    expect(source.setData).toHaveBeenCalledWith(
+      '/wavetiles/ECWAM/contours/2026SEP01/2026090103/contours.geojson'
+    );
+    expect(map.removeSource).not.toHaveBeenCalledWith('wave-contours-ECWAM');
   });
 });
