@@ -47,16 +47,21 @@ const ECWAM_FORECAST_OFFSETS = {
   '48-hour forecast': { days: 2, hour: '00' },
 };
 
-export const ECWAM_REQUIRED_FORECAST_HOURS = Object.freeze(
+export const WW3_REQUIRED_FORECAST_HOURS = Object.freeze(
   Array.from({ length: 21 }, (_, index) => index * 3)
 );
+export const ECWAM_REQUIRED_FORECAST_HOURS = WW3_REQUIRED_FORECAST_HOURS;
 
-const ECWAM_CHART_WINDOWS = Object.freeze({
-  analysis: [0],
-  '24h': ECWAM_REQUIRED_FORECAST_HOURS.filter((hour) => hour <= 35),
-  '36h': ECWAM_REQUIRED_FORECAST_HOURS.filter((hour) => hour >= 25 && hour <= 47),
-  '48h': ECWAM_REQUIRED_FORECAST_HOURS.filter((hour) => hour >= 37 && hour <= 60),
-});
+const buildChartWindows = (forecastHours) =>
+  Object.freeze({
+    analysis: [0],
+    '24h': forecastHours.filter((hour) => hour <= 35),
+    '36h': forecastHours.filter((hour) => hour >= 25 && hour <= 47),
+    '48h': forecastHours.filter((hour) => hour >= 37 && hour <= 60),
+  });
+
+const WW3_CHART_WINDOWS = buildChartWindows(WW3_REQUIRED_FORECAST_HOURS);
+const ECWAM_CHART_WINDOWS = buildChartWindows(ECWAM_REQUIRED_FORECAST_HOURS);
 
 const DEFAULT_WW3_OFFSET = WW3_FORECAST_OFFSETS.analysis;
 const DEFAULT_ECWAM_OFFSET = ECWAM_FORECAST_OFFSETS.analysis;
@@ -87,6 +92,8 @@ const chartWindowKey = (chartType) => {
   return hourMatch ? `${hourMatch[1]}h` : 'analysis';
 };
 
+export const getWW3ForecastHours = (chartType) => WW3_CHART_WINDOWS[chartWindowKey(chartType)];
+
 export const getECWAMForecastHours = (chartType) => ECWAM_CHART_WINDOWS[chartWindowKey(chartType)];
 
 const resolveOffset = (chartType) => {
@@ -111,7 +118,7 @@ const resolveECWAMOffset = (chartType) => {
   return ECWAM_FORECAST_OFFSETS[`forecast ${hourMatch[1]}h`] ?? DEFAULT_ECWAM_OFFSET;
 };
 
-const normalizeECWAMForecastHour = (forecastHour) => {
+const normalizeForecastHour = (forecastHour) => {
   if (forecastHour === undefined || forecastHour === null || forecastHour === '') {
     return null;
   }
@@ -160,25 +167,45 @@ export const formatWW3PackageDate = (forecastDate) => {
   return `${date.getUTCFullYear()}${MONTH_TOKENS[date.getUTCMonth()]}${pad2(date.getUTCDate())}`;
 };
 
-export const resolveWW3ForecastRun = ({ forecastDate, chartType } = {}) => {
-  const offset = resolveOffset(chartType);
+export const resolveWW3ForecastRun = ({ forecastDate, chartType, forecastHour } = {}) => {
+  const packageBaseDate = parseForecastDate(forecastDate);
   const packageDate = formatWW3PackageDate(forecastDate);
-  const date = shiftDate(parseForecastDate(forecastDate), offset.days);
-  const yyyymmdd = formatCompactDate(date);
-  const runDateTime = `${yyyymmdd}${offset.hour}`;
+  const analysisTime = shiftDate(packageBaseDate, -1);
+  analysisTime.setUTCHours(18, 0, 0, 0);
+  const explicitHour = normalizeForecastHour(forecastHour);
+
+  let validTime;
+  let resolvedForecastHour;
+
+  if (explicitHour !== null) {
+    validTime = new Date(analysisTime.getTime() + explicitHour * 60 * 60 * 1000);
+    resolvedForecastHour = explicitHour;
+  } else {
+    const offset = resolveOffset(chartType);
+    validTime = shiftDate(packageBaseDate, offset.days);
+    validTime.setUTCHours(Number(offset.hour), 0, 0, 0);
+    resolvedForecastHour = Math.round(
+      (validTime.getTime() - analysisTime.getTime()) / 3_600_000
+    );
+  }
+
+  const yyyymmdd = formatCompactDate(validTime);
+  const hour = pad2(validTime.getUTCHours());
+  const runDateTime = `${yyyymmdd}${hour}`;
 
   return {
     runTag: `${packageDate}/${runDateTime}`,
     runDateTime,
-    filenameTimestamp: `${yyyymmdd}T${offset.hour}`,
+    filenameTimestamp: `${yyyymmdd}T${hour}`,
     packageDate,
+    forecastHour: resolvedForecastHour,
   };
 };
 
 export const resolveECWAMForecastRun = ({ forecastDate, chartType, forecastHour } = {}) => {
   const packageBaseDate = parseForecastDate(forecastDate);
   const packageDate = formatWW3PackageDate(forecastDate);
-  const explicitHour = normalizeECWAMForecastHour(forecastHour);
+  const explicitHour = normalizeForecastHour(forecastHour);
 
   let validTime;
   let resolvedForecastHour;
