@@ -45,7 +45,20 @@ describe('resolveECWAMForecastRun', () => {
 describe('getECWAMForecastHours', () => {
   it('returns the TL chart windows on the 3-hour cadence', () => {
     expect(getECWAMForecastHours('analysis')).toEqual([0]);
-    expect(getECWAMForecastHours('24h forecast')).toEqual([0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33]);
+    expect(getECWAMForecastHours('24h forecast')).toEqual([
+      0,
+      3,
+      6,
+      9,
+      12,
+      15,
+      18,
+      21,
+      24,
+      27,
+      30,
+      33,
+    ]);
     expect(getECWAMForecastHours('36h forecast')).toEqual([27, 30, 33, 36, 39, 42, 45]);
     expect(getECWAMForecastHours('48h forecast')).toEqual([39, 42, 45, 48, 51, 54, 57, 60]);
   });
