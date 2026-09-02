@@ -23,6 +23,23 @@ class WW3PackageSelectionTests(unittest.TestCase):
             (cycle_dir / f"ww3_grdo.{stamp[:8]}T{stamp[8:]}.nc").touch()
         return cycle_dir
 
+    def test_required_valid_times_cover_three_hour_frames_through_t60(self) -> None:
+        required = selection.required_valid_times(self.package_date)
+
+        self.assertEqual(len(required), 21)
+        self.assertEqual(required[0], "2026071518")
+        self.assertEqual(required[8], "2026071618")
+        self.assertEqual(required[12], "2026071706")
+        self.assertEqual(required[16], "2026071718")
+        self.assertEqual(required[-1], "2026071806")
+        self.assertTrue(
+            all(
+                datetime.strptime(later, "%Y%m%d%H") - datetime.strptime(earlier, "%Y%m%d%H")
+                == selection.timedelta(hours=3)
+                for earlier, later in zip(required, required[1:])
+            )
+        )
+
     def test_newest_complete_cycle_selected(self) -> None:
         required = selection.required_valid_times(self.package_date)
         with tempfile.TemporaryDirectory() as tmp:
