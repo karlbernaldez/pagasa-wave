@@ -8,7 +8,12 @@ import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
 import { ensureEcwamFrameReady } from '@/api/ecwamFrames';
 import { WAVE_ELEMENTS, OFF_ELEMENTS, DEFAULT_DIRECTION_STYLE } from '../constants/layerConstants';
 import { normalizeModelName } from './waveConfig/waveHelpers';
-import { getECWAMForecastHours, resolveECWAMForecastRun } from './waveConfig/ww3ForecastRuns';
+import {
+  getECWAMForecastHours,
+  getWW3ForecastHours,
+  resolveECWAMForecastRun,
+  resolveWW3ForecastRun,
+} from './waveConfig/ww3ForecastRuns';
 import { syncAllWaveLayers } from './waveConfig/waveLayerSync';
 import { useWaveStorage } from './waveConfig/useWaveStorage';
 import { useProjectData } from '../../Menu/hooks/useProjectData';
@@ -32,6 +37,19 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const ecwamRequestRef = useRef(0);
   const { chartType, forecastDate } = useProjectData();
   const packageKey = `${forecastDate ?? ''}|${chartType ?? ''}`;
+  const ww3ForecastHours = useMemo(() => getWW3ForecastHours(chartType), [chartType]);
+  const defaultWW3ForecastHour = useMemo(
+    () => resolveWW3ForecastRun({ chartType, forecastDate }).forecastHour,
+    [chartType, forecastDate]
+  );
+  const [ww3Selection, setWW3Selection] = useState(() => ({
+    packageKey: null,
+    forecastHour: defaultWW3ForecastHour,
+  }));
+  const ww3ForecastHour =
+    ww3Selection.packageKey === packageKey
+      ? ww3Selection.forecastHour
+      : defaultWW3ForecastHour;
   const ecwamForecastHours = useMemo(() => getECWAMForecastHours(chartType), [chartType]);
   const defaultEcwamForecastHour = useMemo(
     () => resolveECWAMForecastRun({ chartType, forecastDate }).forecastHour,
@@ -52,8 +70,14 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const visibleEcwamFrameState =
     ecwamFrameState.packageKey === packageKey ? ecwamFrameState : IDLE_ECWAM_FRAME;
   const forecastPackage = useMemo(
-    () => ({ chartType, forecastDate, ecwamForecastHour, ecwamFrameReady }),
-    [chartType, forecastDate, ecwamForecastHour, ecwamFrameReady]
+    () => ({
+      chartType,
+      forecastDate,
+      ww3ForecastHour,
+      ecwamForecastHour,
+      ecwamFrameReady,
+    }),
+    [chartType, forecastDate, ww3ForecastHour, ecwamForecastHour, ecwamFrameReady]
   );
 
   const { readWaveStorage, saveEnabled, saveModels, saveElements, saveDirectionStyle } =
@@ -145,6 +169,38 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       }
     },
     [ecwamForecastHour, ecwamFrameReady, ecwamForecastHours, forecastDate, packageKey]
+  );
+
+  const setWW3ForecastHour = useCallback(
+    (nextValue) => {
+      const nextHour = Number(nextValue);
+      if (!ww3ForecastHours.includes(nextHour)) {
+        return {
+          state: 'invalid',
+          message: 'This forecast hour is outside the WW3 window for the current chart.',
+        };
+      }
+
+      setWW3Selection({ packageKey, forecastHour: nextHour });
+      return { state: 'ready', forecastHour: nextHour };
+    },
+    [packageKey, ww3ForecastHours]
+  );
+
+  const stepWW3ForecastHour = useCallback(
+    (direction) => {
+      const currentIndex = ww3ForecastHours.indexOf(ww3ForecastHour);
+      if (currentIndex < 0) return { state: 'invalid' };
+      const nextIndex = Math.min(
+        ww3ForecastHours.length - 1,
+        Math.max(0, currentIndex + Math.sign(direction))
+      );
+      if (nextIndex === currentIndex) {
+        return { state: 'ready', forecastHour: ww3ForecastHour };
+      }
+      return setWW3ForecastHour(ww3ForecastHours[nextIndex]);
+    },
+    [setWW3ForecastHour, ww3ForecastHour, ww3ForecastHours]
   );
 
   const ecwamActive = waveConfig.enabled && waveConfig.models.includes('ECWAM');
@@ -308,6 +364,16 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const waveConfigView = useMemo(
     () => ({
       ...waveConfig,
+      ww3Frame: {
+        state: 'ready',
+        message: null,
+        forecastHour: ww3ForecastHour,
+        availableHours: ww3ForecastHours,
+        minHour: ww3ForecastHours[0],
+        maxHour: ww3ForecastHours[ww3ForecastHours.length - 1],
+      },
+      setWW3ForecastHour,
+      stepWW3ForecastHour,
       ecwamFrame: {
         forecastHour: ecwamForecastHour,
         availableHours: ecwamForecastHours,
@@ -320,6 +386,10 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     }),
     [
       waveConfig,
+      ww3ForecastHour,
+      ww3ForecastHours,
+      setWW3ForecastHour,
+      stepWW3ForecastHour,
       ecwamForecastHour,
       ecwamForecastHours,
       visibleEcwamFrameState,
