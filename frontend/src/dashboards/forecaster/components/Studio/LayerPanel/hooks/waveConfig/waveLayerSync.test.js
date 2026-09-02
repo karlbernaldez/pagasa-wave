@@ -187,22 +187,71 @@ describe('WW3 forecast navigation', () => {
     ww3ForecastHour: 24,
   };
 
-  it('updates WW3 raster tiles in place when stepping to another frame', () => {
+  it('creates the first WW3 raster in the active crossfade slot', () => {
     const map = createMap();
+
     syncWaveRasterLayers(map, ['WW3'], true, false, false, ww3Package);
 
-    const source = map.getSource('wave-source-model-WW3');
-    expect(source.tiles).toEqual(['/wavetiles/WW3/light/2026SEP01/2026090118/{z}/{x}/{y}.png']);
+    expect(map.addSource).toHaveBeenCalledWith(
+      'ww3-crossfade-source-a',
+      expect.objectContaining({
+        type: 'raster',
+        tiles: ['/wavetiles/WW3/light/2026SEP01/2026090118/{z}/{x}/{y}.png'],
+      })
+    );
+    expect(map.addLayer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'ww3-crossfade-layer-a',
+        paint: expect.objectContaining({ 'raster-opacity': 1 }),
+      }),
+      'graticules'
+    );
+  });
+
+  it('keeps the old WW3 raster visible until the new frame is loaded, then crossfades', () => {
+    vi.useFakeTimers();
+    const map = createMap();
+
+    syncWaveRasterLayers(map, ['WW3'], true, false, false, ww3Package);
+    map.removeLayer.mockClear();
+    map.removeSource.mockClear();
+    map.setPaintProperty.mockClear();
 
     syncWaveRasterLayers(map, ['WW3'], true, false, false, {
       ...ww3Package,
       ww3ForecastHour: 27,
     });
 
-    expect(source.setTiles).toHaveBeenCalledWith([
-      '/wavetiles/WW3/light/2026SEP01/2026090121/{z}/{x}/{y}.png',
-    ]);
-    expect(map.removeSource).not.toHaveBeenCalledWith('wave-source-model-WW3');
+    expect(map.getSource('ww3-crossfade-source-a')).toBeTruthy();
+    expect(map.getSource('ww3-crossfade-source-b')).toBeTruthy();
+    expect(map.removeSource).not.toHaveBeenCalledWith('ww3-crossfade-source-a');
+    expect(map.addLayer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        id: 'ww3-crossfade-layer-b',
+        paint: expect.objectContaining({ 'raster-opacity': 0 }),
+      }),
+      'graticules'
+    );
+
+    map.emit('sourcedata', {
+      sourceId: 'ww3-crossfade-source-b',
+      isSourceLoaded: true,
+    });
+
+    expect(map.setPaintProperty).toHaveBeenCalledWith(
+      'ww3-crossfade-layer-a',
+      'raster-opacity',
+      0
+    );
+    expect(map.setPaintProperty).toHaveBeenCalledWith(
+      'ww3-crossfade-layer-b',
+      'raster-opacity',
+      1
+    );
+
+    vi.advanceTimersByTime(500);
+    expect(map.removeSource).toHaveBeenCalledWith('ww3-crossfade-source-a');
+    vi.useRealTimers();
   });
 
   it('updates WW3 contour data in place when stepping to another frame', () => {
