@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getECWAMForecastHours,
+  getWW3ForecastHours,
   resolveECWAMForecastRun,
   resolveWW3ForecastRun,
 } from './ww3ForecastRuns';
@@ -54,12 +55,49 @@ describe('getECWAMForecastHours', () => {
 });
 
 describe('resolveWW3ForecastRun', () => {
-  it('is unaffected by ECWAM forecast-window support', () => {
+  it('keeps the existing chart-type defaults as analysis-relative anchors', () => {
+    expect(
+      resolveWW3ForecastRun({ forecastDate: '2026-09-01', chartType: 'analysis' })
+    ).toMatchObject({ forecastHour: 0, runDateTime: '2026083118' });
     expect(
       resolveWW3ForecastRun({ forecastDate: '2026-09-01', chartType: '24h forecast' })
     ).toMatchObject({
+      forecastHour: 24,
       runDateTime: '2026090118',
       runTag: '2026SEP01/2026090118',
     });
+    expect(
+      resolveWW3ForecastRun({ forecastDate: '2026-09-01', chartType: '36h forecast' })
+    ).toMatchObject({ forecastHour: 36, runDateTime: '2026090206' });
+    expect(
+      resolveWW3ForecastRun({ forecastDate: '2026-09-01', chartType: '48h forecast' })
+    ).toMatchObject({ forecastHour: 48, runDateTime: '2026090218' });
+  });
+
+  it('uses explicit valid three-hour frames through T+60', () => {
+    expect(
+      resolveWW3ForecastRun({ forecastDate: '2026-09-01', forecastHour: 3 })
+    ).toMatchObject({ forecastHour: 3, runDateTime: '2026083121' });
+    expect(
+      resolveWW3ForecastRun({ forecastDate: '2026-09-01', forecastHour: 60 })
+    ).toMatchObject({ forecastHour: 60, runDateTime: '2026090306' });
+  });
+
+  it('falls back to the chart default when an explicit hour is off cadence', () => {
+    expect(
+      resolveWW3ForecastRun({
+        forecastDate: '2026-09-01',
+        chartType: '24h forecast',
+        forecastHour: 25,
+      })
+    ).toMatchObject({ forecastHour: 24, runDateTime: '2026090118' });
+  });
+});
+
+describe('getWW3ForecastHours', () => {
+  it('matches the ECWAM chart windows on the 3-hour cadence', () => {
+    for (const chartType of ['analysis', '24h forecast', '36h forecast', '48h forecast']) {
+      expect(getWW3ForecastHours(chartType)).toEqual(getECWAMForecastHours(chartType));
+    }
   });
 });
