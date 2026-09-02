@@ -36,8 +36,10 @@ const resolveForecastContext = ({ forecastDate, chartType, forecastHour }) =>
 const TILE_URL_BUILDERS = {
   MRI3: ({ theme, date }) =>
     `${WAVE_BUCKET_BASE}/MRI3/${theme}/${date}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`,
-  WW3: ({ theme, forecastDate, chartType }) => {
-    const { runTag } = resolveWW3ForecastRun(resolveForecastContext({ forecastDate, chartType }));
+  WW3: ({ theme, forecastDate, chartType, forecastHour }) => {
+    const { runTag } = resolveWW3ForecastRun(
+      resolveForecastContext({ forecastDate, chartType, forecastHour })
+    );
     return `${WW3_TILE_BASE}/WW3/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
   ECWAM: ({ theme, forecastDate, chartType, forecastHour }) => {
@@ -63,8 +65,10 @@ export const buildWaveTileUrl = ({ model, theme, date, forecastDate, chartType, 
 };
 
 const CONTOUR_URL_BUILDERS = {
-  WW3: ({ forecastDate, chartType }) => {
-    const { runTag } = resolveWW3ForecastRun(resolveForecastContext({ forecastDate, chartType }));
+  WW3: ({ forecastDate, chartType, forecastHour }) => {
+    const { runTag } = resolveWW3ForecastRun(
+      resolveForecastContext({ forecastDate, chartType, forecastHour })
+    );
     return `${WW3_TILE_BASE}/WW3/contours/${runTag}/contours.geojson`;
   },
   ECWAM: ({ forecastDate, chartType, forecastHour }) => {
@@ -80,8 +84,8 @@ export const buildWaveContourUrl = ({ model, forecastDate, chartType, forecastHo
   return builder ? builder({ forecastDate, chartType, forecastHour }) : null;
 };
 
-export const buildWW3ContourUrl = ({ forecastDate, chartType } = {}) =>
-  buildWaveContourUrl({ model: 'WW3', forecastDate, chartType });
+export const buildWW3ContourUrl = ({ forecastDate, chartType, forecastHour } = {}) =>
+  buildWaveContourUrl({ model: 'WW3', forecastDate, chartType, forecastHour });
 
 export const buildECWAMContourUrl = ({ forecastDate, chartType, forecastHour } = {}) =>
   buildWaveContourUrl({ model: 'ECWAM', forecastDate, chartType, forecastHour });
