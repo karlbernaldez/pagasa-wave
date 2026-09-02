@@ -192,7 +192,7 @@ describe('WW3 forecast navigation', () => {
     const map = createMap();
     syncWaveRasterLayers(map, ['WW3'], true, false, false, ww3Package);
 
-    const source = map.getSource('wave-raster-source-WW3');
+    const source = map.getSource('wave-source-model-WW3');
     expect(source.tiles).toEqual([
       '/wavetiles/WW3/light/2026SEP01/2026090118/{z}/{x}/{y}.png',
     ]);
@@ -205,7 +205,7 @@ describe('WW3 forecast navigation', () => {
     expect(source.setTiles).toHaveBeenCalledWith([
       '/wavetiles/WW3/light/2026SEP01/2026090121/{z}/{x}/{y}.png',
     ]);
-    expect(map.removeSource).not.toHaveBeenCalledWith('wave-raster-source-WW3');
+    expect(map.removeSource).not.toHaveBeenCalledWith('wave-source-model-WW3');
   });
 
   it('updates WW3 contour data in place when stepping to another frame', () => {
