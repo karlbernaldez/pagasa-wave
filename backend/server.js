@@ -30,6 +30,7 @@ import pdfRoutes from './routes/pdfRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import { createShutdownHandler } from './services/gracefulShutdown.js';
 import { initSocket } from './socket/index.js';
 import { setIo } from './socket/socketEmitter.js';
 import { errorLogger } from './utils/errorLogger.js';
@@ -235,42 +236,11 @@ const startServer = async () => {
     dnsServers: isProduction ? undefined : dns.getServers(),
   });
 
-  let shuttingDown = false;
-
-  const shutdown = (signal) => {
-    if (shuttingDown) {
-      return;
-    }
-
-    shuttingDown = true;
-
-    logger.info('WaveLab API shutdown requested', {
-      signal,
-    });
-
-    const forceShutdownTimer = setTimeout(() => {
-      logger.error('WaveLab API shutdown timed out');
-      process.exit(1);
-    }, 10_000);
-
-    forceShutdownTimer.unref();
-
-    httpServer.close((error) => {
-      clearTimeout(forceShutdownTimer);
-
-      if (error) {
-        logger.error('WaveLab API shutdown failed', {
-          message: error.message,
-          stack: error.stack,
-        });
-
-        process.exit(1);
-      }
-
-      logger.info('WaveLab API stopped');
-      process.exit(0);
-    });
-  };
+  const shutdown = createShutdownHandler({
+    httpServer,
+    socketServer: io,
+    logger,
+  });
 
   process.once('SIGINT', () => shutdown('SIGINT'));
   process.once('SIGTERM', () => shutdown('SIGTERM'));
