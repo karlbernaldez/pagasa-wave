@@ -168,10 +168,12 @@ printf '%s\n' "$DEPLOY_SHA" > "$FRONTEND_DIST/deployed-revision.txt"
 chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIST"
 make_path_traversable "$FRONTEND_DIST"
 make_path_traversable "$WAVETILES_ROOT"
-find "$FRONTEND_DIST" -type d -exec chmod 755 {} \;
-find "$FRONTEND_DIST" -type f -exec chmod 644 {} \;
-find "$WAVETILES_ROOT" -type d -exec chmod 755 {} \;
-find "$WAVETILES_ROOT" -type f -exec chmod 644 {} \;
+# Batch chmod arguments so large WW3/ECWAM tile caches do not spawn one chmod
+# process per file during every deployment.
+find "$FRONTEND_DIST" -type d -exec chmod 755 {} +
+find "$FRONTEND_DIST" -type f -exec chmod 644 {} +
+find "$WAVETILES_ROOT" -type d -exec chmod 755 {} +
+find "$WAVETILES_ROOT" -type f -exec chmod 644 {} +
 
 if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]]; then
   if command -v semanage >/dev/null 2>&1; then
