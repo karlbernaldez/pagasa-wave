@@ -133,7 +133,11 @@ print(f"{v.year}{m[v.month-1]}{v.day:02d}")
 PY
   )"
   if [[ -e "$marker" ]]; then
-    contour_count=$(find "$TILE_ROOT/contours/$tag" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
+    if [[ -d "$TILE_ROOT/contours/$tag" ]]; then
+      contour_count=$(find "$TILE_ROOT/contours/$tag" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
+    else
+      contour_count=0
+    fi
     if (( contour_count == REQUIRED_FRAME_COUNT )); then
       log "package already built: $package_date"
       return 0
