@@ -26,7 +26,7 @@ describe('ECWAM three-hour wave URLs', () => {
     expect(url).toContain('/ECWAM/contours/2026SEP01/2026090203/contours.geojson');
   });
 
-  it('does not apply ECWAM forecastHour to WW3 URL resolution', () => {
+  it('applies an explicit forecast hour to WW3 URL resolution', () => {
     const url = buildWaveTileUrl({
       model: 'WW3',
       theme: 'dark',
@@ -35,6 +35,6 @@ describe('ECWAM three-hour wave URLs', () => {
       forecastHour: 3,
     });
 
-    expect(url).toContain('/WW3/dark/2026SEP01/2026090118/{z}/{x}/{y}.png');
+    expect(url).toContain('/WW3/dark/2026SEP01/2026083121/{z}/{x}/{y}.png');
   });
 });
