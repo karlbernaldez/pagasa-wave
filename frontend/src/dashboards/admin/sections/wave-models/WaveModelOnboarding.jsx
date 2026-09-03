@@ -41,18 +41,21 @@ export default function WaveModelOnboarding({ isDarkMode }) {
     [onboardableModels, selectedCode]
   );
 
+  const applyLoadedModels = (nextModels) => {
+    setModels(nextModels);
+    const candidates = nextModels.filter((model) => !['WW3', 'ECWAM'].includes(model.code));
+    const nextCode = candidates.some((model) => model.code === selectedCode)
+      ? selectedCode
+      : candidates[0]?.code || '';
+    setSelectedCode(nextCode);
+    setProfile(profileFromModel(candidates.find((model) => model.code === nextCode)));
+  };
+
   const loadModels = async () => {
     setLoading(true);
     try {
       const result = await fetchWaveModels();
-      const nextModels = result?.models || [];
-      setModels(nextModels);
-      const candidates = nextModels.filter((model) => !['WW3', 'ECWAM'].includes(model.code));
-      const nextCode = candidates.some((model) => model.code === selectedCode)
-        ? selectedCode
-        : candidates[0]?.code || '';
-      setSelectedCode(nextCode);
-      setProfile(profileFromModel(candidates.find((model) => model.code === nextCode)));
+      applyLoadedModels(result?.models || []);
       setMessage(null);
     } catch (error) {
       setMessage({ type: 'error', text: normalizeError(error, 'Unable to load wave models.') });
@@ -62,9 +65,30 @@ export default function WaveModelOnboarding({ isDarkMode }) {
   };
 
   useEffect(() => {
-    void loadModels();
-    // Initial registry load only. Manual refresh is available for later changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let active = true;
+
+    fetchWaveModels()
+      .then((result) => {
+        if (!active) return;
+        const nextModels = result?.models || [];
+        setModels(nextModels);
+        const candidates = nextModels.filter((model) => !['WW3', 'ECWAM'].includes(model.code));
+        const nextCode = candidates[0]?.code || '';
+        setSelectedCode(nextCode);
+        setProfile(profileFromModel(candidates[0]));
+        setMessage(null);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setMessage({ type: 'error', text: normalizeError(error, 'Unable to load wave models.') });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const chooseModel = (code) => {
