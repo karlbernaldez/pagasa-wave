@@ -42,7 +42,7 @@ PY
 )"
 
 contour_root="$OUTPUT_ROOT/contours/$package_tag"
-if [[ -d "$contour_root" ]] && "$PYTHON_BIN" - "$contour_root" "$OUTPUT_ROOT" "$package_date" "$package_tag" "$target_cycle" <<'PY'
+if [[ -d "$contour_root" ]] && "$PYTHON_BIN" - "$contour_root" "$OUTPUT_ROOT" "$package_tag" "$target_cycle" <<'PY'
 import json
 import sys
 from datetime import datetime, timedelta
@@ -50,9 +50,9 @@ from pathlib import Path
 
 contour_root = Path(sys.argv[1])
 output_root = Path(sys.argv[2])
-start = datetime.strptime(sys.argv[3], "%Y-%m-%d")
-package_tag = sys.argv[4]
-target_cycle = sys.argv[5]
+package_tag = sys.argv[3]
+target_cycle = sys.argv[4]
+start = datetime.strptime(target_cycle, "%Y%m%d%H")
 metadata_path = contour_root / "package.json"
 try:
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
