@@ -18,6 +18,7 @@ import {
   fetchWaveModels,
   runWaveModelBuilder,
   setWaveModelEnabled,
+  setWaveModelRuntimeProfile,
 } from './waveModels';
 
 describe('waveModels API', () => {
@@ -53,6 +54,25 @@ describe('waveModels API', () => {
     await setWaveModelEnabled('WW3', false);
     expect(api.patch).toHaveBeenCalledWith('/admin/wave-models/WW3/availability', {
       enabled: false,
+    });
+  });
+
+  it('updates a managed runtime profile', async () => {
+    const runtimeProfile = {
+      mode: 'managed_timestamp',
+      cycleDayOffset: -1,
+      cycleHourUtc: 18,
+      forecastCadenceHours: 3,
+      maxForecastHour: 60,
+      rasterScheme: 'xyz',
+      bounds: [100, -5, 180, 50],
+      contoursEnabled: false,
+    };
+    api.patch.mockResolvedValueOnce({ data: { model: { code: 'CUSTOM', runtimeProfile } } });
+
+    await setWaveModelRuntimeProfile('CUSTOM', runtimeProfile);
+    expect(api.patch).toHaveBeenCalledWith('/admin/wave-models/CUSTOM/runtime-profile', {
+      runtimeProfile,
     });
   });
 
