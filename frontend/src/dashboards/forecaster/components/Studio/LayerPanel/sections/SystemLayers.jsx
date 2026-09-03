@@ -195,19 +195,22 @@ const SystemLayersSection = ({
 
   React.useEffect(() => {
     const parsed = dayjs(forecastDate);
-    if (!parsed.isValid()) {
-      setEcwamAvailability({
-        state: 'unavailable',
-        message: 'Forecast package date is not available.',
-      });
-      return undefined;
-    }
-
-    const packageDate = parsed.format('YYYY-MM-DD');
+    const packageDate = parsed.isValid() ? parsed.format('YYYY-MM-DD') : null;
     let disposed = false;
     let firstCheck = true;
 
     const checkAvailability = async () => {
+      await Promise.resolve();
+      if (disposed) return;
+
+      if (!packageDate) {
+        setEcwamAvailability({
+          state: 'unavailable',
+          message: 'Forecast package date is not available.',
+        });
+        return;
+      }
+
       if (firstCheck) {
         setEcwamAvailability({ state: 'checking', message: null });
         firstCheck = false;
@@ -227,11 +230,11 @@ const SystemLayersSection = ({
     };
 
     void checkAvailability();
-    const intervalId = window.setInterval(checkAvailability, 60_000);
+    const intervalId = packageDate ? window.setInterval(checkAvailability, 60_000) : null;
 
     return () => {
       disposed = true;
-      window.clearInterval(intervalId);
+      if (intervalId !== null) window.clearInterval(intervalId);
     };
   }, [ecwamForecastHour, forecastDate]);
 
