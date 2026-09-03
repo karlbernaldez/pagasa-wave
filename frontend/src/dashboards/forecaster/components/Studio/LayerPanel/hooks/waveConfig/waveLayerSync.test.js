@@ -88,7 +88,7 @@ describe('ECWAM readiness gating', () => {
       'ecwam-crossfade-source-a',
       expect.objectContaining({
         type: 'raster',
-        tiles: ['/wavetiles/ECWAM/light/2026SEP01/2026090100/{z}/{x}/{y}.png'],
+        tiles: ['/wavetiles/ECWAM/light/2026SEP01/2026083118/{z}/{x}/{y}.png'],
       })
     );
     expect(map.addLayer).toHaveBeenCalledWith(
@@ -157,7 +157,7 @@ describe('ECWAM readiness gating', () => {
 
     expect(map.addSource).toHaveBeenCalledWith('wave-contours-ECWAM', {
       type: 'geojson',
-      data: '/wavetiles/ECWAM/contours/2026SEP01/2026090100/contours.geojson',
+      data: '/wavetiles/ECWAM/contours/2026SEP01/2026083118/contours.geojson',
     });
   });
 
@@ -174,7 +174,7 @@ describe('ECWAM readiness gating', () => {
     });
 
     expect(source.setData).toHaveBeenCalledWith(
-      '/wavetiles/ECWAM/contours/2026SEP01/2026090103/contours.geojson'
+      '/wavetiles/ECWAM/contours/2026SEP01/2026083121/contours.geojson'
     );
     expect(map.removeSource).not.toHaveBeenCalledWith('wave-contours-ECWAM');
   });
