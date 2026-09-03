@@ -81,7 +81,9 @@ function Metric({ label, value, isDarkMode }) {
       >
         {label}
       </div>
-      <div className={cn('mt-1 text-sm font-black', isDarkMode ? 'text-white/85' : 'text-slate-900')}>
+      <div
+        className={cn('mt-1 text-sm font-black', isDarkMode ? 'text-white/85' : 'text-slate-900')}
+      >
         {value ?? '—'}
       </div>
     </div>
@@ -114,7 +116,12 @@ function ModelCard({ model, isDarkMode, busyKey, onToggle, onDeletePackage, onDe
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
+                <h3
+                  className={cn(
+                    'text-base font-black',
+                    isDarkMode ? 'text-white' : 'text-slate-950'
+                  )}
+                >
                   {model.label}
                 </h3>
                 <span
@@ -178,7 +185,11 @@ function ModelCard({ model, isDarkMode, busyKey, onToggle, onDeletePackage, onDe
 
         <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-5">
           <Metric label="Packages" value={model.packageCount} isDarkMode={isDarkMode} />
-          <Metric label="Latest package" value={model.latestPackage || 'None'} isDarkMode={isDarkMode} />
+          <Metric
+            label="Latest package"
+            value={model.latestPackage || 'None'}
+            isDarkMode={isDarkMode}
+          />
           <Metric
             label="Importer"
             value={model.importerConfigured ? 'Configured' : 'Not configured'}
@@ -189,7 +200,11 @@ function ModelCard({ model, isDarkMode, busyKey, onToggle, onDeletePackage, onDe
             value={model.builderConfigured ? 'Configured' : 'Not configured'}
             isDarkMode={isDarkMode}
           />
-          <Metric label="Registry" value={model.builtIn ? 'Built-in' : 'Custom'} isDarkMode={isDarkMode} />
+          <Metric
+            label="Registry"
+            value={model.builtIn ? 'Built-in' : 'Custom'}
+            isDarkMode={isDarkMode}
+          />
         </div>
 
         <button
@@ -221,7 +236,9 @@ function ModelCard({ model, isDarkMode, busyKey, onToggle, onDeletePackage, onDe
               )}
             >
               <Database size={22} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm font-bold">No generated tile packages are connected to this model.</p>
+              <p className="text-sm font-bold">
+                No generated tile packages are connected to this model.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -230,13 +247,17 @@ function ModelCard({ model, isDarkMode, busyKey, onToggle, onDeletePackage, onDe
                   <tr
                     className={cn(
                       'border-b',
-                      isDarkMode ? 'border-white/10 text-white/35' : 'border-slate-200 text-slate-500'
+                      isDarkMode
+                        ? 'border-white/10 text-white/35'
+                        : 'border-slate-200 text-slate-500'
                     )}
                   >
                     <th className="px-2 py-2 font-black uppercase tracking-wide">Package</th>
                     <th className="px-2 py-2 font-black uppercase tracking-wide">Data groups</th>
                     <th className="px-2 py-2 font-black uppercase tracking-wide">Status</th>
-                    <th className="px-2 py-2 text-right font-black uppercase tracking-wide">Action</th>
+                    <th className="px-2 py-2 text-right font-black uppercase tracking-wide">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -247,7 +268,9 @@ function ModelCard({ model, isDarkMode, busyKey, onToggle, onDeletePackage, onDe
                         key={pkg.packageTag}
                         className={cn(
                           'border-b last:border-b-0',
-                          isDarkMode ? 'border-white/[0.06] text-white/70' : 'border-slate-100 text-slate-700'
+                          isDarkMode
+                            ? 'border-white/[0.06] text-white/70'
+                            : 'border-slate-100 text-slate-700'
                         )}
                       >
                         <td className="px-2 py-3 font-black">{pkg.packageTag}</td>
@@ -638,9 +661,9 @@ export default function WaveModelsSection({ isDarkMode }) {
       >
         <HardDrive size={16} className="mt-0.5 shrink-0" />
         <p className="text-[11px] leading-relaxed">
-          Package deletion is intentionally limited to validated model and package identifiers below the
-          WaveLab tile root. Built-in model registry entries cannot be removed; disable them when they
-          should not be used.
+          Package deletion is intentionally limited to validated model and package identifiers below
+          the WaveLab tile root. Built-in model registry entries cannot be removed; disable them
+          when they should not be used.
         </p>
       </div>
     </section>

@@ -52,7 +52,10 @@ const DEFAULT_MODELS = [
   },
 ];
 
-const normalizeCode = (value) => String(value || '').trim().toUpperCase();
+const normalizeCode = (value) =>
+  String(value || '')
+    .trim()
+    .toUpperCase();
 
 const assertModelCode = (value) => {
   const code = normalizeCode(value);
@@ -232,11 +235,7 @@ export const setWaveModelEnabled = async (rawCode, enabled) => {
     throw error;
   }
 
-  const model = await WaveModel.findOneAndUpdate(
-    { code },
-    { $set: { enabled } },
-    { new: true }
-  );
+  const model = await WaveModel.findOneAndUpdate({ code }, { $set: { enabled } }, { new: true });
   if (!model) {
     const error = new Error(`Wave model ${code} was not found.`);
     error.status = 404;
@@ -289,18 +288,14 @@ export const removeCustomWaveModel = async (rawCode) => {
     throw error;
   }
   if (model.builtIn) {
-    const error = new Error(
-      'Built-in wave models cannot be removed. Disable the model instead.'
-    );
+    const error = new Error('Built-in wave models cannot be removed. Disable the model instead.');
     error.status = 409;
     throw error;
   }
 
   const packages = await listPackagesForModel(code);
   if (packages.length > 0) {
-    const error = new Error(
-      'Remove all model packages before deleting the model configuration.'
-    );
+    const error = new Error('Remove all model packages before deleting the model configuration.');
     error.status = 409;
     throw error;
   }
