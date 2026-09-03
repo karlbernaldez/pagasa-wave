@@ -9,6 +9,7 @@ import {
   resolveECWAMForecastRun,
   resolveWW3ForecastRun,
 } from './ww3ForecastRuns';
+import { resolveManagedWaveRun } from './waveModelRuntimeRegistry';
 
 // ── Model helpers ─────────────────────────────────────────────────────────────
 
@@ -58,6 +59,14 @@ const TILE_URL_BUILDERS = {
 
 export const buildWaveTileUrl = ({ model, theme, date, forecastDate, chartType, forecastHour }) => {
   const m = normalizeModelName(model);
+  const managedRun = resolveManagedWaveRun({
+    model: m,
+    ...resolveForecastContext({ forecastDate, chartType, forecastHour }),
+  });
+  if (managedRun) {
+    return `${WW3_TILE_BASE}/${m}/${theme}/${managedRun.runTag}/{z}/{x}/{y}.png`;
+  }
+
   const builder = TILE_URL_BUILDERS[m];
   return builder
     ? builder({ theme, date, forecastDate, chartType, forecastHour })
@@ -80,7 +89,18 @@ const CONTOUR_URL_BUILDERS = {
 };
 
 export const buildWaveContourUrl = ({ model, forecastDate, chartType, forecastHour } = {}) => {
-  const builder = CONTOUR_URL_BUILDERS[normalizeModelName(model)];
+  const normalizedModel = normalizeModelName(model);
+  const managedRun = resolveManagedWaveRun({
+    model: normalizedModel,
+    ...resolveForecastContext({ forecastDate, chartType, forecastHour }),
+  });
+  if (managedRun) {
+    return managedRun.profile.contoursEnabled
+      ? `${WW3_TILE_BASE}/${normalizedModel}/contours/${managedRun.runTag}/contours.geojson`
+      : null;
+  }
+
+  const builder = CONTOUR_URL_BUILDERS[normalizedModel];
   return builder ? builder({ forecastDate, chartType, forecastHour }) : null;
 };
 
