@@ -21,6 +21,7 @@ const ConfigurableLayerGroup = ({
   onToggleModel,
   onSetDirectionStyle,
   onSetBarbStyle,
+  modelStatuses = {},
   afterModelSelector = null,
   isDarkMode,
 }) => {
@@ -138,6 +139,7 @@ const ConfigurableLayerGroup = ({
             models={models}
             selected={config.models}
             onToggle={onToggleModel}
+            modelStatuses={modelStatuses}
             isDarkMode={isDarkMode}
           />
 
