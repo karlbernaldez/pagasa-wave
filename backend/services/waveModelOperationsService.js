@@ -129,6 +129,9 @@ const buildLastError = (service) => {
   return null;
 };
 
+const isBuilderRunning = (service) =>
+  service.ActiveState === 'active' || service.ActiveState === 'activating';
+
 const getUncachedOperations = async (modelCode, latestPackage) => {
   const config = OPERATIONAL_MODELS[modelCode];
   if (!config) {
@@ -172,7 +175,7 @@ const getUncachedOperations = async (modelCode, latestPackage) => {
   const timerLoaded = timer.LoadState === 'loaded';
   const pathLoaded = pathUnit.LoadState === 'loaded';
   const pathActive = pathUnit.ActiveState === 'active';
-  const running = service.ActiveState === 'active';
+  const running = isBuilderRunning(service);
 
   return {
     supported: true,
