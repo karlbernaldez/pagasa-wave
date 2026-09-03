@@ -73,6 +73,9 @@ export const normalizeWaveModelRuntimeProfile = (rawProfile) => {
   if (!['xyz', 'tms'].includes(rasterScheme)) {
     invalidProfile('rasterScheme must be xyz or tms.');
   }
+  if (rawProfile.contoursEnabled === true) {
+    invalidProfile('Dynamic contour onboarding is not supported yet. Use raster-only managed profiles.');
+  }
 
   return {
     mode,
@@ -82,7 +85,7 @@ export const normalizeWaveModelRuntimeProfile = (rawProfile) => {
     maxForecastHour,
     rasterScheme,
     bounds: normalizeBounds(rawProfile.bounds),
-    contoursEnabled: Boolean(rawProfile.contoursEnabled),
+    contoursEnabled: false,
   };
 };
 
