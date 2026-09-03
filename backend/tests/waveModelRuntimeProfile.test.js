@@ -49,3 +49,10 @@ test('rejects invalid geographic bounds', () => {
     /bounds must be valid geographic/
   );
 });
+
+test('rejects dynamic contour onboarding until its lifecycle is supported', () => {
+  assert.throws(
+    () => normalizeWaveModelRuntimeProfile({ ...validProfile, contoursEnabled: true }),
+    /Dynamic contour onboarding is not supported yet/
+  );
+});
