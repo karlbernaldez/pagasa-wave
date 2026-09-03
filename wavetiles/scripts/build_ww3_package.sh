@@ -183,6 +183,23 @@ contour_count=$(find "$ROOT/tiles/WW3/contours/$PACKAGE_TAG" -mindepth 2 -maxdep
   exit 1
 }
 
+metadata_target="$ROOT/tiles/WW3/contours/$PACKAGE_TAG/package.json"
+metadata_tmp="${metadata_target}.tmp.$$"
+cat >"$metadata_tmp" <<EOF
+{
+  "model": "WW3",
+  "packageDate": "$PACKAGE_DATE",
+  "packageTag": "$PACKAGE_TAG",
+  "sourceCycle": "$RESOLVED_SOURCE_CYCLE",
+  "variable": "$VARNAME",
+  "sigma": "$SIGMA",
+  "frameCount": $EXPECTED_FRAME_COUNT,
+  "requiredForecastHours": [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60]
+}
+EOF
+chmod 644 "$metadata_tmp" 2>/dev/null || true
+mv -f "$metadata_tmp" "$metadata_target"
+
 shopt -s nullglob
 package_dirs=("$ROOT/tiles/WW3"/*/"$PACKAGE_TAG")
 shopt -u nullglob
@@ -194,6 +211,7 @@ done
 echo
 echo "+ WW3 forecast package complete: $PACKAGE_DATE (source cycle $RESOLVED_SOURCE_CYCLE)"
 echo "  Contour files: $contour_count"
+echo "  Package metadata: $metadata_target"
 for package_dir in "${package_dirs[@]}"; do
   sample_file=$(find "$package_dir" -type f \( -name '*.png' -o -name 'contours.geojson' \) -print -quit)
   if [[ -n "$sample_file" ]]; then
