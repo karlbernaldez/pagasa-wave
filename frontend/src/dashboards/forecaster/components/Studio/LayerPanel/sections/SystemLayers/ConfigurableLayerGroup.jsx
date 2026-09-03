@@ -92,9 +92,7 @@ const ConfigurableLayerGroup = ({
     : 'bg-white/[0.58] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]';
 
   return (
-    <div
-      className={`studio-liquid-control overflow-hidden rounded-xl border ${border} ${surface}`}
-    >
+    <div className={`studio-liquid-control overflow-hidden rounded-xl border ${border} ${surface}`}>
       <div className="flex min-h-16 items-center">
         <button
           type="button"
