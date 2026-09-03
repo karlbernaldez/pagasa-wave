@@ -2,6 +2,8 @@ import api from './axios';
 
 const unwrap = (response) => response?.data;
 
+export const fetchWaveModelCatalog = async () => unwrap(await api.get('/wave-models'));
+
 export const fetchWaveModels = async () => unwrap(await api.get('/admin/wave-models'));
 
 export const createWaveModel = async (payload) =>
