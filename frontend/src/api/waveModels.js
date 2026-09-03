@@ -14,6 +14,13 @@ export const setWaveModelEnabled = async (code, enabled) =>
     await api.patch(`/admin/wave-models/${encodeURIComponent(code)}/availability`, { enabled })
   );
 
+export const setWaveModelRuntimeProfile = async (code, runtimeProfile) =>
+  unwrap(
+    await api.patch(`/admin/wave-models/${encodeURIComponent(code)}/runtime-profile`, {
+      runtimeProfile,
+    })
+  );
+
 export const runWaveModelBuilder = async (code) =>
   unwrap(await api.post(`/admin/wave-models/${encodeURIComponent(code)}/run-builder`));
 

@@ -8,6 +8,7 @@ import {
   WindBarbStylePanel,
 } from './LayerSelectors';
 import { getSelectedElement, getModelSummary } from '../../utils/layerPanelUtils';
+import { setWaveModelRuntimeCatalog } from '../../hooks/waveConfig/waveModelRuntimeRegistry';
 
 const ConfigurableLayerGroup = ({
   icon,
@@ -37,7 +38,11 @@ const ConfigurableLayerGroup = ({
     const refreshCatalog = async () => {
       try {
         const result = await fetchWaveModelCatalog();
-        if (!disposed) setWaveCatalog(result?.models || []);
+        if (!disposed) {
+          const catalog = result?.models || [];
+          setWaveModelRuntimeCatalog(catalog);
+          setWaveCatalog(catalog);
+        }
       } catch {
         // Keep the bundled model availability as a safe fallback if the catalog cannot be read.
       }
@@ -55,16 +60,24 @@ const ConfigurableLayerGroup = ({
   const effectiveModels = React.useMemo(() => {
     if (title !== 'Wave' || !waveCatalog) return models;
 
-    const catalogByCode = new Map(waveCatalog.map((model) => [model.code, model]));
-    return models.map((model) => {
-      const managed = catalogByCode.get(model.id);
-      if (!managed) return model;
-
+    const bundledByCode = new Map(models.map((model) => [model.id, model]));
+    const managedModels = waveCatalog.map((managed) => {
+      const bundled = bundledByCode.get(managed.code);
       return {
-        ...model,
-        available: Boolean(managed.enabled && managed.hasData && managed.builderConfigured),
+        ...(bundled || {}),
+        id: managed.code,
+        label: managed.label || bundled?.label || managed.code,
+        available: Boolean(
+          managed.enabled &&
+            managed.hasData &&
+            (managed.builderConfigured || managed.runtimeConfigured)
+        ),
       };
     });
+
+    const managedCodes = new Set(managedModels.map((model) => model.id));
+    const fallbackModels = models.filter((model) => !managedCodes.has(model.id));
+    return [...managedModels, ...fallbackModels];
   }, [models, title, waveCatalog]);
 
   const selectedElement = getSelectedElement(config.elements, elements);

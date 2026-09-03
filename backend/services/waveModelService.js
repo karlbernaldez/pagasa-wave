@@ -4,6 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 import WaveModel from '../models/WaveModel.js';
 import { getWaveModelOperations } from './waveModelOperationsService.js';
+import {
+  isWaveModelRuntimeConfigured,
+  normalizeWaveModelRuntimeProfile,
+} from './waveModelRuntimeProfile.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -181,7 +185,9 @@ export const getWaveModelInventory = async (model) => {
   const packages = await listPackagesForModel(model.code);
   const hasData = packages.length > 0;
   const latestPackage = packages[0]?.packageTag || null;
-  const state = !model.enabled ? 'disabled' : hasData ? 'active' : 'no_data';
+  const runtimeConfigured = isWaveModelRuntimeConfigured(model.runtimeProfile);
+  const renderConfigured = Boolean(model.builderConfigured || runtimeConfigured);
+  const state = !model.enabled ? 'disabled' : hasData && renderConfigured ? 'active' : 'no_data';
   const operations = await getWaveModelOperations(model.code, latestPackage);
 
   return {
@@ -193,6 +199,8 @@ export const getWaveModelInventory = async (model) => {
     builtIn: model.builtIn,
     importerConfigured: model.importerConfigured,
     builderConfigured: model.builderConfigured,
+    runtimeConfigured,
+    runtimeProfile: model.runtimeProfile || null,
     state,
     hasData,
     packageCount: packages.length,
@@ -209,7 +217,12 @@ export const listWaveModelsWithInventory = async () => {
   return Promise.all(models.map(getWaveModelInventory));
 };
 
-export const createWaveModel = async ({ code: rawCode, label, description = '' }) => {
+export const createWaveModel = async ({
+  code: rawCode,
+  label,
+  description = '',
+  runtimeProfile = null,
+}) => {
   const code = assertModelCode(rawCode);
   const cleanLabel = String(label || '').trim();
   if (!cleanLabel) {
@@ -217,6 +230,7 @@ export const createWaveModel = async ({ code: rawCode, label, description = '' }
     error.status = 400;
     throw error;
   }
+  const normalizedRuntimeProfile = normalizeWaveModelRuntimeProfile(runtimeProfile);
 
   try {
     return await WaveModel.create({
@@ -227,6 +241,7 @@ export const createWaveModel = async ({ code: rawCode, label, description = '' }
       builtIn: false,
       importerConfigured: false,
       builderConfigured: false,
+      runtimeProfile: normalizedRuntimeProfile,
     });
   } catch (error) {
     if (error?.code === 11000) {
@@ -246,12 +261,47 @@ export const setWaveModelEnabled = async (rawCode, enabled) => {
     throw error;
   }
 
-  const model = await WaveModel.findOneAndUpdate({ code }, { $set: { enabled } }, { new: true });
+  const model = await WaveModel.findOne({ code });
   if (!model) {
     const error = new Error(`Wave model ${code} was not found.`);
     error.status = 404;
     throw error;
   }
+
+  if (enabled && !model.builderConfigured && !isWaveModelRuntimeConfigured(model.runtimeProfile)) {
+    const error = new Error(
+      `Wave model ${code} cannot be enabled until its builder or runtime profile is configured.`
+    );
+    error.status = 409;
+    throw error;
+  }
+
+  model.enabled = enabled;
+  await model.save();
+  return model;
+};
+
+export const setWaveModelRuntimeProfile = async (rawCode, runtimeProfile) => {
+  const code = assertModelCode(rawCode);
+  if (DATE_PACKAGE_MODELS.has(code)) {
+    const error = new Error(
+      `${code} uses its dedicated operational runtime and cannot be replaced by a managed custom profile.`
+    );
+    error.status = 409;
+    throw error;
+  }
+
+  const normalizedRuntimeProfile = normalizeWaveModelRuntimeProfile(runtimeProfile);
+  const model = await WaveModel.findOne({ code });
+  if (!model) {
+    const error = new Error(`Wave model ${code} was not found.`);
+    error.status = 404;
+    throw error;
+  }
+
+  model.runtimeProfile = normalizedRuntimeProfile;
+  if (!normalizedRuntimeProfile) model.enabled = false;
+  await model.save();
   return model;
 };
 
