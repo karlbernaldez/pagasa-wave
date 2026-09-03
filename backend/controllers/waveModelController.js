@@ -7,6 +7,7 @@ import {
   removeCustomWaveModel,
   setWaveModelEnabled,
 } from '../services/waveModelService.js';
+import { triggerWaveModelBuilder } from '../services/waveModelOperationsService.js';
 
 const actorId = (req) => req.user?._id ?? req.user?.id ?? null;
 
@@ -54,6 +55,20 @@ export const updateWaveModelAvailability = async (req, res, next) => {
       enabled: inventory.enabled,
     });
     res.status(200).json({ success: true, model: inventory });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const runWaveModelBuilder = async (req, res, next) => {
+  try {
+    const result = await triggerWaveModelBuilder(req.params.code);
+    await writeAudit(req, 'wave_model.builder.trigger', result);
+    res.status(202).json({
+      success: true,
+      ...result,
+      message: `${result.modelCode} builder run was requested.`,
+    });
   } catch (error) {
     next(error);
   }
