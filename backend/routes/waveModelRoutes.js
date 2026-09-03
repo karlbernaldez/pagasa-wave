@@ -6,6 +6,7 @@ import {
   deleteWaveModelConfiguration,
   listWaveModels,
   removeWaveModelPackage,
+  runWaveModelBuilder,
   updateWaveModelAvailability,
 } from '../controllers/waveModelController.js';
 
@@ -19,10 +20,19 @@ const managementLimiter = rateLimit({
   message: { message: 'Too many wave model management requests. Try again shortly.' },
 });
 
+const builderTriggerLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many manual builder requests. Try again later.' },
+});
+
 router.use(managementLimiter);
 router.get('/', listWaveModels);
 router.post('/', addWaveModel);
 router.patch('/:code/availability', updateWaveModelAvailability);
+router.post('/:code/run-builder', builderTriggerLimiter, runWaveModelBuilder);
 router.delete('/:code/packages/:packageTag', removeWaveModelPackage);
 router.delete('/:code', deleteWaveModelConfiguration);
 
