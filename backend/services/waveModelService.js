@@ -13,6 +13,7 @@ const TILES_ROOT = path.resolve(process.env.WAVELAB_WAVE_TILES_ROOT || DEFAULT_T
 
 const MODEL_CODE_RE = /^[A-Z0-9_-]{2,32}$/;
 const PACKAGE_TAG_RE = /^[A-Z0-9_-]{6,40}$/i;
+const DATE_PACKAGE_MODELS = new Set(['WW3', 'ECWAM']);
 
 const DEFAULT_MODELS = [
   {
@@ -121,6 +122,12 @@ const parsePackageDate = (tag) => {
   return new Date(Date.UTC(Number(match[1]), monthIndex, Number(match[3]))).getTime();
 };
 
+const isInventoryPackageTag = (code, packageTag) => {
+  if (!PACKAGE_TAG_RE.test(packageTag)) return false;
+  if (!DATE_PACKAGE_MODELS.has(code)) return true;
+  return parsePackageDate(packageTag) !== null;
+};
+
 const sortPackageTags = (a, b) => {
   const aDate = parsePackageDate(a);
   const bDate = parsePackageDate(b);
@@ -155,7 +162,7 @@ export const listPackagesForModel = async (rawCode) => {
     const styleRoot = resolveInside(modelRoot, style);
     const packages = await readDirectories(styleRoot);
     for (const packageTag of packages) {
-      if (!PACKAGE_TAG_RE.test(packageTag)) continue;
+      if (!isInventoryPackageTag(code, packageTag)) continue;
       const styles = packageStyles.get(packageTag) || [];
       styles.push(style);
       packageStyles.set(packageTag, styles);
@@ -255,6 +262,11 @@ export const deleteWaveModelPackage = async (rawCode, rawPackageTag) => {
   if (!model) {
     const error = new Error(`Wave model ${code} was not found.`);
     error.status = 404;
+    throw error;
+  }
+  if (DATE_PACKAGE_MODELS.has(code) && parsePackageDate(packageTag) === null) {
+    const error = new Error(`Invalid managed package identifier for ${code}.`);
+    error.status = 400;
     throw error;
   }
 
