@@ -194,4 +194,10 @@ done
 echo
 echo "+ WW3 forecast package complete: $PACKAGE_DATE (source cycle $RESOLVED_SOURCE_CYCLE)"
 echo "  Contour files: $contour_count"
-find "$ROOT/tiles/WW3" -type f \( -name '*.png' -o -name 'contours.geojson' \) | head || true
+for package_dir in "${package_dirs[@]}"; do
+  sample_file=$(find "$package_dir" -type f \( -name '*.png' -o -name 'contours.geojson' \) -print -quit)
+  if [[ -n "$sample_file" ]]; then
+    echo "  Sample output: $sample_file"
+    break
+  fi
+done
