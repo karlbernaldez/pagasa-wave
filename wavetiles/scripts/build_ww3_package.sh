@@ -183,8 +183,13 @@ contour_count=$(find "$ROOT/tiles/WW3/contours/$PACKAGE_TAG" -mindepth 2 -maxdep
   exit 1
 }
 
-find "$ROOT/tiles" -type d -exec chmod 755 {} \; 2>/dev/null || true
-find "$ROOT/tiles" -type f -exec chmod 644 {} \; 2>/dev/null || true
+shopt -s nullglob
+package_dirs=("$ROOT/tiles/WW3"/*/"$PACKAGE_TAG")
+shopt -u nullglob
+for package_dir in "${package_dirs[@]}"; do
+  find "$package_dir" -type d -exec chmod 755 {} + 2>/dev/null || true
+  find "$package_dir" -type f -exec chmod 644 {} + 2>/dev/null || true
+done
 
 echo
 echo "+ WW3 forecast package complete: $PACKAGE_DATE (source cycle $RESOLVED_SOURCE_CYCLE)"
