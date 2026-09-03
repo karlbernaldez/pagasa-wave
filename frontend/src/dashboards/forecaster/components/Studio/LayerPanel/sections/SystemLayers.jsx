@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import {
   ChevronLeft,
   ChevronRight,
+  Link2,
   LoaderCircle,
   Map,
   Satellite,
@@ -26,6 +27,7 @@ import {
 import { useProjectData } from '../../Menu/hooks/useProjectData';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
+const WAVE_SYNC_STORAGE_KEY = 'WAVE_SYNC_FORECAST_HOURS';
 
 const SectionLabel = ({ label, count, isDarkMode, accent = false }) => (
   <div className="flex items-center justify-between px-1">
@@ -144,14 +146,53 @@ const ForecastFrameNavigator = ({ model, frame, onStep, isDarkMode }) => {
   );
 };
 
+const SyncForecastToggle = ({ checked, onChange, isDarkMode }) => (
+  <label
+    className={cn(
+      'flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2',
+      isDarkMode
+        ? 'border-white/10 bg-white/[0.045] text-white/70'
+        : 'border-white/80 bg-white/65 text-slate-700'
+    )}
+  >
+    <span className="flex min-w-0 items-center gap-2">
+      <span
+        className={cn(
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+          checked
+            ? isDarkMode
+              ? 'bg-cyan-400/15 text-cyan-200'
+              : 'bg-blue-500/10 text-blue-700'
+            : isDarkMode
+              ? 'bg-white/[0.06] text-white/35'
+              : 'bg-slate-100 text-slate-400'
+        )}
+      >
+        <Link2 size={14} strokeWidth={2.4} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-black">Sync forecast time</span>
+        <span
+          className={cn(
+            'block text-[9px] font-semibold',
+            isDarkMode ? 'text-white/35' : 'text-slate-400'
+          )}
+        >
+          Step all selected wave models together
+        </span>
+      </span>
+    </span>
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(event) => onChange(event.target.checked)}
+      className="h-4 w-4 shrink-0 accent-cyan-500"
+    />
+  </label>
+);
+
 const countActiveByDefinition = (definitions, state) =>
   definitions.filter((layer) => state[layer.id]).length;
-
-const formatCycleDetail = (cycle) => {
-  const value = String(cycle || '');
-  if (!/^\d{10}$/.test(value)) return null;
-  return `${value.slice(0, 8)} ${value.slice(8)}Z`;
-};
 
 const SystemLayersSection = ({
   expanded,
@@ -184,11 +225,22 @@ const SystemLayersSection = ({
   const referenceCount = domainCount + utilityCount + satelliteOverlayCount;
   const showWW3Navigator = waveConfig?.models?.includes('WW3');
   const showEcwamNavigator = waveConfig?.models?.includes('ECWAM');
+  const multipleWaveNavigators = showWW3Navigator && showEcwamNavigator;
   const ecwamForecastHour = waveConfig?.ecwamFrame?.forecastHour ?? 0;
+  const [syncForecastTime, setSyncForecastTime] = React.useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem(WAVE_SYNC_STORAGE_KEY) !== 'false';
+  });
   const [ecwamAvailability, setEcwamAvailability] = React.useState({
     state: 'checking',
     message: null,
   });
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(WAVE_SYNC_STORAGE_KEY, String(syncForecastTime));
+    }
+  }, [syncForecastTime]);
 
   React.useEffect(() => {
     const parsed = dayjs(forecastDate);
@@ -243,14 +295,11 @@ const SystemLayersSection = ({
         : ecwamAvailability;
 
     if (effectiveStatus?.state === 'ready') {
-      const cycle = formatCycleDetail(
-        effectiveStatus.sourceCycle || effectiveStatus.requiredSourceCycle
-      );
       return {
         ECWAM: {
           state: 'ready',
           label: 'Ready',
-          detail: cycle ? `${cycle} aligned` : 'Aligned forecast package ready',
+          detail: showEcwamNavigator ? 'Visible in map stack' : 'Available',
           selectable: true,
         },
       };
@@ -259,14 +308,11 @@ const SystemLayersSection = ({
     if (
       ['checking', 'building', 'available', 'busy', 'unavailable'].includes(effectiveStatus?.state)
     ) {
-      const targetCycle = formatCycleDetail(effectiveStatus?.requiredSourceCycle);
       return {
         ECWAM: {
           state: 'processing',
           label: 'Processing',
-          detail: targetCycle
-            ? `Waiting for ${targetCycle}`
-            : effectiveStatus?.message || 'Checking aligned ECWAM data',
+          detail: effectiveStatus?.message || 'Checking forecast data',
           selectable: false,
         },
       };
@@ -276,11 +322,58 @@ const SystemLayersSection = ({
       ECWAM: {
         state: 'unavailable',
         label: 'No data',
-        detail: effectiveStatus?.message || 'Aligned ECWAM data is not available.',
+        detail: effectiveStatus?.message || 'Forecast data is not available.',
         selectable: false,
       },
     };
   }, [ecwamAvailability, showEcwamNavigator, waveConfig?.ecwamFrame]);
+
+  const stepSingleModel = React.useCallback(
+    (model, direction) => {
+      if (model === 'WW3') return waveConfig.stepWW3ForecastHour?.(direction);
+      if (model === 'ECWAM') return waveConfig.stepEcwamForecastHour?.(direction);
+      return { state: 'invalid' };
+    },
+    [waveConfig]
+  );
+
+  const stepSyncedModels = React.useCallback(
+    async (sourceModel, direction) => {
+      if (!syncForecastTime || !multipleWaveNavigators) {
+        return stepSingleModel(sourceModel, direction);
+      }
+
+      const sourceFrame = sourceModel === 'ECWAM' ? waveConfig.ecwamFrame : waveConfig.ww3Frame;
+      const sourceHours = sourceFrame?.availableHours || [];
+      const currentIndex = sourceHours.indexOf(sourceFrame?.forecastHour);
+      if (currentIndex < 0) return { state: 'invalid' };
+
+      const nextIndex = Math.min(
+        sourceHours.length - 1,
+        Math.max(0, currentIndex + Math.sign(direction))
+      );
+      const targetHour = sourceHours[nextIndex];
+      if (targetHour === sourceFrame.forecastHour) {
+        return { state: 'ready', forecastHour: targetHour };
+      }
+
+      const ww3SupportsTarget = waveConfig.ww3Frame?.availableHours?.includes(targetHour);
+      const ecwamSupportsTarget = waveConfig.ecwamFrame?.availableHours?.includes(targetHour);
+      if (!ww3SupportsTarget || !ecwamSupportsTarget) {
+        return {
+          state: 'invalid',
+          message: `T+${targetHour} is not available in every selected wave model.`,
+        };
+      }
+
+      const ecwamResult = await waveConfig.setEcwamForecastHour?.(targetHour);
+      if (ecwamResult?.state !== 'ready') return ecwamResult;
+
+      const ww3Result = waveConfig.setWW3ForecastHour?.(targetHour);
+      return ww3Result || ecwamResult;
+    },
+    [multipleWaveNavigators, stepSingleModel, syncForecastTime, waveConfig]
+  );
 
   if (!expanded) return null;
 
@@ -395,11 +488,18 @@ const SystemLayersSection = ({
             afterModelSelector={
               showWW3Navigator || showEcwamNavigator ? (
                 <div className="space-y-2">
+                  {multipleWaveNavigators && (
+                    <SyncForecastToggle
+                      checked={syncForecastTime}
+                      onChange={setSyncForecastTime}
+                      isDarkMode={isDarkMode}
+                    />
+                  )}
                   {showWW3Navigator && (
                     <ForecastFrameNavigator
                       model="WW3"
                       frame={waveConfig.ww3Frame}
-                      onStep={waveConfig.stepWW3ForecastHour}
+                      onStep={(direction) => stepSyncedModels('WW3', direction)}
                       isDarkMode={isDarkMode}
                     />
                   )}
@@ -407,7 +507,7 @@ const SystemLayersSection = ({
                     <ForecastFrameNavigator
                       model="ECWAM"
                       frame={waveConfig.ecwamFrame}
-                      onStep={waveConfig.stepEcwamForecastHour}
+                      onStep={(direction) => stepSyncedModels('ECWAM', direction)}
                       isDarkMode={isDarkMode}
                     />
                   )}
