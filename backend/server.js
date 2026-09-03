@@ -30,6 +30,7 @@ import pdfRoutes from './routes/pdfRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import waveModelCatalogRoutes from './routes/waveModelCatalogRoutes.js';
 import waveModelRoutes from './routes/waveModelRoutes.js';
 import { createShutdownHandler } from './services/gracefulShutdown.js';
 import { initSocket } from './socket/index.js';
@@ -153,6 +154,12 @@ const createApp = () => {
     forecastPackageRoutes
   );
   app.use('/api/ecwam/frames', authenticate, requireRole('forecaster', 'admin'), ecwamFrameRoutes);
+  app.use(
+    '/api/wave-models',
+    authenticate,
+    requireRole('forecaster', 'admin'),
+    waveModelCatalogRoutes
+  );
   app.use('/api/admin/wave-models', authenticate, requireRole('admin'), waveModelRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
