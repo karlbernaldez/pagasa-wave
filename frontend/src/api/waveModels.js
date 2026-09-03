@@ -10,7 +10,9 @@ export const createWaveModel = async (payload) =>
   unwrap(await api.post('/admin/wave-models', payload));
 
 export const setWaveModelEnabled = async (code, enabled) =>
-  unwrap(await api.patch(`/admin/wave-models/${encodeURIComponent(code)}/availability`, { enabled }));
+  unwrap(
+    await api.patch(`/admin/wave-models/${encodeURIComponent(code)}/availability`, { enabled })
+  );
 
 export const deleteWaveModelPackage = async (code, packageTag) =>
   unwrap(
