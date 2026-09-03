@@ -24,29 +24,6 @@ const WW3_FORECAST_OFFSETS = {
   '48-hour forecast': { days: 1, hour: '18' },
 };
 
-const ECWAM_FORECAST_OFFSETS = {
-  analysis: { days: 0, hour: '00' },
-  'wave analysis': { days: 0, hour: '00' },
-  'forecast 24h': { days: 1, hour: '00' },
-  '24h': { days: 1, hour: '00' },
-  '24h forecast': { days: 1, hour: '00' },
-  '24hr forecast': { days: 1, hour: '00' },
-  '24 hour forecast': { days: 1, hour: '00' },
-  '24-hour forecast': { days: 1, hour: '00' },
-  'forecast 36h': { days: 1, hour: '12' },
-  '36h': { days: 1, hour: '12' },
-  '36h forecast': { days: 1, hour: '12' },
-  '36hr forecast': { days: 1, hour: '12' },
-  '36 hour forecast': { days: 1, hour: '12' },
-  '36-hour forecast': { days: 1, hour: '12' },
-  'forecast 48h': { days: 2, hour: '00' },
-  '48h': { days: 2, hour: '00' },
-  '48h forecast': { days: 2, hour: '00' },
-  '48hr forecast': { days: 2, hour: '00' },
-  '48 hour forecast': { days: 2, hour: '00' },
-  '48-hour forecast': { days: 2, hour: '00' },
-};
-
 export const WW3_REQUIRED_FORECAST_HOURS = Object.freeze(
   Array.from({ length: 21 }, (_, index) => index * 3)
 );
@@ -64,7 +41,6 @@ const WW3_CHART_WINDOWS = buildChartWindows(WW3_REQUIRED_FORECAST_HOURS);
 const ECWAM_CHART_WINDOWS = buildChartWindows(ECWAM_REQUIRED_FORECAST_HOURS);
 
 const DEFAULT_WW3_OFFSET = WW3_FORECAST_OFFSETS.analysis;
-const DEFAULT_ECWAM_OFFSET = ECWAM_FORECAST_OFFSETS.analysis;
 const MONTH_TOKENS = [
   'JAN',
   'FEB',
@@ -105,17 +81,6 @@ const resolveOffset = (chartType) => {
   if (!hourMatch) return DEFAULT_WW3_OFFSET;
 
   return WW3_FORECAST_OFFSETS[`forecast ${hourMatch[1]}h`] ?? DEFAULT_WW3_OFFSET;
-};
-
-const resolveECWAMOffset = (chartType) => {
-  const normalized = normalizeChartType(chartType);
-  const directOffset = ECWAM_FORECAST_OFFSETS[normalized];
-  if (directOffset) return directOffset;
-
-  const hourMatch = normalized.match(/(?:forecast\s*)?(24|36|48)\s*(?:h|hr|hour)?/);
-  if (!hourMatch) return DEFAULT_ECWAM_OFFSET;
-
-  return ECWAM_FORECAST_OFFSETS[`forecast ${hourMatch[1]}h`] ?? DEFAULT_ECWAM_OFFSET;
 };
 
 const normalizeForecastHour = (forecastHour) => {
@@ -201,33 +166,12 @@ export const resolveWW3ForecastRun = ({ forecastDate, chartType, forecastHour } 
 };
 
 export const resolveECWAMForecastRun = ({ forecastDate, chartType, forecastHour } = {}) => {
-  const packageBaseDate = parseForecastDate(forecastDate);
-  const packageDate = formatWW3PackageDate(forecastDate);
-  const explicitHour = normalizeForecastHour(forecastHour);
-
-  let validTime;
-  let resolvedForecastHour;
-
-  if (explicitHour !== null) {
-    validTime = new Date(packageBaseDate.getTime() + explicitHour * 60 * 60 * 1000);
-    resolvedForecastHour = explicitHour;
-  } else {
-    const offset = resolveECWAMOffset(chartType);
-    validTime = shiftDate(packageBaseDate, offset.days);
-    validTime.setUTCHours(Number(offset.hour), 0, 0, 0);
-    resolvedForecastHour = Math.round(
-      (validTime.getTime() - packageBaseDate.getTime()) / 3_600_000
-    );
-  }
-
-  const yyyymmdd = formatCompactDate(validTime);
-  const runDateTime = `${yyyymmdd}${pad2(validTime.getUTCHours())}`;
-
+  const resolved = resolveWW3ForecastRun({ forecastDate, chartType, forecastHour });
   return {
-    runTag: `${packageDate}/${runDateTime}`,
-    runDateTime,
-    packageDate,
-    forecastHour: resolvedForecastHour,
+    runTag: resolved.runTag,
+    runDateTime: resolved.runDateTime,
+    packageDate: resolved.packageDate,
+    forecastHour: resolved.forecastHour,
   };
 };
 
