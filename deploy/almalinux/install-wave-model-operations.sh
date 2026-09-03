@@ -23,8 +23,15 @@ for unit in wavelab-ww3-package-builder.service wavelab-ecwam-package-builder.se
 done
 
 install -d -o wavelab -g wavelab -m 0750 "$TRIGGER_ROOT"
-install -o wavelab -g wavelab -m 0640 /dev/null "$TRIGGER_ROOT/ww3.trigger"
-install -o wavelab -g wavelab -m 0640 /dev/null "$TRIGGER_ROOT/ecwam.trigger"
+for trigger_file in ww3.trigger ecwam.trigger; do
+  trigger_path="$TRIGGER_ROOT/$trigger_file"
+  if [[ ! -e "$trigger_path" ]]; then
+    install -o wavelab -g wavelab -m 0640 /dev/null "$trigger_path"
+  else
+    chown wavelab:wavelab "$trigger_path"
+    chmod 0640 "$trigger_path"
+  fi
+done
 
 sed "s|__APP_ROOT__|$APP_ROOT|g" \
   "$DEPLOY_ROOT/wavelab-ww3-manual-build.path" \
