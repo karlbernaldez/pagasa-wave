@@ -231,7 +231,9 @@ export const triggerWaveModelBuilder = async (rawModelCode) => {
     .toUpperCase();
   const config = OPERATIONAL_MODELS[modelCode];
   if (!config) {
-    const error = new Error(`No operational builder is configured for ${modelCode || 'this model'}.`);
+    const error = new Error(
+      `No operational builder is configured for ${modelCode || 'this model'}.`
+    );
     error.status = 409;
     throw error;
   }
@@ -248,7 +250,9 @@ export const triggerWaveModelBuilder = async (rawModelCode) => {
     throw error;
   }
   if (!operations.manualRun.available) {
-    const error = new Error(operations.manualRun.reason || 'Manual builder trigger is unavailable.');
+    const error = new Error(
+      operations.manualRun.reason || 'Manual builder trigger is unavailable.'
+    );
     error.status = 503;
     throw error;
   }
