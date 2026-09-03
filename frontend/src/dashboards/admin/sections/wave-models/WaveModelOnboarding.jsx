@@ -80,7 +80,10 @@ export default function WaveModelOnboarding({ isDarkMode }) {
       })
       .catch((error) => {
         if (!active) return;
-        setMessage({ type: 'error', text: normalizeError(error, 'Unable to load wave models.') });
+        setMessage({
+          type: 'error',
+          text: normalizeError(error, 'Unable to load wave models.'),
+        });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -175,10 +178,20 @@ export default function WaveModelOnboarding({ isDarkMode }) {
               <Waves size={21} />
             </span>
             <div>
-              <h2 className={cn('text-lg font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
+              <h2
+                className={cn(
+                  'text-lg font-black',
+                  isDarkMode ? 'text-white' : 'text-slate-950'
+                )}
+              >
                 Managed model onboarding
               </h2>
-              <p className={cn('mt-1 max-w-2xl text-sm', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
+              <p
+                className={cn(
+                  'mt-1 max-w-2xl text-sm',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                )}
+              >
                 Configure a prebuilt model to use WaveLab&apos;s standard timestamp package layout.
                 This does not create an importer, builder service, or shell command.
               </p>
@@ -210,11 +223,21 @@ export default function WaveModelOnboarding({ isDarkMode }) {
         )}
       >
         {loading ? (
-          <div className={cn('flex min-h-40 items-center justify-center', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+          <div
+            className={cn(
+              'flex min-h-40 items-center justify-center',
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            )}
+          >
             <Loader2 size={18} className="mr-2 animate-spin" /> Loading model registry…
           </div>
         ) : onboardableModels.length === 0 ? (
-          <div className={cn('py-8 text-center', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+          <div
+            className={cn(
+              'py-8 text-center',
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            )}
+          >
             <AlertTriangle size={24} className="mx-auto mb-2" />
             <p className="font-black">No models are available for managed onboarding.</p>
             <p className="mt-1 text-sm">Register a custom model from Wave Models first.</p>
@@ -223,10 +246,19 @@ export default function WaveModelOnboarding({ isDarkMode }) {
           <form onSubmit={saveProfile} className="space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-1.5">
-                <span className={cn('text-xs font-black', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>
+                <span
+                  className={cn(
+                    'text-xs font-black',
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  )}
+                >
                   Model
                 </span>
-                <select value={selectedCode} onChange={(event) => chooseModel(event.target.value)} className={inputClass}>
+                <select
+                  value={selectedCode}
+                  onChange={(event) => chooseModel(event.target.value)}
+                  className={inputClass}
+                >
                   {onboardableModels.map((model) => (
                     <option key={model.code} value={model.code}>
                       {model.label} ({model.code})
@@ -237,13 +269,25 @@ export default function WaveModelOnboarding({ isDarkMode }) {
               <div
                 className={cn(
                   'rounded-xl border px-4 py-3',
-                  isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-slate-200 bg-slate-50'
+                  isDarkMode
+                    ? 'border-white/10 bg-white/[0.025]'
+                    : 'border-slate-200 bg-slate-50'
                 )}
               >
-                <p className={cn('text-xs font-black', isDarkMode ? 'text-white' : 'text-slate-900')}>
+                <p
+                  className={cn(
+                    'text-xs font-black',
+                    isDarkMode ? 'text-white' : 'text-slate-900'
+                  )}
+                >
                   Current readiness
                 </p>
-                <p className={cn('mt-1 text-xs', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
+                <p
+                  className={cn(
+                    'mt-1 text-xs',
+                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                  )}
+                >
                   Runtime: {selectedModel?.runtimeConfigured ? 'Configured' : 'Not configured'} · Data:{' '}
                   {selectedModel?.hasData ? 'Present' : 'No managed package'} · Access:{' '}
                   {selectedModel?.enabled ? 'Enabled' : 'Disabled'}
@@ -253,48 +297,128 @@ export default function WaveModelOnboarding({ isDarkMode }) {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <label className="space-y-1.5">
-                <span className={cn('text-xs font-black', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>
+                <span
+                  className={cn(
+                    'text-xs font-black',
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  )}
+                >
                   Cycle day offset
                 </span>
-                <input type="number" min="-2" max="1" value={profile.cycleDayOffset} onChange={(event) => updateNumber('cycleDayOffset', event.target.value)} className={inputClass} />
+                <input
+                  type="number"
+                  min="-2"
+                  max="1"
+                  value={profile.cycleDayOffset}
+                  onChange={(event) => updateNumber('cycleDayOffset', event.target.value)}
+                  className={inputClass}
+                />
               </label>
               <label className="space-y-1.5">
-                <span className={cn('text-xs font-black', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>
+                <span
+                  className={cn(
+                    'text-xs font-black',
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  )}
+                >
                   Cycle hour UTC
                 </span>
-                <input type="number" min="0" max="23" value={profile.cycleHourUtc} onChange={(event) => updateNumber('cycleHourUtc', event.target.value)} className={inputClass} />
+                <input
+                  type="number"
+                  min="0"
+                  max="23"
+                  value={profile.cycleHourUtc}
+                  onChange={(event) => updateNumber('cycleHourUtc', event.target.value)}
+                  className={inputClass}
+                />
               </label>
               <label className="space-y-1.5">
-                <span className={cn('text-xs font-black', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>
+                <span
+                  className={cn(
+                    'text-xs font-black',
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  )}
+                >
                   Forecast cadence (h)
                 </span>
-                <input type="number" min="1" max="24" value={profile.forecastCadenceHours} onChange={(event) => updateNumber('forecastCadenceHours', event.target.value)} className={inputClass} />
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={profile.forecastCadenceHours}
+                  onChange={(event) => updateNumber('forecastCadenceHours', event.target.value)}
+                  className={inputClass}
+                />
               </label>
               <label className="space-y-1.5">
-                <span className={cn('text-xs font-black', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>
+                <span
+                  className={cn(
+                    'text-xs font-black',
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  )}
+                >
                   Maximum forecast hour
                 </span>
-                <input type="number" min="0" max="240" value={profile.maxForecastHour} onChange={(event) => updateNumber('maxForecastHour', event.target.value)} className={inputClass} />
+                <input
+                  type="number"
+                  min="0"
+                  max="240"
+                  value={profile.maxForecastHour}
+                  onChange={(event) => updateNumber('maxForecastHour', event.target.value)}
+                  className={inputClass}
+                />
               </label>
             </div>
 
             <div className="grid gap-4 md:grid-cols-[0.5fr_1.5fr]">
               <label className="space-y-1.5">
-                <span className={cn('text-xs font-black', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>
+                <span
+                  className={cn(
+                    'text-xs font-black',
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  )}
+                >
                   Raster scheme
                 </span>
-                <select value={profile.rasterScheme} onChange={(event) => setProfile((current) => ({ ...current, rasterScheme: event.target.value }))} className={inputClass}>
+                <select
+                  value={profile.rasterScheme}
+                  onChange={(event) =>
+                    setProfile((current) => ({
+                      ...current,
+                      rasterScheme: event.target.value,
+                    }))
+                  }
+                  className={inputClass}
+                >
                   <option value="xyz">XYZ</option>
                   <option value="tms">TMS</option>
                 </select>
               </label>
               <div>
-                <span className={cn('text-xs font-black', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>
+                <span
+                  className={cn(
+                    'text-xs font-black',
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  )}
+                >
                   Raster bounds (west, south, east, north)
                 </span>
                 <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {profile.bounds.map((value, index) => (
-                    <input key={index} type="number" step="any" value={value} onChange={(event) => updateBound(index, event.target.value)} className={inputClass} aria-label={['West longitude', 'South latitude', 'East longitude', 'North latitude'][index]} />
+                    <input
+                      key={index}
+                      type="number"
+                      step="any"
+                      value={value}
+                      onChange={(event) => updateBound(index, event.target.value)}
+                      className={inputClass}
+                      aria-label={[
+                        'West longitude',
+                        'South latitude',
+                        'East longitude',
+                        'North latitude',
+                      ][index]}
+                    />
                   ))}
                 </div>
               </div>
@@ -303,25 +427,42 @@ export default function WaveModelOnboarding({ isDarkMode }) {
             <div
               className={cn(
                 'rounded-xl border px-4 py-3 text-xs',
-                isDarkMode ? 'border-cyan-300/15 bg-cyan-400/5 text-slate-300' : 'border-cyan-100 bg-cyan-50/60 text-slate-700'
+                isDarkMode
+                  ? 'border-cyan-300/15 bg-cyan-400/5 text-slate-300'
+                  : 'border-cyan-100 bg-cyan-50/60 text-slate-700'
               )}
             >
               <p className="font-black">Required package layout</p>
               <code className="mt-1 block break-all font-mono">
-                /wavetiles/{selectedModel?.code || 'MODEL'}/light/YYYYMONDD/YYYYMMDDHH/&#123;z&#125;/&#123;x&#125;/&#123;y&#125;.png
+                /wavetiles/{selectedModel?.code || 'MODEL'}
+                /light/YYYYMONDD/YYYYMMDDHH/&#123;z&#125;/&#123;x&#125;/&#123;y&#125;.png
               </code>
               <code className="mt-1 block break-all font-mono">
-                /wavetiles/{selectedModel?.code || 'MODEL'}/dark/YYYYMONDD/YYYYMMDDHH/&#123;z&#125;/&#123;x&#125;/&#123;y&#125;.png
+                /wavetiles/{selectedModel?.code || 'MODEL'}
+                /dark/YYYYMONDD/YYYYMMDDHH/&#123;z&#125;/&#123;x&#125;/&#123;y&#125;.png
               </code>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className={cn('inline-flex items-center gap-2 text-xs', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
+              <p
+                className={cn(
+                  'inline-flex items-center gap-2 text-xs',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                )}
+              >
                 <CheckCircle2 size={14} className="text-emerald-500" />
                 Saving this profile does not enable the model automatically.
               </p>
-              <button type="submit" disabled={!selectedModel || saving} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-600/20 disabled:opacity-50">
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              <button
+                type="submit"
+                disabled={!selectedModel || saving}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-600/20 disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Save size={14} />
+                )}
                 Save Runtime Profile
               </button>
             </div>
