@@ -20,6 +20,7 @@ const MAX_CONCURRENT_BUILDS = Math.max(
   Number.parseInt(process.env.ECWAM_FRAME_MAX_CONCURRENT || '1', 10) || 1
 );
 const FAILURE_TTL_MS = 15 * 60 * 1000;
+const TARGET_CYCLE_HOUR = 18;
 
 const activeBuilds = new Map();
 const recentFailures = new Map();
@@ -57,6 +58,25 @@ function parsePackageDate(packageDate) {
   }
 
   return date;
+}
+
+export function requiredEcwamSourceCycle(packageDate) {
+  const date = packageDate instanceof Date ? packageDate : parsePackageDate(packageDate);
+  if (!date) return null;
+  const target = new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() - 1,
+      TARGET_CYCLE_HOUR
+    )
+  );
+  return [
+    target.getUTCFullYear(),
+    String(target.getUTCMonth() + 1).padStart(2, '0'),
+    String(target.getUTCDate()).padStart(2, '0'),
+    String(target.getUTCHours()).padStart(2, '0'),
+  ].join('');
 }
 
 export function validateFrameRequest(packageDate, forecastHour) {
@@ -153,6 +173,33 @@ export function getEcwamFrameStatus(packageDate, forecastHour) {
   const tag = packageTag(validation.date);
   const validRunTag = runTag(validation.date, validation.forecastHour);
   const key = frameKey(packageDate, validation.forecastHour);
+  const requiredSourceCycle = requiredEcwamSourceCycle(validation.date);
+  const metadata = readPackageMetadata(tag);
+
+  if (!metadata) {
+    return {
+      state: 'unavailable',
+      packageDate,
+      forecastHour: validation.forecastHour,
+      packageTag: tag,
+      runTag: validRunTag,
+      requiredSourceCycle,
+      message: `Waiting for aligned ECWAM ${requiredSourceCycle} package.`,
+    };
+  }
+
+  if (String(metadata.sourceCycle) !== requiredSourceCycle) {
+    return {
+      state: 'unavailable',
+      packageDate,
+      forecastHour: validation.forecastHour,
+      packageTag: tag,
+      runTag: validRunTag,
+      sourceCycle: metadata.sourceCycle,
+      requiredSourceCycle,
+      message: `ECWAM ${metadata.sourceCycle} is available, but WaveLab is waiting for aligned cycle ${requiredSourceCycle}.`,
+    };
+  }
 
   if (isFrameReady(tag, validRunTag)) {
     recentFailures.delete(key);
@@ -162,6 +209,8 @@ export function getEcwamFrameStatus(packageDate, forecastHour) {
       forecastHour: validation.forecastHour,
       packageTag: tag,
       runTag: validRunTag,
+      sourceCycle: metadata.sourceCycle,
+      requiredSourceCycle,
     };
   }
 
@@ -173,19 +222,9 @@ export function getEcwamFrameStatus(packageDate, forecastHour) {
       forecastHour: validation.forecastHour,
       packageTag: tag,
       runTag: validRunTag,
+      sourceCycle: metadata.sourceCycle,
+      requiredSourceCycle,
       startedAt: active.startedAt,
-    };
-  }
-
-  const metadata = readPackageMetadata(tag);
-  if (!metadata) {
-    return {
-      state: 'unavailable',
-      packageDate,
-      forecastHour: validation.forecastHour,
-      packageTag: tag,
-      runTag: validRunTag,
-      message: 'ECWAM package metadata is not available yet.',
     };
   }
 
@@ -198,6 +237,7 @@ export function getEcwamFrameStatus(packageDate, forecastHour) {
       packageTag: tag,
       runTag: validRunTag,
       sourceCycle: metadata.sourceCycle,
+      requiredSourceCycle,
       failedAt: failure.failedAt,
       message: failure.message,
     };
@@ -210,6 +250,7 @@ export function getEcwamFrameStatus(packageDate, forecastHour) {
     packageTag: tag,
     runTag: validRunTag,
     sourceCycle: metadata.sourceCycle,
+    requiredSourceCycle,
   };
 }
 
@@ -248,11 +289,11 @@ export function startEcwamFrameBuild(packageDate, forecastHour, requestedBy = nu
   }
 
   const metadata = readPackageMetadata(status.packageTag);
-  if (!metadata) {
+  if (!metadata || String(metadata.sourceCycle) !== status.requiredSourceCycle) {
     return {
       ...status,
       state: 'unavailable',
-      message: 'ECWAM package metadata is not available yet.',
+      message: `Waiting for aligned ECWAM ${status.requiredSourceCycle} package.`,
     };
   }
 
@@ -353,5 +394,6 @@ export function startEcwamFrameBuild(packageDate, forecastHour, requestedBy = nu
     runTag: status.runTag,
     startedAt,
     sourceCycle: metadata.sourceCycle,
+    requiredSourceCycle: status.requiredSourceCycle,
   };
 }
