@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { fetchWaveModelCatalog } from '@/api/waveModels';
 import {
   ModelSelector,
   ElementSelector,
@@ -26,6 +27,45 @@ const ConfigurableLayerGroup = ({
   isDarkMode,
 }) => {
   const { enabled } = config;
+  const [waveCatalog, setWaveCatalog] = React.useState(null);
+
+  React.useEffect(() => {
+    if (title !== 'Wave') return undefined;
+
+    let disposed = false;
+
+    const refreshCatalog = async () => {
+      try {
+        const result = await fetchWaveModelCatalog();
+        if (!disposed) setWaveCatalog(result?.models || []);
+      } catch {
+        // Keep the bundled model availability as a safe fallback if the catalog cannot be read.
+      }
+    };
+
+    void refreshCatalog();
+    const intervalId = window.setInterval(refreshCatalog, 60_000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(intervalId);
+    };
+  }, [title]);
+
+  const effectiveModels = React.useMemo(() => {
+    if (title !== 'Wave' || !waveCatalog) return models;
+
+    const catalogByCode = new Map(waveCatalog.map((model) => [model.code, model]));
+    return models.map((model) => {
+      const managed = catalogByCode.get(model.id);
+      if (!managed) return model;
+
+      return {
+        ...model,
+        available: Boolean(managed.enabled && managed.hasData && managed.builderConfigured),
+      };
+    });
+  }, [models, title, waveCatalog]);
 
   const selectedElement = getSelectedElement(config.elements, elements);
   const showDirectionStyle = enabled && expanded && selectedElement === 'waveDirection';
@@ -136,7 +176,7 @@ const ConfigurableLayerGroup = ({
       {expanded && enabled && (
         <div className={`space-y-3 border-t px-3 pb-3 pt-3 ${border}`}>
           <ModelSelector
-            models={models}
+            models={effectiveModels}
             selected={config.models}
             onToggle={onToggleModel}
             modelStatuses={modelStatuses}

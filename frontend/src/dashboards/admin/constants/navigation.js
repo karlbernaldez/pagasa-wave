@@ -1,8 +1,17 @@
-import { LayoutDashboard, Waves, Users, BarChart3, Settings, CalendarDays } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Waves,
+  Users,
+  BarChart3,
+  Settings,
+  CalendarDays,
+  Database,
+} from 'lucide-react';
 
 export const ADMIN_TABS = {
   DASHBOARD: 'dashboard',
   CHARTS: 'charts',
+  WAVE_MODELS: 'wave_models',
   USERS: 'users',
   USERS_LIST: 'users_list',
   USERS_ROLES: 'users_roles',
@@ -15,6 +24,7 @@ export const ADMIN_TABS = {
 export const ADMIN_ROUTE_BY_TAB = {
   [ADMIN_TABS.DASHBOARD]: '/dashboard',
   [ADMIN_TABS.CHARTS]: '/dashboard/review',
+  [ADMIN_TABS.WAVE_MODELS]: '/dashboard/wave-models',
   [ADMIN_TABS.USERS]: '/dashboard/users',
   [ADMIN_TABS.USERS_LIST]: '/dashboard/users',
   [ADMIN_TABS.USERS_ROLES]: '/dashboard/users/roles',
@@ -69,6 +79,12 @@ export const MENU_GROUPS = [
     label: 'Management',
     items: [
       {
+        id: ADMIN_TABS.WAVE_MODELS,
+        label: 'Wave Models',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODELS],
+        icon: Database,
+      },
+      {
         id: ADMIN_TABS.USERS,
         label: 'Users',
         path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS],
@@ -113,6 +129,11 @@ export const PAGE_META = {
     title: 'Review Forecast Packages',
     description:
       "Prioritize today's analysis and forecast charts while keeping approved, rejected, and past packages available.",
+  },
+  [ADMIN_TABS.WAVE_MODELS]: {
+    title: 'Wave Model Management',
+    description:
+      'Monitor model availability, manage generated tile packages, and register future wave data sources.',
   },
   [ADMIN_TABS.USERS]: {
     title: 'User Management',

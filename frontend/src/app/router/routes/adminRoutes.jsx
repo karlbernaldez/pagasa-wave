@@ -13,6 +13,7 @@ export default [
     children: [
       { path: '/dashboard', element: <Dashboard /> },
       { path: '/dashboard/review', element: <Dashboard /> },
+      { path: '/dashboard/wave-models', element: <Dashboard /> },
       { path: '/dashboard/users', element: <Dashboard /> },
       { path: '/dashboard/users/roles', element: <Dashboard /> },
       { path: '/dashboard/analytics', element: <Dashboard /> },
