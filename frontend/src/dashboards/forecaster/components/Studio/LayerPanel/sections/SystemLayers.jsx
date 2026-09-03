@@ -1,4 +1,5 @@
 import React from 'react';
+import dayjs from 'dayjs';
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,6 +10,7 @@ import {
   Wind,
   Wrench,
 } from 'lucide-react';
+import { getEcwamFrameStatus } from '@/api/ecwamFrames';
 import LayerGroupCard from './SystemLayers/LayerGroupCard';
 import CheckboxLayerRow from './SystemLayers/CheckboxLayerRow';
 import ConfigurableLayerGroup from './SystemLayers/ConfigurableLayerGroup';
@@ -21,6 +23,7 @@ import {
   WIND_ELEMENTS,
   WAVE_ELEMENTS,
 } from '../constants/layerConstants';
+import { useProjectData } from '../../Menu/hooks/useProjectData';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -144,6 +147,12 @@ const ForecastFrameNavigator = ({ model, frame, onStep, isDarkMode }) => {
 const countActiveByDefinition = (definitions, state) =>
   definitions.filter((layer) => state[layer.id]).length;
 
+const formatCycleDetail = (cycle) => {
+  const value = String(cycle || '');
+  if (!/^\d{10}$/.test(value)) return null;
+  return `${value.slice(0, 8)} ${value.slice(8)}Z`;
+};
+
 const SystemLayersSection = ({
   expanded,
   activeCount,
@@ -167,6 +176,7 @@ const SystemLayersSection = ({
   onSetWindBarbStyle,
   isDarkMode,
 }) => {
+  const { forecastDate } = useProjectData();
   const domainCount = countActiveByDefinition(DOMAIN_LAYERS, domainLayers);
   const utilityCount = countActiveByDefinition(UTILITY_LAYERS, utilitiesLayers);
   const satelliteOverlayCount =
@@ -174,6 +184,103 @@ const SystemLayersSection = ({
   const referenceCount = domainCount + utilityCount + satelliteOverlayCount;
   const showWW3Navigator = waveConfig?.models?.includes('WW3');
   const showEcwamNavigator = waveConfig?.models?.includes('ECWAM');
+  const ecwamForecastHour = waveConfig?.ecwamFrame?.forecastHour ?? 0;
+  const [ecwamAvailability, setEcwamAvailability] = React.useState({
+    state: 'checking',
+    message: null,
+  });
+
+  React.useEffect(() => {
+    const parsed = dayjs(forecastDate);
+    const packageDate = parsed.isValid() ? parsed.format('YYYY-MM-DD') : null;
+    let disposed = false;
+    let firstCheck = true;
+
+    const checkAvailability = async () => {
+      await Promise.resolve();
+      if (disposed) return;
+
+      if (!packageDate) {
+        setEcwamAvailability({
+          state: 'unavailable',
+          message: 'Forecast package date is not available.',
+        });
+        return;
+      }
+
+      if (firstCheck) {
+        setEcwamAvailability({ state: 'checking', message: null });
+        firstCheck = false;
+      }
+
+      try {
+        const result = await getEcwamFrameStatus(packageDate, ecwamForecastHour);
+        if (!disposed) setEcwamAvailability(result);
+      } catch (error) {
+        if (!disposed) {
+          setEcwamAvailability({
+            state: 'failed',
+            message: error?.message || 'Unable to check ECWAM readiness.',
+          });
+        }
+      }
+    };
+
+    void checkAvailability();
+    const intervalId = packageDate ? window.setInterval(checkAvailability, 60_000) : null;
+
+    return () => {
+      disposed = true;
+      if (intervalId !== null) window.clearInterval(intervalId);
+    };
+  }, [ecwamForecastHour, forecastDate]);
+
+  const waveModelStatuses = React.useMemo(() => {
+    const selectedEcwamState = showEcwamNavigator ? waveConfig?.ecwamFrame : null;
+    const effectiveStatus =
+      selectedEcwamState && selectedEcwamState.state !== 'idle'
+        ? selectedEcwamState
+        : ecwamAvailability;
+
+    if (effectiveStatus?.state === 'ready') {
+      const cycle = formatCycleDetail(
+        effectiveStatus.sourceCycle || effectiveStatus.requiredSourceCycle
+      );
+      return {
+        ECWAM: {
+          state: 'ready',
+          label: 'Ready',
+          detail: cycle ? `${cycle} aligned` : 'Aligned forecast package ready',
+          selectable: true,
+        },
+      };
+    }
+
+    if (
+      ['checking', 'building', 'available', 'busy', 'unavailable'].includes(effectiveStatus?.state)
+    ) {
+      const targetCycle = formatCycleDetail(effectiveStatus?.requiredSourceCycle);
+      return {
+        ECWAM: {
+          state: 'processing',
+          label: 'Processing',
+          detail: targetCycle
+            ? `Waiting for ${targetCycle}`
+            : effectiveStatus?.message || 'Checking aligned ECWAM data',
+          selectable: false,
+        },
+      };
+    }
+
+    return {
+      ECWAM: {
+        state: 'unavailable',
+        label: 'No data',
+        detail: effectiveStatus?.message || 'Aligned ECWAM data is not available.',
+        selectable: false,
+      },
+    };
+  }, [ecwamAvailability, showEcwamNavigator, waveConfig?.ecwamFrame]);
 
   if (!expanded) return null;
 
@@ -284,6 +391,7 @@ const SystemLayersSection = ({
             onSetElement={onSetWaveElement}
             onToggleModel={onToggleWaveModel}
             onSetDirectionStyle={onSetWaveDirectionStyle}
+            modelStatuses={waveModelStatuses}
             afterModelSelector={
               showWW3Navigator || showEcwamNavigator ? (
                 <div className="space-y-2">

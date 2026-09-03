@@ -8,8 +8,8 @@ Usage:
 
 Examples:
   bash scripts/build_ecwam_package.sh 2026-08-24
-  bash scripts/build_ecwam_package.sh 2026-08-24 swh 1.5 --source-cycle 2026082400 --skip-existing
-  ECWAM_OUTPUT_ROOT=/tmp/ecwam-package bash scripts/build_ecwam_package.sh 2026-08-24 swh 1.5 --source-cycle 2026082400
+  bash scripts/build_ecwam_package.sh 2026-08-24 swh 1.5 --source-cycle 2026082318 --skip-existing
+  ECWAM_OUTPUT_ROOT=/tmp/ecwam-package bash scripts/build_ecwam_package.sh 2026-08-24 swh 1.5 --source-cycle 2026082318
 
 Environment:
   ECWAM_PYTHON         Python executable. Defaults to wavetiles/.venv/bin/python.
@@ -86,13 +86,15 @@ PY
 
 if [[ -z "$SOURCE_CYCLE" ]]; then
   if ! SOURCE_CYCLE="$($PYTHON_BIN "$SELECTOR" select "$INPUT_ROOT" "$PACKAGE_DATE")"; then
-    echo "No single ECWAM source cycle contains all required 3-hour frames through T+60 for package $PACKAGE_DATE" >&2
+    target_cycle="$($PYTHON_BIN "$SELECTOR" target "$PACKAGE_DATE")"
+    echo "Required ECWAM source cycle $target_cycle is incomplete for package $PACKAGE_DATE" >&2
     exit 1
   fi
 fi
 
 if ! MANIFEST="$($PYTHON_BIN "$SELECTOR" manifest "$INPUT_ROOT" "$PACKAGE_DATE" --source-cycle "$SOURCE_CYCLE")"; then
-  echo "ECWAM source cycle $SOURCE_CYCLE is incomplete for package $PACKAGE_DATE" >&2
+  target_cycle="$($PYTHON_BIN "$SELECTOR" target "$PACKAGE_DATE")"
+  echo "ECWAM source cycle $SOURCE_CYCLE is not the complete required aligned cycle $target_cycle for package $PACKAGE_DATE" >&2
   exit 1
 fi
 mapfile -t PACKAGE_RUNS <<<"$MANIFEST"
@@ -114,6 +116,31 @@ echo "  python       : $PYTHON_BIN"
 echo "  root         : $ROOT"
 
 mkdir -p "$OUTPUT_ROOT"
+
+metadata_target="$OUTPUT_ROOT/contours/$PACKAGE_TAG/package.json"
+existing_source_cycle=""
+if [[ -s "$metadata_target" ]]; then
+  existing_source_cycle="$($PYTHON_BIN - "$metadata_target" <<'PY'
+import json
+import sys
+from pathlib import Path
+try:
+    value = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    value = {}
+print(str(value.get("sourceCycle") or ""))
+PY
+)"
+fi
+
+if [[ -n "$existing_source_cycle" && "$existing_source_cycle" != "$RESOLVED_SOURCE_CYCLE" ]]; then
+  echo "Replacing ECWAM package $PACKAGE_TAG from stale source cycle $existing_source_cycle with aligned cycle $RESOLVED_SOURCE_CYCLE"
+  shopt -s nullglob
+  for package_dir in "$OUTPUT_ROOT"/*/"$PACKAGE_TAG"; do
+    rm -rf "$package_dir"
+  done
+  shopt -u nullglob
+fi
 
 for line in "${PACKAGE_RUNS[@]}"; do
   IFS='|' read -r label run_tag package_tag gribfile source_cycle <<<"$line"

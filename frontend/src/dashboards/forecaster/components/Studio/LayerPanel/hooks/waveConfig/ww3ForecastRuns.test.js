@@ -8,51 +8,51 @@ import {
 } from './ww3ForecastRuns';
 
 describe('resolveECWAMForecastRun', () => {
-  it('keeps the existing chart-type defaults', () => {
+  it('uses the same 18Z analysis-relative chart anchors as WW3', () => {
     expect(
       resolveECWAMForecastRun({
         forecastDate: '2026-09-01',
         chartType: 'analysis',
       })
-    ).toMatchObject({ forecastHour: 0, runDateTime: '2026090100' });
+    ).toMatchObject({ forecastHour: 0, runDateTime: '2026083118' });
     expect(
       resolveECWAMForecastRun({
         forecastDate: '2026-09-01',
         chartType: '24h forecast',
       })
-    ).toMatchObject({ forecastHour: 24, runDateTime: '2026090200' });
+    ).toMatchObject({ forecastHour: 24, runDateTime: '2026090118' });
     expect(
       resolveECWAMForecastRun({
         forecastDate: '2026-09-01',
         chartType: '36h forecast',
       })
-    ).toMatchObject({ forecastHour: 36, runDateTime: '2026090212' });
+    ).toMatchObject({ forecastHour: 36, runDateTime: '2026090206' });
     expect(
       resolveECWAMForecastRun({
         forecastDate: '2026-09-01',
         chartType: '48h forecast',
       })
-    ).toMatchObject({ forecastHour: 48, runDateTime: '2026090300' });
+    ).toMatchObject({ forecastHour: 48, runDateTime: '2026090218' });
   });
 
-  it('uses explicit valid three-hour frames through T+60', () => {
+  it('uses explicit valid three-hour frames through T+60 from 18Z', () => {
     expect(resolveECWAMForecastRun({ forecastDate: '2026-09-01', forecastHour: 3 })).toMatchObject({
       forecastHour: 3,
-      runDateTime: '2026090103',
+      runDateTime: '2026083121',
     });
     expect(resolveECWAMForecastRun({ forecastDate: '2026-09-01', forecastHour: 60 })).toMatchObject(
-      { forecastHour: 60, runDateTime: '2026090312' }
+      { forecastHour: 60, runDateTime: '2026090306' }
     );
   });
 
-  it('falls back to chart-type resolution when an explicit hour is off cadence', () => {
+  it('falls back to the aligned chart default when an explicit hour is off cadence', () => {
     expect(
       resolveECWAMForecastRun({
         forecastDate: '2026-09-01',
         chartType: '24h forecast',
         forecastHour: 25,
       })
-    ).toMatchObject({ forecastHour: 24, runDateTime: '2026090200' });
+    ).toMatchObject({ forecastHour: 24, runDateTime: '2026090118' });
   });
 });
 

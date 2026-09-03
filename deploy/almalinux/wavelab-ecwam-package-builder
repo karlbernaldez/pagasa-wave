@@ -30,6 +30,7 @@ if ! flock -n 9; then
 fi
 
 package_date="$($PYTHON_BIN "$SELECTOR" today --timezone "$PACKAGE_TIMEZONE")"
+target_cycle="$($PYTHON_BIN "$SELECTOR" target "$package_date")"
 package_tag="$($PYTHON_BIN - "$package_date" <<'PY'
 import sys
 from datetime import date
@@ -41,44 +42,55 @@ PY
 )"
 
 contour_root="$OUTPUT_ROOT/contours/$package_tag"
-if [[ -d "$contour_root" ]] && "$PYTHON_BIN" - "$contour_root" "$package_date" <<'PY'
+if [[ -d "$contour_root" ]] && "$PYTHON_BIN" - "$contour_root" "$OUTPUT_ROOT" "$package_tag" "$target_cycle" <<'PY'
+import json
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-root = Path(sys.argv[1])
-start = datetime.strptime(sys.argv[2], "%Y-%m-%d")
-required = tuple(range(0, 61, 3))
-for hour in required:
-    run_tag = (start + timedelta(hours=hour)).strftime("%Y%m%d%H")
-    target = root / run_tag / "contours.geojson"
-    if not target.is_file() or target.stat().st_size <= 0:
-        raise SystemExit(1)
-metadata = root / "package.json"
-if not metadata.is_file() or metadata.stat().st_size <= 0:
+contour_root = Path(sys.argv[1])
+output_root = Path(sys.argv[2])
+package_tag = sys.argv[3]
+target_cycle = sys.argv[4]
+start = datetime.strptime(target_cycle, "%Y%m%d%H")
+metadata_path = contour_root / "package.json"
+try:
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+except (OSError, ValueError):
     raise SystemExit(1)
+if str(metadata.get("sourceCycle") or "") != target_cycle:
+    raise SystemExit(1)
+
+for hour in range(0, 61, 3):
+    run_tag = (start + timedelta(hours=hour)).strftime("%Y%m%d%H")
+    contour = contour_root / run_tag / "contours.geojson"
+    light_legend = output_root / "light" / package_tag / run_tag / "legend.json"
+    dark_legend = output_root / "dark" / package_tag / run_tag / "legend.json"
+    for target in (contour, light_legend, dark_legend):
+        if not target.is_file() or target.stat().st_size <= 0:
+            raise SystemExit(1)
 PY
 then
-  log "ECWAM package already complete for Manila package date $package_date (T+0 through T+60 every 3 hours)"
+  log "ECWAM package already complete for Manila package date $package_date from required source cycle $target_cycle (T+0 through T+60 every 3 hours)"
   exit 0
 fi
 
 if ! source_cycle="$($PYTHON_BIN "$SELECTOR" select "$INPUT_ROOT" "$package_date")"; then
   newest_cycle=$(find "$INPUT_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | grep -E '^[0-9]{10}$' | sort -r | head -n 1 || true)
   if [[ -n "$newest_cycle" ]]; then
-    log "ECWAM not ready for Manila package date $package_date; newest available cycle is $newest_cycle but no cycle contains all 3-hour frames through T+60 yet"
+    log "ECWAM waiting for required aligned source cycle $target_cycle for Manila package date $package_date; newest available cycle is $newest_cycle but $target_cycle is missing or incomplete through T+60"
   else
-    log "ECWAM not ready for Manila package date $package_date; no source cycles are available yet"
+    log "ECWAM waiting for required aligned source cycle $target_cycle for Manila package date $package_date; no source cycles are available yet"
   fi
   exit 0
 fi
 
-log "selected Manila package date $package_date from newest complete ECWAM source cycle $source_cycle"
+log "selected Manila package date $package_date from required aligned ECWAM source cycle $source_cycle"
 
 if bash "$BUILDER" "$package_date" "$VARNAME" "$SIGMA" --source-cycle "$source_cycle" --skip-existing; then
-  log "ECWAM package build completed for $package_date from source cycle $source_cycle"
+  log "ECWAM package build completed for $package_date from aligned source cycle $source_cycle"
 else
   status=$?
-  log "ECWAM package build failed for $package_date from source cycle $source_cycle with exit status $status"
+  log "ECWAM package build failed for $package_date from aligned source cycle $source_cycle with exit status $status"
   exit "$status"
 fi
