@@ -26,14 +26,14 @@ class ECWAMPackageSelectionTests(unittest.TestCase):
             (cycle_dir / f"{prefix}{valid:%m%d%H}{suffix}").touch()
         return cycle_dir
 
-    def test_required_valid_times_match_three_hour_operational_package(self) -> None:
+    def test_required_valid_times_match_aligned_three_hour_operational_package(self) -> None:
         values = tuple(
             value.strftime("%Y%m%d%H") for value in selection.required_valid_times(self.package_date)
         )
         self.assertEqual(len(values), 21)
-        self.assertEqual(values[0], "2026082400")
-        self.assertEqual(values[1], "2026082403")
-        self.assertEqual(values[-1], "2026082612")
+        self.assertEqual(values[0], "2026082318")
+        self.assertEqual(values[1], "2026082321")
+        self.assertEqual(values[-1], "2026082606")
 
     def test_target_source_cycle_is_previous_day_18z(self) -> None:
         self.assertEqual(
@@ -86,7 +86,7 @@ class ECWAMPackageSelectionTests(unittest.TestCase):
             selection.forecast_valid_time(self.package_date, 61)
         self.assertEqual(
             selection.forecast_valid_time(self.package_date, 60).strftime("%Y%m%d%H"),
-            "2026082612",
+            "2026082606",
         )
 
     def test_year_rollover_uses_year_nearest_cycle(self) -> None:
@@ -96,7 +96,7 @@ class ECWAMPackageSelectionTests(unittest.TestCase):
             root = Path(tmp)
             cycle = self.make_cycle(root, "2026123018", required)
             available = selection.files_by_valid_time(cycle)
-            self.assertIn(datetime(2027, 1, 2, 12), available)
+            self.assertIn(datetime(2027, 1, 2, 6), available)
             self.assertTrue(selection.cycle_is_complete(cycle, package_date))
 
 
