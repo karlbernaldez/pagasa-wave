@@ -26,6 +26,17 @@ const writeAudit = async (req, action, details) => {
   }
 };
 
+const toCatalogModel = ({ operations: _operations, packages: _packages, ...model }) => model;
+
+export const listWaveModelCatalog = async (_req, res, next) => {
+  try {
+    const models = await listWaveModelsWithInventory();
+    res.status(200).json({ success: true, models: models.map(toCatalogModel) });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const listWaveModels = async (_req, res, next) => {
   try {
     const models = await listWaveModelsWithInventory();
