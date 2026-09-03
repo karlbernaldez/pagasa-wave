@@ -19,6 +19,7 @@ Environment:
   ECWAM_INPUT_ROOT     Cycle-folder root. Defaults to /home/darwin/ecmwf/ecwam.
   ECWAM_OUTPUT_ROOT    Output root. Defaults to wavetiles/tiles/ECWAM.
   ECWAM_SOURCE_CYCLE   Optional exact source cycle folder (YYYYMMDDHH).
+  ECWAM_BUILD_WORKERS  Parallel forecast-frame workers. Defaults to 4.
 EOF
 }
 
@@ -60,6 +61,7 @@ PYTHON_BIN="${ECWAM_PYTHON:-$ROOT/.venv/bin/python}"
 INPUT_ROOT="${ECWAM_INPUT_ROOT:-/home/darwin/ecmwf/ecwam}"
 OUTPUT_ROOT="${ECWAM_OUTPUT_ROOT:-$ROOT/tiles/ECWAM}"
 GRID_POINTS="${ECWAM_GRID_POINTS:-271051}"
+BUILD_WORKERS="${ECWAM_BUILD_WORKERS:-4}"
 TILER="$SCRIPT_DIR/tiling/ecwam_direct.py"
 CONTOUR_GENERATOR="$SCRIPT_DIR/tiling/ecwam_contours.py"
 SELECTOR="$SCRIPT_DIR/ecwam_package_selection.py"
@@ -71,6 +73,8 @@ REQUIRED_FRAME_COUNT=21
 [[ -f "$SELECTOR" ]] || { echo "ECWAM package selector not found: $SELECTOR" >&2; exit 1; }
 [[ -z "$SOURCE_CYCLE" || "$SOURCE_CYCLE" =~ ^[0-9]{10}$ ]] || { echo "Invalid ECWAM source cycle: $SOURCE_CYCLE" >&2; exit 2; }
 [[ "$GRID_POINTS" =~ ^[0-9]+$ ]] || { echo "Invalid ECWAM grid point count: $GRID_POINTS" >&2; exit 2; }
+[[ "$BUILD_WORKERS" =~ ^[1-9][0-9]*$ ]] || { echo "ECWAM_BUILD_WORKERS must be a positive integer" >&2; exit 2; }
+(( BUILD_WORKERS <= REQUIRED_FRAME_COUNT )) || { echo "ECWAM_BUILD_WORKERS cannot exceed $REQUIRED_FRAME_COUNT" >&2; exit 2; }
 [[ -n "$OUTPUT_ROOT" && "$OUTPUT_ROOT" != "/" ]] || { echo "Unsafe ECWAM output root: $OUTPUT_ROOT" >&2; exit 2; }
 
 "$PYTHON_BIN" - <<'PY'
@@ -112,6 +116,7 @@ echo "  output root  : $OUTPUT_ROOT"
 echo "  variable     : $VARNAME"
 echo "  grid points  : $GRID_POINTS"
 echo "  sigma        : $SIGMA"
+echo "  workers      : $BUILD_WORKERS"
 echo "  python       : $PYTHON_BIN"
 echo "  root         : $ROOT"
 
@@ -142,12 +147,13 @@ if [[ -n "$existing_source_cycle" && "$existing_source_cycle" != "$RESOLVED_SOUR
   shopt -u nullglob
 fi
 
-for line in "${PACKAGE_RUNS[@]}"; do
+run_frame() {
+  local line="$1" label run_tag package_tag gribfile source_cycle contour_target source_dir style_dir target_dir
   IFS='|' read -r label run_tag package_tag gribfile source_cycle <<<"$line"
-  [[ "$source_cycle" == "$RESOLVED_SOURCE_CYCLE" ]] || { echo "ECWAM manifest mixed source cycles" >&2; exit 1; }
-  [[ "$package_tag" == "$PACKAGE_TAG" ]] || { echo "ECWAM manifest mixed package tags" >&2; exit 1; }
-  [[ -f "$gribfile" ]] || { echo "Missing ECWAM input for $label: $gribfile" >&2; exit 1; }
-  [[ -r "$gribfile" ]] || { echo "ECWAM input is not readable by $(id -un): $gribfile" >&2; exit 1; }
+  [[ "$source_cycle" == "$RESOLVED_SOURCE_CYCLE" ]] || { echo "ECWAM manifest mixed source cycles" >&2; return 1; }
+  [[ "$package_tag" == "$PACKAGE_TAG" ]] || { echo "ECWAM manifest mixed package tags" >&2; return 1; }
+  [[ -f "$gribfile" ]] || { echo "Missing ECWAM input for $label: $gribfile" >&2; return 1; }
+  [[ -r "$gribfile" ]] || { echo "ECWAM input is not readable by $(id -un): $gribfile" >&2; return 1; }
 
   echo
   echo "-> [$label] $run_tag"
@@ -168,7 +174,7 @@ for line in "${PACKAGE_RUNS[@]}"; do
     --grid-points "$GRID_POINTS" \
     --sigma "$SIGMA" \
     --output "$contour_target"
-  [[ -s "$contour_target" ]] || { echo "ECWAM contour output is missing or empty: $contour_target" >&2; exit 1; }
+  [[ -s "$contour_target" ]] || { echo "ECWAM contour output is missing or empty: $contour_target" >&2; return 1; }
   chmod 644 "$contour_target" 2>/dev/null || true
   chmod 755 "$(dirname "$contour_target")" 2>/dev/null || true
   echo "   Package contours: $contour_target"
@@ -186,6 +192,29 @@ for line in "${PACKAGE_RUNS[@]}"; do
     echo "   Package tiles: $target_dir"
   done
   shopt -u nullglob
+}
+
+run_batch() {
+  local -a pids=() labels=()
+  local line label _run_tag failed=0 index
+  for line in "$@"; do
+    IFS='|' read -r label _run_tag _ <<<"$line"
+    run_frame "$line" &
+    pids+=("$!")
+    labels+=("$label")
+  done
+  for index in "${!pids[@]}"; do
+    if ! wait "${pids[$index]}"; then
+      echo "ECWAM frame ${labels[$index]} failed" >&2
+      failed=1
+    fi
+  done
+  (( failed == 0 ))
+}
+
+for ((offset = 0; offset < REQUIRED_FRAME_COUNT; offset += BUILD_WORKERS)); do
+  batch=("${PACKAGE_RUNS[@]:offset:BUILD_WORKERS}")
+  run_batch "${batch[@]}"
 done
 
 contour_count=$(find "$OUTPUT_ROOT/contours/$PACKAGE_TAG" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
