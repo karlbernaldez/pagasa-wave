@@ -1,0 +1,10 @@
+[Unit]
+Description=WaveLab ECWAM supervised manual build trigger
+Documentation=https://github.com/karlbernaldez/pagasa-wave
+
+[Path]
+PathChanged=__APP_ROOT__/backend/tmp/wave-ops/ecwam.trigger
+Unit=wavelab-ecwam-package-builder.service
+
+[Install]
+WantedBy=multi-user.target

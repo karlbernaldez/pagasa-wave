@@ -16,6 +16,7 @@ import {
   deleteWaveModelPackage,
   fetchWaveModelCatalog,
   fetchWaveModels,
+  runWaveModelBuilder,
   setWaveModelEnabled,
 } from './waveModels';
 
@@ -53,6 +54,13 @@ describe('waveModels API', () => {
     expect(api.patch).toHaveBeenCalledWith('/admin/wave-models/WW3/availability', {
       enabled: false,
     });
+  });
+
+  it('requests a supervised builder run through the admin API', async () => {
+    api.post.mockResolvedValueOnce({ data: { success: true, modelCode: 'WW3' } });
+
+    await runWaveModelBuilder('WW3');
+    expect(api.post).toHaveBeenCalledWith('/admin/wave-models/WW3/run-builder');
   });
 
   it('encodes package identifiers before deletion', async () => {

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import WaveModel from '../models/WaveModel.js';
+import { getWaveModelOperations } from './waveModelOperationsService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -172,7 +173,9 @@ export const listPackagesForModel = async (rawCode) => {
 export const getWaveModelInventory = async (model) => {
   const packages = await listPackagesForModel(model.code);
   const hasData = packages.length > 0;
+  const latestPackage = packages[0]?.packageTag || null;
   const state = !model.enabled ? 'disabled' : hasData ? 'active' : 'no_data';
+  const operations = await getWaveModelOperations(model.code, latestPackage);
 
   return {
     id: model._id,
@@ -186,8 +189,9 @@ export const getWaveModelInventory = async (model) => {
     state,
     hasData,
     packageCount: packages.length,
-    latestPackage: packages[0]?.packageTag || null,
+    latestPackage,
     packages,
+    operations,
     updatedAt: model.updatedAt,
   };
 };

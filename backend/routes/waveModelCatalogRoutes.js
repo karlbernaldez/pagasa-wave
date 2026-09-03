@@ -1,7 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 
-import { listWaveModels } from '../controllers/waveModelController.js';
+import { listWaveModelCatalog } from '../controllers/waveModelController.js';
 
 const router = express.Router();
 
@@ -14,7 +14,7 @@ router.get(
     legacyHeaders: false,
     message: { message: 'Too many wave model catalog requests. Try again shortly.' },
   }),
-  listWaveModels
+  listWaveModelCatalog
 );
 
 export default router;
