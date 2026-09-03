@@ -104,7 +104,15 @@ function packageTag(date) {
 }
 
 function runTag(date, forecastHour) {
-  const validTime = new Date(date.getTime() + forecastHour * 60 * 60 * 1000);
+  const analysisTime = new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() - 1,
+      TARGET_CYCLE_HOUR
+    )
+  );
+  const validTime = new Date(analysisTime.getTime() + forecastHour * 60 * 60 * 1000);
   return [
     validTime.getUTCFullYear(),
     String(validTime.getUTCMonth() + 1).padStart(2, '0'),
