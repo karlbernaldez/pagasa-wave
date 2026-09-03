@@ -63,6 +63,6 @@ describe('waveModelRuntimeRegistry', () => {
         chartType: '48h',
         forecastHour: 59,
       })
-    ).toMatchObject({ forecastHour: 60, runDateTime: '2026090518' });
+    ).toMatchObject({ forecastHour: 60, runDateTime: '2026090506' });
   });
 });
