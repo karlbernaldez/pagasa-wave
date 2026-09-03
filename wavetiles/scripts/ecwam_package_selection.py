@@ -30,15 +30,14 @@ def target_source_cycle(package_date: date) -> datetime:
 
 
 def required_valid_times(package_date: date) -> tuple[datetime, ...]:
-    start = datetime(package_date.year, package_date.month, package_date.day)
+    start = target_source_cycle(package_date)
     return tuple(start + timedelta(hours=hour) for hour in REQUIRED_FORECAST_HOURS)
 
 
 def forecast_valid_time(package_date: date, forecast_hour: int) -> datetime:
     if forecast_hour not in REQUIRED_FORECAST_HOURS:
         raise ValueError("forecast hour must be from 0 through 60 in 3-hour increments")
-    start = datetime(package_date.year, package_date.month, package_date.day)
-    return start + timedelta(hours=forecast_hour)
+    return target_source_cycle(package_date) + timedelta(hours=forecast_hour)
 
 
 def package_tag(package_date: date) -> str:
@@ -115,9 +114,7 @@ def print_manifest(input_root: Path, package_date: date, source_cycle: str | Non
         return 1
     available = files_by_valid_time(cycle_dir)
     tag = package_tag(package_date)
-    start = datetime(package_date.year, package_date.month, package_date.day)
-    for forecast_hour in REQUIRED_FORECAST_HOURS:
-        valid = start + timedelta(hours=forecast_hour)
+    for forecast_hour, valid in zip(REQUIRED_FORECAST_HOURS, required_valid_times(package_date)):
         stamp = valid.strftime("%Y%m%d%H")
         print(f"{forecast_hour}h|{stamp}|{tag}|{available[valid]}|{cycle_dir.name}")
     return 0
