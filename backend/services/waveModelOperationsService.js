@@ -46,7 +46,9 @@ const parseProperties = (stdout = '') =>
       .filter(Boolean)
       .map((line) => {
         const separator = line.indexOf('=');
-        return separator === -1 ? [line, ''] : [line.slice(0, separator), line.slice(separator + 1)];
+        return separator === -1
+          ? [line, '']
+          : [line.slice(0, separator), line.slice(separator + 1)];
       })
   );
 
@@ -224,7 +226,9 @@ export const getWaveModelOperations = async (modelCode, latestPackage = null) =>
 };
 
 export const triggerWaveModelBuilder = async (rawModelCode) => {
-  const modelCode = String(rawModelCode || '').trim().toUpperCase();
+  const modelCode = String(rawModelCode || '')
+    .trim()
+    .toUpperCase();
   const config = OPERATIONAL_MODELS[modelCode];
   if (!config) {
     const error = new Error(`No operational builder is configured for ${modelCode || 'this model'}.`);
