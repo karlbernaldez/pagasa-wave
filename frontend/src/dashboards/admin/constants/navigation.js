@@ -6,12 +6,14 @@ import {
   Settings,
   CalendarDays,
   Database,
+  Cable,
 } from 'lucide-react';
 
 export const ADMIN_TABS = {
   DASHBOARD: 'dashboard',
   CHARTS: 'charts',
   WAVE_MODELS: 'wave_models',
+  WAVE_MODEL_ONBOARDING: 'wave_model_onboarding',
   USERS: 'users',
   USERS_LIST: 'users_list',
   USERS_ROLES: 'users_roles',
@@ -25,6 +27,7 @@ export const ADMIN_ROUTE_BY_TAB = {
   [ADMIN_TABS.DASHBOARD]: '/dashboard',
   [ADMIN_TABS.CHARTS]: '/dashboard/review',
   [ADMIN_TABS.WAVE_MODELS]: '/dashboard/wave-models',
+  [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: '/dashboard/wave-models/onboard',
   [ADMIN_TABS.USERS]: '/dashboard/users',
   [ADMIN_TABS.USERS_LIST]: '/dashboard/users',
   [ADMIN_TABS.USERS_ROLES]: '/dashboard/users/roles',
@@ -85,6 +88,12 @@ export const MENU_GROUPS = [
         icon: Database,
       },
       {
+        id: ADMIN_TABS.WAVE_MODEL_ONBOARDING,
+        label: 'Model Onboarding',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODEL_ONBOARDING],
+        icon: Cable,
+      },
+      {
         id: ADMIN_TABS.USERS,
         label: 'Users',
         path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS],
@@ -134,6 +143,11 @@ export const PAGE_META = {
     title: 'Wave Model Management',
     description:
       'Monitor model availability, manage generated tile packages, and register future wave data sources.',
+  },
+  [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: {
+    title: 'Wave Model Onboarding',
+    description:
+      'Configure managed timestamp, forecast cadence, and map metadata for prebuilt wave model packages.',
   },
   [ADMIN_TABS.USERS]: {
     title: 'User Management',
