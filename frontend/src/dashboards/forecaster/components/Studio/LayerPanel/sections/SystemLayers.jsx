@@ -71,9 +71,7 @@ const ForecastFrameNavigator = ({ model, frame, onStep, isDarkMode }) => {
     <div
       className={cn(
         'rounded-xl border p-2.5',
-        isDarkMode
-          ? 'border-cyan-400/15 bg-cyan-400/[0.04]'
-          : 'border-blue-200/70 bg-blue-50/60'
+        isDarkMode ? 'border-cyan-400/15 bg-cyan-400/[0.04]' : 'border-blue-200/70 bg-blue-50/60'
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -174,7 +172,12 @@ const SyncForecastToggle = ({ checked, onChange, isDarkMode }) => (
       </span>
       <span className="min-w-0">
         <span className="block text-[11px] font-black">Sync forecast time</span>
-        <span className={cn('block text-[9px] font-semibold', isDarkMode ? 'text-white/35' : 'text-slate-400')}>
+        <span
+          className={cn(
+            'block text-[9px] font-semibold',
+            isDarkMode ? 'text-white/35' : 'text-slate-400'
+          )}
+        >
           Step all selected wave models together
         </span>
       </span>
