@@ -28,7 +28,9 @@ const parseForecastDate = (forecastDate) => {
   }
   if (typeof forecastDate === 'string') {
     const match = forecastDate.match(/^(\d{4})-?(\d{2})-?(\d{2})/);
-    if (match) return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    if (match) {
+      return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    }
   }
   const now = new Date();
   return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -60,7 +62,8 @@ export const setWaveModelRuntimeCatalog = (models = []) => {
   });
 };
 
-export const getWaveModelRuntimeProfile = (model) => runtimeCatalog.get(normalizeCode(model)) || null;
+export const getWaveModelRuntimeProfile = (model) =>
+  runtimeCatalog.get(normalizeCode(model)) || null;
 
 export const resolveManagedWaveRun = ({ model, forecastDate, chartType, forecastHour } = {}) => {
   const profile = getWaveModelRuntimeProfile(model);
