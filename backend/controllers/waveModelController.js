@@ -1,4 +1,5 @@
 import AuditLog from '../models/AuditLog.js';
+import { triggerWaveModelBuilder } from '../services/waveModelOperationsService.js';
 import {
   createWaveModel,
   deleteWaveModelPackage,
@@ -8,7 +9,6 @@ import {
   setWaveModelEnabled,
   setWaveModelRuntimeProfile,
 } from '../services/waveModelService.js';
-import { triggerWaveModelBuilder } from '../services/waveModelOperationsService.js';
 
 const actorId = (req) => req.user?._id ?? req.user?.id ?? null;
 
@@ -77,7 +77,10 @@ export const updateWaveModelAvailability = async (req, res, next) => {
 
 export const updateWaveModelRuntimeProfile = async (req, res, next) => {
   try {
-    const model = await setWaveModelRuntimeProfile(req.params.code, req.body?.runtimeProfile ?? null);
+    const model = await setWaveModelRuntimeProfile(
+      req.params.code,
+      req.body?.runtimeProfile ?? null
+    );
     const inventory = await getWaveModelInventory(model.toObject());
     await writeAudit(req, 'wave_model.runtime_profile.update', {
       code: inventory.code,
