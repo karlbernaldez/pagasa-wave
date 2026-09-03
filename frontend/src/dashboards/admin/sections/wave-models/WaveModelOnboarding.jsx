@@ -80,10 +80,7 @@ export default function WaveModelOnboarding({ isDarkMode }) {
       })
       .catch((error) => {
         if (!active) return;
-        setMessage({
-          type: 'error',
-          text: normalizeError(error, 'Unable to load wave models.'),
-        });
+        setMessage({ type: 'error', text: normalizeError(error, 'Unable to load wave models.') });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -232,12 +229,7 @@ export default function WaveModelOnboarding({ isDarkMode }) {
             <Loader2 size={18} className="mr-2 animate-spin" /> Loading model registry…
           </div>
         ) : onboardableModels.length === 0 ? (
-          <div
-            className={cn(
-              'py-8 text-center',
-              isDarkMode ? 'text-slate-400' : 'text-slate-500'
-            )}
-          >
+          <div className={cn('py-8 text-center', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
             <AlertTriangle size={24} className="mx-auto mb-2" />
             <p className="font-black">No models are available for managed onboarding.</p>
             <p className="mt-1 text-sm">Register a custom model from Wave Models first.</p>
@@ -269,9 +261,7 @@ export default function WaveModelOnboarding({ isDarkMode }) {
               <div
                 className={cn(
                   'rounded-xl border px-4 py-3',
-                  isDarkMode
-                    ? 'border-white/10 bg-white/[0.025]'
-                    : 'border-slate-200 bg-slate-50'
+                  isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-slate-200 bg-slate-50'
                 )}
               >
                 <p
@@ -282,12 +272,7 @@ export default function WaveModelOnboarding({ isDarkMode }) {
                 >
                   Current readiness
                 </p>
-                <p
-                  className={cn(
-                    'mt-1 text-xs',
-                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                  )}
-                >
+                <p className={cn('mt-1 text-xs', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
                   Runtime: {selectedModel?.runtimeConfigured ? 'Configured' : 'Not configured'} · Data:{' '}
                   {selectedModel?.hasData ? 'Present' : 'No managed package'} · Access:{' '}
                   {selectedModel?.enabled ? 'Enabled' : 'Disabled'}
@@ -434,12 +419,10 @@ export default function WaveModelOnboarding({ isDarkMode }) {
             >
               <p className="font-black">Required package layout</p>
               <code className="mt-1 block break-all font-mono">
-                /wavetiles/{selectedModel?.code || 'MODEL'}
-                /light/YYYYMONDD/YYYYMMDDHH/&#123;z&#125;/&#123;x&#125;/&#123;y&#125;.png
+                {`/wavetiles/${selectedModel?.code || 'MODEL'}/light/YYYYMONDD/YYYYMMDDHH/{z}/{x}/{y}.png`}
               </code>
               <code className="mt-1 block break-all font-mono">
-                /wavetiles/{selectedModel?.code || 'MODEL'}
-                /dark/YYYYMONDD/YYYYMMDDHH/&#123;z&#125;/&#123;x&#125;/&#123;y&#125;.png
+                {`/wavetiles/${selectedModel?.code || 'MODEL'}/dark/YYYYMONDD/YYYYMMDDHH/{z}/{x}/{y}.png`}
               </code>
             </div>
 
@@ -458,11 +441,7 @@ export default function WaveModelOnboarding({ isDarkMode }) {
                 disabled={!selectedModel || saving}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-600/20 disabled:opacity-50"
               >
-                {saving ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Save size={14} />
-                )}
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save Runtime Profile
               </button>
             </div>
