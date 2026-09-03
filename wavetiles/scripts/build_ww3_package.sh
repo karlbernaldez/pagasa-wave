@@ -17,6 +17,7 @@ Environment:
   WW3_SIGMA          Default smoothing sigma. Defaults to 1.5.
   WW3_INPUT_ROOT     Cycle-folder root. Defaults to wavetiles/input/ww3.
   WW3_SOURCE_CYCLE   Optional exact source cycle folder (YYYYMMDDHH).
+  WW3_BUILD_WORKERS  Parallel forecast-frame workers. Defaults to 4.
   WW3_NO_INPUT_CHECK Set to 1 to skip the package input preflight.
 EOF
 }
@@ -57,15 +58,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PYTHON_BIN="${WW3_PYTHON:-$ROOT/.venv/bin/python}"
 INPUT_ROOT="${WW3_INPUT_ROOT:-$ROOT/input/ww3}"
+BUILD_WORKERS="${WW3_BUILD_WORKERS:-4}"
 TILER="$SCRIPT_DIR/tiling/ww3_direct.py"
 CONTOUR_GENERATOR="$SCRIPT_DIR/tiling/ww3_contours.py"
 SELECTOR="$SCRIPT_DIR/ww3_package_selection.py"
+EXPECTED_FRAME_COUNT=21
 
 [[ -x "$PYTHON_BIN" || -f "$PYTHON_BIN" ]] || { echo "WW3 Python runtime not found: $PYTHON_BIN" >&2; exit 1; }
 [[ -f "$TILER" ]] || { echo "Direct WW3 tiler not found: $TILER" >&2; exit 1; }
 [[ -f "$CONTOUR_GENERATOR" ]] || { echo "WW3 contour generator not found: $CONTOUR_GENERATOR" >&2; exit 1; }
 [[ -f "$SELECTOR" ]] || { echo "WW3 package selector not found: $SELECTOR" >&2; exit 1; }
 [[ -z "$SOURCE_CYCLE" || "$SOURCE_CYCLE" =~ ^[0-9]{10}$ ]] || { echo "Invalid source cycle: $SOURCE_CYCLE" >&2; exit 2; }
+[[ "$BUILD_WORKERS" =~ ^[1-9][0-9]*$ ]] || { echo "WW3_BUILD_WORKERS must be a positive integer" >&2; exit 2; }
+(( BUILD_WORKERS <= EXPECTED_FRAME_COUNT )) || { echo "WW3_BUILD_WORKERS cannot exceed $EXPECTED_FRAME_COUNT" >&2; exit 2; }
 
 "$PYTHON_BIN" - <<'PY'
 missing = []
@@ -94,7 +99,6 @@ if ! MANIFEST="$($PYTHON_BIN "$SELECTOR" manifest "$INPUT_ROOT" "$PACKAGE_DATE" 
   exit 1
 fi
 mapfile -t PACKAGE_RUNS <<<"$MANIFEST"
-EXPECTED_FRAME_COUNT=21
 [[ ${#PACKAGE_RUNS[@]} -eq "$EXPECTED_FRAME_COUNT" ]] || {
   echo "Expected $EXPECTED_FRAME_COUNT WW3 package inputs, got ${#PACKAGE_RUNS[@]}" >&2
   exit 1
@@ -109,14 +113,16 @@ echo "  package date : $PACKAGE_DATE"
 echo "  source cycle : $RESOLVED_SOURCE_CYCLE"
 echo "  variable     : $VARNAME"
 echo "  sigma        : $SIGMA"
+echo "  workers      : $BUILD_WORKERS"
 echo "  python       : $PYTHON_BIN"
 echo "  root         : $ROOT"
 
-for line in "${PACKAGE_RUNS[@]}"; do
+run_frame() {
+  local line="$1" label run_tag timestamp package_tag ncfile source_cycle date_tag contour_target source_dir style_dir target_dir
   IFS='|' read -r label run_tag timestamp package_tag ncfile source_cycle <<<"$line"
-  [[ "$source_cycle" == "$RESOLVED_SOURCE_CYCLE" ]] || { echo "Manifest mixed source cycles" >&2; exit 1; }
-  [[ "$package_tag" == "$PACKAGE_TAG" ]] || { echo "Manifest mixed package tags" >&2; exit 1; }
-  [[ -f "$ncfile" ]] || { echo "Missing exact input for $label: $ncfile" >&2; exit 1; }
+  [[ "$source_cycle" == "$RESOLVED_SOURCE_CYCLE" ]] || { echo "Manifest mixed source cycles" >&2; return 1; }
+  [[ "$package_tag" == "$PACKAGE_TAG" ]] || { echo "Manifest mixed package tags" >&2; return 1; }
+  [[ -f "$ncfile" ]] || { echo "Missing exact input for $label: $ncfile" >&2; return 1; }
   echo
   echo "-> [$label] $run_tag"
   echo "   Source cycle: $source_cycle"
@@ -133,7 +139,7 @@ for line in "${PACKAGE_RUNS[@]}"; do
     --var "$VARNAME" \
     --sigma "$SIGMA" \
     --output "$contour_target"
-  [[ -s "$contour_target" ]] || { echo "WW3 contour output is missing or empty: $contour_target" >&2; exit 1; }
+  [[ -s "$contour_target" ]] || { echo "WW3 contour output is missing or empty: $contour_target" >&2; return 1; }
   echo "   Package contours: $contour_target"
 
   shopt -s nullglob
@@ -146,6 +152,29 @@ for line in "${PACKAGE_RUNS[@]}"; do
     echo "   Package tiles: $target_dir"
   done
   shopt -u nullglob
+}
+
+run_batch() {
+  local -a pids=() labels=()
+  local line label _run_tag failed=0 index
+  for line in "$@"; do
+    IFS='|' read -r label _run_tag _ <<<"$line"
+    run_frame "$line" &
+    pids+=("$!")
+    labels+=("$label")
+  done
+  for index in "${!pids[@]}"; do
+    if ! wait "${pids[$index]}"; then
+      echo "WW3 frame ${labels[$index]} failed" >&2
+      failed=1
+    fi
+  done
+  (( failed == 0 ))
+}
+
+for ((offset = 0; offset < EXPECTED_FRAME_COUNT; offset += BUILD_WORKERS)); do
+  batch=("${PACKAGE_RUNS[@]:offset:BUILD_WORKERS}")
+  run_batch "${batch[@]}"
 done
 
 contour_count=$(find "$ROOT/tiles/WW3/contours/$PACKAGE_TAG" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)

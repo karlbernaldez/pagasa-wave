@@ -12,6 +12,9 @@ Environment=LOCK_FILE=/run/wavelab-ecwam/package-builder.lock
 ExecStart=/usr/local/sbin/wavelab-ecwam-package-builder
 UMask=0022
 TimeoutStartSec=5h
+Nice=5
+CPUWeight=50
+IOWeight=50
 StateDirectory=wavelab-ecwam
 StateDirectoryMode=0700
 RuntimeDirectory=wavelab-ecwam

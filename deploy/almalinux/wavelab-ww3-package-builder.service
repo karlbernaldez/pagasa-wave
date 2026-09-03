@@ -12,6 +12,9 @@ Environment=LOCK_FILE=/run/wavelab-ww3/package-builder.lock
 ExecStart=/usr/local/sbin/wavelab-ww3-package-builder
 UMask=0022
 TimeoutStartSec=5h
+Nice=5
+CPUWeight=50
+IOWeight=50
 StateDirectory=wavelab-ww3
 StateDirectoryMode=0700
 RuntimeDirectory=wavelab-ww3

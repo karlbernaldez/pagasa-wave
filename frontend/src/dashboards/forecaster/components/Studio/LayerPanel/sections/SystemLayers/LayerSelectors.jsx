@@ -191,7 +191,7 @@ export const ModelSelector = React.memo(
           const processing = modelStatus?.state === 'processing';
           const unavailable = modelStatus?.state === 'unavailable';
           const status = disconnected
-            ? 'Soon'
+            ? 'No data'
             : modelStatus?.label || (active ? 'Active' : 'Ready');
           const subtitle = disconnected
             ? 'Dataset not connected'
@@ -203,7 +203,7 @@ export const ModelSelector = React.memo(
               type="button"
               onClick={() => (!blocked || active) && onToggle(model.id)}
               disabled={disabled}
-              title={modelStatus?.detail || (disconnected ? 'Coming soon' : model.label)}
+              title={modelStatus?.detail || (disconnected ? 'Dataset not connected' : model.label)}
               className={cn(
                 'group flex min-h-[3.75rem] w-full items-center gap-3 border-b px-3 py-2.5 text-left transition-all last:border-b-0',
                 isDarkMode ? 'border-white/[0.08]' : 'border-slate-100',
