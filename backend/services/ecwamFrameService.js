@@ -64,12 +64,7 @@ export function requiredEcwamSourceCycle(packageDate) {
   const date = packageDate instanceof Date ? packageDate : parsePackageDate(packageDate);
   if (!date) return null;
   const target = new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate() - 1,
-      TARGET_CYCLE_HOUR
-    )
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - 1, TARGET_CYCLE_HOUR)
   );
   return [
     target.getUTCFullYear(),
@@ -105,12 +100,7 @@ function packageTag(date) {
 
 function runTag(date, forecastHour) {
   const analysisTime = new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate() - 1,
-      TARGET_CYCLE_HOUR
-    )
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - 1, TARGET_CYCLE_HOUR)
   );
   const validTime = new Date(analysisTime.getTime() + forecastHour * 60 * 60 * 1000);
   return [

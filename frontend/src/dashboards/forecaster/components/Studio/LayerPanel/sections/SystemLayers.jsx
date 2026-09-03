@@ -69,9 +69,7 @@ const ForecastFrameNavigator = ({ model, frame, onStep, isDarkMode }) => {
     <div
       className={cn(
         'rounded-xl border p-2.5',
-        isDarkMode
-          ? 'border-cyan-400/15 bg-cyan-400/[0.04]'
-          : 'border-blue-200/70 bg-blue-50/60'
+        isDarkMode ? 'border-cyan-400/15 bg-cyan-400/[0.04]' : 'border-blue-200/70 bg-blue-50/60'
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -182,8 +180,7 @@ const SystemLayersSection = ({
   const domainCount = countActiveByDefinition(DOMAIN_LAYERS, domainLayers);
   const utilityCount = countActiveByDefinition(UTILITY_LAYERS, utilitiesLayers);
   const satelliteOverlayCount =
-    (satelliteLayer ? 1 : 0) +
-    countActiveByDefinition(SATELLITE_OVERLAY_LAYERS, utilitiesLayers);
+    (satelliteLayer ? 1 : 0) + countActiveByDefinition(SATELLITE_OVERLAY_LAYERS, utilitiesLayers);
   const referenceCount = domainCount + utilityCount + satelliteOverlayCount;
   const showWW3Navigator = waveConfig?.models?.includes('WW3');
   const showEcwamNavigator = waveConfig?.models?.includes('ECWAM');
@@ -260,9 +257,7 @@ const SystemLayersSection = ({
     }
 
     if (
-      ['checking', 'building', 'available', 'busy', 'unavailable'].includes(
-        effectiveStatus?.state
-      )
+      ['checking', 'building', 'available', 'busy', 'unavailable'].includes(effectiveStatus?.state)
     ) {
       const targetCycle = formatCycleDetail(effectiveStatus?.requiredSourceCycle);
       return {

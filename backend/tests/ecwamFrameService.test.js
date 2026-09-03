@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  requiredEcwamSourceCycle,
-  validateFrameRequest,
-} from '../services/ecwamFrameService.js';
+import { requiredEcwamSourceCycle, validateFrameRequest } from '../services/ecwamFrameService.js';
 
 test('accepts ECWAM forecast hours from 0 through 60 on the 3-hour cadence', () => {
   assert.equal(validateFrameRequest('2026-09-01', 0).valid, true);

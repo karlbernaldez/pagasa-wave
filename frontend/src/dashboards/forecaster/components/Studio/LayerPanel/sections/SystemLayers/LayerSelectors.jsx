@@ -19,7 +19,12 @@ const ELEMENT_META = {
   barbs: { short: 'WB', tone: 'cyan', description: 'Directional wind symbols', icon: Wind },
   particles: { short: 'PT', tone: 'violet', description: 'Animated wind flow', icon: Sparkles },
   raster: { short: 'RS', tone: 'emerald', description: 'Color raster overlay', icon: Map },
-  waveDirection: { short: 'WD', tone: 'sky', description: 'Wave direction arrows', icon: Navigation },
+  waveDirection: {
+    short: 'WD',
+    tone: 'sky',
+    description: 'Wave direction arrows',
+    icon: Navigation,
+  },
   wavePeriod: { short: 'MP', tone: 'amber', description: 'Mean wave period', icon: Clock3 },
 };
 
@@ -48,16 +53,23 @@ const toneClasses = {
 
 const getElementBadgeClass = (id, isDarkMode) => {
   const tone = ELEMENT_META[id]?.tone;
-  return toneClasses[tone]?.badge || (isDarkMode ? 'bg-white/10 text-white/60' : 'bg-slate-100 text-slate-500');
+  return (
+    toneClasses[tone]?.badge ||
+    (isDarkMode ? 'bg-white/10 text-white/60' : 'bg-slate-100 text-slate-500')
+  );
 };
 
 const StyleLabel = ({ text, isDarkMode, hint }) => (
   <div className="flex items-center justify-between gap-2">
-    <span className={`text-[11px] font-black uppercase ${isDarkMode ? 'text-white/65' : 'text-slate-600'}`}>
+    <span
+      className={`text-[11px] font-black uppercase ${isDarkMode ? 'text-white/65' : 'text-slate-600'}`}
+    >
       {text}
     </span>
     {hint && (
-      <span className={`text-[10px] font-semibold ${isDarkMode ? 'text-white/35' : 'text-slate-400'}`}>
+      <span
+        className={`text-[10px] font-semibold ${isDarkMode ? 'text-white/35' : 'text-slate-400'}`}
+      >
         {hint}
       </span>
     )}
@@ -101,10 +113,14 @@ const StyleSlider = ({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className={`text-[11px] font-bold ${isDarkMode ? 'text-white/65' : 'text-slate-600'}`}>
+        <span
+          className={`text-[11px] font-bold ${isDarkMode ? 'text-white/65' : 'text-slate-600'}`}
+        >
           {label}
         </span>
-        <span className={`rounded px-2 py-1 text-[10px] font-black tabular-nums ${isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-700'}`}>
+        <span
+          className={`rounded px-2 py-1 text-[10px] font-black tabular-nums ${isDarkMode ? 'bg-cyan-400/10 text-cyan-300' : 'bg-blue-500/10 text-blue-700'}`}
+        >
           {display}
         </span>
       </div>
@@ -126,7 +142,10 @@ const StyleSlider = ({
       />
       <div className="flex justify-between">
         {ticks.map((tick) => (
-          <span key={tick} className={`text-[9px] font-semibold ${isDarkMode ? 'text-white/30' : 'text-slate-400'}`}>
+          <span
+            key={tick}
+            className={`text-[9px] font-semibold ${isDarkMode ? 'text-white/30' : 'text-slate-400'}`}
+          >
             {tick}
           </span>
         ))}
@@ -136,10 +155,12 @@ const StyleSlider = ({
 };
 
 const PanelShell = ({ children, isDarkMode }) => (
-  <div className={cn(
-    'studio-liquid-control mt-1 space-y-3 rounded-lg border px-3 py-3',
-    isDarkMode ? 'border-white/10 bg-white/[0.055]' : 'border-white/80 bg-white/[0.58]'
-  )}>
+  <div
+    className={cn(
+      'studio-liquid-control mt-1 space-y-3 rounded-lg border px-3 py-3',
+      isDarkMode ? 'border-white/10 bg-white/[0.055]' : 'border-white/80 bg-white/[0.58]'
+    )}
+  >
     {children}
   </div>
 );
@@ -155,10 +176,12 @@ export const ModelSelector = React.memo(
         hint={`${selected.length}/${models.length} active`}
         isDarkMode={isDarkMode}
       />
-      <div className={cn(
-        'studio-liquid-control overflow-hidden rounded-lg border',
-        isDarkMode ? 'border-white/10 bg-slate-950/35' : 'border-white/80 bg-white/[0.58]'
-      )}>
+      <div
+        className={cn(
+          'studio-liquid-control overflow-hidden rounded-lg border',
+          isDarkMode ? 'border-white/10 bg-slate-950/35' : 'border-white/80 bg-white/[0.58]'
+        )}
+      >
         {models.map((model) => {
           const active = selected.includes(model.id);
           const modelStatus = modelStatuses[model.id] || null;
@@ -197,18 +220,30 @@ export const ModelSelector = React.memo(
                       : 'text-slate-700 hover:bg-slate-50'
               )}
             >
-              <span className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border',
-                disconnected
-                  ? isDarkMode ? 'border-white/10 bg-white/5 text-white/20' : 'border-slate-200 bg-slate-100 text-slate-300'
-                  : processing
-                    ? isDarkMode ? 'border-amber-300/30 bg-amber-300/10 text-amber-200' : 'border-amber-300 bg-amber-50 text-amber-600'
-                    : unavailable
-                      ? isDarkMode ? 'border-white/10 bg-white/5 text-white/30' : 'border-slate-200 bg-slate-100 text-slate-400'
-                      : active
-                        ? isDarkMode ? 'border-cyan-300/45 bg-cyan-300/15 text-cyan-200' : 'border-blue-500/35 bg-blue-500/10 text-blue-700'
-                        : isDarkMode ? 'border-white/10 bg-white/[0.06] text-white/45' : 'border-white/80 bg-white/70 text-slate-400'
-              )}>
+              <span
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border',
+                  disconnected
+                    ? isDarkMode
+                      ? 'border-white/10 bg-white/5 text-white/20'
+                      : 'border-slate-200 bg-slate-100 text-slate-300'
+                    : processing
+                      ? isDarkMode
+                        ? 'border-amber-300/30 bg-amber-300/10 text-amber-200'
+                        : 'border-amber-300 bg-amber-50 text-amber-600'
+                      : unavailable
+                        ? isDarkMode
+                          ? 'border-white/10 bg-white/5 text-white/30'
+                          : 'border-slate-200 bg-slate-100 text-slate-400'
+                        : active
+                          ? isDarkMode
+                            ? 'border-cyan-300/45 bg-cyan-300/15 text-cyan-200'
+                            : 'border-blue-500/35 bg-blue-500/10 text-blue-700'
+                          : isDarkMode
+                            ? 'border-white/10 bg-white/[0.06] text-white/45'
+                            : 'border-white/80 bg-white/70 text-slate-400'
+                )}
+              >
                 {disconnected ? (
                   <Lock size={15} />
                 ) : processing ? (
@@ -221,24 +256,43 @@ export const ModelSelector = React.memo(
               </span>
 
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-black leading-tight">{model.label}</span>
-                <span className={cn('mt-0.5 block truncate text-[10px] font-semibold', isDarkMode ? 'text-white/35' : 'text-slate-400')}>
+                <span className="block truncate text-[13px] font-black leading-tight">
+                  {model.label}
+                </span>
+                <span
+                  className={cn(
+                    'mt-0.5 block truncate text-[10px] font-semibold',
+                    isDarkMode ? 'text-white/35' : 'text-slate-400'
+                  )}
+                >
                   {subtitle}
                 </span>
               </span>
 
-              <span className={cn(
-                'shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wide',
-                disconnected
-                  ? isDarkMode ? 'bg-white/5 text-white/20' : 'bg-slate-100 text-slate-300'
-                  : processing
-                    ? isDarkMode ? 'bg-amber-300/10 text-amber-200' : 'bg-amber-100 text-amber-700'
-                    : unavailable
-                      ? isDarkMode ? 'bg-white/5 text-white/30' : 'bg-slate-100 text-slate-500'
-                      : active
-                        ? isDarkMode ? 'bg-cyan-300/15 text-cyan-200' : 'bg-blue-600/10 text-blue-700'
-                        : isDarkMode ? 'bg-white/5 text-white/35' : 'bg-slate-100 text-slate-500'
-              )}>
+              <span
+                className={cn(
+                  'shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wide',
+                  disconnected
+                    ? isDarkMode
+                      ? 'bg-white/5 text-white/20'
+                      : 'bg-slate-100 text-slate-300'
+                    : processing
+                      ? isDarkMode
+                        ? 'bg-amber-300/10 text-amber-200'
+                        : 'bg-amber-100 text-amber-700'
+                      : unavailable
+                        ? isDarkMode
+                          ? 'bg-white/5 text-white/30'
+                          : 'bg-slate-100 text-slate-500'
+                        : active
+                          ? isDarkMode
+                            ? 'bg-cyan-300/15 text-cyan-200'
+                            : 'bg-blue-600/10 text-blue-700'
+                          : isDarkMode
+                            ? 'bg-white/5 text-white/35'
+                            : 'bg-slate-100 text-slate-500'
+                )}
+              >
                 {status}
               </span>
             </button>
@@ -255,7 +309,11 @@ export const ElementSelector = React.memo(({ elements, value, onChange, isDarkMo
   const selectedElement = elements.find((element) => element.id === value) || null;
 
   const optionRows = [
-    { id: '', name: 'None', meta: { short: 'OFF', description: 'Hide all elements', icon: EyeOff } },
+    {
+      id: '',
+      name: 'None',
+      meta: { short: 'OFF', description: 'Hide all elements', icon: EyeOff },
+    },
     ...elements.map((element) => ({
       ...element,
       meta: ELEMENT_META[element.id] || {},
@@ -299,28 +357,37 @@ export const ElementSelector = React.memo(({ elements, value, onChange, isDarkMo
               )}
             >
               <span className="flex w-full items-start justify-between gap-2">
-                <span className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
-                  element.id
-                    ? getElementBadgeClass(element.id, isDarkMode)
-                    : isDarkMode ? 'bg-white/10 text-white/45' : 'bg-slate-200 text-slate-500'
-                )}>
+                <span
+                  className={cn(
+                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
+                    element.id
+                      ? getElementBadgeClass(element.id, isDarkMode)
+                      : isDarkMode
+                        ? 'bg-white/10 text-white/45'
+                        : 'bg-slate-200 text-slate-500'
+                  )}
+                >
                   <Icon size={15} strokeWidth={2.4} />
                 </span>
                 {active && (
-                  <span className={cn(
-                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
-                    isDarkMode ? 'bg-cyan-300 text-slate-950' : 'bg-blue-600 text-white'
-                  )}>
+                  <span
+                    className={cn(
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
+                      isDarkMode ? 'bg-cyan-300 text-slate-950' : 'bg-blue-600 text-white'
+                    )}
+                  >
                     <Check size={12} strokeWidth={3} />
                   </span>
                 )}
               </span>
               <span className="min-w-0">
-                <span className="block text-[12px] font-black leading-tight">
-                  {element.name}
-                </span>
-                <span className={cn('mt-1 block min-h-8 text-[10px] font-semibold leading-snug', isDarkMode ? 'text-white/35' : 'text-slate-500')}>
+                <span className="block text-[12px] font-black leading-tight">{element.name}</span>
+                <span
+                  className={cn(
+                    'mt-1 block min-h-8 text-[10px] font-semibold leading-snug',
+                    isDarkMode ? 'text-white/35' : 'text-slate-500'
+                  )}
+                >
                   {meta.description || 'Layer element'}
                 </span>
               </span>
@@ -343,10 +410,20 @@ export const WaveDirectionStylePanel = React.memo(({ style, onChange, isDarkMode
       <div className="space-y-2">
         <StyleLabel text="Arrow color" isDarkMode={isDarkMode} />
         <div className="flex gap-1.5">
-          <StyleThemeBtn id="colored" active={theme === 'colored'} onSelect={(id) => onChange({ theme: id })} isDarkMode={isDarkMode}>
+          <StyleThemeBtn
+            id="colored"
+            active={theme === 'colored'}
+            onSelect={(id) => onChange({ theme: id })}
+            isDarkMode={isDarkMode}
+          >
             Colored
           </StyleThemeBtn>
-          <StyleThemeBtn id="black" active={theme === 'black'} onSelect={(id) => onChange({ theme: id })} isDarkMode={isDarkMode}>
+          <StyleThemeBtn
+            id="black"
+            active={theme === 'black'}
+            onSelect={(id) => onChange({ theme: id })}
+            isDarkMode={isDarkMode}
+          >
             Black
           </StyleThemeBtn>
         </div>
@@ -355,7 +432,9 @@ export const WaveDirectionStylePanel = React.memo(({ style, onChange, isDarkMode
       <StyleSlider
         label="Arrow size"
         field="size"
-        min={0.4} max={2.0} step={0.1}
+        min={0.4}
+        max={2.0}
+        step={0.1}
         value={size}
         onChange={onChange}
         isDarkMode={isDarkMode}
@@ -365,7 +444,9 @@ export const WaveDirectionStylePanel = React.memo(({ style, onChange, isDarkMode
       <StyleSlider
         label="Opacity"
         field="opacity"
-        min={0.1} max={1.0} step={0.05}
+        min={0.1}
+        max={1.0}
+        step={0.05}
         value={opacity}
         onChange={onChange}
         isDarkMode={isDarkMode}
@@ -387,7 +468,9 @@ export const WindBarbStylePanel = React.memo(({ style, onChange, isDarkMode }) =
       <StyleSlider
         label="Barb size"
         field="size"
-        min={0.5} max={2.0} step={0.1}
+        min={0.5}
+        max={2.0}
+        step={0.1}
         value={size}
         onChange={onChange}
         isDarkMode={isDarkMode}
@@ -397,7 +480,9 @@ export const WindBarbStylePanel = React.memo(({ style, onChange, isDarkMode }) =
       <StyleSlider
         label="Opacity"
         field="opacity"
-        min={0.1} max={1.0} step={0.05}
+        min={0.1}
+        max={1.0}
+        step={0.05}
         value={opacity}
         onChange={onChange}
         isDarkMode={isDarkMode}
