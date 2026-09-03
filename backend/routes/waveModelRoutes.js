@@ -8,6 +8,7 @@ import {
   removeWaveModelPackage,
   runWaveModelBuilder,
   updateWaveModelAvailability,
+  updateWaveModelRuntimeProfile,
 } from '../controllers/waveModelController.js';
 
 const router = express.Router();
@@ -32,6 +33,7 @@ router.use(managementLimiter);
 router.get('/', listWaveModels);
 router.post('/', addWaveModel);
 router.patch('/:code/availability', updateWaveModelAvailability);
+router.patch('/:code/runtime-profile', updateWaveModelRuntimeProfile);
 router.post('/:code/run-builder', builderTriggerLimiter, runWaveModelBuilder);
 router.delete('/:code/packages/:packageTag', removeWaveModelPackage);
 router.delete('/:code', deleteWaveModelConfiguration);
