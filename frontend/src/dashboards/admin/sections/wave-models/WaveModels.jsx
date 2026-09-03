@@ -201,7 +201,12 @@ function PackageRows({ model, busyKey, isDarkMode, onDeletePackage }) {
               <p className={cn('text-xs font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
                 {model.code} package inventory
               </p>
-              <p className={cn('mt-0.5 text-[11px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+              <p
+                className={cn(
+                  'mt-0.5 text-[11px]',
+                  isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                )}
+              >
                 Generated data groups managed by WaveLab.
               </p>
             </div>
@@ -210,11 +215,15 @@ function PackageRows({ model, busyKey, isDarkMode, onDeletePackage }) {
           <div className="overflow-hidden rounded-xl border border-white/10">
             <table className="w-full min-w-[620px] text-left text-xs">
               <thead>
-                <tr className={isDarkMode ? 'bg-black/10 text-slate-500' : 'bg-white text-slate-500'}>
+                <tr
+                  className={isDarkMode ? 'bg-black/10 text-slate-500' : 'bg-white text-slate-500'}
+                >
                   <th className="px-3 py-2 font-black uppercase tracking-wide">Package</th>
                   <th className="px-3 py-2 font-black uppercase tracking-wide">Data groups</th>
                   <th className="px-3 py-2 font-black uppercase tracking-wide">Status</th>
-                  <th className="px-3 py-2 text-right font-black uppercase tracking-wide">Action</th>
+                  <th className="px-3 py-2 text-right font-black uppercase tracking-wide">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -229,10 +238,20 @@ function PackageRows({ model, busyKey, isDarkMode, onDeletePackage }) {
                         isDarkMode ? 'border-white/[0.06]' : 'border-slate-100'
                       )}
                     >
-                      <td className={cn('px-3 py-2.5 font-black', isDarkMode ? 'text-white' : 'text-slate-900')}>
+                      <td
+                        className={cn(
+                          'px-3 py-2.5 font-black',
+                          isDarkMode ? 'text-white' : 'text-slate-900'
+                        )}
+                      >
                         {pkg.packageTag}
                       </td>
-                      <td className={cn('px-3 py-2.5', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
+                      <td
+                        className={cn(
+                          'px-3 py-2.5',
+                          isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                        )}
+                      >
                         {pkg.styles.join(', ')}
                       </td>
                       <td className="px-3 py-2.5 text-emerald-500">Ready</td>
@@ -275,20 +294,37 @@ function ModelRow({ model, isDarkMode, busyKey, onToggle, onDeletePackage, onDel
 
   return (
     <>
-      <tr className={cn('border-t first:border-t-0', isDarkMode ? 'border-white/[0.08]' : 'border-slate-100')}>
+      <tr
+        className={cn(
+          'border-t first:border-t-0',
+          isDarkMode ? 'border-white/[0.08]' : 'border-slate-100'
+        )}
+      >
         <td className="px-3 py-3.5 align-middle">
           <div className="flex min-w-[230px] items-center gap-3">
             <ModelAvatar model={model} isDarkMode={isDarkMode} />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <strong className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
+                <strong
+                  className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}
+                >
                   {model.label}
                 </strong>
-                <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-black', isDarkMode ? 'bg-white/5 text-slate-500' : 'bg-slate-100 text-slate-500')}>
+                <span
+                  className={cn(
+                    'rounded px-1.5 py-0.5 text-[9px] font-black',
+                    isDarkMode ? 'bg-white/5 text-slate-500' : 'bg-slate-100 text-slate-500'
+                  )}
+                >
                   {model.code}
                 </span>
               </div>
-              <p className={cn('mt-1 max-w-[240px] text-[11px] leading-relaxed', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+              <p
+                className={cn(
+                  'mt-1 max-w-[240px] text-[11px] leading-relaxed',
+                  isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                )}
+              >
                 {model.description || 'Managed WaveLab wave forecast model.'}
               </p>
             </div>
@@ -303,14 +339,25 @@ function ModelRow({ model, isDarkMode, busyKey, onToggle, onDeletePackage, onDel
               <p className={cn('text-xs font-black', isDarkMode ? 'text-white' : 'text-slate-900')}>
                 {model.latestPackage}
               </p>
-              <p className={cn('mt-1 text-[10px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+              <p
+                className={cn('mt-1 text-[10px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}
+              >
                 Latest package
               </p>
             </div>
           ) : (
             <div>
-              <p className={cn('text-sm font-black', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>—</p>
-              <p className={cn('mt-1 text-[10px]', isDarkMode ? 'text-slate-600' : 'text-slate-400')}>
+              <p
+                className={cn(
+                  'text-sm font-black',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                )}
+              >
+                —
+              </p>
+              <p
+                className={cn('mt-1 text-[10px]', isDarkMode ? 'text-slate-600' : 'text-slate-400')}
+              >
                 {model.state === 'disabled' ? 'No data feed yet' : 'No package yet'}
               </p>
             </div>
@@ -370,7 +417,13 @@ function ModelRow({ model, isDarkMode, busyKey, onToggle, onDeletePackage, onDel
                   : 'bg-cyan-600 text-white shadow-md shadow-cyan-600/15 hover:bg-cyan-500'
               )}
             >
-              {busy ? <Loader2 size={13} className="animate-spin" /> : model.enabled ? 'Disable' : 'Enable'}
+              {busy ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : model.enabled ? (
+                'Disable'
+              ) : (
+                'Enable'
+              )}
             </button>
 
             {!model.builtIn && (
@@ -421,7 +474,10 @@ export default function WaveModelsSection({ isDarkMode = true }) {
       setModels(result?.models || []);
       setMessage(null);
     } catch (error) {
-      setMessage({ type: 'error', text: normalizeError(error, 'Unable to load wave model inventory.') });
+      setMessage({
+        type: 'error',
+        text: normalizeError(error, 'Unable to load wave model inventory.'),
+      });
     } finally {
       setLoading(false);
     }
@@ -438,7 +494,10 @@ export default function WaveModelsSection({ isDarkMode = true }) {
       })
       .catch((error) => {
         if (!active) return;
-        setMessage({ type: 'error', text: normalizeError(error, 'Unable to load wave model inventory.') });
+        setMessage({
+          type: 'error',
+          text: normalizeError(error, 'Unable to load wave model inventory.'),
+        });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -555,7 +614,12 @@ export default function WaveModelsSection({ isDarkMode = true }) {
           <p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
             Model registry
           </p>
-          <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+          <p
+            className={cn(
+              'mt-1 text-xs font-semibold',
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            )}
+          >
             {resultText}
           </p>
         </div>
@@ -649,14 +713,24 @@ export default function WaveModelsSection({ isDarkMode = true }) {
               : 'border-white/70 bg-white/70 shadow-slate-300/40'
           )}
         >
-          <form onSubmit={handleAdd} className="grid gap-3 lg:grid-cols-[0.7fr_1fr_1.7fr_auto] lg:items-end">
+          <form
+            onSubmit={handleAdd}
+            className="grid gap-3 lg:grid-cols-[0.7fr_1fr_1.7fr_auto] lg:items-end"
+          >
             <label className="space-y-1">
-              <span className={cn('text-[10px] font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+              <span
+                className={cn(
+                  'text-[10px] font-black uppercase tracking-wide',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                )}
+              >
                 Model code
               </span>
               <input
                 value={form.code}
-                onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))
+                }
                 required
                 maxLength={32}
                 placeholder="MRI3"
@@ -670,12 +744,19 @@ export default function WaveModelsSection({ isDarkMode = true }) {
             </label>
 
             <label className="space-y-1">
-              <span className={cn('text-[10px] font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+              <span
+                className={cn(
+                  'text-[10px] font-black uppercase tracking-wide',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                )}
+              >
                 Display name
               </span>
               <input
                 value={form.label}
-                onChange={(event) => setForm((current) => ({ ...current, label: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, label: event.target.value }))
+                }
                 required
                 maxLength={80}
                 placeholder="Model name"
@@ -689,12 +770,19 @@ export default function WaveModelsSection({ isDarkMode = true }) {
             </label>
 
             <label className="space-y-1">
-              <span className={cn('text-[10px] font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+              <span
+                className={cn(
+                  'text-[10px] font-black uppercase tracking-wide',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                )}
+              >
                 Description
               </span>
               <input
                 value={form.description}
-                onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, description: event.target.value }))
+                }
                 maxLength={240}
                 placeholder="Optional operational description"
                 className={cn(
@@ -711,7 +799,11 @@ export default function WaveModelsSection({ isDarkMode = true }) {
               disabled={busyKey === 'new:create'}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-600/20 transition-colors hover:bg-cyan-500 disabled:opacity-50"
             >
-              {busyKey === 'new:create' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+              {busyKey === 'new:create' ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Plus size={14} />
+              )}
               Register
             </button>
           </form>
@@ -726,12 +818,20 @@ export default function WaveModelsSection({ isDarkMode = true }) {
             : 'border-white/70 bg-white/70 shadow-slate-300/40'
         )}
       >
-        <div className={cn('border-b px-4 py-4 sm:px-5', isDarkMode ? 'border-white/10' : 'border-white/70')}>
+        <div
+          className={cn(
+            'border-b px-4 py-4 sm:px-5',
+            isDarkMode ? 'border-white/10' : 'border-white/70'
+          )}
+        >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative flex-1">
               <Search
                 size={15}
-                className={cn('absolute left-3 top-1/2 -translate-y-1/2', isDarkMode ? 'text-slate-500' : 'text-slate-400')}
+                className={cn(
+                  'absolute left-3 top-1/2 -translate-y-1/2',
+                  isDarkMode ? 'text-slate-500' : 'text-slate-400'
+                )}
               />
               <input
                 value={query}
@@ -746,7 +846,12 @@ export default function WaveModelsSection({ isDarkMode = true }) {
               />
             </div>
 
-            <div className={cn('flex flex-wrap gap-1 rounded-xl border p-1', isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/80')}>
+            <div
+              className={cn(
+                'flex flex-wrap gap-1 rounded-xl border p-1',
+                isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/80'
+              )}
+            >
               {[
                 ['all', 'All'],
                 ['active', 'Ready'],
@@ -777,12 +882,22 @@ export default function WaveModelsSection({ isDarkMode = true }) {
 
         <div className="px-4 py-4 sm:px-5">
           {loading ? (
-            <div className={cn('flex min-h-56 items-center justify-center text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+            <div
+              className={cn(
+                'flex min-h-56 items-center justify-center text-sm font-semibold',
+                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              )}
+            >
               <Loader2 size={18} className="mr-2 animate-spin" />
               Loading model registry…
             </div>
           ) : filteredModels.length === 0 ? (
-            <div className={cn('flex min-h-56 flex-col items-center justify-center text-center', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+            <div
+              className={cn(
+                'flex min-h-56 flex-col items-center justify-center text-center',
+                isDarkMode ? 'text-slate-500' : 'text-slate-500'
+              )}
+            >
               <Waves size={24} className="mb-2 opacity-50" />
               <p className="text-sm font-black">No wave models match this view.</p>
               <p className="mt-1 text-xs">Try another search term or status filter.</p>
@@ -791,7 +906,12 @@ export default function WaveModelsSection({ isDarkMode = true }) {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1180px] text-left">
                 <thead>
-                  <tr className={cn('text-[10px] uppercase tracking-[0.1em]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+                  <tr
+                    className={cn(
+                      'text-[10px] uppercase tracking-[0.1em]',
+                      isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                    )}
+                  >
                     <th className="px-3 py-2.5 font-black">Model</th>
                     <th className="px-3 py-2.5 font-black">Status</th>
                     <th className="px-3 py-2.5 font-black">Latest package</th>
@@ -819,8 +939,14 @@ export default function WaveModelsSection({ isDarkMode = true }) {
             </div>
           )}
 
-          <div className={cn('mt-4 border-t pt-3 text-[10px] leading-relaxed', isDarkMode ? 'border-white/[0.08] text-slate-600' : 'border-slate-100 text-slate-400')}>
-            Package deletion is restricted to validated model/package identifiers inside the WaveLab tile root. Built-in models can be disabled but not removed.
+          <div
+            className={cn(
+              'mt-4 border-t pt-3 text-[10px] leading-relaxed',
+              isDarkMode ? 'border-white/[0.08] text-slate-600' : 'border-slate-100 text-slate-400'
+            )}
+          >
+            Package deletion is restricted to validated model/package identifiers inside the WaveLab
+            tile root. Built-in models can be disabled but not removed.
           </div>
         </div>
       </section>
