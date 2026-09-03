@@ -14,7 +14,7 @@ import {
   resolveECWAMForecastRun,
   resolveWW3ForecastRun,
 } from './waveConfig/ww3ForecastRuns';
-import { syncAllWaveLayers } from './waveConfig/waveLayerSync';
+import { syncAllWaveLayers } from './waveConfig/waveLayerRuntimeSync';
 import { useWaveStorage } from './waveConfig/useWaveStorage';
 import { useProjectData } from '../../Menu/hooks/useProjectData';
 
