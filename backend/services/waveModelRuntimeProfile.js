@@ -76,9 +76,7 @@ export const normalizeWaveModelRuntimeProfile = (rawProfile) => {
     invalidProfile('maxForecastHour must be divisible by forecastCadenceHours.');
   }
 
-  const rasterScheme = String(rawProfile.rasterScheme || 'xyz')
-    .trim()
-    .toLowerCase();
+  const rasterScheme = String(rawProfile.rasterScheme || 'xyz').trim().toLowerCase();
   if (!['xyz', 'tms'].includes(rasterScheme)) {
     invalidProfile('rasterScheme must be xyz or tms.');
   }
