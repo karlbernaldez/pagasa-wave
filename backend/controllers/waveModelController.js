@@ -6,6 +6,7 @@ import {
   listWaveModelsWithInventory,
   removeCustomWaveModel,
   setWaveModelEnabled,
+  setWaveModelRuntimeProfile,
 } from '../services/waveModelService.js';
 import { triggerWaveModelBuilder } from '../services/waveModelOperationsService.js';
 
@@ -50,7 +51,10 @@ export const addWaveModel = async (req, res, next) => {
   try {
     const model = await createWaveModel(req.body || {});
     const inventory = await getWaveModelInventory(model.toObject());
-    await writeAudit(req, 'wave_model.create', { code: inventory.code });
+    await writeAudit(req, 'wave_model.create', {
+      code: inventory.code,
+      runtimeConfigured: inventory.runtimeConfigured,
+    });
     res.status(201).json({ success: true, model: inventory });
   } catch (error) {
     next(error);
@@ -64,6 +68,21 @@ export const updateWaveModelAvailability = async (req, res, next) => {
     await writeAudit(req, 'wave_model.availability.update', {
       code: inventory.code,
       enabled: inventory.enabled,
+    });
+    res.status(200).json({ success: true, model: inventory });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateWaveModelRuntimeProfile = async (req, res, next) => {
+  try {
+    const model = await setWaveModelRuntimeProfile(req.params.code, req.body?.runtimeProfile ?? null);
+    const inventory = await getWaveModelInventory(model.toObject());
+    await writeAudit(req, 'wave_model.runtime_profile.update', {
+      code: inventory.code,
+      runtimeConfigured: inventory.runtimeConfigured,
+      mode: inventory.runtimeProfile?.mode || null,
     });
     res.status(200).json({ success: true, model: inventory });
   } catch (error) {
