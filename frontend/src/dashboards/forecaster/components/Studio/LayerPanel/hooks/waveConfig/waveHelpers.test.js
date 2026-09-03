@@ -12,7 +12,7 @@ describe('ECWAM three-hour wave URLs', () => {
       forecastHour: 3,
     });
 
-    expect(url).toContain('/ECWAM/light/2026SEP01/2026090103/{z}/{x}/{y}.png');
+    expect(url).toContain('/ECWAM/light/2026SEP01/2026083121/{z}/{x}/{y}.png');
   });
 
   it('builds contour URLs for the same explicit frame', () => {
@@ -23,7 +23,7 @@ describe('ECWAM three-hour wave URLs', () => {
       forecastHour: 27,
     });
 
-    expect(url).toContain('/ECWAM/contours/2026SEP01/2026090203/contours.geojson');
+    expect(url).toContain('/ECWAM/contours/2026SEP01/2026090121/contours.geojson');
   });
 
   it('applies an explicit forecast hour to WW3 URL resolution', () => {
