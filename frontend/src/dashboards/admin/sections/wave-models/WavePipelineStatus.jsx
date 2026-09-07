@@ -66,7 +66,7 @@ function StatusBadge({ state, isDarkMode }) {
     <span
       className={cn(
         'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold',
-        tone,
+        tone
       )}
     >
       <Icon className={cn('h-3.5 w-3.5', isBusy && 'animate-spin')} />
@@ -81,7 +81,7 @@ function Detail({ label, value, mono = false, isDarkMode }) {
       <p
         className={cn(
           'text-[11px] font-semibold uppercase tracking-[0.14em]',
-          isDarkMode ? 'text-slate-500' : 'text-slate-400',
+          isDarkMode ? 'text-slate-500' : 'text-slate-400'
         )}
       >
         {label}
@@ -90,7 +90,7 @@ function Detail({ label, value, mono = false, isDarkMode }) {
         className={cn(
           'mt-1 text-sm font-semibold',
           mono && 'font-mono',
-          isDarkMode ? 'text-slate-100' : 'text-slate-800',
+          isDarkMode ? 'text-slate-100' : 'text-slate-800'
         )}
       >
         {value ?? 'Unavailable'}
@@ -110,7 +110,7 @@ function ModelCard({ model, isDarkMode }) {
         'rounded-3xl border p-5 shadow-xl backdrop-blur-xl',
         isDarkMode
           ? 'border-white/10 bg-slate-950/55 shadow-black/20'
-          : 'border-white/80 bg-white/80 shadow-slate-300/40',
+          : 'border-white/80 bg-white/80 shadow-slate-300/40'
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -118,16 +118,26 @@ function ModelCard({ model, isDarkMode }) {
           <div
             className={cn(
               'grid h-11 w-11 place-items-center rounded-2xl',
-              isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700',
+              isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700'
             )}
           >
             <Waves className="h-5 w-5" />
           </div>
           <div>
-            <h3 className={cn('text-lg font-bold', isDarkMode ? 'text-white' : 'text-slate-900')}>
+            <h3
+              className={cn(
+                'text-lg font-bold',
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              )}
+            >
               {model.model}
             </h3>
-            <p className={cn('mt-0.5 text-sm', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+            <p
+              className={cn(
+                'mt-0.5 text-sm',
+                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              )}
+            >
               {model.message || 'Wave pipeline status'}
             </p>
           </div>
@@ -158,7 +168,9 @@ function ModelCard({ model, isDarkMode }) {
 
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between text-xs font-semibold">
-          <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Forecast frames</span>
+          <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>
+            Forecast frames
+          </span>
           <span className={isDarkMode ? 'text-slate-200' : 'text-slate-700'}>
             {frameCount} / {expected}
           </span>
@@ -166,7 +178,7 @@ function ModelCard({ model, isDarkMode }) {
         <div
           className={cn(
             'h-2 overflow-hidden rounded-full',
-            isDarkMode ? 'bg-slate-800' : 'bg-slate-100',
+            isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
           )}
         >
           <div
@@ -200,7 +212,7 @@ function ModelCard({ model, isDarkMode }) {
             'mt-5 rounded-2xl border p-4 text-sm',
             isDarkMode
               ? 'border-rose-400/20 bg-rose-400/10 text-rose-100'
-              : 'border-rose-200 bg-rose-50 text-rose-700',
+              : 'border-rose-200 bg-rose-50 text-rose-700'
           )}
         >
           {model.error}
@@ -226,7 +238,7 @@ export default function WavePipelineStatus({ isDarkMode }) {
       setError(
         requestError?.response?.data?.message ||
           requestError?.message ||
-          'Unable to load wave pipeline status.',
+          'Unable to load wave pipeline status.'
       );
     } finally {
       setLoading(false);
@@ -254,14 +266,16 @@ export default function WavePipelineStatus({ isDarkMode }) {
             <ServerCog
               className={cn('h-5 w-5', isDarkMode ? 'text-cyan-300' : 'text-cyan-700')}
             />
-            <h2 className={cn('text-xl font-bold', isDarkMode ? 'text-white' : 'text-slate-900')}>
+            <h2
+              className={cn('text-xl font-bold', isDarkMode ? 'text-white' : 'text-slate-900')}
+            >
               Wave Data Pipeline
             </h2>
           </div>
           <p
             className={cn(
               'mt-2 max-w-3xl text-sm',
-              isDarkMode ? 'text-slate-400' : 'text-slate-500',
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
             )}
           >
             Monitor the operational WW3 and ECWAM ingestion, normalized processing, validation,
@@ -276,7 +290,7 @@ export default function WavePipelineStatus({ isDarkMode }) {
             'inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition',
             isDarkMode
               ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
-              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
           )}
         >
           <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
@@ -290,7 +304,7 @@ export default function WavePipelineStatus({ isDarkMode }) {
             'rounded-2xl border p-4 text-sm',
             isDarkMode
               ? 'border-rose-400/20 bg-rose-400/10 text-rose-100'
-              : 'border-rose-200 bg-rose-50 text-rose-700',
+              : 'border-rose-200 bg-rose-50 text-rose-700'
           )}
         >
           {error}
@@ -303,7 +317,7 @@ export default function WavePipelineStatus({ isDarkMode }) {
             'grid min-h-48 place-items-center rounded-3xl border',
             isDarkMode
               ? 'border-white/10 bg-slate-950/50 text-slate-400'
-              : 'border-slate-200 bg-white text-slate-500',
+              : 'border-slate-200 bg-white text-slate-500'
           )}
         >
           <div className="flex items-center gap-2 text-sm">
@@ -319,7 +333,12 @@ export default function WavePipelineStatus({ isDarkMode }) {
       )}
 
       {payload?.generatedAt ? (
-        <p className={cn('text-right text-xs', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+        <p
+          className={cn(
+            'text-right text-xs',
+            isDarkMode ? 'text-slate-500' : 'text-slate-400'
+          )}
+        >
           Updated {formatDateTime(payload.generatedAt)} · refreshes every 30 seconds
         </p>
       ) : null}
