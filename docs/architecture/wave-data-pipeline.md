@@ -17,6 +17,8 @@ model source
   -> model product renderer
   -> staged validation
   -> publication with rollback protection
+  -> structured operational status
+  -> Studio + Admin Dashboard
   -> lifecycle / retention
 ```
 
@@ -27,6 +29,8 @@ The adapter layer owns source-specific behavior. The common package path must no
 Adapters own source discovery, native parsing, variable mapping, unit conversion, coordinate normalization, direction conventions, forecast reduction, and retained-cycle assembly. Downstream product generation owns normalized-contract validation, raster generation, contours/vectors, package metadata, integrity checks, staging, and publication.
 
 Source scheduling remains independent per model because source availability and retry cadence are ingestion concerns. Normalization does not require WW3 and ECWAM to share one timer.
+
+Studio remains downstream of the stable tile/contour product contract. It does not read normalized NetCDF directly. This keeps the normalized storage implementation replaceable without coupling the interactive forecast workspace to source-format or pipeline internals.
 
 ## Time semantics
 
@@ -91,6 +95,33 @@ The model-specific compatibility scripts still own source selection and normaliz
 The runner verifies that the normalized cycle model and `sourceCycle` match the requested build before invoking a renderer. The publisher validates package metadata, all 21 contour frames, and non-empty PNG output before replacing production directories.
 
 Publication is atomic per package category, not as one filesystem transaction across all categories. Each complete staged category is copied beside its production destination and promoted with a local atomic rename. If a later category fails, already-promoted categories are rolled back to their backups. This design supports staging and production roots on different filesystems while preserving the previous complete package on failures covered by the rollback path.
+
+## Pipeline observability
+
+The normalized runner writes a small atomic JSON status snapshot per model under the shared writable staging tree:
+
+```text
+wavetiles/.normalized-product-stage/.status/
+  WW3.json
+  ECWAM.json
+```
+
+The status schema exposes operational states such as `BUILDING`, `VALIDATING`, `PUBLISHING`, `READY`, and `FAILED`, together with package date, required/source cycle, input mode, retained-frame counts, timestamps, and any failure message.
+
+The backend exposes this information through an admin-only API:
+
+```text
+GET /api/admin/wave-pipeline
+```
+
+The Admin Dashboard consumes the API through a dedicated Wave Pipeline page. The backend does not scrape `journalctl` or expose arbitrary systemd logs. For `READY`, it cross-checks the current Manila package against the published `package.json` before reporting the package as ready for Studio. If the current package is not published yet, the dashboard reports `WAITING_FOR_SOURCE` unless a current transient/failure state is available from the runner snapshot.
+
+This observability boundary deliberately separates product consumption from pipeline operations:
+
+```text
+Studio         -> published tiles / contours
+Admin pipeline -> structured status API
+```
 
 ## Real operational validation
 
@@ -161,15 +192,17 @@ The systemd services retain `ProtectSystem=strict`; only the required model inpu
 - staged publication with cross-filesystem support and rollback protection
 - package metadata validation before publication
 - common normalized package runner for build/stage/validate/publish/cleanup
+- structured runner status snapshots and admin-only status API
+- Admin Dashboard Wave Pipeline status page
 - AlmaLinux automation integration
 - supervised production cutover of both WW3 and ECWAM to normalized input
 
 ### Remaining hardening
 
 - observe and record unattended timer-driven normalized cycles
-- expand publisher and runner failure-path regression coverage as new failure modes are identified
 - add direct native-GRIB-to-normalized numerical parity verification for ECWAM
-- consolidate additional lifecycle concerns only where they are truly common, such as structured status/metrics and retention hooks
+- add retention/status history only if operations require trend or audit views beyond the current latest-snapshot model
+- complete final merge-readiness review after unattended operation and CI are green
 
 Do not merge source-specific retry cadence into one global timer solely for architectural symmetry. A common contract and lifecycle runner do not require common source scheduling.
 
