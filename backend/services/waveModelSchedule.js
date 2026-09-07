@@ -39,7 +39,9 @@ export const normalizeWaveModelSchedule = (rawSchedule) => {
     invalidSchedule('schedule must be an object.');
   }
 
-  const mode = String(rawSchedule.mode || '').trim().toLowerCase();
+  const mode = String(rawSchedule.mode || '')
+    .trim()
+    .toLowerCase();
   if (mode === 'interval') {
     const everyMinutes = Number(rawSchedule.everyMinutes);
     if (

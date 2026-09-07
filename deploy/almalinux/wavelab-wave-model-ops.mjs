@@ -23,13 +23,17 @@ const fail = (message, code = 64) => {
   process.exit(code);
 };
 
-const modelCode = String(process.argv[3] || '').trim().toUpperCase();
+const modelCode = String(process.argv[3] || '')
+  .trim()
+  .toUpperCase();
 const config = MODELS[modelCode];
 if (!config) fail('Unsupported wave model.');
 
 const normalizeSchedule = (raw) => {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) fail('Invalid schedule payload.');
-  const mode = String(raw.mode || '').trim().toLowerCase();
+  const mode = String(raw.mode || '')
+    .trim()
+    .toLowerCase();
   if (mode === 'interval') {
     const everyMinutes = Number(raw.everyMinutes);
     if (!Number.isInteger(everyMinutes) || everyMinutes < 15 || everyMinutes > 1440) {
@@ -80,7 +84,10 @@ const writeAtomic = (target, content, mode = 0o644) => {
 const readState = () => {
   if (!existsSync(statePath)) return { managed: false, schedule: DEFAULT_SCHEDULE };
   try {
-    return { managed: true, schedule: normalizeSchedule(JSON.parse(readFileSync(statePath, 'utf8'))) };
+    return {
+      managed: true,
+      schedule: normalizeSchedule(JSON.parse(readFileSync(statePath, 'utf8'))),
+    };
   } catch {
     fail('Stored schedule state is invalid.', 70);
   }

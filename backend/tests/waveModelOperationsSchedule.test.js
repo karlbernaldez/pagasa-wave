@@ -38,11 +38,8 @@ await chmod(fakeSudo, 0o755);
 process.env.WAVELAB_SUDO_BIN = fakeSudo;
 process.env.WAVELAB_WAVE_OPS_HELPER = '/usr/local/sbin/wavelab-wave-model-ops';
 
-const {
-  restoreWaveModelSchedule,
-  setWaveModelSchedule,
-  setWaveModelScheduleEnabled,
-} = await import(`../services/waveModelOperationsService.js?test=${Date.now()}`);
+const { restoreWaveModelSchedule, setWaveModelSchedule, setWaveModelScheduleEnabled } =
+  await import(`../services/waveModelOperationsService.js?test=${Date.now()}`);
 
 after(async () => {
   await rm(tempRoot, { recursive: true, force: true });

@@ -25,9 +25,7 @@ export const runWaveModelBuilder = async (code) =>
   unwrap(await api.post(`/admin/wave-models/${encodeURIComponent(code)}/run-builder`));
 
 export const setWaveModelSchedule = async (code, schedule) =>
-  unwrap(
-    await api.patch(`/admin/wave-models/${encodeURIComponent(code)}/schedule`, { schedule })
-  );
+  unwrap(await api.patch(`/admin/wave-models/${encodeURIComponent(code)}/schedule`, { schedule }));
 
 export const enableWaveModelSchedule = async (code) =>
   unwrap(await api.post(`/admin/wave-models/${encodeURIComponent(code)}/schedule/enable`));

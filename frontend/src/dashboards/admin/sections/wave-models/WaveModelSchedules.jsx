@@ -160,7 +160,9 @@ function ScheduleEditor({ model, form, setForm, busy, isDarkMode, onSave, onCanc
               <input
                 required
                 value={form.times}
-                onChange={(event) => setForm((current) => ({ ...current, times: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, times: event.target.value }))
+                }
                 placeholder="06:00, 18:00"
                 className={cn(
                   'min-h-10 w-full rounded-lg border px-3 text-sm',
@@ -326,7 +328,9 @@ function ModelScheduleCard({ model, busyKey, editingCode, setEditingCode, isDark
         <Metric
           icon={Activity}
           label="Builder state"
-          value={operations?.service?.running ? 'Running' : operations?.lastError ? 'Attention' : 'Idle'}
+          value={
+            operations?.service?.running ? 'Running' : operations?.lastError ? 'Attention' : 'Idle'
+          }
           isDarkMode={isDarkMode}
         />
         <Metric
@@ -436,7 +440,10 @@ export default function WaveModelSchedules({ isDarkMode = true }) {
       setModels(result?.models || []);
       setMessage(null);
     } catch (error) {
-      setMessage({ type: 'error', text: normalizeError(error, 'Unable to load model operations.') });
+      setMessage({
+        type: 'error',
+        text: normalizeError(error, 'Unable to load model operations.'),
+      });
     } finally {
       setLoading(false);
     }

@@ -363,11 +363,9 @@ export const triggerWaveModelBuilder = async (rawModelCode) => {
 
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const requestedAt = new Date().toISOString();
-  await fs.writeFile(
-    triggerPath,
-    `${JSON.stringify({ requestId, modelCode, requestedAt })}\n`,
-    { mode: 0o640 }
-  );
+  await fs.writeFile(triggerPath, `${JSON.stringify({ requestId, modelCode, requestedAt })}\n`, {
+    mode: 0o640,
+  });
 
   cache.clear();
   return { modelCode, requestId, requestedAt };
