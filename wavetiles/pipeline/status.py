@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_VERSION = 1
 VALID_STATES = {
     "UNKNOWN",
@@ -18,7 +19,12 @@ VALID_STATES = {
     "READY",
     "FAILED",
 }
-DEFAULT_STATUS_ROOT = Path(os.getenv("WAVE_PIPELINE_STATUS_ROOT", "/var/lib/wavelab-wave/status"))
+DEFAULT_STATUS_ROOT = Path(
+    os.getenv(
+        "WAVE_PIPELINE_STATUS_ROOT",
+        str(ROOT / "wavetiles" / ".normalized-product-stage" / ".status"),
+    )
+)
 
 
 def utc_now() -> str:
