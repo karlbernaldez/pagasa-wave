@@ -9,6 +9,9 @@ on:
       - 'wavetiles/scripts/normalize_ecwam_cycle.py'
       - 'wavetiles/scripts/build_normalized_ww3_shadow.py'
       - 'wavetiles/scripts/build_normalized_ecwam_shadow.py'
+      - 'wavetiles/scripts/build_ww3_compatible_package.sh'
+      - 'wavetiles/scripts/build_ecwam_compatible_package.sh'
+      - 'wavetiles/scripts/publish_wave_package.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
       - 'wavetiles/scripts/ecwam_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
@@ -29,6 +32,9 @@ on:
       - 'wavetiles/scripts/normalize_ecwam_cycle.py'
       - 'wavetiles/scripts/build_normalized_ww3_shadow.py'
       - 'wavetiles/scripts/build_normalized_ecwam_shadow.py'
+      - 'wavetiles/scripts/build_ww3_compatible_package.sh'
+      - 'wavetiles/scripts/build_ecwam_compatible_package.sh'
+      - 'wavetiles/scripts/publish_wave_package.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
       - 'wavetiles/scripts/ecwam_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
@@ -77,10 +83,13 @@ jobs:
       - name: Run ECWAM adapter tests
         run: python -m unittest wavetiles.tests.test_ecwam_adapter -v
 
-      - name: Validate WW3 builder shell syntax
-        run: bash -n deploy/almalinux/wavelab-ww3-package-builder
+      - name: Validate builder shell syntax
+        run: >-
+          bash -n deploy/almalinux/wavelab-ww3-package-builder
+          wavetiles/scripts/build_ww3_compatible_package.sh
+          wavetiles/scripts/build_ecwam_compatible_package.sh
 
-      - name: Compile pipeline and shadow modules
+      - name: Compile pipeline and package modules
         run: >-
           python -m compileall -q
           wavetiles/pipeline
@@ -88,5 +97,6 @@ jobs:
           wavetiles/scripts/normalize_ecwam_cycle.py
           wavetiles/scripts/build_normalized_ww3_shadow.py
           wavetiles/scripts/build_normalized_ecwam_shadow.py
+          wavetiles/scripts/publish_wave_package.py
           wavetiles/scripts/ww3_package_selection.py
           wavetiles/scripts/ecwam_package_selection.py
