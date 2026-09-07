@@ -8,24 +8,25 @@ Standardize model-specific inputs behind adapters so WaveLab product generation 
 
 ```text
 model source
-  -> ingestion / staging
+  -> source-specific ingestion / retry scheduling
   -> model adapter
-  -> reduction
-  -> normalization
+  -> reduction / normalization
   -> retained-cycle assembly
   -> normalized/<MODEL>/<REFERENCE_TIME>/wave.nc + manifest.json
-  -> generic package builder
-  -> validation
-  -> staged package
-  -> atomic publication
+  -> common normalized package runner
+  -> model product renderer
+  -> staged validation
+  -> publication with rollback protection
   -> lifecycle / retention
 ```
 
 ## Architectural boundary
 
-The adapter layer owns source-specific behavior. The generic package path must not parse WW3 archives, ECWAM GRIB files, or future model-native formats directly.
+The adapter layer owns source-specific behavior. The common package path must not parse WW3 archives, ECWAM GRIB files, or future model-native formats directly.
 
 Adapters own source discovery, native parsing, variable mapping, unit conversion, coordinate normalization, direction conventions, forecast reduction, and retained-cycle assembly. Downstream product generation owns normalized-contract validation, raster generation, contours/vectors, package metadata, integrity checks, staging, and publication.
+
+Source scheduling remains independent per model because source availability and retry cadence are ingestion concerns. Normalization does not require WW3 and ECWAM to share one timer.
 
 ## Time semantics
 
@@ -72,6 +73,25 @@ The canonical wave-height variable is `significant_wave_height` in metres with d
 
 `manifest.json` records provenance and normalized contract metadata. Validation cross-checks it against `wave.nc`, including model, source cycle, reference time, forecast-hour axis, and canonical variables.
 
+## Common normalized package runner
+
+`run_normalized_wave_package.py` owns the shared normalized product lifecycle for the currently supported WW3 and ECWAM models:
+
+```text
+validated normalized cycle
+  -> isolated unique stage directory
+  -> model renderer
+  -> staged package validation
+  -> production publication
+  -> stage cleanup on success or failure
+```
+
+The model-specific compatibility scripts still own source selection and normalization because those operations depend on native input formats. Once a normalized cycle exists, both paths enter the same runner.
+
+The runner verifies that the normalized cycle model and `sourceCycle` match the requested build before invoking a renderer. The publisher validates package metadata, all 21 contour frames, and non-empty PNG output before replacing production directories.
+
+Publication is atomic per package category, not as one filesystem transaction across all categories. Each complete staged category is copied beside its production destination and promoted with a local atomic rename. If a later category fails, already-promoted categories are rolled back to their backups. This design supports staging and production roots on different filesystems while preserving the previous complete package on failures covered by the rollback path.
+
 ## Real operational validation
 
 ### WW3
@@ -93,7 +113,7 @@ package.json   : semantically identical
 missing files  : 0
 ```
 
-The normalized compatibility path also completed staged validation and publication successfully with 114,708 PNG tiles and 21 contour frames.
+The production systemd service then completed a supervised normalized build successfully with 114,708 PNG tiles and 21 contour frames. Its production marker records `source_cycle=2026090618` and `product_input=normalized`.
 
 ### ECWAM
 
@@ -107,11 +127,11 @@ package.json   : semantically identical
 missing files  : 0
 ```
 
-The ECWAM normalized compatibility path also completed staged validation and publication successfully with 72,954 PNG tiles and 21 contour frames.
+The production systemd service then completed a supervised normalized build successfully with 72,954 PNG tiles and 21 contour frames. The live ECWAM package is marked `normalized`.
 
 These results prove parity for the validated real operational cycle and settings; they are not a claim that every historical or future cycle has been exhaustively compared.
 
-## Compatibility rollout
+## Compatibility and production rollout
 
 Both model package paths support an explicit input mode:
 
@@ -120,11 +140,11 @@ WW3_PRODUCT_INPUT=raw|normalized
 ECWAM_PRODUCT_INPUT=raw|normalized
 ```
 
-`raw` remains the default during rollout. There is no silent normalized-to-raw fallback. A configured normalized run must fail clearly if normalization or normalized product generation fails.
+There is no silent normalized-to-raw fallback. A configured normalized run must fail clearly if normalization or normalized product generation fails.
 
-The AlmaLinux automation wrappers call the compatibility builders, but deployment environment examples keep both models on `raw`. Existing WW3 build markers without a `product_input` field are treated as `raw` for backward compatibility. ECWAM records the published mode alongside the package so changing input mode forces a supervised rebuild instead of being mistaken for an already-complete package.
+The AlmaLinux wrappers call the compatibility builders. Production on `vote3` was deliberately cut over to `normalized` for both models after supervised validation. Existing WW3 build markers without a `product_input` field remain treated as `raw` for backward compatibility. ECWAM records the published mode alongside the package so changing input mode forces a supervised rebuild instead of being mistaken for an already-complete package.
 
-Normalized product mode builds into an isolated staging tree first. The staged package is validated for PNG output, all 21 contour frames, and package metadata. Publication first copies each complete package directory onto the destination filesystem and then performs a local atomic rename with rollback protection. This also supports destinations mounted on a different filesystem from the staging tree.
+The systemd services retain `ProtectSystem=strict`; only the required model input/output, normalized model directory, shared normalized staging directory, and service state/runtime paths are writable.
 
 ## Migration phases
 
@@ -135,17 +155,23 @@ Normalized product mode builds into an isolated staging tree first. The staged p
 - WW3 NetCDF adapter and real-cycle data parity
 - ECWAM GRIB1 adapter and real-cycle normalization
 - normalized reader
-- normalized WW3 and ECWAM product shadow builders
+- normalized WW3 and ECWAM product renderers
 - product parity validation for both operational models
 - raw/normalized compatibility builders
-- validated staged publication with cross-filesystem support
-- AlmaLinux automation wrapper integration with raw default
+- staged publication with cross-filesystem support and rollback protection
+- package metadata validation before publication
+- common normalized package runner for build/stage/validate/publish/cleanup
+- AlmaLinux automation integration
+- supervised production cutover of both WW3 and ECWAM to normalized input
 
-### Next
+### Remaining hardening
 
-Perform one supervised production run per model with `*_PRODUCT_INPUT=normalized`, verify package metadata/counts and Studio rendering, then decide whether normalized mode should become the operational default.
+- observe and record unattended timer-driven normalized cycles
+- expand publisher and runner failure-path regression coverage as new failure modes are identified
+- add direct native-GRIB-to-normalized numerical parity verification for ECWAM
+- consolidate additional lifecycle concerns only where they are truly common, such as structured status/metrics and retention hooks
 
-After rollout, consolidate remaining duplicated lifecycle behavior into a common runner where it materially improves locking, timeout/signal handling, retry classification, retention, and observability.
+Do not merge source-specific retry cadence into one global timer solely for architectural symmetry. A common contract and lifecycle runner do not require common source scheduling.
 
 ## Retention rule
 
