@@ -6,6 +6,7 @@ import ChartReviewSection from '@dashboards/admin/sections/chart-review/ChartRev
 import UserManagementSection from '@dashboards/admin/sections/user-management/UserManagement';
 import WaveModelsSection from '@dashboards/admin/sections/wave-models/WaveModels';
 import WaveModelOnboarding from '@dashboards/admin/sections/wave-models/WaveModelOnboarding';
+import WaveModelSchedules from '@dashboards/admin/sections/wave-models/WaveModelSchedules';
 import AnalyticsSection from '@dashboards/admin/sections/Analytics';
 import CalendarSection from '@dashboards/admin/sections/Calendar';
 import SettingsSection from '@dashboards/admin/sections/Settings';
@@ -15,6 +16,7 @@ const SECTION_MAP = {
   [ADMIN_TABS.CHARTS]: (dark) => <ChartReviewSection isDarkMode={dark} />,
   [ADMIN_TABS.WAVE_MODELS]: (dark) => <WaveModelsSection isDarkMode={dark} />,
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: (dark) => <WaveModelOnboarding isDarkMode={dark} />,
+  [ADMIN_TABS.WAVE_MODEL_SCHEDULES]: (dark) => <WaveModelSchedules isDarkMode={dark} />,
   [ADMIN_TABS.USERS_ROLES]: (dark) => <UserManagementSection isDarkMode={dark} mode="roles" />,
   [ADMIN_TABS.USERS_LIST]: (dark) => <UserManagementSection isDarkMode={dark} mode="list" />,
   [ADMIN_TABS.USERS]: (dark) => <UserManagementSection isDarkMode={dark} mode="list" />,
