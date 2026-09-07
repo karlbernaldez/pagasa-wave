@@ -26,9 +26,8 @@ GRID_POINTS="${ECWAM_GRID_POINTS:-271051}"
 SOURCE_CYCLE="${ECWAM_SOURCE_CYCLE:-}"
 SELECTOR="$SCRIPT_DIR/ecwam_package_selection.py"
 NORMALIZER="$SCRIPT_DIR/normalize_ecwam_cycle.py"
-NORMALIZED_BUILDER="$SCRIPT_DIR/build_normalized_ecwam_shadow.py"
 RAW_BUILDER="$SCRIPT_DIR/build_ecwam_package.sh"
-PUBLISHER="$SCRIPT_DIR/publish_wave_package.py"
+RUNNER="$SCRIPT_DIR/run_normalized_wave_package.py"
 
 case "$PRODUCT_INPUT" in
   raw|normalized) ;;
@@ -45,7 +44,7 @@ fi
   exit 2
 }
 [[ -x "$PYTHON_BIN" || -f "$PYTHON_BIN" ]] || { echo "ECWAM Python runtime not found: $PYTHON_BIN" >&2; exit 1; }
-[[ -f "$NORMALIZER" && -f "$NORMALIZED_BUILDER" && -f "$SELECTOR" && -f "$PUBLISHER" ]] || {
+[[ -f "$NORMALIZER" && -f "$SELECTOR" && -f "$RUNNER" ]] || {
   echo "Normalized ECWAM pipeline scripts are missing" >&2
   exit 1
 }
@@ -62,33 +61,13 @@ if [[ ! -s "$CYCLE_DIR/wave.nc" || ! -s "$CYCLE_DIR/manifest.json" ]]; then
   "$PYTHON_BIN" "$NORMALIZER" "$INPUT_ROOT" "$SOURCE_CYCLE" --normalized-root "$NORMALIZED_ROOT" --grid-points "$GRID_POINTS"
 fi
 
-PACKAGE_TAG="$($PYTHON_BIN - "$PACKAGE_DATE" <<'PY'
-import sys
-from datetime import datetime
-raw=sys.argv[1]
-for pattern in ("%Y-%m-%d", "%Y%m%d"):
-    try:
-        value=datetime.strptime(raw, pattern).date(); break
-    except ValueError:
-        pass
-else:
-    raise SystemExit("invalid package date")
-months=("JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC")
-print(f"{value.year}{months[value.month-1]}{value.day:02d}")
-PY
-)"
-
-STAGE_ROOT="$ROOT/.normalized-product-stage/ECWAM-${PACKAGE_TAG}-$$"
-trap 'rm -rf -- "$STAGE_ROOT"' EXIT
-rm -rf -- "$STAGE_ROOT"
-
-"$PYTHON_BIN" "$NORMALIZED_BUILDER" \
+"$PYTHON_BIN" "$RUNNER" \
+  ECWAM \
   "$CYCLE_DIR" \
   "$PACKAGE_DATE" \
-  --output-root "$STAGE_ROOT" \
+  --output-root "$OUTPUT_ROOT" \
+  --source-cycle "$SOURCE_CYCLE" \
   --sigma "$SIGMA" \
-  --grid-points "$GRID_POINTS" \
   --workers "$WORKERS" \
-  "${EXTRA_ARGS[@]}"
-
-"$PYTHON_BIN" "$PUBLISHER" "$STAGE_ROOT" "$OUTPUT_ROOT" "$PACKAGE_TAG"
+  --grid-points "$GRID_POINTS" \
+  -- "${EXTRA_ARGS[@]}"
