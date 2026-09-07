@@ -154,7 +154,12 @@ const createApp = () => {
     requireRole('forecaster', 'admin'),
     forecastPackageRoutes
   );
-  app.use('/api/ecwam/frames', authenticate, requireRole('forecaster', 'admin'), ecwamFrameRoutes);
+  app.use(
+    '/api/ecwam/frames',
+    authenticate,
+    requireRole('forecaster', 'admin'),
+    ecwamFrameRoutes
+  );
   app.use(
     '/api/wave-models',
     authenticate,
@@ -162,7 +167,12 @@ const createApp = () => {
     waveModelCatalogRoutes
   );
   app.use('/api/admin/wave-models', authenticate, requireRole('admin'), waveModelRoutes);
-  app.use('/api/admin/wave-pipeline', authenticate, requireRole('admin'), wavePipelineStatusRoutes);
+  app.use(
+    '/api/admin/wave-pipeline',
+    authenticate,
+    requireRole('admin'),
+    wavePipelineStatusRoutes
+  );
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
   app.use('/api/chat', chatRoutes);
