@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -149,6 +150,13 @@ def validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         raise ContractValidationError("adapter.id and adapter.version are required.")
     if manifest.get("frameCount") != normalized["frameCount"]:
         raise ContractValidationError("frameCount must match forecastHours length.")
+    normalized["normalizedAt"] = str(manifest.get("normalizedAt") or "").strip()
+    if not normalized["normalizedAt"]:
+        raise ContractValidationError("normalizedAt is required.")
+    try:
+        normalize_reference_time(normalized["normalizedAt"])
+    except ContractValidationError as error:
+        raise ContractValidationError("normalizedAt must be an ISO-8601 timestamp.") from error
     return normalized
 
 
@@ -242,6 +250,32 @@ def validate_normalized_cycle(
         raise ContractValidationError(f"Missing normalized dataset: {dataset_path}")
     if not manifest_path.is_file():
         raise ContractValidationError(f"Missing normalized manifest: {manifest_path}")
+
+    try:
+        with manifest_path.open("r", encoding="utf-8") as handle:
+            manifest = validate_manifest(json.load(handle))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ContractValidationError(f"Unable to read normalized manifest: {manifest_path}") from error
+
     with xr.open_dataset(dataset_path) as dataset:
         validate_dataset(dataset, expected_forecast_hours=expected_forecast_hours)
+        dataset_model = normalize_model_code(dataset.attrs["model"])
+        dataset_cycle = normalize_cycle(dataset.attrs["source_cycle"])
+        dataset_reference = normalize_reference_time(dataset.attrs["reference_time"])
+        dataset_hours = [int(value) for value in dataset["forecast_hour"].values.tolist()]
+        dataset_variables = sorted(name for name in dataset.data_vars if name in CANONICAL_VARIABLES)
+
+    checks = (
+        ("model", manifest["model"], dataset_model),
+        ("sourceCycle", manifest["sourceCycle"], dataset_cycle),
+        ("referenceTime", manifest["referenceTime"], dataset_reference),
+        ("forecastHours", manifest["forecastHours"], dataset_hours),
+        ("variables", manifest["variables"], dataset_variables),
+    )
+    for field, manifest_value, dataset_value in checks:
+        if manifest_value != dataset_value:
+            raise ContractValidationError(
+                f"Normalized manifest {field} does not match wave.nc: {manifest_value!r} != {dataset_value!r}."
+            )
+
     return dataset_path, manifest_path
