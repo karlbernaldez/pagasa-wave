@@ -1,5 +1,10 @@
 import AuditLog from '../models/AuditLog.js';
-import { triggerWaveModelBuilder } from '../services/waveModelOperationsService.js';
+import {
+  restoreWaveModelSchedule,
+  setWaveModelSchedule,
+  setWaveModelScheduleEnabled,
+  triggerWaveModelBuilder,
+} from '../services/waveModelOperationsService.js';
 import {
   createWaveModel,
   deleteWaveModelPackage,
@@ -102,6 +107,43 @@ export const runWaveModelBuilder = async (req, res, next) => {
       ...result,
       message: `${result.modelCode} builder run was requested.`,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateWaveModelSchedule = async (req, res, next) => {
+  try {
+    const result = await setWaveModelSchedule(req.params.code, req.body?.schedule);
+    await writeAudit(req, 'wave_model.schedule.update', result);
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateScheduleEnabled = (enabled) => async (req, res, next) => {
+  try {
+    const result = await setWaveModelScheduleEnabled(req.params.code, enabled);
+    await writeAudit(
+      req,
+      enabled ? 'wave_model.schedule.enable' : 'wave_model.schedule.disable',
+      result
+    );
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const enableWaveModelSchedule = updateScheduleEnabled(true);
+export const disableWaveModelSchedule = updateScheduleEnabled(false);
+
+export const restoreWaveModelScheduleDefaults = async (req, res, next) => {
+  try {
+    const result = await restoreWaveModelSchedule(req.params.code);
+    await writeAudit(req, 'wave_model.schedule.restore', result);
+    res.status(200).json({ success: true, ...result });
   } catch (error) {
     next(error);
   }

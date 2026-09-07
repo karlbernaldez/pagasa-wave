@@ -15,6 +15,7 @@ export default [
       { path: '/dashboard/review', element: <Dashboard /> },
       { path: '/dashboard/wave-models', element: <Dashboard /> },
       { path: '/dashboard/wave-models/onboard', element: <Dashboard /> },
+      { path: '/dashboard/wave-models/schedules', element: <Dashboard /> },
       { path: '/dashboard/users', element: <Dashboard /> },
       { path: '/dashboard/users/roles', element: <Dashboard /> },
       { path: '/dashboard/analytics', element: <Dashboard /> },

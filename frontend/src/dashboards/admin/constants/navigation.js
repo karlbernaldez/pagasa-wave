@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Database,
   Cable,
+  TimerReset,
 } from 'lucide-react';
 
 export const ADMIN_TABS = {
@@ -14,6 +15,7 @@ export const ADMIN_TABS = {
   CHARTS: 'charts',
   WAVE_MODELS: 'wave_models',
   WAVE_MODEL_ONBOARDING: 'wave_model_onboarding',
+  WAVE_MODEL_SCHEDULES: 'wave_model_schedules',
   USERS: 'users',
   USERS_LIST: 'users_list',
   USERS_ROLES: 'users_roles',
@@ -28,6 +30,7 @@ export const ADMIN_ROUTE_BY_TAB = {
   [ADMIN_TABS.CHARTS]: '/dashboard/review',
   [ADMIN_TABS.WAVE_MODELS]: '/dashboard/wave-models',
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: '/dashboard/wave-models/onboard',
+  [ADMIN_TABS.WAVE_MODEL_SCHEDULES]: '/dashboard/wave-models/schedules',
   [ADMIN_TABS.USERS]: '/dashboard/users',
   [ADMIN_TABS.USERS_LIST]: '/dashboard/users',
   [ADMIN_TABS.USERS_ROLES]: '/dashboard/users/roles',
@@ -94,6 +97,12 @@ export const MENU_GROUPS = [
         icon: Cable,
       },
       {
+        id: ADMIN_TABS.WAVE_MODEL_SCHEDULES,
+        label: 'Builder Schedules',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODEL_SCHEDULES],
+        icon: TimerReset,
+      },
+      {
         id: ADMIN_TABS.USERS,
         label: 'Users',
         path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS],
@@ -148,6 +157,11 @@ export const PAGE_META = {
     title: 'Wave Model Onboarding',
     description:
       'Configure managed timestamp, forecast cadence, and map metadata for prebuilt wave model packages.',
+  },
+  [ADMIN_TABS.WAVE_MODEL_SCHEDULES]: {
+    title: 'Wave Model Builder Schedules',
+    description:
+      'Safely manage operational builder schedules, automation state, and supervised manual runs.',
   },
   [ADMIN_TABS.USERS]: {
     title: 'User Management',

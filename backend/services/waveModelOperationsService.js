@@ -4,6 +4,8 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
+import { DEFAULT_WAVE_MODEL_SCHEDULE, normalizeWaveModelSchedule } from './waveModelSchedule.js';
+
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +20,9 @@ const TRIGGER_ROOT = path.resolve(
 
 const SYSTEMCTL = process.env.WAVELAB_SYSTEMCTL_BIN || '/usr/bin/systemctl';
 const DU = process.env.WAVELAB_DU_BIN || '/usr/bin/du';
+const SUDO = process.env.WAVELAB_SUDO_BIN || '/usr/bin/sudo';
+const OPERATIONS_HELPER =
+  process.env.WAVELAB_WAVE_OPS_HELPER || '/usr/local/sbin/wavelab-wave-model-ops';
 const CACHE_TTL_MS = 5_000;
 const MANUAL_TRIGGER_COOLDOWN_MS = 60_000;
 
@@ -37,6 +42,24 @@ const OPERATIONAL_MODELS = {
 };
 
 const cache = new Map();
+
+const normalizeModelCode = (rawModelCode) =>
+  String(rawModelCode || '')
+    .trim()
+    .toUpperCase();
+
+const requireOperationalModel = (rawModelCode) => {
+  const modelCode = normalizeModelCode(rawModelCode);
+  const config = OPERATIONAL_MODELS[modelCode];
+  if (!config) {
+    const error = new Error(
+      `No operational builder is configured for ${modelCode || 'this model'}.`
+    );
+    error.status = 409;
+    throw error;
+  }
+  return { modelCode, config };
+};
 
 const parseProperties = (stdout = '') =>
   Object.fromEntries(
@@ -67,6 +90,42 @@ const readUnit = async (unit, properties) => {
       SubState: 'dead',
       Result: 'unknown',
       _error: error?.message || 'Unable to query systemd unit.',
+    };
+  }
+};
+
+const runOperationsHelper = async (action, modelCode, payload = null) => {
+  const args = ['-n', OPERATIONS_HELPER, action, modelCode];
+  if (payload != null) args.push(JSON.stringify(payload));
+  try {
+    const { stdout } = await execFileAsync(SUDO, args, {
+      timeout: 10_000,
+      maxBuffer: 64 * 1024,
+    });
+    return stdout.trim() ? JSON.parse(stdout.trim()) : {};
+  } catch (error) {
+    const wrapped = new Error(
+      error?.stderr?.trim() || error?.message || 'Wave model operations helper failed.'
+    );
+    wrapped.status = 503;
+    throw wrapped;
+  }
+};
+
+const readScheduleState = async (modelCode) => {
+  try {
+    const result = await runOperationsHelper('status', modelCode);
+    return {
+      available: true,
+      managed: Boolean(result.managed),
+      schedule: result.schedule || DEFAULT_WAVE_MODEL_SCHEDULE,
+    };
+  } catch (error) {
+    return {
+      available: false,
+      managed: false,
+      schedule: DEFAULT_WAVE_MODEL_SCHEDULE,
+      error: error.message,
     };
   }
 };
@@ -139,6 +198,7 @@ const getUncachedOperations = async (modelCode, latestPackage) => {
       supported: false,
       service: null,
       timer: null,
+      schedule: null,
       manualRun: { available: false, reason: 'No operational builder is configured.' },
       sourceCycle: null,
       packageBuiltAt: null,
@@ -147,7 +207,7 @@ const getUncachedOperations = async (modelCode, latestPackage) => {
     };
   }
 
-  const [service, timer, pathUnit, diskBytes, metadata] = await Promise.all([
+  const [service, timer, pathUnit, diskBytes, metadata, scheduleState] = await Promise.all([
     readUnit(config.serviceUnit, [
       'LoadState',
       'ActiveState',
@@ -163,12 +223,14 @@ const getUncachedOperations = async (modelCode, latestPackage) => {
       'LoadState',
       'ActiveState',
       'SubState',
+      'UnitFileState',
       'LastTriggerUSec',
       'NextElapseUSecRealtime',
     ]),
     readUnit(config.pathUnit, ['LoadState', 'ActiveState', 'SubState']),
     readDiskBytes(modelCode),
     readLatestPackageMetadata(modelCode, latestPackage),
+    readScheduleState(modelCode),
   ]);
 
   const serviceLoaded = service.LoadState === 'loaded';
@@ -196,11 +258,13 @@ const getUncachedOperations = async (modelCode, latestPackage) => {
     timer: {
       installed: timerLoaded,
       active: timer.ActiveState === 'active',
+      enabled: timer.UnitFileState === 'enabled',
       activeState: timer.ActiveState || 'unknown',
       subState: timer.SubState || 'unknown',
       lastTrigger: timer.LastTriggerUSec || null,
       nextRun: timer.NextElapseUSecRealtime || null,
     },
+    schedule: scheduleState,
     manualRun: {
       available: pathLoaded && pathActive && !running,
       reason: !pathLoaded
@@ -228,19 +292,39 @@ export const getWaveModelOperations = async (modelCode, latestPackage = null) =>
   return value;
 };
 
-export const triggerWaveModelBuilder = async (rawModelCode) => {
-  const modelCode = String(rawModelCode || '')
-    .trim()
-    .toUpperCase();
-  const config = OPERATIONAL_MODELS[modelCode];
-  if (!config) {
-    const error = new Error(
-      `No operational builder is configured for ${modelCode || 'this model'}.`
-    );
-    error.status = 409;
+export const setWaveModelSchedule = async (rawModelCode, rawSchedule) => {
+  const { modelCode } = requireOperationalModel(rawModelCode);
+  const schedule = normalizeWaveModelSchedule(rawSchedule);
+  const result = await runOperationsHelper('set-schedule', modelCode, schedule);
+  cache.clear();
+  return { modelCode, schedule: result.schedule || schedule, managed: true };
+};
+
+export const setWaveModelScheduleEnabled = async (rawModelCode, enabled) => {
+  const { modelCode } = requireOperationalModel(rawModelCode);
+  if (typeof enabled !== 'boolean') {
+    const error = new Error('enabled must be a boolean.');
+    error.status = 400;
     throw error;
   }
+  await runOperationsHelper(enabled ? 'enable' : 'disable', modelCode);
+  cache.clear();
+  return { modelCode, enabled };
+};
 
+export const restoreWaveModelSchedule = async (rawModelCode) => {
+  const { modelCode } = requireOperationalModel(rawModelCode);
+  const result = await runOperationsHelper('restore-schedule', modelCode);
+  cache.clear();
+  return {
+    modelCode,
+    managed: false,
+    schedule: result.schedule || DEFAULT_WAVE_MODEL_SCHEDULE,
+  };
+};
+
+export const triggerWaveModelBuilder = async (rawModelCode) => {
+  const { modelCode, config } = requireOperationalModel(rawModelCode);
   const operations = await getUncachedOperations(modelCode, null);
   if (!operations.service?.installed) {
     const error = new Error(`${modelCode} builder service is not installed.`);
@@ -278,12 +362,11 @@ export const triggerWaveModelBuilder = async (rawModelCode) => {
   }
 
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  await fs.writeFile(
-    triggerPath,
-    `${JSON.stringify({ requestId, modelCode, requestedAt: new Date().toISOString() })}\n`,
-    { mode: 0o640 }
-  );
+  const requestedAt = new Date().toISOString();
+  await fs.writeFile(triggerPath, `${JSON.stringify({ requestId, modelCode, requestedAt })}\n`, {
+    mode: 0o640,
+  });
 
   cache.clear();
-  return { modelCode, requestId, requestedAt: new Date().toISOString() };
+  return { modelCode, requestId, requestedAt };
 };

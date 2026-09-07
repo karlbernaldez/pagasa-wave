@@ -14,11 +14,15 @@ import {
   createWaveModel,
   deleteWaveModel,
   deleteWaveModelPackage,
+  disableWaveModelSchedule,
+  enableWaveModelSchedule,
   fetchWaveModelCatalog,
   fetchWaveModels,
+  restoreWaveModelSchedule,
   runWaveModelBuilder,
   setWaveModelEnabled,
   setWaveModelRuntimeProfile,
+  setWaveModelSchedule,
 } from './waveModels';
 
 describe('waveModels API', () => {
@@ -81,6 +85,31 @@ describe('waveModels API', () => {
 
     await runWaveModelBuilder('WW3');
     expect(api.post).toHaveBeenCalledWith('/admin/wave-models/WW3/run-builder');
+  });
+
+  it('updates a validated builder schedule', async () => {
+    const schedule = { mode: 'interval', everyMinutes: 90 };
+    api.patch.mockResolvedValueOnce({ data: { success: true, schedule } });
+
+    await setWaveModelSchedule('WW3', schedule);
+    expect(api.patch).toHaveBeenCalledWith('/admin/wave-models/WW3/schedule', { schedule });
+  });
+
+  it('enables and disables scheduled builder runs', async () => {
+    api.post.mockResolvedValue({ data: { success: true } });
+
+    await enableWaveModelSchedule('WW3');
+    await disableWaveModelSchedule('ECWAM');
+
+    expect(api.post).toHaveBeenNthCalledWith(1, '/admin/wave-models/WW3/schedule/enable');
+    expect(api.post).toHaveBeenNthCalledWith(2, '/admin/wave-models/ECWAM/schedule/disable');
+  });
+
+  it('restores the deployed builder schedule', async () => {
+    api.post.mockResolvedValueOnce({ data: { success: true } });
+
+    await restoreWaveModelSchedule('WW3');
+    expect(api.post).toHaveBeenCalledWith('/admin/wave-models/WW3/schedule/restore');
   });
 
   it('encodes package identifiers before deletion', async () => {
