@@ -12,8 +12,8 @@ model source
   -> model adapter
   -> reduction
   -> normalization
-  -> cycle assembly
-  -> normalized/<MODEL>/<CYCLE>/wave.nc + manifest.json
+  -> retained-cycle assembly
+  -> normalized/<MODEL>/<REFERENCE_TIME>/wave.nc + manifest.json
   -> generic package builder
   -> validation
   -> atomic publication
@@ -26,14 +26,14 @@ The adapter layer owns source-specific behavior. The generic package builder mus
 
 Adapters are responsible for:
 
-- source discovery and cycle selection
+- source discovery and native source-cycle selection
 - native format parsing
 - variable mapping
 - unit conversion
 - coordinate normalization
 - wave-direction convention normalization
 - forecast-range and cadence reduction
-- cycle assembly into the WaveLab normalized contract
+- retained-cycle assembly into the WaveLab normalized contract
 
 The downstream package builder is responsible for:
 
@@ -45,11 +45,30 @@ The downstream package builder is responsible for:
 - product integrity checks
 - atomic publication
 
+## Time semantics
+
+WaveLab keeps two times separate because they are not guaranteed to be the same.
+
+- `sourceCycle` is the model-native cycle from which the files were ingested.
+- `referenceTime` is WaveLab T+0, the first retained valid time used by Studio and the normalized forecast axis.
+- `forecastHour` is always relative to `referenceTime`.
+- `validTime = referenceTime + forecastHour` for every retained frame.
+
+For example, a native WW3 12Z source cycle may provide a complete WaveLab retained window beginning at 18Z. In that case:
+
+```text
+sourceCycle   = 2026090612
+referenceTime = 2026-09-06T18:00:00Z
+forecastHours = 0, 3, ..., 60
+```
+
+Conflating the source cycle with WaveLab T+0 would make forecast-hour metadata incorrect, so the contract validates this relationship explicitly.
+
 ## Normalized contract v1
 
 Storage implementation: NetCDF.
 
-Granularity: one normalized dataset per model per source cycle.
+Granularity: one normalized dataset per model per WaveLab reference time. Source provenance remains recorded separately in the manifest and dataset attributes.
 
 ```text
 normalized/
@@ -82,6 +101,15 @@ The dataset exposes:
 - `latitude`
 - `longitude`
 
+Contract v1 requires latitude and longitude to be one-dimensional, unique, and strictly ascending. Curvilinear grids require a future contract revision or an adapter-side remapping step.
+
+Required dataset attributes include:
+
+- `contract_version`
+- `model`
+- `source_cycle`
+- `reference_time`
+
 ### Canonical variables
 
 Initial canonical variables:
@@ -94,7 +122,7 @@ Initial canonical variables:
   - direction convention: `from_north_clockwise`
   - dimensions: `valid_time, latitude, longitude`
 
-Adapters must explicitly convert native naming, units, and direction conventions into the canonical representation.
+Adapters must explicitly convert native naming, units, coordinates, and direction conventions into the canonical representation.
 
 ## Manifest
 
@@ -106,7 +134,8 @@ Example:
 {
   "contractVersion": "wavelab-wave-v1",
   "model": "WW3",
-  "sourceCycle": "2026090618",
+  "sourceCycle": "2026090612",
+  "referenceTime": "2026-09-06T18:00:00Z",
   "sourceFormat": "netcdf",
   "adapter": {
     "id": "ww3-netcdf",
@@ -132,15 +161,28 @@ Example:
 
 No production builder behavior changes in this phase.
 
-### Phase 2 - WW3 adapter
+### Phase 2 - WW3 shadow adapter
 
-- consume the current extracted WW3 NetCDF cycle
-- retain only T+0 through T+60 at three-hour cadence
+- consume the current extracted WW3 NetCDF source cycle
+- require an explicit WaveLab `referenceTime`
+- retain exactly T+0 through T+60 at three-hour cadence
 - map `hs` to `significant_wave_height`
-- assemble one cycle-level `wave.nc`
+- convert supported source units to metres
+- canonicalize latitude/longitude ordering
+- assemble one retained-window `wave.nc`
 - produce `manifest.json`
-- validate against the contract
+- validate the written artifacts before atomically exposing the normalized directory
 - compare normalized data against current WW3 published products before switching input paths
+
+The shadow command is:
+
+```bash
+python wavetiles/scripts/normalize_ww3_cycle.py \
+  wavetiles/input/ww3 \
+  2026090618
+```
+
+It writes only below `wavetiles/normalized/WW3/` and does not modify existing tiles, contours, package markers, or Studio URLs.
 
 ### Phase 3 - Generic WW3 product path
 
@@ -166,4 +208,4 @@ Move duplicated builder lifecycle behavior into a shared runner:
 
 Raw inputs are not deleted merely because normalization succeeded. Cleanup is allowed only after normalization validation and successful package publication, subject to the configured retention policy.
 
-Do not combine multiple historical source cycles into a single NetCDF file. Corruption, retry, replacement, and retention boundaries remain per model/cycle.
+Do not combine multiple historical retained windows into a single NetCDF file. Corruption, retry, replacement, and retention boundaries remain per model/reference time.
