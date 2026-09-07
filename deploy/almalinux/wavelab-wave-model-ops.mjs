@@ -82,6 +82,7 @@ const renderDropin = (schedule) => {
     'OnUnitActiveSec=',
     'OnCalendar=',
     'RandomizedDelaySec=0',
+    'Persistent=false',
   ];
   if (schedule.mode === 'interval') {
     lines.push(`OnActiveSec=${schedule.everyMinutes}min`);
@@ -94,7 +95,21 @@ const renderDropin = (schedule) => {
   return `${lines.join('\n')}\n`;
 };
 
-const reloadManager = () => execFileSync('/usr/bin/systemctl', ['daemon-reload'], { stdio: 'ignore' });
+const systemctl = (args, options = {}) =>
+  execFileSync('/usr/bin/systemctl', args, { stdio: options.stdio || 'ignore' });
+const reloadManager = () => systemctl(['daemon-reload']);
+const isTimerActive = () => {
+  try {
+    systemctl(['is-active', '--quiet', config.timer]);
+    return true;
+  } catch {
+    return false;
+  }
+};
+const rearmManagedTimer = () => {
+  if (!isTimerActive()) return;
+  systemctl(['restart', config.timer]);
+};
 const action = String(process.argv[2] || '').trim();
 
 if (action === 'status') {
@@ -115,18 +130,19 @@ if (action === 'set-schedule') {
   writeAtomic(dropinPath, renderDropin(schedule));
   writeAtomic(statePath, `${JSON.stringify(schedule)}\n`);
   reloadManager();
+  rearmManagedTimer();
   process.stdout.write(`${JSON.stringify({ managed: true, schedule })}\n`);
   process.exit(0);
 }
 
 if (action === 'enable') {
-  execFileSync('/usr/bin/systemctl', ['enable', '--now', config.timer], { stdio: 'ignore' });
+  systemctl(['enable', '--now', config.timer]);
   process.stdout.write(`${JSON.stringify({ enabled: true })}\n`);
   process.exit(0);
 }
 
 if (action === 'disable') {
-  execFileSync('/usr/bin/systemctl', ['disable', '--now', config.timer], { stdio: 'ignore' });
+  systemctl(['disable', '--now', config.timer]);
   process.stdout.write(`${JSON.stringify({ enabled: false })}\n`);
   process.exit(0);
 }
