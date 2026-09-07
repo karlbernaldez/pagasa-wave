@@ -12,6 +12,7 @@ const STATUS_ROOT =
 const MODELS = ['WW3', 'ECWAM'];
 const EXPECTED_FORECAST_HOURS = Array.from({ length: 21 }, (_, index) => index * 3);
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const TRANSIENT_STATES = new Set(['NORMALIZING', 'BUILDING', 'VALIDATING', 'PUBLISHING', 'FAILED']);
 
 function manilaParts(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -104,7 +105,10 @@ export async function getWavePipelineStatus(now = new Date()) {
   const models = await Promise.all(
     MODELS.map(async (model) => {
       const runtime = await readRuntimeSnapshot(model);
-      if (runtime?.packageDate === packageDate && runtime?.requiredSourceCycle === sourceCycle) {
+      const runtimeMatchesToday =
+        runtime?.packageDate === packageDate && runtime?.requiredSourceCycle === sourceCycle;
+
+      if (runtimeMatchesToday && TRANSIENT_STATES.has(runtime.state)) {
         return runtime;
       }
 
@@ -113,8 +117,8 @@ export async function getWavePipelineStatus(now = new Date()) {
         return {
           ...published,
           inputMode: published.inputMode || runtime?.inputMode || null,
-          lastCheckAt: runtime?.lastCheckAt || null,
-          completedAt: runtime?.completedAt || null,
+          lastCheckAt: runtimeMatchesToday ? runtime?.lastCheckAt || null : null,
+          completedAt: runtimeMatchesToday ? runtime?.completedAt || null : null,
         };
       }
 
@@ -130,7 +134,7 @@ export async function getWavePipelineStatus(now = new Date()) {
         frameCount: 0,
         expectedFrameCount: EXPECTED_FORECAST_HOURS.length,
         published: false,
-        lastCheckAt: runtime?.lastCheckAt || null,
+        lastCheckAt: runtimeMatchesToday ? runtime?.lastCheckAt || null : null,
       };
     })
   );
