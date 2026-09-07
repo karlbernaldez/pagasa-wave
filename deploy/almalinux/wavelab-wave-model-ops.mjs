@@ -55,6 +55,18 @@ const normalizeSchedule = (raw) => {
   fail('Unsupported schedule mode.');
 };
 
+const validateSystemdSchedule = (schedule) => {
+  if (schedule.mode !== 'daily') return;
+  for (const time of schedule.times) {
+    const expression = `*-*-* ${time}:00 ${schedule.timezone}`;
+    try {
+      execFileSync('/usr/bin/systemd-analyze', ['calendar', expression], { stdio: 'ignore' });
+    } catch {
+      fail('The generated daily schedule is not accepted by systemd.');
+    }
+  }
+};
+
 const statePath = path.join(STATE_ROOT, `${modelCode.toLowerCase()}.json`);
 const dropinDir = path.join(DROPIN_ROOT, `${config.timer}.d`);
 const dropinPath = path.join(dropinDir, 'wavelab-admin-schedule.conf');
@@ -125,6 +137,7 @@ if (action === 'set-schedule') {
     fail('Schedule payload must be JSON.');
   }
   const schedule = normalizeSchedule(parsed);
+  validateSystemdSchedule(schedule);
   mkdirSync(STATE_ROOT, { recursive: true, mode: 0o755 });
   mkdirSync(dropinDir, { recursive: true, mode: 0o755 });
   writeAtomic(dropinPath, renderDropin(schedule));
