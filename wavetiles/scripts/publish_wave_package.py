@@ -59,26 +59,44 @@ def validate_stage(stage_root: Path, tag: str) -> tuple[list[Path], int, int]:
     return dirs, png_count, contour_count
 
 
+def _copy_to_destination_filesystem(staged: Path, incoming: Path) -> None:
+    """Copy a complete staged directory beside its destination before the atomic swap."""
+    if incoming.exists():
+        shutil.rmtree(incoming)
+    try:
+        shutil.copytree(staged, incoming, copy_function=shutil.copy2)
+    except Exception:
+        shutil.rmtree(incoming, ignore_errors=True)
+        raise
+
+
 def publish(stage_root: Path, production_root: Path, tag: str) -> None:
     staged_dirs, png_count, contour_count = validate_stage(stage_root, tag)
     production_root.mkdir(parents=True, exist_ok=True)
 
     token = uuid.uuid4().hex[:8]
     replaced: list[tuple[Path, Path | None]] = []
+    incoming_paths: list[Path] = []
     try:
         for staged in staged_dirs:
             category = staged.parent.name
             destination_parent = production_root / category
             destination_parent.mkdir(parents=True, exist_ok=True)
             destination = destination_parent / tag
-            backup = None
-            if destination.exists():
-                backup = destination_parent / f".{tag}.backup-{token}"
+            incoming = destination_parent / f".{tag}.incoming-{token}"
+            backup = destination_parent / f".{tag}.backup-{token}" if destination.exists() else None
+            incoming_paths.append(incoming)
+
+            # The shadow/stage tree may live on a different filesystem. Copy first
+            # so the final rename is always local to the destination filesystem.
+            _copy_to_destination_filesystem(staged, incoming)
+
+            if backup is not None:
                 if backup.exists():
                     shutil.rmtree(backup)
                 os.replace(destination, backup)
             try:
-                os.replace(staged, destination)
+                os.replace(incoming, destination)
             except Exception:
                 if backup is not None and backup.exists() and not destination.exists():
                     os.replace(backup, destination)
@@ -89,12 +107,17 @@ def publish(stage_root: Path, production_root: Path, tag: str) -> None:
             if backup is not None and backup.exists():
                 shutil.rmtree(backup)
     except Exception:
+        for incoming in incoming_paths:
+            shutil.rmtree(incoming, ignore_errors=True)
         for destination, backup in reversed(replaced):
             if destination.exists():
                 shutil.rmtree(destination)
             if backup is not None and backup.exists():
                 os.replace(backup, destination)
         raise
+    finally:
+        for incoming in incoming_paths:
+            shutil.rmtree(incoming, ignore_errors=True)
 
     print(f"Published package {tag}")
     print(f"  PNG files: {png_count}")
