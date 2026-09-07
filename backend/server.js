@@ -32,6 +32,7 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import waveModelCatalogRoutes from './routes/waveModelCatalogRoutes.js';
 import waveModelRoutes from './routes/waveModelRoutes.js';
+import wavePipelineStatusRoutes from './routes/wavePipelineStatusRoutes.js';
 import { createShutdownHandler } from './services/gracefulShutdown.js';
 import { initSocket } from './socket/index.js';
 import { setIo } from './socket/socketEmitter.js';
@@ -161,6 +162,7 @@ const createApp = () => {
     waveModelCatalogRoutes
   );
   app.use('/api/admin/wave-models', authenticate, requireRole('admin'), waveModelRoutes);
+  app.use('/api/admin/wave-pipeline', authenticate, requireRole('admin'), wavePipelineStatusRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
   app.use('/api/chat', chatRoutes);
