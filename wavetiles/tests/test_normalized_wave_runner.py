@@ -33,7 +33,11 @@ class NormalizedWaveRunnerTests(unittest.TestCase):
         )
 
     def reader(self, model: str = "WW3", source_cycle: str = "2026090618"):
-        return SimpleNamespace(model=model, source_cycle=source_cycle)
+        return SimpleNamespace(
+            model=model,
+            source_cycle=source_cycle,
+            forecast_hours=tuple(range(0, 61, 3)),
+        )
 
     def test_builds_model_specific_commands(self):
         with tempfile.TemporaryDirectory() as temporary:
