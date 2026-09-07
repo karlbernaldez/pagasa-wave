@@ -245,8 +245,10 @@ function ModelScheduleCard({ model, busyKey, editingCode, setEditingCode, isDark
               .filter(Boolean),
             timezone: form.timezone.trim(),
           };
-    await onAction(`${model.code}:schedule`, () => setWaveModelSchedule(model.code, schedule));
-    setEditingCode(null);
+    const saved = await onAction(`${model.code}:schedule`, () =>
+      setWaveModelSchedule(model.code, schedule)
+    );
+    if (saved) setEditingCode(null);
   };
 
   const handleEdit = () => {
@@ -478,14 +480,16 @@ export default function WaveModelSchedules({ isDarkMode = true }) {
   );
 
   const onAction = async (key, action, confirmAction = false) => {
-    if (confirmAction && !window.confirm('Apply this operational change?')) return;
+    if (confirmAction && !window.confirm('Apply this operational change?')) return false;
     setBusyKey(key);
     try {
       await action();
       await loadModels();
       setMessage({ type: 'success', text: 'Wave model operation completed.' });
+      return true;
     } catch (error) {
       setMessage({ type: 'error', text: normalizeError(error, 'Wave model operation failed.') });
+      return false;
     } finally {
       setBusyKey('');
     }
