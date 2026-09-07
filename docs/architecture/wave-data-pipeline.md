@@ -130,7 +130,7 @@ Adapters must explicitly convert native naming, units, coordinates, and directio
 
 ## Manifest
 
-`manifest.json` records provenance and normalized contract metadata.
+`manifest.json` records provenance and normalized contract metadata. Validation cross-checks the manifest against `wave.nc`, including model, source cycle, reference time, forecast-hour axis, and canonical variables.
 
 Example:
 
@@ -152,6 +152,19 @@ Example:
   "normalizedAt": "2026-09-07T00:00:00Z"
 }
 ```
+
+## Real WW3 validation
+
+The `2026090618` operational WW3 cycle was normalized on AlmaLinux using the real staged NetCDF inputs. All 21 retained frames from T+0 through T+60 were compared directly against the canonical `significant_wave_height` frames.
+
+Observed parity:
+
+```text
+Worst max absolute difference : 0.0000000000
+Worst mean absolute difference: 0.0000000000
+```
+
+This proves the WW3 adapter preserves the source wave-height values exactly for the validated operational cycle. Product parity is still required before the normalized path may replace the production raw-file product path.
 
 ## Migration plan
 
@@ -178,9 +191,9 @@ No production builder behavior changes in this phase.
 - assemble one retained-window `wave.nc`
 - produce `manifest.json`
 - validate the written artifacts before atomically exposing the normalized directory
-- compare normalized data against current WW3 published products before switching input paths
+- compare normalized data against native WW3 frames before switching input paths
 
-The shadow command is:
+The normalization command is:
 
 ```bash
 python wavetiles/scripts/normalize_ww3_cycle.py \
@@ -190,9 +203,25 @@ python wavetiles/scripts/normalize_ww3_cycle.py \
 
 It writes only below `wavetiles/normalized/WW3/` and does not modify existing tiles, contours, package markers, or Studio URLs.
 
-### Phase 3 - Generic WW3 product path
+### Phase 3 - Generic normalized reader and WW3 product shadow
 
-Teach the package builder to read the normalized contract rather than the raw WW3 file hierarchy, behind a compatibility switch until output parity is proven.
+`NormalizedCycleReader` validates and reads the canonical contract without knowing the source format or native source hierarchy.
+
+The WW3 compatibility bridge consumes that reader and sends canonical frames through the same production WW3 tile and contour algorithms, but writes into an isolated shadow tree:
+
+```bash
+python wavetiles/scripts/build_normalized_ww3_shadow.py \
+  wavetiles/normalized/WW3/2026090618 \
+  2026-09-07
+```
+
+Default output:
+
+```text
+wavetiles/shadow-products/WW3/
+```
+
+The shadow builder refuses to write inside `wavetiles/tiles/WW3`. Production remains on the raw WW3 path until raster and contour parity is proven.
 
 ### Phase 4 - ECWAM adapter
 
