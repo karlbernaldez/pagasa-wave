@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'deploy/almalinux/wavelab-ww3-package-builder'
+      - 'deploy/almalinux/wavelab-ecwam-package-builder'
+      - 'deploy/almalinux/ww3-package-builder.env.example'
+      - 'deploy/almalinux/ecwam-package-builder.env.example'
       - 'wavetiles/pipeline/**'
       - 'wavetiles/scripts/normalize_ww3_cycle.py'
       - 'wavetiles/scripts/normalize_ecwam_cycle.py'
@@ -27,6 +30,9 @@ on:
       - dev
     paths:
       - 'deploy/almalinux/wavelab-ww3-package-builder'
+      - 'deploy/almalinux/wavelab-ecwam-package-builder'
+      - 'deploy/almalinux/ww3-package-builder.env.example'
+      - 'deploy/almalinux/ecwam-package-builder.env.example'
       - 'wavetiles/pipeline/**'
       - 'wavetiles/scripts/normalize_ww3_cycle.py'
       - 'wavetiles/scripts/normalize_ecwam_cycle.py'
@@ -84,10 +90,11 @@ jobs:
         run: python -m unittest wavetiles.tests.test_ecwam_adapter -v
 
       - name: Validate builder shell syntax
-        run: >-
+        run: |
           bash -n deploy/almalinux/wavelab-ww3-package-builder
-          wavetiles/scripts/build_ww3_compatible_package.sh
-          wavetiles/scripts/build_ecwam_compatible_package.sh
+          bash -n deploy/almalinux/wavelab-ecwam-package-builder
+          bash -n wavetiles/scripts/build_ww3_compatible_package.sh
+          bash -n wavetiles/scripts/build_ecwam_compatible_package.sh
 
       - name: Compile pipeline and package modules
         run: >-
