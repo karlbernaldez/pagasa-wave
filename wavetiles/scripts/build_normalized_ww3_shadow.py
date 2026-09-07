@@ -212,7 +212,7 @@ def main() -> int:
         "packageTag": tag,
         "sourceCycle": reader.source_cycle,
         "variable": "hs",
-        "sigma": args.sigma,
+        "sigma": str(args.sigma),
         "frameCount": len(reader.forecast_hours),
         "requiredForecastHours": list(reader.forecast_hours),
     }
