@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select one complete WW3 source cycle for a forecast package date."""
+"""Select the required previous-day 18Z WW3 source cycle for a forecast package date."""
 
 from __future__ import annotations
 
@@ -28,6 +28,10 @@ def manila_today(now: datetime | None = None) -> date:
     return current.astimezone(ZoneInfo("Asia/Manila")).date()
 
 
+def required_source_cycle(package_date: date) -> str:
+    return (package_date - timedelta(days=1)).strftime("%Y%m%d") + "18"
+
+
 def required_valid_times(package_date: date) -> tuple[str, ...]:
     analysis_time = datetime.combine(
         package_date - timedelta(days=1), datetime.min.time()
@@ -46,6 +50,8 @@ def package_tag(package_date: date) -> str:
 def cycle_is_complete(cycle_dir: Path, package_date: date) -> bool:
     if not cycle_dir.is_dir() or not CYCLE_RE.fullmatch(cycle_dir.name):
         return False
+    if cycle_dir.name != required_source_cycle(package_date):
+        return False
     return all(
         (cycle_dir / f"ww3_grdo.{stamp[:8]}T{stamp[8:]}.nc").is_file()
         for stamp in required_valid_times(package_date)
@@ -53,21 +59,18 @@ def cycle_is_complete(cycle_dir: Path, package_date: date) -> bool:
 
 
 def select_source_cycle(input_root: Path, package_date: date) -> Path | None:
-    cycles = (
-        sorted(
-            (path for path in input_root.iterdir() if path.is_dir() and CYCLE_RE.fullmatch(path.name)),
-            key=lambda path: path.name,
-            reverse=True,
-        )
-        if input_root.is_dir()
-        else []
-    )
-    return next((path for path in cycles if cycle_is_complete(path, package_date)), None)
+    if not input_root.is_dir():
+        return None
+    cycle_dir = input_root / required_source_cycle(package_date)
+    return cycle_dir if cycle_is_complete(cycle_dir, package_date) else None
 
 
 def print_manifest(input_root: Path, package_date: date, source_cycle: str | None) -> int:
-    cycle_dir = input_root / source_cycle if source_cycle else select_source_cycle(input_root, package_date)
-    if cycle_dir is None or not cycle_is_complete(cycle_dir, package_date):
+    required_cycle = required_source_cycle(package_date)
+    if source_cycle is not None and source_cycle != required_cycle:
+        return 1
+    cycle_dir = input_root / required_cycle
+    if not cycle_is_complete(cycle_dir, package_date):
         return 1
     tag = package_tag(package_date)
     for forecast_hour, stamp in zip(
