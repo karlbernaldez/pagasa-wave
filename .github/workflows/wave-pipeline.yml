@@ -27,6 +27,15 @@ on:
       - 'wavetiles/tests/test_ww3_adapter.py'
       - 'wavetiles/tests/test_ecwam_adapter.py'
       - 'wavetiles/tests/test_ww3_package_selection.py'
+      - 'backend/services/wavePipelineStatus.js'
+      - 'backend/routes/wavePipelineStatusRoutes.js'
+      - 'backend/tests/wavePipelineStatus.test.js'
+      - 'backend/server.js'
+      - 'frontend/src/api/wavePipelineStatus.js'
+      - 'frontend/src/dashboards/admin/sections/wave-models/WavePipelineStatus.jsx'
+      - 'frontend/src/dashboards/admin/constants/navigation.js'
+      - 'frontend/src/dashboards/admin/pages/Dashboard.jsx'
+      - 'frontend/src/app/router/routes/adminRoutes.jsx'
       - 'docs/architecture/wave-data-pipeline.md'
       - '.github/workflows/wave-pipeline.yml'
   push:
@@ -58,6 +67,15 @@ on:
       - 'wavetiles/tests/test_ww3_adapter.py'
       - 'wavetiles/tests/test_ecwam_adapter.py'
       - 'wavetiles/tests/test_ww3_package_selection.py'
+      - 'backend/services/wavePipelineStatus.js'
+      - 'backend/routes/wavePipelineStatusRoutes.js'
+      - 'backend/tests/wavePipelineStatus.test.js'
+      - 'backend/server.js'
+      - 'frontend/src/api/wavePipelineStatus.js'
+      - 'frontend/src/dashboards/admin/sections/wave-models/WavePipelineStatus.jsx'
+      - 'frontend/src/dashboards/admin/constants/navigation.js'
+      - 'frontend/src/dashboards/admin/pages/Dashboard.jsx'
+      - 'frontend/src/app/router/routes/adminRoutes.jsx'
       - 'docs/architecture/wave-data-pipeline.md'
       - '.github/workflows/wave-pipeline.yml'
   workflow_dispatch:
@@ -81,6 +99,11 @@ jobs:
           cache: pip
           cache-dependency-path: wavetiles/requirements.txt
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install pipeline test dependencies
         run: python -m pip install --disable-pip-version-check numpy pandas xarray netCDF4
 
@@ -95,6 +118,9 @@ jobs:
 
       - name: Run pipeline status tests
         run: python -m unittest wavetiles.tests.test_wave_pipeline_status -v
+
+      - name: Run pipeline status API tests
+        run: node --test backend/tests/wavePipelineStatus.test.js
 
       - name: Run package publisher tests
         run: python -m unittest wavetiles.tests.test_wave_package_publisher -v
