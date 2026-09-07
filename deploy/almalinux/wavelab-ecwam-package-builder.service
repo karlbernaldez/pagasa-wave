@@ -30,6 +30,8 @@ RestrictSUIDSGID=true
 LockPersonality=true
 MemoryDenyWriteExecute=false
 ReadWritePaths=/home/wavelab/app/wavetiles/tiles/ECWAM
+ReadWritePaths=/home/wavelab/app/wavetiles/normalized/ECWAM
+ReadWritePaths=/home/wavelab/app/wavetiles/.normalized-product-stage
 ReadWritePaths=/run/wavelab-ecwam
 
 [Install]
