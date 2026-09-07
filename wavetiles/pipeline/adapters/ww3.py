@@ -174,7 +174,7 @@ def _assert_same_grid(reference: xr.DataArray, candidate: xr.DataArray, path: Pa
 
 
 class WW3NetCDFAdapter(WaveModelAdapter):
-    """Normalize the retained WW3 NetCDF window into WaveLab contract v1."""
+    """Normalize the required previous-day 18Z WW3 cycle into WaveLab contract v1."""
 
     adapter_id = "ww3-netcdf"
     adapter_version = "1"
@@ -187,39 +187,38 @@ class WW3NetCDFAdapter(WaveModelAdapter):
         reference_time: datetime | None = None,
     ) -> SourceCycle:
         if reference_time is None:
-            raise WW3AdapterError(
-                "WW3 normalization requires an explicit reference_time so WaveLab T+0 is not "
-                "confused with the native source-cycle hour."
-            )
+            raise WW3AdapterError("WW3 normalization requires an explicit reference_time.")
+
         reference_time = _as_utc(reference_time)
+        if reference_time.minute != 0 or reference_time.second != 0 or reference_time.hour != 18:
+            raise WW3AdapterError("WW3 normalization requires an 18Z reference_time/source cycle.")
+
+        required_cycle = _reference_tag(reference_time)
         root = Path(source_root)
-        candidates = [root] if CYCLE_RE.fullmatch(root.name) else []
-        if root.is_dir() and not candidates:
-            candidates = sorted(
-                (
-                    path
-                    for path in root.iterdir()
-                    if path.is_dir() and CYCLE_RE.fullmatch(path.name)
-                ),
-                key=lambda path: path.name,
-                reverse=True,
+        cycle_dir = root if CYCLE_RE.fullmatch(root.name) else root / required_cycle
+
+        if cycle_dir.name != required_cycle:
+            raise WW3AdapterError(
+                f"WW3 source cycle must exactly match the 18Z reference time {required_cycle}; "
+                f"got {cycle_dir.name}."
             )
-        for cycle_dir in candidates:
-            files = tuple(
-                cycle_dir / _expected_file_name(reference_time, hour)
-                for hour in DEFAULT_FORECAST_HOURS
+
+        files = tuple(
+            cycle_dir / _expected_file_name(reference_time, hour)
+            for hour in DEFAULT_FORECAST_HOURS
+        )
+        if not cycle_dir.is_dir() or not all(path.is_file() for path in files):
+            raise WW3AdapterError(
+                f"No complete WW3 18Z source cycle {required_cycle} under {root} contains "
+                "T+0 through T+60."
             )
-            if all(path.is_file() for path in files):
-                return SourceCycle(
-                    model=self.model_code,
-                    cycle=cycle_dir.name,
-                    source_format="netcdf",
-                    files=files,
-                    reference_time=reference_time,
-                )
-        expected = _expected_file_name(reference_time, DEFAULT_FORECAST_HOURS[0])
-        raise WW3AdapterError(
-            f"No complete WW3 source cycle under {root} contains {expected} through T+60."
+
+        return SourceCycle(
+            model=self.model_code,
+            cycle=required_cycle,
+            source_format="netcdf",
+            files=files,
+            reference_time=reference_time,
         )
 
     def normalize(
@@ -240,13 +239,19 @@ class WW3NetCDFAdapter(WaveModelAdapter):
             raise WW3AdapterError("WW3 adapter v1 requires NetCDF source files.")
 
         reference_time = _as_utc(source_cycle.reference_time)
+        reference_tag = _reference_tag(reference_time)
+        if reference_time.hour != 18 or source_cycle.cycle != reference_tag:
+            raise WW3AdapterError(
+                "WW3 sourceCycle must equal the 18Z reference_time; fallback cycles are not allowed."
+            )
+
         expected_files = tuple(
             path.parent / _expected_file_name(reference_time, hour)
             for path, hour in zip(source_cycle.files, hours)
         )
         if len(source_cycle.files) != len(hours) or tuple(source_cycle.files) != expected_files:
             raise WW3AdapterError(
-                "WW3 source file list must exactly match reference_time + T+0..T+60 in 3-hour steps."
+                "WW3 source file list must exactly match the 18Z source cycle T+0..T+60 in 3-hour steps."
             )
         missing = [str(path) for path in source_cycle.files if not path.is_file()]
         if missing:
@@ -300,7 +305,6 @@ class WW3NetCDFAdapter(WaveModelAdapter):
         )
         validate_manifest(manifest)
 
-        reference_tag = _reference_tag(reference_time)
         model_root = Path(normalized_root) / self.model_code
         target_dir = model_root / reference_tag
         model_root.mkdir(parents=True, exist_ok=True)
