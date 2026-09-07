@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
+import test, { after } from 'node:test';
 
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'wavelab-wave-ops-'));
 const fakeSudo = path.join(tempRoot, 'fake-sudo.mjs');
@@ -44,7 +44,7 @@ const {
   setWaveModelScheduleEnabled,
 } = await import(`../services/waveModelOperationsService.js?test=${Date.now()}`);
 
-test.after(async () => {
+after(async () => {
   await rm(tempRoot, { recursive: true, force: true });
 });
 
