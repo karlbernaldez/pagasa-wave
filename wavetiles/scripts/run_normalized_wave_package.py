@@ -21,6 +21,7 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from wavetiles.pipeline.reader import NormalizedCycleReader
+from wavetiles.pipeline.status import utc_now, write_status
 from publish_wave_package import publish
 
 MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
@@ -109,13 +110,28 @@ def validate_config(config: RunnerConfig) -> NormalizedCycleReader:
 
 
 def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
-    validate_config(config)
+    reader = validate_config(config)
     tag = package_tag(config.package_date)
     config.stage_parent.mkdir(parents=True, exist_ok=True)
     stage_root = config.stage_parent / (
         f"{config.model}-{tag}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
     )
     stage_root.mkdir(mode=0o755)
+    started_at = utc_now()
+
+    write_status(
+        config.model,
+        "BUILDING",
+        message="Generating WaveLab products from the normalized cycle.",
+        package_date=config.package_date.isoformat(),
+        required_source_cycle=config.source_cycle,
+        source_cycle=config.source_cycle,
+        input_mode="normalized",
+        frame_count=0,
+        expected_frame_count=len(reader.forecast_hours),
+        published=False,
+        started_at=started_at,
+    )
 
     print(
         f"WaveLab normalized runner: model={config.model} package={config.package_date.isoformat()} "
@@ -132,16 +148,75 @@ def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
                 f"{config.model} normalized product builder exited with status {completed.returncode}"
             )
 
+        write_status(
+            config.model,
+            "VALIDATING",
+            message="Validating the staged WaveLab product package.",
+            package_date=config.package_date.isoformat(),
+            required_source_cycle=config.source_cycle,
+            source_cycle=config.source_cycle,
+            input_mode="normalized",
+            frame_count=len(reader.forecast_hours),
+            expected_frame_count=len(reader.forecast_hours),
+            published=False,
+            started_at=started_at,
+        )
+
+        write_status(
+            config.model,
+            "PUBLISHING",
+            message="Promoting the validated package to the production wave tree.",
+            package_date=config.package_date.isoformat(),
+            required_source_cycle=config.source_cycle,
+            source_cycle=config.source_cycle,
+            input_mode="normalized",
+            frame_count=len(reader.forecast_hours),
+            expected_frame_count=len(reader.forecast_hours),
+            published=False,
+            started_at=started_at,
+        )
         publish(
             stage_root,
             config.output_root,
             tag,
             expected_source_cycle=config.source_cycle,
         )
+
+        write_status(
+            config.model,
+            "READY",
+            message="Normalized wave package is published and ready for Studio.",
+            package_date=config.package_date.isoformat(),
+            required_source_cycle=config.source_cycle,
+            source_cycle=config.source_cycle,
+            input_mode="normalized",
+            frame_count=len(reader.forecast_hours),
+            expected_frame_count=len(reader.forecast_hours),
+            published=True,
+            started_at=started_at,
+            completed_at=utc_now(),
+            extra={"packageTag": tag},
+        )
         print(
             f"WaveLab normalized runner completed: model={config.model} package={tag}",
             flush=True,
         )
+    except Exception as exc:
+        write_status(
+            config.model,
+            "FAILED",
+            message="Normalized WaveLab package generation failed.",
+            package_date=config.package_date.isoformat(),
+            required_source_cycle=config.source_cycle,
+            source_cycle=config.source_cycle,
+            input_mode="normalized",
+            expected_frame_count=len(reader.forecast_hours),
+            published=False,
+            started_at=started_at,
+            completed_at=utc_now(),
+            error=str(exc),
+        )
+        raise
     finally:
         shutil.rmtree(stage_root, ignore_errors=True)
 
