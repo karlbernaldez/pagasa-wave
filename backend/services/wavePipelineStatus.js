@@ -13,7 +13,13 @@ const WW3_STATE_ROOT = process.env.WW3_STATE_ROOT || '/var/lib/wavelab-ww3';
 const MODELS = ['WW3', 'ECWAM'];
 const EXPECTED_FORECAST_HOURS = Array.from({ length: 21 }, (_, index) => index * 3);
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const TRANSIENT_STATES = new Set(['NORMALIZING', 'BUILDING', 'VALIDATING', 'PUBLISHING', 'FAILED']);
+const TRANSIENT_STATES = new Set([
+  'NORMALIZING',
+  'BUILDING',
+  'VALIDATING',
+  'PUBLISHING',
+  'FAILED',
+]);
 
 function manilaParts(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -112,7 +118,10 @@ async function publishedSnapshot(model, packageDate, sourceCycle) {
     published: true,
     lastCheckAt: null,
     completedAt: markerMatches ? ww3Marker.built_utc || null : null,
-    pngCount: markerMatches && Number.isFinite(Number(ww3Marker.png_count)) ? Number(ww3Marker.png_count) : null,
+    pngCount:
+      markerMatches && Number.isFinite(Number(ww3Marker.png_count))
+        ? Number(ww3Marker.png_count)
+        : null,
     contourCount:
       markerMatches && Number.isFinite(Number(ww3Marker.contour_count))
         ? Number(ww3Marker.contour_count)
@@ -144,7 +153,8 @@ export async function getWavePipelineStatus(now = new Date()) {
           ...published,
           inputMode: published.inputMode || runtime?.inputMode || null,
           lastCheckAt: runtimeMatchesToday ? runtime?.lastCheckAt || null : null,
-          completedAt: published.completedAt || (runtimeMatchesToday ? runtime?.completedAt || null : null),
+          completedAt:
+            published.completedAt || (runtimeMatchesToday ? runtime?.completedAt || null : null),
         };
       }
 
