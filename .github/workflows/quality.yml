@@ -56,6 +56,33 @@ jobs:
       - name: Run incremental quality gates
         run: npm run quality
 
+  backend-validation:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Run backend tests
+        run: npm test
+
+      - name: Run workflow regression tests
+        run: npm run test:workflow
+
   frontend-validation:
     name: Frontend tests and build
     runs-on: ubuntu-latest
