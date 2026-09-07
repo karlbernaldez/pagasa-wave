@@ -7,12 +7,14 @@ import {
   CalendarDays,
   Database,
   Cable,
+  Activity,
 } from 'lucide-react';
 
 export const ADMIN_TABS = {
   DASHBOARD: 'dashboard',
   CHARTS: 'charts',
   WAVE_MODELS: 'wave_models',
+  WAVE_PIPELINE: 'wave_pipeline',
   WAVE_MODEL_ONBOARDING: 'wave_model_onboarding',
   USERS: 'users',
   USERS_LIST: 'users_list',
@@ -27,6 +29,7 @@ export const ADMIN_ROUTE_BY_TAB = {
   [ADMIN_TABS.DASHBOARD]: '/dashboard',
   [ADMIN_TABS.CHARTS]: '/dashboard/review',
   [ADMIN_TABS.WAVE_MODELS]: '/dashboard/wave-models',
+  [ADMIN_TABS.WAVE_PIPELINE]: '/dashboard/wave-models/pipeline',
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: '/dashboard/wave-models/onboard',
   [ADMIN_TABS.USERS]: '/dashboard/users',
   [ADMIN_TABS.USERS_LIST]: '/dashboard/users',
@@ -88,6 +91,12 @@ export const MENU_GROUPS = [
         icon: Database,
       },
       {
+        id: ADMIN_TABS.WAVE_PIPELINE,
+        label: 'Wave Pipeline',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_PIPELINE],
+        icon: Activity,
+      },
+      {
         id: ADMIN_TABS.WAVE_MODEL_ONBOARDING,
         label: 'Model Onboarding',
         path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODEL_ONBOARDING],
@@ -143,6 +152,11 @@ export const PAGE_META = {
     title: 'Wave Model Management',
     description:
       'Monitor model availability, manage generated tile packages, and register future wave data sources.',
+  },
+  [ADMIN_TABS.WAVE_PIPELINE]: {
+    title: 'Wave Data Pipeline',
+    description:
+      'Monitor WW3 and ECWAM source readiness, normalized processing, validation, and publication status.',
   },
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: {
     title: 'Wave Model Onboarding',
