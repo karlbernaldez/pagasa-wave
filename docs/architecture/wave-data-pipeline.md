@@ -47,28 +47,32 @@ The downstream package builder is responsible for:
 
 ## Time semantics
 
-WaveLab keeps two times separate because they are not guaranteed to be the same.
+The normalized contract records both `sourceCycle` and `referenceTime` because future models may need different semantics. For the current WW3 operational profile, however, they are intentionally the same.
 
-- `sourceCycle` is the model-native cycle from which the files were ingested.
-- `referenceTime` is WaveLab T+0, the first retained valid time used by Studio and the normalized forecast axis.
-- `forecastHour` is always relative to `referenceTime`.
-- `validTime = referenceTime + forecastHour` for every retained frame.
-
-For example, a native WW3 12Z source cycle may provide a complete WaveLab retained window beginning at 18Z. In that case:
+WW3 requires the previous-day 18Z model cycle for each WaveLab package date:
 
 ```text
-sourceCycle   = 2026090612
-referenceTime = 2026-09-06T18:00:00Z
-forecastHours = 0, 3, ..., 60
+package date   = 2026-09-07
+sourceCycle    = 2026090618
+referenceTime  = 2026-09-06T18:00:00Z
+forecastHours  = 0, 3, ..., 60
 ```
 
-Conflating the source cycle with WaveLab T+0 would make forecast-hour metadata incorrect, so the contract validates this relationship explicitly.
+The WW3 adapter and package selector enforce this invariant. A complete 12Z cycle is not used as a fallback if the required 18Z cycle is incomplete; the automation waits for a later retry instead.
+
+For every normalized WW3 frame:
+
+```text
+validTime = referenceTime + forecastHour
+```
+
+Therefore WW3 T+0 is the native 18Z model T+0, T+3 is the native 18Z model T+3, and so on through T+60.
 
 ## Normalized contract v1
 
 Storage implementation: NetCDF.
 
-Granularity: one normalized dataset per model per WaveLab reference time. Source provenance remains recorded separately in the manifest and dataset attributes.
+Granularity: one normalized dataset per model per WaveLab reference time. Source provenance remains recorded in the manifest and dataset attributes.
 
 ```text
 normalized/
@@ -134,7 +138,7 @@ Example:
 {
   "contractVersion": "wavelab-wave-v1",
   "model": "WW3",
-  "sourceCycle": "2026090612",
+  "sourceCycle": "2026090618",
   "referenceTime": "2026-09-06T18:00:00Z",
   "sourceFormat": "netcdf",
   "adapter": {
@@ -164,8 +168,10 @@ No production builder behavior changes in this phase.
 ### Phase 2 - WW3 shadow adapter
 
 - consume the current extracted WW3 NetCDF source cycle
-- require an explicit WaveLab `referenceTime`
+- require the previous-day 18Z WW3 cycle
+- require `sourceCycle == referenceTime` for WW3
 - retain exactly T+0 through T+60 at three-hour cadence
+- do not fall back to 12Z when the required 18Z cycle is incomplete
 - map `hs` to `significant_wave_height`
 - convert supported source units to metres
 - canonicalize latitude/longitude ordering
