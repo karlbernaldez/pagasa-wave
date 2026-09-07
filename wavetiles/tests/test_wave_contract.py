@@ -32,34 +32,44 @@ class WaveContractTests(unittest.TestCase):
                 ),
             },
             coords={
-                "valid_time": valid_time,
+                "valid_time": valid_time.tz_localize(None),
                 "forecast_hour": ("valid_time", hours),
                 "latitude": latitude,
                 "longitude": longitude,
+            },
+            attrs={
+                "contract_version": CONTRACT_VERSION,
+                "model": "WW3",
+                "source_cycle": "2026090612",
+                "reference_time": "2026-09-06T18:00:00Z",
             },
         )
 
     def test_builds_versioned_manifest(self):
         manifest = build_manifest(
             model="ww3",
-            source_cycle="2026090618",
+            source_cycle="2026090612",
+            reference_time="2026-09-06T18:00:00Z",
             source_format="netcdf",
             adapter_id="ww3-netcdf",
             adapter_version="1",
             forecast_hours=DEFAULT_FORECAST_HOURS,
             variables=["significant_wave_height"],
-            source_files=["ww3_grdo.2026090618.nc"],
+            source_files=["ww3_grdo.20260906T18.nc"],
         )
 
         self.assertEqual(manifest["contractVersion"], CONTRACT_VERSION)
         self.assertEqual(manifest["model"], "WW3")
+        self.assertEqual(manifest["sourceCycle"], "2026090612")
+        self.assertEqual(manifest["referenceTime"], "2026-09-06T18:00:00Z")
         self.assertEqual(manifest["frameCount"], 21)
         self.assertEqual(manifest["forecastHours"][-1], 60)
 
     def test_rejects_manifest_frame_count_mismatch(self):
         manifest = build_manifest(
             model="WW3",
-            source_cycle="2026090618",
+            source_cycle="2026090612",
+            reference_time="2026-09-06T18:00:00Z",
             source_format="netcdf",
             adapter_id="ww3-netcdf",
             adapter_version="1",
@@ -92,6 +102,20 @@ class WaveContractTests(unittest.TestCase):
         dataset["significant_wave_height"][:] = np.nan
 
         with self.assertRaisesRegex(ContractValidationError, "entirely missing"):
+            validate_dataset(dataset, expected_forecast_hours=DEFAULT_FORECAST_HOURS)
+
+    def test_rejects_valid_time_that_does_not_match_reference_time(self):
+        dataset = self.make_dataset()
+        shifted = dataset["valid_time"].values + np.timedelta64(3, "h")
+        dataset = dataset.assign_coords(valid_time=("valid_time", shifted))
+
+        with self.assertRaisesRegex(ContractValidationError, "reference_time"):
+            validate_dataset(dataset, expected_forecast_hours=DEFAULT_FORECAST_HOURS)
+
+    def test_rejects_descending_latitude(self):
+        dataset = self.make_dataset().sortby("latitude", ascending=False)
+
+        with self.assertRaisesRegex(ContractValidationError, "latitude must be strictly ascending"):
             validate_dataset(dataset, expected_forecast_hours=DEFAULT_FORECAST_HOURS)
 
 
