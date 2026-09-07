@@ -1,0 +1,45 @@
+name: Format Preview 270
+
+on:
+  push:
+    branches:
+      - feat/270-wave-model-schedule-controls
+
+permissions:
+  contents: read
+
+jobs:
+  prettier-preview:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked quality tools
+        run: npm ci --ignore-scripts
+
+      - name: Print exact Prettier diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx prettier --write \
+            backend/services/waveModelOperationsService.js \
+            backend/services/waveModelSchedule.js \
+            backend/tests/waveModelOperationsSchedule.test.js \
+            deploy/almalinux/wavelab-wave-model-ops.mjs \
+            frontend/src/api/waveModels.js \
+            frontend/src/dashboards/admin/sections/wave-models/WaveModelSchedules.jsx
+          git diff -- \
+            backend/services/waveModelOperationsService.js \
+            backend/services/waveModelSchedule.js \
+            backend/tests/waveModelOperationsSchedule.test.js \
+            deploy/almalinux/wavelab-wave-model-ops.mjs \
+            frontend/src/api/waveModels.js \
+            frontend/src/dashboards/admin/sections/wave-models/WaveModelSchedules.jsx
