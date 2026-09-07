@@ -15,12 +15,14 @@ on:
       - 'wavetiles/scripts/build_ww3_compatible_package.sh'
       - 'wavetiles/scripts/build_ecwam_compatible_package.sh'
       - 'wavetiles/scripts/run_normalized_wave_package.py'
+      - 'wavetiles/scripts/write_wave_pipeline_status.py'
       - 'wavetiles/scripts/publish_wave_package.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
       - 'wavetiles/scripts/ecwam_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
       - 'wavetiles/tests/test_normalized_reader.py'
       - 'wavetiles/tests/test_normalized_wave_runner.py'
+      - 'wavetiles/tests/test_wave_pipeline_status.py'
       - 'wavetiles/tests/test_wave_package_publisher.py'
       - 'wavetiles/tests/test_ww3_adapter.py'
       - 'wavetiles/tests/test_ecwam_adapter.py'
@@ -44,12 +46,14 @@ on:
       - 'wavetiles/scripts/build_ww3_compatible_package.sh'
       - 'wavetiles/scripts/build_ecwam_compatible_package.sh'
       - 'wavetiles/scripts/run_normalized_wave_package.py'
+      - 'wavetiles/scripts/write_wave_pipeline_status.py'
       - 'wavetiles/scripts/publish_wave_package.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
       - 'wavetiles/scripts/ecwam_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
       - 'wavetiles/tests/test_normalized_reader.py'
       - 'wavetiles/tests/test_normalized_wave_runner.py'
+      - 'wavetiles/tests/test_wave_pipeline_status.py'
       - 'wavetiles/tests/test_wave_package_publisher.py'
       - 'wavetiles/tests/test_ww3_adapter.py'
       - 'wavetiles/tests/test_ecwam_adapter.py'
@@ -89,6 +93,9 @@ jobs:
       - name: Run common normalized runner tests
         run: python -m unittest wavetiles.tests.test_normalized_wave_runner -v
 
+      - name: Run pipeline status tests
+        run: python -m unittest wavetiles.tests.test_wave_pipeline_status -v
+
       - name: Run package publisher tests
         run: python -m unittest wavetiles.tests.test_wave_package_publisher -v
 
@@ -117,6 +124,7 @@ jobs:
           wavetiles/scripts/build_normalized_ww3_shadow.py
           wavetiles/scripts/build_normalized_ecwam_shadow.py
           wavetiles/scripts/run_normalized_wave_package.py
+          wavetiles/scripts/write_wave_pipeline_status.py
           wavetiles/scripts/publish_wave_package.py
           wavetiles/scripts/ww3_package_selection.py
           wavetiles/scripts/ecwam_package_selection.py
