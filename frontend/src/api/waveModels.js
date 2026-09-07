@@ -24,6 +24,20 @@ export const setWaveModelRuntimeProfile = async (code, runtimeProfile) =>
 export const runWaveModelBuilder = async (code) =>
   unwrap(await api.post(`/admin/wave-models/${encodeURIComponent(code)}/run-builder`));
 
+export const setWaveModelSchedule = async (code, schedule) =>
+  unwrap(
+    await api.patch(`/admin/wave-models/${encodeURIComponent(code)}/schedule`, { schedule })
+  );
+
+export const enableWaveModelSchedule = async (code) =>
+  unwrap(await api.post(`/admin/wave-models/${encodeURIComponent(code)}/schedule/enable`));
+
+export const disableWaveModelSchedule = async (code) =>
+  unwrap(await api.post(`/admin/wave-models/${encodeURIComponent(code)}/schedule/disable`));
+
+export const restoreWaveModelSchedule = async (code) =>
+  unwrap(await api.post(`/admin/wave-models/${encodeURIComponent(code)}/schedule/restore`));
+
 export const deleteWaveModelPackage = async (code, packageTag) =>
   unwrap(
     await api.delete(
