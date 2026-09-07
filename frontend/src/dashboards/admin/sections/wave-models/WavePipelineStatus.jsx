@@ -124,20 +124,10 @@ function ModelCard({ model, isDarkMode }) {
             <Waves className="h-5 w-5" />
           </div>
           <div>
-            <h3
-              className={cn(
-                'text-lg font-bold',
-                isDarkMode ? 'text-white' : 'text-slate-900'
-              )}
-            >
+            <h3 className={cn('text-lg font-bold', isDarkMode ? 'text-white' : 'text-slate-900')}>
               {model.model}
             </h3>
-            <p
-              className={cn(
-                'mt-0.5 text-sm',
-                isDarkMode ? 'text-slate-400' : 'text-slate-500'
-              )}
-            >
+            <p className={cn('mt-0.5 text-sm', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
               {model.message || 'Wave pipeline status'}
             </p>
           </div>
@@ -168,9 +158,7 @@ function ModelCard({ model, isDarkMode }) {
 
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between text-xs font-semibold">
-          <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>
-            Forecast frames
-          </span>
+          <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Forecast frames</span>
           <span className={isDarkMode ? 'text-slate-200' : 'text-slate-700'}>
             {frameCount} / {expected}
           </span>
@@ -189,11 +177,7 @@ function ModelCard({ model, isDarkMode }) {
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
-        <Detail
-          label="Published"
-          value={model.published ? 'Yes' : 'No'}
-          isDarkMode={isDarkMode}
-        />
+        <Detail label="Published" value={model.published ? 'Yes' : 'No'} isDarkMode={isDarkMode} />
         <Detail
           label="Last check"
           value={formatDateTime(model.lastCheckAt)}
@@ -263,12 +247,8 @@ export default function WavePipelineStatus({ isDarkMode }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <ServerCog
-              className={cn('h-5 w-5', isDarkMode ? 'text-cyan-300' : 'text-cyan-700')}
-            />
-            <h2
-              className={cn('text-xl font-bold', isDarkMode ? 'text-white' : 'text-slate-900')}
-            >
+            <ServerCog className={cn('h-5 w-5', isDarkMode ? 'text-cyan-300' : 'text-cyan-700')} />
+            <h2 className={cn('text-xl font-bold', isDarkMode ? 'text-white' : 'text-slate-900')}>
               Wave Data Pipeline
             </h2>
           </div>
@@ -278,8 +258,8 @@ export default function WavePipelineStatus({ isDarkMode }) {
               isDarkMode ? 'text-slate-400' : 'text-slate-500'
             )}
           >
-            Monitor the operational WW3 and ECWAM ingestion, normalized processing, validation,
-            and publication state used by Studio.
+            Monitor the operational WW3 and ECWAM ingestion, normalized processing, validation, and
+            publication state used by Studio.
           </p>
         </div>
         <button
@@ -333,12 +313,7 @@ export default function WavePipelineStatus({ isDarkMode }) {
       )}
 
       {payload?.generatedAt ? (
-        <p
-          className={cn(
-            'text-right text-xs',
-            isDarkMode ? 'text-slate-500' : 'text-slate-400'
-          )}
-        >
+        <p className={cn('text-right text-xs', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
           Updated {formatDateTime(payload.generatedAt)} · refreshes every 30 seconds
         </p>
       ) : null}

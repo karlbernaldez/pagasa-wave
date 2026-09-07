@@ -13,13 +13,7 @@ const WW3_STATE_ROOT = process.env.WW3_STATE_ROOT || '/var/lib/wavelab-ww3';
 const MODELS = ['WW3', 'ECWAM'];
 const EXPECTED_FORECAST_HOURS = Array.from({ length: 21 }, (_, index) => index * 3);
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const TRANSIENT_STATES = new Set([
-  'NORMALIZING',
-  'BUILDING',
-  'VALIDATING',
-  'PUBLISHING',
-  'FAILED',
-]);
+const TRANSIENT_STATES = new Set(['NORMALIZING', 'BUILDING', 'VALIDATING', 'PUBLISHING', 'FAILED']);
 
 function manilaParts(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
