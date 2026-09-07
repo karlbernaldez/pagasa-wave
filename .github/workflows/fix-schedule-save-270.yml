@@ -1,0 +1,84 @@
+name: Fix Schedule Save 270
+
+on:
+  push:
+    branches:
+      - feat/270-wave-model-schedule-controls
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked quality tools
+        run: npm ci --ignore-scripts
+
+      - name: Keep schedule editor open after failed saves
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/src/dashboards/admin/sections/wave-models/WaveModelSchedules.jsx')
+          text = path.read_text()
+
+          old_save = """    await onAction(`${model.code}:schedule`, () => setWaveModelSchedule(model.code, schedule));
+              setEditingCode(null);
+          """
+          new_save = """    const saved = await onAction(
+                `${model.code}:schedule`,
+                () => setWaveModelSchedule(model.code, schedule)
+              );
+              if (saved) setEditingCode(null);
+          """
+
+          old_confirm = """    if (confirmAction && !window.confirm('Apply this operational change?')) return;
+          """
+          new_confirm = """    if (confirmAction && !window.confirm('Apply this operational change?')) return false;
+          """
+
+          old_success = """      setMessage({ type: 'success', text: 'Wave model operation completed.' });
+              } catch (error) {
+                setMessage({ type: 'error', text: normalizeError(error, 'Wave model operation failed.') });
+              } finally {
+          """
+          new_success = """      setMessage({ type: 'success', text: 'Wave model operation completed.' });
+                return true;
+              } catch (error) {
+                setMessage({ type: 'error', text: normalizeError(error, 'Wave model operation failed.') });
+                return false;
+              } finally {
+          """
+
+          changed = False
+          for old, new in [(old_save, new_save), (old_confirm, new_confirm), (old_success, new_success)]:
+              if old in text:
+                  text = text.replace(old, new, 1)
+                  changed = True
+
+          if changed:
+              path.write_text(text)
+          PY
+
+          npx prettier --write frontend/src/dashboards/admin/sections/wave-models/WaveModelSchedules.jsx
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/dashboards/admin/sections/wave-models/WaveModelSchedules.jsx
+          git commit -m "fix: keep schedule editor open after failed saves"
+          git push origin HEAD:feat/270-wave-model-schedule-controls
