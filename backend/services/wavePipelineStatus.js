@@ -9,6 +9,7 @@ const WAVETILES_ROOT = process.env.WAVETILES_ROOT || path.join(PROJECT_ROOT, 'wa
 const STATUS_ROOT =
   process.env.WAVE_PIPELINE_STATUS_ROOT ||
   path.join(WAVETILES_ROOT, '.normalized-product-stage', '.status');
+const WW3_STATE_ROOT = process.env.WW3_STATE_ROOT || '/var/lib/wavelab-ww3';
 const MODELS = ['WW3', 'ECWAM'];
 const EXPECTED_FORECAST_HOURS = Array.from({ length: 21 }, (_, index) => index * 3);
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -53,9 +54,25 @@ async function readText(target) {
   try {
     return (await fs.readFile(target, 'utf8')).trim();
   } catch (error) {
-    if (error.code === 'ENOENT') return null;
+    if (error.code === 'ENOENT' || error.code === 'EACCES') return null;
     throw error;
   }
+}
+
+function parseKeyValueDocument(value) {
+  if (!value) return null;
+  const document = {};
+  for (const line of value.split(/\r?\n/)) {
+    const separator = line.indexOf('=');
+    if (separator <= 0) continue;
+    document[line.slice(0, separator).trim()] = line.slice(separator + 1).trim();
+  }
+  return document;
+}
+
+async function readWw3Marker(packageDate) {
+  const raw = await readText(path.join(WW3_STATE_ROOT, 'built', packageDate));
+  return parseKeyValueDocument(raw);
 }
 
 function isCompleteMetadata(metadata, packageDate, sourceCycle) {
@@ -76,6 +93,10 @@ async function publishedSnapshot(model, packageDate, sourceCycle) {
   if (!isCompleteMetadata(metadata, packageDate, sourceCycle)) return null;
 
   const inputMarker = await readText(path.join(contourRoot, '.product-input'));
+  const ww3Marker = model === 'WW3' ? await readWw3Marker(packageDate) : null;
+  const markerMatches =
+    ww3Marker?.package_date === packageDate && ww3Marker?.source_cycle === sourceCycle;
+
   return {
     schemaVersion: 1,
     model,
@@ -85,12 +106,17 @@ async function publishedSnapshot(model, packageDate, sourceCycle) {
     packageTag: tag,
     requiredSourceCycle: sourceCycle,
     sourceCycle: metadata.sourceCycle,
-    inputMode: inputMarker || null,
+    inputMode: inputMarker || (markerMatches ? ww3Marker.product_input || null : null),
     frameCount: EXPECTED_FORECAST_HOURS.length,
     expectedFrameCount: EXPECTED_FORECAST_HOURS.length,
     published: true,
     lastCheckAt: null,
-    completedAt: null,
+    completedAt: markerMatches ? ww3Marker.built_utc || null : null,
+    pngCount: markerMatches && Number.isFinite(Number(ww3Marker.png_count)) ? Number(ww3Marker.png_count) : null,
+    contourCount:
+      markerMatches && Number.isFinite(Number(ww3Marker.contour_count))
+        ? Number(ww3Marker.contour_count)
+        : EXPECTED_FORECAST_HOURS.length,
   };
 }
 
@@ -118,7 +144,7 @@ export async function getWavePipelineStatus(now = new Date()) {
           ...published,
           inputMode: published.inputMode || runtime?.inputMode || null,
           lastCheckAt: runtimeMatchesToday ? runtime?.lastCheckAt || null : null,
-          completedAt: runtimeMatchesToday ? runtime?.completedAt || null : null,
+          completedAt: published.completedAt || (runtimeMatchesToday ? runtime?.completedAt || null : null),
         };
       }
 
