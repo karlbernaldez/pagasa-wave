@@ -6,8 +6,10 @@ on:
       - 'deploy/almalinux/wavelab-ww3-package-builder'
       - 'wavetiles/pipeline/**'
       - 'wavetiles/scripts/normalize_ww3_cycle.py'
+      - 'wavetiles/scripts/build_normalized_ww3_shadow.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
+      - 'wavetiles/tests/test_normalized_reader.py'
       - 'wavetiles/tests/test_ww3_adapter.py'
       - 'wavetiles/tests/test_ww3_package_selection.py'
       - 'docs/architecture/wave-data-pipeline.md'
@@ -15,14 +17,18 @@ on:
   push:
     branches:
       - main
+      - dev
     paths:
       - 'deploy/almalinux/wavelab-ww3-package-builder'
       - 'wavetiles/pipeline/**'
       - 'wavetiles/scripts/normalize_ww3_cycle.py'
+      - 'wavetiles/scripts/build_normalized_ww3_shadow.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
+      - 'wavetiles/tests/test_normalized_reader.py'
       - 'wavetiles/tests/test_ww3_adapter.py'
       - 'wavetiles/tests/test_ww3_package_selection.py'
+      - 'docs/architecture/wave-data-pipeline.md'
       - '.github/workflows/wave-pipeline.yml'
   workflow_dispatch:
 
@@ -51,6 +57,9 @@ jobs:
       - name: Run normalized wave contract tests
         run: python -m unittest wavetiles.tests.test_wave_contract -v
 
+      - name: Run normalized cycle reader tests
+        run: python -m unittest wavetiles.tests.test_normalized_reader -v
+
       - name: Run WW3 selector tests
         run: python -m unittest wavetiles.tests.test_ww3_package_selection -v
 
@@ -60,5 +69,10 @@ jobs:
       - name: Validate WW3 builder shell syntax
         run: bash -n deploy/almalinux/wavelab-ww3-package-builder
 
-      - name: Compile pipeline modules
-        run: python -m compileall -q wavetiles/pipeline wavetiles/scripts/normalize_ww3_cycle.py wavetiles/scripts/ww3_package_selection.py
+      - name: Compile pipeline and shadow modules
+        run: >-
+          python -m compileall -q
+          wavetiles/pipeline
+          wavetiles/scripts/normalize_ww3_cycle.py
+          wavetiles/scripts/build_normalized_ww3_shadow.py
+          wavetiles/scripts/ww3_package_selection.py
