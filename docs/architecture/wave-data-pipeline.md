@@ -16,40 +16,22 @@ model source
   -> normalized/<MODEL>/<REFERENCE_TIME>/wave.nc + manifest.json
   -> generic package builder
   -> validation
+  -> staged package
   -> atomic publication
   -> lifecycle / retention
 ```
 
 ## Architectural boundary
 
-The adapter layer owns source-specific behavior. The generic package builder must not parse WW3 archives, ECWAM GRIB files, or future model-native formats directly.
+The adapter layer owns source-specific behavior. The generic package path must not parse WW3 archives, ECWAM GRIB files, or future model-native formats directly.
 
-Adapters are responsible for:
-
-- source discovery and native source-cycle selection
-- native format parsing
-- variable mapping
-- unit conversion
-- coordinate normalization
-- wave-direction convention normalization
-- forecast-range and cadence reduction
-- retained-cycle assembly into the WaveLab normalized contract
-
-The downstream package builder is responsible for:
-
-- normalized contract validation
-- raster generation
-- vectors/arrows when supported
-- contour generation
-- package metadata
-- product integrity checks
-- atomic publication
+Adapters own source discovery, native parsing, variable mapping, unit conversion, coordinate normalization, direction conventions, forecast reduction, and retained-cycle assembly. Downstream product generation owns normalized-contract validation, raster generation, contours/vectors, package metadata, integrity checks, staging, and publication.
 
 ## Time semantics
 
-The normalized contract records both `sourceCycle` and `referenceTime` because future models may need different semantics. For the current WW3 operational profile, however, they are intentionally the same.
+For the current WW3 and ECWAM operational profiles, each WaveLab package date uses the required previous-day 18Z source cycle with no fallback to another cycle.
 
-WW3 requires the previous-day 18Z model cycle for each WaveLab package date:
+Example:
 
 ```text
 package date   = 2026-09-07
@@ -58,21 +40,17 @@ referenceTime  = 2026-09-06T18:00:00Z
 forecastHours  = 0, 3, ..., 60
 ```
 
-The WW3 adapter and package selector enforce this invariant. A complete 12Z cycle is not used as a fallback if the required 18Z cycle is incomplete; the automation waits for a later retry instead.
-
-For every normalized WW3 frame:
+For every retained frame:
 
 ```text
 validTime = referenceTime + forecastHour
 ```
 
-Therefore WW3 T+0 is the native 18Z model T+0, T+3 is the native 18Z model T+3, and so on through T+60.
+If the required 18Z source is incomplete, automation waits for a later timer retry instead of silently selecting a fallback cycle.
 
 ## Normalized contract v1
 
-Storage implementation: NetCDF.
-
-Granularity: one normalized dataset per model per WaveLab reference time. Source provenance remains recorded in the manifest and dataset attributes.
+Storage implementation: NetCDF. Granularity: one normalized dataset per model/reference time.
 
 ```text
 normalized/
@@ -86,158 +64,88 @@ normalized/
       manifest.json
 ```
 
-NetCDF is the v1 storage implementation, not the permanent architectural interface. A future chunked implementation such as Zarr may implement the same logical contract without changing model adapters or product semantics.
+The initial operational profile retains 21 frames from T+0 through T+60 every three hours. Contract v1 exposes `valid_time`, `forecast_hour`, `latitude`, and `longitude`, with one-dimensional unique strictly ascending latitude/longitude coordinates.
 
-### Forecast axis
-
-The initial operational profile retains T+0 through T+60 at three-hour cadence:
-
-```text
-0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60
-```
-
-This is 21 frames.
-
-The dataset exposes:
-
-- `valid_time`
-- `forecast_hour`
-- `latitude`
-- `longitude`
-
-Contract v1 requires latitude and longitude to be one-dimensional, unique, and strictly ascending. Curvilinear grids require a future contract revision or an adapter-side remapping step.
-
-Required dataset attributes include:
-
-- `contract_version`
-- `model`
-- `source_cycle`
-- `reference_time`
-
-### Canonical variables
-
-Initial canonical variables:
-
-- `significant_wave_height`
-  - units: `m`
-  - dimensions: `valid_time, latitude, longitude`
-- `mean_wave_direction`
-  - units: `degree`
-  - direction convention: `from_north_clockwise`
-  - dimensions: `valid_time, latitude, longitude`
-
-Adapters must explicitly convert native naming, units, coordinates, and direction conventions into the canonical representation.
+The canonical wave-height variable is `significant_wave_height` in metres with dimensions `valid_time, latitude, longitude`. Source-specific names such as WW3 `hs` and ECWAM `swh` are mapped by adapters. Smoothing remains downstream in product generation rather than being stored in the canonical dataset.
 
 ## Manifest
 
-`manifest.json` records provenance and normalized contract metadata. Validation cross-checks the manifest against `wave.nc`, including model, source cycle, reference time, forecast-hour axis, and canonical variables.
+`manifest.json` records provenance and normalized contract metadata. Validation cross-checks it against `wave.nc`, including model, source cycle, reference time, forecast-hour axis, and canonical variables.
 
-Example:
+## Real operational validation
 
-```json
-{
-  "contractVersion": "wavelab-wave-v1",
-  "model": "WW3",
-  "sourceCycle": "2026090618",
-  "referenceTime": "2026-09-06T18:00:00Z",
-  "sourceFormat": "netcdf",
-  "adapter": {
-    "id": "ww3-netcdf",
-    "version": "1"
-  },
-  "forecastHours": [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60],
-  "frameCount": 21,
-  "variables": ["significant_wave_height"],
-  "sourceFiles": [],
-  "normalizedAt": "2026-09-07T00:00:00Z"
-}
-```
+### WW3
 
-## Real WW3 validation
-
-The `2026090618` operational WW3 cycle was normalized on AlmaLinux using the real staged NetCDF inputs. All 21 retained frames from T+0 through T+60 were compared directly against the canonical `significant_wave_height` frames.
-
-Observed parity:
+The real `2026090618` WW3 cycle was normalized and all 21 retained frames were compared with the native NetCDF inputs after coordinate canonicalization.
 
 ```text
 Worst max absolute difference : 0.0000000000
 Worst mean absolute difference: 0.0000000000
 ```
 
-This proves the WW3 adapter preserves the source wave-height values exactly for the validated operational cycle. Product parity is still required before the normalized path may replace the production raw-file product path.
-
-## Migration plan
-
-### Phase 1 - Contract foundation
-
-- versioned normalized contract
-- manifest builder/validator
-- dataset validator
-- adapter base interface
-- contract tests
-
-No production builder behavior changes in this phase.
-
-### Phase 2 - WW3 shadow adapter
-
-- consume the current extracted WW3 NetCDF source cycle
-- require the previous-day 18Z WW3 cycle
-- require `sourceCycle == referenceTime` for WW3
-- retain exactly T+0 through T+60 at three-hour cadence
-- do not fall back to 12Z when the required 18Z cycle is incomplete
-- map `hs` to `significant_wave_height`
-- convert supported source units to metres
-- canonicalize latitude/longitude ordering
-- assemble one retained-window `wave.nc`
-- produce `manifest.json`
-- validate the written artifacts before atomically exposing the normalized directory
-- compare normalized data against native WW3 frames before switching input paths
-
-The normalization command is:
-
-```bash
-python wavetiles/scripts/normalize_ww3_cycle.py \
-  wavetiles/input/ww3 \
-  2026090618
-```
-
-It writes only below `wavetiles/normalized/WW3/` and does not modify existing tiles, contours, package markers, or Studio URLs.
-
-### Phase 3 - Generic normalized reader and WW3 product shadow
-
-`NormalizedCycleReader` validates and reads the canonical contract without knowing the source format or native source hierarchy.
-
-The WW3 compatibility bridge consumes that reader and sends canonical frames through the same production WW3 tile and contour algorithms, but writes into an isolated shadow tree:
-
-```bash
-python wavetiles/scripts/build_normalized_ww3_shadow.py \
-  wavetiles/normalized/WW3/2026090618 \
-  2026-09-07
-```
-
-Default output:
+A normalized shadow package for WaveLab package date `2026-09-07` then matched the raw production products:
 
 ```text
-wavetiles/shadow-products/WW3/
+light tree     : 57,375 files, exact SHA-256 parity
+dark tree      : 57,375 files, exact SHA-256 parity
+contours       : 21 GeoJSON files, exact SHA-256 parity
+package.json   : semantically identical
+missing files  : 0
 ```
 
-The shadow builder refuses to write inside `wavetiles/tiles/WW3`. Production remains on the raw WW3 path until raster and contour parity is proven.
+The normalized compatibility path also completed staged validation and publication successfully with 114,708 PNG tiles and 21 contour frames.
 
-### Phase 4 - ECWAM adapter
+### ECWAM
 
-Decode the current GRIB1 + index inputs through the ECWAM adapter and produce the same normalized contract. Product generation remains unchanged because it consumes canonical data.
+The real `2026090618` ECWAM GRIB1 cycle was normalized successfully into the same contract. A normalized shadow package for `2026-09-07` matched the current raw production products:
 
-### Phase 5 - Common runner and lifecycle
+```text
+light tree     : 36,498 files, exact SHA-256 parity
+dark tree      : 36,498 files, exact SHA-256 parity
+contours       : 21 GeoJSON files, exact SHA-256 parity
+package.json   : semantically identical
+missing files  : 0
+```
 
-Move duplicated builder lifecycle behavior into a shared runner:
+The ECWAM normalized compatibility path also completed staged validation and publication successfully with 72,954 PNG tiles and 21 contour frames.
 
-- locking
-- staging cleanup
-- timeout/signal handling
-- retry classification
-- normalized status output
-- atomic package promotion
-- retention hooks
+These results prove parity for the validated real operational cycle and settings; they are not a claim that every historical or future cycle has been exhaustively compared.
+
+## Compatibility rollout
+
+Both model package paths support an explicit input mode:
+
+```text
+WW3_PRODUCT_INPUT=raw|normalized
+ECWAM_PRODUCT_INPUT=raw|normalized
+```
+
+`raw` remains the default during rollout. There is no silent normalized-to-raw fallback. A configured normalized run must fail clearly if normalization or normalized product generation fails.
+
+The AlmaLinux automation wrappers call the compatibility builders, but deployment environment examples keep both models on `raw`. Existing WW3 build markers without a `product_input` field are treated as `raw` for backward compatibility. ECWAM records the published mode alongside the package so changing input mode forces a supervised rebuild instead of being mistaken for an already-complete package.
+
+Normalized product mode builds into an isolated staging tree first. The staged package is validated for PNG output, all 21 contour frames, and package metadata. Publication first copies each complete package directory onto the destination filesystem and then performs a local atomic rename with rollback protection. This also supports destinations mounted on a different filesystem from the staging tree.
+
+## Migration phases
+
+### Completed
+
+- normalized contract and validators
+- adapter base interface
+- WW3 NetCDF adapter and real-cycle data parity
+- ECWAM GRIB1 adapter and real-cycle normalization
+- normalized reader
+- normalized WW3 and ECWAM product shadow builders
+- product parity validation for both operational models
+- raw/normalized compatibility builders
+- validated staged publication with cross-filesystem support
+- AlmaLinux automation wrapper integration with raw default
+
+### Next
+
+Perform one supervised production run per model with `*_PRODUCT_INPUT=normalized`, verify package metadata/counts and Studio rendering, then decide whether normalized mode should become the operational default.
+
+After rollout, consolidate remaining duplicated lifecycle behavior into a common runner where it materially improves locking, timeout/signal handling, retry classification, retention, and observability.
 
 ## Retention rule
 
