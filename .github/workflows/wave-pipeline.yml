@@ -8,6 +8,7 @@ on:
       - 'wavetiles/scripts/normalize_ww3_cycle.py'
       - 'wavetiles/scripts/normalize_ecwam_cycle.py'
       - 'wavetiles/scripts/build_normalized_ww3_shadow.py'
+      - 'wavetiles/scripts/build_normalized_ecwam_shadow.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
       - 'wavetiles/scripts/ecwam_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
@@ -27,6 +28,7 @@ on:
       - 'wavetiles/scripts/normalize_ww3_cycle.py'
       - 'wavetiles/scripts/normalize_ecwam_cycle.py'
       - 'wavetiles/scripts/build_normalized_ww3_shadow.py'
+      - 'wavetiles/scripts/build_normalized_ecwam_shadow.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
       - 'wavetiles/scripts/ecwam_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
@@ -85,5 +87,6 @@ jobs:
           wavetiles/scripts/normalize_ww3_cycle.py
           wavetiles/scripts/normalize_ecwam_cycle.py
           wavetiles/scripts/build_normalized_ww3_shadow.py
+          wavetiles/scripts/build_normalized_ecwam_shadow.py
           wavetiles/scripts/ww3_package_selection.py
           wavetiles/scripts/ecwam_package_selection.py
