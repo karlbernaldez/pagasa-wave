@@ -6,11 +6,14 @@ on:
       - 'deploy/almalinux/wavelab-ww3-package-builder'
       - 'wavetiles/pipeline/**'
       - 'wavetiles/scripts/normalize_ww3_cycle.py'
+      - 'wavetiles/scripts/normalize_ecwam_cycle.py'
       - 'wavetiles/scripts/build_normalized_ww3_shadow.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
+      - 'wavetiles/scripts/ecwam_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
       - 'wavetiles/tests/test_normalized_reader.py'
       - 'wavetiles/tests/test_ww3_adapter.py'
+      - 'wavetiles/tests/test_ecwam_adapter.py'
       - 'wavetiles/tests/test_ww3_package_selection.py'
       - 'docs/architecture/wave-data-pipeline.md'
       - '.github/workflows/wave-pipeline.yml'
@@ -22,11 +25,14 @@ on:
       - 'deploy/almalinux/wavelab-ww3-package-builder'
       - 'wavetiles/pipeline/**'
       - 'wavetiles/scripts/normalize_ww3_cycle.py'
+      - 'wavetiles/scripts/normalize_ecwam_cycle.py'
       - 'wavetiles/scripts/build_normalized_ww3_shadow.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
+      - 'wavetiles/scripts/ecwam_package_selection.py'
       - 'wavetiles/tests/test_wave_contract.py'
       - 'wavetiles/tests/test_normalized_reader.py'
       - 'wavetiles/tests/test_ww3_adapter.py'
+      - 'wavetiles/tests/test_ecwam_adapter.py'
       - 'wavetiles/tests/test_ww3_package_selection.py'
       - 'docs/architecture/wave-data-pipeline.md'
       - '.github/workflows/wave-pipeline.yml'
@@ -37,7 +43,7 @@ permissions:
 
 jobs:
   normalized-wave-contract:
-    name: Normalized wave contract and WW3 adapter
+    name: Normalized wave contract and model adapters
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -66,6 +72,9 @@ jobs:
       - name: Run WW3 adapter tests
         run: python -m unittest wavetiles.tests.test_ww3_adapter -v
 
+      - name: Run ECWAM adapter tests
+        run: python -m unittest wavetiles.tests.test_ecwam_adapter -v
+
       - name: Validate WW3 builder shell syntax
         run: bash -n deploy/almalinux/wavelab-ww3-package-builder
 
@@ -74,5 +83,7 @@ jobs:
           python -m compileall -q
           wavetiles/pipeline
           wavetiles/scripts/normalize_ww3_cycle.py
+          wavetiles/scripts/normalize_ecwam_cycle.py
           wavetiles/scripts/build_normalized_ww3_shadow.py
           wavetiles/scripts/ww3_package_selection.py
+          wavetiles/scripts/ecwam_package_selection.py
