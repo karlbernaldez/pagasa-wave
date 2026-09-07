@@ -118,6 +118,23 @@ class WW3AdapterTests(unittest.TestCase):
                 )
                 self.assertEqual(dataset["significant_wave_height"].attrs["units"], "m")
 
+    def test_rejects_mislabeled_internal_source_time(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            input_root = root / "input"
+            normalized_root = root / "normalized"
+            cycle_dir = self.write_source_cycle(input_root)
+            first_file = cycle_dir / "ww3_grdo.20260906T18.nc"
+            with xr.open_dataset(first_file) as original:
+                changed = original.load()
+            changed = changed.assign_coords(time=[np.datetime64("2026-09-06T21:00:00")])
+            changed.to_netcdf(first_file, mode="w")
+
+            adapter = WW3NetCDFAdapter()
+            source = adapter.discover_cycle(input_root, reference_time=self.reference_time)
+            with self.assertRaisesRegex(WW3AdapterError, "timestamp mismatch"):
+                adapter.normalize(source, normalized_root)
+
     def test_requires_explicit_reference_time(self):
         with tempfile.TemporaryDirectory() as temporary:
             input_root = Path(temporary) / "input"
