@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Sequence
 
@@ -12,12 +13,14 @@ class SourceCycle:
     cycle: str
     source_format: str
     files: tuple[Path, ...]
+    reference_time: datetime
 
 
 @dataclass(frozen=True)
 class NormalizationResult:
     model: str
     source_cycle: str
+    reference_time: datetime
     normalized_dir: Path
     dataset_path: Path
     manifest_path: Path
@@ -33,7 +36,12 @@ class WaveModelAdapter(ABC):
     model_code: str
 
     @abstractmethod
-    def discover_cycle(self, source_root: Path) -> SourceCycle:
+    def discover_cycle(
+        self,
+        source_root: Path,
+        *,
+        reference_time: datetime | None = None,
+    ) -> SourceCycle:
         """Return the source cycle selected for normalization."""
 
     @abstractmethod
