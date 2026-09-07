@@ -228,11 +228,6 @@ function ModelScheduleCard({ model, busyKey, editingCode, setEditingCode, isDark
   const [form, setForm] = useState(() => toForm(model));
   const busy = busyKey?.startsWith(`${model.code}:`);
   const editing = editingCode === model.code;
-
-  useEffect(() => {
-    if (!editing) setForm(toForm(model));
-  }, [editing, model]);
-
   const timerEnabled = Boolean(operations?.timer?.enabled || operations?.timer?.active);
 
   const handleSave = async (event) => {
@@ -250,6 +245,15 @@ function ModelScheduleCard({ model, busyKey, editingCode, setEditingCode, isDark
           };
     await onAction(`${model.code}:schedule`, () => setWaveModelSchedule(model.code, schedule));
     setEditingCode(null);
+  };
+
+  const handleEdit = () => {
+    if (editing) {
+      setEditingCode(null);
+      return;
+    }
+    setForm(toForm(model));
+    setEditingCode(model.code);
   };
 
   return (
@@ -375,7 +379,7 @@ function ModelScheduleCard({ model, busyKey, editingCode, setEditingCode, isDark
         <button
           type="button"
           disabled={busy || !scheduleState?.available}
-          onClick={() => setEditingCode(editing ? null : model.code)}
+          onClick={handleEdit}
           className={cn(
             'rounded-lg border px-3 py-2 text-xs font-black disabled:opacity-40',
             isDarkMode
@@ -439,8 +443,27 @@ export default function WaveModelSchedules({ isDarkMode = true }) {
   }, []);
 
   useEffect(() => {
-    void loadModels();
-  }, [loadModels]);
+    let active = true;
+    fetchWaveModels()
+      .then((result) => {
+        if (!active) return;
+        setModels(result?.models || []);
+        setMessage(null);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setMessage({
+          type: 'error',
+          text: normalizeError(error, 'Unable to load model operations.'),
+        });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const operationalModels = useMemo(
     () => models.filter((model) => model.operations?.supported),
