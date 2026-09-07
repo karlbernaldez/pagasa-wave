@@ -23,10 +23,9 @@ from wavetiles.pipeline.contract import (
 )
 
 CYCLE_RE = re.compile(r"^\d{10}$")
-WW3_FILE_RE = re.compile(r"^ww3_grdo\.(\d{8})T(\d{2})\.nc$")
 LAT_NAMES = ("lat", "latitude", "Latitude", "LATITUDE", "nav_lat", "y", "YLAT")
 LON_NAMES = ("lon", "longitude", "Longitude", "LONGITUDE", "nav_lon", "x", "XLON")
-TIME_DIMS = ("time", "Time", "forecast_time", "valid_time")
+TIME_NAMES = ("time", "Time", "forecast_time", "valid_time")
 WAVE_HEIGHT_ALIASES = ("hs", "swh", "significant_wave_height")
 
 
@@ -69,9 +68,32 @@ def _find_wave_height(dataset: xr.Dataset) -> xr.DataArray:
     raise WW3AdapterError(f"WW3 significant wave height variable was not found. Available: {available}")
 
 
+def _validate_source_time(dataset: xr.Dataset, expected_valid_time: datetime, path: Path) -> None:
+    expected = np.datetime64(_as_utc(expected_valid_time).replace(tzinfo=None), "ns")
+    for name in TIME_NAMES:
+        if name not in dataset.coords and name not in dataset.variables:
+            continue
+        values = np.asarray(dataset[name].values).reshape(-1)
+        if len(values) != 1:
+            raise WW3AdapterError(
+                f"WW3 source {path.name} must contain exactly one {name} value, got {len(values)}."
+            )
+        try:
+            actual = values.astype("datetime64[ns]")[0]
+        except (TypeError, ValueError) as error:
+            raise WW3AdapterError(
+                f"WW3 source {path.name} contains an unreadable {name} timestamp."
+            ) from error
+        if actual != expected:
+            raise WW3AdapterError(
+                f"WW3 source timestamp mismatch for {path.name}: expected {expected}, got {actual}."
+            )
+        return
+
+
 def _first_time_slice(variable: xr.DataArray) -> xr.DataArray:
     result = variable
-    for dimension in TIME_DIMS:
+    for dimension in TIME_NAMES:
         if dimension in result.dims:
             if result.sizes[dimension] != 1:
                 raise WW3AdapterError(
@@ -105,13 +127,13 @@ def _canonicalize_longitudes(values: np.ndarray) -> np.ndarray:
     return normalized
 
 
-def _normalize_frame(path: Path) -> xr.DataArray:
+def _normalize_frame(path: Path, expected_valid_time: datetime) -> xr.DataArray:
     try:
         with xr.open_dataset(path) as dataset:
+            _validate_source_time(dataset, expected_valid_time, path)
             latitude = _find_coordinate(dataset, LAT_NAMES, "latitude")
             longitude = _find_coordinate(dataset, LON_NAMES, "longitude")
             variable = _first_time_slice(_find_wave_height(dataset))
-
             latitude_dimension = latitude.dims[0]
             longitude_dimension = longitude.dims[0]
             extra_dimensions = [
@@ -127,7 +149,6 @@ def _normalize_frame(path: Path) -> xr.DataArray:
                 raise WW3AdapterError(
                     "WW3 wave-height dimensions do not match the latitude/longitude coordinates."
                 )
-
             variable = _wave_height_to_metres(
                 variable.transpose(latitude_dimension, longitude_dimension)
             ).load()
@@ -138,8 +159,7 @@ def _normalize_frame(path: Path) -> xr.DataArray:
                 latitude=("latitude", np.asarray(latitude.values, dtype=np.float64)),
                 longitude=("longitude", _canonicalize_longitudes(longitude.values)),
             )
-            variable = variable.sortby("latitude").sortby("longitude")
-            return variable
+            return variable.sortby("latitude").sortby("longitude")
     except WW3AdapterError:
         raise
     except Exception as error:
@@ -184,7 +204,6 @@ class WW3NetCDFAdapter(WaveModelAdapter):
                 key=lambda path: path.name,
                 reverse=True,
             )
-
         for cycle_dir in candidates:
             files = tuple(
                 cycle_dir / _expected_file_name(reference_time, hour)
@@ -198,7 +217,6 @@ class WW3NetCDFAdapter(WaveModelAdapter):
                     files=files,
                     reference_time=reference_time,
                 )
-
         expected = _expected_file_name(reference_time, DEFAULT_FORECAST_HOURS[0])
         raise WW3AdapterError(
             f"No complete WW3 source cycle under {root} contains {expected} through T+60."
@@ -235,8 +253,9 @@ class WW3NetCDFAdapter(WaveModelAdapter):
             raise WW3AdapterError(f"WW3 source files are missing: {', '.join(missing)}")
 
         frames: list[xr.DataArray] = []
-        for path in source_cycle.files:
-            frame = _normalize_frame(path)
+        for path, hour in zip(source_cycle.files, hours):
+            expected_valid_time = reference_time + timedelta(hours=hour)
+            frame = _normalize_frame(path, expected_valid_time)
             if frames:
                 _assert_same_grid(frames[0], frame, path)
             frames.append(frame)
@@ -285,7 +304,6 @@ class WW3NetCDFAdapter(WaveModelAdapter):
         model_root = Path(normalized_root) / self.model_code
         target_dir = model_root / reference_tag
         model_root.mkdir(parents=True, exist_ok=True)
-
         if target_dir.exists():
             existing_manifest = target_dir / "manifest.json"
             existing_dataset = target_dir / "wave.nc"
@@ -333,12 +351,10 @@ class WW3NetCDFAdapter(WaveModelAdapter):
             with manifest_path.open("w", encoding="utf-8") as handle:
                 json.dump(manifest, handle, indent=2, sort_keys=True)
                 handle.write("\n")
-
             with xr.open_dataset(dataset_path) as written:
                 validate_dataset(written, expected_forecast_hours=hours)
             with manifest_path.open("r", encoding="utf-8") as handle:
                 validate_manifest(json.load(handle))
-
             os.replace(temporary_dir, target_dir)
         except Exception:
             shutil.rmtree(temporary_dir, ignore_errors=True)
