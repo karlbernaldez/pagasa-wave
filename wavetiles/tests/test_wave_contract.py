@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -13,6 +16,7 @@ from wavetiles.pipeline.contract import (
     build_manifest,
     validate_dataset,
     validate_manifest,
+    validate_normalized_cycle,
 )
 
 
@@ -40,15 +44,15 @@ class WaveContractTests(unittest.TestCase):
             attrs={
                 "contract_version": CONTRACT_VERSION,
                 "model": "WW3",
-                "source_cycle": "2026090612",
+                "source_cycle": "2026090618",
                 "reference_time": "2026-09-06T18:00:00Z",
             },
         )
 
-    def test_builds_versioned_manifest(self):
-        manifest = build_manifest(
-            model="ww3",
-            source_cycle="2026090612",
+    def make_manifest(self) -> dict:
+        return build_manifest(
+            model="WW3",
+            source_cycle="2026090618",
             reference_time="2026-09-06T18:00:00Z",
             source_format="netcdf",
             adapter_id="ww3-netcdf",
@@ -58,24 +62,26 @@ class WaveContractTests(unittest.TestCase):
             source_files=["ww3_grdo.20260906T18.nc"],
         )
 
+    def write_cycle(self, root: Path, *, manifest: dict | None = None) -> Path:
+        cycle_dir = root / "WW3" / "2026090618"
+        cycle_dir.mkdir(parents=True)
+        self.make_dataset().to_netcdf(cycle_dir / "wave.nc")
+        with (cycle_dir / "manifest.json").open("w", encoding="utf-8") as handle:
+            json.dump(manifest or self.make_manifest(), handle)
+        return cycle_dir
+
+    def test_builds_versioned_manifest(self):
+        manifest = self.make_manifest()
+
         self.assertEqual(manifest["contractVersion"], CONTRACT_VERSION)
         self.assertEqual(manifest["model"], "WW3")
-        self.assertEqual(manifest["sourceCycle"], "2026090612")
+        self.assertEqual(manifest["sourceCycle"], "2026090618")
         self.assertEqual(manifest["referenceTime"], "2026-09-06T18:00:00Z")
         self.assertEqual(manifest["frameCount"], 21)
         self.assertEqual(manifest["forecastHours"][-1], 60)
 
     def test_rejects_manifest_frame_count_mismatch(self):
-        manifest = build_manifest(
-            model="WW3",
-            source_cycle="2026090612",
-            reference_time="2026-09-06T18:00:00Z",
-            source_format="netcdf",
-            adapter_id="ww3-netcdf",
-            adapter_version="1",
-            forecast_hours=DEFAULT_FORECAST_HOURS,
-            variables=["significant_wave_height"],
-        )
+        manifest = self.make_manifest()
         manifest["frameCount"] = 20
 
         with self.assertRaisesRegex(ContractValidationError, "frameCount"):
@@ -83,6 +89,32 @@ class WaveContractTests(unittest.TestCase):
 
     def test_accepts_canonical_dataset(self):
         validate_dataset(self.make_dataset(), expected_forecast_hours=DEFAULT_FORECAST_HOURS)
+
+    def test_validates_complete_normalized_cycle(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            cycle_dir = self.write_cycle(Path(temporary))
+            dataset_path, manifest_path = validate_normalized_cycle(cycle_dir)
+
+            self.assertEqual(dataset_path, cycle_dir / "wave.nc")
+            self.assertEqual(manifest_path, cycle_dir / "manifest.json")
+
+    def test_rejects_manifest_dataset_source_cycle_mismatch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = self.make_manifest()
+            manifest["sourceCycle"] = "2026090612"
+            cycle_dir = self.write_cycle(Path(temporary), manifest=manifest)
+
+            with self.assertRaisesRegex(ContractValidationError, "sourceCycle does not match"):
+                validate_normalized_cycle(cycle_dir)
+
+    def test_rejects_manifest_dataset_forecast_hour_mismatch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = self.make_manifest()
+            manifest["forecastHours"][-1] = 63
+            cycle_dir = self.write_cycle(Path(temporary), manifest=manifest)
+
+            with self.assertRaisesRegex(ContractValidationError, "forecastHours does not match"):
+                validate_normalized_cycle(cycle_dir)
 
     def test_rejects_wrong_units(self):
         dataset = self.make_dataset()
