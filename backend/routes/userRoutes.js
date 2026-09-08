@@ -16,18 +16,22 @@ import {
 } from '../controllers/emailChangeController.js';
 import authenticate from '../middleware/authMiddleware.js';
 import { verificationEmailLimiter } from '../middleware/authRateLimits.js';
-import { isAdmin, isOwnerOnly, isOwnerOrAdmin } from '../middleware/adminMiddleware.js';
+import { isOwnerOnly } from '../middleware/adminMiddleware.js';
+import {
+  requirePermission,
+  requireSelfOrPermission,
+} from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/', isAdmin, getAllUsers);
-router.post('/', isAdmin, createUserByAdmin);
+router.get('/', requirePermission('users.view'), getAllUsers);
+router.post('/', requirePermission('users.create'), createUserByAdmin);
 
-router.get('/:userId', isOwnerOrAdmin, getUserDetails);
-router.put('/:userId', isOwnerOrAdmin, updateUserDetails);
-router.put('/:userId/change-password', isOwnerOrAdmin, changePassword);
+router.get('/:userId', requireSelfOrPermission('users.view'), getUserDetails);
+router.put('/:userId', requireSelfOrPermission('users.edit'), updateUserDetails);
+router.put('/:userId/change-password', isOwnerOnly, changePassword);
 router.post(
   '/:userId/email-change/request',
   isOwnerOnly,
@@ -41,7 +45,7 @@ router.post(
   resendPendingEmailChange
 );
 router.delete('/:userId/email-change', isOwnerOnly, cancelPendingEmailChange);
-router.put('/:userId/status', isAdmin, updateUserStatus);
-router.delete('/:userId', isAdmin, deleteUser);
+router.put('/:userId/status', requirePermission('users.change_status'), updateUserStatus);
+router.delete('/:userId', requirePermission('users.delete'), deleteUser);
 
 export default router;
