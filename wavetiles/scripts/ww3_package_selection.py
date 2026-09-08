@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select the required previous-day 18Z WW3 source cycle for a forecast package date."""
+"""Select the configured previous-day WW3 source cycle for a forecast package date."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+from source_cycle_policy import preferred_cycle_hour
 
 CYCLE_RE = re.compile(r"\d{10}")
 PACKAGE_DATE_RE = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})")
@@ -28,14 +30,20 @@ def manila_today(now: datetime | None = None) -> date:
     return current.astimezone(ZoneInfo("Asia/Manila")).date()
 
 
-def required_source_cycle(package_date: date) -> str:
-    return (package_date - timedelta(days=1)).strftime("%Y%m%d") + "18"
+def source_cycle_hour() -> int:
+    return preferred_cycle_hour("WW3")
 
 
-def required_valid_times(package_date: date) -> tuple[str, ...]:
+def required_source_cycle(package_date: date, cycle_hour: int | None = None) -> str:
+    hour = source_cycle_hour() if cycle_hour is None else cycle_hour
+    return (package_date - timedelta(days=1)).strftime("%Y%m%d") + f"{hour:02d}"
+
+
+def required_valid_times(package_date: date, cycle_hour: int | None = None) -> tuple[str, ...]:
+    hour = source_cycle_hour() if cycle_hour is None else cycle_hour
     analysis_time = datetime.combine(
         package_date - timedelta(days=1), datetime.min.time()
-    ).replace(hour=18)
+    ).replace(hour=hour)
     return tuple(
         (analysis_time + timedelta(hours=forecast_hour)).strftime("%Y%m%d%H")
         for forecast_hour in REQUIRED_FORECAST_HOURS
@@ -50,11 +58,12 @@ def package_tag(package_date: date) -> str:
 def cycle_is_complete(cycle_dir: Path, package_date: date) -> bool:
     if not cycle_dir.is_dir() or not CYCLE_RE.fullmatch(cycle_dir.name):
         return False
-    if cycle_dir.name != required_source_cycle(package_date):
+    cycle_hour = source_cycle_hour()
+    if cycle_dir.name != required_source_cycle(package_date, cycle_hour):
         return False
     return all(
         (cycle_dir / f"ww3_grdo.{stamp[:8]}T{stamp[8:]}.nc").is_file()
-        for stamp in required_valid_times(package_date)
+        for stamp in required_valid_times(package_date, cycle_hour)
     )
 
 
@@ -66,7 +75,8 @@ def select_source_cycle(input_root: Path, package_date: date) -> Path | None:
 
 
 def print_manifest(input_root: Path, package_date: date, source_cycle: str | None) -> int:
-    required_cycle = required_source_cycle(package_date)
+    cycle_hour = source_cycle_hour()
+    required_cycle = required_source_cycle(package_date, cycle_hour)
     if source_cycle is not None and source_cycle != required_cycle:
         return 1
     cycle_dir = input_root / required_cycle
@@ -74,7 +84,7 @@ def print_manifest(input_root: Path, package_date: date, source_cycle: str | Non
         return 1
     tag = package_tag(package_date)
     for forecast_hour, stamp in zip(
-        REQUIRED_FORECAST_HOURS, required_valid_times(package_date)
+        REQUIRED_FORECAST_HOURS, required_valid_times(package_date, cycle_hour)
     ):
         label = "analysis" if forecast_hour == 0 else f"{forecast_hour}h"
         timestamp = f"{stamp[:8]}T{stamp[8:]}"
@@ -89,6 +99,9 @@ def main() -> int:
 
     today_parser = subparsers.add_parser("today")
     today_parser.add_argument("--timezone", default="Asia/Manila")
+
+    target_parser = subparsers.add_parser("target")
+    target_parser.add_argument("package_date")
 
     select_parser = subparsers.add_parser("select")
     select_parser.add_argument("input_root", type=Path)
@@ -105,6 +118,9 @@ def main() -> int:
         return 0
 
     parsed_date = parse_package_date(args.package_date)
+    if args.command == "target":
+        print(required_source_cycle(parsed_date))
+        return 0
     if args.command == "select":
         selected = select_source_cycle(args.input_root, parsed_date)
         if selected is None:
