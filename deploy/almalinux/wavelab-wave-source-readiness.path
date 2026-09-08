@@ -1,0 +1,10 @@
+[Unit]
+Description=Check WaveLab source readiness when operational source directories change
+
+[Path]
+PathChanged=/home/darwin/ww3_nc
+PathChanged=/home/darwin/ecmwf/ecwam
+Unit=wavelab-wave-source-readiness.service
+
+[Install]
+WantedBy=multi-user.target
