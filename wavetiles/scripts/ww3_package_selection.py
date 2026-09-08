@@ -5,9 +5,14 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 from source_cycle_policy import preferred_cycle_hour
 
