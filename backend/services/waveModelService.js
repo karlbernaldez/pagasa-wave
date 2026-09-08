@@ -18,6 +18,8 @@ const TILES_ROOT = path.resolve(process.env.WAVELAB_WAVE_TILES_ROOT || DEFAULT_T
 const MODEL_CODE_RE = /^[A-Z0-9_-]{2,32}$/;
 const PACKAGE_TAG_RE = /^[A-Z0-9_-]{6,40}$/i;
 const DATE_PACKAGE_MODELS = new Set(['WW3', 'ECWAM']);
+const PACKAGE_RETENTION_DAYS = 10;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const DEFAULT_MODELS = [
   {
@@ -126,6 +128,46 @@ const parsePackageDate = (tag) => {
   return new Date(Date.UTC(Number(match[1]), monthIndex, Number(match[3]))).getTime();
 };
 
+export const getWavePackageRetentionStatus = (
+  rawCode,
+  rawPackageTag,
+  nowMs = Date.now()
+) => {
+  const code = assertModelCode(rawCode);
+  const packageTag = assertPackageTag(rawPackageTag);
+  const packageDateMs = parsePackageDate(packageTag);
+
+  if (packageDateMs === null) {
+    return {
+      code,
+      packageTag,
+      retentionDays: PACKAGE_RETENTION_DAYS,
+      packageDate: null,
+      deleteAfter: null,
+      deletable: false,
+      retentionRemainingDays: null,
+      reason: 'Package age cannot be verified from its identifier.',
+    };
+  }
+
+  const deleteAfterMs = packageDateMs + PACKAGE_RETENTION_DAYS * DAY_MS;
+  const remainingMs = deleteAfterMs - nowMs;
+  const deletable = nowMs > deleteAfterMs;
+
+  return {
+    code,
+    packageTag,
+    retentionDays: PACKAGE_RETENTION_DAYS,
+    packageDate: new Date(packageDateMs).toISOString(),
+    deleteAfter: new Date(deleteAfterMs).toISOString(),
+    deletable,
+    retentionRemainingDays: deletable ? 0 : Math.max(0, Math.ceil(remainingMs / DAY_MS)),
+    reason: deletable
+      ? null
+      : `Package must be older than ${PACKAGE_RETENTION_DAYS} days before deletion.`,
+  };
+};
+
 const isInventoryPackageTag = (code, packageTag) => {
   if (!PACKAGE_TAG_RE.test(packageTag)) return false;
   if (!DATE_PACKAGE_MODELS.has(code)) return true;
@@ -178,6 +220,7 @@ export const listPackagesForModel = async (rawCode) => {
     .map(([packageTag, styles]) => ({
       packageTag,
       styles: styles.sort(),
+      retention: getWavePackageRetentionStatus(code, packageTag),
     }));
 };
 
@@ -206,6 +249,7 @@ export const getWaveModelInventory = async (model) => {
     packageCount: packages.length,
     latestPackage,
     packages,
+    packageRetentionDays: PACKAGE_RETENTION_DAYS,
     operations,
     updatedAt: model.updatedAt,
   };
@@ -308,6 +352,18 @@ export const setWaveModelRuntimeProfile = async (rawCode, runtimeProfile) => {
 export const deleteWaveModelPackage = async (rawCode, rawPackageTag) => {
   const code = assertModelCode(rawCode);
   const packageTag = assertPackageTag(rawPackageTag);
+  const retention = getWavePackageRetentionStatus(code, packageTag);
+
+  if (!retention.deletable) {
+    const error = new Error(
+      retention.deleteAfter
+        ? `Package ${packageTag} is protected by the ${PACKAGE_RETENTION_DAYS}-day retention policy until ${retention.deleteAfter}.`
+        : `Package ${packageTag} cannot be deleted because its age cannot be verified.`
+    );
+    error.status = 409;
+    throw error;
+  }
+
   const model = await WaveModel.findOne({ code }).lean();
   if (!model) {
     const error = new Error(`Wave model ${code} was not found.`);
@@ -342,7 +398,7 @@ export const deleteWaveModelPackage = async (rawCode, rawPackageTag) => {
     throw error;
   }
 
-  return { code, packageTag, removedStyles: removed.sort() };
+  return { code, packageTag, removedStyles: removed.sort(), retentionDays: PACKAGE_RETENTION_DAYS };
 };
 
 export const removeCustomWaveModel = async (rawCode) => {
