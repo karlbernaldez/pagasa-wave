@@ -27,6 +27,12 @@ const STATE_META = {
     light: 'border-amber-200 bg-amber-50 text-amber-700',
     dark: 'border-amber-400/20 bg-amber-400/10 text-amber-200',
   },
+  READY_TO_BUILD: {
+    label: 'Source ready',
+    icon: CheckCircle2,
+    light: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+    dark: 'border-cyan-400/20 bg-cyan-400/10 text-cyan-200',
+  },
   NORMALIZING: { label: 'Normalizing', icon: Loader2 },
   BUILDING: { label: 'Building', icon: Loader2 },
   VALIDATING: { label: 'Validating', icon: Loader2 },
@@ -258,8 +264,8 @@ export default function WavePipelineStatus({ isDarkMode }) {
               isDarkMode ? 'text-slate-400' : 'text-slate-500'
             )}
           >
-            Monitor the operational WW3 and ECWAM ingestion, normalized processing, validation, and
-            publication state used by Studio.
+            Monitor source readiness, normalized processing, validation, and publication state used
+            by Studio.
           </p>
         </div>
         <button
