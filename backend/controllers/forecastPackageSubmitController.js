@@ -75,10 +75,6 @@ async function populateForecastPackageById(id) {
     .populate('auditLogs.performedBy', 'firstName lastName email username');
 }
 
-function canUserSubmitPackage(user) {
-  return user?.role === 'forecaster';
-}
-
 async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, session) {
   const projectIds = getLinkedProjectIds(forecastPackage);
   if (!projectIds.length) return;
@@ -126,13 +122,6 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
       const forecastPackage = await ForecastPackage.findById(req.params.id, null, { session });
       if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-      if (!canUserSubmitPackage(req.user)) {
-        throwError(
-          'Only the package owner or a participating forecaster can submit this package',
-          403
-        );
-      }
-
       if (!canSubmitPackage(forecastPackage.status)) {
         throwError(`Package cannot be submitted while it is ${forecastPackage.status}`, 403);
       }
@@ -159,7 +148,7 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
         performedBy: req.user.id,
         previousStatus,
         newStatus: FORECAST_PACKAGE_STATUS.SUBMITTED,
-        comment: 'Forecast Package submitted for admin review',
+        comment: 'Forecast Package submitted for review',
       });
 
       await saveForecastPackageSnapshot(forecastPackage, {
