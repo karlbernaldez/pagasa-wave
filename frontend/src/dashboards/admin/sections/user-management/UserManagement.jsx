@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Ban, Clock3, Plus, RefreshCw, UserCheck, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 import { fetchRoles } from '@/api/roleAPI';
 
-import { AddUserModal } from './components/AddUserModal';
 import { ManageUserModal } from './components/ManageUserModal';
 import { RolesSection } from './components/RolesSection';
 import { SearchBar } from './components/SearchBar';
 import { UserTable } from './components/UserTable';
 import { useUsers } from './hooks/useUsers';
 import { LEGACY_ROLE_OPTIONS, setRoleOptions, STATUS_LABELS } from './constants';
+
+const AddUserModal = lazy(() =>
+  import('./components/AddUserModal').then((module) => ({ default: module.AddUserModal }))
+);
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -66,6 +69,7 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
   const [userSearchQuery, setUserSearchQuery] = useState(() => searchParams.get('q') ?? '');
   const [statusFilter, setStatusFilter] = useState('all');
   const [roleOptions, setRoleOptionsState] = useState(() => [...LEGACY_ROLE_OPTIONS]);
+  const [rolesReady, setRolesReady] = useState(false);
   const [rolesError, setRolesError] = useState('');
 
   const {
@@ -141,8 +145,11 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
       } catch (error) {
         if (cancelled) return;
         console.error('[UserManagement] Failed to load dynamic user types:', error);
-        setRoleOptionsState([...LEGACY_ROLE_OPTIONS]);
+        const fallbackOptions = setRoleOptions([]);
+        setRoleOptionsState([...fallbackOptions]);
         setRolesError('Dynamic user types could not be loaded. Admin, Forecaster, and User remain available.');
+      } finally {
+        if (!cancelled) setRolesReady(true);
       }
     };
 
@@ -232,7 +239,8 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-600/20 transition-colors hover:bg-cyan-500"
+            disabled={!rolesReady}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-600/20 transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus size={15} />
             Add User
@@ -287,15 +295,16 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
         </div>
       </section>
 
-      {isAddModalOpen && (
-        <AddUserModal
-          isDarkMode={isDarkMode}
-          newUser={newUser}
-          setNewUser={setNewUser}
-          roleOptions={roleOptions}
-          onClose={() => setIsAddModalOpen(false)}
-          onSubmit={handleAddSubmit}
-        />
+      {isAddModalOpen && rolesReady && (
+        <Suspense fallback={null}>
+          <AddUserModal
+            isDarkMode={isDarkMode}
+            newUser={newUser}
+            setNewUser={setNewUser}
+            onClose={() => setIsAddModalOpen(false)}
+            onSubmit={handleAddSubmit}
+          />
+        </Suspense>
       )}
 
       {manageUserId !== null && managedUser && (
