@@ -44,15 +44,46 @@ class NormalizedWaveRunnerTests(unittest.TestCase):
             root = Path(temporary)
             python_bin = Path("/usr/bin/python3")
 
-            ww3 = runner.builder_command(self.config(root, model="WW3"), root / "stage-ww3", python_bin)
+            ww3 = runner.builder_command(
+                self.config(root, model="WW3"), root / "stage-ww3", python_bin
+            )
             self.assertIn("build_normalized_ww3_shadow.py", " ".join(ww3))
             self.assertNotIn("--grid-points", ww3)
             self.assertEqual(ww3[-1], "--skip-existing")
 
-            ecwam = runner.builder_command(self.config(root, model="ECWAM"), root / "stage-ecwam", python_bin)
+            ecwam = runner.builder_command(
+                self.config(root, model="ECWAM"), root / "stage-ecwam", python_bin
+            )
             self.assertIn("build_normalized_ecwam_shadow.py", " ".join(ecwam))
             self.assertIn("--grid-points", ecwam)
             self.assertIn("271051", ecwam)
+
+    def test_cli_parses_runner_options_after_positionals(self):
+        args, builder_args = runner.parse_cli(
+            [
+                "WW3",
+                "/tmp/normalized/WW3/2026090718",
+                "2026-09-08",
+                "--output-root",
+                "/tmp/tiles/WW3",
+                "--source-cycle",
+                "2026090718",
+                "--sigma",
+                "1.5",
+                "--workers",
+                "4",
+                "--",
+                "--skip-existing",
+            ]
+        )
+
+        self.assertEqual(args.model, "WW3")
+        self.assertEqual(args.package_date, date(2026, 9, 8))
+        self.assertEqual(args.output_root, Path("/tmp/tiles/WW3"))
+        self.assertEqual(args.source_cycle, "2026090718")
+        self.assertEqual(args.sigma, 1.5)
+        self.assertEqual(args.workers, 4)
+        self.assertEqual(builder_args, ("--skip-existing",))
 
     def test_rejects_normalized_source_cycle_mismatch(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -70,7 +101,9 @@ class NormalizedWaveRunnerTests(unittest.TestCase):
             root = Path(temporary)
             config = self.config(root)
 
-            with mock.patch.object(runner, "NormalizedCycleReader", return_value=self.reader()), mock.patch.object(
+            with mock.patch.object(
+                runner, "NormalizedCycleReader", return_value=self.reader()
+            ), mock.patch.object(
                 runner.subprocess,
                 "run",
                 return_value=SimpleNamespace(returncode=7),
@@ -87,7 +120,9 @@ class NormalizedWaveRunnerTests(unittest.TestCase):
             root = Path(temporary)
             config = self.config(root)
 
-            with mock.patch.object(runner, "NormalizedCycleReader", return_value=self.reader()), mock.patch.object(
+            with mock.patch.object(
+                runner, "NormalizedCycleReader", return_value=self.reader()
+            ), mock.patch.object(
                 runner.subprocess,
                 "run",
                 return_value=SimpleNamespace(returncode=0),
