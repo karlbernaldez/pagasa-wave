@@ -15,9 +15,16 @@ test('uses Asia/Manila date for the operational package date', () => {
   assert.equal(currentPackageDate(afterMidnightManila), '2026-09-08');
 });
 
-test('requires the previous-day 18Z source cycle', () => {
+test('defaults to the previous-day 18Z source cycle', () => {
   assert.equal(requiredSourceCycle('2026-09-08'), '2026090718');
   assert.equal(requiredSourceCycle('2026-01-01'), '2025123118');
+});
+
+test('supports a configured previous-day source cycle hour', () => {
+  assert.equal(requiredSourceCycle('2026-09-08', 0), '2026090700');
+  assert.equal(requiredSourceCycle('2026-09-08', 6), '2026090706');
+  assert.equal(requiredSourceCycle('2026-09-08', 12), '2026090712');
+  assert.equal(requiredSourceCycle('2026-09-08', 18), '2026090718');
 });
 
 test('formats the existing WaveLab package tag contract', () => {
