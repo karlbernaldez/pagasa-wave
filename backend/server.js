@@ -28,12 +28,14 @@ import forecastPackageRoutes from './routes/forecastPackageRoutes.js';
 import notificationRoutes from './routes/notificationRouter.js';
 import pdfRoutes from './routes/pdfRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
+import roleRoutes from './routes/roleRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import waveModelCatalogRoutes from './routes/waveModelCatalogRoutes.js';
 import waveModelRoutes from './routes/waveModelRoutes.js';
 import wavePipelineStatusRoutes from './routes/wavePipelineStatusRoutes.js';
 import { createShutdownHandler } from './services/gracefulShutdown.js';
+import { ensureDefaultRoles } from './services/roleService.js';
 import { initSocket } from './socket/index.js';
 import { setIo } from './socket/socketEmitter.js';
 import { errorLogger } from './utils/errorLogger.js';
@@ -163,6 +165,7 @@ const createApp = () => {
   );
   app.use('/api/admin/wave-models', authenticate, requireRole('admin'), waveModelRoutes);
   app.use('/api/admin/wave-pipeline', authenticate, requireRole('admin'), wavePipelineStatusRoutes);
+  app.use('/api/admin/roles', roleRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
   app.use('/api/chat', chatRoutes);
@@ -226,6 +229,7 @@ const startServer = async () => {
   configureRuntimeDns();
 
   await connectDB();
+  await ensureDefaultRoles();
 
   setStore(new RedisPendingAuthStore(), new RedisOtpStore());
 
