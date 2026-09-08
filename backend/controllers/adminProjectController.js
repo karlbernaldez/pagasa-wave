@@ -47,6 +47,13 @@ const ADMIN_PROJECT_SORT_FIELDS = {
   createdAt: 'createdAt',
 };
 
+function assertAuthorizedPermission(req, permission) {
+  if (!req.user) throwError('Unauthorized', 401);
+  if (!Array.isArray(req.authorizedPermissions) || !req.authorizedPermissions.includes(permission)) {
+    throwError('You do not have permission to perform this action.', 403);
+  }
+}
+
 function clampInt(value, min, max, fallback) {
   const number = Math.trunc(Number(value));
   if (!Number.isFinite(number)) return fallback;
@@ -193,9 +200,7 @@ async function getOwnerSearchIds(searchRegex) {
 }
 
 export const getAdminProjects = asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const {
     page = 1,
@@ -362,9 +367,7 @@ async function findLegacyPackageProjects(project) {
 }
 
 export const getAdminForecastPackage = asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const project = await Project.findById(req.params.id)
     .select('name forecastDate submittedAt createdAt owner forecastPackage')
