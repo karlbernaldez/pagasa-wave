@@ -7,8 +7,9 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const DEFAULT_POLICY_PATH = path.join(
   PROJECT_ROOT,
-  'wavetiles',
-  '.runtime',
+  'backend',
+  'tmp',
+  'wave-ops',
   'source-cycle-policy.json'
 );
 
