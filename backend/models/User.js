@@ -90,6 +90,14 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: /^[a-z][a-z0-9_-]{1,31}$/,
       index: true,
+      validate: {
+        validator: async (value) => {
+          const Role = mongoose.models.Role;
+          if (!Role) return ['user', 'forecaster', 'admin'].includes(value);
+          return Boolean(await Role.exists({ key: value, enabled: true }));
+        },
+        message: 'Assigned user type does not exist or is disabled.',
+      },
     },
 
     status: {
