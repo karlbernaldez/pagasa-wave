@@ -7,12 +7,46 @@ export const STATUS_LABELS = {
   inactive: 'Inactive'
 };
 
-export const ROLE_OPTIONS = [
+export const LEGACY_ROLE_OPTIONS = Object.freeze([
   { value: 'user', label: 'User' },
   { value: 'admin', label: 'Admin' },
   { value: 'forecaster', label: 'Forecaster' },
-  { value: 'data_analyst', label: 'Data Analyst' },
-];
+]);
+
+// Live binding consumed by the existing add/manage user controls. It starts
+// with the three legacy roles so current behavior remains available while the
+// dynamic role registry is loading, then UserManagement replaces it with the
+// enabled database-backed roles returned by /api/admin/roles.
+export let ROLE_OPTIONS = [...LEGACY_ROLE_OPTIONS];
+
+export const setRoleOptions = (roles = []) => {
+  const dynamicOptions = Array.isArray(roles)
+    ? roles
+        .filter((role) => role?.enabled !== false && role?.key)
+        .map((role) => ({
+          value: String(role.key).trim().toLowerCase(),
+          label: role.name || role.key,
+        }))
+    : [];
+
+  const optionsByValue = new Map(
+    [...LEGACY_ROLE_OPTIONS, ...dynamicOptions].map((option) => [option.value, option])
+  );
+
+  // Keep the established built-ins in their existing order, then append any
+  // custom user types in the order returned by the role API.
+  const ordered = LEGACY_ROLE_OPTIONS
+    .map((option) => optionsByValue.get(option.value))
+    .filter(Boolean);
+  const legacyValues = new Set(LEGACY_ROLE_OPTIONS.map((option) => option.value));
+
+  for (const option of dynamicOptions) {
+    if (!legacyValues.has(option.value)) ordered.push(option);
+  }
+
+  ROLE_OPTIONS = ordered;
+  return ROLE_OPTIONS;
+};
 
 export const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
