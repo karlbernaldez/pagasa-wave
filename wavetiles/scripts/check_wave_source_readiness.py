@@ -10,7 +10,7 @@ import sys
 import tarfile
 import time
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 from zoneinfo import ZoneInfo
 
@@ -87,6 +87,18 @@ def existing_status(model: str) -> dict | None:
     return read_json(status_path(model, DEFAULT_STATUS_ROOT))
 
 
+def parse_utc_timestamp(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 def already_signaled_or_running(model: str, package_date: date, source_cycle: str) -> bool:
     snapshot = existing_status(model)
     if not snapshot:
@@ -95,15 +107,20 @@ def already_signaled_or_running(model: str, package_date: date, source_cycle: st
         return False
     if snapshot.get("requiredSourceCycle") != source_cycle:
         return False
-    return snapshot.get("state") in {
-        "READY_TO_BUILD",
-        "NORMALIZING",
-        "BUILDING",
-        "VALIDATING",
-        "PUBLISHING",
-        "READY",
-        "FAILED",
-    }
+
+    state = snapshot.get("state")
+    if state == "READY_TO_BUILD":
+        return signal_path(model).is_file()
+    if state in {"NORMALIZING", "BUILDING", "VALIDATING", "PUBLISHING", "READY"}:
+        return True
+    if state != "FAILED":
+        return False
+
+    retry_minutes = max(1, int(os.getenv("WAVE_SOURCE_FAILED_RETRY_MINUTES", "15")))
+    checked_at = parse_utc_timestamp(snapshot.get("lastCheckAt"))
+    if checked_at is None:
+        return False
+    return (datetime.now(timezone.utc) - checked_at).total_seconds() < retry_minutes * 60
 
 
 def ww3_archive_complete(archive: Path, package_date: date, cycle_hour: int) -> bool:
@@ -117,7 +134,13 @@ def ww3_archive_complete(archive: Path, package_date: date, cycle_hour: int) -> 
             names = set()
             for member in handle.getmembers():
                 path = PurePosixPath(member.name)
-                if path.is_absolute() or ".." in path.parts or member.issym() or member.islnk() or member.isdev():
+                if (
+                    path.is_absolute()
+                    or ".." in path.parts
+                    or member.issym()
+                    or member.islnk()
+                    or member.isdev()
+                ):
                     return False
                 if member.isfile():
                     names.add(path.as_posix())
@@ -132,14 +155,33 @@ def assess_ww3(package_date: date) -> ReadinessResult:
     input_root = Path(os.getenv("WW3_INPUT_ROOT", ROOT / "wavetiles" / "input" / "ww3"))
     staged = input_root / source_cycle
     if ww3.cycle_is_complete(staged, package_date):
-        return ReadinessResult("WW3", package_date, source_cycle, hour, True, "Required WW3 cycle is staged and complete.")
+        return ReadinessResult(
+            "WW3",
+            package_date,
+            source_cycle,
+            hour,
+            True,
+            "Required WW3 cycle is staged and complete.",
+        )
 
     source_root = Path(os.getenv("WW3_SOURCE_ARCHIVE_DIR", "/home/darwin/ww3_nc"))
     archive = source_root / f"ww3_{source_cycle}.tar.gz"
     if not archive.is_file():
-        return ReadinessResult("WW3", package_date, source_cycle, hour, False, "Required WW3 archive has not arrived yet.")
+        return ReadinessResult(
+            "WW3",
+            package_date,
+            source_cycle,
+            hour,
+            False,
+            "Required WW3 archive has not arrived yet.",
+        )
 
-    stability_minutes = int(os.getenv("WW3_ARCHIVE_STABILITY_MINUTES", os.getenv("ARCHIVE_STABILITY_MINUTES", "10")))
+    stability_minutes = int(
+        os.getenv(
+            "WW3_ARCHIVE_STABILITY_MINUTES",
+            os.getenv("ARCHIVE_STABILITY_MINUTES", "10"),
+        )
+    )
     age_seconds = max(0.0, time.time() - archive.stat().st_mtime)
     if age_seconds < stability_minutes * 60:
         remaining = max(1, int((stability_minutes * 60 - age_seconds + 59) // 60))
@@ -153,8 +195,22 @@ def assess_ww3(package_date: date) -> ReadinessResult:
         )
 
     if not ww3_archive_complete(archive, package_date, hour):
-        return ReadinessResult("WW3", package_date, source_cycle, hour, False, "WW3 archive is stable but does not contain the complete required T+0 through T+60 cycle.")
-    return ReadinessResult("WW3", package_date, source_cycle, hour, True, "Required WW3 archive is stable and complete.")
+        return ReadinessResult(
+            "WW3",
+            package_date,
+            source_cycle,
+            hour,
+            False,
+            "WW3 archive is stable but does not contain the complete required T+0 through T+60 cycle.",
+        )
+    return ReadinessResult(
+        "WW3",
+        package_date,
+        source_cycle,
+        hour,
+        True,
+        "Required WW3 archive is stable and complete.",
+    )
 
 
 def assess_ecwam(package_date: date) -> ReadinessResult:
@@ -163,8 +219,22 @@ def assess_ecwam(package_date: date) -> ReadinessResult:
     input_root = Path(os.getenv("ECWAM_INPUT_ROOT", "/home/darwin/ecmwf/ecwam"))
     cycle_dir = input_root / source_cycle
     if ecwam.cycle_is_complete(cycle_dir, package_date):
-        return ReadinessResult("ECWAM", package_date, source_cycle, hour, True, "Required ECWAM cycle is complete through T+60.")
-    return ReadinessResult("ECWAM", package_date, source_cycle, hour, False, "Required ECWAM cycle is missing or incomplete through T+60.")
+        return ReadinessResult(
+            "ECWAM",
+            package_date,
+            source_cycle,
+            hour,
+            True,
+            "Required ECWAM cycle is complete through T+60.",
+        )
+    return ReadinessResult(
+        "ECWAM",
+        package_date,
+        source_cycle,
+        hour,
+        False,
+        "Required ECWAM cycle is missing or incomplete through T+60.",
+    )
 
 
 def signal_path(model: str) -> Path:
@@ -179,7 +249,9 @@ def emit_signal(result: ReadinessResult) -> None:
     DEFAULT_SIGNAL_ROOT.mkdir(parents=True, exist_ok=True)
     target = signal_path(result.model)
     temporary = target.with_name(f".{target.name}.{os.getpid()}.tmp")
-    temporary.write_text(f"{result.package_date.isoformat()}|{result.source_cycle}\n", encoding="utf-8")
+    temporary.write_text(
+        f"{result.package_date.isoformat()}|{result.source_cycle}\n", encoding="utf-8"
+    )
     os.replace(temporary, target)
 
 
@@ -219,10 +291,24 @@ def scan_model(model: str, package_date: date) -> ReadinessResult:
 
     if published_for_cycle(model, package_date, result.source_cycle):
         clear_signal(model)
-        return ReadinessResult(model, package_date, result.source_cycle, result.preferred_hour_utc, False, "Package is already published for the required source cycle.")
+        return ReadinessResult(
+            model,
+            package_date,
+            result.source_cycle,
+            result.preferred_hour_utc,
+            False,
+            "Package is already published for the required source cycle.",
+        )
 
     if already_signaled_or_running(model, package_date, result.source_cycle):
-        return ReadinessResult(model, package_date, result.source_cycle, result.preferred_hour_utc, False, "Builder was already signaled or has already processed this source cycle.")
+        return ReadinessResult(
+            model,
+            package_date,
+            result.source_cycle,
+            result.preferred_hour_utc,
+            False,
+            "Builder was already signaled, is running, or is inside its failure retry cooldown.",
+        )
 
     if result.ready:
         record_ready(result)
@@ -232,7 +318,9 @@ def scan_model(model: str, package_date: date) -> ReadinessResult:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Check configured WaveLab source cycles and emit builder-ready signals.")
+    parser = argparse.ArgumentParser(
+        description="Check configured WaveLab source cycles and emit builder-ready signals."
+    )
     parser.add_argument("--model", choices=MODELS, action="append", dest="models")
     parser.add_argument("--package-date", type=date.fromisoformat)
     args = parser.parse_args()
