@@ -221,7 +221,7 @@ def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
         shutil.rmtree(stage_root, ignore_errors=True)
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Build, validate, publish, and clean up one normalized WaveLab package."
     )
@@ -238,12 +238,23 @@ def main() -> int:
         type=Path,
         default=ROOT / "wavetiles" / ".normalized-product-stage",
     )
-    parser.add_argument("builder_args", nargs=argparse.REMAINDER)
-    args = parser.parse_args()
+    return parser
 
-    builder_args = tuple(args.builder_args)
-    if builder_args and builder_args[0] == "--":
-        builder_args = builder_args[1:]
+
+def parse_cli(argv: list[str]) -> tuple[argparse.Namespace, tuple[str, ...]]:
+    """Parse runner options independently from renderer-specific arguments after ``--``."""
+    if "--" in argv:
+        separator = argv.index("--")
+        runner_args = argv[:separator]
+        builder_args = tuple(argv[separator + 1 :])
+    else:
+        runner_args = argv
+        builder_args = ()
+    return build_parser().parse_args(runner_args), builder_args
+
+
+def main() -> int:
+    args, builder_args = parse_cli(sys.argv[1:])
 
     config = RunnerConfig(
         model=args.model,
