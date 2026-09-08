@@ -130,7 +130,9 @@ function ModelCard({ model, isDarkMode }) {
             <Waves className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h3 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
+            <h3
+              className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}
+            >
               {model.model}
             </h3>
             <p
@@ -274,7 +276,9 @@ export default function WavePipelineStatus({ isDarkMode }) {
               <ServerCog className="h-5 w-5" />
             </span>
             <div>
-              <p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
+              <p
+                className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}
+              >
                 Operational pipeline status
               </p>
               <p
@@ -341,7 +345,12 @@ export default function WavePipelineStatus({ isDarkMode }) {
       )}
 
       {payload?.generatedAt ? (
-        <p className={cn('mt-3 text-right text-[11px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+        <p
+          className={cn(
+            'mt-3 text-right text-[11px]',
+            isDarkMode ? 'text-slate-500' : 'text-slate-500'
+          )}
+        >
           Updated {formatDateTime(payload.generatedAt)} · refreshes every 30 seconds
         </p>
       ) : null}
