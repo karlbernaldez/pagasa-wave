@@ -2,13 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Ban, Clock3, Plus, RefreshCw, UserCheck, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
+import { fetchRoles } from '@/api/roleAPI';
+
 import { AddUserModal } from './components/AddUserModal';
 import { ManageUserModal } from './components/ManageUserModal';
 import { RolesSection } from './components/RolesSection';
 import { SearchBar } from './components/SearchBar';
 import { UserTable } from './components/UserTable';
 import { useUsers } from './hooks/useUsers';
-import { STATUS_LABELS } from './constants';
+import { LEGACY_ROLE_OPTIONS, setRoleOptions, STATUS_LABELS } from './constants';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -63,6 +65,8 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
   const [searchParams] = useSearchParams();
   const [userSearchQuery, setUserSearchQuery] = useState(() => searchParams.get('q') ?? '');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [roleOptions, setRoleOptionsState] = useState(() => [...LEGACY_ROLE_OPTIONS]);
+  const [rolesError, setRolesError] = useState('');
 
   const {
     users,
@@ -124,11 +128,35 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
     if (q !== null) setUserSearchQuery(q);
   }, [searchParams]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRoleOptions = async () => {
+      try {
+        const response = await fetchRoles();
+        if (cancelled) return;
+        const nextOptions = setRoleOptions(response?.roles ?? []);
+        setRoleOptionsState([...nextOptions]);
+        setRolesError('');
+      } catch (error) {
+        if (cancelled) return;
+        console.error('[UserManagement] Failed to load dynamic user types:', error);
+        setRoleOptionsState([...LEGACY_ROLE_OPTIONS]);
+        setRolesError('Dynamic user types could not be loaded. Admin, Forecaster, and User remain available.');
+      }
+    };
+
+    loadRoleOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleAddSubmit = async (payload) => {
     const ok = await createUser(payload);
     if (ok) {
       setIsAddModalOpen(false);
-      resetNewUser();
+      resetNewUser?.();
     }
   };
 
@@ -212,12 +240,12 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
         </div>
       </section>
 
-      {usersError && (
+      {(usersError || rolesError) && (
         <section className={cn(
           'rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm backdrop-blur-xl',
           isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50/80 text-amber-800',
         )}>
-          {usersError}
+          {usersError || rolesError}
         </section>
       )}
 
@@ -264,6 +292,7 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
           isDarkMode={isDarkMode}
           newUser={newUser}
           setNewUser={setNewUser}
+          roleOptions={roleOptions}
           onClose={() => setIsAddModalOpen(false)}
           onSubmit={handleAddSubmit}
         />
@@ -272,6 +301,7 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
       {manageUserId !== null && managedUser && (
         <ManageUserModal
           user={managedUser}
+          roleOptions={roleOptions}
           isDarkMode={isDarkMode}
           onClose={() => setManageUserId(null)}
           onSave={replaceUser}
