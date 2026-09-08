@@ -2,33 +2,31 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { fetchUserDetails } from '@/api/userAPI';
-import { loginUser, sendOtp, verifyOtp as verifyOtpApi, resendVerificationEmail } from '@/api/auth'; // ← added resendVerificationEmail
+import {
+  checkAuthSession,
+  loginUser,
+  sendOtp,
+  verifyOtp as verifyOtpApi,
+  resendVerificationEmail,
+} from '@/api/auth';
+import { resolveAuthenticatedLandingPath } from '@/core/auth/resolveLandingPath';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
-const MAX_OTP_ATTEMPTS = 5; // mirrors the server-side cap — used for UI feedback
-
-// ─────────────────────────────────────────────────────────────────────────────
-// useFormValidation
-// ─────────────────────────────────────────────────────────────────────────────
+const MAX_OTP_ATTEMPTS = 5;
 
 export const useFormValidation = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [touched, setTouched] = useState({ email: false, password: false });
 
-  const validateEmail = useCallback((value) =>
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-      ? 'Please enter a valid email'
-      : '',
-    []);
+  const validateEmail = useCallback(
+    (value) => (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? 'Please enter a valid email' : ''),
+    []
+  );
 
-  const validatePassword = useCallback((value) =>
-    value.length < 1 ? 'Password is required' : '',
-    []);
+  const validatePassword = useCallback(
+    (value) => (value.length < 1 ? 'Password is required' : ''),
+    []
+  );
 
   const handleEmailChange = useCallback((e) => setEmail(e.target.value), []);
   const handlePasswordChange = useCallback((e) => setPassword(e.target.value), []);
@@ -57,10 +55,6 @@ export const useFormValidation = () => {
   };
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// useLoginAuth
-// ─────────────────────────────────────────────────────────────────────────────
-
 export const useLoginAuth = (setIsLoggedIn, setRole) => {
   const navigate = useNavigate();
 
@@ -68,16 +62,14 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
   const [isLoading, setIsLoading] = useState(false);
   const [otpAttempts, setOtpAttempts] = useState(0);
   const [emailUnverified, setEmailUnverified] = useState(false);
-  const [resendStatus, setResendStatus] = useState(null); // null | 'sending' | 'sent' | 'error'
+  const [resendStatus, setResendStatus] = useState(null);
   const [resendError, setResendError] = useState(null);
-  const [cooldown, setCooldown] = useState(0);   // seconds remaining
+  const [cooldown, setCooldown] = useState(0);
 
   const cooldownRef = useRef(null);
 
-  // ── Clear cooldown timer on unmount ───────────────────────────────────────
   useEffect(() => () => clearInterval(cooldownRef.current), []);
 
-  // ── Start the 30s countdown ───────────────────────────────────────────────
   const startCooldown = useCallback(() => {
     clearInterval(cooldownRef.current);
     setCooldown(30);
@@ -86,7 +78,7 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
       setCooldown((prev) => {
         if (prev <= 1) {
           clearInterval(cooldownRef.current);
-          setResendStatus(null); // re-enable the button
+          setResendStatus(null);
           return 0;
         }
         return prev - 1;
@@ -94,81 +86,91 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
     }, 1_000);
   }, []);
 
-  // ── Resend verification email ─────────────────────────────────────────────
-  const resendVerification = useCallback(async (email) => {
-    setResendStatus('sending');
-    setResendError(null);
-    try {
-      await resendVerificationEmail(email);
-      setResendStatus('sent');
-      startCooldown(); // begin 30s cooldown after every successful send
-    } catch (err) {
-      const message = err?.message ?? 'Failed to resend. Please try again.';
-      setResendStatus('error');
-      setResendError(message);
-      console.error('[resendVerification]', message);
-    }
-  }, [startCooldown]);
-
-  // ── Step 1: verify credentials + send OTP ────────────────────────────────
-  const handleLogin = useCallback(async (
-    email,
-    password,
-    validateEmail,
-    validatePassword,
-    setTouched,
-    options = {},
-  ) => {
-    const { coordinates, onCredentialsValid } = options;
-
-    setTouched({ email: true, password: true });
-
-    const emailErr = validateEmail(email);
-    const passwordErr = validatePassword(password);
-
-    if (emailErr || passwordErr) {
-      setError(emailErr || passwordErr);
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-    setEmailUnverified(false);
-    setResendStatus(null);
-    setResendError(null);
-    setCooldown(0);
-    clearInterval(cooldownRef.current);
-
-    try {
-      const res = await loginUser({ email, password, coordinates: coordinates ?? null });
-
-      if (res.trustedDevice) {
-        // ── Trusted device: server already issued tokens, skip OTP entirely ──
-        const userData = await fetchUserDetails(res.user.id);
-        flushSync(() => {
-          setRole(userData.role);
-          setIsLoggedIn(true);
-        });
-        navigate(userData.role === 'admin' ? '/dashboard' : '/studio', { replace: true });
-      } else {
-        // ── Unknown device: OTP was sent, open the modal ──────────────────────
-        onCredentialsValid?.();
+  const resendVerification = useCallback(
+    async (email) => {
+      setResendStatus('sending');
+      setResendError(null);
+      try {
+        await resendVerificationEmail(email);
+        setResendStatus('sent');
+        startCooldown();
+      } catch (err) {
+        const message = err?.message ?? 'Failed to resend. Please try again.';
+        setResendStatus('error');
+        setResendError(message);
+        console.error('[resendVerification]', message);
       }
-    } catch (err) {
-      const message = err.message || 'Login failed. Please try again.';
-      if (message === 'Please verify your email before logging in.') {
-        setEmailUnverified(true);
-        resendVerification(email);
-      } else {
-        setError(message);
-      }
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [resendVerification, navigate, setIsLoggedIn, setRole]);
+    },
+    [startCooldown]
+  );
 
-  // ── Resend OTP ────────────────────────────────────────────────────────────
+  const finishAuthenticatedLogin = useCallback(async () => {
+    const { authenticated, user } = await checkAuthSession({ force: true });
+    if (!authenticated || !user) {
+      throw new Error('Unable to verify the authenticated session.');
+    }
+
+    flushSync(() => {
+      setRole(user.role);
+      setIsLoggedIn(true);
+    });
+
+    navigate(resolveAuthenticatedLandingPath(user, '/'), { replace: true });
+  }, [navigate, setIsLoggedIn, setRole]);
+
+  const handleLogin = useCallback(
+    async (
+      email,
+      password,
+      validateEmail,
+      validatePassword,
+      setTouched,
+      options = {}
+    ) => {
+      const { coordinates, onCredentialsValid } = options;
+
+      setTouched({ email: true, password: true });
+
+      const emailErr = validateEmail(email);
+      const passwordErr = validatePassword(password);
+
+      if (emailErr || passwordErr) {
+        setError(emailErr || passwordErr);
+        return;
+      }
+
+      setIsLoading(true);
+      setError('');
+      setEmailUnverified(false);
+      setResendStatus(null);
+      setResendError(null);
+      setCooldown(0);
+      clearInterval(cooldownRef.current);
+
+      try {
+        const res = await loginUser({ email, password, coordinates: coordinates ?? null });
+
+        if (res.trustedDevice) {
+          await finishAuthenticatedLogin();
+        } else {
+          onCredentialsValid?.();
+        }
+      } catch (err) {
+        const message = err.message || 'Login failed. Please try again.';
+        if (message === 'Please verify your email before logging in.') {
+          setEmailUnverified(true);
+          resendVerification(email);
+        } else {
+          setError(message);
+        }
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [finishAuthenticatedLogin, resendVerification]
+  );
+
   const requestOtp = useCallback(async (email) => {
     setError('');
     try {
@@ -180,50 +182,50 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
     }
   }, []);
 
-  // ── Step 2: verify OTP + complete login ──────────────────────────────────
-  const verifyOtp = useCallback(async (email, otp) => {
-    setError('');
-    setIsLoading(true);
+  const verifyOtp = useCallback(
+    async (email, otp) => {
+      setError('');
+      setIsLoading(true);
 
-    try {
-      const res = await verifyOtpApi({ email, otp });
+      try {
+        const res = await verifyOtpApi({ email, otp });
 
-      if (!res?.user?.id) {
-        throw new Error('Unexpected server response during OTP verification.');
+        if (!res?.user?.id) {
+          throw new Error('Unexpected server response during OTP verification.');
+        }
+
+        await finishAuthenticatedLogin();
+      } catch (err) {
+        const newAttempts = otpAttempts + 1;
+        setOtpAttempts(newAttempts);
+        const message = err.message || 'OTP verification failed. Please try again.';
+        setError(message);
+        throw Object.assign(new Error(message), { attempts: newAttempts });
+      } finally {
+        setIsLoading(false);
       }
-
-      const userData = await fetchUserDetails(res.user.id);
-
-      flushSync(() => {
-        setRole(userData.role);
-        setIsLoggedIn(true);
-      });
-
-      navigate(userData.role === 'admin' ? '/dashboard' : '/studio', { replace: true });
-    } catch (err) {
-      const newAttempts = otpAttempts + 1;
-      setOtpAttempts(newAttempts);
-      const message = err.message || 'OTP verification failed. Please try again.';
-      setError(message);
-      throw Object.assign(new Error(message), { attempts: newAttempts });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [navigate, otpAttempts, setIsLoggedIn, setRole]);
+    },
+    [finishAuthenticatedLogin, otpAttempts]
+  );
 
   const otpLocked = otpAttempts >= MAX_OTP_ATTEMPTS;
 
   return {
-    error, isLoading, setError,
-    otpAttempts, otpLocked, requestOtp, verifyOtp,
+    error,
+    isLoading,
+    setError,
+    otpAttempts,
+    otpLocked,
+    requestOtp,
+    verifyOtp,
     handleLogin,
-    emailUnverified, resendStatus, resendError, cooldown, resendVerification,
+    emailUnverified,
+    resendStatus,
+    resendError,
+    cooldown,
+    resendVerification,
   };
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// usePasswordVisibility
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const usePasswordVisibility = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -235,16 +237,14 @@ export const usePasswordVisibility = () => {
   return { showPassword, togglePasswordVisibility };
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// useGeolocation
-// ─────────────────────────────────────────────────────────────────────────────
-
 export const useGeolocation = ({ onPosition } = {}) => {
   const [position, setPosition] = useState(null);
   const [geoError, setGeoError] = useState('');
   const onPositionRef = useRef(onPosition);
 
-  useEffect(() => { onPositionRef.current = onPosition; }, [onPosition]);
+  useEffect(() => {
+    onPositionRef.current = onPosition;
+  }, [onPosition]);
 
   useEffect(() => {
     if (!navigator?.geolocation) {
@@ -274,7 +274,7 @@ export const useGeolocation = ({ onPosition } = {}) => {
         };
         setGeoError(messages[err.code] ?? 'Failed to retrieve location.');
       },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 }
     );
 
     return () => {
