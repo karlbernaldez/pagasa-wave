@@ -24,7 +24,11 @@ import {
   updateForecastChartCompletionByProject,
 } from '../controllers/forecastPackageEditingController.js';
 import protect from '../middleware/authMiddleware.js';
-import { requireAnyPermission, requirePermission } from '../middleware/permissionMiddleware.js';
+import {
+  authorizeLegacyAdminController,
+  requireAnyPermission,
+  requirePermission,
+} from '../middleware/permissionMiddleware.js';
 import {
   lockPackageChartMutation,
   lockProjectParamMutation,
@@ -336,24 +340,28 @@ router.get('/admin/packages', requirePermission('projects.review'), getAdminFore
 router.patch(
   '/:id/start-review',
   requirePermission('projects.review'),
+  authorizeLegacyAdminController,
   emitForecastPackageWorkflowAfterResponse('review_started'),
   startForecastPackageReview
 );
 router.patch(
   '/:id/request-revision',
   requirePermission('projects.review'),
+  authorizeLegacyAdminController,
   emitForecastPackageWorkflowAfterResponse('revision_requested'),
   requestTargetedForecastPackageRevision
 );
 router.patch(
   '/:id/approve',
   requirePermission('projects.approve'),
+  authorizeLegacyAdminController,
   emitForecastPackageWorkflowAfterResponse('approved'),
   approveForecastPackage
 );
 router.patch(
   '/:id/publish',
   requirePermission('projects.publish'),
+  authorizeLegacyAdminController,
   emitForecastPackageWorkflowAfterResponse('published'),
   publishForecastPackage
 );
@@ -374,6 +382,7 @@ router.get(
 router.patch(
   '/charts/project/:projectId/request-revision',
   requirePermission('projects.review'),
+  authorizeLegacyAdminController,
   emitForecastPackageWorkflowAfterResponse('revision_requested'),
   requestForecastChartRevisionByProject
 );
