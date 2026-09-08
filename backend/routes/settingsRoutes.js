@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 
 import { getSettings, saveSettings } from '../controllers/settingsController.js';
 import authenticate from '../middleware/authMiddleware.js';
-import { isAdmin } from '../middleware/adminMiddleware.js';
+import { requirePermission } from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
 
@@ -24,6 +24,12 @@ const adminSettingsLimiter = rateLimit({
 });
 
 router.get('/:page', publicSettingsLimiter, getSettings);
-router.put('/:page', adminSettingsLimiter, authenticate, isAdmin, saveSettings);
+router.put(
+  '/:page',
+  adminSettingsLimiter,
+  authenticate,
+  requirePermission('settings.manage'),
+  saveSettings
+);
 
 export default router;
