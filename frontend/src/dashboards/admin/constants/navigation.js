@@ -6,8 +6,6 @@ import {
   Settings,
   CalendarDays,
   Database,
-  Cable,
-  Activity,
 } from 'lucide-react';
 
 export const ADMIN_TABS = {
@@ -91,18 +89,6 @@ export const MENU_GROUPS = [
         icon: Database,
       },
       {
-        id: ADMIN_TABS.WAVE_PIPELINE,
-        label: 'Wave Pipeline',
-        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_PIPELINE],
-        icon: Activity,
-      },
-      {
-        id: ADMIN_TABS.WAVE_MODEL_ONBOARDING,
-        label: 'Model Onboarding',
-        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODEL_ONBOARDING],
-        icon: Cable,
-      },
-      {
         id: ADMIN_TABS.USERS,
         label: 'Users',
         path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS],
@@ -151,7 +137,7 @@ export const PAGE_META = {
   [ADMIN_TABS.WAVE_MODELS]: {
     title: 'Wave Model Management',
     description:
-      'Monitor model availability, manage generated tile packages, and register future wave data sources.',
+      'Manage operational wave models, source-cycle policy, generated packages, and future model definitions.',
   },
   [ADMIN_TABS.WAVE_PIPELINE]: {
     title: 'Wave Data Pipeline',
@@ -161,7 +147,7 @@ export const PAGE_META = {
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: {
     title: 'Wave Model Onboarding',
     description:
-      'Configure managed timestamp, forecast cadence, and map metadata for prebuilt wave model packages.',
+      'Configure runtime cadence and map metadata for additional managed wave model packages.',
   },
   [ADMIN_TABS.USERS]: {
     title: 'User Management',
