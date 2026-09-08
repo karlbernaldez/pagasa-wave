@@ -25,13 +25,20 @@ function assertAuthenticated(req) {
   if (!req.user) throwError('Unauthorized', 401);
 }
 
-function assertAdmin(req) {
-  if (req.user?.role !== 'admin') throwError('Admin access required', 403);
+function hasPermission(req, permission) {
+  return new Set(req.permissions || []).has(permission);
 }
 
-function isPackageOwnerOrAdmin(user, forecastPackage) {
-  const isOwner = String(forecastPackage.owner?._id || forecastPackage.owner) === String(user?.id);
-  return isOwner || user?.role === 'admin';
+function assertPermission(req, permission) {
+  assertAuthenticated(req);
+  if (!hasPermission(req, permission)) {
+    throwError('You do not have permission to perform this action.', 403);
+  }
+}
+
+function isPackageOwnerOrPrivilegedSubmitter(req, forecastPackage) {
+  const isOwner = String(forecastPackage.owner?._id || forecastPackage.owner) === String(req.user?.id);
+  return isOwner || (hasPermission(req, 'projects.submit') && hasPermission(req, 'projects.view_all'));
 }
 
 function isSameId(left, right) {
@@ -276,7 +283,6 @@ function updateForecastChartCompletionState(forecastPackage, chartType, isComple
 
   syncLegacyClaimFields(chartRow);
 
-  const ownerOrAdmin = isPackageOwnerOrAdmin(user, forecastPackage);
   const activeEditors = getActiveEditors(chartRow);
   const activeEditorCurrentUser = activeEditors.some((editor) => isSameId(editor.user, user?.id));
 
@@ -291,7 +297,7 @@ function updateForecastChartCompletionState(forecastPackage, chartType, isComple
     );
   }
 
-  if (isComplete && !activeEditorCurrentUser && !ownerOrAdmin) {
+  if (isComplete && !activeEditorCurrentUser) {
     throwError(
       `${getForecastChartLabel(chartType)} must be joined for editing before it can be certified ready`,
       409
@@ -513,8 +519,8 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
-  if (!isPackageOwnerOrAdmin(req.user, forecastPackage)) {
-    throwError('Only the package owner or an admin can submit this package', 403);
+  if (!isPackageOwnerOrPrivilegedSubmitter(req, forecastPackage)) {
+    throwError('Only the package owner or a user with package-wide submit access can submit this package', 403);
   }
 
   if (!canSubmitPackage(forecastPackage.status)) {
@@ -542,7 +548,7 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
     performedBy: req.user.id,
     previousStatus,
     newStatus: FORECAST_PACKAGE_STATUS.SUBMITTED,
-    comment: 'Forecast Package submitted for admin review',
+    comment: 'Forecast Package submitted for review',
   });
 
   await forecastPackage.save();
@@ -553,8 +559,7 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
 });
 
 export const startForecastPackageReview = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-  assertAdmin(req);
+  assertPermission(req, 'projects.review');
 
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
@@ -587,8 +592,7 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
 });
 
 export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-  assertAdmin(req);
+  assertPermission(req, 'projects.review');
 
   const comment = getRequiredComment(req.body?.comment, 'Revision comment');
   const forecastPackage = await ForecastPackage.findById(req.params.id);
@@ -630,8 +634,7 @@ export const requestForecastPackageRevision = asyncHandler(async (req, res) => {
 });
 
 export const approveForecastPackage = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-  assertAdmin(req);
+  assertPermission(req, 'projects.approve');
 
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
@@ -653,7 +656,7 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
     performedBy: req.user.id,
     previousStatus,
     newStatus: FORECAST_PACKAGE_STATUS.APPROVED,
-    comment: 'Forecast Package approved by admin',
+    comment: 'Forecast Package approved',
   });
 
   await saveForecastPackageSnapshot(forecastPackage, {
@@ -667,8 +670,7 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
 });
 
 export const rejectForecastPackage = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-  assertAdmin(req);
+  assertPermission(req, 'projects.review');
 
   const comment = getRequiredComment(req.body?.comment, 'Rejection comment');
   const forecastPackage = await ForecastPackage.findById(req.params.id);
@@ -703,8 +705,7 @@ export const rejectForecastPackage = asyncHandler(async (req, res) => {
 });
 
 export const publishForecastPackage = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-  assertAdmin(req);
+  assertPermission(req, 'projects.publish');
 
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
@@ -736,8 +737,7 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
 });
 
 export const archiveForecastPackage = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
-  assertAdmin(req);
+  assertPermission(req, 'projects.publish');
 
   const forecastPackage = await ForecastPackage.findById(req.params.id);
   if (!forecastPackage) throwError('Forecast Package not found', 404);
