@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -25,6 +27,31 @@ class WW3PackageSelectionTests(unittest.TestCase):
 
     def test_required_source_cycle_is_previous_day_18z(self) -> None:
         self.assertEqual(selection.required_source_cycle(self.package_date), "2026071518")
+
+    def test_configured_source_cycle_changes_required_cycle_and_valid_times(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "source-cycle-policy.json"
+            policy_path.write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "models": {"WW3": {"preferredHourUtc": 12}},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = os.environ.get("WAVE_SOURCE_CYCLE_POLICY_PATH")
+            os.environ["WAVE_SOURCE_CYCLE_POLICY_PATH"] = str(policy_path)
+            try:
+                self.assertEqual(selection.required_source_cycle(self.package_date), "2026071512")
+                required = selection.required_valid_times(self.package_date)
+                self.assertEqual(required[0], "2026071512")
+                self.assertEqual(required[-1], "2026071800")
+            finally:
+                if previous is None:
+                    os.environ.pop("WAVE_SOURCE_CYCLE_POLICY_PATH", None)
+                else:
+                    os.environ["WAVE_SOURCE_CYCLE_POLICY_PATH"] = previous
 
     def test_required_valid_times_cover_three_hour_frames_through_t60(self) -> None:
         required = selection.required_valid_times(self.package_date)
