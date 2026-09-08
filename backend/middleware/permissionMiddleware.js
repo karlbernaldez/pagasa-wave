@@ -34,3 +34,18 @@ export const requireAnyPermission = (...requiredPermissions) => (req, res, next)
   markAuthorizedPermission(req, authorizedPermission);
   return next();
 };
+
+export const requireSelfOrPermission = (permission, paramName = 'userId') => (req, res, next) => {
+  if (!requireAuthenticatedUser(req, res)) return;
+
+  const actorId = String(req.user?._id || req.user?.id || '');
+  const targetId = String(req.params?.[paramName] || '');
+  if (actorId && targetId && actorId === targetId) return next();
+
+  if (!getPermissionSet(req).has(permission)) {
+    return res.status(403).json({ message: 'You do not have permission to perform this action.' });
+  }
+
+  markAuthorizedPermission(req, permission);
+  return next();
+};
