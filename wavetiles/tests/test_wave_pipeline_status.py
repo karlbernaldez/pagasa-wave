@@ -37,6 +37,22 @@ class WavePipelineStatusTests(unittest.TestCase):
             self.assertTrue(stored["published"])
             self.assertEqual(document, stored)
 
+    def test_accepts_source_ready_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            stored = write_status(
+                "ECWAM",
+                "READY_TO_BUILD",
+                root=Path(temporary),
+                package_date="2026-09-08",
+                required_source_cycle="2026090718",
+                source_cycle="2026090718",
+                frame_count=21,
+                expected_frame_count=21,
+                published=False,
+            )
+            self.assertEqual(stored["state"], "READY_TO_BUILD")
+            self.assertFalse(stored["published"])
+
     def test_rejects_unknown_state(self):
         with tempfile.TemporaryDirectory() as temporary:
             with self.assertRaisesRegex(ValueError, "invalid pipeline state"):
