@@ -1,6 +1,10 @@
 import { ChevronDown, ChevronUp, Settings } from 'lucide-react';
 
-import { ADMIN_ROUTE_BY_TAB, ADMIN_TABS, MENU_GROUPS } from '@dashboards/admin/constants/navigation';
+import {
+  ADMIN_ROUTE_BY_TAB,
+  ADMIN_TABS,
+  MENU_GROUPS,
+} from '@dashboards/admin/constants/navigation';
 import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
