@@ -107,8 +107,11 @@ function Detail({ label, value, mono = false, isDarkMode }) {
 
 function ModelCard({ model, isDarkMode }) {
   const frameCount = Number.isFinite(model.frameCount) ? model.frameCount : 0;
-  const expected = Number.isFinite(model.expectedFrameCount) ? model.expectedFrameCount : 21;
-  const progress = expected > 0 ? Math.min(100, Math.round((frameCount / expected) * 100)) : 0;
+  const expected = Number.isFinite(model.expectedFrameCount)
+    ? model.expectedFrameCount
+    : 21;
+  const progress =
+    expected > 0 ? Math.min(100, Math.round((frameCount / expected) * 100)) : 0;
 
   return (
     <article
@@ -171,7 +174,9 @@ function ModelCard({ model, isDarkMode }) {
 
       <div className="mt-4 border-t border-slate-200/70 pt-4 dark:border-white/10">
         <div className="mb-2 flex items-center justify-between text-xs font-semibold">
-          <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Forecast frames</span>
+          <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>
+            Forecast frames
+          </span>
           <span className={isDarkMode ? 'text-slate-200' : 'text-slate-700'}>
             {frameCount} / {expected}
           </span>
@@ -190,7 +195,11 @@ function ModelCard({ model, isDarkMode }) {
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <Detail label="Published" value={model.published ? 'Yes' : 'No'} isDarkMode={isDarkMode} />
+        <Detail
+          label="Published"
+          value={model.published ? 'Yes' : 'No'}
+          isDarkMode={isDarkMode}
+        />
         <Detail
           label="Last check"
           value={formatDateTime(model.lastCheckAt)}
