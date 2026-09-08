@@ -18,7 +18,6 @@ import { setStore } from '#controllers/auth/otp';
 import { checkRedisHealth } from '#lib/redis';
 import { RedisOtpStore, RedisPendingAuthStore } from '#lib/redisOtpStore';
 import authenticate from './middleware/authMiddleware.js';
-import { requireRole } from './middleware/adminMiddleware.js';
 import { csrfProtection } from './middleware/csrfMiddleware.js';
 import authRoutes from './routes/authRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
@@ -153,7 +152,7 @@ const createApp = () => {
   app.use('/api/forecast-packages', authenticate, forecastPackageRoutes);
   app.use('/api/ecwam/frames', authenticate, ecwamFrameRoutes);
   app.use('/api/wave-models', authenticate, waveModelCatalogRoutes);
-  app.use('/api/admin/wave-models', authenticate, requireRole('admin'), waveModelRoutes);
+  app.use('/api/admin/wave-models', authenticate, waveModelRoutes);
   app.use('/api/admin/wave-pipeline', authenticate, wavePipelineStatusRoutes);
   app.use('/api/admin/roles', roleRoutes);
   app.use('/api/users', userRoutes);
