@@ -110,8 +110,8 @@ function SourceCycleSelector({ model, policy, busy, isDarkMode, onChange }) {
         </select>
       </label>
       <p className={cn('mt-2 text-[10px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
-        Default is 18Z. Fallback to another cycle remains disabled; WaveLab waits for the selected
-        cycle to become complete.
+        Default is 18Z. Fallback remains disabled; WaveLab waits for the selected cycle to become
+        complete.
       </p>
     </div>
   );
@@ -138,7 +138,10 @@ export default function WaveModelManagement({ isDarkMode = true, onSelectTab }) 
         if (!active) return;
         setPolicyMessage({
           type: 'error',
-          text: error?.response?.data?.message || error?.message || 'Unable to load source cycle policy.',
+          text:
+            error?.response?.data?.message ||
+            error?.message ||
+            'Unable to load source cycle policy.',
         });
       });
     return () => {
@@ -147,6 +150,15 @@ export default function WaveModelManagement({ isDarkMode = true, onSelectTab }) 
   }, []);
 
   const handleCycleChange = async (model, preferredHourUtc) => {
+    const currentHour = policies[model]?.preferredHourUtc ?? 18;
+    if (preferredHourUtc === currentHour) return;
+
+    const nextLabel = `${String(preferredHourUtc).padStart(2, '0')}Z`;
+    const confirmed = window.confirm(
+      `Change ${model} preferred source cycle to ${nextLabel}? This takes effect immediately for package selection. If today's published package was built from another cycle, Wave Pipeline may show waiting until the selected cycle is built and published.`
+    );
+    if (!confirmed) return;
+
     setPolicyBusy(model);
     setPolicyMessage(null);
     try {
@@ -154,12 +166,15 @@ export default function WaveModelManagement({ isDarkMode = true, onSelectTab }) 
       setPolicies((current) => ({ ...current, [model]: result.policy }));
       setPolicyMessage({
         type: 'success',
-        text: `${model} preferred source cycle is now ${String(preferredHourUtc).padStart(2, '0')}Z.`,
+        text: `${model} preferred source cycle is now ${nextLabel}.`,
       });
     } catch (error) {
       setPolicyMessage({
         type: 'error',
-        text: error?.response?.data?.message || error?.message || 'Unable to update source cycle policy.',
+        text:
+          error?.response?.data?.message ||
+          error?.message ||
+          'Unable to update source cycle policy.',
       });
     } finally {
       setPolicyBusy('');
@@ -290,8 +305,8 @@ export default function WaveModelManagement({ isDarkMode = true, onSelectTab }) 
           )}
         >
           <Database size={13} />
-          Source-cycle changes affect future package selection; already-published packages are not
-          rewritten.
+          Source-cycle changes take effect immediately for new package selection. Existing files are
+          not rewritten automatically.
         </div>
       </div>
 
