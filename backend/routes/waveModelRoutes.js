@@ -4,11 +4,13 @@ import rateLimit from 'express-rate-limit';
 import {
   addWaveModel,
   deleteWaveModelConfiguration,
+  getWaveModelSourceCyclePolicy,
   listWaveModels,
   removeWaveModelPackage,
   runWaveModelBuilder,
   updateWaveModelAvailability,
   updateWaveModelRuntimeProfile,
+  updateWaveModelSourceCyclePolicy,
 } from '../controllers/waveModelController.js';
 
 const router = express.Router();
@@ -34,6 +36,8 @@ router.get('/', listWaveModels);
 router.post('/', addWaveModel);
 router.patch('/:code/availability', updateWaveModelAvailability);
 router.patch('/:code/runtime-profile', updateWaveModelRuntimeProfile);
+router.get('/:code/source-cycle-policy', getWaveModelSourceCyclePolicy);
+router.patch('/:code/source-cycle-policy', updateWaveModelSourceCyclePolicy);
 router.post('/:code/run-builder', builderTriggerLimiter, runWaveModelBuilder);
 router.delete('/:code/packages/:packageTag', removeWaveModelPackage);
 router.delete('/:code', deleteWaveModelConfiguration);

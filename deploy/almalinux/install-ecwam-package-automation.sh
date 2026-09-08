@@ -5,6 +5,7 @@ set -Eeuo pipefail
 
 APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
 DEPLOY_ROOT="$APP_ROOT/deploy/almalinux"
+WAVETILES_ROOT="$APP_ROOT/wavetiles"
 ENV_FILE=/etc/wavelab/ecwam-package-builder.env
 
 for path in \
@@ -17,6 +18,9 @@ done
 
 id wavelab >/dev/null 2>&1 || { echo "The wavelab account does not exist." >&2; exit 1; }
 install -d -m 0755 /etc/wavelab
+install -d -o wavelab -g wavelab -m 0755 \
+  "$WAVETILES_ROOT/normalized/ECWAM" \
+  "$WAVETILES_ROOT/.normalized-product-stage"
 
 if [[ ! -e "$ENV_FILE" ]]; then
   install -o root -g root -m 0600 "$DEPLOY_ROOT/ecwam-package-builder.env.example" "$ENV_FILE"

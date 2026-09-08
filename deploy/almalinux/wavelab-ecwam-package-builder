@@ -13,13 +13,15 @@ PACKAGE_TIMEZONE="${PACKAGE_TIMEZONE:-Asia/Manila}"
 PYTHON_BIN="${ECWAM_PYTHON:-$WAVETILES_ROOT/.venv/bin/python}"
 VARNAME="${ECWAM_VAR:-swh}"
 SIGMA="${ECWAM_SIGMA:-1.5}"
+PRODUCT_INPUT="${ECWAM_PRODUCT_INPUT:-raw}"
 SELECTOR="$WAVETILES_ROOT/scripts/ecwam_package_selection.py"
-BUILDER="$WAVETILES_ROOT/scripts/build_ecwam_package.sh"
+BUILDER="$WAVETILES_ROOT/scripts/build_ecwam_compatible_package.sh"
 LOCK_FILE="${LOCK_FILE:-/run/wavelab-ecwam/package-builder.lock}"
 
+[[ "$PRODUCT_INPUT" == raw || "$PRODUCT_INPUT" == normalized ]] || { log "ECWAM_PRODUCT_INPUT must be raw or normalized"; exit 1; }
 [[ -x "$PYTHON_BIN" || -f "$PYTHON_BIN" ]] || { log "ECWAM Python runtime missing: $PYTHON_BIN"; exit 1; }
 [[ -f "$SELECTOR" ]] || { log "ECWAM package selector missing: $SELECTOR"; exit 1; }
-[[ -f "$BUILDER" ]] || { log "ECWAM package builder missing: $BUILDER"; exit 1; }
+[[ -f "$BUILDER" ]] || { log "ECWAM compatible package builder missing: $BUILDER"; exit 1; }
 [[ -d "$INPUT_ROOT" ]] || { log "ECWAM input root is not available yet: $INPUT_ROOT"; exit 0; }
 
 mkdir -p "$(dirname "$LOCK_FILE")"
@@ -42,7 +44,7 @@ PY
 )"
 
 contour_root="$OUTPUT_ROOT/contours/$package_tag"
-if [[ -d "$contour_root" ]] && "$PYTHON_BIN" - "$contour_root" "$OUTPUT_ROOT" "$package_tag" "$target_cycle" <<'PY'
+if [[ -d "$contour_root" ]] && "$PYTHON_BIN" - "$contour_root" "$OUTPUT_ROOT" "$package_tag" "$target_cycle" "$PRODUCT_INPUT" <<'PY'
 import json
 import sys
 from datetime import datetime, timedelta
@@ -52,6 +54,7 @@ contour_root = Path(sys.argv[1])
 output_root = Path(sys.argv[2])
 package_tag = sys.argv[3]
 target_cycle = sys.argv[4]
+product_input = sys.argv[5]
 start = datetime.strptime(target_cycle, "%Y%m%d%H")
 metadata_path = contour_root / "package.json"
 try:
@@ -59,6 +62,17 @@ try:
 except (OSError, ValueError):
     raise SystemExit(1)
 if str(metadata.get("sourceCycle") or "") != target_cycle:
+    raise SystemExit(1)
+
+marker = contour_root / ".product-input"
+if marker.exists():
+    try:
+        existing_input = marker.read_text(encoding="utf-8").strip()
+    except OSError:
+        raise SystemExit(1)
+else:
+    existing_input = "raw"
+if existing_input != product_input:
     raise SystemExit(1)
 
 for hour in range(0, 61, 3):
@@ -71,7 +85,7 @@ for hour in range(0, 61, 3):
             raise SystemExit(1)
 PY
 then
-  log "ECWAM package already complete for Manila package date $package_date from required source cycle $target_cycle (T+0 through T+60 every 3 hours)"
+  log "ECWAM package already complete for Manila package date $package_date from required source cycle $target_cycle using $PRODUCT_INPUT input (T+0 through T+60 every 3 hours)"
   exit 0
 fi
 
@@ -85,12 +99,18 @@ if ! source_cycle="$($PYTHON_BIN "$SELECTOR" select "$INPUT_ROOT" "$package_date
   exit 0
 fi
 
-log "selected Manila package date $package_date from required aligned ECWAM source cycle $source_cycle"
+log "selected Manila package date $package_date from required aligned ECWAM source cycle $source_cycle using $PRODUCT_INPUT input"
 
-if bash "$BUILDER" "$package_date" "$VARNAME" "$SIGMA" --source-cycle "$source_cycle" --skip-existing; then
-  log "ECWAM package build completed for $package_date from aligned source cycle $source_cycle"
+if ECWAM_PRODUCT_INPUT="$PRODUCT_INPUT" \
+   ECWAM_INPUT_ROOT="$INPUT_ROOT" \
+   ECWAM_OUTPUT_ROOT="$OUTPUT_ROOT" \
+   ECWAM_SOURCE_CYCLE="$source_cycle" \
+   ECWAM_PYTHON="$PYTHON_BIN" \
+   bash "$BUILDER" "$package_date" "$VARNAME" "$SIGMA" --skip-existing; then
+  printf '%s\n' "$PRODUCT_INPUT" > "$OUTPUT_ROOT/contours/$package_tag/.product-input"
+  log "ECWAM package build completed for $package_date from aligned source cycle $source_cycle using $PRODUCT_INPUT input"
 else
   status=$?
-  log "ECWAM package build failed for $package_date from aligned source cycle $source_cycle with exit status $status"
+  log "ECWAM package build failed for $package_date from aligned source cycle $source_cycle using $PRODUCT_INPUT input with exit status $status"
   exit "$status"
 fi
