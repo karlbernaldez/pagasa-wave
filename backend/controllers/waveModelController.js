@@ -9,6 +9,10 @@ import {
   setWaveModelEnabled,
   setWaveModelRuntimeProfile,
 } from '../services/waveModelService.js';
+import {
+  getWaveSourceCyclePolicy,
+  setWaveSourceCycleHour,
+} from '../services/waveSourceCyclePolicy.js';
 
 const actorId = (req) => req.user?._id ?? req.user?.id ?? null;
 
@@ -88,6 +92,28 @@ export const updateWaveModelRuntimeProfile = async (req, res, next) => {
       mode: inventory.runtimeProfile?.mode || null,
     });
     res.status(200).json({ success: true, model: inventory });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getWaveModelSourceCyclePolicy = async (req, res, next) => {
+  try {
+    const policy = await getWaveSourceCyclePolicy(req.params.code);
+    res.status(200).json({ success: true, code: req.params.code.toUpperCase(), policy });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateWaveModelSourceCyclePolicy = async (req, res, next) => {
+  try {
+    const policy = await setWaveSourceCycleHour(req.params.code, req.body?.preferredHourUtc);
+    await writeAudit(req, 'wave_model.source_cycle.update', {
+      code: req.params.code.toUpperCase(),
+      preferredHourUtc: policy.preferredHourUtc,
+    });
+    res.status(200).json({ success: true, code: req.params.code.toUpperCase(), policy });
   } catch (error) {
     next(error);
   }
