@@ -2,7 +2,7 @@ import express from 'express';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 import authenticate from '../middleware/authMiddleware.js';
-import { requireRole } from '../middleware/adminMiddleware.js';
+import { requirePermission } from '../middleware/permissionMiddleware.js';
 import { createStyledPdfBuffer } from '../utils/pdfGenerator.js';
 
 const router = express.Router();
@@ -17,25 +17,29 @@ const pdfGenerationLimiter = rateLimit({
 });
 
 router.use(authenticate);
-router.use(requireRole('forecaster', 'admin'));
 
-router.get('/generate', pdfGenerationLimiter, async (req, res, next) => {
-  try {
-    const pdfBuffer = await createStyledPdfBuffer({
-      reportTitle: req.query.reportTitle || req.query.title || 'Wave Charts Report',
-      reportDateText: req.query.reportDateText || req.query.date || '1100000UTC FEB 2026 - WW3',
-      preparedByName: req.query.preparedByName || 'KARL SANTIAGO B. BERNALDEZ',
-      preparedByTitle: req.query.preparedByTitle || 'Technical Specialist I',
-      certifiedByName: req.query.certifiedByName || 'JEHAN FE S. PANTI',
-      certifiedByTitle: req.query.certifiedByTitle || 'Weather Specialist II',
-    });
+router.get(
+  '/generate',
+  requirePermission('reports.create'),
+  pdfGenerationLimiter,
+  async (req, res, next) => {
+    try {
+      const pdfBuffer = await createStyledPdfBuffer({
+        reportTitle: req.query.reportTitle || req.query.title || 'Wave Charts Report',
+        reportDateText: req.query.reportDateText || req.query.date || '1100000UTC FEB 2026 - WW3',
+        preparedByName: req.query.preparedByName || 'KARL SANTIAGO B. BERNALDEZ',
+        preparedByTitle: req.query.preparedByTitle || 'Technical Specialist I',
+        certifiedByName: req.query.certifiedByName || 'JEHAN FE S. PANTI',
+        certifiedByTitle: req.query.certifiedByTitle || 'Weather Specialist II',
+      });
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="wave-charts-report.pdf"');
-    res.send(pdfBuffer);
-  } catch (error) {
-    next(error);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="wave-charts-report.pdf"');
+      res.send(pdfBuffer);
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 export default router;
