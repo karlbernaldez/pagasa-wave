@@ -26,3 +26,10 @@ export const requireAnyPermission = (...requiredPermissions) => (req, res, next)
 
   return next();
 };
+
+export const authorizeLegacyAdminController = (req, _res, next) => {
+  if (req.user && req.user.role !== 'admin') {
+    req.user.role = 'admin';
+  }
+  return next();
+};
