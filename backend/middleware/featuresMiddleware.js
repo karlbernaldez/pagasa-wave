@@ -17,9 +17,9 @@ export const isOwnerOrAdmin = async (req, res, next) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const hasAccess = await canAccessProject(req.user, project);
+    const hasAccess = await canAccessProject(req.user, project, req.permissions || []);
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Access denied. Not the owner, admin, or assigned forecast package chart forecaster.' });
+      return res.status(403).json({ message: 'Access denied for this project.' });
     }
 
     req.project = project;
@@ -33,7 +33,6 @@ export const isOwnerOrAdmin = async (req, res, next) => {
 export const isFeatureOwnerOrAdmin = async (req, res, next) => {
   try {
     const { sourceId } = req.params;
-
     const feature = await Feature.findOne({ sourceId });
 
     if (!feature) {
@@ -41,14 +40,14 @@ export const isFeatureOwnerOrAdmin = async (req, res, next) => {
     }
 
     const userId = req.user.id;
-    const isAdmin = req.user.role === 'admin';
+    const isLegacyAdmin = req.user.role === 'admin';
 
     if (!feature.properties.owner) {
       return res.status(500).json({ message: 'Feature owner is not set in the database.' });
     }
 
-    if (feature.properties.owner.toString() !== userId && !isAdmin) {
-      return res.status(403).json({ message: 'Access denied. Not the feature owner or admin.' });
+    if (feature.properties.owner.toString() !== userId && !isLegacyAdmin) {
+      return res.status(403).json({ message: 'Access denied. Not the annotation owner.' });
     }
 
     req.feature = feature;
