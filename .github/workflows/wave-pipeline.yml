@@ -5,6 +5,12 @@ on:
     paths:
       - 'deploy/almalinux/wavelab-ww3-package-builder'
       - 'deploy/almalinux/wavelab-ecwam-package-builder'
+      - 'deploy/almalinux/wavelab-ww3-package-builder.service'
+      - 'deploy/almalinux/wavelab-ecwam-package-builder.service'
+      - 'deploy/almalinux/wavelab-wave-source-readiness.*'
+      - 'deploy/almalinux/wavelab-ww3-source-ready.path'
+      - 'deploy/almalinux/wavelab-ecwam-source-ready.path'
+      - 'deploy/almalinux/install-wave-source-readiness.sh'
       - 'deploy/almalinux/ww3-package-builder.env.example'
       - 'deploy/almalinux/ecwam-package-builder.env.example'
       - 'wavetiles/pipeline/**'
@@ -15,6 +21,7 @@ on:
       - 'wavetiles/scripts/build_ww3_compatible_package.sh'
       - 'wavetiles/scripts/build_ecwam_compatible_package.sh'
       - 'wavetiles/scripts/run_normalized_wave_package.py'
+      - 'wavetiles/scripts/check_wave_source_readiness.py'
       - 'wavetiles/scripts/write_wave_pipeline_status.py'
       - 'wavetiles/scripts/publish_wave_package.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
@@ -23,6 +30,7 @@ on:
       - 'wavetiles/tests/test_normalized_reader.py'
       - 'wavetiles/tests/test_normalized_wave_runner.py'
       - 'wavetiles/tests/test_wave_pipeline_status.py'
+      - 'wavetiles/tests/test_wave_source_readiness.py'
       - 'wavetiles/tests/test_wave_package_publisher.py'
       - 'wavetiles/tests/test_ww3_adapter.py'
       - 'wavetiles/tests/test_ecwam_adapter.py'
@@ -45,6 +53,12 @@ on:
     paths:
       - 'deploy/almalinux/wavelab-ww3-package-builder'
       - 'deploy/almalinux/wavelab-ecwam-package-builder'
+      - 'deploy/almalinux/wavelab-ww3-package-builder.service'
+      - 'deploy/almalinux/wavelab-ecwam-package-builder.service'
+      - 'deploy/almalinux/wavelab-wave-source-readiness.*'
+      - 'deploy/almalinux/wavelab-ww3-source-ready.path'
+      - 'deploy/almalinux/wavelab-ecwam-source-ready.path'
+      - 'deploy/almalinux/install-wave-source-readiness.sh'
       - 'deploy/almalinux/ww3-package-builder.env.example'
       - 'deploy/almalinux/ecwam-package-builder.env.example'
       - 'wavetiles/pipeline/**'
@@ -55,6 +69,7 @@ on:
       - 'wavetiles/scripts/build_ww3_compatible_package.sh'
       - 'wavetiles/scripts/build_ecwam_compatible_package.sh'
       - 'wavetiles/scripts/run_normalized_wave_package.py'
+      - 'wavetiles/scripts/check_wave_source_readiness.py'
       - 'wavetiles/scripts/write_wave_pipeline_status.py'
       - 'wavetiles/scripts/publish_wave_package.py'
       - 'wavetiles/scripts/ww3_package_selection.py'
@@ -63,6 +78,7 @@ on:
       - 'wavetiles/tests/test_normalized_reader.py'
       - 'wavetiles/tests/test_normalized_wave_runner.py'
       - 'wavetiles/tests/test_wave_pipeline_status.py'
+      - 'wavetiles/tests/test_wave_source_readiness.py'
       - 'wavetiles/tests/test_wave_package_publisher.py'
       - 'wavetiles/tests/test_ww3_adapter.py'
       - 'wavetiles/tests/test_ecwam_adapter.py'
@@ -119,6 +135,9 @@ jobs:
       - name: Run pipeline status tests
         run: python -m unittest wavetiles.tests.test_wave_pipeline_status -v
 
+      - name: Run source readiness tests
+        run: python -m unittest wavetiles.tests.test_wave_source_readiness -v
+
       - name: Run pipeline status API tests
         run: node --test backend/tests/wavePipelineStatus.test.js
 
@@ -134,10 +153,11 @@ jobs:
       - name: Run ECWAM adapter tests
         run: python -m unittest wavetiles.tests.test_ecwam_adapter -v
 
-      - name: Validate builder shell syntax
+      - name: Validate shell syntax
         run: |
           bash -n deploy/almalinux/wavelab-ww3-package-builder
           bash -n deploy/almalinux/wavelab-ecwam-package-builder
+          bash -n deploy/almalinux/install-wave-source-readiness.sh
           bash -n wavetiles/scripts/build_ww3_compatible_package.sh
           bash -n wavetiles/scripts/build_ecwam_compatible_package.sh
 
@@ -150,6 +170,7 @@ jobs:
           wavetiles/scripts/build_normalized_ww3_shadow.py
           wavetiles/scripts/build_normalized_ecwam_shadow.py
           wavetiles/scripts/run_normalized_wave_package.py
+          wavetiles/scripts/check_wave_source_readiness.py
           wavetiles/scripts/write_wave_pipeline_status.py
           wavetiles/scripts/publish_wave_package.py
           wavetiles/scripts/ww3_package_selection.py
