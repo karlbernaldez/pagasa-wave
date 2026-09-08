@@ -150,12 +150,7 @@ const createApp = () => {
   app.use('/api/features', featureRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/projects', projectRoutes);
-  app.use(
-    '/api/forecast-packages',
-    authenticate,
-    requireRole('forecaster', 'admin'),
-    forecastPackageRoutes
-  );
+  app.use('/api/forecast-packages', authenticate, forecastPackageRoutes);
   app.use('/api/ecwam/frames', authenticate, ecwamFrameRoutes);
   app.use('/api/wave-models', authenticate, waveModelCatalogRoutes);
   app.use('/api/admin/wave-models', authenticate, requireRole('admin'), waveModelRoutes);
