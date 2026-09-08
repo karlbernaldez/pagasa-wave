@@ -1,0 +1,12 @@
+[Unit]
+Description=Reconcile WaveLab wave source readiness every two minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+AccuracySec=30s
+Persistent=true
+Unit=wavelab-wave-source-readiness.service
+
+[Install]
+WantedBy=timers.target
