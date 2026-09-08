@@ -9,6 +9,7 @@ User=wavelab
 Group=wavelab
 EnvironmentFile=/etc/wavelab/ecwam-package-builder.env
 Environment=LOCK_FILE=/run/wavelab-ecwam/package-builder.lock
+ExecStartPre=/usr/bin/rm -f /var/lib/wavelab-wave-source-readiness/ECWAM.ready
 ExecStart=/usr/local/sbin/wavelab-ecwam-package-builder
 UMask=0022
 TimeoutStartSec=5h
@@ -32,6 +33,7 @@ MemoryDenyWriteExecute=false
 ReadWritePaths=/home/wavelab/app/wavetiles/tiles/ECWAM
 ReadWritePaths=/home/wavelab/app/wavetiles/normalized/ECWAM
 ReadWritePaths=/home/wavelab/app/wavetiles/.normalized-product-stage
+ReadWritePaths=/var/lib/wavelab-wave-source-readiness
 ReadWritePaths=/run/wavelab-ecwam
 
 [Install]
