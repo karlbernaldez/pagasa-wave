@@ -41,13 +41,21 @@ const serializeRole = async (role) => {
 
 export const ensureDefaultRoles = async () => {
   await Promise.all(
-    DEFAULT_ROLE_DEFINITIONS.map(({ key, ...defaults }) =>
-      Role.updateOne(
-        { key },
-        { $setOnInsert: { key, ...defaults } },
-        { upsert: true, runValidators: true }
-      )
-    )
+    DEFAULT_ROLE_DEFINITIONS.map(({ key, ...defaults }) => {
+      const update = {
+        $setOnInsert: { key, ...defaults },
+      };
+
+      if (key === 'admin') {
+        update.$set = {
+          permissions: [...PERMISSION_KEYS],
+          system: true,
+          enabled: true,
+        };
+      }
+
+      return Role.updateOne({ key }, update, { upsert: true, runValidators: true });
+    })
   );
 };
 
