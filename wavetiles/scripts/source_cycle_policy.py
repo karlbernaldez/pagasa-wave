@@ -9,8 +9,8 @@ from pathlib import Path
 
 DEFAULT_SOURCE_CYCLE_HOUR_UTC = 18
 STANDARD_SOURCE_CYCLE_HOURS_UTC = (0, 6, 12, 18)
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_POLICY_PATH = ROOT / ".runtime" / "source-cycle-policy.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_POLICY_PATH = PROJECT_ROOT / "backend" / "tmp" / "wave-ops" / "source-cycle-policy.json"
 
 
 def policy_path() -> Path:
