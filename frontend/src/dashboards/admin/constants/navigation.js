@@ -38,6 +38,19 @@ export const ADMIN_ROUTE_BY_TAB = {
   [ADMIN_TABS.ACCOUNT]: '/dashboard/account',
 };
 
+export const ADMIN_PERMISSION_BY_TAB = Object.freeze({
+  [ADMIN_TABS.DASHBOARD]: 'dashboard.view',
+  [ADMIN_TABS.CHARTS]: 'projects.review',
+  [ADMIN_TABS.WAVE_MODELS]: 'wave_models.manage',
+  [ADMIN_TABS.WAVE_PIPELINE]: 'wave_pipeline.view',
+  [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: 'model_onboarding.view',
+  [ADMIN_TABS.USERS]: 'users.view',
+  [ADMIN_TABS.USERS_LIST]: 'users.view',
+  [ADMIN_TABS.USERS_ROLES]: 'roles.view',
+  [ADMIN_TABS.ANALYTICS]: 'analytics.view',
+  [ADMIN_TABS.SETTINGS]: 'settings.view',
+});
+
 export const ADMIN_TAB_BY_ROUTE = Object.entries(ADMIN_ROUTE_BY_TAB).reduce(
   (routes, [tab, path]) => ({
     ...routes,
