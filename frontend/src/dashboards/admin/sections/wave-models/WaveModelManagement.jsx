@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Activity, Cable, Clock3, Database, Loader2, ShieldCheck } from 'lucide-react';
 
-import {
-  fetchWaveSourceCyclePolicy,
-  setWaveSourceCyclePolicy,
-} from '@/api/waveModels';
+import { fetchWaveSourceCyclePolicy, setWaveSourceCyclePolicy } from '@/api/waveModels';
 import WaveModelsSection from './WaveModels';
 import { ADMIN_TABS } from '@dashboards/admin/constants/navigation';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 const OPERATIONAL_MODELS = ['WW3', 'ECWAM'];
 
-function ArchitectureCard({ icon: Icon, title, description, actionLabel, onAction, isDarkMode }) {
+function ArchitectureCard({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  isDarkMode,
+}) {
   return (
     <article
       className={cn(
@@ -76,7 +80,9 @@ function SourceCycleSelector({ model, policy, busy, isDarkMode, onChange }) {
           <p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
             {model}
           </p>
-          <p className={cn('mt-1 text-[11px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+          <p
+            className={cn('mt-1 text-[11px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}
+          >
             Preferred source cycle for the Manila package date
           </p>
         </div>
