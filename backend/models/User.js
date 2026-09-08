@@ -85,8 +85,10 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ['user', 'forecaster', 'admin'],
       default: 'user',
+      lowercase: true,
+      trim: true,
+      match: /^[a-z][a-z0-9_-]{1,31}$/,
       index: true,
     },
 
@@ -146,6 +148,7 @@ userSchema.pre('save', async function () {
   if (this.email) this.email = this.email.toLowerCase().trim();
   if (this.pendingEmail) this.pendingEmail = this.pendingEmail.toLowerCase().trim();
   if (this.username) this.username = this.username.toLowerCase().trim();
+  if (this.role) this.role = this.role.toLowerCase().trim();
 
   if (this.isNew) return;
 
@@ -179,6 +182,10 @@ userSchema.pre('findOneAndUpdate', function () {
   const normalizedUpdate = usesOperators
     ? { ...update, $set: { ...(update.$set || {}) } }
     : { $set: { ...update } };
+
+  if (normalizedUpdate.$set.role) {
+    normalizedUpdate.$set.role = String(normalizedUpdate.$set.role).toLowerCase().trim();
+  }
 
   if (passwordChanged) {
     normalizedUpdate.$set.passwordChangedAt = new Date();
@@ -220,7 +227,6 @@ userSchema.methods.createPendingEmailVerificationToken = function () {
 
 userSchema.methods.createPasswordResetToken = function () {
   const rawToken = crypto.randomBytes(32).toString('hex');
-
   this.passwordResetToken = crypto.createHash('sha256').update(rawToken).digest('hex');
 
   this.passwordResetExpires = Date.now() + 1000 * 60 * 30;
