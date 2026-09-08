@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select the required aligned ECWAM source cycle for a forecast package date."""
+"""Select the configured aligned ECWAM source cycle for a forecast package date."""
 
 from __future__ import annotations
 
@@ -9,13 +9,14 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from source_cycle_policy import preferred_cycle_hour
+
 CYCLE_RE = re.compile(r"\d{10}")
 PACKAGE_DATE_RE = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})")
 ECWAM_FILE_RE = re.compile(
     r"^W1P(?P<cycle_mmdd>\d{4})(?P<cycle_hhmm>\d{4})(?P<valid_mmddhh>\d{6})(?P<suffix>\d{3})$"
 )
 REQUIRED_FORECAST_HOURS = tuple(range(0, 61, 3))
-TARGET_CYCLE_HOUR = 18
 
 
 def parse_package_date(raw: str) -> date:
@@ -25,19 +26,26 @@ def parse_package_date(raw: str) -> date:
     return date(*map(int, match.groups()))
 
 
-def target_source_cycle(package_date: date) -> datetime:
-    return datetime.combine(package_date - timedelta(days=1), time(hour=TARGET_CYCLE_HOUR))
+def source_cycle_hour() -> int:
+    return preferred_cycle_hour("ECWAM")
 
 
-def required_valid_times(package_date: date) -> tuple[datetime, ...]:
-    start = target_source_cycle(package_date)
+def target_source_cycle(package_date: date, cycle_hour: int | None = None) -> datetime:
+    hour = source_cycle_hour() if cycle_hour is None else cycle_hour
+    return datetime.combine(package_date - timedelta(days=1), time(hour=hour))
+
+
+def required_valid_times(package_date: date, cycle_hour: int | None = None) -> tuple[datetime, ...]:
+    start = target_source_cycle(package_date, cycle_hour)
     return tuple(start + timedelta(hours=hour) for hour in REQUIRED_FORECAST_HOURS)
 
 
-def forecast_valid_time(package_date: date, forecast_hour: int) -> datetime:
+def forecast_valid_time(
+    package_date: date, forecast_hour: int, cycle_hour: int | None = None
+) -> datetime:
     if forecast_hour not in REQUIRED_FORECAST_HOURS:
         raise ValueError("forecast hour must be from 0 through 60 in 3-hour increments")
-    return target_source_cycle(package_date) + timedelta(hours=forecast_hour)
+    return target_source_cycle(package_date, cycle_hour) + timedelta(hours=forecast_hour)
 
 
 def package_tag(package_date: date) -> str:
@@ -89,8 +97,12 @@ def files_by_valid_time(cycle_dir: Path) -> dict[datetime, Path]:
 
 
 def cycle_is_complete(cycle_dir: Path, package_date: date) -> bool:
+    cycle_hour = source_cycle_hour()
+    target = target_source_cycle(package_date, cycle_hour)
+    if cycle_dir.name != target.strftime("%Y%m%d%H"):
+        return False
     available = files_by_valid_time(cycle_dir)
-    return all(value in available for value in required_valid_times(package_date))
+    return all(value in available for value in required_valid_times(package_date, cycle_hour))
 
 
 def select_source_cycle(input_root: Path, package_date: date) -> Path | None:
@@ -113,8 +125,11 @@ def print_manifest(input_root: Path, package_date: date, source_cycle: str | Non
     if cycle_dir is None:
         return 1
     available = files_by_valid_time(cycle_dir)
+    cycle_hour = source_cycle_hour()
     tag = package_tag(package_date)
-    for forecast_hour, valid in zip(REQUIRED_FORECAST_HOURS, required_valid_times(package_date)):
+    for forecast_hour, valid in zip(
+        REQUIRED_FORECAST_HOURS, required_valid_times(package_date, cycle_hour)
+    ):
         stamp = valid.strftime("%Y%m%d%H")
         print(f"{forecast_hour}h|{stamp}|{tag}|{available[valid]}|{cycle_dir.name}")
     return 0
@@ -131,7 +146,7 @@ def print_frame(
         return 1
 
     try:
-        valid = forecast_valid_time(package_date, forecast_hour)
+        valid = forecast_valid_time(package_date, forecast_hour, source_cycle_hour())
     except ValueError:
         return 1
     available = files_by_valid_time(cycle_dir)
