@@ -1,6 +1,6 @@
 export const PERMISSION_CATALOG = Object.freeze({
   dashboard: ['view'],
-  studio: ['view', 'edit'],
+  studio: ['view', 'edit', 'edit_any_annotation'],
   projects: ['view_own', 'view_all', 'create', 'edit', 'submit', 'review', 'approve', 'publish'],
   wave_models: ['view', 'manage', 'run_builder', 'delete_package'],
   wave_pipeline: ['view'],
