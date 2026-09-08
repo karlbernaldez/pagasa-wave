@@ -128,11 +128,7 @@ const parsePackageDate = (tag) => {
   return new Date(Date.UTC(Number(match[1]), monthIndex, Number(match[3]))).getTime();
 };
 
-export const getWavePackageRetentionStatus = (
-  rawCode,
-  rawPackageTag,
-  nowMs = Date.now()
-) => {
+export const getWavePackageRetentionStatus = (rawCode, rawPackageTag, nowMs = Date.now()) => {
   const code = assertModelCode(rawCode);
   const packageTag = assertPackageTag(rawPackageTag);
   const packageDateMs = parsePackageDate(packageTag);
