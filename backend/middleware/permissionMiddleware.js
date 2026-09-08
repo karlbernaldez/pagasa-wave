@@ -6,6 +6,11 @@ const requireAuthenticatedUser = (req, res) => {
   return false;
 };
 
+const markAuthorizedPermission = (req, permission) => {
+  if (!Array.isArray(req.authorizedPermissions)) req.authorizedPermissions = [];
+  if (!req.authorizedPermissions.includes(permission)) req.authorizedPermissions.push(permission);
+};
+
 export const requirePermission = (permission) => (req, res, next) => {
   if (!requireAuthenticatedUser(req, res)) return;
 
@@ -13,6 +18,7 @@ export const requirePermission = (permission) => (req, res, next) => {
     return res.status(403).json({ message: 'You do not have permission to perform this action.' });
   }
 
+  markAuthorizedPermission(req, permission);
   return next();
 };
 
@@ -20,16 +26,11 @@ export const requireAnyPermission = (...requiredPermissions) => (req, res, next)
   if (!requireAuthenticatedUser(req, res)) return;
 
   const permissions = getPermissionSet(req);
-  if (!requiredPermissions.some((permission) => permissions.has(permission))) {
+  const authorizedPermission = requiredPermissions.find((permission) => permissions.has(permission));
+  if (!authorizedPermission) {
     return res.status(403).json({ message: 'You do not have permission to perform this action.' });
   }
 
-  return next();
-};
-
-export const authorizeLegacyAdminController = (req, _res, next) => {
-  if (req.user && req.user.role !== 'admin') {
-    req.user.role = 'admin';
-  }
+  markAuthorizedPermission(req, authorizedPermission);
   return next();
 };
