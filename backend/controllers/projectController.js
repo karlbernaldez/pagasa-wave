@@ -31,16 +31,16 @@ const USER_PROJECT_SORT_FIELDS = {
 
 const PROJECT_NOTIFICATION_COPY = {
   comment_added: {
-    title: 'Admin commented on your project',
-    message: (project, comment) => `Admin left a comment on "${project.name}": ${comment}`,
+    title: 'Reviewer commented on your project',
+    message: (project, comment) => `A reviewer left a comment on "${project.name}": ${comment}`,
   },
   revision_requested: {
     title: 'Revision requested',
-    message: (project, comment) => `Admin requested revisions on "${project.name}": ${comment}`,
+    message: (project, comment) => `A reviewer requested revisions on "${project.name}": ${comment}`,
   },
   approved: {
     title: 'Project approved',
-    message: (project) => `"${project.name}" has been approved by Admin.`,
+    message: (project) => `"${project.name}" has been approved.`,
   },
   rejected: {
     title: 'Project rejected',
@@ -55,6 +55,13 @@ const PROJECT_NOTIFICATION_COPY = {
     message: (project) => `"${project.name}" has been published.`,
   },
 };
+
+function assertAuthorizedPermission(req, permission) {
+  if (!req.user) throwError('Unauthorized', 401);
+  if (!Array.isArray(req.authorizedPermissions) || !req.authorizedPermissions.includes(permission)) {
+    throwError('You do not have permission to perform this action.', 403);
+  }
+}
 
 function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -206,13 +213,8 @@ async function sendProject(project, res) {
   res.json(project);
 }
 
-/* =========================================================
-   ADMIN: GET ALL PROJECTS
---------------------------------------------------------- */
 export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const allowedAdminStatuses = [
     PROJECT_STATUS.SUBMITTED,
@@ -226,10 +228,7 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
   ];
 
   const { status } = req.query;
-
-  const filter = {
-    status: { $in: allowedAdminStatuses },
-  };
+  const filter = { status: { $in: allowedAdminStatuses } };
 
   if (status) {
     if (!allowedAdminStatuses.includes(status)) {
@@ -245,20 +244,12 @@ export const getAllProjectsForAdmin = asyncHandler(async (req, res) => {
     .populate('rejectedBy', 'firstName lastName email username')
     .populate('noPublicationBy', 'firstName lastName email username')
     .populate('auditLogs.performedBy', 'firstName lastName email username')
-    .sort({
-      lastOpenedAt: -1,
-      updatedAt: -1,
-      submittedAt: -1,
-      createdAt: -1,
-    })
+    .sort({ lastOpenedAt: -1, updatedAt: -1, submittedAt: -1, createdAt: -1 })
     .lean();
 
   res.json(projects);
 });
 
-/* =========================================================
-   CREATE PROJECT
---------------------------------------------------------- */
 export const createProject = asyncHandler(async (req, res) => {
   const { name, description, chartType, forecastDate } = req.body;
 
@@ -291,9 +282,6 @@ export const createProject = asyncHandler(async (req, res) => {
   res.status(201).json(project);
 });
 
-/* =========================================================
-   GET USER PROJECTS
---------------------------------------------------------- */
 export const getUserProjects = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
@@ -326,25 +314,16 @@ export const getUserProjects = asyncHandler(async (req, res) => {
     });
   }
 
-  if (status && status !== 'All') {
-    filters.push({ status });
-  }
-
-  if (type && type !== 'All') {
-    filters.push({ chartType: type });
-  }
+  if (status && status !== 'All') filters.push({ status });
+  if (type && type !== 'All') filters.push({ chartType: type });
 
   const cutoffDate = getDateRangeFilter(dateRange);
   if (cutoffDate) {
     const dateQuery = { $gte: cutoffDate };
-    filters.push({
-      $or: [{ updatedAt: dateQuery }, { forecastDate: dateQuery }],
-    });
+    filters.push({ $or: [{ updatedAt: dateQuery }, { forecastDate: dateQuery }] });
   }
 
-  if (filters.length > 0) {
-    query.$and = filters;
-  }
+  if (filters.length > 0) query.$and = filters;
 
   const sortField = USER_PROJECT_SORT_FIELDS[sortBy] || 'updatedAt';
   const sortDirection = sortDir === 'asc' ? 1 : -1;
@@ -371,29 +350,20 @@ export const getUserProjects = asyncHandler(async (req, res) => {
   });
 });
 
-/* =========================================================
-   GET LATEST USER PROJECT
---------------------------------------------------------- */
 export const getLatestUserProject = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
   const project = await Project.findOne({ owner: req.user.id }).sort({ updatedAt: -1 }).lean();
 
   if (!project) {
-    return res.json({
-      project: null,
-      message: 'No projects found for this user',
-    });
+    return res.json({ project: null, message: 'No projects found for this user' });
   }
 
   res.json({ project });
 });
 
-/* =========================================================
-   GET PROJECT BY ID
---------------------------------------------------------- */
 export const getProjectById = asyncHandler(async (req, res) => {
-  const project = await ensureProjectExists(req.params.id, req.user.id);
+  const project = req.project || (await ensureProjectExists(req.params.id, req.user.id));
 
   await project.populate('owner', 'firstName lastName email position');
 
@@ -401,10 +371,7 @@ export const getProjectById = asyncHandler(async (req, res) => {
   await Project.updateOne(
     { _id: project._id },
     {
-      $set: {
-        lastOpenedAt: openedAt,
-        lastOpenedBy: req.user.id,
-      },
+      $set: { lastOpenedAt: openedAt, lastOpenedBy: req.user.id },
       $inc: { openCount: 1 },
     }
   );
@@ -416,25 +383,18 @@ export const getProjectById = asyncHandler(async (req, res) => {
   res.json(project);
 });
 
-/* =========================================================
-   UPDATE PROJECT NAME
---------------------------------------------------------- */
 export const renameProject = asyncHandler(async (req, res) => {
   const { name } = req.body;
 
-  if (!name || !name.trim()) {
-    throwError('name is required', 400);
-  }
+  if (!name || !name.trim()) throwError('name is required', 400);
 
-  const project = await ensureProjectExists(req.params.id, req.user.id);
+  const project = req.project || (await ensureProjectExists(req.params.id, req.user.id));
 
   if (!canEditProjectStatus(project.status)) {
     throwError('Only Draft, Rejected, or Revision Requested projects can be renamed', 403);
   }
 
-  if (project.name === name.trim()) {
-    return res.json(project);
-  }
+  if (project.name === name.trim()) return res.json(project);
 
   const expectedStatus = project.status;
   const expectedUpdatedAt = project.updatedAt;
@@ -442,7 +402,6 @@ export const renameProject = asyncHandler(async (req, res) => {
 
   const previousName = project.name;
   project.name = name.trim();
-
   project.auditLogs.push({
     action: 'renamed',
     performedBy: req.user.id,
@@ -460,21 +419,15 @@ export const renameProject = asyncHandler(async (req, res) => {
   res.json(project);
 });
 
-/* =========================================================
-   UPDATE PROJECT (DRAFT, REJECTED, OR REVISION REQUESTED)
---------------------------------------------------------- */
 export const updateProject = asyncHandler(async (req, res) => {
   const { name, description, chartType, forecastDate } = req.body;
-
-  const project = await ensureProjectExists(req.params.id, req.user.id);
+  const project = req.project || (await ensureProjectExists(req.params.id, req.user.id));
 
   if (!canEditProjectStatus(project.status)) {
     throwError('Only Draft, Rejected, or Revision Requested projects can be edited', 400);
   }
 
-  if (!name || !chartType || !forecastDate) {
-    throwError('All fields are required', 400);
-  }
+  if (!name || !chartType || !forecastDate) throwError('All fields are required', 400);
 
   const expectedStatus = project.status;
   const expectedUpdatedAt = project.updatedAt;
@@ -502,9 +455,6 @@ export const updateProject = asyncHandler(async (req, res) => {
   res.json(project);
 });
 
-/* =========================================================
-   SUBMIT PROJECT (OWNER)
---------------------------------------------------------- */
 export const submitProject = asyncHandler(async (req, res) => {
   const project = await ensureProjectExists(req.params.id, req.user.id);
 
@@ -522,7 +472,6 @@ export const submitProject = asyncHandler(async (req, res) => {
 
   project.status = PROJECT_STATUS.SUBMITTED;
   project.submittedAt = new Date();
-
   project.auditLogs.push({
     action: 'submitted',
     performedBy: req.user.id,
@@ -544,20 +493,13 @@ export const submitProject = asyncHandler(async (req, res) => {
   res.json(project);
 });
 
-/* =========================================================
-   START PROJECT REVIEW (ADMIN)
---------------------------------------------------------- */
 export const startReviewProject = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
-  if (project.status === PROJECT_STATUS.UNDER_REVIEW) {
-    return sendProject(project, res);
-  }
+  if (project.status === PROJECT_STATUS.UNDER_REVIEW) return sendProject(project, res);
 
   if (!canTransitionProjectStatus(project.status, PROJECT_STATUS.UNDER_REVIEW)) {
     throwError('Invalid status transition', 400);
@@ -568,7 +510,6 @@ export const startReviewProject = asyncHandler(async (req, res) => {
   project.status = PROJECT_STATUS.UNDER_REVIEW;
   project.reviewStartedAt = new Date();
   project.reviewStartedBy = req.user.id;
-
   project.auditLogs.push({
     action: 'review_started',
     performedBy: req.user.id,
@@ -587,13 +528,8 @@ export const startReviewProject = asyncHandler(async (req, res) => {
   return sendProject(project, res);
 });
 
-/* =========================================================
-   ADD REVIEW COMMENT (ADMIN)
---------------------------------------------------------- */
 export const addReviewComment = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const comment = getRequiredComment(req.body?.comment);
   const project = await Project.findById(req.params.id);
@@ -623,13 +559,8 @@ export const addReviewComment = asyncHandler(async (req, res) => {
   return sendProject(project, res);
 });
 
-/* =========================================================
-   REQUEST REVISION (ADMIN)
---------------------------------------------------------- */
 export const requestProjectRevision = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const comment = getRequiredComment(req.body?.comment, 'Revision comment');
   const project = await Project.findById(req.params.id);
@@ -650,7 +581,6 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
   project.rejectedBy = undefined;
   project.reviewComment = comment;
   project.reviewedAt = new Date();
-
   project.auditLogs.push({
     action: 'revision_requested',
     performedBy: req.user.id,
@@ -669,13 +599,8 @@ export const requestProjectRevision = asyncHandler(async (req, res) => {
   return sendProject(project, res);
 });
 
-/* =========================================================
-   APPROVE PROJECT (ADMIN)
---------------------------------------------------------- */
 export const approveProject = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.approve');
 
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
@@ -693,7 +618,6 @@ export const approveProject = asyncHandler(async (req, res) => {
   project.status = PROJECT_STATUS.APPROVED;
   project.reviewedAt = new Date();
   project.approvedBy = req.user.id;
-
   project.auditLogs.push({
     action: 'approved',
     performedBy: req.user.id,
@@ -709,20 +633,13 @@ export const approveProject = asyncHandler(async (req, res) => {
       'Project workflow changed while this operation was in progress. Reload and try again.',
   });
   await notifyProjectOwner(project, req.user.id, 'approved');
-
   return sendProject(project, res);
 });
 
-/* =========================================================
-   REJECT PROJECT (ADMIN)
---------------------------------------------------------- */
 export const rejectProject = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const comment = getRequiredComment(req.body?.comment, 'Rejection comment');
-
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
 
@@ -736,7 +653,6 @@ export const rejectProject = asyncHandler(async (req, res) => {
   project.rejectedBy = req.user.id;
   project.reviewComment = comment;
   project.reviewedAt = new Date();
-
   project.auditLogs.push({
     action: 'rejected',
     performedBy: req.user.id,
@@ -752,17 +668,11 @@ export const rejectProject = asyncHandler(async (req, res) => {
       'Project workflow changed while this operation was in progress. Reload and try again.',
   });
   await notifyProjectOwner(project, req.user.id, 'rejected', comment);
-
   return sendProject(project, res);
 });
 
-/* =========================================================
-   MARK NO PUBLICATION (ADMIN)
---------------------------------------------------------- */
 export const markProjectNoPublication = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const { reason, notes, comment } = getNoPublicationPayload(req.body);
   const project = await Project.findById(req.params.id);
@@ -781,7 +691,6 @@ export const markProjectNoPublication = asyncHandler(async (req, res) => {
   project.noPublicationNotes = notes;
   project.reviewComment = comment;
   project.reviewedAt = new Date();
-
   project.auditLogs.push({
     action: 'marked_no_publication',
     performedBy: req.user.id,
@@ -797,17 +706,11 @@ export const markProjectNoPublication = asyncHandler(async (req, res) => {
       'Project workflow changed while this operation was in progress. Reload and try again.',
   });
   await notifyProjectOwner(project, req.user.id, 'marked_no_publication', comment);
-
   return sendProject(project, res);
 });
 
-/* =========================================================
-   PUBLISH PROJECT (ADMIN)
---------------------------------------------------------- */
 export const publishProject = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.publish');
 
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
@@ -825,7 +728,6 @@ export const publishProject = asyncHandler(async (req, res) => {
 
   project.status = PROJECT_STATUS.PUBLISHED;
   project.publishedAt = new Date();
-
   project.auditLogs.push({
     action: 'published',
     performedBy: req.user.id,
@@ -841,13 +743,9 @@ export const publishProject = asyncHandler(async (req, res) => {
       'Project workflow changed while this operation was in progress. Reload and try again.',
   });
   await notifyProjectOwner(project, req.user.id, 'published');
-
   return sendProject(project, res);
 });
 
-/* =========================================================
-   DELETE PROJECT
---------------------------------------------------------- */
 export const deleteProject = asyncHandler(async (req, res) => {
   const deletedFeaturesCount = await deleteProjectAndFeatures(req.params.id, req.user.id);
 
@@ -857,13 +755,8 @@ export const deleteProject = asyncHandler(async (req, res) => {
   });
 });
 
-/* =========================================================
-   ARCHIVE PROJECT (ADMIN)
---------------------------------------------------------- */
 export const archiveProject = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const project = await Project.findById(req.params.id);
   if (!project) throwError('Project not found', 404);
@@ -875,7 +768,6 @@ export const archiveProject = asyncHandler(async (req, res) => {
   const previousStatus = project.status;
   const expectedUpdatedAt = project.updatedAt;
   project.status = PROJECT_STATUS.ARCHIVED;
-
   project.auditLogs.push({
     action: 'archived',
     performedBy: req.user.id,
