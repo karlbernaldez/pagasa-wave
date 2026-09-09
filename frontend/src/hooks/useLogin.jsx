@@ -178,7 +178,7 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
     } catch (err) {
       const message = err.message || 'Failed to send OTP. Please try again.';
       setError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: err });
     }
   }, []);
 
@@ -200,7 +200,7 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
         setOtpAttempts(newAttempts);
         const message = err.message || 'OTP verification failed. Please try again.';
         setError(message);
-        throw Object.assign(new Error(message), { attempts: newAttempts });
+        throw Object.assign(new Error(message, { cause: err }), { attempts: newAttempts });
       } finally {
         setIsLoading(false);
       }
@@ -238,8 +238,11 @@ export const usePasswordVisibility = () => {
 };
 
 export const useGeolocation = ({ onPosition } = {}) => {
+  const geolocationSupported = typeof navigator !== 'undefined' && Boolean(navigator.geolocation);
   const [position, setPosition] = useState(null);
-  const [geoError, setGeoError] = useState('');
+  const [geoError, setGeoError] = useState(() =>
+    geolocationSupported ? '' : 'Geolocation is not supported by this browser.'
+  );
   const onPositionRef = useRef(onPosition);
 
   useEffect(() => {
@@ -247,10 +250,7 @@ export const useGeolocation = ({ onPosition } = {}) => {
   }, [onPosition]);
 
   useEffect(() => {
-    if (!navigator?.geolocation) {
-      setGeoError('Geolocation is not supported by this browser.');
-      return;
-    }
+    if (!geolocationSupported) return undefined;
 
     let cancelled = false;
 
@@ -281,7 +281,7 @@ export const useGeolocation = ({ onPosition } = {}) => {
       cancelled = true;
       navigator.geolocation.clearWatch(watchId);
     };
-  }, []);
+  }, [geolocationSupported]);
 
   return { position, geoError };
 };
