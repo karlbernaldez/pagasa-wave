@@ -1,41 +1,58 @@
-const TRANSPARENT_PLACEHOLDER = {
-  width: 1,
-  height: 1,
-  data: new Uint8Array([0, 0, 0, 0]),
-};
+const imageLoadState = new WeakMap();
+
+function getMapImageState(map) {
+  let state = imageLoadState.get(map);
+  if (!state) {
+    state = {
+      loaded: new Set(),
+      pending: new Map(),
+    };
+    imageLoadState.set(map, state);
+  }
+  return state;
+}
 
 export function loadImage(map, name, path) {
-  if (map.hasImage(name)) return Promise.resolve(true);
+  const state = getMapImageState(map);
 
-  // Register the image name immediately so persisted symbol layers can be
-  // restored while the real asset is still loading. Mapbox requires every
-  // icon-image reference to exist when the layer is created.
-  map.addImage(name, TRANSPARENT_PLACEHOLDER);
+  if (state.loaded.has(name) && map.hasImage(name)) {
+    return Promise.resolve(true);
+  }
 
-  return new Promise((resolve) => {
+  const pending = state.pending.get(name);
+  if (pending) return pending;
+
+  const request = new Promise((resolve) => {
     map.loadImage(path, (error, image) => {
+      state.pending.delete(name);
+
       if (error || !image) {
+        console.warn(`Failed to load image ${name} from ${path}:`, error || 'empty image');
         resolve(false);
         return;
       }
 
       try {
-        if (typeof map.updateImage === 'function') {
-          map.updateImage(name, image);
-        } else {
-          if (map.hasImage(name)) map.removeImage(name);
-          map.addImage(name, image);
-        }
+        // Replace any stale/placeholder registration with the real image. Using
+        // remove/add also handles images whose dimensions differ from an older
+        // registration, which updateImage does not reliably support.
+        if (map.hasImage(name)) map.removeImage(name);
+        map.addImage(name, image);
+        state.loaded.add(name);
         resolve(true);
-      } catch (error) {
-        console.warn(`Failed to register image ${name}:`, error);
+      } catch (registrationError) {
+        console.warn(`Failed to register image ${name}:`, registrationError);
         resolve(false);
       }
     });
   });
+
+  state.pending.set(name, request);
+  return request;
 }
 
-// Initialize all custom images
+// Initialize all custom images. Repeated callers share the same in-flight
+// requests, so map setup and annotation restoration do not duplicate loads.
 export function loadCustomImages(map) {
   const singleImages = [
     { name: 'typhoon', path: '/hurricane.png' },
