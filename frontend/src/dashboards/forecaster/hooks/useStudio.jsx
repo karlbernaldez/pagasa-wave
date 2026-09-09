@@ -32,10 +32,7 @@ function getIdString(value) {
   if (typeof value === 'number') return String(value);
   if (value._id) return String(value._id);
   if (value.id) return String(value.id);
-  if (
-    typeof value.toString === 'function' &&
-    value.toString !== Object.prototype.toString
-  ) {
+  if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) {
     return String(value.toString());
   }
   return '';
@@ -53,7 +50,10 @@ function getShortLayerSuffix(feature) {
       feature?._id ||
       feature?.id
   );
-  const suffix = raw.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase();
+  const suffix = raw
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(-4)
+    .toUpperCase();
   return suffix || '0000';
 }
 
@@ -113,10 +113,7 @@ export const useProjectId = () => {
   return [projectId, updateProjectId];
 };
 
-export const useInactivityReload = (
-  timeout = INACTIVITY_TIMEOUT,
-  { disabled = false } = {}
-) => {
+export const useInactivityReload = (timeout = INACTIVITY_TIMEOUT, { disabled = false } = {}) => {
   const [isInactivityPromptVisible, setIsInactivityPromptVisible] = useState(false);
   const timerRef = useRef(null);
 
@@ -144,9 +141,7 @@ export const useInactivityReload = (
 
     const resetTimer = () => scheduleInactivityPrompt();
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    events.forEach((event) =>
-      window.addEventListener(event, resetTimer, { passive: true })
-    );
+    events.forEach((event) => window.addEventListener(event, resetTimer, { passive: true }));
     scheduleInactivityPrompt();
 
     return () => {
@@ -270,14 +265,9 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
             ].includes(type);
 
             return {
-              id:
-                feature.sourceId ||
-                feature.properties?.sourceId ||
-                feature.properties?.stableId,
+              id: feature.sourceId || feature.properties?.sourceId || feature.properties?.stableId,
               sourceID:
-                feature.sourceId ||
-                feature.properties?.sourceId ||
-                feature.properties?.stableId,
+                feature.sourceId || feature.properties?.sourceId || feature.properties?.stableId,
               name,
               visible: true,
               locked: false,
@@ -288,8 +278,7 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
               owner: feature.properties?.owner,
               canEdit: feature.properties?.canEdit !== false,
               frontSymbolSide:
-                feature.properties?.frontSymbolSide ||
-                feature.properties?.style?.frontSymbolSide,
+                feature.properties?.frontSymbolSide || feature.properties?.style?.frontSymbolSide,
               style: feature.properties?.style || {},
               properties: { ...(feature.properties || {}), displayName: name },
             };
