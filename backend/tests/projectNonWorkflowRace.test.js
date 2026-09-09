@@ -44,12 +44,18 @@ function createProject(status = PROJECT_STATUS.DRAFT) {
   };
 }
 
-function request({ role = 'forecaster', userId = OWNER_ID, body = {} } = {}) {
+function request({
+  role = 'forecaster',
+  userId = OWNER_ID,
+  body = {},
+  authorizedPermissions = [],
+} = {}) {
   return {
     params: { id: 'project-1' },
     body,
     query: {},
     user: { id: userId, role },
+    authorizedPermissions,
   };
 }
 
@@ -191,9 +197,10 @@ test('review comment rejects a stale review snapshot before any success response
         run(
           addReviewComment,
           request({
-            role: 'admin',
+            role: 'reviewer',
             userId: ADMIN_ID,
             body: { comment: 'Please verify the wave-height labels.' },
+            authorizedPermissions: ['projects.review'],
           })
         ),
       {

@@ -31,8 +31,12 @@ function ownerId(value = OWNER_ID) {
 
 function createQuery(result) {
   return {
-    populate() { return this; },
-    then(resolve, reject) { return Promise.resolve(result).then(resolve, reject); },
+    populate() {
+      return this;
+    },
+    then(resolve, reject) {
+      return Promise.resolve(result).then(resolve, reject);
+    },
   };
 }
 
@@ -87,6 +91,7 @@ function req(overrides = {}) {
     body: {},
     query: {},
     user: { id: OWNER_ID, role: 'forecaster' },
+    permissions: ['projects.submit'],
     ...overrides,
   };
 }
@@ -96,8 +101,15 @@ async function run(handler, request) {
     const res = {
       statusCode: 200,
       body: undefined,
-      status(code) { this.statusCode = code; return this; },
-      json(payload) { this.body = payload; resolve(this); return this; },
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(payload) {
+        this.body = payload;
+        resolve(this);
+        return this;
+      },
     };
 
     handler(request, res, (error) => {
@@ -107,7 +119,16 @@ async function run(handler, request) {
   });
 }
 
-async function withMockedModels({ mongoose, ForecastPackage, Project, packageFactory, updateMany = async () => ({ modifiedCount: 0 }) }, fn) {
+async function withMockedModels(
+  {
+    mongoose,
+    ForecastPackage,
+    Project,
+    packageFactory,
+    updateMany = async () => ({ modifiedCount: 0 }),
+  },
+  fn
+) {
   const originalStartSession = mongoose.startSession;
   const originalFindById = ForecastPackage.findById;
   const originalUpdateMany = Project.updateMany;
@@ -137,64 +158,81 @@ async function withMockedModels({ mongoose, ForecastPackage, Project, packageFac
   }
 }
 
-test('forecast package can move from forecaster submission to admin review without exposing draft package state', async () => {
+test('forecast package can move from forecaster submission to reviewer review without exposing draft package state', async () => {
   const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
   let updateManyPayload;
 
-  await withMockedModels({
-    mongoose,
-    ForecastPackage,
-    Project,
-    packageFactory: () => pkg,
-    updateMany: async (filter, update) => {
-      updateManyPayload = { filter, update };
-      return { modifiedCount: 4 };
+  await withMockedModels(
+    {
+      mongoose,
+      ForecastPackage,
+      Project,
+      packageFactory: () => pkg,
+      updateMany: async (filter, update) => {
+        updateManyPayload = { filter, update };
+        return { modifiedCount: 4 };
+      },
     },
-  }, async () => {
-    const submitResponse = await run(controller.submitForecastPackage, req());
+    async () => {
+      const submitResponse = await run(controller.submitForecastPackage, req());
 
-    assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
-    assert.equal(pkg.saveCalls, 1);
-    assert.equal(submitResponse.body.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
-    assert.deepEqual(updateManyPayload.filter.status.$in, ['Draft', 'Revision Requested', 'Rejected']);
-    assert.equal(updateManyPayload.update.$set.status, 'Submitted');
+      assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
+      assert.equal(pkg.saveCalls, 1);
+      assert.equal(submitResponse.body.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
+      assert.deepEqual(updateManyPayload.filter.status.$in, [
+        'Draft',
+        'Revision Requested',
+        'Rejected',
+      ]);
+      assert.equal(updateManyPayload.update.$set.status, 'Submitted');
 
-    const reviewResponse = await run(
-      controller.startForecastPackageReview,
-      req({ user: { id: ADMIN_ID, role: 'admin' } })
-    );
+      const reviewResponse = await run(
+        controller.startForecastPackageReview,
+        req({
+          user: { id: ADMIN_ID, role: 'reviewer' },
+          permissions: ['projects.review'],
+        })
+      );
 
-    assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
-    assert.equal(pkg.reviewStartedBy, ADMIN_ID);
-    assert.equal(pkg.saveCalls, 2);
-    assert.equal(pkg.auditLogs.at(-1).action, 'review_started');
-    assert.equal(reviewResponse.body.status, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
-  });
+      assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
+      assert.equal(pkg.reviewStartedBy, ADMIN_ID);
+      assert.equal(pkg.saveCalls, 2);
+      assert.equal(pkg.auditLogs.at(-1).action, 'review_started');
+      assert.equal(reviewResponse.body.status, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
+    }
+  );
 });
 
-test('admin cannot start review until a package has been submitted by a forecaster', async () => {
+test('reviewer cannot start review until a package has been submitted', async () => {
   const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
 
-  await withMockedModels({
-    mongoose,
-    ForecastPackage,
-    Project,
-    packageFactory: () => pkg,
-  }, async () => {
-    await assert.rejects(
-      () => run(
-        controller.startForecastPackageReview,
-        req({ user: { id: ADMIN_ID, role: 'admin' } })
-      ),
-      { status: 403, message: 'Only Submitted packages can be moved to Under Review' }
-    );
+  await withMockedModels(
+    {
+      mongoose,
+      ForecastPackage,
+      Project,
+      packageFactory: () => pkg,
+    },
+    async () => {
+      await assert.rejects(
+        () =>
+          run(
+            controller.startForecastPackageReview,
+            req({
+              user: { id: ADMIN_ID, role: 'reviewer' },
+              permissions: ['projects.review'],
+            })
+          ),
+        { status: 403, message: 'Only Submitted packages can be moved to Under Review' }
+      );
 
-    assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
-    assert.equal(pkg.saveCalls, 0);
-    assert.equal(pkg.auditLogs.length, 0);
-  });
+      assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
+      assert.equal(pkg.saveCalls, 0);
+      assert.equal(pkg.auditLogs.length, 0);
+    }
+  );
 });
 
 test('participating forecaster can resubmit a revision-requested package and relock linked chart projects', async () => {
@@ -203,63 +241,85 @@ test('participating forecaster can resubmit a revision-requested package and rel
   pkg.chartCompletion[1].completedBy = PARTICIPANT_ID;
   let updateManyPayload;
 
-  await withMockedModels({
-    mongoose,
-    ForecastPackage,
-    Project,
-    packageFactory: () => pkg,
-    updateMany: async (filter, update) => {
-      updateManyPayload = { filter, update };
-      return { modifiedCount: 4 };
+  await withMockedModels(
+    {
+      mongoose,
+      ForecastPackage,
+      Project,
+      packageFactory: () => pkg,
+      updateMany: async (filter, update) => {
+        updateManyPayload = { filter, update };
+        return { modifiedCount: 4 };
+      },
     },
-  }, async () => {
-    const response = await run(
-      controller.submitForecastPackage,
-      req({ user: { id: PARTICIPANT_ID, role: 'forecaster' } })
-    );
+    async () => {
+      const response = await run(
+        controller.submitForecastPackage,
+        req({
+          user: { id: PARTICIPANT_ID, role: 'forecaster' },
+          permissions: ['projects.submit'],
+        })
+      );
 
-    assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
-    assert.equal(pkg.auditLogs.at(-1).performedBy, PARTICIPANT_ID);
-    assert.deepEqual(updateManyPayload.filter._id.$in, ['project-1', 'project-2', 'project-3', 'project-4']);
-    assert.deepEqual(updateManyPayload.filter.status.$in, ['Draft', 'Revision Requested', 'Rejected']);
-    assert.equal(updateManyPayload.update.$push.auditLogs.previousStatus, 'Revision Requested');
-    assert.equal(updateManyPayload.update.$push.auditLogs.comment, 'Revision resubmitted as part of Forecast Package submission');
-    assert.equal(response.body.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
-  });
+      assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
+      assert.equal(pkg.auditLogs.at(-1).performedBy, PARTICIPANT_ID);
+      assert.deepEqual(updateManyPayload.filter._id.$in, [
+        'project-1',
+        'project-2',
+        'project-3',
+        'project-4',
+      ]);
+      assert.deepEqual(updateManyPayload.filter.status.$in, [
+        'Draft',
+        'Revision Requested',
+        'Rejected',
+      ]);
+      assert.equal(updateManyPayload.update.$push.auditLogs.previousStatus, 'Revision Requested');
+      assert.equal(
+        updateManyPayload.update.$push.auditLogs.comment,
+        'Revision resubmitted as part of Forecast Package submission'
+      );
+      assert.equal(response.body.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
+    }
+  );
 });
 
-test('admin revision request returns package and linked submitted chart projects to revision requested', async () => {
+test('reviewer revision request returns package and linked submitted chart projects to revision requested', async () => {
   const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
   const comment = 'Update the 36h forecast notes before resubmission.';
   let updateManyPayload;
 
-  await withMockedModels({
-    mongoose,
-    ForecastPackage,
-    Project,
-    packageFactory: () => pkg,
-    updateMany: async (filter, update) => {
-      updateManyPayload = { filter, update };
-      return { modifiedCount: 4 };
+  await withMockedModels(
+    {
+      mongoose,
+      ForecastPackage,
+      Project,
+      packageFactory: () => pkg,
+      updateMany: async (filter, update) => {
+        updateManyPayload = { filter, update };
+        return { modifiedCount: 4 };
+      },
     },
-  }, async () => {
-    const response = await run(
-      controller.requestForecastPackageRevision,
-      req({
-        body: { comment },
-        user: { id: ADMIN_ID, role: 'admin' },
-      })
-    );
+    async () => {
+      const response = await run(
+        controller.requestForecastPackageRevision,
+        req({
+          body: { comment },
+          user: { id: ADMIN_ID, role: 'reviewer' },
+          permissions: ['projects.review'],
+        })
+      );
 
-    assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
-    assert.equal(pkg.reviewComment, comment);
-    assert.equal(pkg.rejectedBy, ADMIN_ID);
-    assert.equal(pkg.saveCalls, 1);
-    assert.deepEqual(updateManyPayload.filter.status.$in, ['Submitted', 'Under Review']);
-    assert.equal(updateManyPayload.update.$set.status, 'Revision Requested');
-    assert.equal(updateManyPayload.update.$set.reviewComment, comment);
-    assert.equal(updateManyPayload.update.$push.auditLogs.action, 'revision_requested');
-    assert.equal(response.body.status, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
-  });
+      assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
+      assert.equal(pkg.reviewComment, comment);
+      assert.equal(pkg.rejectedBy, ADMIN_ID);
+      assert.equal(pkg.saveCalls, 1);
+      assert.deepEqual(updateManyPayload.filter.status.$in, ['Submitted', 'Under Review']);
+      assert.equal(updateManyPayload.update.$set.status, 'Revision Requested');
+      assert.equal(updateManyPayload.update.$set.reviewComment, comment);
+      assert.equal(updateManyPayload.update.$push.auditLogs.action, 'revision_requested');
+      assert.equal(response.body.status, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
+    }
+  );
 });

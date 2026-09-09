@@ -160,6 +160,7 @@ test('submission save is guarded by the package status and timestamp that were v
       body: {},
       query: {},
       user: { id: USER_ID, role: 'forecaster' },
+      permissions: ['projects.submit'],
     });
 
     assert.deepEqual(pkg.saveFilters[0], {
@@ -201,7 +202,8 @@ test('targeted revision save is guarded before chart completion state is persist
       params: { id: PACKAGE_ID },
       body: { chartTypes: ['analysis'], comment: 'Revise the wave analysis.' },
       query: {},
-      user: { id: ADMIN_ID, role: 'admin' },
+      user: { id: ADMIN_ID, role: 'reviewer' },
+      permissions: ['projects.review'],
     });
 
     assert.deepEqual(pkg.saveFilters[0], {

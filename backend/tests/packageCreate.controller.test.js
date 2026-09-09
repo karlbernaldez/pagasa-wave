@@ -130,7 +130,7 @@ test('package creation produces exactly Wave Analysis, 24h, 36h, and 48h without
     );
     assert.deepEqual(
       createdProjects.map((project) => project.name.split(' - ').at(-1)),
-      ['Wave Analysis', '24h', '36h', '48h']
+      ['Wave Analysis', '24h Wave Forecast', '36h Wave Forecast', '48h Wave Forecast']
     );
     assert.ok(createdProjects.every((project) => project.status === PROJECT_STATUS.DRAFT));
     assert.ok(createdProjects.every((project) => project.owner === undefined));
