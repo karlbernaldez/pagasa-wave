@@ -1,18 +1,36 @@
+const TRANSPARENT_PLACEHOLDER = {
+  width: 1,
+  height: 1,
+  data: new Uint8Array([0, 0, 0, 0]),
+};
+
 export function loadImage(map, name, path) {
   if (map.hasImage(name)) return Promise.resolve(true);
 
+  // Register the image name immediately so persisted symbol layers can be
+  // restored while the real asset is still loading. Mapbox requires every
+  // icon-image reference to exist when the layer is created.
+  map.addImage(name, TRANSPARENT_PLACEHOLDER);
+
   return new Promise((resolve) => {
     map.loadImage(path, (error, image) => {
-      if (error) {
+      if (error || !image) {
         resolve(false);
         return;
       }
 
-      if (!map.hasImage(name)) {
-        map.addImage(name, image);
+      try {
+        if (typeof map.updateImage === 'function') {
+          map.updateImage(name, image);
+        } else {
+          if (map.hasImage(name)) map.removeImage(name);
+          map.addImage(name, image);
+        }
+        resolve(true);
+      } catch (error) {
+        console.warn(`Failed to register image ${name}:`, error);
+        resolve(false);
       }
-
-      resolve(true);
     });
   });
 }
