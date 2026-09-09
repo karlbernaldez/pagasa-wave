@@ -10,6 +10,7 @@ export const PERMISSION_CATALOG = Object.freeze({
   analytics: ['view', 'export'],
   reports: ['view', 'create', 'approve'],
   settings: ['view', 'manage'],
+  chat: ['use_internal', 'forecaster_knowledge', 'admin_knowledge'],
 });
 
 export const PERMISSION_KEYS = Object.freeze(
@@ -67,6 +68,8 @@ export const DEFAULT_ROLE_DEFINITIONS = Object.freeze([
       'analytics.view',
       'reports.view',
       'reports.create',
+      'chat.use_internal',
+      'chat.forecaster_knowledge',
     ],
     system: true,
     enabled: true,
