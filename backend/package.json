@@ -45,6 +45,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "ingest:knowledge": "node scripts/ingestKnowledge.js",
+    "migrate:rbac": "node scripts/migrateForecasterChatPermissions.js",
     "migrate:rbac-chat": "node scripts/migrateForecasterChatPermissions.js"
   },
   "keywords": [],
