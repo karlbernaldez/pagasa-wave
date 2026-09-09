@@ -17,8 +17,11 @@ const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
 ];
 
-function assertAuthenticated(req) {
+function assertSubmitPermission(req) {
   if (!req.user) throwError('Unauthorized', 401);
+  if (!(req.permissions || []).includes('projects.submit')) {
+    throwError('You do not have permission to submit Forecast Packages.', 403);
+  }
 }
 
 function isSameId(left, right) {
@@ -111,7 +114,7 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, 
 }
 
 export const submitForecastPackage = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
+  assertSubmitPermission(req);
 
   const session = await mongoose.startSession();
   let packageId = null;
