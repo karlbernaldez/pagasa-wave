@@ -73,6 +73,7 @@ export async function canAccessProject(user, project, permissions = []) {
   const sharedForecastChart = await isForecastPackageChartProject(project._id || project.id);
   if (sharedForecastChart) {
     return (
+      hasPermission(permissions, 'projects.view') ||
       hasPermission(permissions, 'projects.edit') ||
       hasPermission(permissions, 'projects.review') ||
       hasPermission(permissions, 'projects.approve') ||
