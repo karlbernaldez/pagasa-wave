@@ -63,7 +63,6 @@ function serializePackage(forecastPackage) {
 
 async function populateForecastPackageById(id) {
   return ForecastPackage.findById(id)
-    .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
     .populate('charts.activeEditors.user', 'firstName lastName email username')
     .populate('charts.claimedBy', 'firstName lastName email username')
