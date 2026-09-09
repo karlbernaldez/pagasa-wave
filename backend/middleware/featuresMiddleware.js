@@ -3,6 +3,12 @@ import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 import { canAccessProject, isForecastPackageChartProject } from '../utils/forecastPackageAccess.js';
 
+function grantSharedAnnotationEdit(req) {
+  if (!(req.permissions || []).includes('studio.edit')) return;
+  if ((req.permissions || []).includes('studio.edit_any_annotation')) return;
+  req.permissions = [...(req.permissions || []), 'studio.edit_any_annotation'];
+}
+
 export const isOwnerOrAdmin = async (req, res, next) => {
   try {
     const projectId = req.params.projectId;
@@ -20,6 +26,10 @@ export const isOwnerOrAdmin = async (req, res, next) => {
     const hasAccess = await canAccessProject(req.user, project, req.permissions || []);
     if (!hasAccess) {
       return res.status(403).json({ message: 'Access denied for this project.' });
+    }
+
+    if (await isForecastPackageChartProject(projectId)) {
+      grantSharedAnnotationEdit(req);
     }
 
     req.project = project;
@@ -41,6 +51,7 @@ export const isFeatureOwnerOrAdmin = async (req, res, next) => {
 
     const projectId = feature.properties?.project;
     if (projectId && (await isForecastPackageChartProject(projectId))) {
+      grantSharedAnnotationEdit(req);
       req.feature = feature;
       return next();
     }
