@@ -128,7 +128,10 @@ function getStableFeatureId(feature) {
 
 function getFeatureType(feature) {
   return (
-    feature?.properties?.type || feature?.properties?.markerType || feature?.properties?.symbolType || ''
+    feature?.properties?.type ||
+    feature?.properties?.markerType ||
+    feature?.properties?.symbolType ||
+    ''
   );
 }
 
