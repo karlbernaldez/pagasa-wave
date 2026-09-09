@@ -105,13 +105,19 @@ async function requireEditableProject(req, _res, next) {
   }
 }
 
-async function preventReviewerSelfReview(req, _res, next) {
+async function preventLegacyOwnerSelfReview(req, _res, next) {
   try {
-    const project = await Project.findById(req.params.id).select('owner');
+    const project = await Project.findById(req.params.id).select('owner forecastPackage');
     if (!project) throwError('Project not found', 404);
-    if (String(project.owner) === String(req.user?.id)) {
+
+    const isSharedForecastChart =
+      Boolean(project.forecastPackage) ||
+      Boolean(await ForecastPackage.exists({ 'charts.project': project._id }));
+
+    if (!isSharedForecastChart && project.owner && String(project.owner) === String(req.user?.id)) {
       throwError('Reviewers cannot review their own projects', 403);
     }
+
     next();
   } catch (error) {
     next(error);
@@ -140,56 +146,56 @@ router.get(
 router.patch(
   '/:id/start-review',
   requirePermission('projects.review'),
-  preventReviewerSelfReview,
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('review_started'),
   startReviewProject
 );
 router.post(
   '/:id/review-comment',
   requirePermission('projects.review'),
-  preventReviewerSelfReview,
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('comment_added'),
   addReviewComment
 );
 router.patch(
   '/:id/request-revision',
   requirePermission('projects.review'),
-  preventReviewerSelfReview,
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('revision_requested'),
   requestProjectRevision
 );
 router.patch(
   '/:id/approve',
   requirePermission('projects.approve'),
-  preventReviewerSelfReview,
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('approved'),
   approveProject
 );
 router.patch(
   '/:id/reject',
   requirePermission('projects.review'),
-  preventReviewerSelfReview,
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('rejected'),
   rejectProject
 );
 router.patch(
   '/:id/no-publication',
   requirePermission('projects.review'),
-  preventReviewerSelfReview,
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('marked_no_publication'),
   markProjectNoPublication
 );
 router.patch(
   '/:id/publish',
   requirePermission('projects.publish'),
-  preventReviewerSelfReview,
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('published'),
   publishProject
 );
 router.patch(
   '/:id/archive',
   requirePermission('projects.review'),
-  preventReviewerSelfReview,
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('archived'),
   archiveProject
 );
