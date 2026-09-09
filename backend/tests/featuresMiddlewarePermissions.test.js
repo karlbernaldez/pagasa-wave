@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import Feature from '../models/Feature.js';
+import ForecastPackage from '../models/ForecastPackage.js';
 import { isFeatureOwnerOrAdmin } from '../middleware/featuresMiddleware.js';
+
+const PROJECT_ID = '507f1f77bcf86cd799439011';
 
 function createResponse() {
   return {
@@ -19,9 +22,11 @@ function createResponse() {
   };
 }
 
-async function runWithFeature(req, feature) {
-  const originalFindOne = Feature.findOne;
+async function runWithFeature(req, feature, { packageChart = false } = {}) {
+  const originalFeatureFindOne = Feature.findOne;
+  const originalPackageExists = ForecastPackage.exists;
   Feature.findOne = async () => feature;
+  ForecastPackage.exists = async () => (packageChart ? { _id: 'package-1' } : null);
   const res = createResponse();
   let nextCalled = false;
 
@@ -29,13 +34,14 @@ async function runWithFeature(req, feature) {
     await isFeatureOwnerOrAdmin(req, res, () => {
       nextCalled = true;
     });
-    return { res, nextCalled };
+    return { req, res, nextCalled };
   } finally {
-    Feature.findOne = originalFindOne;
+    Feature.findOne = originalFeatureFindOne;
+    ForecastPackage.exists = originalPackageExists;
   }
 }
 
-const feature = {
+const standaloneFeature = {
   sourceId: 'annotation-1',
   properties: {
     owner: {
@@ -46,28 +52,40 @@ const feature = {
   },
 };
 
-test('annotation owner retains access without cross-owner permission', async () => {
+const packageFeature = {
+  sourceId: 'annotation-2',
+  properties: {
+    project: PROJECT_ID,
+    owner: {
+      toString() {
+        return 'forecaster-a';
+      },
+    },
+  },
+};
+
+test('standalone annotation creator retains access without cross-annotation permission', async () => {
   const { res, nextCalled } = await runWithFeature(
     {
       params: { sourceId: 'annotation-1' },
       user: { id: 'owner-1', role: 'custom-forecaster' },
       permissions: ['studio.edit'],
     },
-    feature
+    standaloneFeature
   );
 
   assert.equal(nextCalled, true);
   assert.equal(res.statusCode, 200);
 });
 
-test('cross-owner annotation access requires studio.edit_any_annotation', async () => {
+test('standalone cross-creator editing still requires studio.edit_any_annotation', async () => {
   const denied = await runWithFeature(
     {
       params: { sourceId: 'annotation-1' },
       user: { id: 'editor-1', role: 'custom-editor' },
       permissions: ['studio.edit'],
     },
-    feature
+    standaloneFeature
   );
 
   assert.equal(denied.nextCalled, false);
@@ -79,9 +97,25 @@ test('cross-owner annotation access requires studio.edit_any_annotation', async 
       user: { id: 'editor-1', role: 'custom-editor' },
       permissions: ['studio.edit', 'studio.edit_any_annotation'],
     },
-    feature
+    standaloneFeature
   );
 
   assert.equal(allowed.nextCalled, true);
   assert.equal(allowed.res.statusCode, 200);
+});
+
+test('forecast package chart annotations are collaborative for studio editors regardless of creator', async () => {
+  const request = {
+    params: { sourceId: 'annotation-2' },
+    user: { id: 'forecaster-b', role: 'forecaster' },
+    permissions: ['studio.view', 'studio.edit', 'projects.edit'],
+  };
+
+  const { req, res, nextCalled } = await runWithFeature(request, packageFeature, {
+    packageChart: true,
+  });
+
+  assert.equal(nextCalled, true);
+  assert.equal(res.statusCode, 200);
+  assert.ok(req.permissions.includes('studio.edit_any_annotation'));
 });
