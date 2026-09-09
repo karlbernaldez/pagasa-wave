@@ -135,7 +135,6 @@ export const useInactivityReload = (
   useEffect(() => {
     if (disabled) {
       clearInactivityTimer();
-      setIsInactivityPromptVisible(false);
       return undefined;
     }
     if (isInactivityPromptVisible) {
@@ -157,7 +156,7 @@ export const useInactivityReload = (
   }, [clearInactivityTimer, disabled, isInactivityPromptVisible, scheduleInactivityPrompt]);
 
   return {
-    isInactivityPromptVisible,
+    isInactivityPromptVisible: disabled ? false : isInactivityPromptVisible,
     stayActive: () => setIsInactivityPromptVisible(false),
     refreshWorkspace: () => window.location.reload(),
   };
@@ -231,8 +230,6 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
 
   useEffect(() => {
     requestSeqRef.current += 1;
-    setSavedFeatures([]);
-    setLayers([]);
   }, [projectId]);
 
   const setupFeaturesAndLayers = useCallback(
@@ -246,7 +243,7 @@ export const useMapSetup = (projectId, logger, isDarkMode) => {
         return [];
       }
 
-      let filteredFeatures = [];
+      let filteredFeatures;
       try {
         const features = await fetchFeatures(projectId);
 
