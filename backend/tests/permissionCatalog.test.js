@@ -10,6 +10,8 @@ import {
 test('permission catalog exposes unique stable permission keys', () => {
   assert.ok(PERMISSION_KEYS.length > 0);
   assert.equal(new Set(PERMISSION_KEYS).size, PERMISSION_KEYS.length);
+  assert.ok(PERMISSION_KEYS.includes('projects.view'));
+  assert.ok(PERMISSION_KEYS.includes('projects.view_own'));
   assert.ok(PERMISSION_KEYS.includes('roles.edit'));
   assert.ok(PERMISSION_KEYS.includes('wave_models.delete_package'));
 });
@@ -32,4 +34,11 @@ test('administrator default role keeps the complete permission catalog', () => {
   assert.deepEqual(new Set(admin.permissions), new Set(PERMISSION_KEYS));
   assert.equal(admin.system, true);
   assert.equal(admin.enabled, true);
+});
+
+test('forecaster default role can view shared packages and legacy standalone projects', () => {
+  const forecaster = DEFAULT_ROLE_DEFINITIONS.find((role) => role.key === 'forecaster');
+  assert.ok(forecaster);
+  assert.ok(forecaster.permissions.includes('projects.view'));
+  assert.ok(forecaster.permissions.includes('projects.view_own'));
 });
