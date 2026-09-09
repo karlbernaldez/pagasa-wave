@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ProtectedAdminRoute from './ProtectedAdminRoute';
@@ -16,16 +16,20 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ setIsLoggedIn, setRole }),
 }));
 
-vi.mock('@/components/ui/modals/OnlyAdminModal', () => ({
-  default: () => <div>Access denied</div>,
-}));
-
 function renderGuard(permission = null) {
   return render(
-    <MemoryRouter>
-      <ProtectedAdminRoute requireAuth permission={permission}>
-        <div>Protected admin content</div>
-      </ProtectedAdminRoute>
+    <MemoryRouter initialEntries={['/protected']}>
+      <Routes>
+        <Route
+          path="/protected"
+          element={
+            <ProtectedAdminRoute requireAuth permission={permission}>
+              <div>Protected admin content</div>
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route path="/" element={<div>Permission denied landing</div>} />
+      </Routes>
     </MemoryRouter>
   );
 }
@@ -49,10 +53,10 @@ describe('ProtectedAdminRoute permission authorization', () => {
     renderGuard('forecast.review');
 
     expect(await screen.findByText('Protected admin content')).toBeInTheDocument();
-    expect(screen.queryByText('Access denied')).not.toBeInTheDocument();
+    expect(screen.queryByText('Permission denied landing')).not.toBeInTheDocument();
   });
 
-  it('denies a custom reviewer without the required permission', async () => {
+  it('redirects a custom reviewer without the required permission', async () => {
     checkAuthSession.mockResolvedValue({
       authenticated: true,
       unavailable: false,
@@ -65,7 +69,7 @@ describe('ProtectedAdminRoute permission authorization', () => {
 
     renderGuard('users.view');
 
-    expect(await screen.findByText('Access denied')).toBeInTheDocument();
+    expect(await screen.findByText('Permission denied landing')).toBeInTheDocument();
     expect(screen.queryByText('Protected admin content')).not.toBeInTheDocument();
   });
 
@@ -98,7 +102,7 @@ describe('ProtectedAdminRoute permission authorization', () => {
 
     renderGuard('roles.view');
 
-    expect(await screen.findByText('Access denied')).toBeInTheDocument();
+    expect(await screen.findByText('Permission denied landing')).toBeInTheDocument();
     expect(screen.queryByText('Protected admin content')).not.toBeInTheDocument();
   });
 });
