@@ -343,6 +343,7 @@ const MapComponent = ({
                   window.clearTimeout(studioSetupTimeout);
                   studioSetupTimeout = null;
                 }
+                releaseLoading();
               });
           } catch (error) {
             console.error('[MapComponent] Studio map setup failed:', error);
