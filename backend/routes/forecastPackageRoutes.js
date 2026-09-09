@@ -325,7 +325,7 @@ async function getAdminForecastPackages(req, res, next) {
 }
 
 const canViewForecastPackages = requireAnyPermission(
-  'projects.view_own',
+  'projects.view',
   'projects.view_all',
   'projects.review'
 );
