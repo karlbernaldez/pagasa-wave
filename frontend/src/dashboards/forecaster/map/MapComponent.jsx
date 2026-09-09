@@ -13,6 +13,9 @@ import { registerMapInstance } from '@dashboards/forecaster/map/helpers/mapInsta
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
+const MAP_LOAD_TIMEOUT_MS = 12000;
+const STUDIO_SETUP_TIMEOUT_MS = 10000;
+
 // Basemap palette. Keep forecast/annotation overlays untouched.
 const BASEMAP_THEMES = {
   dark: {
@@ -72,10 +75,7 @@ const NON_BASEMAP_LAYER_IDS = new Set([
   'SHIPPING_ZONE_OUTLINE',
 ]);
 
-const THEMED_OVERLAY_LAYER_IDS = new Set([
-  'ph-overlay',
-  'ph-overlay-outline',
-]);
+const THEMED_OVERLAY_LAYER_IDS = new Set(['ph-overlay', 'ph-overlay-outline']);
 
 const includesAny = (value = '', terms = []) => {
   const text = String(value).toLowerCase();
@@ -90,7 +90,12 @@ const isBasemapLayer = (layer) => {
 
   const sourceLayer = layer['source-layer'];
   if (!layer.source && layer.type === 'background') return true;
-  if (sourceLayer && BASEMAP_SOURCE_LAYERS.some((name) => sourceLayer.toLowerCase().includes(name))) return true;
+  if (
+    sourceLayer &&
+    BASEMAP_SOURCE_LAYERS.some((name) => sourceLayer.toLowerCase().includes(name))
+  ) {
+    return true;
+  }
 
   return includesAny(layer.id, [
     'background',
@@ -220,12 +225,21 @@ async function loadStudioMapViewSettings() {
     const settings = await getSettings('mapview');
     return normalizeStudioMapViewSettings(settings);
   } catch (error) {
-    console.warn('[MapComponent] Failed to load map view settings. Falling back to defaults.', error);
+    console.warn(
+      '[MapComponent] Failed to load map view settings. Falling back to defaults.',
+      error
+    );
     return normalizeStudioMapViewSettings(DEFAULT_STUDIO_MAP_VIEW);
   }
 }
 
-const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode, mapRef: externalMapRef }) => {
+const MapComponent = ({
+  setMapInstance,
+  onMapLoad,
+  isDarkMode,
+  mapRef: externalMapRef,
+  setIsLoading,
+}) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
 
@@ -237,64 +251,122 @@ const MapComponent = ({ setMapInstance, onMapLoad, isDarkMode, mapRef: externalM
     let map = null;
     let resizeObserver = null;
     let resizeFrame = null;
+    let mapLoadTimeout = null;
+    let studioSetupTimeout = null;
+
+    const clearLoadingTimeouts = () => {
+      if (mapLoadTimeout) {
+        window.clearTimeout(mapLoadTimeout);
+        mapLoadTimeout = null;
+      }
+      if (studioSetupTimeout) {
+        window.clearTimeout(studioSetupTimeout);
+        studioSetupTimeout = null;
+      }
+    };
+
+    const releaseLoading = (reason) => {
+      if (reason) console.warn(`[MapComponent] ${reason}`);
+      setIsLoading?.(false);
+    };
 
     const initializeMap = async () => {
-      const mapViewSettings = await loadStudioMapViewSettings();
-      if (cancelled || !mapContainerRef.current) return;
+      try {
+        mapLoadTimeout = window.setTimeout(() => {
+          releaseLoading('Map load timed out; releasing loading overlay.');
+        }, MAP_LOAD_TIMEOUT_MS);
 
-      // Clean container (important for hot reloads)
-      while (mapContainerRef.current.firstChild) {
-        mapContainerRef.current.removeChild(mapContainerRef.current.firstChild);
-      }
+        const mapViewSettings = await loadStudioMapViewSettings();
+        if (cancelled || !mapContainerRef.current) return;
 
-      map = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        projection: 'mercator',
-        style: DEFAULT_MAP_STYLE_URL,
-        center: lngLatPair(mapViewSettings.center),
-        zoom: mapViewSettings.zoom.default,
-        minZoom: mapViewSettings.zoom.min,
-        maxZoom: mapViewSettings.zoom.max,
-        preserveDrawingBuffer: true,
-        maxBounds: boundsPair(mapViewSettings.maxBounds),
-      });
+        // Clean container (important for hot reloads)
+        while (mapContainerRef.current.firstChild) {
+          mapContainerRef.current.removeChild(mapContainerRef.current.firstChild);
+        }
 
-      const resizeMap = () => map.resize();
-      resizeObserver =
-        typeof ResizeObserver !== 'undefined'
-          ? new ResizeObserver(resizeMap)
-          : null;
-      resizeFrame = requestAnimationFrame(resizeMap);
+        map = new mapboxgl.Map({
+          container: mapContainerRef.current,
+          projection: 'mercator',
+          style: DEFAULT_MAP_STYLE_URL,
+          center: lngLatPair(mapViewSettings.center),
+          zoom: mapViewSettings.zoom.default,
+          minZoom: mapViewSettings.zoom.min,
+          maxZoom: mapViewSettings.zoom.max,
+          preserveDrawingBuffer: true,
+          maxBounds: boundsPair(mapViewSettings.maxBounds),
+        });
 
-      resizeObserver?.observe(mapContainerRef.current);
+        const resizeMap = () => map.resize();
+        resizeObserver =
+          typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resizeMap) : null;
+        resizeFrame = requestAnimationFrame(resizeMap);
 
-      window.map = map;
-      map.fitBounds(
-        boundsPair(mapViewSettings.fitBounds),
-        {
+        resizeObserver?.observe(mapContainerRef.current);
+
+        window.map = map;
+        map.fitBounds(boundsPair(mapViewSettings.fitBounds), {
           padding: mapViewSettings.padding,
           maxZoom: mapViewSettings.fitBoundsMaxZoom,
-        }
-      );
+        });
 
-      map.on('load', () => {
-        mapRef.current = map;
-        if (externalMapRef) externalMapRef.current = map;
-        map.resize();
+        map.on('error', (event) => {
+          const message = event?.error?.message || 'Unknown Mapbox error';
+          console.error('[MapComponent] Mapbox error:', message);
+        });
 
-        registerMapInstance(map);
-        if (setMapInstance) setMapInstance(map);
-        if (onMapLoad) onMapLoad(map);
+        map.on('load', () => {
+          if (mapLoadTimeout) {
+            window.clearTimeout(mapLoadTimeout);
+            mapLoadTimeout = null;
+          }
 
-        // Apply initial theme after the custom style is fully available.
-        applyTheme(map, isDarkMode);
-      });
+          mapRef.current = map;
+          if (externalMapRef) externalMapRef.current = map;
+          map.resize();
+
+          registerMapInstance(map);
+          if (setMapInstance) setMapInstance(map);
+
+          studioSetupTimeout = window.setTimeout(() => {
+            releaseLoading('Studio setup timed out; releasing loading overlay.');
+          }, STUDIO_SETUP_TIMEOUT_MS);
+
+          try {
+            const setupResult = onMapLoad?.(map);
+            Promise.resolve(setupResult)
+              .catch((error) => {
+                console.error('[MapComponent] Studio map setup failed:', error);
+                releaseLoading('Studio map setup failed; releasing loading overlay.');
+              })
+              .finally(() => {
+                if (studioSetupTimeout) {
+                  window.clearTimeout(studioSetupTimeout);
+                  studioSetupTimeout = null;
+                }
+              });
+          } catch (error) {
+            console.error('[MapComponent] Studio map setup failed:', error);
+            releaseLoading('Studio map setup failed; releasing loading overlay.');
+            if (studioSetupTimeout) {
+              window.clearTimeout(studioSetupTimeout);
+              studioSetupTimeout = null;
+            }
+          }
+
+          // Apply initial theme after the custom style is fully available.
+          applyTheme(map, isDarkMode);
+        });
+      } catch (error) {
+        console.error('[MapComponent] Failed to initialize map:', error);
+        releaseLoading('Map initialization failed; releasing loading overlay.');
+      }
     };
 
     initializeMap();
 
     return () => {
       cancelled = true;
+      clearLoadingTimeouts();
       if (resizeFrame) cancelAnimationFrame(resizeFrame);
       resizeObserver?.disconnect();
       if (externalMapRef?.current === map) externalMapRef.current = null;
