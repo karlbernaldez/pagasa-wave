@@ -19,6 +19,14 @@ const WW3_FORECAST_OFFSETS = Object.freeze({
   forecast_48h: { days: 1, hour: '18' },
 });
 
+export function canArchivePublishedForecast(permissions = [], status) {
+  return (
+    Array.isArray(permissions) &&
+    permissions.includes('projects.review') &&
+    status === PROJECT_STATUS.PUBLISHED
+  );
+}
+
 function assertValidProjectId(projectId) {
   if (!mongoose.isValidObjectId(projectId)) {
     throwError('Invalid published chart ID', 400);
@@ -360,7 +368,7 @@ export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
   }
 
   res.json(await buildPublishedForecastPayload(project, {
-    canArchive: permissions.includes('projects.review') && project.status === PROJECT_STATUS.PUBLISHED,
+    canArchive: canArchivePublishedForecast(permissions, project.status),
     theme: normalizeRasterTheme(req.query.theme),
   }));
 });
