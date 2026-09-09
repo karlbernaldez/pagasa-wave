@@ -53,19 +53,15 @@ test('view-all users and permitted owners of non-package projects retain access'
   try {
     ForecastPackage.exists = async () => null;
     assert.equal(
-      await canAccessProject(
-        { id: 'reviewer-1', role: 'reviewer' },
-        project,
-        ['projects.view_all']
-      ),
+      await canAccessProject({ id: 'reviewer-1', role: 'reviewer' }, project, [
+        'projects.view_all',
+      ]),
       true
     );
     assert.equal(
-      await canAccessProject(
-        { id: OWNER_ID, role: 'custom_forecaster' },
-        project,
-        ['projects.view_own']
-      ),
+      await canAccessProject({ id: OWNER_ID, role: 'custom_forecaster' }, project, [
+        'projects.view_own',
+      ]),
       true
     );
   } finally {
@@ -78,19 +74,13 @@ test('users with project editing or review permissions may collaborate on foreca
   try {
     ForecastPackage.exists = async () => ({ _id: 'package-1' });
     assert.equal(
-      await canAccessProject(
-        { id: 'forecaster-2', role: 'custom_forecaster' },
-        project,
-        ['projects.edit']
-      ),
+      await canAccessProject({ id: 'forecaster-2', role: 'custom_forecaster' }, project, [
+        'projects.edit',
+      ]),
       true
     );
     assert.equal(
-      await canAccessProject(
-        { id: 'reviewer-2', role: 'reviewer' },
-        project,
-        ['projects.review']
-      ),
+      await canAccessProject({ id: 'reviewer-2', role: 'reviewer' }, project, ['projects.review']),
       true
     );
   } finally {

@@ -54,7 +54,8 @@ export const DEFAULT_ROLE_DEFINITIONS = Object.freeze([
   {
     key: 'forecaster',
     name: 'Forecaster',
-    description: 'Operational forecasting access for Studio, forecast projects, and wave-model use.',
+    description:
+      'Operational forecasting access for Studio, forecast projects, and wave-model use.',
     permissions: [
       'dashboard.view',
       'studio.view',

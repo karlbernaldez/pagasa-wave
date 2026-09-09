@@ -9,7 +9,10 @@ import {
 
 const ROLE_KEY_RE = /^[a-z][a-z0-9_-]{1,31}$/;
 
-const normalizeRoleKey = (value) => String(value || '').trim().toLowerCase();
+const normalizeRoleKey = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase();
 
 const assertRoleKey = (value) => {
   const key = normalizeRoleKey(value);
@@ -93,7 +96,8 @@ export const getRoleByKey = async (rawKey, { requireEnabled = false } = {}) => {
   return role;
 };
 
-export const assertRoleAssignable = async (rawKey) => getRoleByKey(rawKey, { requireEnabled: true });
+export const assertRoleAssignable = async (rawKey) =>
+  getRoleByKey(rawKey, { requireEnabled: true });
 
 export const resolvePermissionsForRole = async (rawKey) => {
   try {

@@ -5,10 +5,7 @@ import { canArchivePublishedForecast } from '../controllers/publishedForecastCon
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 test('projects.review grants archive capability for published forecasts regardless of role key', () => {
-  assert.equal(
-    canArchivePublishedForecast(['projects.review'], PROJECT_STATUS.PUBLISHED),
-    true
-  );
+  assert.equal(canArchivePublishedForecast(['projects.review'], PROJECT_STATUS.PUBLISHED), true);
 });
 
 test('role name alone does not grant archive capability', () => {
@@ -16,8 +13,5 @@ test('role name alone does not grant archive capability', () => {
 });
 
 test('archive capability is false once the forecast is already archived', () => {
-  assert.equal(
-    canArchivePublishedForecast(['projects.review'], PROJECT_STATUS.ARCHIVED),
-    false
-  );
+  assert.equal(canArchivePublishedForecast(['projects.review'], PROJECT_STATUS.ARCHIVED), false);
 });

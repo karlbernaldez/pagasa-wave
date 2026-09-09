@@ -17,10 +17,7 @@ import {
 import authenticate from '../middleware/authMiddleware.js';
 import { verificationEmailLimiter } from '../middleware/authRateLimits.js';
 import { isOwnerOnly } from '../middleware/adminMiddleware.js';
-import {
-  requirePermission,
-  requireSelfOrPermission,
-} from '../middleware/permissionMiddleware.js';
+import { requirePermission, requireSelfOrPermission } from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
 

@@ -81,17 +81,18 @@ test('chat tier is resolved from explicit knowledge permissions', () => {
   assert.equal(resolveChatTier({ role: 'admin' }, []), null);
   assert.equal(resolveChatTier({ role: 'custom' }, ['chat.use_internal']), null);
   assert.equal(
-    resolveChatTier(
-      { role: 'custom_forecaster' },
-      ['chat.use_internal', 'chat.forecaster_knowledge']
-    ),
+    resolveChatTier({ role: 'custom_forecaster' }, [
+      'chat.use_internal',
+      'chat.forecaster_knowledge',
+    ]),
     'forecaster'
   );
   assert.equal(
-    resolveChatTier(
-      { role: 'custom_admin_assistant' },
-      ['chat.use_internal', 'chat.forecaster_knowledge', 'chat.admin_knowledge']
-    ),
+    resolveChatTier({ role: 'custom_admin_assistant' }, [
+      'chat.use_internal',
+      'chat.forecaster_knowledge',
+      'chat.admin_knowledge',
+    ]),
     'admin'
   );
 });

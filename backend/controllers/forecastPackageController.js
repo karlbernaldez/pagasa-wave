@@ -37,8 +37,11 @@ function assertPermission(req, permission) {
 }
 
 function isPackageOwnerOrPrivilegedSubmitter(req, forecastPackage) {
-  const isOwner = String(forecastPackage.owner?._id || forecastPackage.owner) === String(req.user?.id);
-  return isOwner || (hasPermission(req, 'projects.submit') && hasPermission(req, 'projects.view_all'));
+  const isOwner =
+    String(forecastPackage.owner?._id || forecastPackage.owner) === String(req.user?.id);
+  return (
+    isOwner || (hasPermission(req, 'projects.submit') && hasPermission(req, 'projects.view_all'))
+  );
 }
 
 function isSameId(left, right) {
@@ -520,7 +523,10 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
   if (!forecastPackage) throwError('Forecast Package not found', 404);
 
   if (!isPackageOwnerOrPrivilegedSubmitter(req, forecastPackage)) {
-    throwError('Only the package owner or a user with package-wide submit access can submit this package', 403);
+    throwError(
+      'Only the package owner or a user with package-wide submit access can submit this package',
+      403
+    );
   }
 
   if (!canSubmitPackage(forecastPackage.status)) {

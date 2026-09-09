@@ -33,10 +33,7 @@ import ForecastPackage from '../models/ForecastPackage.js';
 
 import protect from '../middleware/authMiddleware.js';
 import isOwnerOrAdmin from '../middleware/projectMiddleware.js';
-import {
-  requireAnyPermission,
-  requirePermission,
-} from '../middleware/permissionMiddleware.js';
+import { requireAnyPermission, requirePermission } from '../middleware/permissionMiddleware.js';
 import { throwError } from '../utils/errorHelper.js';
 import { canEditProjectStatus, getProjectEditLockMessage } from '../utils/projectWorkflow.js';
 import { emitForecastChartUpdated, emitForecastPackageUpdated } from '../socket/socketEmitter.js';

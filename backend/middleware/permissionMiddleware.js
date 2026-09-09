@@ -22,30 +22,40 @@ export const requirePermission = (permission) => (req, res, next) => {
   return next();
 };
 
-export const requireAnyPermission = (...requiredPermissions) => (req, res, next) => {
-  if (!requireAuthenticatedUser(req, res)) return;
+export const requireAnyPermission =
+  (...requiredPermissions) =>
+  (req, res, next) => {
+    if (!requireAuthenticatedUser(req, res)) return;
 
-  const permissions = getPermissionSet(req);
-  const authorizedPermission = requiredPermissions.find((permission) => permissions.has(permission));
-  if (!authorizedPermission) {
-    return res.status(403).json({ message: 'You do not have permission to perform this action.' });
-  }
+    const permissions = getPermissionSet(req);
+    const authorizedPermission = requiredPermissions.find((permission) =>
+      permissions.has(permission)
+    );
+    if (!authorizedPermission) {
+      return res
+        .status(403)
+        .json({ message: 'You do not have permission to perform this action.' });
+    }
 
-  markAuthorizedPermission(req, authorizedPermission);
-  return next();
-};
+    markAuthorizedPermission(req, authorizedPermission);
+    return next();
+  };
 
-export const requireSelfOrPermission = (permission, paramName = 'userId') => (req, res, next) => {
-  if (!requireAuthenticatedUser(req, res)) return;
+export const requireSelfOrPermission =
+  (permission, paramName = 'userId') =>
+  (req, res, next) => {
+    if (!requireAuthenticatedUser(req, res)) return;
 
-  const actorId = String(req.user?._id || req.user?.id || '');
-  const targetId = String(req.params?.[paramName] || '');
-  if (actorId && targetId && actorId === targetId) return next();
+    const actorId = String(req.user?._id || req.user?.id || '');
+    const targetId = String(req.params?.[paramName] || '');
+    if (actorId && targetId && actorId === targetId) return next();
 
-  if (!getPermissionSet(req).has(permission)) {
-    return res.status(403).json({ message: 'You do not have permission to perform this action.' });
-  }
+    if (!getPermissionSet(req).has(permission)) {
+      return res
+        .status(403)
+        .json({ message: 'You do not have permission to perform this action.' });
+    }
 
-  markAuthorizedPermission(req, permission);
-  return next();
-};
+    markAuthorizedPermission(req, permission);
+    return next();
+  };

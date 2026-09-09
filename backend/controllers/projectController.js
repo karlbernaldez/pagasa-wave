@@ -36,7 +36,8 @@ const PROJECT_NOTIFICATION_COPY = {
   },
   revision_requested: {
     title: 'Revision requested',
-    message: (project, comment) => `A reviewer requested revisions on "${project.name}": ${comment}`,
+    message: (project, comment) =>
+      `A reviewer requested revisions on "${project.name}": ${comment}`,
   },
   approved: {
     title: 'Project approved',
@@ -58,7 +59,10 @@ const PROJECT_NOTIFICATION_COPY = {
 
 function assertAuthorizedPermission(req, permission) {
   if (!req.user) throwError('Unauthorized', 401);
-  if (!Array.isArray(req.authorizedPermissions) || !req.authorizedPermissions.includes(permission)) {
+  if (
+    !Array.isArray(req.authorizedPermissions) ||
+    !req.authorizedPermissions.includes(permission)
+  ) {
     throwError('You do not have permission to perform this action.', 403);
   }
 }

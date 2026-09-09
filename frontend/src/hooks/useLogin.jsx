@@ -119,14 +119,7 @@ export const useLoginAuth = (setIsLoggedIn, setRole) => {
   }, [navigate, setIsLoggedIn, setRole]);
 
   const handleLogin = useCallback(
-    async (
-      email,
-      password,
-      validateEmail,
-      validatePassword,
-      setTouched,
-      options = {}
-    ) => {
+    async (email, password, validateEmail, validatePassword, setTouched, options = {}) => {
       const { coordinates, onCredentialsValid } = options;
 
       setTouched({ email: true, password: true });

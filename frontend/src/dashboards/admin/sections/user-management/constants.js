@@ -4,7 +4,7 @@ export const STATUS_LABELS = {
   active: 'Active',
   locked: 'Locked',
   suspended: 'Suspended',
-  inactive: 'Inactive'
+  inactive: 'Inactive',
 };
 
 export const LEGACY_ROLE_OPTIONS = Object.freeze([
@@ -35,9 +35,9 @@ export const setRoleOptions = (roles = []) => {
 
   // Keep the established built-ins in their existing order, then append any
   // custom user types in the order returned by the role API.
-  const ordered = LEGACY_ROLE_OPTIONS
-    .map((option) => optionsByValue.get(option.value))
-    .filter(Boolean);
+  const ordered = LEGACY_ROLE_OPTIONS.map((option) => optionsByValue.get(option.value)).filter(
+    Boolean
+  );
   const legacyValues = new Set(LEGACY_ROLE_OPTIONS.map((option) => option.value));
 
   for (const option of dynamicOptions) {
@@ -81,36 +81,35 @@ export const ROLE_DEFINITIONS = [
 ];
 
 export const STATUS_CONFIG = {
-
   active: {
     badge: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30',
     badgeLight: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    dot: 'bg-emerald-500'
+    dot: 'bg-emerald-500',
   },
 
   pending: {
     badge: 'bg-amber-500/10 text-amber-300 border border-amber-500/30',
     badgeLight: 'bg-amber-50 text-amber-700 border border-amber-200',
-    dot: 'bg-amber-500'
+    dot: 'bg-amber-500',
   },
 
   locked: {
     badge: 'bg-red-500/10 text-red-300 border border-red-500/30',
     badgeLight: 'bg-red-50 text-red-700 border border-red-200',
-    dot: 'bg-red-500'
+    dot: 'bg-red-500',
   },
 
   suspended: {
     badge: 'bg-orange-500/10 text-orange-300 border border-orange-500/30',
     badgeLight: 'bg-orange-50 text-orange-700 border border-orange-200',
-    dot: 'bg-orange-500'
+    dot: 'bg-orange-500',
   },
 
   inactive: {
     badge: 'bg-slate-500/10 text-slate-300 border border-slate-500/30',
     badgeLight: 'bg-slate-100 text-slate-600 border border-slate-200',
-    dot: 'bg-slate-400'
-  }
+    dot: 'bg-slate-400',
+  },
 };
 
 export const ROLE_COLOR_CONFIG = {

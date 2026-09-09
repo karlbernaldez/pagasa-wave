@@ -46,7 +46,7 @@ function AdminDashboardLayoutContent() {
       localStorage.setItem(TAB_STORAGE_KEY, tab);
       navigate(search ? `${route}?${search}` : route, { replace: false });
     },
-    [navigate, searchParams],
+    [navigate, searchParams]
   );
 
   useEffect(() => {
@@ -65,9 +65,7 @@ function AdminDashboardLayoutContent() {
   }, [activeTab]);
 
   useEffect(() => {
-    document.title = activeMeta?.title
-      ? `WaveLab – ${activeMeta.title}`
-      : 'WaveLab – Dashboard';
+    document.title = activeMeta?.title ? `WaveLab – ${activeMeta.title}` : 'WaveLab – Dashboard';
   }, [activeMeta]);
 
   const toggleMobileMenu = useCallback(() => setIsMobileOpen((p) => !p), []);
@@ -80,7 +78,7 @@ function AdminDashboardLayoutContent() {
       isDarkMode,
       setActiveTab,
     }),
-    [activeMeta, activeTab, isDarkMode, setActiveTab],
+    [activeMeta, activeTab, isDarkMode, setActiveTab]
   );
 
   return (

@@ -71,7 +71,9 @@ export const buildChatRequest = async ({ user, permissions = [], model, messages
     contextSection,
     sourceSection,
     '\nWhen citing documentation, mention the source names naturally in the answer.',
-  ].join('\n').trim();
+  ]
+    .join('\n')
+    .trim();
 
   return {
     tier,

@@ -125,7 +125,12 @@ function RoleCard({ role, selected, onSelect, isDarkMode }) {
                 </span>
               )}
             </div>
-            <p className={cn('mt-1 line-clamp-2 text-xs', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+            <p
+              className={cn(
+                'mt-1 line-clamp-2 text-xs',
+                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              )}
+            >
               {role.description || 'No description provided.'}
             </p>
           </div>
@@ -139,7 +144,12 @@ function RoleCard({ role, selected, onSelect, isDarkMode }) {
           <Users size={11} /> {role.memberCount}
         </span>
       </div>
-      <div className={cn('mt-3 flex items-center justify-between text-[10px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+      <div
+        className={cn(
+          'mt-3 flex items-center justify-between text-[10px]',
+          isDarkMode ? 'text-slate-500' : 'text-slate-500'
+        )}
+      >
         <span>{role.permissions.length} permissions</span>
         <span className="font-mono">{role.key}</span>
       </div>
@@ -185,10 +195,17 @@ function PermissionEditor({ catalog, permissions, onChange, disabled, isDarkMode
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className={cn('text-xs font-black', isDarkMode ? 'text-white' : 'text-slate-900')}>
+                <p
+                  className={cn('text-xs font-black', isDarkMode ? 'text-white' : 'text-slate-900')}
+                >
                   {FEATURE_LABELS[feature] || feature}
                 </p>
-                <p className={cn('mt-0.5 text-[10px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
+                <p
+                  className={cn(
+                    'mt-0.5 text-[10px]',
+                    isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                  )}
+                >
                   {keys.filter((key) => selected.has(key)).length} of {keys.length} enabled
                 </p>
               </div>
@@ -393,7 +410,12 @@ export function RolesSection({ isDarkMode }) {
               <p className={cn('text-lg font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
                 {creating ? 'Create User Type' : selectedRole.name}
               </p>
-              <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+              <p
+                className={cn(
+                  'mt-1 text-xs font-semibold',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                )}
+              >
                 {adminLocked
                   ? 'Administrator permissions are protected to prevent lockout.'
                   : 'Configure the user type and the capabilities it grants.'}
@@ -435,12 +457,19 @@ export function RolesSection({ isDarkMode }) {
         >
           <div className="grid gap-4 lg:grid-cols-2">
             <label className="space-y-1">
-              <span className={cn('text-[10px] font-black uppercase', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+              <span
+                className={cn(
+                  'text-[10px] font-black uppercase',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                )}
+              >
                 Name
               </span>
               <input
                 value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, name: event.target.value }))
+                }
                 maxLength={80}
                 className={cn(
                   'min-h-10 w-full rounded-xl border px-3 py-2 text-sm outline-none',
@@ -451,7 +480,12 @@ export function RolesSection({ isDarkMode }) {
               />
             </label>
             <label className="space-y-1">
-              <span className={cn('text-[10px] font-black uppercase', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+              <span
+                className={cn(
+                  'text-[10px] font-black uppercase',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                )}
+              >
                 Key
               </span>
               <input
@@ -475,7 +509,12 @@ export function RolesSection({ isDarkMode }) {
             </label>
           </div>
           <label className="mt-4 block space-y-1">
-            <span className={cn('text-[10px] font-black uppercase', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+            <span
+              className={cn(
+                'text-[10px] font-black uppercase',
+                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              )}
+            >
               Description
             </span>
             <textarea
@@ -542,8 +581,15 @@ export function RolesSection({ isDarkMode }) {
           <p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
             User types
           </p>
-          <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-            {loading ? 'Loading user types' : `${roles.length} configured user type${roles.length === 1 ? '' : 's'}`}
+          <p
+            className={cn(
+              'mt-1 text-xs font-semibold',
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            )}
+          >
+            {loading
+              ? 'Loading user types'
+              : `${roles.length} configured user type${roles.length === 1 ? '' : 's'}`}
           </p>
         </div>
         <div className="flex gap-2">

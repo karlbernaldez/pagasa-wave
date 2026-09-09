@@ -67,7 +67,11 @@ test('requirePermission allows authenticated users with the permission', () => {
 });
 
 test('requireAnyPermission allows one matching permission', () => {
-  const middleware = requireAnyPermission('projects.view_own', 'projects.view_all', 'projects.review');
+  const middleware = requireAnyPermission(
+    'projects.view_own',
+    'projects.view_all',
+    'projects.review'
+  );
   const res = createResponse();
   let nextCalled = false;
   const req = { user: { id: 'reviewer-1' }, permissions: ['projects.review'] };
