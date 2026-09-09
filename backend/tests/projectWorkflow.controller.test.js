@@ -16,6 +16,7 @@ import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const OWNER_ID = 'owner-1';
 const ADMIN_ID = 'admin-1';
+const REVIEW_PERMISSIONS = ['projects.review', 'projects.approve', 'projects.publish'];
 
 function ownerId(value = OWNER_ID) {
   return {
@@ -51,7 +52,14 @@ function createFakeProject(overrides = {}) {
   };
 }
 
-function createReq({ projectId = 'project-1', role = 'admin', userId = ADMIN_ID, body = {}, query = {} } = {}) {
+function createReq({
+  projectId = 'project-1',
+  role = 'admin',
+  userId = ADMIN_ID,
+  body = {},
+  query = {},
+  authorizedPermissions = REVIEW_PERMISSIONS,
+} = {}) {
   return {
     params: { id: projectId },
     body,
@@ -60,14 +68,21 @@ function createReq({ projectId = 'project-1', role = 'admin', userId = ADMIN_ID,
       id: userId,
       role,
     },
+    authorizedPermissions,
   };
 }
 
 function createAdminProjectQuery(result = []) {
   return {
-    populate() { return this; },
-    sort() { return this; },
-    lean() { return Promise.resolve(result); },
+    populate() {
+      return this;
+    },
+    sort() {
+      return this;
+    },
+    lean() {
+      return Promise.resolve(result);
+    },
   };
 }
 
@@ -130,7 +145,7 @@ async function withMockedNotifications(fn) {
   }
 }
 
-test('admin project list excludes draft projects from review desk query', async () => {
+test('review project list excludes draft projects from review desk query', async () => {
   const originalFind = Project.find;
   let capturedFilter;
 
@@ -151,10 +166,14 @@ test('admin project list excludes draft projects from review desk query', async 
   }
 });
 
-test('admin project list rejects Draft as an unauthorized review status filter', async () => {
+test('review project list rejects Draft as an unauthorized review status filter', async () => {
   await assert.rejects(
-    () => runController(getAllProjectsForAdmin, createReq({ query: { status: PROJECT_STATUS.DRAFT } })),
-    { message: 'Invalid or unauthorized status filter', status: 400 }
+    () =>
+      runController(
+        getAllProjectsForAdmin,
+        createReq({ query: { status: PROJECT_STATUS.DRAFT } }),
+      ),
+    { message: 'Invalid or unauthorized status filter', status: 400 },
   );
 });
 
@@ -192,13 +211,13 @@ test('startReviewProject is idempotent when project is already under review', as
   });
 });
 
-test('startReviewProject rejects draft projects as not reviewable by admin', async () => {
+test('startReviewProject rejects draft projects as not reviewable', async () => {
   const project = createFakeProject({ status: PROJECT_STATUS.DRAFT });
 
   await withMockedProject(project, async () => {
     await assert.rejects(
       () => runController(startReviewProject, createReq()),
-      { message: 'Invalid status transition', status: 400 }
+      { message: 'Invalid status transition', status: 400 },
     );
 
     assert.equal(project.status, PROJECT_STATUS.DRAFT);
@@ -207,14 +226,24 @@ test('startReviewProject rejects draft projects as not reviewable by admin', asy
   });
 });
 
-test('startReviewProject blocks non-admin users', async () => {
+test('startReviewProject blocks users without review permission regardless of User Type', async () => {
   const project = createFakeProject({ status: PROJECT_STATUS.SUBMITTED });
 
   await withMockedProject(project, async () => {
-    await assert.rejects(
-      () => runController(startReviewProject, createReq({ role: 'forecaster', userId: OWNER_ID })),
-      { message: 'Admin access required', status: 403 }
-    );
+    for (const role of ['admin', 'forecaster', 'duty_reviewer']) {
+      await assert.rejects(
+        () =>
+          runController(
+            startReviewProject,
+            createReq({
+              role,
+              userId: `${role}-1`,
+              authorizedPermissions: [],
+            }),
+          ),
+        { message: 'You do not have permission to perform this action.', status: 403 },
+      );
+    }
   });
 });
 
@@ -225,7 +254,7 @@ test('addReviewComment keeps project status unchanged, writes audit log, and not
     await withMockedNotifications(async (notifications) => {
       const res = await runController(
         addReviewComment,
-        createReq({ body: { comment: 'Please verify this annotation.' } })
+        createReq({ body: { comment: 'Please verify this annotation.' } }),
       );
 
       assert.equal(res.body, project);
@@ -255,13 +284,13 @@ test('addReviewComment rejects comments outside submitted or under review states
       {
         message: 'Comments can only be added while a project is submitted or under review',
         status: 400,
-      }
+      },
     );
     assert.equal(project.saveCalls, 0);
   });
 });
 
-test('addReviewComment rejects draft projects as not reviewable by admin', async () => {
+test('addReviewComment rejects draft projects as not reviewable', async () => {
   const project = createFakeProject({ status: PROJECT_STATUS.DRAFT });
 
   await withMockedProject(project, async () => {
@@ -270,7 +299,7 @@ test('addReviewComment rejects draft projects as not reviewable by admin', async
       {
         message: 'Comments can only be added while a project is submitted or under review',
         status: 400,
-      }
+      },
     );
 
     assert.equal(project.status, PROJECT_STATUS.DRAFT);
@@ -285,7 +314,7 @@ test('requestProjectRevision requires a revision comment before mutating project
   await withMockedProject(project, async () => {
     await assert.rejects(
       () => runController(requestProjectRevision, createReq({ body: { comment: '   ' } })),
-      { message: 'Revision comment is required', status: 400 }
+      { message: 'Revision comment is required', status: 400 },
     );
     assert.equal(project.saveCalls, 0);
     assert.equal(project.status, PROJECT_STATUS.UNDER_REVIEW);
@@ -302,7 +331,7 @@ test('requestProjectRevision moves under review project to revision requested', 
     await withMockedNotifications(async (notifications) => {
       await runController(
         requestProjectRevision,
-        createReq({ body: { comment: 'Fix the advisory area.' } })
+        createReq({ body: { comment: 'Fix the advisory area.' } }),
       );
 
       assert.equal(project.status, PROJECT_STATUS.REVISION_REQUESTED);
@@ -323,13 +352,17 @@ test('requestProjectRevision moves under review project to revision requested', 
   });
 });
 
-test('requestProjectRevision rejects submitted projects until admin starts review', async () => {
+test('requestProjectRevision rejects submitted projects until review starts', async () => {
   const project = createFakeProject({ status: PROJECT_STATUS.SUBMITTED });
 
   await withMockedProject(project, async () => {
     await assert.rejects(
-      () => runController(requestProjectRevision, createReq({ body: { comment: 'Needs review first.' } })),
-      { message: 'Invalid status transition', status: 400 }
+      () =>
+        runController(
+          requestProjectRevision,
+          createReq({ body: { comment: 'Needs review first.' } }),
+        ),
+      { message: 'Invalid status transition', status: 400 },
     );
 
     assert.equal(project.status, PROJECT_STATUS.SUBMITTED);
@@ -338,7 +371,7 @@ test('requestProjectRevision rejects submitted projects until admin starts revie
   });
 });
 
-test('approveProject blocks admin self-review', async () => {
+test('approveProject blocks self-review', async () => {
   const project = createFakeProject({
     status: PROJECT_STATUS.UNDER_REVIEW,
     owner: ownerId(ADMIN_ID),
@@ -347,7 +380,7 @@ test('approveProject blocks admin self-review', async () => {
   await withMockedProject(project, async () => {
     await assert.rejects(
       () => runController(approveProject, createReq()),
-      { message: 'You cannot approve your own project', status: 400 }
+      { message: 'You cannot approve your own project', status: 400 },
     );
     assert.equal(project.saveCalls, 0);
     assert.equal(project.status, PROJECT_STATUS.UNDER_REVIEW);
@@ -378,13 +411,13 @@ test('approveProject moves under review project to approved and notifies owner',
   });
 });
 
-test('approveProject rejects submitted projects until admin starts review', async () => {
+test('approveProject rejects submitted projects until review starts', async () => {
   const project = createFakeProject({ status: PROJECT_STATUS.SUBMITTED });
 
   await withMockedProject(project, async () => {
     await assert.rejects(
       () => runController(approveProject, createReq()),
-      { message: 'Invalid status transition', status: 400 }
+      { message: 'Invalid status transition', status: 400 },
     );
 
     assert.equal(project.status, PROJECT_STATUS.SUBMITTED);
@@ -399,7 +432,7 @@ test('rejectProject requires a rejection comment', async () => {
   await withMockedProject(project, async () => {
     await assert.rejects(
       () => runController(rejectProject, createReq({ body: { comment: '' } })),
-      { message: 'Rejection comment is required', status: 400 }
+      { message: 'Rejection comment is required', status: 400 },
     );
     assert.equal(project.saveCalls, 0);
     assert.equal(project.status, PROJECT_STATUS.UNDER_REVIEW);
@@ -431,13 +464,13 @@ test('rejectProject moves under review project to rejected and saves remarks', a
   });
 });
 
-test('rejectProject rejects submitted projects until admin starts review', async () => {
+test('rejectProject rejects submitted projects until review starts', async () => {
   const project = createFakeProject({ status: PROJECT_STATUS.SUBMITTED });
 
   await withMockedProject(project, async () => {
     await assert.rejects(
       () => runController(rejectProject, createReq({ body: { comment: 'Not acceptable.' } })),
-      { message: 'Invalid status transition', status: 400 }
+      { message: 'Invalid status transition', status: 400 },
     );
 
     assert.equal(project.status, PROJECT_STATUS.SUBMITTED);
@@ -452,7 +485,7 @@ test('publishProject only publishes approved projects', async () => {
   await withMockedProject(project, async () => {
     await assert.rejects(
       () => runController(publishProject, createReq()),
-      { message: 'Invalid status transition', status: 400 }
+      { message: 'Invalid status transition', status: 400 },
     );
     assert.equal(project.saveCalls, 0);
     assert.equal(project.status, PROJECT_STATUS.UNDER_REVIEW);
