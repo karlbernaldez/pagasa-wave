@@ -127,7 +127,7 @@ async function withMockedModels(
     packageFactory,
     updateMany = async () => ({ modifiedCount: 0 }),
   },
-  fn,
+  fn
 ) {
   const originalStartSession = mongoose.startSession;
   const originalFindById = ForecastPackage.findById;
@@ -192,7 +192,7 @@ test('forecast package can move from forecaster submission to reviewer review wi
         req({
           user: { id: ADMIN_ID, role: 'reviewer' },
           permissions: ['projects.review'],
-        }),
+        })
       );
 
       assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
@@ -200,7 +200,7 @@ test('forecast package can move from forecaster submission to reviewer review wi
       assert.equal(pkg.saveCalls, 2);
       assert.equal(pkg.auditLogs.at(-1).action, 'review_started');
       assert.equal(reviewResponse.body.status, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
-    },
+    }
   );
 });
 
@@ -223,15 +223,15 @@ test('reviewer cannot start review until a package has been submitted', async ()
             req({
               user: { id: ADMIN_ID, role: 'reviewer' },
               permissions: ['projects.review'],
-            }),
+            })
           ),
-        { status: 403, message: 'Only Submitted packages can be moved to Under Review' },
+        { status: 403, message: 'Only Submitted packages can be moved to Under Review' }
       );
 
       assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
       assert.equal(pkg.saveCalls, 0);
       assert.equal(pkg.auditLogs.length, 0);
-    },
+    }
   );
 });
 
@@ -258,7 +258,7 @@ test('participating forecaster can resubmit a revision-requested package and rel
         req({
           user: { id: PARTICIPANT_ID, role: 'forecaster' },
           permissions: ['projects.submit'],
-        }),
+        })
       );
 
       assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
@@ -274,16 +274,13 @@ test('participating forecaster can resubmit a revision-requested package and rel
         'Revision Requested',
         'Rejected',
       ]);
-      assert.equal(
-        updateManyPayload.update.$push.auditLogs.previousStatus,
-        'Revision Requested',
-      );
+      assert.equal(updateManyPayload.update.$push.auditLogs.previousStatus, 'Revision Requested');
       assert.equal(
         updateManyPayload.update.$push.auditLogs.comment,
-        'Revision resubmitted as part of Forecast Package submission',
+        'Revision resubmitted as part of Forecast Package submission'
       );
       assert.equal(response.body.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
-    },
+    }
   );
 });
 
@@ -311,7 +308,7 @@ test('reviewer revision request returns package and linked submitted chart proje
           body: { comment },
           user: { id: ADMIN_ID, role: 'reviewer' },
           permissions: ['projects.review'],
-        }),
+        })
       );
 
       assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
@@ -323,6 +320,6 @@ test('reviewer revision request returns package and linked submitted chart proje
       assert.equal(updateManyPayload.update.$set.reviewComment, comment);
       assert.equal(updateManyPayload.update.$push.auditLogs.action, 'revision_requested');
       assert.equal(response.body.status, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
-    },
+    }
   );
 });

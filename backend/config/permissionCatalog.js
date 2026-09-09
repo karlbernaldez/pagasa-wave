@@ -15,8 +15,8 @@ export const PERMISSION_CATALOG = Object.freeze({
 
 export const PERMISSION_KEYS = Object.freeze(
   Object.entries(PERMISSION_CATALOG).flatMap(([feature, actions]) =>
-    actions.map((action) => `${feature}.${action}`),
-  ),
+    actions.map((action) => `${feature}.${action}`)
+  )
 );
 
 const PERMISSION_SET = new Set(PERMISSION_KEYS);
@@ -35,10 +35,7 @@ export const LEGACY_PROJECT_PERMISSION_ALIASES = Object.freeze({
   'projects.publish': 'forecast.publish',
 });
 
-const LEGACY_PROJECT_SCOPE_PERMISSIONS = Object.freeze([
-  'projects.view_own',
-  'projects.view_all',
-]);
+const LEGACY_PROJECT_SCOPE_PERMISSIONS = Object.freeze(['projects.view_own', 'projects.view_all']);
 const LEGACY_PERMISSION_SET = new Set([
   ...Object.keys(LEGACY_PROJECT_PERMISSION_ALIASES),
   ...LEGACY_PROJECT_SCOPE_PERMISSIONS,
@@ -79,7 +76,7 @@ const applyForecastPermissionImplications = (permissions) => {
   while (changed) {
     changed = false;
     for (const [permission, impliedPermissions] of Object.entries(
-      FORECAST_PERMISSION_IMPLICATIONS,
+      FORECAST_PERMISSION_IMPLICATIONS
     )) {
       if (!result.has(permission)) continue;
       for (const impliedPermission of impliedPermissions) {
@@ -96,7 +93,7 @@ const applyForecastPermissionImplications = (permissions) => {
 export const normalizePermissionKeys = (permissions = []) => {
   const cleaned = cleanPermissionInput(permissions);
   const unknown = cleaned.filter(
-    (permission) => !PERMISSION_SET.has(permission) && !LEGACY_PERMISSION_SET.has(permission),
+    (permission) => !PERMISSION_SET.has(permission) && !LEGACY_PERMISSION_SET.has(permission)
   );
 
   if (unknown.length) {

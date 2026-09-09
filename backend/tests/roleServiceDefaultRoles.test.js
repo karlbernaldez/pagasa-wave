@@ -40,15 +40,15 @@ test('ensureDefaultRoles keeps Administrator synced without conflicting Mongo up
 
     assert.equal(
       Object.prototype.hasOwnProperty.call(adminCall.update.$setOnInsert, 'permissions'),
-      false,
+      false
     );
     assert.equal(
       Object.prototype.hasOwnProperty.call(adminCall.update.$setOnInsert, 'system'),
-      false,
+      false
     );
     assert.equal(
       Object.prototype.hasOwnProperty.call(adminCall.update.$setOnInsert, 'enabled'),
-      false,
+      false
     );
   });
 });

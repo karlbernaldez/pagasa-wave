@@ -135,7 +135,7 @@ test('guarded package save converts a lost snapshot race into conflict', async (
         expectedUpdatedAt: UPDATED_AT,
         conflictMessage: 'Package changed concurrently',
       }),
-    { status: 409, message: 'Package changed concurrently' },
+    { status: 409, message: 'Package changed concurrently' }
   );
   assert.equal(document.$where, undefined);
 });

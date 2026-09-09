@@ -90,9 +90,9 @@ test('owner cannot bypass pending verification through generic profile update', 
           body: { email: 'new@example.com' },
           user: ownerActor,
         },
-        res,
+        res
       );
-    },
+    }
   );
 
   assert.equal(res.state.statusCode, 400);
@@ -130,9 +130,9 @@ test('user manager changing another account email still invalidates verification
           user: adminActor,
           authorizedPermissions: ['users.edit'],
         },
-        res,
+        res
       );
-    },
+    }
   );
 
   assert.equal(res.state.statusCode, 200);

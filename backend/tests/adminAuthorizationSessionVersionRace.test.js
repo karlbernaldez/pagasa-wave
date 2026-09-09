@@ -92,9 +92,9 @@ test('admin role change guards the role snapshot in the atomic authorization upd
           body: { role: 'admin' },
           ...userManageRequest,
         },
-        res,
+        res
       );
-    },
+    }
   );
 
   assert.equal(res.state.statusCode, 200);
@@ -125,15 +125,15 @@ test('stale admin role change is rejected when another authorization update wins
           body: { role: 'admin' },
           ...userManageRequest,
         },
-        res,
+        res
       );
-    },
+    }
   );
 
   assert.equal(res.state.statusCode, 409);
   assert.equal(
     res.state.body.message,
-    'Role changed concurrently. Reload the account and try again.',
+    'Role changed concurrently. Reload the account and try again.'
   );
 });
 
@@ -156,9 +156,9 @@ test('admin status change guards the status snapshot in the atomic authorization
           body: { status: 'suspended' },
           user: adminActor,
         },
-        res,
+        res
       );
-    },
+    }
   );
 
   assert.equal(res.state.statusCode, 200);
@@ -186,14 +186,14 @@ test('stale admin status change is rejected when another authorization update wi
           body: { status: 'suspended' },
           user: adminActor,
         },
-        res,
+        res
       );
-    },
+    }
   );
 
   assert.equal(res.state.statusCode, 409);
   assert.equal(
     res.state.body.message,
-    'Status changed concurrently. Reload the account and try again.',
+    'Status changed concurrently. Reload the account and try again.'
   );
 });

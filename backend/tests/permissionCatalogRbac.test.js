@@ -58,7 +58,7 @@ test('legacy project workflow permissions normalize to canonical forecast permis
       'forecast.review',
       'forecast.submit',
       'forecast.view',
-    ],
+    ]
   );
 });
 
@@ -69,19 +69,12 @@ test('forecast permission implications add required prerequisite capabilities', 
     'forecast.view',
   ]);
 
-  assert.deepEqual(normalizePermissionKeys(['forecast.edit']), [
-    'forecast.edit',
-    'forecast.view',
-  ]);
+  assert.deepEqual(normalizePermissionKeys(['forecast.edit']), ['forecast.edit', 'forecast.view']);
 });
 
 test('canonical forecast permissions expand to legacy route permissions during migration', () => {
   const effective = new Set(
-    expandEffectivePermissions([
-      'forecast.review',
-      'forecast.approve',
-      'forecast.publish',
-    ]),
+    expandEffectivePermissions(['forecast.review', 'forecast.approve', 'forecast.publish'])
   );
 
   for (const permission of [
@@ -120,22 +113,12 @@ test('permission middleware ignores User Type name when effective permissions ar
   const reviewerPermission = 'forecast.review';
   const middleware = requirePermission(reviewerPermission);
 
-  for (const role of [
-    'admin',
-    'forecaster',
-    'duty_reviewer',
-    'shift-lead',
-    'marine_ops',
-  ]) {
+  for (const role of ['admin', 'forecaster', 'duty_reviewer', 'shift-lead', 'marine_ops']) {
     const result = runMiddleware(middleware, {
       user: { id: `user-${role}`, role },
       permissions: ['forecast.view', reviewerPermission],
     });
-    assert.equal(
-      result.nextCalled,
-      true,
-      `${role} should be authorized by permission`,
-    );
+    assert.equal(result.nextCalled, true, `${role} should be authorized by permission`);
   }
 });
 
@@ -147,11 +130,7 @@ test('permission middleware rejects any User Type that lacks the required permis
       user: { id: `user-${role}`, role },
       permissions: ['forecast.view'],
     });
-    assert.equal(
-      result.nextCalled,
-      false,
-      `${role} should not bypass missing permission`,
-    );
+    assert.equal(result.nextCalled, false, `${role} should not bypass missing permission`);
     assert.equal(result.res.statusCode, 403);
   }
 });

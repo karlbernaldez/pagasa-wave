@@ -26,17 +26,14 @@ test('permission normalization removes duplicates and rejects unknown capabiliti
 
   assert.throws(
     () => normalizePermissionKeys(['users.view', 'system.superuser']),
-    /Unknown permission keys/,
+    /Unknown permission keys/
   );
 });
 
 test('administrator default role keeps canonical catalog plus legacy view-all compatibility', () => {
   const admin = DEFAULT_ROLE_DEFINITIONS.find((role) => role.key === 'admin');
   assert.ok(admin);
-  assert.deepEqual(
-    new Set(admin.permissions),
-    new Set([...PERMISSION_KEYS, 'projects.view_all']),
-  );
+  assert.deepEqual(new Set(admin.permissions), new Set([...PERMISSION_KEYS, 'projects.view_all']));
   assert.equal(admin.system, true);
   assert.equal(admin.enabled, true);
 });
