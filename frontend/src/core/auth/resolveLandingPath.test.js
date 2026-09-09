@@ -30,7 +30,7 @@ describe('permission-driven frontend authorization helpers', () => {
 
   it('sends a reviewer-only custom User Type to the review workspace', () => {
     expect(resolveAuthenticatedLandingPath(user('duty_reviewer', ['forecast.review']), '/')).toBe(
-      '/dashboard/review',
+      '/dashboard/review'
     );
   });
 
@@ -46,12 +46,12 @@ describe('permission-driven frontend authorization helpers', () => {
     expect(
       resolveAuthenticatedLandingPath(
         user('forecaster', ['dashboard.view', 'forecast.review', 'studio.view']),
-        '/',
-      ),
+        '/'
+      )
     ).toBe('/dashboard');
 
     expect(
-      resolveAuthenticatedLandingPath(user('admin', ['forecast.review', 'studio.view']), '/'),
+      resolveAuthenticatedLandingPath(user('admin', ['forecast.review', 'studio.view']), '/')
     ).toBe('/dashboard/review');
   });
 });
