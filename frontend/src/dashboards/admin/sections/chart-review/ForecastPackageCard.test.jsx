@@ -21,6 +21,8 @@ const testTheme = {
   },
 };
 
+const DEFAULT_PERMISSIONS = ['forecast.view', 'forecast.review', 'forecast.publish'];
+
 function createChart(status, chartType = 'analysis') {
   return {
     chartType,
@@ -67,6 +69,7 @@ function renderCard(forecastPackage, handlers = {}) {
         isDarkMode={false}
         onOpenChart={onOpenChart}
         onPublishPackage={onPublishPackage}
+        permissions={handlers.permissions || DEFAULT_PERMISSIONS}
         publishingPackageId={handlers.publishingPackageId || null}
       />
     </ThemeProvider>
@@ -86,6 +89,16 @@ describe('ForecastPackageCard', () => {
 
     fireEvent.click(publishButton);
     expect(handlers.onPublishPackage).toHaveBeenCalledWith(expect.objectContaining({ status: 'Approved' }));
+  });
+
+  it('does not expose publish action to a review-only user', () => {
+    const handlers = renderCard(createPackage(), {
+      permissions: ['forecast.view', 'forecast.review'],
+    });
+
+    expect(screen.queryByRole('button', { name: /publish package/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^approved$/i })).toBeDisabled();
+    expect(handlers.onPublishPackage).not.toHaveBeenCalled();
   });
 
   it('shows one published status and opens the package summary', () => {
