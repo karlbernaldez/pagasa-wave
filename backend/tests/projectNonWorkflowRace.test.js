@@ -44,12 +44,18 @@ function createProject(status = PROJECT_STATUS.DRAFT) {
   };
 }
 
-function request({ role = 'forecaster', userId = OWNER_ID, body = {} } = {}) {
+function request({
+  role = 'forecaster',
+  userId = OWNER_ID,
+  body = {},
+  authorizedPermissions = [],
+} = {}) {
   return {
     params: { id: 'project-1' },
     body,
     query: {},
     user: { id: userId, role },
+    authorizedPermissions,
   };
 }
 
@@ -124,7 +130,7 @@ test('opening a project updates access metadata atomically without saving the lo
       assert.equal(res.body.openCount, 4);
       assert.equal(res.body.lastOpenedBy, OWNER_ID);
       assert.ok(res.body.lastOpenedAt instanceof Date);
-    }
+    },
   );
 
   assert.equal(saveCalls, 0);
@@ -143,7 +149,7 @@ test('rename rejects a stale editable project snapshot', async () => {
       {
         status: 409,
         message: 'Project changed while the rename was in progress. Reload and try again.',
-      }
+      },
     );
   });
 
@@ -165,12 +171,12 @@ test('update rejects a stale editable project snapshot', async () => {
               chartType: 'analysis',
               forecastDate: '2026-08-13',
             },
-          })
+          }),
         ),
       {
         status: 409,
         message: 'Project changed while the edit was in progress. Reload and try again.',
-      }
+      },
     );
   });
 
@@ -191,16 +197,17 @@ test('review comment rejects a stale review snapshot before any success response
         run(
           addReviewComment,
           request({
-            role: 'admin',
+            role: 'reviewer',
             userId: ADMIN_ID,
             body: { comment: 'Please verify the wave-height labels.' },
-          })
+            authorizedPermissions: ['projects.review'],
+          }),
         ),
       {
         status: 409,
         message:
           'Project review state changed while the comment was being added. Reload and try again.',
-      }
+      },
     );
   });
 
