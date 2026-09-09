@@ -4,13 +4,13 @@ import ForecastPackage from '../models/ForecastPackage.js';
 import Project from '../models/Project.js';
 import {
   approveForecastPackage,
-  createForecastPackage,
   getForecastPackageById,
   getUserForecastPackages,
   publishForecastPackage,
   startForecastPackageReview,
   updateForecastChartCompletion,
 } from '../controllers/forecastPackageController.js';
+import { createForecastPackage } from '../controllers/forecastPackageCreateController.js';
 import {
   requestForecastChartRevisionByProject,
   requestTargetedForecastPackageRevision,
