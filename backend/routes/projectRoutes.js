@@ -119,6 +119,7 @@ async function preventReviewerSelfReview(req, _res, next) {
 }
 
 const canViewProject = requireAnyPermission(
+  'projects.view',
   'projects.view_own',
   'projects.view_all',
   'projects.review'
