@@ -42,11 +42,17 @@ const serializeRole = async (role) => {
 export const ensureDefaultRoles = async () => {
   await Promise.all(
     DEFAULT_ROLE_DEFINITIONS.map(({ key, ...defaults }) => {
-      const update = {
-        $setOnInsert: { key, ...defaults },
-      };
+      const setOnInsert = { key, ...defaults };
+      const update = { $setOnInsert: setOnInsert };
 
       if (key === 'admin') {
+        // MongoDB rejects the same path appearing in both $setOnInsert and $set.
+        // Keep descriptive defaults insert-only while continuously synchronizing
+        // the protected Administrator authorization fields.
+        delete setOnInsert.permissions;
+        delete setOnInsert.system;
+        delete setOnInsert.enabled;
+
         update.$set = {
           permissions: [...PERMISSION_KEYS],
           system: true,
