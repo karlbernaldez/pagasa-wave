@@ -177,6 +177,13 @@ const ForecastPackageSchema = new Schema(
       enum: Object.values(FORECAST_PACKAGE_STATUS),
       default: FORECAST_PACKAGE_STATUS.DRAFT,
     },
+    // Historical compatibility only. New daily packages do not set this field,
+    // and authorization must never depend on it.
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     charts: {
       type: [ForecastPackageChartSchema],
       validate: {
