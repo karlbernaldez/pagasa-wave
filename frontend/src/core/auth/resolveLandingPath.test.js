@@ -52,11 +52,7 @@ describe('permission-driven frontend authorization helpers', () => {
   });
 
   it('uses permission priority rather than role priority', () => {
-    const combined = user('forecaster', [
-      'dashboard.view',
-      'forecast.review',
-      'studio.view',
-    ]);
+    const combined = user('forecaster', ['dashboard.view', 'forecast.review', 'studio.view']);
     const reviewer = user('admin', ['forecast.review', 'studio.view']);
 
     expect(resolveAuthenticatedLandingPath(combined, '/')).toBe('/dashboard');
