@@ -188,7 +188,7 @@ export const buildNewSourceIdAndUpdateData = (feature, newName) => {
 export const ensureUniqueProjectName = async (
   name,
   owner = null,
-  excludeId = null
+  excludeId = null,
 ) => {
   const query = owner ? { name, owner } : { name, owner: null };
   const existing = await Project.findOne(query);
