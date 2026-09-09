@@ -42,7 +42,9 @@ const readStream = async (response, onToken) => {
         if (!token) continue;
         accumulated += token;
         onToken(accumulated);
-      } catch {}
+      } catch {
+        continue;
+      }
     }
   }
 
