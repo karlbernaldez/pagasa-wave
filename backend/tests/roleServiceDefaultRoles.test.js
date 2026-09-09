@@ -27,24 +27,28 @@ test('ensureDefaultRoles keeps Administrator synced without conflicting Mongo up
 
     const adminCall = calls.find((call) => call.filter?.key === 'admin');
     assert.ok(adminCall);
-    assert.deepEqual(adminCall.update?.$set?.permissions, [...PERMISSION_KEYS]);
+    assert.deepEqual(adminCall.update?.$set?.permissions, [
+      ...PERMISSION_KEYS,
+      'projects.view_all',
+    ]);
     assert.equal(adminCall.update?.$set?.system, true);
     assert.equal(adminCall.update?.$set?.enabled, true);
     assert.equal(adminCall.options?.upsert, true);
     assert.ok(adminCall.update.$set.permissions.includes('studio.edit_any_annotation'));
     assert.ok(adminCall.update.$set.permissions.includes('chat.admin_knowledge'));
+    assert.ok(adminCall.update.$set.permissions.includes('projects.view_all'));
 
     assert.equal(
       Object.prototype.hasOwnProperty.call(adminCall.update.$setOnInsert, 'permissions'),
-      false
+      false,
     );
     assert.equal(
       Object.prototype.hasOwnProperty.call(adminCall.update.$setOnInsert, 'system'),
-      false
+      false,
     );
     assert.equal(
       Object.prototype.hasOwnProperty.call(adminCall.update.$setOnInsert, 'enabled'),
-      false
+      false,
     );
   });
 });
@@ -57,5 +61,6 @@ test('ensureDefaultRoles keeps non-Administrator defaults insert-only', async ()
     assert.ok(forecasterCall);
     assert.equal(forecasterCall.update?.$set, undefined);
     assert.equal(Array.isArray(forecasterCall.update?.$setOnInsert?.permissions), true);
+    assert.ok(forecasterCall.update.$setOnInsert.permissions.includes('projects.view_own'));
   });
 });
