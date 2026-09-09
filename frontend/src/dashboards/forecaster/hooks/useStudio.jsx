@@ -2,9 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { setupMap, syncAnnotationFeaturesToMap } from '@dashboards/forecaster/utils/mapSetup';
-import {
-  applyAnnotationStylesToMap,
-} from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
+import { applyAnnotationStylesToMap } from '@dashboards/forecaster/utils/layers/annotationStylePersistence';
 import { fetchFeatures } from '@/api/featureServices';
 import { fetchProjectById } from '@/api/projectAPI';
 import socket from '@/socket/socketClient';
