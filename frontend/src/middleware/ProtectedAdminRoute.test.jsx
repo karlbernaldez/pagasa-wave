@@ -28,6 +28,7 @@ function renderGuard(permission = null) {
             </ProtectedAdminRoute>
           }
         />
+        <Route path="/dashboard/review" element={<div>Review workspace</div>} />
         <Route path="/" element={<div>Permission denied landing</div>} />
       </Routes>
     </MemoryRouter>
@@ -53,10 +54,10 @@ describe('ProtectedAdminRoute permission authorization', () => {
     renderGuard('forecast.review');
 
     expect(await screen.findByText('Protected admin content')).toBeInTheDocument();
-    expect(screen.queryByText('Permission denied landing')).not.toBeInTheDocument();
+    expect(screen.queryByText('Review workspace')).not.toBeInTheDocument();
   });
 
-  it('redirects a custom reviewer without the required permission', async () => {
+  it('redirects a custom reviewer without the required permission to an allowed workspace', async () => {
     checkAuthSession.mockResolvedValue({
       authenticated: true,
       unavailable: false,
@@ -69,7 +70,7 @@ describe('ProtectedAdminRoute permission authorization', () => {
 
     renderGuard('users.view');
 
-    expect(await screen.findByText('Permission denied landing')).toBeInTheDocument();
+    expect(await screen.findByText('Review workspace')).toBeInTheDocument();
     expect(screen.queryByText('Protected admin content')).not.toBeInTheDocument();
   });
 
