@@ -14,7 +14,7 @@ const PUBLIC_ASSISTANT_LABEL = 'WaveLab Public Assistant (Experimental)';
 const FORECASTER_ASSISTANT_LABEL = 'WaveLab Forecaster Assistant (Experimental)';
 const ADMIN_ASSISTANT_LABEL = 'WaveLab Admin Assistant (Experimental)';
 
-const normalizeResponse = (text) => text ? text.trim() : text;
+const normalizeResponse = (text) => (text ? text.trim() : text);
 
 const readStream = async (response, onToken) => {
   const reader = response.body.getReader();
@@ -60,6 +60,39 @@ const getAuthProfile = async () => {
   }
 };
 
+const resolveChatProfile = (user) => {
+  const permissions = new Set(user?.permissions || []);
+  if (!user || !permissions.has('chat.use_internal')) {
+    return {
+      endpoint: PUBLIC_URL,
+      models: PUBLIC_MODELS,
+      label: PUBLIC_ASSISTANT_LABEL,
+    };
+  }
+
+  if (permissions.has('chat.admin_knowledge')) {
+    return {
+      endpoint: INTERNAL_URL,
+      models: ADMIN_MODELS,
+      label: ADMIN_ASSISTANT_LABEL,
+    };
+  }
+
+  if (permissions.has('chat.forecaster_knowledge')) {
+    return {
+      endpoint: INTERNAL_URL,
+      models: FORECASTER_MODELS,
+      label: FORECASTER_ASSISTANT_LABEL,
+    };
+  }
+
+  return {
+    endpoint: PUBLIC_URL,
+    models: PUBLIC_MODELS,
+    label: PUBLIC_ASSISTANT_LABEL,
+  };
+};
+
 export const useChatbot = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -71,106 +104,86 @@ export const useChatbot = () => {
 
   useEffect(() => {
     const initAssistant = async () => {
-      const user = await getAuthProfile();
-      const role = user?.role || null;
-
-      if (role === 'admin') {
-        setAssistantLabel(ADMIN_ASSISTANT_LABEL);
-        setActiveModel(ADMIN_MODELS[0]);
-        return;
-      }
-      if (role === 'forecaster') {
-        setAssistantLabel(FORECASTER_ASSISTANT_LABEL);
-        setActiveModel(FORECASTER_MODELS[0]);
-        return;
-      }
-      setAssistantLabel(PUBLIC_ASSISTANT_LABEL);
-      setActiveModel(PUBLIC_MODELS[0]);
+      const profile = resolveChatProfile(await getAuthProfile());
+      setAssistantLabel(profile.label);
+      setActiveModel(profile.models[0]);
     };
 
     initAssistant();
   }, []);
 
-  const sendMessage = useCallback(async (text) => {
-    if (!text.trim() || isLoading) return;
+  const sendMessage = useCallback(
+    async (text) => {
+      if (!text.trim() || isLoading) return;
 
-    const user = await getAuthProfile();
-    const role = user?.role || null;
-    const isInternal = !!role;
+      const profile = resolveChatProfile(await getAuthProfile());
+      const endpoint = profile.endpoint;
+      const model = profile.models[0];
+      const userMessage = { role: 'user', content: text.trim() };
+      const conversationHistory = [...messages, userMessage]
+        .filter((m) => m.content && !m.isStreaming)
+        .slice(-MEMORY_WINDOW);
 
-    let models = PUBLIC_MODELS;
-    let label = PUBLIC_ASSISTANT_LABEL;
+      setActiveModel(model);
+      setAssistantLabel(profile.label);
+      setMessages((prev) => [
+        ...prev,
+        userMessage,
+        { role: 'assistant', content: '', isStreaming: true },
+      ]);
+      setInput('');
+      setIsLoading(true);
+      setError(null);
+      abortRef.current = new AbortController();
 
-    if (role === 'forecaster') {
-      models = FORECASTER_MODELS;
-      label = FORECASTER_ASSISTANT_LABEL;
-    }
-    if (role === 'admin') {
-      models = ADMIN_MODELS;
-      label = ADMIN_ASSISTANT_LABEL;
-    }
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          signal: abortRef.current.signal,
+          body: JSON.stringify({
+            model,
+            messages: conversationHistory,
+          }),
+        });
 
-    const endpoint = isInternal ? INTERNAL_URL : PUBLIC_URL;
-    const model = models[0];
-    const userMessage = { role: 'user', content: text.trim() };
-    const conversationHistory = [...messages, userMessage]
-      .filter((m) => m.content && !m.isStreaming)
-      .slice(-MEMORY_WINDOW);
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.message || `Chat error: ${response.status}`);
+        }
 
-    setActiveModel(model);
-    setAssistantLabel(label);
-    setMessages((prev) => [...prev, userMessage, { role: 'assistant', content: '', isStreaming: true }]);
-    setInput('');
-    setIsLoading(true);
-    setError(null);
-    abortRef.current = new AbortController();
+        const accumulated = await readStream(response, (partial) => {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              role: 'assistant',
+              content: normalizeResponse(partial),
+              isStreaming: true,
+            };
+            return updated;
+          });
+        });
 
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        signal: abortRef.current.signal,
-        body: JSON.stringify({
-          model,
-          messages: conversationHistory,
-        }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body?.message || `Chat error: ${response.status}`);
-      }
-
-      const accumulated = await readStream(response, (partial) => {
         setMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = {
             role: 'assistant',
-            content: normalizeResponse(partial),
-            isStreaming: true,
+            content: normalizeResponse(accumulated),
           };
           return updated;
         });
-      });
-
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          role: 'assistant',
-          content: normalizeResponse(accumulated),
-        };
-        return updated;
-      });
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        setError(err.message || 'Something went wrong.');
-        setMessages((prev) => prev.slice(0, -1));
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setError(err.message || 'Something went wrong.');
+          setMessages((prev) => prev.slice(0, -1));
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading, messages]);
+    },
+    [isLoading, messages]
+  );
 
   const clearChat = useCallback(() => {
     abortRef.current?.abort();
