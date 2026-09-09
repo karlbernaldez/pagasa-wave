@@ -69,6 +69,19 @@ test('view-all users and permitted owners of non-package projects retain access'
   }
 });
 
+test('projects.view grants read access to shared forecast-package charts', async () => {
+  const originalExists = ForecastPackage.exists;
+  try {
+    ForecastPackage.exists = async () => ({ _id: 'package-1' });
+    assert.equal(
+      await canAccessProject({ id: 'viewer-1', role: 'custom_viewer' }, project, ['projects.view']),
+      true
+    );
+  } finally {
+    ForecastPackage.exists = originalExists;
+  }
+});
+
 test('users with project editing or review permissions may collaborate on forecast-package charts', async () => {
   const originalExists = ForecastPackage.exists;
   try {
@@ -82,6 +95,21 @@ test('users with project editing or review permissions may collaborate on foreca
     assert.equal(
       await canAccessProject({ id: 'reviewer-2', role: 'reviewer' }, project, ['projects.review']),
       true
+    );
+  } finally {
+    ForecastPackage.exists = originalExists;
+  }
+});
+
+test('projects.view_own alone does not grant shared forecast-package access', async () => {
+  const originalExists = ForecastPackage.exists;
+  try {
+    ForecastPackage.exists = async () => ({ _id: 'package-1' });
+    assert.equal(
+      await canAccessProject({ id: OWNER_ID, role: 'legacy_owner' }, project, [
+        'projects.view_own',
+      ]),
+      false
     );
   } finally {
     ForecastPackage.exists = originalExists;
