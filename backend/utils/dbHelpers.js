@@ -4,23 +4,25 @@ import { throwError } from './errorHelper.js';
 import { isForecastPackageChartProject } from './forecastPackageAccess.js';
 
 /**
- * Ensure project exists, optionally validate owner.
- * Forecast Package chart projects are shared across forecasters, so owner-scoped
- * reads must allow those linked chart projects even when the current forecaster
- * is not the original project owner.
+ * Ensure project exists, optionally validate legacy standalone ownership.
+ * Forecast Package chart projects are shared operational resources and never
+ * use owner as an authorization boundary.
  *
  * @param {string} projectId - Project ID
- * @param {string} [owner] - Optional owner ID
+ * @param {string} [owner] - Optional legacy standalone owner ID
  * @returns {Promise<Project>}
  */
 export const ensureProjectExists = async (projectId, owner = null) => {
   const project = await Project.findById(projectId);
   if (!project) throwError('Project not found.', 404);
 
-  if (owner && project.owner.toString() !== owner.toString()) {
+  if (owner) {
     const sharedForecastChart = await isForecastPackageChartProject(project._id || projectId);
     if (!sharedForecastChart) {
-      throwError('Unauthorized: you do not own this project.', 403);
+      const projectOwner = project.owner?._id || project.owner;
+      if (!projectOwner || String(projectOwner) !== String(owner)) {
+        throwError('Unauthorized: you do not have access to this project.', 403);
+      }
     }
   }
 
@@ -28,9 +30,12 @@ export const ensureProjectExists = async (projectId, owner = null) => {
 };
 
 /**
- * Ensure feature exists, optionally validate owner and project
+ * Ensure feature exists, optionally validate creator attribution and project.
+ * Creator attribution is retained for legacy standalone annotation workflows;
+ * shared Forecast Package charts derive edit rights from project access.
+ *
  * @param {string} sourceId - Feature source ID
- * @param {string} [owner] - Optional owner ID
+ * @param {string} [owner] - Optional creator ID
  * @param {string} [projectId] - Optional project ID
  * @returns {Promise<Feature>}
  */
@@ -60,7 +65,7 @@ export const validateGeometry = (geometry) => {
     throwError('Invalid geometry object. Missing type or coordinates.', 400);
   }
 
-  const isNumber = (n) => typeof n === 'number' && !isNaN(n);
+  const isNumber = (n) => typeof n === 'number' && !Number.isNaN(n);
 
   const isLngLat = (coord) =>
     Array.isArray(coord) &&
@@ -89,19 +94,12 @@ export const validateGeometry = (geometry) => {
   }
 
   if (type === 'Polygon') {
-    if (
-      !Array.isArray(coordinates) ||
-      coordinates.length === 0
-    ) {
+    if (!Array.isArray(coordinates) || coordinates.length === 0) {
       throwError('Invalid Polygon coordinates.', 400);
     }
 
     coordinates.forEach((ring) => {
-      if (
-        !Array.isArray(ring) ||
-        ring.length < 4 ||
-        !ring.every(isLngLat)
-      ) {
+      if (!Array.isArray(ring) || ring.length < 4 || !ring.every(isLngLat)) {
         throwError('Invalid Polygon ring. Must contain at least 4 [lng, lat] points.', 400);
       }
 
@@ -120,11 +118,18 @@ export const validateGeometry = (geometry) => {
 };
 
 function getStableFeatureId(feature) {
-  return feature?.properties?.stableId || feature?.properties?.annotationId || feature?.properties?.sourceId || feature?.sourceId;
+  return (
+    feature?.properties?.stableId ||
+    feature?.properties?.annotationId ||
+    feature?.properties?.sourceId ||
+    feature?.sourceId
+  );
 }
 
 function getFeatureType(feature) {
-  return feature?.properties?.type || feature?.properties?.markerType || feature?.properties?.symbolType || '';
+  return (
+    feature?.properties?.type || feature?.properties?.markerType || feature?.properties?.symbolType || ''
+  );
 }
 
 function buildRenamedFeatureProperties(feature, newName) {
@@ -166,41 +171,50 @@ function buildRenamedFeatureProperties(feature, newName) {
 export const buildNewSourceIdAndUpdateData = (feature, newName) => {
   const stableSourceId = feature.sourceId || getStableFeatureId(feature);
 
-  return [
-    stableSourceId,
-    buildRenamedFeatureProperties(feature, newName),
-  ];
+  return [stableSourceId, buildRenamedFeatureProperties(feature, newName)];
 };
 
 /**
- * Ensure project name is unique for a user (optionally exclude a project ID)
+ * Ensure project name uniqueness. Historical standalone projects retain their
+ * owner-scoped namespace; ownerless operational charts use a shared namespace.
+ *
  * @param {string} name
- * @param {string} owner
+ * @param {string|null} owner
  * @param {string} [excludeId]
  */
-export const ensureUniqueProjectName = async (name, owner, excludeId = null) => {
-  const existing = await Project.findOne({ name, owner });
-  if (existing && existing._id.toString() !== excludeId) {
+export const ensureUniqueProjectName = async (name, owner = null, excludeId = null) => {
+  const query = owner ? { name, owner } : { name, owner: null };
+  const existing = await Project.findOne(query);
+  if (existing && existing._id.toString() !== String(excludeId || '')) {
     throwError('A project with this name already exists.', 409);
   }
   return existing;
 };
 
 /**
- * Delete a project and all related features
+ * Delete a standalone project and related features. Forecast Package chart
+ * projects are structural package resources and cannot be deleted directly.
+ *
  * @param {string} projectId
  * @param {string} owner
  * @returns {Promise<number>} - Number of deleted features
  */
 export const deleteProjectAndFeatures = async (projectId, owner) => {
-  const deleteResult = await Feature.deleteMany({
-    'properties.project': projectId,
-    'properties.owner': owner,
-  });
-
   const project = await Project.findById(projectId);
   if (!project) throwError('Project not found.', 404);
-  if (project.owner.toString() !== owner.toString()) throwError('Unauthorized: cannot delete this project.', 403);
+
+  if (await isForecastPackageChartProject(projectId)) {
+    throwError('Forecast Package chart projects cannot be deleted directly.', 409);
+  }
+
+  const projectOwner = project.owner?._id || project.owner;
+  if (!projectOwner || String(projectOwner) !== String(owner)) {
+    throwError('Unauthorized: cannot delete this project.', 403);
+  }
+
+  const deleteResult = await Feature.deleteMany({
+    'properties.project': projectId,
+  });
 
   await project.deleteOne();
   return deleteResult.deletedCount;
