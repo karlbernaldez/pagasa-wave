@@ -9,11 +9,16 @@ function hasPermission(permissions, permission) {
 
 export function getForecastPackageCapabilities({ permissions = [], status = '' } = {}) {
   const canView = hasPermission(permissions, 'forecast.view');
-  const canEdit = canView && hasPermission(permissions, 'forecast.edit') && EDITABLE_STATUSES.has(status);
-  const canSubmit = canView && hasPermission(permissions, 'forecast.submit') && EDITABLE_STATUSES.has(status);
-  const canReview = canView && hasPermission(permissions, 'forecast.review') && REVIEWABLE_STATUSES.has(status);
-  const canApprove = canView && hasPermission(permissions, 'forecast.approve') && APPROVABLE_STATUSES.has(status);
-  const canPublish = canView && hasPermission(permissions, 'forecast.publish') && PUBLISHABLE_STATUSES.has(status);
+  const canEdit =
+    canView && hasPermission(permissions, 'forecast.edit') && EDITABLE_STATUSES.has(status);
+  const canSubmit =
+    canView && hasPermission(permissions, 'forecast.submit') && EDITABLE_STATUSES.has(status);
+  const canReview =
+    canView && hasPermission(permissions, 'forecast.review') && REVIEWABLE_STATUSES.has(status);
+  const canApprove =
+    canView && hasPermission(permissions, 'forecast.approve') && APPROVABLE_STATUSES.has(status);
+  const canPublish =
+    canView && hasPermission(permissions, 'forecast.publish') && PUBLISHABLE_STATUSES.has(status);
 
   return {
     canView,

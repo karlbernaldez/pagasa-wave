@@ -48,8 +48,10 @@ function getPackageStatus(charts) {
   if (charts.some((chart) => chart.status === 'Under Review')) return 'Under Review';
   if (charts.some((chart) => chart.status === 'Submitted')) return 'Submitted';
   if (charts.some((chart) => RETURNED_STATUSES.has(chart.status))) return 'Revision Requested';
-  if (charts.length > 0 && charts.every((chart) => APPROVED_STATUSES.has(chart.status))) return 'Approved';
-  if (charts.length > 0 && charts.every((chart) => FINAL_STATUSES.has(chart.status))) return 'Closed';
+  if (charts.length > 0 && charts.every((chart) => APPROVED_STATUSES.has(chart.status)))
+    return 'Approved';
+  if (charts.length > 0 && charts.every((chart) => FINAL_STATUSES.has(chart.status)))
+    return 'Closed';
   return 'In Production';
 }
 
@@ -126,9 +128,12 @@ export function adaptForecastPackageModel(forecastPackage) {
   const pendingCharts = chartProjects.filter((chart) => REVIEW_STATUSES.has(chart.status));
   const approvedCharts = chartProjects.filter((chart) => APPROVED_STATUSES.has(chart.status));
   const returnedCharts = chartProjects.filter((chart) => RETURNED_STATUSES.has(chart.status));
-  const primaryChartRow = charts.find((chart) => REVIEW_STATUSES.has(chart.project?.status)) || charts[0];
+  const primaryChartRow =
+    charts.find((chart) => REVIEW_STATUSES.has(chart.project?.status)) || charts[0];
   const derivedStatus =
-    forecastPackage?.displayStatus || displayPackageStatus(forecastPackage?.status) || getPackageStatus(chartProjects);
+    forecastPackage?.displayStatus ||
+    displayPackageStatus(forecastPackage?.status) ||
+    getPackageStatus(chartProjects);
   const contributorNames = getContributorNames(forecastPackage, charts);
 
   return {
@@ -166,7 +171,9 @@ export function groupForecastPackages(projects = []) {
       groups.set(key, {
         id: key,
         dateKey,
-        title: dateKey ? `${formatPackageDate(dateKey)} Forecast Package` : 'Unscheduled Forecast Package',
+        title: dateKey
+          ? `${formatPackageDate(dateKey)} Forecast Package`
+          : 'Unscheduled Forecast Package',
         charts: [],
       });
     }
@@ -202,7 +209,9 @@ export function groupForecastPackages(projects = []) {
           chartProjects.find((chart) => !FINAL_STATUSES.has(chart.status)) ||
           chartProjects[0],
         updatedAt: chartProjects.reduce((latest, chart) => {
-          const timestamp = new Date(chart.updatedAt || chart.submittedAt || chart.createdAt || 0).getTime();
+          const timestamp = new Date(
+            chart.updatedAt || chart.submittedAt || chart.createdAt || 0
+          ).getTime();
           return Math.max(latest, Number.isNaN(timestamp) ? 0 : timestamp);
         }, 0),
       };
