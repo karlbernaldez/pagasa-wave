@@ -6,13 +6,14 @@ import ProtectedAdminRoute from './ProtectedAdminRoute';
 import { checkAuthSession } from '@/api/auth';
 
 const setIsLoggedIn = vi.fn();
+const setRole = vi.fn();
 
 vi.mock('@/api/auth', () => ({
   checkAuthSession: vi.fn(),
 }));
 
 vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ setIsLoggedIn }),
+  useAuth: () => ({ setIsLoggedIn, setRole }),
 }));
 
 vi.mock('@/components/ui/modals/OnlyAdminModal', () => ({
@@ -25,7 +26,7 @@ function renderGuard(permission = null) {
       <ProtectedAdminRoute requireAuth permission={permission}>
         <div>Protected admin content</div>
       </ProtectedAdminRoute>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -34,18 +35,18 @@ beforeEach(() => {
 });
 
 describe('ProtectedAdminRoute permission authorization', () => {
-  it('allows a custom reviewer with projects.review', async () => {
+  it('allows a custom reviewer with forecast.review', async () => {
     checkAuthSession.mockResolvedValue({
       authenticated: true,
       unavailable: false,
       user: {
         id: 'reviewer-1',
         role: 'reviewer',
-        permissions: ['projects.review'],
+        permissions: ['forecast.review'],
       },
     });
 
-    renderGuard('projects.review');
+    renderGuard('forecast.review');
 
     expect(await screen.findByText('Protected admin content')).toBeInTheDocument();
     expect(screen.queryByText('Access denied')).not.toBeInTheDocument();
@@ -58,7 +59,7 @@ describe('ProtectedAdminRoute permission authorization', () => {
       user: {
         id: 'reviewer-1',
         role: 'reviewer',
-        permissions: ['projects.review'],
+        permissions: ['forecast.review'],
       },
     });
 
@@ -68,12 +69,28 @@ describe('ProtectedAdminRoute permission authorization', () => {
     expect(screen.queryByText('Protected admin content')).not.toBeInTheDocument();
   });
 
-  it('preserves full administrator access', async () => {
+  it('allows Administrator only when the required permission is present', async () => {
     checkAuthSession.mockResolvedValue({
       authenticated: true,
       unavailable: false,
       user: {
         id: 'admin-1',
+        role: 'admin',
+        permissions: ['roles.view'],
+      },
+    });
+
+    renderGuard('roles.view');
+
+    expect(await screen.findByText('Protected admin content')).toBeInTheDocument();
+  });
+
+  it('does not grant an admin-named User Type a permission bypass', async () => {
+    checkAuthSession.mockResolvedValue({
+      authenticated: true,
+      unavailable: false,
+      user: {
+        id: 'admin-like-1',
         role: 'admin',
         permissions: [],
       },
@@ -81,6 +98,7 @@ describe('ProtectedAdminRoute permission authorization', () => {
 
     renderGuard('roles.view');
 
-    expect(await screen.findByText('Protected admin content')).toBeInTheDocument();
+    expect(await screen.findByText('Access denied')).toBeInTheDocument();
+    expect(screen.queryByText('Protected admin content')).not.toBeInTheDocument();
   });
 });
