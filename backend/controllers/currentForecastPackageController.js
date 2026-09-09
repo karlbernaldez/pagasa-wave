@@ -95,7 +95,7 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
   );
 }
 
-async function ensureDailyChartProject({ forecastDate, requiredChart, packageName }) {
+async function ensureDailyChartProject({ forecastDate, requiredChart }) {
   const name = buildForecastChartProjectName(forecastDate, requiredChart.label);
   const query = {
     chartType: requiredChart.chartType,
@@ -157,7 +157,6 @@ async function createDailyForecastPackage({ forecastDate }) {
     const project = await ensureDailyChartProject({
       forecastDate,
       requiredChart,
-      packageName: name,
     });
     charts.push({
       chartType: requiredChart.chartType,
