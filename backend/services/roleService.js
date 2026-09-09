@@ -19,7 +19,7 @@ const assertRoleKey = (value) => {
   const key = normalizeRoleKey(value);
   if (!ROLE_KEY_RE.test(key)) {
     const error = new Error(
-      'Role key must be 2-32 characters, begin with a letter, and use lowercase letters, numbers, underscores, or hyphens.'
+      'Role key must be 2-32 characters, begin with a letter, and use lowercase letters, numbers, underscores, or hyphens.',
     );
     error.status = 400;
     throw error;
@@ -61,14 +61,14 @@ export const ensureDefaultRoles = async () => {
         delete setOnInsert.enabled;
 
         update.$set = {
-          permissions: [...PERMISSION_KEYS],
+          permissions: [...defaults.permissions],
           system: true,
           enabled: true,
         };
       }
 
       return Role.updateOne({ key }, update, { upsert: true, runValidators: true });
-    })
+    }),
   );
 };
 
@@ -197,7 +197,7 @@ export const updateRole = async (rawKey, updates = {}) => {
       const memberCount = await User.countDocuments({ role: key, deletedAt: null });
       if (memberCount > 0) {
         const error = new Error(
-          `User type ${key} cannot be disabled while ${memberCount} user${memberCount === 1 ? '' : 's'} are assigned to it.`
+          `User type ${key} cannot be disabled while ${memberCount} user${memberCount === 1 ? '' : 's'} are assigned to it.`,
         );
         error.status = 409;
         throw error;
@@ -233,7 +233,7 @@ export const deleteRole = async (rawKey) => {
   const memberCount = await User.countDocuments({ role: key, deletedAt: null });
   if (memberCount > 0) {
     const error = new Error(
-      `User type ${key} cannot be deleted while ${memberCount} user${memberCount === 1 ? '' : 's'} are assigned to it.`
+      `User type ${key} cannot be deleted while ${memberCount} user${memberCount === 1 ? '' : 's'} are assigned to it.`,
     );
     error.status = 409;
     throw error;
