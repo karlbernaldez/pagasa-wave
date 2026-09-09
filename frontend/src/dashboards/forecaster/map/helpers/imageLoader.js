@@ -1,18 +1,15 @@
-const TRANSPARENT_PLACEHOLDER = {
-  width: 1,
-  height: 1,
-  data: new Uint8Array([0, 0, 0, 0]),
-};
+const inFlightImages = new WeakMap();
+
+function getImageRequests(map) {
+  if (!inFlightImages.has(map)) inFlightImages.set(map, new Map());
+  return inFlightImages.get(map);
+}
 
 export function loadImage(map, name, path) {
-  if (map.hasImage(name)) return Promise.resolve(true);
+  const requests = getImageRequests(map);
+  if (requests.has(name)) return requests.get(name);
 
-  // Register the image name immediately so persisted symbol layers can be
-  // restored while the real asset is still loading. Mapbox requires every
-  // icon-image reference to exist when the layer is created.
-  map.addImage(name, TRANSPARENT_PLACEHOLDER);
-
-  return new Promise((resolve) => {
+  const request = new Promise((resolve) => {
     map.loadImage(path, (error, image) => {
       if (error || !image) {
         resolve(false);
@@ -20,19 +17,20 @@ export function loadImage(map, name, path) {
       }
 
       try {
-        if (typeof map.updateImage === 'function') {
-          map.updateImage(name, image);
-        } else {
-          if (map.hasImage(name)) map.removeImage(name);
-          map.addImage(name, image);
-        }
+        if (map.hasImage(name)) map.removeImage(name);
+        map.addImage(name, image);
         resolve(true);
       } catch (error) {
         console.warn(`Failed to register image ${name}:`, error);
         resolve(false);
       }
     });
+  }).finally(() => {
+    requests.delete(name);
   });
+
+  requests.set(name, request);
+  return request;
 }
 
 // Initialize all custom images
