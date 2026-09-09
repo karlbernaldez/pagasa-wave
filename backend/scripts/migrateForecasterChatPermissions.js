@@ -4,7 +4,11 @@ import mongoose from 'mongoose';
 import Role from '../models/Role.js';
 import User from '../models/User.js';
 
-const CHAT_PERMISSIONS = ['chat.use_internal', 'chat.forecaster_knowledge'];
+const REQUIRED_FORECASTER_PERMISSIONS = [
+  'projects.view',
+  'chat.use_internal',
+  'chat.forecaster_knowledge',
+];
 
 async function main() {
   if (!process.env.MONGO_URI) {
@@ -15,7 +19,7 @@ async function main() {
 
   const result = await Role.updateOne(
     { key: 'forecaster' },
-    { $addToSet: { permissions: { $each: CHAT_PERMISSIONS } } }
+    { $addToSet: { permissions: { $each: REQUIRED_FORECASTER_PERMISSIONS } } }
   );
 
   if (result.modifiedCount > 0) {
@@ -24,10 +28,10 @@ async function main() {
       { $inc: { sessionVersion: 1 } }
     );
     console.log(
-      `Forecaster chat permissions added; invalidated ${users.modifiedCount} active authorization session(s).`
+      `Forecaster RBAC permissions updated; invalidated ${users.modifiedCount} active authorization session(s).`
     );
   } else {
-    console.log('Forecaster chat permissions already present; no changes required.');
+    console.log('Forecaster RBAC permissions already present; no changes required.');
   }
 }
 
