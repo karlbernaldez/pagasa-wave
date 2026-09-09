@@ -40,7 +40,7 @@ export const ADMIN_ROUTE_BY_TAB = {
 
 export const ADMIN_PERMISSION_BY_TAB = Object.freeze({
   [ADMIN_TABS.DASHBOARD]: 'dashboard.view',
-  [ADMIN_TABS.CHARTS]: 'projects.review',
+  [ADMIN_TABS.CHARTS]: 'forecast.review',
   [ADMIN_TABS.WAVE_MODELS]: 'wave_models.manage',
   [ADMIN_TABS.WAVE_PIPELINE]: 'wave_pipeline.view',
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: 'model_onboarding.view',
@@ -138,9 +138,9 @@ export const MENU_ITEMS = MENU_GROUPS.flatMap((group) => group.items);
 
 export const PAGE_META = {
   [ADMIN_TABS.DASHBOARD]: {
-    title: 'Admin Overview',
+    title: 'Dashboard Overview',
     description:
-      "Monitor today's forecast package review workflow, users, and publication readiness.",
+      "Monitor today's forecast package workflow, operational users, and publication readiness.",
   },
   [ADMIN_TABS.CHARTS]: {
     title: 'Review Forecast Packages',
@@ -164,15 +164,15 @@ export const PAGE_META = {
   },
   [ADMIN_TABS.USERS]: {
     title: 'User Management',
-    description: 'Manage forecaster accounts, admin users, roles, and access status.',
+    description: 'Manage user accounts, User Types, permissions, and access status.',
   },
   [ADMIN_TABS.USERS_LIST]: {
     title: 'User List',
     description: 'View, approve, suspend, and manage operational user accounts.',
   },
   [ADMIN_TABS.USERS_ROLES]: {
-    title: 'Roles & Permissions',
-    description: 'Review admin and forecaster role boundaries for forecast operations.',
+    title: 'User Types & Permissions',
+    description: 'Manage permission bundles for WaveLab User Types.',
   },
   [ADMIN_TABS.ANALYTICS]: {
     title: 'Operational Analytics',
@@ -180,8 +180,7 @@ export const PAGE_META = {
   },
   [ADMIN_TABS.CALENDAR]: {
     title: 'Forecast Operations Calendar',
-    description:
-      'Track forecast package dates, review events, publication milestones, and admin notes.',
+    description: 'Track forecast package dates, review events, and publication milestones.',
   },
   [ADMIN_TABS.SETTINGS]: {
     title: 'System Settings',
@@ -190,6 +189,6 @@ export const PAGE_META = {
   },
   [ADMIN_TABS.ACCOUNT]: {
     title: 'Account Settings',
-    description: 'Review and update your administrator profile, sessions, and account security.',
+    description: 'Review and update your profile, sessions, and account security.',
   },
 };
