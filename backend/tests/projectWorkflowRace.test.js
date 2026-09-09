@@ -17,6 +17,7 @@ import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 const OWNER_ID = 'owner-1';
 const ADMIN_ID = 'admin-1';
 const UPDATED_AT = new Date('2026-08-12T06:00:00.000Z');
+const REVIEW_PERMISSIONS = ['projects.review', 'projects.approve', 'projects.publish'];
 
 function ownerId(value = OWNER_ID) {
   return { toString: () => value };
@@ -45,12 +46,18 @@ function createStaleProject(status) {
   };
 }
 
-function createReq({ role = 'admin', userId = ADMIN_ID, body = {} } = {}) {
+function createReq({
+  role = 'admin',
+  userId = ADMIN_ID,
+  body = {},
+  authorizedPermissions = REVIEW_PERMISSIONS,
+} = {}) {
   return {
     params: { id: 'project-1' },
     body,
     query: {},
     user: { id: userId, role },
+    authorizedPermissions,
   };
 }
 
