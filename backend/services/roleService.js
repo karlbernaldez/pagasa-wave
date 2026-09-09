@@ -4,6 +4,7 @@ import {
   DEFAULT_ROLE_DEFINITIONS,
   PERMISSION_CATALOG,
   PERMISSION_KEYS,
+  expandEffectivePermissions,
   normalizePermissionKeys,
 } from '../config/permissionCatalog.js';
 
@@ -33,7 +34,9 @@ const serializeRole = async (role) => {
     key: role.key,
     name: role.name,
     description: role.description,
-    permissions: role.permissions,
+    // Expose canonical permissions to User Type management while preserving the
+    // two legacy Project scope permissions until standalone Project access is retired.
+    permissions: normalizePermissionKeys(role.permissions || []),
     system: role.system,
     enabled: role.enabled,
     memberCount,
@@ -51,7 +54,8 @@ export const ensureDefaultRoles = async () => {
       if (key === 'admin') {
         // MongoDB rejects the same path appearing in both $setOnInsert and $set.
         // Keep descriptive defaults insert-only while continuously synchronizing
-        // the protected Administrator authorization fields.
+        // the protected Administrator authorization fields. Runtime authorization
+        // still flows through effective permissions; this is only a lockout safeguard.
         delete setOnInsert.permissions;
         delete setOnInsert.system;
         delete setOnInsert.enabled;
@@ -102,7 +106,9 @@ export const assertRoleAssignable = async (rawKey) =>
 export const resolvePermissionsForRole = async (rawKey) => {
   try {
     const role = await getRoleByKey(rawKey, { requireEnabled: true });
-    return role.permissions || [];
+    // Authorization is permission-first. The User Type key is used only to load
+    // its permission bundle; no normal capability depends on the key's name.
+    return expandEffectivePermissions(role.permissions || []);
   } catch (error) {
     if (error.status === 404 || error.status === 409) return [];
     throw error;
