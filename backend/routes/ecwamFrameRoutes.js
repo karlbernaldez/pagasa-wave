@@ -2,6 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 
 import { getEcwamFrame, requestEcwamFrame } from '../controllers/ecwamFrameController.js';
+import { requirePermission } from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
 
@@ -17,7 +18,12 @@ const frameRequestLimiter = rateLimit({
   },
 });
 
-router.get('/:packageDate/:forecastHour', getEcwamFrame);
-router.post('/:packageDate/:forecastHour', frameRequestLimiter, requestEcwamFrame);
+router.get('/:packageDate/:forecastHour', requirePermission('wave_models.view'), getEcwamFrame);
+router.post(
+  '/:packageDate/:forecastHour',
+  requirePermission('wave_models.view'),
+  frameRequestLimiter,
+  requestEcwamFrame
+);
 
 export default router;

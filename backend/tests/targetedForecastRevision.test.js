@@ -5,6 +5,7 @@ const ADMIN_ID = 'admin-1';
 const PACKAGE_ID = 'package-1';
 const PROJECT_IDS = ['project-1', 'project-2', 'project-3', 'project-4'];
 const CHART_TYPES = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
+const REVIEW_PERMISSIONS = ['projects.review'];
 
 function createQuery(result) {
   return {
@@ -160,6 +161,7 @@ test('revision by project resets only the selected chart and records the true pr
       params: { projectId: PROJECT_IDS[0] },
       body: { comment: 'Revise the wave analysis.' },
       user: { id: ADMIN_ID, role: 'admin' },
+      permissions: REVIEW_PERMISSIONS,
     });
 
     assert.equal(response.statusCode, 200);
@@ -188,6 +190,7 @@ test('targeted revision rejects an empty chart selection before writing', async 
         params: { id: PACKAGE_ID },
         body: { comment: 'Revise this chart.', chartTypes: [] },
         user: { id: ADMIN_ID, role: 'admin' },
+        permissions: REVIEW_PERMISSIONS,
       }),
     { status: 400, message: 'At least one affected chart type is required' }
   );
@@ -202,6 +205,7 @@ test('targeted revision rejects unsupported chart types before writing', async (
         params: { id: PACKAGE_ID },
         body: { comment: 'Revise this chart.', chartTypes: ['forecast_72h'] },
         user: { id: ADMIN_ID, role: 'admin' },
+        permissions: REVIEW_PERMISSIONS,
       }),
     { status: 400, message: 'Unsupported forecast chart type: forecast_72h' }
   );

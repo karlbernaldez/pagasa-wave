@@ -1,7 +1,13 @@
 import mongoose from 'mongoose';
 import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
-import { canAccessProject } from '../utils/forecastPackageAccess.js';
+import { canAccessProject, isForecastPackageChartProject } from '../utils/forecastPackageAccess.js';
+
+function grantSharedAnnotationEdit(req) {
+  if (!(req.permissions || []).includes('studio.edit')) return;
+  if ((req.permissions || []).includes('studio.edit_any_annotation')) return;
+  req.permissions = [...(req.permissions || []), 'studio.edit_any_annotation'];
+}
 
 export const isOwnerOrAdmin = async (req, res, next) => {
   try {
@@ -17,9 +23,13 @@ export const isOwnerOrAdmin = async (req, res, next) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const hasAccess = await canAccessProject(req.user, project);
+    const hasAccess = await canAccessProject(req.user, project, req.permissions || []);
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Access denied. Not the owner, admin, or assigned forecast package chart forecaster.' });
+      return res.status(403).json({ message: 'Access denied for this project.' });
+    }
+
+    if (await isForecastPackageChartProject(projectId)) {
+      grantSharedAnnotationEdit(req);
     }
 
     req.project = project;
@@ -33,22 +43,28 @@ export const isOwnerOrAdmin = async (req, res, next) => {
 export const isFeatureOwnerOrAdmin = async (req, res, next) => {
   try {
     const { sourceId } = req.params;
-
     const feature = await Feature.findOne({ sourceId });
 
     if (!feature) {
       return res.status(404).json({ message: 'Feature not found' });
     }
 
-    const userId = req.user.id;
-    const isAdmin = req.user.role === 'admin';
-
-    if (!feature.properties.owner) {
-      return res.status(500).json({ message: 'Feature owner is not set in the database.' });
+    const projectId = feature.properties?.project;
+    if (projectId && (await isForecastPackageChartProject(projectId))) {
+      grantSharedAnnotationEdit(req);
+      req.feature = feature;
+      return next();
     }
 
-    if (feature.properties.owner.toString() !== userId && !isAdmin) {
-      return res.status(403).json({ message: 'Access denied. Not the feature owner or admin.' });
+    const userId = String(req.user?.id || req.user?._id || '');
+    const canEditAnyAnnotation = (req.permissions || []).includes('studio.edit_any_annotation');
+
+    if (!feature.properties.owner) {
+      return res.status(500).json({ message: 'Feature creator is not set in the database.' });
+    }
+
+    if (feature.properties.owner.toString() !== userId && !canEditAnyAnnotation) {
+      return res.status(403).json({ message: 'Access denied for this annotation.' });
     }
 
     req.feature = feature;

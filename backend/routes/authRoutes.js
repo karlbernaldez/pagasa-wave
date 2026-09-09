@@ -46,6 +46,7 @@ router.get('/check', authenticate, (req, res) => {
       lastName: req.user.lastName,
       email: req.user.email,
       role: req.user.role,
+      permissions: req.permissions || [],
       status: req.user.status,
     },
   });

@@ -45,11 +45,17 @@ function getFeatureProjectId(feature) {
   return feature?.properties?.project?._id || feature?.properties?.project;
 }
 
-function featureCanEdit(feature, user) {
-  return Boolean(user?.role === 'admin' || isSameId(getFeatureOwner(feature), user?.id));
+function canEditAnyAnnotation(permissions = []) {
+  return Array.isArray(permissions) && permissions.includes('studio.edit_any_annotation');
 }
 
-function normalizeFeatureForClient(feature, user) {
+function featureCanEdit(feature, user, permissions = []) {
+  return Boolean(
+    canEditAnyAnnotation(permissions) || isSameId(getFeatureOwner(feature), user?.id || user?._id)
+  );
+}
+
+function normalizeFeatureForClient(feature, user, permissions = []) {
   const plain = typeof feature.toObject === 'function' ? feature.toObject() : feature;
   const stableId =
     plain.properties?.stableId ||
@@ -68,7 +74,7 @@ function normalizeFeatureForClient(feature, user) {
       sourceId: plain.sourceId,
       stableId,
       annotationId: stableId,
-      canEdit: featureCanEdit(plain, user),
+      canEdit: featureCanEdit(plain, user, permissions),
       owner: plain.properties?.owner,
     },
   };
@@ -78,14 +84,14 @@ function emitAnnotationUpdate(projectId, action, sourceId) {
   emitForecastChartUpdated(projectId, { action, resourceType: 'annotation', sourceId });
 }
 
-async function ensureFeatureMutationAllowed(sourceId, user) {
+async function ensureFeatureMutationAllowed(sourceId, user, permissions = []) {
   const feature = await ensureFeatureExists(sourceId);
   const projectId = getFeatureProjectId(feature);
-  const project = await ensureProjectExists(projectId, user.id);
+  const project = await ensureProjectExists(projectId, user.id || user._id);
   await ensureProjectMutationAllowed(project);
-  if (!featureCanEdit(feature, user)) {
+  if (!featureCanEdit(feature, user, permissions)) {
     throwError(
-      'Only the annotation owner or an admin can change this annotation. Send a request to the owner instead.',
+      'Only the annotation owner or an authorized editor can change this annotation. Send a request to the owner instead.',
       403
     );
   }
@@ -155,7 +161,9 @@ export const createFeature = asyncHandler(async (req, res) => {
 
 export const getAllFeatures = asyncHandler(async (req, res) => {
   const features = await Feature.find().sort({ createdAt: -1 });
-  res.json(features.map((feature) => normalizeFeatureForClient(feature, req.user)));
+  res.json(
+    features.map((feature) => normalizeFeatureForClient(feature, req.user, req.permissions || []))
+  );
 });
 
 export const getProjectFeatureCollection = asyncHandler(async (req, res) => {
@@ -164,7 +172,9 @@ export const getProjectFeatureCollection = asyncHandler(async (req, res) => {
   const features = await Feature.find({ 'properties.project': projectId });
   res.json({
     type: 'FeatureCollection',
-    features: features.map((feature) => normalizeFeatureForClient(feature, req.user)),
+    features: features.map((feature) =>
+      normalizeFeatureForClient(feature, req.user, req.permissions || [])
+    ),
   });
 });
 
@@ -179,18 +189,24 @@ export const getFeaturesByUserAndProject = asyncHandler(async (req, res) => {
     : { 'properties.owner': userId, 'properties.project': projectId };
   const features = await Feature.find(query).sort({ createdAt: -1 });
 
-  res.json(features.map((feature) => normalizeFeatureForClient(feature, req.user)));
+  res.json(
+    features.map((feature) => normalizeFeatureForClient(feature, req.user, req.permissions || []))
+  );
 });
 
 export const getFeatureBySourceId = asyncHandler(async (req, res) => {
   const { sourceId } = req.params;
   const feature = await ensureFeatureExists(sourceId);
-  res.json(normalizeFeatureForClient(feature, req.user));
+  res.json(normalizeFeatureForClient(feature, req.user, req.permissions || []));
 });
 
 export const deleteFeature = asyncHandler(async (req, res) => {
   const { sourceId } = req.params;
-  const { projectId } = await ensureFeatureMutationAllowed(sourceId, req.user);
+  const { projectId } = await ensureFeatureMutationAllowed(
+    sourceId,
+    req.user,
+    req.permissions || []
+  );
 
   const result = await Feature.deleteOne({ sourceId, 'properties.project': projectId });
   if (result.deletedCount === 0)
@@ -209,7 +225,11 @@ export const updateFeatureName = asyncHandler(async (req, res) => {
   if (!newName || typeof newName !== 'string')
     throwError('Invalid name. Name must be a non-empty string.', 400);
 
-  const { feature, projectId } = await ensureFeatureMutationAllowed(sourceId, req.user);
+  const { feature, projectId } = await ensureFeatureMutationAllowed(
+    sourceId,
+    req.user,
+    req.permissions || []
+  );
   const [newSourceId, updateData] = buildNewSourceIdAndUpdateData(feature, newName);
   const updatedFeature = await Feature.findOneAndUpdate(
     { sourceId, 'properties.project': projectId },
@@ -220,7 +240,7 @@ export const updateFeatureName = asyncHandler(async (req, res) => {
   emitAnnotationUpdate(projectId, 'annotation_updated', newSourceId);
   res.json({
     message: 'Feature name updated successfully.',
-    feature: normalizeFeatureForClient(updatedFeature, req.user),
+    feature: normalizeFeatureForClient(updatedFeature, req.user, req.permissions || []),
   });
 });
 
@@ -237,7 +257,11 @@ export const updateFeatureCoordinates = asyncHandler(async (req, res) => {
     throwError('Invalid coordinates. Must be [lng, lat] as numbers.', 400);
   }
 
-  const { projectId } = await ensureFeatureMutationAllowed(sourceId, req.user);
+  const { projectId } = await ensureFeatureMutationAllowed(
+    sourceId,
+    req.user,
+    req.permissions || []
+  );
   await Feature.findOneAndUpdate(
     { sourceId, 'properties.project': projectId },
     { $set: { 'geometry.coordinates': coordinates } },
@@ -251,7 +275,11 @@ export const updateFeatureCoordinates = asyncHandler(async (req, res) => {
 export const updateFeatureStyle = asyncHandler(async (req, res) => {
   const { sourceId } = req.params;
   const style = sanitizeStyle(req.body?.style);
-  const { projectId } = await ensureFeatureMutationAllowed(sourceId, req.user);
+  const { projectId } = await ensureFeatureMutationAllowed(
+    sourceId,
+    req.user,
+    req.permissions || []
+  );
 
   const setPayload = { 'properties.style': style };
   if (style.frontSymbolSide) setPayload['properties.frontSymbolSide'] = style.frontSymbolSide;
@@ -265,7 +293,7 @@ export const updateFeatureStyle = asyncHandler(async (req, res) => {
   emitAnnotationUpdate(projectId, 'annotation_updated', sourceId);
   res.json({
     message: 'Feature style updated.',
-    feature: normalizeFeatureForClient(updatedFeature, req.user),
+    feature: normalizeFeatureForClient(updatedFeature, req.user, req.permissions || []),
   });
 });
 
@@ -325,8 +353,11 @@ export const approveFeatureChangeRequest = asyncHandler(async (req, res) => {
   if (!notification) throwError('Request notification not found.', 404);
   if (notification.type !== 'annotation_change_request')
     throwError('Notification is not an annotation change request.', 400);
-  if (!isSameId(notification.recipientUser, req.user.id) && req.user.role !== 'admin')
-    throwError('Only the annotation owner or an admin can approve this request.', 403);
+
+  const permissions = req.permissions || [];
+  const canOverrideOwner = canEditAnyAnnotation(permissions);
+  if (!isSameId(notification.recipientUser, req.user.id) && !canOverrideOwner)
+    throwError('Only the annotation owner or an authorized editor can approve this request.', 403);
   if (notification.metadata?.status === 'approved')
     return res.json({
       message: 'Request already approved.',
@@ -349,8 +380,8 @@ export const approveFeatureChangeRequest = asyncHandler(async (req, res) => {
   const projectId = getFeatureProjectId(feature);
   const project = await ensureProjectExists(projectId, req.user.id);
   await ensureProjectMutationAllowed(project);
-  if (!featureCanEdit(feature, req.user))
-    throwError('Only the annotation owner or an admin can approve this request.', 403);
+  if (!featureCanEdit(feature, req.user, permissions))
+    throwError('Only the annotation owner or an authorized editor can approve this request.', 403);
 
   let newSourceId = sourceId;
   if (requestType === 'delete') {
@@ -389,8 +420,11 @@ export const declineFeatureChangeRequest = asyncHandler(async (req, res) => {
   if (!notification) throwError('Request notification not found.', 404);
   if (notification.type !== 'annotation_change_request')
     throwError('Notification is not an annotation change request.', 400);
-  if (!isSameId(notification.recipientUser, req.user.id) && req.user.role !== 'admin')
-    throwError('Only the annotation owner or an admin can decline this request.', 403);
+  if (
+    !isSameId(notification.recipientUser, req.user.id) &&
+    !canEditAnyAnnotation(req.permissions || [])
+  )
+    throwError('Only the annotation owner or an authorized editor can decline this request.', 403);
   if (notification.metadata?.status === 'approved')
     throwError('Request was already approved.', 400);
 

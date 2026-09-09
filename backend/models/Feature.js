@@ -10,7 +10,7 @@ const FeatureSchema = new mongoose.Schema({
     coordinates: {
       type: mongoose.Schema.Types.Mixed,
       required: true,
-    }
+    },
   },
   properties: {
     labelValue: { type: String },
@@ -19,22 +19,27 @@ const FeatureSchema = new mongoose.Schema({
     frontType: { type: String, enum: ['cold', 'warm', 'stationary', 'occluded'] },
     frontSymbolSide: { type: String, enum: ['normal', 'opposite'] },
     style: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // Creator attribution only. This field is not an authorization boundary for
+    // annotations inside shared Forecast Package charts.
     owner: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User', // Reference to the User model
-      required: true
+      ref: 'User',
+      required: true,
     },
     project: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Project',
-      required: true // optional, depending on your logic
+      required: true,
     },
     sourceId: { type: String },
     stableId: { type: String },
     annotationId: { type: String },
     title: { type: String },
     name: { type: String },
-    type: { type: String, enum: ['high_pressure', 'low_pressure', 'typhoon', 'less_1', 'text_note'] },
+    type: {
+      type: String,
+      enum: ['high_pressure', 'low_pressure', 'typhoon', 'less_1', 'text_note'],
+    },
     markerType: { type: String },
     mapLayerId: { type: String },
   },
@@ -43,7 +48,8 @@ const FeatureSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-FeatureSchema.index({ sourceId: 1, 'properties.owner': 1, 'properties.project': 1 }, { unique: true });
+FeatureSchema.index({ sourceId: 1, 'properties.project': 1 }, { unique: true });
 FeatureSchema.index({ 'properties.stableId': 1, 'properties.project': 1 });
+FeatureSchema.index({ 'properties.owner': 1, 'properties.project': 1, createdAt: -1 });
 
 export default mongoose.models.Feature || mongoose.model('Feature', FeatureSchema);

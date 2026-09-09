@@ -17,8 +17,11 @@ const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.REVISION_REQUESTED,
 ];
 
-function assertAuthenticated(req) {
+function assertSubmitPermission(req) {
   if (!req.user) throwError('Unauthorized', 401);
+  if (!(req.permissions || []).includes('projects.submit')) {
+    throwError('You do not have permission to submit Forecast Packages.', 403);
+  }
 }
 
 function isSameId(left, right) {
@@ -63,7 +66,6 @@ function serializePackage(forecastPackage) {
 
 async function populateForecastPackageById(id) {
   return ForecastPackage.findById(id)
-    .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
     .populate('charts.activeEditors.user', 'firstName lastName email username')
     .populate('charts.claimedBy', 'firstName lastName email username')
@@ -73,10 +75,6 @@ async function populateForecastPackageById(id) {
     .populate('approvedBy', 'firstName lastName email username')
     .populate('rejectedBy', 'firstName lastName email username')
     .populate('auditLogs.performedBy', 'firstName lastName email username');
-}
-
-function canUserSubmitPackage(user) {
-  return user?.role === 'forecaster';
 }
 
 async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, session) {
@@ -116,7 +114,7 @@ async function lockLinkedChartProjects(forecastPackage, userId, previousStatus, 
 }
 
 export const submitForecastPackage = asyncHandler(async (req, res) => {
-  assertAuthenticated(req);
+  assertSubmitPermission(req);
 
   const session = await mongoose.startSession();
   let packageId = null;
@@ -125,13 +123,6 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
     await session.withTransaction(async () => {
       const forecastPackage = await ForecastPackage.findById(req.params.id, null, { session });
       if (!forecastPackage) throwError('Forecast Package not found', 404);
-
-      if (!canUserSubmitPackage(req.user)) {
-        throwError(
-          'Only the package owner or a participating forecaster can submit this package',
-          403
-        );
-      }
 
       if (!canSubmitPackage(forecastPackage.status)) {
         throwError(`Package cannot be submitted while it is ${forecastPackage.status}`, 403);
@@ -159,7 +150,7 @@ export const submitForecastPackage = asyncHandler(async (req, res) => {
         performedBy: req.user.id,
         previousStatus,
         newStatus: FORECAST_PACKAGE_STATUS.SUBMITTED,
-        comment: 'Forecast Package submitted for admin review',
+        comment: 'Forecast Package submitted for review',
       });
 
       await saveForecastPackageSnapshot(forecastPackage, {

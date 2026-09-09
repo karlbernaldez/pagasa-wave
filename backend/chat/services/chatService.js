@@ -37,16 +37,16 @@ Rules:
 `,
 };
 
-export const resolveChatTier = (user) => !user
-  ? 'public'
-  : user.role === 'admin'
-    ? 'admin'
-    : user.role === 'forecaster'
-      ? 'forecaster'
-      : null;
+export const resolveChatTier = (user, permissions = []) => {
+  if (!user) return 'public';
+  if (!permissions.includes('chat.use_internal')) return null;
+  if (permissions.includes('chat.admin_knowledge')) return 'admin';
+  if (permissions.includes('chat.forecaster_knowledge')) return 'forecaster';
+  return null;
+};
 
-export const buildChatRequest = async ({ user, model, messages }) => {
-  const tier = resolveChatTier(user);
+export const buildChatRequest = async ({ user, permissions = [], model, messages }) => {
+  const tier = resolveChatTier(user, permissions);
   if (!tier) throw new Error('Unauthorized chat tier');
 
   const policy = {
@@ -71,7 +71,9 @@ export const buildChatRequest = async ({ user, model, messages }) => {
     contextSection,
     sourceSection,
     '\nWhen citing documentation, mention the source names naturally in the answer.',
-  ].join('\n').trim();
+  ]
+    .join('\n')
+    .trim();
 
   return {
     tier,

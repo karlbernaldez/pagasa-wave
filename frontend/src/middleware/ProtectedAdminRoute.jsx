@@ -4,7 +4,7 @@ import OnlyAdminModal from '@/components/ui/modals/OnlyAdminModal';
 import { useAuth } from '@/hooks/useAuth';
 import { checkAuthSession } from '@/api/auth';
 
-const ProtectedAdminRoute = ({ children, requireAuth = true, onDeny }) => {
+const ProtectedAdminRoute = ({ children, requireAuth = true, onDeny, permission = null }) => {
   const { setIsLoggedIn } = useAuth();
   const [status, setStatus] = useState('loading');
   const [retryCount, setRetryCount] = useState(0);
@@ -29,7 +29,9 @@ const ProtectedAdminRoute = ({ children, requireAuth = true, onDeny }) => {
 
         if (authenticated && user) {
           setIsLoggedIn(true);
-          setStatus(user.role === 'admin' ? 'admin' : 'user');
+          const permissions = new Set(user.permissions || []);
+          const authorized = user.role === 'admin' || (permission && permissions.has(permission));
+          setStatus(authorized ? 'authorized' : 'user');
           return;
         }
 
@@ -45,7 +47,7 @@ const ProtectedAdminRoute = ({ children, requireAuth = true, onDeny }) => {
     return () => {
       cancelled = true;
     };
-  }, [retryCount, setIsLoggedIn]);
+  }, [permission, retryCount, setIsLoggedIn]);
 
   if (status === 'loading') return null;
 

@@ -5,6 +5,7 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import ProtectedAdminRoute from '@/middleware/ProtectedAdminRoute';
 import { AdminDashboardProvider } from '@dashboards/admin/context/AdminDashboardContext';
 import {
+  ADMIN_PERMISSION_BY_TAB,
   ADMIN_TABS,
   PAGE_META,
   getAdminRouteForTab,
@@ -45,7 +46,7 @@ function AdminDashboardLayoutContent() {
       localStorage.setItem(TAB_STORAGE_KEY, tab);
       navigate(search ? `${route}?${search}` : route, { replace: false });
     },
-    [navigate, searchParams],
+    [navigate, searchParams]
   );
 
   useEffect(() => {
@@ -64,9 +65,7 @@ function AdminDashboardLayoutContent() {
   }, [activeTab]);
 
   useEffect(() => {
-    document.title = activeMeta?.title
-      ? `WaveLab – ${activeMeta.title}`
-      : 'WaveLab – Dashboard';
+    document.title = activeMeta?.title ? `WaveLab – ${activeMeta.title}` : 'WaveLab – Dashboard';
   }, [activeMeta]);
 
   const toggleMobileMenu = useCallback(() => setIsMobileOpen((p) => !p), []);
@@ -79,7 +78,7 @@ function AdminDashboardLayoutContent() {
       isDarkMode,
       setActiveTab,
     }),
-    [activeMeta, activeTab, isDarkMode, setActiveTab],
+    [activeMeta, activeTab, isDarkMode, setActiveTab]
   );
 
   return (
@@ -103,8 +102,12 @@ function AdminDashboardLayoutContent() {
 }
 
 export default function AdminRouteLayout() {
+  const location = useLocation();
+  const activeTab = getAdminTabForPath(location.pathname);
+  const permission = ADMIN_PERMISSION_BY_TAB[activeTab] ?? null;
+
   return (
-    <ProtectedAdminRoute requireAuth>
+    <ProtectedAdminRoute requireAuth permission={permission}>
       <AdminDashboardLayoutContent />
     </ProtectedAdminRoute>
   );

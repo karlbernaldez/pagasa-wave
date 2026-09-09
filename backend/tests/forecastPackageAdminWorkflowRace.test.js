@@ -5,6 +5,7 @@ const ADMIN_ID = 'admin-1';
 const PACKAGE_ID = 'package-1';
 const UPDATED_AT = new Date('2026-08-12T04:00:00.000Z');
 const CHART_TYPES = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
+const ADMIN_WORKFLOW_PERMISSIONS = ['projects.review', 'projects.approve', 'projects.publish'];
 
 function createPackage(status) {
   let guardedConditions = null;
@@ -74,6 +75,7 @@ function request(body = {}) {
     body,
     query: {},
     user: { id: ADMIN_ID, role: 'admin' },
+    permissions: ADMIN_WORKFLOW_PERMISSIONS,
   };
 }
 

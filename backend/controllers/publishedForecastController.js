@@ -6,11 +6,25 @@ import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 import { formatLocalDateKey } from '../utils/forecastPackage.js';
+import { canAccessProject } from '../utils/forecastPackageAccess.js';
 
 const DEFAULT_RASTER_BOUNDS = [100, -5, 180, 50];
 const DEFAULT_MODEL_RUN_HOUR = 18;
 const DEFAULT_MODEL_RUN_DAY_OFFSET = -1;
-const MONTH_TOKENS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const MONTH_TOKENS = [
+  'JAN',
+  'FEB',
+  'MAR',
+  'APR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AUG',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DEC',
+];
 const WW3_FORECAST_OFFSETS = Object.freeze({
   analysis: { days: -1, hour: '18' },
   forecast_24h: { days: 0, hour: '18' },
@@ -18,14 +32,12 @@ const WW3_FORECAST_OFFSETS = Object.freeze({
   forecast_48h: { days: 1, hour: '18' },
 });
 
-function getProjectOwnerId(project) {
-  return String(project?.owner?._id || project?.owner || '');
-}
-
-function canViewPublishedForecast(project, user) {
-  if (!project || !user) return false;
-  if (user.role === 'admin') return true;
-  return getProjectOwnerId(project) === String(user.id);
+export function canArchivePublishedForecast(permissions = [], status) {
+  return (
+    Array.isArray(permissions) &&
+    permissions.includes('projects.review') &&
+    status === PROJECT_STATUS.PUBLISHED
+  );
 }
 
 function assertValidProjectId(projectId) {
@@ -35,7 +47,12 @@ function assertValidProjectId(projectId) {
 }
 
 function getStableFeatureId(feature) {
-  return feature?.properties?.stableId || feature?.properties?.annotationId || feature?.properties?.sourceId || feature?.sourceId;
+  return (
+    feature?.properties?.stableId ||
+    feature?.properties?.annotationId ||
+    feature?.properties?.sourceId ||
+    feature?.sourceId
+  );
 }
 
 function toFeatureSnapshot(feature) {
@@ -59,7 +76,11 @@ function getPublishedVersion(project) {
   const versions = Array.isArray(project?.versions) ? project.versions : [];
   return [...versions]
     .reverse()
-    .find((version) => version?.reason === 'publish' && (version.featureCollection || version.snapshot || version.raster));
+    .find(
+      (version) =>
+        version?.reason === 'publish' &&
+        (version.featureCollection || version.snapshot || version.raster)
+    );
 }
 
 function getPublishedFeatureCollectionFromVersions(project) {
@@ -119,11 +140,18 @@ function padDatePart(value) {
 }
 
 function normalizeChartType(chartType = '') {
-  return String(chartType).trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return String(chartType)
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
 }
 
 function normalizeRasterTheme(value) {
-  return String(value || '').trim().toLowerCase() === 'dark' ? 'dark' : 'light';
+  return String(value || '')
+    .trim()
+    .toLowerCase() === 'dark'
+    ? 'dark'
+    : 'light';
 }
 
 function formatForecastDateToken(value) {
@@ -172,10 +200,12 @@ function getNumberSetting(asset, key, envName, fallback) {
 }
 
 function getChartRunDefaults(chartType) {
-  return WW3_FORECAST_OFFSETS[normalizeChartType(chartType)] || {
-    days: DEFAULT_MODEL_RUN_DAY_OFFSET,
-    hour: padDatePart(DEFAULT_MODEL_RUN_HOUR),
-  };
+  return (
+    WW3_FORECAST_OFFSETS[normalizeChartType(chartType)] || {
+      days: DEFAULT_MODEL_RUN_DAY_OFFSET,
+      hour: padDatePart(DEFAULT_MODEL_RUN_HOUR),
+    }
+  );
 }
 
 function resolveCogRaster(project, { theme = 'light' } = {}) {
@@ -191,7 +221,12 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
     : getNumberSetting(asset, 'runHour', 'PUBLIC_WAVE_MODEL_RUN_HOUR', chartDefaults.hour);
   const runDayOffset = isWw3Raster
     ? chartDefaults.days
-    : getNumberSetting(asset, 'runDayOffset', 'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET', chartDefaults.days);
+    : getNumberSetting(
+        asset,
+        'runDayOffset',
+        'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET',
+        chartDefaults.days
+      );
   const runDate = isWw3Raster
     ? shiftDateToken(forecastDate, runDayOffset)
     : asset.runDate || shiftDateToken(forecastDate, runDayOffset);
@@ -213,15 +248,27 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
     cycle: runHourToken,
   };
 
-  const defaultTileTemplate = process.env.NODE_ENV === 'production'
-    ? '/wavetiles/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png'
-    : 'http://127.0.0.1:8081/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png';
-  const cogUrl = asset.cogUrl || asset.url || interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
-  const directTileUrl = asset.tileUrl || interpolateTemplate(process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultTileTemplate, tokenValues);
-  const cogTileTemplate = process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
-  const tileUrl = directTileUrl || (cogUrl && cogTileTemplate
-    ? interpolateTemplate(cogTileTemplate, { ...tokenValues, cogUrl, url: cogUrl })
-    : '');
+  const defaultTileTemplate =
+    process.env.NODE_ENV === 'production'
+      ? '/wavetiles/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png'
+      : 'http://127.0.0.1:8081/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png';
+  const cogUrl =
+    asset.cogUrl ||
+    asset.url ||
+    interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
+  const directTileUrl =
+    asset.tileUrl ||
+    interpolateTemplate(
+      process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultTileTemplate,
+      tokenValues
+    );
+  const cogTileTemplate =
+    process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
+  const tileUrl =
+    directTileUrl ||
+    (cogUrl && cogTileTemplate
+      ? interpolateTemplate(cogTileTemplate, { ...tokenValues, cogUrl, url: cogUrl })
+      : '');
 
   if (!tileUrl) return null;
 
@@ -243,9 +290,13 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
   };
 }
 
-async function buildPublishedForecastPayload(project, { canArchive = false, theme = 'light', publicSafe = false } = {}) {
+async function buildPublishedForecastPayload(
+  project,
+  { canArchive = false, theme = 'light', publicSafe = false } = {}
+) {
   const versionFeatureCollection = getPublishedFeatureCollectionFromVersions(project);
-  const featureCollection = versionFeatureCollection || await getCurrentFeatureCollection(project._id);
+  const featureCollection =
+    versionFeatureCollection || (await getCurrentFeatureCollection(project._id));
 
   return {
     project: publicSafe ? getPublicProjectPayload(project) : getPublishedProjectPayload(project),
@@ -270,7 +321,9 @@ async function findPublicPublishedProject(projectId) {
   const project = await Project.findOne({
     _id: projectId,
     status: PROJECT_STATUS.PUBLISHED,
-  }).select('name description chartType forecastDate status publishedAt updatedAt publishedRaster raster versions');
+  }).select(
+    'name description chartType forecastDate status publishedAt updatedAt publishedRaster raster versions'
+  );
 
   if (!project) {
     throwError('Published chart not found. Archived charts require an access request.', 404);
@@ -282,10 +335,12 @@ async function findPublicPublishedProject(projectId) {
 async function findPublishedProject(projectId) {
   assertValidProjectId(projectId);
 
-  const project = await populatePublishedProject(Project.findOne({
-    _id: projectId,
-    status: { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] },
-  }));
+  const project = await populatePublishedProject(
+    Project.findOne({
+      _id: projectId,
+      status: { $in: [PROJECT_STATUS.PUBLISHED, PROJECT_STATUS.ARCHIVED] },
+    })
+  );
 
   if (!project) {
     throwError('Published forecast not found', 404);
@@ -334,7 +389,9 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
 
   const [projects, total] = await Promise.all([
     Project.find(query)
-      .select('name description chartType forecastDate status publishedAt updatedAt publishedRaster raster versions')
+      .select(
+        'name description chartType forecastDate status publishedAt updatedAt publishedRaster raster versions'
+      )
       .sort({ forecastDate: -1, publishedAt: -1, updatedAt: -1, _id: -1 })
       .skip(skip)
       .limit(limit)
@@ -343,7 +400,10 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
   ]);
 
   res.json({
-    projects: projects.map((project) => ({ ...getPublicProjectPayload(project), raster: resolveCogRaster(project, { theme }) })),
+    projects: projects.map((project) => ({
+      ...getPublicProjectPayload(project),
+      raster: resolveCogRaster(project, { theme }),
+    })),
     total,
     page,
     limit,
@@ -355,17 +415,28 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
 
 export const getPublicPublishedForecastOutput = asyncHandler(async (req, res) => {
   const project = await findPublicPublishedProject(req.params.id);
-  res.json(await buildPublishedForecastPayload(project, { publicSafe: true, theme: normalizeRasterTheme(req.query.theme) }));
+  res.json(
+    await buildPublishedForecastPayload(project, {
+      publicSafe: true,
+      theme: normalizeRasterTheme(req.query.theme),
+    })
+  );
 });
 
 export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
   const project = await findPublishedProject(req.params.id);
+  const permissions = req.permissions || [];
 
-  if (!canViewPublishedForecast(project, req.user)) {
+  if (!(await canAccessProject(req.user, project, permissions))) {
     throwError('You do not have access to this published forecast', 403);
   }
 
-  res.json(await buildPublishedForecastPayload(project, { canArchive: req.user.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED, theme: normalizeRasterTheme(req.query.theme) }));
+  res.json(
+    await buildPublishedForecastPayload(project, {
+      canArchive: canArchivePublishedForecast(permissions, project.status),
+      theme: normalizeRasterTheme(req.query.theme),
+    })
+  );
 });

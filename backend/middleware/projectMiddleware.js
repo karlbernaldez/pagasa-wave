@@ -16,9 +16,9 @@ const isOwnerOrAdmin = async (req, res, next) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const hasAccess = await canAccessProject(req.user, project);
+    const hasAccess = await canAccessProject(req.user, project, req.permissions || []);
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Access denied. Not the owner, admin, or assigned forecast package chart forecaster.' });
+      return res.status(403).json({ message: 'Access denied for this project.' });
     }
 
     req.project = project;

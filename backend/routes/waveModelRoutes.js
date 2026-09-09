@@ -12,6 +12,7 @@ import {
   updateWaveModelRuntimeProfile,
   updateWaveModelSourceCyclePolicy,
 } from '../controllers/waveModelController.js';
+import { requirePermission } from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
 
@@ -32,14 +33,39 @@ const builderTriggerLimiter = rateLimit({
 });
 
 router.use(managementLimiter);
-router.get('/', listWaveModels);
-router.post('/', addWaveModel);
-router.patch('/:code/availability', updateWaveModelAvailability);
-router.patch('/:code/runtime-profile', updateWaveModelRuntimeProfile);
-router.get('/:code/source-cycle-policy', getWaveModelSourceCyclePolicy);
-router.patch('/:code/source-cycle-policy', updateWaveModelSourceCyclePolicy);
-router.post('/:code/run-builder', builderTriggerLimiter, runWaveModelBuilder);
-router.delete('/:code/packages/:packageTag', removeWaveModelPackage);
-router.delete('/:code', deleteWaveModelConfiguration);
+router.get('/', requirePermission('wave_models.view'), listWaveModels);
+router.post('/', requirePermission('wave_models.manage'), addWaveModel);
+router.patch(
+  '/:code/availability',
+  requirePermission('wave_models.manage'),
+  updateWaveModelAvailability
+);
+router.patch(
+  '/:code/runtime-profile',
+  requirePermission('wave_models.manage'),
+  updateWaveModelRuntimeProfile
+);
+router.get(
+  '/:code/source-cycle-policy',
+  requirePermission('wave_models.view'),
+  getWaveModelSourceCyclePolicy
+);
+router.patch(
+  '/:code/source-cycle-policy',
+  requirePermission('wave_models.manage'),
+  updateWaveModelSourceCyclePolicy
+);
+router.post(
+  '/:code/run-builder',
+  requirePermission('wave_models.run_builder'),
+  builderTriggerLimiter,
+  runWaveModelBuilder
+);
+router.delete(
+  '/:code/packages/:packageTag',
+  requirePermission('wave_models.delete_package'),
+  removeWaveModelPackage
+);
+router.delete('/:code', requirePermission('wave_models.manage'), deleteWaveModelConfiguration);
 
 export default router;

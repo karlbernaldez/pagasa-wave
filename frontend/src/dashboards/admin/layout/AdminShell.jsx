@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { ChevronDown, ChevronUp, Settings } from 'lucide-react';
 
 import {
+  ADMIN_PERMISSION_BY_TAB,
   ADMIN_ROUTE_BY_TAB,
   ADMIN_TABS,
   MENU_GROUPS,
@@ -24,63 +26,77 @@ const ACCOUNT_ITEM = {
 const expandableIcon = (isExpanded) =>
   isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />;
 
-const enhanceAdminItem = (item) => {
+const canAccessTab = (rawUser, tab) => {
+  if (rawUser?.role === 'admin') return true;
+  const permission = ADMIN_PERMISSION_BY_TAB[tab];
+  if (!permission) return false;
+  return new Set(rawUser?.permissions || []).has(permission);
+};
+
+const enhanceAdminItem = (item, rawUser) => {
   if (item.id === ADMIN_TABS.WAVE_MODELS) {
+    const children = [
+      {
+        id: ADMIN_TABS.WAVE_MODELS,
+        label: 'Models',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODELS],
+      },
+      {
+        id: ADMIN_TABS.WAVE_PIPELINE,
+        label: 'Pipeline',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_PIPELINE],
+      },
+      {
+        id: ADMIN_TABS.WAVE_MODEL_ONBOARDING,
+        label: 'Onboarding',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODEL_ONBOARDING],
+      },
+    ].filter((child) => canAccessTab(rawUser, child.id));
+
+    if (!children.length) return null;
+
     return {
       ...item,
       isActive: (activeId) => WAVE_MODEL_TABS.includes(activeId),
       isExpanded: (activeId) => WAVE_MODEL_TABS.includes(activeId),
       expandIcon: expandableIcon,
-      children: [
-        {
-          id: ADMIN_TABS.WAVE_MODELS,
-          label: 'Models',
-          path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODELS],
-        },
-        {
-          id: ADMIN_TABS.WAVE_PIPELINE,
-          label: 'Pipeline',
-          path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_PIPELINE],
-        },
-        {
-          id: ADMIN_TABS.WAVE_MODEL_ONBOARDING,
-          label: 'Onboarding',
-          path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODEL_ONBOARDING],
-        },
-      ],
+      children,
     };
   }
 
   if (item.id === ADMIN_TABS.USERS) {
+    const children = [
+      {
+        id: ADMIN_TABS.USERS_LIST,
+        label: 'User List',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_LIST],
+      },
+      {
+        id: ADMIN_TABS.USERS_ROLES,
+        label: 'Roles',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_ROLES],
+      },
+    ].filter((child) => canAccessTab(rawUser, child.id));
+
+    if (!children.length) return null;
+
     return {
       ...item,
       isActive: (activeId) => USER_TABS.includes(activeId),
       isExpanded: (activeId) => USER_TABS.includes(activeId),
       expandIcon: expandableIcon,
-      children: [
-        {
-          id: ADMIN_TABS.USERS_LIST,
-          label: 'User List',
-          path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_LIST],
-        },
-        {
-          id: ADMIN_TABS.USERS_ROLES,
-          label: 'Roles',
-          path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_ROLES],
-        },
-      ],
+      children,
     };
   }
 
-  return item;
+  return canAccessTab(rawUser, item.id) ? item : null;
 };
 
-const adminSidebarGroups = MENU_GROUPS.map((group) => ({
-  ...group,
-  items: group.items.map(enhanceAdminItem),
-}));
-
-const ADMIN_USER_OPTIONS = { roleOverride: 'Administrator' };
+const buildAdminSidebarGroups = (rawUser) =>
+  MENU_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.map((item) => enhanceAdminItem(item, rawUser)).filter(Boolean),
+  })).filter((group) => group.items.length > 0);
 
 const AdminShell = ({
   activeMeta,
@@ -95,7 +111,8 @@ const AdminShell = ({
   setIsMobileOpen,
   setIsSidebarCollapsed,
 }) => {
-  const { user } = useCurrentDashboardUser(null, ADMIN_USER_OPTIONS);
+  const { user, rawUser } = useCurrentDashboardUser();
+  const adminSidebarGroups = useMemo(() => buildAdminSidebarGroups(rawUser), [rawUser]);
 
   return (
     <DashboardShell
@@ -112,12 +129,12 @@ const AdminShell = ({
       sidebar={{
         groups: adminSidebarGroups,
         utilityItems: [ACCOUNT_ITEM],
-        label: 'Administration',
+        label: rawUser?.role === 'admin' ? 'Administration' : 'Workspace',
       }}
       header={{
         accountSettingsPath: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ACCOUNT],
         description: activeMeta?.description,
-        eyebrow: 'Admin Dashboard',
+        eyebrow: rawUser?.role === 'admin' ? 'Admin Dashboard' : 'WaveLab Workspace',
         title: activeMeta?.title ?? 'Dashboard Overview',
         user,
       }}
