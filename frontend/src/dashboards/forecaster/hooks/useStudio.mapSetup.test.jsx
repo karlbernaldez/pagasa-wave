@@ -37,7 +37,13 @@ function deferred() {
 function waveFeature(id) {
   return {
     sourceId: id,
-    geometry: { type: 'LineString', coordinates: [[120, 15], [121, 16]] },
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [120, 15],
+        [121, 16],
+      ],
+    },
     properties: { project: 'project-1', type: 'Wave Height', labelValue: '2' },
   };
 }
