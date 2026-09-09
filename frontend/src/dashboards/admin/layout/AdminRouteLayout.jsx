@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import ProtectedAdminRoute from '@/middleware/ProtectedAdminRoute';
+import ProtectedRoute from '@/middleware/ProtectedRoute';
 import { AdminDashboardProvider } from '@dashboards/admin/context/AdminDashboardContext';
 import {
   ADMIN_PERMISSION_BY_TAB,
@@ -107,8 +107,8 @@ export default function AdminRouteLayout() {
   const permission = ADMIN_PERMISSION_BY_TAB[activeTab] ?? null;
 
   return (
-    <ProtectedAdminRoute requireAuth permission={permission}>
+    <ProtectedRoute requireAuth permission={permission} deniedRedirect="/">
       <AdminDashboardLayoutContent />
-    </ProtectedAdminRoute>
+    </ProtectedRoute>
   );
 }

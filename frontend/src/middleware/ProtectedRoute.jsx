@@ -4,7 +4,9 @@ import { Navigate } from 'react-router-dom';
 import { checkAuthSession } from '@/api/auth';
 import { useAuth } from '@/hooks/useAuth';
 import {
+  hasAnyEffectivePermission,
   hasEffectivePermission,
+  hasEveryEffectivePermission,
   resolveAuthenticatedLandingPath,
 } from '@/core/auth/resolveLandingPath';
 import LoadingScreen from '@/components/ui/LoadingScreen';
@@ -13,7 +15,11 @@ const ProtectedRoute = ({
   children,
   requireAuth = true,
   redirectTo = '/login',
-  authenticatedRedirect = '/studio',
+  authenticatedRedirect = '/',
+  permission = null,
+  requireAll = [],
+  requireAny = [],
+  deniedRedirect = '/',
 }) => {
   const { setIsLoggedIn, setRole } = useAuth();
   const [retryCount, setRetryCount] = useState(0);
@@ -99,8 +105,13 @@ const ProtectedRoute = ({
 
   if (!apiState.isAuthenticated) return <Navigate to={redirectTo} replace />;
 
-  if (!hasEffectivePermission(apiState.user, 'studio.view')) {
-    return <Navigate to={resolveAuthenticatedLandingPath(apiState.user, '/')} replace />;
+  const allowedByPermission = !permission || hasEffectivePermission(apiState.user, permission);
+  const allowedByAll = !requireAll.length || hasEveryEffectivePermission(apiState.user, requireAll);
+  const allowedByAny = !requireAny.length || hasAnyEffectivePermission(apiState.user, requireAny);
+
+  if (!allowedByPermission || !allowedByAll || !allowedByAny) {
+    const fallback = resolveAuthenticatedLandingPath(apiState.user, deniedRedirect);
+    return <Navigate to={fallback} replace />;
   }
 
   return children;

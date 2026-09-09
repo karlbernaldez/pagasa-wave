@@ -27,7 +27,6 @@ const expandableIcon = (isExpanded) =>
   isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />;
 
 const canAccessTab = (rawUser, tab) => {
-  if (rawUser?.role === 'admin') return true;
   const permission = ADMIN_PERMISSION_BY_TAB[tab];
   if (!permission) return false;
   return new Set(rawUser?.permissions || []).has(permission);
@@ -73,7 +72,7 @@ const enhanceAdminItem = (item, rawUser) => {
       },
       {
         id: ADMIN_TABS.USERS_ROLES,
-        label: 'Roles',
+        label: 'User Types & Permissions',
         path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_ROLES],
       },
     ].filter((child) => canAccessTab(rawUser, child.id));
@@ -129,12 +128,12 @@ const AdminShell = ({
       sidebar={{
         groups: adminSidebarGroups,
         utilityItems: [ACCOUNT_ITEM],
-        label: rawUser?.role === 'admin' ? 'Administration' : 'Workspace',
+        label: 'Workspace',
       }}
       header={{
         accountSettingsPath: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ACCOUNT],
         description: activeMeta?.description,
-        eyebrow: rawUser?.role === 'admin' ? 'Admin Dashboard' : 'WaveLab Workspace',
+        eyebrow: 'WaveLab Workspace',
         title: activeMeta?.title ?? 'Dashboard Overview',
         user,
       }}

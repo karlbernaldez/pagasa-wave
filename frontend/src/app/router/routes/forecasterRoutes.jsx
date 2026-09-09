@@ -15,7 +15,14 @@ export default [
   {
     element: <ForecasterRouteLayout />,
     children: [
-      { path: '/studio', element: <ProjectLibraryPage /> },
+      {
+        path: '/studio',
+        element: (
+          <ProtectedRoute requireAuth permission="studio.view">
+            <ProjectLibraryPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         element: <AccountLayout />,
         children: [
@@ -36,7 +43,7 @@ export default [
       {
         path: '/studio/:projectId',
         element: (
-          <ProtectedRoute requireAuth={true}>
+          <ProtectedRoute requireAuth permission="studio.view">
             <Studio />
           </ProtectedRoute>
         ),

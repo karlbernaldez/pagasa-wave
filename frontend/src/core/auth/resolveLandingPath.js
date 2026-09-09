@@ -1,6 +1,7 @@
-const ADMIN_LANDING_ROUTES = Object.freeze([
+const PERMISSION_LANDING_ROUTES = Object.freeze([
   ['dashboard.view', '/dashboard'],
-  ['projects.review', '/dashboard/review'],
+  ['forecast.review', '/dashboard/review'],
+  ['studio.view', '/studio'],
   ['wave_models.manage', '/dashboard/wave-models'],
   ['wave_pipeline.view', '/dashboard/wave-models/pipeline'],
   ['model_onboarding.view', '/dashboard/wave-models/onboard'],
@@ -14,18 +15,20 @@ export function hasEffectivePermission(user, permission) {
   return Array.isArray(user?.permissions) && user.permissions.includes(permission);
 }
 
+export function hasEveryEffectivePermission(user, permissions = []) {
+  return permissions.every((permission) => hasEffectivePermission(user, permission));
+}
+
+export function hasAnyEffectivePermission(user, permissions = []) {
+  return permissions.some((permission) => hasEffectivePermission(user, permission));
+}
+
 export function resolveAuthenticatedLandingPath(user, fallback = '/') {
   if (!user) return fallback;
 
-  if (user.role === 'admin') return '/dashboard';
-
-  // Studio remains the primary operational workspace for forecaster-style custom user types.
-  if (hasEffectivePermission(user, 'studio.view')) return '/studio';
-
-  const adminRoute = ADMIN_LANDING_ROUTES.find(([permission]) =>
+  const route = PERMISSION_LANDING_ROUTES.find(([permission]) =>
     hasEffectivePermission(user, permission)
   );
-  if (adminRoute) return adminRoute[1];
 
-  return user.role === 'user' ? '/' : fallback;
+  return route?.[1] ?? fallback;
 }

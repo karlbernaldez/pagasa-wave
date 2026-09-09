@@ -1,36 +1,61 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveAuthenticatedLandingPath } from './resolveLandingPath';
+import {
+  hasAnyEffectivePermission,
+  hasEffectivePermission,
+  hasEveryEffectivePermission,
+  resolveAuthenticatedLandingPath,
+} from './resolveLandingPath';
 
-describe('resolveAuthenticatedLandingPath', () => {
-  it('keeps built-in administrators on the admin dashboard', () => {
-    expect(
-      resolveAuthenticatedLandingPath({
-        role: 'admin',
-        permissions: ['studio.view', 'projects.review', 'dashboard.view'],
-      })
-    ).toBe('/dashboard');
+const user = (role, permissions = []) => ({ role, permissions });
+
+describe('permission-driven frontend authorization helpers', () => {
+  it('ignores User Type names when evaluating a permission', () => {
+    const roles = ['admin', 'forecaster', 'duty_reviewer', 'shift-lead', 'marine_ops'];
+
+    for (const role of roles) {
+      const withReview = user(role, ['forecast.review']);
+      const withoutReview = user(role, []);
+
+      expect(hasEffectivePermission(withReview, 'forecast.review')).toBe(true);
+      expect(hasEffectivePermission(withoutReview, 'forecast.review')).toBe(false);
+    }
   });
 
-  it('keeps combined forecaster-reviewer user types in Studio as their primary workspace', () => {
-    expect(
-      resolveAuthenticatedLandingPath({
-        role: 'forecaster_reviewer',
-        permissions: ['studio.view', 'studio.edit', 'projects.review'],
-      })
-    ).toBe('/studio');
+  it('supports all-of and any-of permission checks without role shortcuts', () => {
+    const reviewer = user('custom-reviewer', ['forecast.view', 'forecast.review']);
+    const required = ['forecast.view', 'forecast.review'];
+    const missingApprove = ['forecast.review', 'forecast.approve'];
+    const anyReview = ['forecast.approve', 'forecast.review'];
+
+    expect(hasEveryEffectivePermission(reviewer, required)).toBe(true);
+    expect(hasEveryEffectivePermission(reviewer, missingApprove)).toBe(false);
+    expect(hasAnyEffectivePermission(reviewer, anyReview)).toBe(true);
+    expect(hasAnyEffectivePermission(user('admin', []), ['forecast.review'])).toBe(false);
   });
 
-  it('sends reviewer-only user types to the forecast review workspace', () => {
-    expect(
-      resolveAuthenticatedLandingPath({
-        role: 'reviewer',
-        permissions: ['projects.review'],
-      })
-    ).toBe('/dashboard/review');
+  it('sends a reviewer-only custom User Type to the review workspace', () => {
+    const reviewer = user('duty_reviewer', ['forecast.review']);
+    const landing = resolveAuthenticatedLandingPath(reviewer, '/');
+
+    expect(landing).toBe('/dashboard/review');
   });
 
-  it('sends basic registered users to the public landing page', () => {
-    expect(resolveAuthenticatedLandingPath({ role: 'user', permissions: [] })).toBe('/');
+  it('sends a Studio-capable arbitrary User Type to Studio', () => {
+    const studioUser = user('anything', ['studio.view']);
+
+    expect(resolveAuthenticatedLandingPath(studioUser, '/')).toBe('/studio');
+  });
+
+  it('does not grant an admin-named User Type a landing route without permissions', () => {
+    expect(resolveAuthenticatedLandingPath(user('admin', []), '/')).toBe('/');
+  });
+
+  it('uses permission priority rather than role priority', () => {
+    const combined = user('forecaster', ['dashboard.view', 'forecast.review', 'studio.view']);
+    const reviewer = user('admin', ['forecast.review', 'studio.view']);
+
+    expect(resolveAuthenticatedLandingPath(combined, '/')).toBe('/dashboard');
+    expect(resolveAuthenticatedLandingPath(reviewer, '/')).toBe('/dashboard/review');
   });
 });
