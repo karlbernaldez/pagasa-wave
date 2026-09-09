@@ -1,60 +1,80 @@
 # WaveLab Glossary
 
+For the canonical distinction between Forecast, Forecast Package, Forecast Chart, Studio, and the internal Project persistence model, see `docs/domain/forecast-terminology.md`.
+
 ## Forecast Workflow Terms
+
+### Forecast
+Definition:
+The overall WaveLab operational domain for preparing, reviewing, approving, publishing, and archiving marine forecast products.
+
+### Forecast Package
+Definition:
+A complete forecast production set for a forecast date or cycle containing the required Forecast Charts and carrying the package-level workflow state.
+
+### Forecast Chart
+Definition:
+One operational chart or forecast product inside a Forecast Package, such as Wave Analysis, 24-hour Wave Forecast, 36-hour Wave Forecast, or 48-hour Wave Forecast.
+
+Implementation note:
+A Forecast Chart is currently backed internally by the existing `Project` persistence model.
 
 ### Draft
 Definition:
-A project that is still being prepared and can be edited by the Forecaster.
+A Forecast Package that is still being prepared and may be edited by users with the required permissions.
 
 ### Submitted
 Definition:
-A project that has been sent for Admin review and is no longer editable by the Forecaster.
+A Forecast Package that has been sent for review and is no longer in ordinary editing state until the workflow permits revision.
 
 ### Under Review
 Definition:
-A project currently being reviewed by an Admin.
+A Forecast Package currently being evaluated by a user with review permission.
 
 ### Revision Requested
 Definition:
-A project returned to the Forecaster for required changes.
+A Forecast Package returned for required changes before it can proceed through review again.
 
 ### Approved
 Definition:
-A project that passed review and is ready for publication.
+A Forecast Package that passed the approval step and is eligible for publication subject to publication permission and workflow rules.
 
 ### Rejected
 Definition:
-A project that did not pass review.
+A Forecast Package that did not pass review and cannot proceed to approval or publication in its current workflow instance.
 
 ### Published
 Definition:
-A finalized forecast product that is no longer editable.
+A finalized Forecast Package released through the approved publication workflow and no longer ordinarily editable.
 
 ### Archived
 Definition:
-A stored project retained for history and no longer actively edited.
+A Forecast Package retained for history or records purposes and no longer active in the normal forecast-production workflow.
 
 ## Platform Terms
 
-### Project Library
-Definition:
-The area where users manage forecast chart projects.
-
 ### Studio
 Definition:
-The interactive map editing workspace used for creating and editing project annotations.
+The interactive map workspace used to inspect or edit a Forecast Chart, including forecast layers, annotations, drawing tools, labels, and related chart-editing controls.
 
-### Review Modal
+### Project
 Definition:
-The Admin review interface used to inspect, compare, and evaluate projects.
+An internal persistence and implementation concept currently used to store an individual Forecast Chart.
+
+Usage note:
+Project is retained for internal compatibility during migration and should not be used as the preferred user-facing workflow term.
+
+### Review Queue
+Definition:
+The shared workspace where users with forecast review permission access Forecast Packages awaiting review or related review actions.
 
 ### Preview Mode
 Definition:
-A review mode showing the current project state.
+A review mode showing the current Forecast Chart state.
 
 ### Diff Mode
 Definition:
-A comparison mode showing differences between project versions.
+A comparison mode showing differences between Forecast Chart versions.
 
 ### Annotation
 Definition:
@@ -88,7 +108,7 @@ A finalized forecast chart or operational output prepared for publication.
 
 ### Review Remark
 Definition:
-A comment added by an Admin during review to explain a decision or request changes.
+A reviewer comment used to document an observation, decision, or requested change during Forecast Package or Forecast Chart review.
 
 ## Chatbot Guidance Terms
 
