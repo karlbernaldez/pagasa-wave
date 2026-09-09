@@ -187,7 +187,9 @@ describe('ForecastPackageCard', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
 
-    const continueReview = within(dialog).getByText(/^continue review$/i).closest('button');
+    const continueReview = within(dialog)
+      .getByText(/^continue review$/i)
+      .closest('button');
     fireEvent.click(continueReview);
     expect(handlers.onOpenChart).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'Under Review' }),

@@ -343,7 +343,10 @@ export default function ForecastPackageCard({
               >
                 {dateLabel}
               </h3>
-              <p className="truncate text-xs font-semibold text-slate-500" title={forecastPackage.title}>
+              <p
+                className="truncate text-xs font-semibold text-slate-500"
+                title={forecastPackage.title}
+              >
                 {forecastPackage.title}
               </p>
             </div>
