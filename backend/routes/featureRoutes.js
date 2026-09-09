@@ -17,6 +17,7 @@ import protect from '../middleware/authMiddleware.js';
 import { authenticateToken } from '../middleware/authenticateToken.js';
 import { requirePermission } from '../middleware/permissionMiddleware.js';
 import { isOwnerOrAdmin, isFeatureOwnerOrAdmin } from '../middleware/featuresMiddleware.js';
+import { auditAnnotationMutation } from '../middleware/annotationAuditMiddleware.js';
 import { lockFeatureProjectMutation } from '../middleware/projectMutationLockMiddleware.js';
 
 const router = express.Router();
@@ -28,6 +29,7 @@ router.post(
   requirePermission('studio.edit'),
   authenticateToken,
   lockFeatureProjectMutation,
+  auditAnnotationMutation('created'),
   createFeature
 );
 router.get(
@@ -70,6 +72,7 @@ router.delete(
   requirePermission('studio.edit'),
   isFeatureOwnerOrAdmin,
   lockFeatureProjectMutation,
+  auditAnnotationMutation('deleted'),
   deleteFeature
 );
 router.patch(
@@ -77,6 +80,7 @@ router.patch(
   requirePermission('studio.edit'),
   isFeatureOwnerOrAdmin,
   lockFeatureProjectMutation,
+  auditAnnotationMutation('moved'),
   updateFeatureCoordinates
 );
 router.patch(
@@ -84,6 +88,7 @@ router.patch(
   requirePermission('studio.edit'),
   isFeatureOwnerOrAdmin,
   lockFeatureProjectMutation,
+  auditAnnotationMutation('styled'),
   updateFeatureStyle
 );
 router.patch(
@@ -91,6 +96,7 @@ router.patch(
   requirePermission('studio.edit'),
   isFeatureOwnerOrAdmin,
   lockFeatureProjectMutation,
+  auditAnnotationMutation('renamed'),
   updateFeatureName
 );
 
