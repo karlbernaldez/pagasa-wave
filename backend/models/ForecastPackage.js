@@ -196,7 +196,9 @@ const ForecastPackageSchema = new Schema(
 
           if (uniqueChartTypes.size !== REQUIRED_FORECAST_CHART_TYPES.length) return false;
 
-          return REQUIRED_FORECAST_CHART_TYPES.every((chartType) => uniqueChartTypes.has(chartType));
+          return REQUIRED_FORECAST_CHART_TYPES.every((chartType) =>
+            uniqueChartTypes.has(chartType)
+          );
         },
         message:
           'Forecast Package must include exactly one project for each required forecast chart type.',
@@ -235,4 +237,5 @@ ForecastPackageSchema.index({ status: 1, updatedAt: -1 });
 ForecastPackageSchema.index({ forecastDate: -1, updatedAt: -1 });
 ForecastPackageSchema.index({ 'charts.project': 1 });
 
-export default mongoose.models.ForecastPackage || mongoose.model('ForecastPackage', ForecastPackageSchema);
+export default mongoose.models.ForecastPackage ||
+  mongoose.model('ForecastPackage', ForecastPackageSchema);
