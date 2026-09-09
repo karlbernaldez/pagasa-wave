@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
-import { canAccessProject } from '../utils/forecastPackageAccess.js';
+import { canAccessProject, isForecastPackageChartProject } from '../utils/forecastPackageAccess.js';
 
 export const isOwnerOrAdmin = async (req, res, next) => {
   try {
@@ -39,15 +39,21 @@ export const isFeatureOwnerOrAdmin = async (req, res, next) => {
       return res.status(404).json({ message: 'Feature not found' });
     }
 
+    const projectId = feature.properties?.project;
+    if (projectId && (await isForecastPackageChartProject(projectId))) {
+      req.feature = feature;
+      return next();
+    }
+
     const userId = String(req.user?.id || req.user?._id || '');
     const canEditAnyAnnotation = (req.permissions || []).includes('studio.edit_any_annotation');
 
     if (!feature.properties.owner) {
-      return res.status(500).json({ message: 'Feature owner is not set in the database.' });
+      return res.status(500).json({ message: 'Feature creator is not set in the database.' });
     }
 
     if (feature.properties.owner.toString() !== userId && !canEditAnyAnnotation) {
-      return res.status(403).json({ message: 'Access denied. Not the annotation owner.' });
+      return res.status(403).json({ message: 'Access denied for this annotation.' });
     }
 
     req.feature = feature;
