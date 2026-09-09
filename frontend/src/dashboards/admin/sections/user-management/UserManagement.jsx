@@ -128,11 +128,6 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
   }, [filteredUsers, total]);
 
   useEffect(() => {
-    const q = searchParams.get('q');
-    if (q !== null) setUserSearchQuery(q);
-  }, [searchParams]);
-
-  useEffect(() => {
     let cancelled = false;
 
     const loadRoleOptions = async () => {
