@@ -16,7 +16,6 @@ import Button from '@/components/ui/Button';
 import { getForecastPackageCapabilities } from '@/features/forecasts/forecastPackageCapabilities';
 import { CHART_LABELS, formatPackageDate } from '@/features/forecasts/forecastPackageViewModel';
 
-const REVIEWABLE_PACKAGE_STATUSES = new Set(['Submitted', 'Under Review']);
 const REQUIRED_CHART_COUNT = 4;
 
 const STATUS_STYLES = {
@@ -90,11 +89,16 @@ function getChartActionLabel(status, isReviewablePackage) {
   return isReviewablePackage ? 'Review chart' : 'View chart';
 }
 
-function PackageSummaryModal({ forecastPackage, isDarkMode, onClose, onOpenChart }) {
+function PackageSummaryModal({
+  forecastPackage,
+  isDarkMode,
+  isReviewablePackage,
+  onClose,
+  onOpenChart,
+}) {
   const dateLabel = forecastPackage.dateKey
     ? formatPackageDate(forecastPackage.dateKey)
     : 'Unscheduled';
-  const isReviewablePackage = REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status);
   const chartCount = forecastPackage.chartCount || forecastPackage.charts?.length || 0;
   const contributorLabel = forecastPackage.contributorLabel || 'No recorded contributors';
   const contributorTitle = (forecastPackage.contributorNames || []).join(', ') || contributorLabel;
@@ -381,6 +385,7 @@ export default function ForecastPackageCard({
         <PackageSummaryModal
           forecastPackage={forecastPackage}
           isDarkMode={isDarkMode}
+          isReviewablePackage={canReview}
           onClose={() => setShowPackageSummary(false)}
           onOpenChart={onOpenChart}
         />
