@@ -5,7 +5,7 @@ import Role from '../models/Role.js';
 import { PERMISSION_KEYS } from '../config/permissionCatalog.js';
 import { ensureDefaultRoles } from '../services/roleService.js';
 
-test('ensureDefaultRoles keeps an existing administrator synced to the full permission catalog', async () => {
+async function withRoleUpdateMock(work) {
   const originalUpdateOne = Role.updateOne;
   const calls = [];
 
@@ -15,6 +15,14 @@ test('ensureDefaultRoles keeps an existing administrator synced to the full perm
       return { acknowledged: true };
     };
 
+    await work(calls);
+  } finally {
+    Role.updateOne = originalUpdateOne;
+  }
+}
+
+test('ensureDefaultRoles keeps Administrator synced without conflicting Mongo update paths', async () => {
+  await withRoleUpdateMock(async (calls) => {
     await ensureDefaultRoles();
 
     const adminCall = calls.find((call) => call.filter?.key === 'admin');
@@ -24,11 +32,30 @@ test('ensureDefaultRoles keeps an existing administrator synced to the full perm
     assert.equal(adminCall.update?.$set?.enabled, true);
     assert.equal(adminCall.options?.upsert, true);
     assert.ok(adminCall.update.$set.permissions.includes('studio.edit_any_annotation'));
+    assert.ok(adminCall.update.$set.permissions.includes('chat.admin_knowledge'));
+
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(adminCall.update.$setOnInsert, 'permissions'),
+      false
+    );
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(adminCall.update.$setOnInsert, 'system'),
+      false
+    );
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(adminCall.update.$setOnInsert, 'enabled'),
+      false
+    );
+  });
+});
+
+test('ensureDefaultRoles keeps non-Administrator defaults insert-only', async () => {
+  await withRoleUpdateMock(async (calls) => {
+    await ensureDefaultRoles();
 
     const forecasterCall = calls.find((call) => call.filter?.key === 'forecaster');
     assert.ok(forecasterCall);
     assert.equal(forecasterCall.update?.$set, undefined);
-  } finally {
-    Role.updateOne = originalUpdateOne;
-  }
+    assert.equal(Array.isArray(forecasterCall.update?.$setOnInsert?.permissions), true);
+  });
 });
