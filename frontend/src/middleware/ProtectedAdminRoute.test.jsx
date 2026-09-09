@@ -26,7 +26,7 @@ function renderGuard(permission = null) {
       <ProtectedAdminRoute requireAuth permission={permission}>
         <div>Protected admin content</div>
       </ProtectedAdminRoute>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
