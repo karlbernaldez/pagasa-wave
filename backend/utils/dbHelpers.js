@@ -84,11 +84,7 @@ export const validateGeometry = (geometry) => {
   }
 
   if (type === 'LineString') {
-    if (
-      !Array.isArray(coordinates) ||
-      coordinates.length < 2 ||
-      !coordinates.every(isLngLat)
-    ) {
+    if (!Array.isArray(coordinates) || coordinates.length < 2 || !coordinates.every(isLngLat)) {
       throwError('Invalid LineString coordinates.', 400);
     }
   }
