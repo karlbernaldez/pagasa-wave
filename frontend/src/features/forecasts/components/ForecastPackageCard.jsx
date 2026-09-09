@@ -13,10 +13,10 @@ import {
 } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
+import { getForecastPackageCapabilities } from '@/features/forecasts/forecastPackageCapabilities';
 import { CHART_LABELS, formatPackageDate } from '@/features/forecasts/forecastPackageViewModel';
 
 const REVIEWABLE_PACKAGE_STATUSES = new Set(['Submitted', 'Under Review']);
-const PUBLISHABLE_PACKAGE_STATUSES = new Set(['Approved']);
 const REQUIRED_CHART_COUNT = 4;
 
 const STATUS_STYLES = {
@@ -280,14 +280,18 @@ export default function ForecastPackageCard({
   isDarkMode,
   onOpenChart,
   onPublishPackage,
+  permissions = [],
   publishingPackageId,
 }) {
   const [showPackageSummary, setShowPackageSummary] = useState(false);
-  const canReview =
-    REVIEWABLE_PACKAGE_STATUSES.has(forecastPackage.status) &&
-    Boolean(forecastPackage.primaryChart);
-  const canPublish = PUBLISHABLE_PACKAGE_STATUSES.has(forecastPackage.status);
+  const capabilities = getForecastPackageCapabilities({
+    permissions,
+    status: forecastPackage.status,
+  });
+  const canReview = capabilities.canReview && Boolean(forecastPackage.primaryChart);
+  const canPublish = capabilities.canPublish;
   const canViewPublished =
+    capabilities.canView &&
     forecastPackage.status === 'Published' &&
     (forecastPackage.charts || []).some((row) => row.project?._id || row.project?.id);
   const isPublishing = publishingPackageId === forecastPackage.id;
@@ -335,10 +339,7 @@ export default function ForecastPackageCard({
               >
                 {dateLabel}
               </h3>
-              <p
-                className="truncate text-xs font-semibold text-slate-500"
-                title={forecastPackage.title}
-              >
+              <p className="truncate text-xs font-semibold text-slate-500" title={forecastPackage.title}>
                 {forecastPackage.title}
               </p>
             </div>
