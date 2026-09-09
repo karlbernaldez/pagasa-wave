@@ -6,6 +6,7 @@ import Project from '../models/Project.js';
 import Feature from '../models/Feature.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 import { formatLocalDateKey } from '../utils/forecastPackage.js';
+import { canAccessProject } from '../utils/forecastPackageAccess.js';
 
 const DEFAULT_RASTER_BOUNDS = [100, -5, 180, 50];
 const DEFAULT_MODEL_RUN_HOUR = 18;
@@ -17,16 +18,6 @@ const WW3_FORECAST_OFFSETS = Object.freeze({
   forecast_36h: { days: 1, hour: '06' },
   forecast_48h: { days: 1, hour: '18' },
 });
-
-function getProjectOwnerId(project) {
-  return String(project?.owner?._id || project?.owner || '');
-}
-
-function canViewPublishedForecast(project, user) {
-  if (!project || !user) return false;
-  if (user.role === 'admin') return true;
-  return getProjectOwnerId(project) === String(user.id);
-}
 
 function assertValidProjectId(projectId) {
   if (!mongoose.isValidObjectId(projectId)) {
@@ -362,10 +353,14 @@ export const getPublishedForecastOutput = asyncHandler(async (req, res) => {
   if (!req.user) throwError('Unauthorized', 401);
 
   const project = await findPublishedProject(req.params.id);
+  const permissions = req.permissions || [];
 
-  if (!canViewPublishedForecast(project, req.user)) {
+  if (!(await canAccessProject(req.user, project, permissions))) {
     throwError('You do not have access to this published forecast', 403);
   }
 
-  res.json(await buildPublishedForecastPayload(project, { canArchive: req.user.role === 'admin' && project.status === PROJECT_STATUS.PUBLISHED, theme: normalizeRasterTheme(req.query.theme) }));
+  res.json(await buildPublishedForecastPayload(project, {
+    canArchive: permissions.includes('projects.review') && project.status === PROJECT_STATUS.PUBLISHED,
+    theme: normalizeRasterTheme(req.query.theme),
+  }));
 });
