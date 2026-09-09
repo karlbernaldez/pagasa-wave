@@ -1,17 +1,7 @@
 export const PERMISSION_CATALOG = Object.freeze({
   dashboard: ['view'],
+  forecast: ['view', 'edit', 'submit', 'review', 'approve', 'publish', 'archive'],
   studio: ['view', 'edit', 'edit_any_annotation'],
-  projects: [
-    'view',
-    'view_own',
-    'view_all',
-    'create',
-    'edit',
-    'submit',
-    'review',
-    'approve',
-    'publish',
-  ],
   wave_models: ['view', 'manage', 'run_builder', 'delete_package'],
   wave_pipeline: ['view'],
   model_onboarding: ['view', 'manage'],
@@ -31,17 +21,80 @@ export const PERMISSION_KEYS = Object.freeze(
 
 const PERMISSION_SET = new Set(PERMISSION_KEYS);
 
-export const normalizePermissionKeys = (permissions = []) => {
+// Legacy Project permissions remain valid only during the migration window.
+// `view_own` and `view_all` are preserved as scope-specific compatibility
+// permissions because collapsing them into forecast.view could broaden access to
+// standalone legacy Project records before those routes are retired.
+export const LEGACY_PROJECT_PERMISSION_ALIASES = Object.freeze({
+  'projects.view': 'forecast.view',
+  'projects.create': 'forecast.edit',
+  'projects.edit': 'forecast.edit',
+  'projects.submit': 'forecast.submit',
+  'projects.review': 'forecast.review',
+  'projects.approve': 'forecast.approve',
+  'projects.publish': 'forecast.publish',
+});
+
+const LEGACY_PROJECT_SCOPE_PERMISSIONS = Object.freeze(['projects.view_own', 'projects.view_all']);
+const LEGACY_PERMISSION_SET = new Set([
+  ...Object.keys(LEGACY_PROJECT_PERMISSION_ALIASES),
+  ...LEGACY_PROJECT_SCOPE_PERMISSIONS,
+]);
+
+const FORECAST_PERMISSION_IMPLICATIONS = Object.freeze({
+  'forecast.edit': ['forecast.view'],
+  'forecast.submit': ['forecast.view'],
+  'forecast.review': ['forecast.view'],
+  'forecast.approve': ['forecast.review', 'forecast.view'],
+  'forecast.publish': ['forecast.view'],
+  'forecast.archive': ['forecast.view'],
+});
+
+const FORECAST_RUNTIME_LEGACY_PERMISSIONS = Object.freeze({
+  'forecast.view': ['projects.view'],
+  'forecast.edit': ['projects.create', 'projects.edit'],
+  'forecast.submit': ['projects.submit'],
+  'forecast.review': ['projects.review'],
+  'forecast.approve': ['projects.approve'],
+  'forecast.publish': ['projects.publish'],
+});
+
+const cleanPermissionInput = (permissions) => {
   if (!Array.isArray(permissions)) {
     const error = new Error('permissions must be an array.');
     error.status = 400;
     throw error;
   }
 
-  const normalized = [...new Set(permissions.map((value) => String(value || '').trim()))].filter(
-    Boolean
+  return [...new Set(permissions.map((value) => String(value || '').trim()))].filter(Boolean);
+};
+
+const applyForecastPermissionImplications = (permissions) => {
+  const result = new Set(permissions);
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    for (const [permission, impliedPermissions] of Object.entries(
+      FORECAST_PERMISSION_IMPLICATIONS
+    )) {
+      if (!result.has(permission)) continue;
+      for (const impliedPermission of impliedPermissions) {
+        if (result.has(impliedPermission)) continue;
+        result.add(impliedPermission);
+        changed = true;
+      }
+    }
+  }
+
+  return result;
+};
+
+export const normalizePermissionKeys = (permissions = []) => {
+  const cleaned = cleanPermissionInput(permissions);
+  const unknown = cleaned.filter(
+    (permission) => !PERMISSION_SET.has(permission) && !LEGACY_PERMISSION_SET.has(permission)
   );
-  const unknown = normalized.filter((permission) => !PERMISSION_SET.has(permission));
 
   if (unknown.length) {
     const error = new Error(`Unknown permission keys: ${unknown.join(', ')}`);
@@ -49,7 +102,46 @@ export const normalizePermissionKeys = (permissions = []) => {
     throw error;
   }
 
-  return normalized.sort();
+  const canonical = new Set();
+  for (const permission of cleaned) {
+    if (PERMISSION_SET.has(permission)) {
+      canonical.add(permission);
+      continue;
+    }
+
+    const alias = LEGACY_PROJECT_PERMISSION_ALIASES[permission];
+    if (alias) {
+      canonical.add(alias);
+      continue;
+    }
+
+    // Preserve the two legacy scope permissions until standalone Project access
+    // is removed. They are intentionally not exposed in PERMISSION_CATALOG.
+    canonical.add(permission);
+  }
+
+  return [...applyForecastPermissionImplications(canonical)].sort();
+};
+
+export const expandEffectivePermissions = (permissions = []) => {
+  const normalized = normalizePermissionKeys(permissions);
+  const effective = new Set(normalized);
+
+  for (const permission of normalized) {
+    for (const legacyPermission of FORECAST_RUNTIME_LEGACY_PERMISSIONS[permission] || []) {
+      effective.add(legacyPermission);
+    }
+  }
+
+  // Preserve any original legacy scope permission exactly as stored so a role
+  // cannot gain broader standalone Project access through forecast.view.
+  for (const permission of cleanPermissionInput(permissions)) {
+    if (LEGACY_PROJECT_SCOPE_PERMISSIONS.includes(permission)) {
+      effective.add(permission);
+    }
+  }
+
+  return [...effective].sort();
 };
 
 export const DEFAULT_ROLE_DEFINITIONS = Object.freeze([
@@ -64,17 +156,14 @@ export const DEFAULT_ROLE_DEFINITIONS = Object.freeze([
   {
     key: 'forecaster',
     name: 'Forecaster',
-    description:
-      'Operational forecasting access for Studio, forecast projects, and wave-model use.',
+    description: 'Operational forecasting access for Studio and wave-model use.',
     permissions: [
       'dashboard.view',
+      'forecast.view',
+      'forecast.edit',
+      'forecast.submit',
       'studio.view',
       'studio.edit',
-      'projects.view',
-      'projects.view_own',
-      'projects.create',
-      'projects.edit',
-      'projects.submit',
       'wave_models.view',
       'wave_models.run_builder',
       'analytics.view',
