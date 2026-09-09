@@ -40,7 +40,6 @@ function serializePackage(forecastPackage) {
 
 function populateForecastPackage(query) {
   return query
-    .populate('owner', 'firstName lastName email username')
     .populate('charts.project')
     .populate('charts.activeEditors.user', 'firstName lastName email username')
     .populate('charts.participants.user', 'firstName lastName email username')
@@ -96,10 +95,9 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
   );
 }
 
-async function ensureDailyChartProject({ forecastDate, user, requiredChart, packageName }) {
+async function ensureDailyChartProject({ forecastDate, requiredChart, packageName }) {
   const name = buildForecastChartProjectName(forecastDate, requiredChart.label);
   const query = {
-    owner: user.id,
     chartType: requiredChart.chartType,
     forecastDate: getForecastDateQuery(forecastDate),
   };
@@ -121,23 +119,14 @@ async function ensureDailyChartProject({ forecastDate, user, requiredChart, pack
       description: 'Automatically created for daily operational forecast production.',
       chartType: requiredChart.chartType,
       forecastDate,
-      owner: user.id,
       status: PROJECT_STATUS.DRAFT,
       version: 1,
-      auditLogs: [
-        {
-          action: 'created',
-          performedBy: user.id,
-          previousStatus: null,
-          newStatus: PROJECT_STATUS.DRAFT,
-          comment: `Auto-created from daily Forecast Package: ${packageName}`,
-        },
-      ],
+      auditLogs: [],
     });
   } catch (error) {
     if (error?.code !== 11000) throw error;
 
-    const conflictingProject = await Project.findOne({ owner: user.id, name });
+    const conflictingProject = await Project.findOne({ name });
     if (!conflictingProject) throw error;
 
     await Project.updateOne(
@@ -158,7 +147,7 @@ async function ensureDailyChartProject({ forecastDate, user, requiredChart, pack
   }
 }
 
-async function createDailyForecastPackage({ forecastDate, user }) {
+async function createDailyForecastPackage({ forecastDate }) {
   const name = buildForecastPackageName(forecastDate);
   if (!name) throwError('forecastDate must be a valid date', 400);
 
@@ -167,7 +156,6 @@ async function createDailyForecastPackage({ forecastDate, user }) {
   for (const requiredChart of REQUIRED_FORECAST_CHARTS) {
     const project = await ensureDailyChartProject({
       forecastDate,
-      user,
       requiredChart,
       packageName: name,
     });
@@ -192,20 +180,16 @@ async function createDailyForecastPackage({ forecastDate, user }) {
     const forecastPackage = await ForecastPackage.create({
       name,
       forecastDate,
-      owner: user.id,
       status: FORECAST_PACKAGE_STATUS.DRAFT,
       charts,
       chartCompletion,
-      auditLogs: [
-        {
-          action: 'created',
-          performedBy: user.id,
-          previousStatus: null,
-          newStatus: FORECAST_PACKAGE_STATUS.DRAFT,
-          comment: 'Daily Forecast Package auto-created with required charts',
-        },
-      ],
+      auditLogs: [],
     });
+
+    await Project.updateMany(
+      { _id: { $in: charts.map((chart) => chart.project) } },
+      { $set: { forecastPackage: forecastPackage._id } }
+    );
 
     return populateForecastPackage(ForecastPackage.findById(forecastPackage._id));
   } catch (error) {
@@ -231,7 +215,6 @@ export const getCurrentForecastPackage = asyncHandler(async (req, res) => {
     existingPackage ||
     (await createDailyForecastPackage({
       forecastDate: requestedDate,
-      user: req.user,
     }));
 
   const syncedPackage = await syncPackageStatusFromCharts(forecastPackage, req.user.id);
