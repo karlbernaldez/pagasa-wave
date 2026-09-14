@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { Navigate } from 'react-router-dom';
 
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 
+import adminRoutes from './adminRoutes';
 import forecastRoutes from './forecastRoutes';
+import forecasterRoutes from './forecasterRoutes';
 import publicRoutes from './publicRoutes';
 
 function findRoute(routes, path) {
@@ -43,5 +46,31 @@ describe('forecast business routes', () => {
     expect(findRoute(publicRoutes, '/forecasts')).toBeNull();
     expect(findRoute(publicRoutes, '/forecasts/:projectId')).toBeNull();
     expect(findRoute(publicRoutes, '/charts/:projectId')).toBeTruthy();
+  });
+
+  it('redirects the legacy package-library entry to /forecasts', () => {
+    const route = findRoute(forecasterRoutes, '/studio');
+
+    expect(route).toBeTruthy();
+    expect(route.element.type).toBe(Navigate);
+    expect(route.element.props.to).toBe('/forecasts');
+    expect(route.element.props.replace).toBe(true);
+  });
+
+  it('redirects the legacy review entry to /forecasts/review', () => {
+    const route = findRoute(adminRoutes, '/dashboard/review');
+
+    expect(route).toBeTruthy();
+    expect(route.element.type).toBe(Navigate);
+    expect(route.element.props.to).toBe('/forecasts/review');
+    expect(route.element.props.replace).toBe(true);
+  });
+
+  it('preserves the Studio project route behind studio.view', () => {
+    const route = findRoute(forecasterRoutes, '/studio/:projectId');
+
+    expect(route).toBeTruthy();
+    expect(route.element.type).toBe(ProtectedRoute);
+    expect(route.element.props.permission).toBe('studio.view');
   });
 });
