@@ -17,7 +17,6 @@ const REQUIRED_CHART_SEQUENCE = ['analysis', 'forecast_24h', 'forecast_36h', 'fo
 const EDITABLE_PACKAGE_STATUSES = new Set(['Draft', 'Revision Requested']);
 const APPROVED_PACKAGE_STATUSES = new Set(['Approved', 'Published']);
 const APPROVED_CHART_STATUSES = new Set(['Approved', 'Published']);
-const WARNING_CHART_STATUSES = new Set(['Revision Requested', 'Under Review', 'Submitted']);
 const REVISION_REQUESTED_STATUS = 'Revision Requested';
 const AUTO_PACKAGE_NAME_PATTERN = /^Marine Forecast \d{4}-\d{2}-\d{2}$/;
 
@@ -30,16 +29,16 @@ const REQUIRED_CHART_LABELS = {
 
 const LOCKED_PACKAGE_COPY = {
   Submitted: {
-    nextAction: 'No action is needed right now. You will be notified if Admin requests revisions.',
-    lockedNotice: 'Submitted to the Admin review queue.',
+    nextAction: 'No action is needed right now. You will be notified if a reviewer requests revisions.',
+    lockedNotice: 'Submitted to the review queue.',
     currentStep: 'Submitted',
-    reviewGateDetail: 'Waiting for Admin review',
+    reviewGateDetail: 'Waiting for review',
   },
   'Under Review': {
-    nextAction: 'No action is needed while Admin reviews the package. You will be notified of the decision.',
-    lockedNotice: 'Admin review is in progress.',
+    nextAction: 'No action is needed while the package is under review. You will be notified of the decision.',
+    lockedNotice: 'Package review is in progress.',
     currentStep: 'Under Review',
-    reviewGateDetail: 'Admin review in progress',
+    reviewGateDetail: 'Review in progress',
   },
   Approved: {
     nextAction: 'The package is approved. Monitor its publication status here.',
@@ -55,7 +54,7 @@ const LOCKED_PACKAGE_COPY = {
   },
   Rejected: {
     nextAction: 'This review cycle is closed. Create or wait for the next forecast package.',
-    lockedNotice: 'Rejected by Admin; review cycle closed.',
+    lockedNotice: 'Rejected during review; review cycle closed.',
     currentStep: 'Rejected',
     reviewGateDetail: 'Review closed',
   },
@@ -235,7 +234,7 @@ function getCompletion(packageData) {
 
 function getLockedPackageCopy(status) {
   return LOCKED_PACKAGE_COPY[status] || {
-    nextAction: `Package is ${status || 'locked'}. Charts are read-only until Admin requests a revision.`,
+    nextAction: `Package is ${status || 'locked'}. Charts are read-only until a reviewer requests a revision.`,
     lockedNotice: `This package is locked while it is ${status || 'not editable'}.`,
     currentStep: status || 'Locked',
     reviewGateDetail: 'Package locked',
@@ -273,7 +272,7 @@ function getSubmitReadiness(packageData, completion, isEditable, pendingRevision
       tone: 'blocked',
     };
   }
-  return { title: 'Ready to submit', detail: 'All required charts are certified. Submit this package for Admin review.', tone: 'ready' };
+  return { title: 'Ready to submit', detail: 'All required charts are certified. Submit this package for review.', tone: 'ready' };
 }
 
 function getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes = []) {
@@ -289,7 +288,7 @@ function getNextAction(packageData, completion, isEditable, pendingRevisionChart
       ? `Continue with ${REQUIRED_CHART_LABELS[nextChartType]}. Later charts remain queued until prerequisites are certified.`
       : `${completion.required - completion.completed} chart${completion.required - completion.completed === 1 ? '' : 's'} still need forecast work.`;
   }
-  return 'All charts are complete. Submit the package for admin review.';
+  return 'All charts are complete. Submit the package for review.';
 }
 
 function StatusPill({ status, isDarkMode }) {
@@ -320,7 +319,7 @@ function NextActionCard({ packageData, completion, isEditable, isDarkMode, pendi
   );
 }
 
-function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen, sequenceNumber }) {
+function ChartCard({ chart, packageData, isDarkMode, onOpen, sequenceNumber }) {
   const chartType = chart?.chartType;
   const completion = getChartCompletion(packageData, chartType);
   const projectId = getChartProjectId(chart);
@@ -404,7 +403,7 @@ function ChartCard({ chart, packageData, isDarkMode, isEditable, onOpen, sequenc
 function PackageSummary({ chartSequenceHelper, completion, hasPendingRevisionAction, isDarkMode, isEditable, lockedPackageCopy, packageData, packageTitle, submitReadiness }) {
   const ReadinessIcon = !isEditable ? LockKeyhole : completion.isComplete ? ShieldCheck : Waves;
   const statusIsComplete = ['Submitted', 'Approved', 'Published'].includes(packageData.status);
-  const lockedDescription = 'The package is locked and cannot be edited until the Admin completes the review.';
+  const lockedDescription = 'The package is locked and cannot be edited until the review is completed.';
 
   return (
     <section className={`relative min-h-[192px] overflow-hidden rounded-xl border backdrop-blur-3xl ${isDarkMode ? 'border-cyan-300/35 bg-[#07335b]/54 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(8,47,73,0.35),0_26px_64px_rgba(0,0,0,0.28)]' : 'border-white/[0.90] bg-white/[0.62] shadow-[inset_0_1px_0_rgba(255,255,255,0.98),inset_0_-1px_0_rgba(255,255,255,0.40),0_26px_64px_rgba(15,74,105,0.18)]'}`}>
@@ -515,9 +514,32 @@ export default function ForecasterProjectLibraryPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    loadCurrentPackage({ signal: controller.signal });
+
+    const loadInitialPackage = async () => {
+      try {
+        const response = await fetchCurrentForecastPackage({
+          signal: controller.signal,
+        });
+
+        if (!controller.signal.aborted) {
+          setPackageData(getPackagePayload(response));
+        }
+      } catch (err) {
+        if (err?.name !== 'AbortError' && !controller.signal.aborted) {
+          console.error('Failed to load current forecast package:', err);
+          setError(err?.message || 'Failed to load current forecast package.');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadInitialPackage();
+
     return () => controller.abort();
-  }, [loadCurrentPackage]);
+  }, []);
 
   const handleCreatePackage = async () => {
     if (creating) return;
