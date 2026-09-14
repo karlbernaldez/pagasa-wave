@@ -172,7 +172,7 @@ export default function AdminForecastPackageReviewPageV2() {
     if (!projectId) return;
 
     if (isProjectPublished(project?.status)) {
-      navigate(`/forecasts/${projectId}`);
+      navigate(`/charts/${projectId}`);
       return;
     }
 
