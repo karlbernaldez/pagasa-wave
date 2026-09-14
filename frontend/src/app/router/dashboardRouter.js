@@ -15,10 +15,5 @@ export const DASHBOARD_ROUTES = {
 };
 
 export function getAllRoutes() {
-  return [
-    ...publicRoutes,
-    ...forecastRoutes,
-    ...adminRoutes,
-    ...forecasterRoutes,
-  ];
+  return [...publicRoutes, ...forecastRoutes, ...adminRoutes, ...forecasterRoutes];
 }
