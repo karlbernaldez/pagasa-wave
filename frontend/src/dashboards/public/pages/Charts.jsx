@@ -318,7 +318,7 @@ export default function Charts() {
     : 'PDF export becomes available after at least one chart is published for this date.';
 
   useEffect(() => { if (selectedDate && !historyGroups.some((item) => item.dateKey === selectedDate)) setSelectedDate(''); }, [historyGroups, selectedDate]);
-  const openChart = useCallback((chart) => { if (chart?._id) navigate(`/forecasts/${chart._id}`); }, [navigate]);
+  const openChart = useCallback((chart) => { if (chart?._id) navigate(`/charts/${chart._id}`); }, [navigate]);
 
   useEffect(() => {
     const controller = new AbortController();
