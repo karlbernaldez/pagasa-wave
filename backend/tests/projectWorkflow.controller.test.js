@@ -28,9 +28,7 @@ function createFakeProject(overrides = {}) {
   return {
     _id: overrides._id ?? 'project-1',
     name: overrides.name ?? 'Test Project',
-    owner: Object.prototype.hasOwnProperty.call(overrides, 'owner')
-      ? overrides.owner
-      : ownerId(),
+    owner: Object.prototype.hasOwnProperty.call(overrides, 'owner') ? overrides.owner : ownerId(),
     status: overrides.status ?? PROJECT_STATUS.UNDER_REVIEW,
     versions: overrides.versions ?? [],
     auditLogs: overrides.auditLogs ?? [],
