@@ -151,7 +151,7 @@ function getLatestVersionReason(project) {
 }
 
 function getProjectNotificationResourcePath(project, type) {
-  if (type === 'published') return `/forecasts/${project._id}`;
+  if (type === 'published') return `/charts/${project._id}`;
   return `/studio/${project._id}`;
 }
 

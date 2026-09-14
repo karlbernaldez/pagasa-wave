@@ -29,8 +29,6 @@ export default [
       { path: '/charts/:projectId', element: <PublishedForecastPage /> },
       { path: '/wave-charts', element: <LegacyChartRedirect /> },
       { path: '/wave-charts/:projectId', element: <LegacyChartRedirect /> },
-      { path: '/forecasts', element: <LegacyChartRedirect /> },
-      { path: '/forecasts/:projectId', element: <LegacyChartRedirect /> },
       { path: '/about-us', element: <AboutUs /> },
       { path: '/contact', element: <Contact /> },
       { path: '*', element: <NotFound /> },

@@ -3,7 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, FolderKanban } from 'lucide-react';
 
-import { approveProject, publishProject, rejectProject, startReviewProject } from '@/api/projectAPI';
+import {
+  approveProject,
+  publishProject,
+  rejectProject,
+  startReviewProject,
+} from '@/api/projectAPI';
 import {
   approveForecastPackage,
   fetchAdminForecastPackages,
@@ -30,16 +35,29 @@ const PACKAGE_AUTO_APPROVE_STATUSES = ['Under Review', 'Revision Requested'];
 const getId = (item) => item?._id || item?.id;
 
 function packageStats(packages, total) {
-  const counts = packages.reduce((memo, item) => ({
-    ...memo,
-    [item.status]: (memo[item.status] || 0) + 1,
-  }), {});
+  const counts = packages.reduce(
+    (memo, item) => ({
+      ...memo,
+      [item.status]: (memo[item.status] || 0) + 1,
+    }),
+    {}
+  );
   const reviewReady = (counts.Submitted || 0) + (counts['Under Review'] || 0);
 
   return [
     { value: reviewReady, label: 'Needs Review', helper: 'Submitted or in progress', tone: 'blue' },
-    { value: counts['Under Review'] || 0, label: 'In Progress', helper: 'Review already started', tone: 'amber' },
-    { value: counts.Approved || 0, label: 'Ready to Publish', helper: 'All charts approved', tone: 'emerald' },
+    {
+      value: counts['Under Review'] || 0,
+      label: 'In Progress',
+      helper: 'Review already started',
+      tone: 'amber',
+    },
+    {
+      value: counts.Approved || 0,
+      label: 'Ready to Publish',
+      helper: 'All charts approved',
+      tone: 'emerald',
+    },
     { value: total, label: 'Packages', helper: 'Matching current filters', tone: 'slate' },
   ];
 }
@@ -47,7 +65,11 @@ function packageStats(packages, total) {
 function filterPackages(packages, search, typeFilter) {
   const query = search.trim().toLowerCase();
   return packages.filter((forecastPackage) => {
-    if (typeFilter !== 'All' && !forecastPackage.charts.some((chart) => chart.chartType === typeFilter)) return false;
+    if (
+      typeFilter !== 'All' &&
+      !forecastPackage.charts.some((chart) => chart.chartType === typeFilter)
+    )
+      return false;
     if (!query) return true;
 
     const haystack = [
@@ -56,33 +78,38 @@ function filterPackages(packages, search, typeFilter) {
       forecastPackage.ownerLabel,
       forecastPackage.dateKey,
       ...forecastPackage.charts.map((chart) => chart.project?.name || chart.project?.title || ''),
-    ].join(' ').toLowerCase();
+    ]
+      .join(' ')
+      .toLowerCase();
 
     return haystack.includes(query);
   });
 }
 
 function getPackageContainingProject(packages, projectId) {
-  return packages.find((forecastPackage) => (
-    forecastPackage.charts || []
-  ).some((chart) => getId(chart.project) === projectId));
+  return packages.find((forecastPackage) =>
+    (forecastPackage.charts || []).some((chart) => getId(chart.project) === projectId)
+  );
 }
 
 function mergeApprovedProjectIntoPackage(forecastPackage, updatedProject) {
   const updatedProjectId = getId(updatedProject);
   return {
     ...forecastPackage,
-    charts: (forecastPackage?.charts || []).map((chart) => (
+    charts: (forecastPackage?.charts || []).map((chart) =>
       getId(chart.project) === updatedProjectId
         ? { ...chart, project: { ...chart.project, ...updatedProject } }
         : chart
-    )),
+    ),
   };
 }
 
 function isPackageReadyForApproval(forecastPackage) {
   const charts = forecastPackage?.charts || [];
-  return charts.length > 0 && charts.every((chart) => PROJECT_APPROVED_STATUSES.includes(chart.project?.status));
+  return (
+    charts.length > 0 &&
+    charts.every((chart) => PROJECT_APPROVED_STATUSES.includes(chart.project?.status))
+  );
 }
 
 function getEmptyStateCopy({ hasFilters }) {
@@ -101,11 +128,13 @@ function getEmptyStateCopy({ hasFilters }) {
 
 function StateCard({ children, isDarkMode }) {
   return (
-    <div className={`rounded-2xl border p-10 text-center shadow-xl backdrop-blur-2xl ${
-      isDarkMode
-        ? 'border-white/10 bg-slate-950/48 text-slate-200 shadow-black/20'
-        : 'border-white/75 bg-white/68 text-slate-800 shadow-slate-300/35'
-    }`}>
+    <div
+      className={`rounded-2xl border p-10 text-center shadow-xl backdrop-blur-2xl ${
+        isDarkMode
+          ? 'border-white/10 bg-slate-950/48 text-slate-200 shadow-black/20'
+          : 'border-white/75 bg-white/68 text-slate-800 shadow-slate-300/35'
+      }`}
+    >
       {children}
     </div>
   );
@@ -128,31 +157,36 @@ export default function AdminForecastPackageReviewPageV2() {
 
   const query = useQuery({
     queryKey: ['admin-forecast-packages', page, statusFilter],
-    queryFn: ({ signal }) => fetchAdminForecastPackages({ page, limit: PAGE_SIZE, status: statusFilter, signal }),
+    queryFn: ({ signal }) =>
+      fetchAdminForecastPackages({ page, limit: PAGE_SIZE, status: statusFilter, signal }),
     staleTime: 30000,
     keepPreviousData: true,
   });
 
   const packages = useMemo(
     () => (query.data?.packages || []).map(adaptForecastPackageModel),
-    [query.data],
+    [query.data]
   );
   const visiblePackages = useMemo(
     () => filterPackages(packages, search, typeFilter),
-    [packages, search, typeFilter],
+    [packages, search, typeFilter]
   );
   const dailyPackage = useMemo(
     () => visiblePackages.find(isDailyForecastPackage) || null,
-    [visiblePackages],
+    [visiblePackages]
   );
   const historicalPackages = useMemo(
     () => visiblePackages.filter((forecastPackage) => forecastPackage.id !== dailyPackage?.id),
-    [visiblePackages, dailyPackage],
+    [visiblePackages, dailyPackage]
   );
 
   const total = query.data?.total ?? visiblePackages.length;
   const totalPages = Math.max(1, query.data?.totalPages ?? 1);
-  const activeFilterCount = [statusFilter !== 'All', typeFilter !== 'All', dateRangeFilter !== 'All'].filter(Boolean).length;
+  const activeFilterCount = [
+    statusFilter !== 'All',
+    typeFilter !== 'All',
+    dateRangeFilter !== 'All',
+  ].filter(Boolean).length;
   const hasActiveFilters = activeFilterCount > 0 || Boolean(search.trim());
   const emptyStateCopy = getEmptyStateCopy({ hasFilters: hasActiveFilters });
 
@@ -172,7 +206,7 @@ export default function AdminForecastPackageReviewPageV2() {
     if (!projectId) return;
 
     if (isProjectPublished(project?.status)) {
-      navigate(`/forecasts/${projectId}`);
+      navigate(`/charts/${projectId}`);
       return;
     }
 
@@ -182,14 +216,15 @@ export default function AdminForecastPackageReviewPageV2() {
         await startForecastPackageReview(getId(forecastPackage));
       }
 
-      const updatedProject = project?.status === 'Submitted'
-        ? await startReviewProject(projectId)
-        : project;
+      const updatedProject =
+        project?.status === 'Submitted' ? await startReviewProject(projectId) : project;
 
       setReviewProject({
         ...project,
         ...updatedProject,
-        status: updatedProject?.status || (project.status === 'Submitted' ? 'Under Review' : project.status),
+        status:
+          updatedProject?.status ||
+          (project.status === 'Submitted' ? 'Under Review' : project.status),
       });
       await query.refetch();
     } catch (error) {
@@ -247,11 +282,14 @@ export default function AdminForecastPackageReviewPageV2() {
     <div className="min-h-full bg-transparent">
       <div className="mx-auto max-w-[1500px] space-y-5 p-4 sm:p-6">
         {feedbackError && (
-          <div role="alert" className={`rounded-xl border px-4 py-3 text-sm font-semibold backdrop-blur-xl ${
-            isDarkMode
-              ? 'border-red-400/25 bg-red-950/30 text-red-200'
-              : 'border-red-200 bg-red-50/85 text-red-700'
-          }`}>
+          <div
+            role="alert"
+            className={`rounded-xl border px-4 py-3 text-sm font-semibold backdrop-blur-xl ${
+              isDarkMode
+                ? 'border-red-400/25 bg-red-950/30 text-red-200'
+                : 'border-red-200 bg-red-50/85 text-red-700'
+            }`}
+          >
             <AlertCircle className="mr-2 inline" size={17} />
             {feedbackError}
           </div>
@@ -269,8 +307,12 @@ export default function AdminForecastPackageReviewPageV2() {
         <section className="space-y-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Package Queue</h2>
-              <p className={`text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+              <h2 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+                Package Queue
+              </h2>
+              <p
+                className={`text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+              >
                 Review counts and previous packages are secondary to today’s operational package.
               </p>
             </div>
@@ -285,7 +327,10 @@ export default function AdminForecastPackageReviewPageV2() {
             search={search}
             setSearch={setSearch}
             statusFilter={statusFilter}
-            setStatusFilter={(status) => { setStatusFilter(status); setPage(1); }}
+            setStatusFilter={(status) => {
+              setStatusFilter(status);
+              setPage(1);
+            }}
             typeFilter={typeFilter}
             setTypeFilter={setTypeFilter}
             dateRangeFilter={dateRangeFilter}
@@ -300,7 +345,9 @@ export default function AdminForecastPackageReviewPageV2() {
           />
         </section>
 
-        {query.isLoading && <StateCard isDarkMode={isDarkMode}>Loading forecast packages...</StateCard>}
+        {query.isLoading && (
+          <StateCard isDarkMode={isDarkMode}>Loading forecast packages...</StateCard>
+        )}
 
         {!query.isLoading && query.error && (
           <StateCard isDarkMode={isDarkMode}>
@@ -313,12 +360,16 @@ export default function AdminForecastPackageReviewPageV2() {
           <StateCard isDarkMode={isDarkMode}>
             <FolderKanban className="mx-auto mb-3" size={26} />
             <h2 className="text-lg font-black">{emptyStateCopy.title}</h2>
-            <p className={`mx-auto mt-2 max-w-md text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p
+              className={`mx-auto mt-2 max-w-md text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
+            >
               {emptyStateCopy.body}
             </p>
             {hasActiveFilters && (
               <div className="mt-5">
-                <Button variant="secondary" onClick={resetFilters}>Clear filters</Button>
+                <Button variant="secondary" onClick={resetFilters}>
+                  Clear filters
+                </Button>
               </div>
             )}
           </StateCard>
