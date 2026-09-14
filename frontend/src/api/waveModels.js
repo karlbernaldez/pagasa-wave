@@ -26,10 +26,7 @@ export const fetchWaveSourceCyclePolicy = async (code) =>
 
 export const setWaveSourceCyclePolicy = async (code, policy) =>
   unwrap(
-    await api.patch(
-      `/admin/wave-models/${encodeURIComponent(code)}/source-cycle-policy`,
-      policy
-    )
+    await api.patch(`/admin/wave-models/${encodeURIComponent(code)}/source-cycle-policy`, policy)
   );
 
 export const runWaveModelBuilder = async (code) =>
