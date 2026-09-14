@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 
-import ForecasterRouteLayout from '@/dashboards/forecaster/layout/ForecasterRouteLayout';
+import ForecastRouteLayout from '@/features/forecasts/layout/ForecastRouteLayout';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 
 const ForecastPackageListPage = lazy(
@@ -15,7 +15,7 @@ const ForecastReviewQueuePage = lazy(
 
 export default [
   {
-    element: <ForecasterRouteLayout />,
+    element: <ForecastRouteLayout />,
     children: [
       {
         path: '/forecasts',
