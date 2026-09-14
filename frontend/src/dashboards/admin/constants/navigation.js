@@ -10,7 +10,11 @@ import {
 
 export const ADMIN_TABS = {
   DASHBOARD: 'dashboard',
-  CHARTS: 'charts',
+  FORECAST: 'forecast',
+  FORECAST_PACKAGES: 'forecast_packages',
+  FORECAST_REVIEW: 'forecast_review',
+  // Backward-compatible alias for legacy dashboard actions that open review.
+  CHARTS: 'forecast_review',
   WAVE_MODELS: 'wave_models',
   WAVE_PIPELINE: 'wave_pipeline',
   WAVE_MODEL_ONBOARDING: 'wave_model_onboarding',
@@ -25,7 +29,8 @@ export const ADMIN_TABS = {
 
 export const ADMIN_ROUTE_BY_TAB = {
   [ADMIN_TABS.DASHBOARD]: '/dashboard',
-  [ADMIN_TABS.CHARTS]: '/forecasts/review',
+  [ADMIN_TABS.FORECAST_PACKAGES]: '/forecasts',
+  [ADMIN_TABS.FORECAST_REVIEW]: '/forecasts/review',
   [ADMIN_TABS.WAVE_MODELS]: '/dashboard/wave-models',
   [ADMIN_TABS.WAVE_PIPELINE]: '/dashboard/wave-models/pipeline',
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: '/dashboard/wave-models/onboard',
@@ -40,7 +45,8 @@ export const ADMIN_ROUTE_BY_TAB = {
 
 export const ADMIN_PERMISSION_BY_TAB = Object.freeze({
   [ADMIN_TABS.DASHBOARD]: 'dashboard.view',
-  [ADMIN_TABS.CHARTS]: 'forecast.review',
+  [ADMIN_TABS.FORECAST_PACKAGES]: 'forecast.view',
+  [ADMIN_TABS.FORECAST_REVIEW]: 'forecast.review',
   [ADMIN_TABS.WAVE_MODELS]: 'wave_models.manage',
   [ADMIN_TABS.WAVE_PIPELINE]: 'wave_pipeline.view',
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: 'model_onboarding.view',
@@ -48,6 +54,7 @@ export const ADMIN_PERMISSION_BY_TAB = Object.freeze({
   [ADMIN_TABS.USERS_LIST]: 'users.view',
   [ADMIN_TABS.USERS_ROLES]: 'roles.view',
   [ADMIN_TABS.ANALYTICS]: 'analytics.view',
+  [ADMIN_TABS.CALENDAR]: 'calendar.view',
   [ADMIN_TABS.SETTINGS]: 'settings.view',
 });
 
@@ -64,6 +71,17 @@ export function getAdminRouteForTab(tab) {
 }
 
 export function getAdminTabForPath(pathname) {
+  if (pathname === ADMIN_ROUTE_BY_TAB[ADMIN_TABS.FORECAST_REVIEW]) {
+    return ADMIN_TABS.FORECAST_REVIEW;
+  }
+
+  if (
+    pathname === ADMIN_ROUTE_BY_TAB[ADMIN_TABS.FORECAST_PACKAGES] ||
+    pathname.startsWith('/forecasts/')
+  ) {
+    return ADMIN_TABS.FORECAST_PACKAGES;
+  }
+
   if (
     pathname === ADMIN_ROUTE_BY_TAB[ADMIN_TABS.ACCOUNT] ||
     pathname.startsWith('/dashboard/account/')
@@ -76,31 +94,30 @@ export function getAdminTabForPath(pathname) {
 
 export const MENU_GROUPS = [
   {
-    label: 'Review',
+    label: 'Workspace',
     items: [
       {
         id: ADMIN_TABS.DASHBOARD,
-        label: 'Overview',
+        label: 'Dashboard',
         path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.DASHBOARD],
         icon: LayoutDashboard,
       },
       {
-        id: ADMIN_TABS.CHARTS,
-        label: 'Forecast Packages',
-        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.CHARTS],
+        id: ADMIN_TABS.FORECAST,
+        label: 'Forecast',
         icon: Waves,
+      },
+      {
+        id: ADMIN_TABS.WAVE_MODELS,
+        label: 'Models',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODELS],
+        icon: Database,
       },
     ],
   },
   {
     label: 'Management',
     items: [
-      {
-        id: ADMIN_TABS.WAVE_MODELS,
-        label: 'Wave Models',
-        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.WAVE_MODELS],
-        icon: Database,
-      },
       {
         id: ADMIN_TABS.USERS,
         label: 'Users',
@@ -126,7 +143,7 @@ export const MENU_GROUPS = [
       },
       {
         id: ADMIN_TABS.SETTINGS,
-        label: 'System Settings',
+        label: 'Settings',
         path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.SETTINGS],
         icon: Settings,
       },
@@ -142,8 +159,12 @@ export const PAGE_META = {
     description:
       "Monitor today's forecast package workflow, operational users, and publication readiness.",
   },
-  [ADMIN_TABS.CHARTS]: {
-    title: 'Review Forecast Packages',
+  [ADMIN_TABS.FORECAST_PACKAGES]: {
+    title: 'Forecast Packages',
+    description: 'Browse available forecast packages and continue operational forecasting work.',
+  },
+  [ADMIN_TABS.FORECAST_REVIEW]: {
+    title: 'Review Queue',
     description:
       "Prioritize today's analysis and forecast charts while keeping approved, rejected, and past packages available.",
   },
