@@ -10,7 +10,7 @@ const normalize = (value) =>
     .trim()
     .toLowerCase();
 
-function PermissionRow({ item, checked, disabled, onToggle, isDarkMode }) {
+function PermissionRow({ item, checked, disabled, onToggle, isDarkMode, showTechnicalKeys }) {
   const elevated = item.sensitivity === 'elevated';
 
   return (
@@ -53,14 +53,16 @@ function PermissionRow({ item, checked, disabled, onToggle, isDarkMode }) {
         >
           {item.description}
         </span>
-        <span
-          className={cn(
-            'mt-1.5 block font-mono text-[10px]',
-            isDarkMode ? 'text-slate-600' : 'text-slate-400'
-          )}
-        >
-          {item.key}
-        </span>
+        {showTechnicalKeys && (
+          <span
+            className={cn(
+              'mt-1.5 block font-mono text-[10px]',
+              isDarkMode ? 'text-slate-600' : 'text-slate-400'
+            )}
+          >
+            {item.key}
+          </span>
+        )}
       </span>
     </label>
   );
@@ -77,6 +79,7 @@ export function PermissionEditor({
   const groups = useMemo(() => buildPermissionGroups(categories, metadata), [categories, metadata]);
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(() => new Set());
+  const [showTechnicalKeys, setShowTechnicalKeys] = useState(false);
 
   const selected = useMemo(() => new Set(permissions), [permissions]);
   const configurableKeys = useMemo(() => new Set(Object.keys(metadata)), [metadata]);
@@ -141,8 +144,7 @@ export function PermissionEditor({
               {selectedConfigurable} of {Object.keys(metadata).length} permissions enabled
             </p>
             <p className={cn('mt-1 text-xs', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-              Open only the categories you need. Search by capability, description, or permission
-              key.
+              Open only the categories you need. Search by capability or description.
             </p>
             {compatibilityCount > 0 && (
               <p className="mt-1 text-[10px] font-semibold text-amber-500">
@@ -151,27 +153,44 @@ export function PermissionEditor({
               </p>
             )}
           </div>
-          <label className="relative block w-full lg:max-w-sm">
-            <Search
-              size={15}
+          <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl lg:justify-end">
+            <button
+              type="button"
+              aria-pressed={showTechnicalKeys}
+              onClick={() => setShowTechnicalKeys((current) => !current)}
               className={cn(
-                'pointer-events-none absolute left-3 top-1/2 -translate-y-1/2',
-                isDarkMode ? 'text-slate-500' : 'text-slate-400'
+                'min-h-10 shrink-0 rounded-xl border px-3 py-2 text-xs font-black transition-colors',
+                showTechnicalKeys
+                  ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-500'
+                  : isDarkMode
+                    ? 'border-white/10 text-slate-400 hover:bg-white/[0.04]'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
               )}
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search permissions"
-              className={cn(
-                'min-h-10 w-full rounded-xl border py-2 pl-9 pr-3 text-sm outline-none transition focus:border-cyan-500/60',
-                isDarkMode
-                  ? 'border-white/10 bg-white/[0.04] text-white placeholder:text-slate-600'
-                  : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400'
-              )}
-            />
-          </label>
+            >
+              {showTechnicalKeys ? 'Hide technical keys' : 'Show technical keys'}
+            </button>
+            <label className="relative block w-full sm:min-w-64">
+              <Search
+                size={15}
+                className={cn(
+                  'pointer-events-none absolute left-3 top-1/2 -translate-y-1/2',
+                  isDarkMode ? 'text-slate-500' : 'text-slate-400'
+                )}
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search permissions"
+                className={cn(
+                  'min-h-10 w-full rounded-xl border py-2 pl-9 pr-3 text-sm outline-none transition focus:border-cyan-500/60',
+                  isDarkMode
+                    ? 'border-white/10 bg-white/[0.04] text-white placeholder:text-slate-600'
+                    : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400'
+                )}
+              />
+            </label>
+          </div>
         </div>
       </div>
 
@@ -255,6 +274,7 @@ export function PermissionEditor({
                     disabled={disabled}
                     onToggle={togglePermission}
                     isDarkMode={isDarkMode}
+                    showTechnicalKeys={showTechnicalKeys}
                   />
                 ))}
               </div>
