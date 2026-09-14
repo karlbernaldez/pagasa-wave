@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { Navigate } from 'react-router-dom';
 
 import AdminAccountLayout from '@dashboards/admin/layout/AdminAccountLayout';
 import AdminRouteLayout from '@dashboards/admin/layout/AdminRouteLayout';
@@ -12,7 +13,7 @@ export default [
     element: <AdminRouteLayout />,
     children: [
       { path: '/dashboard', element: <Dashboard /> },
-      { path: '/dashboard/review', element: <Dashboard /> },
+      { path: '/dashboard/review', element: <Navigate to="/forecasts/review" replace /> },
       { path: '/dashboard/wave-models', element: <Dashboard /> },
       { path: '/dashboard/wave-models/pipeline', element: <Dashboard /> },
       { path: '/dashboard/wave-models/onboard', element: <Dashboard /> },

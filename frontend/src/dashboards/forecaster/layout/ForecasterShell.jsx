@@ -16,16 +16,45 @@ import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 const NAV_ITEMS = [
-  { id: 'project-library', label: 'Forecast Package', path: '/studio', icon: FolderKanban },
+  { id: 'project-library', label: 'Forecast Package', path: '/forecasts', icon: FolderKanban },
   { id: 'models', label: 'Models', path: '/studio?section=models', icon: Box, disabled: true },
-  { id: 'observations', label: 'Observations', path: '/studio?section=observations', icon: CloudSun, disabled: true },
-  { id: 'nowcast', label: 'Nowcast', path: '/studio?section=nowcast', icon: RadioTower, disabled: true },
-  { id: 'analytics', label: 'Analytics', path: '/studio?section=analytics', icon: BarChart3, disabled: true },
-  { id: 'map-viewer', label: 'Map Viewer', path: '/studio?section=map-viewer', icon: Map, disabled: true },
+  {
+    id: 'observations',
+    label: 'Observations',
+    path: '/studio?section=observations',
+    icon: CloudSun,
+    disabled: true,
+  },
+  {
+    id: 'nowcast',
+    label: 'Nowcast',
+    path: '/studio?section=nowcast',
+    icon: RadioTower,
+    disabled: true,
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    path: '/studio?section=analytics',
+    icon: BarChart3,
+    disabled: true,
+  },
+  {
+    id: 'map-viewer',
+    label: 'Map Viewer',
+    path: '/studio?section=map-viewer',
+    icon: Map,
+    disabled: true,
+  },
   { id: 'report-builder', label: 'Report Builder', path: '/pdf', icon: Waves, disabled: true },
 ];
 
-const ACCOUNT_ITEM = { id: 'account-settings', label: 'Account Settings', path: '/profile', icon: Settings };
+const ACCOUNT_ITEM = {
+  id: 'account-settings',
+  label: 'Account Settings',
+  path: '/profile',
+  icon: Settings,
+};
 
 const HEADER_BY_PATH = {
   '/profile': {
