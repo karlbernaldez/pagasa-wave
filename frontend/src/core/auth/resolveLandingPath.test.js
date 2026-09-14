@@ -34,17 +34,23 @@ describe('permission-driven frontend authorization helpers', () => {
     expect(hasAnyEffectivePermission(user('admin', []), ['forecast.review'])).toBe(false);
   });
 
-  it('sends a reviewer-only custom User Type to the review workspace', () => {
+  it('sends a reviewer-only custom User Type to the shared review queue', () => {
     const reviewer = user('duty_reviewer', ['forecast.review']);
     const landing = resolveAuthenticatedLandingPath(reviewer, '/');
 
-    expect(landing).toBe('/dashboard/review');
+    expect(landing).toBe('/forecasts/review');
   });
 
-  it('sends a Studio-capable arbitrary User Type to Studio', () => {
-    const studioUser = user('anything', ['studio.view']);
+  it('sends a Forecast-capable arbitrary User Type to the canonical Forecast entry', () => {
+    const forecastUser = user('anything', ['forecast.view']);
 
-    expect(resolveAuthenticatedLandingPath(studioUser, '/')).toBe('/studio');
+    expect(resolveAuthenticatedLandingPath(forecastUser, '/')).toBe('/forecasts');
+  });
+
+  it('does not use Studio permission as a generic landing route without a project', () => {
+    const studioOnlyUser = user('anything', ['studio.view']);
+
+    expect(resolveAuthenticatedLandingPath(studioOnlyUser, '/')).toBe('/');
   });
 
   it('does not grant an admin-named User Type a landing route without permissions', () => {
@@ -52,10 +58,17 @@ describe('permission-driven frontend authorization helpers', () => {
   });
 
   it('uses permission priority rather than role priority', () => {
-    const combined = user('forecaster', ['dashboard.view', 'forecast.review', 'studio.view']);
-    const reviewer = user('admin', ['forecast.review', 'studio.view']);
+    const combined = user('forecaster', [
+      'dashboard.view',
+      'forecast.review',
+      'forecast.view',
+      'studio.view',
+    ]);
+    const reviewer = user('admin', ['forecast.review', 'forecast.view', 'studio.view']);
+    const forecastOnly = user('admin', ['forecast.view', 'studio.view']);
 
     expect(resolveAuthenticatedLandingPath(combined, '/')).toBe('/dashboard');
-    expect(resolveAuthenticatedLandingPath(reviewer, '/')).toBe('/dashboard/review');
+    expect(resolveAuthenticatedLandingPath(reviewer, '/')).toBe('/forecasts/review');
+    expect(resolveAuthenticatedLandingPath(forecastOnly, '/')).toBe('/forecasts');
   });
 });

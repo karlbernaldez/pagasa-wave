@@ -28,7 +28,7 @@ function renderGuard(permission = null) {
             </ProtectedAdminRoute>
           }
         />
-        <Route path="/dashboard/review" element={<div>Review workspace</div>} />
+        <Route path="/forecasts/review" element={<div>Review workspace</div>} />
         <Route path="/" element={<div>Permission denied landing</div>} />
       </Routes>
     </MemoryRouter>

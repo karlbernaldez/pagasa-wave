@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { checkAuthSession } from '@/api/auth';
 import { resolveAuthenticatedLandingPath } from '@/core/auth/resolveLandingPath';
 
-const useAuthRedirect = (redirectPath = '/studio') => {
+const useAuthRedirect = (redirectPath = '/') => {
   const navigate = useNavigate();
 
   useEffect(() => {
