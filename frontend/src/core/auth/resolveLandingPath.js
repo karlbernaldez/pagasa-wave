@@ -1,7 +1,7 @@
 const PERMISSION_LANDING_ROUTES = Object.freeze([
   ['dashboard.view', '/dashboard'],
-  ['forecast.review', '/dashboard/review'],
-  ['studio.view', '/studio'],
+  ['forecast.review', '/forecasts/review'],
+  ['forecast.view', '/forecasts'],
   ['wave_models.manage', '/dashboard/wave-models'],
   ['wave_pipeline.view', '/dashboard/wave-models/pipeline'],
   ['model_onboarding.view', '/dashboard/wave-models/onboard'],
