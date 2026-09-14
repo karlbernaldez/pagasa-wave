@@ -11,7 +11,7 @@ import {
 } from '../services/waveModelService.js';
 import {
   getWaveSourceCyclePolicy,
-  setWaveSourceCycleHour,
+  setWaveSourceCyclePolicy,
 } from '../services/waveSourceCyclePolicy.js';
 
 const actorId = (req) => req.user?._id ?? req.user?.id ?? null;
@@ -108,10 +108,14 @@ export const getWaveModelSourceCyclePolicy = async (req, res, next) => {
 
 export const updateWaveModelSourceCyclePolicy = async (req, res, next) => {
   try {
-    const policy = await setWaveSourceCycleHour(req.params.code, req.body?.preferredHourUtc);
+    const policy = await setWaveSourceCyclePolicy(req.params.code, {
+      preferredHourUtc: req.body?.preferredHourUtc,
+      cycleDateMode: req.body?.cycleDateMode,
+    });
     await writeAudit(req, 'wave_model.source_cycle.update', {
       code: req.params.code.toUpperCase(),
       preferredHourUtc: policy.preferredHourUtc,
+      cycleDateMode: policy.cycleDateMode,
     });
     res.status(200).json({ success: true, code: req.params.code.toUpperCase(), policy });
   } catch (error) {

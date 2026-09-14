@@ -2,7 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { getWaveSourceCyclePolicy } from './waveSourceCyclePolicy.js';
+import {
+  DEFAULT_SOURCE_CYCLE_DATE_MODE,
+  getWaveSourceCyclePolicy,
+} from './waveSourceCyclePolicy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,10 +47,22 @@ export function packageTag(packageDate) {
   return `${year}${MONTHS[month - 1]}${String(day).padStart(2, '0')}`;
 }
 
-export function requiredSourceCycle(packageDate, preferredHourUtc = 18) {
+export function requiredSourceCycle(
+  packageDate,
+  preferredHourUtc = 18,
+  cycleDateMode = DEFAULT_SOURCE_CYCLE_DATE_MODE
+) {
   const [year, month, day] = packageDate.split('-').map(Number);
-  const previousUtc = new Date(Date.UTC(year, month - 1, day - 1, preferredHourUtc, 0, 0));
-  return `${previousUtc.getUTCFullYear()}${String(previousUtc.getUTCMonth() + 1).padStart(2, '0')}${String(previousUtc.getUTCDate()).padStart(2, '0')}${String(preferredHourUtc).padStart(2, '0')}`;
+  const dayOffset =
+    cycleDateMode === 'same_day'
+      ? 0
+      : cycleDateMode === 'previous_day'
+        ? -1
+        : preferredHourUtc === 0
+          ? 0
+          : -1;
+  const cycleUtc = new Date(Date.UTC(year, month - 1, day + dayOffset, preferredHourUtc, 0, 0));
+  return `${cycleUtc.getUTCFullYear()}${String(cycleUtc.getUTCMonth() + 1).padStart(2, '0')}${String(cycleUtc.getUTCDate()).padStart(2, '0')}${String(preferredHourUtc).padStart(2, '0')}`;
 }
 
 async function readJson(target) {
@@ -142,13 +157,21 @@ export async function getWavePipelineStatus(now = new Date()) {
   const models = await Promise.all(
     MODELS.map(async (model) => {
       const policy = await getWaveSourceCyclePolicy(model);
-      const sourceCycle = requiredSourceCycle(packageDate, policy.preferredHourUtc);
+      const sourceCycle = requiredSourceCycle(
+        packageDate,
+        policy.preferredHourUtc,
+        policy.cycleDateMode
+      );
       const runtime = await readRuntimeSnapshot(model);
       const runtimeMatchesToday =
         runtime?.packageDate === packageDate && runtime?.requiredSourceCycle === sourceCycle;
 
       if (runtimeMatchesToday && TRANSIENT_STATES.has(runtime.state)) {
-        return { ...runtime, preferredSourceCycleHourUtc: policy.preferredHourUtc };
+        return {
+          ...runtime,
+          preferredSourceCycleHourUtc: policy.preferredHourUtc,
+          sourceCycleDateMode: policy.cycleDateMode,
+        };
       }
 
       const published = await publishedSnapshot(model, packageDate, sourceCycle);
@@ -156,6 +179,7 @@ export async function getWavePipelineStatus(now = new Date()) {
         return {
           ...published,
           preferredSourceCycleHourUtc: policy.preferredHourUtc,
+          sourceCycleDateMode: policy.cycleDateMode,
           inputMode: published.inputMode || runtime?.inputMode || null,
           lastCheckAt: runtimeMatchesToday ? runtime?.lastCheckAt || null : null,
           completedAt:
@@ -170,6 +194,7 @@ export async function getWavePipelineStatus(now = new Date()) {
         message: `Waiting for the configured ${String(policy.preferredHourUtc).padStart(2, '0')}Z source cycle to become complete.`,
         packageDate,
         preferredSourceCycleHourUtc: policy.preferredHourUtc,
+        sourceCycleDateMode: policy.cycleDateMode,
         requiredSourceCycle: sourceCycle,
         sourceCycle: null,
         inputMode: runtime?.inputMode || null,

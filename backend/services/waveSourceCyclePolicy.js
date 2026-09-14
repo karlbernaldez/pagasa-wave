@@ -15,6 +15,8 @@ const DEFAULT_POLICY_PATH = path.join(
 
 export const DEFAULT_SOURCE_CYCLE_HOUR_UTC = 18;
 export const STANDARD_SOURCE_CYCLE_HOURS_UTC = [0, 6, 12, 18];
+export const DEFAULT_SOURCE_CYCLE_DATE_MODE = 'automatic';
+export const SOURCE_CYCLE_DATE_MODES = ['automatic', 'same_day', 'previous_day'];
 export const SOURCE_CYCLE_POLICY_PATH = path.resolve(
   process.env.WAVE_SOURCE_CYCLE_POLICY_PATH || DEFAULT_POLICY_PATH
 );
@@ -40,6 +42,17 @@ const assertHour = (code, value) => {
     throw error;
   }
   return hour;
+};
+
+const assertCycleDateMode = (value) => {
+  if (!SOURCE_CYCLE_DATE_MODES.includes(value)) {
+    const error = new Error(
+      `Source cycle date mode must be one of ${SOURCE_CYCLE_DATE_MODES.join(', ')}.`
+    );
+    error.status = 400;
+    throw error;
+  }
+  return value;
 };
 
 async function readDocument() {
@@ -76,32 +89,55 @@ async function writeDocument(document) {
 export async function getWaveSourceCyclePolicy(rawCode) {
   const code = normalizeCode(rawCode);
   const document = await readDocument();
-  const configured = document.models?.[code]?.preferredHourUtc;
+  const configured = document.models?.[code] || {};
   const allowedHoursUtc = allowedHoursForModel(code);
   const preferredHourUtc =
-    Number.isInteger(configured) && allowedHoursUtc.includes(configured)
-      ? configured
+    Number.isInteger(configured.preferredHourUtc) &&
+    allowedHoursUtc.includes(configured.preferredHourUtc)
+      ? configured.preferredHourUtc
       : DEFAULT_SOURCE_CYCLE_HOUR_UTC;
+  const cycleDateMode = SOURCE_CYCLE_DATE_MODES.includes(configured.cycleDateMode)
+    ? configured.cycleDateMode
+    : DEFAULT_SOURCE_CYCLE_DATE_MODE;
 
   return {
     preferredHourUtc,
     allowedHoursUtc: [...allowedHoursUtc],
+    cycleDateMode,
+    allowedCycleDateModes: [...SOURCE_CYCLE_DATE_MODES],
     fallbackEnabled: false,
   };
 }
 
-export async function setWaveSourceCycleHour(rawCode, value) {
+export async function setWaveSourceCyclePolicy(rawCode, changes = {}) {
   const code = normalizeCode(rawCode);
-  const preferredHourUtc = assertHour(code, value);
   const document = await readDocument();
+  const current = await getWaveSourceCyclePolicy(code);
+  const preferredHourUtc =
+    changes.preferredHourUtc === undefined
+      ? current.preferredHourUtc
+      : assertHour(code, changes.preferredHourUtc);
+  const cycleDateMode =
+    changes.cycleDateMode === undefined
+      ? current.cycleDateMode
+      : assertCycleDateMode(changes.cycleDateMode);
+
   const next = {
     schemaVersion: 1,
     updatedAt: new Date().toISOString(),
     models: {
       ...document.models,
-      [code]: { preferredHourUtc },
+      [code]: {
+        ...(document.models?.[code] || {}),
+        preferredHourUtc,
+        cycleDateMode,
+      },
     },
   };
   await writeDocument(next);
   return getWaveSourceCyclePolicy(code);
+}
+
+export async function setWaveSourceCycleHour(rawCode, value) {
+  return setWaveSourceCyclePolicy(rawCode, { preferredHourUtc: value });
 }

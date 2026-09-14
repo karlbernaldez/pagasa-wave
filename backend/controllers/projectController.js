@@ -613,10 +613,6 @@ export const approveProject = asyncHandler(async (req, res) => {
     throwError('Invalid status transition', 400);
   }
 
-  if (project.owner.toString() === req.user.id) {
-    throwError('You cannot approve your own project', 400);
-  }
-
   const previousStatus = project.status;
   const expectedUpdatedAt = project.updatedAt;
   project.status = PROJECT_STATUS.APPROVED;
