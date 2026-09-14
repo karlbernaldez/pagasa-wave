@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CalendarDays, CheckCircle2, Eye, Info, Loader2, LockKeyhole, Plus, RefreshCw, Send, ShieldCheck, Waves } from 'lucide-react';
+import {
+  AlertCircle,
+  CalendarDays,
+  CheckCircle2,
+  Eye,
+  Info,
+  Loader2,
+  LockKeyhole,
+  Plus,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+  Waves,
+} from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import {
@@ -29,13 +42,15 @@ const REQUIRED_CHART_LABELS = {
 
 const LOCKED_PACKAGE_COPY = {
   Submitted: {
-    nextAction: 'No action is needed right now. You will be notified if a reviewer requests revisions.',
+    nextAction:
+      'No action is needed right now. You will be notified if a reviewer requests revisions.',
     lockedNotice: 'Submitted to the review queue.',
     currentStep: 'Submitted',
     reviewGateDetail: 'Waiting for review',
   },
   'Under Review': {
-    nextAction: 'No action is needed while the package is under review. You will be notified of the decision.',
+    nextAction:
+      'No action is needed while the package is under review. You will be notified of the decision.',
     lockedNotice: 'Package review is in progress.',
     currentStep: 'Under Review',
     reviewGateDetail: 'Review in progress',
@@ -76,19 +91,22 @@ const CHART_METADATA = {
   analysis: {
     code: 'ANL',
     horizon: 'Analysis',
-    mandate: 'Analysis of observed wave conditions, including significant wave height, direction, and period.',
+    mandate:
+      'Analysis of observed wave conditions, including significant wave height, direction, and period.',
     checkpoint: 'Analysis complete',
   },
   forecast_24h: {
     code: '+24H',
     horizon: '24-hour outlook',
-    mandate: '24-hour wave height and direction forecast based on latest model guidance and analysis.',
+    mandate:
+      '24-hour wave height and direction forecast based on latest model guidance and analysis.',
     checkpoint: '24h forecast complete',
   },
   forecast_36h: {
     code: '+36H',
     horizon: '36-hour outlook',
-    mandate: '36-hour wave height and direction forecast extending the 24-hour outlook with model guidance.',
+    mandate:
+      '36-hour wave height and direction forecast extending the 24-hour outlook with model guidance.',
     checkpoint: '36h forecast complete',
   },
   forecast_48h: {
@@ -107,7 +125,10 @@ function formatForecastDate(value) {
   if (!value) return 'Today';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Today';
-  return new Intl.DateTimeFormat('en-PH', { dateStyle: 'full', timeZone: FORECAST_TIME_ZONE }).format(date);
+  return new Intl.DateTimeFormat('en-PH', {
+    dateStyle: 'full',
+    timeZone: FORECAST_TIME_ZONE,
+  }).format(date);
 }
 
 function formatForecastDateKey(value) {
@@ -115,7 +136,10 @@ function formatForecastDateKey(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   const parts = new Intl.DateTimeFormat('en-CA', {
-    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: FORECAST_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: FORECAST_TIME_ZONE,
   }).formatToParts(date);
   const getPart = (type) => parts.find((part) => part.type === type)?.value || '';
   const year = getPart('year');
@@ -126,7 +150,12 @@ function formatForecastDateKey(value) {
 
 function getUserDisplayName(user) {
   if (!user || typeof user === 'string') return '';
-  return [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.username || user.email || '';
+  return (
+    [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+    user.username ||
+    user.email ||
+    ''
+  );
 }
 
 function formatNameList(names = []) {
@@ -167,7 +196,8 @@ function getPackageId(packageData) {
 function getPackageTitle(packageData) {
   const dateKey = formatForecastDateKey(packageData?.forecastDate);
   const name = packageData?.name || '';
-  if (dateKey && (!name || AUTO_PACKAGE_NAME_PATTERN.test(name))) return `Marine Forecast ${dateKey}`;
+  if (dateKey && (!name || AUTO_PACKAGE_NAME_PATTERN.test(name)))
+    return `Marine Forecast ${dateKey}`;
   return name || 'Marine Forecast Package';
 }
 
@@ -217,11 +247,17 @@ function isChartComplete(packageData, chartType) {
 function getFirstIncompletePrerequisite(packageData, chartType) {
   const chartIndex = REQUIRED_CHART_SEQUENCE.indexOf(chartType);
   if (chartIndex <= 0) return null;
-  return REQUIRED_CHART_SEQUENCE.slice(0, chartIndex).find((previousChartType) => !isChartComplete(packageData, previousChartType)) || null;
+  return (
+    REQUIRED_CHART_SEQUENCE.slice(0, chartIndex).find(
+      (previousChartType) => !isChartComplete(packageData, previousChartType)
+    ) || null
+  );
 }
 
 function getNextIncompleteChartType(packageData) {
-  return REQUIRED_CHART_SEQUENCE.find((chartType) => !isChartComplete(packageData, chartType)) || null;
+  return (
+    REQUIRED_CHART_SEQUENCE.find((chartType) => !isChartComplete(packageData, chartType)) || null
+  );
 }
 
 function getCompletion(packageData) {
@@ -229,16 +265,23 @@ function getCompletion(packageData) {
   const rows = packageData?.chartCompletion || [];
   const required = REQUIRED_CHART_SEQUENCE.length;
   const completed = rows.filter((row) => row.isComplete).length;
-  return { required, completed, percentage: required ? Math.round((completed / required) * 100) : 0, isComplete: completed === required };
+  return {
+    required,
+    completed,
+    percentage: required ? Math.round((completed / required) * 100) : 0,
+    isComplete: completed === required,
+  };
 }
 
 function getLockedPackageCopy(status) {
-  return LOCKED_PACKAGE_COPY[status] || {
-    nextAction: `Package is ${status || 'locked'}. Charts are read-only until a reviewer requests a revision.`,
-    lockedNotice: `This package is locked while it is ${status || 'not editable'}.`,
-    currentStep: status || 'Locked',
-    reviewGateDetail: 'Package locked',
-  };
+  return (
+    LOCKED_PACKAGE_COPY[status] || {
+      nextAction: `Package is ${status || 'locked'}. Charts are read-only until a reviewer requests a revision.`,
+      lockedNotice: `This package is locked while it is ${status || 'not editable'}.`,
+      currentStep: status || 'Locked',
+      reviewGateDetail: 'Package locked',
+    }
+  );
 }
 
 function sortChartsBySequence(charts = []) {
@@ -251,15 +294,25 @@ function sortChartsBySequence(charts = []) {
 
 function getSubmitReadiness(packageData, completion, isEditable, pendingRevisionChartTypes = []) {
   if (!packageData) {
-    return { title: 'No package yet', detail: 'Create today\'s package to begin the four-chart forecast workflow.', tone: 'neutral' };
+    return {
+      title: 'No package yet',
+      detail: "Create today's package to begin the four-chart forecast workflow.",
+      tone: 'neutral',
+    };
   }
   if (!isEditable) {
     const copy = getLockedPackageCopy(packageData.status);
     return { title: 'Locked for forecasters', detail: copy.lockedNotice, tone: 'locked' };
   }
   if (pendingRevisionChartTypes.length) {
-    const labels = pendingRevisionChartTypes.map((chartType) => REQUIRED_CHART_LABELS[chartType] || chartType).join(', ');
-    return { title: 'Revision action required', detail: `Open and re-certify ${labels} before resubmitting this package.`, tone: 'warning' };
+    const labels = pendingRevisionChartTypes
+      .map((chartType) => REQUIRED_CHART_LABELS[chartType] || chartType)
+      .join(', ');
+    return {
+      title: 'Revision action required',
+      detail: `Open and re-certify ${labels} before resubmitting this package.`,
+      tone: 'warning',
+    };
   }
   if (!completion.isComplete) {
     const nextChartType = getNextIncompleteChartType(packageData);
@@ -272,14 +325,20 @@ function getSubmitReadiness(packageData, completion, isEditable, pendingRevision
       tone: 'blocked',
     };
   }
-  return { title: 'Ready to submit', detail: 'All required charts are certified. Submit this package for review.', tone: 'ready' };
+  return {
+    title: 'Ready to submit',
+    detail: 'All required charts are certified. Submit this package for review.',
+    tone: 'ready',
+  };
 }
 
 function getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes = []) {
-  if (!packageData) return 'Create today\'s package to generate the four required forecast charts.';
+  if (!packageData) return "Create today's package to generate the four required forecast charts.";
   if (!isEditable) return getLockedPackageCopy(packageData.status).nextAction;
   if (pendingRevisionChartTypes.length) {
-    const labels = pendingRevisionChartTypes.map((chartType) => REQUIRED_CHART_LABELS[chartType] || chartType).join(', ');
+    const labels = pendingRevisionChartTypes
+      .map((chartType) => REQUIRED_CHART_LABELS[chartType] || chartType)
+      .join(', ');
     return `Resolve and re-certify requested revisions for ${labels} before resubmitting the package.`;
   }
   if (!completion.isComplete) {
@@ -294,25 +353,49 @@ function getNextAction(packageData, completion, isEditable, pendingRevisionChart
 function StatusPill({ status, isDarkMode }) {
   const isSuccessful = ['Submitted', 'Approved', 'Published'].includes(status);
   return (
-    <span className={`inline-flex items-center text-base font-black uppercase tracking-wide ${isSuccessful ? isDarkMode ? 'text-lime-300' : 'text-emerald-700' : isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}>
+    <span
+      className={`inline-flex items-center text-base font-black uppercase tracking-wide ${isSuccessful ? (isDarkMode ? 'text-lime-300' : 'text-emerald-700') : isDarkMode ? 'text-cyan-200' : 'text-blue-700'}`}
+    >
       {status || 'Draft'}
     </span>
   );
 }
 
-function NextActionCard({ packageData, completion, isEditable, isDarkMode, pendingRevisionChartTypes }) {
+function NextActionCard({
+  packageData,
+  completion,
+  isEditable,
+  isDarkMode,
+  pendingRevisionChartTypes,
+}) {
   const nextAction = getNextAction(packageData, completion, isEditable, pendingRevisionChartTypes);
 
   return (
-    <section className={`relative overflow-hidden rounded-2xl border px-5 py-4 backdrop-blur-3xl ${isDarkMode ? 'border-cyan-300/35 bg-[#07335b]/48 shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_18px_42px_rgba(0,0,0,0.20)]' : 'border-white/85 bg-white/64 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_18px_42px_rgba(15,74,105,0.14)]'}`}>
-      <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/3 opacity-20 sm:block" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(34,211,238,.8), transparent 38%), repeating-radial-gradient(ellipse at 100% 120%, transparent 0 14px, rgba(125,211,252,.5) 15px 16px)' }} />
+    <section
+      className={`relative overflow-hidden rounded-2xl border px-5 py-4 backdrop-blur-3xl ${isDarkMode ? 'border-cyan-300/35 bg-[#07335b]/48 shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_18px_42px_rgba(0,0,0,0.20)]' : 'border-white/85 bg-white/64 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_18px_42px_rgba(15,74,105,0.14)]'}`}
+    >
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/3 opacity-20 sm:block"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 80% 20%, rgba(34,211,238,.8), transparent 38%), repeating-radial-gradient(ellipse at 100% 120%, transparent 0 14px, rgba(125,211,252,.5) 15px 16px)',
+        }}
+      />
       <div className="flex min-w-0 items-start gap-3">
-        <span className={`relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border ${isDarkMode ? 'border-cyan-300/50 bg-cyan-300/10 text-cyan-300' : 'border-blue-200 bg-white text-blue-700 shadow-sm'}`}>
+        <span
+          className={`relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border ${isDarkMode ? 'border-cyan-300/50 bg-cyan-300/10 text-cyan-300' : 'border-blue-200 bg-white text-blue-700 shadow-sm'}`}
+        >
           <Info size={18} />
         </span>
         <div className="relative min-w-0">
-          <p className={`text-base font-black ${isDarkMode ? 'text-cyan-300' : 'text-blue-700'}`}>Next action</p>
-          <p className={`mt-0.5 text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{nextAction}</p>
+          <p className={`text-base font-black ${isDarkMode ? 'text-cyan-300' : 'text-blue-700'}`}>
+            Next action
+          </p>
+          <p
+            className={`mt-0.5 text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}
+          >
+            {nextAction}
+          </p>
         </div>
       </div>
     </section>
@@ -324,29 +407,46 @@ function ChartCard({ chart, packageData, isDarkMode, onOpen, sequenceNumber }) {
   const completion = getChartCompletion(packageData, chartType);
   const projectId = getChartProjectId(chart);
   const chartProjectStatus = getChartProjectStatus(chart);
-  const chartReviewStatus = chartProjectStatus || (APPROVED_PACKAGE_STATUSES.has(packageData?.status) ? 'Approved' : packageData?.status);
+  const chartReviewStatus =
+    chartProjectStatus ||
+    (APPROVED_PACKAGE_STATUSES.has(packageData?.status) ? 'Approved' : packageData?.status);
   const isComplete = Boolean(completion?.isComplete);
   const revisionActionPending = isRevisionActionPending(packageData, chart);
-  const isReCertifiedRevision = chartReviewStatus === REVISION_REQUESTED_STATUS && isComplete && !revisionActionPending;
+  const isReCertifiedRevision =
+    chartReviewStatus === REVISION_REQUESTED_STATUS && isComplete && !revisionActionPending;
   const displayChartStatus = isReCertifiedRevision ? 'Re-certified' : chartReviewStatus;
   const blockingChartType = getFirstIncompletePrerequisite(packageData, chartType);
   const isQueued = Boolean(blockingChartType) && !isComplete;
   const activeEditorNames = getActiveEditorNames(chart);
   const activeEditorText = formatNameList(activeEditorNames);
   const readyEditorText = formatNameList(getReadyEditorNames(chart, completion));
-  const metadata = CHART_METADATA[chartType] || { code: 'CHT', horizon: 'Forecast chart', mandate: 'Prepare and verify this forecast chart.', checkpoint: 'Confirm readiness before package submission.' };
+  const metadata = CHART_METADATA[chartType] || {
+    code: 'CHT',
+    horizon: 'Forecast chart',
+    mandate: 'Prepare and verify this forecast chart.',
+    checkpoint: 'Confirm readiness before package submission.',
+  };
   const hasActiveEditors = activeEditorNames.length > 0;
   const canOpen = Boolean(projectId && !isQueued);
   const isApprovedChart = APPROVED_CHART_STATUSES.has(displayChartStatus);
   const isSubmittedChart = displayChartStatus === 'Submitted';
-  const isWarningChart = ['Revision Requested', 'Under Review'].includes(displayChartStatus) && !isReCertifiedRevision;
-  const isPositiveState = isApprovedChart || isSubmittedChart || isComplete || isReCertifiedRevision;
-  const statusLabel = isQueued && !displayChartStatus ? 'Queued' : displayChartStatus || (isComplete ? 'Ready for review' : 'In production');
+  const isWarningChart =
+    ['Revision Requested', 'Under Review'].includes(displayChartStatus) && !isReCertifiedRevision;
+  const isPositiveState =
+    isApprovedChart || isSubmittedChart || isComplete || isReCertifiedRevision;
+  const statusLabel =
+    isQueued && !displayChartStatus
+      ? 'Queued'
+      : displayChartStatus || (isComplete ? 'Ready for review' : 'In production');
   const certificationText = revisionActionPending
     ? 'Revision needs re-certification'
     : isComplete
-      ? readyEditorText ? `Certified by ${readyEditorText}` : 'Certified'
-      : hasActiveEditors ? `Editing by ${activeEditorText}` : 'Not yet certified';
+      ? readyEditorText
+        ? `Certified by ${readyEditorText}`
+        : 'Certified'
+      : hasActiveEditors
+        ? `Editing by ${activeEditorText}`
+        : 'Not yet certified';
   const checkpointText = revisionActionPending
     ? 'Revision required before resubmission'
     : isQueued
@@ -354,20 +454,33 @@ function ChartCard({ chart, packageData, isDarkMode, onOpen, sequenceNumber }) {
       : hasActiveEditors && !isComplete
         ? `${activeEditorText} ${activeEditorNames.length === 1 ? 'is' : 'are'} currently editing`
         : metadata.checkpoint;
-  const statusTextClass = isApprovedChart || isSubmittedChart || isReCertifiedRevision
-    ? isDarkMode ? 'text-lime-300' : 'text-emerald-700'
-    : isWarningChart
-      ? 'text-amber-400'
-      : isQueued
-        ? 'text-slate-500'
-        : isDarkMode ? 'text-cyan-300' : 'text-blue-700';
+  const statusTextClass =
+    isApprovedChart || isSubmittedChart || isReCertifiedRevision
+      ? isDarkMode
+        ? 'text-lime-300'
+        : 'text-emerald-700'
+      : isWarningChart
+        ? 'text-amber-400'
+        : isQueued
+          ? 'text-slate-500'
+          : isDarkMode
+            ? 'text-cyan-300'
+            : 'text-blue-700';
 
   return (
-    <article className={`group min-h-[156px] overflow-hidden rounded-xl border shadow-lg backdrop-blur-2xl transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-cyan-300/30 bg-[#062b50]/62 shadow-black/20 hover:border-cyan-300/55' : 'border-white/85 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_14px_34px_rgba(15,74,105,0.12)] hover:border-cyan-200'}`}>
+    <article
+      className={`group min-h-[156px] overflow-hidden rounded-xl border shadow-lg backdrop-blur-2xl transition duration-200 ${isQueued ? 'opacity-75' : 'hover:-translate-y-0.5 hover:shadow-xl'} ${isDarkMode ? 'border-cyan-300/30 bg-[#062b50]/62 shadow-black/20 hover:border-cyan-300/55' : 'border-white/85 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_14px_34px_rgba(15,74,105,0.12)] hover:border-cyan-200'}`}
+    >
       <div className="grid min-h-[156px] gap-3 p-4 sm:grid-cols-[28px_1fr] xl:grid-cols-[28px_68px_minmax(0,1fr)_172px] xl:items-center">
-        <span className={`grid h-7 w-7 place-items-center self-start rounded-md border text-sm font-black xl:mt-0 ${isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-white' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>{sequenceNumber}</span>
+        <span
+          className={`grid h-7 w-7 place-items-center self-start rounded-md border text-sm font-black xl:mt-0 ${isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-white' : 'border-blue-200 bg-blue-50 text-blue-800'}`}
+        >
+          {sequenceNumber}
+        </span>
 
-        <div className={`grid h-16 w-16 place-items-center rounded-full border ${isPositiveState ? isDarkMode ? 'border-cyan-100/45 bg-white/[0.03] text-white' : 'border-blue-200 bg-blue-50 text-blue-800' : isQueued ? 'border-slate-500/30 text-slate-500' : isDarkMode ? 'border-cyan-300/35 bg-cyan-400/[0.05] text-cyan-100' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+        <div
+          className={`grid h-16 w-16 place-items-center rounded-full border ${isPositiveState ? (isDarkMode ? 'border-cyan-100/45 bg-white/[0.03] text-white' : 'border-blue-200 bg-blue-50 text-blue-800') : isQueued ? 'border-slate-500/30 text-slate-500' : isDarkMode ? 'border-cyan-300/35 bg-cyan-400/[0.05] text-cyan-100' : 'border-blue-200 bg-blue-50 text-blue-700'}`}
+        >
           <div className="text-center">
             <Waves className="mx-auto" size={28} aria-hidden="true" />
             <span className="block text-[9px] font-black leading-none">{metadata.code}</span>
@@ -375,22 +488,62 @@ function ChartCard({ chart, packageData, isDarkMode, onOpen, sequenceNumber }) {
         </div>
 
         <div className="min-w-0 sm:col-span-2 xl:col-span-1">
-          <h3 className={`text-base font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{REQUIRED_CHART_LABELS[chartType] || chartType}</h3>
-          <p className={`mt-0.5 text-xs font-black uppercase tracking-[0.08em] ${isDarkMode ? 'text-cyan-300' : 'text-blue-700'}`}>{metadata.code}</p>
-          <p className={`mt-3 max-w-[290px] text-sm leading-[1.35] ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{metadata.mandate}</p>
-          <p className={`mt-3 inline-flex items-start gap-1.5 text-xs font-medium ${revisionActionPending ? 'text-amber-400' : isComplete ? isDarkMode ? 'text-cyan-300' : 'text-cyan-700' : isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+          <h3
+            className={`text-base font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+          >
+            {REQUIRED_CHART_LABELS[chartType] || chartType}
+          </h3>
+          <p
+            className={`mt-0.5 text-xs font-black uppercase tracking-[0.08em] ${isDarkMode ? 'text-cyan-300' : 'text-blue-700'}`}
+          >
+            {metadata.code}
+          </p>
+          <p
+            className={`mt-3 max-w-[290px] text-sm leading-[1.35] ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}
+          >
+            {metadata.mandate}
+          </p>
+          <p
+            className={`mt-3 inline-flex items-start gap-1.5 text-xs font-medium ${revisionActionPending ? 'text-amber-400' : isComplete ? (isDarkMode ? 'text-cyan-300' : 'text-cyan-700') : isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+          >
             <CheckCircle2 className="mt-0.5 shrink-0" size={14} aria-hidden="true" />
             <span>Readiness checkpoint: {checkpointText}</span>
           </p>
         </div>
 
-        <div className={`flex min-h-[126px] flex-col border-t pt-4 sm:col-span-2 xl:col-span-1 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-1 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <span className={`inline-flex w-fit items-center gap-1.5 text-xs font-black uppercase tracking-wide ${statusTextClass}`}><CheckCircle2 size={16} />{statusLabel}</span>
-          <span className="group/certification relative mt-3 inline-flex w-fit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent" tabIndex={0} aria-label={isComplete ? certificationText : 'Not yet certified'}>
-            <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide ${isComplete ? isDarkMode ? 'border-cyan-300/25 bg-cyan-400/[0.07] text-cyan-300' : 'border-cyan-200 bg-cyan-50 text-cyan-700' : isDarkMode ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}><ShieldCheck size={14} />{isComplete ? 'Certified' : 'Not certified'}</span>
-            <span role="tooltip" className={`pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-max max-w-[240px] translate-y-1 rounded-lg border px-3 py-2 text-[11px] font-semibold normal-case tracking-normal opacity-0 shadow-xl transition duration-150 group-hover/certification:translate-y-0 group-hover/certification:opacity-100 group-focus-within/certification:translate-y-0 group-focus-within/certification:opacity-100 ${isDarkMode ? 'border-cyan-300/20 bg-slate-950 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}`}>{certificationText}</span>
+        <div
+          className={`flex min-h-[126px] flex-col border-t pt-4 sm:col-span-2 xl:col-span-1 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-1 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
+        >
+          <span
+            className={`inline-flex w-fit items-center gap-1.5 text-xs font-black uppercase tracking-wide ${statusTextClass}`}
+          >
+            <CheckCircle2 size={16} />
+            {statusLabel}
           </span>
-          <button type="button" disabled={!canOpen} onClick={() => canOpen && onOpen(projectId)} className={`mt-auto inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border px-3 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:cursor-not-allowed disabled:opacity-50 ${isDarkMode ? 'border-white/15 bg-white/[0.06] text-white hover:border-cyan-300/30 hover:bg-white/[0.10]' : 'border-slate-200 bg-white/78 text-slate-900 hover:border-blue-300 hover:bg-white'}`}>
+          <span
+            className="group/certification relative mt-3 inline-flex w-fit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+            tabIndex={0}
+            aria-label={isComplete ? certificationText : 'Not yet certified'}
+          >
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide ${isComplete ? (isDarkMode ? 'border-cyan-300/25 bg-cyan-400/[0.07] text-cyan-300' : 'border-cyan-200 bg-cyan-50 text-cyan-700') : isDarkMode ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}
+            >
+              <ShieldCheck size={14} />
+              {isComplete ? 'Certified' : 'Not certified'}
+            </span>
+            <span
+              role="tooltip"
+              className={`pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-max max-w-[240px] translate-y-1 rounded-lg border px-3 py-2 text-[11px] font-semibold normal-case tracking-normal opacity-0 shadow-xl transition duration-150 group-hover/certification:translate-y-0 group-hover/certification:opacity-100 group-focus-within/certification:translate-y-0 group-focus-within/certification:opacity-100 ${isDarkMode ? 'border-cyan-300/20 bg-slate-950 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}`}
+            >
+              {certificationText}
+            </span>
+          </span>
+          <button
+            type="button"
+            disabled={!canOpen}
+            onClick={() => canOpen && onOpen(projectId)}
+            className={`mt-auto inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border px-3 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:cursor-not-allowed disabled:opacity-50 ${isDarkMode ? 'border-white/15 bg-white/[0.06] text-white hover:border-cyan-300/30 hover:bg-white/[0.10]' : 'border-slate-200 bg-white/78 text-slate-900 hover:border-blue-300 hover:bg-white'}`}
+          >
             <Eye size={17} aria-hidden="true" />
             {isQueued ? 'Waiting' : isComplete ? 'Review chart' : 'Open chart'}
           </button>
@@ -400,56 +553,164 @@ function ChartCard({ chart, packageData, isDarkMode, onOpen, sequenceNumber }) {
   );
 }
 
-function PackageSummary({ chartSequenceHelper, completion, hasPendingRevisionAction, isDarkMode, isEditable, lockedPackageCopy, packageData, packageTitle, submitReadiness }) {
+function PackageSummary({
+  chartSequenceHelper,
+  completion,
+  hasPendingRevisionAction,
+  isDarkMode,
+  isEditable,
+  lockedPackageCopy,
+  packageData,
+  packageTitle,
+  submitReadiness,
+}) {
   const ReadinessIcon = !isEditable ? LockKeyhole : completion.isComplete ? ShieldCheck : Waves;
   const statusIsComplete = ['Submitted', 'Approved', 'Published'].includes(packageData.status);
-  const lockedDescription = 'The package is locked and cannot be edited until the review is completed.';
+  const lockedDescription =
+    'The package is locked and cannot be edited until the review is completed.';
 
   return (
-    <section className={`relative min-h-[192px] overflow-hidden rounded-xl border backdrop-blur-3xl ${isDarkMode ? 'border-cyan-300/35 bg-[#07335b]/54 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(8,47,73,0.35),0_26px_64px_rgba(0,0,0,0.28)]' : 'border-white/[0.90] bg-white/[0.62] shadow-[inset_0_1px_0_rgba(255,255,255,0.98),inset_0_-1px_0_rgba(255,255,255,0.40),0_26px_64px_rgba(15,74,105,0.18)]'}`}>
-      <div className={`pointer-events-none absolute inset-0 ${isDarkMode ? 'bg-[radial-gradient(100%_90%_at_34%_-15%,rgba(125,211,252,0.16),transparent_48%),linear-gradient(120deg,rgba(255,255,255,0.04),transparent_46%,rgba(34,211,238,0.04))]' : 'bg-[radial-gradient(100%_90%_at_34%_-15%,rgba(255,255,255,0.92),transparent_50%),linear-gradient(120deg,rgba(255,255,255,0.22),transparent_46%,rgba(56,189,248,0.06))]'}`} aria-hidden="true" />
+    <section
+      className={`relative min-h-[192px] overflow-hidden rounded-xl border backdrop-blur-3xl ${isDarkMode ? 'border-cyan-300/35 bg-[#07335b]/54 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(8,47,73,0.35),0_26px_64px_rgba(0,0,0,0.28)]' : 'border-white/[0.90] bg-white/[0.62] shadow-[inset_0_1px_0_rgba(255,255,255,0.98),inset_0_-1px_0_rgba(255,255,255,0.40),0_26px_64px_rgba(15,74,105,0.18)]'}`}
+    >
+      <div
+        className={`pointer-events-none absolute inset-0 ${isDarkMode ? 'bg-[radial-gradient(100%_90%_at_34%_-15%,rgba(125,211,252,0.16),transparent_48%),linear-gradient(120deg,rgba(255,255,255,0.04),transparent_46%,rgba(34,211,238,0.04))]' : 'bg-[radial-gradient(100%_90%_at_34%_-15%,rgba(255,255,255,0.92),transparent_50%),linear-gradient(120deg,rgba(255,255,255,0.22),transparent_46%,rgba(56,189,248,0.06))]'}`}
+        aria-hidden="true"
+      />
       <div className="relative grid min-h-[192px] xl:grid-cols-[18%_33%_27%_22%] xl:grid-rows-[1fr_auto]">
-        <div className={`flex items-start gap-4 border-b p-6 xl:col-start-1 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <span className={`mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-full border ${statusIsComplete ? isDarkMode ? 'border-lime-300/60 bg-lime-400/10 text-lime-300 shadow-[0_0_18px_rgba(163,230,53,0.10)]' : 'border-emerald-200 bg-emerald-50 text-emerald-600' : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+        <div
+          className={`flex items-start gap-4 border-b p-6 xl:col-start-1 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
+        >
+          <span
+            className={`mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-full border ${statusIsComplete ? (isDarkMode ? 'border-lime-300/60 bg-lime-400/10 text-lime-300 shadow-[0_0_18px_rgba(163,230,53,0.10)]' : 'border-emerald-200 bg-emerald-50 text-emerald-600') : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}
+          >
             <CheckCircle2 size={24} aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Status</p>
-            <div className="mt-1"><StatusPill status={packageData.status} isDarkMode={isDarkMode} /></div>
+            <p
+              className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}
+            >
+              Status
+            </p>
+            <div className="mt-1">
+              <StatusPill status={packageData.status} isDarkMode={isDarkMode} />
+            </div>
           </div>
         </div>
 
-        <div className={`border-b p-6 xl:col-start-2 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+        <div
+          className={`border-b p-6 xl:col-start-2 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
+        >
           <dl className="space-y-3">
             <div>
-              <dt className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Date</dt>
-              <dd className={`mt-1 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatForecastDate(packageData.forecastDate)}</dd>
+              <dt
+                className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}
+              >
+                Date
+              </dt>
+              <dd
+                className={`mt-1 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
+              >
+                {formatForecastDate(packageData.forecastDate)}
+              </dd>
             </div>
             <div>
-              <dt className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Package title</dt>
-              <dd className={`mt-1 truncate text-lg font-bold ${isDarkMode ? 'text-white' : 'text-slate-950'}`} title={packageTitle}>{packageTitle}</dd>
+              <dt
+                className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}
+              >
+                Package title
+              </dt>
+              <dd
+                className={`mt-1 truncate text-lg font-bold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+                title={packageTitle}
+              >
+                {packageTitle}
+              </dd>
             </div>
             <div>
-              <dt className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Message</dt>
-              <dd className={`mt-1 text-xs font-medium leading-5 ${isDarkMode ? 'text-slate-200' : 'text-slate-600'}`}>{hasPendingRevisionAction ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.' : completion.isComplete ? 'All required charts are complete.' : chartSequenceHelper}</dd>
+              <dt
+                className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}
+              >
+                Message
+              </dt>
+              <dd
+                className={`mt-1 text-xs font-medium leading-5 ${isDarkMode ? 'text-slate-200' : 'text-slate-600'}`}
+              >
+                {hasPendingRevisionAction
+                  ? 'Requested revisions must be opened in Studio and re-certified before this package can be resubmitted.'
+                  : completion.isComplete
+                    ? 'All required charts are complete.'
+                    : chartSequenceHelper}
+              </dd>
             </div>
           </dl>
         </div>
 
-        <div className={`border-b p-6 xl:col-start-3 xl:row-span-2 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <p className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Completion</p>
-          <p className={`mt-2 text-4xl font-black leading-none ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{completion.percentage}%</p>
-          <p className={`mt-3 text-base font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>{completion.completed}/{completion.required} charts</p>
-          <div className={`mt-5 h-2 w-full max-w-[310px] overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-950/60' : 'bg-slate-200'}`} role="progressbar" aria-label="Forecast package completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow={completion.percentage}><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-cyan-300" style={{ width: `${completion.percentage}%` }} /></div>
+        <div
+          className={`border-b p-6 xl:col-start-3 xl:row-span-2 xl:row-start-1 xl:border-b-0 xl:border-r ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
+        >
+          <p
+            className={`text-[10px] font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}
+          >
+            Completion
+          </p>
+          <p
+            className={`mt-2 text-4xl font-black leading-none ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+          >
+            {completion.percentage}%
+          </p>
+          <p
+            className={`mt-3 text-base font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}
+          >
+            {completion.completed}/{completion.required} charts
+          </p>
+          <div
+            className={`mt-5 h-2 w-full max-w-[310px] overflow-hidden rounded-full ${isDarkMode ? 'bg-slate-950/60' : 'bg-slate-200'}`}
+            role="progressbar"
+            aria-label="Forecast package completion"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={completion.percentage}
+          >
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-cyan-300"
+              style={{ width: `${completion.percentage}%` }}
+            />
+          </div>
         </div>
 
-        <div className={`flex flex-col items-center justify-center border-b p-5 text-center xl:col-start-4 xl:row-span-2 xl:row-start-1 xl:border-b-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <span className={`grid h-16 w-16 place-items-center rounded-full border ${!isEditable ? isDarkMode ? 'border-amber-300/80 bg-slate-950/15 text-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.14)]' : 'border-amber-300 bg-amber-50 text-amber-600' : completion.isComplete ? 'border-emerald-300/50 bg-emerald-400/10 text-emerald-400' : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}><ReadinessIcon size={29} /></span>
-          <p className={`mt-3 text-base font-black ${!isEditable ? 'text-amber-400' : isDarkMode ? 'text-white' : 'text-slate-950'}`}>{submitReadiness.title}</p>
-          <p className={`mt-2 max-w-[260px] text-xs font-medium leading-5 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{!isEditable ? lockedDescription : submitReadiness.detail}</p>
+        <div
+          className={`flex flex-col items-center justify-center border-b p-5 text-center xl:col-start-4 xl:row-span-2 xl:row-start-1 xl:border-b-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}
+        >
+          <span
+            className={`grid h-16 w-16 place-items-center rounded-full border ${!isEditable ? (isDarkMode ? 'border-amber-300/80 bg-slate-950/15 text-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.14)]' : 'border-amber-300 bg-amber-50 text-amber-600') : completion.isComplete ? 'border-emerald-300/50 bg-emerald-400/10 text-emerald-400' : isDarkMode ? 'border-cyan-300/40 bg-cyan-400/10 text-cyan-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}
+          >
+            <ReadinessIcon size={29} />
+          </span>
+          <p
+            className={`mt-3 text-base font-black ${!isEditable ? 'text-amber-400' : isDarkMode ? 'text-white' : 'text-slate-950'}`}
+          >
+            {submitReadiness.title}
+          </p>
+          <p
+            className={`mt-2 max-w-[260px] text-xs font-medium leading-5 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}
+          >
+            {!isEditable ? lockedDescription : submitReadiness.detail}
+          </p>
         </div>
 
-        {!isEditable && <div className={`flex items-center gap-3 px-7 pb-5 pt-1 text-xs font-bold xl:col-span-2 xl:col-start-1 xl:row-start-2 ${isDarkMode ? 'text-amber-300' : 'text-amber-800'}`}><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border ${isDarkMode ? 'border-amber-300/45 bg-amber-400/[0.06]' : 'border-amber-300 bg-amber-50'}`}><LockKeyhole size={15} /></span><p>{lockedPackageCopy.lockedNotice}</p></div>}
+        {!isEditable && (
+          <div
+            className={`flex items-center gap-3 px-7 pb-5 pt-1 text-xs font-bold xl:col-span-2 xl:col-start-1 xl:row-start-2 ${isDarkMode ? 'text-amber-300' : 'text-amber-800'}`}
+          >
+            <span
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border ${isDarkMode ? 'border-amber-300/45 bg-amber-400/[0.06]' : 'border-amber-300 bg-amber-50'}`}
+            >
+              <LockKeyhole size={15} />
+            </span>
+            <p>{lockedPackageCopy.lockedNotice}</p>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -457,11 +718,28 @@ function PackageSummary({ chartSequenceHelper, completion, hasPendingRevisionAct
 
 function EmptyPackageState({ isCreating, isDarkMode, onCreate, message }) {
   return (
-    <div className={`rounded-3xl border p-8 text-center shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}>
-      <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}><CalendarDays size={30} /></div>
-      <h2 className={`mt-5 text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Create today&apos;s forecast package</h2>
-      <p className={`mx-auto mt-2 max-w-2xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{message || 'A forecast package creates the four required charts for the daily marine forecast and keeps the forecaster workflow focused on the current forecast.'}</p>
-      <div className="mt-6 flex justify-center"><Button icon={Plus} loading={isCreating} disabled={isCreating} onClick={onCreate}>Create Forecast Package</Button></div>
+    <div
+      className={`rounded-3xl border p-8 text-center shadow-sm ${isDarkMode ? 'border-white/10 bg-slate-900/80' : 'border-slate-200 bg-white'}`}
+    >
+      <div
+        className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'}`}
+      >
+        <CalendarDays size={30} />
+      </div>
+      <h2 className={`mt-5 text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+        Create today&apos;s forecast package
+      </h2>
+      <p
+        className={`mx-auto mt-2 max-w-2xl text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+      >
+        {message ||
+          'A forecast package creates the four required charts for the daily marine forecast and keeps the forecaster workflow focused on the current forecast.'}
+      </p>
+      <div className="mt-6 flex justify-center">
+        <Button icon={Plus} loading={isCreating} disabled={isCreating} onClick={onCreate}>
+          Create Forecast Package
+        </Button>
+      </div>
     </div>
   );
 }
@@ -476,18 +754,37 @@ export default function ForecasterProjectLibraryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const operationsSettings = useMemo(() => normalizeOperationsSettings(workspaceSettings.operations), [workspaceSettings.operations]);
+  const operationsSettings = useMemo(
+    () => normalizeOperationsSettings(workspaceSettings.operations),
+    [workspaceSettings.operations]
+  );
   const completion = useMemo(() => getCompletion(packageData), [packageData]);
   const packageId = getPackageId(packageData);
-  const orderedCharts = useMemo(() => sortChartsBySequence(packageData?.charts || []), [packageData?.charts]);
-  const pendingRevisionChartTypes = useMemo(() => getRevisionActionPendingChartTypes(packageData), [packageData]);
+  const orderedCharts = useMemo(
+    () => sortChartsBySequence(packageData?.charts || []),
+    [packageData?.charts]
+  );
+  const pendingRevisionChartTypes = useMemo(
+    () => getRevisionActionPendingChartTypes(packageData),
+    [packageData]
+  );
   const hasPendingRevisionAction = pendingRevisionChartTypes.length > 0;
   const isEditable = EDITABLE_PACKAGE_STATUSES.has(packageData?.status || 'Draft');
-  const lockedPackageCopy = useMemo(() => getLockedPackageCopy(packageData?.status), [packageData?.status]);
-  const submitReadiness = useMemo(() => getSubmitReadiness(packageData, completion, isEditable, pendingRevisionChartTypes), [packageData, completion, isEditable, pendingRevisionChartTypes]);
-  const canSubmit = Boolean(packageId && isEditable && completion.isComplete && !hasPendingRevisionAction && !submitting);
+  const lockedPackageCopy = useMemo(
+    () => getLockedPackageCopy(packageData?.status),
+    [packageData?.status]
+  );
+  const submitReadiness = useMemo(
+    () => getSubmitReadiness(packageData, completion, isEditable, pendingRevisionChartTypes),
+    [packageData, completion, isEditable, pendingRevisionChartTypes]
+  );
+  const canSubmit = Boolean(
+    packageId && isEditable && completion.isComplete && !hasPendingRevisionAction && !submitting
+  );
   const packageTitle = getPackageTitle(packageData);
-  const chartSequenceHelper = workspaceSettings.chartSequenceHelperMessage || 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Forecasters can co-edit; readiness waits until active editors release.';
+  const chartSequenceHelper =
+    workspaceSettings.chartSequenceHelperMessage ||
+    'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Forecasters can co-edit; readiness waits until active editors release.';
   const submitButtonLabel = !isEditable
     ? 'Package locked'
     : hasPendingRevisionAction
@@ -573,15 +870,38 @@ export default function ForecasterProjectLibraryPage() {
 
   return (
     <div className="relative min-h-full bg-transparent transition-colors">
-      <div className="pointer-events-none absolute inset-0" style={{ background: isDarkMode ? 'radial-gradient(ellipse 72% 46% at 36% 16%, rgba(2, 20, 39, 0.42), transparent 72%)' : 'radial-gradient(ellipse 78% 50% at 38% 14%, rgba(245, 251, 255, 0.50), transparent 74%)' }} aria-hidden="true" />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: isDarkMode
+            ? 'radial-gradient(ellipse 72% 46% at 36% 16%, rgba(2, 20, 39, 0.42), transparent 72%)'
+            : 'radial-gradient(ellipse 78% 50% at 38% 14%, rgba(245, 251, 255, 0.50), transparent 74%)',
+        }}
+        aria-hidden="true"
+      />
       <div className="relative mx-auto max-w-[1540px] space-y-5 p-4 sm:space-y-6 sm:p-6 lg:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className={`text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Current Forecast Package</h1>
-            <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Complete the daily forecast sequence from analysis through the 48-hour outlook.</p>
+            <h1
+              className={`text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}
+            >
+              Current Forecast Package
+            </h1>
+            <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+              Complete the daily forecast sequence from analysis through the 48-hour outlook.
+            </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            {packageData && isEditable && <Button icon={Send} loading={submitting} disabled={!canSubmit} onClick={handleSubmitPackage}>{submitButtonLabel}</Button>}
+            {packageData && isEditable && (
+              <Button
+                icon={Send}
+                loading={submitting}
+                disabled={!canSubmit}
+                onClick={handleSubmitPackage}
+              >
+                {submitButtonLabel}
+              </Button>
+            )}
             <button
               type="button"
               onClick={() => loadCurrentPackage()}
@@ -590,42 +910,110 @@ export default function ForecasterProjectLibraryPage() {
             >
               <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
               <span className="pointer-events-none absolute -top-3 left-3 h-8 w-2/3 rounded-full bg-white/10 blur-xl transition-transform duration-300 group-hover:translate-x-2" />
-              <RefreshCw className={`relative ${loading ? 'animate-spin' : 'transition-transform duration-300 group-hover:rotate-45'}`} size={17} aria-hidden="true" />
+              <RefreshCw
+                className={`relative ${loading ? 'animate-spin' : 'transition-transform duration-300 group-hover:rotate-45'}`}
+                size={17}
+                aria-hidden="true"
+              />
               <span className="relative">Refresh</span>
             </button>
           </div>
         </div>
 
         {error && (
-          <div className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`} role="alert">
-            <span className="inline-flex items-start gap-2"><AlertCircle className="mt-0.5 shrink-0" size={17} />{error}</span>
-            <button type="button" className={`shrink-0 text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-red-200 hover:text-white' : 'text-red-700 hover:text-red-900'}`} onClick={() => setError('')}>Dismiss</button>
+          <div
+            className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${isDarkMode ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`}
+            role="alert"
+          >
+            <span className="inline-flex items-start gap-2">
+              <AlertCircle className="mt-0.5 shrink-0" size={17} />
+              {error}
+            </span>
+            <button
+              type="button"
+              className={`shrink-0 text-xs font-black uppercase tracking-wide ${isDarkMode ? 'text-red-200 hover:text-white' : 'text-red-700 hover:text-red-900'}`}
+              onClick={() => setError('')}
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
         {loading ? (
-          <div className={`flex min-h-[320px] items-center justify-center rounded-3xl border ${isDarkMode ? 'border-white/10 bg-slate-900/80 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}><span className="inline-flex items-center gap-2 text-sm font-bold"><Loader2 className="animate-spin" size={18} />Loading current forecast package...</span></div>
+          <div
+            className={`flex min-h-[320px] items-center justify-center rounded-3xl border ${isDarkMode ? 'border-white/10 bg-slate-900/80 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}
+          >
+            <span className="inline-flex items-center gap-2 text-sm font-bold">
+              <Loader2 className="animate-spin" size={18} />
+              Loading current forecast package...
+            </span>
+          </div>
         ) : !packageData ? (
-          <EmptyPackageState isCreating={creating} isDarkMode={isDarkMode} onCreate={handleCreatePackage} message={workspaceSettings.emptyPackageMessage} />
+          <EmptyPackageState
+            isCreating={creating}
+            isDarkMode={isDarkMode}
+            onCreate={handleCreatePackage}
+            message={workspaceSettings.emptyPackageMessage}
+          />
         ) : (
           <div className="space-y-5">
-              <PackageSummary chartSequenceHelper={chartSequenceHelper} completion={completion} hasPendingRevisionAction={hasPendingRevisionAction} isDarkMode={isDarkMode} isEditable={isEditable} lockedPackageCopy={lockedPackageCopy} packageData={packageData} packageTitle={packageTitle} submitReadiness={submitReadiness} />
+            <PackageSummary
+              chartSequenceHelper={chartSequenceHelper}
+              completion={completion}
+              hasPendingRevisionAction={hasPendingRevisionAction}
+              isDarkMode={isDarkMode}
+              isEditable={isEditable}
+              lockedPackageCopy={lockedPackageCopy}
+              packageData={packageData}
+              packageTitle={packageTitle}
+              submitReadiness={submitReadiness}
+            />
 
-              {isEditable && <ForecastReminderCard packageData={packageData} settings={operationsSettings} isDarkMode={isDarkMode} />}
-              <NextActionCard packageData={packageData} completion={completion} isEditable={isEditable} isDarkMode={isDarkMode} pendingRevisionChartTypes={pendingRevisionChartTypes} />
+            {isEditable && (
+              <ForecastReminderCard
+                packageData={packageData}
+                settings={operationsSettings}
+                isDarkMode={isDarkMode}
+              />
+            )}
+            <NextActionCard
+              packageData={packageData}
+              completion={completion}
+              isEditable={isEditable}
+              isDarkMode={isDarkMode}
+              pendingRevisionChartTypes={pendingRevisionChartTypes}
+            />
 
-              <section>
-                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4"><h2 className={`text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>Forecast charts</h2><p className={`text-xs font-semibold ${isDarkMode ? 'text-slate-300/80' : 'text-slate-600'}`}>Four required charts · Complete in sequence</p></div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {orderedCharts.map((chart, index) => (
-                    <ChartCard key={chart.chartType} chart={chart} packageData={packageData} isDarkMode={isDarkMode} isEditable={isEditable} onOpen={(projectId) => navigate(`/studio/${projectId}`)} sequenceNumber={index + 1} />
-                  ))}
-                </div>
-              </section>
+            <section>
+              <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+                <h2
+                  className={`text-xl font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}
+                >
+                  Forecast charts
+                </h2>
+                <p
+                  className={`text-xs font-semibold ${isDarkMode ? 'text-slate-300/80' : 'text-slate-600'}`}
+                >
+                  Four required charts · Complete in sequence
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {orderedCharts.map((chart, index) => (
+                  <ChartCard
+                    key={chart.chartType}
+                    chart={chart}
+                    packageData={packageData}
+                    isDarkMode={isDarkMode}
+                    isEditable={isEditable}
+                    onOpen={(projectId) => navigate(`/studio/${projectId}`)}
+                    sequenceNumber={index + 1}
+                  />
+                ))}
+              </div>
+            </section>
           </div>
         )}
       </div>
     </div>
   );
 }
-
