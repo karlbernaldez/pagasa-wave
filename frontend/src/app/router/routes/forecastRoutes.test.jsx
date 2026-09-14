@@ -31,8 +31,9 @@ describe('forecast business routes', () => {
     expect(route.element.props.permission).toBe('forecast.review');
   });
 
-  it('reserves the exact /forecasts path for the authenticated business area', () => {
+  it('reserves /forecasts paths for the authenticated business area', () => {
     expect(findRoute(publicRoutes, '/forecasts')).toBeNull();
-    expect(findRoute(publicRoutes, '/forecasts/:projectId')).toBeTruthy();
+    expect(findRoute(publicRoutes, '/forecasts/:projectId')).toBeNull();
+    expect(findRoute(publicRoutes, '/charts/:projectId')).toBeTruthy();
   });
 });
