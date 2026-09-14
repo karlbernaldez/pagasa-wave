@@ -46,8 +46,8 @@ export function packageTag(packageDate) {
 
 export function requiredSourceCycle(packageDate, preferredHourUtc = 18) {
   const [year, month, day] = packageDate.split('-').map(Number);
-  const previousUtc = new Date(Date.UTC(year, month - 1, day - 1, preferredHourUtc, 0, 0));
-  return `${previousUtc.getUTCFullYear()}${String(previousUtc.getUTCMonth() + 1).padStart(2, '0')}${String(previousUtc.getUTCDate()).padStart(2, '0')}${String(preferredHourUtc).padStart(2, '0')}`;
+  const cycleUtc = new Date(Date.UTC(year, month - 1, day, preferredHourUtc, 0, 0));
+  return `${cycleUtc.getUTCFullYear()}${String(cycleUtc.getUTCMonth() + 1).padStart(2, '0')}${String(cycleUtc.getUTCDate()).padStart(2, '0')}${String(preferredHourUtc).padStart(2, '0')}`;
 }
 
 async function readJson(target) {
