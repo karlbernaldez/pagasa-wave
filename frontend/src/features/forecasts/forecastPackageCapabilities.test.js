@@ -14,6 +14,20 @@ describe('getForecastPackageCapabilities', () => {
     });
   });
 
+  it('preserves Draft capabilities when the shared view model displays In Production', () => {
+    expect(
+      getForecastPackageCapabilities({
+        permissions: ['forecast.view', 'forecast.edit', 'forecast.submit'],
+        status: 'In Production',
+      })
+    ).toMatchObject({
+      canView: true,
+      canEdit: true,
+      canSubmit: true,
+      isEditableState: true,
+    });
+  });
+
   it('does not allow edit actions outside editable states', () => {
     expect(
       getForecastPackageCapabilities({

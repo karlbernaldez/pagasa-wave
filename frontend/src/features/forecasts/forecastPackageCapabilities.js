@@ -7,18 +7,31 @@ function hasPermission(permissions, permission) {
   return Array.isArray(permissions) && permissions.includes(permission);
 }
 
+function normalizeWorkflowStatus(status) {
+  return status === 'In Production' ? 'Draft' : status;
+}
+
 export function getForecastPackageCapabilities({ permissions = [], status = '' } = {}) {
+  const workflowStatus = normalizeWorkflowStatus(status);
   const canView = hasPermission(permissions, 'forecast.view');
   const canEdit =
-    canView && hasPermission(permissions, 'forecast.edit') && EDITABLE_STATUSES.has(status);
+    canView && hasPermission(permissions, 'forecast.edit') && EDITABLE_STATUSES.has(workflowStatus);
   const canSubmit =
-    canView && hasPermission(permissions, 'forecast.submit') && EDITABLE_STATUSES.has(status);
+    canView &&
+    hasPermission(permissions, 'forecast.submit') &&
+    EDITABLE_STATUSES.has(workflowStatus);
   const canReview =
-    canView && hasPermission(permissions, 'forecast.review') && REVIEWABLE_STATUSES.has(status);
+    canView &&
+    hasPermission(permissions, 'forecast.review') &&
+    REVIEWABLE_STATUSES.has(workflowStatus);
   const canApprove =
-    canView && hasPermission(permissions, 'forecast.approve') && APPROVABLE_STATUSES.has(status);
+    canView &&
+    hasPermission(permissions, 'forecast.approve') &&
+    APPROVABLE_STATUSES.has(workflowStatus);
   const canPublish =
-    canView && hasPermission(permissions, 'forecast.publish') && PUBLISHABLE_STATUSES.has(status);
+    canView &&
+    hasPermission(permissions, 'forecast.publish') &&
+    PUBLISHABLE_STATUSES.has(workflowStatus);
 
   return {
     canView,
@@ -27,9 +40,9 @@ export function getForecastPackageCapabilities({ permissions = [], status = '' }
     canReview,
     canApprove,
     canPublish,
-    isEditableState: EDITABLE_STATUSES.has(status),
-    isReviewableState: REVIEWABLE_STATUSES.has(status),
-    isApprovableState: APPROVABLE_STATUSES.has(status),
-    isPublishableState: PUBLISHABLE_STATUSES.has(status),
+    isEditableState: EDITABLE_STATUSES.has(workflowStatus),
+    isReviewableState: REVIEWABLE_STATUSES.has(workflowStatus),
+    isApprovableState: APPROVABLE_STATUSES.has(workflowStatus),
+    isPublishableState: PUBLISHABLE_STATUSES.has(workflowStatus),
   };
 }
