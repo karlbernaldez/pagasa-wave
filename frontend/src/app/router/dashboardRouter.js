@@ -1,4 +1,5 @@
 import publicRoutes from './routes/publicRoutes';
+import forecastRoutes from './routes/forecastRoutes';
 import adminRoutes from './routes/adminRoutes';
 import forecasterRoutes from './routes/forecasterRoutes';
 
@@ -8,6 +9,7 @@ import forecasterRoutes from './routes/forecasterRoutes';
  */
 export const DASHBOARD_ROUTES = {
   public: publicRoutes,
+  forecasts: forecastRoutes,
   admin: adminRoutes,
   forecaster: forecasterRoutes,
 };
@@ -15,6 +17,7 @@ export const DASHBOARD_ROUTES = {
 export function getAllRoutes() {
   return [
     ...publicRoutes,
+    ...forecastRoutes,
     ...adminRoutes,
     ...forecasterRoutes,
   ];
