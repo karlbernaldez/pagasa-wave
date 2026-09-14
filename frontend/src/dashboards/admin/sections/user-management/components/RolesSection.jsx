@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -20,39 +20,9 @@ import {
   updateRole,
 } from '@/api/roleAPI';
 
+import { PermissionEditor } from './PermissionEditor';
+
 const cn = (...classes) => classes.filter(Boolean).join(' ');
-
-const FEATURE_LABELS = {
-  dashboard: 'Dashboard',
-  studio: 'Studio',
-  projects: 'Forecast Projects',
-  wave_models: 'Wave Models',
-  wave_pipeline: 'Wave Pipeline',
-  model_onboarding: 'Model Onboarding',
-  users: 'Users',
-  roles: 'User Types',
-  analytics: 'Analytics',
-  reports: 'Reports',
-  settings: 'System Settings',
-};
-
-const ACTION_LABELS = {
-  view: 'View',
-  view_own: 'View own',
-  view_all: 'View all',
-  create: 'Create',
-  edit: 'Edit',
-  submit: 'Submit',
-  review: 'Review',
-  approve: 'Approve',
-  publish: 'Publish',
-  manage: 'Manage',
-  run_builder: 'Run builder',
-  delete_package: 'Delete packages',
-  change_status: 'Change status',
-  delete: 'Delete',
-  export: 'Export',
-};
 
 const emptyForm = () => ({
   key: '',
@@ -157,114 +127,10 @@ function RoleCard({ role, selected, onSelect, isDarkMode }) {
   );
 }
 
-function PermissionEditor({ catalog, permissions, onChange, disabled, isDarkMode }) {
-  const selected = new Set(permissions);
-
-  const toggle = (permission) => {
-    if (disabled) return;
-    onChange(
-      selected.has(permission)
-        ? permissions.filter((item) => item !== permission)
-        : [...permissions, permission]
-    );
-  };
-
-  const toggleFeature = (feature, actions) => {
-    if (disabled) return;
-    const keys = actions.map((action) => `${feature}.${action}`);
-    const allSelected = keys.every((key) => selected.has(key));
-    onChange(
-      allSelected
-        ? permissions.filter((permission) => !keys.includes(permission))
-        : [...new Set([...permissions, ...keys])]
-    );
-  };
-
-  return (
-    <div className="space-y-3">
-      {Object.entries(catalog).map(([feature, actions]) => {
-        const keys = actions.map((action) => `${feature}.${action}`);
-        const allSelected = keys.length > 0 && keys.every((key) => selected.has(key));
-        return (
-          <section
-            key={feature}
-            className={cn(
-              'rounded-xl border p-3',
-              isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-slate-200 bg-white'
-            )}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p
-                  className={cn('text-xs font-black', isDarkMode ? 'text-white' : 'text-slate-900')}
-                >
-                  {FEATURE_LABELS[feature] || feature}
-                </p>
-                <p
-                  className={cn(
-                    'mt-0.5 text-[10px]',
-                    isDarkMode ? 'text-slate-500' : 'text-slate-500'
-                  )}
-                >
-                  {keys.filter((key) => selected.has(key)).length} of {keys.length} enabled
-                </p>
-              </div>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => toggleFeature(feature, actions)}
-                className={cn(
-                  'rounded-lg border px-2.5 py-1.5 text-[10px] font-black disabled:cursor-not-allowed disabled:opacity-50',
-                  allSelected
-                    ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-500'
-                    : isDarkMode
-                      ? 'border-white/10 text-slate-400'
-                      : 'border-slate-200 text-slate-600'
-                )}
-              >
-                {allSelected ? 'Clear section' : 'Select section'}
-              </button>
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {actions.map((action) => {
-                const permission = `${feature}.${action}`;
-                const checked = selected.has(permission);
-                return (
-                  <label
-                    key={permission}
-                    className={cn(
-                      'flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold',
-                      checked
-                        ? isDarkMode
-                          ? 'border-cyan-300/20 bg-cyan-400/[0.07] text-cyan-100'
-                          : 'border-cyan-200 bg-cyan-50 text-cyan-800'
-                        : isDarkMode
-                          ? 'border-white/[0.07] text-slate-400'
-                          : 'border-slate-100 text-slate-600',
-                      disabled ? 'cursor-not-allowed opacity-65' : 'cursor-pointer'
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={disabled}
-                      onChange={() => toggle(permission)}
-                    />
-                    {ACTION_LABELS[action] || action}
-                  </label>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
-    </div>
-  );
-}
-
 export function RolesSection({ isDarkMode }) {
   const [roles, setRoles] = useState([]);
-  const [catalog, setCatalog] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [permissionMetadata, setPermissionMetadata] = useState({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -278,7 +144,8 @@ export function RolesSection({ isDarkMode }) {
       .then(([roleResult, catalogResult]) => {
         if (!active) return;
         setRoles(roleResult?.roles || []);
-        setCatalog(catalogResult?.catalog || {});
+        setCategories(catalogResult?.categories || []);
+        setPermissionMetadata(catalogResult?.metadata || {});
         setError('');
       })
       .catch((requestError) => {
@@ -418,7 +285,7 @@ export function RolesSection({ isDarkMode }) {
               >
                 {adminLocked
                   ? 'Administrator permissions are protected to prevent lockout.'
-                  : 'Configure the user type and the capabilities it grants.'}
+                  : 'Configure the User Type and only the capabilities it needs.'}
               </p>
             </div>
           </div>
@@ -553,7 +420,7 @@ export function RolesSection({ isDarkMode }) {
                 Permissions
               </p>
               <p className={cn('mt-1 text-xs', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-                {form.permissions.length} capabilities selected
+                Permissions are grouped by WaveLab capability so access is easier to review.
               </p>
             </div>
             {adminLocked && (
@@ -563,7 +430,8 @@ export function RolesSection({ isDarkMode }) {
             )}
           </div>
           <PermissionEditor
-            catalog={catalog}
+            categories={categories}
+            metadata={permissionMetadata}
             permissions={form.permissions}
             onChange={(permissions) => setForm((current) => ({ ...current, permissions }))}
             disabled={adminLocked || busy}

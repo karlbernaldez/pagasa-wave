@@ -3,7 +3,9 @@ import User from '../models/User.js';
 import {
   DEFAULT_ROLE_DEFINITIONS,
   PERMISSION_CATALOG,
+  PERMISSION_CATEGORIES,
   PERMISSION_KEYS,
+  PERMISSION_METADATA,
   expandEffectivePermissions,
   normalizePermissionKeys,
 } from '../config/permissionCatalog.js';
@@ -75,6 +77,8 @@ export const ensureDefaultRoles = async () => {
 export const getPermissionCatalog = () => ({
   catalog: PERMISSION_CATALOG,
   permissions: PERMISSION_KEYS,
+  categories: PERMISSION_CATEGORIES,
+  metadata: PERMISSION_METADATA,
 });
 
 export const listRoles = async () => {
