@@ -19,6 +19,20 @@ import { fetchWaveSourceCyclePolicy, setWaveSourceCyclePolicy } from '@/api/wave
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 const PAGE_SIZE = 10;
 const OPERATIONAL_MODELS = new Set(['WW3', 'ECWAM']);
+const CYCLE_DATE_MODE_OPTIONS = {
+  automatic: {
+    label: 'Automatic (recommended)',
+    description: '00Z uses the package date. 06Z, 12Z, and 18Z use the previous date.',
+  },
+  same_day: {
+    label: 'Same package date',
+    description: 'All source cycles use the operational package date.',
+  },
+  previous_day: {
+    label: 'Previous date',
+    description: 'All source cycles use the date before the operational package date.',
+  },
+};
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes < 0) return 'Unavailable';
@@ -262,26 +276,15 @@ function ConfigurationTab({ model, isDarkMode }) {
     };
   }, [model.code, operational]);
 
-  const handleCycleChange = async (preferredHourUtc) => {
-    const previous = policy?.preferredHourUtc;
-    if (preferredHourUtc === previous) return;
-    const label = `${String(preferredHourUtc).padStart(2, '0')}Z`;
-    if (
-      !window.confirm(
-        `Change ${model.code} preferred source cycle to ${label}? This takes effect immediately for new package selection.`
-      )
-    )
-      return;
+  const updatePolicy = async (changes, confirmation, successMessage) => {
+    if (!window.confirm(confirmation)) return;
 
     setBusy(true);
     setMessage(null);
     try {
-      const result = await setWaveSourceCyclePolicy(model.code, preferredHourUtc);
+      const result = await setWaveSourceCyclePolicy(model.code, changes);
       setPolicy(result?.policy || null);
-      setMessage({
-        type: 'success',
-        text: `${model.code} preferred source cycle is now ${label}.`,
-      });
+      setMessage({ type: 'success', text: successMessage });
     } catch (error) {
       setMessage({
         type: 'error',
@@ -294,6 +297,31 @@ function ConfigurationTab({ model, isDarkMode }) {
       setBusy(false);
     }
   };
+
+  const handleCycleChange = async (preferredHourUtc) => {
+    if (preferredHourUtc === policy?.preferredHourUtc) return;
+    const label = `${String(preferredHourUtc).padStart(2, '0')}Z`;
+    await updatePolicy(
+      { preferredHourUtc },
+      `Change ${model.code} preferred source cycle to ${label}? This takes effect immediately for new package selection.`,
+      `${model.code} preferred source cycle is now ${label}.`
+    );
+  };
+
+  const handleDateModeChange = async (cycleDateMode) => {
+    if (cycleDateMode === policy?.cycleDateMode) return;
+    const option = CYCLE_DATE_MODE_OPTIONS[cycleDateMode];
+    await updatePolicy(
+      { cycleDateMode },
+      `Change ${model.code} cycle date behavior to “${option?.label || cycleDateMode}”? This takes effect immediately for new package selection.`,
+      `${model.code} cycle date behavior is now ${option?.label || cycleDateMode}.`
+    );
+  };
+
+  const currentDateMode = policy?.cycleDateMode || 'automatic';
+  const currentDateModeDescription =
+    CYCLE_DATE_MODE_OPTIONS[currentDateMode]?.description ||
+    CYCLE_DATE_MODE_OPTIONS.automatic.description;
 
   return (
     <div className="space-y-4">
@@ -374,11 +402,11 @@ function ConfigurationTab({ model, isDarkMode }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-                Preferred source cycle
+                Source cycle policy
               </p>
               <p className={cn('mt-1 text-xs', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-                Select the UTC source cycle used for the Manila package date. Fallback remains
-                disabled.
+                Choose the UTC cycle and how its date relates to the Manila operational package
+                date. Fallback remains disabled.
               </p>
             </div>
             {(loading || busy) && <Loader2 size={16} className="animate-spin text-cyan-500" />}
@@ -401,33 +429,79 @@ function ConfigurationTab({ model, isDarkMode }) {
             </div>
           )}
 
-          <label className="mt-4 block max-w-sm">
-            <span
-              className={cn(
-                'text-[10px] font-black uppercase',
-                isDarkMode ? 'text-slate-400' : 'text-slate-500'
-              )}
-            >
-              Preferred cycle
-            </span>
-            <select
-              value={policy?.preferredHourUtc ?? 18}
-              disabled={loading || busy || !policy}
-              onChange={(event) => void handleCycleChange(Number(event.target.value))}
-              className={cn(
-                'mt-1 min-h-10 w-full rounded-xl border px-3 py-2 text-sm font-black outline-none disabled:opacity-60',
-                isDarkMode
-                  ? 'border-white/10 bg-slate-950 text-white'
-                  : 'border-slate-200 bg-white text-slate-900'
-              )}
-            >
-              {(policy?.allowedHoursUtc || [0, 6, 12, 18]).map((hour) => (
-                <option key={hour} value={hour}>
-                  {String(hour).padStart(2, '0')}Z
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <label className="block">
+              <span
+                className={cn(
+                  'text-[10px] font-black uppercase',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                )}
+              >
+                Preferred cycle
+              </span>
+              <select
+                value={policy?.preferredHourUtc ?? 18}
+                disabled={loading || busy || !policy}
+                onChange={(event) => void handleCycleChange(Number(event.target.value))}
+                className={cn(
+                  'mt-1 min-h-10 w-full rounded-xl border px-3 py-2 text-sm font-black outline-none disabled:opacity-60',
+                  isDarkMode
+                    ? 'border-white/10 bg-slate-950 text-white'
+                    : 'border-slate-200 bg-white text-slate-900'
+                )}
+              >
+                {(policy?.allowedHoursUtc || [0, 6, 12, 18]).map((hour) => (
+                  <option key={hour} value={hour}>
+                    {String(hour).padStart(2, '0')}Z
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span
+                className={cn(
+                  'text-[10px] font-black uppercase',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                )}
+              >
+                Cycle date
+              </span>
+              <select
+                value={currentDateMode}
+                disabled={loading || busy || !policy}
+                onChange={(event) => void handleDateModeChange(event.target.value)}
+                className={cn(
+                  'mt-1 min-h-10 w-full rounded-xl border px-3 py-2 text-sm font-black outline-none disabled:opacity-60',
+                  isDarkMode
+                    ? 'border-white/10 bg-slate-950 text-white'
+                    : 'border-slate-200 bg-white text-slate-900'
+                )}
+              >
+                {(policy?.allowedCycleDateModes || Object.keys(CYCLE_DATE_MODE_OPTIONS)).map(
+                  (mode) => (
+                    <option key={mode} value={mode}>
+                      {CYCLE_DATE_MODE_OPTIONS[mode]?.label || mode}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
+          </div>
+
+          <div
+            className={cn(
+              'mt-4 rounded-xl border px-4 py-3 text-xs leading-relaxed',
+              isDarkMode
+                ? 'border-cyan-300/10 bg-cyan-400/[0.06] text-slate-300'
+                : 'border-cyan-100 bg-cyan-50/70 text-slate-700'
+            )}
+          >
+            <span className={cn('font-black', isDarkMode ? 'text-cyan-200' : 'text-cyan-800')}>
+              {CYCLE_DATE_MODE_OPTIONS[currentDateMode]?.label || 'Automatic'}:
+            </span>{' '}
+            {currentDateModeDescription}
+          </div>
         </Card>
       )}
     </div>
