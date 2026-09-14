@@ -34,10 +34,7 @@ describe('operational dashboard routes', () => {
 
   it('redirects legacy Dashboard account routes to canonical account routes', () => {
     const accountRoute = findRoute(operationalDashboardRoutes, '/dashboard/account');
-    const securityRoute = findRoute(
-      operationalDashboardRoutes,
-      '/dashboard/account/security'
-    );
+    const securityRoute = findRoute(operationalDashboardRoutes, '/dashboard/account/security');
 
     expect(accountRoute.element.type).toBe(Navigate);
     expect(accountRoute.element.props.to).toBe('/account');
