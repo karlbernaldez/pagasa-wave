@@ -59,7 +59,11 @@ test('administrator receives every operational navigation permission through its
 
   const effective = new Set(expandEffectivePermissions(admin.permissions));
   for (const permission of ADMIN_OPERATIONAL_PERMISSIONS) {
-    assert.equal(effective.has(permission), true, `expected Administrator to receive ${permission}`);
+    assert.equal(
+      effective.has(permission),
+      true,
+      `expected Administrator to receive ${permission}`
+    );
   }
 });
 
