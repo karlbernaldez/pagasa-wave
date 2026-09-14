@@ -21,17 +21,22 @@ vi.mock('@/shared/hooks/useCurrentDashboardUser', () => ({
 }));
 
 vi.mock('@/shared/dashboard-shell/DashboardShell', () => ({
-  default: ({ sidebar, header, children }) => (
-    <div>
-      <div data-testid="user-role">{header.user?.role}</div>
-      <nav>
-        {sidebar.items.map((item) => (
-          <span key={item.id}>{item.label}</span>
-        ))}
-      </nav>
-      {children}
-    </div>
-  ),
+  default: ({ sidebar, header, children }) => {
+    const items = (sidebar.groups ?? []).flatMap((group) => group.items ?? []);
+    const navigationItems = items.flatMap((item) => [item, ...(item.children ?? [])]);
+
+    return (
+      <div>
+        <div data-testid="user-role">{header.user?.role}</div>
+        <nav>
+          {navigationItems.map((item) => (
+            <span key={item.id}>{item.label}</span>
+          ))}
+        </nav>
+        {children}
+      </div>
+    );
+  },
 }));
 
 function renderShell(path = '/forecasts') {
@@ -62,6 +67,7 @@ describe('ForecastShell permission-driven navigation', () => {
 
     renderShell('/forecasts/review');
 
+    expect(screen.getByText('Forecast')).toBeInTheDocument();
     expect(screen.getByText('Forecast Packages')).toBeInTheDocument();
     expect(screen.getByText('Review Queue')).toBeInTheDocument();
     expect(screen.getByTestId('user-role')).toHaveTextContent('duty reviewer');
@@ -80,6 +86,7 @@ describe('ForecastShell permission-driven navigation', () => {
 
     renderShell();
 
+    expect(screen.getByText('Forecast')).toBeInTheDocument();
     expect(screen.getByText('Forecast Packages')).toBeInTheDocument();
     expect(screen.queryByText('Review Queue')).not.toBeInTheDocument();
   });
@@ -96,6 +103,7 @@ describe('ForecastShell permission-driven navigation', () => {
 
     renderShell();
 
+    expect(screen.queryByText('Forecast')).not.toBeInTheDocument();
     expect(screen.queryByText('Forecast Packages')).not.toBeInTheDocument();
     expect(screen.queryByText('Review Queue')).not.toBeInTheDocument();
   });
