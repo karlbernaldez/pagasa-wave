@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  ADMIN_ROUTE_BY_TAB,
-  ADMIN_TABS,
-} from '@dashboards/admin/constants/navigation';
+import { ADMIN_ROUTE_BY_TAB, ADMIN_TABS } from '@dashboards/admin/constants/navigation';
 import { buildDashboardSidebarGroups } from './OperationalDashboardShell';
 
 function visibleItemIds(groups) {
@@ -61,7 +58,9 @@ describe('OperationalDashboardShell permission-driven navigation', () => {
 
     expect(forecast).toBeTruthy();
     expect(forecast.path).toBe('/forecasts');
-    expect(forecast.children.map((child) => child.id)).toEqual([ADMIN_TABS.FORECAST_PACKAGES]);
+    expect(forecast.children.map((child) => child.id)).toEqual([
+      ADMIN_TABS.FORECAST_PACKAGES,
+    ]);
   });
 
   it('shows Forecast with Review Queue for forecast.review only', () => {
