@@ -278,38 +278,55 @@ export default function Charts() {
   const { settings: publicSettings } = usePublicMapBounds();
   const exportRefs = useRef({});
   const exportImageCacheRef = useRef({});
-  const [state, setState] = useState({ loading: true, error: '', projects: [] });
+  const [state, setState] = useState({ requestKey: '', error: '', projects: [] });
   const [query, setQuery] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const [selectedDate, setSelectedDate] = useState('');
-  const [exportState, setExportState] = useState({ loading: false, error: '', entries: [] });
-  const [pdfReadyCount, setPdfReadyCount] = useState(0);
+  const [exportState, setExportState] = useState({ requestKey: '', error: '', entries: [] });
+  const [pdfReadiness, setPdfReadiness] = useState({ key: '', count: 0 });
   const showStaffInfo = publicSettings.showPublicStaffInfo !== false;
+  const chartRequestKey = `${query}\u0000${isDark ? 'dark' : 'light'}\u0000${reloadToken}`;
+  const chartListLoading = state.requestKey !== chartRequestKey;
+  const chartListError = state.requestKey === chartRequestKey ? state.error : '';
 
   useEffect(() => { document.title = 'Wavelab | Published Wave Charts'; }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    setState((prev) => ({ ...prev, loading: true, error: '' }));
     fetchPublicPublishedCharts({ page: 1, limit: RECENT_FETCH_LIMIT, search: query, theme: isDark ? 'dark' : 'light', signal: controller.signal })
-      .then((data) => setState({ loading: false, error: '', projects: filterProjectsToPublicChartWindow(data?.projects || [], getPublicChartTenDayWindow()) }))
-      .catch((error) => { if (error?.name !== 'AbortError') setState({ loading: false, error: error?.message || 'Failed to load public charts.', projects: [] }); });
+      .then((data) => setState({ requestKey: chartRequestKey, error: '', projects: filterProjectsToPublicChartWindow(data?.projects || [], getPublicChartTenDayWindow()) }))
+      .catch((error) => {
+        if (error?.name !== 'AbortError') {
+          setState({ requestKey: chartRequestKey, error: error?.message || 'Failed to load public charts.', projects: [] });
+        }
+      });
     return () => controller.abort();
-  }, [isDark, query, reloadToken]);
+  }, [chartRequestKey, isDark, query]);
 
-  const recentProjects = state.projects;
+  const recentProjects = state.requestKey === chartRequestKey ? state.projects : [];
   const historyGroups = useMemo(() => groupPublicChartHistory(recentProjects), [recentProjects]);
   const latestDate = historyGroups[0]?.dateKey || '';
-  const activeDate = selectedDate || latestDate;
+  const selectedDateAvailable = selectedDate && historyGroups.some((item) => item.dateKey === selectedDate);
+  const activeDate = selectedDateAvailable ? selectedDate : latestDate;
   const chartByType = useMemo(() => groupPublicChartsByTypeForDate(recentProjects, activeDate), [activeDate, recentProjects]);
   const availableCount = useMemo(() => getPublicChartAvailableCount(chartByType), [chartByType]);
   const completeness = useMemo(() => getPublicChartCompleteness(chartByType), [chartByType]);
-  const activeStyle = CHART_STYLES.find((item) => item.id === activeChartType) || CHART_STYLES[0];
   const activeStyleMode = normalizeChartStyleMode(activeChartType);
   const activeStyleLabel = getChartStyleMode(activeStyleMode).label;
-  const pdfTotalCount = exportState.entries.length;
-  const isPdfReady = Boolean(!exportState.loading && pdfTotalCount && pdfReadyCount >= pdfTotalCount);
-  const pdfButtonLabel = exportState.loading ? 'Preparing PDF' : isPdfReady ? 'Download PDF' : 'Preparing PDF';
+  const chartExportSignature = PUBLIC_CHART_SLOTS
+    .map((slot) => chartByType.get(slot.chartType)?._id || '')
+    .join('|');
+  const exportRequestKey = `${activeDate}\u0000${isDark ? 'dark' : 'light'}\u0000${chartExportSignature}`;
+  const hasExportRequest = Boolean(activeDate && recentProjects.length);
+  const exportRequestCurrent = exportState.requestKey === exportRequestKey;
+  const exportEntries = exportRequestCurrent ? exportState.entries : [];
+  const exportError = exportRequestCurrent ? exportState.error : '';
+  const exportLoading = hasExportRequest && !exportRequestCurrent;
+  const pdfReadinessKey = `${exportRequestKey}\u0000${activeStyleMode}`;
+  const pdfReadyCount = pdfReadiness.key === pdfReadinessKey ? pdfReadiness.count : 0;
+  const pdfTotalCount = exportEntries.length;
+  const isPdfReady = Boolean(!exportLoading && pdfTotalCount && pdfReadyCount >= pdfTotalCount);
+  const pdfButtonLabel = exportLoading ? 'Preparing PDF' : isPdfReady ? 'Download PDF' : 'Preparing PDF';
   const forecastPeriodLabel = activeDate ? `${formatDate(activeDate, { month: 'short', day: 'numeric' })} - ${formatDate(new Date(new Date(activeDate).getTime() + 24 * 60 * 60 * 1000), { month: 'short', day: 'numeric', year: 'numeric' })}` : 'Latest available period';
   const pdfStatusText = availableCount
     ? isPdfReady
@@ -317,45 +334,39 @@ export default function Charts() {
       : `Preparing ${Math.min(pdfReadyCount, pdfTotalCount || 4)} of ${pdfTotalCount || 4} chart slots for PDF export. Empty slots will be marked unavailable.`
     : 'PDF export becomes available after at least one chart is published for this date.';
 
-  useEffect(() => { if (selectedDate && !historyGroups.some((item) => item.dateKey === selectedDate)) setSelectedDate(''); }, [historyGroups, selectedDate]);
   const openChart = useCallback((chart) => { if (chart?._id) navigate(`/charts/${chart._id}`); }, [navigate]);
 
   useEffect(() => {
     const controller = new AbortController();
     exportRefs.current = {};
     exportImageCacheRef.current = {};
-    setPdfReadyCount(0);
 
-    if (!activeDate || !recentProjects.length) {
-      setExportState({ loading: false, error: '', entries: [] });
-      return () => controller.abort();
-    }
+    if (!hasExportRequest) return () => controller.abort();
 
     const theme = isDark ? 'dark' : 'light';
-    setExportState({ loading: true, error: '', entries: [] });
-
     Promise.all(PUBLIC_CHART_SLOTS.map(async (slot) => {
       const project = chartByType.get(slot.chartType) || null;
       if (!project?._id) return { slot, project: null, output: null };
       const output = await fetchPublicPublishedChartOutput(project._id, { theme, signal: controller.signal });
       return { slot, project, output };
     }))
-      .then((entries) => setExportState({ loading: false, error: '', entries }))
+      .then((entries) => setExportState({ requestKey: exportRequestKey, error: '', entries }))
       .catch((error) => {
-        if (error?.name !== 'AbortError') setExportState({ loading: false, error: error?.message || 'Failed to preload chart set PDF.', entries: [] });
+        if (error?.name !== 'AbortError') {
+          setExportState({ requestKey: exportRequestKey, error: error?.message || 'Failed to preload chart set PDF.', entries: [] });
+        }
       });
 
     return () => controller.abort();
-  }, [activeDate, chartByType, isDark, recentProjects.length]);
+  }, [chartByType, exportRequestKey, hasExportRequest, isDark]);
 
   useEffect(() => {
     exportImageCacheRef.current = {};
-    setPdfReadyCount(0);
-    if (!exportState.entries.length) return undefined;
+    if (!exportEntries.length) return undefined;
 
-    const totalCount = exportState.entries.length;
+    const totalCount = exportEntries.length;
     const updateReadyCount = () => {
-      const readyCount = exportState.entries.filter((entry) => {
+      const readyCount = exportEntries.filter((entry) => {
         const key = `${activeStyleMode}:${entry.slot.chartType}`;
         if (!entry.project?._id || !hasExportableOutput(entry.output)) {
           exportImageCacheRef.current[key] = '';
@@ -374,14 +385,21 @@ export default function Charts() {
         }
       }).length;
 
-      setPdfReadyCount((current) => readyCount >= totalCount ? totalCount : Math.max(current, readyCount));
+      setPdfReadiness((current) => {
+        const currentCount = current.key === pdfReadinessKey ? current.count : 0;
+        const nextCount = readyCount >= totalCount ? totalCount : Math.max(currentCount, readyCount);
+        return current.key === pdfReadinessKey && current.count === nextCount
+          ? current
+          : { key: pdfReadinessKey, count: nextCount };
+      });
       return readyCount >= totalCount;
     };
 
-    if (updateReadyCount()) return undefined;
-    const timer = window.setInterval(() => { if (updateReadyCount()) window.clearInterval(timer); }, 500);
+    const timer = window.setInterval(() => {
+      if (updateReadyCount()) window.clearInterval(timer);
+    }, 0);
     return () => window.clearInterval(timer);
-  }, [activeStyleMode, exportState.entries]);
+  }, [activeStyleMode, exportEntries, pdfReadinessKey]);
 
   const handleDownloadChartSetPdf = () => {
     if (!isPdfReady) {
@@ -389,14 +407,14 @@ export default function Charts() {
       return;
     }
 
-    const printableEntries = exportState.entries.map((entry) => {
+    const printableEntries = exportEntries.map((entry) => {
       if (!entry.project?._id || !hasExportableOutput(entry.output)) return { ...entry, imageDataUrl: '' };
       return { ...entry, imageDataUrl: exportImageCacheRef.current[`${activeStyleMode}:${entry.slot.chartType}`] || '' };
     });
 
     const missingImage = printableEntries.some((entry) => entry.project?._id && hasExportableOutput(entry.output) && !entry.imageDataUrl);
     if (missingImage) {
-      setPdfReadyCount(0);
+      setPdfReadiness({ key: pdfReadinessKey, count: 0 });
       setExportState((prev) => ({ ...prev, error: 'PDF export is still preparing the chart images. Please wait until the Download PDF button is ready.' }));
       return;
     }
@@ -423,7 +441,7 @@ export default function Charts() {
     <main className={`wavelab-home relative min-h-screen overflow-hidden px-4 pb-14 pt-24 sm:px-6 lg:px-8 ${isDark ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-950'}`}>
       <LiquidBackdrop isDark={isDark} />
 
-      {exportState.entries.map((entry) => entry.project?._id && hasExportableOutput(entry.output) ? (
+      {exportEntries.map((entry) => entry.project?._id && hasExportableOutput(entry.output) ? (
         <PublishedForecastExportMap
           key={`export-${entry.project._id}-${activeStyleMode}`}
           ref={(instance) => { if (instance) exportRefs.current[entry.slot.chartType] = instance; }}
@@ -445,34 +463,34 @@ export default function Charts() {
             <h2 className={`mt-3 flex items-center gap-2 text-3xl font-black ${isDark ? 'text-white' : 'text-slate-950'}`}><CalendarDays size={27} className="text-blue-700" /> {activeDate ? formatDate(activeDate) : 'Latest available'}</h2>
             <div className="mt-4 flex flex-wrap gap-2"><CompletenessBadge completeness={completeness} isDark={isDark} /><span className={cx('rounded-full px-3 py-1 text-xs font-black', isDark ? 'bg-blue-400/10 text-cyan-100' : 'bg-blue-50 text-blue-800')}>{forecastPeriodLabel}</span></div>
           </div>
-          <Button size="lg" icon={Download} loading={exportState.loading || (!isPdfReady && !!availableCount)} disabled={!availableCount || exportState.loading || !isPdfReady} onClick={handleDownloadChartSetPdf}>{pdfButtonLabel}</Button>
+          <Button size="lg" icon={Download} loading={exportLoading || (!isPdfReady && !!availableCount)} disabled={!availableCount || exportLoading || !isPdfReady} onClick={handleDownloadChartSetPdf}>{pdfButtonLabel}</Button>
         </section>
 
         <ChartControls activeStyle={activeChartType} onChange={setActiveChartType} query={query} onQueryChange={setQuery} isDark={isDark} />
 
-        {state.loading && (
+        {chartListLoading && (
           <section className="space-y-4">
             <StateNotice isDark={isDark} title="Loading latest chart set">Fetching published charts and preparing the public chart cards.</StateNotice>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{PUBLIC_CHART_SLOTS.map((slot) => <div key={slot.chartType} className={glassPanel(isDark, 'h-[350px] animate-pulse')} />)}</div>
           </section>
         )}
 
-        {!state.loading && state.error && (
+        {!chartListLoading && chartListError && (
           <StateNotice isDark={isDark} tone="red" title="Charts could not be loaded" action={<Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => setReloadToken((value) => value + 1)}>Retry</Button>}>
-            <p>{state.error}</p>
+            <p>{chartListError}</p>
             <p className="mt-1">Refresh the chart list or try again later.</p>
           </StateNotice>
         )}
 
-        {exportState.error && <StateNotice isDark={isDark} tone="amber" title="PDF export not ready">{exportState.error}</StateNotice>}
+        {exportError && <StateNotice isDark={isDark} tone="amber" title="PDF export not ready">{exportError}</StateNotice>}
 
-        {!state.loading && !state.error && !recentProjects.length && (
+        {!chartListLoading && !chartListError && !recentProjects.length && (
           <StateNotice isDark={isDark} title={query.trim() ? 'No charts match this search' : 'No published wave charts found'}>
             {query.trim() ? 'Clear the search to view recent published outputs.' : 'Published charts will appear here once Admin publishes approved outputs.'}
           </StateNotice>
         )}
 
-        {!state.loading && !state.error && recentProjects.length > 0 && <>
+        {!chartListLoading && !chartListError && recentProjects.length > 0 && <>
           <section className="space-y-4">
             <div className={glassPanel(isDark, 'grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center')}>
               <div>
@@ -483,7 +501,7 @@ export default function Charts() {
               <div className="flex flex-wrap items-center gap-2">
                 <CompletenessBadge completeness={completeness} isDark={isDark} />
                 <div className={`rounded-2xl border px-4 py-3 text-sm font-black ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-600'}`}>{availableCount}/4 published charts available</div>
-                <Button size="sm" variant="secondary" icon={Download} loading={exportState.loading || (!isPdfReady && !!availableCount)} disabled={!availableCount || exportState.loading || !isPdfReady} onClick={handleDownloadChartSetPdf}>{pdfButtonLabel}</Button>
+                <Button size="sm" variant="secondary" icon={Download} loading={exportLoading || (!isPdfReady && !!availableCount)} disabled={!availableCount || exportLoading || !isPdfReady} onClick={handleDownloadChartSetPdf}>{pdfButtonLabel}</Button>
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{PUBLIC_CHART_SLOTS.map((slot) => <ChartSlotCard key={`${activeDate}-${slot.chartType}`} slot={slot} chart={chartByType.get(slot.chartType)} activeStyle={activeChartType} isDark={isDark} onOpen={openChart} showStaffInfo={showStaffInfo} />)}</div>
