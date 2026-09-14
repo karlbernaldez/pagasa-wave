@@ -28,7 +28,9 @@ function createFakeProject(overrides = {}) {
   return {
     _id: overrides._id ?? 'project-1',
     name: overrides.name ?? 'Test Project',
-    owner: overrides.owner ?? ownerId(),
+    owner: Object.prototype.hasOwnProperty.call(overrides, 'owner')
+      ? overrides.owner
+      : ownerId(),
     status: overrides.status ?? PROJECT_STATUS.UNDER_REVIEW,
     versions: overrides.versions ?? [],
     auditLogs: overrides.auditLogs ?? [],
@@ -368,19 +370,22 @@ test('requestProjectRevision rejects submitted projects until review starts', as
   });
 });
 
-test('approveProject blocks self-review', async () => {
+test('approveProject supports shared forecast charts without a legacy owner', async () => {
   const project = createFakeProject({
     status: PROJECT_STATUS.UNDER_REVIEW,
-    owner: ownerId(ADMIN_ID),
+    owner: null,
   });
 
   await withMockedProject(project, async () => {
-    await assert.rejects(() => runController(approveProject, createReq()), {
-      message: 'You cannot approve your own project',
-      status: 400,
+    await withMockedNotifications(async (notifications) => {
+      await runController(approveProject, createReq());
+
+      assert.equal(project.status, PROJECT_STATUS.APPROVED);
+      assert.equal(project.approvedBy, ADMIN_ID);
+      assert.ok(project.reviewedAt instanceof Date);
+      assert.equal(project.saveCalls, 1);
+      assert.equal(notifications.length, 0);
     });
-    assert.equal(project.saveCalls, 0);
-    assert.equal(project.status, PROJECT_STATUS.UNDER_REVIEW);
   });
 });
 
