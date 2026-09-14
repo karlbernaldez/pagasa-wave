@@ -8,6 +8,7 @@ export const PERMISSION_CATALOG = Object.freeze({
   users: ['view', 'create', 'edit', 'change_status', 'delete'],
   roles: ['view', 'create', 'edit', 'delete'],
   analytics: ['view', 'export'],
+  calendar: ['view'],
   reports: ['view', 'create', 'approve'],
   settings: ['view', 'manage'],
   chat: ['use_internal', 'forecaster_knowledge', 'admin_knowledge'],
