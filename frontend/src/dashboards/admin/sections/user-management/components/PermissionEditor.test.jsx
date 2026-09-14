@@ -72,6 +72,20 @@ describe('PermissionEditor', () => {
     expect(screen.queryByText('View users')).not.toBeInTheDocument();
   });
 
+  it('keeps technical keys hidden by default and exposes them on demand', () => {
+    render(<StatefulEditor initialPermissions={['dashboard.view']} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Dashboard/ }));
+    expect(screen.queryByText('dashboard.view')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show technical keys' }));
+    expect(screen.getByText('dashboard.view')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide technical keys' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
   it('searches labels, descriptions, and permission keys without changing selections', () => {
     render(<StatefulEditor initialPermissions={['dashboard.view', 'users.view']} />);
 
