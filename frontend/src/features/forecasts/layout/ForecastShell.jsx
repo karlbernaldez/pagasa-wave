@@ -39,10 +39,7 @@ export default function ForecastShell({ children, user: fallbackUser = null }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const navItems = useMemo(
-    () =>
-      FORECAST_NAV_ITEMS.filter((item) =>
-        hasEffectivePermission(rawUser, item.permission)
-      ),
+    () => FORECAST_NAV_ITEMS.filter((item) => hasEffectivePermission(rawUser, item.permission)),
     [rawUser]
   );
 
