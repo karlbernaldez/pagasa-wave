@@ -10,13 +10,14 @@ import {
 import DashboardShell from '@/shared/dashboard-shell/DashboardShell';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
+const FORECAST_TABS = [ADMIN_TABS.FORECAST_PACKAGES, ADMIN_TABS.FORECAST_REVIEW];
 const USER_TABS = [ADMIN_TABS.USERS, ADMIN_TABS.USERS_LIST, ADMIN_TABS.USERS_ROLES];
 const WAVE_MODEL_TABS = [
   ADMIN_TABS.WAVE_MODELS,
   ADMIN_TABS.WAVE_PIPELINE,
   ADMIN_TABS.WAVE_MODEL_ONBOARDING,
 ];
-const ACCOUNT_ITEM = {
+export const ACCOUNT_ITEM = {
   id: ADMIN_TABS.ACCOUNT,
   label: 'Account Settings',
   path: '/account',
@@ -32,7 +33,37 @@ const canAccessTab = (rawUser, tab) => {
   return new Set(rawUser?.permissions || []).has(permission);
 };
 
+const buildExpandableItem = (item, activeTabs, children) => {
+  if (!children.length) return null;
+
+  return {
+    ...item,
+    path: children[0].path,
+    isActive: (activeId) => activeTabs.includes(activeId),
+    isExpanded: (activeId) => activeTabs.includes(activeId),
+    expandIcon: expandableIcon,
+    children,
+  };
+};
+
 const enhanceDashboardItem = (item, rawUser) => {
+  if (item.id === ADMIN_TABS.FORECAST) {
+    const children = [
+      {
+        id: ADMIN_TABS.FORECAST_PACKAGES,
+        label: 'Forecast Packages',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.FORECAST_PACKAGES],
+      },
+      {
+        id: ADMIN_TABS.FORECAST_REVIEW,
+        label: 'Review Queue',
+        path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.FORECAST_REVIEW],
+      },
+    ].filter((child) => canAccessTab(rawUser, child.id));
+
+    return buildExpandableItem(item, FORECAST_TABS, children);
+  }
+
   if (item.id === ADMIN_TABS.WAVE_MODELS) {
     const children = [
       {
@@ -52,22 +83,14 @@ const enhanceDashboardItem = (item, rawUser) => {
       },
     ].filter((child) => canAccessTab(rawUser, child.id));
 
-    if (!children.length) return null;
-
-    return {
-      ...item,
-      isActive: (activeId) => WAVE_MODEL_TABS.includes(activeId),
-      isExpanded: (activeId) => WAVE_MODEL_TABS.includes(activeId),
-      expandIcon: expandableIcon,
-      children,
-    };
+    return buildExpandableItem(item, WAVE_MODEL_TABS, children);
   }
 
   if (item.id === ADMIN_TABS.USERS) {
     const children = [
       {
         id: ADMIN_TABS.USERS_LIST,
-        label: 'User List',
+        label: 'Users',
         path: ADMIN_ROUTE_BY_TAB[ADMIN_TABS.USERS_LIST],
       },
       {
@@ -77,15 +100,7 @@ const enhanceDashboardItem = (item, rawUser) => {
       },
     ].filter((child) => canAccessTab(rawUser, child.id));
 
-    if (!children.length) return null;
-
-    return {
-      ...item,
-      isActive: (activeId) => USER_TABS.includes(activeId),
-      isExpanded: (activeId) => USER_TABS.includes(activeId),
-      expandIcon: expandableIcon,
-      children,
-    };
+    return buildExpandableItem(item, USER_TABS, children);
   }
 
   return canAccessTab(rawUser, item.id) ? item : null;
