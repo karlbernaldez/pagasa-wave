@@ -23,7 +23,9 @@ function StateCard({ title, body, action, isDarkMode }) {
       }`}
     >
       <h1 className="text-xl font-black">{title}</h1>
-      <p className={`mx-auto mt-2 max-w-xl text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+      <p
+        className={`mx-auto mt-2 max-w-xl text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+      >
         {body}
       </p>
       {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
@@ -40,11 +42,15 @@ function SummaryItem({ icon: Icon, label, value, isDarkMode }) {
     >
       <div className="flex items-center gap-2">
         <Icon size={17} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} />
-        <span className={`text-xs font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+        <span
+          className={`text-xs font-black uppercase tracking-[0.12em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
+        >
           {label}
         </span>
       </div>
-      <p className={`mt-2 text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{value}</p>
+      <p className={`mt-2 text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -115,16 +121,24 @@ export default function ForecastPackageDetailPage() {
               : 'border-white/80 bg-white/68 shadow-slate-300/35'
           }`}
         >
-          <header className={`border-b p-5 sm:p-7 ${isDarkMode ? 'border-white/10' : 'border-white/80'}`}>
-            <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>
+          <header
+            className={`border-b p-5 sm:p-7 ${isDarkMode ? 'border-white/10' : 'border-white/80'}`}
+          >
+            <p
+              className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}
+            >
               Forecast Package
             </p>
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h1 className={`text-3xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+                <h1
+                  className={`text-3xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+                >
                   {dateLabel}
                 </h1>
-                <p className={`mt-1 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                <p
+                  className={`mt-1 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+                >
                   {forecastPackage.title}
                 </p>
               </div>
@@ -164,9 +178,16 @@ export default function ForecastPackageDetailPage() {
 
             <section>
               <div className="mb-3">
-                <h2 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Forecast charts</h2>
-                <p className={`mt-1 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Open an operational chart in Studio, or view its published output when publication is complete.
+                <h2
+                  className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+                >
+                  Forecast charts
+                </h2>
+                <p
+                  className={`mt-1 text-sm font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+                >
+                  Open an operational chart in Studio, or view its published output when publication
+                  is complete.
                 </p>
               </div>
 
@@ -174,7 +195,8 @@ export default function ForecastPackageDetailPage() {
                 {(forecastPackage.charts || []).map((chartRow) => {
                   const chart = chartRow.project;
                   const projectId = chart?._id || chart?.id;
-                  const chartLabel = CHART_LABELS[chartRow.chartType] || chartRow.chartType || 'Forecast Chart';
+                  const chartLabel =
+                    CHART_LABELS[chartRow.chartType] || chartRow.chartType || 'Forecast Chart';
                   const published = isProjectPublished(chart?.status);
 
                   return (
@@ -201,14 +223,21 @@ export default function ForecastPackageDetailPage() {
                         <Waves size={20} />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className={`block truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+                        <span
+                          className={`block truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+                        >
                           {chartLabel}
                         </span>
-                        <span className={`mt-1 block truncate text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {chart?.name || chart?.title || 'Chart unavailable'} · {chart?.status || 'Draft'}
+                        <span
+                          className={`mt-1 block truncate text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
+                        >
+                          {chart?.name || chart?.title || 'Chart unavailable'} ·{' '}
+                          {chart?.status || 'Draft'}
                         </span>
                         {projectId ? (
-                          <span className={`mt-2 block text-xs font-black ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}>
+                          <span
+                            className={`mt-2 block text-xs font-black ${isDarkMode ? 'text-cyan-300' : 'text-cyan-700'}`}
+                          >
                             {published ? 'View published chart' : 'Open in Studio'}
                           </span>
                         ) : null}

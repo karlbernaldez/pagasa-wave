@@ -17,13 +17,21 @@ export function getForecastPackageCapabilities({ permissions = [], status = '' }
   const canEdit =
     canView && hasPermission(permissions, 'forecast.edit') && EDITABLE_STATUSES.has(workflowStatus);
   const canSubmit =
-    canView && hasPermission(permissions, 'forecast.submit') && EDITABLE_STATUSES.has(workflowStatus);
+    canView &&
+    hasPermission(permissions, 'forecast.submit') &&
+    EDITABLE_STATUSES.has(workflowStatus);
   const canReview =
-    canView && hasPermission(permissions, 'forecast.review') && REVIEWABLE_STATUSES.has(workflowStatus);
+    canView &&
+    hasPermission(permissions, 'forecast.review') &&
+    REVIEWABLE_STATUSES.has(workflowStatus);
   const canApprove =
-    canView && hasPermission(permissions, 'forecast.approve') && APPROVABLE_STATUSES.has(workflowStatus);
+    canView &&
+    hasPermission(permissions, 'forecast.approve') &&
+    APPROVABLE_STATUSES.has(workflowStatus);
   const canPublish =
-    canView && hasPermission(permissions, 'forecast.publish') && PUBLISHABLE_STATUSES.has(workflowStatus);
+    canView &&
+    hasPermission(permissions, 'forecast.publish') &&
+    PUBLISHABLE_STATUSES.has(workflowStatus);
 
   return {
     canView,
