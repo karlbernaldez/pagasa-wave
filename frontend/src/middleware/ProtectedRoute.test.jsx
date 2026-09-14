@@ -29,19 +29,23 @@ vi.mock('@/components/ui/LoadingScreen', () => ({
   default: () => <div>Loading session</div>,
 }));
 
-function renderProtectedRoute() {
+function renderProtectedRoute({ element, initialEntry = '/secure' } = {}) {
   return render(
-    <MemoryRouter initialEntries={['/secure']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route
           path="/secure"
           element={
-            <ProtectedRoute requireAuth>
-              <div>Protected content</div>
-            </ProtectedRoute>
+            element || (
+              <ProtectedRoute requireAuth>
+                <div>Protected content</div>
+              </ProtectedRoute>
+            )
           }
         />
         <Route path="/login" element={<div>Login page</div>} />
+        <Route path="/forecasts" element={<div>Forecast workspace</div>} />
+        <Route path="/forecasts/review" element={<div>Forecast review queue</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -91,5 +95,51 @@ describe('ProtectedRoute session verification', () => {
     expect(await screen.findByText('Login page')).toBeInTheDocument();
     expect(setIsLoggedIn).toHaveBeenCalledWith(false);
     expect(setRole).toHaveBeenCalledWith(null);
+  });
+
+  it('uses effective permissions for denied authenticated redirects regardless of User Type', async () => {
+    checkAuthSession.mockResolvedValue({
+      authenticated: true,
+      unavailable: false,
+      user: {
+        id: 'reviewer-1',
+        role: 'duty_reviewer',
+        permissions: ['forecast.review'],
+      },
+    });
+
+    renderProtectedRoute({
+      element: (
+        <ProtectedRoute requireAuth permission="forecast.approve">
+          <div>Approval workspace</div>
+        </ProtectedRoute>
+      ),
+    });
+
+    expect(await screen.findByText('Forecast review queue')).toBeInTheDocument();
+    expect(screen.queryByText('Approval workspace')).not.toBeInTheDocument();
+  });
+
+  it('redirects authenticated public-route visitors using canonical permission landing', async () => {
+    checkAuthSession.mockResolvedValue({
+      authenticated: true,
+      unavailable: false,
+      user: {
+        id: 'forecast-user-1',
+        role: 'custom_forecast_operator',
+        permissions: ['forecast.view'],
+      },
+    });
+
+    renderProtectedRoute({
+      element: (
+        <ProtectedRoute requireAuth={false}>
+          <div>Public-only page</div>
+        </ProtectedRoute>
+      ),
+    });
+
+    expect(await screen.findByText('Forecast workspace')).toBeInTheDocument();
+    expect(screen.queryByText('Public-only page')).not.toBeInTheDocument();
   });
 });
