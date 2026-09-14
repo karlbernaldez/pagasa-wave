@@ -23,6 +23,14 @@ describe('forecast business routes', () => {
     expect(route.element.props.permission).toBe('forecast.view');
   });
 
+  it('gates package detail by forecast.view', () => {
+    const route = findRoute(forecastRoutes, '/forecasts/:packageId');
+
+    expect(route).toBeTruthy();
+    expect(route.element.type).toBe(ProtectedRoute);
+    expect(route.element.props.permission).toBe('forecast.view');
+  });
+
   it('gates the shared review queue by forecast.review', () => {
     const route = findRoute(forecastRoutes, '/forecasts/review');
 
