@@ -25,7 +25,7 @@ export const ADMIN_TABS = {
 
 export const ADMIN_ROUTE_BY_TAB = {
   [ADMIN_TABS.DASHBOARD]: '/dashboard',
-  [ADMIN_TABS.CHARTS]: '/dashboard/review',
+  [ADMIN_TABS.CHARTS]: '/forecasts/review',
   [ADMIN_TABS.WAVE_MODELS]: '/dashboard/wave-models',
   [ADMIN_TABS.WAVE_PIPELINE]: '/dashboard/wave-models/pipeline',
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: '/dashboard/wave-models/onboard',
