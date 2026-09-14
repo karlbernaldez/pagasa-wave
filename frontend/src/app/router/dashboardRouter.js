@@ -1,19 +1,15 @@
 import publicRoutes from './routes/publicRoutes';
 import forecastRoutes from './routes/forecastRoutes';
-import adminRoutes from './routes/adminRoutes';
+import operationalDashboardRoutes from './routes/operationalDashboardRoutes';
 import forecasterRoutes from './routes/forecasterRoutes';
 
-/**
- * Central dashboard router
- * This enables future extraction into independent apps
- */
 export const DASHBOARD_ROUTES = {
   public: publicRoutes,
   forecasts: forecastRoutes,
-  admin: adminRoutes,
+  dashboard: operationalDashboardRoutes,
   forecaster: forecasterRoutes,
 };
 
 export function getAllRoutes() {
-  return [...publicRoutes, ...forecastRoutes, ...adminRoutes, ...forecasterRoutes];
+  return [...publicRoutes, ...forecastRoutes, ...operationalDashboardRoutes, ...forecasterRoutes];
 }

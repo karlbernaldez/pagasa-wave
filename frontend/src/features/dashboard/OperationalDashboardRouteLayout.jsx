@@ -5,7 +5,6 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 import {
   ADMIN_PERMISSION_BY_TAB,
-  ADMIN_ROUTE_BY_TAB,
   ADMIN_TABS,
   PAGE_META,
   getAdminRouteForTab,
