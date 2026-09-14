@@ -6,6 +6,9 @@ import ProtectedRoute from '@/middleware/ProtectedRoute';
 const ForecastPackageListPage = lazy(
   () => import('@/dashboards/forecaster/pages/ProjectLibraryPage')
 );
+const ForecastPackageDetailPage = lazy(
+  () => import('@/features/forecasts/pages/ForecastPackageDetailPage')
+);
 const ForecastReviewQueuePage = lazy(
   () => import('@/dashboards/admin/sections/chart-review/AdminForecastPackageReviewPageV2')
 );
@@ -27,6 +30,14 @@ export default [
         element: (
           <ProtectedRoute requireAuth permission="forecast.review">
             <ForecastReviewQueuePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/forecasts/:packageId',
+        element: (
+          <ProtectedRoute requireAuth permission="forecast.view">
+            <ForecastPackageDetailPage />
           </ProtectedRoute>
         ),
       },
