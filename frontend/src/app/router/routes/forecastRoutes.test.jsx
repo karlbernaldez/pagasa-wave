@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Navigate } from 'react-router-dom';
 
+import ForecastRouteLayout from '@/features/forecasts/layout/ForecastRouteLayout';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 
 import adminRoutes from './adminRoutes';
@@ -18,6 +19,11 @@ function findRoute(routes, path) {
 }
 
 describe('forecast business routes', () => {
+  it('uses the shared Forecast route layout', () => {
+    expect(forecastRoutes).toHaveLength(1);
+    expect(forecastRoutes[0].element.type).toBe(ForecastRouteLayout);
+  });
+
   it('gates the package list by forecast.view', () => {
     const route = findRoute(forecastRoutes, '/forecasts');
 
