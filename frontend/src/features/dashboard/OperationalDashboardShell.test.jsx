@@ -37,7 +37,10 @@ describe('OperationalDashboardShell permission-driven navigation', () => {
       buildDashboardSidebarGroups({ role: 'admin', permissions: FULL_OPERATIONAL_PERMISSIONS })
     );
     const customType = visibleItemIds(
-      buildDashboardSidebarGroups({ role: 'marine_ops_lead', permissions: FULL_OPERATIONAL_PERMISSIONS })
+      buildDashboardSidebarGroups({
+        role: 'marine_ops_lead',
+        permissions: FULL_OPERATIONAL_PERMISSIONS,
+      })
     );
 
     expect(customType).toEqual(administrator);
@@ -58,9 +61,7 @@ describe('OperationalDashboardShell permission-driven navigation', () => {
 
     expect(forecast).toBeTruthy();
     expect(forecast.path).toBe('/forecasts');
-    expect(forecast.children.map((child) => child.id)).toEqual([
-      ADMIN_TABS.FORECAST_PACKAGES,
-    ]);
+    expect(forecast.children.map((child) => child.id)).toEqual([ADMIN_TABS.FORECAST_PACKAGES]);
   });
 
   it('shows Forecast with Review Queue for forecast.review only', () => {
