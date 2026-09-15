@@ -2,61 +2,46 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  serializeUserAnalytics,
-  serializeUserExportRow,
-  USER_ANALYTICS_ALLOWED_KEYS,
+  buildUserAnalyticsExportRows,
   USER_ANALYTICS_EXPORT_HEADERS,
-  USER_ANALYTICS_SELECT,
 } from '../utils/analyticsSanitizers.js';
 
-const userWithPii = {
-  _id: 'user-123',
-  role: 'forecaster',
-  status: 'active',
-  createdAt: new Date('2026-09-15T00:00:00.000Z'),
-  firstName: 'Private',
-  lastName: 'Person',
-  email: 'private@example.com',
-  contact: '09171234567',
-  address: 'Private address',
-  agency: 'Private agency',
-  position: 'Private position',
-};
+test('user analytics CSV export is aggregate-only', () => {
+  assert.deepEqual([...USER_ANALYTICS_EXPORT_HEADERS], ['metric', 'value', 'count']);
 
-test('user analytics serializer exposes only the approved aggregate identity contract', () => {
-  const result = serializeUserAnalytics(userWithPii);
-
-  assert.deepEqual(Object.keys(result).sort(), [...USER_ANALYTICS_ALLOWED_KEYS].sort());
-  assert.deepEqual(result, {
-    id: 'user-123',
-    role: 'forecaster',
-    status: 'active',
-    createdAt: userWithPii.createdAt,
+  const rows = buildUserAnalyticsExportRows({
+    total: 4,
+    statusRows: [
+      { _id: 'active', count: 3 },
+      { _id: 'pending', count: 1 },
+    ],
+    roleRows: [
+      { _id: 'forecaster', count: 2 },
+      { _id: 'reviewer', count: 2 },
+    ],
   });
-  assert.equal('email' in result, false);
-  assert.equal('contact' in result, false);
-  assert.equal('firstName' in result, false);
-  assert.equal('lastName' in result, false);
+
+  assert.deepEqual(rows, [
+    ['accounts.total', 'all', 4],
+    ['accounts.status', 'active', 3],
+    ['accounts.status', 'pending', 1],
+    ['accounts.user_type', 'forecaster', 2],
+    ['accounts.user_type', 'reviewer', 2],
+  ]);
 });
 
-test('user analytics database projection excludes profile and contact fields', () => {
-  assert.equal(USER_ANALYTICS_SELECT, '_id role status createdAt');
-  for (const blocked of ['email', 'contact', 'firstName', 'lastName', 'address', 'agency', 'position']) {
-    assert.equal(USER_ANALYTICS_SELECT.includes(blocked), false);
-  }
-});
-
-test('user analytics CSV export contains only the approved sanitized columns', () => {
-  assert.deepEqual([...USER_ANALYTICS_EXPORT_HEADERS], [
+test('aggregate user analytics export has no row-level identity or PII columns', () => {
+  const headers = USER_ANALYTICS_EXPORT_HEADERS.join(',').toLowerCase();
+  for (const blocked of [
     'user_id',
-    'user_type',
-    'status',
-    'created_at',
-  ]);
-  assert.deepEqual(serializeUserExportRow(userWithPii), [
-    'user-123',
-    'forecaster',
-    'active',
-    userWithPii.createdAt,
-  ]);
+    'name',
+    'email',
+    'contact',
+    'phone',
+    'address',
+    'agency',
+    'position',
+  ]) {
+    assert.equal(headers.includes(blocked), false, `unexpected PII column: ${blocked}`);
+  }
 });
