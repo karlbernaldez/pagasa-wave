@@ -32,22 +32,35 @@ const serializeUserAnalytics = (user) => ({
   status: user.status,
 });
 
+const rowsToCountObject = (rows = [], key = '_id') =>
+  Object.fromEntries(rows.map((row) => [String(row[key] || 'unknown'), row.count || 0]));
+
 export const getForecastAnalytics = async (_req, res, next) => {
   try {
-    const packages = await ForecastPackage.find({
-      status: { $in: ANALYTICS_PACKAGE_STATUSES },
-    })
-      .select(
-        '_id name forecastDate status charts chartCompletion submittedAt reviewedAt publishedAt createdAt updatedAt'
-      )
-      .populate({ path: 'charts.project', select: ANALYTICS_PROJECT_FIELDS })
-      .sort({ forecastDate: -1, updatedAt: -1, _id: -1 })
-      .limit(100)
-      .lean();
+    const match = { status: { $in: ANALYTICS_PACKAGE_STATUSES } };
+    const [packages, total, statusRows] = await Promise.all([
+      ForecastPackage.find(match)
+        .select(
+          '_id name forecastDate status charts chartCompletion submittedAt reviewedAt publishedAt createdAt updatedAt'
+        )
+        .populate({ path: 'charts.project', select: ANALYTICS_PROJECT_FIELDS })
+        .sort({ forecastDate: -1, updatedAt: -1, _id: -1 })
+        .limit(100)
+        .lean(),
+      ForecastPackage.countDocuments(match),
+      ForecastPackage.aggregate([
+        { $match: match },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+    ]);
 
     return res.status(200).json({
       packages,
-      total: packages.length,
+      total,
+      sampleSize: packages.length,
+      statusCounts: rowsToCountObject(statusRows),
+      generatedAt: new Date().toISOString(),
     });
   } catch (error) {
     return next(error);
@@ -56,14 +69,27 @@ export const getForecastAnalytics = async (_req, res, next) => {
 
 export const getUserAnalytics = async (_req, res, next) => {
   try {
-    const users = await User.find({ deletedAt: null })
-      .select('_id role status')
-      .sort({ createdAt: -1, _id: -1 })
-      .lean();
+    const match = { deletedAt: null };
+    const [users, statusRows, roleRows] = await Promise.all([
+      User.find(match).select('_id role status').sort({ createdAt: -1, _id: -1 }).lean(),
+      User.aggregate([
+        { $match: match },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+      User.aggregate([
+        { $match: match },
+        { $group: { _id: '$role', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+    ]);
 
     return res.status(200).json({
       data: users.map(serializeUserAnalytics),
       total: users.length,
+      statusCounts: rowsToCountObject(statusRows),
+      roleCounts: rowsToCountObject(roleRows),
+      generatedAt: new Date().toISOString(),
     });
   } catch (error) {
     return next(error);
@@ -72,20 +98,35 @@ export const getUserAnalytics = async (_req, res, next) => {
 
 export const getSystemAnalytics = async (_req, res, next) => {
   try {
-    const [totalUsers, activeUsers, totalPackages] = await Promise.all([
-      User.countDocuments({ deletedAt: null }),
-      User.countDocuments({ deletedAt: null, status: 'active' }),
-      ForecastPackage.countDocuments({ status: { $in: ANALYTICS_PACKAGE_STATUSES } }),
-    ]);
+    const packageMatch = { status: { $in: ANALYTICS_PACKAGE_STATUSES } };
+    const [totalUsers, activeUsers, totalPackages, packageStatusRows, userStatusRows] =
+      await Promise.all([
+        User.countDocuments({ deletedAt: null }),
+        User.countDocuments({ deletedAt: null, status: 'active' }),
+        ForecastPackage.countDocuments(packageMatch),
+        ForecastPackage.aggregate([
+          { $match: packageMatch },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+          { $sort: { count: -1, _id: 1 } },
+        ]),
+        User.aggregate([
+          { $match: { deletedAt: null } },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+          { $sort: { count: -1, _id: 1 } },
+        ]),
+      ]);
 
     return res.status(200).json({
       users: {
         total: totalUsers,
         active: activeUsers,
+        statusCounts: rowsToCountObject(userStatusRows),
       },
       forecastPackages: {
         total: totalPackages,
+        statusCounts: rowsToCountObject(packageStatusRows),
       },
+      generatedAt: new Date().toISOString(),
     });
   } catch (error) {
     return next(error);
