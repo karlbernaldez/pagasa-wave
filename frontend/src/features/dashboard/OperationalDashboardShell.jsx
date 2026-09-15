@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ChevronDown, ChevronUp, Settings } from 'lucide-react';
 
 import {
+  ADMIN_ANY_PERMISSION_BY_TAB,
   ADMIN_PERMISSION_BY_TAB,
   ADMIN_ROUTE_BY_TAB,
   ADMIN_TABS,
@@ -28,9 +29,13 @@ const expandableIcon = (isExpanded) =>
   isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />;
 
 const canAccessTab = (rawUser, tab) => {
+  const permissions = new Set(rawUser?.permissions || []);
+  const requiredAny = ADMIN_ANY_PERMISSION_BY_TAB[tab] || [];
+  if (requiredAny.length) return requiredAny.some((permission) => permissions.has(permission));
+
   const permission = ADMIN_PERMISSION_BY_TAB[tab];
   if (!permission) return false;
-  return new Set(rawUser?.permissions || []).has(permission);
+  return permissions.has(permission);
 };
 
 const buildExpandableItem = (item, activeTabs, children) => {
