@@ -2,9 +2,8 @@ import ForecastPackage from '../models/ForecastPackage.js';
 import User from '../models/User.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
 import {
-  serializeUserExportRow,
+  buildUserAnalyticsExportRows,
   USER_ANALYTICS_EXPORT_HEADERS,
-  USER_ANALYTICS_SELECT,
 } from '../utils/analyticsSanitizers.js';
 import { toCsv } from '../utils/csv.js';
 
@@ -73,20 +72,29 @@ export const exportForecastAnalytics = async (req, res, next) => {
 export const exportUserAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
-    const rows = await User.find({
+    const match = {
       deletedAt: null,
       ...buildDateMatch('createdAt', range),
-    })
-      .select(USER_ANALYTICS_SELECT)
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(5000)
-      .lean();
+    };
+    const [total, statusRows, roleRows] = await Promise.all([
+      User.countDocuments(match),
+      User.aggregate([
+        { $match: match },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+      User.aggregate([
+        { $match: match },
+        { $group: { _id: '$role', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+    ]);
 
     return sendCsv(
       res,
       filenameFor('users', range),
       USER_ANALYTICS_EXPORT_HEADERS,
-      rows.map(serializeUserExportRow)
+      buildUserAnalyticsExportRows({ total, statusRows, roleRows })
     );
   } catch (error) {
     return next(error);
