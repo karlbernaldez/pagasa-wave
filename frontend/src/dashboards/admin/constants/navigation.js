@@ -172,7 +172,7 @@ export const PAGE_META = {
   [ADMIN_TABS.DASHBOARD]: {
     title: 'Dashboard Overview',
     description:
-      "Monitor today's forecast package workflow, operational users, and publication readiness.",
+      "Monitor today's forecast package workflow, wave-model readiness, and publication status.",
   },
   [ADMIN_TABS.FORECAST_PACKAGES]: {
     title: 'Forecast Packages',
@@ -191,7 +191,7 @@ export const PAGE_META = {
   [ADMIN_TABS.WAVE_PIPELINE]: {
     title: 'Wave Data Pipeline',
     description:
-      'Monitor WW3 and ECWAM source readiness, normalized processing, validation, and publication status.',
+      'Monitor configured wave-model source readiness, normalized processing, validation, and publication status.',
   },
   [ADMIN_TABS.WAVE_MODEL_ONBOARDING]: {
     title: 'Wave Model Onboarding',
