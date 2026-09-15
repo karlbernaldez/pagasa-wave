@@ -100,7 +100,8 @@ describe('PermissionEditor', () => {
     expect(screen.getByText('User Types & Permissions')).toBeInTheDocument();
     expect(screen.queryByText('View users')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /^Users/ }));
+    const subsectionButtons = screen.getAllByRole('button', { name: /^Users/ });
+    fireEvent.click(subsectionButtons[subsectionButtons.length - 1]);
     expect(screen.getByText('View users')).toBeInTheDocument();
     expect(screen.getByText('Delete users')).toBeInTheDocument();
     expect(screen.queryByText('View User Types')).not.toBeInTheDocument();
@@ -150,7 +151,7 @@ describe('PermissionEditor', () => {
   it('selecting a section selects all of its subsection actions', () => {
     render(<StatefulEditor initialPermissions={['dashboard.view']} />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Select section/i })[1]);
+    fireEvent.click(screen.getByRole('button', { name: 'Select section' }));
 
     expect(screen.getByTestId('permissions')).toHaveTextContent('users.view');
     expect(screen.getByTestId('permissions')).toHaveTextContent('users.delete');
