@@ -163,8 +163,13 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
   }, [has]);
 
   useEffect(() => {
-    if (!rawUser) return;
-    void load();
+    if (!rawUser) return undefined;
+
+    const initialLoadTimer = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(initialLoadTimer);
   }, [load, rawUser]);
 
   const forecast = buildForecastMetrics(state.data.forecast);
