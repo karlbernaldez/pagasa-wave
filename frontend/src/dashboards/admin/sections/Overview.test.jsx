@@ -94,6 +94,33 @@ describe('DashboardOverview dynamic read model', () => {
     expect(screen.getByText('1/2')).toBeInTheDocument();
   });
 
+  it('renders only the five most recent forecast packages', async () => {
+    currentUser.raw = { permissions: ['dashboard.view', 'forecast.view'] };
+    dashboardApi.overview.mockResolvedValue({
+      ...basePayload,
+      recentPackages: Array.from({ length: 6 }, (_, index) => ({
+        id: `package-${index + 1}`,
+        forecastDate: `2026-09-${String(15 - index).padStart(2, '0')}T00:00:00.000Z`,
+        name: `Recent Package ${index + 1}`,
+        status: 'Draft',
+        updatedAt: '2026-09-15T08:00:00.000Z',
+        actions: [
+          {
+            key: 'open',
+            label: 'Open',
+            target: { type: 'dashboard_tab', tab: 'forecast_packages' },
+          },
+        ],
+      })),
+    });
+
+    render(<DashboardOverview isDarkMode={false} onSelectTab={vi.fn()} />);
+
+    expect(await screen.findByText('Recent Package 1')).toBeInTheDocument();
+    expect(screen.getByText('Recent Package 5')).toBeInTheDocument();
+    expect(screen.queryByText('Recent Package 6')).not.toBeInTheDocument();
+  });
+
   it('renders only actions returned by the permission-filtered backend contract', async () => {
     currentUser.raw = { permissions: ['dashboard.view', 'calendar.view'] };
     const onSelectTab = vi.fn();
@@ -146,6 +173,8 @@ describe('DashboardOverview dynamic read model', () => {
 
     expect(await screen.findByText('In Review')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText(/Some dashboard sources are temporarily unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Some dashboard sources are temporarily unavailable/i)
+    ).toBeInTheDocument();
   });
 });
