@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -43,12 +43,14 @@ function StatefulEditor({ initialPermissions = [] }) {
   const [permissions, setPermissions] = useState(initialPermissions);
   return (
     <>
-      <PermissionEditor
-        categories={categories}
-        metadata={metadata}
-        permissions={permissions}
-        onChange={setPermissions}
-      />
+      <div data-testid="permission-editor">
+        <PermissionEditor
+          categories={categories}
+          metadata={metadata}
+          permissions={permissions}
+          onChange={setPermissions}
+        />
+      </div>
       <output data-testid="permissions">{permissions.join(',')}</output>
     </>
   );
@@ -74,13 +76,14 @@ describe('PermissionEditor', () => {
 
   it('keeps technical keys hidden by default and exposes them on demand', () => {
     render(<StatefulEditor initialPermissions={['dashboard.view']} />);
+    const editor = within(screen.getByTestId('permission-editor'));
 
-    fireEvent.click(screen.getByRole('button', { name: /Dashboard/ }));
-    expect(screen.queryByText('dashboard.view')).not.toBeInTheDocument();
+    fireEvent.click(editor.getByRole('button', { name: /Dashboard/ }));
+    expect(editor.queryByText('dashboard.view')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show technical keys' }));
-    expect(screen.getByText('dashboard.view')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Hide technical keys' })).toHaveAttribute(
+    fireEvent.click(editor.getByRole('button', { name: 'Show technical keys' }));
+    expect(editor.getByText('dashboard.view')).toBeInTheDocument();
+    expect(editor.getByRole('button', { name: 'Hide technical keys' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );
