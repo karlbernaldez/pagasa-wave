@@ -20,8 +20,13 @@ const ADMIN_OPERATIONAL_PERMISSIONS = [
   'users.view',
   'roles.view',
   'analytics.view',
+  'analytics_forecast.view',
+  'analytics_users.view',
+  'analytics_system.view',
   'calendar.view',
   'settings.view',
+  'settings_schedule.manage',
+  'settings_public_contact.manage',
 ];
 
 test('permission catalog exposes unique stable canonical permission keys', () => {
@@ -33,6 +38,8 @@ test('permission catalog exposes unique stable canonical permission keys', () =>
   assert.equal(PERMISSION_KEYS.includes('projects.view_own'), false);
   assert.ok(PERMISSION_KEYS.includes('roles.edit'));
   assert.ok(PERMISSION_KEYS.includes('wave_models.delete_package'));
+  assert.ok(PERMISSION_KEYS.includes('settings_map_view.manage'));
+  assert.ok(PERMISSION_KEYS.includes('analytics_forecast.view'));
 });
 
 test('permission presentation metadata exactly covers canonical permissions', () => {
@@ -43,6 +50,17 @@ test('permission presentation metadata exactly covers canonical permissions', ()
 
   for (const [permission, metadata] of Object.entries(PERMISSION_METADATA)) {
     assert.ok(categoryKeys.includes(metadata.category), `${permission} has an unknown category`);
+    assert.ok(metadata.subsection?.trim(), `${permission} is missing a subsection`);
+    assert.ok(metadata.subsectionLabel?.trim(), `${permission} is missing a subsection label`);
+    assert.ok(
+      metadata.subsectionDescription?.trim(),
+      `${permission} is missing a subsection description`
+    );
+    assert.equal(
+      Number.isFinite(metadata.subsectionOrder),
+      true,
+      `${permission} is missing subsection ordering`
+    );
     assert.ok(metadata.label.trim(), `${permission} is missing a label`);
     assert.ok(metadata.description.trim(), `${permission} is missing a description`);
     assert.equal(Number.isFinite(metadata.order), true, `${permission} is missing a stable order`);
@@ -69,6 +87,7 @@ test('high-impact permissions are marked elevated for the management UI', () => 
     'users.delete',
     'roles.edit',
     'settings.manage',
+    'settings_map_view.manage',
   ]) {
     assert.equal(PERMISSION_METADATA[permission]?.sensitivity, 'elevated');
   }
@@ -84,6 +103,34 @@ test('permission normalization removes duplicates and rejects unknown capabiliti
     () => normalizePermissionKeys(['users.view', 'system.superuser']),
     /Unknown permission keys/
   );
+});
+
+test('broad settings permissions imply child capabilities without sibling escalation', () => {
+  const fullSettings = new Set(normalizePermissionKeys(['settings.manage']));
+  assert.ok(fullSettings.has('settings.view'));
+  assert.ok(fullSettings.has('settings_schedule.manage'));
+  assert.ok(fullSettings.has('settings_map_view.manage'));
+  assert.ok(fullSettings.has('settings_public_contact.manage'));
+  assert.ok(fullSettings.has('settings_public_contact.view'));
+
+  const mapOnly = new Set(normalizePermissionKeys(['settings_map_view.manage']));
+  assert.ok(mapOnly.has('settings_map_view.view'));
+  assert.equal(mapOnly.has('settings_schedule.view'), false);
+  assert.equal(mapOnly.has('settings_public_contact.manage'), false);
+  assert.equal(mapOnly.has('settings.view'), false);
+});
+
+test('broad analytics view implies scoped analytics views without unrelated permissions', () => {
+  const fullAnalytics = new Set(normalizePermissionKeys(['analytics.view']));
+  assert.ok(fullAnalytics.has('analytics_forecast.view'));
+  assert.ok(fullAnalytics.has('analytics_users.view'));
+  assert.ok(fullAnalytics.has('analytics_system.view'));
+  assert.equal(fullAnalytics.has('users.view'), false);
+  assert.equal(fullAnalytics.has('forecast.review'), false);
+
+  const forecastOnly = new Set(normalizePermissionKeys(['analytics_forecast.view']));
+  assert.equal(forecastOnly.has('analytics_users.view'), false);
+  assert.equal(forecastOnly.has('analytics.view'), false);
 });
 
 test('administrator default role keeps canonical catalog plus legacy view-all compatibility', () => {
@@ -127,4 +174,7 @@ test('forecaster default role can view shared packages and legacy standalone pro
   const effective = new Set(expandEffectivePermissions(forecaster.permissions));
   assert.ok(effective.has('projects.view'));
   assert.ok(effective.has('projects.view_own'));
+  assert.ok(effective.has('analytics_forecast.view'));
+  assert.ok(effective.has('analytics_users.view'));
+  assert.ok(effective.has('analytics_system.view'));
 });
