@@ -8,9 +8,19 @@ export const PERMISSION_CATALOG = Object.freeze({
   users: ['view', 'create', 'edit', 'change_status', 'delete'],
   roles: ['view', 'create', 'edit', 'delete'],
   analytics: ['view', 'export'],
+  analytics_forecast: ['view'],
+  analytics_users: ['view'],
+  analytics_system: ['view'],
   calendar: ['view'],
   reports: ['view', 'create', 'approve'],
   settings: ['view', 'manage'],
+  settings_schedule: ['view', 'manage'],
+  settings_workspace: ['view', 'manage'],
+  settings_map_view: ['view', 'manage'],
+  settings_review_targets: ['view', 'manage'],
+  settings_public_general: ['view', 'manage'],
+  settings_public_about: ['view', 'manage'],
+  settings_public_contact: ['view', 'manage'],
   chat: ['use_internal', 'forecaster_knowledge', 'admin_knowledge'],
 });
 
@@ -78,19 +88,190 @@ export const PERMISSION_CATEGORIES = Object.freeze([
 ]);
 
 const FEATURE_PRESENTATION = Object.freeze({
-  dashboard: { category: 'dashboard', subject: 'dashboard' },
-  forecast: { category: 'forecast_operations', subject: 'forecast packages' },
-  studio: { category: 'forecast_studio', subject: 'Forecast Studio content' },
-  wave_models: { category: 'models_pipeline', subject: 'wave models' },
-  wave_pipeline: { category: 'models_pipeline', subject: 'wave pipeline' },
-  model_onboarding: { category: 'models_pipeline', subject: 'model onboarding' },
-  users: { category: 'users_access', subject: 'users' },
-  roles: { category: 'users_access', subject: 'User Types' },
-  analytics: { category: 'analytics_reports', subject: 'analytics' },
-  calendar: { category: 'calendar', subject: 'calendar' },
-  reports: { category: 'analytics_reports', subject: 'reports' },
-  settings: { category: 'system', subject: 'system settings' },
-  chat: { category: 'internal_assistant', subject: 'internal assistant' },
+  dashboard: {
+    category: 'dashboard',
+    subsection: 'overview',
+    subsectionLabel: 'Operational Overview',
+    subsectionDescription: 'Shared dashboard and readiness information.',
+    subsectionOrder: 10,
+    subject: 'dashboard',
+  },
+  forecast: {
+    category: 'forecast_operations',
+    subsection: 'packages',
+    subsectionLabel: 'Forecast Packages',
+    subsectionDescription: 'Prepare, review, approve, publish, and archive forecast packages.',
+    subsectionOrder: 10,
+    subject: 'forecast packages',
+  },
+  studio: {
+    category: 'forecast_studio',
+    subsection: 'chart_authoring',
+    subsectionLabel: 'Chart Authoring',
+    subsectionDescription: 'Work with forecast charts and annotation content in Studio.',
+    subsectionOrder: 10,
+    subject: 'Forecast Studio content',
+  },
+  wave_models: {
+    category: 'models_pipeline',
+    subsection: 'wave_models',
+    subsectionLabel: 'Wave Models',
+    subsectionDescription: 'View and operate configured wave models and packages.',
+    subsectionOrder: 10,
+    subject: 'wave models',
+  },
+  wave_pipeline: {
+    category: 'models_pipeline',
+    subsection: 'pipeline_status',
+    subsectionLabel: 'Pipeline Status',
+    subsectionDescription: 'Inspect wave-model pipeline and package readiness.',
+    subsectionOrder: 20,
+    subject: 'wave pipeline',
+  },
+  model_onboarding: {
+    category: 'models_pipeline',
+    subsection: 'model_onboarding',
+    subsectionLabel: 'Model Onboarding',
+    subsectionDescription: 'View or manage model onboarding workflows.',
+    subsectionOrder: 30,
+    subject: 'model onboarding',
+  },
+  users: {
+    category: 'users_access',
+    subsection: 'users',
+    subsectionLabel: 'Users',
+    subsectionDescription: 'View and manage operational user accounts.',
+    subsectionOrder: 10,
+    subject: 'users',
+  },
+  roles: {
+    category: 'users_access',
+    subsection: 'user_types',
+    subsectionLabel: 'User Types & Permissions',
+    subsectionDescription: 'Create and maintain permission bundles for User Types.',
+    subsectionOrder: 20,
+    subject: 'User Types',
+  },
+  analytics: {
+    category: 'analytics_reports',
+    subsection: 'analytics_full',
+    subsectionLabel: 'Analytics - Full Access',
+    subsectionDescription: 'Compatibility access spanning all analytics views.',
+    subsectionOrder: 5,
+    subject: 'analytics',
+  },
+  analytics_forecast: {
+    category: 'analytics_reports',
+    subsection: 'analytics_forecast',
+    subsectionLabel: 'Forecast Operations Analytics',
+    subsectionDescription: 'Forecast package throughput, review outcomes, and timing metrics.',
+    subsectionOrder: 10,
+    subject: 'forecast operations analytics',
+  },
+  analytics_users: {
+    category: 'analytics_reports',
+    subsection: 'analytics_users',
+    subsectionLabel: 'User Activity Analytics',
+    subsectionDescription: 'Account activity and user participation metrics without user administration access.',
+    subsectionOrder: 20,
+    subject: 'user activity analytics',
+  },
+  analytics_system: {
+    category: 'analytics_reports',
+    subsection: 'analytics_system',
+    subsectionLabel: 'System Operations Analytics',
+    subsectionDescription: 'Operational health and system-level analytics summaries.',
+    subsectionOrder: 30,
+    subject: 'system operations analytics',
+  },
+  reports: {
+    category: 'analytics_reports',
+    subsection: 'reports',
+    subsectionLabel: 'Reports',
+    subsectionDescription: 'View, create, and approve operational reports.',
+    subsectionOrder: 40,
+    subject: 'reports',
+  },
+  calendar: {
+    category: 'calendar',
+    subsection: 'calendar',
+    subsectionLabel: 'Calendar',
+    subsectionDescription: 'WaveLab calendar information.',
+    subsectionOrder: 10,
+    subject: 'calendar',
+  },
+  settings: {
+    category: 'system',
+    subsection: 'settings_full',
+    subsectionLabel: 'Settings - Full Access',
+    subsectionDescription: 'Compatibility access spanning all Settings work areas.',
+    subsectionOrder: 5,
+    subject: 'system settings',
+  },
+  settings_schedule: {
+    category: 'system',
+    subsection: 'settings_schedule',
+    subsectionLabel: 'Forecast Operations - Schedule & Policy',
+    subsectionDescription: 'Operational timing, package windows, archive policy, and no-publication options.',
+    subsectionOrder: 10,
+    subject: 'Schedule & Policy settings',
+  },
+  settings_workspace: {
+    category: 'system',
+    subsection: 'settings_workspace',
+    subsectionLabel: 'Forecaster Workspace - Workspace Defaults',
+    subsectionDescription: 'Forecaster-facing helper copy, workspace defaults, and collaboration guidance.',
+    subsectionOrder: 20,
+    subject: 'Workspace Defaults settings',
+  },
+  settings_map_view: {
+    category: 'system',
+    subsection: 'settings_map_view',
+    subsectionLabel: 'Forecaster Workspace - Map View',
+    subsectionDescription: 'Default map center, zoom, bounds, and map-facing behavior.',
+    subsectionOrder: 30,
+    subject: 'Map View settings',
+  },
+  settings_review_targets: {
+    category: 'system',
+    subsection: 'settings_review_targets',
+    subsectionLabel: 'Admin Review - Review Targets',
+    subsectionDescription: 'Review SLA targets and admin-facing package resolution settings.',
+    subsectionOrder: 40,
+    subject: 'Review Targets settings',
+  },
+  settings_public_general: {
+    category: 'system',
+    subsection: 'settings_public_general',
+    subsectionLabel: 'Public Site - General',
+    subsectionDescription: 'General public dashboard branding and shared public-site configuration.',
+    subsectionOrder: 50,
+    subject: 'Public Site General settings',
+  },
+  settings_public_about: {
+    category: 'system',
+    subsection: 'settings_public_about',
+    subsectionLabel: 'Public Site - About Page',
+    subsectionDescription: 'Public About page content and presentation.',
+    subsectionOrder: 60,
+    subject: 'About Page settings',
+  },
+  settings_public_contact: {
+    category: 'system',
+    subsection: 'settings_public_contact',
+    subsectionLabel: 'Public Site - Contact Page',
+    subsectionDescription: 'Public Contact page content and presentation.',
+    subsectionOrder: 70,
+    subject: 'Contact Page settings',
+  },
+  chat: {
+    category: 'internal_assistant',
+    subsection: 'assistant',
+    subsectionLabel: 'Internal Assistant',
+    subsectionDescription: 'Internal assistant access and approved knowledge scopes.',
+    subsectionOrder: 10,
+    subject: 'internal assistant',
+  },
 });
 
 const ACTION_LABELS = Object.freeze({
@@ -133,6 +314,13 @@ const ELEVATED_PERMISSIONS = new Set([
   'analytics.export',
   'reports.approve',
   'settings.manage',
+  'settings_schedule.manage',
+  'settings_workspace.manage',
+  'settings_map_view.manage',
+  'settings_review_targets.manage',
+  'settings_public_general.manage',
+  'settings_public_about.manage',
+  'settings_public_contact.manage',
   'chat.admin_knowledge',
 ]);
 
@@ -152,6 +340,10 @@ export const PERMISSION_METADATA = Object.freeze(
         key,
         Object.freeze({
           category: presentation.category,
+          subsection: presentation.subsection,
+          subsectionLabel: presentation.subsectionLabel,
+          subsectionDescription: presentation.subsectionDescription,
+          subsectionOrder: presentation.subsectionOrder,
           label,
           description: `Allows this User Type to ${label.toLowerCase()}.`,
           order: featureIndex * 100 + actionIndex * 10,
@@ -184,13 +376,41 @@ const LEGACY_PERMISSION_SET = new Set([
   ...LEGACY_PROJECT_SCOPE_PERMISSIONS,
 ]);
 
-const FORECAST_PERMISSION_IMPLICATIONS = Object.freeze({
+const PERMISSION_IMPLICATIONS = Object.freeze({
   'forecast.edit': ['forecast.view'],
   'forecast.submit': ['forecast.view'],
   'forecast.review': ['forecast.view'],
   'forecast.approve': ['forecast.review', 'forecast.view'],
   'forecast.publish': ['forecast.view'],
   'forecast.archive': ['forecast.view'],
+  'analytics.view': ['analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'],
+  'analytics.export': ['analytics.view'],
+  'settings.view': [
+    'settings_schedule.view',
+    'settings_workspace.view',
+    'settings_map_view.view',
+    'settings_review_targets.view',
+    'settings_public_general.view',
+    'settings_public_about.view',
+    'settings_public_contact.view',
+  ],
+  'settings.manage': [
+    'settings.view',
+    'settings_schedule.manage',
+    'settings_workspace.manage',
+    'settings_map_view.manage',
+    'settings_review_targets.manage',
+    'settings_public_general.manage',
+    'settings_public_about.manage',
+    'settings_public_contact.manage',
+  ],
+  'settings_schedule.manage': ['settings_schedule.view'],
+  'settings_workspace.manage': ['settings_workspace.view'],
+  'settings_map_view.manage': ['settings_map_view.view'],
+  'settings_review_targets.manage': ['settings_review_targets.view'],
+  'settings_public_general.manage': ['settings_public_general.view'],
+  'settings_public_about.manage': ['settings_public_about.view'],
+  'settings_public_contact.manage': ['settings_public_contact.view'],
 });
 
 const FORECAST_RUNTIME_LEGACY_PERMISSIONS = Object.freeze({
@@ -212,15 +432,13 @@ const cleanPermissionInput = (permissions) => {
   return [...new Set(permissions.map((value) => String(value || '').trim()))].filter(Boolean);
 };
 
-const applyForecastPermissionImplications = (permissions) => {
+const applyPermissionImplications = (permissions) => {
   const result = new Set(permissions);
   let changed = true;
 
   while (changed) {
     changed = false;
-    for (const [permission, impliedPermissions] of Object.entries(
-      FORECAST_PERMISSION_IMPLICATIONS
-    )) {
+    for (const [permission, impliedPermissions] of Object.entries(PERMISSION_IMPLICATIONS)) {
       if (!result.has(permission)) continue;
       for (const impliedPermission of impliedPermissions) {
         if (result.has(impliedPermission)) continue;
@@ -263,7 +481,7 @@ export const normalizePermissionKeys = (permissions = []) => {
     canonical.add(permission);
   }
 
-  return [...applyForecastPermissionImplications(canonical)].sort();
+  return [...applyPermissionImplications(canonical)].sort();
 };
 
 export const expandEffectivePermissions = (permissions = []) => {
