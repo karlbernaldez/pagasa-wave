@@ -26,6 +26,7 @@ import {
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 import ecwamFrameRoutes from './routes/ecwamFrameRoutes.js';
 import featureRoutes from './routes/featureRoutes.js';
 import forecastPackageRoutes from './routes/forecastPackageRoutes.js';
@@ -153,6 +154,7 @@ const createApp = () => {
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/features', featureRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/dashboard', authenticate, dashboardRoutes);
   app.use('/api/analytics', analyticsRoutes);
   app.use('/api/projects', projectRoutes);
   app.use('/api/forecast-packages', forecastAnalyticsCompatibilityRouter);
