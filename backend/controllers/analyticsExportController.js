@@ -1,6 +1,11 @@
 import ForecastPackage from '../models/ForecastPackage.js';
 import User from '../models/User.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
+import {
+  serializeUserExportRow,
+  USER_ANALYTICS_EXPORT_HEADERS,
+  USER_ANALYTICS_SELECT,
+} from '../utils/analyticsSanitizers.js';
 
 const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
   'Submitted',
@@ -82,7 +87,7 @@ export const exportUserAnalytics = async (req, res, next) => {
       deletedAt: null,
       ...buildDateMatch('createdAt', range),
     })
-      .select('_id role status createdAt')
+      .select(USER_ANALYTICS_SELECT)
       .sort({ createdAt: -1, _id: -1 })
       .limit(5000)
       .lean();
@@ -90,8 +95,8 @@ export const exportUserAnalytics = async (req, res, next) => {
     return sendCsv(
       res,
       filenameFor('users', range),
-      ['user_id', 'user_type', 'status', 'created_at'],
-      rows.map((row) => [row._id, row.role, row.status, row.createdAt])
+      USER_ANALYTICS_EXPORT_HEADERS,
+      rows.map(serializeUserExportRow)
     );
   } catch (error) {
     return next(error);
