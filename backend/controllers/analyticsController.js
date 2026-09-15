@@ -37,13 +37,24 @@ export const getForecastAnalytics = async (req, res, next) => {
       ...buildDateMatch('forecastDate', range),
     };
     const [packages, total, statusRows] = await Promise.all([
-      ForecastPackage.find(match)
-        .select(
-          '_id name forecastDate status submittedAt reviewedAt publishedAt createdAt updatedAt'
-        )
-        .sort({ forecastDate: -1, updatedAt: -1, _id: -1 })
-        .limit(100)
-        .lean(),
+      ForecastPackage.aggregate([
+        { $match: match },
+        { $sort: { forecastDate: -1, updatedAt: -1, _id: -1 } },
+        { $limit: 100 },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            forecastDate: 1,
+            status: 1,
+            submittedAt: 1,
+            reviewedAt: 1,
+            publishedAt: 1,
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        },
+      ]),
       ForecastPackage.countDocuments(match),
       ForecastPackage.aggregate([
         { $match: match },
