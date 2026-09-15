@@ -15,7 +15,9 @@ const TabBar = ({ activeTab, setActiveTab, dark, tabs = TABS }) => {
   const groups = groupTabs(tabs);
   const visibleGroups = SETTINGS_GROUPS.filter((group) => (groups[group.id] || []).length > 0);
   const activeGroupId =
-    tabs.find((tab) => tab.id === activeTab)?.group || visibleGroups[0]?.id || SETTINGS_GROUPS[0]?.id;
+    tabs.find((tab) => tab.id === activeTab)?.group ||
+    visibleGroups[0]?.id ||
+    SETTINGS_GROUPS[0]?.id;
   const visibleTabs = groups[activeGroupId] || [];
 
   const selectGroup = (groupId) => {
@@ -24,7 +26,12 @@ const TabBar = ({ activeTab, setActiveTab, dark, tabs = TABS }) => {
   };
 
   return (
-    <div className={cn('border-b px-4 py-4', dark ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-white')}>
+    <div
+      className={cn(
+        'border-b px-4 py-4',
+        dark ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-white'
+      )}
+    >
       <div className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {visibleGroups.map((group) => {
@@ -51,16 +58,27 @@ const TabBar = ({ activeTab, setActiveTab, dark, tabs = TABS }) => {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-black">{group.label}</p>
-                    <p className={cn('mt-1 text-xs font-semibold leading-5', active ? 'opacity-80' : 'opacity-75')}>
+                    <p
+                      className={cn(
+                        'mt-1 text-xs font-semibold leading-5',
+                        active ? 'opacity-80' : 'opacity-75'
+                      )}
+                    >
                       {group.description}
                     </p>
                   </div>
-                  <span className={cn(
-                    'shrink-0 rounded-full px-2 py-1 text-[11px] font-black',
-                    active
-                      ? dark ? 'bg-cyan-300/15 text-cyan-100' : 'bg-white/80 text-cyan-700'
-                      : dark ? 'bg-white/[0.06] text-slate-400' : 'bg-slate-100 text-slate-500'
-                  )}>
+                  <span
+                    className={cn(
+                      'shrink-0 rounded-full px-2 py-1 text-[11px] font-black',
+                      active
+                        ? dark
+                          ? 'bg-cyan-300/15 text-cyan-100'
+                          : 'bg-white/80 text-cyan-700'
+                        : dark
+                          ? 'bg-white/[0.06] text-slate-400'
+                          : 'bg-slate-100 text-slate-500'
+                    )}
+                  >
                     {count}
                   </span>
                 </div>
@@ -70,7 +88,12 @@ const TabBar = ({ activeTab, setActiveTab, dark, tabs = TABS }) => {
         </div>
 
         {visibleTabs.length > 1 && (
-          <div className={cn('rounded-2xl border p-2', dark ? 'border-white/10 bg-slate-950/35' : 'border-white/80 bg-slate-50/80')}>
+          <div
+            className={cn(
+              'rounded-2xl border p-2',
+              dark ? 'border-white/10 bg-slate-950/35' : 'border-white/80 bg-slate-50/80'
+            )}
+          >
             <div className="flex flex-wrap gap-1.5">
               {visibleTabs.map(({ id, label, icon: Icon }) => {
                 const active = activeTab === id;
@@ -93,7 +116,9 @@ const TabBar = ({ activeTab, setActiveTab, dark, tabs = TABS }) => {
                   >
                     <Icon size={14} />
                     {label}
-                    {active && <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" />}
+                    {active && (
+                      <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" />
+                    )}
                   </button>
                 );
               })}

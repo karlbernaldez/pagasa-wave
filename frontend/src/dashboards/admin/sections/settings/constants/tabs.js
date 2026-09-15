@@ -1,4 +1,12 @@
-import { FileText, LayoutDashboard, Mail, MapPinned, Settings, ShieldCheck, Workflow } from 'lucide-react';
+import {
+  FileText,
+  LayoutDashboard,
+  Mail,
+  MapPinned,
+  Settings,
+  ShieldCheck,
+  Workflow,
+} from 'lucide-react';
 
 export const SETTINGS_GROUPS = [
   {
@@ -9,7 +17,8 @@ export const SETTINGS_GROUPS = [
   {
     id: 'forecasterWorkspace',
     label: 'Forecaster Workspace',
-    description: 'Helper copy, workspace defaults, collaboration reminders, map defaults, and forecaster-facing guidance.',
+    description:
+      'Helper copy, workspace defaults, collaboration reminders, map defaults, and forecaster-facing guidance.',
   },
   {
     id: 'adminReview',

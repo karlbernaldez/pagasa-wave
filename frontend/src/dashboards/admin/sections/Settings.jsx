@@ -110,7 +110,15 @@ const SettingsSection = ({ isDarkMode }) => {
 
     return normalized;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [operationsData, forecasterWorkspaceData, mapViewData, adminReviewData, generalData, aboutData, contactData]);
+  }, [
+    operationsData,
+    forecasterWorkspaceData,
+    mapViewData,
+    adminReviewData,
+    generalData,
+    aboutData,
+    contactData,
+  ]);
 
   const history = useUndoRedoState(combinedInitial, {
     maxHistory: 100,
@@ -158,42 +166,88 @@ const SettingsSection = ({ isDarkMode }) => {
 
   return (
     <div className="mx-auto max-w-[1500px] p-4 sm:p-6">
-      <section className={cn('overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl', pageSurface)}>
-        <header className={cn('border-b px-5 py-5 sm:px-6', dark ? 'border-white/10 bg-white/[0.03]' : 'border-white/70 bg-white/75')}>
+      <section
+        className={cn('overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl', pageSurface)}
+      >
+        <header
+          className={cn(
+            'border-b px-5 py-5 sm:px-6',
+            dark ? 'border-white/10 bg-white/[0.03]' : 'border-white/70 bg-white/75'
+          )}
+        >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <p className={cn('text-xs font-black uppercase tracking-[0.16em]', dark ? 'text-cyan-200' : 'text-cyan-700')}>
+              <p
+                className={cn(
+                  'text-xs font-black uppercase tracking-[0.16em]',
+                  dark ? 'text-cyan-200' : 'text-cyan-700'
+                )}
+              >
                 Admin settings
               </p>
               <h2 className={cn('mt-2 text-2xl font-black tracking-tight', text)}>
                 Dashboard Settings Control Center
               </h2>
               <p className={cn('mt-1 max-w-3xl text-sm font-semibold leading-6', muted)}>
-                Select a work area first, then edit only the configurable copy, schedules, and public content for that area. Fixed forecast-package rules stay out of Settings.
+                Select a work area first, then edit only the configurable copy, schedules, and
+                public content for that area. Fixed forecast-package rules stay out of Settings.
               </p>
               {activeGroup && visibleTabs.some((tab) => tab.id === activeTab) && (
-                <div className={cn('mt-4 rounded-2xl border px-4 py-3', dark ? 'border-white/10 bg-white/[0.03]' : 'border-white/80 bg-white/70')}>
-                  <p className={cn('text-xs font-black uppercase tracking-[0.14em]', muted)}>Selected area</p>
-                  <p className={cn('mt-1 text-sm font-black', text)}>{activeGroup.label} · {activeConfig?.label}</p>
-                  <p className={cn('mt-1 text-xs font-semibold leading-5', muted)}>{activeGroup.description}</p>
+                <div
+                  className={cn(
+                    'mt-4 rounded-2xl border px-4 py-3',
+                    dark ? 'border-white/10 bg-white/[0.03]' : 'border-white/80 bg-white/70'
+                  )}
+                >
+                  <p className={cn('text-xs font-black uppercase tracking-[0.14em]', muted)}>
+                    Selected area
+                  </p>
+                  <p className={cn('mt-1 text-sm font-black', text)}>
+                    {activeGroup.label} · {activeConfig?.label}
+                  </p>
+                  <p className={cn('mt-1 text-xs font-semibold leading-5', muted)}>
+                    {activeGroup.description}
+                  </p>
                   {!canManageActive && (
-                    <p className="mt-2 text-xs font-black text-amber-500">View-only access for this subsection.</p>
+                    <p className="mt-2 text-xs font-black text-amber-500">
+                      View-only access for this subsection.
+                    </p>
                   )}
                 </div>
               )}
             </div>
 
             <div className="flex flex-wrap gap-2 lg:justify-end">
-              <ActionButton icon={Undo2} onClick={history.undo} disabled={!canManageActive || !history.canUndo} isDarkMode={dark}>
+              <ActionButton
+                icon={Undo2}
+                onClick={history.undo}
+                disabled={!canManageActive || !history.canUndo}
+                isDarkMode={dark}
+              >
                 Undo
               </ActionButton>
-              <ActionButton icon={Redo2} onClick={history.redo} disabled={!canManageActive || !history.canRedo} isDarkMode={dark}>
+              <ActionButton
+                icon={Redo2}
+                onClick={history.redo}
+                disabled={!canManageActive || !history.canRedo}
+                isDarkMode={dark}
+              >
                 Redo
               </ActionButton>
-              <ActionButton icon={RotateCcw} onClick={onReset} disabled={!canManageActive || !dataLoaded || saving} isDarkMode={dark}>
+              <ActionButton
+                icon={RotateCcw}
+                onClick={onReset}
+                disabled={!canManageActive || !dataLoaded || saving}
+                isDarkMode={dark}
+              >
                 Reset
               </ActionButton>
-              <ActionButton icon={Save} onClick={onSave} disabled={!canManageActive || !dataLoaded || saving} isDarkMode={dark}>
+              <ActionButton
+                icon={Save}
+                onClick={onSave}
+                disabled={!canManageActive || !dataLoaded || saving}
+                isDarkMode={dark}
+              >
                 {saving ? 'Saving' : 'Save'}
               </ActionButton>
             </div>
@@ -201,25 +255,59 @@ const SettingsSection = ({ isDarkMode }) => {
         </header>
 
         {visibleTabs.length > 0 && (
-          <TabBar activeTab={activeTab} setActiveTab={setActiveTab} dark={dark} tabs={visibleTabs} />
+          <TabBar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            dark={dark}
+            tabs={visibleTabs}
+          />
         )}
 
         <div className={cn('min-h-[560px] p-4 sm:p-6', contentSurface)}>
           {visibleTabs.length === 0 ? (
-            <div className={cn('rounded-2xl border px-5 py-16 text-center text-sm font-semibold', dark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-white/80 bg-white/70 text-slate-500')}>
+            <div
+              className={cn(
+                'rounded-2xl border px-5 py-16 text-center text-sm font-semibold',
+                dark
+                  ? 'border-white/10 bg-white/[0.03] text-slate-400'
+                  : 'border-white/80 bg-white/70 text-slate-500'
+              )}
+            >
               You do not have access to any Settings subsections.
             </div>
           ) : !dataLoaded ? (
-            <div className={cn('flex items-center justify-center rounded-2xl border py-24 text-sm font-semibold', dark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-white/80 bg-white/70 text-slate-500')}>
+            <div
+              className={cn(
+                'flex items-center justify-center rounded-2xl border py-24 text-sm font-semibold',
+                dark
+                  ? 'border-white/10 bg-white/[0.03] text-slate-400'
+                  : 'border-white/80 bg-white/70 text-slate-500'
+              )}
+            >
               <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"
+                />
               </svg>
               Loading settings...
             </div>
           ) : ActiveComponent ? (
             <fieldset disabled={!canManageActive} className="min-w-0 disabled:opacity-90">
-              <ActiveComponent settings={allSettings[activeTab]} setSettings={makeSetter(activeTab)} dark={dark} />
+              <ActiveComponent
+                settings={allSettings[activeTab]}
+                setSettings={makeSetter(activeTab)}
+                dark={dark}
+              />
             </fieldset>
           ) : null}
         </div>

@@ -283,21 +283,31 @@ export function PermissionEditor({
             </div>
 
             {isExpanded && (
-              <div className={cn('space-y-3 border-t p-4', isDarkMode ? 'border-white/[0.07]' : 'border-slate-100')}>
+              <div
+                className={cn(
+                  'space-y-3 border-t p-4',
+                  isDarkMode ? 'border-white/[0.07]' : 'border-slate-100'
+                )}
+              >
                 {group.subsections.map((subsection) => {
                   const subsectionKey = `${group.key}:${subsection.key}`;
                   const subsectionKeys = getPermissionKeys(subsection);
-                  const subsectionSelected = subsectionKeys.filter((key) => selected.has(key)).length;
+                  const subsectionSelected = subsectionKeys.filter((key) =>
+                    selected.has(key)
+                  ).length;
                   const subsectionAllSelected =
                     subsectionKeys.length > 0 && subsectionSelected === subsectionKeys.length;
-                  const subsectionExpanded = Boolean(search) || expandedSubsections.has(subsectionKey);
+                  const subsectionExpanded =
+                    Boolean(search) || expandedSubsections.has(subsectionKey);
 
                   return (
                     <div
                       key={subsection.key}
                       className={cn(
                         'overflow-hidden rounded-xl border',
-                        isDarkMode ? 'border-white/[0.07] bg-white/[0.015]' : 'border-slate-200 bg-slate-50/60'
+                        isDarkMode
+                          ? 'border-white/[0.07] bg-white/[0.015]'
+                          : 'border-slate-200 bg-slate-50/60'
                       )}
                     >
                       <div className="flex items-center gap-3 px-3 py-3">
@@ -316,11 +326,22 @@ export function PermissionEditor({
                             )}
                           />
                           <span className="min-w-0">
-                            <span className={cn('block text-xs font-black', isDarkMode ? 'text-slate-200' : 'text-slate-800')}>
+                            <span
+                              className={cn(
+                                'block text-xs font-black',
+                                isDarkMode ? 'text-slate-200' : 'text-slate-800'
+                              )}
+                            >
                               {subsection.label}
                             </span>
-                            <span className={cn('mt-0.5 block text-[11px]', isDarkMode ? 'text-slate-500' : 'text-slate-500')}>
-                              {subsectionSelected} of {subsectionKeys.length} enabled · {subsection.description}
+                            <span
+                              className={cn(
+                                'mt-0.5 block text-[11px]',
+                                isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                              )}
+                            >
+                              {subsectionSelected} of {subsectionKeys.length} enabled ·{' '}
+                              {subsection.description}
                             </span>
                           </span>
                         </button>

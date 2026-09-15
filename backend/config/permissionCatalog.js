@@ -172,7 +172,8 @@ const FEATURE_PRESENTATION = Object.freeze({
     category: 'analytics_reports',
     subsection: 'analytics_users',
     subsectionLabel: 'User Activity Analytics',
-    subsectionDescription: 'Account activity and user participation metrics without user administration access.',
+    subsectionDescription:
+      'Account activity and user participation metrics without user administration access.',
     subsectionOrder: 20,
     subject: 'user activity analytics',
   },
@@ -212,7 +213,8 @@ const FEATURE_PRESENTATION = Object.freeze({
     category: 'system',
     subsection: 'settings_schedule',
     subsectionLabel: 'Forecast Operations - Schedule & Policy',
-    subsectionDescription: 'Operational timing, package windows, archive policy, and no-publication options.',
+    subsectionDescription:
+      'Operational timing, package windows, archive policy, and no-publication options.',
     subsectionOrder: 10,
     subject: 'Schedule & Policy settings',
   },
@@ -220,7 +222,8 @@ const FEATURE_PRESENTATION = Object.freeze({
     category: 'system',
     subsection: 'settings_workspace',
     subsectionLabel: 'Forecaster Workspace - Workspace Defaults',
-    subsectionDescription: 'Forecaster-facing helper copy, workspace defaults, and collaboration guidance.',
+    subsectionDescription:
+      'Forecaster-facing helper copy, workspace defaults, and collaboration guidance.',
     subsectionOrder: 20,
     subject: 'Workspace Defaults settings',
   },
@@ -244,7 +247,8 @@ const FEATURE_PRESENTATION = Object.freeze({
     category: 'system',
     subsection: 'settings_public_general',
     subsectionLabel: 'Public Site - General',
-    subsectionDescription: 'General public dashboard branding and shared public-site configuration.',
+    subsectionDescription:
+      'General public dashboard branding and shared public-site configuration.',
     subsectionOrder: 50,
     subject: 'Public Site General settings',
   },

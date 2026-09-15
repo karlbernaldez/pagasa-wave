@@ -109,12 +109,7 @@ export default function AdminRouteLayout() {
   const requireAny = ADMIN_ANY_PERMISSION_BY_TAB[activeTab] ?? [];
 
   return (
-    <ProtectedRoute
-      requireAuth
-      permission={permission}
-      requireAny={requireAny}
-      deniedRedirect="/"
-    >
+    <ProtectedRoute requireAuth permission={permission} requireAny={requireAny} deniedRedirect="/">
       <AdminDashboardLayoutContent />
     </ProtectedRoute>
   );

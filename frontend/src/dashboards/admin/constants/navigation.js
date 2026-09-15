@@ -212,7 +212,8 @@ export const PAGE_META = {
   },
   [ADMIN_TABS.ANALYTICS]: {
     title: 'Operational Analytics',
-    description: 'Track forecast operations, user activity, and system readiness by granted capability.',
+    description:
+      'Track forecast operations, user activity, and system readiness by granted capability.',
   },
   [ADMIN_TABS.CALENDAR]: {
     title: 'Forecast Operations Calendar',
@@ -220,8 +221,7 @@ export const PAGE_META = {
   },
   [ADMIN_TABS.SETTINGS]: {
     title: 'System Settings',
-    description:
-      'Configure only the WaveLab settings work areas granted to your User Type.',
+    description: 'Configure only the WaveLab settings work areas granted to your User Type.',
   },
   [ADMIN_TABS.ACCOUNT]: {
     title: 'Account Settings',
