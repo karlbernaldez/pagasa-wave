@@ -8,7 +8,13 @@ const RECENT_PACKAGE_LIMIT = 6;
 const RECENT_ACTIVITY_LIMIT = 8;
 const REVIEW_STATUSES = ['Submitted', 'Under Review'];
 const RETURNED_STATUSES = ['Revision Requested', 'Rejected'];
-const COMPLETED_STATUSES = ['Approved', 'Published'];
+const TREND_ACTIONS = [
+  'submitted',
+  'approved',
+  'published',
+  'revision_requested',
+  'rejected',
+];
 const ATTENTION_PIPELINE_STATES = new Set(['FAILED', 'WAITING_FOR_SOURCE', 'UNKNOWN']);
 
 const toPermissionSet = (permissions = []) =>
@@ -122,6 +128,71 @@ export function buildQuickActions(permissions = []) {
   return actions;
 }
 
+export function buildSummaryCards({
+  permissions = [],
+  workflowCounts = {},
+  publishedToday = 0,
+  waveModels = [],
+} = {}) {
+  const permissionSet = toPermissionSet(permissions);
+  const cards = [];
+  const canForecastMetrics =
+    permissionSet.has('analytics_forecast.view') || permissionSet.has('forecast.review');
+
+  if (canForecastMetrics) {
+    const inReview = REVIEW_STATUSES.reduce(
+      (sum, status) => sum + (Number(workflowCounts[status]) || 0),
+      0
+    );
+    const returned = RETURNED_STATUSES.reduce(
+      (sum, status) => sum + (Number(workflowCounts[status]) || 0),
+      0
+    );
+
+    cards.push(
+      {
+        key: 'in_review',
+        label: 'In Review',
+        value: inReview,
+        format: 'integer',
+        tone: 'info',
+        icon: 'review',
+      },
+      {
+        key: 'returned',
+        label: 'Returned',
+        value: returned,
+        format: 'integer',
+        tone: returned > 0 ? 'warning' : 'neutral',
+        icon: 'revision',
+      },
+      {
+        key: 'published_today',
+        label: 'Published Today',
+        value: Number(publishedToday) || 0,
+        format: 'integer',
+        tone: 'success',
+        icon: 'publish',
+      }
+    );
+  }
+
+  if (permissionSet.has('wave_pipeline.view')) {
+    const readyModels = waveModels.filter((model) => model.pipelineState === 'READY').length;
+    cards.push({
+      key: 'models_ready',
+      label: 'Models Ready',
+      value: readyModels,
+      total: waveModels.length,
+      format: 'ratio',
+      tone: readyModels === waveModels.length && waveModels.length > 0 ? 'success' : 'warning',
+      icon: 'models',
+    });
+  }
+
+  return cards;
+}
+
 function buildWaveModels(pipelinePayload) {
   return (pipelinePayload?.models || []).map((model) => ({
     id: model.modelId ? String(model.modelId) : String(model.model || ''),
@@ -163,10 +234,16 @@ function buildPipelineAttention(waveModels = []) {
     }));
 }
 
-function buildForecastAttention(statusCounts = {}, canReview = false) {
+function buildForecastAttention(workflowCounts = {}, canReview = false) {
   if (!canReview) return [];
-  const inReview = REVIEW_STATUSES.reduce((sum, status) => sum + (statusCounts[status] || 0), 0);
-  const returned = RETURNED_STATUSES.reduce((sum, status) => sum + (statusCounts[status] || 0), 0);
+  const inReview = REVIEW_STATUSES.reduce(
+    (sum, status) => sum + (Number(workflowCounts[status]) || 0),
+    0
+  );
+  const returned = RETURNED_STATUSES.reduce(
+    (sum, status) => sum + (Number(workflowCounts[status]) || 0),
+    0
+  );
   const items = [];
 
   if (inReview > 0) {
@@ -203,30 +280,37 @@ function buildForecastAttention(statusCounts = {}, canReview = false) {
 }
 
 async function loadForecastAnalytics(range) {
-  const match = buildDateMatch('forecastDate', range);
+  const packageMatch = buildDateMatch('forecastDate', range);
+  const auditTimeMatch = buildDateMatch('auditLogs.timestamp', range);
   const [statusRows, trendRows] = await Promise.all([
     ForecastPackage.aggregate([
-      { $match: match },
+      { $match: packageMatch },
       { $group: { _id: '$status', count: { $sum: 1 } } },
       { $sort: { count: -1, _id: 1 } },
     ]),
     ForecastPackage.aggregate([
-      { $match: match },
+      { $unwind: '$auditLogs' },
+      {
+        $match: {
+          'auditLogs.action': { $in: TREND_ACTIONS },
+          ...auditTimeMatch,
+        },
+      },
       {
         $project: {
           date: {
             $dateToString: {
               format: '%Y-%m-%d',
-              date: '$forecastDate',
+              date: '$auditLogs.timestamp',
               timezone: DASHBOARD_TIME_ZONE,
             },
           },
-          status: 1,
+          action: '$auditLogs.action',
         },
       },
       {
         $group: {
-          _id: { date: '$date', status: '$status' },
+          _id: { date: '$date', action: '$action' },
           count: { $sum: 1 },
         },
       },
@@ -234,7 +318,6 @@ async function loadForecastAnalytics(range) {
     ]),
   ]);
 
-  const statusCounts = countFromRows(statusRows);
   const byDate = new Map();
   for (const row of trendRows) {
     const date = row?._id?.date;
@@ -246,22 +329,21 @@ async function loadForecastAnalytics(range) {
       published: 0,
       returned: 0,
     };
-    const status = row?._id?.status;
+    const action = row?._id?.action;
     const count = Number(row.count) || 0;
-    if (REVIEW_STATUSES.includes(status)) point.submitted += count;
-    if (status === FORECAST_PACKAGE_STATUS.APPROVED) point.approved += count;
-    if (status === FORECAST_PACKAGE_STATUS.PUBLISHED) point.published += count;
-    if (RETURNED_STATUSES.includes(status)) point.returned += count;
+    if (action === 'submitted') point.submitted += count;
+    if (action === 'approved') point.approved += count;
+    if (action === 'published') point.published += count;
+    if (action === 'revision_requested' || action === 'rejected') point.returned += count;
     byDate.set(date, point);
   }
 
   return {
-    statusCounts,
     forecastWorkflowTrend: {
       title: 'Forecast Workflow Trend',
-      description: 'Forecast package movement during the selected operating period.',
+      description: 'Actual workflow events during the selected operating period.',
       series: [
-        { key: 'submitted', label: 'Submitted / Under Review' },
+        { key: 'submitted', label: 'Submitted' },
         { key: 'approved', label: 'Approved' },
         { key: 'published', label: 'Published' },
         { key: 'returned', label: 'Returned' },
@@ -273,6 +355,24 @@ async function loadForecastAnalytics(range) {
       label: String(row._id || 'Unknown'),
       count: Number(row.count) || 0,
     })),
+  };
+}
+
+async function loadCurrentWorkflowSummary(todayRange) {
+  const [statusRows, publishedToday] = await Promise.all([
+    ForecastPackage.aggregate([
+      { $match: { status: { $ne: FORECAST_PACKAGE_STATUS.ARCHIVED } } },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
+    ForecastPackage.countDocuments({
+      status: FORECAST_PACKAGE_STATUS.PUBLISHED,
+      ...buildDateMatch('publishedAt', todayRange),
+    }),
+  ]);
+
+  return {
+    workflowCounts: countFromRows(statusRows),
+    publishedToday,
   };
 }
 
@@ -352,69 +452,32 @@ function serializeRecentActivity(rows = []) {
   }));
 }
 
-function buildSummaryCards({ statusCounts = {}, waveModels = [], operationalDate }) {
-  const inReview = REVIEW_STATUSES.reduce((sum, status) => sum + (statusCounts[status] || 0), 0);
-  const returned = RETURNED_STATUSES.reduce((sum, status) => sum + (statusCounts[status] || 0), 0);
-  const publishedToday = Number(statusCounts[FORECAST_PACKAGE_STATUS.PUBLISHED]) || 0;
-  const readyModels = waveModels.filter((model) => model.pipelineState === 'READY').length;
-
-  return [
-    {
-      key: 'in_review',
-      label: 'In Review',
-      value: inReview,
-      format: 'integer',
-      tone: 'info',
-      icon: 'review',
-    },
-    {
-      key: 'returned',
-      label: 'Returned',
-      value: returned,
-      format: 'integer',
-      tone: returned > 0 ? 'warning' : 'neutral',
-      icon: 'revision',
-    },
-    {
-      key: 'published_today',
-      label: 'Published in Period',
-      value: publishedToday,
-      format: 'integer',
-      tone: 'success',
-      icon: 'publish',
-      context: operationalDate,
-    },
-    {
-      key: 'models_ready',
-      label: 'Models Ready',
-      value: readyModels,
-      total: waveModels.length,
-      format: 'ratio',
-      tone: readyModels === waveModels.length && waveModels.length > 0 ? 'success' : 'warning',
-      icon: 'models',
-    },
-  ];
-}
-
 export async function getDashboardOverview({ permissions = [], query = {}, now = new Date() } = {}) {
   const permissionSet = toPermissionSet(permissions);
   const range = parseAnalyticsDateRange(query, now);
   const operationalDate = formatManilaDateKey(now);
+  const todayRange = parseAnalyticsDateRange(
+    { start: operationalDate, end: operationalDate },
+    now
+  );
   const errors = [];
 
   const canForecastAnalytics = permissionSet.has('analytics_forecast.view');
+  const canForecastMetrics = canForecastAnalytics || permissionSet.has('forecast.review');
   const canViewForecasts = permissionSet.has('forecast.view') || permissionSet.has('forecast.review');
   const canReviewForecasts = permissionSet.has('forecast.review');
   const canViewPipeline = permissionSet.has('wave_pipeline.view');
 
   let forecastAnalytics = null;
+  let workflowCounts = {};
+  let publishedToday = 0;
   let recentPackages = [];
   let recentActivity = [];
   let waveModels = [];
 
   const tasks = [];
 
-  if (canForecastAnalytics || canReviewForecasts) {
+  if (canForecastAnalytics) {
     tasks.push(
       loadForecastAnalytics(range)
         .then((value) => {
@@ -425,6 +488,23 @@ export async function getDashboardOverview({ permissions = [], query = {}, now =
             source: 'forecast_analytics',
             code: 'FORECAST_ANALYTICS_UNAVAILABLE',
             message: error.message || 'Forecast analytics are temporarily unavailable.',
+          });
+        })
+    );
+  }
+
+  if (canForecastMetrics) {
+    tasks.push(
+      loadCurrentWorkflowSummary(todayRange)
+        .then((value) => {
+          workflowCounts = value.workflowCounts;
+          publishedToday = value.publishedToday;
+        })
+        .catch((error) => {
+          errors.push({
+            source: 'forecast_summary',
+            code: 'FORECAST_SUMMARY_UNAVAILABLE',
+            message: error.message || 'Forecast workflow summary is temporarily unavailable.',
           });
         })
     );
@@ -478,12 +558,6 @@ export async function getDashboardOverview({ permissions = [], query = {}, now =
 
   await Promise.all(tasks);
 
-  const statusCounts = forecastAnalytics?.statusCounts || {};
-  const attentionItems = [
-    ...buildForecastAttention(statusCounts, canReviewForecasts),
-    ...buildPipelineAttention(waveModels),
-  ];
-
   return {
     meta: {
       operationalDate,
@@ -492,10 +566,12 @@ export async function getDashboardOverview({ permissions = [], query = {}, now =
       range: serializeRange(range),
       partial: errors.length > 0,
     },
-    summaryCards:
-      canForecastAnalytics || canViewPipeline
-        ? buildSummaryCards({ statusCounts, waveModels, operationalDate })
-        : [],
+    summaryCards: buildSummaryCards({
+      permissions: permissionSet,
+      workflowCounts,
+      publishedToday,
+      waveModels,
+    }),
     forecastWorkflowTrend: canForecastAnalytics
       ? forecastAnalytics?.forecastWorkflowTrend || null
       : null,
@@ -504,7 +580,10 @@ export async function getDashboardOverview({ permissions = [], query = {}, now =
       : [],
     waveModels: canViewPipeline ? waveModels : [],
     recentPackages: canViewForecasts ? serializeRecentPackages(recentPackages) : [],
-    attentionItems,
+    attentionItems: [
+      ...buildForecastAttention(workflowCounts, canReviewForecasts),
+      ...buildPipelineAttention(waveModels),
+    ],
     recentActivity: canViewForecasts ? serializeRecentActivity(recentActivity) : [],
     quickActions: buildQuickActions(permissionSet),
     errors,
