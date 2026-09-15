@@ -1,109 +1,151 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DashboardOverview from './Overview';
 
-const currentUser = vi.hoisted(() => ({ raw: null, normalized: null }));
-const analyticsApi = vi.hoisted(() => ({
-  forecast: vi.fn(),
-  users: vi.fn(),
-  system: vi.fn(),
-}));
-const wavePipelineApi = vi.hoisted(() => ({ status: vi.fn() }));
+const currentUser = vi.hoisted(() => ({ raw: null }));
+const dashboardApi = vi.hoisted(() => ({ overview: vi.fn() }));
 
 vi.mock('@/shared/hooks/useCurrentDashboardUser', () => ({
-  default: () => ({
-    rawUser: currentUser.raw,
-    user: currentUser.normalized,
-  }),
+  default: () => ({ rawUser: currentUser.raw }),
 }));
 
-vi.mock('@/api/analyticsAPI', () => ({
-  fetchForecastAnalytics: analyticsApi.forecast,
-  fetchUserAnalytics: analyticsApi.users,
-  fetchSystemAnalytics: analyticsApi.system,
+vi.mock('@/api/dashboardAPI', () => ({
+  fetchDashboardOverview: dashboardApi.overview,
 }));
 
-vi.mock('@/api/wavePipelineStatus', () => ({
-  fetchWavePipelineStatus: wavePipelineApi.status,
-}));
-
-const forecastPayload = {
-  total: 2,
-  sampleSize: 2,
-  packages: [],
-  statusCounts: { Submitted: 1, Published: 1 },
+const basePayload = {
+  meta: {
+    operationalDate: '2026-09-15',
+    generatedAt: '2026-09-15T08:00:00.000Z',
+    timezone: 'Asia/Manila',
+    range: { start: '2026-09-02', end: '2026-09-15', days: 14, timezone: 'Asia/Manila' },
+    partial: false,
+  },
+  summaryCards: [],
+  forecastWorkflowTrend: null,
+  packageStatusDistribution: [],
+  waveModels: [],
+  recentPackages: [],
+  attentionItems: [],
+  recentActivity: [],
+  quickActions: [],
+  errors: [],
 };
-const userPayload = { total: 2, statusCounts: { active: 2 }, roleCounts: {} };
-const systemPayload = {
-  users: { total: 2, active: 2, statusCounts: { active: 2 } },
-  forecastPackages: { total: 2, statusCounts: { Published: 2 } },
-};
-const pipelinePayload = { models: [{ model: 'WW3', state: 'READY' }] };
 
 beforeEach(() => {
   currentUser.raw = null;
-  currentUser.normalized = { name: 'WaveLab User', role: 'Operator' };
-  analyticsApi.forecast.mockReset().mockResolvedValue(forecastPayload);
-  analyticsApi.users.mockReset().mockResolvedValue(userPayload);
-  analyticsApi.system.mockReset().mockResolvedValue(systemPayload);
-  wavePipelineApi.status.mockReset().mockResolvedValue(pipelinePayload);
+  dashboardApi.overview.mockReset().mockResolvedValue(basePayload);
 });
 
-describe('DashboardOverview permission-aware data loading', () => {
-  it('does not request protected summary APIs for dashboard-only access', async () => {
+describe('DashboardOverview dynamic read model', () => {
+  it('loads only the dedicated dashboard overview endpoint from the page', async () => {
     currentUser.raw = { permissions: ['dashboard.view'] };
 
     render(<DashboardOverview isDarkMode={false} onSelectTab={vi.fn()} />);
 
-    await waitFor(() =>
-      expect(screen.queryByText('Preparing your operational dashboard…')).not.toBeInTheDocument()
-    );
-    expect(analyticsApi.forecast).not.toHaveBeenCalled();
-    expect(analyticsApi.users).not.toHaveBeenCalled();
-    expect(analyticsApi.system).not.toHaveBeenCalled();
-    expect(wavePipelineApi.status).not.toHaveBeenCalled();
+    await waitFor(() => expect(dashboardApi.overview).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('Operational Dashboard')).toBeInTheDocument();
   });
 
-  it('requests only the forecast analytics summary when that is the only summary permission', async () => {
-    currentUser.raw = { permissions: ['dashboard.view', 'analytics_forecast.view'] };
-
-    render(<DashboardOverview isDarkMode={false} onSelectTab={vi.fn()} />);
-
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
-    expect(analyticsApi.users).not.toHaveBeenCalled();
-    expect(analyticsApi.system).not.toHaveBeenCalled();
-    expect(wavePipelineApi.status).not.toHaveBeenCalled();
-  });
-
-  it('keeps wave pipeline loading independent from analytics permissions', async () => {
+  it('renders configured wave models without assuming WW3 or ECWAM', async () => {
     currentUser.raw = { permissions: ['dashboard.view', 'wave_pipeline.view'] };
+    dashboardApi.overview.mockResolvedValue({
+      ...basePayload,
+      summaryCards: [
+        {
+          key: 'models_ready',
+          label: 'Models Ready',
+          value: 1,
+          total: 2,
+          format: 'ratio',
+          tone: 'warning',
+          icon: 'models',
+        },
+      ],
+      waveModels: [
+        {
+          id: 'swan-id',
+          key: 'swan',
+          code: 'SWAN',
+          name: 'Regional SWAN',
+          sourceCycle: '2026091500',
+          frames: { ready: 21, expected: 21 },
+          package: { name: '2026SEP15', status: 'ready' },
+          pipelineState: 'READY',
+        },
+        {
+          id: 'custom-id',
+          key: 'custom-wave',
+          code: 'CUSTOM_WAVE',
+          name: 'Custom Wave Model',
+          sourceCycle: '2026091418',
+          frames: { ready: 9, expected: 21 },
+          package: null,
+          pipelineState: 'BUILDING',
+        },
+      ],
+    });
 
     render(<DashboardOverview isDarkMode={false} onSelectTab={vi.fn()} />);
 
-    await waitFor(() => expect(wavePipelineApi.status).toHaveBeenCalledTimes(1));
-    expect(analyticsApi.forecast).not.toHaveBeenCalled();
-    expect(analyticsApi.users).not.toHaveBeenCalled();
-    expect(analyticsApi.system).not.toHaveBeenCalled();
+    expect(await screen.findByText('Regional SWAN')).toBeInTheDocument();
+    expect(screen.getByText('Custom Wave Model')).toBeInTheDocument();
+    expect(screen.getByText('1/2')).toBeInTheDocument();
   });
 
-  it('loads all permitted sources without using the User Type name as authorization', async () => {
-    currentUser.raw = {
-      role: 'custom_operator',
-      permissions: [
-        'dashboard.view',
-        'analytics_forecast.view',
-        'analytics_users.view',
-        'analytics_system.view',
-        'wave_pipeline.view',
+  it('renders only actions returned by the permission-filtered backend contract', async () => {
+    currentUser.raw = { permissions: ['dashboard.view', 'calendar.view'] };
+    const onSelectTab = vi.fn();
+    dashboardApi.overview.mockResolvedValue({
+      ...basePayload,
+      quickActions: [
+        {
+          key: 'calendar',
+          label: 'Calendar',
+          description: 'Open the operational forecast calendar.',
+          icon: 'calendar',
+          target: { type: 'dashboard_tab', tab: 'calendar' },
+        },
       ],
-    };
+    });
+
+    render(<DashboardOverview isDarkMode={false} onSelectTab={onSelectTab} />);
+
+    const calendar = await screen.findByRole('button', { name: /Calendar/i });
+    fireEvent.click(calendar);
+    expect(onSelectTab).toHaveBeenCalledWith('calendar');
+    expect(screen.queryByText('User Management')).not.toBeInTheDocument();
+  });
+
+  it('keeps available dashboard data visible when the backend reports a partial result', async () => {
+    currentUser.raw = { permissions: ['dashboard.view', 'forecast.review'] };
+    dashboardApi.overview.mockResolvedValue({
+      ...basePayload,
+      meta: { ...basePayload.meta, partial: true },
+      summaryCards: [
+        {
+          key: 'in_review',
+          label: 'In Review',
+          value: 3,
+          format: 'integer',
+          tone: 'info',
+          icon: 'review',
+        },
+      ],
+      errors: [
+        {
+          source: 'wave_models',
+          code: 'WAVE_MODEL_STATUS_UNAVAILABLE',
+          message: 'Wave model readiness is temporarily unavailable.',
+        },
+      ],
+    });
 
     render(<DashboardOverview isDarkMode={false} onSelectTab={vi.fn()} />);
 
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
-    expect(analyticsApi.users).toHaveBeenCalledTimes(1);
-    expect(analyticsApi.system).toHaveBeenCalledTimes(1);
-    expect(wavePipelineApi.status).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('In Review')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText(/Some dashboard sources are temporarily unavailable/i)).toBeInTheDocument();
   });
 });
