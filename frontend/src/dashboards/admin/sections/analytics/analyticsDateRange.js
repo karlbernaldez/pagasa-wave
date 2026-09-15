@@ -8,15 +8,28 @@ export const ANALYTICS_RANGE_PRESETS = Object.freeze([
 
 const pad = (value) => String(value).padStart(2, '0');
 
-export const toLocalDateKey = (date) =>
-  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+export function toManilaDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const valueByType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${valueByType.year}-${valueByType.month}-${valueByType.day}`;
+}
+
+const subtractCalendarDays = (dateKey, days) => {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() - days);
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+};
 
 export function buildPresetRange(days, now = new Date()) {
-  const end = new Date(now);
-  end.setHours(0, 0, 0, 0);
-  const start = new Date(end);
-  start.setDate(start.getDate() - (days - 1));
-  return { start: toLocalDateKey(start), end: toLocalDateKey(end) };
+  const end = toManilaDateKey(now);
+  const start = subtractCalendarDays(end, days - 1);
+  return { start, end };
 }
 
 export function initialAnalyticsRange(now = new Date()) {
