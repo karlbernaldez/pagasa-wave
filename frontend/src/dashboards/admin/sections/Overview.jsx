@@ -56,6 +56,7 @@ const PIPELINE_TONE = {
 };
 
 const ATTENTION_PIPELINE_STATES = new Set(['FAILED', 'WAITING_FOR_SOURCE', 'UNKNOWN']);
+const DASHBOARD_STALE_AFTER_MS = 5 * 60 * 1000;
 
 function formatRelative(value) {
   if (!value) return 'not refreshed yet';
@@ -202,7 +203,9 @@ function AttentionItem({ icon: Icon, title, detail, tone = 'amber', onClick, isD
         <span className="block text-sm font-black">{title}</span>
         <span className="mt-1 block text-xs font-semibold opacity-80">{detail}</span>
       </span>
-      {onClick ? <ArrowRight size={15} aria-hidden="true" className="mt-1 shrink-0 opacity-60" /> : null}
+      {onClick ? (
+        <ArrowRight size={15} aria-hidden="true" className="mt-1 shrink-0 opacity-60" />
+      ) : null}
     </>
   );
 
@@ -218,7 +221,9 @@ function AttentionItem({ icon: Icon, title, detail, tone = 'amber', onClick, isD
     );
   }
 
-  return <div className={cn('flex items-start gap-3 rounded-xl border p-3', toneClasses)}>{content}</div>;
+  return (
+    <div className={cn('flex items-start gap-3 rounded-xl border p-3', toneClasses)}>{content}</div>
+  );
 }
 
 function PipelineCard({ model, isDarkMode }) {
@@ -274,6 +279,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
     errors: {},
     data: {},
     loadedAt: null,
+    stale: false,
   });
 
   const load = useCallback(
@@ -309,6 +315,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         errors,
         data: { ...current.data, ...data },
         loadedAt: new Date().toISOString(),
+        stale: false,
       }));
     },
     [has]
@@ -320,17 +327,27 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
     return () => window.clearTimeout(initialLoadTimer);
   }, [load, rawUser]);
 
+  useEffect(() => {
+    if (!state.loadedAt) return undefined;
+    const loadedAt = state.loadedAt;
+    const staleTimer = window.setTimeout(() => {
+      setState((current) =>
+        current.loadedAt === loadedAt ? { ...current, stale: true } : current
+      );
+    }, DASHBOARD_STALE_AFTER_MS);
+    return () => window.clearTimeout(staleTimer);
+  }, [state.loadedAt]);
+
   const forecast = buildForecastMetrics(state.data.forecast);
   const users = buildUserMetrics(state.data.users);
   const system = buildSystemMetrics(state.data.system);
   const pipelineModels = state.data.pipeline?.models || [];
   const failedPipelines = pipelineModels.filter((model) => model.state === 'FAILED').length;
   const readyPipelines = pipelineModels.filter((model) => model.state === 'READY').length;
-  const attentionPipelines = pipelineModels.filter((model) => ATTENTION_PIPELINE_STATES.has(model.state));
+  const attentionPipelines = pipelineModels.filter((model) =>
+    ATTENTION_PIPELINE_STATES.has(model.state)
+  );
   const errorCount = Object.keys(state.errors).length;
-  const stale = state.loadedAt
-    ? Date.now() - new Date(state.loadedAt).getTime() > 5 * 60 * 1000
-    : false;
 
   const attention = useMemo(() => {
     const items = [];
@@ -391,7 +408,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
       rows.push({
         icon: Waves,
         title: 'Review forecast packages',
-        description: 'Open the package review queue and resolve submitted or returned forecast work.',
+        description:
+          'Open the package review queue and resolve submitted or returned forecast work.',
         tab: ADMIN_TABS.FORECAST_REVIEW,
         meta: forecast.inReview ? `${forecast.inReview} currently in review` : 'Review workspace',
       });
@@ -565,7 +583,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         <p
           className={cn(
             'mt-3 text-[10px] font-semibold uppercase tracking-wide',
-            stale
+            state.stale
               ? isDarkMode
                 ? 'text-amber-200'
                 : 'text-amber-700'
@@ -574,7 +592,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
                 : 'text-slate-400'
           )}
         >
-          Last refreshed {formatRelative(state.loadedAt)}{stale ? ' · data may be stale' : ''}
+          Last refreshed {formatRelative(state.loadedAt)}
+          {state.stale ? ' · data may be stale' : ''}
         </p>
       </section>
 
@@ -659,7 +678,12 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
               ))}
             </div>
           ) : (
-            <p className={cn('py-6 text-center text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+            <p
+              className={cn(
+                'py-6 text-center text-xs font-semibold',
+                isDarkMode ? 'text-slate-500' : 'text-slate-400'
+              )}
+            >
               No wave-model readiness data is available from the latest pipeline response.
             </p>
           )}
