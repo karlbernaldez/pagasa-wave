@@ -1,7 +1,6 @@
 import ForecastPackage from '../models/ForecastPackage.js';
 import User from '../models/User.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
-import { serializeUserAnalytics, USER_ANALYTICS_SELECT } from '../utils/analyticsSanitizers.js';
 
 const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
   'Submitted',
@@ -77,12 +76,8 @@ export const getUserAnalytics = async (req, res, next) => {
       deletedAt: null,
       ...buildDateMatch('createdAt', range),
     };
-    const [users, statusRows, roleRows] = await Promise.all([
-      User.find(match)
-        .select(USER_ANALYTICS_SELECT)
-        .sort({ createdAt: -1, _id: -1 })
-        .limit(500)
-        .lean(),
+    const [total, statusRows, roleRows] = await Promise.all([
+      User.countDocuments(match),
       User.aggregate([
         { $match: match },
         { $group: { _id: '$status', count: { $sum: 1 } } },
@@ -96,8 +91,7 @@ export const getUserAnalytics = async (req, res, next) => {
     ]);
 
     return res.status(200).json({
-      data: users.map(serializeUserAnalytics),
-      total: users.length,
+      total,
       statusCounts: rowsToCountObject(statusRows),
       roleCounts: rowsToCountObject(roleRows),
       range: serializeRange(range),
