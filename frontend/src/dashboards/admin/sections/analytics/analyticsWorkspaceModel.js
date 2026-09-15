@@ -41,18 +41,9 @@ export function buildForecastMetrics(payload = {}) {
   const packages = Array.isArray(payload.packages) ? payload.packages : [];
   const statusCounts = payload.statusCounts || {};
   const countStatus = (status) => toCount(statusCounts[status]);
-  const inReview = [...REVIEW_STATUSES].reduce(
-    (total, status) => total + countStatus(status),
-    0
-  );
-  const returned = [...RETURNED_STATUSES].reduce(
-    (total, status) => total + countStatus(status),
-    0
-  );
-  const approved = [...APPROVED_STATUSES].reduce(
-    (total, status) => total + countStatus(status),
-    0
-  );
+  const inReview = [...REVIEW_STATUSES].reduce((total, status) => total + countStatus(status), 0);
+  const returned = [...RETURNED_STATUSES].reduce((total, status) => total + countStatus(status), 0);
+  const approved = [...APPROVED_STATUSES].reduce((total, status) => total + countStatus(status), 0);
 
   return {
     total: toCount(payload.total) || packages.length,
@@ -97,8 +88,7 @@ export function buildSystemMetrics(payload = {}) {
     activeUsers,
     totalPackages,
     activeUserRate: totalUsers ? Math.round((activeUsers / totalUsers) * 100) : 0,
-    packagesInReview:
-      toCount(packageStatuses.Submitted) + toCount(packageStatuses['Under Review']),
+    packagesInReview: toCount(packageStatuses.Submitted) + toCount(packageStatuses['Under Review']),
     packagesReturned:
       toCount(packageStatuses['Revision Requested']) + toCount(packageStatuses.Rejected),
     packagesPublished: toCount(packageStatuses.Published),
@@ -126,9 +116,7 @@ export function buildForecastDailySeries(packages = [], dayCount = 14) {
     const key = dateKey(date);
     days.push({
       key,
-      label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(
-        date
-      ),
+      label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date),
       submitted: 0,
       completed: 0,
       returned: 0,
