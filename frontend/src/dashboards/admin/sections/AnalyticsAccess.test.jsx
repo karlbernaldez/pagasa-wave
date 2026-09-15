@@ -8,6 +8,7 @@ const analyticsApi = vi.hoisted(() => ({
   forecast: vi.fn(),
   users: vi.fn(),
   system: vi.fn(),
+  export: vi.fn(),
 }));
 
 vi.mock('@/shared/hooks/useCurrentDashboardUser', () => ({
@@ -18,6 +19,7 @@ vi.mock('@/api/analyticsAPI', () => ({
   fetchForecastAnalytics: analyticsApi.forecast,
   fetchUserAnalytics: analyticsApi.users,
   fetchSystemAnalytics: analyticsApi.system,
+  fetchAnalyticsExport: analyticsApi.export,
 }));
 
 const forecastPayload = {
@@ -25,6 +27,7 @@ const forecastPayload = {
   sampleSize: 1,
   packages: [],
   statusCounts: { Submitted: 1 },
+  range: { start: '2026-09-02', end: '2026-09-15', days: 14, timezone: 'Asia/Manila' },
   generatedAt: '2026-09-15T00:00:00.000Z',
 };
 
@@ -32,12 +35,14 @@ const userPayload = {
   total: 2,
   statusCounts: { active: 2 },
   roleCounts: { forecaster: 2 },
+  range: { start: '2026-09-02', end: '2026-09-15', days: 14, timezone: 'Asia/Manila' },
   generatedAt: '2026-09-15T00:00:00.000Z',
 };
 
 const systemPayload = {
   users: { total: 2, active: 2, statusCounts: { active: 2 } },
   forecastPackages: { total: 1, statusCounts: { Published: 1 } },
+  range: { start: '2026-09-02', end: '2026-09-15', days: 14, timezone: 'Asia/Manila' },
   generatedAt: '2026-09-15T00:00:00.000Z',
 };
 
@@ -46,6 +51,10 @@ beforeEach(() => {
   analyticsApi.forecast.mockReset().mockResolvedValue(forecastPayload);
   analyticsApi.users.mockReset().mockResolvedValue(userPayload);
   analyticsApi.system.mockReset().mockResolvedValue(systemPayload);
+  analyticsApi.export.mockReset().mockResolvedValue({
+    blob: new Blob(['metric,value\n']),
+    filename: 'analytics.csv',
+  });
 });
 
 describe('AnalyticsAccess RBAC fetch boundaries', () => {
@@ -60,6 +69,7 @@ describe('AnalyticsAccess RBAC fetch boundaries', () => {
     expect(screen.getByRole('button', { name: 'Forecast' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Users' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'System' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Export CSV/i })).not.toBeInTheDocument();
   });
 
   it('loads only the active permitted subsection until another permitted tab is selected', async () => {
@@ -107,5 +117,30 @@ describe('AnalyticsAccess RBAC fetch boundaries', () => {
     expect(analyticsApi.forecast).not.toHaveBeenCalled();
     expect(analyticsApi.users).not.toHaveBeenCalled();
     expect(analyticsApi.system).not.toHaveBeenCalled();
+  });
+
+  it('shows export only when analytics.export is effective', async () => {
+    currentUser.raw = {
+      permissions: ['analytics_forecast.view', 'analytics.export'],
+    };
+
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: /Export CSV/i })).toBeInTheDocument();
+  });
+
+  it('refetches the active subsection when a preset range changes', async () => {
+    currentUser.raw = { permissions: ['analytics_forecast.view'] };
+
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Last 7 days' }));
+
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(2));
+    expect(analyticsApi.forecast.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ start: expect.any(String), end: expect.any(String) })
+    );
   });
 });
