@@ -53,9 +53,24 @@ export const ADMIN_PERMISSION_BY_TAB = Object.freeze({
   [ADMIN_TABS.USERS]: 'users.view',
   [ADMIN_TABS.USERS_LIST]: 'users.view',
   [ADMIN_TABS.USERS_ROLES]: 'roles.view',
-  [ADMIN_TABS.ANALYTICS]: 'analytics.view',
   [ADMIN_TABS.CALENDAR]: 'calendar.view',
-  [ADMIN_TABS.SETTINGS]: 'settings.view',
+});
+
+export const ADMIN_ANY_PERMISSION_BY_TAB = Object.freeze({
+  [ADMIN_TABS.ANALYTICS]: [
+    'analytics_forecast.view',
+    'analytics_users.view',
+    'analytics_system.view',
+  ],
+  [ADMIN_TABS.SETTINGS]: [
+    'settings_schedule.view',
+    'settings_workspace.view',
+    'settings_map_view.view',
+    'settings_review_targets.view',
+    'settings_public_general.view',
+    'settings_public_about.view',
+    'settings_public_contact.view',
+  ],
 });
 
 export const ADMIN_TAB_BY_ROUTE = Object.entries(ADMIN_ROUTE_BY_TAB).reduce(
@@ -197,7 +212,7 @@ export const PAGE_META = {
   },
   [ADMIN_TABS.ANALYTICS]: {
     title: 'Operational Analytics',
-    description: 'Track review throughput, forecast chart status, and user readiness.',
+    description: 'Track forecast operations, user activity, and system readiness by granted capability.',
   },
   [ADMIN_TABS.CALENDAR]: {
     title: 'Forecast Operations Calendar',
@@ -206,7 +221,7 @@ export const PAGE_META = {
   [ADMIN_TABS.SETTINGS]: {
     title: 'System Settings',
     description:
-      'Configure WaveLab public content, contact information, and other system-wide settings.',
+      'Configure only the WaveLab settings work areas granted to your User Type.',
   },
   [ADMIN_TABS.ACCOUNT]: {
     title: 'Account Settings',
