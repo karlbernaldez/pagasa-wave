@@ -11,7 +11,8 @@ export const ANALYTICS_SECTIONS = Object.freeze([
     label: 'User Activity',
     shortLabel: 'Users',
     permission: 'analytics_users.view',
-    description: 'Account status and User Type participation without exposing profile or contact data.',
+    description:
+      'Account status and User Type participation without exposing profile or contact data.',
   },
   {
     id: 'system',
@@ -40,9 +41,18 @@ export function buildForecastMetrics(payload = {}) {
   const packages = Array.isArray(payload.packages) ? payload.packages : [];
   const statusCounts = payload.statusCounts || {};
   const countStatus = (status) => toCount(statusCounts[status]);
-  const inReview = [...REVIEW_STATUSES].reduce((total, status) => total + countStatus(status), 0);
-  const returned = [...RETURNED_STATUSES].reduce((total, status) => total + countStatus(status), 0);
-  const approved = [...APPROVED_STATUSES].reduce((total, status) => total + countStatus(status), 0);
+  const inReview = [...REVIEW_STATUSES].reduce(
+    (total, status) => total + countStatus(status),
+    0
+  );
+  const returned = [...RETURNED_STATUSES].reduce(
+    (total, status) => total + countStatus(status),
+    0
+  );
+  const approved = [...APPROVED_STATUSES].reduce(
+    (total, status) => total + countStatus(status),
+    0
+  );
 
   return {
     total: toCount(payload.total) || packages.length,
@@ -116,7 +126,9 @@ export function buildForecastDailySeries(packages = [], dayCount = 14) {
     const key = dateKey(date);
     days.push({
       key,
-      label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date),
+      label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(
+        date
+      ),
       submitted: 0,
       completed: 0,
       returned: 0,
@@ -134,7 +146,9 @@ export function buildForecastDailySeries(packages = [], dayCount = 14) {
     if (!rows.has(key)) continue;
 
     const row = rows.get(key);
-    if (forecastPackage.submittedAt || REVIEW_STATUSES.has(forecastPackage.status)) row.submitted += 1;
+    if (forecastPackage.submittedAt || REVIEW_STATUSES.has(forecastPackage.status)) {
+      row.submitted += 1;
+    }
     if (APPROVED_STATUSES.has(forecastPackage.status)) row.completed += 1;
     if (RETURNED_STATUSES.has(forecastPackage.status)) row.returned += 1;
   }
