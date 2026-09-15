@@ -27,14 +27,7 @@ const normalizeBounds = (value) => {
   }
 
   const [west, south, east, north] = normalized;
-  if (
-    west < -180 ||
-    east > 180 ||
-    south < -90 ||
-    north > 90 ||
-    west >= east ||
-    south >= north
-  ) {
+  if (west < -180 || east > 180 || south < -90 || north > 90 || west >= east || south >= north) {
     invalidProfile('bounds must be valid geographic west/south/east/north coordinates.');
   }
   return normalized;
@@ -76,7 +69,9 @@ export const normalizeWaveModelRuntimeProfile = (rawProfile) => {
     invalidProfile('maxForecastHour must be divisible by forecastCadenceHours.');
   }
 
-  const rasterScheme = String(rawProfile.rasterScheme || 'xyz').trim().toLowerCase();
+  const rasterScheme = String(rawProfile.rasterScheme || 'xyz')
+    .trim()
+    .toLowerCase();
   if (!['xyz', 'tms'].includes(rasterScheme)) {
     invalidProfile('rasterScheme must be xyz or tms.');
   }
