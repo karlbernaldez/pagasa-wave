@@ -69,8 +69,8 @@ const ConfigurableLayerGroup = ({
         label: managed.label || bundled?.label || managed.code,
         available: Boolean(
           managed.enabled &&
-            managed.hasData &&
-            (managed.builderConfigured || managed.runtimeConfigured)
+          managed.hasData &&
+          (managed.builderConfigured || managed.runtimeConfigured)
         ),
       };
     });

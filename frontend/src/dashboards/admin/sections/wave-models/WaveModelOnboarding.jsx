@@ -176,10 +176,7 @@ export default function WaveModelOnboarding({ isDarkMode }) {
             </span>
             <div>
               <h2
-                className={cn(
-                  'text-lg font-black',
-                  isDarkMode ? 'text-white' : 'text-slate-950'
-                )}
+                className={cn('text-lg font-black', isDarkMode ? 'text-white' : 'text-slate-950')}
               >
                 Managed model onboarding
               </h2>
@@ -265,16 +262,13 @@ export default function WaveModelOnboarding({ isDarkMode }) {
                 )}
               >
                 <p
-                  className={cn(
-                    'text-xs font-black',
-                    isDarkMode ? 'text-white' : 'text-slate-900'
-                  )}
+                  className={cn('text-xs font-black', isDarkMode ? 'text-white' : 'text-slate-900')}
                 >
                   Current readiness
                 </p>
                 <p className={cn('mt-1 text-xs', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
-                  Runtime: {selectedModel?.runtimeConfigured ? 'Configured' : 'Not configured'} · Data:{' '}
-                  {selectedModel?.hasData ? 'Present' : 'No managed package'} · Access:{' '}
+                  Runtime: {selectedModel?.runtimeConfigured ? 'Configured' : 'Not configured'} ·
+                  Data: {selectedModel?.hasData ? 'Present' : 'No managed package'} · Access:{' '}
                   {selectedModel?.enabled ? 'Enabled' : 'Disabled'}
                 </p>
               </div>
@@ -397,12 +391,11 @@ export default function WaveModelOnboarding({ isDarkMode }) {
                       value={value}
                       onChange={(event) => updateBound(index, event.target.value)}
                       className={inputClass}
-                      aria-label={[
-                        'West longitude',
-                        'South latitude',
-                        'East longitude',
-                        'North latitude',
-                      ][index]}
+                      aria-label={
+                        ['West longitude', 'South latitude', 'East longitude', 'North latitude'][
+                          index
+                        ]
+                      }
                     />
                   ))}
                 </div>
