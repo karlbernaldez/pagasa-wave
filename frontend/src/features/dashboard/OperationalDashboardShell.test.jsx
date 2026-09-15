@@ -27,8 +27,18 @@ const FULL_OPERATIONAL_PERMISSIONS = [
   'users.view',
   'roles.view',
   'analytics.view',
+  'analytics_forecast.view',
+  'analytics_users.view',
+  'analytics_system.view',
   'calendar.view',
   'settings.view',
+  'settings_schedule.view',
+  'settings_workspace.view',
+  'settings_map_view.view',
+  'settings_review_targets.view',
+  'settings_public_general.view',
+  'settings_public_about.view',
+  'settings_public_contact.view',
 ];
 
 describe('OperationalDashboardShell permission-driven navigation', () => {
@@ -125,6 +135,20 @@ describe('OperationalDashboardShell permission-driven navigation', () => {
     expect(fullIds).toContain(ADMIN_TABS.ANALYTICS);
     expect(fullIds).toContain(ADMIN_TABS.CALENDAR);
     expect(fullIds).toContain(ADMIN_TABS.SETTINGS);
+  });
+
+  it('shows child-capability sections without broad compatibility permissions', () => {
+    const ids = visibleItemIds(
+      buildDashboardSidebarGroups({
+        role: 'scoped_observer',
+        permissions: ['analytics_forecast.view', 'settings_map_view.view'],
+      })
+    );
+
+    expect(ids).toContain(ADMIN_TABS.ANALYTICS);
+    expect(ids).toContain(ADMIN_TABS.SETTINGS);
+    expect(ids).not.toContain(ADMIN_TABS.USERS);
+    expect(ids).not.toContain(ADMIN_TABS.FORECAST);
   });
 
   it('shows User Types only when roles.view is present', () => {
