@@ -388,7 +388,7 @@ const PERMISSION_IMPLICATIONS = Object.freeze({
   'forecast.publish': ['forecast.view'],
   'forecast.archive': ['forecast.view'],
   'analytics.view': ['analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'],
-  'analytics.export': ['analytics.view'],
+  // Export is additive: it never widens which analytics subsections a User Type can view.
   'settings.view': [
     'settings_schedule.view',
     'settings_workspace.view',
