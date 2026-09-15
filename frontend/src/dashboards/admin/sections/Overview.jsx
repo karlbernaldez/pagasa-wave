@@ -40,7 +40,6 @@ const PERMISSIONS = Object.freeze({
   pipelineView: 'wave_pipeline.view',
   waveModelsManage: 'wave_models.manage',
   usersView: 'users.view',
-  rolesView: 'roles.view',
   calendarView: 'calendar.view',
 });
 
@@ -55,6 +54,8 @@ const PIPELINE_TONE = {
   FAILED: 'rose',
   UNKNOWN: 'slate',
 };
+
+const ATTENTION_PIPELINE_STATES = new Set(['FAILED', 'WAITING_FOR_SOURCE', 'UNKNOWN']);
 
 function formatRelative(value) {
   if (!value) return 'not refreshed yet';
@@ -73,7 +74,9 @@ function MetricCard({ icon: Icon, label, value, helper, tone = 'cyan', isDarkMod
   const iconTone =
     {
       cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700',
-      emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700',
+      emerald: isDarkMode
+        ? 'bg-emerald-400/10 text-emerald-200'
+        : 'bg-emerald-50 text-emerald-700',
       amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700',
       rose: isDarkMode ? 'bg-rose-400/10 text-rose-200' : 'bg-rose-50 text-rose-700',
     }[tone] || (isDarkMode ? 'bg-slate-400/10 text-slate-200' : 'bg-slate-100 text-slate-700');
@@ -81,10 +84,8 @@ function MetricCard({ icon: Icon, label, value, helper, tone = 'cyan', isDarkMod
   return (
     <article
       className={cn(
-        'rounded-2xl border p-4 shadow-xl backdrop-blur-xl',
-        isDarkMode
-          ? 'border-white/10 bg-slate-950/50 shadow-black/20'
-          : 'border-white/70 bg-white/75 shadow-slate-300/30'
+        'rounded-2xl border p-4 shadow-lg',
+        isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -107,7 +108,7 @@ function MetricCard({ icon: Icon, label, value, helper, tone = 'cyan', isDarkMod
           </p>
         </div>
         <span className={cn('grid h-10 w-10 place-items-center rounded-xl', iconTone)}>
-          <Icon size={18} />
+          <Icon size={18} aria-hidden="true" />
         </span>
       </div>
       <p
@@ -128,10 +129,10 @@ function ActionCard({ icon: Icon, title, description, meta, onClick, isDarkMode 
       type="button"
       onClick={onClick}
       className={cn(
-        'group flex w-full items-start gap-3 rounded-2xl border p-4 text-left shadow-lg backdrop-blur-xl transition-colors',
+        'group flex w-full items-start gap-3 rounded-2xl border p-4 text-left shadow-sm transition-colors',
         isDarkMode
           ? 'border-white/10 bg-slate-950/50 hover:bg-white/[0.05]'
-          : 'border-white/70 bg-white/75 hover:bg-white'
+          : 'border-slate-200 bg-white hover:bg-slate-50'
       )}
     >
       <span
@@ -140,7 +141,7 @@ function ActionCard({ icon: Icon, title, description, meta, onClick, isDarkMode 
           isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700'
         )}
       >
-        <Icon size={18} />
+        <Icon size={18} aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">
         <span
@@ -169,6 +170,7 @@ function ActionCard({ icon: Icon, title, description, meta, onClick, isDarkMode 
       </span>
       <ArrowRight
         size={15}
+        aria-hidden="true"
         className={cn(
           'mt-1 shrink-0 transition-transform group-hover:translate-x-0.5',
           isDarkMode ? 'text-slate-500' : 'text-slate-400'
@@ -178,33 +180,75 @@ function ActionCard({ icon: Icon, title, description, meta, onClick, isDarkMode 
   );
 }
 
+function AttentionItem({ icon: Icon, title, detail, tone = 'amber', onClick, isDarkMode }) {
+  const toneClasses = {
+    amber: isDarkMode
+      ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100'
+      : 'border-amber-200 bg-amber-50 text-amber-900',
+    rose: isDarkMode
+      ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100'
+      : 'border-rose-200 bg-rose-50 text-rose-900',
+    cyan: isDarkMode
+      ? 'border-cyan-300/20 bg-cyan-400/[0.08] text-cyan-100'
+      : 'border-cyan-200 bg-cyan-50 text-cyan-900',
+  }[tone];
+
+  const content = (
+    <>
+      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-current/10">
+        <Icon size={16} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-black">{title}</span>
+        <span className="mt-1 block text-xs font-semibold opacity-80">{detail}</span>
+      </span>
+      {onClick ? <ArrowRight size={15} aria-hidden="true" className="mt-1 shrink-0 opacity-60" /> : null}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn('flex w-full items-start gap-3 rounded-xl border p-3 text-left', toneClasses)}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={cn('flex items-start gap-3 rounded-xl border p-3', toneClasses)}>{content}</div>;
+}
+
 function PipelineCard({ model, isDarkMode }) {
   const state = model?.state || 'UNKNOWN';
   const tone = PIPELINE_TONE[state] || 'slate';
   const toneClass = {
     emerald: isDarkMode
-      ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
-      : 'border-emerald-200 bg-emerald-50 text-emerald-700',
+      ? 'border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-200'
+      : 'border-emerald-200 bg-emerald-50 text-emerald-800',
     cyan: isDarkMode
-      ? 'border-cyan-400/20 bg-cyan-400/10 text-cyan-200'
-      : 'border-cyan-200 bg-cyan-50 text-cyan-700',
+      ? 'border-cyan-400/20 bg-cyan-400/[0.08] text-cyan-200'
+      : 'border-cyan-200 bg-cyan-50 text-cyan-800',
     amber: isDarkMode
-      ? 'border-amber-400/20 bg-amber-400/10 text-amber-200'
-      : 'border-amber-200 bg-amber-50 text-amber-700',
+      ? 'border-amber-400/20 bg-amber-400/[0.08] text-amber-200'
+      : 'border-amber-200 bg-amber-50 text-amber-800',
     rose: isDarkMode
-      ? 'border-rose-400/20 bg-rose-400/10 text-rose-200'
-      : 'border-rose-200 bg-rose-50 text-rose-700',
+      ? 'border-rose-400/20 bg-rose-400/[0.08] text-rose-200'
+      : 'border-rose-200 bg-rose-50 text-rose-800',
     slate: isDarkMode
       ? 'border-white/10 bg-white/[0.04] text-slate-300'
       : 'border-slate-200 bg-slate-50 text-slate-700',
   }[tone];
   const frameCount = Number.isFinite(model?.frameCount) ? model.frameCount : 0;
   const expected = Number.isFinite(model?.expectedFrameCount) ? model.expectedFrameCount : 0;
+  const sourceCycle = model?.sourceCycle || model?.cycle || model?.source?.cycle || null;
 
   return (
-    <div className={cn('rounded-xl border p-3', toneClass)}>
+    <article className={cn('rounded-xl border p-3', toneClass)}>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-black">{model?.model || 'Wave model'}</p>
+        <h4 className="text-sm font-black">{model?.model || 'Wave model'}</h4>
         <span className="text-[10px] font-black uppercase tracking-wide">
           {state.replaceAll('_', ' ')}
         </span>
@@ -212,10 +256,11 @@ function PipelineCard({ model, isDarkMode }) {
       <p className="mt-2 text-xs font-semibold opacity-80">
         {model?.message || 'Operational pipeline status'}
       </p>
-      <p className="mt-2 text-[10px] font-black uppercase tracking-wide opacity-70">
-        {expected ? `${frameCount}/${expected} frames` : 'Frame readiness unavailable'}
-      </p>
-    </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-black uppercase tracking-wide opacity-70">
+        <span>{expected ? `${frameCount}/${expected} frames` : 'Frame readiness unavailable'}</span>
+        {sourceCycle ? <span>Cycle {sourceCycle}</span> : null}
+      </div>
+    </article>
   );
 }
 
@@ -245,6 +290,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         refreshing: silent,
         errors: {},
       }));
+
       const settled = await Promise.allSettled(
         requests.map(async ([key, request]) => [key, await request])
       );
@@ -256,6 +302,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         if (result.status === 'fulfilled') data[key] = result.value[1];
         else errors[key] = result.reason?.message || `Unable to load ${key} summary.`;
       });
+
       setState((current) => ({
         loading: false,
         refreshing: false,
@@ -269,11 +316,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
 
   useEffect(() => {
     if (!rawUser) return undefined;
-
-    const initialLoadTimer = window.setTimeout(() => {
-      void load();
-    }, 0);
-
+    const initialLoadTimer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(initialLoadTimer);
   }, [load, rawUser]);
 
@@ -283,20 +326,76 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
   const pipelineModels = state.data.pipeline?.models || [];
   const failedPipelines = pipelineModels.filter((model) => model.state === 'FAILED').length;
   const readyPipelines = pipelineModels.filter((model) => model.state === 'READY').length;
+  const attentionPipelines = pipelineModels.filter((model) => ATTENTION_PIPELINE_STATES.has(model.state));
   const errorCount = Object.keys(state.errors).length;
+  const stale = state.loadedAt
+    ? Date.now() - new Date(state.loadedAt).getTime() > 5 * 60 * 1000
+    : false;
+
+  const attention = useMemo(() => {
+    const items = [];
+
+    if (has(PERMISSIONS.forecastReview) && has(PERMISSIONS.forecastAnalytics)) {
+      if (forecast.inReview > 0) {
+        items.push({
+          key: 'review',
+          icon: Clock3,
+          title: `${forecast.inReview} package${forecast.inReview === 1 ? '' : 's'} awaiting review`,
+          detail: 'Open the Review Queue and resolve submitted forecast work.',
+          tone: 'cyan',
+          tab: ADMIN_TABS.FORECAST_REVIEW,
+        });
+      }
+      if (forecast.returned > 0) {
+        items.push({
+          key: 'returned',
+          icon: AlertTriangle,
+          title: `${forecast.returned} returned package${forecast.returned === 1 ? '' : 's'} need follow-up`,
+          detail: 'Revision requested or rejected packages still require operational action.',
+          tone: 'amber',
+          tab: ADMIN_TABS.FORECAST_REVIEW,
+        });
+      }
+    }
+
+    if (has(PERMISSIONS.pipelineView)) {
+      attentionPipelines.forEach((model) => {
+        items.push({
+          key: `pipeline-${model.model}`,
+          icon: Database,
+          title: `${model.model || 'Wave model'} is ${String(model.state || 'unknown').replaceAll('_', ' ').toLowerCase()}`,
+          detail: model.message || 'Inspect the wave pipeline for the latest source/build state.',
+          tone: model.state === 'FAILED' ? 'rose' : 'amber',
+          tab: ADMIN_TABS.WAVE_PIPELINE,
+        });
+      });
+    }
+
+    if (has(PERMISSIONS.usersView) && has(PERMISSIONS.userAnalytics) && users.pending > 0) {
+      items.push({
+        key: 'pending-users',
+        icon: Users,
+        title: `${users.pending} pending account${users.pending === 1 ? '' : 's'} need review`,
+        detail: 'Open User Management to review account status and operational access.',
+        tone: 'amber',
+        tab: ADMIN_TABS.USERS_LIST,
+      });
+    }
+
+    return items;
+  }, [attentionPipelines, forecast.inReview, forecast.returned, has, users.pending]);
 
   const actions = useMemo(() => {
     const rows = [];
-    if (has(PERMISSIONS.forecastReview))
+    if (has(PERMISSIONS.forecastReview)) {
       rows.push({
         icon: Waves,
         title: 'Review forecast packages',
-        description:
-          'Open the package review queue and resolve submitted or returned forecast work.',
+        description: 'Open the package review queue and resolve submitted or returned forecast work.',
         tab: ADMIN_TABS.FORECAST_REVIEW,
         meta: forecast.inReview ? `${forecast.inReview} currently in review` : 'Review workspace',
       });
-    else if (has(PERMISSIONS.forecastView))
+    } else if (has(PERMISSIONS.forecastView)) {
       rows.push({
         icon: Waves,
         title: 'Open forecast packages',
@@ -304,7 +403,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         tab: ADMIN_TABS.FORECAST_PACKAGES,
         meta: 'Forecast workspace',
       });
-    if (has(PERMISSIONS.pipelineView))
+    }
+    if (has(PERMISSIONS.pipelineView)) {
       rows.push({
         icon: Database,
         title: 'Check wave pipeline',
@@ -314,7 +414,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
           ? `${failedPipelines} pipeline issue${failedPipelines === 1 ? '' : 's'}`
           : `${readyPipelines} ready`,
       });
-    if (has(PERMISSIONS.usersView))
+    }
+    if (has(PERMISSIONS.usersView)) {
       rows.push({
         icon: Users,
         title: 'Manage users',
@@ -322,7 +423,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         tab: ADMIN_TABS.USERS_LIST,
         meta: users.pending ? `${users.pending} pending` : 'User management',
       });
-    if (has(PERMISSIONS.waveModelsManage))
+    }
+    if (has(PERMISSIONS.waveModelsManage)) {
       rows.push({
         icon: Database,
         title: 'Manage wave models',
@@ -330,7 +432,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         tab: ADMIN_TABS.WAVE_MODELS,
         meta: 'Model operations',
       });
-    if (has(PERMISSIONS.calendarView))
+    }
+    if (has(PERMISSIONS.calendarView)) {
       rows.push({
         icon: Clock3,
         title: 'Open operations calendar',
@@ -338,11 +441,12 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         tab: ADMIN_TABS.CALENDAR,
         meta: 'Schedule view',
       });
+    }
     if (
       has(PERMISSIONS.forecastAnalytics) ||
       has(PERMISSIONS.userAnalytics) ||
       has(PERMISSIONS.systemAnalytics)
-    )
+    ) {
       rows.push({
         icon: BarChart3,
         title: 'Open analytics',
@@ -350,23 +454,24 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         tab: ADMIN_TABS.ANALYTICS,
         meta: 'Operational analytics',
       });
+    }
     return rows;
   }, [failedPipelines, forecast.inReview, has, readyPipelines, users.pending]);
 
   const surface = isDarkMode
-    ? 'border-white/10 bg-slate-950/50 shadow-black/20'
-    : 'border-white/70 bg-white/75 shadow-slate-300/30';
+    ? 'border-white/10 bg-slate-950/50'
+    : 'border-slate-200 bg-white';
 
   if (state.loading) {
     return (
       <div className="mx-auto max-w-[1500px] p-4 sm:p-6">
         <div
           className={cn(
-            'flex min-h-[420px] items-center justify-center rounded-2xl border shadow-xl',
+            'flex min-h-[420px] items-center justify-center rounded-2xl border shadow-lg',
             surface
           )}
         >
-          <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+          <Loader2 className="mr-3 h-6 w-6 animate-spin" aria-hidden="true" />
           <span className="text-sm font-black">Preparing your operational dashboard…</span>
         </div>
       </div>
@@ -377,10 +482,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
     <div className="mx-auto max-w-[1500px] space-y-5 p-4 sm:p-6">
       <section
         className={cn(
-          'rounded-2xl border p-5 shadow-xl backdrop-blur-xl',
-          isDarkMode
-            ? 'border-cyan-300/15 bg-cyan-400/[0.05] shadow-black/20'
-            : 'border-cyan-100 bg-cyan-50/70 shadow-slate-300/30'
+          'rounded-2xl border p-5 shadow-lg',
+          isDarkMode ? 'border-cyan-300/15 bg-slate-950/60' : 'border-cyan-100 bg-cyan-50/60'
         )}
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -399,7 +502,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
                 isDarkMode ? 'text-white' : 'text-slate-950'
               )}
             >
-              Welcome, {user.name}.
+              Welcome, {user?.name || 'WaveLab user'}.
             </h2>
             <p
               className={cn(
@@ -407,9 +510,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
                 isDarkMode ? 'text-slate-400' : 'text-slate-600'
               )}
             >
-              This dashboard only loads summaries and actions your current User Type is allowed to
-              access. Use it to identify what needs attention and move directly into the relevant
-              workflow.
+              Prioritize forecast work, wave-model readiness, and operational follow-up using only
+              the capabilities assigned to your User Type.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <span
@@ -420,7 +522,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
                     : 'border-white bg-white text-slate-600'
                 )}
               >
-                <ShieldCheck size={12} /> {user.role}
+                <ShieldCheck size={12} aria-hidden="true" /> {user?.role || 'Authorized user'}
               </span>
               <span
                 className={cn(
@@ -430,10 +532,14 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
                     : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-500'
                 )}
               >
-                {errorCount ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} />}
+                {errorCount ? (
+                  <AlertTriangle size={12} aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 size={12} aria-hidden="true" />
+                )}
                 {errorCount
-                  ? `${errorCount} summary source${errorCount === 1 ? '' : 's'} unavailable`
-                  : 'Dashboard data available'}
+                  ? `${errorCount} source${errorCount === 1 ? '' : 's'} unavailable`
+                  : 'Permitted data sources available'}
               </span>
             </div>
           </div>
@@ -445,20 +551,30 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
               'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-black disabled:opacity-50',
               isDarkMode
                 ? 'border-white/10 bg-white/[0.04] text-slate-200'
-                : 'border-white bg-white text-slate-700'
+                : 'border-slate-200 bg-white text-slate-700'
             )}
           >
-            <RefreshCw size={15} className={state.refreshing ? 'animate-spin' : ''} />
+            <RefreshCw
+              size={15}
+              className={state.refreshing ? 'animate-spin' : ''}
+              aria-hidden="true"
+            />
             Refresh
           </button>
         </div>
         <p
           className={cn(
             'mt-3 text-[10px] font-semibold uppercase tracking-wide',
-            isDarkMode ? 'text-slate-500' : 'text-slate-400'
+            stale
+              ? isDarkMode
+                ? 'text-amber-200'
+                : 'text-amber-700'
+              : isDarkMode
+                ? 'text-slate-500'
+                : 'text-slate-400'
           )}
         >
-          Last refreshed {formatRelative(state.loadedAt)}
+          Last refreshed {formatRelative(state.loadedAt)}{stale ? ' · data may be stale' : ''}
         </p>
       </section>
 
@@ -470,7 +586,9 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
               ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
               : 'border-amber-200 bg-amber-50 text-amber-800'
           )}
+          aria-label="Unavailable dashboard sources"
         >
+          <p className="mb-1 font-black">Some permitted data could not be refreshed.</p>
           {Object.entries(state.errors).map(([key, message]) => (
             <p key={key}>
               <span className="font-black capitalize">{key}:</span> {message}
@@ -482,7 +600,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
       <section>
         <div className="mb-3">
           <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-            At a glance
+            What needs attention
           </h3>
           <p
             className={cn(
@@ -490,14 +608,83 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
               isDarkMode ? 'text-slate-400' : 'text-slate-500'
             )}
           >
-            Only permitted operational summaries appear here.
+            Actionable conditions are shown only when you can access the related workflow.
+          </p>
+        </div>
+        {attention.length ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {attention.map((item) => (
+              <AttentionItem
+                key={item.key}
+                {...item}
+                onClick={() => onSelectTab?.(item.tab)}
+                isDarkMode={isDarkMode}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            className={cn(
+              'flex items-center gap-3 rounded-2xl border px-4 py-4 text-sm font-semibold',
+              isDarkMode
+                ? 'border-emerald-300/15 bg-emerald-400/[0.05] text-emerald-100'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            )}
+          >
+            <CheckCircle2 size={18} aria-hidden="true" />
+            No immediate attention items were detected from your permitted data sources.
+          </div>
+        )}
+      </section>
+
+      {has(PERMISSIONS.pipelineView) ? (
+        <section className={cn('rounded-2xl border p-4 shadow-sm', surface)}>
+          <div className="mb-4">
+            <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
+              Forecast readiness
+            </h3>
+            <p
+              className={cn(
+                'mt-1 text-xs font-semibold',
+                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              )}
+            >
+              WW3 and ECWAM source/build readiness from the latest pipeline status available to you.
+            </p>
+          </div>
+          {pipelineModels.length ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {pipelineModels.map((model) => (
+                <PipelineCard key={model.model} model={model} isDarkMode={isDarkMode} />
+              ))}
+            </div>
+          ) : (
+            <p className={cn('py-6 text-center text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+              No wave-model readiness data is available from the latest pipeline response.
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      <section>
+        <div className="mb-3">
+          <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
+            Operational summary
+          </h3>
+          <p
+            className={cn(
+              'mt-1 text-xs font-semibold',
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            )}
+          >
+            Only summaries backed by a granted analytics or pipeline capability appear here.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {has(PERMISSIONS.forecastAnalytics) ? (
             <MetricCard
               icon={Waves}
-              label="Packages In Review"
+              label="Packages in review"
               value={forecast.inReview}
               helper={`${forecast.returned} returned · ${forecast.approved} approved/published`}
               tone={forecast.returned ? 'amber' : 'cyan'}
@@ -507,9 +694,9 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
           {has(PERMISSIONS.userAnalytics) ? (
             <MetricCard
               icon={Users}
-              label="Active Accounts"
+              label="Active new accounts"
               value={users.active}
-              helper={`${users.pending} pending · ${users.activeRate}% active`}
+              helper={`${users.pending} pending · ${users.activeRate}% active in the analytics period`}
               tone={users.pending ? 'amber' : 'emerald'}
               isDarkMode={isDarkMode}
             />
@@ -517,7 +704,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
           {has(PERMISSIONS.systemAnalytics) ? (
             <MetricCard
               icon={Activity}
-              label="Tracked Packages"
+              label="Tracked packages"
               value={system.totalPackages}
               helper={`${system.packagesPublished} published · ${system.packagesReturned} returned`}
               tone="cyan"
@@ -527,7 +714,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
           {has(PERMISSIONS.pipelineView) ? (
             <MetricCard
               icon={Database}
-              label="Pipeline Ready"
+              label="Pipeline ready"
               value={`${readyPipelines}/${pipelineModels.length || 0}`}
               helper={
                 failedPipelines
@@ -555,33 +742,10 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         </div>
       </section>
 
-      {has(PERMISSIONS.pipelineView) && pipelineModels.length ? (
-        <section className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', surface)}>
-          <div className="mb-4">
-            <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-              Wave model readiness
-            </h3>
-            <p
-              className={cn(
-                'mt-1 text-xs font-semibold',
-                isDarkMode ? 'text-slate-400' : 'text-slate-500'
-              )}
-            >
-              Latest pipeline state visible to your User Type.
-            </p>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {pipelineModels.map((model) => (
-              <PipelineCard key={model.model} model={model} isDarkMode={isDarkMode} />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       <section>
         <div className="mb-3">
           <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-            Your operational actions
+            Your next actions
           </h3>
           <p
             className={cn(
@@ -589,7 +753,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
               isDarkMode ? 'text-slate-400' : 'text-slate-500'
             )}
           >
-            Shortcuts are generated from your effective permissions, not your User Type name.
+            Shortcuts are generated from effective permissions, never from the User Type name.
           </p>
         </div>
         {actions.length ? (
