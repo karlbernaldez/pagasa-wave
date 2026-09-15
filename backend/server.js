@@ -19,6 +19,7 @@ import { checkRedisHealth } from '#lib/redis';
 import { RedisOtpStore, RedisPendingAuthStore } from '#lib/redisOtpStore';
 import authenticate from './middleware/authMiddleware.js';
 import { csrfProtection } from './middleware/csrfMiddleware.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import ecwamFrameRoutes from './routes/ecwamFrameRoutes.js';
@@ -148,6 +149,7 @@ const createApp = () => {
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/features', featureRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/analytics', analyticsRoutes);
   app.use('/api/projects', projectRoutes);
   app.use('/api/forecast-packages', authenticate, forecastPackageRoutes);
   app.use('/api/ecwam/frames', authenticate, ecwamFrameRoutes);
