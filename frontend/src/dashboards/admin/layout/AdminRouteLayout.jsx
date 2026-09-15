@@ -5,6 +5,7 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 import { AdminDashboardProvider } from '@dashboards/admin/context/AdminDashboardContext';
 import {
+  ADMIN_ANY_PERMISSION_BY_TAB,
   ADMIN_PERMISSION_BY_TAB,
   ADMIN_TABS,
   PAGE_META,
@@ -105,9 +106,15 @@ export default function AdminRouteLayout() {
   const location = useLocation();
   const activeTab = getAdminTabForPath(location.pathname);
   const permission = ADMIN_PERMISSION_BY_TAB[activeTab] ?? null;
+  const requireAny = ADMIN_ANY_PERMISSION_BY_TAB[activeTab] ?? [];
 
   return (
-    <ProtectedRoute requireAuth permission={permission} deniedRedirect="/">
+    <ProtectedRoute
+      requireAuth
+      permission={permission}
+      requireAny={requireAny}
+      deniedRedirect="/"
+    >
       <AdminDashboardLayoutContent />
     </ProtectedRoute>
   );
