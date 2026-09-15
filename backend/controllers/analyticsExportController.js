@@ -35,14 +35,26 @@ const filenameFor = (section, range) =>
 export const exportForecastAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
-    const rows = await ForecastPackage.find({
+    const match = {
       status: { $in: ANALYTICS_PACKAGE_STATUSES },
       ...buildDateMatch('forecastDate', range),
-    })
-      .select('_id name forecastDate status submittedAt reviewedAt publishedAt')
-      .sort({ forecastDate: -1, _id: -1 })
-      .limit(1000)
-      .lean();
+    };
+    const rows = await ForecastPackage.aggregate([
+      { $match: match },
+      { $sort: { forecastDate: -1, _id: -1 } },
+      { $limit: 1000 },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          forecastDate: 1,
+          status: 1,
+          submittedAt: 1,
+          reviewedAt: 1,
+          publishedAt: 1,
+        },
+      },
+    ]);
 
     return sendCsv(
       res,
@@ -122,12 +134,7 @@ export const exportSystemAnalytics = async (req, res, next) => {
       ]),
     ];
 
-    return sendCsv(
-      res,
-      filenameFor('system', range),
-      ['metric', 'value'],
-      rows
-    );
+    return sendCsv(res, filenameFor('system', range), ['metric', 'value'], rows);
   } catch (error) {
     return next(error);
   }
