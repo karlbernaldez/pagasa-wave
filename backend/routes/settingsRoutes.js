@@ -23,12 +23,35 @@ const adminSettingsLimiter = rateLimit({
   message: { message: 'Too many settings updates. Try again later.' },
 });
 
+const SETTINGS_MANAGE_PERMISSION_BY_PAGE = Object.freeze({
+  operations: 'settings_schedule.manage',
+  forecasterworkspace: 'settings_workspace.manage',
+  mapview: 'settings_map_view.manage',
+  adminreview: 'settings_review_targets.manage',
+  general: 'settings_public_general.manage',
+  about: 'settings_public_about.manage',
+  contact: 'settings_public_contact.manage',
+});
+
+function requireSettingsManagePermission(req, res, next) {
+  const page = String(req.params.page || '')
+    .trim()
+    .toLowerCase();
+  const permission = SETTINGS_MANAGE_PERMISSION_BY_PAGE[page];
+
+  if (!permission) {
+    return res.status(400).json({ message: `Unknown settings page: "${page}"` });
+  }
+
+  return requirePermission(permission)(req, res, next);
+}
+
 router.get('/:page', publicSettingsLimiter, getSettings);
 router.put(
   '/:page',
   adminSettingsLimiter,
   authenticate,
-  requirePermission('settings.manage'),
+  requireSettingsManagePermission,
   saveSettings
 );
 

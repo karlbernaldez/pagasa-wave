@@ -47,6 +47,15 @@ describe('permission-driven frontend authorization helpers', () => {
     expect(resolveAuthenticatedLandingPath(forecastUser, '/')).toBe('/forecasts');
   });
 
+  it('sends granular settings viewers to Settings', () => {
+    expect(resolveAuthenticatedLandingPath(user('test', ['settings_map_view.view']), '/')).toBe(
+      '/dashboard/settings'
+    );
+    expect(
+      resolveAuthenticatedLandingPath(user('test', ['settings_public_contact.view']), '/')
+    ).toBe('/dashboard/settings');
+  });
+
   it('does not use Studio permission as a generic landing route without a project', () => {
     const studioOnlyUser = user('anything', ['studio.view']);
 

@@ -68,6 +68,10 @@ function PermissionRow({ item, checked, disabled, onToggle, isDarkMode, showTech
   );
 }
 
+function getPermissionKeys(container) {
+  return container.permissions.map((item) => item.key);
+}
+
 export function PermissionEditor({
   categories = [],
   metadata = {},
@@ -78,7 +82,8 @@ export function PermissionEditor({
 }) {
   const groups = useMemo(() => buildPermissionGroups(categories, metadata), [categories, metadata]);
   const [query, setQuery] = useState('');
-  const [expanded, setExpanded] = useState(() => new Set());
+  const [expandedSections, setExpandedSections] = useState(() => new Set());
+  const [expandedSubsections, setExpandedSubsections] = useState(() => new Set());
   const [showTechnicalKeys, setShowTechnicalKeys] = useState(false);
 
   const selected = useMemo(() => new Set(permissions), [permissions]);
@@ -89,15 +94,33 @@ export function PermissionEditor({
 
   const visibleGroups = useMemo(() => {
     if (!search) return groups;
+
     return groups
-      .map((group) => ({
-        ...group,
-        permissions: group.permissions.filter((item) =>
-          [item.label, item.description, item.key, group.label]
-            .map(normalize)
-            .some((value) => value.includes(search))
-        ),
-      }))
+      .map((group) => {
+        const subsections = group.subsections
+          .map((subsection) => ({
+            ...subsection,
+            permissions: subsection.permissions.filter((item) =>
+              [
+                item.label,
+                item.description,
+                item.key,
+                group.label,
+                subsection.label,
+                subsection.description,
+              ]
+                .map(normalize)
+                .some((value) => value.includes(search))
+            ),
+          }))
+          .filter((subsection) => subsection.permissions.length > 0);
+
+        return {
+          ...group,
+          subsections,
+          permissions: subsections.flatMap((subsection) => subsection.permissions),
+        };
+      })
       .filter((group) => group.permissions.length > 0);
   }, [groups, search]);
 
@@ -110,9 +133,9 @@ export function PermissionEditor({
     );
   };
 
-  const toggleCategory = (group) => {
+  const toggleContainerPermissions = (container) => {
     if (disabled) return;
-    const keys = group.permissions.map((item) => item.key);
+    const keys = getPermissionKeys(container);
     const allSelected = keys.every((key) => selected.has(key));
     onChange(
       allSelected
@@ -121,8 +144,8 @@ export function PermissionEditor({
     );
   };
 
-  const toggleExpanded = (key) => {
-    setExpanded((current) => {
+  const toggleExpanded = (setter, key) => {
+    setter((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -144,7 +167,7 @@ export function PermissionEditor({
               {selectedConfigurable} of {Object.keys(metadata).length} permissions enabled
             </p>
             <p className={cn('mt-1 text-xs', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-              Open only the categories you need. Search by capability or description.
+              Review access by section, subsection, and action. Search by capability or description.
             </p>
             {compatibilityCount > 0 && (
               <p className="mt-1 text-[10px] font-semibold text-amber-500">
@@ -195,10 +218,10 @@ export function PermissionEditor({
       </div>
 
       {visibleGroups.map((group) => {
-        const categoryKeys = group.permissions.map((item) => item.key);
-        const selectedCount = categoryKeys.filter((key) => selected.has(key)).length;
-        const allSelected = categoryKeys.length > 0 && selectedCount === categoryKeys.length;
-        const isExpanded = Boolean(search) || expanded.has(group.key);
+        const sectionKeys = getPermissionKeys(group);
+        const selectedCount = sectionKeys.filter((key) => selected.has(key)).length;
+        const allSelected = sectionKeys.length > 0 && selectedCount === sectionKeys.length;
+        const isExpanded = Boolean(search) || expandedSections.has(group.key);
 
         return (
           <section
@@ -211,7 +234,7 @@ export function PermissionEditor({
             <div className="flex items-center gap-3 p-4">
               <button
                 type="button"
-                onClick={() => toggleExpanded(group.key)}
+                onClick={() => toggleExpanded(setExpandedSections, group.key)}
                 aria-expanded={isExpanded}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
@@ -238,14 +261,14 @@ export function PermissionEditor({
                       isDarkMode ? 'text-slate-400' : 'text-slate-500'
                     )}
                   >
-                    {selectedCount} of {categoryKeys.length} enabled · {group.description}
+                    {selectedCount} of {sectionKeys.length} enabled · {group.description}
                   </span>
                 </span>
               </button>
               <button
                 type="button"
                 disabled={disabled}
-                onClick={() => toggleCategory(group)}
+                onClick={() => toggleContainerPermissions(group)}
                 className={cn(
                   'shrink-0 rounded-lg border px-2.5 py-1.5 text-[10px] font-black disabled:cursor-not-allowed disabled:opacity-50',
                   allSelected
@@ -255,28 +278,113 @@ export function PermissionEditor({
                       : 'border-slate-200 text-slate-600'
                 )}
               >
-                {allSelected ? 'Clear category' : 'Select category'}
+                {allSelected ? 'Clear section' : 'Select section'}
               </button>
             </div>
 
             {isExpanded && (
               <div
                 className={cn(
-                  'grid gap-2 border-t p-4 lg:grid-cols-2',
+                  'space-y-3 border-t p-4',
                   isDarkMode ? 'border-white/[0.07]' : 'border-slate-100'
                 )}
               >
-                {group.permissions.map((item) => (
-                  <PermissionRow
-                    key={item.key}
-                    item={item}
-                    checked={selected.has(item.key)}
-                    disabled={disabled}
-                    onToggle={togglePermission}
-                    isDarkMode={isDarkMode}
-                    showTechnicalKeys={showTechnicalKeys}
-                  />
-                ))}
+                {group.subsections.map((subsection) => {
+                  const subsectionKey = `${group.key}:${subsection.key}`;
+                  const subsectionKeys = getPermissionKeys(subsection);
+                  const subsectionSelected = subsectionKeys.filter((key) =>
+                    selected.has(key)
+                  ).length;
+                  const subsectionAllSelected =
+                    subsectionKeys.length > 0 && subsectionSelected === subsectionKeys.length;
+                  const subsectionExpanded =
+                    Boolean(search) || expandedSubsections.has(subsectionKey);
+
+                  return (
+                    <div
+                      key={subsection.key}
+                      className={cn(
+                        'overflow-hidden rounded-xl border',
+                        isDarkMode
+                          ? 'border-white/[0.07] bg-white/[0.015]'
+                          : 'border-slate-200 bg-slate-50/60'
+                      )}
+                    >
+                      <div className="flex items-center gap-3 px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(setExpandedSubsections, subsectionKey)}
+                          aria-expanded={subsectionExpanded}
+                          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                        >
+                          <ChevronDown
+                            size={15}
+                            className={cn(
+                              'shrink-0 transition-transform',
+                              subsectionExpanded ? 'rotate-0' : '-rotate-90',
+                              isDarkMode ? 'text-slate-500' : 'text-slate-400'
+                            )}
+                          />
+                          <span className="min-w-0">
+                            <span
+                              className={cn(
+                                'block text-xs font-black',
+                                isDarkMode ? 'text-slate-200' : 'text-slate-800'
+                              )}
+                            >
+                              {subsection.label}
+                            </span>
+                            <span
+                              className={cn(
+                                'mt-0.5 block text-[11px]',
+                                isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                              )}
+                            >
+                              {subsectionSelected} of {subsectionKeys.length} enabled ·{' '}
+                              {subsection.description}
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleContainerPermissions(subsection)}
+                          className={cn(
+                            'shrink-0 rounded-lg border px-2 py-1 text-[9px] font-black disabled:cursor-not-allowed disabled:opacity-50',
+                            subsectionAllSelected
+                              ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-500'
+                              : isDarkMode
+                                ? 'border-white/10 text-slate-500'
+                                : 'border-slate-200 bg-white text-slate-500'
+                          )}
+                        >
+                          {subsectionAllSelected ? 'Clear subsection' : 'Select subsection'}
+                        </button>
+                      </div>
+
+                      {subsectionExpanded && (
+                        <div
+                          className={cn(
+                            'grid gap-2 border-t p-3 lg:grid-cols-2',
+                            isDarkMode ? 'border-white/[0.06]' : 'border-slate-200'
+                          )}
+                        >
+                          {subsection.permissions.map((item) => (
+                            <PermissionRow
+                              key={item.key}
+                              item={item}
+                              checked={selected.has(item.key)}
+                              disabled={disabled}
+                              onToggle={togglePermission}
+                              isDarkMode={isDarkMode}
+                              showTechnicalKeys={showTechnicalKeys}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>

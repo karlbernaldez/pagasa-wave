@@ -152,6 +152,8 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
   }, [filteredUsers, total]);
 
   useEffect(() => {
+    if (mode !== 'list') return undefined;
+
     let cancelled = false;
 
     const loadRoleOptions = async () => {
@@ -174,11 +176,11 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
       }
     };
 
-    loadRoleOptions();
+    void loadRoleOptions();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mode]);
 
   const handleAddSubmit = async (payload) => {
     const ok = await createUser(payload);
