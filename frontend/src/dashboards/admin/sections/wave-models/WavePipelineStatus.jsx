@@ -107,7 +107,7 @@ function Detail({ label, value, mono = false, isDarkMode }) {
 
 function ModelCard({ model, isDarkMode }) {
   const frameCount = Number.isFinite(model.frameCount) ? model.frameCount : 0;
-  const expected = Number.isFinite(model.expectedFrameCount) ? model.expectedFrameCount : 21;
+  const expected = Number.isFinite(model.expectedFrameCount) ? model.expectedFrameCount : 0;
   const progress = expected > 0 ? Math.min(100, Math.round((frameCount / expected) * 100)) : 0;
 
   return (
@@ -133,7 +133,7 @@ function ModelCard({ model, isDarkMode }) {
             <h3
               className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}
             >
-              {model.model}
+              {model.modelLabel || model.model || 'Wave model'}
             </h3>
             <p
               className={cn(
@@ -173,7 +173,7 @@ function ModelCard({ model, isDarkMode }) {
         <div className="mb-2 flex items-center justify-between text-xs font-semibold">
           <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Forecast frames</span>
           <span className={isDarkMode ? 'text-slate-200' : 'text-slate-700'}>
-            {frameCount} / {expected}
+            {expected > 0 ? `${frameCount} / ${expected}` : `${frameCount} / unknown`}
           </span>
         </div>
         <div
@@ -285,9 +285,9 @@ export default function WavePipelineStatus({ isDarkMode }) {
                   isDarkMode ? 'text-slate-400' : 'text-slate-600'
                 )}
               >
-                Monitor source readiness, normalized processing, validation, and publication for WW3
-                and ECWAM. This page is observational; operational policy is configured under Wave
-                Models.
+                Monitor source readiness, normalized processing, validation, and publication for all
+                configured operational wave models. This page is observational; operational policy is
+                configured under Wave Models.
               </p>
             </div>
           </div>
@@ -336,9 +336,22 @@ export default function WavePipelineStatus({ isDarkMode }) {
         </div>
       ) : (
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
-          {models.map((model) => (
-            <ModelCard key={model.model} model={model} isDarkMode={isDarkMode} />
-          ))}
+          {models.length ? (
+            models.map((model) => (
+              <ModelCard key={model.modelId || model.model} model={model} isDarkMode={isDarkMode} />
+            ))
+          ) : (
+            <div
+              className={cn(
+                'col-span-full rounded-2xl border px-4 py-10 text-center text-sm font-semibold',
+                isDarkMode
+                  ? 'border-white/10 bg-slate-950/50 text-slate-500'
+                  : 'border-white/70 bg-white/70 text-slate-500'
+              )}
+            >
+              No enabled operational wave models are currently available.
+            </div>
+          )}
         </div>
       )}
 
