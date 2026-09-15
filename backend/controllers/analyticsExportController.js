@@ -6,6 +6,7 @@ import {
   USER_ANALYTICS_EXPORT_HEADERS,
   USER_ANALYTICS_SELECT,
 } from '../utils/analyticsSanitizers.js';
+import { toCsv } from '../utils/csv.js';
 
 const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
   'Submitted',
@@ -16,17 +17,6 @@ const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
   'Rejected',
   'Archived',
 ]);
-
-const csvCell = (value) => {
-  if (value === null || value === undefined) return '';
-  const text = value instanceof Date ? value.toISOString() : String(value);
-  return `"${text.replaceAll('"', '""')}"`;
-};
-
-const toCsv = (headers, rows) =>
-  [headers, ...rows]
-    .map((row) => row.map((value) => csvCell(value)).join(','))
-    .join('\n');
 
 const sendCsv = (res, filename, headers, rows) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
