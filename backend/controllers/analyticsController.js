@@ -12,21 +12,6 @@ const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
   'Archived',
 ]);
 
-const ANALYTICS_PROJECT_FIELDS = [
-  '_id',
-  'name',
-  'chartType',
-  'status',
-  'submittedAt',
-  'reviewedAt',
-  'publishedAt',
-  'createdAt',
-  'updatedAt',
-  'auditLogs.action',
-  'auditLogs.timestamp',
-  'versions.createdAt',
-].join(' ');
-
 const serializeUserAnalytics = (user) => ({
   id: String(user._id),
   role: user.role,
@@ -54,9 +39,8 @@ export const getForecastAnalytics = async (req, res, next) => {
     const [packages, total, statusRows] = await Promise.all([
       ForecastPackage.find(match)
         .select(
-          '_id name forecastDate status charts chartCompletion submittedAt reviewedAt publishedAt createdAt updatedAt'
+          '_id name forecastDate status submittedAt reviewedAt publishedAt createdAt updatedAt'
         )
-        .populate({ path: 'charts.project', select: ANALYTICS_PROJECT_FIELDS })
         .sort({ forecastDate: -1, updatedAt: -1, _id: -1 })
         .limit(100)
         .lean(),
