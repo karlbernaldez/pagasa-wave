@@ -37,6 +37,41 @@ const pagesConfig = TABS.reduce((acc, tab) => {
   return acc;
 }, {});
 
+const isFormControl = (target) =>
+  target instanceof HTMLElement && Boolean(target.closest('input, textarea, select'));
+
+function ViewOnlySettingsSurface({ readOnly, children }) {
+  if (!readOnly) return children;
+
+  const blockFormControlEvent = (event) => {
+    if (!isFormControl(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const blurFormControl = (event) => {
+    if (!isFormControl(event.target)) return;
+    event.target.blur?.();
+  };
+
+  return (
+    <div
+      data-settings-read-only="true"
+      aria-label="View-only settings"
+      onPointerDownCapture={blockFormControlEvent}
+      onClickCapture={blockFormControlEvent}
+      onKeyDownCapture={blockFormControlEvent}
+      onBeforeInputCapture={blockFormControlEvent}
+      onPasteCapture={blockFormControlEvent}
+      onDropCapture={blockFormControlEvent}
+      onFocusCapture={blurFormControl}
+      className="[&_input]:cursor-not-allowed [&_input]:opacity-70 [&_select]:cursor-not-allowed [&_select]:opacity-70 [&_textarea]:cursor-not-allowed [&_textarea]:opacity-70"
+    >
+      {children}
+    </div>
+  );
+}
+
 function ActionButton({ icon: Icon, children, disabled, onClick, isDarkMode }) {
   return (
     <button
@@ -210,7 +245,8 @@ const SettingsSection = ({ isDarkMode }) => {
                   </p>
                   {!canManageActive && (
                     <p className="mt-2 text-xs font-black text-amber-500">
-                      View-only access for this subsection.
+                      View-only access for this subsection. Navigation remains available, but
+                      setting values cannot be changed.
                     </p>
                   )}
                 </div>
@@ -302,13 +338,13 @@ const SettingsSection = ({ isDarkMode }) => {
               Loading settings...
             </div>
           ) : ActiveComponent ? (
-            <fieldset disabled={!canManageActive} className="min-w-0 disabled:opacity-90">
+            <ViewOnlySettingsSurface readOnly={!canManageActive}>
               <ActiveComponent
                 settings={allSettings[activeTab]}
                 setSettings={makeSetter(activeTab)}
                 dark={dark}
               />
-            </fieldset>
+            </ViewOnlySettingsSurface>
           ) : null}
         </div>
 
