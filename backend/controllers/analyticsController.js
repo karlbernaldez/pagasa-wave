@@ -1,6 +1,7 @@
 import ForecastPackage from '../models/ForecastPackage.js';
 import User from '../models/User.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
+import { serializeUserAnalytics, USER_ANALYTICS_SELECT } from '../utils/analyticsSanitizers.js';
 
 const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
   'Submitted',
@@ -11,13 +12,6 @@ const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
   'Rejected',
   'Archived',
 ]);
-
-const serializeUserAnalytics = (user) => ({
-  id: String(user._id),
-  role: user.role,
-  status: user.status,
-  createdAt: user.createdAt,
-});
 
 const rowsToCountObject = (rows = [], key = '_id') =>
   Object.fromEntries(rows.map((row) => [String(row[key] || 'unknown'), row.count || 0]));
@@ -85,7 +79,7 @@ export const getUserAnalytics = async (req, res, next) => {
     };
     const [users, statusRows, roleRows] = await Promise.all([
       User.find(match)
-        .select('_id role status createdAt')
+        .select(USER_ANALYTICS_SELECT)
         .sort({ createdAt: -1, _id: -1 })
         .limit(500)
         .lean(),
