@@ -17,13 +17,17 @@ import {
 import authenticate from '../middleware/authMiddleware.js';
 import { verificationEmailLimiter } from '../middleware/authRateLimits.js';
 import { isOwnerOnly } from '../middleware/adminMiddleware.js';
-import { requirePermission, requireSelfOrPermission } from '../middleware/permissionMiddleware.js';
+import {
+  requireAnyPermission,
+  requirePermission,
+  requireSelfOrPermission,
+} from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/', requirePermission('users.view'), getAllUsers);
+router.get('/', requireAnyPermission('users.view', 'analytics_users.view'), getAllUsers);
 router.post('/', requirePermission('users.create'), createUserByAdmin);
 
 router.get('/:userId', requireSelfOrPermission('users.view'), getUserDetails);
