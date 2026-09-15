@@ -2,8 +2,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import WaveModel from '../models/WaveModel.js';
-import { ensureDefaultWaveModels } from './waveModelService.js';
 import {
   DEFAULT_SOURCE_CYCLE_DATE_MODE,
   getWaveSourceCyclePolicy,
@@ -82,6 +80,11 @@ function expectedForecastHours(model) {
 }
 
 async function listOperationalModels() {
+  const [{ default: WaveModel }, { ensureDefaultWaveModels }] = await Promise.all([
+    import('../models/WaveModel.js'),
+    import('./waveModelService.js'),
+  ]);
+
   await ensureDefaultWaveModels();
   return WaveModel.find({
     enabled: true,
