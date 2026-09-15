@@ -155,7 +155,6 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
     if (mode !== 'list') return undefined;
 
     let cancelled = false;
-    setRolesReady(false);
 
     const loadRoleOptions = async () => {
       try {
