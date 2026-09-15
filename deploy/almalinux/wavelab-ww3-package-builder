@@ -20,8 +20,11 @@ PACKAGE_TIMEZONE="${PACKAGE_TIMEZONE:-Asia/Manila}"
 WW3_VAR="${WW3_VAR:-hs}"
 WW3_SIGMA="${WW3_SIGMA:-1.5}"
 WW3_BUILD_TIMEOUT="${WW3_BUILD_TIMEOUT:-4h}"
+WW3_PRODUCT_INPUT="${WW3_PRODUCT_INPUT:-raw}"
+REQUIRED_FRAME_COUNT=21
 WW3_BUILD_EXTRA_ARGS="${WW3_BUILD_EXTRA_ARGS:---skip-existing}"
 SELECTOR="$WAVETILES_ROOT/scripts/ww3_package_selection.py"
+BUILDER="$WAVETILES_ROOT/scripts/build_ww3_compatible_package.sh"
 
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 fail() { log "ERROR: $*" >&2; exit 1; }
@@ -53,10 +56,11 @@ for value in "$ARCHIVE_STABILITY_MINUTES" "$SOURCE_ARCHIVE_RETENTION_DAYS" "$INP
   [[ "$value" =~ ^[0-9]+$ ]] || fail "age and retention settings must be non-negative integers"
 done
 [[ "$CLEANUP_DRY_RUN" == 0 || "$CLEANUP_DRY_RUN" == 1 ]] || fail "CLEANUP_DRY_RUN must be 0 or 1"
+[[ "$WW3_PRODUCT_INPUT" == raw || "$WW3_PRODUCT_INPUT" == normalized ]] || fail "WW3_PRODUCT_INPUT must be raw or normalized"
 for cmd in curl find flock python3 timeout; do command -v "$cmd" >/dev/null || fail "$cmd is not installed"; done
 [[ -d "$SOURCE_ARCHIVE_DIR" ]] || fail "source directory not found: $SOURCE_ARCHIVE_DIR"
 [[ -x "$WAVETILES_ROOT/.venv/bin/python" ]] || fail "WW3 Python runtime is missing"
-[[ -f "$WAVETILES_ROOT/scripts/build_ww3_package.sh" ]] || fail "WW3 package helper is missing"
+[[ -f "$BUILDER" ]] || fail "WW3 compatible package builder is missing: $BUILDER"
 [[ -f "$SELECTOR" ]] || fail "WW3 package selector is missing"
 
 install -d -m 0755 "$INPUT_ROOT" "$TILE_ROOT"
@@ -95,6 +99,12 @@ if not list(cycle_dir.glob("ww3_grdo.*.nc")):
 PY
 }
 
+cycle_is_staged() {
+  local cycle="$1"
+  [[ -d "$INPUT_ROOT/$cycle" ]] && \
+    find "$INPUT_ROOT/$cycle" -maxdepth 1 -type f -name 'ww3_grdo.*.nc' -print -quit | grep -q .
+}
+
 import_archives() {
   local archive name cycle marker temp
   while IFS= read -r -d '' archive; do
@@ -102,9 +112,15 @@ import_archives() {
     [[ "$name" =~ ^ww3_([0-9]{10})\.tar\.gz$ ]] || continue
     cycle=${BASH_REMATCH[1]}
     marker="$STATE_ROOT/imported/$cycle"
-    [[ -e "$marker" ]] && continue
+    if [[ -e "$marker" ]]; then
+      if cycle_is_staged "$cycle"; then
+        continue
+      fi
+      log "stale import marker for cycle $cycle; staged files are missing, re-importing"
+      rm -f -- "$marker"
+    fi
     find "$archive" -mmin "+$ARCHIVE_STABILITY_MINUTES" -print -quit | grep -q . || { log "archive not stable yet: $name"; continue; }
-    if [[ -d "$INPUT_ROOT/$cycle" ]] && find "$INPUT_ROOT/$cycle" -maxdepth 1 -type f -name 'ww3_grdo.*.nc' -print -quit | grep -q .; then
+    if cycle_is_staged "$cycle"; then
       printf 'archive=%s\nimported_utc=%s\n' "$name" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$marker"
       continue
     fi
@@ -121,10 +137,14 @@ import_archives() {
   done < <(find "$SOURCE_ARCHIVE_DIR" -maxdepth 1 -type f -name 'ww3_??????????.tar.gz' -print0 | sort -z)
 }
 
+marker_value() {
+  local marker="$1" key="$2"
+  awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, ""); print; exit }' "$marker" 2>/dev/null || true
+}
+
 build_package() {
-  local package_date="$1" source_cycle="$2" marker tag png_count contour_count message
+  local package_date="$1" source_cycle="$2" marker tag png_count contour_count message marker_source_cycle marker_product_input force_rebuild=0
   marker="$STATE_ROOT/built/$package_date"
-  [[ -e "$marker" ]] && { log "package already built: $package_date"; return 0; }
   tag="$(python3 - "$package_date" <<'PY'
 import sys
 from datetime import date
@@ -132,24 +152,63 @@ v=date.fromisoformat(sys.argv[1]); m=("JAN","FEB","MAR","APR","MAY","JUN","JUL",
 print(f"{v.year}{m[v.month-1]}{v.day:02d}")
 PY
   )"
+  if [[ -e "$marker" ]]; then
+    marker_source_cycle="$(marker_value "$marker" source_cycle)"
+    marker_product_input="$(marker_value "$marker" product_input)"
+    [[ -n "$marker_product_input" ]] || marker_product_input=raw
+    if [[ "$marker_source_cycle" != "$source_cycle" ]]; then
+      log "package $package_date was built from source cycle ${marker_source_cycle:-unknown}; required source cycle is $source_cycle; rebuilding"
+      force_rebuild=1
+    elif [[ "$marker_product_input" != "$WW3_PRODUCT_INPUT" ]]; then
+      log "package $package_date was built with product input $marker_product_input; configured product input is $WW3_PRODUCT_INPUT; rebuilding"
+      force_rebuild=1
+    else
+      if [[ -d "$TILE_ROOT/contours/$tag" ]]; then
+        contour_count=$(find "$TILE_ROOT/contours/$tag" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
+      else
+        contour_count=0
+      fi
+      if (( contour_count == REQUIRED_FRAME_COUNT )); then
+        log "package already built from required source cycle $source_cycle using $WW3_PRODUCT_INPUT input: $package_date"
+        return 0
+      fi
+      log "package marker matches source cycle $source_cycle and $WW3_PRODUCT_INPUT input but has $contour_count of $REQUIRED_FRAME_COUNT required frames; rebuilding"
+      force_rebuild=1
+    fi
+  fi
+
   read -r -a extra_args <<< "$WW3_BUILD_EXTRA_ARGS"
-  if ! timeout "$WW3_BUILD_TIMEOUT" env WW3_PYTHON="$WAVETILES_ROOT/.venv/bin/python" WW3_INPUT_ROOT="$INPUT_ROOT" \
-      WW3_SOURCE_CYCLE="$source_cycle" WW3_NO_PAUSE=1 \
-      bash "$WAVETILES_ROOT/scripts/build_ww3_package.sh" "$package_date" "$WW3_VAR" "$WW3_SIGMA" "${extra_args[@]}"; then
-    printf 'package_date=%s\nsource_cycle=%s\nfailed_utc=%s\n' "$package_date" "$source_cycle" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$STATE_ROOT/failed/$package_date"
+  if (( force_rebuild == 1 )); then
+    filtered_args=()
+    for arg in "${extra_args[@]}"; do
+      [[ "$arg" == "--skip-existing" ]] || filtered_args+=("$arg")
+    done
+    extra_args=("${filtered_args[@]}")
+  fi
+
+  if ! timeout "$WW3_BUILD_TIMEOUT" env \
+      WW3_PYTHON="$WAVETILES_ROOT/.venv/bin/python" \
+      WW3_INPUT_ROOT="$INPUT_ROOT" \
+      WW3_OUTPUT_ROOT="$TILE_ROOT" \
+      WW3_SOURCE_CYCLE="$source_cycle" \
+      WW3_PRODUCT_INPUT="$WW3_PRODUCT_INPUT" \
+      WW3_NO_PAUSE=1 \
+      bash "$BUILDER" "$package_date" "$WW3_VAR" "$WW3_SIGMA" "${extra_args[@]}"; then
+    printf 'package_date=%s\nsource_cycle=%s\nproduct_input=%s\nfailed_utc=%s\n' \
+      "$package_date" "$source_cycle" "$WW3_PRODUCT_INPUT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$STATE_ROOT/failed/$package_date"
     return 1
   fi
   png_count=$(find "$TILE_ROOT" -mindepth 3 -type f -path "*/$tag/*" -name '*.png' | wc -l)
   (( png_count > 0 )) || fail "build produced no PNG tiles for $tag"
   contour_count=$(find "$TILE_ROOT/contours/$tag" -mindepth 2 -maxdepth 2 -type f -name 'contours.geojson' -size +0c | wc -l)
-  (( contour_count == 4 )) || fail "build produced $contour_count of 4 required contour files for $tag"
-  printf 'package_date=%s\nsource_cycle=%s\noutput_tag=%s\npng_count=%s\ncontour_count=%s\nbuilt_utc=%s\n' \
-    "$package_date" "$source_cycle" "$tag" "$png_count" "$contour_count" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$marker"
+  (( contour_count == REQUIRED_FRAME_COUNT )) || fail "build produced $contour_count of $REQUIRED_FRAME_COUNT required contour files for $tag"
+  printf 'package_date=%s\nsource_cycle=%s\nproduct_input=%s\noutput_tag=%s\npng_count=%s\ncontour_count=%s\nbuilt_utc=%s\n' \
+    "$package_date" "$source_cycle" "$WW3_PRODUCT_INPUT" "$tag" "$png_count" "$contour_count" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$marker"
   rm -f -- "$STATE_ROOT/failed/$package_date"
-  printf -v message 'Host: %s\nPackage: %s\nSource cycle: %s\nTile folder: %s\nPNG files: %s\nContour files: %s' \
-    "$(hostname -f 2>/dev/null || hostname)" "$package_date" "$source_cycle" "$tag" "$png_count" "$contour_count"
+  printf -v message 'Host: %s\nPackage: %s\nSource cycle: %s\nProduct input: %s\nTile folder: %s\nPNG files: %s\nContour files: %s' \
+    "$(hostname -f 2>/dev/null || hostname)" "$package_date" "$source_cycle" "$WW3_PRODUCT_INPUT" "$tag" "$png_count" "$contour_count"
   send_alert SUCCESS "$message"
-  log "built WW3 package $package_date from source cycle $source_cycle with $png_count PNG files and $contour_count contour files"
+  log "built WW3 package $package_date from source cycle $source_cycle using $WW3_PRODUCT_INPUT input with $png_count PNG files and $contour_count contour files"
 }
 
 remove_path() {
@@ -185,7 +244,7 @@ if source_cycle="$($WAVETILES_ROOT/.venv/bin/python "$SELECTOR" select "$INPUT_R
   log "selected package date $package_date in $PACKAGE_TIMEZONE from complete source cycle $source_cycle"
   build_package "$package_date" "$source_cycle"
 else
-  log "no complete source cycle for Manila package date $package_date; skipping until the next timer run"
+  log "no complete required 18Z source cycle for Manila package date $package_date; skipping until the next timer run"
 fi
 cleanup
 trap - ERR

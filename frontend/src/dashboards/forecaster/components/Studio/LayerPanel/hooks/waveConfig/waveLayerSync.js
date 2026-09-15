@@ -14,6 +14,8 @@ import {
   buildWaveContourUrl,
   buildIconSize,
 } from './waveHelpers';
+import { removeEcwamRasterCrossfade, syncEcwamRasterCrossfade } from './ecwamRasterCrossfade';
+import { removeWw3RasterCrossfade, syncWw3RasterCrossfade } from './ww3RasterCrossfade';
 
 const MODEL_RASTER_CONFIG = {
   BMKG: { scheme: 'tms', bounds: [100, -5, 180, 50] },
@@ -26,6 +28,7 @@ const CONTOUR_MODELS = new Set(['WW3', 'ECWAM']);
 const CONTOUR_SOURCE_PREFIX = 'wave-contours-';
 const CONTOUR_LINE_PREFIX = 'wave-contours-line-';
 const CONTOUR_LABEL_PREFIX = 'wave-contours-label-';
+const ECWAM_CONTOUR_FADE_MS = 320;
 
 const getRasterConfig = (model) =>
   MODEL_RASTER_CONFIG[model] ?? { scheme: 'xyz', bounds: [100, -5, 180, 50] };
@@ -47,16 +50,29 @@ const removeLegacyLayers = (map) => {
   });
 };
 
+const removeRasterSource = (map, sourceId) => {
+  const layerId = sourceId.replace(WAVE_RASTER_SOURCE_PREFIX, WAVE_RASTER_LAYER_PREFIX);
+  if (map.getLayer(layerId)) map.removeLayer(layerId);
+  if (map.getSource(sourceId)) map.removeSource(sourceId);
+  rasterTileUrlBySource.delete(sourceId);
+};
+
 const removeStaleRasterSources = (map, targetSourceIds) => {
   Object.keys(map.getStyle()?.sources || {})
     .filter((id) => id.startsWith(WAVE_RASTER_SOURCE_PREFIX))
     .forEach((sourceId) => {
-      if (targetSourceIds.has(sourceId)) return;
-      const layerId = sourceId.replace(WAVE_RASTER_SOURCE_PREFIX, WAVE_RASTER_LAYER_PREFIX);
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-      rasterTileUrlBySource.delete(sourceId);
+      if (!targetSourceIds.has(sourceId)) removeRasterSource(map, sourceId);
     });
+};
+
+const updateRasterTilesInPlace = (map, sourceId, tileUrl) => {
+  const source = map.getSource(sourceId);
+  if (typeof source?.setTiles !== 'function') return false;
+
+  source.setTiles([tileUrl]);
+  rasterTileUrlBySource.set(sourceId, tileUrl);
+  map.triggerRepaint?.();
+  return true;
 };
 
 const upsertRasterLayer = (
@@ -79,10 +95,10 @@ const upsertRasterLayer = (
   const sourceUrlChanged = sourceExists && rasterTileUrlBySource.get(sourceId) !== tileUrl;
 
   if (sourceExists && (themeChanged || sourceUrlChanged)) {
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
-    map.removeSource(sourceId);
-    rasterTileUrlBySource.delete(sourceId);
-    sourceExists = false;
+    if (!updateRasterTilesInPlace(map, sourceId, tileUrl)) {
+      removeRasterSource(map, sourceId);
+      sourceExists = false;
+    }
   }
 
   if (!sourceExists) {
@@ -117,6 +133,67 @@ const upsertRasterLayer = (
   }
 };
 
+const syncWw3Raster = (map, { selectedModels, theme, opacity, showRaster, forecastPackage }) => {
+  const ww3Selected = selectedModels.includes('WW3');
+
+  // Remove the pre-crossfade WW3 source if a deployment already created it.
+  removeRasterSource(map, `${WAVE_RASTER_SOURCE_PREFIX}WW3`);
+
+  if (!ww3Selected) {
+    removeWw3RasterCrossfade(map);
+    return;
+  }
+
+  const tileUrl = buildWaveTileUrl({
+    model: 'WW3',
+    theme,
+    date: WAVE_RASTER_DATE,
+    forecastDate: forecastPackage.forecastDate,
+    chartType: forecastPackage.chartType,
+    forecastHour: forecastPackage.ww3ForecastHour,
+  });
+  const { scheme, bounds } = getRasterConfig('WW3');
+
+  syncWw3RasterCrossfade(map, {
+    tileUrl,
+    opacity,
+    showRaster,
+    scheme,
+    bounds,
+  });
+};
+
+const syncEcwamRaster = (map, { selectedModels, theme, opacity, showRaster, forecastPackage }) => {
+  const ecwamSelected = selectedModels.includes('ECWAM');
+  const frameReady = forecastPackage.ecwamFrameReady !== false;
+
+  // Remove the pre-crossfade ECWAM source if a deployment already created it.
+  removeRasterSource(map, `${WAVE_RASTER_SOURCE_PREFIX}ECWAM`);
+
+  if (!ecwamSelected || !frameReady) {
+    removeEcwamRasterCrossfade(map);
+    return;
+  }
+
+  const tileUrl = buildWaveTileUrl({
+    model: 'ECWAM',
+    theme,
+    date: WAVE_RASTER_DATE,
+    forecastDate: forecastPackage.forecastDate,
+    chartType: forecastPackage.chartType,
+    forecastHour: forecastPackage.ecwamForecastHour,
+  });
+  const { scheme, bounds } = getRasterConfig('ECWAM');
+
+  syncEcwamRasterCrossfade(map, {
+    tileUrl,
+    opacity,
+    showRaster,
+    scheme,
+    bounds,
+  });
+};
+
 export const syncWaveRasterLayers = (
   map,
   models = [],
@@ -129,16 +206,15 @@ export const syncWaveRasterLayers = (
   const theme = isDarkMode ? 'dark' : 'light';
   const selectedModels = getSelectedModels(models);
   const opacity = selectedModels.length > 0 ? Math.max(0.25, 1 / selectedModels.length) : 0;
+  const regularModels = selectedModels.filter((model) => model !== 'ECWAM' && model !== 'WW3');
 
   removeLegacyLayers(map);
   removeStaleRasterSources(
     map,
-    new Set(selectedModels.map((model) => `${WAVE_RASTER_SOURCE_PREFIX}${model}`))
+    new Set(regularModels.map((model) => `${WAVE_RASTER_SOURCE_PREFIX}${model}`))
   );
 
-  selectedModels.forEach((model) => {
-    if (model === 'ECWAM' && forecastPackage.ecwamFrameReady === false) return;
-
+  regularModels.forEach((model) => {
     upsertRasterLayer(map, {
       model,
       theme,
@@ -147,8 +223,23 @@ export const syncWaveRasterLayers = (
       themeChanged,
       forecastDate: forecastPackage.forecastDate,
       chartType: forecastPackage.chartType,
-      forecastHour: model === 'ECWAM' ? forecastPackage.ecwamForecastHour : undefined,
     });
+  });
+
+  syncWw3Raster(map, {
+    selectedModels,
+    theme,
+    opacity,
+    showRaster,
+    forecastPackage,
+  });
+
+  syncEcwamRaster(map, {
+    selectedModels,
+    theme,
+    opacity,
+    showRaster,
+    forecastPackage,
   });
 
   ['wave-glass-fill', 'wave-glass-depth'].forEach((id) => {
@@ -185,13 +276,28 @@ const removeStaleContourSources = (map, targetModels) => {
     });
 };
 
+const updateContourDataInPlace = (map, sourceId, dataUrl) => {
+  const source = map.getSource(sourceId);
+  if (typeof source?.setData !== 'function') return false;
+
+  source.setData(dataUrl);
+  contourUrlBySource.set(sourceId, dataUrl);
+  map.triggerRepaint?.();
+  return true;
+};
+
 const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
   const { sourceId, lineLayerId, labelLayerId } = contourIds(model);
   const dataUrl = buildWaveContourUrl({
     model,
     forecastDate: forecastPackage.forecastDate,
     chartType: forecastPackage.chartType,
-    forecastHour: model === 'ECWAM' ? forecastPackage.ecwamForecastHour : undefined,
+    forecastHour:
+      model === 'ECWAM'
+        ? forecastPackage.ecwamForecastHour
+        : model === 'WW3'
+          ? forecastPackage.ww3ForecastHour
+          : undefined,
   });
   if (!dataUrl) {
     removeContourModel(map, model);
@@ -199,7 +305,9 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
   }
 
   if (map.getSource(sourceId) && contourUrlBySource.get(sourceId) !== dataUrl) {
-    removeContourModel(map, model);
+    if (!updateContourDataInPlace(map, sourceId, dataUrl)) {
+      removeContourModel(map, model);
+    }
   }
 
   if (!map.getSource(sourceId)) {
@@ -220,6 +328,7 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
           'line-color': ['get', colorProperty],
           'line-width': ['case', ['get', 'major'], 2.2, 1.35],
           'line-opacity': 0.95,
+          'line-opacity-transition': { duration: ECWAM_CONTOUR_FADE_MS, delay: 0 },
         },
       },
       'graticules'
@@ -250,13 +359,23 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
           'text-halo-color': haloColor,
           'text-halo-width': 1.5,
           'text-halo-blur': 0.4,
+          'text-opacity-transition': { duration: ECWAM_CONTOUR_FADE_MS, delay: 0 },
         },
       },
       'graticules'
     );
   } else {
+    map.setPaintProperty(lineLayerId, 'line-color', ['get', colorProperty]);
+    map.setPaintProperty(lineLayerId, 'line-opacity-transition', {
+      duration: ECWAM_CONTOUR_FADE_MS,
+      delay: 0,
+    });
     map.setPaintProperty(labelLayerId, 'text-color', ['get', colorProperty]);
     map.setPaintProperty(labelLayerId, 'text-halo-color', haloColor);
+    map.setPaintProperty(labelLayerId, 'text-opacity-transition', {
+      duration: ECWAM_CONTOUR_FADE_MS,
+      delay: 0,
+    });
   }
 };
 
@@ -280,7 +399,6 @@ export const syncWaveContourLayers = (
   });
 };
 
-// Backward-compatible export retained for existing imports/tests.
 export const syncWW3ContourLayers = syncWaveContourLayers;
 
 export const syncWaveSymbolLayers = (map, config) => {

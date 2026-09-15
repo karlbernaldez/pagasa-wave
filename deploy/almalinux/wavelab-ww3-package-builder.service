@@ -9,9 +9,13 @@ User=wavelab
 Group=wavelab
 EnvironmentFile=/etc/wavelab/ww3-package-builder.env
 Environment=LOCK_FILE=/run/wavelab-ww3/package-builder.lock
+ExecStartPre=/usr/bin/rm -f /var/lib/wavelab-wave-source-readiness/WW3.ready
 ExecStart=/usr/local/sbin/wavelab-ww3-package-builder
 UMask=0022
 TimeoutStartSec=5h
+Nice=5
+CPUWeight=50
+IOWeight=50
 StateDirectory=wavelab-ww3
 StateDirectoryMode=0700
 RuntimeDirectory=wavelab-ww3
@@ -28,8 +32,11 @@ LockPersonality=true
 MemoryDenyWriteExecute=false
 ReadWritePaths=/home/wavelab/app/wavetiles/input/ww3
 ReadWritePaths=/home/wavelab/app/wavetiles/tiles/WW3
+ReadWritePaths=/home/wavelab/app/wavetiles/normalized/WW3
+ReadWritePaths=/home/wavelab/app/wavetiles/.normalized-product-stage
 ReadWritePaths=/home/darwin/ww3_nc
 ReadWritePaths=/var/lib/wavelab-ww3
+ReadWritePaths=/var/lib/wavelab-wave-source-readiness
 ReadWritePaths=/run/wavelab-ww3
 
 [Install]

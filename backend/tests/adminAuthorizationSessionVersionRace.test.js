@@ -68,6 +68,11 @@ const updatedUser = {
   },
 };
 
+const userManageRequest = {
+  user: adminActor,
+  authorizedPermissions: ['users.edit'],
+};
+
 test('admin role change guards the role snapshot in the atomic authorization update', async () => {
   let call;
   const res = makeResponse();
@@ -85,7 +90,7 @@ test('admin role change guards the role snapshot in the atomic authorization upd
         {
           params: { userId: updatedUser._id },
           body: { role: 'admin' },
-          user: adminActor,
+          ...userManageRequest,
         },
         res
       );
@@ -98,7 +103,10 @@ test('admin role change guards the role snapshot in the atomic authorization upd
     deletedAt: null,
     role: 'forecaster',
   });
-  assert.deepEqual(call.update, { $set: { role: 'admin' } });
+  assert.deepEqual(call.update, {
+    $set: { role: 'admin' },
+    $inc: { sessionVersion: 1 },
+  });
   assert.deepEqual(call.options, { new: true, runValidators: true });
 });
 
@@ -115,7 +123,7 @@ test('stale admin role change is rejected when another authorization update wins
         {
           params: { userId: updatedUser._id },
           body: { role: 'admin' },
-          user: adminActor,
+          ...userManageRequest,
         },
         res
       );

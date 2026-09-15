@@ -1,0 +1,10 @@
+[Unit]
+Description=WaveLab WW3 supervised manual build trigger
+Documentation=https://github.com/karlbernaldez/pagasa-wave
+
+[Path]
+PathChanged=__APP_ROOT__/backend/tmp/wave-ops/ww3.trigger
+Unit=wavelab-ww3-package-builder.service
+
+[Install]
+WantedBy=multi-user.target

@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { checkAuthSession } from '@/api/auth';
+import { resolveAuthenticatedLandingPath } from '@/core/auth/resolveLandingPath';
 
-const useAuthRedirect = (redirectPath = '/studio') => {
+const useAuthRedirect = (redirectPath = '/') => {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -11,12 +12,10 @@ const useAuthRedirect = (redirectPath = '/studio') => {
       try {
         const { authenticated, user } = await checkAuthSession();
         if (authenticated && user) {
-          const nextPath = user.role === 'admin' ? '/dashboard' : redirectPath;
-          navigate(nextPath);
+          navigate(resolveAuthenticatedLandingPath(user, redirectPath));
         }
       } catch (err) {
         console.error('Auth check failed:', err);
-        // Do nothing or show a login prompt if needed
       }
     };
 

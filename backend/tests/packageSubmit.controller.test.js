@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const USER_ID = 'user-1';
-const ADMIN_ID = 'admin-1';
+const REVIEWER_ID = 'reviewer-1';
 
 async function loadModules() {
   const workflow = await import('../utils/' + 'forecast' + 'Package.js');
@@ -30,9 +30,10 @@ async function loadModules() {
   };
 }
 
-function ownerId(value = USER_ID) {
+function id(value = USER_ID) {
   return { toString: () => value };
 }
+
 function createQuery(result) {
   return {
     populate() {
@@ -47,7 +48,6 @@ function createQuery(result) {
 function createPkg(workflow, ready, status = workflow.FORECAST_PACKAGE_STATUS.DRAFT) {
   return {
     _id: 'package-1',
-    owner: ownerId(),
     status,
     charts: workflow.REQUIRED_FORECAST_CHART_TYPES.map((chartType, index) => ({
       chartType,
@@ -71,7 +71,6 @@ function createPkg(workflow, ready, status = workflow.FORECAST_PACKAGE_STATUS.DR
     toObject() {
       return {
         _id: this._id,
-        owner: this.owner,
         status: this.status,
         charts: this.charts,
         chartCompletion: this.chartCompletion,
@@ -112,6 +111,7 @@ function req(overrides = {}) {
     body: {},
     query: {},
     user: { id: USER_ID, role: 'forecaster' },
+    permissions: ['projects.submit'],
     ...overrides,
   };
 }
@@ -207,7 +207,7 @@ test('package submit action blocks while a chart still has active editors', asyn
   const originalFindById = PackageModel.findById;
   const originalUpdateMany = Project.updateMany;
   const pkg = createPkg(workflow, true);
-  pkg.charts[0].activeEditors = [{ user: ownerId('forecaster-2'), startedAt: new Date() }];
+  pkg.charts[0].activeEditors = [{ user: id('forecaster-2'), startedAt: new Date() }];
   let updateManyCalls = 0;
   try {
     PackageModel.findById = () => pkg;
@@ -223,7 +223,7 @@ test('package submit action blocks while a chart still has active editors', asyn
   }
 });
 
-test('package submit action submits and locks linked chart projects when every required chart is ready', async () => {
+test('package submit action submits and locks all four linked chart projects', async () => {
   const { workflow, controller, PackageModel, Project, testSession } = await loadModules();
   const originalFindById = PackageModel.findById;
   const originalUpdateMany = Project.updateMany;
@@ -261,39 +261,31 @@ test('package submit action submits and locks linked chart projects when every r
   }
 });
 
-test('package submit action allows a participating non-owner forecaster to submit', async () => {
+test('any authenticated collaborator with projects.submit may submit the shared package', async () => {
   const { workflow, controller, PackageModel, Project } = await loadModules();
   const originalFindById = PackageModel.findById;
   const originalUpdateMany = Project.updateMany;
   const pkg = createPkg(workflow, true);
-  const participantId = 'forecaster-2';
-  pkg.chartCompletion[0].completedBy = participantId;
+  const collaboratorId = 'forecaster-2';
   let calls = 0;
-  let updateManyPayload;
 
   try {
     PackageModel.findById = () => {
       calls += 1;
       return calls === 1 ? pkg : createQuery(pkg);
     };
-    Project.updateMany = async (filter, update) => {
-      updateManyPayload = { filter, update };
-      return { modifiedCount: 4 };
-    };
+    Project.updateMany = async () => ({ modifiedCount: 4 });
 
     const res = await run(
       controller.submitForecastPackage,
-      req({ user: { id: participantId, role: 'forecaster' } })
+      req({
+        user: { id: collaboratorId, role: 'custom_forecaster' },
+        permissions: ['projects.submit'],
+      })
     );
 
     assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.SUBMITTED);
-    assert.equal(pkg.auditLogs.at(-1).performedBy, participantId);
-    assert.deepEqual(updateManyPayload.filter._id.$in, [
-      'project-1',
-      'project-2',
-      'project-3',
-      'project-4',
-    ]);
+    assert.equal(pkg.auditLogs.at(-1).performedBy, collaboratorId);
     assert.equal(res.body.completion.isComplete, true);
   } finally {
     PackageModel.findById = originalFindById;
@@ -301,7 +293,7 @@ test('package submit action allows a participating non-owner forecaster to submi
   }
 });
 
-test('package submit action blocks admins from submitting forecast packages', async () => {
+test('package submission is denied by missing permission, not by role or ownership', async () => {
   const { workflow, controller, PackageModel, Project } = await loadModules();
   const originalFindById = PackageModel.findById;
   const originalUpdateMany = Project.updateMany;
@@ -315,10 +307,17 @@ test('package submit action blocks admins from submitting forecast packages', as
     };
 
     await assert.rejects(
-      () => run(controller.submitForecastPackage, req({ user: { id: ADMIN_ID, role: 'admin' } })),
+      () =>
+        run(
+          controller.submitForecastPackage,
+          req({
+            user: { id: 'custom-user', role: 'custom_role' },
+            permissions: [],
+          })
+        ),
       {
         status: 403,
-        message: 'Only the package owner or a participating forecaster can submit this package',
+        message: 'You do not have permission to submit Forecast Packages.',
       }
     );
 
@@ -350,7 +349,11 @@ test('package revision request unlocks linked chart projects for forecaster edit
     };
     const res = await run(
       controller.requestForecastPackageRevision,
-      req({ body: { comment }, user: { id: ADMIN_ID, role: 'admin' } })
+      req({
+        body: { comment },
+        user: { id: REVIEWER_ID, role: 'reviewer' },
+        permissions: ['projects.review'],
+      })
     );
     assert.equal(pkg.status, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
     assert.ok(pkg.reviewedAt instanceof Date);

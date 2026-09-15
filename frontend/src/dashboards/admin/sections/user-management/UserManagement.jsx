@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Ban, Clock3, Plus, RefreshCw, UserCheck, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
-import { AddUserModal } from './components/AddUserModal';
+import { fetchRoles } from '@/api/roleAPI';
+
 import { ManageUserModal } from './components/ManageUserModal';
 import { RolesSection } from './components/RolesSection';
 import { SearchBar } from './components/SearchBar';
 import { UserTable } from './components/UserTable';
 import { useUsers } from './hooks/useUsers';
-import { STATUS_LABELS } from './constants';
+import { LEGACY_ROLE_OPTIONS, setRoleOptions, STATUS_LABELS } from './constants';
+
+const AddUserModal = lazy(() =>
+  import('./components/AddUserModal').then((module) => ({ default: module.AddUserModal }))
+);
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -32,19 +37,35 @@ const STAT_TONES = {
 };
 
 function StatCard({ icon: Icon, label, value, helper, color, isDarkMode }) {
-  const tone = STAT_TONES[color]?.[isDarkMode ? 'dark' : 'light'] ?? STAT_TONES.cyan[isDarkMode ? 'dark' : 'light'];
+  const tone =
+    STAT_TONES[color]?.[isDarkMode ? 'dark' : 'light'] ??
+    STAT_TONES.cyan[isDarkMode ? 'dark' : 'light'];
 
   return (
-    <div className={cn(
-      'rounded-2xl border p-4 shadow-xl backdrop-blur-xl',
-      isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40',
-    )}>
+    <div
+      className={cn(
+        'rounded-2xl border p-4 shadow-xl backdrop-blur-xl',
+        isDarkMode
+          ? 'border-white/10 bg-slate-950/50 shadow-black/20'
+          : 'border-white/70 bg-white/70 shadow-slate-300/40'
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className={cn('truncate text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+          <p
+            className={cn(
+              'truncate text-xs font-black uppercase tracking-wide',
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            )}
+          >
             {label}
           </p>
-          <p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>
+          <p
+            className={cn(
+              'mt-2 text-3xl font-black tabular-nums',
+              isDarkMode ? 'text-white' : 'text-slate-950'
+            )}
+          >
             {value}
           </p>
         </div>
@@ -52,7 +73,12 @@ function StatCard({ icon: Icon, label, value, helper, color, isDarkMode }) {
           <Icon size={21} />
         </span>
       </div>
-      <p className={cn('mt-3 text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+      <p
+        className={cn(
+          'mt-3 text-sm font-semibold',
+          isDarkMode ? 'text-slate-400' : 'text-slate-500'
+        )}
+      >
         {helper}
       </p>
     </div>
@@ -63,6 +89,9 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
   const [searchParams] = useSearchParams();
   const [userSearchQuery, setUserSearchQuery] = useState(() => searchParams.get('q') ?? '');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [roleOptions, setRoleOptionsState] = useState(() => [...LEGACY_ROLE_OPTIONS]);
+  const [rolesReady, setRolesReady] = useState(false);
+  const [rolesError, setRolesError] = useState('');
 
   const {
     users,
@@ -98,7 +127,10 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
         user.agency,
         user.position,
         user.role,
-      ].filter(Boolean).join(' ').toLowerCase();
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
 
       return haystack.includes(normalizedSearchQuery);
     });
@@ -106,7 +138,7 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
 
   const managedUser = useMemo(
     () => users.find((user) => user.id === manageUserId) ?? null,
-    [manageUserId, users],
+    [manageUserId, users]
   );
 
   const stats = useMemo(() => {
@@ -120,15 +152,41 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
   }, [filteredUsers, total]);
 
   useEffect(() => {
-    const q = searchParams.get('q');
-    if (q !== null) setUserSearchQuery(q);
-  }, [searchParams]);
+    if (mode !== 'list') return undefined;
+
+    let cancelled = false;
+
+    const loadRoleOptions = async () => {
+      try {
+        const response = await fetchRoles();
+        if (cancelled) return;
+        const nextOptions = setRoleOptions(response?.roles ?? []);
+        setRoleOptionsState([...nextOptions]);
+        setRolesError('');
+      } catch (error) {
+        if (cancelled) return;
+        console.error('[UserManagement] Failed to load dynamic user types:', error);
+        const fallbackOptions = setRoleOptions([]);
+        setRoleOptionsState([...fallbackOptions]);
+        setRolesError(
+          'Dynamic user types could not be loaded. Admin, Forecaster, and User remain available.'
+        );
+      } finally {
+        if (!cancelled) setRolesReady(true);
+      }
+    };
+
+    void loadRoleOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
 
   const handleAddSubmit = async (payload) => {
     const ok = await createUser(payload);
     if (ok) {
       setIsAddModalOpen(false);
-      resetNewUser();
+      resetNewUser?.();
     }
   };
 
@@ -144,25 +202,36 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
   const selectAll = useCallback((ids) => setSelectedIds(new Set(ids)), []);
 
-  const applyBulkAction = useCallback((action, payload) => {
-    switch (action) {
-      case 'delete':
-        bulkUpdateUsers(selectedIds, 'delete');
-        break;
-      case 'activate':
-        bulkUpdateUsers(selectedIds, (user) => ({ ...user, status: 'active', statusLabel: STATUS_LABELS.active }));
-        break;
-      case 'suspend':
-        bulkUpdateUsers(selectedIds, (user) => ({ ...user, status: 'suspended', statusLabel: STATUS_LABELS.suspended }));
-        break;
-      case 'role':
-        bulkUpdateUsers(selectedIds, (user) => ({ ...user, role: payload }));
-        break;
-      default:
-        break;
-    }
-    clearSelection();
-  }, [bulkUpdateUsers, clearSelection, selectedIds]);
+  const applyBulkAction = useCallback(
+    (action, payload) => {
+      switch (action) {
+        case 'delete':
+          bulkUpdateUsers(selectedIds, 'delete');
+          break;
+        case 'activate':
+          bulkUpdateUsers(selectedIds, (user) => ({
+            ...user,
+            status: 'active',
+            statusLabel: STATUS_LABELS.active,
+          }));
+          break;
+        case 'suspend':
+          bulkUpdateUsers(selectedIds, (user) => ({
+            ...user,
+            status: 'suspended',
+            statusLabel: STATUS_LABELS.suspended,
+          }));
+          break;
+        case 'role':
+          bulkUpdateUsers(selectedIds, (user) => ({ ...user, role: payload }));
+          break;
+        default:
+          break;
+      }
+      clearSelection();
+    },
+    [bulkUpdateUsers, clearSelection, selectedIds]
+  );
 
   if (mode === 'roles') return <RolesSection isDarkMode={isDarkMode} />;
 
@@ -180,7 +249,12 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
           <p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
             User directory
           </p>
-          <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+          <p
+            className={cn(
+              'mt-1 text-xs font-semibold',
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            )}
+          >
             {resultText}
           </p>
         </div>
@@ -194,7 +268,7 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
               'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-black shadow-sm backdrop-blur-xl transition-colors disabled:cursor-not-allowed disabled:opacity-60',
               isDarkMode
                 ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
-                : 'border-white/80 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-950',
+                : 'border-white/80 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-950'
             )}
           >
             <RefreshCw size={15} className={isLoadingUsers ? 'animate-spin' : ''} />
@@ -204,7 +278,8 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-600/20 transition-colors hover:bg-cyan-500"
+            disabled={!rolesReady}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-600/20 transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus size={15} />
             Add User
@@ -212,27 +287,68 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
         </div>
       </section>
 
-      {usersError && (
-        <section className={cn(
-          'rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm backdrop-blur-xl',
-          isDarkMode ? 'border-amber-300/20 bg-amber-400/10 text-amber-200' : 'border-amber-200 bg-amber-50/80 text-amber-800',
-        )}>
-          {usersError}
+      {(usersError || rolesError) && (
+        <section
+          className={cn(
+            'rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm backdrop-blur-xl',
+            isDarkMode
+              ? 'border-amber-300/20 bg-amber-400/10 text-amber-200'
+              : 'border-amber-200 bg-amber-50/80 text-amber-800'
+          )}
+        >
+          {usersError || rolesError}
         </section>
       )}
 
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard icon={Users} label="Total Users" value={stats.total} helper="Registered accounts" color="cyan" isDarkMode={isDarkMode} />
-        <StatCard icon={UserCheck} label="Active" value={stats.active} helper="Can access tools" color="emerald" isDarkMode={isDarkMode} />
-        <StatCard icon={Clock3} label="Pending" value={stats.pending} helper="Needs admin review" color="amber" isDarkMode={isDarkMode} />
-        <StatCard icon={Ban} label="Suspended" value={stats.suspended} helper="Access restricted" color="red" isDarkMode={isDarkMode} />
+        <StatCard
+          icon={Users}
+          label="Total Users"
+          value={stats.total}
+          helper="Registered accounts"
+          color="cyan"
+          isDarkMode={isDarkMode}
+        />
+        <StatCard
+          icon={UserCheck}
+          label="Active"
+          value={stats.active}
+          helper="Can access tools"
+          color="emerald"
+          isDarkMode={isDarkMode}
+        />
+        <StatCard
+          icon={Clock3}
+          label="Pending"
+          value={stats.pending}
+          helper="Needs admin review"
+          color="amber"
+          isDarkMode={isDarkMode}
+        />
+        <StatCard
+          icon={Ban}
+          label="Suspended"
+          value={stats.suspended}
+          helper="Access restricted"
+          color="red"
+          isDarkMode={isDarkMode}
+        />
       </section>
 
-      <section className={cn(
-        'overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl',
-        isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40',
-      )}>
-        <div className={cn('border-b px-4 py-4 sm:px-5', isDarkMode ? 'border-white/10' : 'border-white/70')}>
+      <section
+        className={cn(
+          'overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl',
+          isDarkMode
+            ? 'border-white/10 bg-slate-950/50 shadow-black/20'
+            : 'border-white/70 bg-white/70 shadow-slate-300/40'
+        )}
+      >
+        <div
+          className={cn(
+            'border-b px-4 py-4 sm:px-5',
+            isDarkMode ? 'border-white/10' : 'border-white/70'
+          )}
+        >
           <SearchBar
             query={userSearchQuery}
             onQueryChange={setUserSearchQuery}
@@ -259,19 +375,22 @@ export default function UserManagementSection({ isDarkMode = true, mode = 'list'
         </div>
       </section>
 
-      {isAddModalOpen && (
-        <AddUserModal
-          isDarkMode={isDarkMode}
-          newUser={newUser}
-          setNewUser={setNewUser}
-          onClose={() => setIsAddModalOpen(false)}
-          onSubmit={handleAddSubmit}
-        />
+      {isAddModalOpen && rolesReady && (
+        <Suspense fallback={null}>
+          <AddUserModal
+            isDarkMode={isDarkMode}
+            newUser={newUser}
+            setNewUser={setNewUser}
+            onClose={() => setIsAddModalOpen(false)}
+            onSubmit={handleAddSubmit}
+          />
+        </Suspense>
       )}
 
       {manageUserId !== null && managedUser && (
         <ManageUserModal
           user={managedUser}
+          roleOptions={roleOptions}
           isDarkMode={isDarkMode}
           onClose={() => setManageUserId(null)}
           onSave={replaceUser}

@@ -1,40 +1,35 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 import { checkAuthSession } from '@/api/auth';
 import { useAuth } from '@/hooks/useAuth';
-import OnlyUserModal from '@/components/ui/modals/OnlyUserModal';
+import {
+  hasAnyEffectivePermission,
+  hasEffectivePermission,
+  hasEveryEffectivePermission,
+  resolveAuthenticatedLandingPath,
+} from '@/core/auth/resolveLandingPath';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-
-const ALLOWED_ROLES = ['forecaster'];
-const ADMIN_ROLES = ['admin'];
-
-const resolveAuthenticatedRedirect = (role, fallback = '/studio') => {
-  if (role === 'admin') return '/dashboard';
-  if (role === 'forecaster') return '/studio';
-  if (role === 'user') return '/';
-  return fallback;
-};
 
 const ProtectedRoute = ({
   children,
   requireAuth = true,
   redirectTo = '/login',
-  adminRedirect = '/login',
-  authenticatedRedirect = '/studio',
+  authenticatedRedirect = '/',
+  permission = null,
+  requireAll = [],
+  requireAny = [],
+  deniedRedirect = '/',
 }) => {
-  const navigate = useNavigate();
-  const { isLoggedIn, role: contextRole, setIsLoggedIn, setRole } = useAuth();
+  const { setIsLoggedIn, setRole } = useAuth();
   const [retryCount, setRetryCount] = useState(0);
   const [apiState, setApiState] = useState({
     phase: 'loading',
     isAuthenticated: false,
-    role: null,
+    user: null,
   });
 
   useEffect(() => {
-    if (isLoggedIn && contextRole) return;
-
     let cancelled = false;
 
     const verify = async () => {
@@ -47,23 +42,23 @@ const ProtectedRoute = ({
         if (cancelled) return;
 
         if (unavailable) {
-          setApiState({ phase: 'unavailable', isAuthenticated: false, role: null });
+          setApiState({ phase: 'unavailable', isAuthenticated: false, user: null });
           return;
         }
 
         if (authenticated && user) {
           setIsLoggedIn(true);
           setRole(user.role);
-          setApiState({ phase: 'resolved', isAuthenticated: true, role: user.role });
+          setApiState({ phase: 'resolved', isAuthenticated: true, user });
         } else {
           setIsLoggedIn(false);
           setRole(null);
-          setApiState({ phase: 'resolved', isAuthenticated: false, role: null });
+          setApiState({ phase: 'resolved', isAuthenticated: false, user: null });
         }
       } catch (err) {
         console.error('[ProtectedRoute] Auth check failed:', err);
         if (!cancelled) {
-          setApiState({ phase: 'unavailable', isAuthenticated: false, role: null });
+          setApiState({ phase: 'unavailable', isAuthenticated: false, user: null });
         }
       }
     };
@@ -72,15 +67,11 @@ const ProtectedRoute = ({
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, contextRole, retryCount, setIsLoggedIn, setRole]);
+  }, [retryCount, setIsLoggedIn, setRole]);
 
-  const phase = isLoggedIn && contextRole ? 'resolved' : apiState.phase;
-  const isAuthenticated = isLoggedIn && contextRole ? true : apiState.isAuthenticated;
-  const role = isLoggedIn && contextRole ? contextRole : apiState.role;
+  if (apiState.phase === 'loading') return <LoadingScreen />;
 
-  if (phase === 'loading') return <LoadingScreen />;
-
-  if (phase === 'unavailable') {
+  if (apiState.phase === 'unavailable') {
     return (
       <div className="grid min-h-[320px] place-items-center p-6">
         <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
@@ -102,22 +93,25 @@ const ProtectedRoute = ({
   }
 
   if (!requireAuth) {
-    return isAuthenticated ? (
-      <Navigate to={resolveAuthenticatedRedirect(role, authenticatedRedirect)} replace />
+    return apiState.isAuthenticated ? (
+      <Navigate
+        to={resolveAuthenticatedLandingPath(apiState.user, authenticatedRedirect)}
+        replace
+      />
     ) : (
       children
     );
   }
 
-  if (!isAuthenticated) return <Navigate to={redirectTo} replace />;
+  if (!apiState.isAuthenticated) return <Navigate to={redirectTo} replace />;
 
-  if (ADMIN_ROLES.includes(role)) {
-    return <OnlyUserModal isOpen onClose={() => navigate(adminRedirect, { replace: true })} />;
-  }
+  const allowedByPermission = !permission || hasEffectivePermission(apiState.user, permission);
+  const allowedByAll = !requireAll.length || hasEveryEffectivePermission(apiState.user, requireAll);
+  const allowedByAny = !requireAny.length || hasAnyEffectivePermission(apiState.user, requireAny);
 
-  if (!ALLOWED_ROLES.includes(role)) {
-    console.warn(`[ProtectedRoute] Unrecognised role "${role}" — denying access.`);
-    return <Navigate to={redirectTo} replace />;
+  if (!allowedByPermission || !allowedByAll || !allowedByAny) {
+    const fallback = resolveAuthenticatedLandingPath(apiState.user, deniedRedirect);
+    return <Navigate to={fallback} replace />;
   }
 
   return children;

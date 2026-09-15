@@ -1,7 +1,9 @@
 import React from 'react';
+import dayjs from 'dayjs';
 import {
   ChevronLeft,
   ChevronRight,
+  Link2,
   LoaderCircle,
   Map,
   Satellite,
@@ -9,6 +11,7 @@ import {
   Wind,
   Wrench,
 } from 'lucide-react';
+import { getEcwamFrameStatus } from '@/api/ecwamFrames';
 import LayerGroupCard from './SystemLayers/LayerGroupCard';
 import CheckboxLayerRow from './SystemLayers/CheckboxLayerRow';
 import ConfigurableLayerGroup from './SystemLayers/ConfigurableLayerGroup';
@@ -21,8 +24,10 @@ import {
   WIND_ELEMENTS,
   WAVE_ELEMENTS,
 } from '../constants/layerConstants';
+import { useProjectData } from '../../Menu/hooks/useProjectData';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
+const WAVE_SYNC_STORAGE_KEY = 'WAVE_SYNC_FORECAST_HOURS';
 
 const SectionLabel = ({ label, count, isDarkMode, accent = false }) => (
   <div className="flex items-center justify-between px-1">
@@ -51,8 +56,8 @@ const SectionLabel = ({ label, count, isDarkMode, accent = false }) => (
   </div>
 );
 
-const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
-  if (!frame || !onStep) return null;
+const ForecastFrameNavigator = ({ model, frame, onStep, isDarkMode }) => {
+  if (!model || !frame || !onStep) return null;
 
   const busy = ['checking', 'building'].includes(frame.state);
   const requestedHour = frame.requestedHour;
@@ -60,7 +65,7 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
     ? `Preparing T+${requestedHour ?? frame.forecastHour}`
     : frame.state === 'ready'
       ? 'Frame ready'
-      : frame.message || 'Hourly ECWAM cache';
+      : frame.message || `3-hour ${model} cadence`;
 
   return (
     <div
@@ -77,7 +82,7 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
               isDarkMode ? 'text-cyan-200/70' : 'text-blue-700'
             )}
           >
-            ECWAM forecast hour
+            {model} forecast hour
           </div>
           <div
             className={cn(
@@ -100,7 +105,7 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
           type="button"
           onClick={() => onStep(-1)}
           disabled={busy || frame.forecastHour <= frame.minHour}
-          aria-label="Previous ECWAM forecast hour"
+          aria-label={`Previous ${model} forecast hour`}
           className={cn(
             'flex h-9 items-center justify-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-35',
             isDarkMode
@@ -126,7 +131,7 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
           type="button"
           onClick={() => onStep(1)}
           disabled={busy || frame.forecastHour >= frame.maxHour}
-          aria-label="Next ECWAM forecast hour"
+          aria-label={`Next ${model} forecast hour`}
           className={cn(
             'flex h-9 items-center justify-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-35',
             isDarkMode
@@ -140,6 +145,51 @@ const EcwamFrameNavigator = ({ frame, onStep, isDarkMode }) => {
     </div>
   );
 };
+
+const SyncForecastToggle = ({ checked, onChange, isDarkMode }) => (
+  <label
+    className={cn(
+      'flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2',
+      isDarkMode
+        ? 'border-white/10 bg-white/[0.045] text-white/70'
+        : 'border-white/80 bg-white/65 text-slate-700'
+    )}
+  >
+    <span className="flex min-w-0 items-center gap-2">
+      <span
+        className={cn(
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+          checked
+            ? isDarkMode
+              ? 'bg-cyan-400/15 text-cyan-200'
+              : 'bg-blue-500/10 text-blue-700'
+            : isDarkMode
+              ? 'bg-white/[0.06] text-white/35'
+              : 'bg-slate-100 text-slate-400'
+        )}
+      >
+        <Link2 size={14} strokeWidth={2.4} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-black">Sync forecast time</span>
+        <span
+          className={cn(
+            'block text-[9px] font-semibold',
+            isDarkMode ? 'text-white/35' : 'text-slate-400'
+          )}
+        >
+          Step all selected wave models together
+        </span>
+      </span>
+    </span>
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(event) => onChange(event.target.checked)}
+      className="h-4 w-4 shrink-0 accent-cyan-500"
+    />
+  </label>
+);
 
 const countActiveByDefinition = (definitions, state) =>
   definitions.filter((layer) => state[layer.id]).length;
@@ -167,12 +217,163 @@ const SystemLayersSection = ({
   onSetWindBarbStyle,
   isDarkMode,
 }) => {
+  const { forecastDate } = useProjectData();
   const domainCount = countActiveByDefinition(DOMAIN_LAYERS, domainLayers);
   const utilityCount = countActiveByDefinition(UTILITY_LAYERS, utilitiesLayers);
   const satelliteOverlayCount =
     (satelliteLayer ? 1 : 0) + countActiveByDefinition(SATELLITE_OVERLAY_LAYERS, utilitiesLayers);
   const referenceCount = domainCount + utilityCount + satelliteOverlayCount;
+  const showWW3Navigator = waveConfig?.models?.includes('WW3');
   const showEcwamNavigator = waveConfig?.models?.includes('ECWAM');
+  const multipleWaveNavigators = showWW3Navigator && showEcwamNavigator;
+  const ecwamForecastHour = waveConfig?.ecwamFrame?.forecastHour ?? 0;
+  const [syncForecastTime, setSyncForecastTime] = React.useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem(WAVE_SYNC_STORAGE_KEY) !== 'false';
+  });
+  const [ecwamAvailability, setEcwamAvailability] = React.useState({
+    state: 'checking',
+    message: null,
+  });
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(WAVE_SYNC_STORAGE_KEY, String(syncForecastTime));
+    }
+  }, [syncForecastTime]);
+
+  React.useEffect(() => {
+    const parsed = dayjs(forecastDate);
+    const packageDate = parsed.isValid() ? parsed.format('YYYY-MM-DD') : null;
+    let disposed = false;
+    let firstCheck = true;
+
+    const checkAvailability = async () => {
+      await Promise.resolve();
+      if (disposed) return;
+
+      if (!packageDate) {
+        setEcwamAvailability({
+          state: 'unavailable',
+          message: 'Forecast package date is not available.',
+        });
+        return;
+      }
+
+      if (firstCheck) {
+        setEcwamAvailability({ state: 'checking', message: null });
+        firstCheck = false;
+      }
+
+      try {
+        const result = await getEcwamFrameStatus(packageDate, ecwamForecastHour);
+        if (!disposed) setEcwamAvailability(result);
+      } catch (error) {
+        if (!disposed) {
+          setEcwamAvailability({
+            state: 'failed',
+            message: error?.message || 'Unable to check ECWAM readiness.',
+          });
+        }
+      }
+    };
+
+    void checkAvailability();
+    const intervalId = packageDate ? window.setInterval(checkAvailability, 60_000) : null;
+
+    return () => {
+      disposed = true;
+      if (intervalId !== null) window.clearInterval(intervalId);
+    };
+  }, [ecwamForecastHour, forecastDate]);
+
+  const waveModelStatuses = React.useMemo(() => {
+    const selectedEcwamState = showEcwamNavigator ? waveConfig?.ecwamFrame : null;
+    const effectiveStatus =
+      selectedEcwamState && selectedEcwamState.state !== 'idle'
+        ? selectedEcwamState
+        : ecwamAvailability;
+
+    if (effectiveStatus?.state === 'ready') {
+      return {
+        ECWAM: {
+          state: 'ready',
+          label: 'Ready',
+          detail: showEcwamNavigator ? 'Visible in map stack' : 'Available',
+          selectable: true,
+        },
+      };
+    }
+
+    if (
+      ['checking', 'building', 'available', 'busy', 'unavailable'].includes(effectiveStatus?.state)
+    ) {
+      return {
+        ECWAM: {
+          state: 'processing',
+          label: 'Processing',
+          detail: effectiveStatus?.message || 'Checking forecast data',
+          selectable: false,
+        },
+      };
+    }
+
+    return {
+      ECWAM: {
+        state: 'unavailable',
+        label: 'No data',
+        detail: effectiveStatus?.message || 'Forecast data is not available.',
+        selectable: false,
+      },
+    };
+  }, [ecwamAvailability, showEcwamNavigator, waveConfig?.ecwamFrame]);
+
+  const stepSingleModel = React.useCallback(
+    (model, direction) => {
+      if (model === 'WW3') return waveConfig.stepWW3ForecastHour?.(direction);
+      if (model === 'ECWAM') return waveConfig.stepEcwamForecastHour?.(direction);
+      return { state: 'invalid' };
+    },
+    [waveConfig]
+  );
+
+  const stepSyncedModels = React.useCallback(
+    async (sourceModel, direction) => {
+      if (!syncForecastTime || !multipleWaveNavigators) {
+        return stepSingleModel(sourceModel, direction);
+      }
+
+      const sourceFrame = sourceModel === 'ECWAM' ? waveConfig.ecwamFrame : waveConfig.ww3Frame;
+      const sourceHours = sourceFrame?.availableHours || [];
+      const currentIndex = sourceHours.indexOf(sourceFrame?.forecastHour);
+      if (currentIndex < 0) return { state: 'invalid' };
+
+      const nextIndex = Math.min(
+        sourceHours.length - 1,
+        Math.max(0, currentIndex + Math.sign(direction))
+      );
+      const targetHour = sourceHours[nextIndex];
+      if (targetHour === sourceFrame.forecastHour) {
+        return { state: 'ready', forecastHour: targetHour };
+      }
+
+      const ww3SupportsTarget = waveConfig.ww3Frame?.availableHours?.includes(targetHour);
+      const ecwamSupportsTarget = waveConfig.ecwamFrame?.availableHours?.includes(targetHour);
+      if (!ww3SupportsTarget || !ecwamSupportsTarget) {
+        return {
+          state: 'invalid',
+          message: `T+${targetHour} is not available in every selected wave model.`,
+        };
+      }
+
+      const ecwamResult = await waveConfig.setEcwamForecastHour?.(targetHour);
+      if (ecwamResult?.state !== 'ready') return ecwamResult;
+
+      const ww3Result = waveConfig.setWW3ForecastHour?.(targetHour);
+      return ww3Result || ecwamResult;
+    },
+    [multipleWaveNavigators, stepSingleModel, syncForecastTime, waveConfig]
+  );
 
   if (!expanded) return null;
 
@@ -283,13 +484,34 @@ const SystemLayersSection = ({
             onSetElement={onSetWaveElement}
             onToggleModel={onToggleWaveModel}
             onSetDirectionStyle={onSetWaveDirectionStyle}
+            modelStatuses={waveModelStatuses}
             afterModelSelector={
-              showEcwamNavigator ? (
-                <EcwamFrameNavigator
-                  frame={waveConfig.ecwamFrame}
-                  onStep={waveConfig.stepEcwamForecastHour}
-                  isDarkMode={isDarkMode}
-                />
+              showWW3Navigator || showEcwamNavigator ? (
+                <div className="space-y-2">
+                  {multipleWaveNavigators && (
+                    <SyncForecastToggle
+                      checked={syncForecastTime}
+                      onChange={setSyncForecastTime}
+                      isDarkMode={isDarkMode}
+                    />
+                  )}
+                  {showWW3Navigator && (
+                    <ForecastFrameNavigator
+                      model="WW3"
+                      frame={waveConfig.ww3Frame}
+                      onStep={(direction) => stepSyncedModels('WW3', direction)}
+                      isDarkMode={isDarkMode}
+                    />
+                  )}
+                  {showEcwamNavigator && (
+                    <ForecastFrameNavigator
+                      model="ECWAM"
+                      frame={waveConfig.ecwamFrame}
+                      onStep={(direction) => stepSyncedModels('ECWAM', direction)}
+                      isDarkMode={isDarkMode}
+                    />
+                  )}
+                </div>
               ) : null
             }
             isDarkMode={isDarkMode}

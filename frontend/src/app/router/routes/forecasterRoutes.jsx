@@ -6,7 +6,6 @@ import ProtectedRoute from '@/middleware/ProtectedRoute';
 import StudioLayout from '@/app/layout/StudioLayout';
 
 const AccountSettings = lazy(() => import('@/dashboards/forecaster/pages/AccountSettings'));
-const ProjectLibraryPage = lazy(() => import('@/dashboards/forecaster/pages/ProjectLibraryPage'));
 const Studio = lazy(() => import('@/dashboards/forecaster/pages/Studio'));
 const Profile = lazy(() => import('@/dashboards/forecaster/pages/Profile'));
 const PdfGenerator = lazy(() => import('@/pages/PdfGenerator'));
@@ -15,7 +14,7 @@ export default [
   {
     element: <ForecasterRouteLayout />,
     children: [
-      { path: '/studio', element: <ProjectLibraryPage /> },
+      { path: '/studio', element: <Navigate to="/forecasts" replace /> },
       {
         element: <AccountLayout />,
         children: [
@@ -36,7 +35,7 @@ export default [
       {
         path: '/studio/:projectId',
         element: (
-          <ProtectedRoute requireAuth={true}>
+          <ProtectedRoute requireAuth permission="studio.view">
             <Studio />
           </ProtectedRoute>
         ),

@@ -143,6 +143,35 @@ describe('useWaveConfig hydration', () => {
     expect(mocks.addWaveLayer).toHaveBeenCalledWith(map, true, ['WW3']);
   });
 
+  it('steps WW3 within the current chart window without a readiness request', () => {
+    mocks.projectData.chartType = '24h forecast';
+
+    const mapRef = { current: createReadyMap() };
+    const { result } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
+
+    expect(result.current.waveConfig.ww3Frame).toMatchObject({
+      state: 'ready',
+      forecastHour: 24,
+      minHour: 0,
+      maxHour: 33,
+    });
+
+    act(() => {
+      result.current.waveConfig.stepWW3ForecastHour(1);
+    });
+
+    expect(result.current.waveConfig.ww3Frame.forecastHour).toBe(27);
+    expect(mocks.ensureEcwamFrameReady).not.toHaveBeenCalled();
+
+    let invalidResult;
+    act(() => {
+      invalidResult = result.current.waveConfig.setWW3ForecastHour(60);
+    });
+
+    expect(invalidResult.state).toBe('invalid');
+    expect(result.current.waveConfig.ww3Frame.forecastHour).toBe(27);
+  });
+
   it('validates the default ECWAM frame before marking the package ready', async () => {
     mocks.readWaveStorage.mockReturnValue(ecwamWaveStorage());
 

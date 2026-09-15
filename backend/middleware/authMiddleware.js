@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 import User from '../models/User.js';
+import { resolvePermissionsForRole } from '../services/roleService.js';
 
 const ACCESS_TOKEN_ALGORITHMS = ['HS512'];
 const AUTH_USER_FIELDS =
@@ -54,6 +55,8 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: 'Authentication session has been revoked.' });
     }
 
+    const permissions = await resolvePermissionsForRole(user.role);
+
     req.auth = {
       tokenId: decoded.jti ?? null,
       issuedAt: decoded.iat ?? null,
@@ -61,6 +64,7 @@ export const authenticate = async (req, res, next) => {
       sessionVersion: decoded.sessionVersion ?? 0,
     };
     req.user = user;
+    req.permissions = permissions;
 
     return next();
   } catch (error) {

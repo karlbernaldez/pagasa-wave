@@ -52,6 +52,11 @@ wavetiles/render
 wavetiles/venv
 wavetiles/wave3data
 
+# Wave pipeline runtime and generated output
+wavetiles/.normalized-product-stage/
+wavetiles/normalized/
+wavetiles/shadow-products/
+
 # Wind processing runtime and generated output
 wind_scripts/venv/
 wind_scripts/AIFS-SINGLE/

@@ -3,124 +3,128 @@ import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
-const AuditLogSchema = new Schema({
-  action: {
-    type: String,
-    enum: [
-      'created',
-      'edited',
-      'renamed',
-      'submitted',
-      'review_started',
-      'moved_to_review',
-      'comment_added',
-      'revision_requested',
-      'revision_reopened',
-      'approved',
-      'rejected',
-      'published',
-      'marked_no_publication',
-      'archived'
-    ],
-    required: true
+const AuditLogSchema = new Schema(
+  {
+    action: {
+      type: String,
+      enum: [
+        'created',
+        'edited',
+        'renamed',
+        'submitted',
+        'review_started',
+        'moved_to_review',
+        'comment_added',
+        'revision_requested',
+        'revision_reopened',
+        'approved',
+        'rejected',
+        'published',
+        'marked_no_publication',
+        'archived',
+      ],
+      required: true,
+    },
+    performedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    previousStatus: String,
+    newStatus: String,
+    comment: String,
+    timestamp: { type: Date, default: Date.now },
   },
-  performedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  { _id: false }
+);
+
+const VersionSchema = new Schema(
+  {
+    versionNumber: { type: Number, required: true },
+    snapshot: { type: Schema.Types.Mixed, required: true },
+    features: { type: [Schema.Types.Mixed], default: [] },
+    featureCollection: { type: Schema.Types.Mixed, default: null },
+    raster: { type: Schema.Types.Mixed, default: null },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    createdAt: { type: Date, default: Date.now },
+    reason: { type: String, default: 'snapshot' },
   },
-  previousStatus: String,
-  newStatus: String,
-  comment: String,
-  timestamp: { type: Date, default: Date.now }
-}, { _id: false });
+  { _id: false }
+);
 
-const VersionSchema = new Schema({
-  versionNumber: { type: Number, required: true },
-  snapshot: { type: Schema.Types.Mixed, required: true },
-  features: { type: [Schema.Types.Mixed], default: [] },
-  featureCollection: { type: Schema.Types.Mixed, default: null },
-  raster: { type: Schema.Types.Mixed, default: null },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  createdAt: { type: Date, default: Date.now },
-  reason: { type: String, default: 'snapshot' }
-}, { _id: false });
+const ProjectSchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    description: { type: String, default: '' },
+    chartType: {
+      type: String,
+      enum: ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'],
+      required: true,
+    },
+    forecastDate: { type: Date, required: true },
+    forecastPackage: {
+      type: Schema.Types.ObjectId,
+      ref: 'ForecastPackage',
+      default: null,
+      index: true,
+    },
 
-const ProjectSchema = new Schema({
-  name: { type: String, required: true, trim: true },
-  description: { type: String, default: '' },
-  chartType: {
-    type: String,
-    enum: ['analysis','forecast_24h','forecast_36h','forecast_48h'],
-    required: true
+    status: {
+      type: String,
+      enum: [
+        'Draft',
+        'Submitted',
+        'Under Review',
+        'Revision Requested',
+        'Approved',
+        'Published',
+        'Rejected',
+        'No Publication',
+        'Archived',
+      ],
+      default: 'Draft',
+    },
+
+    version: { type: Number, default: 1 },
+
+    // Legacy compatibility only. Forecast Package chart projects are shared
+    // operational resources and this field must never be used for authorization.
+    owner: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+
+    submittedAt: Date,
+    reviewedAt: Date,
+    reviewStartedAt: Date,
+    reviewStartedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    reviewComment: String,
+    publishedAt: Date,
+    publishedRaster: { type: Schema.Types.Mixed, default: null },
+
+    noPublicationAt: Date,
+    noPublicationBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    noPublicationReason: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    noPublicationNotes: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+
+    lastOpenedAt: { type: Date, default: null },
+    lastOpenedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    openCount: { type: Number, default: 0 },
+
+    versions: [VersionSchema],
+    auditLogs: [AuditLogSchema],
   },
-  forecastDate: { type: Date, required: true },
-  forecastPackage: {
-    type: Schema.Types.ObjectId,
-    ref: 'ForecastPackage',
-    default: null,
-    index: true,
-  },
+  { timestamps: true }
+);
 
-  status: {
-    type: String,
-    enum: [
-      'Draft',
-      'Submitted',
-      'Under Review',
-      'Revision Requested',
-      'Approved',
-      'Published',
-      'Rejected',
-      'No Publication',
-      'Archived'
-    ],
-    default: 'Draft'
-  },
-
-  version: { type: Number, default: 1 },
-
-  owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-
-  submittedAt: Date,
-  reviewedAt: Date,
-  reviewStartedAt: Date,
-  reviewStartedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  reviewComment: String,
-  publishedAt: Date,
-  publishedRaster: { type: Schema.Types.Mixed, default: null },
-
-  noPublicationAt: Date,
-  noPublicationBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  noPublicationReason: {
-    type: String,
-    default: '',
-    trim: true
-  },
-  noPublicationNotes: {
-    type: String,
-    default: '',
-    trim: true
-  },
-
-  lastOpenedAt: { type: Date, default: null },
-  lastOpenedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
-  openCount: { type: Number, default: 0 },
-
-  versions: [VersionSchema],
-  auditLogs: [AuditLogSchema]
-
-}, { timestamps: true });
-
-ProjectSchema.index({ name: 1, owner: 1 }, { unique: true });
-
-// NEW PERFORMANCE INDEXES
-ProjectSchema.index({ owner: 1, updatedAt: -1 });
-ProjectSchema.index({ owner: 1, status: 1, updatedAt: -1 });
-ProjectSchema.index({ owner: 1, chartType: 1, updatedAt: -1 });
-ProjectSchema.index({ owner: 1, forecastDate: -1 });
+ProjectSchema.index({ forecastDate: -1, chartType: 1, updatedAt: -1 });
 ProjectSchema.index({ status: 1, updatedAt: -1 });
 ProjectSchema.index({ status: 1, noPublicationAt: -1 });
 ProjectSchema.index({ forecastPackage: 1, chartType: 1 });

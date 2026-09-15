@@ -33,7 +33,7 @@ import ForecastPackage from '../models/ForecastPackage.js';
 
 import protect from '../middleware/authMiddleware.js';
 import isOwnerOrAdmin from '../middleware/projectMiddleware.js';
-import { isAdmin, requireRole } from '../middleware/adminMiddleware.js';
+import { requireAnyPermission, requirePermission } from '../middleware/permissionMiddleware.js';
 import { throwError } from '../utils/errorHelper.js';
 import { canEditProjectStatus, getProjectEditLockMessage } from '../utils/projectWorkflow.js';
 import { emitForecastChartUpdated, emitForecastPackageUpdated } from '../socket/socketEmitter.js';
@@ -105,94 +105,127 @@ async function requireEditableProject(req, _res, next) {
   }
 }
 
-async function preventAdminSelfReview(req, _res, next) {
+async function preventLegacyOwnerSelfReview(req, _res, next) {
   try {
-    const project = await Project.findById(req.params.id).select('owner');
+    const project = await Project.findById(req.params.id).select('owner forecastPackage');
     if (!project) throwError('Project not found', 404);
-    if (String(project.owner) === String(req.user?.id)) {
-      throwError('Admins cannot review their own projects', 403);
+
+    const isSharedForecastChart =
+      Boolean(project.forecastPackage) ||
+      Boolean(await ForecastPackage.exists({ 'charts.project': project._id }));
+
+    if (!isSharedForecastChart && project.owner && String(project.owner) === String(req.user?.id)) {
+      throwError('Reviewers cannot review their own projects', 403);
     }
+
     next();
   } catch (error) {
     next(error);
   }
 }
 
+const canViewProject = requireAnyPermission(
+  'projects.view',
+  'projects.view_own',
+  'projects.view_all',
+  'projects.review'
+);
+
 router.get('/public/published', listPublicPublishedForecasts);
 router.get('/public/published/:id', getPublicPublishedForecastOutput);
 
 router.use(protect);
-router.use(requireRole('forecaster', 'admin'));
 
-router.get('/admin/projects', isAdmin, getAdminProjects);
-router.get('/admin/projects/:id/package', isAdmin, getAdminForecastPackage);
+router.get('/admin/projects', requirePermission('projects.review'), getAdminProjects);
+router.get(
+  '/admin/projects/:id/package',
+  requirePermission('projects.review'),
+  getAdminForecastPackage
+);
 
 router.patch(
   '/:id/start-review',
-  isAdmin,
-  preventAdminSelfReview,
+  requirePermission('projects.review'),
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('review_started'),
   startReviewProject
 );
 router.post(
   '/:id/review-comment',
-  isAdmin,
-  preventAdminSelfReview,
+  requirePermission('projects.review'),
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('comment_added'),
   addReviewComment
 );
 router.patch(
   '/:id/request-revision',
-  isAdmin,
-  preventAdminSelfReview,
+  requirePermission('projects.review'),
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('revision_requested'),
   requestProjectRevision
 );
 router.patch(
   '/:id/approve',
-  isAdmin,
-  preventAdminSelfReview,
+  requirePermission('projects.approve'),
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('approved'),
   approveProject
 );
 router.patch(
   '/:id/reject',
-  isAdmin,
-  preventAdminSelfReview,
+  requirePermission('projects.review'),
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('rejected'),
   rejectProject
 );
 router.patch(
   '/:id/no-publication',
-  isAdmin,
-  preventAdminSelfReview,
+  requirePermission('projects.review'),
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('marked_no_publication'),
   markProjectNoPublication
 );
 router.patch(
   '/:id/publish',
-  isAdmin,
-  preventAdminSelfReview,
+  requirePermission('projects.publish'),
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('published'),
   publishProject
 );
 router.patch(
   '/:id/archive',
-  isAdmin,
-  preventAdminSelfReview,
+  requirePermission('projects.review'),
+  preventLegacyOwnerSelfReview,
   emitProjectWorkflowAfterResponse('archived'),
   archiveProject
 );
 
-router.get('/:id/published-output', getPublishedForecastOutput);
+router.get('/:id/published-output', canViewProject, isOwnerOrAdmin, getPublishedForecastOutput);
 
-router.post('/', createProject);
-router.get('/', getUserProjects);
-router.get('/latest', getLatestUserProject);
-router.get('/:id', isOwnerOrAdmin, getProjectById);
-router.put('/:id', isOwnerOrAdmin, updateProject);
-router.patch('/:id/rename', isOwnerOrAdmin, requireEditableProject, renameProject);
-router.delete('/:id', isOwnerOrAdmin, requireEditableProject, deleteProject);
-router.patch('/:id/submit', emitProjectWorkflowAfterResponse('submitted'), submitProject);
+router.post('/', requirePermission('projects.create'), createProject);
+router.get('/', requirePermission('projects.view_own'), getUserProjects);
+router.get('/latest', requirePermission('projects.view_own'), getLatestUserProject);
+router.get('/:id', canViewProject, isOwnerOrAdmin, getProjectById);
+router.put('/:id', requirePermission('projects.edit'), isOwnerOrAdmin, updateProject);
+router.patch(
+  '/:id/rename',
+  requirePermission('projects.edit'),
+  isOwnerOrAdmin,
+  requireEditableProject,
+  renameProject
+);
+router.delete(
+  '/:id',
+  requirePermission('projects.edit'),
+  isOwnerOrAdmin,
+  requireEditableProject,
+  deleteProject
+);
+router.patch(
+  '/:id/submit',
+  requirePermission('projects.submit'),
+  emitProjectWorkflowAfterResponse('submitted'),
+  submitProject
+);
 
 export default router;

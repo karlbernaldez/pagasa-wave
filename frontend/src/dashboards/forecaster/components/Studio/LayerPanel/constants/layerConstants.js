@@ -21,10 +21,10 @@ export const WIND_RASTER_TILESETS = {
 };
 
 export const WAVE_MODELS = [
-  { id: 'WW3', label: 'WW3' },
-  { id: 'ECWAM', label: 'ECWAM' },
-  { id: 'MRI3', label: 'MRI3' },
-  { id: 'BMKG', label: 'BMKG' },
+  { id: 'WW3', label: 'WW3', available: true },
+  { id: 'ECWAM', label: 'ECWAM', available: true },
+  { id: 'MRI3', label: 'MRI3', available: false },
+  { id: 'BMKG', label: 'BMKG', available: false },
 ];
 
 // ── Element options ───────────────────────────────────────────────────────────

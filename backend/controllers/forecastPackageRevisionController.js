@@ -29,6 +29,13 @@ function getId(value) {
   return String(value?._id || value || '');
 }
 
+function assertReviewPermission(req) {
+  if (!req.user) throwError('Unauthorized', 401);
+  if (!new Set(req.permissions || []).has('projects.review')) {
+    throwError('You do not have permission to perform this action.', 403);
+  }
+}
+
 function getRequiredComment(value) {
   const comment = String(value || '').trim();
   if (!comment) throwError('Revision comment is required', 400);
@@ -347,13 +354,8 @@ async function sendTargetedRevision({ packageId, chartTypes, comment, userId }, 
   });
 }
 
-function assertAdmin(req) {
-  if (!req.user) throwError('Unauthorized', 401);
-  if (req.user.role !== 'admin') throwError('Admin access required', 403);
-}
-
 export const requestTargetedForecastPackageRevision = asyncHandler(async (req, res) => {
-  assertAdmin(req);
+  assertReviewPermission(req);
   await sendTargetedRevision(
     {
       packageId: req.params.id,
@@ -366,7 +368,7 @@ export const requestTargetedForecastPackageRevision = asyncHandler(async (req, r
 });
 
 export const requestForecastChartRevisionByProject = asyncHandler(async (req, res) => {
-  assertAdmin(req);
+  assertReviewPermission(req);
 
   const forecastPackage = await ForecastPackage.findOne({ 'charts.project': req.params.projectId })
     .select('_id charts')

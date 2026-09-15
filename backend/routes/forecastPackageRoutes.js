@@ -4,13 +4,13 @@ import ForecastPackage from '../models/ForecastPackage.js';
 import Project from '../models/Project.js';
 import {
   approveForecastPackage,
-  createForecastPackage,
   getForecastPackageById,
   getUserForecastPackages,
   publishForecastPackage,
   startForecastPackageReview,
   updateForecastChartCompletion,
 } from '../controllers/forecastPackageController.js';
+import { createForecastPackage } from '../controllers/forecastPackageCreateController.js';
 import {
   requestForecastChartRevisionByProject,
   requestTargetedForecastPackageRevision,
@@ -24,7 +24,7 @@ import {
   updateForecastChartCompletionByProject,
 } from '../controllers/forecastPackageEditingController.js';
 import protect from '../middleware/authMiddleware.js';
-import { isAdmin } from '../middleware/adminMiddleware.js';
+import { requireAnyPermission, requirePermission } from '../middleware/permissionMiddleware.js';
 import {
   lockPackageChartMutation,
   lockProjectParamMutation,
@@ -324,63 +324,82 @@ async function getAdminForecastPackages(req, res, next) {
   }
 }
 
+const canViewForecastPackages = requireAnyPermission(
+  'projects.view',
+  'projects.view_all',
+  'projects.review'
+);
+
 router.use(protect);
 
-router.get('/admin/packages', isAdmin, getAdminForecastPackages);
+router.get('/admin/packages', requirePermission('projects.review'), getAdminForecastPackages);
 router.patch(
   '/:id/start-review',
-  isAdmin,
+  requirePermission('projects.review'),
   emitForecastPackageWorkflowAfterResponse('review_started'),
   startForecastPackageReview
 );
 router.patch(
   '/:id/request-revision',
-  isAdmin,
+  requirePermission('projects.review'),
   emitForecastPackageWorkflowAfterResponse('revision_requested'),
   requestTargetedForecastPackageRevision
 );
 router.patch(
   '/:id/approve',
-  isAdmin,
+  requirePermission('projects.approve'),
   emitForecastPackageWorkflowAfterResponse('approved'),
   approveForecastPackage
 );
 router.patch(
   '/:id/publish',
-  isAdmin,
+  requirePermission('projects.publish'),
   emitForecastPackageWorkflowAfterResponse('published'),
   publishForecastPackage
 );
 
-router.post('/', emitForecastPackageWorkflowAfterResponse('created'), createForecastPackage);
-router.get('/', getUserForecastPackages);
-router.get('/current', getCurrentForecastPackage);
-router.get('/charts/project/:projectId/context', getForecastPackageChartContextByProject);
+router.post(
+  '/',
+  requirePermission('projects.create'),
+  emitForecastPackageWorkflowAfterResponse('created'),
+  createForecastPackage
+);
+router.get('/', canViewForecastPackages, getUserForecastPackages);
+router.get('/current', canViewForecastPackages, getCurrentForecastPackage);
+router.get(
+  '/charts/project/:projectId/context',
+  canViewForecastPackages,
+  getForecastPackageChartContextByProject
+);
 router.patch(
   '/charts/project/:projectId/request-revision',
-  isAdmin,
+  requirePermission('projects.review'),
   emitForecastPackageWorkflowAfterResponse('revision_requested'),
   requestForecastChartRevisionByProject
 );
 router.patch(
   '/charts/project/:projectId/claim',
+  requirePermission('projects.edit'),
   emitForecastPackageWorkflowAfterResponse('chart_claimed'),
   joinForecastPackageChartEditingByProject
 );
 router.patch(
   '/charts/project/:projectId/release',
+  requirePermission('projects.edit'),
   emitForecastPackageWorkflowAfterResponse('chart_released'),
   releaseForecastPackageChartEditingByProject
 );
 router.patch(
   '/charts/project/:projectId/completion',
+  requirePermission('projects.edit'),
   lockProjectParamMutation,
   emitForecastPackageWorkflowAfterResponse('chart_completion_updated'),
   updateForecastChartCompletionByProject
 );
-router.get('/:id', getForecastPackageById);
+router.get('/:id', canViewForecastPackages, getForecastPackageById);
 router.patch(
   '/:id/charts/:chartType/completion',
+  requirePermission('projects.edit'),
   lockPackageChartMutation,
   requireJoinedChartBeforeCompletion,
   emitForecastPackageWorkflowAfterResponse('chart_completion_updated'),
@@ -388,6 +407,7 @@ router.patch(
 );
 router.patch(
   '/:id/submit',
+  requirePermission('projects.submit'),
   requireResolvedRevisionBeforeSubmit,
   emitForecastPackageWorkflowAfterResponse('submitted'),
   submitForecastPackage

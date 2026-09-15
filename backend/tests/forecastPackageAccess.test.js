@@ -48,28 +48,75 @@ async function withMockedForecastPackageFindOne(result, fn) {
   }
 }
 
-test('admins and owners of non-package projects retain access', async () => {
+test('view-all users and permitted owners of non-package projects retain access', async () => {
   const originalExists = ForecastPackage.exists;
   try {
     ForecastPackage.exists = async () => null;
-    assert.equal(await canAccessProject({ id: 'admin-1', role: 'admin' }, project), true);
-    assert.equal(await canAccessProject({ id: OWNER_ID, role: 'user' }, project), true);
+    assert.equal(
+      await canAccessProject({ id: 'reviewer-1', role: 'reviewer' }, project, [
+        'projects.view_all',
+      ]),
+      true
+    );
+    assert.equal(
+      await canAccessProject({ id: OWNER_ID, role: 'custom_forecaster' }, project, [
+        'projects.view_own',
+      ]),
+      true
+    );
   } finally {
     ForecastPackage.exists = originalExists;
   }
 });
 
-test('all forecasters may collaborate on forecast-package charts', async () => {
+test('projects.view grants read access to shared forecast-package charts', async () => {
   const originalExists = ForecastPackage.exists;
   try {
     ForecastPackage.exists = async () => ({ _id: 'package-1' });
-    assert.equal(await canAccessProject({ id: 'forecaster-2', role: 'forecaster' }, project), true);
+    assert.equal(
+      await canAccessProject({ id: 'viewer-1', role: 'custom_viewer' }, project, ['projects.view']),
+      true
+    );
   } finally {
     ForecastPackage.exists = originalExists;
   }
 });
 
-test('ordinary users do not inherit access from forecast-package membership', async () => {
+test('users with project editing or review permissions may collaborate on forecast-package charts', async () => {
+  const originalExists = ForecastPackage.exists;
+  try {
+    ForecastPackage.exists = async () => ({ _id: 'package-1' });
+    assert.equal(
+      await canAccessProject({ id: 'forecaster-2', role: 'custom_forecaster' }, project, [
+        'projects.edit',
+      ]),
+      true
+    );
+    assert.equal(
+      await canAccessProject({ id: 'reviewer-2', role: 'reviewer' }, project, ['projects.review']),
+      true
+    );
+  } finally {
+    ForecastPackage.exists = originalExists;
+  }
+});
+
+test('projects.view_own alone does not grant shared forecast-package access', async () => {
+  const originalExists = ForecastPackage.exists;
+  try {
+    ForecastPackage.exists = async () => ({ _id: 'package-1' });
+    assert.equal(
+      await canAccessProject({ id: OWNER_ID, role: 'legacy_owner' }, project, [
+        'projects.view_own',
+      ]),
+      false
+    );
+  } finally {
+    ForecastPackage.exists = originalExists;
+  }
+});
+
+test('users without project permissions do not inherit access from forecast-package membership', async () => {
   const originalExists = ForecastPackage.exists;
   let packageLookupCount = 0;
   try {
@@ -77,7 +124,7 @@ test('ordinary users do not inherit access from forecast-package membership', as
       packageLookupCount += 1;
       return { _id: 'package-1' };
     };
-    assert.equal(await canAccessProject({ id: 'user-2', role: 'user' }, project), false);
+    assert.equal(await canAccessProject({ id: 'user-2', role: 'user' }, project, []), false);
     assert.equal(packageLookupCount, 1);
   } finally {
     ForecastPackage.exists = originalExists;

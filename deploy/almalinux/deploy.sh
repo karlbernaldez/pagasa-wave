@@ -49,6 +49,8 @@ if ! id "$APP_USER" >/dev/null 2>&1; then
   useradd --system --create-home --shell /bin/bash "$APP_USER"
 fi
 
+DEPLOY_SHA="$(sudo -u "$APP_USER" git -C "$APP_ROOT" rev-parse HEAD)"
+
 mkdir -p /etc/wavelab
 mkdir -p "$APP_ROOT/backend/logs" "$APP_ROOT/backend/frames" "$APP_ROOT/backend/public" "$APP_ROOT/backend/tmp"
 mkdir -p "$WAVETILES_ROOT"
@@ -115,10 +117,22 @@ if grep -q "replace-with-public-mapbox-token" "$FRONTEND_ENV"; then
   exit 2
 fi
 
+# Install full backend dependencies first so deployment preflight can execute
+# against the exact code and dependency set that is about to be activated.
 sudo -u "$APP_USER" bash -lc "
   set -euo pipefail
   cd '$APP_ROOT/backend'
   npm ci
+"
+
+# Validate the current environment with the current security rules before the
+# running API is interrupted. This catches restart-unsafe configuration such as
+# production + COOKIE_SECURE=false while the previous backend remains online.
+node "$APP_ROOT/backend/scripts/validateDeploymentEnv.js" "$BACKEND_ENV"
+
+sudo -u "$APP_USER" bash -lc "
+  set -euo pipefail
+  cd '$APP_ROOT/backend'
   npm test
   npm run test:workflow
   npm ci --omit=dev
@@ -139,6 +153,10 @@ if [[ ! -d "$FRONTEND_DIST" ]]; then
   exit 1
 fi
 
+# Record the exact repository revision that produced the currently served Vite
+# bundle. This makes stale frontend deployments visible without inspecting asset hashes.
+printf '%s\n' "$DEPLOY_SHA" > "$FRONTEND_DIST/deployed-revision.txt"
+
 # Vite recreates frontend/dist during each build. Re-apply web-server-safe
 # permissions and SELinux labels so Nginx can serve public assets such as
 # /pagasa-logo.png, favicons, and immutable /assets/* files after every deploy.
@@ -150,10 +168,12 @@ fi
 chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIST"
 make_path_traversable "$FRONTEND_DIST"
 make_path_traversable "$WAVETILES_ROOT"
-find "$FRONTEND_DIST" -type d -exec chmod 755 {} \;
-find "$FRONTEND_DIST" -type f -exec chmod 644 {} \;
-find "$WAVETILES_ROOT" -type d -exec chmod 755 {} \;
-find "$WAVETILES_ROOT" -type f -exec chmod 644 {} \;
+# Batch chmod arguments so large WW3/ECWAM tile caches do not spawn one chmod
+# process per file during every deployment.
+find "$FRONTEND_DIST" -type d -exec chmod 755 {} +
+find "$FRONTEND_DIST" -type f -exec chmod 644 {} +
+find "$WAVETILES_ROOT" -type d -exec chmod 755 {} +
+find "$WAVETILES_ROOT" -type f -exec chmod 644 {} +
 
 if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]]; then
   if command -v semanage >/dev/null 2>&1; then
@@ -172,6 +192,39 @@ else
   exit 1
 fi
 
+# Keep installed package-builder wrappers and units synchronized with the same
+# repository revision as the application. Existing environment files are never overwritten.
+if [[ -f "$SCRIPT_DIR/wavelab-ww3-package-builder" ]]; then
+  install -o root -g root -m 0755 \
+    "$SCRIPT_DIR/wavelab-ww3-package-builder" \
+    /usr/local/sbin/wavelab-ww3-package-builder
+fi
+if [[ -f "$SCRIPT_DIR/wavelab-ww3-package-builder.service" ]]; then
+  install -o root -g root -m 0644 \
+    "$SCRIPT_DIR/wavelab-ww3-package-builder.service" \
+    /etc/systemd/system/wavelab-ww3-package-builder.service
+fi
+if [[ -f "$SCRIPT_DIR/wavelab-ww3-package-builder.timer" ]]; then
+  install -o root -g root -m 0644 \
+    "$SCRIPT_DIR/wavelab-ww3-package-builder.timer" \
+    /etc/systemd/system/wavelab-ww3-package-builder.timer
+fi
+if [[ -f "$SCRIPT_DIR/wavelab-ecwam-package-builder" ]]; then
+  install -o root -g root -m 0755 \
+    "$SCRIPT_DIR/wavelab-ecwam-package-builder" \
+    /usr/local/sbin/wavelab-ecwam-package-builder
+fi
+if [[ -f "$SCRIPT_DIR/wavelab-ecwam-package-builder.service" ]]; then
+  install -o root -g root -m 0644 \
+    "$SCRIPT_DIR/wavelab-ecwam-package-builder.service" \
+    /etc/systemd/system/wavelab-ecwam-package-builder.service
+fi
+if [[ -f "$SCRIPT_DIR/wavelab-ecwam-package-builder.timer" ]]; then
+  install -o root -g root -m 0644 \
+    "$SCRIPT_DIR/wavelab-ecwam-package-builder.timer" \
+    /etc/systemd/system/wavelab-ecwam-package-builder.timer
+fi
+
 cp "$SCRIPT_DIR/wavelab-backend.service" "$SERVICE_FILE"
 cp "$SCRIPT_DIR/nginx.conf" "$NGINX_CONF"
 sed -i \
@@ -186,15 +239,32 @@ sed -i \
 
 nginx -t
 systemctl daemon-reload
-systemctl enable --now wavelab-backend
+systemctl enable wavelab-backend
+# `enable --now` does not restart an already-running service. Explicit restart
+# guarantees that backend code/config from DEPLOY_SHA is actually activated.
+systemctl restart wavelab-backend
 systemctl reload nginx
 
-curl -fsS http://127.0.0.1:5000/status >/dev/null
+# Give the restarted API a bounded startup window before declaring deployment failure.
+backend_ready=0
+for _ in {1..20}; do
+  if curl -fsS --max-time 5 http://127.0.0.1:5000/status >/dev/null; then
+    backend_ready=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$backend_ready" -ne 1 ]]; then
+  echo "Backend did not become healthy after restart."
+  exit 1
+fi
 
-# Validate that root-level Vite public assets are reachable through Nginx.
-curl -fsSI "http://127.0.0.1/pagasa-logo.png" >/dev/null
+# Validate that root-level Vite public assets and the deployed revision marker are reachable.
+curl -fsSI --max-time 10 "http://127.0.0.1/pagasa-logo.png" >/dev/null
+curl -fsS --max-time 10 "http://127.0.0.1/deployed-revision.txt" | grep -Fx "$DEPLOY_SHA" >/dev/null
 
 echo "WaveLab deploy completed."
+echo "Deployed revision: $DEPLOY_SHA"
 echo "Public origin used for this deployment: $PUBLIC_ORIGIN"
 echo "App root used for this deployment: $APP_ROOT"
 echo "WW3 tile base used for this deployment: $PUBLIC_ORIGIN/wavetiles"

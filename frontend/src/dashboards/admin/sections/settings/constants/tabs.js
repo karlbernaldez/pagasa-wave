@@ -1,4 +1,12 @@
-import { FileText, LayoutDashboard, Mail, MapPinned, Settings, ShieldCheck, Workflow } from 'lucide-react';
+import {
+  FileText,
+  LayoutDashboard,
+  Mail,
+  MapPinned,
+  Settings,
+  ShieldCheck,
+  Workflow,
+} from 'lucide-react';
 
 export const SETTINGS_GROUPS = [
   {
@@ -9,7 +17,8 @@ export const SETTINGS_GROUPS = [
   {
     id: 'forecasterWorkspace',
     label: 'Forecaster Workspace',
-    description: 'Helper copy, workspace defaults, collaboration reminders, map defaults, and forecaster-facing guidance.',
+    description:
+      'Helper copy, workspace defaults, collaboration reminders, map defaults, and forecaster-facing guidance.',
   },
   {
     id: 'adminReview',
@@ -30,6 +39,8 @@ export const TABS = [
     icon: Workflow,
     group: 'forecastOperations',
     apiPage: null,
+    viewPermission: 'settings_schedule.view',
+    managePermission: 'settings_schedule.manage',
   },
   {
     id: 'forecasterWorkspace',
@@ -37,6 +48,8 @@ export const TABS = [
     icon: LayoutDashboard,
     group: 'forecasterWorkspace',
     apiPage: null,
+    viewPermission: 'settings_workspace.view',
+    managePermission: 'settings_workspace.manage',
   },
   {
     id: 'mapView',
@@ -44,6 +57,8 @@ export const TABS = [
     icon: MapPinned,
     group: 'forecasterWorkspace',
     apiPage: 'mapview',
+    viewPermission: 'settings_map_view.view',
+    managePermission: 'settings_map_view.manage',
   },
   {
     id: 'adminReview',
@@ -51,6 +66,8 @@ export const TABS = [
     icon: ShieldCheck,
     group: 'adminReview',
     apiPage: null,
+    viewPermission: 'settings_review_targets.view',
+    managePermission: 'settings_review_targets.manage',
   },
   {
     id: 'general',
@@ -58,6 +75,8 @@ export const TABS = [
     icon: Settings,
     group: 'publicSite',
     apiPage: null,
+    viewPermission: 'settings_public_general.view',
+    managePermission: 'settings_public_general.manage',
   },
   {
     id: 'about',
@@ -65,6 +84,8 @@ export const TABS = [
     icon: FileText,
     group: 'publicSite',
     apiPage: 'about',
+    viewPermission: 'settings_public_about.view',
+    managePermission: 'settings_public_about.manage',
   },
   {
     id: 'contact',
@@ -72,5 +93,7 @@ export const TABS = [
     icon: Mail,
     group: 'publicSite',
     apiPage: 'contact',
+    viewPermission: 'settings_public_contact.view',
+    managePermission: 'settings_public_contact.manage',
   },
 ];

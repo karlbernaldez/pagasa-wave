@@ -21,6 +21,10 @@ function getCompletionRow(forecastPackage, chartType) {
   return forecastPackage?.chartCompletion?.find((row) => row.chartType === chartType);
 }
 
+function hasPermission(permissions, permission) {
+  return Array.isArray(permissions) && permissions.includes(permission);
+}
+
 export async function getForecastPackageChartAccess(projectId) {
   if (!mongoose.Types.ObjectId.isValid(projectId)) return null;
 
@@ -61,18 +65,25 @@ export async function isForecastPackageChartProject(projectId) {
   return Boolean(forecastPackage);
 }
 
-export async function canAccessProject(user, project) {
+export async function canAccessProject(user, project, permissions = []) {
   if (!user || !project) return false;
-  if (user.role === 'admin') return true;
+
+  if (hasPermission(permissions, 'projects.view_all')) return true;
 
   const sharedForecastChart = await isForecastPackageChartProject(project._id || project.id);
   if (sharedForecastChart) {
-    // Forecast-package charts are shared operational workspaces. Every authenticated
-    // forecaster may collaborate, but ordinary user accounts must not retain access
-    // even if they originally owned a project before it entered the package.
-    return user.role === 'forecaster';
+    return (
+      hasPermission(permissions, 'projects.view') ||
+      hasPermission(permissions, 'projects.edit') ||
+      hasPermission(permissions, 'projects.review') ||
+      hasPermission(permissions, 'projects.approve') ||
+      hasPermission(permissions, 'projects.publish')
+    );
   }
 
   const projectOwner = project.owner?._id || project.owner;
-  return String(projectOwner) === String(user.id);
+  return (
+    String(projectOwner) === String(user.id) &&
+    (hasPermission(permissions, 'projects.view_own') || hasPermission(permissions, 'projects.edit'))
+  );
 }

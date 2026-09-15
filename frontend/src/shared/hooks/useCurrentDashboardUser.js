@@ -111,7 +111,9 @@ async function loadCurrentUser() {
 
     try {
       const fullUser = await fetchUserDetails(userId);
-      userCache = fullUser || sessionUser;
+      userCache = fullUser
+        ? { ...fullUser, permissions: sessionUser.permissions || [] }
+        : sessionUser;
     } catch (error) {
       console.error('[useCurrentDashboardUser] Failed to fetch user details:', error);
       userCache = sessionUser;
@@ -150,8 +152,15 @@ export default function useCurrentDashboardUser(fallbackUser = null, options = {
       const updatedUser = event.detail?.user;
       if (!updatedUser) return;
 
-      primeCurrentDashboardUserCache(updatedUser);
-      setRawUser((prev) => ({ ...(prev || {}), ...updatedUser }));
+      setRawUser((prev) => {
+        const nextUser = {
+          ...(prev || {}),
+          ...updatedUser,
+          permissions: updatedUser.permissions || prev?.permissions || [],
+        };
+        primeCurrentDashboardUserCache(nextUser);
+        return nextUser;
+      });
     };
 
     window.addEventListener(USER_UPDATED_EVENT, handleUserUpdate);

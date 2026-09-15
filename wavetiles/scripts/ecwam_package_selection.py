@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
-"""Select one complete ECWAM source cycle for a forecast package date."""
+"""Select the configured aligned ECWAM source cycle for a forecast package date."""
 
 from __future__ import annotations
 
 import argparse
 import re
-from datetime import date, datetime, timedelta
+import sys
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from source_cycle_policy import preferred_cycle_hour
 
 CYCLE_RE = re.compile(r"\d{10}")
 PACKAGE_DATE_RE = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})")
 ECWAM_FILE_RE = re.compile(
     r"^W1P(?P<cycle_mmdd>\d{4})(?P<cycle_hhmm>\d{4})(?P<valid_mmddhh>\d{6})(?P<suffix>\d{3})$"
 )
+REQUIRED_FORECAST_HOURS = tuple(range(0, 61, 3))
 
 
 def parse_package_date(raw: str) -> date:
@@ -23,21 +31,26 @@ def parse_package_date(raw: str) -> date:
     return date(*map(int, match.groups()))
 
 
-def required_valid_times(package_date: date) -> tuple[datetime, ...]:
-    start = datetime(package_date.year, package_date.month, package_date.day)
-    return (
-        start,
-        start + timedelta(hours=24),
-        start + timedelta(hours=36),
-        start + timedelta(hours=48),
-    )
+def source_cycle_hour() -> int:
+    return preferred_cycle_hour("ECWAM")
 
 
-def forecast_valid_time(package_date: date, forecast_hour: int) -> datetime:
-    if not 0 <= forecast_hour <= 48:
-        raise ValueError("forecast hour must be between 0 and 48 inclusive")
-    start = datetime(package_date.year, package_date.month, package_date.day)
-    return start + timedelta(hours=forecast_hour)
+def target_source_cycle(package_date: date, cycle_hour: int | None = None) -> datetime:
+    hour = source_cycle_hour() if cycle_hour is None else cycle_hour
+    return datetime.combine(package_date - timedelta(days=1), time(hour=hour))
+
+
+def required_valid_times(package_date: date, cycle_hour: int | None = None) -> tuple[datetime, ...]:
+    start = target_source_cycle(package_date, cycle_hour)
+    return tuple(start + timedelta(hours=hour) for hour in REQUIRED_FORECAST_HOURS)
+
+
+def forecast_valid_time(
+    package_date: date, forecast_hour: int, cycle_hour: int | None = None
+) -> datetime:
+    if forecast_hour not in REQUIRED_FORECAST_HOURS:
+        raise ValueError("forecast hour must be from 0 through 60 in 3-hour increments")
+    return target_source_cycle(package_date, cycle_hour) + timedelta(hours=forecast_hour)
 
 
 def package_tag(package_date: date) -> str:
@@ -89,26 +102,25 @@ def files_by_valid_time(cycle_dir: Path) -> dict[datetime, Path]:
 
 
 def cycle_is_complete(cycle_dir: Path, package_date: date) -> bool:
+    cycle_hour = source_cycle_hour()
+    target = target_source_cycle(package_date, cycle_hour)
+    if cycle_dir.name != target.strftime("%Y%m%d%H"):
+        return False
     available = files_by_valid_time(cycle_dir)
-    return all(value in available for value in required_valid_times(package_date))
+    return all(value in available for value in required_valid_times(package_date, cycle_hour))
 
 
 def select_source_cycle(input_root: Path, package_date: date) -> Path | None:
-    cycles = (
-        sorted(
-            (path for path in input_root.iterdir() if path.is_dir() and CYCLE_RE.fullmatch(path.name)),
-            key=lambda path: path.name,
-            reverse=True,
-        )
-        if input_root.is_dir()
-        else []
-    )
-    return next((path for path in cycles if cycle_is_complete(path, package_date)), None)
+    target = input_root / target_source_cycle(package_date).strftime("%Y%m%d%H")
+    return target if cycle_is_complete(target, package_date) else None
 
 
 def resolve_cycle_dir(input_root: Path, package_date: date, source_cycle: str | None) -> Path | None:
-    cycle_dir = input_root / source_cycle if source_cycle else select_source_cycle(input_root, package_date)
-    if cycle_dir is None or not cycle_is_complete(cycle_dir, package_date):
+    target_name = target_source_cycle(package_date).strftime("%Y%m%d%H")
+    if source_cycle and source_cycle != target_name:
+        return None
+    cycle_dir = input_root / target_name
+    if not cycle_is_complete(cycle_dir, package_date):
         return None
     return cycle_dir
 
@@ -118,12 +130,13 @@ def print_manifest(input_root: Path, package_date: date, source_cycle: str | Non
     if cycle_dir is None:
         return 1
     available = files_by_valid_time(cycle_dir)
-    required = required_valid_times(package_date)
-    labels = ("analysis", "24h", "36h", "48h")
+    cycle_hour = source_cycle_hour()
     tag = package_tag(package_date)
-    for label, valid in zip(labels, required):
+    for forecast_hour, valid in zip(
+        REQUIRED_FORECAST_HOURS, required_valid_times(package_date, cycle_hour)
+    ):
         stamp = valid.strftime("%Y%m%d%H")
-        print(f"{label}|{stamp}|{tag}|{available[valid]}|{cycle_dir.name}")
+        print(f"{forecast_hour}h|{stamp}|{tag}|{available[valid]}|{cycle_dir.name}")
     return 0
 
 
@@ -137,7 +150,10 @@ def print_frame(
     if cycle_dir is None:
         return 1
 
-    valid = forecast_valid_time(package_date, forecast_hour)
+    try:
+        valid = forecast_valid_time(package_date, forecast_hour, source_cycle_hour())
+    except ValueError:
+        return 1
     available = files_by_valid_time(cycle_dir)
     gribfile = available.get(valid)
     if gribfile is None:
@@ -153,6 +169,8 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
     today_parser = subparsers.add_parser("today")
     today_parser.add_argument("--timezone", default="Asia/Manila")
+    target_parser = subparsers.add_parser("target")
+    target_parser.add_argument("package_date")
     select_parser = subparsers.add_parser("select")
     select_parser.add_argument("input_root", type=Path)
     select_parser.add_argument("package_date")
@@ -172,6 +190,9 @@ def main() -> int:
         return 0
 
     parsed_date = parse_package_date(args.package_date)
+    if args.command == "target":
+        print(target_source_cycle(parsed_date).strftime("%Y%m%d%H"))
+        return 0
     if args.command == "select":
         selected = select_source_cycle(args.input_root, parsed_date)
         if selected is None:

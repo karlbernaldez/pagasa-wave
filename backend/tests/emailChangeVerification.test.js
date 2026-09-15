@@ -100,7 +100,7 @@ test('owner cannot bypass pending verification through generic profile update', 
   assert.equal(databaseTouched, false);
 });
 
-test('admin changing another account email still invalidates verification and sessions', async () => {
+test('user manager changing another account email still invalidates verification and sessions', async () => {
   let call;
   const res = makeResponse();
   const updatedUser = {
@@ -128,6 +128,7 @@ test('admin changing another account email still invalidates verification and se
           params: { userId },
           body: { email: ' New@Example.COM ' },
           user: adminActor,
+          authorizedPermissions: ['users.edit'],
         },
         res
       );

@@ -71,6 +71,10 @@ const buildUserFilter = ({ search, status, role } = {}) => {
   return filter;
 };
 
+const hasPermission = (req, permission) =>
+  (req.authorizedPermissions || []).includes(permission) ||
+  (req.permissions || []).includes(permission);
+
 export const getAllUsers = async (req, res) => {
   try {
     const page = clampInt(req.query.page, 1, Number.MAX_SAFE_INTEGER, 1);
@@ -201,9 +205,8 @@ export const changePassword = async (req, res) => {
 
     if (!actor) return res.status(401).json({ message: 'Unauthorized' });
 
-    const isOwner = actor._id.toString() === userId;
-    const isAdmin = actor.role === 'admin';
-    if (!isOwner && !isAdmin) return res.status(403).json({ message: 'Forbidden' });
+    const isOwner = String(actor._id || actor.id) === String(userId);
+    if (!isOwner) return res.status(403).json({ message: 'Forbidden' });
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Current and new password are required.' });
@@ -258,14 +261,14 @@ export const updateUserDetails = async (req, res) => {
 
     if (!actor) return res.status(401).json({ message: 'Unauthorized' });
 
-    const isOwner = actor._id.toString() === userId;
-    const isAdmin = actor.role === 'admin';
+    const isOwner = String(actor._id || actor.id) === String(userId);
+    const canManageUser = hasPermission(req, 'users.edit');
 
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !canManageUser) {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
-    const allowedFields = isAdmin && !isOwner ? ADMIN_FIELDS : OWNER_FIELDS;
+    const allowedFields = canManageUser && !isOwner ? ADMIN_FIELDS : OWNER_FIELDS;
     const updates = Object.fromEntries(
       allowedFields.filter((f) => req.body[f] !== undefined).map((f) => [f, req.body[f]])
     );
@@ -331,7 +334,10 @@ export const updateUserDetails = async (req, res) => {
     }
 
     if (roleChanged || emailChanged) {
-      const updateDocument = { $set: { ...updates } };
+      const updateDocument = {
+        $set: { ...updates },
+        $inc: { sessionVersion: 1 },
+      };
       const filter = { _id: userId, deletedAt: null };
 
       if (roleChanged) {
@@ -351,7 +357,6 @@ export const updateUserDetails = async (req, res) => {
           passwordResetToken: '',
           passwordResetExpires: '',
         };
-        updateDocument.$inc = { sessionVersion: 1 };
       }
 
       const user = await User.findOneAndUpdate(filter, updateDocument, {

@@ -16,12 +16,7 @@ const ALLOWED_ADMIN_STATUSES = Object.freeze([
   PROJECT_STATUS.ARCHIVED,
 ]);
 
-const ALLOWED_CHART_TYPES = [
-  'analysis',
-  'forecast_24h',
-  'forecast_36h',
-  'forecast_48h',
-];
+const ALLOWED_CHART_TYPES = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
 
 const CHART_TYPE_SORT = ALLOWED_CHART_TYPES.reduce((order, chartType, index) => {
   order[chartType] = index;
@@ -46,6 +41,16 @@ const ADMIN_PROJECT_SORT_FIELDS = {
   updatedAt: 'updatedAt',
   createdAt: 'createdAt',
 };
+
+function assertAuthorizedPermission(req, permission) {
+  if (!req.user) throwError('Unauthorized', 401);
+  if (
+    !Array.isArray(req.authorizedPermissions) ||
+    !req.authorizedPermissions.includes(permission)
+  ) {
+    throwError('You do not have permission to perform this action.', 403);
+  }
+}
 
 function clampInt(value, min, max, fallback) {
   const number = Math.trunc(Number(value));
@@ -86,7 +91,7 @@ function getPackageNamePrefix(projectName = '') {
 
   return CHART_NAME_SUFFIX_PATTERNS.reduce(
     (current, pattern) => current.replace(pattern, ''),
-    name,
+    name
   ).trim();
 }
 
@@ -127,12 +132,14 @@ function sortProjectsByChartType(projects = []) {
 }
 
 function getPackageProjects(forecastPackage) {
-  return sortProjectsByChartType(uniqueProjectsById(
-    (forecastPackage?.charts || [])
-      .map((chart) => chart?.project)
-      .filter((project) => project && typeof project === 'object')
-      .filter((project) => ALLOWED_CHART_TYPES.includes(project.chartType)),
-  ));
+  return sortProjectsByChartType(
+    uniqueProjectsById(
+      (forecastPackage?.charts || [])
+        .map((chart) => chart?.project)
+        .filter((project) => project && typeof project === 'object')
+        .filter((project) => ALLOWED_CHART_TYPES.includes(project.chartType))
+    )
+  );
 }
 
 function withAdminProjectPopulates(query) {
@@ -167,13 +174,16 @@ function withPackagePopulates(query) {
 }
 
 function buildStatusCounts(rows) {
-  return ALLOWED_ADMIN_STATUSES.reduce((counts, status) => {
-    counts[status] = 0;
-    return counts;
-  }, rows.reduce((counts, row) => {
-    if (row?._id) counts[row._id] = row.count;
-    return counts;
-  }, {}));
+  return ALLOWED_ADMIN_STATUSES.reduce(
+    (counts, status) => {
+      counts[status] = 0;
+      return counts;
+    },
+    rows.reduce((counts, row) => {
+      if (row?._id) counts[row._id] = row.count;
+      return counts;
+    }, {})
+  );
 }
 
 async function getOwnerSearchIds(searchRegex) {
@@ -193,9 +203,7 @@ async function getOwnerSearchIds(searchRegex) {
 }
 
 export const getAdminProjects = asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const {
     page = 1,
@@ -285,10 +293,7 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
       .limit(limitNumber)
       .lean(),
     Project.countDocuments(query),
-    Project.aggregate([
-      { $match: query },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]),
+    Project.aggregate([{ $match: query }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
   ]);
 
   res.json({
@@ -304,14 +309,14 @@ export const getAdminProjects = asyncHandler(async (req, res) => {
 async function findPackageByProject(project) {
   if (project.forecastPackage) {
     const forecastPackage = await withPackagePopulates(
-      ForecastPackage.findById(project.forecastPackage),
+      ForecastPackage.findById(project.forecastPackage)
     ).lean();
 
     if (forecastPackage) return forecastPackage;
   }
 
   const directPackage = await withPackagePopulates(
-    ForecastPackage.findOne({ 'charts.project': project._id }),
+    ForecastPackage.findOne({ 'charts.project': project._id })
   ).lean();
 
   if (directPackage) return directPackage;
@@ -320,7 +325,9 @@ async function findPackageByProject(project) {
   if (!forecastBounds) return null;
 
   return withPackagePopulates(
-    ForecastPackage.findOne({ forecastDate: { $gte: forecastBounds.start, $lt: forecastBounds.end } }),
+    ForecastPackage.findOne({
+      forecastDate: { $gte: forecastBounds.start, $lt: forecastBounds.end },
+    })
   ).lean();
 }
 
@@ -347,12 +354,14 @@ async function findLegacyPackageProjects(project) {
     ...(packageFilters.length > 0 ? { $or: packageFilters } : {}),
   };
 
-  const projects = sortProjectsByChartType(uniqueProjectsById(
-    await withAdminProjectPopulates(Project.find(query))
-      .sort({ forecastDate: -1, chartType: 1, updatedAt: -1, _id: -1 })
-      .limit(20)
-      .lean(),
-  ));
+  const projects = sortProjectsByChartType(
+    uniqueProjectsById(
+      await withAdminProjectPopulates(Project.find(query))
+        .sort({ forecastDate: -1, chartType: 1, updatedAt: -1, _id: -1 })
+        .limit(20)
+        .lean()
+    )
+  );
 
   return {
     forecastDate: forecastBounds?.start || getDateBounds(project.forecastDate)?.start || null,
@@ -362,9 +371,7 @@ async function findLegacyPackageProjects(project) {
 }
 
 export const getAdminForecastPackage = asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    throwError('Admin access required', 403);
-  }
+  assertAuthorizedPermission(req, 'projects.review');
 
   const project = await Project.findById(req.params.id)
     .select('name forecastDate submittedAt createdAt owner forecastPackage')
@@ -390,7 +397,7 @@ export const getAdminForecastPackage = asyncHandler(async (req, res) => {
       expectedChartTypes: ALLOWED_CHART_TYPES,
       chartCount: projects.length,
       isComplete: ALLOWED_CHART_TYPES.every((chartType) =>
-        projects.some((candidate) => candidate.chartType === chartType),
+        projects.some((candidate) => candidate.chartType === chartType)
       ),
       projects,
     });
@@ -406,7 +413,7 @@ export const getAdminForecastPackage = asyncHandler(async (req, res) => {
     expectedChartTypes: ALLOWED_CHART_TYPES,
     chartCount: projects.length,
     isComplete: ALLOWED_CHART_TYPES.every((chartType) =>
-      projects.some((candidate) => candidate.chartType === chartType),
+      projects.some((candidate) => candidate.chartType === chartType)
     ),
     projects,
   });

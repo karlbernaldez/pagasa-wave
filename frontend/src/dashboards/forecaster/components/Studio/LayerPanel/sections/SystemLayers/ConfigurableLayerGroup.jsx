@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { fetchWaveModelCatalog } from '@/api/waveModels';
 import {
   ModelSelector,
   ElementSelector,
@@ -7,6 +8,7 @@ import {
   WindBarbStylePanel,
 } from './LayerSelectors';
 import { getSelectedElement, getModelSummary } from '../../utils/layerPanelUtils';
+import { setWaveModelRuntimeCatalog } from '../../hooks/waveConfig/waveModelRuntimeRegistry';
 
 const ConfigurableLayerGroup = ({
   icon,
@@ -21,10 +23,62 @@ const ConfigurableLayerGroup = ({
   onToggleModel,
   onSetDirectionStyle,
   onSetBarbStyle,
+  modelStatuses = {},
   afterModelSelector = null,
   isDarkMode,
 }) => {
   const { enabled } = config;
+  const [waveCatalog, setWaveCatalog] = React.useState(null);
+
+  React.useEffect(() => {
+    if (title !== 'Wave') return undefined;
+
+    let disposed = false;
+
+    const refreshCatalog = async () => {
+      try {
+        const result = await fetchWaveModelCatalog();
+        if (!disposed) {
+          const catalog = result?.models || [];
+          setWaveModelRuntimeCatalog(catalog);
+          setWaveCatalog(catalog);
+        }
+      } catch {
+        // Keep the bundled model availability as a safe fallback if the catalog cannot be read.
+      }
+    };
+
+    void refreshCatalog();
+    const intervalId = window.setInterval(refreshCatalog, 60_000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(intervalId);
+    };
+  }, [title]);
+
+  const effectiveModels = React.useMemo(() => {
+    if (title !== 'Wave' || !waveCatalog) return models;
+
+    const bundledByCode = new Map(models.map((model) => [model.id, model]));
+    const managedModels = waveCatalog.map((managed) => {
+      const bundled = bundledByCode.get(managed.code);
+      return {
+        ...(bundled || {}),
+        id: managed.code,
+        label: managed.label || bundled?.label || managed.code,
+        available: Boolean(
+          managed.enabled &&
+          managed.hasData &&
+          (managed.builderConfigured || managed.runtimeConfigured)
+        ),
+      };
+    });
+
+    const managedCodes = new Set(managedModels.map((model) => model.id));
+    const fallbackModels = models.filter((model) => !managedCodes.has(model.id));
+    return [...managedModels, ...fallbackModels];
+  }, [models, title, waveCatalog]);
 
   const selectedElement = getSelectedElement(config.elements, elements);
   const showDirectionStyle = enabled && expanded && selectedElement === 'waveDirection';
@@ -135,9 +189,10 @@ const ConfigurableLayerGroup = ({
       {expanded && enabled && (
         <div className={`space-y-3 border-t px-3 pb-3 pt-3 ${border}`}>
           <ModelSelector
-            models={models}
+            models={effectiveModels}
             selected={config.models}
             onToggle={onToggleModel}
+            modelStatuses={modelStatuses}
             isDarkMode={isDarkMode}
           />
 

@@ -1,0 +1,9 @@
+[Unit]
+Description=Trigger WaveLab ECWAM builder when source is ready
+
+[Path]
+PathExists=/var/lib/wavelab-wave-source-readiness/ECWAM.ready
+Unit=wavelab-ecwam-package-builder.service
+
+[Install]
+WantedBy=multi-user.target
