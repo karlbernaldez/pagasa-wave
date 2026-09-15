@@ -57,12 +57,6 @@ const formatUser = (u) => ({
   createdAt: u.createdAt,
 });
 
-const formatAnalyticsUser = (u) => ({
-  id: u._id.toString(),
-  role: u.role,
-  status: u.status,
-});
-
 const buildUserFilter = ({ search, status, role } = {}) => {
   const filter = {};
 
@@ -83,24 +77,6 @@ const hasPermission = (req, permission) =>
 
 export const getAllUsers = async (req, res) => {
   try {
-    const analyticsOnly =
-      hasPermission(req, 'analytics_users.view') && !hasPermission(req, 'users.view');
-
-    if (analyticsOnly) {
-      const users = await User.find({ deletedAt: null })
-        .select('_id role status')
-        .sort({ createdAt: -1, _id: -1 })
-        .lean();
-
-      return res.status(200).json({
-        data: users.map(formatAnalyticsUser),
-        total: users.length,
-        page: 1,
-        limit: users.length,
-        totalPages: 1,
-      });
-    }
-
     const page = clampInt(req.query.page, 1, Number.MAX_SAFE_INTEGER, 1);
     const limit = snapToPageOption(clampInt(req.query.limit, 5, 50, DEFAULT_LIMIT));
     const filter = buildUserFilter(req.query);
@@ -202,134 +178,295 @@ export const createUserByAdmin = async (req, res) => {
       status: safeStatus,
       password: hashedPassword,
       activatedAt: isActive ? new Date() : null,
-      emailVerified: true,
+      activatedBy: isActive ? req.user?._id : null,
     });
+
+    const { password: _, ...safeUser } = user.toObject();
 
     return res.status(201).json({
       message: 'User created successfully',
-      user: formatUser(user),
+      user: safeUser,
       defaultPassword: rawPassword,
     });
   } catch (err) {
     console.error('[createUserByAdmin]', err);
-    if (err?.code === 11000) {
-      return res.status(409).json({ message: 'A user with this email or username already exists' });
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ message: err.message });
     }
-    return res.status(500).json({ message: 'Error creating user', error: err.message });
+    return res.status(500).json({ message: 'Server error creating user' });
   }
 };
 
-export const getUserDetailsForOwner = async (req, res) => {
+export const changePassword = async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).select(DETAIL_FIELDS).lean();
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const { userId } = req.params;
+    const { currentPassword, newPassword } = req.body;
+    const actor = req.user;
 
-    const userId = String(user._id);
-    const currentUserId = String(req.user?._id || req.user?.id || '');
-    const isOwner = userId === currentUserId;
+    if (!actor) return res.status(401).json({ message: 'Unauthorized' });
 
-    if (!isOwner && !hasPermission(req, 'users.view')) {
-      return res.status(403).json({ message: 'You do not have permission to perform this action.' });
+    const isOwner = String(actor._id || actor.id) === String(userId);
+    if (!isOwner) return res.status(403).json({ message: 'Forbidden' });
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current and new password are required.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters.' });
     }
 
-    const fields = isOwner ? OWNER_FIELDS : ADMIN_FIELDS;
-    const result = { id: userId };
-    for (const field of fields) result[field] = user[field];
+    const user = await User.findById(userId).select('+password +sessionVersion');
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    return res.status(200).json(result);
+    const verifiedPasswordHash = user.password;
+    const match = await bcrypt.compare(currentPassword, verifiedPasswordHash);
+    if (!match) return res.status(400).json({ message: 'Incorrect current password.' });
+
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    const updated = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        password: verifiedPasswordHash,
+        deletedAt: null,
+      },
+      {
+        $set: { password: hashedPassword },
+        $unset: {
+          pendingEmail: '',
+          pendingEmailVerificationToken: '',
+          pendingEmailVerificationExpires: '',
+          pendingEmailRequestedAt: '',
+        },
+      },
+      { new: true }
+    ).select('+sessionVersion');
+
+    if (!updated) {
+      return res.status(409).json({
+        message: 'Password changed concurrently. Please retry with the current password.',
+      });
+    }
+
+    return res.status(200).json({ message: 'Password updated successfully.' });
   } catch (err) {
-    console.error('[getUserDetailsForOwner]', err);
-    return res.status(500).json({ message: 'Error fetching user details', error: err.message });
+    console.error('[changePassword]', err);
+    return res.status(500).json({ message: 'Error changing password', error: err.message });
   }
 };
 
 export const updateUserDetails = async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId);
+    const { userId } = req.params;
+    const actor = req.user;
+
+    if (!actor) return res.status(401).json({ message: 'Unauthorized' });
+
+    const isOwner = String(actor._id || actor.id) === String(userId);
+    const canManageUser = hasPermission(req, 'users.edit');
+
+    if (!isOwner && !canManageUser) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const allowedFields = canManageUser && !isOwner ? ADMIN_FIELDS : OWNER_FIELDS;
+    const updates = Object.fromEntries(
+      allowedFields.filter((f) => req.body[f] !== undefined).map((f) => [f, req.body[f]])
+    );
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ message: 'No permitted fields provided' });
+    }
+
+    if (updates.username !== undefined) {
+      updates.username = String(updates.username).trim().toLowerCase();
+      if (!/^[a-z0-9._-]{3,30}$/.test(updates.username)) {
+        return res.status(400).json({
+          message:
+            'Username must be 3-30 characters and use only letters, numbers, dots, underscores, or hyphens',
+        });
+      }
+    }
+
+    if (updates.email !== undefined) {
+      updates.email = String(updates.email).trim().toLowerCase();
+    }
+
+    if (updates.avatarUrl !== undefined && updates.avatarUrl !== null) {
+      const avatarUrl = String(updates.avatarUrl).trim();
+      const isSupportedAvatar = /^(https?:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(
+        avatarUrl
+      );
+      if (!isSupportedAvatar || avatarUrl.length > 1000000) {
+        return res.status(400).json({
+          message: 'Avatar must be a supported image URL or an image smaller than 750 KB',
+        });
+      }
+      updates.avatarUrl = avatarUrl;
+    }
+
+    if (updates.email || updates.username) {
+      const conflict = await User.findOne({
+        _id: { $ne: userId },
+        $or: [
+          ...(updates.email ? [{ email: updates.email }, { pendingEmail: updates.email }] : []),
+          ...(updates.username ? [{ username: updates.username }] : []),
+        ],
+      }).lean();
+
+      if (conflict) {
+        return res.status(409).json({ message: 'Email or username already in use' });
+      }
+    }
+
+    let currentEmail = null;
+    let currentRole = null;
+    let emailChanged = false;
+    let roleChanged = false;
+
+    if (updates.email !== undefined || updates.role !== undefined) {
+      const currentUser = await User.findById(userId).select('email role').lean();
+      if (!currentUser) return res.status(404).json({ message: 'User not found' });
+
+      currentEmail = currentUser.email;
+      currentRole = currentUser.role;
+      emailChanged = updates.email !== undefined && updates.email !== currentEmail;
+      roleChanged = updates.role !== undefined && updates.role !== currentRole;
+    }
+
+    if (roleChanged || emailChanged) {
+      const updateDocument = {
+        $set: { ...updates },
+        $inc: { sessionVersion: 1 },
+      };
+      const filter = { _id: userId, deletedAt: null };
+
+      if (roleChanged) {
+        filter.role = currentRole;
+      }
+
+      if (emailChanged) {
+        filter.email = currentEmail;
+        updateDocument.$set.emailVerified = false;
+        updateDocument.$unset = {
+          emailVerificationToken: '',
+          emailVerificationExpires: '',
+          pendingEmail: '',
+          pendingEmailVerificationToken: '',
+          pendingEmailVerificationExpires: '',
+          pendingEmailRequestedAt: '',
+          passwordResetToken: '',
+          passwordResetExpires: '',
+        };
+      }
+
+      const user = await User.findOneAndUpdate(filter, updateDocument, {
+        new: true,
+        runValidators: true,
+      }).select('+sessionVersion');
+
+      if (!user) {
+        if (roleChanged && emailChanged) {
+          return res.status(409).json({
+            message:
+              'Authorization details changed concurrently. Reload the account and try again.',
+          });
+        }
+        if (roleChanged) {
+          return res.status(409).json({
+            message: 'Role changed concurrently. Reload the account and try again.',
+          });
+        }
+        return res.status(409).json({
+          message: 'Email changed concurrently. Reload the account and try again.',
+        });
+      }
+
+      const safeUser = user.toObject();
+      delete safeUser.password;
+      delete safeUser.sessionVersion;
+
+      return res.status(200).json(safeUser);
+    }
+
+    const user = await User.findById(userId).select('+sessionVersion');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const userId = String(user._id);
-    const currentUserId = String(req.user?._id || req.user?.id || '');
-    const isOwner = userId === currentUserId;
-    const allowed = new Set(isOwner ? OWNER_FIELDS : ADMIN_FIELDS);
-
-    Object.entries(req.body || {}).forEach(([key, value]) => {
-      if (allowed.has(key)) user[key] = value;
-    });
+    for (const [field, value] of Object.entries(updates)) {
+      user.set(field, value);
+    }
 
     await user.save();
-    await sendUserUpdateEmail(user, { changedByAdmin: !isOwner });
 
-    return res.status(200).json(formatUser(user));
+    const safeUser = user.toObject();
+    delete safeUser.password;
+    delete safeUser.sessionVersion;
+
+    return res.status(200).json(safeUser);
   } catch (err) {
     console.error('[updateUserDetails]', err);
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ message: err.message });
+    }
     return res.status(500).json({ message: 'Error updating user', error: err.message });
   }
 };
 
 export const updateUserStatus = async (req, res) => {
   try {
+    const { userId } = req.params;
     const { status } = req.body;
+
     if (!ALLOWED_STATUSES.includes(status)) {
-      return res.status(400).json({ message: 'Invalid user status' });
+      return res
+        .status(400)
+        .json({ message: `Invalid status. Allowed: ${ALLOWED_STATUSES.join(', ')}` });
     }
 
-    const user = await User.findById(req.params.userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const currentUser = await User.findById(userId).select('status activatedAt').lean();
+    if (!currentUser) return res.status(404).json({ message: 'User not found' });
 
-    user.status = status;
-    if (status === 'active' && !user.activatedAt) {
-      user.activatedAt = new Date();
-      user.activatedBy = req.user?._id || req.user?.id || null;
+    const previousStatus = currentUser.status;
+    const update = { status };
+
+    if (status === 'active' && !currentUser.activatedAt) {
+      update.activatedAt = new Date();
+      update.activatedBy = req.user._id;
     }
 
-    await user.save();
+    const user = await User.findOneAndUpdate(
+      { _id: userId, deletedAt: null, status: previousStatus },
+      { $set: update },
+      { new: true, runValidators: true }
+    ).select('+sessionVersion');
 
-    return res.status(200).json({
-      message: 'User status updated successfully',
-      user: formatUser(user),
-    });
+    if (!user) {
+      return res.status(409).json({
+        message: 'Status changed concurrently. Reload the account and try again.',
+      });
+    }
+
+    sendUserUpdateEmail(user.email, user.firstName, [
+      { field: 'Status', from: previousStatus, to: status },
+    ]).catch((err) => console.warn('[updateUserStatus] Email notification failed:', err.message));
+
+    return res.status(200).json({ message: 'Status updated successfully', user });
   } catch (err) {
     console.error('[updateUserStatus]', err);
-    return res.status(500).json({ message: 'Error updating user status', error: err.message });
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ message: err.message });
+    }
+    return res.status(500).json({ message: 'Server error updating status' });
   }
 };
 
 export const deleteUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    user.deletedAt = new Date();
-    user.status = 'inactive';
-    await user.save();
+    const deleted = await User.findByIdAndDelete(req.params.userId);
+    if (!deleted) return res.status(404).json({ message: 'User not found' });
 
     return res.status(200).json({ message: 'User deleted successfully' });
   } catch (err) {
     console.error('[deleteUser]', err);
     return res.status(500).json({ message: 'Error deleting user', error: err.message });
-  }
-};
-
-export const changePassword = async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Current password and new password are required.' });
-    }
-
-    const user = await User.findById(req.params.userId).select('+password');
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const valid = await bcrypt.compare(currentPassword, user.password);
-    if (!valid) return res.status(400).json({ message: 'Current password is incorrect.' });
-
-    user.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
-    await user.save();
-
-    return res.status(200).json({ message: 'Password changed successfully.' });
-  } catch (err) {
-    console.error('[changePassword]', err);
-    return res.status(500).json({ message: 'Error changing password', error: err.message });
   }
 };
