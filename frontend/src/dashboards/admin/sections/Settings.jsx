@@ -1,6 +1,8 @@
 import { useMemo, useEffect } from 'react';
 import { RotateCcw, Save, Undo2, Redo2 } from 'lucide-react';
 
+import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
+
 import useSettings from './settings/hooks/useSettings';
 
 import TabBar from './settings/components/TabBar';
@@ -46,7 +48,7 @@ function ActionButton({ icon: Icon, children, disabled, onClick, isDarkMode }) {
         'focus:outline-none focus:ring-2 focus:ring-cyan-400/50',
         isDarkMode
           ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
-          : 'border-white/80 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-950',
+          : 'border-white/80 bg-white/70 text-slate-600 hover:bg-white hover:text-slate-950'
       )}
     >
       <Icon size={15} />
@@ -57,9 +59,12 @@ function ActionButton({ icon: Icon, children, disabled, onClick, isDarkMode }) {
 
 const SettingsSection = ({ isDarkMode }) => {
   const dark = isDarkMode;
+  const { rawUser } = useCurrentDashboardUser();
+  const permissionSet = useMemo(() => new Set(rawUser?.permissions || []), [rawUser?.permissions]);
 
   const {
-    activeTab, setActiveTab,
+    activeTab,
+    setActiveTab,
     operationsData,
     forecasterWorkspaceData,
     mapViewData,
@@ -73,6 +78,18 @@ const SettingsSection = ({ isDarkMode }) => {
     handleSave,
     handleReset,
   } = useSettings();
+
+  const visibleTabs = useMemo(
+    () => TABS.filter((tab) => permissionSet.has(tab.viewPermission)),
+    [permissionSet]
+  );
+
+  useEffect(() => {
+    if (!visibleTabs.length) return;
+    if (!visibleTabs.some((tab) => tab.id === activeTab)) {
+      setActiveTab(visibleTabs[0].id);
+    }
+  }, [activeTab, setActiveTab, visibleTabs]);
 
   const rawSettings = {
     operations: operationsData,
@@ -112,18 +129,24 @@ const SettingsSection = ({ isDarkMode }) => {
   const makeSetter = (key) => (updater) =>
     history.set((prev) => ({
       ...prev,
-      [key]: typeof updater === 'function'
-        ? updater(prev[key])
-        : updater,
+      [key]: typeof updater === 'function' ? updater(prev[key]) : updater,
     }));
 
-  const onSave = () => handleSave(allSettings);
+  const activeConfig = pagesConfig[activeTab];
+  const canManageActive = Boolean(
+    activeConfig?.managePermission && permissionSet.has(activeConfig.managePermission)
+  );
+
+  const onSave = () => {
+    if (!canManageActive) return;
+    handleSave(allSettings);
+  };
 
   const onReset = () => {
+    if (!canManageActive) return;
     handleReset?.();
   };
 
-  const activeConfig = pagesConfig[activeTab];
   const activeGroup = SETTINGS_GROUPS.find((group) => group.id === activeConfig?.group);
   const ActiveComponent = activeConfig?.component;
   const pageSurface = dark
@@ -148,36 +171,45 @@ const SettingsSection = ({ isDarkMode }) => {
               <p className={cn('mt-1 max-w-3xl text-sm font-semibold leading-6', muted)}>
                 Select a work area first, then edit only the configurable copy, schedules, and public content for that area. Fixed forecast-package rules stay out of Settings.
               </p>
-              {activeGroup && (
+              {activeGroup && visibleTabs.some((tab) => tab.id === activeTab) && (
                 <div className={cn('mt-4 rounded-2xl border px-4 py-3', dark ? 'border-white/10 bg-white/[0.03]' : 'border-white/80 bg-white/70')}>
                   <p className={cn('text-xs font-black uppercase tracking-[0.14em]', muted)}>Selected area</p>
                   <p className={cn('mt-1 text-sm font-black', text)}>{activeGroup.label} · {activeConfig?.label}</p>
                   <p className={cn('mt-1 text-xs font-semibold leading-5', muted)}>{activeGroup.description}</p>
+                  {!canManageActive && (
+                    <p className="mt-2 text-xs font-black text-amber-500">View-only access for this subsection.</p>
+                  )}
                 </div>
               )}
             </div>
 
             <div className="flex flex-wrap gap-2 lg:justify-end">
-              <ActionButton icon={Undo2} onClick={history.undo} disabled={!history.canUndo} isDarkMode={dark}>
+              <ActionButton icon={Undo2} onClick={history.undo} disabled={!canManageActive || !history.canUndo} isDarkMode={dark}>
                 Undo
               </ActionButton>
-              <ActionButton icon={Redo2} onClick={history.redo} disabled={!history.canRedo} isDarkMode={dark}>
+              <ActionButton icon={Redo2} onClick={history.redo} disabled={!canManageActive || !history.canRedo} isDarkMode={dark}>
                 Redo
               </ActionButton>
-              <ActionButton icon={RotateCcw} onClick={onReset} disabled={!dataLoaded || saving} isDarkMode={dark}>
+              <ActionButton icon={RotateCcw} onClick={onReset} disabled={!canManageActive || !dataLoaded || saving} isDarkMode={dark}>
                 Reset
               </ActionButton>
-              <ActionButton icon={Save} onClick={onSave} disabled={!dataLoaded || saving} isDarkMode={dark}>
+              <ActionButton icon={Save} onClick={onSave} disabled={!canManageActive || !dataLoaded || saving} isDarkMode={dark}>
                 {saving ? 'Saving' : 'Save'}
               </ActionButton>
             </div>
           </div>
         </header>
 
-        <TabBar activeTab={activeTab} setActiveTab={setActiveTab} dark={dark} />
+        {visibleTabs.length > 0 && (
+          <TabBar activeTab={activeTab} setActiveTab={setActiveTab} dark={dark} tabs={visibleTabs} />
+        )}
 
         <div className={cn('min-h-[560px] p-4 sm:p-6', contentSurface)}>
-          {!dataLoaded ? (
+          {visibleTabs.length === 0 ? (
+            <div className={cn('rounded-2xl border px-5 py-16 text-center text-sm font-semibold', dark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-white/80 bg-white/70 text-slate-500')}>
+              You do not have access to any Settings subsections.
+            </div>
+          ) : !dataLoaded ? (
             <div className={cn('flex items-center justify-center rounded-2xl border py-24 text-sm font-semibold', dark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-white/80 bg-white/70 text-slate-500')}>
               <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -186,11 +218,15 @@ const SettingsSection = ({ isDarkMode }) => {
               Loading settings...
             </div>
           ) : ActiveComponent ? (
-            <ActiveComponent settings={allSettings[activeTab]} setSettings={makeSetter(activeTab)} dark={dark} />
+            <fieldset disabled={!canManageActive} className="min-w-0 disabled:opacity-90">
+              <ActiveComponent settings={allSettings[activeTab]} setSettings={makeSetter(activeTab)} dark={dark} />
+            </fieldset>
           ) : null}
         </div>
 
-        <SaveBar onSave={onSave} onReset={onReset} saving={saving} status={status} dark={dark} />
+        {visibleTabs.length > 0 && canManageActive && (
+          <SaveBar onSave={onSave} onReset={onReset} saving={saving} status={status} dark={dark} />
+        )}
       </section>
     </div>
   );
