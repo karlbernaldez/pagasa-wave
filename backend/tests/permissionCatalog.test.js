@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   DEFAULT_ROLE_DEFINITIONS,
+  PERMISSION_CATEGORIES,
   PERMISSION_KEYS,
+  PERMISSION_METADATA,
   expandEffectivePermissions,
   normalizePermissionKeys,
 } from '../config/permissionCatalog.js';
@@ -31,6 +33,45 @@ test('permission catalog exposes unique stable canonical permission keys', () =>
   assert.equal(PERMISSION_KEYS.includes('projects.view_own'), false);
   assert.ok(PERMISSION_KEYS.includes('roles.edit'));
   assert.ok(PERMISSION_KEYS.includes('wave_models.delete_package'));
+});
+
+test('permission presentation metadata exactly covers canonical permissions', () => {
+  assert.deepEqual(Object.keys(PERMISSION_METADATA).sort(), [...PERMISSION_KEYS].sort());
+
+  const categoryKeys = PERMISSION_CATEGORIES.map((category) => category.key);
+  assert.equal(new Set(categoryKeys).size, categoryKeys.length);
+
+  for (const [permission, metadata] of Object.entries(PERMISSION_METADATA)) {
+    assert.ok(categoryKeys.includes(metadata.category), `${permission} has an unknown category`);
+    assert.ok(metadata.label.trim(), `${permission} is missing a label`);
+    assert.ok(metadata.description.trim(), `${permission} is missing a description`);
+    assert.equal(Number.isFinite(metadata.order), true, `${permission} is missing a stable order`);
+    assert.ok(
+      ['standard', 'elevated'].includes(metadata.sensitivity),
+      `${permission} has an unsupported sensitivity`
+    );
+  }
+});
+
+test('permission categories have unique stable ordering', () => {
+  const orders = PERMISSION_CATEGORIES.map((category) => category.order);
+  assert.equal(new Set(orders).size, orders.length);
+  assert.deepEqual(
+    orders,
+    [...orders].sort((left, right) => left - right)
+  );
+});
+
+test('high-impact permissions are marked elevated for the management UI', () => {
+  for (const permission of [
+    'forecast.publish',
+    'wave_models.delete_package',
+    'users.delete',
+    'roles.edit',
+    'settings.manage',
+  ]) {
+    assert.equal(PERMISSION_METADATA[permission]?.sensitivity, 'elevated');
+  }
 });
 
 test('permission normalization removes duplicates and rejects unknown capabilities', () => {

@@ -20,6 +20,148 @@ export const PERMISSION_KEYS = Object.freeze(
   )
 );
 
+export const PERMISSION_CATEGORIES = Object.freeze([
+  {
+    key: 'dashboard',
+    label: 'Dashboard',
+    description: 'Access the shared operational overview and readiness summaries.',
+    order: 10,
+  },
+  {
+    key: 'forecast_operations',
+    label: 'Forecast Operations',
+    description: 'Work with forecast packages through preparation, review, and publication.',
+    order: 20,
+  },
+  {
+    key: 'forecast_studio',
+    label: 'Forecast Studio',
+    description: 'View and edit forecast charts, annotations, and Studio content.',
+    order: 30,
+  },
+  {
+    key: 'models_pipeline',
+    label: 'Models & Pipeline',
+    description: 'View or manage wave models, model packages, pipeline status, and onboarding.',
+    order: 40,
+  },
+  {
+    key: 'users_access',
+    label: 'Users & Access',
+    description: 'Manage operational accounts, User Types, and authorization settings.',
+    order: 50,
+  },
+  {
+    key: 'analytics_reports',
+    label: 'Analytics & Reports',
+    description: 'View operational analytics and create or approve reports.',
+    order: 60,
+  },
+  {
+    key: 'calendar',
+    label: 'Calendar',
+    description: 'View WaveLab calendar information.',
+    order: 70,
+  },
+  {
+    key: 'system',
+    label: 'System',
+    description: 'View and manage system-level configuration.',
+    order: 80,
+  },
+  {
+    key: 'internal_assistant',
+    label: 'Internal Assistant',
+    description: 'Use internal assistant capabilities and approved knowledge sources.',
+    order: 90,
+  },
+]);
+
+const FEATURE_PRESENTATION = Object.freeze({
+  dashboard: { category: 'dashboard', subject: 'dashboard' },
+  forecast: { category: 'forecast_operations', subject: 'forecast packages' },
+  studio: { category: 'forecast_studio', subject: 'Forecast Studio content' },
+  wave_models: { category: 'models_pipeline', subject: 'wave models' },
+  wave_pipeline: { category: 'models_pipeline', subject: 'wave pipeline' },
+  model_onboarding: { category: 'models_pipeline', subject: 'model onboarding' },
+  users: { category: 'users_access', subject: 'users' },
+  roles: { category: 'users_access', subject: 'User Types' },
+  analytics: { category: 'analytics_reports', subject: 'analytics' },
+  calendar: { category: 'calendar', subject: 'calendar' },
+  reports: { category: 'analytics_reports', subject: 'reports' },
+  settings: { category: 'system', subject: 'system settings' },
+  chat: { category: 'internal_assistant', subject: 'internal assistant' },
+});
+
+const ACTION_LABELS = Object.freeze({
+  view: 'View',
+  edit: 'Edit',
+  submit: 'Submit',
+  review: 'Review',
+  approve: 'Approve',
+  publish: 'Publish',
+  archive: 'Archive',
+  manage: 'Manage',
+  create: 'Create',
+  export: 'Export',
+  delete: 'Delete',
+  change_status: 'Change status for',
+  run_builder: 'Run builder for',
+  delete_package: 'Delete packages for',
+  edit_any_annotation: 'Edit any annotation in',
+  use_internal: 'Use',
+  forecaster_knowledge: 'Use forecaster knowledge in',
+  admin_knowledge: 'Use administrative knowledge in',
+});
+
+const ELEVATED_PERMISSIONS = new Set([
+  'forecast.approve',
+  'forecast.publish',
+  'forecast.archive',
+  'studio.edit_any_annotation',
+  'wave_models.manage',
+  'wave_models.run_builder',
+  'wave_models.delete_package',
+  'model_onboarding.manage',
+  'users.create',
+  'users.edit',
+  'users.change_status',
+  'users.delete',
+  'roles.create',
+  'roles.edit',
+  'roles.delete',
+  'analytics.export',
+  'reports.approve',
+  'settings.manage',
+  'chat.admin_knowledge',
+]);
+
+const FEATURE_ORDER = Object.freeze(Object.keys(PERMISSION_CATALOG));
+
+export const PERMISSION_METADATA = Object.freeze(
+  Object.fromEntries(
+    PERMISSION_KEYS.map((key) => {
+      const [feature, action] = key.split('.');
+      const presentation = FEATURE_PRESENTATION[feature];
+      const actionLabel = ACTION_LABELS[action] || action;
+      const featureIndex = FEATURE_ORDER.indexOf(feature);
+      const actionIndex = PERMISSION_CATALOG[feature].indexOf(action);
+      const label = `${actionLabel} ${presentation.subject}`;
+
+      return [
+        key,
+        Object.freeze({
+          category: presentation.category,
+          label,
+          description: `Allows this User Type to ${label.toLowerCase()}.`,
+          order: featureIndex * 100 + actionIndex * 10,
+          sensitivity: ELEVATED_PERMISSIONS.has(key) ? 'elevated' : 'standard',
+        }),
+      ];
+    })
+  )
+);
+
 const PERMISSION_SET = new Set(PERMISSION_KEYS);
 
 // Legacy Project permissions remain valid only during the migration window.
@@ -128,17 +270,17 @@ export const expandEffectivePermissions = (permissions = []) => {
   const normalized = normalizePermissionKeys(permissions);
   const effective = new Set(normalized);
 
-  for (const permission of normalized) {
-    for (const legacyPermission of FORECAST_RUNTIME_LEGACY_PERMISSIONS[permission] || []) {
+  for (const permissionKey of normalized) {
+    for (const legacyPermission of FORECAST_RUNTIME_LEGACY_PERMISSIONS[permissionKey] || []) {
       effective.add(legacyPermission);
     }
   }
 
   // Preserve any original legacy scope permission exactly as stored so a role
   // cannot gain broader standalone Project access through forecast.view.
-  for (const permission of cleanPermissionInput(permissions)) {
-    if (LEGACY_PROJECT_SCOPE_PERMISSIONS.includes(permission)) {
-      effective.add(permission);
+  for (const permissionKey of cleanPermissionInput(permissions)) {
+    if (LEGACY_PROJECT_SCOPE_PERMISSIONS.includes(permissionKey)) {
+      effective.add(permissionKey);
     }
   }
 
