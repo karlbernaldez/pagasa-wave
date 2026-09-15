@@ -2,6 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import WaveModel from '../models/WaveModel.js';
+import { ensureDefaultWaveModels } from './waveModelService.js';
 import {
   DEFAULT_SOURCE_CYCLE_DATE_MODE,
   getWaveSourceCyclePolicy,
@@ -15,8 +17,8 @@ const STATUS_ROOT =
   process.env.WAVE_PIPELINE_STATUS_ROOT ||
   path.join(WAVETILES_ROOT, '.normalized-product-stage', '.status');
 const WW3_STATE_ROOT = process.env.WW3_STATE_ROOT || '/var/lib/wavelab-ww3';
-const MODELS = ['WW3', 'ECWAM'];
-const EXPECTED_FORECAST_HOURS = Array.from({ length: 21 }, (_, index) => index * 3);
+const DEFAULT_FORECAST_CADENCE_HOURS = 3;
+const DEFAULT_MAX_FORECAST_HOUR = 60;
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const TRANSIENT_STATES = new Set([
   'READY_TO_BUILD',
@@ -65,6 +67,30 @@ export function requiredSourceCycle(
   return `${cycleUtc.getUTCFullYear()}${String(cycleUtc.getUTCMonth() + 1).padStart(2, '0')}${String(cycleUtc.getUTCDate()).padStart(2, '0')}${String(preferredHourUtc).padStart(2, '0')}`;
 }
 
+function expectedForecastHours(model) {
+  const cadence = Number(model?.runtimeProfile?.forecastCadenceHours);
+  const maxHour = Number(model?.runtimeProfile?.maxForecastHour);
+  const forecastCadenceHours =
+    Number.isInteger(cadence) && cadence > 0 ? cadence : DEFAULT_FORECAST_CADENCE_HOURS;
+  const maxForecastHour =
+    Number.isInteger(maxHour) && maxHour >= 0 ? maxHour : DEFAULT_MAX_FORECAST_HOUR;
+
+  return Array.from(
+    { length: Math.floor(maxForecastHour / forecastCadenceHours) + 1 },
+    (_, index) => index * forecastCadenceHours
+  );
+}
+
+async function listOperationalModels() {
+  await ensureDefaultWaveModels();
+  return WaveModel.find({
+    enabled: true,
+    $or: [{ builderConfigured: true }, { runtimeProfile: { $ne: null } }],
+  })
+    .sort({ builtIn: -1, code: 1 })
+    .lean();
+}
+
 async function readJson(target) {
   try {
     return JSON.parse(await fs.readFile(target, 'utf8'));
@@ -99,31 +125,34 @@ async function readWw3Marker(packageDate) {
   return parseKeyValueDocument(raw);
 }
 
-function isCompleteMetadata(metadata, packageDate, sourceCycle) {
+function isCompleteMetadata(metadata, packageDate, sourceCycle, requiredHours) {
   if (!metadata) return false;
   if (metadata.packageDate !== packageDate || metadata.sourceCycle !== sourceCycle) return false;
   const hours = metadata.requiredForecastHours;
   return (
     Array.isArray(hours) &&
-    hours.length === EXPECTED_FORECAST_HOURS.length &&
-    hours.every((hour, index) => hour === EXPECTED_FORECAST_HOURS[index])
+    hours.length === requiredHours.length &&
+    hours.every((hour, index) => hour === requiredHours[index])
   );
 }
 
-async function publishedSnapshot(model, packageDate, sourceCycle) {
+async function publishedSnapshot(model, packageDate, sourceCycle, requiredHours) {
+  const code = model.code;
   const tag = packageTag(packageDate);
-  const contourRoot = path.join(WAVETILES_ROOT, 'tiles', model, 'contours', tag);
+  const contourRoot = path.join(WAVETILES_ROOT, 'tiles', code, 'contours', tag);
   const metadata = await readJson(path.join(contourRoot, 'package.json'));
-  if (!isCompleteMetadata(metadata, packageDate, sourceCycle)) return null;
+  if (!isCompleteMetadata(metadata, packageDate, sourceCycle, requiredHours)) return null;
 
   const inputMarker = await readText(path.join(contourRoot, '.product-input'));
-  const ww3Marker = model === 'WW3' ? await readWw3Marker(packageDate) : null;
+  const ww3Marker = code === 'WW3' ? await readWw3Marker(packageDate) : null;
   const markerMatches =
     ww3Marker?.package_date === packageDate && ww3Marker?.source_cycle === sourceCycle;
 
   return {
-    schemaVersion: 1,
-    model,
+    schemaVersion: 2,
+    model: code,
+    modelId: model._id,
+    modelLabel: model.label || code,
     state: 'READY',
     message: 'Wave package is published and ready for Studio.',
     packageDate,
@@ -131,8 +160,8 @@ async function publishedSnapshot(model, packageDate, sourceCycle) {
     requiredSourceCycle: sourceCycle,
     sourceCycle: metadata.sourceCycle,
     inputMode: inputMarker || (markerMatches ? ww3Marker.product_input || null : null),
-    frameCount: EXPECTED_FORECAST_HOURS.length,
-    expectedFrameCount: EXPECTED_FORECAST_HOURS.length,
+    frameCount: requiredHours.length,
+    expectedFrameCount: requiredHours.length,
     published: true,
     lastCheckAt: null,
     completedAt: markerMatches ? ww3Marker.built_utc || null : null,
@@ -143,38 +172,46 @@ async function publishedSnapshot(model, packageDate, sourceCycle) {
     contourCount:
       markerMatches && Number.isFinite(Number(ww3Marker.contour_count))
         ? Number(ww3Marker.contour_count)
-        : EXPECTED_FORECAST_HOURS.length,
+        : requiredHours.length,
   };
 }
 
-async function readRuntimeSnapshot(model) {
-  return readJson(path.join(STATUS_ROOT, `${model}.json`));
+async function readRuntimeSnapshot(code) {
+  return readJson(path.join(STATUS_ROOT, `${code}.json`));
 }
 
 export async function getWavePipelineStatus(now = new Date()) {
   const packageDate = currentPackageDate(now);
+  const operationalModels = await listOperationalModels();
 
   const models = await Promise.all(
-    MODELS.map(async (model) => {
-      const policy = await getWaveSourceCyclePolicy(model);
+    operationalModels.map(async (model) => {
+      const code = model.code;
+      const requiredHours = expectedForecastHours(model);
+      const policy = await getWaveSourceCyclePolicy(code);
       const sourceCycle = requiredSourceCycle(
         packageDate,
         policy.preferredHourUtc,
         policy.cycleDateMode
       );
-      const runtime = await readRuntimeSnapshot(model);
+      const runtime = await readRuntimeSnapshot(code);
       const runtimeMatchesToday =
         runtime?.packageDate === packageDate && runtime?.requiredSourceCycle === sourceCycle;
 
       if (runtimeMatchesToday && TRANSIENT_STATES.has(runtime.state)) {
         return {
           ...runtime,
+          schemaVersion: 2,
+          model: code,
+          modelId: model._id,
+          modelLabel: model.label || code,
+          expectedFrameCount: runtime.expectedFrameCount || requiredHours.length,
           preferredSourceCycleHourUtc: policy.preferredHourUtc,
           sourceCycleDateMode: policy.cycleDateMode,
         };
       }
 
-      const published = await publishedSnapshot(model, packageDate, sourceCycle);
+      const published = await publishedSnapshot(model, packageDate, sourceCycle, requiredHours);
       if (published) {
         return {
           ...published,
@@ -188,8 +225,10 @@ export async function getWavePipelineStatus(now = new Date()) {
       }
 
       return {
-        schemaVersion: 1,
-        model,
+        schemaVersion: 2,
+        model: code,
+        modelId: model._id,
+        modelLabel: model.label || code,
         state: 'WAITING_FOR_SOURCE',
         message: `Waiting for the configured ${String(policy.preferredHourUtc).padStart(2, '0')}Z source cycle to become complete.`,
         packageDate,
@@ -199,7 +238,7 @@ export async function getWavePipelineStatus(now = new Date()) {
         sourceCycle: null,
         inputMode: runtime?.inputMode || null,
         frameCount: 0,
-        expectedFrameCount: EXPECTED_FORECAST_HOURS.length,
+        expectedFrameCount: requiredHours.length,
         published: false,
         lastCheckAt: runtimeMatchesToday ? runtime?.lastCheckAt || null : null,
       };
@@ -207,6 +246,7 @@ export async function getWavePipelineStatus(now = new Date()) {
   );
 
   return {
+    schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     packageDate,
     models,
