@@ -206,8 +206,10 @@ function SummaryCard({ card, isDarkMode }) {
   const comparisonText = (() => {
     if (!comparison) return null;
     if (comparison.direction === 'new') return '↑ New vs yesterday';
-    if (comparison.direction === 'up') return `↑ ${Math.abs(Number(comparison.percent) || 0)}% vs yesterday`;
-    if (comparison.direction === 'down') return `↓ ${Math.abs(Number(comparison.percent) || 0)}% vs yesterday`;
+    if (comparison.direction === 'up')
+      return `↑ ${Math.abs(Number(comparison.percent) || 0)}% vs yesterday`;
+    if (comparison.direction === 'down')
+      return `↓ ${Math.abs(Number(comparison.percent) || 0)}% vs yesterday`;
     return '→ No change vs yesterday';
   })();
   const comparisonClass =
@@ -528,7 +530,7 @@ function WaveModelsTable({ models = [], isDarkMode, onSelectTab }) {
                     </button>
                   </td>
                 </tr>
-              ))
+              ))}
             ) : (
               <tr>
                 <td
