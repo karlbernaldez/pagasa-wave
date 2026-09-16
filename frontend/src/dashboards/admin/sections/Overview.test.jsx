@@ -14,6 +14,10 @@ vi.mock('@/api/dashboardAPI', () => ({
   fetchDashboardOverview: dashboardApi.overview,
 }));
 
+vi.mock('./analytics/analyticsDateRange', () => ({
+  buildPresetRange: (days) => ({ start: `start-${days}`, end: `end-${days}` }),
+}));
+
 const basePayload = {
   meta: {
     operationalDate: '2026-09-15',
@@ -45,7 +49,35 @@ describe('DashboardOverview dynamic read model', () => {
     render(<DashboardOverview isDarkMode={false} onSelectTab={vi.fn()} />);
 
     await waitFor(() => expect(dashboardApi.overview).toHaveBeenCalledTimes(1));
+    expect(dashboardApi.overview).toHaveBeenCalledWith({ start: 'start-14', end: 'end-14' });
     expect(screen.getByText('Operational Dashboard')).toBeInTheDocument();
+  });
+
+  it('reloads historical dashboard analytics when the trend range changes', async () => {
+    currentUser.raw = { permissions: ['dashboard.view', 'analytics_forecast.view'] };
+    dashboardApi.overview.mockResolvedValue({
+      ...basePayload,
+      forecastWorkflowTrend: {
+        title: 'Forecast Workflow Trend',
+        description: 'Actual workflow events during the selected operating period.',
+        series: [{ key: 'submitted', label: 'Submitted' }],
+        points: [{ date: '2026-09-15', submitted: 1 }],
+      },
+    });
+
+    render(<DashboardOverview isDarkMode={false} onSelectTab={vi.fn()} />);
+
+    const rangeSelect = await screen.findByRole('combobox', {
+      name: 'Forecast workflow trend period',
+    });
+    expect(rangeSelect).toHaveValue('14');
+
+    fireEvent.change(rangeSelect, { target: { value: '30' } });
+
+    await waitFor(() =>
+      expect(dashboardApi.overview).toHaveBeenLastCalledWith({ start: 'start-30', end: 'end-30' })
+    );
+    expect(rangeSelect).toHaveValue('30');
   });
 
   it('renders configured wave models without assuming WW3 or ECWAM', async () => {
