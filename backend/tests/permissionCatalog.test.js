@@ -40,6 +40,7 @@ test('permission catalog exposes unique stable canonical permission keys', () =>
   assert.ok(PERMISSION_KEYS.includes('wave_models.delete_package'));
   assert.ok(PERMISSION_KEYS.includes('settings_map_view.manage'));
   assert.ok(PERMISSION_KEYS.includes('analytics_forecast.view'));
+  assert.ok(PERMISSION_KEYS.includes('analytics.export'));
 });
 
 test('permission presentation metadata exactly covers canonical permissions', () => {
@@ -86,6 +87,7 @@ test('high-impact permissions are marked elevated for the management UI', () => 
     'wave_models.delete_package',
     'users.delete',
     'roles.edit',
+    'analytics.export',
     'settings.manage',
     'settings_map_view.manage',
   ]) {
@@ -131,6 +133,24 @@ test('broad analytics view implies scoped analytics views without unrelated perm
   const forecastOnly = new Set(normalizePermissionKeys(['analytics_forecast.view']));
   assert.equal(forecastOnly.has('analytics_users.view'), false);
   assert.equal(forecastOnly.has('analytics.view'), false);
+});
+
+test('analytics export is additive and never widens subsection visibility', () => {
+  const exportOnly = new Set(normalizePermissionKeys(['analytics.export']));
+  assert.ok(exportOnly.has('analytics.export'));
+  assert.equal(exportOnly.has('analytics.view'), false);
+  assert.equal(exportOnly.has('analytics_forecast.view'), false);
+  assert.equal(exportOnly.has('analytics_users.view'), false);
+  assert.equal(exportOnly.has('analytics_system.view'), false);
+
+  const forecastExport = new Set(
+    normalizePermissionKeys(['analytics_forecast.view', 'analytics.export'])
+  );
+  assert.ok(forecastExport.has('analytics_forecast.view'));
+  assert.ok(forecastExport.has('analytics.export'));
+  assert.equal(forecastExport.has('analytics_users.view'), false);
+  assert.equal(forecastExport.has('analytics_system.view'), false);
+  assert.equal(forecastExport.has('analytics.view'), false);
 });
 
 test('administrator default role keeps canonical catalog plus legacy view-all compatibility', () => {
