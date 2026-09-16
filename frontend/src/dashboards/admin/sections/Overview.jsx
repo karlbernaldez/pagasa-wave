@@ -202,6 +202,26 @@ function SummaryCard({ card, isDarkMode }) {
     neutral: isDarkMode ? 'bg-slate-400/10 text-slate-300' : 'bg-slate-100 text-slate-700',
   }[tone];
   const displayValue = card.format === 'ratio' ? `${card.value}/${card.total ?? 0}` : card.value;
+  const comparison = card.comparison;
+  const comparisonText = (() => {
+    if (!comparison) return null;
+    if (comparison.direction === 'new') return '↑ New vs yesterday';
+    if (comparison.direction === 'up') return `↑ ${Math.abs(Number(comparison.percent) || 0)}% vs yesterday`;
+    if (comparison.direction === 'down') return `↓ ${Math.abs(Number(comparison.percent) || 0)}% vs yesterday`;
+    return '→ No change vs yesterday';
+  })();
+  const comparisonClass =
+    comparison?.direction === 'up' || comparison?.direction === 'new'
+      ? isDarkMode
+        ? 'text-emerald-300'
+        : 'text-emerald-600'
+      : comparison?.direction === 'down'
+        ? isDarkMode
+          ? 'text-rose-300'
+          : 'text-rose-600'
+        : isDarkMode
+          ? 'text-slate-400'
+          : 'text-slate-500';
 
   return (
     <article
@@ -228,6 +248,11 @@ function SummaryCard({ card, isDarkMode }) {
           >
             {displayValue}
           </p>
+          {comparisonText ? (
+            <p className={cn('mt-1.5 text-[11px] font-bold leading-4', comparisonClass)}>
+              {comparisonText}
+            </p>
+          ) : null}
         </div>
         <span className={cn('grid h-10 w-10 place-items-center rounded-xl', iconClass)}>
           <Icon size={18} aria-hidden="true" />
