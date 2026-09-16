@@ -1,5 +1,10 @@
 import ForecastPackage from '../models/ForecastPackage.js';
 import User from '../models/User.js';
+import {
+  loadPublishedChartViewAnalytics,
+  loadUserContributionAnalytics,
+} from '../services/operationalAnalyticsService.js';
+import { formatManilaDateKey } from '../services/publishedChartViewService.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
 import {
   buildUserAnalyticsExportRows,
@@ -84,7 +89,7 @@ export const exportUserAnalytics = async (req, res, next) => {
       deletedAt: null,
       ...buildDateMatch('createdAt', range),
     };
-    const [total, statusRows, roleRows] = await Promise.all([
+    const [total, statusRows, roleRows, contributions] = await Promise.all([
       User.countDocuments(match),
       User.aggregate([
         { $match: match },
@@ -96,13 +101,14 @@ export const exportUserAnalytics = async (req, res, next) => {
         { $group: { _id: '$role', count: { $sum: 1 } } },
         { $sort: { count: -1, _id: 1 } },
       ]),
+      loadUserContributionAnalytics(range),
     ]);
 
     return sendCsv(
       res,
       filenameFor('users', range),
       USER_ANALYTICS_EXPORT_HEADERS,
-      buildUserAnalyticsExportRows({ total, statusRows, roleRows })
+      buildUserAnalyticsExportRows({ total, statusRows, roleRows, contributions })
     );
   } catch (error) {
     return next(error);
@@ -118,7 +124,14 @@ export const exportSystemAnalytics = async (req, res, next) => {
       ...buildDateMatch('forecastDate', range),
     };
 
-    const [totalUsers, activeUsers, totalPackages, packageRows, userRows] = await Promise.all([
+    const [
+      totalUsers,
+      activeUsers,
+      totalPackages,
+      packageRows,
+      userRows,
+      publishedChartViews,
+    ] = await Promise.all([
       User.countDocuments(userMatch),
       User.countDocuments({ ...userMatch, status: 'active' }),
       ForecastPackage.countDocuments(packageMatch),
@@ -132,16 +145,27 @@ export const exportSystemAnalytics = async (req, res, next) => {
         { $group: { _id: '$status', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
+      loadPublishedChartViewAnalytics(range, { currentDateKey: formatManilaDateKey() }),
     ]);
 
     const rows = [
       ['users.total', totalUsers],
       ['users.active', activeUsers],
       ['forecast_packages.total', totalPackages],
+      ['published_chart_views.period', publishedChartViews.totalViews],
+      ['published_chart_views.today', publishedChartViews.viewsToday],
       ...userRows.map((row) => [`users.status.${row._id || 'unknown'}`, row.count || 0]),
       ...packageRows.map((row) => [
         `forecast_packages.status.${row._id || 'unknown'}`,
         row.count || 0,
+      ]),
+      ...publishedChartViews.trend.map((row) => [
+        `published_chart_views.daily.${row.date}`,
+        row.views,
+      ]),
+      ...publishedChartViews.topCharts.map((row) => [
+        `published_chart_views.chart.${row.projectId}`,
+        row.views,
       ]),
     ];
 
