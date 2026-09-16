@@ -33,6 +33,7 @@ import { fetchDashboardOverview } from '@/api/dashboardAPI';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
 import { buildPresetRange } from './analytics/analyticsDateRange';
+import { adaptiveBucketDays, bucketDateSeries } from './analytics/analyticsWorkspaceModel';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -97,7 +98,7 @@ function formatOperationalDate(value) {
   }).format(date);
 }
 
-function buildDailyTrendPoints(points = [], series = [], range) {
+function buildTrendPoints(points = [], series = [], range, selectedDays) {
   if (!range?.start || !range?.end) return points;
 
   const start = new Date(`${range.start}T00:00:00Z`);
@@ -105,16 +106,21 @@ function buildDailyTrendPoints(points = [], series = [], range) {
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return points;
 
   const existingByDate = new Map(points.map((point) => [point.date, point]));
-  const result = [];
+  const daily = [];
 
   for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
     const date = cursor.toISOString().slice(0, 10);
     const base = { date };
     for (const item of series) base[item.key] = 0;
-    result.push({ ...base, ...(existingByDate.get(date) || {}) });
+    daily.push({ ...base, ...(existingByDate.get(date) || {}) });
   }
 
-  return result;
+  return bucketDateSeries(daily, {
+    start: range.start,
+    end: range.end,
+    valueFields: series.map((item) => item.key),
+    dayCount: selectedDays,
+  });
 }
 
 function formatCycle(value) {
@@ -156,7 +162,7 @@ function Panel({ title, description, action, children, isDarkMode, className }) 
   return (
     <section
       className={cn(
-        'rounded-2xl border shadow-lg backdrop-blur-sm',
+        'relative rounded-2xl border shadow-lg backdrop-blur-sm',
         isDarkMode ? 'border-white/10 bg-slate-950/55' : 'border-slate-200 bg-white/95',
         className
       )}
@@ -232,7 +238,8 @@ function SummaryCard({ card, isDarkMode }) {
 
 function WorkflowTrend({ trend, range, selectedDays, isRefreshing, onRangeChange, isDarkMode }) {
   const series = trend?.series || [];
-  const points = buildDailyTrendPoints(trend?.points || [], series, range);
+  const points = buildTrendPoints(trend?.points || [], series, range, selectedDays);
+  const isBucketed = adaptiveBucketDays(selectedDays) > 1;
   const tooltipStyle = {
     background: isDarkMode ? '#07182c' : '#ffffff',
     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : '#e2e8f0'}`,
@@ -281,11 +288,10 @@ function WorkflowTrend({ trend, range, selectedDays, isRefreshing, onRangeChange
                 stroke={isDarkMode ? 'rgba(148,163,184,0.14)' : '#e2e8f0'}
               />
               <XAxis
-                dataKey="date"
-                interval={0}
-                minTickGap={4}
+                dataKey="label"
+                interval="preserveStartEnd"
+                minTickGap={isBucketed ? 28 : 18}
                 tickMargin={8}
-                tickFormatter={(value) => formatDate(value)}
                 tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
                 axisLine={false}
                 tickLine={false}
@@ -296,10 +302,7 @@ function WorkflowTrend({ trend, range, selectedDays, isRefreshing, onRangeChange
                 axisLine={false}
                 tickLine={false}
               />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                labelFormatter={(value) => formatDate(value, { year: true })}
-              />
+              <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {series.map((item, index) => (
                 <Line
@@ -309,7 +312,7 @@ function WorkflowTrend({ trend, range, selectedDays, isRefreshing, onRangeChange
                   name={item.label}
                   stroke={LINE_COLORS[index % LINE_COLORS.length]}
                   strokeWidth={2}
-                  dot={{ r: 2.5 }}
+                  dot={isBucketed ? false : { r: 2.5 }}
                   activeDot={{ r: 4.5 }}
                   connectNulls
                 />
