@@ -80,7 +80,7 @@ describe('DashboardOverview dynamic read model', () => {
     expect(rangeSelect).toHaveValue('30');
   });
 
-  it('renders a single dashboard carousel containing forecast, user, and system analytics slides', async () => {
+  it('renders separate chart and distribution carousels for dashboard analytics', async () => {
     currentUser.raw = {
       permissions: [
         'dashboard.view',
@@ -111,7 +111,7 @@ describe('DashboardOverview dynamic read model', () => {
       },
       systemAnalytics: {
         users: { total: 2, active: 2, statusCounts: { active: 2 } },
-        forecastPackages: { total: 2, statusCounts: { Published: 2 } },
+        forecastPackages: { total: 2, statusCounts: { Published: 2 }, publishedCharts: 2 },
         publishedChartViews: {
           totalViews: 5,
           viewsToday: 2,
@@ -123,13 +123,13 @@ describe('DashboardOverview dynamic read model', () => {
 
     render(<DashboardOverview isDarkMode={false} onSelectTab={vi.fn()} />);
 
-    expect(await screen.findByText('Chart 1 of 10')).toBeInTheDocument();
+    expect((await screen.findAllByText('Chart 1 of 5')).length).toBe(2);
     expect(screen.getByRole('tab', { name: 'Show Contribution Activity' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show Contribution Mix' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Show Account Status' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Show User Type Distribution' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show Published Chart Views' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show Top Viewed Published Charts' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show Account Status' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show User Type Distribution' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show Forecast Package Health' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show New Account Health' })).toBeInTheDocument();
   });
