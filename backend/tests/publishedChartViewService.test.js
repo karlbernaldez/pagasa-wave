@@ -71,6 +71,30 @@ test('stored viewer hashes cannot be correlated across charts or Manila dates', 
   assert.notEqual(anotherDay, anotherChart);
 });
 
+test('published chart view rejects malformed project IDs before querying the database', async () => {
+  let findCalled = false;
+  const ProjectModel = {
+    findOne() {
+      findCalled = true;
+      throw new Error('should not query');
+    },
+  };
+
+  await assert.rejects(
+    () =>
+      recordPublishedChartView(
+        {
+          projectId: 'not-an-object-id',
+          viewerToken: VIEWER_TOKEN,
+          hashSecret: HASH_SECRET,
+        },
+        { ProjectModel, PublishedChartViewModel: {} }
+      ),
+    (error) => error.statusCode === 400
+  );
+  assert.equal(findCalled, false);
+});
+
 test('published chart view rejects archived or unpublished charts before creating a view', async () => {
   let createCalled = false;
   const PublishedChartViewModel = {
