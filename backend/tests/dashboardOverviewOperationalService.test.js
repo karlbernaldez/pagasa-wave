@@ -5,13 +5,35 @@ import { getDashboardOverview } from '../services/dashboardOverviewOperationalSe
 
 const baseOverview = {
   meta: { partial: false },
-  summaryCards: [],
+  summaryCards: [
+    {
+      key: 'in_review',
+      label: 'In Review',
+      value: 2,
+      format: 'integer',
+      tone: 'info',
+      icon: 'review',
+    },
+    {
+      key: 'models_ready',
+      label: 'Models Ready',
+      value: 1,
+      total: 2,
+      format: 'ratio',
+      tone: 'warning',
+      icon: 'models',
+    },
+  ],
   errors: [],
 };
 
 const systemPayload = {
   users: { total: 4, active: 3, statusCounts: { active: 3, pending: 1 } },
-  forecastPackages: { total: 5, statusCounts: { Published: 3, Submitted: 2 } },
+  forecastPackages: {
+    total: 5,
+    statusCounts: { Published: 3, Submitted: 2 },
+    publishedCharts: 7,
+  },
   publishedChartViews: {
     totalViews: 21,
     viewsToday: 5,
@@ -46,7 +68,10 @@ test('dashboard does not fetch user or system analytics without corresponding pe
   assert.equal(systemFetched, false);
   assert.equal(result.userAnalytics, undefined);
   assert.equal(result.systemAnalytics, undefined);
-  assert.deepEqual(result.summaryCards, []);
+  assert.deepEqual(
+    result.summaryCards.map((card) => card.key),
+    ['in_review', 'models_ready']
+  );
 });
 
 test('dashboard fetches only aggregate user analytics when user analytics permission is granted', async () => {
@@ -85,7 +110,7 @@ test('dashboard fetches only aggregate user analytics when user analytics permis
   assert.equal(JSON.stringify(result.userAnalytics).includes('email'), false);
 });
 
-test('dashboard fetches and composes aggregate system analytics when permitted', async () => {
+test('dashboard composes four headline cards when system analytics are permitted', async () => {
   let receivedDateKey = null;
   const result = await getDashboardOverview(
     {
@@ -105,16 +130,12 @@ test('dashboard fetches and composes aggregate system analytics when permitted',
   assert.equal(receivedDateKey, '2026-09-15');
   assert.deepEqual(result.systemAnalytics, systemPayload);
   assert.equal(result.publishedChartViews.totalViews, 21);
-  assert.deepEqual(result.summaryCards, [
-    {
-      key: 'published_chart_views',
-      label: 'Published Chart Views',
-      value: 21,
-      format: 'integer',
-      tone: 'info',
-      icon: 'views',
-    },
-  ]);
+  assert.deepEqual(
+    result.summaryCards.map((card) => card.key),
+    ['published_chart_views', 'published_charts', 'in_review', 'models_ready']
+  );
+  assert.equal(result.summaryCards[0].value, 21);
+  assert.equal(result.summaryCards[1].value, 7);
 });
 
 test('dashboard keeps other sources available when user analytics fail', async () => {
@@ -157,4 +178,8 @@ test('dashboard degrades to partial data when system analytics fail', async () =
   assert.equal(result.systemAnalytics, null);
   assert.equal(result.publishedChartViews, null);
   assert.equal(result.errors.at(-1).source, 'system_analytics');
+  assert.deepEqual(
+    result.summaryCards.map((card) => card.key),
+    ['in_review', 'models_ready']
+  );
 });
