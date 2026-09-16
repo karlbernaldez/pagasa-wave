@@ -102,16 +102,14 @@ export async function loadPublishedChartViewAnalytics(
   range,
   { PublishedChartViewModel = PublishedChartView, currentDateKey = null, topLimit = 5 } = {}
 ) {
-  const dateMatch = buildDateMatch('viewedAt', range);
-  const match = { ...dateMatch };
   const rows = await PublishedChartViewModel.aggregate([
-    { $match: match },
+    { $match: buildDateMatch('viewedAt', range) },
     {
       $facet: {
         totals: [{ $count: 'count' }],
         today: currentDateKey
           ? [{ $match: { dateKey: currentDateKey } }, { $count: 'count' }]
-          : [{ $limit: 0 }],
+          : [{ $match: { _id: { $exists: false } } }, { $count: 'count' }],
         byDay: [
           { $group: { _id: '$dateKey', count: { $sum: 1 } } },
           { $sort: { _id: 1 } },
