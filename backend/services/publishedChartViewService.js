@@ -1,5 +1,7 @@
 import { createHmac } from 'node:crypto';
 
+import mongoose from 'mongoose';
+
 import Project from '../models/Project.js';
 import PublishedChartView from '../models/PublishedChartView.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
@@ -37,6 +39,12 @@ export async function recordPublishedChartView(
   } = {},
   { ProjectModel = Project, PublishedChartViewModel = PublishedChartView } = {}
 ) {
+  if (!mongoose.isValidObjectId(projectId)) {
+    const error = new Error('Invalid published chart ID.');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const normalizedToken = normalizeViewerToken(viewerToken);
   if (!normalizedToken) {
     const error = new Error('A valid anonymous viewer token is required.');
