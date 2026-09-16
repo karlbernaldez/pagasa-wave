@@ -124,31 +124,25 @@ export const exportSystemAnalytics = async (req, res, next) => {
       ...buildDateMatch('forecastDate', range),
     };
 
-    const [
-      totalUsers,
-      activeUsers,
-      totalPackages,
-      packageRows,
-      userRows,
-      publishedChartViews,
-    ] = await Promise.all([
-      User.countDocuments(userMatch),
-      User.countDocuments({ ...userMatch, status: 'active' }),
-      ForecastPackage.countDocuments(packageMatch),
-      ForecastPackage.aggregate([
-        { $match: packageMatch },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-        { $sort: { _id: 1 } },
-      ]),
-      User.aggregate([
-        { $match: userMatch },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-        { $sort: { _id: 1 } },
-      ]),
-      loadPublishedChartViewAnalytics(range, {
-        currentDateKey: formatManilaDateKey(),
-      }),
-    ]);
+    const [totalUsers, activeUsers, totalPackages, packageRows, userRows, publishedChartViews] =
+      await Promise.all([
+        User.countDocuments(userMatch),
+        User.countDocuments({ ...userMatch, status: 'active' }),
+        ForecastPackage.countDocuments(packageMatch),
+        ForecastPackage.aggregate([
+          { $match: packageMatch },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+          { $sort: { _id: 1 } },
+        ]),
+        User.aggregate([
+          { $match: userMatch },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+          { $sort: { _id: 1 } },
+        ]),
+        loadPublishedChartViewAnalytics(range, {
+          currentDateKey: formatManilaDateKey(),
+        }),
+      ]);
 
     const rows = [
       ['users.total', totalUsers],
@@ -156,10 +150,7 @@ export const exportSystemAnalytics = async (req, res, next) => {
       ['forecast_packages.total', totalPackages],
       ['published_chart_views.period', publishedChartViews.totalViews],
       ['published_chart_views.today', publishedChartViews.viewsToday],
-      ...userRows.map((row) => [
-        `users.status.${row._id || 'unknown'}`,
-        row.count || 0,
-      ]),
+      ...userRows.map((row) => [`users.status.${row._id || 'unknown'}`, row.count || 0]),
       ...packageRows.map((row) => [
         `forecast_packages.status.${row._id || 'unknown'}`,
         row.count || 0,
