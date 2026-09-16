@@ -252,7 +252,12 @@ export function BarChartCard({ title, description, rows = [], isDarkMode }) {
   );
 }
 
-export function AnalyticsCarousel({ slides = [], isDarkMode, ariaLabel = 'Analytics charts' }) {
+export function AnalyticsCarousel({
+  slides = [],
+  isDarkMode,
+  ariaLabel = 'Analytics charts',
+  headerAction = null,
+}) {
   const [index, setIndex] = useState(0);
 
   if (!slides.length) return null;
@@ -267,7 +272,7 @@ export function AnalyticsCarousel({ slides = [], isDarkMode, ariaLabel = 'Analyt
 
   return (
     <section aria-label={ariaLabel} className="space-y-3">
-      {showControls ? (
+      {showControls || headerAction ? (
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
@@ -288,32 +293,37 @@ export function AnalyticsCarousel({ slides = [], isDarkMode, ariaLabel = 'Analyt
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={goPrevious}
-              className={cn(
-                'grid h-9 w-9 place-items-center rounded-xl border transition-colors',
-                isDarkMode
-                  ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'
-                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-              )}
-              aria-label="Previous analytics chart"
-            >
-              <ChevronLeft size={16} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={goNext}
-              className={cn(
-                'grid h-9 w-9 place-items-center rounded-xl border transition-colors',
-                isDarkMode
-                  ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'
-                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-              )}
-              aria-label="Next analytics chart"
-            >
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
+            {headerAction}
+            {showControls ? (
+              <>
+                <button
+                  type="button"
+                  onClick={goPrevious}
+                  className={cn(
+                    'grid h-9 w-9 place-items-center rounded-xl border transition-colors',
+                    isDarkMode
+                      ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  )}
+                  aria-label="Previous analytics chart"
+                >
+                  <ChevronLeft size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className={cn(
+                    'grid h-9 w-9 place-items-center rounded-xl border transition-colors',
+                    isDarkMode
+                      ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  )}
+                  aria-label="Next analytics chart"
+                >
+                  <ChevronRight size={16} aria-hidden="true" />
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}
