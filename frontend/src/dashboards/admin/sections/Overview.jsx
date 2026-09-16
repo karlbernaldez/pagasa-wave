@@ -32,6 +32,7 @@ import {
 import { fetchDashboardOverview } from '@/api/dashboardAPI';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
+import { AnalyticsCarousel } from './analytics/AnalyticsVisuals';
 import { buildPresetRange } from './analytics/analyticsDateRange';
 import { adaptiveBucketDays, bucketDateSeries } from './analytics/analyticsWorkspaceModel';
 
@@ -878,6 +879,34 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
 
   const data = state.data || {};
   const meta = data.meta || {};
+  const dashboardChartSlides = [];
+
+  if (data.forecastWorkflowTrend) {
+    dashboardChartSlides.push({
+      id: 'workflow-trend',
+      label: 'Forecast Workflow Trend',
+      content: (
+        <WorkflowTrend
+          trend={data.forecastWorkflowTrend}
+          range={meta.range}
+          selectedDays={trendDays}
+          isRefreshing={state.refreshing}
+          onRangeChange={handleTrendRangeChange}
+          isDarkMode={isDarkMode}
+        />
+      ),
+    });
+  }
+
+  if (data.packageStatusDistribution?.length) {
+    dashboardChartSlides.push({
+      id: 'package-status',
+      label: 'Package Status Distribution',
+      content: (
+        <StatusDistribution rows={data.packageStatusDistribution} isDarkMode={isDarkMode} />
+      ),
+    });
+  }
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-4 p-4 sm:p-6">
@@ -991,18 +1020,12 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         </section>
       ) : null}
 
-      {data.forecastWorkflowTrend || data.packageStatusDistribution?.length ? (
-        <section className="grid gap-4 xl:grid-cols-[2fr_1fr]">
-          <WorkflowTrend
-            trend={data.forecastWorkflowTrend}
-            range={meta.range}
-            selectedDays={trendDays}
-            isRefreshing={state.refreshing}
-            onRangeChange={handleTrendRangeChange}
-            isDarkMode={isDarkMode}
-          />
-          <StatusDistribution rows={data.packageStatusDistribution} isDarkMode={isDarkMode} />
-        </section>
+      {dashboardChartSlides.length ? (
+        <AnalyticsCarousel
+          slides={dashboardChartSlides}
+          isDarkMode={isDarkMode}
+          ariaLabel="Dashboard operational charts"
+        />
       ) : null}
 
       {data.waveModels?.length || data.recentPackages?.length ? (
