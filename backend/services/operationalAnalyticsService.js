@@ -107,19 +107,21 @@ export async function loadPublishedChartViewAnalytics(
   range,
   { PublishedChartViewModel = PublishedChartView, currentDateKey = null, topLimit = 5 } = {}
 ) {
+  const periodMatch = buildDateMatch('viewedAt', range);
   const rows = await PublishedChartViewModel.aggregate([
-    { $match: buildDateMatch('viewedAt', range) },
     {
       $facet: {
-        totals: [{ $count: 'count' }],
+        totals: [{ $match: periodMatch }, { $count: 'count' }],
         today: currentDateKey
           ? [{ $match: { dateKey: currentDateKey } }, { $count: 'count' }]
           : [{ $match: { _id: { $exists: false } } }, { $count: 'count' }],
         byDay: [
+          { $match: periodMatch },
           { $group: { _id: '$dateKey', count: { $sum: 1 } } },
           { $sort: { _id: 1 } },
         ],
         topCharts: [
+          { $match: periodMatch },
           {
             $group: {
               _id: '$project',
@@ -127,8 +129,6 @@ export async function loadPublishedChartViewAnalytics(
               lastViewedAt: { $max: '$viewedAt' },
             },
           },
-          { $sort: { count: -1, lastViewedAt: -1, _id: 1 } },
-          { $limit: Math.max(1, Math.min(Number(topLimit) || 5, 20)) },
           {
             $lookup: {
               from: 'projects',
@@ -150,6 +150,8 @@ export async function loadPublishedChartViewAnalytics(
             },
           },
           { $unwind: '$project' },
+          { $sort: { count: -1, lastViewedAt: -1, _id: 1 } },
+          { $limit: Math.max(1, Math.min(Number(topLimit) || 5, 20)) },
           {
             $project: {
               _id: 0,
