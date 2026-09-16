@@ -195,7 +195,10 @@ test('dashboard keeps other sources available when user analytics fail', async (
   assert.equal(result.meta.partial, true);
   assert.equal(result.userAnalytics, null);
   assert.deepEqual(result.systemAnalytics, systemPayload);
-  assert.equal(result.errors.some((error) => error.source === 'user_analytics'), true);
+  assert.equal(
+    result.errors.some((error) => error.source === 'user_analytics'),
+    true
+  );
 });
 
 test('dashboard degrades to partial data when system analytics fail', async () => {
