@@ -13,6 +13,7 @@ STATUS_ROOT="${STATUS_ROOT:-/var/lib/wavelab/deployment-status}"
 EXPECTED_BRANCH="${EXPECTED_BRANCH:-main}"
 BACKEND_URL="${BACKEND_URL:-http://127.0.0.1:5000/status}"
 FRONTEND_URL="${FRONTEND_URL:-http://127.0.0.1}"
+REQUIRE_PREFLIGHT="${REQUIRE_PREFLIGHT:-1}"
 
 wavelab_require_root
 for command_name in git curl systemctl journalctl node; do
@@ -79,6 +80,8 @@ if [[ -f "$preflight_json" ]]; then
     preflight_valid=1
     record_check preflight_revision "Preflight revision" PASS "$short_revision"
   fi
+elif [[ "$REQUIRE_PREFLIGHT" == "1" ]]; then
+  record_check preflight_report "Pre-deployment validation report" FAIL "required report is not available"
 else
   record_check preflight_report "Pre-deployment validation report" WARN "not available"
 fi
