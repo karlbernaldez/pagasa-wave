@@ -29,7 +29,12 @@ export function hashViewerToken(viewerToken, secret) {
 }
 
 export async function recordPublishedChartView(
-  { projectId, viewerToken, now = new Date(), hashSecret = process.env.PUBLIC_VIEW_HASH_SECRET || process.env.JWT_SECRET } = {},
+  {
+    projectId,
+    viewerToken,
+    now = new Date(),
+    hashSecret = process.env.PUBLIC_VIEW_HASH_SECRET || process.env.JWT_SECRET,
+  } = {},
   { ProjectModel = Project, PublishedChartViewModel = PublishedChartView } = {}
 ) {
   const normalizedToken = normalizeViewerToken(viewerToken);
