@@ -9,6 +9,7 @@ import {
 } from './analyticsWorkspaceModel';
 
 const RANGE_OPTIONS = [7, 14, 30, 60, 90];
+const FORECAST_SERIES_COLORS = ['#34d399', '#fbbf24', '#fb7185', '#38bdf8', '#a78bfa', '#22d3ee'];
 const bucketLabel = (days) => (adaptiveBucketDays(days) > 1 ? 'Weekly' : 'Daily');
 
 export default function DashboardAnalyticsCarousel({
@@ -44,10 +45,34 @@ export default function DashboardAnalyticsCarousel({
   ) : null;
 
   if (forecastSlide) {
+    const forecastTrend = rangeControlProps.trend || {};
+    const forecastSeries = forecastTrend.series || [];
+    const forecastRows = bucketDateSeries(forecastTrend.points || [], {
+      start: range?.start,
+      end: range?.end,
+      valueFields: forecastSeries.map((item) => item.key),
+      dayCount: selectedDays,
+    });
+
     chartSlides.push({
       id: 'forecast-workflow',
       label: 'Forecast Workflow Trend',
-      content: <div className="[&_#dashboard-trend-range]:hidden">{forecastSlide}</div>,
+      content: (
+        <TrendCard
+          title={forecastTrend.title || 'Forecast Workflow Trend'}
+          description={
+            forecastTrend.description || 'Actual workflow events during the selected operating period.'
+          }
+          rows={forecastRows}
+          series={forecastSeries.map((item, index) => ({
+            dataKey: item.key,
+            label: item.label,
+            stroke: FORECAST_SERIES_COLORS[index % FORECAST_SERIES_COLORS.length],
+          }))}
+          bucketLabel={bucketLabel(selectedDays)}
+          isDarkMode={isDarkMode}
+        />
+      ),
     });
   }
 
