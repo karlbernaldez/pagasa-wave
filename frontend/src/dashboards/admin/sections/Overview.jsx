@@ -530,7 +530,7 @@ function WaveModelsTable({ models = [], isDarkMode, onSelectTab }) {
                     </button>
                   </td>
                 </tr>
-              ))}
+              ))
             ) : (
               <tr>
                 <td
