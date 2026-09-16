@@ -78,7 +78,9 @@ export function DistributionCard({ title, description, rows = [], isDarkMode }) 
               >
                 <div
                   className="h-full rounded-full bg-cyan-500"
-                  style={{ width: `${Math.max(5, Math.round(((Number(row.value) || 0) / max) * 100))}%` }}
+                  style={{
+                    width: `${Math.max(5, Math.round(((Number(row.value) || 0) / max) * 100))}%`,
+                  }}
                 />
               </div>
             </div>
@@ -98,14 +100,7 @@ export function DistributionCard({ title, description, rows = [], isDarkMode }) 
   );
 }
 
-export function TrendCard({
-  title,
-  description,
-  rows = [],
-  series = [],
-  bucketLabel,
-  isDarkMode,
-}) {
+export function TrendCard({ title, description, rows = [], series = [], bucketLabel, isDarkMode }) {
   const gridColor = isDarkMode ? 'rgba(148,163,184,0.12)' : 'rgba(100,116,139,0.14)';
   const axisColor = isDarkMode ? '#94a3b8' : '#64748b';
 
@@ -217,7 +212,11 @@ export function BarChartCard({ title, description, rows = [], isDarkMode }) {
       {rows.length ? (
         <div className="mt-5 h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+            <BarChart
+              data={rows}
+              layout="vertical"
+              margin={{ top: 0, right: 20, left: 10, bottom: 0 }}
+            >
               <CartesianGrid stroke={gridColor} horizontal={false} />
               <XAxis
                 type="number"
@@ -279,7 +278,12 @@ export function AnalyticsCarousel({ slides = [], isDarkMode, ariaLabel = 'Analyt
             >
               {current.label}
             </p>
-            <p className={cn('text-[11px] font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+            <p
+              className={cn(
+                'text-[11px] font-semibold',
+                isDarkMode ? 'text-slate-500' : 'text-slate-400'
+              )}
+            >
               Chart {currentIndex + 1} of {slides.length}
             </p>
           </div>
@@ -317,7 +321,11 @@ export function AnalyticsCarousel({ slides = [], isDarkMode, ariaLabel = 'Analyt
       <div>{current.content}</div>
 
       {showControls ? (
-        <div className="flex justify-center gap-2" role="tablist" aria-label="Analytics chart pages">
+        <div
+          className="flex justify-center gap-2"
+          role="tablist"
+          aria-label="Analytics chart pages"
+        >
           {slides.map((slide, slideIndex) => (
             <button
               key={slide.id}
