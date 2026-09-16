@@ -43,10 +43,7 @@ export async function loadUserContributionAnalytics(
     {
       $facet: {
         totals: [{ $count: 'count' }],
-        contributors: [
-          { $group: { _id: '$auditLogs.performedBy' } },
-          { $count: 'count' },
-        ],
+        contributors: [{ $group: { _id: '$auditLogs.performedBy' } }, { $count: 'count' }],
         byAction: [
           { $group: { _id: '$auditLogs.action', count: { $sum: 1 } } },
           { $sort: { count: -1, _id: 1 } },
