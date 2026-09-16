@@ -42,6 +42,18 @@ export const fetchPublicPublishedChartOutput = (projectId, { signal, theme } = {
   return request(`${PROJECT_API_BASE_URL}/public/published/${projectId}${query ? `?${query}` : ''}`, { signal });
 };
 
+export const trackPublicPublishedChartView = (projectId, viewerToken, { signal } = {}) => {
+  if (!projectId || !viewerToken) {
+    return Promise.reject(new Error('Missing published chart view tracking data'));
+  }
+
+  return request(`${PROJECT_API_BASE_URL}/public/published/${projectId}/view`, {
+    method: 'POST',
+    signal,
+    body: JSON.stringify({ viewerToken }),
+  });
+};
+
 export const fetchPublicPublishedCharts = ({ page = 1, limit = 12, search = '', mode = 'active', before = '', after = '', theme = '', signal } = {}) => {
   const params = new URLSearchParams({
     page: String(page),
