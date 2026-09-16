@@ -61,10 +61,18 @@ const getOrCreateViewerToken = () => {
   return token;
 };
 
+const isPublishedChartDetailRoute = (projectId) => {
+  if (typeof window === 'undefined' || !projectId) return false;
+  const normalizedPath = window.location.pathname.replace(/\/+$/, '');
+  return normalizedPath === `/charts/${encodeURIComponent(String(projectId))}`;
+};
+
 const trackSuccessfulPublicLoad = async (projectId) => {
+  if (!isPublishedChartDetailRoute(projectId)) return;
+
   const storage = getStorage();
   const viewerToken = getOrCreateViewerToken();
-  if (!storage || !projectId || !viewerToken) return;
+  if (!storage || !viewerToken) return;
 
   const dateKey = formatManilaDateKey();
   const marker = `${PUBLIC_VIEW_MARKER_PREFIX}:${projectId}:${dateKey}`;
