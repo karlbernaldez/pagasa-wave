@@ -139,9 +139,7 @@ export function buildForecastDailySeries(packages = [], dayCount = 14, endDateKe
   const endDate = selectedEnd || new Date();
 
   for (let offset = dayCount - 1; offset >= 0; offset -= 1) {
-    const date = selectedEnd
-      ? new Date(endDate.getTime() - offset * DAY_MS)
-      : new Date(endDate);
+    const date = selectedEnd ? new Date(endDate.getTime() - offset * DAY_MS) : new Date(endDate);
     if (!selectedEnd) {
       date.setHours(0, 0, 0, 0);
       date.setDate(date.getDate() - offset);
