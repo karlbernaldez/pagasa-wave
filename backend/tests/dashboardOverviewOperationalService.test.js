@@ -36,7 +36,10 @@ const systemPayload = {
   },
   publishedChartViews: {
     totalViews: 21,
-    viewsToday: 5,
+    allTimeViews: 34,
+    viewsToday: 6,
+    viewsYesterday: 4,
+    dayOverDay: { direction: 'up', percent: 50, previousValue: 4 },
     trend: [{ date: '2026-09-15', views: 5 }],
     topCharts: [],
   },
@@ -70,7 +73,7 @@ test('dashboard does not fetch user or system analytics without corresponding pe
   assert.equal(result.systemAnalytics, undefined);
   assert.deepEqual(
     result.summaryCards.map((card) => card.key),
-    ['in_review', 'models_ready']
+    ['models_ready']
   );
 });
 
@@ -110,7 +113,7 @@ test('dashboard fetches only aggregate user analytics when user analytics permis
   assert.equal(JSON.stringify(result.userAnalytics).includes('email'), false);
 });
 
-test('dashboard composes four headline cards when system analytics are permitted', async () => {
+test('dashboard composes four reach and readiness headline cards when system analytics are permitted', async () => {
   let receivedDateKey = null;
   const result = await getDashboardOverview(
     {
@@ -132,10 +135,35 @@ test('dashboard composes four headline cards when system analytics are permitted
   assert.equal(result.publishedChartViews.totalViews, 21);
   assert.deepEqual(
     result.summaryCards.map((card) => card.key),
-    ['published_chart_views', 'published_charts', 'in_review', 'models_ready']
+    ['chart_views_today', 'published_chart_views_total', 'published_charts', 'models_ready']
   );
-  assert.equal(result.summaryCards[0].value, 21);
-  assert.equal(result.summaryCards[1].value, 7);
+  assert.equal(result.summaryCards[0].value, '6 ↑ 50%');
+  assert.equal(result.summaryCards[1].value, 34);
+  assert.equal(result.summaryCards[2].value, 7);
+});
+
+test('dashboard represents first views after a zero-view day without inventing a percentage', async () => {
+  const result = await getDashboardOverview(
+    {
+      permissions: ['dashboard.view', 'analytics_system.view'],
+      query: { start: '2026-09-01', end: '2026-09-15' },
+      now: new Date('2026-09-15T03:00:00.000Z'),
+    },
+    {
+      getBaseOverview: async () => baseOverview,
+      loadSystemAnalytics: async () => ({
+        ...systemPayload,
+        publishedChartViews: {
+          ...systemPayload.publishedChartViews,
+          viewsToday: 2,
+          viewsYesterday: 0,
+          dayOverDay: { direction: 'new', percent: null, previousValue: 0 },
+        },
+      }),
+    }
+  );
+
+  assert.equal(result.summaryCards[0].value, '2 ↑ NEW');
 });
 
 test('dashboard keeps other sources available when user analytics fail', async () => {
@@ -180,6 +208,6 @@ test('dashboard degrades to partial data when system analytics fail', async () =
   assert.equal(result.errors.at(-1).source, 'system_analytics');
   assert.deepEqual(
     result.summaryCards.map((card) => card.key),
-    ['in_review', 'models_ready']
+    ['models_ready']
   );
 });
