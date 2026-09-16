@@ -204,7 +204,11 @@ function ForecastPanel({ payload, isDarkMode }) {
           isDarkMode={isDarkMode}
         />
       </section>
-      <AnalyticsCarousel slides={slides} isDarkMode={isDarkMode} ariaLabel="Forecast analytics charts" />
+      <AnalyticsCarousel
+        slides={slides}
+        isDarkMode={isDarkMode}
+        ariaLabel="Forecast analytics charts"
+      />
     </div>
   );
 }
@@ -304,7 +308,11 @@ function UserPanel({ payload, isDarkMode }) {
           isDarkMode={isDarkMode}
         />
       </section>
-      <AnalyticsCarousel slides={slides} isDarkMode={isDarkMode} ariaLabel="User analytics charts" />
+      <AnalyticsCarousel
+        slides={slides}
+        isDarkMode={isDarkMode}
+        ariaLabel="User analytics charts"
+      />
     </div>
   );
 }
@@ -404,7 +412,11 @@ function SystemPanel({ payload, isDarkMode }) {
           isDarkMode={isDarkMode}
         />
       </section>
-      <AnalyticsCarousel slides={slides} isDarkMode={isDarkMode} ariaLabel="System analytics charts" />
+      <AnalyticsCarousel
+        slides={slides}
+        isDarkMode={isDarkMode}
+        ariaLabel="System analytics charts"
+      />
     </div>
   );
 }
@@ -506,7 +518,9 @@ const hasNoData = (sectionId, payload) => {
   if (!payload) return false;
   if (sectionId === 'forecast') return Number(payload.total || 0) === 0;
   if (sectionId === 'users') {
-    return Number(payload.total || 0) === 0 && Number(payload.contributions?.totalEvents || 0) === 0;
+    return (
+      Number(payload.total || 0) === 0 && Number(payload.contributions?.totalEvents || 0) === 0
+    );
   }
   if (sectionId === 'system') {
     return (
@@ -588,7 +602,8 @@ export default function AnalyticsAccess({ isDarkMode }) {
   }, []);
 
   const handlePreset = useCallback(
-    (preset) => applyRange({ preset: preset.id, days: preset.days, ...buildPresetRange(preset.days) }),
+    (preset) =>
+      applyRange({ preset: preset.id, days: preset.days, ...buildPresetRange(preset.days) }),
     [applyRange]
   );
 
@@ -677,7 +692,12 @@ export default function AnalyticsAccess({ isDarkMode }) {
               >
                 Operational analytics
               </p>
-              <h2 className={cn('mt-1 text-xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
+              <h2
+                className={cn(
+                  'mt-1 text-xl font-black',
+                  isDarkMode ? 'text-white' : 'text-slate-950'
+                )}
+              >
                 {activeConfig.label}
               </h2>
               <p
