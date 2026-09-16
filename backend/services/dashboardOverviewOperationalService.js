@@ -24,6 +24,16 @@ const toPermissionSet = (permissions = []) =>
 const rowsToCountObject = (rows = []) =>
   Object.fromEntries(rows.map((row) => [String(row._id || 'unknown'), Number(row.count) || 0]));
 
+const formatTodayViewsValue = (publishedChartViews = {}) => {
+  const today = Number(publishedChartViews.viewsToday) || 0;
+  const comparison = publishedChartViews.dayOverDay || {};
+
+  if (comparison.direction === 'new') return `${today} ↑ NEW`;
+  if (comparison.direction === 'up') return `${today} ↑ ${Math.abs(Number(comparison.percent) || 0)}%`;
+  if (comparison.direction === 'down') return `${today} ↓ ${Math.abs(Number(comparison.percent) || 0)}%`;
+  return `${today} → 0%`;
+};
+
 export async function loadDashboardUserAnalytics(
   range,
   { UserModel = User, loadContributions = loadUserContributionAnalytics } = {}
@@ -125,8 +135,8 @@ const buildHeadlineCards = ({ baseCards = [], systemAnalytics = null } = {}) => 
       {
         key: 'chart_views_today',
         label: "Today's Chart Views",
-        value: Number(publishedChartViews.viewsToday) || 0,
-        format: 'integer',
+        value: formatTodayViewsValue(publishedChartViews),
+        format: 'text',
         tone: 'info',
         icon: 'views',
         comparison: publishedChartViews.dayOverDay || null,
