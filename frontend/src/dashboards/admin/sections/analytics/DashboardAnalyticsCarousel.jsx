@@ -8,6 +8,7 @@ import {
   publishedChartRows,
 } from './analyticsWorkspaceModel';
 
+const RANGE_OPTIONS = [7, 14, 30, 60, 90];
 const bucketLabel = (days) => (adaptiveBucketDays(days) > 1 ? 'Weekly' : 'Daily');
 
 export default function DashboardAnalyticsCarousel({
@@ -21,12 +22,32 @@ export default function DashboardAnalyticsCarousel({
 }) {
   const chartSlides = [];
   const distributionSlides = [];
+  const rangeControlProps = forecastSlide?.props || {};
+  const rangeControl = rangeControlProps.onRangeChange ? (
+    <select
+      aria-label="Forecast workflow trend period"
+      value={rangeControlProps.selectedDays ?? selectedDays}
+      disabled={rangeControlProps.isRefreshing}
+      onChange={(event) => rangeControlProps.onRangeChange(Number(event.target.value))}
+      className={
+        isDarkMode
+          ? 'rounded-lg border border-white/10 bg-slate-900 px-2 py-1.5 text-[10px] font-black text-slate-200 outline-none disabled:cursor-wait disabled:opacity-60'
+          : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-black text-slate-700 outline-none disabled:cursor-wait disabled:opacity-60'
+      }
+    >
+      {RANGE_OPTIONS.map((days) => (
+        <option key={days} value={days}>
+          Last {days} days
+        </option>
+      ))}
+    </select>
+  ) : null;
 
   if (forecastSlide) {
     chartSlides.push({
       id: 'forecast-workflow',
       label: 'Forecast Workflow Trend',
-      content: forecastSlide,
+      content: <div className="[&_#dashboard-trend-range]:hidden">{forecastSlide}</div>,
     });
   }
 
@@ -177,6 +198,7 @@ export default function DashboardAnalyticsCarousel({
         slides={chartSlides}
         isDarkMode={isDarkMode}
         ariaLabel="Dashboard trend and activity charts"
+        headerAction={rangeControl}
       />
       <AnalyticsCarousel
         slides={distributionSlides}
