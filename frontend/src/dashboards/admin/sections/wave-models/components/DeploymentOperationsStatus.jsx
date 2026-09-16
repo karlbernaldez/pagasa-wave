@@ -61,9 +61,7 @@ function StateGrid({ title, icon: Icon, values = {}, isDarkMode }) {
       )}
     >
       <div className="mb-3 flex items-center gap-2">
-        <Icon
-          className={cn('h-4 w-4', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')}
-        />
+        <Icon className={cn('h-4 w-4', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
         <h4 className={cn('text-xs font-black', isDarkMode ? 'text-white' : 'text-slate-900')}>
           {title}
         </h4>
