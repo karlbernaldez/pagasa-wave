@@ -74,23 +74,31 @@ export async function loadDashboardSystemAnalytics(
     ...buildDateMatch('forecastDate', range),
   };
 
-  const [totalUsers, activeUsers, userStatusRows, totalPackages, packageStatusRows, publishedChartViews] =
-    await Promise.all([
-      UserModel.countDocuments(userMatch),
-      UserModel.countDocuments({ ...userMatch, status: 'active' }),
-      UserModel.aggregate([
-        { $match: userMatch },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } },
-      ]),
-      ForecastPackageModel.countDocuments(packageMatch),
-      ForecastPackageModel.aggregate([
-        { $match: packageMatch },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } },
-      ]),
-      loadPublishedViews(range, { currentDateKey }),
-    ]);
+  const [
+    totalUsers,
+    activeUsers,
+    userStatusRows,
+    totalPackages,
+    packageStatusRows,
+    publishedCharts,
+    publishedChartViews,
+  ] = await Promise.all([
+    UserModel.countDocuments(userMatch),
+    UserModel.countDocuments({ ...userMatch, status: 'active' }),
+    UserModel.aggregate([
+      { $match: userMatch },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+    ]),
+    ForecastPackageModel.countDocuments(packageMatch),
+    ForecastPackageModel.aggregate([
+      { $match: packageMatch },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+    ]),
+    ForecastPackageModel.countDocuments({ status: 'Published' }),
+    loadPublishedViews(range, { currentDateKey }),
+  ]);
 
   return {
     users: {
@@ -101,10 +109,45 @@ export async function loadDashboardSystemAnalytics(
     forecastPackages: {
       total: Number(totalPackages) || 0,
       statusCounts: rowsToCountObject(packageStatusRows),
+      publishedCharts: Number(publishedCharts) || 0,
     },
     publishedChartViews,
   };
 }
+
+const buildHeadlineCards = ({ baseCards = [], systemAnalytics = null } = {}) => {
+  const cardsByKey = new Map((baseCards || []).map((card) => [card.key, card]));
+  const cards = [];
+
+  if (systemAnalytics) {
+    const publishedChartViews = systemAnalytics.publishedChartViews || {};
+    cards.push(
+      {
+        key: 'published_chart_views',
+        label: 'Published Chart Views',
+        value: Number(publishedChartViews.totalViews) || 0,
+        format: 'integer',
+        tone: 'info',
+        icon: 'views',
+      },
+      {
+        key: 'published_charts',
+        label: 'Published Charts',
+        value: Number(systemAnalytics.forecastPackages?.publishedCharts) || 0,
+        format: 'integer',
+        tone: 'success',
+        icon: 'publish',
+      }
+    );
+  }
+
+  for (const key of ['in_review', 'models_ready']) {
+    const card = cardsByKey.get(key);
+    if (card) cards.push(card);
+  }
+
+  return cards.slice(0, 4);
+};
 
 export async function getDashboardOverview(
   { permissions = [], query = {}, now = new Date() } = {},
@@ -117,7 +160,10 @@ export async function getDashboardOverview(
   const permissionSet = toPermissionSet(permissions);
   const base = await getBaseOverview({ permissions: permissionSet, query, now });
   const range = parseAnalyticsDateRange(query, now);
-  let result = base;
+  let result = {
+    ...base,
+    summaryCards: buildHeadlineCards({ baseCards: base.summaryCards }),
+  };
 
   if (permissionSet.has('analytics_users.view')) {
     try {
@@ -152,17 +198,10 @@ export async function getDashboardOverview(
         ...result,
         systemAnalytics,
         publishedChartViews,
-        summaryCards: [
-          ...(result.summaryCards || []),
-          {
-            key: 'published_chart_views',
-            label: 'Published Chart Views',
-            value: Number(publishedChartViews.totalViews) || 0,
-            format: 'integer',
-            tone: 'info',
-            icon: 'views',
-          },
-        ],
+        summaryCards: buildHeadlineCards({
+          baseCards: base.summaryCards,
+          systemAnalytics,
+        }),
       };
     } catch (error) {
       result = {
