@@ -137,7 +137,12 @@ test('dashboard composes four reach and readiness headline cards when system ana
     result.summaryCards.map((card) => card.key),
     ['chart_views_today', 'published_chart_views_total', 'published_charts', 'models_ready']
   );
-  assert.equal(result.summaryCards[0].value, '6 ↑ 50%');
+  assert.equal(result.summaryCards[0].value, 6);
+  assert.deepEqual(result.summaryCards[0].comparison, {
+    direction: 'up',
+    percent: 50,
+    previousValue: 4,
+  });
   assert.equal(result.summaryCards[1].value, 34);
   assert.equal(result.summaryCards[2].value, 7);
 });
@@ -163,7 +168,12 @@ test('dashboard represents first views after a zero-view day without inventing a
     }
   );
 
-  assert.equal(result.summaryCards[0].value, '2 ↑ NEW');
+  assert.equal(result.summaryCards[0].value, 2);
+  assert.deepEqual(result.summaryCards[0].comparison, {
+    direction: 'new',
+    percent: null,
+    previousValue: 0,
+  });
 });
 
 test('dashboard keeps other sources available when user analytics fail', async () => {
