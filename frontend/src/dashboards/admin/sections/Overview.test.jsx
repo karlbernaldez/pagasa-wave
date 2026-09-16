@@ -127,7 +127,9 @@ describe('DashboardOverview dynamic read model', () => {
     expect(screen.getByRole('tab', { name: 'Show Contribution Activity' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show Contribution Mix' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show Published Chart Views' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Show Top Viewed Published Charts' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: 'Show Top Viewed Published Charts' })
+    ).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show Account Status' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show User Type Distribution' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Show Forecast Package Health' })).toBeInTheDocument();
