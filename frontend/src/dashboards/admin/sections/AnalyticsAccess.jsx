@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock3,
   Download,
+  Eye,
   Loader2,
   RefreshCw,
   RotateCcw,
@@ -28,13 +29,23 @@ import {
   isAnalyticsDataStale,
 } from './analytics/analyticsDateRange';
 import {
+  adaptiveBucketDays,
+  bucketDateSeries,
   buildForecastDailySeries,
   buildForecastMetrics,
   buildSystemMetrics,
   buildUserMetrics,
+  contributionMixRows,
   entriesByCount,
   getAllowedAnalyticsSections,
+  publishedChartRows,
 } from './analytics/analyticsWorkspaceModel';
+import {
+  AnalyticsCarousel,
+  BarChartCard,
+  DistributionCard,
+  TrendCard,
+} from './analytics/AnalyticsVisuals';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -48,6 +59,13 @@ const REQUEST_BY_SECTION = {
   forecast: fetchForecastAnalytics,
   users: fetchUserAnalytics,
   system: fetchSystemAnalytics,
+};
+
+const bucketLabel = (days) => {
+  const size = adaptiveBucketDays(days);
+  if (size === 1) return 'Daily';
+  if (size === 2) return '2-day buckets';
+  return 'Weekly';
 };
 
 function formatGeneratedAt(value) {
@@ -110,75 +128,49 @@ function MetricCard({ icon: Icon, label, value, helper, isDarkMode }) {
   );
 }
 
-function Distribution({ title, description, rows, isDarkMode }) {
-  const max = Math.max(1, ...rows.map((row) => row.value));
-  return (
-    <section
-      className={cn(
-        'rounded-2xl border p-4',
-        isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
-      )}
-    >
-      <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-        {title}
-      </h3>
-      <p
-        className={cn(
-          'mt-1 text-xs font-semibold',
-          isDarkMode ? 'text-slate-400' : 'text-slate-500'
-        )}
-      >
-        {description}
-      </p>
-      <div className="mt-4 space-y-3">
-        {rows.length ? (
-          rows.map((row) => (
-            <div key={row.label}>
-              <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold">
-                <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>
-                  {row.label}
-                </span>
-                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>
-                  {row.value}
-                </span>
-              </div>
-              <div
-                className={cn(
-                  'h-2 overflow-hidden rounded-full',
-                  isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
-                )}
-                aria-label={`${row.label}: ${row.value}`}
-              >
-                <div
-                  className="h-full rounded-full bg-cyan-500"
-                  style={{ width: `${Math.max(5, Math.round((row.value / max) * 100))}%` }}
-                />
-              </div>
-            </div>
-          ))
-        ) : (
-          <p
-            className={cn(
-              'py-8 text-center text-xs font-semibold',
-              isDarkMode ? 'text-slate-500' : 'text-slate-400'
-            )}
-          >
-            No data in the selected period.
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
-
 function ForecastPanel({ payload, isDarkMode }) {
   const metrics = buildForecastMetrics(payload);
-  const dayCount = Math.min(Math.max(Number(payload.range?.days) || 14, 1), 30);
-  const daily = buildForecastDailySeries(payload.packages || [], dayCount);
-  const maxDaily = Math.max(
-    1,
-    ...daily.map((row) => Math.max(row.submitted, row.completed, row.returned))
-  );
+  const days = Math.max(1, Number(payload.range?.days) || 14);
+  const daily = buildForecastDailySeries(payload.packages || [], days);
+  const trend = bucketDateSeries(daily, {
+    start: payload.range?.start,
+    end: payload.range?.end,
+    valueFields: ['submitted', 'completed', 'returned'],
+    dayCount: days,
+  });
+
+  const slides = [
+    {
+      id: 'movement',
+      label: 'Package movement',
+      content: (
+        <TrendCard
+          title="Package movement"
+          description="Submitted, completed, and returned forecast packages in the selected period."
+          rows={trend}
+          series={[
+            { dataKey: 'submitted', label: 'Submitted', stroke: '#0ea5e9' },
+            { dataKey: 'completed', label: 'Completed', stroke: '#10b981' },
+            { dataKey: 'returned', label: 'Returned', stroke: '#f59e0b' },
+          ]}
+          bucketLabel={bucketLabel(days)}
+          isDarkMode={isDarkMode}
+        />
+      ),
+    },
+    {
+      id: 'status',
+      label: 'Package status distribution',
+      content: (
+        <DistributionCard
+          title="Package status distribution"
+          description="Forecast package states within the selected period."
+          rows={entriesByCount(payload.statusCounts)}
+          isDarkMode={isDarkMode}
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-5">
@@ -201,7 +193,7 @@ function ForecastPanel({ payload, isDarkMode }) {
           icon={CheckCircle2}
           label="Approved / published"
           value={metrics.approved}
-          helper={`${metrics.completionRate}% of packages in this period reached an approved outcome.`}
+          helper={`${metrics.completionRate}% reached an approved outcome.`}
           isDarkMode={isDarkMode}
         />
         <MetricCard
@@ -212,157 +204,189 @@ function ForecastPanel({ payload, isDarkMode }) {
           isDarkMode={isDarkMode}
         />
       </section>
-
-      <section
-        className={cn(
-          'rounded-2xl border p-4',
-          isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
-        )}
-      >
-        <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
-          Package movement
-        </h3>
-        <p
-          className={cn(
-            'mt-1 text-xs font-semibold',
-            isDarkMode ? 'text-slate-400' : 'text-slate-500'
-          )}
-        >
-          Submitted, completed, and returned forecast packages within the selected period.
-        </p>
-        <div
-          className="mt-5 grid gap-1 sm:gap-2"
-          style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(20px, 1fr))` }}
-        >
-          {daily.map((row) => (
-            <div key={row.key} className="min-w-0">
-              <div
-                className={cn(
-                  'flex h-36 items-end gap-[2px] rounded-lg p-1',
-                  isDarkMode ? 'bg-white/[0.03]' : 'bg-slate-50'
-                )}
-                title={`${row.label}: ${row.submitted} submitted, ${row.completed} completed, ${row.returned} returned`}
-              >
-                <div
-                  className="w-1/3 rounded-t bg-sky-500"
-                  style={{
-                    height: `${Math.max(row.submitted ? 8 : 0, Math.round((row.submitted / maxDaily) * 100))}%`,
-                  }}
-                />
-                <div
-                  className="w-1/3 rounded-t bg-emerald-500"
-                  style={{
-                    height: `${Math.max(row.completed ? 8 : 0, Math.round((row.completed / maxDaily) * 100))}%`,
-                  }}
-                />
-                <div
-                  className="w-1/3 rounded-t bg-amber-500"
-                  style={{
-                    height: `${Math.max(row.returned ? 8 : 0, Math.round((row.returned / maxDaily) * 100))}%`,
-                  }}
-                />
-              </div>
-              <p
-                className={cn(
-                  'mt-1 truncate text-center text-[9px] font-semibold',
-                  isDarkMode ? 'text-slate-500' : 'text-slate-400'
-                )}
-              >
-                {row.label}
-              </p>
-            </div>
-          ))}
-        </div>
-        <div
-          className={cn(
-            'mt-3 flex flex-wrap gap-4 text-[10px] font-bold',
-            isDarkMode ? 'text-slate-400' : 'text-slate-500'
-          )}
-        >
-          <span>
-            <span className="text-sky-500">■</span> Submitted
-          </span>
-          <span>
-            <span className="text-emerald-500">■</span> Completed
-          </span>
-          <span>
-            <span className="text-amber-500">■</span> Returned
-          </span>
-        </div>
-      </section>
-
-      <Distribution
-        title="Package status distribution"
-        description="Forecast package states within the selected period."
-        rows={entriesByCount(payload.statusCounts)}
-        isDarkMode={isDarkMode}
-      />
+      <AnalyticsCarousel slides={slides} isDarkMode={isDarkMode} ariaLabel="Forecast analytics charts" />
     </div>
   );
 }
 
 function UserPanel({ payload, isDarkMode }) {
   const metrics = buildUserMetrics(payload);
-  return (
-    <div className="space-y-5">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          icon={Users}
-          label="Accounts created"
-          value={metrics.total}
-          helper="Sanitized WaveLab accounts created within the selected period."
+  const days = Math.max(1, Number(payload.range?.days) || 14);
+  const contributionTrend = bucketDateSeries(payload.contributions?.trend || [], {
+    start: payload.range?.start,
+    end: payload.range?.end,
+    valueFields: ['total'],
+    dayCount: days,
+  });
+
+  const slides = [
+    {
+      id: 'contribution-trend',
+      label: 'Contribution activity',
+      content: (
+        <TrendCard
+          title="Contribution activity"
+          description="Meaningful operational participation from package and review audit events."
+          rows={contributionTrend}
+          series={[{ dataKey: 'total', label: 'Operational events', stroke: '#06b6d4' }]}
+          bucketLabel={bucketLabel(days)}
           isDarkMode={isDarkMode}
         />
-        <MetricCard
-          icon={CheckCircle2}
-          label="Active"
-          value={metrics.active}
-          helper={`${metrics.activeRate}% of accounts created in this period are active.`}
+      ),
+    },
+    {
+      id: 'contribution-mix',
+      label: 'Contribution mix',
+      content: (
+        <BarChartCard
+          title="Contribution mix"
+          description="Aggregate operational events by action. This is not a productivity ranking."
+          rows={contributionMixRows(payload.contributions)}
           isDarkMode={isDarkMode}
         />
-        <MetricCard
-          icon={Clock3}
-          label="Pending"
-          value={metrics.pending}
-          helper="Accounts in this period still awaiting activation or operational approval."
-          isDarkMode={isDarkMode}
-        />
-        <MetricCard
-          icon={ShieldCheck}
-          label="Restricted"
-          value={metrics.suspended}
-          helper="Suspended or locked accounts created in this period."
-          isDarkMode={isDarkMode}
-        />
-      </section>
-      <section className="grid gap-5 xl:grid-cols-2">
-        <Distribution
+      ),
+    },
+    {
+      id: 'account-status',
+      label: 'Account status',
+      content: (
+        <DistributionCard
           title="Account status"
           description="Operational account state without names, email addresses, or contact details."
           rows={entriesByCount(payload.statusCounts)}
           isDarkMode={isDarkMode}
         />
-        <Distribution
+      ),
+    },
+    {
+      id: 'user-types',
+      label: 'User Type distribution',
+      content: (
+        <DistributionCard
           title="User Type distribution"
-          description="New account participation by configured User Type key."
+          description="New accounts by configured User Type key."
           rows={entriesByCount(payload.roleCounts)}
           isDarkMode={isDarkMode}
         />
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          icon={Activity}
+          label="Contribution events"
+          value={metrics.contributionEvents}
+          helper="Meaningful operational events during the selected period."
+          isDarkMode={isDarkMode}
+        />
+        <MetricCard
+          icon={Users}
+          label="Active contributors"
+          value={metrics.activeContributors}
+          helper="Distinct participants in aggregate; identities are not exposed."
+          isDarkMode={isDarkMode}
+        />
+        <MetricCard
+          icon={Users}
+          label="Accounts created"
+          value={metrics.total}
+          helper={`${metrics.activeRate}% of new accounts are active.`}
+          isDarkMode={isDarkMode}
+        />
+        <MetricCard
+          icon={ShieldCheck}
+          label="Pending / restricted"
+          value={metrics.pending + metrics.suspended}
+          helper={`${metrics.pending} pending and ${metrics.suspended} suspended or locked.`}
+          isDarkMode={isDarkMode}
+        />
       </section>
+      <AnalyticsCarousel slides={slides} isDarkMode={isDarkMode} ariaLabel="User analytics charts" />
     </div>
   );
 }
 
 function SystemPanel({ payload, isDarkMode }) {
   const metrics = buildSystemMetrics(payload);
+  const days = Math.max(1, Number(payload.range?.days) || 14);
+  const viewTrend = bucketDateSeries(payload.publishedChartViews?.trend || [], {
+    start: payload.range?.start,
+    end: payload.range?.end,
+    valueFields: ['views'],
+    dayCount: days,
+  });
+
+  const slides = [
+    {
+      id: 'view-trend',
+      label: 'Published chart views',
+      content: (
+        <TrendCard
+          title="Published chart views"
+          description="Privacy-safe public chart views recorded during the selected period."
+          rows={viewTrend}
+          series={[{ dataKey: 'views', label: 'Views', stroke: '#06b6d4' }]}
+          bucketLabel={bucketLabel(days)}
+          isDarkMode={isDarkMode}
+        />
+      ),
+    },
+    {
+      id: 'top-charts',
+      label: 'Top viewed charts',
+      content: (
+        <BarChartCard
+          title="Top viewed published charts"
+          description="Current published charts with the most deduplicated views in the selected period."
+          rows={publishedChartRows(payload.publishedChartViews)}
+          isDarkMode={isDarkMode}
+        />
+      ),
+    },
+    {
+      id: 'forecast-health',
+      label: 'Forecast package health',
+      content: (
+        <DistributionCard
+          title="Forecast package health"
+          description="Package state distribution within the selected period."
+          rows={entriesByCount(payload.forecastPackages?.statusCounts)}
+          isDarkMode={isDarkMode}
+        />
+      ),
+    },
+    {
+      id: 'account-health',
+      label: 'New account health',
+      content: (
+        <DistributionCard
+          title="New account health"
+          description="Account state distribution for accounts created in the selected period."
+          rows={entriesByCount(payload.users?.statusCounts)}
+          isDarkMode={isDarkMode}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-5">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
+          icon={Eye}
+          label="Published chart views"
+          value={metrics.publishedViews}
+          helper="Deduplicated public views in the selected period."
+          isDarkMode={isDarkMode}
+        />
+        <MetricCard
           icon={Activity}
-          label="Active new accounts"
-          value={metrics.activeUsers}
-          helper={`${metrics.activeUserRate}% of ${metrics.totalUsers} accounts created in this period are active.`}
+          label="Views today"
+          value={metrics.viewsToday}
+          helper="Current Asia/Manila operational day."
           isDarkMode={isDarkMode}
         />
         <MetricCard
@@ -373,34 +397,14 @@ function SystemPanel({ payload, isDarkMode }) {
           isDarkMode={isDarkMode}
         />
         <MetricCard
-          icon={Clock3}
-          label="Review load"
-          value={metrics.packagesInReview}
-          helper="Packages currently submitted or under review in this period."
-          isDarkMode={isDarkMode}
-        />
-        <MetricCard
           icon={AlertTriangle}
           label="Open follow-up"
           value={metrics.packagesReturned + metrics.usersPending}
-          helper={`${metrics.packagesReturned} returned packages and ${metrics.usersPending} pending new accounts.`}
+          helper={`${metrics.packagesReturned} returned packages and ${metrics.usersPending} pending accounts.`}
           isDarkMode={isDarkMode}
         />
       </section>
-      <section className="grid gap-5 xl:grid-cols-2">
-        <Distribution
-          title="Forecast package health"
-          description="Package state distribution within the selected period."
-          rows={entriesByCount(payload.forecastPackages?.statusCounts)}
-          isDarkMode={isDarkMode}
-        />
-        <Distribution
-          title="New account health"
-          description="Account state distribution for accounts created in the selected period."
-          rows={entriesByCount(payload.users?.statusCounts)}
-          isDarkMode={isDarkMode}
-        />
-      </section>
+      <AnalyticsCarousel slides={slides} isDarkMode={isDarkMode} ariaLabel="System analytics charts" />
     </div>
   );
 }
@@ -492,7 +496,7 @@ function RangeControls({
           isDarkMode ? 'text-slate-500' : 'text-slate-400'
         )}
       >
-        Active period: {range.start} to {range.end} · Asia/Manila
+        Active period: {range.start} to {range.end} · Asia/Manila · {bucketLabel(range.days)}
       </p>
     </section>
   );
@@ -501,10 +505,14 @@ function RangeControls({
 const hasNoData = (sectionId, payload) => {
   if (!payload) return false;
   if (sectionId === 'forecast') return Number(payload.total || 0) === 0;
-  if (sectionId === 'users') return Number(payload.total || 0) === 0;
+  if (sectionId === 'users') {
+    return Number(payload.total || 0) === 0 && Number(payload.contributions?.totalEvents || 0) === 0;
+  }
   if (sectionId === 'system') {
     return (
-      Number(payload.users?.total || 0) === 0 && Number(payload.forecastPackages?.total || 0) === 0
+      Number(payload.users?.total || 0) === 0 &&
+      Number(payload.forecastPackages?.total || 0) === 0 &&
+      Number(payload.publishedChartViews?.totalViews || 0) === 0
     );
   }
   return false;
@@ -520,10 +528,10 @@ export default function AnalyticsAccess({ isDarkMode }) {
   const activeSection = activeConfig?.id || null;
   const canExport = permissions.has('analytics.export');
   const [range, setRange] = useState(() => initialAnalyticsRange());
-  const [customRange, setCustomRange] = useState(() => ({
-    start: initialAnalyticsRange().start,
-    end: initialAnalyticsRange().end,
-  }));
+  const [customRange, setCustomRange] = useState(() => {
+    const initial = initialAnalyticsRange();
+    return { start: initial.start, end: initial.end };
+  });
   const [state, setState] = useState({
     loading: false,
     refreshing: false,
@@ -576,18 +584,20 @@ export default function AnalyticsAccess({ isDarkMode }) {
   const applyRange = useCallback((nextRange) => {
     setRange(nextRange);
     setCustomRange({ start: nextRange.start, end: nextRange.end });
-    setState((current) => ({
-      ...current,
-      error: '',
-      data: {},
-      loadedAt: {},
-    }));
+    setState((current) => ({ ...current, error: '', data: {}, loadedAt: {} }));
   }, []);
 
   const handlePreset = useCallback(
-    (preset) => applyRange({ preset: preset.id, ...buildPresetRange(preset.days) }),
+    (preset) => applyRange({ preset: preset.id, days: preset.days, ...buildPresetRange(preset.days) }),
     [applyRange]
   );
+
+  const handleCustom = useCallback(() => {
+    const start = new Date(`${customRange.start}T00:00:00Z`);
+    const end = new Date(`${customRange.end}T00:00:00Z`);
+    const days = Math.max(1, Math.floor((end.getTime() - start.getTime()) / 86400000) + 1);
+    applyRange({ preset: 'custom', days, ...customRange });
+  }, [applyRange, customRange]);
 
   const handleExport = useCallback(async () => {
     if (!activeSection || !canExport) return;
@@ -667,12 +677,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
               >
                 Operational analytics
               </p>
-              <h2
-                className={cn(
-                  'mt-1 text-xl font-black',
-                  isDarkMode ? 'text-white' : 'text-slate-950'
-                )}
-              >
+              <h2 className={cn('mt-1 text-xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
                 {activeConfig.label}
               </h2>
               <p
@@ -701,7 +706,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {canExport && (
+            {canExport ? (
               <button
                 type="button"
                 onClick={() => void handleExport()}
@@ -720,7 +725,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
                 )}
                 Export CSV
               </button>
-            )}
+            ) : null}
             <button
               type="button"
               onClick={() => void loadSection(activeConfig.id, { silent: true })}
@@ -782,11 +787,11 @@ export default function AnalyticsAccess({ isDarkMode }) {
         onCustomChange={(field, value) =>
           setCustomRange((current) => ({ ...current, [field]: value }))
         }
-        onApplyCustom={() => applyRange({ preset: 'custom', ...customRange })}
+        onApplyCustom={handleCustom}
         isDarkMode={isDarkMode}
       />
 
-      {state.error && (
+      {state.error ? (
         <div
           className={cn(
             'rounded-2xl border px-4 py-3 text-sm font-semibold',
@@ -800,9 +805,9 @@ export default function AnalyticsAccess({ isDarkMode }) {
           {state.error}
           {payload ? ' Showing the last successfully loaded data.' : ''}
         </div>
-      )}
+      ) : null}
 
-      {payload && hasNoData(activeConfig.id, payload) && (
+      {payload && hasNoData(activeConfig.id, payload) ? (
         <div
           className={cn(
             'rounded-2xl border px-4 py-3 text-sm font-semibold',
@@ -813,7 +818,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
         >
           No analytics records were found for {range.start} to {range.end}. Try a wider period.
         </div>
-      )}
+      ) : null}
 
       {state.loading && !payload ? (
         <div
@@ -828,9 +833,9 @@ export default function AnalyticsAccess({ isDarkMode }) {
       ) : activeConfig.id === 'forecast' ? (
         <ForecastPanel payload={payload || { range }} isDarkMode={isDarkMode} />
       ) : activeConfig.id === 'users' ? (
-        <UserPanel payload={payload || {}} isDarkMode={isDarkMode} />
+        <UserPanel payload={payload || { range }} isDarkMode={isDarkMode} />
       ) : (
-        <SystemPanel payload={payload || {}} isDarkMode={isDarkMode} />
+        <SystemPanel payload={payload || { range }} isDarkMode={isDarkMode} />
       )}
     </div>
   );
