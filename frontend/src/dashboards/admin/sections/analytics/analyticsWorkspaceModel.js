@@ -26,10 +26,32 @@ export const ANALYTICS_SECTIONS = Object.freeze([
 const REVIEW_STATUSES = new Set(['Submitted', 'Under Review']);
 const RETURNED_STATUSES = new Set(['Revision Requested', 'Rejected']);
 const APPROVED_STATUSES = new Set(['Approved', 'Published']);
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const toCount = (value) => {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : 0;
+};
+
+const parseDateKey = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return null;
+  const [year, month, day] = String(value).split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const formatDateKey = (date) =>
+  `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(
+    date.getUTCDate()
+  ).padStart(2, '0')}`;
+
+const formatShortDateKey = (value) => {
+  const date = parseDateKey(value);
+  if (!date) return String(value || '');
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
 };
 
 export function getAllowedAnalyticsSections(permissions = []) {
@@ -122,6 +144,7 @@ export function buildForecastDailySeries(packages = [], dayCount = 14) {
     const key = dateKey(date);
     days.push({
       key,
+      date: key,
       label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date),
       submitted: 0,
       completed: 0,
@@ -148,6 +171,56 @@ export function buildForecastDailySeries(packages = [], dayCount = 14) {
   }
 
   return days;
+}
+
+export function adaptiveBucketDays(dayCount) {
+  const days = Math.max(1, Number(dayCount) || 1);
+  if (days <= 31) return 1;
+  if (days <= 60) return 2;
+  return 7;
+}
+
+export function bucketDateSeries(
+  rows = [],
+  { start, end, dateField = 'date', valueFields = ['value'], dayCount } = {}
+) {
+  const startDate = parseDateKey(start);
+  const endDate = parseDateKey(end);
+  if (!startDate || !endDate || endDate < startDate) return [];
+
+  const inclusiveDays = Math.floor((endDate.getTime() - startDate.getTime()) / DAY_MS) + 1;
+  const bucketDays = adaptiveBucketDays(dayCount || inclusiveDays);
+  const bucketCount = Math.ceil(inclusiveDays / bucketDays);
+  const buckets = Array.from({ length: bucketCount }, (_, index) => {
+    const bucketStart = new Date(startDate.getTime() + index * bucketDays * DAY_MS);
+    const bucketEnd = new Date(
+      Math.min(endDate.getTime(), bucketStart.getTime() + (bucketDays - 1) * DAY_MS)
+    );
+    const bucketStartKey = formatDateKey(bucketStart);
+    const bucketEndKey = formatDateKey(bucketEnd);
+    return {
+      key: `${bucketStartKey}:${bucketEndKey}`,
+      date: bucketStartKey,
+      label:
+        bucketStartKey === bucketEndKey
+          ? formatShortDateKey(bucketStartKey)
+          : `${formatShortDateKey(bucketStartKey)}–${formatShortDateKey(bucketEndKey)}`,
+      ...Object.fromEntries(valueFields.map((field) => [field, 0])),
+    };
+  });
+
+  for (const row of rows || []) {
+    const rowDate = parseDateKey(row?.[dateField]);
+    if (!rowDate || rowDate < startDate || rowDate > endDate) continue;
+    const offset = Math.floor((rowDate.getTime() - startDate.getTime()) / DAY_MS);
+    const bucket = buckets[Math.floor(offset / bucketDays)];
+    if (!bucket) continue;
+    for (const field of valueFields) {
+      bucket[field] += Number(row?.[field]) || 0;
+    }
+  }
+
+  return buckets;
 }
 
 export function contributionMixRows(contributions = {}) {
