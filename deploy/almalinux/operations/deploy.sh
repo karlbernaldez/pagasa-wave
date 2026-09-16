@@ -122,7 +122,7 @@ if grep -q "replace-with-public-mapbox-token" "$FRONTEND_ENV"; then
 fi
 
 wavelab_log "Running required pre-deployment validation."
-APP_USER="$APP_USER" APP_ROOT="$APP_ROOT" BACKEND_ENV="$BACKEND_ENV" \
+APP_USER="$APP_USER" APP_ROOT="$APP_ROOT" BACKEND_ENV="$BACKEND_ENV" RUN_WAVETILES_TESTS=1 \
   bash "$SCRIPT_DIR/preflight.sh"
 
 wavelab_log "Installing production backend dependency set."
