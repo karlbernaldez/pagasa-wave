@@ -70,7 +70,9 @@ function StateGrid({ title, icon: Icon, values = {}, isDarkMode }) {
         {entries.length ? (
           entries.map(([key, state]) => (
             <div key={key} className="flex items-center justify-between gap-3 text-xs">
-              <span className={cn('font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
+              <span
+                className={cn('font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-600')}
+              >
                 {key.replaceAll('_', ' ')}
               </span>
               <StatusPill status={state} label={state} isDarkMode={isDarkMode} />
