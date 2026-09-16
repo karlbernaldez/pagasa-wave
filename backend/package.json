@@ -8,7 +8,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
-    "express-mongo-sanitize": "^2.2.0",
+    "express-mongo-sanitize": "^2.2.2",
     "express-rate-limit": "^8.2.1",
     "handlebars": "^4.7.8",
     "helmet": "^8.1.0",
@@ -21,7 +21,7 @@
     "redis": "^5.11.0",
     "socket.io": "^4.8.3",
     "winston": "^3.19.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^6.0.0"
   },
   "type": "module",
   "imports": {
@@ -46,7 +46,8 @@
     "dev": "nodemon server.js",
     "ingest:knowledge": "node scripts/ingestKnowledge.js",
     "migrate:rbac": "node scripts/migrateForecasterRbacPermissions.js",
-    "migrate:rbac-chat": "node scripts/migrateForecasterRbacPermissions.js"
+    "migrate:rbac-chat": "node scripts/migrateForecasterRbacPermissions.js",
+    "seed:chart-views": "node scripts/seedPublishedChartViews.js"
   },
   "keywords": [],
   "author": "",
