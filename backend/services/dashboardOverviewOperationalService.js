@@ -123,9 +123,18 @@ const buildHeadlineCards = ({ baseCards = [], systemAnalytics = null } = {}) => 
     const publishedChartViews = systemAnalytics.publishedChartViews || {};
     cards.push(
       {
-        key: 'published_chart_views',
-        label: 'Published Chart Views',
-        value: Number(publishedChartViews.totalViews) || 0,
+        key: 'chart_views_today',
+        label: "Today's Chart Views",
+        value: Number(publishedChartViews.viewsToday) || 0,
+        format: 'integer',
+        tone: 'info',
+        icon: 'views',
+        comparison: publishedChartViews.dayOverDay || null,
+      },
+      {
+        key: 'published_chart_views_total',
+        label: 'Total Published Chart Views',
+        value: Number(publishedChartViews.allTimeViews) || 0,
         format: 'integer',
         tone: 'info',
         icon: 'views',
@@ -141,10 +150,8 @@ const buildHeadlineCards = ({ baseCards = [], systemAnalytics = null } = {}) => 
     );
   }
 
-  for (const key of ['in_review', 'models_ready']) {
-    const card = cardsByKey.get(key);
-    if (card) cards.push(card);
-  }
+  const modelsReady = cardsByKey.get('models_ready');
+  if (modelsReady) cards.push(modelsReady);
 
   return cards.slice(0, 4);
 };
