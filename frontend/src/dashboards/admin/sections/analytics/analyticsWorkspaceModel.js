@@ -12,14 +12,14 @@ export const ANALYTICS_SECTIONS = Object.freeze([
     shortLabel: 'Users',
     permission: 'analytics_users.view',
     description:
-      'Account status and User Type participation without exposing profile or contact data.',
+      'Operational participation and account health without exposing names, email addresses, or contact data.',
   },
   {
     id: 'system',
     label: 'System Operations',
     shortLabel: 'System',
     permission: 'analytics_system.view',
-    description: 'Cross-system readiness counts and operational health indicators.',
+    description: 'Cross-system readiness, public chart reach, and operational health indicators.',
   },
 ]);
 
@@ -59,6 +59,7 @@ export function buildForecastMetrics(payload = {}) {
 
 export function buildUserMetrics(payload = {}) {
   const statusCounts = payload.statusCounts || {};
+  const contributions = payload.contributions || {};
   const total = toCount(payload.total);
   const active = toCount(statusCounts.active);
   const pending = toCount(statusCounts.pending);
@@ -71,12 +72,15 @@ export function buildUserMetrics(payload = {}) {
     suspended,
     inactive: toCount(statusCounts.inactive),
     activeRate: total ? Math.round((active / total) * 100) : 0,
+    contributionEvents: toCount(contributions.totalEvents),
+    activeContributors: toCount(contributions.activeContributors),
   };
 }
 
 export function buildSystemMetrics(payload = {}) {
   const users = payload.users || {};
   const packages = payload.forecastPackages || {};
+  const chartViews = payload.publishedChartViews || {};
   const packageStatuses = packages.statusCounts || {};
   const userStatuses = users.statusCounts || {};
   const totalUsers = toCount(users.total);
@@ -93,6 +97,8 @@ export function buildSystemMetrics(payload = {}) {
       toCount(packageStatuses['Revision Requested']) + toCount(packageStatuses.Rejected),
     packagesPublished: toCount(packageStatuses.Published),
     usersPending: toCount(userStatuses.pending),
+    publishedViews: toCount(chartViews.totalViews),
+    viewsToday: toCount(chartViews.viewsToday),
   };
 }
 
@@ -142,6 +148,18 @@ export function buildForecastDailySeries(packages = [], dayCount = 14) {
   }
 
   return days;
+}
+
+export function contributionMixRows(contributions = {}) {
+  return (contributions.actionMix || [])
+    .map((row) => ({ label: row.label || row.action || 'Unknown', value: toCount(row.count) }))
+    .filter((row) => row.value > 0);
+}
+
+export function publishedChartRows(publishedChartViews = {}) {
+  return (publishedChartViews.topCharts || [])
+    .map((row) => ({ label: row.name || 'Published chart', value: toCount(row.views) }))
+    .filter((row) => row.value > 0);
 }
 
 export function entriesByCount(counts = {}) {
