@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Bar,
@@ -256,17 +256,15 @@ export function BarChartCard({ title, description, rows = [], isDarkMode }) {
 export function AnalyticsCarousel({ slides = [], isDarkMode, ariaLabel = 'Analytics charts' }) {
   const [index, setIndex] = useState(0);
 
-  useEffect(() => {
-    setIndex(0);
-  }, [slides.length]);
-
   if (!slides.length) return null;
 
   const currentIndex = Math.min(index, slides.length - 1);
   const current = slides[currentIndex];
   const showControls = slides.length > 1;
-  const goPrevious = () => setIndex((value) => (value - 1 + slides.length) % slides.length);
-  const goNext = () => setIndex((value) => (value + 1) % slides.length);
+  const goPrevious = () =>
+    setIndex((value) => (Math.min(value, slides.length - 1) - 1 + slides.length) % slides.length);
+  const goNext = () =>
+    setIndex((value) => (Math.min(value, slides.length - 1) + 1) % slides.length);
 
   return (
     <section aria-label={ariaLabel} className="space-y-3">
