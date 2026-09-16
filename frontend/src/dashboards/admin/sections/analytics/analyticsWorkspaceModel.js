@@ -185,7 +185,6 @@ export function buildForecastDailySeries(packages = [], dayCount = 14, endDateKe
 export function adaptiveBucketDays(dayCount) {
   const days = Math.max(1, Number(dayCount) || 1);
   if (days <= 31) return 1;
-  if (days <= 60) return 2;
   return 7;
 }
 
