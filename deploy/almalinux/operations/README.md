@@ -56,10 +56,10 @@ APP_ROOT=/home/wavelab/app
 BACKEND_ENV=/etc/wavelab/backend.env
 EXPECTED_BRANCH=main
 RUN_WAVETILES_TESTS=1
-WAVETILES_PYTHON=python3
+WAVETILES_PYTHON=/home/wavelab/app/wavetiles/.venv/bin/python
 ```
 
-`RUN_WAVETILES_TESTS=0` exists for emergency diagnosis only. Normal deployments should keep the pipeline tests enabled.
+The application-local WaveTiles virtual environment is the supported default runtime for pipeline tests. `RUN_WAVETILES_TESTS=0` exists for emergency diagnosis only; the production deployment path forces these tests on.
 
 ## Standalone health validation
 
