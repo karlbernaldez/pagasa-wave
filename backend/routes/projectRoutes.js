@@ -1,6 +1,8 @@
 // backend/routes/projectRoutes.js
 
+import { createHash } from 'node:crypto';
 import express from 'express';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import {
   createProject,
   getUserProjects,
@@ -28,6 +30,7 @@ import {
   getPublicPublishedForecastOutput,
   listPublicPublishedForecasts,
 } from '../controllers/publishedForecastController.js';
+import { recordPublicPublishedChartView } from '../controllers/publishedChartViewController.js';
 import Project from '../models/Project.js';
 import ForecastPackage from '../models/ForecastPackage.js';
 
@@ -39,6 +42,16 @@ import { canEditProjectStatus, getProjectEditLockMessage } from '../utils/projec
 import { emitForecastChartUpdated, emitForecastPackageUpdated } from '../socket/socketEmitter.js';
 
 const router = express.Router();
+
+const publishedViewLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) =>
+    createHash('sha256').update(String(ipKeyGenerator(req))).digest('hex'),
+  message: { message: 'Published chart view rate limit exceeded.' },
+});
 
 function getId(value) {
   if (!value) return '';
@@ -133,6 +146,7 @@ const canViewProject = requireAnyPermission(
 
 router.get('/public/published', listPublicPublishedForecasts);
 router.get('/public/published/:id', getPublicPublishedForecastOutput);
+router.post('/public/published/:id/view', publishedViewLimiter, recordPublicPublishedChartView);
 
 router.use(protect);
 
