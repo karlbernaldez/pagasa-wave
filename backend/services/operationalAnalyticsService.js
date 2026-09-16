@@ -28,6 +28,34 @@ const TIME_ZONE = 'Asia/Manila';
 
 const serializeCount = (value) => Number(value) || 0;
 
+const previousDateKey = (dateKey) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ''))) return null;
+  const [year, month, day] = String(dateKey).split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+};
+
+const buildDayOverDay = (today, yesterday) => {
+  const current = serializeCount(today);
+  const previous = serializeCount(yesterday);
+
+  if (previous === 0) {
+    return {
+      direction: current > 0 ? 'new' : 'flat',
+      percent: current > 0 ? null : 0,
+      previousValue: previous,
+    };
+  }
+
+  const percent = Math.round(((current - previous) / previous) * 100);
+  return {
+    direction: percent > 0 ? 'up' : percent < 0 ? 'down' : 'flat',
+    percent,
+    previousValue: previous,
+  };
+};
+
 export async function loadUserContributionAnalytics(
   range,
   { ForecastPackageModel = ForecastPackage } = {}
@@ -105,12 +133,17 @@ export async function loadPublishedChartViewAnalytics(
   { PublishedChartViewModel = PublishedChartView, currentDateKey = null, topLimit = 5 } = {}
 ) {
   const periodMatch = buildDateMatch('viewedAt', range);
+  const yesterdayDateKey = previousDateKey(currentDateKey);
   const rows = await PublishedChartViewModel.aggregate([
     {
       $facet: {
         totals: [{ $match: periodMatch }, { $count: 'count' }],
+        allTime: [{ $count: 'count' }],
         today: currentDateKey
           ? [{ $match: { dateKey: currentDateKey } }, { $count: 'count' }]
+          : [{ $match: { _id: { $exists: false } } }, { $count: 'count' }],
+        yesterday: yesterdayDateKey
+          ? [{ $match: { dateKey: yesterdayDateKey } }, { $count: 'count' }]
           : [{ $match: { _id: { $exists: false } } }, { $count: 'count' }],
         byDay: [
           { $match: periodMatch },
@@ -166,9 +199,15 @@ export async function loadPublishedChartViewAnalytics(
   ]);
 
   const result = rows[0] || {};
+  const viewsToday = serializeCount(result.today?.[0]?.count);
+  const viewsYesterday = serializeCount(result.yesterday?.[0]?.count);
+
   return {
     totalViews: serializeCount(result.totals?.[0]?.count),
-    viewsToday: serializeCount(result.today?.[0]?.count),
+    allTimeViews: serializeCount(result.allTime?.[0]?.count),
+    viewsToday,
+    viewsYesterday,
+    dayOverDay: buildDayOverDay(viewsToday, viewsYesterday),
     trend: (result.byDay || []).map((row) => ({
       date: String(row._id),
       views: serializeCount(row.count),
