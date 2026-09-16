@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { buildQuickActions, buildSummaryCards } from '../services/dashboardOverviewService.js';
 
-test('dashboard summary cards expose only metrics backed by effective permissions', () => {
+test('dashboard summary cards expose only meaningful metrics backed by effective permissions', () => {
   const pipelineOnly = buildSummaryCards({
     permissions: ['dashboard.view', 'wave_pipeline.view'],
     waveModels: [
@@ -28,16 +28,13 @@ test('dashboard summary cards expose only metrics backed by effective permission
       'Revision Requested': 1,
       Rejected: 2,
     },
-    publishedToday: 4,
   });
 
   assert.deepEqual(
     forecastOnly.map((card) => card.key),
-    ['in_review', 'returned', 'published_today']
+    ['in_review']
   );
   assert.equal(forecastOnly[0].value, 5);
-  assert.equal(forecastOnly[1].value, 3);
-  assert.equal(forecastOnly[2].value, 4);
 });
 
 test('dashboard model readiness is model-agnostic', () => {
