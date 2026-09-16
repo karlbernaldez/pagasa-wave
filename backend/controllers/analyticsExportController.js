@@ -145,7 +145,9 @@ export const exportSystemAnalytics = async (req, res, next) => {
         { $group: { _id: '$status', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
-      loadPublishedChartViewAnalytics(range, { currentDateKey: formatManilaDateKey() }),
+      loadPublishedChartViewAnalytics(range, {
+        currentDateKey: formatManilaDateKey(),
+      }),
     ]);
 
     const rows = [
@@ -154,7 +156,10 @@ export const exportSystemAnalytics = async (req, res, next) => {
       ['forecast_packages.total', totalPackages],
       ['published_chart_views.period', publishedChartViews.totalViews],
       ['published_chart_views.today', publishedChartViews.viewsToday],
-      ...userRows.map((row) => [`users.status.${row._id || 'unknown'}`, row.count || 0]),
+      ...userRows.map((row) => [
+        `users.status.${row._id || 'unknown'}`,
+        row.count || 0,
+      ]),
       ...packageRows.map((row) => [
         `forecast_packages.status.${row._id || 'unknown'}`,
         row.count || 0,
