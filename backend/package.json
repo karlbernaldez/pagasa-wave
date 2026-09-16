@@ -46,7 +46,8 @@
     "dev": "nodemon server.js",
     "ingest:knowledge": "node scripts/ingestKnowledge.js",
     "migrate:rbac": "node scripts/migrateForecasterRbacPermissions.js",
-    "migrate:rbac-chat": "node scripts/migrateForecasterRbacPermissions.js"
+    "migrate:rbac-chat": "node scripts/migrateForecasterRbacPermissions.js",
+    "seed:chart-views": "node scripts/seedPublishedChartViews.js"
   },
   "keywords": [],
   "author": "",

@@ -12,24 +12,46 @@ export const ANALYTICS_SECTIONS = Object.freeze([
     shortLabel: 'Users',
     permission: 'analytics_users.view',
     description:
-      'Account status and User Type participation without exposing profile or contact data.',
+      'Operational participation and account health without exposing names, email addresses, or contact data.',
   },
   {
     id: 'system',
     label: 'System Operations',
     shortLabel: 'System',
     permission: 'analytics_system.view',
-    description: 'Cross-system readiness counts and operational health indicators.',
+    description: 'Cross-system readiness, public chart reach, and operational health indicators.',
   },
 ]);
 
 const REVIEW_STATUSES = new Set(['Submitted', 'Under Review']);
 const RETURNED_STATUSES = new Set(['Revision Requested', 'Rejected']);
 const APPROVED_STATUSES = new Set(['Approved', 'Published']);
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const toCount = (value) => {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : 0;
+};
+
+const parseDateKey = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return null;
+  const [year, month, day] = String(value).split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const formatDateKey = (date) =>
+  `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(
+    date.getUTCDate()
+  ).padStart(2, '0')}`;
+
+const formatShortDateKey = (value) => {
+  const date = parseDateKey(value);
+  if (!date) return String(value || '');
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
 };
 
 export function getAllowedAnalyticsSections(permissions = []) {
@@ -59,6 +81,7 @@ export function buildForecastMetrics(payload = {}) {
 
 export function buildUserMetrics(payload = {}) {
   const statusCounts = payload.statusCounts || {};
+  const contributions = payload.contributions || {};
   const total = toCount(payload.total);
   const active = toCount(statusCounts.active);
   const pending = toCount(statusCounts.pending);
@@ -71,12 +94,15 @@ export function buildUserMetrics(payload = {}) {
     suspended,
     inactive: toCount(statusCounts.inactive),
     activeRate: total ? Math.round((active / total) * 100) : 0,
+    contributionEvents: toCount(contributions.totalEvents),
+    activeContributors: toCount(contributions.activeContributors),
   };
 }
 
 export function buildSystemMetrics(payload = {}) {
   const users = payload.users || {};
   const packages = payload.forecastPackages || {};
+  const chartViews = payload.publishedChartViews || {};
   const packageStatuses = packages.statusCounts || {};
   const userStatuses = users.statusCounts || {};
   const totalUsers = toCount(users.total);
@@ -93,6 +119,8 @@ export function buildSystemMetrics(payload = {}) {
       toCount(packageStatuses['Revision Requested']) + toCount(packageStatuses.Rejected),
     packagesPublished: toCount(packageStatuses.Published),
     usersPending: toCount(userStatuses.pending),
+    publishedViews: toCount(chartViews.totalViews),
+    viewsToday: toCount(chartViews.viewsToday),
   };
 }
 
@@ -105,18 +133,26 @@ const dateKey = (value) => {
   return `${year}-${month}-${day}`;
 };
 
-export function buildForecastDailySeries(packages = [], dayCount = 14) {
+export function buildForecastDailySeries(packages = [], dayCount = 14, endDateKey = null) {
   const days = [];
-  const today = new Date();
+  const selectedEnd = parseDateKey(endDateKey);
+  const endDate = selectedEnd || new Date();
 
   for (let offset = dayCount - 1; offset >= 0; offset -= 1) {
-    const date = new Date(today);
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - offset);
-    const key = dateKey(date);
+    const date = selectedEnd ? new Date(endDate.getTime() - offset * DAY_MS) : new Date(endDate);
+    if (!selectedEnd) {
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - offset);
+    }
+    const key = selectedEnd ? formatDateKey(date) : dateKey(date);
     days.push({
       key,
-      label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date),
+      date: key,
+      label: new Intl.DateTimeFormat(undefined, {
+        month: 'short',
+        day: 'numeric',
+        ...(selectedEnd ? { timeZone: 'UTC' } : {}),
+      }).format(date),
       submitted: 0,
       completed: 0,
       returned: 0,
@@ -142,6 +178,67 @@ export function buildForecastDailySeries(packages = [], dayCount = 14) {
   }
 
   return days;
+}
+
+export function adaptiveBucketDays(dayCount) {
+  const days = Math.max(1, Number(dayCount) || 1);
+  if (days <= 31) return 1;
+  return 7;
+}
+
+export function bucketDateSeries(
+  rows = [],
+  { start, end, dateField = 'date', valueFields = ['value'], dayCount } = {}
+) {
+  const startDate = parseDateKey(start);
+  const endDate = parseDateKey(end);
+  if (!startDate || !endDate || endDate < startDate) return [];
+
+  const inclusiveDays = Math.floor((endDate.getTime() - startDate.getTime()) / DAY_MS) + 1;
+  const bucketDays = adaptiveBucketDays(dayCount || inclusiveDays);
+  const bucketCount = Math.ceil(inclusiveDays / bucketDays);
+  const buckets = Array.from({ length: bucketCount }, (_, index) => {
+    const bucketStart = new Date(startDate.getTime() + index * bucketDays * DAY_MS);
+    const bucketEnd = new Date(
+      Math.min(endDate.getTime(), bucketStart.getTime() + (bucketDays - 1) * DAY_MS)
+    );
+    const bucketStartKey = formatDateKey(bucketStart);
+    const bucketEndKey = formatDateKey(bucketEnd);
+    return {
+      key: `${bucketStartKey}:${bucketEndKey}`,
+      date: bucketStartKey,
+      label:
+        bucketStartKey === bucketEndKey
+          ? formatShortDateKey(bucketStartKey)
+          : `${formatShortDateKey(bucketStartKey)}–${formatShortDateKey(bucketEndKey)}`,
+      ...Object.fromEntries(valueFields.map((field) => [field, 0])),
+    };
+  });
+
+  for (const row of rows || []) {
+    const rowDate = parseDateKey(row?.[dateField]);
+    if (!rowDate || rowDate < startDate || rowDate > endDate) continue;
+    const offset = Math.floor((rowDate.getTime() - startDate.getTime()) / DAY_MS);
+    const bucket = buckets[Math.floor(offset / bucketDays)];
+    if (!bucket) continue;
+    for (const field of valueFields) {
+      bucket[field] += Number(row?.[field]) || 0;
+    }
+  }
+
+  return buckets;
+}
+
+export function contributionMixRows(contributions = {}) {
+  return (contributions.actionMix || [])
+    .map((row) => ({ label: row.label || row.action || 'Unknown', value: toCount(row.count) }))
+    .filter((row) => row.value > 0);
+}
+
+export function publishedChartRows(publishedChartViews = {}) {
+  return (publishedChartViews.topCharts || [])
+    .map((row) => ({ label: row.name || 'Published chart', value: toCount(row.views) }))
+    .filter((row) => row.value > 0);
 }
 
 export function entriesByCount(counts = {}) {

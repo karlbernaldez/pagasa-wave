@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  adaptiveBucketDays,
+  bucketDateSeries,
+  buildForecastDailySeries,
   buildForecastMetrics,
   buildSystemMetrics,
   buildUserMetrics,
+  contributionMixRows,
   getAllowedAnalyticsSections,
+  publishedChartRows,
 } from './analyticsWorkspaceModel';
 
 describe('analytics workspace model', () => {
@@ -47,11 +52,12 @@ describe('analytics workspace model', () => {
     });
   });
 
-  it('builds user activity metrics without requiring profile fields', () => {
+  it('builds user activity metrics from aggregate operational participation without profile fields', () => {
     expect(
       buildUserMetrics({
         total: 10,
         statusCounts: { active: 7, pending: 1, suspended: 1, locked: 1 },
+        contributions: { totalEvents: 26, activeContributors: 5 },
       })
     ).toEqual({
       total: 10,
@@ -60,10 +66,26 @@ describe('analytics workspace model', () => {
       suspended: 2,
       inactive: 0,
       activeRate: 70,
+      contributionEvents: 26,
+      activeContributors: 5,
     });
   });
 
-  it('builds system readiness metrics from aggregate-only payloads', () => {
+  it('normalizes contribution mix without participant identities or ranking fields', () => {
+    expect(
+      contributionMixRows({
+        actionMix: [
+          { action: 'submitted', label: 'Package submitted', count: 4 },
+          { action: 'approved', label: 'Approved', count: 3 },
+        ],
+      })
+    ).toEqual([
+      { label: 'Package submitted', value: 4 },
+      { label: 'Approved', value: 3 },
+    ]);
+  });
+
+  it('builds system readiness and published view metrics from aggregate-only payloads', () => {
     expect(
       buildSystemMetrics({
         users: {
@@ -81,6 +103,7 @@ describe('analytics workspace model', () => {
             Published: 5,
           },
         },
+        publishedChartViews: { totalViews: 31, viewsToday: 6 },
       })
     ).toEqual({
       totalUsers: 8,
@@ -91,6 +114,80 @@ describe('analytics workspace model', () => {
       packagesReturned: 2,
       packagesPublished: 5,
       usersPending: 2,
+      publishedViews: 31,
+      viewsToday: 6,
     });
+  });
+
+  it('normalizes most-viewed charts as aggregate distribution rows', () => {
+    expect(
+      publishedChartRows({
+        topCharts: [
+          { name: 'Analysis', views: 12 },
+          { name: '24-Hour Forecast', views: 8 },
+        ],
+      })
+    ).toEqual([
+      { label: 'Analysis', value: 12 },
+      { label: '24-Hour Forecast', value: 8 },
+    ]);
+  });
+
+  it('uses daily points up to 31 days and weekly buckets for longer periods', () => {
+    expect(adaptiveBucketDays(30)).toBe(1);
+    expect(adaptiveBucketDays(31)).toBe(1);
+    expect(adaptiveBucketDays(60)).toBe(7);
+    expect(adaptiveBucketDays(61)).toBe(7);
+    expect(adaptiveBucketDays(90)).toBe(7);
+  });
+
+  it('reduces a 60-day trend to weekly buckets without losing totals', () => {
+    const rows = [
+      { date: '2026-07-19', views: 2 },
+      { date: '2026-07-20', views: 3 },
+      { date: '2026-09-16', views: 5 },
+    ];
+
+    const result = bucketDateSeries(rows, {
+      start: '2026-07-19',
+      end: '2026-09-16',
+      valueFields: ['views'],
+      dayCount: 60,
+    });
+
+    expect(result).toHaveLength(9);
+    expect(result[0].views).toBe(5);
+    expect(result.at(-1).views).toBe(5);
+    expect(result.reduce((total, row) => total + row.views, 0)).toBe(10);
+  });
+
+  it('reduces a 90-day trend to weekly buckets and retains zero-value periods', () => {
+    const result = bucketDateSeries(
+      [
+        { date: '2026-06-19', total: 4 },
+        { date: '2026-09-16', total: 6 },
+      ],
+      {
+        start: '2026-06-19',
+        end: '2026-09-16',
+        valueFields: ['total'],
+        dayCount: 90,
+      }
+    );
+
+    expect(result).toHaveLength(13);
+    expect(result.reduce((total, row) => total + row.total, 0)).toBe(10);
+    expect(result.some((row) => row.total === 0)).toBe(true);
+  });
+
+  it('anchors forecast daily series to the selected historical end date', () => {
+    const result = buildForecastDailySeries(
+      [{ forecastDate: '2026-06-30T00:00:00.000Z', status: 'Published' }],
+      3,
+      '2026-06-30'
+    );
+
+    expect(result.map((row) => row.date)).toEqual(['2026-06-28', '2026-06-29', '2026-06-30']);
+    expect(result.at(-1)).toMatchObject({ completed: 1 });
   });
 });
