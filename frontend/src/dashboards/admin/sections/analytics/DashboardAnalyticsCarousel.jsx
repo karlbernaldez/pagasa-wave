@@ -1,9 +1,4 @@
-import {
-  AnalyticsCarousel,
-  BarChartCard,
-  DistributionCard,
-  TrendCard,
-} from './AnalyticsVisuals';
+import { AnalyticsCarousel, BarChartCard, DistributionCard, TrendCard } from './AnalyticsVisuals';
 import {
   adaptiveBucketDays,
   bucketDateSeries,
