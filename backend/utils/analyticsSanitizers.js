@@ -8,12 +8,24 @@ export function buildUserAnalyticsExportRows({
 } = {}) {
   return [
     ['accounts.total', 'all', Number(total) || 0],
-    ...statusRows.map((row) => ['accounts.status', String(row._id || 'unknown'), row.count || 0]),
-    ...roleRows.map((row) => ['accounts.user_type', String(row._id || 'unknown'), row.count || 0]),
+    ...statusRows.map((row) => [
+      'accounts.status',
+      String(row._id || 'unknown'),
+      row.count || 0,
+    ]),
+    ...roleRows.map((row) => [
+      'accounts.user_type',
+      String(row._id || 'unknown'),
+      row.count || 0,
+    ]),
     ...(contributions
       ? [
           ['contributions.total_events', 'all', Number(contributions.totalEvents) || 0],
-          ['contributions.active_participants', 'all', Number(contributions.activeContributors) || 0],
+          [
+            'contributions.active_participants',
+            'all',
+            Number(contributions.activeContributors) || 0,
+          ],
           ...(contributions.actionMix || []).map((row) => [
             'contributions.action',
             String(row.action || 'unknown'),
