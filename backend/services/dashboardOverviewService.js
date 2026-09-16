@@ -122,12 +122,7 @@ export function buildQuickActions(permissions = []) {
   return actions;
 }
 
-export function buildSummaryCards({
-  permissions = [],
-  workflowCounts = {},
-  publishedToday = 0,
-  waveModels = [],
-} = {}) {
+export function buildSummaryCards({ permissions = [], workflowCounts = {}, waveModels = [] } = {}) {
   const permissionSet = toPermissionSet(permissions);
   const cards = [];
   const canForecastMetrics =
@@ -138,37 +133,15 @@ export function buildSummaryCards({
       (sum, status) => sum + (Number(workflowCounts[status]) || 0),
       0
     );
-    const returned = RETURNED_STATUSES.reduce(
-      (sum, status) => sum + (Number(workflowCounts[status]) || 0),
-      0
-    );
 
-    cards.push(
-      {
-        key: 'in_review',
-        label: 'In Review',
-        value: inReview,
-        format: 'integer',
-        tone: 'info',
-        icon: 'review',
-      },
-      {
-        key: 'returned',
-        label: 'Returned',
-        value: returned,
-        format: 'integer',
-        tone: returned > 0 ? 'warning' : 'neutral',
-        icon: 'revision',
-      },
-      {
-        key: 'published_today',
-        label: 'Published Today',
-        value: Number(publishedToday) || 0,
-        format: 'integer',
-        tone: 'success',
-        icon: 'publish',
-      }
-    );
+    cards.push({
+      key: 'in_review',
+      label: 'In Review',
+      value: inReview,
+      format: 'integer',
+      tone: 'info',
+      icon: 'review',
+    });
   }
 
   if (permissionSet.has('wave_pipeline.view')) {
@@ -354,21 +327,14 @@ async function loadForecastAnalytics(range) {
   };
 }
 
-async function loadCurrentWorkflowSummary(todayRange) {
-  const [statusRows, publishedToday] = await Promise.all([
-    ForecastPackage.aggregate([
-      { $match: { status: { $ne: FORECAST_PACKAGE_STATUS.ARCHIVED } } },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]),
-    ForecastPackage.countDocuments({
-      status: FORECAST_PACKAGE_STATUS.PUBLISHED,
-      ...buildDateMatch('publishedAt', todayRange),
-    }),
+async function loadCurrentWorkflowSummary() {
+  const statusRows = await ForecastPackage.aggregate([
+    { $match: { status: { $ne: FORECAST_PACKAGE_STATUS.ARCHIVED } } },
+    { $group: { _id: '$status', count: { $sum: 1 } } },
   ]);
 
   return {
     workflowCounts: countFromRows(statusRows),
-    publishedToday,
   };
 }
 
@@ -463,7 +429,6 @@ export async function getDashboardOverview({
   const permissionSet = toPermissionSet(permissions);
   const range = parseAnalyticsDateRange(query, now);
   const operationalDate = formatManilaDateKey(now);
-  const todayRange = parseAnalyticsDateRange({ start: operationalDate, end: operationalDate }, now);
   const errors = [];
 
   const canForecastAnalytics = permissionSet.has('analytics_forecast.view');
@@ -475,7 +440,6 @@ export async function getDashboardOverview({
 
   let forecastAnalytics = null;
   let workflowCounts = {};
-  let publishedToday = 0;
   let recentPackages = [];
   let recentActivity = [];
   let waveModels = [];
@@ -500,10 +464,9 @@ export async function getDashboardOverview({
 
   if (canForecastMetrics) {
     tasks.push(
-      loadCurrentWorkflowSummary(todayRange)
+      loadCurrentWorkflowSummary()
         .then((value) => {
           workflowCounts = value.workflowCounts;
-          publishedToday = value.publishedToday;
         })
         .catch((error) => {
           errors.push({
@@ -574,7 +537,6 @@ export async function getDashboardOverview({
     summaryCards: buildSummaryCards({
       permissions: permissionSet,
       workflowCounts,
-      publishedToday,
       waveModels,
     }),
     forecastWorkflowTrend: canForecastAnalytics
