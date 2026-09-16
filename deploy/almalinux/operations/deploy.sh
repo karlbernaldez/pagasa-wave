@@ -21,6 +21,11 @@ if [[ ! -d "$APP_ROOT/.git" ]]; then
   exit 1
 fi
 
+if ! id "$APP_USER" >/dev/null 2>&1; then
+  useradd --system --create-home --shell /bin/bash "$APP_USER"
+fi
+APP_GROUP="$(id -gn "$APP_USER")"
+
 if [[ -z "$PUBLIC_HOST" ]]; then
   PUBLIC_HOST="$(curl -fsS --max-time 10 https://ifconfig.me || true)"
 fi
@@ -34,10 +39,12 @@ PUBLIC_ORIGIN="${PUBLIC_ORIGIN:-http://$PUBLIC_HOST}"
 DEPLOY_SHA="$(sudo -u "$APP_USER" git -C "$APP_ROOT" rev-parse HEAD)"
 DEPLOY_SHORT_SHA="${DEPLOY_SHA:0:12}"
 mkdir -p "$REPORT_ROOT"
-chmod 0755 "$REPORT_ROOT"
+chmod 0750 "$REPORT_ROOT"
+chown root:"$APP_GROUP" "$REPORT_ROOT"
 DEPLOY_LOG="$REPORT_ROOT/$(date '+%Y-%m-%d_%H%M%S')_${DEPLOY_SHORT_SHA}.deploy.log"
 touch "$DEPLOY_LOG"
-chmod 0644 "$DEPLOY_LOG"
+chown root:"$APP_GROUP" "$DEPLOY_LOG"
+chmod 0640 "$DEPLOY_LOG"
 exec > >(tee -a "$DEPLOY_LOG") 2>&1
 
 wavelab_log "WaveLab deployment starting."
@@ -54,15 +61,11 @@ make_path_traversable() {
   done
 }
 
-if ! id "$APP_USER" >/dev/null 2>&1; then
-  useradd --system --create-home --shell /bin/bash "$APP_USER"
-fi
-
 mkdir -p /etc/wavelab
 mkdir -p "$APP_ROOT/backend/logs" "$APP_ROOT/backend/frames" "$APP_ROOT/backend/public" "$APP_ROOT/backend/tmp"
 WAVETILES_ROOT="$APP_ROOT/wavetiles/tiles"
 mkdir -p "$WAVETILES_ROOT"
-chown -R "$APP_USER:$APP_USER" \
+chown -R "$APP_USER:$APP_GROUP" \
   "$APP_ROOT/backend/logs" \
   "$APP_ROOT/backend/frames" \
   "$APP_ROOT/backend/public" \
@@ -102,7 +105,7 @@ VITE_WW3_TILE_BASE=$PUBLIC_ORIGIN/wavetiles
 VITE_MAPBOX_ACCESS_TOKEN=replace-with-public-mapbox-token
 EOF
   fi
-  chown "$APP_USER:$APP_USER" "$FRONTEND_ENV"
+  chown "$APP_USER:$APP_GROUP" "$FRONTEND_ENV"
   chmod 600 "$FRONTEND_ENV"
   echo "Created $FRONTEND_ENV. Configure its public Mapbox token and run deployment again." >&2
   exit 2
@@ -110,7 +113,7 @@ fi
 
 if ! grep -q "^VITE_WW3_TILE_BASE=" "$FRONTEND_ENV"; then
   printf '\nVITE_WW3_TILE_BASE=%s/wavetiles\n' "$PUBLIC_ORIGIN" >> "$FRONTEND_ENV"
-  chown "$APP_USER:$APP_USER" "$FRONTEND_ENV"
+  chown "$APP_USER:$APP_GROUP" "$FRONTEND_ENV"
   chmod 600 "$FRONTEND_ENV"
 fi
 if grep -q "replace-with-public-mapbox-token" "$FRONTEND_ENV"; then
@@ -120,7 +123,7 @@ fi
 
 wavelab_log "Running required pre-deployment validation."
 APP_USER="$APP_USER" APP_ROOT="$APP_ROOT" BACKEND_ENV="$BACKEND_ENV" \
-  "$SCRIPT_DIR/preflight.sh"
+  bash "$SCRIPT_DIR/preflight.sh"
 
 wavelab_log "Installing production backend dependency set."
 sudo -u "$APP_USER" bash -lc "
@@ -136,7 +139,7 @@ if [[ ! -d "$FRONTEND_DIST" ]]; then
 fi
 printf '%s\n' "$DEPLOY_SHA" > "$FRONTEND_DIST/deployed-revision.txt"
 
-chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIST"
+chown -R "$APP_USER:$APP_GROUP" "$FRONTEND_DIST"
 make_path_traversable "$FRONTEND_DIST"
 make_path_traversable "$WAVETILES_ROOT"
 find "$FRONTEND_DIST" -type d -exec chmod 755 {} +
@@ -210,8 +213,8 @@ curl -fsSI --max-time 10 "http://127.0.0.1/pagasa-logo.png" >/dev/null
 curl -fsS --max-time 10 "http://127.0.0.1/deployed-revision.txt" | grep -Fx "$DEPLOY_SHA" >/dev/null
 
 wavelab_log "Running required post-deployment validation and report generation."
-APP_ROOT="$APP_ROOT" BACKEND_ENV="$BACKEND_ENV" REPORT_ROOT="$REPORT_ROOT" \
-  "$SCRIPT_DIR/validate-deployment.sh"
+APP_ROOT="$APP_ROOT" APP_USER="$APP_USER" BACKEND_ENV="$BACKEND_ENV" REPORT_ROOT="$REPORT_ROOT" \
+  bash "$SCRIPT_DIR/validate-deployment.sh"
 
 wavelab_log "WaveLab deploy completed successfully."
 wavelab_log "Deployed revision: $DEPLOY_SHA"
