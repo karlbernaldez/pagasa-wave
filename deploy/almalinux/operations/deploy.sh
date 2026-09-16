@@ -178,6 +178,32 @@ install_optional "$ALMALINUX_DIR/wavelab-ecwam-package-builder" /usr/local/sbin/
 install_optional "$ALMALINUX_DIR/wavelab-ecwam-package-builder.service" /etc/systemd/system/wavelab-ecwam-package-builder.service 0644
 install_optional "$ALMALINUX_DIR/wavelab-ecwam-package-builder.timer" /etc/systemd/system/wavelab-ecwam-package-builder.timer 0644
 
+wavelab_log "Synchronizing required WaveLab operational automation."
+systemctl daemon-reload
+systemctl enable --now wavelab-ww3-package-builder.timer wavelab-ecwam-package-builder.timer
+
+APP_ROOT="$APP_ROOT" bash "$ALMALINUX_DIR/install-wave-source-readiness.sh"
+APP_ROOT="$APP_ROOT" bash "$ALMALINUX_DIR/install-wave-model-operations.sh"
+
+MONITOR_ENV="/etc/wavelab/monitor.env"
+if [[ ! -f "$MONITOR_ENV" ]]; then
+  echo "Required health-monitor environment file is missing: $MONITOR_ENV" >&2
+  exit 2
+fi
+install -o root -g root -m 0755 "$ALMALINUX_DIR/health-monitor.sh" /usr/local/sbin/wavelab-health-monitor
+install -o root -g root -m 0644 "$ALMALINUX_DIR/wavelab-health-monitor.service" /etc/systemd/system/wavelab-health-monitor.service
+install -o root -g root -m 0644 "$ALMALINUX_DIR/wavelab-health-monitor.timer" /etc/systemd/system/wavelab-health-monitor.timer
+systemd-analyze verify /etc/systemd/system/wavelab-health-monitor.service /etc/systemd/system/wavelab-health-monitor.timer
+systemctl daemon-reload
+systemctl enable --now wavelab-health-monitor.timer
+
+MONGODB_BACKUP_ENV="/etc/wavelab/mongodb-backup.env"
+if [[ ! -f "$MONGODB_BACKUP_ENV" ]]; then
+  echo "Required MongoDB backup environment file is missing: $MONGODB_BACKUP_ENV" >&2
+  exit 2
+fi
+APP_ROOT="$APP_ROOT" bash "$ALMALINUX_DIR/install-mongodb-backup-automation.sh"
+
 cp "$ALMALINUX_DIR/wavelab-backend.service" "$SERVICE_FILE"
 cp "$ALMALINUX_DIR/nginx.conf" "$NGINX_CONF"
 sed -i \
