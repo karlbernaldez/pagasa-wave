@@ -1,5 +1,10 @@
 import ForecastPackage from '../models/ForecastPackage.js';
 import User from '../models/User.js';
+import {
+  loadPublishedChartViewAnalytics,
+  loadUserContributionAnalytics,
+} from '../services/operationalAnalyticsService.js';
+import { formatManilaDateKey } from '../services/publishedChartViewService.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
 
 const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
@@ -76,7 +81,7 @@ export const getUserAnalytics = async (req, res, next) => {
       deletedAt: null,
       ...buildDateMatch('createdAt', range),
     };
-    const [total, statusRows, roleRows] = await Promise.all([
+    const [total, statusRows, roleRows, contributions] = await Promise.all([
       User.countDocuments(match),
       User.aggregate([
         { $match: match },
@@ -88,12 +93,14 @@ export const getUserAnalytics = async (req, res, next) => {
         { $group: { _id: '$role', count: { $sum: 1 } } },
         { $sort: { count: -1, _id: 1 } },
       ]),
+      loadUserContributionAnalytics(range),
     ]);
 
     return res.status(200).json({
       total,
       statusCounts: rowsToCountObject(statusRows),
       roleCounts: rowsToCountObject(roleRows),
+      contributions,
       range: serializeRange(range),
       generatedAt: new Date().toISOString(),
     });
@@ -113,22 +120,29 @@ export const getSystemAnalytics = async (req, res, next) => {
       status: { $in: ANALYTICS_PACKAGE_STATUSES },
       ...buildDateMatch('forecastDate', range),
     };
-    const [totalUsers, activeUsers, totalPackages, packageStatusRows, userStatusRows] =
-      await Promise.all([
-        User.countDocuments(userMatch),
-        User.countDocuments({ ...userMatch, status: 'active' }),
-        ForecastPackage.countDocuments(packageMatch),
-        ForecastPackage.aggregate([
-          { $match: packageMatch },
-          { $group: { _id: '$status', count: { $sum: 1 } } },
-          { $sort: { count: -1, _id: 1 } },
-        ]),
-        User.aggregate([
-          { $match: userMatch },
-          { $group: { _id: '$status', count: { $sum: 1 } } },
-          { $sort: { count: -1, _id: 1 } },
-        ]),
-      ]);
+    const [
+      totalUsers,
+      activeUsers,
+      totalPackages,
+      packageStatusRows,
+      userStatusRows,
+      publishedChartViews,
+    ] = await Promise.all([
+      User.countDocuments(userMatch),
+      User.countDocuments({ ...userMatch, status: 'active' }),
+      ForecastPackage.countDocuments(packageMatch),
+      ForecastPackage.aggregate([
+        { $match: packageMatch },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+      User.aggregate([
+        { $match: userMatch },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+      loadPublishedChartViewAnalytics(range, { currentDateKey: formatManilaDateKey() }),
+    ]);
 
     return res.status(200).json({
       users: {
@@ -140,6 +154,7 @@ export const getSystemAnalytics = async (req, res, next) => {
         total: totalPackages,
         statusCounts: rowsToCountObject(packageStatusRows),
       },
+      publishedChartViews,
       range: serializeRange(range),
       generatedAt: new Date().toISOString(),
     });
