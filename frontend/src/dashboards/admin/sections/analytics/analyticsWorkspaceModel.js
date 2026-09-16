@@ -133,19 +133,28 @@ const dateKey = (value) => {
   return `${year}-${month}-${day}`;
 };
 
-export function buildForecastDailySeries(packages = [], dayCount = 14) {
+export function buildForecastDailySeries(packages = [], dayCount = 14, endDateKey = null) {
   const days = [];
-  const today = new Date();
+  const selectedEnd = parseDateKey(endDateKey);
+  const endDate = selectedEnd || new Date();
 
   for (let offset = dayCount - 1; offset >= 0; offset -= 1) {
-    const date = new Date(today);
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - offset);
-    const key = dateKey(date);
+    const date = selectedEnd
+      ? new Date(endDate.getTime() - offset * DAY_MS)
+      : new Date(endDate);
+    if (!selectedEnd) {
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - offset);
+    }
+    const key = selectedEnd ? formatDateKey(date) : dateKey(date);
     days.push({
       key,
       date: key,
-      label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date),
+      label: new Intl.DateTimeFormat(undefined, {
+        month: 'short',
+        day: 'numeric',
+        ...(selectedEnd ? { timeZone: 'UTC' } : {}),
+      }).format(date),
       submitted: 0,
       completed: 0,
       returned: 0,
