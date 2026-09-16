@@ -8,7 +8,9 @@ describe('DeploymentOperationsStatus', () => {
     render(<DeploymentOperationsStatus deployment={{ available: false }} isDarkMode={false} />);
 
     expect(screen.getByText('Deployment validation report not available')).toBeInTheDocument();
-    expect(screen.getByText(/No deployment commands are executed from this page/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/No deployment commands are executed from this page/i)
+    ).toBeInTheDocument();
   });
 
   it('renders sanitized deployment, service, timer, and warning information', () => {
