@@ -70,12 +70,7 @@ function StateGrid({ title, icon: Icon, values = {}, isDarkMode }) {
         {entries.length ? (
           entries.map(([key, state]) => (
             <div key={key} className="flex items-center justify-between gap-3 text-xs">
-              <span
-                className={cn(
-                  'font-semibold',
-                  isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                )}
-              >
+              <span className={cn('font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
                 {key.replaceAll('_', ' ')}
               </span>
               <StatusPill status={state} label={state} isDarkMode={isDarkMode} />
@@ -147,9 +142,7 @@ export default function DeploymentOperationsStatus({ deployment, isDarkMode }) {
             <ResultIcon className="h-5 w-5" />
           </span>
           <div>
-            <h3
-              className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}
-            >
+            <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
               Application & deployment health
             </h3>
             <p
