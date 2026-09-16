@@ -123,7 +123,7 @@ export default function DashboardAnalyticsCarousel({
         content: (
           <TrendCard
             title="Published Chart Views"
-            description="Privacy-safe public chart views recorded during the selected period."
+            description="Views are grouped by the date they were visited in Asia/Manila, not by the chart forecast date."
             rows={viewTrend}
             series={[{ dataKey: 'views', label: 'Views', stroke: '#06b6d4' }]}
             bucketLabel={bucketLabel(selectedDays)}
