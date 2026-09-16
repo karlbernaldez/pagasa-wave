@@ -100,7 +100,7 @@ test('user contribution analytics expose no participant identity or profile fiel
 });
 
 test(
-  'published chart view analytics are date-bounded and include only aggregate public-safe chart fields',
+  'published chart views keep today independent from the selected period and expose only public-safe chart fields',
   async () => {
     let capturedPipeline = null;
     const PublishedChartViewModel = {
@@ -131,15 +131,22 @@ test(
 
     const result = await loadPublishedChartViewAnalytics(range, {
       PublishedChartViewModel,
-      currentDateKey: '2026-09-15',
+      currentDateKey: '2026-09-16',
     });
-    const initialMatch = capturedPipeline[0].$match.viewedAt;
-    const lookup = capturedPipeline[1].$facet.topCharts.find(
-      (stage) => stage.$lookup
-    )?.$lookup;
+    const facet = capturedPipeline[0].$facet;
+    const periodMatch = facet.totals[0].$match.viewedAt;
+    const lookupIndex = facet.topCharts.findIndex((stage) => stage.$lookup);
+    const sortIndex = facet.topCharts.findIndex((stage) => stage.$sort);
+    const limitIndex = facet.topCharts.findIndex((stage) => stage.$limit);
+    const lookup = facet.topCharts[lookupIndex].$lookup;
 
-    assert.equal(initialMatch.$gte.toISOString(), range.startAt.toISOString());
-    assert.equal(initialMatch.$lt.toISOString(), range.endExclusive.toISOString());
+    assert.equal(periodMatch.$gte.toISOString(), range.startAt.toISOString());
+    assert.equal(periodMatch.$lt.toISOString(), range.endExclusive.toISOString());
+    assert.deepEqual(facet.today[0], { $match: { dateKey: '2026-09-16' } });
+    assert.deepEqual(facet.byDay[0], { $match: { viewedAt: periodMatch } });
+    assert.deepEqual(facet.topCharts[0], { $match: { viewedAt: periodMatch } });
+    assert.ok(lookupIndex < sortIndex);
+    assert.ok(sortIndex < limitIndex);
     assert.deepEqual(lookup.pipeline[0], { $match: { status: 'Published' } });
     assert.deepEqual(Object.keys(lookup.pipeline[1].$project).sort(), [
       '_id',
