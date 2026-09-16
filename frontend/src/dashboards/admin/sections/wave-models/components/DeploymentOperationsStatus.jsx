@@ -61,7 +61,9 @@ function StateGrid({ title, icon: Icon, values = {}, isDarkMode }) {
       )}
     >
       <div className="mb-3 flex items-center gap-2">
-        <Icon className={cn('h-4 w-4', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
+        <Icon
+          className={cn('h-4 w-4', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')}
+        />
         <h4 className={cn('text-xs font-black', isDarkMode ? 'text-white' : 'text-slate-900')}>
           {title}
         </h4>
@@ -70,14 +72,24 @@ function StateGrid({ title, icon: Icon, values = {}, isDarkMode }) {
         {entries.length ? (
           entries.map(([key, state]) => (
             <div key={key} className="flex items-center justify-between gap-3 text-xs">
-              <span className={cn('font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
+              <span
+                className={cn(
+                  'font-semibold',
+                  isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                )}
+              >
                 {key.replaceAll('_', ' ')}
               </span>
               <StatusPill status={state} label={state} isDarkMode={isDarkMode} />
             </div>
           ))
         ) : (
-          <p className={cn('text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+          <p
+            className={cn(
+              'text-xs font-semibold',
+              isDarkMode ? 'text-slate-500' : 'text-slate-400'
+            )}
+          >
             No status recorded.
           </p>
         )}
@@ -137,10 +149,17 @@ export default function DeploymentOperationsStatus({ deployment, isDarkMode }) {
             <ResultIcon className="h-5 w-5" />
           </span>
           <div>
-            <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
+            <h3
+              className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}
+            >
               Application & deployment health
             </h3>
-            <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
+            <p
+              className={cn(
+                'mt-1 text-xs font-semibold',
+                isDarkMode ? 'text-slate-400' : 'text-slate-600'
+              )}
+            >
               {deployment.host || 'WaveLab host'} · {deployment.branch || 'unknown branch'} ·{' '}
               {deployment.shortRevision || 'unknown revision'}
             </p>
@@ -151,42 +170,92 @@ export default function DeploymentOperationsStatus({ deployment, isDarkMode }) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div>
-          <p className={cn('text-[10px] font-black uppercase tracking-[0.12em]', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+          <p
+            className={cn(
+              'text-[10px] font-black uppercase tracking-[0.12em]',
+              isDarkMode ? 'text-slate-500' : 'text-slate-400'
+            )}
+          >
             Environment
           </p>
-          <p className={cn('mt-1 text-sm font-black', isDarkMode ? 'text-slate-100' : 'text-slate-800')}>
+          <p
+            className={cn(
+              'mt-1 text-sm font-black',
+              isDarkMode ? 'text-slate-100' : 'text-slate-800'
+            )}
+          >
             {deployment.backendEnvironment || 'unset'}
           </p>
         </div>
         <div>
-          <p className={cn('text-[10px] font-black uppercase tracking-[0.12em]', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+          <p
+            className={cn(
+              'text-[10px] font-black uppercase tracking-[0.12em]',
+              isDarkMode ? 'text-slate-500' : 'text-slate-400'
+            )}
+          >
             Validated
           </p>
-          <p className={cn('mt-1 text-sm font-black', isDarkMode ? 'text-slate-100' : 'text-slate-800')}>
+          <p
+            className={cn(
+              'mt-1 text-sm font-black',
+              isDarkMode ? 'text-slate-100' : 'text-slate-800'
+            )}
+          >
             {formatDateTime(deployment.generatedAt)}
           </p>
         </div>
         <div>
-          <p className={cn('text-[10px] font-black uppercase tracking-[0.12em]', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+          <p
+            className={cn(
+              'text-[10px] font-black uppercase tracking-[0.12em]',
+              isDarkMode ? 'text-slate-500' : 'text-slate-400'
+            )}
+          >
             Backend started
           </p>
-          <p className={cn('mt-1 text-sm font-black', isDarkMode ? 'text-slate-100' : 'text-slate-800')}>
+          <p
+            className={cn(
+              'mt-1 text-sm font-black',
+              isDarkMode ? 'text-slate-100' : 'text-slate-800'
+            )}
+          >
             {deployment.backend?.startedAt || 'Not recorded'}
           </p>
         </div>
         <div>
-          <p className={cn('text-[10px] font-black uppercase tracking-[0.12em]', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+          <p
+            className={cn(
+              'text-[10px] font-black uppercase tracking-[0.12em]',
+              isDarkMode ? 'text-slate-500' : 'text-slate-400'
+            )}
+          >
             Errors since start
           </p>
-          <p className={cn('mt-1 text-sm font-black', isDarkMode ? 'text-slate-100' : 'text-slate-800')}>
+          <p
+            className={cn(
+              'mt-1 text-sm font-black',
+              isDarkMode ? 'text-slate-100' : 'text-slate-800'
+            )}
+          >
             {deployment.backend?.recentErrorCount ?? 0}
           </p>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
-        <StateGrid title="Application services" icon={Server} values={deployment.services} isDarkMode={isDarkMode} />
-        <StateGrid title="Scheduled automation" icon={TimerReset} values={deployment.timers} isDarkMode={isDarkMode} />
+        <StateGrid
+          title="Application services"
+          icon={Server}
+          values={deployment.services}
+          isDarkMode={isDarkMode}
+        />
+        <StateGrid
+          title="Scheduled automation"
+          icon={TimerReset}
+          values={deployment.timers}
+          isDarkMode={isDarkMode}
+        />
       </div>
 
       {failedChecks.length || warningChecks.length ? (
@@ -207,7 +276,12 @@ export default function DeploymentOperationsStatus({ deployment, isDarkMode }) {
         </div>
       ) : null}
 
-      <p className={cn('mt-3 text-right text-[10px] font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+      <p
+        className={cn(
+          'mt-3 text-right text-[10px] font-semibold',
+          isDarkMode ? 'text-slate-500' : 'text-slate-400'
+        )}
+      >
         Report {deployment.reportId || 'unidentified'} · read-only monitoring
       </p>
     </section>
