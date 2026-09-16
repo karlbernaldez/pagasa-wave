@@ -1,4 +1,5 @@
-import { AnalyticsCarousel, BarChartCard, DistributionCard, TrendCard } from './AnalyticsVisuals';
+import { AnalyticsCarousel, BarChartCard, TrendCard } from './AnalyticsVisuals';
+import DashboardBreakdownCard from './DashboardBreakdownCard';
 import {
   adaptiveBucketDays,
   bucketDateSeries,
@@ -79,7 +80,7 @@ export default function DashboardAnalyticsCarousel({
         id: 'user-account-status',
         label: 'Account Status',
         content: (
-          <DistributionCard
+          <DashboardBreakdownCard
             title="Account Status"
             description="Operational account state without names, email addresses, or contact details."
             rows={entriesByCount(userAnalytics.statusCounts)}
@@ -91,7 +92,7 @@ export default function DashboardAnalyticsCarousel({
         id: 'user-type-distribution',
         label: 'User Type Distribution',
         content: (
-          <DistributionCard
+          <DashboardBreakdownCard
             title="User Type Distribution"
             description="Accounts created in the selected period by configured User Type key."
             rows={entriesByCount(userAnalytics.roleCounts)}
@@ -145,7 +146,7 @@ export default function DashboardAnalyticsCarousel({
         id: 'system-forecast-package-health',
         label: 'Forecast Package Health',
         content: (
-          <DistributionCard
+          <DashboardBreakdownCard
             title="Forecast Package Health"
             description="Package state distribution within the selected period."
             rows={entriesByCount(systemAnalytics.forecastPackages?.statusCounts)}
@@ -157,7 +158,7 @@ export default function DashboardAnalyticsCarousel({
         id: 'system-new-account-health',
         label: 'New Account Health',
         content: (
-          <DistributionCard
+          <DashboardBreakdownCard
             title="New Account Health"
             description="Account state distribution for accounts created in the selected period."
             rows={entriesByCount(systemAnalytics.users?.statusCounts)}
