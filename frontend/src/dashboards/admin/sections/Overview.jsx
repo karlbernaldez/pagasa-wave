@@ -47,15 +47,7 @@ const ICON_BY_KEY = {
 };
 
 const LINE_COLORS = ['#38bdf8', '#34d399', '#fbbf24', '#fb7185', '#a78bfa', '#22d3ee'];
-const PIE_COLORS = [
-  '#64748b',
-  '#3b82f6',
-  '#22c55e',
-  '#06b6d4',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-];
+const PIE_COLORS = ['#64748b', '#3b82f6', '#22c55e', '#06b6d4', '#f59e0b', '#ef4444', '#8b5cf6'];
 const MAX_RECENT_PACKAGES = 5;
 
 const STATUS_TONES = {
@@ -140,9 +132,7 @@ function StatusBadge({ value, isDarkMode }) {
     slate: isDarkMode ? 'bg-slate-400/10 text-slate-300' : 'bg-slate-100 text-slate-700',
     cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700',
     amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700',
-    emerald: isDarkMode
-      ? 'bg-emerald-400/10 text-emerald-200'
-      : 'bg-emerald-50 text-emerald-700',
+    emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700',
     rose: isDarkMode ? 'bg-rose-400/10 text-rose-200' : 'bg-rose-50 text-rose-700',
   }[tone];
 
@@ -195,9 +185,7 @@ function SummaryCard({ card, isDarkMode }) {
   const tone = card.tone || 'neutral';
   const iconClass = {
     info: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700',
-    success: isDarkMode
-      ? 'bg-emerald-400/10 text-emerald-200'
-      : 'bg-emerald-50 text-emerald-700',
+    success: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700',
     warning: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700',
     danger: isDarkMode ? 'bg-rose-400/10 text-rose-200' : 'bg-rose-50 text-rose-700',
     neutral: isDarkMode ? 'bg-slate-400/10 text-slate-300' : 'bg-slate-100 text-slate-700',
@@ -555,12 +543,7 @@ function RecentPackages({ packages = [], isDarkMode, onSelectTab }) {
                   <td className="px-2 py-3">
                     <StatusBadge value={item.status} isDarkMode={isDarkMode} />
                   </td>
-                  <td
-                    className={cn(
-                      'px-2 py-3',
-                      isDarkMode ? 'text-slate-400' : 'text-slate-500'
-                    )}
-                  >
+                  <td className={cn('px-2 py-3', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
                     {formatDate(item.updatedAt, { time: true })}
                   </td>
                   <td className="px-2 py-3">
@@ -570,9 +553,7 @@ function RecentPackages({ packages = [], isDarkMode, onSelectTab }) {
                         onClick={() => onSelectTab?.(item.actions[0].target?.tab)}
                         className={cn(
                           'rounded-lg px-2 py-1 font-black',
-                          isDarkMode
-                            ? 'bg-cyan-400/10 text-cyan-200'
-                            : 'bg-cyan-50 text-cyan-700'
+                          isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50 text-cyan-700'
                         )}
                       >
                         {item.actions[0].label || 'Open'}

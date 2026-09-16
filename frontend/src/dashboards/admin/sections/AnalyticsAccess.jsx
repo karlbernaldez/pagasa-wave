@@ -279,9 +279,15 @@ function ForecastPanel({ payload, isDarkMode }) {
             isDarkMode ? 'text-slate-400' : 'text-slate-500'
           )}
         >
-          <span><span className="text-sky-500">■</span> Submitted</span>
-          <span><span className="text-emerald-500">■</span> Completed</span>
-          <span><span className="text-amber-500">■</span> Returned</span>
+          <span>
+            <span className="text-sky-500">■</span> Submitted
+          </span>
+          <span>
+            <span className="text-emerald-500">■</span> Completed
+          </span>
+          <span>
+            <span className="text-amber-500">■</span> Returned
+          </span>
         </div>
       </section>
 
@@ -399,7 +405,14 @@ function SystemPanel({ payload, isDarkMode }) {
   );
 }
 
-function RangeControls({ range, customRange, onPreset, onCustomChange, onApplyCustom, isDarkMode }) {
+function RangeControls({
+  range,
+  customRange,
+  onPreset,
+  onCustomChange,
+  onApplyCustom,
+  isDarkMode,
+}) {
   return (
     <section
       className={cn(
@@ -473,7 +486,12 @@ function RangeControls({ range, customRange, onPreset, onCustomChange, onApplyCu
           </button>
         </div>
       </div>
-      <p className={cn('mt-2 text-[11px] font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+      <p
+        className={cn(
+          'mt-2 text-[11px] font-semibold',
+          isDarkMode ? 'text-slate-500' : 'text-slate-400'
+        )}
+      >
         Active period: {range.start} to {range.end} · Asia/Manila
       </p>
     </section>
@@ -677,7 +695,8 @@ export default function AnalyticsAccess({ isDarkMode }) {
                       : 'text-slate-400'
                 )}
               >
-                Last refreshed: {formatGeneratedAt(loadedAt)}{stale ? ' · data may be stale' : ''}
+                Last refreshed: {formatGeneratedAt(loadedAt)}
+                {stale ? ' · data may be stale' : ''}
               </p>
             </div>
           </div>

@@ -8,13 +8,7 @@ const RECENT_PACKAGE_LIMIT = 6;
 const RECENT_ACTIVITY_LIMIT = 8;
 const REVIEW_STATUSES = ['Submitted', 'Under Review'];
 const RETURNED_STATUSES = ['Revision Requested', 'Rejected'];
-const TREND_ACTIONS = [
-  'submitted',
-  'approved',
-  'published',
-  'revision_requested',
-  'rejected',
-];
+const TREND_ACTIONS = ['submitted', 'approved', 'published', 'revision_requested', 'rejected'];
 const ATTENTION_PIPELINE_STATES = new Set(['FAILED', 'WAITING_FOR_SOURCE', 'UNKNOWN']);
 
 const toPermissionSet = (permissions = []) =>
@@ -102,8 +96,8 @@ export function buildQuickActions(permissions = []) {
   }
 
   if (
-    ['analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'].some((permission) =>
-      permissionSet.has(permission)
+    ['analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'].some(
+      (permission) => permissionSet.has(permission)
     )
   ) {
     actions.push({
@@ -351,7 +345,9 @@ async function loadForecastAnalytics(range) {
       points: [...byDate.values()],
     },
     packageStatusDistribution: statusRows.map((row) => ({
-      key: String(row._id || 'unknown').toLowerCase().replaceAll(' ', '_'),
+      key: String(row._id || 'unknown')
+        .toLowerCase()
+        .replaceAll(' ', '_'),
       label: String(row._id || 'Unknown'),
       count: Number(row.count) || 0,
     })),
@@ -398,7 +394,14 @@ async function loadRecentActivity() {
     {
       $match: {
         'auditLogs.action': {
-          $in: ['submitted', 'review_started', 'revision_requested', 'approved', 'rejected', 'published'],
+          $in: [
+            'submitted',
+            'review_started',
+            'revision_requested',
+            'approved',
+            'rejected',
+            'published',
+          ],
         },
       },
     },
@@ -452,19 +455,21 @@ function serializeRecentActivity(rows = []) {
   }));
 }
 
-export async function getDashboardOverview({ permissions = [], query = {}, now = new Date() } = {}) {
+export async function getDashboardOverview({
+  permissions = [],
+  query = {},
+  now = new Date(),
+} = {}) {
   const permissionSet = toPermissionSet(permissions);
   const range = parseAnalyticsDateRange(query, now);
   const operationalDate = formatManilaDateKey(now);
-  const todayRange = parseAnalyticsDateRange(
-    { start: operationalDate, end: operationalDate },
-    now
-  );
+  const todayRange = parseAnalyticsDateRange({ start: operationalDate, end: operationalDate }, now);
   const errors = [];
 
   const canForecastAnalytics = permissionSet.has('analytics_forecast.view');
   const canForecastMetrics = canForecastAnalytics || permissionSet.has('forecast.review');
-  const canViewForecasts = permissionSet.has('forecast.view') || permissionSet.has('forecast.review');
+  const canViewForecasts =
+    permissionSet.has('forecast.view') || permissionSet.has('forecast.review');
   const canReviewForecasts = permissionSet.has('forecast.review');
   const canViewPipeline = permissionSet.has('wave_pipeline.view');
 

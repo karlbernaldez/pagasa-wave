@@ -286,8 +286,8 @@ export default function WavePipelineStatus({ isDarkMode }) {
                 )}
               >
                 Monitor source readiness, normalized processing, validation, and publication for all
-                configured operational wave models. This page is observational; operational policy is
-                configured under Wave Models.
+                configured operational wave models. This page is observational; operational policy
+                is configured under Wave Models.
               </p>
             </div>
           </div>

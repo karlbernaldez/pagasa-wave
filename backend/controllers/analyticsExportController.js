@@ -53,7 +53,15 @@ export const exportForecastAnalytics = async (req, res, next) => {
     return sendCsv(
       res,
       filenameFor('forecast', range),
-      ['package_id', 'name', 'forecast_date', 'status', 'submitted_at', 'reviewed_at', 'published_at'],
+      [
+        'package_id',
+        'name',
+        'forecast_date',
+        'status',
+        'submitted_at',
+        'reviewed_at',
+        'published_at',
+      ],
       rows.map((row) => [
         row._id,
         row.name,

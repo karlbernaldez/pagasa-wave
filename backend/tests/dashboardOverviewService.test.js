@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  buildQuickActions,
-  buildSummaryCards,
-} from '../services/dashboardOverviewService.js';
+import { buildQuickActions, buildSummaryCards } from '../services/dashboardOverviewService.js';
 
 test('dashboard summary cards expose only metrics backed by effective permissions', () => {
   const pipelineOnly = buildSummaryCards({
@@ -16,7 +13,10 @@ test('dashboard summary cards expose only metrics backed by effective permission
     ],
   });
 
-  assert.deepEqual(pipelineOnly.map((card) => card.key), ['models_ready']);
+  assert.deepEqual(
+    pipelineOnly.map((card) => card.key),
+    ['models_ready']
+  );
   assert.equal(pipelineOnly[0].value, 2);
   assert.equal(pipelineOnly[0].total, 3);
 
@@ -31,11 +31,10 @@ test('dashboard summary cards expose only metrics backed by effective permission
     publishedToday: 4,
   });
 
-  assert.deepEqual(forecastOnly.map((card) => card.key), [
-    'in_review',
-    'returned',
-    'published_today',
-  ]);
+  assert.deepEqual(
+    forecastOnly.map((card) => card.key),
+    ['in_review', 'returned', 'published_today']
+  );
   assert.equal(forecastOnly[0].value, 5);
   assert.equal(forecastOnly[1].value, 3);
   assert.equal(forecastOnly[2].value, 4);
@@ -66,14 +65,18 @@ test('quick actions are derived from capabilities rather than User Type names', 
     'calendar.view',
   ]);
 
-  assert.deepEqual(actions.map((action) => action.key), [
-    'review_queue',
-    'wave_pipeline',
-    'calendar',
-    'analytics',
-  ]);
-  assert.equal(actions.some((action) => action.key === 'users'), false);
-  assert.equal(actions.some((action) => action.key === 'wave_models'), false);
+  assert.deepEqual(
+    actions.map((action) => action.key),
+    ['review_queue', 'wave_pipeline', 'calendar', 'analytics']
+  );
+  assert.equal(
+    actions.some((action) => action.key === 'users'),
+    false
+  );
+  assert.equal(
+    actions.some((action) => action.key === 'wave_models'),
+    false
+  );
 });
 
 test('dashboard helpers emit no unauthorized cards or actions when capabilities are absent', () => {

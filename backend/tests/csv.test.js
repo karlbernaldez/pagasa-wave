@@ -15,10 +15,7 @@ test('CSV serializer neutralizes spreadsheet formula prefixes in text fields', (
 
 test('CSV serializer preserves numbers and ISO-formats dates', () => {
   assert.equal(escapeCsvCell(42), '"42"');
-  assert.equal(
-    escapeCsvCell(new Date('2026-09-15T00:00:00.000Z')),
-    '"2026-09-15T00:00:00.000Z"'
-  );
+  assert.equal(escapeCsvCell(new Date('2026-09-15T00:00:00.000Z')), '"2026-09-15T00:00:00.000Z"');
 });
 
 test('CSV rows use the hardened serializer for headers and data', () => {
