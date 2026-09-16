@@ -133,15 +133,15 @@ describe('analytics workspace model', () => {
     ]);
   });
 
-  it('uses readable adaptive buckets for longer analytics periods', () => {
+  it('uses daily points up to 31 days and weekly buckets for longer periods', () => {
     expect(adaptiveBucketDays(30)).toBe(1);
     expect(adaptiveBucketDays(31)).toBe(1);
-    expect(adaptiveBucketDays(60)).toBe(2);
+    expect(adaptiveBucketDays(60)).toBe(7);
     expect(adaptiveBucketDays(61)).toBe(7);
     expect(adaptiveBucketDays(90)).toBe(7);
   });
 
-  it('reduces a 60-day trend to 30 two-day buckets without losing totals', () => {
+  it('reduces a 60-day trend to weekly buckets without losing totals', () => {
     const rows = [
       { date: '2026-07-19', views: 2 },
       { date: '2026-07-20', views: 3 },
@@ -155,7 +155,7 @@ describe('analytics workspace model', () => {
       dayCount: 60,
     });
 
-    expect(result).toHaveLength(30);
+    expect(result).toHaveLength(9);
     expect(result[0].views).toBe(5);
     expect(result.at(-1).views).toBe(5);
     expect(result.reduce((total, row) => total + row.views, 0)).toBe(10);
