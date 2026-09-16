@@ -23,9 +23,9 @@ export function normalizeViewerToken(value) {
   return VIEWER_TOKEN_PATTERN.test(token) ? token : null;
 }
 
-export function hashViewerToken(viewerToken, secret) {
+export function hashViewerToken(viewerToken, secret, scope = '') {
   if (!viewerToken || !secret) return null;
-  return createHmac('sha256', secret).update(viewerToken).digest('hex');
+  return createHmac('sha256', secret).update(`${scope}:${viewerToken}`).digest('hex');
 }
 
 export async function recordPublishedChartView(
@@ -63,7 +63,11 @@ export async function recordPublishedChartView(
   }
 
   const dateKey = formatManilaDateKey(now);
-  const viewerHash = hashViewerToken(normalizedToken, hashSecret);
+  const viewerHash = hashViewerToken(
+    normalizedToken,
+    hashSecret,
+    `${String(project._id)}:${dateKey}`
+  );
 
   try {
     const view = await PublishedChartViewModel.create({
