@@ -32,6 +32,8 @@ import {
 import { fetchDashboardOverview } from '@/api/dashboardAPI';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
+import { buildPresetRange } from './analytics/analyticsDateRange';
+
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 const ICON_BY_KEY = {
@@ -49,6 +51,8 @@ const ICON_BY_KEY = {
 const LINE_COLORS = ['#38bdf8', '#34d399', '#fbbf24', '#fb7185', '#a78bfa', '#22d3ee'];
 const PIE_COLORS = ['#64748b', '#3b82f6', '#22c55e', '#06b6d4', '#f59e0b', '#ef4444', '#8b5cf6'];
 const MAX_RECENT_PACKAGES = 5;
+const DEFAULT_TREND_DAYS = 14;
+const TREND_RANGE_OPTIONS = [7, 14, 30, 60, 90];
 
 const STATUS_TONES = {
   Draft: 'slate',
@@ -226,7 +230,7 @@ function SummaryCard({ card, isDarkMode }) {
   );
 }
 
-function WorkflowTrend({ trend, range, isDarkMode }) {
+function WorkflowTrend({ trend, range, selectedDays, isRefreshing, onRangeChange, isDarkMode }) {
   const series = trend?.series || [];
   const points = buildDailyTrendPoints(trend?.points || [], series, range);
   const tooltipStyle = {
@@ -242,18 +246,32 @@ function WorkflowTrend({ trend, range, isDarkMode }) {
       description={trend?.description || 'No workflow trend is available for this period.'}
       isDarkMode={isDarkMode}
       action={
-        range ? (
-          <span
-            className={cn(
-              'rounded-lg border px-2 py-1 text-[10px] font-black',
-              isDarkMode ? 'border-white/10 text-slate-300' : 'border-slate-200 text-slate-600'
-            )}
-          >
-            Last {range.days} days
-          </span>
-        ) : null
+        <label className="sr-only" htmlFor="dashboard-trend-range">
+          Forecast workflow trend period
+        </label>
       }
     >
+      <div className="absolute right-4 top-4">
+        <select
+          id="dashboard-trend-range"
+          aria-label="Forecast workflow trend period"
+          value={selectedDays}
+          disabled={isRefreshing}
+          onChange={(event) => onRangeChange?.(Number(event.target.value))}
+          className={cn(
+            'rounded-lg border px-2 py-1 text-[10px] font-black outline-none disabled:cursor-wait disabled:opacity-60',
+            isDarkMode
+              ? 'border-white/10 bg-slate-900 text-slate-200'
+              : 'border-slate-200 bg-white text-slate-700'
+          )}
+        >
+          {TREND_RANGE_OPTIONS.map((days) => (
+            <option key={days} value={days}>
+              Last {days} days
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="h-72 px-3 pb-3">
         {points.length && series.length ? (
           <ResponsiveContainer width="100%" height="100%">
@@ -797,6 +815,7 @@ function QuickActions({ actions = [], isDarkMode, onSelectTab }) {
 
 export default function DashboardOverview({ isDarkMode, onSelectTab }) {
   const { rawUser } = useCurrentDashboardUser();
+  const [trendDays, setTrendDays] = useState(DEFAULT_TREND_DAYS);
   const [state, setState] = useState({
     loading: true,
     refreshing: false,
@@ -804,7 +823,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
     data: null,
   });
 
-  const load = useCallback(async ({ silent = false } = {}) => {
+  const load = useCallback(async ({ silent = false, days = DEFAULT_TREND_DAYS } = {}) => {
     setState((current) => ({
       ...current,
       loading: !silent && !current.data,
@@ -813,7 +832,8 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
     }));
 
     try {
-      const data = await fetchDashboardOverview();
+      const range = buildPresetRange(days);
+      const data = await fetchDashboardOverview(range);
       setState({ loading: false, refreshing: false, error: '', data });
     } catch (error) {
       setState((current) => ({
@@ -827,9 +847,15 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
 
   useEffect(() => {
     if (!rawUser) return undefined;
-    const timer = window.setTimeout(() => void load(), 0);
+    const timer = window.setTimeout(() => void load({ days: DEFAULT_TREND_DAYS }), 0);
     return () => window.clearTimeout(timer);
   }, [load, rawUser]);
+
+  const handleTrendRangeChange = (days) => {
+    if (!TREND_RANGE_OPTIONS.includes(days) || days === trendDays) return;
+    setTrendDays(days);
+    void load({ silent: true, days });
+  };
 
   if (state.loading && !state.data) {
     return (
@@ -911,7 +937,7 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
             </div>
             <button
               type="button"
-              onClick={() => void load({ silent: true })}
+              onClick={() => void load({ silent: true, days: trendDays })}
               disabled={state.refreshing}
               className={cn(
                 'inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-black disabled:opacity-50',
@@ -967,6 +993,9 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
           <WorkflowTrend
             trend={data.forecastWorkflowTrend}
             range={meta.range}
+            selectedDays={trendDays}
+            isRefreshing={state.refreshing}
+            onRangeChange={handleTrendRangeChange}
             isDarkMode={isDarkMode}
           />
           <StatusDistribution rows={data.packageStatusDistribution} isDarkMode={isDarkMode} />
