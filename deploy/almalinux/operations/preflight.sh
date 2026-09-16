@@ -10,7 +10,7 @@ APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
 BACKEND_ENV="${BACKEND_ENV:-/etc/wavelab/backend.env}"
 EXPECTED_BRANCH="${EXPECTED_BRANCH:-main}"
 RUN_WAVETILES_TESTS="${RUN_WAVETILES_TESTS:-1}"
-WAVETILES_PYTHON="${WAVETILES_PYTHON:-python3}"
+WAVETILES_PYTHON="${WAVETILES_PYTHON:-$APP_ROOT/wavetiles/.venv/bin/python}"
 STATUS_ROOT="${STATUS_ROOT:-/var/lib/wavelab/deployment-status}"
 PREFLIGHT_STATUS_FILE="$STATUS_ROOT/preflight.json"
 
