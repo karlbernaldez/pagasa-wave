@@ -1,4 +1,5 @@
-import { AnalyticsCarousel, BarChartCard, DistributionCard, TrendCard } from './AnalyticsVisuals';
+import { AnalyticsCarousel, BarChartCard, TrendCard } from './AnalyticsVisuals';
+import DashboardBreakdownCard from './DashboardBreakdownCard';
 import {
   adaptiveBucketDays,
   bucketDateSeries,
@@ -7,6 +8,8 @@ import {
   publishedChartRows,
 } from './analyticsWorkspaceModel';
 
+const RANGE_OPTIONS = [7, 14, 30, 60, 90];
+const FORECAST_SERIES_COLORS = ['#34d399', '#fbbf24', '#fb7185', '#38bdf8', '#a78bfa', '#22d3ee'];
 const bucketLabel = (days) => (adaptiveBucketDays(days) > 1 ? 'Weekly' : 'Daily');
 
 export default function DashboardAnalyticsCarousel({
@@ -20,12 +23,57 @@ export default function DashboardAnalyticsCarousel({
 }) {
   const chartSlides = [];
   const distributionSlides = [];
+  const rangeControlProps = forecastSlide?.props || {};
+  const rangeControl = rangeControlProps.onRangeChange ? (
+    <select
+      aria-label="Forecast workflow trend period"
+      value={rangeControlProps.selectedDays ?? selectedDays}
+      disabled={rangeControlProps.isRefreshing}
+      onChange={(event) => rangeControlProps.onRangeChange(Number(event.target.value))}
+      className={
+        isDarkMode
+          ? 'rounded-lg border border-white/10 bg-slate-900 px-2 py-1.5 text-[10px] font-black text-slate-200 outline-none disabled:cursor-wait disabled:opacity-60'
+          : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-black text-slate-700 outline-none disabled:cursor-wait disabled:opacity-60'
+      }
+    >
+      {RANGE_OPTIONS.map((days) => (
+        <option key={days} value={days}>
+          Last {days} days
+        </option>
+      ))}
+    </select>
+  ) : null;
 
   if (forecastSlide) {
+    const forecastTrend = rangeControlProps.trend || {};
+    const forecastSeries = forecastTrend.series || [];
+    const forecastRows = bucketDateSeries(forecastTrend.points || [], {
+      start: range?.start,
+      end: range?.end,
+      valueFields: forecastSeries.map((item) => item.key),
+      dayCount: selectedDays,
+    });
+
     chartSlides.push({
       id: 'forecast-workflow',
       label: 'Forecast Workflow Trend',
-      content: forecastSlide,
+      content: (
+        <TrendCard
+          title={forecastTrend.title || 'Forecast Workflow Trend'}
+          description={
+            forecastTrend.description ||
+            'Actual workflow events during the selected operating period.'
+          }
+          rows={forecastRows}
+          series={forecastSeries.map((item, index) => ({
+            dataKey: item.key,
+            label: item.label,
+            stroke: FORECAST_SERIES_COLORS[index % FORECAST_SERIES_COLORS.length],
+          }))}
+          bucketLabel={bucketLabel(selectedDays)}
+          isDarkMode={isDarkMode}
+        />
+      ),
     });
   }
 
@@ -79,7 +127,7 @@ export default function DashboardAnalyticsCarousel({
         id: 'user-account-status',
         label: 'Account Status',
         content: (
-          <DistributionCard
+          <DashboardBreakdownCard
             title="Account Status"
             description="Operational account state without names, email addresses, or contact details."
             rows={entriesByCount(userAnalytics.statusCounts)}
@@ -91,7 +139,7 @@ export default function DashboardAnalyticsCarousel({
         id: 'user-type-distribution',
         label: 'User Type Distribution',
         content: (
-          <DistributionCard
+          <DashboardBreakdownCard
             title="User Type Distribution"
             description="Accounts created in the selected period by configured User Type key."
             rows={entriesByCount(userAnalytics.roleCounts)}
@@ -145,7 +193,7 @@ export default function DashboardAnalyticsCarousel({
         id: 'system-forecast-package-health',
         label: 'Forecast Package Health',
         content: (
-          <DistributionCard
+          <DashboardBreakdownCard
             title="Forecast Package Health"
             description="Package state distribution within the selected period."
             rows={entriesByCount(systemAnalytics.forecastPackages?.statusCounts)}
@@ -157,7 +205,7 @@ export default function DashboardAnalyticsCarousel({
         id: 'system-new-account-health',
         label: 'New Account Health',
         content: (
-          <DistributionCard
+          <DashboardBreakdownCard
             title="New Account Health"
             description="Account state distribution for accounts created in the selected period."
             rows={entriesByCount(systemAnalytics.users?.statusCounts)}
@@ -176,6 +224,7 @@ export default function DashboardAnalyticsCarousel({
         slides={chartSlides}
         isDarkMode={isDarkMode}
         ariaLabel="Dashboard trend and activity charts"
+        headerAction={rangeControl}
       />
       <AnalyticsCarousel
         slides={distributionSlides}
