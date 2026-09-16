@@ -80,6 +80,60 @@ describe('DashboardOverview dynamic read model', () => {
     expect(rangeSelect).toHaveValue('30');
   });
 
+  it('renders a single dashboard carousel containing forecast, user, and system analytics slides', async () => {
+    currentUser.raw = {
+      permissions: [
+        'dashboard.view',
+        'analytics_forecast.view',
+        'analytics_users.view',
+        'analytics_system.view',
+      ],
+    };
+    dashboardApi.overview.mockResolvedValue({
+      ...basePayload,
+      forecastWorkflowTrend: {
+        title: 'Forecast Workflow Trend',
+        description: 'Actual workflow events during the selected operating period.',
+        series: [{ key: 'submitted', label: 'Submitted' }],
+        points: [{ date: '2026-09-15', submitted: 1 }],
+      },
+      packageStatusDistribution: [{ key: 'Published', label: 'Published', count: 2 }],
+      userAnalytics: {
+        total: 2,
+        statusCounts: { active: 2 },
+        roleCounts: { forecaster: 1, administrator: 1 },
+        contributions: {
+          totalEvents: 3,
+          activeContributors: 2,
+          actionMix: [{ action: 'approved', label: 'Approved', count: 3 }],
+          trend: [{ date: '2026-09-15', total: 3, actions: { approved: 3 } }],
+        },
+      },
+      systemAnalytics: {
+        users: { total: 2, active: 2, statusCounts: { active: 2 } },
+        forecastPackages: { total: 2, statusCounts: { Published: 2 } },
+        publishedChartViews: {
+          totalViews: 5,
+          viewsToday: 2,
+          trend: [{ date: '2026-09-15', views: 2 }],
+          topCharts: [{ projectId: 'chart-1', name: 'Analysis', views: 5 }],
+        },
+      },
+    });
+
+    render(<DashboardOverview isDarkMode={false} onSelectTab={vi.fn()} />);
+
+    expect(await screen.findByText('Chart 1 of 10')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show Contribution Activity' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show Contribution Mix' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show Account Status' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show User Type Distribution' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show Published Chart Views' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show Top Viewed Published Charts' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show Forecast Package Health' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Show New Account Health' })).toBeInTheDocument();
+  });
+
   it('renders configured wave models without assuming WW3 or ECWAM', async () => {
     currentUser.raw = { permissions: ['dashboard.view', 'wave_pipeline.view'] };
     dashboardApi.overview.mockResolvedValue({
