@@ -10,12 +10,7 @@ const formatLabel = (value) => {
   return label ? label.charAt(0).toUpperCase() + label.slice(1) : 'Unknown';
 };
 
-export default function DashboardBreakdownCard({
-  title,
-  description,
-  rows = [],
-  isDarkMode,
-}) {
+export default function DashboardBreakdownCard({ title, description, rows = [], isDarkMode }) {
   const normalizedRows = rows
     .map((row) => ({ label: formatLabel(row.label), value: toCount(row.value) }))
     .filter((row) => row.value > 0)
