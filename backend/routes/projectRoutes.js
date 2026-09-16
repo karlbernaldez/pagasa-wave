@@ -48,7 +48,10 @@ const publishedViewLimiter = rateLimit({
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => createHash('sha256').update(String(ipKeyGenerator(req))).digest('hex'),
+  keyGenerator: (req) =>
+    createHash('sha256')
+      .update(String(ipKeyGenerator(req)))
+      .digest('hex'),
   message: { message: 'Published chart view rate limit exceeded.' },
 });
 
