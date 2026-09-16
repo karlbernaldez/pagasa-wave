@@ -2,7 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 
 import { requirePermission } from '../middleware/permissionMiddleware.js';
-import { getDashboardOverview } from '../services/dashboardOverviewService.js';
+import { getDashboardOverview } from '../services/dashboardOverviewOperationalService.js';
 
 const router = express.Router();
 
