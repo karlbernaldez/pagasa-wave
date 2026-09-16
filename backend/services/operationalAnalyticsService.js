@@ -64,7 +64,12 @@ export async function loadUserContributionAnalytics(
               },
             },
           },
-          { $group: { _id: { date: '$date', action: '$action' }, count: { $sum: 1 } } },
+          {
+            $group: {
+              _id: { date: '$date', action: '$action' },
+              count: { $sum: 1 },
+            },
+          },
           { $sort: { '_id.date': 1, '_id.action': 1 } },
         ],
       },
@@ -115,7 +120,13 @@ export async function loadPublishedChartViewAnalytics(
           { $sort: { _id: 1 } },
         ],
         topCharts: [
-          { $group: { _id: '$project', count: { $sum: 1 }, lastViewedAt: { $max: '$viewedAt' } } },
+          {
+            $group: {
+              _id: '$project',
+              count: { $sum: 1 },
+              lastViewedAt: { $max: '$viewedAt' },
+            },
+          },
           { $sort: { count: -1, lastViewedAt: -1, _id: 1 } },
           { $limit: Math.max(1, Math.min(Number(topLimit) || 5, 20)) },
           {
@@ -126,7 +137,15 @@ export async function loadPublishedChartViewAnalytics(
               as: 'project',
               pipeline: [
                 { $match: { status: 'Published' } },
-                { $project: { _id: 1, name: 1, chartType: 1, forecastDate: 1, publishedAt: 1 } },
+                {
+                  $project: {
+                    _id: 1,
+                    name: 1,
+                    chartType: 1,
+                    forecastDate: 1,
+                    publishedAt: 1,
+                  },
+                },
               ],
             },
           },
