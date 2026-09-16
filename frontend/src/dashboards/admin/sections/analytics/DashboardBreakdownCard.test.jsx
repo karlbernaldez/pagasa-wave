@@ -14,14 +14,17 @@ describe('DashboardBreakdownCard', () => {
       />
     );
 
-    expect(screen.getByText('Account Status')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Account Status' })).toBeInTheDocument();
     expect(screen.getByText('Total')).toBeInTheDocument();
     expect(screen.getByText('Primary')).toBeInTheDocument();
     expect(screen.getByText('Share')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getAllByText('Active').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('1').length).toBeGreaterThan(0);
     expect(screen.getAllByText('100%').length).toBeGreaterThan(0);
-    expect(screen.getByText('Active represents all 1 record in the selected period.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Active: 1 (100%)')).toBeInTheDocument();
+    expect(
+      screen.getByText('Active represents all 1 record in the selected period.')
+    ).toBeInTheDocument();
   });
 
   it('calculates the primary share and preserves all non-zero breakdown rows', () => {
@@ -39,9 +42,11 @@ describe('DashboardBreakdownCard', () => {
     );
 
     expect(screen.getByText('23')).toBeInTheDocument();
-    expect(screen.getByText('Draft')).toBeInTheDocument();
+    expect(screen.getAllByText('Draft').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Published')).toBeInTheDocument();
     expect(screen.queryByText('Rejected')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Draft: 15 (65%)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Published: 8 (35%)')).toBeInTheDocument();
     expect(screen.getAllByText('65%').length).toBeGreaterThan(0);
     expect(screen.getByText('Draft is the largest group at 65% (15 of 23).')).toBeInTheDocument();
   });
