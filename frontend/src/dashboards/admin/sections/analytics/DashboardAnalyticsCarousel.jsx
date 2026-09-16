@@ -9,7 +9,14 @@ import {
 } from './analyticsWorkspaceModel';
 
 const RANGE_OPTIONS = [7, 14, 30, 60, 90];
-const FORECAST_SERIES_COLORS = ['#34d399', '#fbbf24', '#fb7185', '#38bdf8', '#a78bfa', '#22d3ee'];
+const FORECAST_SERIES_COLORS = [
+  '#34d399',
+  '#fbbf24',
+  '#fb7185',
+  '#38bdf8',
+  '#a78bfa',
+  '#22d3ee',
+];
 const bucketLabel = (days) => (adaptiveBucketDays(days) > 1 ? 'Weekly' : 'Daily');
 
 export default function DashboardAnalyticsCarousel({
