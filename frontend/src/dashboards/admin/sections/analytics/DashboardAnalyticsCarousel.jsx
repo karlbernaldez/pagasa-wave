@@ -23,10 +23,11 @@ export default function DashboardAnalyticsCarousel({
   selectedDays = 14,
   isDarkMode,
 }) {
-  const slides = [];
+  const chartSlides = [];
+  const distributionSlides = [];
 
   if (forecastSlide) {
-    slides.push({
+    chartSlides.push({
       id: 'forecast-workflow',
       label: 'Forecast Workflow Trend',
       content: forecastSlide,
@@ -34,7 +35,7 @@ export default function DashboardAnalyticsCarousel({
   }
 
   if (statusSlide) {
-    slides.push({
+    distributionSlides.push({
       id: 'package-status',
       label: 'Package Status Distribution',
       content: statusSlide,
@@ -49,7 +50,7 @@ export default function DashboardAnalyticsCarousel({
       dayCount: selectedDays,
     });
 
-    slides.push(
+    chartSlides.push(
       {
         id: 'user-contribution-activity',
         label: 'Contribution Activity',
@@ -75,7 +76,10 @@ export default function DashboardAnalyticsCarousel({
             isDarkMode={isDarkMode}
           />
         ),
-      },
+      }
+    );
+
+    distributionSlides.push(
       {
         id: 'user-account-status',
         label: 'Account Status',
@@ -112,7 +116,7 @@ export default function DashboardAnalyticsCarousel({
       dayCount: selectedDays,
     });
 
-    slides.push(
+    chartSlides.push(
       {
         id: 'system-published-chart-views',
         label: 'Published Chart Views',
@@ -138,7 +142,10 @@ export default function DashboardAnalyticsCarousel({
             isDarkMode={isDarkMode}
           />
         ),
-      },
+      }
+    );
+
+    distributionSlides.push(
       {
         id: 'system-forecast-package-health',
         label: 'Forecast Package Health',
@@ -166,11 +173,20 @@ export default function DashboardAnalyticsCarousel({
     );
   }
 
+  if (!chartSlides.length && !distributionSlides.length) return null;
+
   return (
-    <AnalyticsCarousel
-      slides={slides}
-      isDarkMode={isDarkMode}
-      ariaLabel="Dashboard operational and analytics charts"
-    />
+    <section className="grid items-start gap-4 xl:grid-cols-[2fr_1fr]">
+      <AnalyticsCarousel
+        slides={chartSlides}
+        isDarkMode={isDarkMode}
+        ariaLabel="Dashboard trend and activity charts"
+      />
+      <AnalyticsCarousel
+        slides={distributionSlides}
+        isDarkMode={isDarkMode}
+        ariaLabel="Dashboard distribution charts"
+      />
+    </section>
   );
 }
