@@ -6,7 +6,9 @@ const toCount = (value) => {
 };
 
 const formatLabel = (value) => {
-  const label = String(value || 'Unknown').replaceAll('_', ' ').trim();
+  const label = String(value || 'Unknown')
+    .replaceAll('_', ' ')
+    .trim();
   return label ? label.charAt(0).toUpperCase() + label.slice(1) : 'Unknown';
 };
 
