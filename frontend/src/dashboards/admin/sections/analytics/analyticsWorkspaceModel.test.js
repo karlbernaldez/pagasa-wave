@@ -4,7 +4,9 @@ import {
   buildForecastMetrics,
   buildSystemMetrics,
   buildUserMetrics,
+  contributionMixRows,
   getAllowedAnalyticsSections,
+  publishedChartRows,
 } from './analyticsWorkspaceModel';
 
 describe('analytics workspace model', () => {
@@ -47,11 +49,12 @@ describe('analytics workspace model', () => {
     });
   });
 
-  it('builds user activity metrics without requiring profile fields', () => {
+  it('builds user activity metrics from aggregate operational participation without profile fields', () => {
     expect(
       buildUserMetrics({
         total: 10,
         statusCounts: { active: 7, pending: 1, suspended: 1, locked: 1 },
+        contributions: { totalEvents: 26, activeContributors: 5 },
       })
     ).toEqual({
       total: 10,
@@ -60,10 +63,26 @@ describe('analytics workspace model', () => {
       suspended: 2,
       inactive: 0,
       activeRate: 70,
+      contributionEvents: 26,
+      activeContributors: 5,
     });
   });
 
-  it('builds system readiness metrics from aggregate-only payloads', () => {
+  it('normalizes contribution mix without participant identities or ranking fields', () => {
+    expect(
+      contributionMixRows({
+        actionMix: [
+          { action: 'submitted', label: 'Package submitted', count: 4 },
+          { action: 'approved', label: 'Approved', count: 3 },
+        ],
+      })
+    ).toEqual([
+      { label: 'Package submitted', value: 4 },
+      { label: 'Approved', value: 3 },
+    ]);
+  });
+
+  it('builds system readiness and published view metrics from aggregate-only payloads', () => {
     expect(
       buildSystemMetrics({
         users: {
@@ -81,6 +100,7 @@ describe('analytics workspace model', () => {
             Published: 5,
           },
         },
+        publishedChartViews: { totalViews: 31, viewsToday: 6 },
       })
     ).toEqual({
       totalUsers: 8,
@@ -91,6 +111,22 @@ describe('analytics workspace model', () => {
       packagesReturned: 2,
       packagesPublished: 5,
       usersPending: 2,
+      publishedViews: 31,
+      viewsToday: 6,
     });
+  });
+
+  it('normalizes most-viewed charts as aggregate distribution rows', () => {
+    expect(
+      publishedChartRows({
+        topCharts: [
+          { name: 'Analysis', views: 12 },
+          { name: '24-Hour Forecast', views: 8 },
+        ],
+      })
+    ).toEqual([
+      { label: 'Analysis', value: 12 },
+      { label: '24-Hour Forecast', value: 8 },
+    ]);
   });
 });
