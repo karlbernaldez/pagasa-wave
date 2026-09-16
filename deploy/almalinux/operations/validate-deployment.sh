@@ -31,6 +31,7 @@ report_id="${stamp}_${short_revision}"
 text_report="$REPORT_ROOT/$report_id.report.txt"
 json_report="$REPORT_ROOT/$report_id.json"
 latest_json="$STATUS_ROOT/latest.json"
+preflight_json="$STATUS_ROOT/preflight.json"
 
 checks=()
 failed=0
@@ -60,6 +61,40 @@ if wavelab_git_clean "$APP_ROOT"; then
 else
   record_check git_clean "Git working tree" FAIL dirty
 fi
+
+preflight_stages=""
+if [[ -f "$preflight_json" ]]; then
+  preflight_meta="$(node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); console.log([p.revision||'',p.result||'UNKNOWN',(p.completedStages||[]).join(',')].join('|'));" "$preflight_json" 2>/dev/null || true)"
+  IFS='|' read -r preflight_revision preflight_result preflight_stages <<< "$preflight_meta"
+  if [[ "$preflight_revision" != "$revision" ]]; then
+    record_check preflight_revision "Preflight revision" FAIL "report does not match $short_revision"
+  elif [[ "$preflight_result" != "PASS" ]]; then
+    record_check preflight_result "Pre-deployment validation" FAIL "$preflight_result"
+  else
+    record_check preflight_revision "Preflight revision" PASS "$short_revision"
+  fi
+else
+  record_check preflight_report "Pre-deployment validation report" WARN "not available"
+fi
+
+record_preflight_stage() {
+  local stage="$1"
+  local label="$2"
+  if [[ ",$preflight_stages," == *",$stage,"* ]]; then
+    record_check "preflight_$stage" "$label" PASS passed
+  fi
+}
+record_preflight_stage repository_quality "Repository quality"
+record_preflight_stage backend_tests "Backend tests"
+record_preflight_stage backend_workflow_tests "Backend workflow tests"
+record_preflight_stage frontend_tests "Frontend tests"
+record_preflight_stage frontend_build "Frontend production build"
+if [[ ",$preflight_stages," == *",wave_pipeline_tests,"* ]]; then
+  record_check preflight_wave_pipeline_tests "Wave pipeline tests" PASS passed
+elif [[ ",$preflight_stages," == *",wave_pipeline_tests_skipped,"* ]]; then
+  record_check preflight_wave_pipeline_tests "Wave pipeline tests" WARN skipped
+fi
+record_preflight_stage shell_syntax "Deployment shell syntax"
 
 if [[ -f "$APP_ROOT/frontend/dist/deployed-revision.txt" ]] && \
   grep -Fx "$revision" "$APP_ROOT/frontend/dist/deployed-revision.txt" >/dev/null 2>&1; then
@@ -170,7 +205,8 @@ fi
   echo "Failures: $failed"
   echo "Warnings: $warnings"
 } > "$text_report"
-chmod 0644 "$text_report"
+chmod 0640 "$text_report"
+chown root:"$(id -gn "${APP_USER:-wavelab}" 2>/dev/null || echo root)" "$text_report" 2>/dev/null || true
 
 CHECKS_DATA="$(printf '%s\n' "${checks[@]}")" \
 SERVICES_DATA="$(printf '%s\n' "${service_json[@]}")" \
@@ -208,7 +244,8 @@ const payload = {
 };
 process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
 NODE
-chmod 0644 "$json_report"
+chmod 0640 "$json_report"
+chown root:"$(id -gn "${APP_USER:-wavelab}" 2>/dev/null || echo root)" "$json_report" 2>/dev/null || true
 install -o root -g root -m 0644 "$json_report" "$latest_json"
 
 wavelab_log "Deployment validation result: $result"
