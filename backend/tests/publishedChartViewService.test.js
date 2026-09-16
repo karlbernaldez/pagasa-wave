@@ -50,8 +50,25 @@ test('published chart view counts a valid published chart without storing the ra
   assert.equal(created.project, PROJECT_ID);
   assert.equal(created.dateKey, '2026-09-16');
   assert.equal(created.viewerToken, undefined);
-  assert.equal(created.viewerHash, hashViewerToken(VIEWER_TOKEN, HASH_SECRET));
+  assert.equal(
+    created.viewerHash,
+    hashViewerToken(VIEWER_TOKEN, HASH_SECRET, `${PROJECT_ID}:2026-09-16`)
+  );
   assert.notEqual(created.viewerHash, VIEWER_TOKEN);
+});
+
+test('stored viewer hashes cannot be correlated across charts or Manila dates', () => {
+  const first = hashViewerToken(VIEWER_TOKEN, HASH_SECRET, `${PROJECT_ID}:2026-09-16`);
+  const anotherDay = hashViewerToken(VIEWER_TOKEN, HASH_SECRET, `${PROJECT_ID}:2026-09-17`);
+  const anotherChart = hashViewerToken(
+    VIEWER_TOKEN,
+    HASH_SECRET,
+    '507f1f77bcf86cd799439012:2026-09-16'
+  );
+
+  assert.notEqual(first, anotherDay);
+  assert.notEqual(first, anotherChart);
+  assert.notEqual(anotherDay, anotherChart);
 });
 
 test('published chart view rejects archived or unpublished charts before creating a view', async () => {
