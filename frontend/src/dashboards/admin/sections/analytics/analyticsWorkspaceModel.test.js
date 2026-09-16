@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  adaptiveBucketDays,
+  bucketDateSeries,
+  buildForecastDailySeries,
   buildForecastMetrics,
   buildSystemMetrics,
   buildUserMetrics,
@@ -128,5 +131,63 @@ describe('analytics workspace model', () => {
       { label: 'Analysis', value: 12 },
       { label: '24-Hour Forecast', value: 8 },
     ]);
+  });
+
+  it('uses readable adaptive buckets for longer analytics periods', () => {
+    expect(adaptiveBucketDays(30)).toBe(1);
+    expect(adaptiveBucketDays(31)).toBe(1);
+    expect(adaptiveBucketDays(60)).toBe(2);
+    expect(adaptiveBucketDays(61)).toBe(7);
+    expect(adaptiveBucketDays(90)).toBe(7);
+  });
+
+  it('reduces a 60-day trend to 30 two-day buckets without losing totals', () => {
+    const rows = [
+      { date: '2026-07-19', views: 2 },
+      { date: '2026-07-20', views: 3 },
+      { date: '2026-09-16', views: 5 },
+    ];
+
+    const result = bucketDateSeries(rows, {
+      start: '2026-07-19',
+      end: '2026-09-16',
+      valueFields: ['views'],
+      dayCount: 60,
+    });
+
+    expect(result).toHaveLength(30);
+    expect(result[0].views).toBe(5);
+    expect(result.at(-1).views).toBe(5);
+    expect(result.reduce((total, row) => total + row.views, 0)).toBe(10);
+  });
+
+  it('reduces a 90-day trend to weekly buckets and retains zero-value periods', () => {
+    const result = bucketDateSeries(
+      [
+        { date: '2026-06-19', total: 4 },
+        { date: '2026-09-16', total: 6 },
+      ],
+      {
+        start: '2026-06-19',
+        end: '2026-09-16',
+        valueFields: ['total'],
+        dayCount: 90,
+      }
+    );
+
+    expect(result).toHaveLength(13);
+    expect(result.reduce((total, row) => total + row.total, 0)).toBe(10);
+    expect(result.some((row) => row.total === 0)).toBe(true);
+  });
+
+  it('anchors forecast daily series to the selected historical end date', () => {
+    const result = buildForecastDailySeries(
+      [{ forecastDate: '2026-06-30T00:00:00.000Z', status: 'Published' }],
+      3,
+      '2026-06-30'
+    );
+
+    expect(result.map((row) => row.date)).toEqual(['2026-06-28', '2026-06-29', '2026-06-30']);
+    expect(result.at(-1)).toMatchObject({ completed: 1 });
   });
 });
