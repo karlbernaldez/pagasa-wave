@@ -117,7 +117,9 @@ const run = async () => {
   ]);
 
   console.log(`Seed chart: ${project.name} (${project._id})`);
-  console.log(`Yesterday ${yesterdayKey}: +${insertedYesterday} seeded, ${actualYesterday} total views`);
+  console.log(
+    `Yesterday ${yesterdayKey}: +${insertedYesterday} seeded, ${actualYesterday} total views`
+  );
   console.log(`Today ${todayKey}: +${insertedToday} seeded, ${actualToday} total views`);
   console.log(`All-time published chart views: ${allTime}`);
   console.log('Refresh Dashboard Overview to see the KPI and day-over-day comparison.');
