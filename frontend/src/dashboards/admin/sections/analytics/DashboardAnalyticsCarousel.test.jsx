@@ -50,7 +50,7 @@ describe('DashboardAnalyticsCarousel', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Show Contribution Activity' }));
 
-    expect(screen.getByText('Contribution Activity')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Contribution Activity' })).toBeInTheDocument();
     expect(
       screen.getByRole('combobox', { name: 'Forecast workflow trend period' })
     ).toBeInTheDocument();
