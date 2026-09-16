@@ -126,18 +126,16 @@ export const fetchPublicPublishedChartOutput = async (projectId, { signal, theme
   return data;
 };
 
-export const fetchPublicPublishedCharts = (
-  {
-    page = 1,
-    limit = 12,
-    search = '',
-    mode = 'active',
-    before = '',
-    after = '',
-    theme = '',
-    signal,
-  } = {}
-) => {
+export const fetchPublicPublishedCharts = ({
+  page = 1,
+  limit = 12,
+  search = '',
+  mode = 'active',
+  before = '',
+  after = '',
+  theme = '',
+  signal,
+} = {}) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
