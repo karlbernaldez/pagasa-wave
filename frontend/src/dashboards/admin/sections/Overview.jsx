@@ -32,6 +32,7 @@ import {
 import { fetchDashboardOverview } from '@/api/dashboardAPI';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 
+import DashboardAnalyticsCarousel from './analytics/DashboardAnalyticsCarousel';
 import { buildPresetRange } from './analytics/analyticsDateRange';
 import { adaptiveBucketDays, bucketDateSeries } from './analytics/analyticsWorkspaceModel';
 
@@ -878,6 +879,19 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
 
   const data = state.data || {};
   const meta = data.meta || {};
+  const forecastSlide = data.forecastWorkflowTrend ? (
+    <WorkflowTrend
+      trend={data.forecastWorkflowTrend}
+      range={meta.range}
+      selectedDays={trendDays}
+      isRefreshing={state.refreshing}
+      onRangeChange={handleTrendRangeChange}
+      isDarkMode={isDarkMode}
+    />
+  ) : null;
+  const statusSlide = data.packageStatusDistribution?.length ? (
+    <StatusDistribution rows={data.packageStatusDistribution} isDarkMode={isDarkMode} />
+  ) : null;
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-4 p-4 sm:p-6">
@@ -991,19 +1005,15 @@ export default function DashboardOverview({ isDarkMode, onSelectTab }) {
         </section>
       ) : null}
 
-      {data.forecastWorkflowTrend || data.packageStatusDistribution?.length ? (
-        <section className="grid gap-4 xl:grid-cols-[2fr_1fr]">
-          <WorkflowTrend
-            trend={data.forecastWorkflowTrend}
-            range={meta.range}
-            selectedDays={trendDays}
-            isRefreshing={state.refreshing}
-            onRangeChange={handleTrendRangeChange}
-            isDarkMode={isDarkMode}
-          />
-          <StatusDistribution rows={data.packageStatusDistribution} isDarkMode={isDarkMode} />
-        </section>
-      ) : null}
+      <DashboardAnalyticsCarousel
+        forecastSlide={forecastSlide}
+        statusSlide={statusSlide}
+        userAnalytics={data.userAnalytics}
+        systemAnalytics={data.systemAnalytics}
+        range={meta.range}
+        selectedDays={trendDays}
+        isDarkMode={isDarkMode}
+      />
 
       {data.waveModels?.length || data.recentPackages?.length ? (
         <section className="grid gap-4 xl:grid-cols-2">
