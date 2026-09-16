@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$SCRIPT_DIR/lib/common.sh"
 
+APP_USER="${APP_USER:-wavelab}"
 APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
 BACKEND_ENV="${BACKEND_ENV:-/etc/wavelab/backend.env}"
 REPORT_ROOT="${REPORT_ROOT:-/var/log/wavelab/deployments}"
@@ -18,8 +19,11 @@ for command_name in git curl systemctl journalctl node; do
   wavelab_require_command "$command_name"
 done
 
+APP_GROUP="$(id -gn "$APP_USER" 2>/dev/null || echo root)"
 mkdir -p "$REPORT_ROOT" "$STATUS_ROOT"
-chmod 0755 "$REPORT_ROOT" "$STATUS_ROOT"
+chown root:"$APP_GROUP" "$REPORT_ROOT" 2>/dev/null || true
+chmod 0750 "$REPORT_ROOT"
+chmod 0755 "$STATUS_ROOT"
 
 revision="$(wavelab_git_sha "$APP_ROOT")"
 short_revision="${revision:0:12}"
@@ -63,6 +67,7 @@ else
 fi
 
 preflight_stages=""
+preflight_valid=0
 if [[ -f "$preflight_json" ]]; then
   preflight_meta="$(node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); console.log([p.revision||'',p.result||'UNKNOWN',(p.completedStages||[]).join(',')].join('|'));" "$preflight_json" 2>/dev/null || true)"
   IFS='|' read -r preflight_revision preflight_result preflight_stages <<< "$preflight_meta"
@@ -71,6 +76,7 @@ if [[ -f "$preflight_json" ]]; then
   elif [[ "$preflight_result" != "PASS" ]]; then
     record_check preflight_result "Pre-deployment validation" FAIL "$preflight_result"
   else
+    preflight_valid=1
     record_check preflight_revision "Preflight revision" PASS "$short_revision"
   fi
 else
@@ -80,8 +86,13 @@ fi
 record_preflight_stage() {
   local stage="$1"
   local label="$2"
+  if [[ "$preflight_valid" -ne 1 ]]; then
+    return
+  fi
   if [[ ",$preflight_stages," == *",$stage,"* ]]; then
     record_check "preflight_$stage" "$label" PASS passed
+  else
+    record_check "preflight_$stage" "$label" FAIL "missing from preflight report"
   fi
 }
 record_preflight_stage repository_quality "Repository quality"
@@ -89,10 +100,14 @@ record_preflight_stage backend_tests "Backend tests"
 record_preflight_stage backend_workflow_tests "Backend workflow tests"
 record_preflight_stage frontend_tests "Frontend tests"
 record_preflight_stage frontend_build "Frontend production build"
-if [[ ",$preflight_stages," == *",wave_pipeline_tests,"* ]]; then
-  record_check preflight_wave_pipeline_tests "Wave pipeline tests" PASS passed
-elif [[ ",$preflight_stages," == *",wave_pipeline_tests_skipped,"* ]]; then
-  record_check preflight_wave_pipeline_tests "Wave pipeline tests" WARN skipped
+if [[ "$preflight_valid" -eq 1 ]]; then
+  if [[ ",$preflight_stages," == *",wave_pipeline_tests,"* ]]; then
+    record_check preflight_wave_pipeline_tests "Wave pipeline tests" PASS passed
+  elif [[ ",$preflight_stages," == *",wave_pipeline_tests_skipped,"* ]]; then
+    record_check preflight_wave_pipeline_tests "Wave pipeline tests" WARN skipped
+  else
+    record_check preflight_wave_pipeline_tests "Wave pipeline tests" FAIL "missing from preflight report"
+  fi
 fi
 record_preflight_stage shell_syntax "Deployment shell syntax"
 
@@ -206,7 +221,7 @@ fi
   echo "Warnings: $warnings"
 } > "$text_report"
 chmod 0640 "$text_report"
-chown root:"$(id -gn "${APP_USER:-wavelab}" 2>/dev/null || echo root)" "$text_report" 2>/dev/null || true
+chown root:"$APP_GROUP" "$text_report" 2>/dev/null || true
 
 CHECKS_DATA="$(printf '%s\n' "${checks[@]}")" \
 SERVICES_DATA="$(printf '%s\n' "${service_json[@]}")" \
@@ -245,7 +260,7 @@ const payload = {
 process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
 NODE
 chmod 0640 "$json_report"
-chown root:"$(id -gn "${APP_USER:-wavelab}" 2>/dev/null || echo root)" "$json_report" 2>/dev/null || true
+chown root:"$APP_GROUP" "$json_report" 2>/dev/null || true
 install -o root -g root -m 0644 "$json_report" "$latest_json"
 
 wavelab_log "Deployment validation result: $result"
