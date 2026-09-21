@@ -45,17 +45,23 @@ wavelab_check_http() {
   curl -fsS --max-time 10 "$url" >/dev/null
 }
 
+wavelab_git() {
+  local root="$1"
+  shift
+  git -c "safe.directory=$root" -C "$root" "$@"
+}
+
 wavelab_git_branch() {
   local root="$1"
-  git -C "$root" branch --show-current 2>/dev/null || printf 'detached'
+  wavelab_git "$root" branch --show-current 2>/dev/null || printf 'detached'
 }
 
 wavelab_git_sha() {
   local root="$1"
-  git -C "$root" rev-parse HEAD
+  wavelab_git "$root" rev-parse HEAD
 }
 
 wavelab_git_clean() {
   local root="$1"
-  [[ -z "$(git -C "$root" status --porcelain)" ]]
+  [[ -z "$(wavelab_git "$root" status --porcelain)" ]]
 }
