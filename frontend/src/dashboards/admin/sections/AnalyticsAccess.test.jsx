@@ -179,6 +179,56 @@ describe('AnalyticsAccess RBAC fetch boundaries', () => {
     expect(screen.getByText(/data may be stale/i)).toBeInTheDocument();
   });
 
+  it('shows an unavailable state instead of zero-value analytics when the first load fails', async () => {
+    currentUser.raw = { permissions: ['analytics_forecast.view'] };
+    analyticsApi.forecast.mockRejectedValueOnce(new Error('Forecast analytics unavailable'));
+
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    expect(await screen.findByText('Analytics data is currently unavailable.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.queryByText('Packages in period')).not.toBeInTheDocument();
+  });
+
+  it('shows a dedicated empty state without rendering zero-value analytics cards', async () => {
+    currentUser.raw = { permissions: ['analytics_forecast.view'] };
+    analyticsApi.forecast.mockResolvedValueOnce({
+      ...forecastPayload,
+      total: 0,
+      sampleSize: 0,
+      statusCounts: {},
+    });
+
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    expect(await screen.findByText('No analytics records in this period.')).toBeInTheDocument();
+    expect(screen.queryByText('Packages in period')).not.toBeInTheDocument();
+  });
+
+  it('labels an in-flight manual refresh without hiding the cached data', async () => {
+    currentUser.raw = { permissions: ['analytics_forecast.view'] };
+    let resolveRefresh;
+    analyticsApi.forecast
+      .mockResolvedValueOnce(forecastPayload)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+      );
+
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+
+    expect(screen.getByRole('button', { name: 'Refreshing…' })).toBeDisabled();
+    expect(screen.getByText('Packages in period')).toBeInTheDocument();
+
+    resolveRefresh(forecastPayload);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled());
+  });
+
   it('refetches the active subsection when a preset range changes', async () => {
     currentUser.raw = { permissions: ['analytics_forecast.view'] };
 
