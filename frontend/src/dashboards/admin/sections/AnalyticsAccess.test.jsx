@@ -179,6 +179,25 @@ describe('AnalyticsAccess RBAC fetch boundaries', () => {
     expect(screen.getByText(/data may be stale/i)).toBeInTheDocument();
   });
 
+  it('renders a loading placeholder before the first request resolves', async () => {
+    currentUser.raw = { permissions: ['analytics_forecast.view'] };
+    let resolveForecast;
+    analyticsApi.forecast.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveForecast = resolve;
+        })
+    );
+
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    expect(screen.getByText(/Loading forecast operations/i)).toBeInTheDocument();
+    expect(screen.queryByText('Packages in period')).not.toBeInTheDocument();
+
+    resolveForecast(forecastPayload);
+    expect(await screen.findByText('Packages in period')).toBeInTheDocument();
+  });
+
   it('shows an unavailable state instead of zero-value analytics when the first load fails', async () => {
     currentUser.raw = { permissions: ['analytics_forecast.view'] };
     analyticsApi.forecast.mockRejectedValueOnce(new Error('Forecast analytics unavailable'));
