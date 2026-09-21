@@ -58,10 +58,7 @@ test('analytics export routes require subsection access plus analytics.export', 
     ANALYTICS_ROUTE_ACCESS.map(({ path, permissions }) => [path, [...permissions]])
   );
 
-  assert.deepEqual(contract['/forecast/export'], [
-    'analytics_forecast.view',
-    'analytics.export',
-  ]);
+  assert.deepEqual(contract['/forecast/export'], ['analytics_forecast.view', 'analytics.export']);
   assert.deepEqual(contract['/users/export'], ['analytics_users.view', 'analytics.export']);
   assert.deepEqual(contract['/system/export'], ['analytics_system.view', 'analytics.export']);
 });
