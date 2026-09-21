@@ -614,6 +614,11 @@ export default function AnalyticsAccess({ isDarkMode }) {
     applyRange({ preset: 'custom', days, ...customRange });
   }, [applyRange, customRange]);
 
+  const handleSectionChange = useCallback((sectionId) => {
+    setRequestedSection(sectionId);
+    setState((current) => ({ ...current, error: '' }));
+  }, []);
+
   const handleExport = useCallback(async () => {
     if (!activeSection || !canExport) return;
     setState((current) => ({ ...current, exporting: true, error: '' }));
@@ -782,7 +787,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
             <button
               key={section.id}
               type="button"
-              onClick={() => setRequestedSection(section.id)}
+              onClick={() => handleSectionChange(section.id)}
               aria-pressed={selected}
               className={cn(
                 'inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition-colors',
