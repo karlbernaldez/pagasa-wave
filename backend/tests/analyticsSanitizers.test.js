@@ -47,7 +47,6 @@ test('aggregate user analytics export has no row-level identity or PII columns',
   }
 });
 
-
 test('aggregate user analytics export neutralizes spreadsheet formulas in dynamic labels', () => {
   const rows = buildUserAnalyticsExportRows({
     roleRows: [{ _id: '=HYPERLINK("https://example.invalid")', count: 1 }],
