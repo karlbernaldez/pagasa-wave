@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { getDeploymentStatus } from './deploymentStatusService.js';
 import {
   DEFAULT_SOURCE_CYCLE_DATE_MODE,
   getWaveSourceCyclePolicy,
@@ -185,7 +186,10 @@ async function readRuntimeSnapshot(code) {
 
 export async function getWavePipelineStatus(now = new Date()) {
   const packageDate = currentPackageDate(now);
-  const operationalModels = await listOperationalModels();
+  const [operationalModels, deployment] = await Promise.all([
+    listOperationalModels(),
+    getDeploymentStatus(),
+  ]);
 
   const models = await Promise.all(
     operationalModels.map(async (model) => {
@@ -252,6 +256,7 @@ export async function getWavePipelineStatus(now = new Date()) {
     schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     packageDate,
+    deployment,
     models,
   };
 }
