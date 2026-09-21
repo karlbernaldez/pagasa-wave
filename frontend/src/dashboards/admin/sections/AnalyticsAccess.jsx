@@ -767,7 +767,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
                 className={state.refreshing ? 'animate-spin' : ''}
                 aria-hidden="true"
               />
-              Refresh
+              {state.refreshing ? 'Refreshing…' : 'Refresh'}
             </button>
           </div>
         </div>
@@ -832,35 +832,67 @@ export default function AnalyticsAccess({ isDarkMode }) {
         </div>
       ) : null}
 
-      {payload && hasNoData(activeConfig.id, payload) ? (
-        <div
-          className={cn(
-            'rounded-2xl border px-4 py-3 text-sm font-semibold',
-            isDarkMode
-              ? 'border-white/10 bg-white/[0.03] text-slate-300'
-              : 'border-slate-200 bg-slate-50 text-slate-600'
-          )}
-        >
-          No analytics records were found for {range.start} to {range.end}. Try a wider period.
-        </div>
-      ) : null}
-
       {state.loading && !payload ? (
         <div
           className={cn(
             'flex min-h-[360px] items-center justify-center rounded-2xl border',
             isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
           )}
+          aria-live="polite"
         >
           <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
           <span className="text-sm font-black">Loading {activeConfig.label.toLowerCase()}…</span>
         </div>
+      ) : !payload && state.error ? (
+        <div
+          className={cn(
+            'flex min-h-[280px] flex-col items-center justify-center rounded-2xl border px-6 text-center',
+            isDarkMode
+              ? 'border-amber-300/20 bg-amber-400/5 text-slate-300'
+              : 'border-amber-200 bg-amber-50/60 text-slate-700'
+          )}
+        >
+          <AlertTriangle className="h-7 w-7" aria-hidden="true" />
+          <p className="mt-3 text-sm font-black">Analytics data is currently unavailable.</p>
+          <p className="mt-1 max-w-xl text-xs font-semibold">
+            No previous data is available for this subsection. Retry the request when the source is
+            available.
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadSection(activeConfig.id)}
+            className={cn(
+              'mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-black',
+              isDarkMode
+                ? 'border-white/10 bg-white/[0.04] text-slate-200'
+                : 'border-slate-200 bg-white text-slate-700'
+            )}
+          >
+            <RefreshCw size={15} aria-hidden="true" />
+            Retry
+          </button>
+        </div>
+      ) : payload && hasNoData(activeConfig.id, payload) ? (
+        <div
+          className={cn(
+            'flex min-h-[280px] flex-col items-center justify-center rounded-2xl border px-6 text-center',
+            isDarkMode
+              ? 'border-white/10 bg-white/[0.03] text-slate-300'
+              : 'border-slate-200 bg-slate-50 text-slate-600'
+          )}
+        >
+          <BarChart3 className="h-7 w-7" aria-hidden="true" />
+          <p className="mt-3 text-sm font-black">No analytics records in this period.</p>
+          <p className="mt-1 text-xs font-semibold">
+            {range.start} to {range.end} · Try a wider date range.
+          </p>
+        </div>
       ) : activeConfig.id === 'forecast' ? (
-        <ForecastPanel payload={payload || { range }} isDarkMode={isDarkMode} />
+        <ForecastPanel payload={payload} isDarkMode={isDarkMode} />
       ) : activeConfig.id === 'users' ? (
-        <UserPanel payload={payload || { range }} isDarkMode={isDarkMode} />
+        <UserPanel payload={payload} isDarkMode={isDarkMode} />
       ) : (
-        <SystemPanel payload={payload || { range }} isDarkMode={isDarkMode} />
+        <SystemPanel payload={payload} isDarkMode={isDarkMode} />
       )}
     </div>
   );
