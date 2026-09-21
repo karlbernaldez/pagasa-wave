@@ -12,6 +12,8 @@ import {
 
 import { fetchWavePipelineStatus } from '@/api/wavePipelineStatus';
 
+import DeploymentOperationsStatus from './components/DeploymentOperationsStatus';
+
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 const STATE_META = {
@@ -285,9 +287,9 @@ export default function WavePipelineStatus({ isDarkMode }) {
                   isDarkMode ? 'text-slate-400' : 'text-slate-600'
                 )}
               >
-                Monitor source readiness, normalized processing, validation, and publication for all
-                configured operational wave models. This page is observational; operational policy
-                is configured under Wave Models.
+                Monitor application deployment health, scheduled automation, source readiness,
+                normalized processing, validation, and publication for configured operational wave
+                models. This page is observational; deployment commands remain server-side.
               </p>
             </div>
           </div>
@@ -319,6 +321,10 @@ export default function WavePipelineStatus({ isDarkMode }) {
         >
           {error}
         </div>
+      ) : null}
+
+      {!loading ? (
+        <DeploymentOperationsStatus deployment={payload?.deployment} isDarkMode={isDarkMode} />
       ) : null}
 
       {loading ? (
