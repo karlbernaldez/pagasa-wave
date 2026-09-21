@@ -832,13 +832,14 @@ export default function AnalyticsAccess({ isDarkMode }) {
         </div>
       ) : null}
 
-      {state.loading && !payload ? (
+      {!payload && !state.error ? (
         <div
           className={cn(
             'flex min-h-[360px] items-center justify-center rounded-2xl border',
             isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
           )}
           aria-live="polite"
+          aria-busy="true"
         >
           <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
           <span className="text-sm font-black">Loading {activeConfig.label.toLowerCase()}…</span>
