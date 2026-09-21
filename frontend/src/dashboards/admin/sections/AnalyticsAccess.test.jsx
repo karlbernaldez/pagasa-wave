@@ -227,14 +227,12 @@ describe('AnalyticsAccess RBAC fetch boundaries', () => {
   it('labels an in-flight manual refresh without hiding the cached data', async () => {
     currentUser.raw = { permissions: ['analytics_forecast.view'] };
     let resolveRefresh;
-    analyticsApi.forecast
-      .mockResolvedValueOnce(forecastPayload)
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveRefresh = resolve;
-          })
-      );
+    analyticsApi.forecast.mockResolvedValueOnce(forecastPayload).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRefresh = resolve;
+        })
+    );
 
     render(<AnalyticsAccess isDarkMode={false} />);
 
