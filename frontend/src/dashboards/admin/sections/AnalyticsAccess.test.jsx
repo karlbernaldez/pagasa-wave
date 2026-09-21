@@ -130,6 +130,55 @@ describe('AnalyticsAccess RBAC fetch boundaries', () => {
     expect(screen.getByRole('button', { name: /Export CSV/i })).toBeInTheDocument();
   });
 
+  it('keeps the last successful subsection data visible when refresh fails', async () => {
+    currentUser.raw = { permissions: ['analytics_forecast.view'] };
+
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('Packages in period')).toBeInTheDocument();
+
+    analyticsApi.forecast.mockRejectedValueOnce(new Error('Forecast analytics unavailable'));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Forecast analytics unavailable');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Showing the last successfully loaded data.'
+    );
+    expect(screen.getByText('Packages in period')).toBeInTheDocument();
+  });
+
+  it('does not leak a failed subsection error into a different cached subsection', async () => {
+    currentUser.raw = {
+      permissions: ['analytics_forecast.view', 'analytics_users.view'],
+    };
+    analyticsApi.users.mockRejectedValueOnce(new Error('User analytics unavailable'));
+
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Users' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('User analytics unavailable');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Forecast' }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('Packages in period')).toBeInTheDocument();
+  });
+
+  it('labels old subsection data as stale', async () => {
+    currentUser.raw = { permissions: ['analytics_forecast.view'] };
+    analyticsApi.forecast.mockResolvedValueOnce({
+      ...forecastPayload,
+      generatedAt: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
+    });
+
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
+    expect(screen.getByText(/data may be stale/i)).toBeInTheDocument();
+  });
+
   it('refetches the active subsection when a preset range changes', async () => {
     currentUser.raw = { permissions: ['analytics_forecast.view'] };
 
