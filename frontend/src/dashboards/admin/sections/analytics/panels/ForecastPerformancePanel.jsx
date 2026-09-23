@@ -11,7 +11,6 @@ import {
   buildForecastExplorerRows,
   buildForecastFindings,
   buildOpenAgingRows,
-  buildPackagePerformanceRows,
   buildSlowestPackageRows,
   buildTimingRows,
   buildWorkflowFunnel,
@@ -38,7 +37,6 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
     value: row.value,
   }));
   const timingRows = buildTimingRows(payload.timing);
-  const packageRows = buildPackagePerformanceRows(payload.packages);
   const explorerRows = buildForecastExplorerRows(payload.packages);
   const findings = buildForecastFindings(payload);
   const comparison = payload.comparison || {};
