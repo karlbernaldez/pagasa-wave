@@ -1,7 +1,9 @@
 import express from 'express';
 
 import {
+  getAnalyticsOverview,
   getForecastAnalytics,
+  getPublicReachAnalytics,
   getSystemAnalytics,
   getUserAnalytics,
 } from '../controllers/analyticsController.js';
@@ -11,47 +13,45 @@ import {
   exportUserAnalytics,
 } from '../controllers/analyticsExportController.js';
 import authenticate from '../middleware/authMiddleware.js';
-import { requirePermission } from '../middleware/permissionMiddleware.js';
+import {
+  requireAnyPermission,
+  requirePermission,
+} from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
 
-export const ANALYTICS_ROUTE_ACCESS = Object.freeze([
-  {
-    path: '/forecast',
-    permissions: Object.freeze(['analytics_forecast.view']),
-    handler: getForecastAnalytics,
-  },
-  {
-    path: '/forecast/export',
-    permissions: Object.freeze(['analytics_forecast.view', 'analytics.export']),
-    handler: exportForecastAnalytics,
-  },
-  {
-    path: '/users',
-    permissions: Object.freeze(['analytics_users.view']),
-    handler: getUserAnalytics,
-  },
-  {
-    path: '/users/export',
-    permissions: Object.freeze(['analytics_users.view', 'analytics.export']),
-    handler: exportUserAnalytics,
-  },
-  {
-    path: '/system',
-    permissions: Object.freeze(['analytics_system.view']),
-    handler: getSystemAnalytics,
-  },
-  {
-    path: '/system/export',
-    permissions: Object.freeze(['analytics_system.view', 'analytics.export']),
-    handler: exportSystemAnalytics,
-  },
-]);
-
 router.use(authenticate);
 
-for (const route of ANALYTICS_ROUTE_ACCESS) {
-  router.get(route.path, ...route.permissions.map(requirePermission), route.handler);
-}
+router.get(
+  '/overview',
+  requireAnyPermission(
+    'analytics_forecast.view',
+    'analytics_users.view',
+    'analytics_system.view'
+  ),
+  getAnalyticsOverview
+);
+router.get('/forecast', requirePermission('analytics_forecast.view'), getForecastAnalytics);
+router.get(
+  '/forecast/export',
+  requirePermission('analytics_forecast.view'),
+  requirePermission('analytics.export'),
+  exportForecastAnalytics
+);
+router.get('/public', requirePermission('analytics_system.view'), getPublicReachAnalytics);
+router.get('/users', requirePermission('analytics_users.view'), getUserAnalytics);
+router.get(
+  '/users/export',
+  requirePermission('analytics_users.view'),
+  requirePermission('analytics.export'),
+  exportUserAnalytics
+);
+router.get('/system', requirePermission('analytics_system.view'), getSystemAnalytics);
+router.get(
+  '/system/export',
+  requirePermission('analytics_system.view'),
+  requirePermission('analytics.export'),
+  exportSystemAnalytics
+);
 
 export default router;
