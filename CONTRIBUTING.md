@@ -46,7 +46,7 @@ npm ci --ignore-scripts
 npm run quality
 ```
 
-These checks lint and format-check new or changed files, validate repository hygiene, check changed JSON and local Markdown links, scan for selected high-confidence secret patterns, and enforce the package-manager lockfile policy.
+These checks lint and format-check new or changed files, validate repository hygiene, check changed JSON and local Markdown links, scan for selected high-confidence secret patterns, and enforce the package-manager lockfile policy. Pull-request security gates additionally scan the full repository for secrets, lint GitHub Actions workflows, validate GitHub YAML formatting and issue-form structure, review dependency changes, and run CodeQL.
 
 Backend:
 

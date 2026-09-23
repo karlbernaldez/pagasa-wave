@@ -14,6 +14,43 @@ permissions:
   contents: read
 
 jobs:
+  repository-security:
+    name: Repository secret and configuration validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout full repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate GitHub Actions workflows
+        uses: raven-actions/actionlint@v2.2.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked repository quality tools
+        run: npm ci --ignore-scripts
+
+      - name: Validate GitHub workflow YAML formatting
+        run: npx prettier --check ".github/workflows/**/*.{yml,yaml}"
+
+      - name: Validate GitHub issue forms
+        run: node .github/scripts/validate-github-config.mjs
+
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'
