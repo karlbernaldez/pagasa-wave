@@ -51,6 +51,7 @@ const REQUEST_BY_SECTION = {
 };
 
 const EXPORTABLE_SECTIONS = new Set(['overview', 'forecast', 'public', 'users', 'system']);
+const EMPTY_FORECAST_FILTERS = Object.freeze({ status: '', chartType: '' });
 
 const hasNoData = (sectionId, payload) => {
   if (!payload) return false;
@@ -68,12 +69,20 @@ const hasNoData = (sectionId, payload) => {
   return false;
 };
 
-function renderPanel(sectionId, payload, isDarkMode) {
+function renderPanel(sectionId, payload, isDarkMode, options = {}) {
   if (sectionId === 'overview') {
     return <ExecutiveAnalysisPanel payload={payload} isDarkMode={isDarkMode} />;
   }
   if (sectionId === 'forecast') {
-    return <ForecastPerformancePanel payload={payload} isDarkMode={isDarkMode} />;
+    return (
+      <ForecastPerformancePanel
+        payload={payload}
+        filters={options.forecastFilters}
+        onFiltersChange={options.onForecastFiltersChange}
+        filtersDisabled={options.filtersDisabled}
+        isDarkMode={isDarkMode}
+      />
+    );
   }
   if (sectionId === 'public') {
     return <PublicReachPanel payload={payload} isDarkMode={isDarkMode} />;
@@ -95,6 +104,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
   const canExport = permissions.has('analytics.export') && EXPORTABLE_SECTIONS.has(activeSection);
 
   const [range, setRange] = useState(() => initialAnalyticsRange());
+  const [forecastFilters, setForecastFilters] = useState(() => ({ ...EMPTY_FORECAST_FILTERS }));
   const [customRange, setCustomRange] = useState(() => {
     const initial = initialAnalyticsRange();
     return { start: initial.start, end: initial.end };
@@ -109,7 +119,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
   });
 
   const loadSection = useCallback(
-    async (sectionId, { silent = false } = {}) => {
+    async (sectionId, { silent = false, forecastFiltersOverride = null } = {}) => {
       const request = REQUEST_BY_SECTION[sectionId];
       if (!request) return;
 
@@ -121,7 +131,12 @@ export default function AnalyticsAccess({ isDarkMode }) {
       }));
 
       try {
-        const data = await request({ start: range.start, end: range.end });
+        const effectiveForecastFilters = forecastFiltersOverride || forecastFilters;
+        const data = await request({
+          start: range.start,
+          end: range.end,
+          ...(sectionId === 'forecast' ? effectiveForecastFilters : {}),
+        });
         setState((current) => ({
           ...current,
           loading: false,
@@ -142,7 +157,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
         }));
       }
     },
-    [range.end, range.start]
+    [forecastFilters, range.end, range.start]
   );
 
   useEffect(() => {
@@ -162,6 +177,21 @@ export default function AnalyticsAccess({ isDarkMode }) {
     setState((current) => ({ ...current, error: '', data: {}, loadedAt: {} }));
   }, []);
 
+  const handleForecastFiltersChange = useCallback(
+    (nextFilters) => {
+      const normalized = {
+        status: nextFilters?.status || '',
+        chartType: nextFilters?.chartType || '',
+      };
+      setForecastFilters(normalized);
+      void loadSection('forecast', {
+        silent: true,
+        forecastFiltersOverride: normalized,
+      });
+    },
+    [loadSection]
+  );
+
   const handleCustom = useCallback(() => {
     const start = new Date(`${customRange.start}T00:00:00Z`);
     const end = new Date(`${customRange.end}T00:00:00Z`);
@@ -177,6 +207,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
       const { blob, filename } = await fetchAnalyticsExport(activeSection, {
         start: range.start,
         end: range.end,
+        ...(activeSection === 'forecast' ? forecastFilters : {}),
       });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
@@ -194,7 +225,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
         error: error?.message || 'Unable to export analytics.',
       }));
     }
-  }, [activeSection, canExport, range.end, range.start]);
+  }, [activeSection, canExport, forecastFilters, range.end, range.start]);
 
   if (!sections.length) {
     return (
@@ -407,7 +438,11 @@ export default function AnalyticsAccess({ isDarkMode }) {
           </p>
         </div>
       ) : payload ? (
-        renderPanel(activeSection, payload, isDarkMode)
+        renderPanel(activeSection, payload, isDarkMode, {
+          forecastFilters,
+          onForecastFiltersChange: handleForecastFiltersChange,
+          filtersDisabled: state.refreshing,
+        })
       ) : null}
     </div>
   );
