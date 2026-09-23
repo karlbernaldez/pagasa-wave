@@ -22,6 +22,29 @@ import {
 
 const router = express.Router();
 
+export const ANALYTICS_ROUTE_ACCESS = Object.freeze([
+  { path: '/forecast', permissions: ['analytics_forecast.view'] },
+  {
+    path: '/forecast/export',
+    permissions: ['analytics_forecast.view', 'analytics.export'],
+  },
+  { path: '/public', permissions: ['analytics_system.view'] },
+  {
+    path: '/public/export',
+    permissions: ['analytics_system.view', 'analytics.export'],
+  },
+  { path: '/users', permissions: ['analytics_users.view'] },
+  {
+    path: '/users/export',
+    permissions: ['analytics_users.view', 'analytics.export'],
+  },
+  { path: '/system', permissions: ['analytics_system.view'] },
+  {
+    path: '/system/export',
+    permissions: ['analytics_system.view', 'analytics.export'],
+  },
+]);
+
 router.use(authenticate);
 
 router.get(
