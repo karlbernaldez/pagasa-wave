@@ -15,10 +15,7 @@ import {
   exportUserAnalytics,
 } from '../controllers/analyticsExportController.js';
 import authenticate from '../middleware/authMiddleware.js';
-import {
-  requireAnyPermission,
-  requirePermission,
-} from '../middleware/permissionMiddleware.js';
+import { requireAnyPermission, requirePermission } from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
 
@@ -49,20 +46,12 @@ router.use(authenticate);
 
 router.get(
   '/overview',
-  requireAnyPermission(
-    'analytics_forecast.view',
-    'analytics_users.view',
-    'analytics_system.view'
-  ),
+  requireAnyPermission('analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'),
   getAnalyticsOverview
 );
 router.get(
   '/overview/export',
-  requireAnyPermission(
-    'analytics_forecast.view',
-    'analytics_users.view',
-    'analytics_system.view'
-  ),
+  requireAnyPermission('analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'),
   requirePermission('analytics.export'),
   exportAnalyticsOverview
 );

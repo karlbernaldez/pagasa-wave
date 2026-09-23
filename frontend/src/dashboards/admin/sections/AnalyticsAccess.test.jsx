@@ -30,7 +30,13 @@ const range = { start: '2026-08-17', end: '2026-09-15', days: 30, timezone: 'Asi
 const forecastPayload = {
   total: 1,
   statusCounts: { Published: 1 },
-  summary: { packages: 1, submitted: 1, publishedEvents: 1, revisionRequests: 0, completionRate: 100 },
+  summary: {
+    packages: 1,
+    submitted: 1,
+    publishedEvents: 1,
+    revisionRequests: 0,
+    completionRate: 100,
+  },
   throughput: [],
   timing: {},
   packages: [],
@@ -57,13 +63,25 @@ const userPayload = {
   statusCounts: { active: 2 },
   roleCounts: { forecaster: 2 },
   contributions: { totalEvents: 0, activeContributors: 0, trend: [], actionMix: [] },
-  summary: { totalAccounts: 2, activeAccounts: 2, pendingAccounts: 0, activeContributors: 0, contributionEvents: 0 },
+  summary: {
+    totalAccounts: 2,
+    activeAccounts: 2,
+    pendingAccounts: 0,
+    activeContributors: 0,
+    contributionEvents: 0,
+  },
   range,
   generatedAt: '2026-09-15T00:00:00.000Z',
 };
 const systemPayload = {
   available: true,
-  summary: { models: 1, readyModels: 1, packagesAvailable: 1, pipelineHealth: 'healthy', currentForecastCycle: '2026091418' },
+  summary: {
+    models: 1,
+    readyModels: 1,
+    packagesAvailable: 1,
+    pipelineHealth: 'healthy',
+    currentForecastCycle: '2026091418',
+  },
   models: [],
   range,
   generatedAt: '2026-09-15T00:00:00.000Z',
@@ -75,7 +93,9 @@ beforeEach(() => {
   analyticsApi.publicReach.mockReset().mockResolvedValue(publicPayload);
   analyticsApi.users.mockReset().mockResolvedValue(userPayload);
   analyticsApi.system.mockReset().mockResolvedValue(systemPayload);
-  analyticsApi.export.mockReset().mockResolvedValue({ blob: new Blob(['metric,value\n']), filename: 'analytics.csv' });
+  analyticsApi.export
+    .mockReset()
+    .mockResolvedValue({ blob: new Blob(['metric,value\n']), filename: 'analytics.csv' });
 });
 
 describe('AnalyticsAccess production workspace', () => {
@@ -96,12 +116,16 @@ describe('AnalyticsAccess production workspace', () => {
     currentUser.raw = { permissions: ['analytics.export'] };
     render(<AnalyticsAccess isDarkMode={false} />);
 
-    expect(await screen.findByText('No analytics subsection is assigned to your User Type.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('No analytics subsection is assigned to your User Type.')
+    ).toBeInTheDocument();
     expect(analyticsApi.overview).not.toHaveBeenCalled();
   });
 
   it('loads a subsection only when selected', async () => {
-    currentUser.raw = { permissions: ['analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'] };
+    currentUser.raw = {
+      permissions: ['analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'],
+    };
     render(<AnalyticsAccess isDarkMode={false} />);
 
     await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(1));
@@ -129,7 +153,9 @@ describe('AnalyticsAccess production workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Overview unavailable');
-    expect(screen.getByRole('alert')).toHaveTextContent('Showing the last successfully loaded data.');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Showing the last successfully loaded data.'
+    );
     expect(screen.getByText('Forecast Packages')).toBeInTheDocument();
   });
 
@@ -140,6 +166,8 @@ describe('AnalyticsAccess production workspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '7 Days' }));
     await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(2));
-    expect(analyticsApi.overview.mock.calls[1][0]).toEqual(expect.objectContaining({ start: expect.any(String), end: expect.any(String) }));
+    expect(analyticsApi.overview.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ start: expect.any(String), end: expect.any(String) })
+    );
   });
 });

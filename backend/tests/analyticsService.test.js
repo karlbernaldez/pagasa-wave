@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  loadForecastAnalytics,
-  loadSystemAnalytics,
-} from '../services/analyticsService.js';
+import { loadForecastAnalytics, loadSystemAnalytics } from '../services/analyticsService.js';
 import { parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
 
 const range = parseAnalyticsDateRange(
@@ -30,8 +27,12 @@ test('forecast analytics use audit event timestamps for throughput and median wo
   ];
 
   const query = {
-    select() { return this; },
-    sort() { return this; },
+    select() {
+      return this;
+    },
+    sort() {
+      return this;
+    },
     lean: async () => packages,
   };
   let aggregateCall = 0;
@@ -40,18 +41,20 @@ test('forecast analytics use audit event timestamps for throughput and median wo
     aggregate: async (pipeline) => {
       aggregateCall += 1;
       if (pipeline.some((stage) => stage.$facet)) {
-        return [{
-          byAction: [
-            { _id: 'submitted', count: 1 },
-            { _id: 'approved', count: 1 },
-            { _id: 'published', count: 1 },
-          ],
-          byDay: [
-            { _id: { date: '2026-09-10', action: 'submitted' }, count: 1 },
-            { _id: { date: '2026-09-10', action: 'approved' }, count: 1 },
-            { _id: { date: '2026-09-10', action: 'published' }, count: 1 },
-          ],
-        }];
+        return [
+          {
+            byAction: [
+              { _id: 'submitted', count: 1 },
+              { _id: 'approved', count: 1 },
+              { _id: 'published', count: 1 },
+            ],
+            byDay: [
+              { _id: { date: '2026-09-10', action: 'submitted' }, count: 1 },
+              { _id: { date: '2026-09-10', action: 'approved' }, count: 1 },
+              { _id: { date: '2026-09-10', action: 'published' }, count: 1 },
+            ],
+          },
+        ];
       }
       return [{ _id: 'Published', count: 1 }];
     },
@@ -74,15 +77,21 @@ test('forecast analytics use audit event timestamps for throughput and median wo
 
 test('forecast timing excludes incomplete historical samples instead of manufacturing zero durations', async () => {
   const query = {
-    select() { return this; },
-    sort() { return this; },
-    lean: async () => [{
-      _id: 'package-2',
-      name: 'Historical Forecast',
-      forecastDate: new Date('2026-09-11T00:00:00.000Z'),
-      status: 'Submitted',
-      auditLogs: [{ action: 'submitted', timestamp: new Date('2026-09-11T02:00:00.000Z') }],
-    }],
+    select() {
+      return this;
+    },
+    sort() {
+      return this;
+    },
+    lean: async () => [
+      {
+        _id: 'package-2',
+        name: 'Historical Forecast',
+        forecastDate: new Date('2026-09-11T00:00:00.000Z'),
+        status: 'Submitted',
+        auditLogs: [{ action: 'submitted', timestamp: new Date('2026-09-11T02:00:00.000Z') }],
+      },
+    ],
   };
   const ForecastPackageModel = {
     find: () => query,
@@ -134,5 +143,8 @@ test('system analytics derive readiness from dynamic pipeline models without har
   assert.equal(result.summary.packagesAvailable, 1);
   assert.equal(result.summary.pipelineHealth, 'processing');
   assert.equal(result.summary.currentForecastCycle, '2026092218');
-  assert.deepEqual(result.models.map((model) => model.code), ['CUSTOM_A', 'CUSTOM_B']);
+  assert.deepEqual(
+    result.models.map((model) => model.code),
+    ['CUSTOM_A', 'CUSTOM_B']
+  );
 });

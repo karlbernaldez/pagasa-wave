@@ -142,7 +142,6 @@ export const exportUserAnalytics = async (req, res, next) => {
   }
 };
 
-
 export const exportPublicReachAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);

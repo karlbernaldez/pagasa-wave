@@ -34,11 +34,21 @@ describe('analyticsAPI', () => {
     await fetchUserAnalytics({ start: '2026-09-01', end: '2026-09-15' });
     await fetchSystemAnalytics({ start: '2026-09-01', end: '2026-09-15' });
 
-    expect(vi.mocked(fetchWithAuth).mock.calls[0][0]).toContain('/api/analytics/overview?start=2026-09-01&end=2026-09-15');
-    expect(vi.mocked(fetchWithAuth).mock.calls[1][0]).toContain('/api/analytics/forecast?start=2026-09-01&end=2026-09-15');
-    expect(vi.mocked(fetchWithAuth).mock.calls[2][0]).toContain('/api/analytics/public?start=2026-09-01&end=2026-09-15');
-    expect(vi.mocked(fetchWithAuth).mock.calls[3][0]).toContain('/api/analytics/users?start=2026-09-01&end=2026-09-15');
-    expect(vi.mocked(fetchWithAuth).mock.calls[4][0]).toContain('/api/analytics/system?start=2026-09-01&end=2026-09-15');
+    expect(vi.mocked(fetchWithAuth).mock.calls[0][0]).toContain(
+      '/api/analytics/overview?start=2026-09-01&end=2026-09-15'
+    );
+    expect(vi.mocked(fetchWithAuth).mock.calls[1][0]).toContain(
+      '/api/analytics/forecast?start=2026-09-01&end=2026-09-15'
+    );
+    expect(vi.mocked(fetchWithAuth).mock.calls[2][0]).toContain(
+      '/api/analytics/public?start=2026-09-01&end=2026-09-15'
+    );
+    expect(vi.mocked(fetchWithAuth).mock.calls[3][0]).toContain(
+      '/api/analytics/users?start=2026-09-01&end=2026-09-15'
+    );
+    expect(vi.mocked(fetchWithAuth).mock.calls[4][0]).toContain(
+      '/api/analytics/system?start=2026-09-01&end=2026-09-15'
+    );
   });
 
   it('downloads subsection exports with the same date bounds and server filename', async () => {

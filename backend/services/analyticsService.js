@@ -101,7 +101,8 @@ const hoursBetween = (start, end) => {
 const packageTiming = (forecastPackage) => {
   const logs = forecastPackage.auditLogs || [];
   const submittedAt =
-    firstAuditAt(logs, ['submitted']) || (forecastPackage.submittedAt ? new Date(forecastPackage.submittedAt) : null);
+    firstAuditAt(logs, ['submitted']) ||
+    (forecastPackage.submittedAt ? new Date(forecastPackage.submittedAt) : null);
   const preparationStartedAt = firstAuditAt(logs, ['chart_claimed', 'chart_completion_updated']);
   const reviewStartedAt =
     firstAuditAt(logs, ['review_started'], { after: submittedAt }) ||
@@ -206,7 +207,10 @@ const loadForecastEventCounts = async (range, ForecastPackageModel = ForecastPac
   };
 };
 
-export async function loadForecastAnalytics(range, { ForecastPackageModel = ForecastPackage } = {}) {
+export async function loadForecastAnalytics(
+  range,
+  { ForecastPackageModel = ForecastPackage } = {}
+) {
   const match = {
     status: { $in: ANALYTICS_PACKAGE_STATUSES },
     ...buildDateMatch('forecastDate', range),
@@ -249,12 +253,15 @@ export async function loadForecastAnalytics(range, { ForecastPackageModel = Fore
         name: forecastPackage.name,
         forecastDate: forecastPackage.forecastDate,
         status: forecastPackage.status,
-        submittedAt: forecastPackage.submittedAt || firstAuditAt(forecastPackage.auditLogs, ['submitted']),
+        submittedAt:
+          forecastPackage.submittedAt || firstAuditAt(forecastPackage.auditLogs, ['submitted']),
         reviewedAt: forecastPackage.reviewedAt || null,
-        publishedAt: forecastPackage.publishedAt || firstAuditAt(forecastPackage.auditLogs, ['published']),
-        reviewDurationHours: timing.reviewDurationHours == null
-          ? null
-          : Math.round(timing.reviewDurationHours * 10) / 10,
+        publishedAt:
+          forecastPackage.publishedAt || firstAuditAt(forecastPackage.auditLogs, ['published']),
+        reviewDurationHours:
+          timing.reviewDurationHours == null
+            ? null
+            : Math.round(timing.reviewDurationHours * 10) / 10,
       };
     }),
     range: serializeAnalyticsRange(range),
@@ -325,13 +332,20 @@ const derivePipelineHealth = (models = []) => {
   if (!models.length) return 'unavailable';
   if (models.every((model) => model.state === 'READY')) return 'healthy';
   if (models.some((model) => model.state === 'FAILED')) return 'attention';
-  if (models.some((model) => ['NORMALIZING', 'BUILDING', 'VALIDATING', 'PUBLISHING'].includes(model.state))) {
+  if (
+    models.some((model) =>
+      ['NORMALIZING', 'BUILDING', 'VALIDATING', 'PUBLISHING'].includes(model.state)
+    )
+  ) {
     return 'processing';
   }
   return 'waiting';
 };
 
-export async function loadSystemAnalytics(range, { getPipelineStatus = getWavePipelineStatus } = {}) {
+export async function loadSystemAnalytics(
+  range,
+  { getPipelineStatus = getWavePipelineStatus } = {}
+) {
   try {
     const pipeline = await getPipelineStatus();
     const models = (pipeline.models || []).map((model) => ({
@@ -412,7 +426,11 @@ export async function loadAnalyticsOverview(range, permissions = []) {
   settled.forEach((result, index) => {
     const key = keys[index];
     if (result.status === 'fulfilled') sections[key] = result.value;
-    else errors.push({ section: key, message: result.reason?.message || 'Analytics source unavailable.' });
+    else
+      errors.push({
+        section: key,
+        message: result.reason?.message || 'Analytics source unavailable.',
+      });
   });
 
   return {
@@ -425,7 +443,9 @@ export async function loadAnalyticsOverview(range, permissions = []) {
 }
 
 export function formatAnalyticsHours(value) {
-  return value == null || !Number.isFinite(Number(value)) ? null : Math.round(Number(value) * 10) / 10;
+  return value == null || !Number.isFinite(Number(value))
+    ? null
+    : Math.round(Number(value) * 10) / 10;
 }
 
 export function analyticsDateKey(value) {

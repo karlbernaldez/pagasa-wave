@@ -4,14 +4,16 @@ export const ANALYTICS_SECTIONS = Object.freeze([
     label: 'Analytics Overview',
     shortLabel: 'Overview',
     permission: null,
-    description: 'Operational performance, forecast workflow trends, platform usage, and system health.',
+    description:
+      'Operational performance, forecast workflow trends, platform usage, and system health.',
   },
   {
     id: 'forecast',
     label: 'Forecast Operations',
     shortLabel: 'Forecast',
     permission: 'analytics_forecast.view',
-    description: 'Package throughput, review outcomes, workflow timing, and recent operational activity.',
+    description:
+      'Package throughput, review outcomes, workflow timing, and recent operational activity.',
   },
   {
     id: 'public',
@@ -33,7 +35,8 @@ export const ANALYTICS_SECTIONS = Object.freeze([
     label: 'System Operations',
     shortLabel: 'System',
     permission: 'analytics_system.view',
-    description: 'Dynamic wave-model readiness, package availability, and pipeline operational state.',
+    description:
+      'Dynamic wave-model readiness, package availability, and pipeline operational state.',
   },
 ]);
 
@@ -76,8 +79,8 @@ export function getAllowedAnalyticsSections(permissions = []) {
     'analytics_system.view',
   ];
   const hasAnalytics = subsectionPermissions.some((permission) => permissionSet.has(permission));
-  return ANALYTICS_SECTIONS.filter(
-    (section) => (section.id === 'overview' ? hasAnalytics : permissionSet.has(section.permission))
+  return ANALYTICS_SECTIONS.filter((section) =>
+    section.id === 'overview' ? hasAnalytics : permissionSet.has(section.permission)
   );
 }
 
