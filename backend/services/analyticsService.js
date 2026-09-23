@@ -141,6 +141,132 @@ const buildTimingSummary = (packages) => {
   };
 };
 
+
+const latestAuditAt = (forecastPackage, actions = null) => {
+  const allowed = actions ? new Set(actions) : null;
+  const timestamps = (forecastPackage.auditLogs || [])
+    .filter((log) => !allowed || allowed.has(log?.action))
+    .map((log) => new Date(log.timestamp).getTime())
+    .filter(Number.isFinite);
+  return timestamps.length ? new Date(Math.max(...timestamps)) : null;
+};
+
+const packageTurnaroundHours = (forecastPackage) => {
+  const submittedAt =
+    firstAuditAt(forecastPackage.auditLogs, ['submitted']) ||
+    (forecastPackage.submittedAt ? new Date(forecastPackage.submittedAt) : null);
+  const publishedAt =
+    firstAuditAt(forecastPackage.auditLogs, ['published'], { after: submittedAt }) ||
+    (forecastPackage.publishedAt ? new Date(forecastPackage.publishedAt) : null);
+  return hoursBetween(submittedAt, publishedAt);
+};
+
+const CURRENT_AGING_STATUS_ACTIONS = Object.freeze({
+  Submitted: ['submitted'],
+  'Under Review': ['review_started', 'submitted'],
+  'Revision Requested': ['revision_requested'],
+  Approved: ['approved'],
+});
+
+const currentStatusStartedAt = (forecastPackage) => {
+  const actions = CURRENT_AGING_STATUS_ACTIONS[forecastPackage.status];
+  if (!actions) return null;
+  return latestAuditAt(forecastPackage, actions);
+};
+
+const agingBucketForHours = (hours) => {
+  if (!Number.isFinite(hours) || hours < 0) return null;
+  if (hours < 6) return 'under_6h';
+  if (hours < 12) return '6_to_12h';
+  if (hours < 24) return '12_to_24h';
+  if (hours < 48) return '24_to_48h';
+  return '48h_plus';
+};
+
+const buildBottleneckAnalysis = (packages = [], timing, referenceNow = new Date()) => {
+  const stageRows = [
+    ['preparation', 'Preparation', timing.preparation],
+    ['reviewWait', 'Review wait', timing.reviewWait],
+    ['reviewDuration', 'Review duration', timing.reviewDuration],
+    ['publicationDelay', 'Publication delay', timing.publicationDelay],
+  ]
+    .filter(([, , metric]) => metric?.sampleSize > 0)
+    .map(([key, label, metric]) => ({
+      key,
+      label,
+      medianHours: metric.medianHours,
+      p75Hours: metric.p75Hours,
+      p90Hours: metric.p90Hours,
+      sampleSize: metric.sampleSize,
+    }))
+    .sort(
+      (a, b) =>
+        (Number(b.p90Hours) || 0) - (Number(a.p90Hours) || 0) ||
+        (Number(b.medianHours) || 0) - (Number(a.medianHours) || 0)
+    );
+
+  const turnaroundRows = packages
+    .map((forecastPackage) => ({
+      id: String(forecastPackage._id),
+      name: forecastPackage.name,
+      forecastDate: forecastPackage.forecastDate,
+      status: forecastPackage.status,
+      turnaroundHours: packageTurnaroundHours(forecastPackage),
+      revisionCycles: countAuditAction(forecastPackage, 'revision_requested'),
+    }))
+    .filter((row) => Number.isFinite(row.turnaroundHours))
+    .sort((a, b) => b.turnaroundHours - a.turnaroundHours);
+
+  const nowMs = new Date(referenceNow).getTime();
+  const agingRows = packages
+    .map((forecastPackage) => {
+      const statusStartedAt = currentStatusStartedAt(forecastPackage);
+      const startedMs = statusStartedAt?.getTime();
+      const ageHours =
+        Number.isFinite(nowMs) && Number.isFinite(startedMs) && nowMs >= startedMs
+          ? (nowMs - startedMs) / 3600000
+          : null;
+      return {
+        id: String(forecastPackage._id),
+        name: forecastPackage.name,
+        forecastDate: forecastPackage.forecastDate,
+        status: forecastPackage.status,
+        statusStartedAt,
+        ageHours: roundHours(ageHours),
+        bucket: agingBucketForHours(ageHours),
+      };
+    })
+    .filter((row) => row.bucket)
+    .sort((a, b) => b.ageHours - a.ageHours);
+
+  const agingBuckets = {
+    under_6h: 0,
+    '6_to_12h': 0,
+    '12_to_24h': 0,
+    '24_to_48h': 0,
+    '48h_plus': 0,
+  };
+  for (const row of agingRows) agingBuckets[row.bucket] += 1;
+
+  return {
+    slowestStage: stageRows[0] || null,
+    stages: stageRows,
+    turnaround: {
+      ...timingMetric(turnaroundRows.map((row) => row.turnaroundHours)),
+      slowestPackages: turnaroundRows.slice(0, 10).map((row) => ({
+        ...row,
+        turnaroundHours: roundHours(row.turnaroundHours),
+      })),
+    },
+    openAging: {
+      asOf: Number.isFinite(nowMs) ? new Date(nowMs).toISOString() : new Date().toISOString(),
+      totalOpen: agingRows.length,
+      buckets: agingBuckets,
+      oldest: agingRows.slice(0, 10),
+    },
+  };
+};
+
 const buildThroughput = (rows = []) => {
   const byDate = new Map();
   for (const row of rows) {
@@ -309,7 +435,7 @@ const loadForecastEventCounts = async (range, ForecastPackageModel = ForecastPac
 
 async function loadForecastAnalyticsPeriod(
   range,
-  { ForecastPackageModel = ForecastPackage } = {}
+  { ForecastPackageModel = ForecastPackage, referenceNow = new Date() } = {}
 ) {
   const match = {
     status: { $in: ANALYTICS_PACKAGE_STATUSES },
@@ -333,6 +459,7 @@ async function loadForecastAnalyticsPeriod(
   const statusCounts = rowsToCountObject(statusRows);
   const statusSummary = summarizeForecastStatuses(statusCounts, packages.length);
   const actionCount = (action) => Number(events.actionCounts[action]) || 0;
+  const timing = buildTimingSummary(packages);
 
   return {
     total: packages.length,
@@ -348,8 +475,9 @@ async function loadForecastAnalyticsPeriod(
       rejectedEvents: actionCount('rejected'),
     },
     throughput: events.throughput,
-    timing: buildTimingSummary(packages),
+    timing,
     efficiency: buildWorkflowEfficiency(packages),
+    bottlenecks: buildBottleneckAnalysis(packages, timing, referenceNow),
     packages: packages.map((forecastPackage) => {
       const timing = packageTiming(forecastPackage);
       return {
@@ -376,13 +504,23 @@ async function loadForecastAnalyticsPeriod(
 
 export async function loadForecastAnalytics(
   range,
-  { ForecastPackageModel = ForecastPackage, includeComparison = true } = {}
+  {
+    ForecastPackageModel = ForecastPackage,
+    includeComparison = true,
+    referenceNow = new Date(),
+  } = {}
 ) {
-  const current = await loadForecastAnalyticsPeriod(range, { ForecastPackageModel });
+  const current = await loadForecastAnalyticsPeriod(range, {
+    ForecastPackageModel,
+    referenceNow,
+  });
   if (!includeComparison) return current;
 
   const previousRange = previousAnalyticsRange(range);
-  const previous = await loadForecastAnalyticsPeriod(previousRange, { ForecastPackageModel });
+  const previous = await loadForecastAnalyticsPeriod(previousRange, {
+    ForecastPackageModel,
+    referenceNow,
+  });
 
   return {
     ...current,
