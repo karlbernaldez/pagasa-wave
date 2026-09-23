@@ -412,6 +412,7 @@ export function buildChartTypePerformanceRows(chartTypes = []) {
 export function buildForecastFindings(payload = {}) {
   const findings = [];
   const comparison = payload.comparison || {};
+  const analysisUnit = payload.filters?.unit === 'chart' ? 'chart project' : 'forecast package';
   const bottlenecks = payload.bottlenecks || {};
   const efficiency = payload.efficiency || {};
   const chartTypes = buildChartTypePerformanceRows(payload.chartTypes);
@@ -441,7 +442,7 @@ export function buildForecastFindings(payload = {}) {
     findings.push({
       id: 'aged-open-items',
       title: 'Open items require attention',
-      detail: `${oldOpen} open package${oldOpen === 1 ? '' : 's'} have remained in their current recorded workflow state for at least 24 hours.`,
+      detail: `${oldOpen} open ${analysisUnit}${oldOpen === 1 ? '' : 's'} have remained in their current recorded workflow state for at least 24 hours.`,
     });
   }
 
@@ -459,7 +460,7 @@ export function buildForecastFindings(payload = {}) {
     findings.push({
       id: 'first-pass',
       title: 'First-pass workflow efficiency',
-      detail: `${efficiency.firstPassApprovalRate}% of completed forecast packages reached completion without a recorded revision request.`,
+      detail: `${efficiency.firstPassApprovalRate}% of completed ${analysisUnit}s reached completion without a recorded revision request.`,
     });
   }
 
