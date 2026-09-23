@@ -65,18 +65,26 @@ export const previousAnalyticsRange = (range) =>
     end: shiftDateKey(range.start, -1),
   });
 
-const median = (values = []) => {
+const percentile = (values = [], percentileValue = 0.5) => {
   const clean = values.filter(Number.isFinite).sort((a, b) => a - b);
   if (!clean.length) return null;
-  const middle = Math.floor(clean.length / 2);
-  return clean.length % 2 ? clean[middle] : (clean[middle - 1] + clean[middle]) / 2;
+  const rank = (clean.length - 1) * percentileValue;
+  const lower = Math.floor(rank);
+  const upper = Math.ceil(rank);
+  if (lower === upper) return clean[lower];
+  const weight = rank - lower;
+  return clean[lower] + (clean[upper] - clean[lower]) * weight;
 };
 
+const roundHours = (value) => (value == null ? null : Math.round(value * 10) / 10);
+
 const timingMetric = (values) => {
-  const value = median(values);
+  const clean = values.filter(Number.isFinite);
   return {
-    medianHours: value == null ? null : Math.round(value * 10) / 10,
-    sampleSize: values.filter(Number.isFinite).length,
+    medianHours: roundHours(percentile(clean, 0.5)),
+    p75Hours: roundHours(percentile(clean, 0.75)),
+    p90Hours: roundHours(percentile(clean, 0.9)),
+    sampleSize: clean.length,
   };
 };
 
@@ -139,15 +147,107 @@ const buildThroughput = (rows = []) => {
     const key = row?._id?.date;
     const action = row?._id?.action;
     if (!key || !action) continue;
-    const point = byDate.get(key) || { date: key, submitted: 0, completed: 0, returned: 0 };
+    const point = byDate.get(key) || {
+      date: key,
+      submitted: 0,
+      approved: 0,
+      published: 0,
+      completed: 0,
+      returned: 0,
+    };
     const count = Number(row.count) || 0;
     if (action === 'submitted') point.submitted += count;
-    if (action === 'approved' || action === 'published') point.completed += count;
+    if (action === 'approved') point.approved += count;
+    if (action === 'published') {
+      point.published += count;
+      point.completed += count;
+    }
     if (action === 'revision_requested' || action === 'rejected') point.returned += count;
     byDate.set(key, point);
   }
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 };
+
+const countAuditAction = (forecastPackage, action) =>
+  (forecastPackage.auditLogs || []).filter((log) => log?.action === action).length;
+
+const buildWorkflowEfficiency = (packages = []) => {
+  const completedPackages = packages.filter((forecastPackage) =>
+    COMPLETED_STATUSES.has(forecastPackage.status)
+  );
+  const revisionCounts = packages.map((forecastPackage) =>
+    countAuditAction(forecastPackage, 'revision_requested')
+  );
+  const revisedPackages = revisionCounts.filter((count) => count > 0);
+  const firstPassCompleted = completedPackages.filter(
+    (forecastPackage) => countAuditAction(forecastPackage, 'revision_requested') === 0
+  ).length;
+
+  return {
+    completedPackages: completedPackages.length,
+    firstPassCompleted,
+    firstPassApprovalRate: completedPackages.length
+      ? Math.round((firstPassCompleted / completedPackages.length) * 100)
+      : null,
+    packagesWithRevision: revisedPackages.length,
+    averageRevisionCycles: revisedPackages.length
+      ? Math.round(
+          (revisedPackages.reduce((sum, count) => sum + count, 0) / revisedPackages.length) * 10
+        ) / 10
+      : 0,
+    maxRevisionCycles: revisedPackages.length ? Math.max(...revisedPackages) : 0,
+  };
+};
+
+const percentChange = (current, previous) => {
+  const currentValue = Number(current) || 0;
+  const previousValue = Number(previous) || 0;
+  if (previousValue === 0) return currentValue === 0 ? 0 : null;
+  return Math.round(((currentValue - previousValue) / previousValue) * 1000) / 10;
+};
+
+const percentagePointChange = (current, previous) => {
+  if (current == null || previous == null) return null;
+  return Math.round((Number(current) - Number(previous)) * 10) / 10;
+};
+
+const buildForecastComparison = (current, previous) => ({
+  previousRange: previous.range,
+  submitted: {
+    current: current.summary.submitted,
+    previous: previous.summary.submitted,
+    percentChange: percentChange(current.summary.submitted, previous.summary.submitted),
+  },
+  published: {
+    current: current.summary.publishedEvents,
+    previous: previous.summary.publishedEvents,
+    percentChange: percentChange(current.summary.publishedEvents, previous.summary.publishedEvents),
+  },
+  revisions: {
+    current: current.summary.revisionRequests,
+    previous: previous.summary.revisionRequests,
+    percentChange: percentChange(
+      current.summary.revisionRequests,
+      previous.summary.revisionRequests
+    ),
+  },
+  completionRate: {
+    current: current.summary.completionRate,
+    previous: previous.summary.completionRate,
+    percentagePointChange: percentagePointChange(
+      current.summary.completionRate,
+      previous.summary.completionRate
+    ),
+  },
+  firstPassApprovalRate: {
+    current: current.efficiency.firstPassApprovalRate,
+    previous: previous.efficiency.firstPassApprovalRate,
+    percentagePointChange: percentagePointChange(
+      current.efficiency.firstPassApprovalRate,
+      previous.efficiency.firstPassApprovalRate
+    ),
+  },
+});
 
 const summarizeForecastStatuses = (statusCounts, total) => {
   const count = (status) => Number(statusCounts[status]) || 0;
@@ -207,7 +307,7 @@ const loadForecastEventCounts = async (range, ForecastPackageModel = ForecastPac
   };
 };
 
-export async function loadForecastAnalytics(
+async function loadForecastAnalyticsPeriod(
   range,
   { ForecastPackageModel = ForecastPackage } = {}
 ) {
@@ -246,6 +346,7 @@ export async function loadForecastAnalytics(
     },
     throughput: events.throughput,
     timing: buildTimingSummary(packages),
+    efficiency: buildWorkflowEfficiency(packages),
     packages: packages.map((forecastPackage) => {
       const timing = packageTiming(forecastPackage);
       return {
@@ -262,10 +363,27 @@ export async function loadForecastAnalytics(
           timing.reviewDurationHours == null
             ? null
             : Math.round(timing.reviewDurationHours * 10) / 10,
+        revisionCycles: countAuditAction(forecastPackage, 'revision_requested'),
       };
     }),
     range: serializeAnalyticsRange(range),
     generatedAt: new Date().toISOString(),
+  };
+}
+
+export async function loadForecastAnalytics(
+  range,
+  { ForecastPackageModel = ForecastPackage, includeComparison = true } = {}
+) {
+  const current = await loadForecastAnalyticsPeriod(range, { ForecastPackageModel });
+  if (!includeComparison) return current;
+
+  const previousRange = previousAnalyticsRange(range);
+  const previous = await loadForecastAnalyticsPeriod(previousRange, { ForecastPackageModel });
+
+  return {
+    ...current,
+    comparison: buildForecastComparison(current, previous),
   };
 }
 
