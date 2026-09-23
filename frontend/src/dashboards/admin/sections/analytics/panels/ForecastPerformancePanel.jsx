@@ -2,6 +2,7 @@ import { BarChartCard, DistributionCard, TrendCard } from '../AnalyticsVisuals';
 import AnalyticsDataExplorer from '../components/AnalyticsDataExplorer';
 import AnalyticsFindings from '../components/AnalyticsFindings';
 import AnalyticsMetricStrip from '../components/AnalyticsMetricStrip';
+import ForecastAnalyticsFilters from '../components/ForecastAnalyticsFilters';
 import AnalyticsTable from '../components/AnalyticsTable';
 import {
   buildAgingDistributionRows,
@@ -25,7 +26,13 @@ import {
   formatHours,
 } from '../analyticsPresentation';
 
-export default function ForecastPerformancePanel({ payload, isDarkMode }) {
+export default function ForecastPerformancePanel({
+  payload,
+  filters,
+  onFiltersChange,
+  filtersDisabled,
+  isDarkMode,
+}) {
   const summary = payload.summary || {};
   const trend = buildTrend(payload.throughput, payload.range, [
     'submitted',
@@ -48,9 +55,19 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
   const slowestPackages = buildSlowestPackageRows(bottlenecks);
   const openAgingRows = buildOpenAgingRows(bottlenecks);
   const explorerFilters = buildForecastExplorerFilters(explorerRows);
+  const analysisUnit = payload.filters?.unit === 'chart' ? 'chart' : 'package';
+  const analysisUnitLabel = analysisUnit === 'chart' ? 'chart project' : 'Forecast Package';
 
   return (
     <div className="space-y-5">
+      <ForecastAnalyticsFilters
+        filters={filters}
+        options={payload.filterOptions}
+        onChange={onFiltersChange}
+        disabled={filtersDisabled}
+        isDarkMode={isDarkMode}
+      />
+
       <AnalyticsMetricStrip
         isDarkMode={isDarkMode}
         items={[
@@ -92,7 +109,7 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           {
             label: 'Avg revision cycles',
             value: efficiency.averageRevisionCycles ?? 0,
-            helper: `${efficiency.packagesWithRevision ?? 0} package(s) required revision`,
+            helper: `${efficiency.packagesWithRevision ?? 0} ${analysisUnit === 'chart' ? 'chart(s)' : 'package(s)'} required revision`,
           },
         ]}
       />
@@ -137,7 +154,7 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
         />
         <DistributionCard
           title="Current Workflow State Distribution"
-          description="Current package states for forecast packages in the selected period."
+          description={`Current workflow states for ${analysisUnitLabel}s in the selected analytical scope.`}
           rows={entriesByCount(payload.statusCounts)}
           isDarkMode={isDarkMode}
         />
@@ -145,7 +162,11 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
 
       <AnalyticsTable
         title="Chart Type & Forecast Horizon Performance"
-        description="Per-chart workflow performance derived from each forecast chart project's persisted audit events."
+        description={
+          analysisUnit === 'chart'
+            ? 'Selected chart/horizon performance from persisted project audit events.'
+            : 'Per-chart workflow performance derived from chart projects linked to the filtered Forecast Package cohort.'
+        }
         isDarkMode={isDarkMode}
         headers={[
           'Chart / Horizon',
@@ -195,7 +216,7 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
         />
         <BarChartCard
           title="Current Open-Item Aging"
-          description="Current open package states within the selected forecast-date cohort."
+          description={`Current open ${analysisUnitLabel} states within the selected analytical cohort.`}
           rows={agingDistribution}
           isDarkMode={isDarkMode}
         />
@@ -204,9 +225,9 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
       <section className="grid gap-5 xl:grid-cols-2">
         <AnalyticsTable
           title="Slowest Published Turnaround"
-          description="Submission-to-publication duration for packages with complete persisted timestamps."
+          description={`Submission-to-publication duration for ${analysisUnitLabel}s with complete persisted timestamps.`}
           isDarkMode={isDarkMode}
-          headers={['Forecast date', 'Package', 'Status', 'Turnaround', 'Revision cycles']}
+          headers={['Forecast date', analysisUnit === 'chart' ? 'Chart project' : 'Package', 'Status', 'Turnaround', 'Revision cycles']}
           rows={slowestPackages.map((item) => [
             formatDate(item.forecastDate),
             item.name,
@@ -217,9 +238,9 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
         />
         <AnalyticsTable
           title="Oldest Current Open Items"
-          description="Age is measured from the latest persisted event that established the package's current open state."
+          description={`Age is measured from the latest persisted event that established the ${analysisUnitLabel}'s current open state.`}
           isDarkMode={isDarkMode}
-          headers={['Forecast date', 'Package', 'Status', 'State since', 'Age']}
+          headers={['Forecast date', analysisUnit === 'chart' ? 'Chart project' : 'Package', 'Status', 'State since', 'Age']}
           rows={openAgingRows.map((item) => [
             formatDate(item.forecastDate),
             item.name,
@@ -231,8 +252,8 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
       </section>
 
       <AnalyticsDataExplorer
-        title="Forecast Package Data Explorer"
-        description="Search, filter, sort, and paginate package-level operational evidence for investigation and reconciliation."
+        title={analysisUnit === 'chart' ? 'Forecast Chart Data Explorer' : 'Forecast Package Data Explorer'}
+        description={`Search, filter, sort, and paginate ${analysisUnitLabel}-level operational evidence for investigation and reconciliation.`}
         isDarkMode={isDarkMode}
         rows={explorerRows}
         searchFields={['name', 'status']}
@@ -243,7 +264,7 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
             label: 'Forecast date',
             render: (value) => formatDate(value),
           },
-          { key: 'name', label: 'Package' },
+          { key: 'name', label: analysisUnit === 'chart' ? 'Chart project' : 'Package' },
           { key: 'status', label: 'Status' },
           {
             key: 'submittedAt',
