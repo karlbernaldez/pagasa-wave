@@ -18,7 +18,7 @@ describe('analytics workspace model', () => {
       new Set(['analytics_forecast.view', 'analytics_system.view'])
     );
 
-    expect(sections.map((section) => section.id)).toEqual(['forecast', 'system']);
+    expect(sections.map((section) => section.id)).toEqual(['overview', 'forecast', 'public', 'system']);
   });
 
   it('does not infer analytics access from unrelated permissions', () => {
