@@ -341,8 +341,11 @@ async function loadForecastAnalyticsPeriod(
     summary: {
       ...statusSummary,
       submitted: actionCount('submitted'),
+      reviewStarted: actionCount('review_started'),
+      approvedEvents: actionCount('approved'),
       publishedEvents: actionCount('published'),
       revisionRequests: actionCount('revision_requested'),
+      rejectedEvents: actionCount('rejected'),
     },
     throughput: events.throughput,
     timing: buildTimingSummary(packages),
