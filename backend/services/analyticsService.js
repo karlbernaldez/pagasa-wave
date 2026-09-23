@@ -29,7 +29,6 @@ const FORECAST_EVENT_ACTIONS = Object.freeze([
 
 const DECIDED_STATUSES = new Set(['Revision Requested', 'Approved', 'Published', 'Rejected']);
 const COMPLETED_STATUSES = new Set(['Approved', 'Published']);
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const rowsToCountObject = (rows = [], key = '_id') =>
   Object.fromEntries(rows.map((row) => [String(row[key] || 'unknown'), Number(row.count) || 0]));
