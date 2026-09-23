@@ -7,6 +7,9 @@ import {
   buildAgingDistributionRows,
   buildBottleneckStageRows,
   buildChartTypePerformanceRows,
+  buildForecastExplorerFilters,
+  buildForecastExplorerRows,
+  buildForecastFindings,
   buildForecastMetrics,
   buildOpenAgingRows,
   buildPackagePerformanceRows,
@@ -413,6 +416,83 @@ describe('analytics workspace model', () => {
       status: 'Under Review',
       ageHours: 8.5,
     });
+  });
+
+  it('builds deterministic findings from persisted analytics evidence', () => {
+    const findings = buildForecastFindings({
+      comparison: { published: { percentChange: -20 } },
+      efficiency: { firstPassApprovalRate: 80 },
+      bottlenecks: {
+        slowestStage: { label: 'Review wait', p90Hours: 4.2, sampleSize: 10 },
+        openAging: { buckets: { '24_to_48h': 2, '48h_plus': 1 } },
+      },
+      chartTypes: [
+        {
+          chartType: 'forecast_24h',
+          label: '24h Wave Forecast',
+          horizonHours: 24,
+          submitted: 10,
+          revisionRate: 30,
+          timing: {},
+        },
+        {
+          chartType: 'forecast_48h',
+          label: '48h Wave Forecast',
+          horizonHours: 48,
+          submitted: 10,
+          revisionRate: 10,
+          timing: {},
+        },
+      ],
+    });
+
+    expect(findings.map((item) => item.id)).toEqual([
+      'slowest-stage',
+      'highest-revision-chart',
+      'aged-open-items',
+      'publication-change',
+      'first-pass',
+    ]);
+    expect(findings[0].detail).toContain('4.2h');
+    expect(findings[1].detail).toContain('24h Wave Forecast');
+    expect(findings[2].detail).toContain('3 open packages');
+  });
+
+  it('builds searchable explorer rows and filter options without identity fields', () => {
+    const rows = buildForecastExplorerRows([
+      {
+        id: 'pkg-1',
+        name: 'Marine Forecast',
+        status: 'Revision Requested',
+        revisionCycles: 2,
+      },
+      {
+        id: 'pkg-2',
+        name: 'Marine Forecast 2',
+        status: 'Published',
+        revisionCycles: 0,
+      },
+    ]);
+
+    expect(rows.map((row) => row.revisionClass)).toEqual(['revised', 'no_revision']);
+    expect(buildForecastExplorerFilters(rows)).toEqual([
+      {
+        key: 'status',
+        label: 'statuses',
+        options: [
+          { value: 'Published', label: 'Published' },
+          { value: 'Revision Requested', label: 'Revision Requested' },
+        ],
+      },
+      {
+        key: 'revisionClass',
+        label: 'revision states',
+        options: [
+          { value: 'revised', label: 'Revised' },
+          { value: 'no_revision', label: 'No revision' },
+        ],
+      },
+    ]);
   });
 
   it('formats period comparison deltas without inventing a percentage when baseline is zero', () => {
