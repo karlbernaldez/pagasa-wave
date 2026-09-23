@@ -9,6 +9,7 @@ import {
 } from '../controllers/analyticsController.js';
 import {
   exportForecastAnalytics,
+  exportPublicReachAnalytics,
   exportSystemAnalytics,
   exportUserAnalytics,
 } from '../controllers/analyticsExportController.js';
@@ -39,6 +40,12 @@ router.get(
   exportForecastAnalytics
 );
 router.get('/public', requirePermission('analytics_system.view'), getPublicReachAnalytics);
+router.get(
+  '/public/export',
+  requirePermission('analytics_system.view'),
+  requirePermission('analytics.export'),
+  exportPublicReachAnalytics
+);
 router.get('/users', requirePermission('analytics_users.view'), getUserAnalytics);
 router.get(
   '/users/export',
