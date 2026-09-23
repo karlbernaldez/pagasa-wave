@@ -1,9 +1,6 @@
 import { BarChartCard, DistributionCard, TrendCard } from '../AnalyticsVisuals';
 import AnalyticsMetricStrip from '../components/AnalyticsMetricStrip';
-import {
-  contributionMixRows,
-  entriesByCount,
-} from '../analyticsWorkspaceModel';
+import { contributionMixRows, entriesByCount } from '../analyticsWorkspaceModel';
 import { bucketLabel, buildTrend } from '../analyticsPresentation';
 
 export default function CollaborationActivityPanel({ payload, isDarkMode }) {

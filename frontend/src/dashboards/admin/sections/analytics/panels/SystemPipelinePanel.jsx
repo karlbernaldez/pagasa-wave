@@ -60,7 +60,11 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
             ),
             helper: 'Derived current state',
           },
-          { label: 'Package date', value: payload.packageDate || '—', helper: 'Current package day' },
+          {
+            label: 'Package date',
+            value: payload.packageDate || '—',
+            helper: 'Current package day',
+          },
           {
             label: 'Telemetry mode',
             value: 'Snapshot',

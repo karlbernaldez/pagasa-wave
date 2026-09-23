@@ -13,7 +13,13 @@ import {
   entriesByCount,
   formatComparisonDelta,
 } from '../analyticsWorkspaceModel';
-import { bucketLabel, buildTrend, formatDate, formatDateTime, formatHours } from '../analyticsPresentation';
+import {
+  bucketLabel,
+  buildTrend,
+  formatDate,
+  formatDateTime,
+  formatHours,
+} from '../analyticsPresentation';
 
 export default function ForecastPerformancePanel({ payload, isDarkMode }) {
   const summary = payload.summary || {};
@@ -148,7 +154,9 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           'Turnaround sample',
         ]}
         rows={chartTypeRows.map((row) => [
-          row.horizonHours === 0 ? `${row.label} · Analysis` : `${row.label} · T+${row.horizonHours}`,
+          row.horizonHours === 0
+            ? `${row.label} · Analysis`
+            : `${row.label} · T+${row.horizonHours}`,
           row.projects,
           row.submitted,
           row.published,
@@ -228,16 +236,18 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           'Revision cycles',
           'Published',
         ]}
-        rows={packageRows.slice(0, 100).map((item) => [
-          formatDate(item.forecastDate),
-          item.name,
-          item.status,
-          formatDateTime(item.submittedAt),
-          formatDateTime(item.reviewedAt),
-          formatHours(item.reviewDurationHours),
-          item.revisionCycles,
-          formatDateTime(item.publishedAt),
-        ])}
+        rows={packageRows
+          .slice(0, 100)
+          .map((item) => [
+            formatDate(item.forecastDate),
+            item.name,
+            item.status,
+            formatDateTime(item.submittedAt),
+            formatDateTime(item.reviewedAt),
+            formatHours(item.reviewDurationHours),
+            item.revisionCycles,
+            formatDateTime(item.publishedAt),
+          ])}
       />
     </div>
   );

@@ -143,7 +143,6 @@ const buildTimingSummary = (packages) => {
   };
 };
 
-
 const latestAuditAt = (forecastPackage, actions = null) => {
   const allowed = actions ? new Set(actions) : null;
   const timestamps = (forecastPackage.auditLogs || [])
@@ -441,7 +440,7 @@ async function loadChartTypeAnalytics(range, { ProjectModel = Project } = {}) {
   return [...byType.values()]
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map(serializeChartTypeAccumulator);
-};
+}
 
 const countAuditAction = (forecastPackage, action) =>
   (forecastPackage.auditLogs || []).filter((log) => log?.action === action).length;
@@ -584,11 +583,7 @@ const loadForecastEventCounts = async (range, ForecastPackageModel = ForecastPac
 
 async function loadForecastAnalyticsPeriod(
   range,
-  {
-    ForecastPackageModel = ForecastPackage,
-    ProjectModel = Project,
-    referenceNow = new Date(),
-  } = {}
+  { ForecastPackageModel = ForecastPackage, ProjectModel = Project, referenceNow = new Date() } = {}
 ) {
   const match = {
     status: { $in: ANALYTICS_PACKAGE_STATUSES },

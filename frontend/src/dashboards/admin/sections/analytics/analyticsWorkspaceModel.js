@@ -4,8 +4,7 @@ export const ANALYTICS_SECTIONS = Object.freeze([
     label: 'Executive Analysis',
     shortLabel: 'Executive',
     permission: null,
-    description:
-      'Cross-section performance analysis for the selected reporting period.',
+    description: 'Cross-section performance analysis for the selected reporting period.',
   },
   {
     id: 'forecast',
@@ -273,7 +272,6 @@ export function entriesByCount(counts = {}) {
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
 }
 
-
 export function buildWorkflowFunnel(payload = {}) {
   const summary = payload.summary || {};
   return [
@@ -320,7 +318,6 @@ export function buildPackagePerformanceRows(packages = []) {
   }));
 }
 
-
 export function formatComparisonDelta(metric = {}, { percentagePoints = false } = {}) {
   const value = percentagePoints ? metric.percentagePointChange : metric.percentChange;
   if (value == null || !Number.isFinite(Number(value))) return null;
@@ -328,7 +325,6 @@ export function formatComparisonDelta(metric = {}, { percentagePoints = false } 
   const prefix = numeric > 0 ? '+' : '';
   return percentagePoints ? `${prefix}${numeric} pp` : `${prefix}${numeric}%`;
 }
-
 
 export function buildBottleneckStageRows(bottlenecks = {}) {
   return (bottlenecks.stages || []).map((stage) => ({
@@ -384,7 +380,6 @@ export function buildOpenAgingRows(bottlenecks = {}) {
   }));
 }
 
-
 export function buildChartTypePerformanceRows(chartTypes = []) {
   return (chartTypes || []).map((row) => ({
     chartType: row.chartType,
@@ -402,8 +397,7 @@ export function buildChartTypePerformanceRows(chartTypes = []) {
         ? null
         : Number(row.revisionRate),
     firstPassPublicationRate:
-      row.firstPassPublicationRate == null ||
-      !Number.isFinite(Number(row.firstPassPublicationRate))
+      row.firstPassPublicationRate == null || !Number.isFinite(Number(row.firstPassPublicationRate))
         ? null
         : Number(row.firstPassPublicationRate),
     reviewMedianHours: row.timing?.reviewDuration?.medianHours ?? null,

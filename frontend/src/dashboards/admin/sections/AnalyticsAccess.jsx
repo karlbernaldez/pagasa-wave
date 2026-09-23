@@ -233,10 +233,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
             Analytics & Reports
           </p>
           <h2
-            className={cn(
-              'mt-1 text-2xl font-black',
-              isDarkMode ? 'text-white' : 'text-slate-950'
-            )}
+            className={cn('mt-1 text-2xl font-black', isDarkMode ? 'text-white' : 'text-slate-950')}
           >
             Operations intelligence
           </h2>

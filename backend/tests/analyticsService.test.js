@@ -231,7 +231,6 @@ test('system analytics derive readiness from dynamic pipeline models without har
   );
 });
 
-
 test('forecast analytics compare the selected period with the immediately preceding equal-length period', async () => {
   const currentStart = new Date(range.startAt).getTime();
 
@@ -291,8 +290,7 @@ test('forecast analytics compare the selected period with the immediately preced
     },
     async aggregate(pipeline) {
       const matchStage = pipeline.find((stage) => stage.$match)?.$match;
-      const dateFilter =
-        matchStage?.forecastDate || matchStage?.['auditLogs.timestamp'] || {};
+      const dateFilter = matchStage?.forecastDate || matchStage?.['auditLogs.timestamp'] || {};
       const isCurrent = new Date(dateFilter.$gte).getTime() === currentStart;
       const packages = packagesFor(isCurrent);
 
@@ -358,7 +356,6 @@ test('forecast analytics compare the selected period with the immediately preced
   assert.equal(result.comparison.firstPassApprovalRate.percentagePointChange, -50);
 });
 
-
 test('forecast analytics compare chart type and horizon performance from project audit evidence', async () => {
   const packageQuery = {
     select() {
@@ -372,9 +369,7 @@ test('forecast analytics compare chart type and horizon performance from project
   const ForecastPackageModel = {
     find: () => packageQuery,
     aggregate: async (pipeline) =>
-      pipeline.some((stage) => stage.$facet)
-        ? [{ byAction: [], byDay: [] }]
-        : [],
+      pipeline.some((stage) => stage.$facet) ? [{ byAction: [], byDay: [] }] : [],
   };
 
   const projects = [

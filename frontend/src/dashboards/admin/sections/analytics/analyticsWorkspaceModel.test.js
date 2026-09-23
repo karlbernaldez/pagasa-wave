@@ -418,12 +418,9 @@ describe('analytics workspace model', () => {
   it('formats period comparison deltas without inventing a percentage when baseline is zero', () => {
     expect(formatComparisonDelta({ percentChange: 12.5 })).toBe('+12.5%');
     expect(formatComparisonDelta({ percentChange: -4 })).toBe('-4%');
-    expect(
-      formatComparisonDelta(
-        { percentagePointChange: -3.2 },
-        { percentagePoints: true }
-      )
-    ).toBe('-3.2 pp');
+    expect(formatComparisonDelta({ percentagePointChange: -3.2 }, { percentagePoints: true })).toBe(
+      '-3.2 pp'
+    );
     expect(formatComparisonDelta({ percentChange: null })).toBeNull();
   });
 });

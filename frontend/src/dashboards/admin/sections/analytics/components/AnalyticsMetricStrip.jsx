@@ -9,7 +9,10 @@ export default function AnalyticsMetricStrip({ items, isDarkMode }) {
       )}
     >
       {items.map((item) => (
-        <div key={item.label} className="min-w-0 border-b border-inherit px-4 py-4 sm:border-b-0 sm:border-r">
+        <div
+          key={item.label}
+          className="min-w-0 border-b border-inherit px-4 py-4 sm:border-b-0 sm:border-r"
+        >
           <p
             className={cn(
               'text-[10px] font-black uppercase tracking-[0.12em]',

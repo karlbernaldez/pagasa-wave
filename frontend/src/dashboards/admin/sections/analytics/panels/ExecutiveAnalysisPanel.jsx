@@ -1,16 +1,8 @@
 import { DistributionCard, TrendCard } from '../AnalyticsVisuals';
 import AnalyticsMetricStrip from '../components/AnalyticsMetricStrip';
 import AnalyticsTable from '../components/AnalyticsTable';
-import {
-  buildTimingRows,
-  entriesByCount,
-  formatComparisonDelta,
-} from '../analyticsWorkspaceModel';
-import {
-  bucketLabel,
-  buildTrend,
-  formatHours,
-} from '../analyticsPresentation';
+import { buildTimingRows, entriesByCount, formatComparisonDelta } from '../analyticsWorkspaceModel';
+import { bucketLabel, buildTrend, formatHours } from '../analyticsPresentation';
 
 export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
   const forecast = payload.sections?.forecast;
@@ -43,8 +35,7 @@ export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
     forecast
       ? {
           label: 'Return rate',
-          value:
-            forecast.summary?.returnRate == null ? '—' : `${forecast.summary.returnRate}%`,
+          value: forecast.summary?.returnRate == null ? '—' : `${forecast.summary.returnRate}%`,
           helper: 'Revision/rejection pressure',
         }
       : null,
