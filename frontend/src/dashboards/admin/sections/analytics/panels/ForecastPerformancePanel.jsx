@@ -2,7 +2,11 @@ import { BarChartCard, DistributionCard, TrendCard } from '../AnalyticsVisuals';
 import AnalyticsMetricStrip from '../components/AnalyticsMetricStrip';
 import AnalyticsTable from '../components/AnalyticsTable';
 import {
+  buildAgingDistributionRows,
+  buildBottleneckStageRows,
+  buildOpenAgingRows,
   buildPackagePerformanceRows,
+  buildSlowestPackageRows,
   buildTimingRows,
   buildWorkflowFunnel,
   entriesByCount,
@@ -25,6 +29,11 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
   const packageRows = buildPackagePerformanceRows(payload.packages);
   const comparison = payload.comparison || {};
   const efficiency = payload.efficiency || {};
+  const bottlenecks = payload.bottlenecks || {};
+  const bottleneckStages = buildBottleneckStageRows(bottlenecks);
+  const agingDistribution = buildAgingDistributionRows(bottlenecks.openAging);
+  const slowestPackages = buildSlowestPackageRows(bottlenecks);
+  const openAgingRows = buildOpenAgingRows(bottlenecks);
 
   return (
     <div className="space-y-5">
@@ -115,6 +124,57 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           description="Current package states for forecast packages in the selected period."
           rows={entriesByCount(payload.statusCounts)}
           isDarkMode={isDarkMode}
+        />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <AnalyticsTable
+          title="Workflow Bottleneck Ranking"
+          description="Stages ranked by P90 duration using complete timing samples only."
+          isDarkMode={isDarkMode}
+          headers={['Stage', 'Median', 'P75', 'P90', 'Sample']}
+          rows={bottleneckStages.map((row) => [
+            row.label,
+            formatHours(row.medianHours),
+            formatHours(row.p75Hours),
+            formatHours(row.p90Hours),
+            row.sampleSize,
+          ])}
+        />
+        <BarChartCard
+          title="Current Open-Item Aging"
+          description="Current open package states within the selected forecast-date cohort."
+          rows={agingDistribution}
+          isDarkMode={isDarkMode}
+        />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <AnalyticsTable
+          title="Slowest Published Turnaround"
+          description="Submission-to-publication duration for packages with complete persisted timestamps."
+          isDarkMode={isDarkMode}
+          headers={['Forecast date', 'Package', 'Status', 'Turnaround', 'Revision cycles']}
+          rows={slowestPackages.map((item) => [
+            formatDate(item.forecastDate),
+            item.name,
+            item.status,
+            formatHours(item.turnaroundHours),
+            item.revisionCycles,
+          ])}
+        />
+        <AnalyticsTable
+          title="Oldest Current Open Items"
+          description="Age is measured from the latest persisted event that established the package's current open state."
+          isDarkMode={isDarkMode}
+          headers={['Forecast date', 'Package', 'Status', 'State since', 'Age']}
+          rows={openAgingRows.map((item) => [
+            formatDate(item.forecastDate),
+            item.name,
+            item.status,
+            formatDateTime(item.statusStartedAt),
+            formatHours(item.ageHours),
+          ])}
         />
       </section>
 
