@@ -1,5 +1,6 @@
 name: WaveLab operationalization work item
-description: Track an SDLC, production-readiness, security, validation, or operations requirement.
+description: >-
+  Track an SDLC, production-readiness, security, validation, or operations requirement.
 title: "[OPS] "
 labels:
   - operationalization
@@ -71,7 +72,9 @@ body:
     id: impact
     attributes:
       label: Impact assessment
-      description: Cover forecast/time, security/privacy, data/migration, dependencies, configuration, availability, and users.
+      description: >-
+        Cover forecast/time, security/privacy, data/migration, dependencies, configuration, availability,
+        and users.
     validations:
       required: true
   - type: textarea
@@ -91,6 +94,8 @@ body:
     id: owners
     attributes:
       label: Owners and required reviewers
-      description: Identify delivery owner and required code, forecast, security/privacy, data, QA, and service reviewers.
+      description: >-
+        Identify delivery owner and required code, forecast, security/privacy, data, QA, and service
+        reviewers.
     validations:
       required: true
