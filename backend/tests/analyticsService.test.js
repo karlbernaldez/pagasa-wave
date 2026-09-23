@@ -60,8 +60,21 @@ test('forecast analytics use audit event timestamps for throughput and median wo
     },
   };
 
+  const ProjectModel = {
+    find: () => ({
+      select() {
+        return this;
+      },
+      sort() {
+        return this;
+      },
+      lean: async () => [],
+    }),
+  };
+
   const result = await loadForecastAnalytics(range, {
     ForecastPackageModel,
+    ProjectModel,
     includeComparison: false,
     referenceNow: new Date('2026-09-11T12:00:00.000Z'),
   });
@@ -139,8 +152,21 @@ test('forecast timing excludes incomplete historical samples instead of manufact
         : [{ _id: 'Submitted', count: 1 }],
   };
 
+  const ProjectModel = {
+    find: () => ({
+      select() {
+        return this;
+      },
+      sort() {
+        return this;
+      },
+      lean: async () => [],
+    }),
+  };
+
   const result = await loadForecastAnalytics(range, {
     ForecastPackageModel,
+    ProjectModel,
     includeComparison: false,
     referenceNow: new Date('2026-09-11T14:00:00.000Z'),
   });
@@ -158,7 +184,7 @@ test('forecast timing excludes incomplete historical samples instead of manufact
     sampleSize: 0,
   });
   assert.equal(result.bottlenecks.openAging.totalOpen, 1);
-  assert.equal(result.bottlenecks.openAging.buckets['6_to_12h'], 1);
+  assert.equal(result.bottlenecks.openAging.buckets['12_to_24h'], 1);
   assert.equal(result.bottlenecks.openAging.oldest[0].status, 'Submitted');
   assert.equal(result.bottlenecks.openAging.oldest[0].ageHours, 12);
 });
@@ -301,7 +327,19 @@ test('forecast analytics compare the selected period with the immediately preced
     },
   };
 
-  const result = await loadForecastAnalytics(range, { ForecastPackageModel });
+  const ProjectModel = {
+    find: () => ({
+      select() {
+        return this;
+      },
+      sort() {
+        return this;
+      },
+      lean: async () => [],
+    }),
+  };
+
+  const result = await loadForecastAnalytics(range, { ForecastPackageModel, ProjectModel });
 
   assert.equal(result.summary.submitted, 2);
   assert.equal(result.summary.publishedEvents, 1);
@@ -318,4 +356,90 @@ test('forecast analytics compare the selected period with the immediately preced
   assert.equal(result.comparison.firstPassApprovalRate.current, 50);
   assert.equal(result.comparison.firstPassApprovalRate.previous, 100);
   assert.equal(result.comparison.firstPassApprovalRate.percentagePointChange, -50);
+});
+
+
+test('forecast analytics compare chart type and horizon performance from project audit evidence', async () => {
+  const packageQuery = {
+    select() {
+      return this;
+    },
+    sort() {
+      return this;
+    },
+    lean: async () => [],
+  };
+  const ForecastPackageModel = {
+    find: () => packageQuery,
+    aggregate: async (pipeline) =>
+      pipeline.some((stage) => stage.$facet)
+        ? [{ byAction: [], byDay: [] }]
+        : [],
+  };
+
+  const projects = [
+    {
+      _id: 'analysis-1',
+      chartType: 'analysis',
+      forecastDate: new Date('2026-09-10T00:00:00.000Z'),
+      status: 'Published',
+      auditLogs: [
+        { action: 'submitted', timestamp: new Date('2026-09-10T01:00:00.000Z') },
+        { action: 'review_started', timestamp: new Date('2026-09-10T02:00:00.000Z') },
+        { action: 'approved', timestamp: new Date('2026-09-10T03:00:00.000Z') },
+        { action: 'published', timestamp: new Date('2026-09-10T04:00:00.000Z') },
+      ],
+    },
+    {
+      _id: 'forecast-24-1',
+      chartType: 'forecast_24h',
+      forecastDate: new Date('2026-09-10T00:00:00.000Z'),
+      status: 'Published',
+      auditLogs: [
+        { action: 'submitted', timestamp: new Date('2026-09-10T01:00:00.000Z') },
+        { action: 'review_started', timestamp: new Date('2026-09-10T03:00:00.000Z') },
+        { action: 'revision_requested', timestamp: new Date('2026-09-10T05:00:00.000Z') },
+        { action: 'approved', timestamp: new Date('2026-09-10T07:00:00.000Z') },
+        { action: 'published', timestamp: new Date('2026-09-10T08:00:00.000Z') },
+      ],
+    },
+  ];
+  const ProjectModel = {
+    find: () => ({
+      select() {
+        return this;
+      },
+      sort() {
+        return this;
+      },
+      lean: async () => projects,
+    }),
+  };
+
+  const result = await loadForecastAnalytics(range, {
+    ForecastPackageModel,
+    ProjectModel,
+    includeComparison: false,
+  });
+
+  const analysis = result.chartTypes.find((row) => row.chartType === 'analysis');
+  const forecast24 = result.chartTypes.find((row) => row.chartType === 'forecast_24h');
+  const forecast36 = result.chartTypes.find((row) => row.chartType === 'forecast_36h');
+
+  assert.equal(analysis.horizonHours, 0);
+  assert.equal(analysis.published, 1);
+  assert.equal(analysis.revisionRate, 0);
+  assert.equal(analysis.firstPassPublicationRate, 100);
+  assert.equal(analysis.timing.reviewDuration.medianHours, 1);
+  assert.equal(analysis.timing.submissionToPublication.medianHours, 3);
+
+  assert.equal(forecast24.horizonHours, 24);
+  assert.equal(forecast24.revisionRequests, 1);
+  assert.equal(forecast24.revisionRate, 100);
+  assert.equal(forecast24.firstPassPublicationRate, 0);
+  assert.equal(forecast24.timing.reviewDuration.medianHours, 2);
+  assert.equal(forecast24.timing.submissionToPublication.medianHours, 7);
+
+  assert.equal(forecast36.projects, 0);
+  assert.equal(forecast36.revisionRate, null);
 });
