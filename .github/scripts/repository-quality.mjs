@@ -74,11 +74,11 @@ function checkLocalMarkdownLinks(file, content) {
   }
 }
 
-if (tracked.has('frontend/package-lock.json')) {
-  fail('frontend/package-lock.json is tracked; the frontend package manager is pnpm only.');
+if (!tracked.has('frontend/package-lock.json')) {
+  fail('frontend/package-lock.json must remain tracked.');
 }
-if (!tracked.has('frontend/pnpm-lock.yaml')) {
-  fail('frontend/pnpm-lock.yaml must remain tracked.');
+if (tracked.has('frontend/pnpm-lock.yaml')) {
+  fail('frontend/pnpm-lock.yaml is tracked; the frontend package manager is npm only.');
 }
 if (!tracked.has('backend/package-lock.json')) {
   fail('backend/package-lock.json must remain tracked.');
