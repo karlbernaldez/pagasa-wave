@@ -49,7 +49,7 @@ export const fetchUserAnalytics = (params) => request(`/users${buildQuery(params
 export const fetchSystemAnalytics = (params) => request(`/system${buildQuery(params)}`);
 
 export const fetchAnalyticsExport = async (section, params = {}) => {
-  if (!['forecast', 'public', 'users', 'system'].includes(section)) {
+  if (!['overview', 'forecast', 'public', 'users', 'system'].includes(section)) {
     throw new Error('Unsupported analytics export section.');
   }
 
