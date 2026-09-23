@@ -115,6 +115,33 @@ export const exportUserAnalytics = async (req, res, next) => {
   }
 };
 
+
+export const exportPublicReachAnalytics = async (req, res, next) => {
+  try {
+    const range = parseAnalyticsDateRange(req.query);
+    const publishedChartViews = await loadPublishedChartViewAnalytics(range, {
+      currentDateKey: formatManilaDateKey(),
+    });
+    const rows = [
+      ['metadata.timezone', range.timezone],
+      ['metadata.generated_at', new Date().toISOString()],
+      ['views.period', publishedChartViews.totalViews],
+      ['views.all_time', publishedChartViews.allTimeViews],
+      ['views.today', publishedChartViews.viewsToday],
+      ['views.yesterday', publishedChartViews.viewsYesterday],
+      ['charts.distinct_viewed', publishedChartViews.distinctChartsViewed || 0],
+      ...publishedChartViews.trend.map((row) => [`views.daily.${row.date}`, row.views]),
+      ...publishedChartViews.topCharts.map((row) => [
+        `views.chart.${row.projectId}.${row.name || 'published-chart'}`,
+        row.views,
+      ]),
+    ];
+    return sendCsv(res, filenameFor('public', range), ['metric', 'value'], rows);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export const exportSystemAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
