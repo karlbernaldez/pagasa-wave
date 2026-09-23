@@ -4,6 +4,7 @@ import AnalyticsTable from '../components/AnalyticsTable';
 import {
   buildAgingDistributionRows,
   buildBottleneckStageRows,
+  buildChartTypePerformanceRows,
   buildOpenAgingRows,
   buildPackagePerformanceRows,
   buildSlowestPackageRows,
@@ -30,6 +31,7 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
   const comparison = payload.comparison || {};
   const efficiency = payload.efficiency || {};
   const bottlenecks = payload.bottlenecks || {};
+  const chartTypeRows = buildChartTypePerformanceRows(payload.chartTypes);
   const bottleneckStages = buildBottleneckStageRows(bottlenecks);
   const agingDistribution = buildAgingDistributionRows(bottlenecks.openAging);
   const slowestPackages = buildSlowestPackageRows(bottlenecks);
@@ -126,6 +128,40 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           isDarkMode={isDarkMode}
         />
       </section>
+
+      <AnalyticsTable
+        title="Chart Type & Forecast Horizon Performance"
+        description="Per-chart workflow performance derived from each forecast chart project's persisted audit events."
+        isDarkMode={isDarkMode}
+        headers={[
+          'Chart / Horizon',
+          'Projects',
+          'Submitted',
+          'Published',
+          'Revision requests',
+          'Revision rate',
+          'First-pass publication',
+          'Median review',
+          'P90 review',
+          'Median turnaround',
+          'P90 turnaround',
+          'Turnaround sample',
+        ]}
+        rows={chartTypeRows.map((row) => [
+          row.horizonHours === 0 ? `${row.label} · Analysis` : `${row.label} · T+${row.horizonHours}`,
+          row.projects,
+          row.submitted,
+          row.published,
+          row.revisionRequests,
+          row.revisionRate == null ? '—' : `${row.revisionRate}%`,
+          row.firstPassPublicationRate == null ? '—' : `${row.firstPassPublicationRate}%`,
+          formatHours(row.reviewMedianHours),
+          formatHours(row.reviewP90Hours),
+          formatHours(row.turnaroundMedianHours),
+          formatHours(row.turnaroundP90Hours),
+          row.sampleSize,
+        ])}
+      />
 
       <section className="grid gap-5 xl:grid-cols-2">
         <AnalyticsTable
