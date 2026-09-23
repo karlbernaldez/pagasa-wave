@@ -1,19 +1,19 @@
 export const ANALYTICS_SECTIONS = Object.freeze([
   {
     id: 'overview',
-    label: 'Analytics Overview',
-    shortLabel: 'Overview',
+    label: 'Executive Analysis',
+    shortLabel: 'Executive',
     permission: null,
     description:
-      'Operational performance, forecast workflow trends, platform usage, and system health.',
+      'Cross-section performance analysis for the selected reporting period.',
   },
   {
     id: 'forecast',
-    label: 'Forecast Operations',
+    label: 'Forecast Performance',
     shortLabel: 'Forecast',
     permission: 'analytics_forecast.view',
     description:
-      'Package throughput, review outcomes, workflow timing, and recent operational activity.',
+      'Throughput, workflow efficiency, revision pressure, timing, and package-level performance.',
   },
   {
     id: 'public',
@@ -24,19 +24,19 @@ export const ANALYTICS_SECTIONS = Object.freeze([
   },
   {
     id: 'users',
-    label: 'User Activity',
-    shortLabel: 'Users',
+    label: 'Collaboration Activity',
+    shortLabel: 'Collaboration',
     permission: 'analytics_users.view',
     description:
       'Aggregate account health and operational participation without employee scoring or identity exposure.',
   },
   {
     id: 'system',
-    label: 'System Operations',
+    label: 'System & Pipeline',
     shortLabel: 'System',
     permission: 'analytics_system.view',
     description:
-      'Dynamic wave-model readiness, package availability, and pipeline operational state.',
+      'Current pipeline evidence and model readiness; historical reliability appears only when persisted telemetry exists.',
   },
 ]);
 
@@ -271,4 +271,55 @@ export function entriesByCount(counts = {}) {
     .map(([label, value]) => ({ label, value: toCount(value) }))
     .filter((entry) => entry.value > 0)
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+}
+
+
+export function buildWorkflowFunnel(payload = {}) {
+  const summary = payload.summary || {};
+  const statusCounts = payload.statusCounts || {};
+  const submitted = toCount(summary.submitted);
+  const inReview = toCount(statusCounts['Under Review']);
+  const revisionRequested = toCount(statusCounts['Revision Requested']);
+  const approved = toCount(statusCounts.Approved) + toCount(statusCounts.Published);
+  const published = toCount(summary.publishedEvents) || toCount(statusCounts.Published);
+
+  return [
+    { stage: 'Submitted', value: submitted },
+    { stage: 'Under Review', value: inReview },
+    { stage: 'Revision Requested', value: revisionRequested },
+    { stage: 'Approved', value: approved },
+    { stage: 'Published', value: published },
+  ];
+}
+
+export function buildTimingRows(timing = {}) {
+  const definitions = [
+    ['Preparation', timing.preparation, 'First tracked chart activity to submission'],
+    ['Review wait', timing.reviewWait, 'Submission to review start'],
+    ['Review duration', timing.reviewDuration, 'Review start to review decision'],
+    ['Publication delay', timing.publicationDelay, 'Approval to publication'],
+  ];
+
+  return definitions.map(([stage, metric, definition]) => ({
+    stage,
+    medianHours: metric?.medianHours ?? null,
+    sampleSize: toCount(metric?.sampleSize),
+    definition,
+  }));
+}
+
+export function buildPackagePerformanceRows(packages = []) {
+  return (packages || []).map((item) => ({
+    id: item.id,
+    forecastDate: item.forecastDate,
+    name: item.name || 'Forecast package',
+    status: item.status || 'Unknown',
+    submittedAt: item.submittedAt || null,
+    reviewedAt: item.reviewedAt || null,
+    publishedAt: item.publishedAt || null,
+    reviewDurationHours:
+      item.reviewDurationHours == null || !Number.isFinite(Number(item.reviewDurationHours))
+        ? null
+        : Number(item.reviewDurationHours),
+  }));
 }
