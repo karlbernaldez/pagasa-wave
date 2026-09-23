@@ -9,6 +9,10 @@ import { formatManilaDateKey } from './publishedChartViewService.js';
 import { getWavePipelineStatus } from './wavePipelineStatus.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
 import { REQUIRED_FORECAST_CHARTS } from '../utils/forecastPackage.js';
+import {
+  FORECAST_ANALYTICS_FILTER_OPTIONS,
+  serializeForecastAnalyticsFilters,
+} from '../utils/forecastAnalyticsFilters.js';
 
 export const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
   'Submitted',
@@ -295,6 +299,65 @@ const buildThroughput = (rows = []) => {
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 };
 
+
+const buildRecordEventAnalytics = (records = [], range) => {
+  const actionCounts = {};
+  const groupedRows = [];
+  const byDateAction = new Map();
+  const startMs = new Date(range.startAt).getTime();
+  const endMs = new Date(range.endExclusive).getTime();
+
+  for (const record of records) {
+    for (const log of record.auditLogs || []) {
+      if (!FORECAST_EVENT_ACTIONS.includes(log?.action)) continue;
+      const timestamp = new Date(log.timestamp).getTime();
+      if (!Number.isFinite(timestamp) || timestamp < startMs || timestamp >= endMs) continue;
+
+      actionCounts[log.action] = (Number(actionCounts[log.action]) || 0) + 1;
+      const day = dateKey(log.timestamp);
+      if (!day) continue;
+      const key = `${day}::${log.action}`;
+      const current = byDateAction.get(key) || {
+        _id: { date: day, action: log.action },
+        count: 0,
+      };
+      current.count += 1;
+      byDateAction.set(key, current);
+    }
+  }
+
+  groupedRows.push(...byDateAction.values());
+  return {
+    actionCounts,
+    throughput: buildThroughput(groupedRows),
+  };
+};
+
+const buildStatusCountsFromRecords = (records = []) => {
+  const counts = {};
+  for (const record of records) {
+    const status = String(record?.status || 'unknown');
+    counts[status] = (Number(counts[status]) || 0) + 1;
+  }
+  return counts;
+};
+
+const toAnalyticsRecord = (record) => {
+  const timing = packageTiming(record);
+  return {
+    id: String(record._id),
+    name: record.name,
+    forecastDate: record.forecastDate,
+    status: record.status,
+    submittedAt: record.submittedAt || firstAuditAt(record.auditLogs, ['submitted']),
+    reviewedAt: record.reviewedAt || null,
+    publishedAt: record.publishedAt || firstAuditAt(record.auditLogs, ['published']),
+    reviewDurationHours:
+      timing.reviewDurationHours == null ? null : roundHours(timing.reviewDurationHours),
+    revisionCycles: countAuditAction(record, 'revision_requested'),
+  };
+};
+
 const CHART_ANALYTICS_ACTIONS = new Set([
   'submitted',
   'review_started',
@@ -388,10 +451,14 @@ const serializeChartTypeAccumulator = (row) => ({
   },
 });
 
-async function loadChartTypeAnalytics(range, { ProjectModel = Project } = {}) {
+async function loadChartTypeAnalytics(
+  range,
+  { ProjectModel = Project, match = {} } = {}
+) {
   const projects = await ProjectModel.find({
     chartType: { $in: [...chartDefinitionByType.keys()] },
     ...buildDateMatch('forecastDate', range),
+    ...match,
   })
     .select(
       '_id chartType forecastDate status submittedAt reviewStartedAt reviewedAt publishedAt auditLogs'
@@ -581,34 +648,32 @@ const loadForecastEventCounts = async (range, ForecastPackageModel = ForecastPac
   };
 };
 
-async function loadForecastAnalyticsPeriod(
+async function loadPackageScopedForecastAnalyticsPeriod(
   range,
+  filters,
   { ForecastPackageModel = ForecastPackage, ProjectModel = Project, referenceNow = new Date() } = {}
 ) {
   const match = {
-    status: { $in: ANALYTICS_PACKAGE_STATUSES },
+    status: filters.status || { $in: ANALYTICS_PACKAGE_STATUSES },
     ...buildDateMatch('forecastDate', range),
   };
-  const [packages, statusRows, events, chartTypes] = await Promise.all([
-    ForecastPackageModel.find(match)
-      .select(
-        '_id name forecastDate status submittedAt reviewStartedAt reviewedAt publishedAt auditLogs createdAt updatedAt'
-      )
-      .sort({ forecastDate: -1, _id: -1 })
-      .lean(),
-    ForecastPackageModel.aggregate([
-      { $match: match },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-      { $sort: { count: -1, _id: 1 } },
-    ]),
-    loadForecastEventCounts(range, ForecastPackageModel),
-    loadChartTypeAnalytics(range, { ProjectModel }),
-  ]);
+  const packages = await ForecastPackageModel.find(match)
+    .select(
+      '_id name forecastDate status submittedAt reviewStartedAt reviewedAt publishedAt auditLogs createdAt updatedAt'
+    )
+    .sort({ forecastDate: -1, _id: -1 })
+    .lean();
 
-  const statusCounts = rowsToCountObject(statusRows);
+  const statusCounts = buildStatusCountsFromRecords(packages);
   const statusSummary = summarizeForecastStatuses(statusCounts, packages.length);
+  const events = buildRecordEventAnalytics(packages, range);
   const actionCount = (action) => Number(events.actionCounts[action]) || 0;
   const timing = buildTimingSummary(packages);
+  const packageIds = packages.map((forecastPackage) => forecastPackage._id);
+  const chartTypes = await loadChartTypeAnalytics(range, {
+    ProjectModel,
+    match: { forecastPackage: { $in: packageIds } },
+  });
 
   return {
     total: packages.length,
@@ -628,28 +693,78 @@ async function loadForecastAnalyticsPeriod(
     efficiency: buildWorkflowEfficiency(packages),
     bottlenecks: buildBottleneckAnalysis(packages, timing, referenceNow),
     chartTypes,
-    packages: packages.map((forecastPackage) => {
-      const timing = packageTiming(forecastPackage);
-      return {
-        id: String(forecastPackage._id),
-        name: forecastPackage.name,
-        forecastDate: forecastPackage.forecastDate,
-        status: forecastPackage.status,
-        submittedAt:
-          forecastPackage.submittedAt || firstAuditAt(forecastPackage.auditLogs, ['submitted']),
-        reviewedAt: forecastPackage.reviewedAt || null,
-        publishedAt:
-          forecastPackage.publishedAt || firstAuditAt(forecastPackage.auditLogs, ['published']),
-        reviewDurationHours:
-          timing.reviewDurationHours == null
-            ? null
-            : Math.round(timing.reviewDurationHours * 10) / 10,
-        revisionCycles: countAuditAction(forecastPackage, 'revision_requested'),
-      };
-    }),
+    packages: packages.map(toAnalyticsRecord),
+    filters: serializeForecastAnalyticsFilters(filters),
+    filterOptions: FORECAST_ANALYTICS_FILTER_OPTIONS,
     range: serializeAnalyticsRange(range),
     generatedAt: new Date().toISOString(),
   };
+}
+
+async function loadChartScopedForecastAnalyticsPeriod(
+  range,
+  filters,
+  { ProjectModel = Project, referenceNow = new Date() } = {}
+) {
+  const match = {
+    chartType: filters.chartType,
+    ...(filters.status ? { status: filters.status } : {}),
+    ...buildDateMatch('forecastDate', range),
+  };
+  const projects = await ProjectModel.find(match)
+    .select(
+      '_id name chartType forecastDate status submittedAt reviewStartedAt reviewedAt publishedAt auditLogs'
+    )
+    .sort({ forecastDate: -1, _id: -1 })
+    .lean();
+
+  const statusCounts = buildStatusCountsFromRecords(projects);
+  const statusSummary = summarizeForecastStatuses(statusCounts, projects.length);
+  const events = buildRecordEventAnalytics(projects, range);
+  const actionCount = (action) => Number(events.actionCounts[action]) || 0;
+  const timing = buildTimingSummary(projects);
+  const chartTypes = await loadChartTypeAnalytics(range, {
+    ProjectModel,
+    match: {
+      chartType: filters.chartType,
+      ...(filters.status ? { status: filters.status } : {}),
+    },
+  });
+
+  return {
+    total: projects.length,
+    sampleSize: projects.length,
+    statusCounts,
+    summary: {
+      ...statusSummary,
+      submitted: actionCount('submitted'),
+      reviewStarted: actionCount('review_started'),
+      approvedEvents: actionCount('approved'),
+      publishedEvents: actionCount('published'),
+      revisionRequests: actionCount('revision_requested'),
+      rejectedEvents: actionCount('rejected'),
+    },
+    throughput: events.throughput,
+    timing,
+    efficiency: buildWorkflowEfficiency(projects),
+    bottlenecks: buildBottleneckAnalysis(projects, timing, referenceNow),
+    chartTypes,
+    packages: projects.map(toAnalyticsRecord),
+    filters: serializeForecastAnalyticsFilters(filters),
+    filterOptions: FORECAST_ANALYTICS_FILTER_OPTIONS,
+    range: serializeAnalyticsRange(range),
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+async function loadForecastAnalyticsPeriod(
+  range,
+  filters,
+  dependencies = {}
+) {
+  return filters.chartType
+    ? loadChartScopedForecastAnalyticsPeriod(range, filters, dependencies)
+    : loadPackageScopedForecastAnalyticsPeriod(range, filters, dependencies);
 }
 
 export async function loadForecastAnalytics(
@@ -659,9 +774,10 @@ export async function loadForecastAnalytics(
     ProjectModel = Project,
     includeComparison = true,
     referenceNow = new Date(),
+    filters = {},
   } = {}
 ) {
-  const current = await loadForecastAnalyticsPeriod(range, {
+  const current = await loadForecastAnalyticsPeriod(range, filters, {
     ForecastPackageModel,
     ProjectModel,
     referenceNow,
@@ -669,7 +785,7 @@ export async function loadForecastAnalytics(
   if (!includeComparison) return current;
 
   const previousRange = previousAnalyticsRange(range);
-  const previous = await loadForecastAnalyticsPeriod(previousRange, {
+  const previous = await loadForecastAnalyticsPeriod(previousRange, filters, {
     ForecastPackageModel,
     ProjectModel,
     referenceNow,
