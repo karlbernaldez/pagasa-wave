@@ -99,14 +99,14 @@ beforeEach(() => {
 });
 
 describe('AnalyticsAccess production workspace', () => {
-  it('shows Overview plus only permitted subsections', async () => {
+  it('shows Executive plus only permitted subsections', async () => {
     currentUser.raw = { permissions: ['analytics_forecast.view'] };
     render(<AnalyticsAccess isDarkMode={false} />);
 
     await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole('tab', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Executive' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Forecast' })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'Users' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Collaboration' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'System' })).not.toBeInTheDocument();
     expect(analyticsApi.users).not.toHaveBeenCalled();
     expect(analyticsApi.system).not.toHaveBeenCalled();
@@ -156,7 +156,7 @@ describe('AnalyticsAccess production workspace', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Showing the last successfully loaded data.'
     );
-    expect(screen.getByText('Forecast Packages')).toBeInTheDocument();
+    expect(screen.getByText('Submitted')).toBeInTheDocument();
   });
 
   it('refetches the active subsection when the date range changes', async () => {
