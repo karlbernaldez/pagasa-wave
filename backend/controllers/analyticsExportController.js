@@ -1,3 +1,4 @@
+import { loadAnalyticsOverview } from '../services/analyticsService.js';
 import ForecastPackage from '../models/ForecastPackage.js';
 import User from '../models/User.js';
 import {
@@ -31,6 +32,32 @@ const sendCsv = (res, filename, headers, rows) => {
 const filenameFor = (section, range) =>
   `wavelab-${section}-analytics-${range.start}-to-${range.end}.csv`;
 
+export const exportAnalyticsOverview = async (req, res, next) => {
+  try {
+    const range = parseAnalyticsDateRange(req.query);
+    const overview = await loadAnalyticsOverview(range, req.permissions || []);
+    const rows = [
+      ['metadata.timezone', range.timezone],
+      ['metadata.generated_at', overview.generatedAt],
+    ];
+
+    for (const [section, payload] of Object.entries(overview.sections || {})) {
+      for (const [key, value] of Object.entries(payload.summary || {})) {
+        if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) {
+          rows.push([`${section}.summary.${key}`, value ?? '']);
+        }
+      }
+    }
+
+    for (const error of overview.errors || []) {
+      rows.push([`${error.section}.availability`, 'unavailable']);
+    }
+
+    return sendCsv(res, filenameFor('overview', range), ['metric', 'value'], rows);
+  } catch (error) {
+    return next(error);
+  }
+};
 export const exportForecastAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
@@ -110,6 +137,32 @@ export const exportUserAnalytics = async (req, res, next) => {
       USER_ANALYTICS_EXPORT_HEADERS,
       buildUserAnalyticsExportRows({ total, statusRows, roleRows, contributions })
     );
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const exportPublicReachAnalytics = async (req, res, next) => {
+  try {
+    const range = parseAnalyticsDateRange(req.query);
+    const publishedChartViews = await loadPublishedChartViewAnalytics(range, {
+      currentDateKey: formatManilaDateKey(),
+    });
+    const rows = [
+      ['metadata.timezone', range.timezone],
+      ['metadata.generated_at', new Date().toISOString()],
+      ['views.period', publishedChartViews.totalViews],
+      ['views.all_time', publishedChartViews.allTimeViews],
+      ['views.today', publishedChartViews.viewsToday],
+      ['views.yesterday', publishedChartViews.viewsYesterday],
+      ['charts.distinct_viewed', publishedChartViews.distinctChartsViewed || 0],
+      ...publishedChartViews.trend.map((row) => [`views.daily.${row.date}`, row.views]),
+      ...publishedChartViews.topCharts.map((row) => [
+        `views.chart.${row.projectId}.${row.name || 'published-chart'}`,
+        row.views,
+      ]),
+    ];
+    return sendCsv(res, filenameFor('public', range), ['metric', 'value'], rows);
   } catch (error) {
     return next(error);
   }

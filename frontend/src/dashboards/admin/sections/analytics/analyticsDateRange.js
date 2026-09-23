@@ -1,10 +1,7 @@
 export const ANALYTICS_RANGE_PRESETS = Object.freeze([
-  { id: 'today', label: 'Today', days: 1 },
-  { id: '7d', label: 'Last 7 days', days: 7 },
-  { id: '14d', label: 'Last 14 days', days: 14 },
-  { id: '30d', label: 'Last 30 days', days: 30 },
-  { id: '60d', label: 'Last 60 days', days: 60 },
-  { id: '90d', label: 'Last 90 days', days: 90 },
+  { id: '7d', label: '7 Days', days: 7 },
+  { id: '30d', label: '30 Days', days: 30 },
+  { id: '90d', label: '90 Days', days: 90 },
   { id: 'custom', label: 'Custom', days: null },
 ]);
 
@@ -35,7 +32,7 @@ export function buildPresetRange(days, now = new Date()) {
 }
 
 export function initialAnalyticsRange(now = new Date()) {
-  return { preset: '14d', ...buildPresetRange(14, now) };
+  return { preset: '30d', days: 30, ...buildPresetRange(30, now) };
 }
 
 export function isAnalyticsDataStale(loadedAt, now = Date.now(), staleAfterMs = 5 * 60 * 1000) {

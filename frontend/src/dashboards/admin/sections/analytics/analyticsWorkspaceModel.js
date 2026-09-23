@@ -1,10 +1,26 @@
 export const ANALYTICS_SECTIONS = Object.freeze([
   {
+    id: 'overview',
+    label: 'Analytics Overview',
+    shortLabel: 'Overview',
+    permission: null,
+    description:
+      'Operational performance, forecast workflow trends, platform usage, and system health.',
+  },
+  {
     id: 'forecast',
     label: 'Forecast Operations',
     shortLabel: 'Forecast',
     permission: 'analytics_forecast.view',
-    description: 'Package throughput, review outcomes, readiness, and recent operational trends.',
+    description:
+      'Package throughput, review outcomes, workflow timing, and recent operational activity.',
+  },
+  {
+    id: 'public',
+    label: 'Public Reach',
+    shortLabel: 'Public Reach',
+    permission: 'analytics_system.view',
+    description: 'Privacy-safe reach and usage of published WaveLab charts.',
   },
   {
     id: 'users',
@@ -12,14 +28,15 @@ export const ANALYTICS_SECTIONS = Object.freeze([
     shortLabel: 'Users',
     permission: 'analytics_users.view',
     description:
-      'Operational participation and account health without exposing names, email addresses, or contact data.',
+      'Aggregate account health and operational participation without employee scoring or identity exposure.',
   },
   {
     id: 'system',
     label: 'System Operations',
     shortLabel: 'System',
     permission: 'analytics_system.view',
-    description: 'Cross-system readiness, public chart reach, and operational health indicators.',
+    description:
+      'Dynamic wave-model readiness, package availability, and pipeline operational state.',
   },
 ]);
 
@@ -56,7 +73,15 @@ const formatShortDateKey = (value) => {
 
 export function getAllowedAnalyticsSections(permissions = []) {
   const permissionSet = permissions instanceof Set ? permissions : new Set(permissions || []);
-  return ANALYTICS_SECTIONS.filter((section) => permissionSet.has(section.permission));
+  const subsectionPermissions = [
+    'analytics_forecast.view',
+    'analytics_users.view',
+    'analytics_system.view',
+  ];
+  const hasAnalytics = subsectionPermissions.some((permission) => permissionSet.has(permission));
+  return ANALYTICS_SECTIONS.filter((section) =>
+    section.id === 'overview' ? hasAnalytics : permissionSet.has(section.permission)
+  );
 }
 
 export function buildForecastMetrics(payload = {}) {

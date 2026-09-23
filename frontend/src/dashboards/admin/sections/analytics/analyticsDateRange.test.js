@@ -16,12 +16,13 @@ describe('analyticsDateRange', () => {
     expect(buildPresetRange(14, now)).toEqual({ start: '2026-09-02', end: '2026-09-15' });
   });
 
-  it('uses the 14-day preset as the initial range', () => {
+  it('uses the 30-day preset as the initial range', () => {
     const now = new Date('2026-09-15T07:30:00.000Z');
 
     expect(initialAnalyticsRange(now)).toEqual({
-      preset: '14d',
-      start: '2026-09-02',
+      preset: '30d',
+      days: 30,
+      start: '2026-08-17',
       end: '2026-09-15',
     });
   });

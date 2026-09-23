@@ -1,74 +1,35 @@
-import ForecastPackage from '../models/ForecastPackage.js';
-import User from '../models/User.js';
 import {
-  loadPublishedChartViewAnalytics,
-  loadUserContributionAnalytics,
-} from '../services/operationalAnalyticsService.js';
-import { formatManilaDateKey } from '../services/publishedChartViewService.js';
-import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
+  loadAnalyticsOverview,
+  loadForecastAnalytics,
+  loadPublicReachAnalytics,
+  loadSystemAnalytics,
+  loadUserAnalytics,
+} from '../services/analyticsService.js';
+import { parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
 
-const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
-  'Submitted',
-  'Under Review',
-  'Revision Requested',
-  'Approved',
-  'Published',
-  'Rejected',
-  'Archived',
-]);
-
-const rowsToCountObject = (rows = [], key = '_id') =>
-  Object.fromEntries(rows.map((row) => [String(row[key] || 'unknown'), row.count || 0]));
-
-const serializeRange = (range) => ({
-  start: range.start,
-  end: range.end,
-  days: range.days,
-  timezone: range.timezone,
-});
+export const getAnalyticsOverview = async (req, res, next) => {
+  try {
+    const range = parseAnalyticsDateRange(req.query);
+    const payload = await loadAnalyticsOverview(range, req.permissions || []);
+    return res.status(200).json(payload);
+  } catch (error) {
+    return next(error);
+  }
+};
 
 export const getForecastAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
-    const match = {
-      status: { $in: ANALYTICS_PACKAGE_STATUSES },
-      ...buildDateMatch('forecastDate', range),
-    };
-    const [packages, total, statusRows] = await Promise.all([
-      ForecastPackage.aggregate([
-        { $match: match },
-        { $sort: { forecastDate: -1, updatedAt: -1, _id: -1 } },
-        { $limit: 100 },
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            forecastDate: 1,
-            status: 1,
-            submittedAt: 1,
-            reviewedAt: 1,
-            publishedAt: 1,
-            createdAt: 1,
-            updatedAt: 1,
-          },
-        },
-      ]),
-      ForecastPackage.countDocuments(match),
-      ForecastPackage.aggregate([
-        { $match: match },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } },
-      ]),
-    ]);
+    return res.status(200).json(await loadForecastAnalytics(range));
+  } catch (error) {
+    return next(error);
+  }
+};
 
-    return res.status(200).json({
-      packages,
-      total,
-      sampleSize: packages.length,
-      statusCounts: rowsToCountObject(statusRows),
-      range: serializeRange(range),
-      generatedAt: new Date().toISOString(),
-    });
+export const getPublicReachAnalytics = async (req, res, next) => {
+  try {
+    const range = parseAnalyticsDateRange(req.query);
+    return res.status(200).json(await loadPublicReachAnalytics(range));
   } catch (error) {
     return next(error);
   }
@@ -77,33 +38,7 @@ export const getForecastAnalytics = async (req, res, next) => {
 export const getUserAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
-    const match = {
-      deletedAt: null,
-      ...buildDateMatch('createdAt', range),
-    };
-    const [total, statusRows, roleRows, contributions] = await Promise.all([
-      User.countDocuments(match),
-      User.aggregate([
-        { $match: match },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } },
-      ]),
-      User.aggregate([
-        { $match: match },
-        { $group: { _id: '$role', count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } },
-      ]),
-      loadUserContributionAnalytics(range),
-    ]);
-
-    return res.status(200).json({
-      total,
-      statusCounts: rowsToCountObject(statusRows),
-      roleCounts: rowsToCountObject(roleRows),
-      contributions,
-      range: serializeRange(range),
-      generatedAt: new Date().toISOString(),
-    });
+    return res.status(200).json(await loadUserAnalytics(range));
   } catch (error) {
     return next(error);
   }
@@ -112,52 +47,7 @@ export const getUserAnalytics = async (req, res, next) => {
 export const getSystemAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
-    const userMatch = {
-      deletedAt: null,
-      ...buildDateMatch('createdAt', range),
-    };
-    const packageMatch = {
-      status: { $in: ANALYTICS_PACKAGE_STATUSES },
-      ...buildDateMatch('forecastDate', range),
-    };
-    const [
-      totalUsers,
-      activeUsers,
-      totalPackages,
-      packageStatusRows,
-      userStatusRows,
-      publishedChartViews,
-    ] = await Promise.all([
-      User.countDocuments(userMatch),
-      User.countDocuments({ ...userMatch, status: 'active' }),
-      ForecastPackage.countDocuments(packageMatch),
-      ForecastPackage.aggregate([
-        { $match: packageMatch },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } },
-      ]),
-      User.aggregate([
-        { $match: userMatch },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } },
-      ]),
-      loadPublishedChartViewAnalytics(range, { currentDateKey: formatManilaDateKey() }),
-    ]);
-
-    return res.status(200).json({
-      users: {
-        total: totalUsers,
-        active: activeUsers,
-        statusCounts: rowsToCountObject(userStatusRows),
-      },
-      forecastPackages: {
-        total: totalPackages,
-        statusCounts: rowsToCountObject(packageStatusRows),
-      },
-      publishedChartViews,
-      range: serializeRange(range),
-      generatedAt: new Date().toISOString(),
-    });
+    return res.status(200).json(await loadSystemAnalytics(range));
   } catch (error) {
     return next(error);
   }

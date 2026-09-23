@@ -5,7 +5,9 @@ import AnalyticsAccess from './AnalyticsAccess';
 
 const currentUser = vi.hoisted(() => ({ raw: null }));
 const analyticsApi = vi.hoisted(() => ({
+  overview: vi.fn(),
   forecast: vi.fn(),
+  publicReach: vi.fn(),
   users: vi.fn(),
   system: vi.fn(),
   export: vi.fn(),
@@ -16,246 +18,155 @@ vi.mock('@/shared/hooks/useCurrentDashboardUser', () => ({
 }));
 
 vi.mock('@/api/analyticsAPI', () => ({
+  fetchAnalyticsOverview: analyticsApi.overview,
   fetchForecastAnalytics: analyticsApi.forecast,
+  fetchPublicReachAnalytics: analyticsApi.publicReach,
   fetchUserAnalytics: analyticsApi.users,
   fetchSystemAnalytics: analyticsApi.system,
   fetchAnalyticsExport: analyticsApi.export,
 }));
 
+const range = { start: '2026-08-17', end: '2026-09-15', days: 30, timezone: 'Asia/Manila' };
 const forecastPayload = {
   total: 1,
-  sampleSize: 1,
+  statusCounts: { Published: 1 },
+  summary: {
+    packages: 1,
+    submitted: 1,
+    publishedEvents: 1,
+    revisionRequests: 0,
+    completionRate: 100,
+  },
+  throughput: [],
+  timing: {},
   packages: [],
-  statusCounts: { Submitted: 1 },
-  range: { start: '2026-09-02', end: '2026-09-15', days: 14, timezone: 'Asia/Manila' },
+  range,
   generatedAt: '2026-09-15T00:00:00.000Z',
 };
-
+const overviewPayload = {
+  sections: { forecast: forecastPayload },
+  partial: false,
+  errors: [],
+  range,
+  generatedAt: '2026-09-15T00:00:00.000Z',
+};
+const publicPayload = {
+  totalViews: 1,
+  summary: { viewsToday: 1, periodViews: 1, allTimeViews: 1, publishedChartsViewed: 1 },
+  trend: [],
+  topCharts: [],
+  range,
+  generatedAt: '2026-09-15T00:00:00.000Z',
+};
 const userPayload = {
   total: 2,
   statusCounts: { active: 2 },
   roleCounts: { forecaster: 2 },
-  range: { start: '2026-09-02', end: '2026-09-15', days: 14, timezone: 'Asia/Manila' },
+  contributions: { totalEvents: 0, activeContributors: 0, trend: [], actionMix: [] },
+  summary: {
+    totalAccounts: 2,
+    activeAccounts: 2,
+    pendingAccounts: 0,
+    activeContributors: 0,
+    contributionEvents: 0,
+  },
+  range,
   generatedAt: '2026-09-15T00:00:00.000Z',
 };
-
 const systemPayload = {
-  users: { total: 2, active: 2, statusCounts: { active: 2 } },
-  forecastPackages: { total: 1, statusCounts: { Published: 1 } },
-  range: { start: '2026-09-02', end: '2026-09-15', days: 14, timezone: 'Asia/Manila' },
+  available: true,
+  summary: {
+    models: 1,
+    readyModels: 1,
+    packagesAvailable: 1,
+    pipelineHealth: 'healthy',
+    currentForecastCycle: '2026091418',
+  },
+  models: [],
+  range,
   generatedAt: '2026-09-15T00:00:00.000Z',
 };
 
 beforeEach(() => {
-  currentUser.raw = null;
+  analyticsApi.overview.mockReset().mockResolvedValue(overviewPayload);
   analyticsApi.forecast.mockReset().mockResolvedValue(forecastPayload);
+  analyticsApi.publicReach.mockReset().mockResolvedValue(publicPayload);
   analyticsApi.users.mockReset().mockResolvedValue(userPayload);
   analyticsApi.system.mockReset().mockResolvedValue(systemPayload);
-  analyticsApi.export.mockReset().mockResolvedValue({
-    blob: new Blob(['metric,value\n']),
-    filename: 'analytics.csv',
-  });
+  analyticsApi.export
+    .mockReset()
+    .mockResolvedValue({ blob: new Blob(['metric,value\n']), filename: 'analytics.csv' });
 });
 
-describe('AnalyticsAccess RBAC fetch boundaries', () => {
-  it('loads only Forecast Operations for a forecast-only analytics user', async () => {
+describe('AnalyticsAccess production workspace', () => {
+  it('shows Overview plus only permitted subsections', async () => {
     currentUser.raw = { permissions: ['analytics_forecast.view'] };
-
     render(<AnalyticsAccess isDarkMode={false} />);
 
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('tab', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Forecast' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Users' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'System' })).not.toBeInTheDocument();
     expect(analyticsApi.users).not.toHaveBeenCalled();
     expect(analyticsApi.system).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Forecast' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Users' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'System' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Export CSV/i })).not.toBeInTheDocument();
   });
 
-  it('loads only the active permitted subsection until another permitted tab is selected', async () => {
-    currentUser.raw = {
-      permissions: ['analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'],
-    };
-
-    render(<AnalyticsAccess isDarkMode={false} />);
-
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
-    expect(analyticsApi.users).not.toHaveBeenCalled();
-    expect(analyticsApi.system).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Users' }));
-
-    await waitFor(() => expect(analyticsApi.users).toHaveBeenCalledTimes(1));
-    expect(analyticsApi.forecast).toHaveBeenCalledTimes(1);
-    expect(analyticsApi.system).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'System' }));
-
-    await waitFor(() => expect(analyticsApi.system).toHaveBeenCalledTimes(1));
-    expect(analyticsApi.forecast).toHaveBeenCalledTimes(1);
-    expect(analyticsApi.users).toHaveBeenCalledTimes(1);
-  });
-
-  it('loads the system API directly for a system-only analytics user', async () => {
-    currentUser.raw = { permissions: ['analytics_system.view'] };
-
-    render(<AnalyticsAccess isDarkMode={false} />);
-
-    await waitFor(() => expect(analyticsApi.system).toHaveBeenCalledTimes(1));
-    expect(analyticsApi.forecast).not.toHaveBeenCalled();
-    expect(analyticsApi.users).not.toHaveBeenCalled();
-  });
-
-  it('does not request any analytics API when no analytics subsection is permitted', async () => {
-    currentUser.raw = { permissions: ['dashboard.view', 'users.view'] };
-
+  it('does not grant analytics access from analytics.export alone', async () => {
+    currentUser.raw = { permissions: ['analytics.export'] };
     render(<AnalyticsAccess isDarkMode={false} />);
 
     expect(
       await screen.findByText('No analytics subsection is assigned to your User Type.')
     ).toBeInTheDocument();
-    expect(analyticsApi.forecast).not.toHaveBeenCalled();
-    expect(analyticsApi.users).not.toHaveBeenCalled();
-    expect(analyticsApi.system).not.toHaveBeenCalled();
+    expect(analyticsApi.overview).not.toHaveBeenCalled();
   });
 
-  it('shows export only when analytics.export is effective', async () => {
+  it('loads a subsection only when selected', async () => {
     currentUser.raw = {
-      permissions: ['analytics_forecast.view', 'analytics.export'],
+      permissions: ['analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'],
     };
-
     render(<AnalyticsAccess isDarkMode={false} />);
 
+    await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(1));
+    expect(analyticsApi.forecast).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('tab', { name: 'Forecast' }));
     await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole('button', { name: /Export CSV/i })).toBeInTheDocument();
+    expect(analyticsApi.users).not.toHaveBeenCalled();
   });
 
-  it('keeps the last successful subsection data visible when refresh fails', async () => {
-    currentUser.raw = { permissions: ['analytics_forecast.view'] };
-
+  it('maps Public Reach to analytics_system.view', async () => {
+    currentUser.raw = { permissions: ['analytics_system.view'] };
     render(<AnalyticsAccess isDarkMode={false} />);
 
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
-    expect(screen.getByText('Packages in period')).toBeInTheDocument();
+    await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('tab', { name: 'Public Reach' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'System' })).toBeInTheDocument();
+  });
 
-    analyticsApi.forecast.mockRejectedValueOnce(new Error('Forecast analytics unavailable'));
+  it('keeps cached data visible when refresh fails', async () => {
+    currentUser.raw = { permissions: ['analytics_forecast.view'] };
+    render(<AnalyticsAccess isDarkMode={false} />);
+    await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(1));
+
+    analyticsApi.overview.mockRejectedValueOnce(new Error('Overview unavailable'));
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Forecast analytics unavailable');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Overview unavailable');
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Showing the last successfully loaded data.'
     );
-    expect(screen.getByText('Packages in period')).toBeInTheDocument();
+    expect(screen.getByText('Forecast Packages')).toBeInTheDocument();
   });
 
-  it('does not leak a failed subsection error into a different cached subsection', async () => {
-    currentUser.raw = {
-      permissions: ['analytics_forecast.view', 'analytics_users.view'],
-    };
-    analyticsApi.users.mockRejectedValueOnce(new Error('User analytics unavailable'));
-
-    render(<AnalyticsAccess isDarkMode={false} />);
-
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole('button', { name: 'Users' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('User analytics unavailable');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Forecast' }));
-
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByText('Packages in period')).toBeInTheDocument();
-  });
-
-  it('labels old subsection data as stale', async () => {
+  it('refetches the active subsection when the date range changes', async () => {
     currentUser.raw = { permissions: ['analytics_forecast.view'] };
-    analyticsApi.forecast.mockResolvedValueOnce({
-      ...forecastPayload,
-      generatedAt: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
-    });
-
     render(<AnalyticsAccess isDarkMode={false} />);
+    await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(1));
 
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
-    expect(screen.getByText(/data may be stale/i)).toBeInTheDocument();
-  });
-
-  it('renders a loading placeholder before the first request resolves', async () => {
-    currentUser.raw = { permissions: ['analytics_forecast.view'] };
-    let resolveForecast;
-    analyticsApi.forecast.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveForecast = resolve;
-        })
-    );
-
-    render(<AnalyticsAccess isDarkMode={false} />);
-
-    expect(screen.getByText(/Loading forecast operations/i)).toBeInTheDocument();
-    expect(screen.queryByText('Packages in period')).not.toBeInTheDocument();
-
-    resolveForecast(forecastPayload);
-    expect(await screen.findByText('Packages in period')).toBeInTheDocument();
-  });
-
-  it('shows an unavailable state instead of zero-value analytics when the first load fails', async () => {
-    currentUser.raw = { permissions: ['analytics_forecast.view'] };
-    analyticsApi.forecast.mockRejectedValueOnce(new Error('Forecast analytics unavailable'));
-
-    render(<AnalyticsAccess isDarkMode={false} />);
-
-    expect(await screen.findByText('Analytics data is currently unavailable.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
-    expect(screen.queryByText('Packages in period')).not.toBeInTheDocument();
-  });
-
-  it('shows a dedicated empty state without rendering zero-value analytics cards', async () => {
-    currentUser.raw = { permissions: ['analytics_forecast.view'] };
-    analyticsApi.forecast.mockResolvedValueOnce({
-      ...forecastPayload,
-      total: 0,
-      sampleSize: 0,
-      statusCounts: {},
-    });
-
-    render(<AnalyticsAccess isDarkMode={false} />);
-
-    expect(await screen.findByText('No analytics records in this period.')).toBeInTheDocument();
-    expect(screen.queryByText('Packages in period')).not.toBeInTheDocument();
-  });
-
-  it('labels an in-flight manual refresh without hiding the cached data', async () => {
-    currentUser.raw = { permissions: ['analytics_forecast.view'] };
-    let resolveRefresh;
-    analyticsApi.forecast.mockResolvedValueOnce(forecastPayload).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveRefresh = resolve;
-        })
-    );
-
-    render(<AnalyticsAccess isDarkMode={false} />);
-
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
-
-    expect(screen.getByRole('button', { name: 'Refreshing…' })).toBeDisabled();
-    expect(screen.getByText('Packages in period')).toBeInTheDocument();
-
-    resolveRefresh(forecastPayload);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled());
-  });
-
-  it('refetches the active subsection when a preset range changes', async () => {
-    currentUser.raw = { permissions: ['analytics_forecast.view'] };
-
-    render(<AnalyticsAccess isDarkMode={false} />);
-
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole('button', { name: 'Last 7 days' }));
-
-    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(2));
-    expect(analyticsApi.forecast.mock.calls[1][0]).toEqual(
+    fireEvent.click(screen.getByRole('button', { name: '7 Days' }));
+    await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(2));
+    expect(analyticsApi.overview.mock.calls[1][0]).toEqual(
       expect.objectContaining({ start: expect.any(String), end: expect.any(String) })
     );
   });

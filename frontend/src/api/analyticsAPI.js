@@ -42,12 +42,14 @@ const parseFilename = (headerValue, fallback) => {
   return match?.[1] || fallback;
 };
 
+export const fetchAnalyticsOverview = (params) => request(`/overview${buildQuery(params)}`);
 export const fetchForecastAnalytics = (params) => request(`/forecast${buildQuery(params)}`);
+export const fetchPublicReachAnalytics = (params) => request(`/public${buildQuery(params)}`);
 export const fetchUserAnalytics = (params) => request(`/users${buildQuery(params)}`);
 export const fetchSystemAnalytics = (params) => request(`/system${buildQuery(params)}`);
 
 export const fetchAnalyticsExport = async (section, params = {}) => {
-  if (!['forecast', 'users', 'system'].includes(section)) {
+  if (!['overview', 'forecast', 'public', 'users', 'system'].includes(section)) {
     throw new Error('Unsupported analytics export section.');
   }
 
