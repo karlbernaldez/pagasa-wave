@@ -5,6 +5,9 @@ import {
   bucketDateSeries,
   buildForecastDailySeries,
   buildForecastMetrics,
+  buildPackagePerformanceRows,
+  buildTimingRows,
+  buildWorkflowFunnel,
   buildSystemMetrics,
   buildUserMetrics,
   contributionMixRows,
@@ -194,5 +197,78 @@ describe('analytics workspace model', () => {
 
     expect(result.map((row) => row.date)).toEqual(['2026-06-28', '2026-06-29', '2026-06-30']);
     expect(result.at(-1)).toMatchObject({ completed: 1 });
+  });
+
+  it('builds workflow funnel values without inventing unavailable stages', () => {
+    expect(
+      buildWorkflowFunnel({
+        summary: { submitted: 9, publishedEvents: 5 },
+        statusCounts: {
+          'Under Review': 2,
+          'Revision Requested': 1,
+          Approved: 3,
+          Published: 5,
+        },
+      })
+    ).toEqual([
+      { stage: 'Submitted', value: 9 },
+      { stage: 'Under Review', value: 2 },
+      { stage: 'Revision Requested', value: 1 },
+      { stage: 'Approved', value: 8 },
+      { stage: 'Published', value: 5 },
+    ]);
+  });
+
+  it('normalizes timing analysis into table-ready rows with sample evidence', () => {
+    expect(
+      buildTimingRows({
+        preparation: { medianHours: 2.1, sampleSize: 8 },
+        reviewWait: { medianHours: 0.7, sampleSize: 9 },
+      })
+    ).toMatchObject([
+      { stage: 'Preparation', medianHours: 2.1, sampleSize: 8 },
+      { stage: 'Review wait', medianHours: 0.7, sampleSize: 9 },
+      { stage: 'Review duration', medianHours: null, sampleSize: 0 },
+      { stage: 'Publication delay', medianHours: null, sampleSize: 0 },
+    ]);
+  });
+
+  it('normalizes package rows without adding identity or synthetic timing values', () => {
+    expect(
+      buildPackagePerformanceRows([
+        {
+          id: 'pkg-1',
+          name: 'Forecast Package',
+          status: 'Published',
+          reviewDurationHours: '1.4',
+        },
+        {
+          id: 'pkg-2',
+          status: 'Submitted',
+          reviewDurationHours: null,
+        },
+      ])
+    ).toEqual([
+      {
+        id: 'pkg-1',
+        forecastDate: undefined,
+        name: 'Forecast Package',
+        status: 'Published',
+        submittedAt: null,
+        reviewedAt: null,
+        publishedAt: null,
+        reviewDurationHours: 1.4,
+      },
+      {
+        id: 'pkg-2',
+        forecastDate: undefined,
+        name: 'Forecast package',
+        status: 'Submitted',
+        submittedAt: null,
+        reviewedAt: null,
+        publishedAt: null,
+        reviewDurationHours: null,
+      },
+    ]);
   });
 });
