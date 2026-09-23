@@ -6,6 +6,7 @@ import {
   loadUserAnalytics,
 } from '../services/analyticsService.js';
 import { parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
+import { parseForecastAnalyticsFilters } from '../utils/forecastAnalyticsFilters.js';
 
 export const getAnalyticsOverview = async (req, res, next) => {
   try {
@@ -20,7 +21,8 @@ export const getAnalyticsOverview = async (req, res, next) => {
 export const getForecastAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
-    return res.status(200).json(await loadForecastAnalytics(range));
+    const filters = parseForecastAnalyticsFilters(req.query);
+    return res.status(200).json(await loadForecastAnalytics(range, { filters }));
   } catch (error) {
     return next(error);
   }
