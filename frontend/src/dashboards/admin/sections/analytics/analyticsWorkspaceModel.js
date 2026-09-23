@@ -303,6 +303,8 @@ export function buildTimingRows(timing = {}) {
   return definitions.map(([stage, metric, definition]) => ({
     stage,
     medianHours: metric?.medianHours ?? null,
+    p75Hours: metric?.p75Hours ?? null,
+    p90Hours: metric?.p90Hours ?? null,
     sampleSize: toCount(metric?.sampleSize),
     definition,
   }));
@@ -321,5 +323,15 @@ export function buildPackagePerformanceRows(packages = []) {
       item.reviewDurationHours == null || !Number.isFinite(Number(item.reviewDurationHours))
         ? null
         : Number(item.reviewDurationHours),
+    revisionCycles: toCount(item.revisionCycles),
   }));
+}
+
+
+export function formatComparisonDelta(metric = {}, { percentagePoints = false } = {}) {
+  const value = percentagePoints ? metric.percentagePointChange : metric.percentChange;
+  if (value == null || !Number.isFinite(Number(value))) return null;
+  const numeric = Number(value);
+  const prefix = numeric > 0 ? '+' : '';
+  return percentagePoints ? `${prefix}${numeric} pp` : `${prefix}${numeric}%`;
 }
