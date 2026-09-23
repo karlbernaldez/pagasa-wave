@@ -1,4 +1,5 @@
 import ForecastPackage from '../models/ForecastPackage.js';
+import Project from '../models/Project.js';
 import User from '../models/User.js';
 import {
   loadPublishedChartViewAnalytics,
@@ -7,6 +8,7 @@ import {
 import { formatManilaDateKey } from './publishedChartViewService.js';
 import { getWavePipelineStatus } from './wavePipelineStatus.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
+import { REQUIRED_FORECAST_CHARTS } from '../utils/forecastPackage.js';
 
 export const ANALYTICS_PACKAGE_STATUSES = Object.freeze([
   'Submitted',
@@ -294,6 +296,153 @@ const buildThroughput = (rows = []) => {
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 };
 
+const CHART_ANALYTICS_ACTIONS = new Set([
+  'submitted',
+  'review_started',
+  'revision_requested',
+  'approved',
+  'rejected',
+  'published',
+]);
+
+const chartDefinitionByType = new Map(
+  REQUIRED_FORECAST_CHARTS.map((chart) => [
+    chart.chartType,
+    {
+      chartType: chart.chartType,
+      label: chart.label,
+      horizonHours:
+        chart.chartType === 'analysis'
+          ? 0
+          : Number(String(chart.chartType).match(/forecast_(\d+)h/)?.[1]) || null,
+      sortOrder: chart.sortOrder,
+    },
+  ])
+);
+
+const projectActionCount = (project, action) =>
+  (project.auditLogs || []).filter((log) => log?.action === action).length;
+
+const projectFirstAuditAt = (project, actions, options = {}) =>
+  firstAuditAt(project.auditLogs || [], actions, options);
+
+const projectTiming = (project) => {
+  const submittedAt =
+    projectFirstAuditAt(project, ['submitted']) ||
+    (project.submittedAt ? new Date(project.submittedAt) : null);
+  const reviewStartedAt =
+    projectFirstAuditAt(project, ['review_started', 'moved_to_review'], { after: submittedAt }) ||
+    (project.reviewStartedAt ? new Date(project.reviewStartedAt) : null);
+  const decisionAt = projectFirstAuditAt(project, ['approved', 'revision_requested', 'rejected'], {
+    after: reviewStartedAt,
+  });
+  const approvedAt = projectFirstAuditAt(project, ['approved']);
+  const publishedAt =
+    projectFirstAuditAt(project, ['published'], { after: approvedAt }) ||
+    (project.publishedAt ? new Date(project.publishedAt) : null);
+
+  return {
+    reviewWaitHours: hoursBetween(submittedAt, reviewStartedAt),
+    reviewDurationHours: hoursBetween(reviewStartedAt, decisionAt),
+    publicationDelayHours: hoursBetween(approvedAt, publishedAt),
+    submissionToPublicationHours: hoursBetween(submittedAt, publishedAt),
+  };
+};
+
+const emptyChartTypeAccumulator = (definition) => ({
+  ...definition,
+  projects: 0,
+  submitted: 0,
+  reviewStarted: 0,
+  revisionRequests: 0,
+  approved: 0,
+  rejected: 0,
+  published: 0,
+  projectsWithRevision: 0,
+  firstPassPublished: 0,
+  reviewWaitHours: [],
+  reviewDurationHours: [],
+  publicationDelayHours: [],
+  submissionToPublicationHours: [],
+});
+
+const serializeChartTypeAccumulator = (row) => ({
+  chartType: row.chartType,
+  label: row.label,
+  horizonHours: row.horizonHours,
+  projects: row.projects,
+  submitted: row.submitted,
+  reviewStarted: row.reviewStarted,
+  revisionRequests: row.revisionRequests,
+  approved: row.approved,
+  rejected: row.rejected,
+  published: row.published,
+  revisionRate:
+    row.submitted > 0 ? Math.round((row.projectsWithRevision / row.submitted) * 1000) / 10 : null,
+  firstPassPublicationRate:
+    row.published > 0 ? Math.round((row.firstPassPublished / row.published) * 1000) / 10 : null,
+  timing: {
+    reviewWait: timingMetric(row.reviewWaitHours),
+    reviewDuration: timingMetric(row.reviewDurationHours),
+    publicationDelay: timingMetric(row.publicationDelayHours),
+    submissionToPublication: timingMetric(row.submissionToPublicationHours),
+  },
+});
+
+async function loadChartTypeAnalytics(range, { ProjectModel = Project } = {}) {
+  const projects = await ProjectModel.find({
+    chartType: { $in: [...chartDefinitionByType.keys()] },
+    ...buildDateMatch('forecastDate', range),
+  })
+    .select(
+      '_id chartType forecastDate status submittedAt reviewStartedAt reviewedAt publishedAt auditLogs'
+    )
+    .sort({ forecastDate: -1, chartType: 1, _id: -1 })
+    .lean();
+
+  const byType = new Map(
+    [...chartDefinitionByType.values()].map((definition) => [
+      definition.chartType,
+      emptyChartTypeAccumulator(definition),
+    ])
+  );
+
+  for (const project of projects) {
+    const row = byType.get(project.chartType);
+    if (!row) continue;
+
+    row.projects += 1;
+    const counts = Object.fromEntries(
+      [...CHART_ANALYTICS_ACTIONS].map((action) => [action, projectActionCount(project, action)])
+    );
+    row.submitted += counts.submitted;
+    row.reviewStarted += counts.review_started;
+    row.revisionRequests += counts.revision_requested;
+    row.approved += counts.approved;
+    row.rejected += counts.rejected;
+    row.published += counts.published;
+
+    if (counts.revision_requested > 0) row.projectsWithRevision += 1;
+    if (counts.published > 0 && counts.revision_requested === 0) row.firstPassPublished += 1;
+
+    const timing = projectTiming(project);
+    if (Number.isFinite(timing.reviewWaitHours)) row.reviewWaitHours.push(timing.reviewWaitHours);
+    if (Number.isFinite(timing.reviewDurationHours)) {
+      row.reviewDurationHours.push(timing.reviewDurationHours);
+    }
+    if (Number.isFinite(timing.publicationDelayHours)) {
+      row.publicationDelayHours.push(timing.publicationDelayHours);
+    }
+    if (Number.isFinite(timing.submissionToPublicationHours)) {
+      row.submissionToPublicationHours.push(timing.submissionToPublicationHours);
+    }
+  }
+
+  return [...byType.values()]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(serializeChartTypeAccumulator);
+};
+
 const countAuditAction = (forecastPackage, action) =>
   (forecastPackage.auditLogs || []).filter((log) => log?.action === action).length;
 
@@ -435,13 +584,17 @@ const loadForecastEventCounts = async (range, ForecastPackageModel = ForecastPac
 
 async function loadForecastAnalyticsPeriod(
   range,
-  { ForecastPackageModel = ForecastPackage, referenceNow = new Date() } = {}
+  {
+    ForecastPackageModel = ForecastPackage,
+    ProjectModel = Project,
+    referenceNow = new Date(),
+  } = {}
 ) {
   const match = {
     status: { $in: ANALYTICS_PACKAGE_STATUSES },
     ...buildDateMatch('forecastDate', range),
   };
-  const [packages, statusRows, events] = await Promise.all([
+  const [packages, statusRows, events, chartTypes] = await Promise.all([
     ForecastPackageModel.find(match)
       .select(
         '_id name forecastDate status submittedAt reviewStartedAt reviewedAt publishedAt auditLogs createdAt updatedAt'
@@ -454,6 +607,7 @@ async function loadForecastAnalyticsPeriod(
       { $sort: { count: -1, _id: 1 } },
     ]),
     loadForecastEventCounts(range, ForecastPackageModel),
+    loadChartTypeAnalytics(range, { ProjectModel }),
   ]);
 
   const statusCounts = rowsToCountObject(statusRows);
@@ -478,6 +632,7 @@ async function loadForecastAnalyticsPeriod(
     timing,
     efficiency: buildWorkflowEfficiency(packages),
     bottlenecks: buildBottleneckAnalysis(packages, timing, referenceNow),
+    chartTypes,
     packages: packages.map((forecastPackage) => {
       const timing = packageTiming(forecastPackage);
       return {
@@ -506,12 +661,14 @@ export async function loadForecastAnalytics(
   range,
   {
     ForecastPackageModel = ForecastPackage,
+    ProjectModel = Project,
     includeComparison = true,
     referenceNow = new Date(),
   } = {}
 ) {
   const current = await loadForecastAnalyticsPeriod(range, {
     ForecastPackageModel,
+    ProjectModel,
     referenceNow,
   });
   if (!includeComparison) return current;
@@ -519,6 +676,7 @@ export async function loadForecastAnalytics(
   const previousRange = previousAnalyticsRange(range);
   const previous = await loadForecastAnalyticsPeriod(previousRange, {
     ForecastPackageModel,
+    ProjectModel,
     referenceNow,
   });
 
