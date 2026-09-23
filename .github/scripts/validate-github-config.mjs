@@ -13,15 +13,17 @@ function parseIssueForm(file, content) {
   if (!/^description:\s*\S+/mu.test(content)) fail(file, 'missing top-level description.');
   if (!/^body:\s*$/mu.test(content)) fail(file, 'missing top-level body.');
 
-  const itemPattern = /^\s{2}- type:\s*(\S+)\s*$([\s\S]*?)(?=^\s{2}- type:|\Z)/gmu;
+  const itemStarts = [...content.matchAll(/^\s{2}- type:\s*(\S+)\s*$/gmu)];
   const allowedTypes = new Set(['markdown', 'input', 'textarea', 'dropdown', 'checkboxes']);
   const ids = new Set();
   let itemCount = 0;
 
-  for (const match of content.matchAll(itemPattern)) {
+  for (const [index, match] of itemStarts.entries()) {
     itemCount += 1;
     const type = match[1];
-    const block = match[2];
+    const start = match.index + match[0].length;
+    const end = itemStarts[index + 1]?.index ?? content.length;
+    const block = content.slice(start, end);
 
     if (!allowedTypes.has(type)) fail(file, `unsupported issue-form item type "${type}".`);
 
