@@ -4,6 +4,7 @@ import AnalyticsTable from '../components/AnalyticsTable';
 import {
   buildTimingRows,
   entriesByCount,
+  formatComparisonDelta,
 } from '../analyticsWorkspaceModel';
 import {
   bucketLabel,
@@ -27,14 +28,16 @@ export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
       ? {
           label: 'Submitted',
           value: forecast.summary?.submitted ?? 0,
-          helper: 'Forecast submissions',
+          delta: formatComparisonDelta(forecast.comparison?.submitted),
+          helper: 'Vs previous equal-length period',
         }
       : null,
     forecast
       ? {
           label: 'Published',
           value: forecast.summary?.publishedEvents ?? 0,
-          helper: 'Publication events',
+          delta: formatComparisonDelta(forecast.comparison?.published),
+          helper: 'Vs previous equal-length period',
         }
       : null,
     forecast
@@ -113,10 +116,12 @@ export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
           title="Timing Summary"
           description="Compact timing evidence for the selected period. Sample size is shown explicitly."
           isDarkMode={isDarkMode}
-          headers={['Stage', 'Median', 'Sample', 'Definition']}
+          headers={['Stage', 'Median', 'P75', 'P90', 'Sample', 'Definition']}
           rows={timingRows.map((row) => [
             row.stage,
             formatHours(row.medianHours),
+            formatHours(row.p75Hours),
+            formatHours(row.p90Hours),
             row.sampleSize,
             row.definition,
           ])}
