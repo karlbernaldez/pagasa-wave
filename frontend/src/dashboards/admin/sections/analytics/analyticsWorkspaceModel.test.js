@@ -6,6 +6,7 @@ import {
   buildForecastDailySeries,
   buildAgingDistributionRows,
   buildBottleneckStageRows,
+  buildChartTypePerformanceRows,
   buildForecastMetrics,
   buildOpenAgingRows,
   buildPackagePerformanceRows,
@@ -299,6 +300,45 @@ describe('analytics workspace model', () => {
         publishedAt: null,
         reviewDurationHours: null,
         revisionCycles: 0,
+      },
+    ]);
+  });
+
+  it('normalizes chart type and forecast horizon analytics without inventing missing timing', () => {
+    expect(
+      buildChartTypePerformanceRows([
+        {
+          chartType: 'forecast_24h',
+          label: '24h Wave Forecast',
+          horizonHours: 24,
+          projects: 8,
+          submitted: 8,
+          revisionRequests: 2,
+          published: 7,
+          revisionRate: 25,
+          firstPassPublicationRate: 71.4,
+          timing: {
+            reviewDuration: { medianHours: 1.2, p90Hours: 3.4 },
+            submissionToPublication: { medianHours: 4.5, p90Hours: 8.1, sampleSize: 7 },
+          },
+        },
+      ])
+    ).toEqual([
+      {
+        chartType: 'forecast_24h',
+        label: '24h Wave Forecast',
+        horizonHours: 24,
+        projects: 8,
+        submitted: 8,
+        revisionRequests: 2,
+        published: 7,
+        revisionRate: 25,
+        firstPassPublicationRate: 71.4,
+        reviewMedianHours: 1.2,
+        reviewP90Hours: 3.4,
+        turnaroundMedianHours: 4.5,
+        turnaroundP90Hours: 8.1,
+        sampleSize: 7,
       },
     ]);
   });
