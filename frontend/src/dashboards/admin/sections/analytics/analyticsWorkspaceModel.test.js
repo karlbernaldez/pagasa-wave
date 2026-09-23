@@ -4,8 +4,12 @@ import {
   adaptiveBucketDays,
   bucketDateSeries,
   buildForecastDailySeries,
+  buildAgingDistributionRows,
+  buildBottleneckStageRows,
   buildForecastMetrics,
+  buildOpenAgingRows,
   buildPackagePerformanceRows,
+  buildSlowestPackageRows,
   buildTimingRows,
   buildWorkflowFunnel,
   buildSystemMetrics,
@@ -297,6 +301,78 @@ describe('analytics workspace model', () => {
         revisionCycles: 0,
       },
     ]);
+  });
+
+  it('normalizes bottleneck analysis for dense operational tables', () => {
+    const bottlenecks = {
+      stages: [
+        {
+          key: 'reviewWait',
+          label: 'Review wait',
+          medianHours: 1.2,
+          p75Hours: 2.4,
+          p90Hours: 4.8,
+          sampleSize: 12,
+        },
+      ],
+      turnaround: {
+        slowestPackages: [
+          {
+            id: 'pkg-9',
+            name: 'Forecast 9',
+            forecastDate: '2026-09-09T00:00:00.000Z',
+            status: 'Published',
+            turnaroundHours: 9.6,
+            revisionCycles: 2,
+          },
+        ],
+      },
+      openAging: {
+        buckets: {
+          under_6h: 1,
+          '6_to_12h': 2,
+          '12_to_24h': 3,
+          '24_to_48h': 4,
+          '48h_plus': 5,
+        },
+        oldest: [
+          {
+            id: 'pkg-open',
+            name: 'Open Forecast',
+            status: 'Under Review',
+            statusStartedAt: '2026-09-23T00:00:00.000Z',
+            ageHours: 8.5,
+          },
+        ],
+      },
+    };
+
+    expect(buildBottleneckStageRows(bottlenecks)).toEqual([
+      {
+        label: 'Review wait',
+        medianHours: 1.2,
+        p75Hours: 2.4,
+        p90Hours: 4.8,
+        sampleSize: 12,
+      },
+    ]);
+    expect(buildAgingDistributionRows(bottlenecks.openAging)).toEqual([
+      { label: '< 6h', value: 1 },
+      { label: '6–12h', value: 2 },
+      { label: '12–24h', value: 3 },
+      { label: '24–48h', value: 4 },
+      { label: '48h+', value: 5 },
+    ]);
+    expect(buildSlowestPackageRows(bottlenecks)[0]).toMatchObject({
+      id: 'pkg-9',
+      turnaroundHours: 9.6,
+      revisionCycles: 2,
+    });
+    expect(buildOpenAgingRows(bottlenecks)[0]).toMatchObject({
+      id: 'pkg-open',
+      status: 'Under Review',
+      ageHours: 8.5,
+    });
   });
 
   it('formats period comparison deltas without inventing a percentage when baseline is zero', () => {
