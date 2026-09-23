@@ -11,6 +11,7 @@ import {
   buildSystemMetrics,
   buildUserMetrics,
   contributionMixRows,
+  formatComparisonDelta,
   getAllowedAnalyticsSections,
   publishedChartRows,
 } from './analyticsWorkspaceModel';
@@ -202,19 +203,19 @@ describe('analytics workspace model', () => {
   it('builds workflow funnel values without inventing unavailable stages', () => {
     expect(
       buildWorkflowFunnel({
-        summary: { submitted: 9, publishedEvents: 5 },
-        statusCounts: {
-          'Under Review': 2,
-          'Revision Requested': 1,
-          Approved: 3,
-          Published: 5,
+        summary: {
+          submitted: 9,
+          reviewStarted: 8,
+          revisionRequests: 1,
+          approvedEvents: 7,
+          publishedEvents: 5,
         },
       })
     ).toEqual([
       { stage: 'Submitted', value: 9 },
-      { stage: 'Under Review', value: 2 },
-      { stage: 'Revision Requested', value: 1 },
-      { stage: 'Approved', value: 8 },
+      { stage: 'Review started', value: 8 },
+      { stage: 'Revision requested', value: 1 },
+      { stage: 'Approved', value: 7 },
       { stage: 'Published', value: 5 },
     ]);
   });
@@ -226,10 +227,34 @@ describe('analytics workspace model', () => {
         reviewWait: { medianHours: 0.7, sampleSize: 9 },
       })
     ).toMatchObject([
-      { stage: 'Preparation', medianHours: 2.1, sampleSize: 8 },
-      { stage: 'Review wait', medianHours: 0.7, sampleSize: 9 },
-      { stage: 'Review duration', medianHours: null, sampleSize: 0 },
-      { stage: 'Publication delay', medianHours: null, sampleSize: 0 },
+      {
+        stage: 'Preparation',
+        medianHours: 2.1,
+        p75Hours: null,
+        p90Hours: null,
+        sampleSize: 8,
+      },
+      {
+        stage: 'Review wait',
+        medianHours: 0.7,
+        p75Hours: null,
+        p90Hours: null,
+        sampleSize: 9,
+      },
+      {
+        stage: 'Review duration',
+        medianHours: null,
+        p75Hours: null,
+        p90Hours: null,
+        sampleSize: 0,
+      },
+      {
+        stage: 'Publication delay',
+        medianHours: null,
+        p75Hours: null,
+        p90Hours: null,
+        sampleSize: 0,
+      },
     ]);
   });
 
@@ -258,6 +283,7 @@ describe('analytics workspace model', () => {
         reviewedAt: null,
         publishedAt: null,
         reviewDurationHours: 1.4,
+        revisionCycles: 0,
       },
       {
         id: 'pkg-2',
@@ -268,7 +294,20 @@ describe('analytics workspace model', () => {
         reviewedAt: null,
         publishedAt: null,
         reviewDurationHours: null,
+        revisionCycles: 0,
       },
     ]);
+  });
+
+  it('formats period comparison deltas without inventing a percentage when baseline is zero', () => {
+    expect(formatComparisonDelta({ percentChange: 12.5 })).toBe('+12.5%');
+    expect(formatComparisonDelta({ percentChange: -4 })).toBe('-4%');
+    expect(
+      formatComparisonDelta(
+        { percentagePointChange: -3.2 },
+        { percentagePoints: true }
+      )
+    ).toBe('-3.2 pp');
+    expect(formatComparisonDelta({ percentChange: null })).toBeNull();
   });
 });
