@@ -6,6 +6,7 @@ import {
   buildTimingRows,
   buildWorkflowFunnel,
   entriesByCount,
+  formatComparisonDelta,
 } from '../analyticsWorkspaceModel';
 import { bucketLabel, buildTrend, formatDate, formatDateTime, formatHours } from '../analyticsPresentation';
 
@@ -22,6 +23,8 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
   }));
   const timingRows = buildTimingRows(payload.timing);
   const packageRows = buildPackagePerformanceRows(payload.packages);
+  const comparison = payload.comparison || {};
+  const efficiency = payload.efficiency || {};
 
   return (
     <div className="space-y-5">
@@ -31,32 +34,42 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           {
             label: 'Submitted',
             value: summary.submitted ?? 0,
-            helper: 'Submission events in range',
+            delta: formatComparisonDelta(comparison.submitted),
+            helper: 'Vs previous equal-length period',
           },
           {
             label: 'Published',
             value: summary.publishedEvents ?? 0,
-            helper: 'Publication events in range',
+            delta: formatComparisonDelta(comparison.published),
+            helper: 'Vs previous equal-length period',
           },
           {
             label: 'Revision requests',
             value: summary.revisionRequests ?? 0,
-            helper: 'Returned for revision',
+            delta: formatComparisonDelta(comparison.revisions),
+            helper: 'Vs previous equal-length period',
           },
           {
             label: 'Completion rate',
             value: summary.completionRate == null ? '—' : `${summary.completionRate}%`,
+            delta: formatComparisonDelta(comparison.completionRate, { percentagePoints: true }),
             helper: 'Completed among decided outcomes',
           },
           {
-            label: 'Return rate',
-            value: summary.returnRate == null ? '—' : `${summary.returnRate}%`,
-            helper: 'Revision/rejection among decisions',
+            label: 'First-pass approval',
+            value:
+              efficiency.firstPassApprovalRate == null
+                ? '—'
+                : `${efficiency.firstPassApprovalRate}%`,
+            delta: formatComparisonDelta(comparison.firstPassApprovalRate, {
+              percentagePoints: true,
+            }),
+            helper: 'Completed without revision request',
           },
           {
-            label: 'Package sample',
-            value: payload.sampleSize ?? payload.total ?? 0,
-            helper: 'Packages used for analysis',
+            label: 'Avg revision cycles',
+            value: efficiency.averageRevisionCycles ?? 0,
+            helper: `${efficiency.packagesWithRevision ?? 0} package(s) required revision`,
           },
         ]}
       />
@@ -87,10 +100,12 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           title="Processing Time Evidence"
           description="Median timings with explicit sample sizes; incomplete samples remain blank."
           isDarkMode={isDarkMode}
-          headers={['Stage', 'Median', 'Sample', 'Definition']}
+          headers={['Stage', 'Median', 'P75', 'P90', 'Sample', 'Definition']}
           rows={timingRows.map((row) => [
             row.stage,
             formatHours(row.medianHours),
+            formatHours(row.p75Hours),
+            formatHours(row.p90Hours),
             row.sampleSize,
             row.definition,
           ])}
@@ -114,6 +129,7 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           'Submitted',
           'Reviewed',
           'Review time',
+          'Revision cycles',
           'Published',
         ]}
         rows={packageRows.slice(0, 100).map((item) => [
@@ -123,6 +139,7 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           formatDateTime(item.submittedAt),
           formatDateTime(item.reviewedAt),
           formatHours(item.reviewDurationHours),
+          item.revisionCycles,
           formatDateTime(item.publishedAt),
         ])}
       />
