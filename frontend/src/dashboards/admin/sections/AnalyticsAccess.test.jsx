@@ -40,6 +40,14 @@ const forecastPayload = {
   throughput: [],
   timing: {},
   packages: [],
+  filters: { status: null, chartType: null, horizonHours: null, unit: 'package' },
+  filterOptions: {
+    statuses: ['Submitted', 'Published'],
+    chartTypes: [
+      { chartType: 'analysis', label: 'Wave Analysis', horizonHours: 0 },
+      { chartType: 'forecast_24h', label: '24h Wave Forecast', horizonHours: 24 },
+    ],
+  },
   range,
   generatedAt: '2026-09-15T00:00:00.000Z',
 };
@@ -157,6 +165,31 @@ describe('AnalyticsAccess production workspace', () => {
       'Showing the last successfully loaded data.'
     );
     expect(screen.getByText('Submitted')).toBeInTheDocument();
+  });
+
+  it('refetches forecast analytics when a server-backed analysis filter changes', async () => {
+    currentUser.raw = { permissions: ['analytics_forecast.view'] };
+    render(<AnalyticsAccess isDarkMode={false} />);
+
+    await waitFor(() => expect(analyticsApi.overview).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('tab', { name: 'Forecast' }));
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText('Chart / horizon'), {
+      target: { value: 'forecast_24h' },
+    });
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(2));
+    expect(analyticsApi.forecast.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ chartType: 'forecast_24h', status: '' })
+    );
+
+    fireEvent.change(screen.getByLabelText('Status'), {
+      target: { value: 'Published' },
+    });
+    await waitFor(() => expect(analyticsApi.forecast).toHaveBeenCalledTimes(3));
+    expect(analyticsApi.forecast.mock.calls[2][0]).toEqual(
+      expect.objectContaining({ chartType: 'forecast_24h', status: 'Published' })
+    );
   });
 
   it('refetches the active subsection when the date range changes', async () => {
