@@ -74,9 +74,8 @@ for (const file of files) {
 if (files.length === 0) {
   console.log('No GitHub issue-form YAML files found.');
 } else {
-  console.log(
-    `Validated ${files.length} GitHub issue-form file(s): ${files.map(basename).join(', ')}`
-  );
+  const fileNames = files.map((file) => basename(file));
+  console.log(`Validated ${files.length} GitHub issue-form file(s): ${fileNames.join(', ')}`);
 }
 
 if (failures.length > 0) {
