@@ -383,3 +383,33 @@ export function buildOpenAgingRows(bottlenecks = {}) {
         : Number(item.ageHours),
   }));
 }
+
+
+export function buildChartTypePerformanceRows(chartTypes = []) {
+  return (chartTypes || []).map((row) => ({
+    chartType: row.chartType,
+    label: row.label || row.chartType || 'Unknown chart',
+    horizonHours:
+      row.horizonHours == null || !Number.isFinite(Number(row.horizonHours))
+        ? null
+        : Number(row.horizonHours),
+    projects: toCount(row.projects),
+    submitted: toCount(row.submitted),
+    revisionRequests: toCount(row.revisionRequests),
+    published: toCount(row.published),
+    revisionRate:
+      row.revisionRate == null || !Number.isFinite(Number(row.revisionRate))
+        ? null
+        : Number(row.revisionRate),
+    firstPassPublicationRate:
+      row.firstPassPublicationRate == null ||
+      !Number.isFinite(Number(row.firstPassPublicationRate))
+        ? null
+        : Number(row.firstPassPublicationRate),
+    reviewMedianHours: row.timing?.reviewDuration?.medianHours ?? null,
+    reviewP90Hours: row.timing?.reviewDuration?.p90Hours ?? null,
+    turnaroundMedianHours: row.timing?.submissionToPublication?.medianHours ?? null,
+    turnaroundP90Hours: row.timing?.submissionToPublication?.p90Hours ?? null,
+    sampleSize: toCount(row.timing?.submissionToPublication?.sampleSize),
+  }));
+}
