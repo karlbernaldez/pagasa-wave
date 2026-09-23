@@ -88,7 +88,7 @@ WaveLab code shall be understandable, testable, secure, observable, maintainable
 
 Implementation is tracked in [issue #179](https://github.com/karlbernaldez/pagasa-wave/issues/179) and introduced by [PR #181](https://github.com/karlbernaldez/pagasa-wave/pull/181).
 
-The incremental quality baseline checks new and changed files so the legacy repository can improve without a repository-wide formatting/refactoring change. It provides pinned root ESLint/Prettier tooling, repository hygiene checks, selected high-confidence secret patterns, changed JSON and Markdown-link checks, Git whitespace validation, frontend/backend npm lockfile policy, pull-request dependency review, and CodeQL JavaScript/TypeScript analysis.
+The incremental quality baseline checks new and changed files so the legacy repository can improve without a repository-wide formatting/refactoring change. It provides pinned root ESLint/Prettier tooling, repository hygiene checks, selected high-confidence secret patterns, changed JSON and Markdown-link checks, Git whitespace validation, frontend/backend npm lockfile policy, full-repository secret scanning on pull requests, GitHub Actions linting, GitHub YAML and issue-form validation, pull-request dependency review, and CodeQL JavaScript/TypeScript analysis.
 
 The root commands are:
 
@@ -103,14 +103,12 @@ Warnings and known historical debt should be ratcheted deliberately. A passing i
 
 The current repository tests, build, and incremental quality workflow remain required. Add the remaining controls through separately reviewed work:
 
-1. Full YAML and GitHub issue-form/configuration validation beyond GitHub's workflow parser.
-2. Repository-wide secret scanning. Dependency review is enforced for pull requests.
-3. Expand static application security analysis as needed beyond the CodeQL JavaScript/TypeScript baseline.
-4. Test coverage reporting focused on critical modules.
-5. API and Socket.IO contract validation.
-6. License and dependency inventory/SBOM.
-7. End-to-end tests for critical workflows.
-8. Incremental lint/format rule ratcheting and an approved legacy-debt baseline.
+1. Expand static application security analysis as needed beyond the CodeQL JavaScript/TypeScript baseline.
+2. Test coverage reporting focused on critical modules.
+3. API and Socket.IO contract validation.
+4. License and dependency inventory/SBOM.
+5. End-to-end tests for critical workflows.
+6. Incremental lint/format rule ratcheting and an approved legacy-debt baseline.
 
 The quality gate must be introduced incrementally: record the baseline, fix high-risk findings, prevent new violations, then ratchet expectations.
 
