@@ -63,7 +63,7 @@ const REQUEST_BY_SECTION = {
   system: fetchSystemAnalytics,
 };
 
-const EXPORTABLE_SECTIONS = new Set(['forecast', 'public', 'users', 'system']);
+const EXPORTABLE_SECTIONS = new Set(['overview', 'forecast', 'public', 'users', 'system']);
 
 const bucketLabel = (days) => (adaptiveBucketDays(days) === 1 ? 'Daily' : 'Weekly');
 
