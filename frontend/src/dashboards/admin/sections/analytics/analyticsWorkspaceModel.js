@@ -328,3 +328,58 @@ export function formatComparisonDelta(metric = {}, { percentagePoints = false } 
   const prefix = numeric > 0 ? '+' : '';
   return percentagePoints ? `${prefix}${numeric} pp` : `${prefix}${numeric}%`;
 }
+
+
+export function buildBottleneckStageRows(bottlenecks = {}) {
+  return (bottlenecks.stages || []).map((stage) => ({
+    label: stage.label || stage.key || 'Unknown stage',
+    medianHours: stage.medianHours ?? null,
+    p75Hours: stage.p75Hours ?? null,
+    p90Hours: stage.p90Hours ?? null,
+    sampleSize: toCount(stage.sampleSize),
+  }));
+}
+
+export function buildAgingDistributionRows(openAging = {}) {
+  const buckets = openAging.buckets || {};
+  const labels = [
+    ['under_6h', '< 6h'],
+    ['6_to_12h', '6–12h'],
+    ['12_to_24h', '12–24h'],
+    ['24_to_48h', '24–48h'],
+    ['48h_plus', '48h+'],
+  ];
+
+  return labels.map(([key, label]) => ({
+    label,
+    value: toCount(buckets[key]),
+  }));
+}
+
+export function buildSlowestPackageRows(bottlenecks = {}) {
+  return (bottlenecks.turnaround?.slowestPackages || []).map((item) => ({
+    id: item.id,
+    name: item.name || 'Forecast package',
+    forecastDate: item.forecastDate,
+    status: item.status || 'Unknown',
+    turnaroundHours:
+      item.turnaroundHours == null || !Number.isFinite(Number(item.turnaroundHours))
+        ? null
+        : Number(item.turnaroundHours),
+    revisionCycles: toCount(item.revisionCycles),
+  }));
+}
+
+export function buildOpenAgingRows(bottlenecks = {}) {
+  return (bottlenecks.openAging?.oldest || []).map((item) => ({
+    id: item.id,
+    name: item.name || 'Forecast package',
+    forecastDate: item.forecastDate,
+    status: item.status || 'Unknown',
+    statusStartedAt: item.statusStartedAt || null,
+    ageHours:
+      item.ageHours == null || !Number.isFinite(Number(item.ageHours))
+        ? null
+        : Number(item.ageHours),
+  }));
+}
