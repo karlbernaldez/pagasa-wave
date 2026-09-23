@@ -8,6 +8,7 @@ import {
   getUserAnalytics,
 } from '../controllers/analyticsController.js';
 import {
+  exportAnalyticsOverview,
   exportForecastAnalytics,
   exportPublicReachAnalytics,
   exportSystemAnalytics,
@@ -31,6 +32,16 @@ router.get(
     'analytics_system.view'
   ),
   getAnalyticsOverview
+);
+router.get(
+  '/overview/export',
+  requireAnyPermission(
+    'analytics_forecast.view',
+    'analytics_users.view',
+    'analytics_system.view'
+  ),
+  requirePermission('analytics.export'),
+  exportAnalyticsOverview
 );
 router.get('/forecast', requirePermission('analytics_forecast.view'), getForecastAnalytics);
 router.get(
