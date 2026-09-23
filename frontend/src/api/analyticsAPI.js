@@ -6,6 +6,9 @@ const buildQuery = (params = {}) => {
   const search = new URLSearchParams();
   if (params.start) search.set('start', params.start);
   if (params.end) search.set('end', params.end);
+  if (params.status) search.set('status', params.status);
+  if (params.chartType) search.set('chartType', params.chartType);
+  if (params.horizon != null && params.horizon !== '') search.set('horizon', params.horizon);
   const query = search.toString();
   return query ? `?${query}` : '';
 };

@@ -1,19 +1,18 @@
 export const ANALYTICS_SECTIONS = Object.freeze([
   {
     id: 'overview',
-    label: 'Analytics Overview',
-    shortLabel: 'Overview',
+    label: 'Executive Analysis',
+    shortLabel: 'Executive',
     permission: null,
-    description:
-      'Operational performance, forecast workflow trends, platform usage, and system health.',
+    description: 'Cross-section performance analysis for the selected reporting period.',
   },
   {
     id: 'forecast',
-    label: 'Forecast Operations',
+    label: 'Forecast Performance',
     shortLabel: 'Forecast',
     permission: 'analytics_forecast.view',
     description:
-      'Package throughput, review outcomes, workflow timing, and recent operational activity.',
+      'Throughput, workflow efficiency, revision pressure, timing, and package-level performance.',
   },
   {
     id: 'public',
@@ -24,19 +23,19 @@ export const ANALYTICS_SECTIONS = Object.freeze([
   },
   {
     id: 'users',
-    label: 'User Activity',
-    shortLabel: 'Users',
+    label: 'Collaboration Activity',
+    shortLabel: 'Collaboration',
     permission: 'analytics_users.view',
     description:
       'Aggregate account health and operational participation without employee scoring or identity exposure.',
   },
   {
     id: 'system',
-    label: 'System Operations',
+    label: 'System & Pipeline',
     shortLabel: 'System',
     permission: 'analytics_system.view',
     description:
-      'Dynamic wave-model readiness, package availability, and pipeline operational state.',
+      'Current pipeline evidence and model readiness; historical reliability appears only when persisted telemetry exists.',
   },
 ]);
 
@@ -271,4 +270,229 @@ export function entriesByCount(counts = {}) {
     .map(([label, value]) => ({ label, value: toCount(value) }))
     .filter((entry) => entry.value > 0)
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+}
+
+export function buildWorkflowFunnel(payload = {}) {
+  const summary = payload.summary || {};
+  return [
+    { stage: 'Submitted', value: toCount(summary.submitted) },
+    { stage: 'Review started', value: toCount(summary.reviewStarted) },
+    { stage: 'Revision requested', value: toCount(summary.revisionRequests) },
+    { stage: 'Approved', value: toCount(summary.approvedEvents) },
+    { stage: 'Published', value: toCount(summary.publishedEvents) },
+  ];
+}
+
+export function buildTimingRows(timing = {}) {
+  const definitions = [
+    ['Preparation', timing.preparation, 'First tracked chart activity to submission'],
+    ['Review wait', timing.reviewWait, 'Submission to review start'],
+    ['Review duration', timing.reviewDuration, 'Review start to review decision'],
+    ['Publication delay', timing.publicationDelay, 'Approval to publication'],
+  ];
+
+  return definitions.map(([stage, metric, definition]) => ({
+    stage,
+    medianHours: metric?.medianHours ?? null,
+    p75Hours: metric?.p75Hours ?? null,
+    p90Hours: metric?.p90Hours ?? null,
+    sampleSize: toCount(metric?.sampleSize),
+    definition,
+  }));
+}
+
+export function buildPackagePerformanceRows(packages = []) {
+  return (packages || []).map((item) => ({
+    id: item.id,
+    forecastDate: item.forecastDate,
+    name: item.name || 'Forecast package',
+    status: item.status || 'Unknown',
+    submittedAt: item.submittedAt || null,
+    reviewedAt: item.reviewedAt || null,
+    publishedAt: item.publishedAt || null,
+    reviewDurationHours:
+      item.reviewDurationHours == null || !Number.isFinite(Number(item.reviewDurationHours))
+        ? null
+        : Number(item.reviewDurationHours),
+    revisionCycles: toCount(item.revisionCycles),
+  }));
+}
+
+export function formatComparisonDelta(metric = {}, { percentagePoints = false } = {}) {
+  const value = percentagePoints ? metric.percentagePointChange : metric.percentChange;
+  if (value == null || !Number.isFinite(Number(value))) return null;
+  const numeric = Number(value);
+  const prefix = numeric > 0 ? '+' : '';
+  return percentagePoints ? `${prefix}${numeric} pp` : `${prefix}${numeric}%`;
+}
+
+export function buildBottleneckStageRows(bottlenecks = {}) {
+  return (bottlenecks.stages || []).map((stage) => ({
+    label: stage.label || stage.key || 'Unknown stage',
+    medianHours: stage.medianHours ?? null,
+    p75Hours: stage.p75Hours ?? null,
+    p90Hours: stage.p90Hours ?? null,
+    sampleSize: toCount(stage.sampleSize),
+  }));
+}
+
+export function buildAgingDistributionRows(openAging = {}) {
+  const buckets = openAging.buckets || {};
+  const labels = [
+    ['under_6h', '< 6h'],
+    ['6_to_12h', '6–12h'],
+    ['12_to_24h', '12–24h'],
+    ['24_to_48h', '24–48h'],
+    ['48h_plus', '48h+'],
+  ];
+
+  return labels.map(([key, label]) => ({
+    label,
+    value: toCount(buckets[key]),
+  }));
+}
+
+export function buildSlowestPackageRows(bottlenecks = {}) {
+  return (bottlenecks.turnaround?.slowestPackages || []).map((item) => ({
+    id: item.id,
+    name: item.name || 'Forecast package',
+    forecastDate: item.forecastDate,
+    status: item.status || 'Unknown',
+    turnaroundHours:
+      item.turnaroundHours == null || !Number.isFinite(Number(item.turnaroundHours))
+        ? null
+        : Number(item.turnaroundHours),
+    revisionCycles: toCount(item.revisionCycles),
+  }));
+}
+
+export function buildOpenAgingRows(bottlenecks = {}) {
+  return (bottlenecks.openAging?.oldest || []).map((item) => ({
+    id: item.id,
+    name: item.name || 'Forecast package',
+    forecastDate: item.forecastDate,
+    status: item.status || 'Unknown',
+    statusStartedAt: item.statusStartedAt || null,
+    ageHours:
+      item.ageHours == null || !Number.isFinite(Number(item.ageHours))
+        ? null
+        : Number(item.ageHours),
+  }));
+}
+
+export function buildChartTypePerformanceRows(chartTypes = []) {
+  return (chartTypes || []).map((row) => ({
+    chartType: row.chartType,
+    label: row.label || row.chartType || 'Unknown chart',
+    horizonHours:
+      row.horizonHours == null || !Number.isFinite(Number(row.horizonHours))
+        ? null
+        : Number(row.horizonHours),
+    projects: toCount(row.projects),
+    submitted: toCount(row.submitted),
+    revisionRequests: toCount(row.revisionRequests),
+    published: toCount(row.published),
+    revisionRate:
+      row.revisionRate == null || !Number.isFinite(Number(row.revisionRate))
+        ? null
+        : Number(row.revisionRate),
+    firstPassPublicationRate:
+      row.firstPassPublicationRate == null || !Number.isFinite(Number(row.firstPassPublicationRate))
+        ? null
+        : Number(row.firstPassPublicationRate),
+    reviewMedianHours: row.timing?.reviewDuration?.medianHours ?? null,
+    reviewP90Hours: row.timing?.reviewDuration?.p90Hours ?? null,
+    turnaroundMedianHours: row.timing?.submissionToPublication?.medianHours ?? null,
+    turnaroundP90Hours: row.timing?.submissionToPublication?.p90Hours ?? null,
+    sampleSize: toCount(row.timing?.submissionToPublication?.sampleSize),
+  }));
+}
+
+export function buildForecastFindings(payload = {}) {
+  const findings = [];
+  const comparison = payload.comparison || {};
+  const analysisUnit = payload.filters?.unit === 'chart' ? 'chart project' : 'forecast package';
+  const bottlenecks = payload.bottlenecks || {};
+  const efficiency = payload.efficiency || {};
+  const chartTypes = buildChartTypePerformanceRows(payload.chartTypes);
+
+  if (bottlenecks.slowestStage?.label && bottlenecks.slowestStage?.p90Hours != null) {
+    findings.push({
+      id: 'slowest-stage',
+      title: 'Primary workflow bottleneck',
+      detail: `${bottlenecks.slowestStage.label} has the highest observed P90 duration at ${bottlenecks.slowestStage.p90Hours}h across ${toCount(bottlenecks.slowestStage.sampleSize)} complete sample(s).`,
+    });
+  }
+
+  const highestRevision = [...chartTypes]
+    .filter((row) => row.submitted > 0 && row.revisionRate != null)
+    .sort((a, b) => b.revisionRate - a.revisionRate)[0];
+  if (highestRevision) {
+    findings.push({
+      id: 'highest-revision-chart',
+      title: 'Highest revision pressure',
+      detail: `${highestRevision.label} has the highest observed revision rate at ${highestRevision.revisionRate}% for the selected period.`,
+    });
+  }
+
+  const oldOpen =
+    toCount(bottlenecks.openAging?.buckets?.['24_to_48h']) +
+    toCount(bottlenecks.openAging?.buckets?.['48h_plus']);
+  if (oldOpen > 0) {
+    findings.push({
+      id: 'aged-open-items',
+      title: 'Open items require attention',
+      detail: `${oldOpen} open ${analysisUnit}${oldOpen === 1 ? '' : 's'} have remained in their current recorded workflow state for at least 24 hours.`,
+    });
+  }
+
+  const publishedChange = comparison.published?.percentChange;
+  if (
+    publishedChange != null &&
+    Number.isFinite(Number(publishedChange)) &&
+    Number(publishedChange) !== 0
+  ) {
+    const direction = Number(publishedChange) > 0 ? 'increased' : 'decreased';
+    findings.push({
+      id: 'publication-change',
+      title: 'Publication volume changed',
+      detail: `Published forecast events ${direction} by ${Math.abs(Number(publishedChange))}% versus the immediately preceding equal-length period.`,
+    });
+  }
+
+  if (efficiency.firstPassApprovalRate != null) {
+    findings.push({
+      id: 'first-pass',
+      title: 'First-pass workflow efficiency',
+      detail: `${efficiency.firstPassApprovalRate}% of completed ${analysisUnit}s reached completion without a recorded revision request.`,
+    });
+  }
+
+  return findings.slice(0, 5);
+}
+
+export function buildForecastExplorerRows(packages = []) {
+  return buildPackagePerformanceRows(packages).map((item) => ({
+    ...item,
+    revisionClass: item.revisionCycles > 0 ? 'revised' : 'no_revision',
+  }));
+}
+
+export function buildForecastExplorerFilters(rows = []) {
+  const statuses = [...new Set(rows.map((row) => row.status).filter(Boolean))].sort();
+  return [
+    {
+      key: 'status',
+      label: 'statuses',
+      options: statuses.map((status) => ({ value: status, label: status })),
+    },
+    {
+      key: 'revisionClass',
+      label: 'revision states',
+      options: [
+        { value: 'revised', label: 'Revised' },
+        { value: 'no_revision', label: 'No revision' },
+      ],
+    },
+  ];
 }

@@ -4,10 +4,22 @@ import {
   adaptiveBucketDays,
   bucketDateSeries,
   buildForecastDailySeries,
+  buildAgingDistributionRows,
+  buildBottleneckStageRows,
+  buildChartTypePerformanceRows,
+  buildForecastExplorerFilters,
+  buildForecastExplorerRows,
+  buildForecastFindings,
   buildForecastMetrics,
+  buildOpenAgingRows,
+  buildPackagePerformanceRows,
+  buildSlowestPackageRows,
+  buildTimingRows,
+  buildWorkflowFunnel,
   buildSystemMetrics,
   buildUserMetrics,
   contributionMixRows,
+  formatComparisonDelta,
   getAllowedAnalyticsSections,
   publishedChartRows,
 } from './analyticsWorkspaceModel';
@@ -194,5 +206,301 @@ describe('analytics workspace model', () => {
 
     expect(result.map((row) => row.date)).toEqual(['2026-06-28', '2026-06-29', '2026-06-30']);
     expect(result.at(-1)).toMatchObject({ completed: 1 });
+  });
+
+  it('builds workflow funnel values without inventing unavailable stages', () => {
+    expect(
+      buildWorkflowFunnel({
+        summary: {
+          submitted: 9,
+          reviewStarted: 8,
+          revisionRequests: 1,
+          approvedEvents: 7,
+          publishedEvents: 5,
+        },
+      })
+    ).toEqual([
+      { stage: 'Submitted', value: 9 },
+      { stage: 'Review started', value: 8 },
+      { stage: 'Revision requested', value: 1 },
+      { stage: 'Approved', value: 7 },
+      { stage: 'Published', value: 5 },
+    ]);
+  });
+
+  it('normalizes timing analysis into table-ready rows with sample evidence', () => {
+    expect(
+      buildTimingRows({
+        preparation: { medianHours: 2.1, sampleSize: 8 },
+        reviewWait: { medianHours: 0.7, sampleSize: 9 },
+      })
+    ).toMatchObject([
+      {
+        stage: 'Preparation',
+        medianHours: 2.1,
+        p75Hours: null,
+        p90Hours: null,
+        sampleSize: 8,
+      },
+      {
+        stage: 'Review wait',
+        medianHours: 0.7,
+        p75Hours: null,
+        p90Hours: null,
+        sampleSize: 9,
+      },
+      {
+        stage: 'Review duration',
+        medianHours: null,
+        p75Hours: null,
+        p90Hours: null,
+        sampleSize: 0,
+      },
+      {
+        stage: 'Publication delay',
+        medianHours: null,
+        p75Hours: null,
+        p90Hours: null,
+        sampleSize: 0,
+      },
+    ]);
+  });
+
+  it('normalizes package rows without adding identity or synthetic timing values', () => {
+    expect(
+      buildPackagePerformanceRows([
+        {
+          id: 'pkg-1',
+          name: 'Forecast Package',
+          status: 'Published',
+          reviewDurationHours: '1.4',
+        },
+        {
+          id: 'pkg-2',
+          status: 'Submitted',
+          reviewDurationHours: null,
+        },
+      ])
+    ).toEqual([
+      {
+        id: 'pkg-1',
+        forecastDate: undefined,
+        name: 'Forecast Package',
+        status: 'Published',
+        submittedAt: null,
+        reviewedAt: null,
+        publishedAt: null,
+        reviewDurationHours: 1.4,
+        revisionCycles: 0,
+      },
+      {
+        id: 'pkg-2',
+        forecastDate: undefined,
+        name: 'Forecast package',
+        status: 'Submitted',
+        submittedAt: null,
+        reviewedAt: null,
+        publishedAt: null,
+        reviewDurationHours: null,
+        revisionCycles: 0,
+      },
+    ]);
+  });
+
+  it('normalizes chart type and forecast horizon analytics without inventing missing timing', () => {
+    expect(
+      buildChartTypePerformanceRows([
+        {
+          chartType: 'forecast_24h',
+          label: '24h Wave Forecast',
+          horizonHours: 24,
+          projects: 8,
+          submitted: 8,
+          revisionRequests: 2,
+          published: 7,
+          revisionRate: 25,
+          firstPassPublicationRate: 71.4,
+          timing: {
+            reviewDuration: { medianHours: 1.2, p90Hours: 3.4 },
+            submissionToPublication: { medianHours: 4.5, p90Hours: 8.1, sampleSize: 7 },
+          },
+        },
+      ])
+    ).toEqual([
+      {
+        chartType: 'forecast_24h',
+        label: '24h Wave Forecast',
+        horizonHours: 24,
+        projects: 8,
+        submitted: 8,
+        revisionRequests: 2,
+        published: 7,
+        revisionRate: 25,
+        firstPassPublicationRate: 71.4,
+        reviewMedianHours: 1.2,
+        reviewP90Hours: 3.4,
+        turnaroundMedianHours: 4.5,
+        turnaroundP90Hours: 8.1,
+        sampleSize: 7,
+      },
+    ]);
+  });
+
+  it('normalizes bottleneck analysis for dense operational tables', () => {
+    const bottlenecks = {
+      stages: [
+        {
+          key: 'reviewWait',
+          label: 'Review wait',
+          medianHours: 1.2,
+          p75Hours: 2.4,
+          p90Hours: 4.8,
+          sampleSize: 12,
+        },
+      ],
+      turnaround: {
+        slowestPackages: [
+          {
+            id: 'pkg-9',
+            name: 'Forecast 9',
+            forecastDate: '2026-09-09T00:00:00.000Z',
+            status: 'Published',
+            turnaroundHours: 9.6,
+            revisionCycles: 2,
+          },
+        ],
+      },
+      openAging: {
+        buckets: {
+          under_6h: 1,
+          '6_to_12h': 2,
+          '12_to_24h': 3,
+          '24_to_48h': 4,
+          '48h_plus': 5,
+        },
+        oldest: [
+          {
+            id: 'pkg-open',
+            name: 'Open Forecast',
+            status: 'Under Review',
+            statusStartedAt: '2026-09-23T00:00:00.000Z',
+            ageHours: 8.5,
+          },
+        ],
+      },
+    };
+
+    expect(buildBottleneckStageRows(bottlenecks)).toEqual([
+      {
+        label: 'Review wait',
+        medianHours: 1.2,
+        p75Hours: 2.4,
+        p90Hours: 4.8,
+        sampleSize: 12,
+      },
+    ]);
+    expect(buildAgingDistributionRows(bottlenecks.openAging)).toEqual([
+      { label: '< 6h', value: 1 },
+      { label: '6–12h', value: 2 },
+      { label: '12–24h', value: 3 },
+      { label: '24–48h', value: 4 },
+      { label: '48h+', value: 5 },
+    ]);
+    expect(buildSlowestPackageRows(bottlenecks)[0]).toMatchObject({
+      id: 'pkg-9',
+      turnaroundHours: 9.6,
+      revisionCycles: 2,
+    });
+    expect(buildOpenAgingRows(bottlenecks)[0]).toMatchObject({
+      id: 'pkg-open',
+      status: 'Under Review',
+      ageHours: 8.5,
+    });
+  });
+
+  it('builds deterministic findings from persisted analytics evidence', () => {
+    const findings = buildForecastFindings({
+      comparison: { published: { percentChange: -20 } },
+      efficiency: { firstPassApprovalRate: 80 },
+      bottlenecks: {
+        slowestStage: { label: 'Review wait', p90Hours: 4.2, sampleSize: 10 },
+        openAging: { buckets: { '24_to_48h': 2, '48h_plus': 1 } },
+      },
+      chartTypes: [
+        {
+          chartType: 'forecast_24h',
+          label: '24h Wave Forecast',
+          horizonHours: 24,
+          submitted: 10,
+          revisionRate: 30,
+          timing: {},
+        },
+        {
+          chartType: 'forecast_48h',
+          label: '48h Wave Forecast',
+          horizonHours: 48,
+          submitted: 10,
+          revisionRate: 10,
+          timing: {},
+        },
+      ],
+    });
+
+    expect(findings.map((item) => item.id)).toEqual([
+      'slowest-stage',
+      'highest-revision-chart',
+      'aged-open-items',
+      'publication-change',
+      'first-pass',
+    ]);
+    expect(findings[0].detail).toContain('4.2h');
+    expect(findings[1].detail).toContain('24h Wave Forecast');
+    expect(findings[2].detail).toContain('3 open forecast packages');
+  });
+
+  it('builds searchable explorer rows and filter options without identity fields', () => {
+    const rows = buildForecastExplorerRows([
+      {
+        id: 'pkg-1',
+        name: 'Marine Forecast',
+        status: 'Revision Requested',
+        revisionCycles: 2,
+      },
+      {
+        id: 'pkg-2',
+        name: 'Marine Forecast 2',
+        status: 'Published',
+        revisionCycles: 0,
+      },
+    ]);
+
+    expect(rows.map((row) => row.revisionClass)).toEqual(['revised', 'no_revision']);
+    expect(buildForecastExplorerFilters(rows)).toEqual([
+      {
+        key: 'status',
+        label: 'statuses',
+        options: [
+          { value: 'Published', label: 'Published' },
+          { value: 'Revision Requested', label: 'Revision Requested' },
+        ],
+      },
+      {
+        key: 'revisionClass',
+        label: 'revision states',
+        options: [
+          { value: 'revised', label: 'Revised' },
+          { value: 'no_revision', label: 'No revision' },
+        ],
+      },
+    ]);
+  });
+
+  it('formats period comparison deltas without inventing a percentage when baseline is zero', () => {
+    expect(formatComparisonDelta({ percentChange: 12.5 })).toBe('+12.5%');
+    expect(formatComparisonDelta({ percentChange: -4 })).toBe('-4%');
+    expect(formatComparisonDelta({ percentagePointChange: -3.2 }, { percentagePoints: true })).toBe(
+      '-3.2 pp'
+    );
+    expect(formatComparisonDelta({ percentChange: null })).toBeNull();
   });
 });

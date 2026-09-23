@@ -1,5 +1,6 @@
 import { loadAnalyticsOverview } from '../services/analyticsService.js';
 import ForecastPackage from '../models/ForecastPackage.js';
+import Project from '../models/Project.js';
 import User from '../models/User.js';
 import {
   loadPublishedChartViewAnalytics,
@@ -7,6 +8,7 @@ import {
 } from '../services/operationalAnalyticsService.js';
 import { formatManilaDateKey } from '../services/publishedChartViewService.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
+import { parseForecastAnalyticsFilters } from '../utils/forecastAnalyticsFilters.js';
 import {
   buildUserAnalyticsExportRows,
   USER_ANALYTICS_EXPORT_HEADERS,
@@ -61,11 +63,17 @@ export const exportAnalyticsOverview = async (req, res, next) => {
 export const exportForecastAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
+    const filters = parseForecastAnalyticsFilters(req.query);
+    const useChartScope = Boolean(filters.chartType);
+    const Model = useChartScope ? Project : ForecastPackage;
     const match = {
-      status: { $in: ANALYTICS_PACKAGE_STATUSES },
+      ...(useChartScope
+        ? { chartType: filters.chartType }
+        : { status: { $in: ANALYTICS_PACKAGE_STATUSES } }),
+      ...(filters.status ? { status: filters.status } : {}),
       ...buildDateMatch('forecastDate', range),
     };
-    const rows = await ForecastPackage.aggregate([
+    const rows = await Model.aggregate([
       { $match: match },
       { $sort: { forecastDate: -1, _id: -1 } },
       { $limit: 1000 },
@@ -73,6 +81,7 @@ export const exportForecastAnalytics = async (req, res, next) => {
         $project: {
           _id: 1,
           name: 1,
+          chartType: 1,
           forecastDate: 1,
           status: 1,
           submittedAt: 1,
@@ -86,7 +95,9 @@ export const exportForecastAnalytics = async (req, res, next) => {
       res,
       filenameFor('forecast', range),
       [
-        'package_id',
+        'record_id',
+        'record_type',
+        'chart_type',
         'name',
         'forecast_date',
         'status',
@@ -96,6 +107,8 @@ export const exportForecastAnalytics = async (req, res, next) => {
       ],
       rows.map((row) => [
         row._id,
+        useChartScope ? 'chart' : 'package',
+        row.chartType || '',
         row.name,
         row.forecastDate,
         row.status,
