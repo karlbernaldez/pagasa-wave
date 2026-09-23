@@ -1,10 +1,15 @@
 import { BarChartCard, DistributionCard, TrendCard } from '../AnalyticsVisuals';
+import AnalyticsDataExplorer from '../components/AnalyticsDataExplorer';
+import AnalyticsFindings from '../components/AnalyticsFindings';
 import AnalyticsMetricStrip from '../components/AnalyticsMetricStrip';
 import AnalyticsTable from '../components/AnalyticsTable';
 import {
   buildAgingDistributionRows,
   buildBottleneckStageRows,
   buildChartTypePerformanceRows,
+  buildForecastExplorerFilters,
+  buildForecastExplorerRows,
+  buildForecastFindings,
   buildOpenAgingRows,
   buildPackagePerformanceRows,
   buildSlowestPackageRows,
@@ -34,6 +39,8 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
   }));
   const timingRows = buildTimingRows(payload.timing);
   const packageRows = buildPackagePerformanceRows(payload.packages);
+  const explorerRows = buildForecastExplorerRows(payload.packages);
+  const findings = buildForecastFindings(payload);
   const comparison = payload.comparison || {};
   const efficiency = payload.efficiency || {};
   const bottlenecks = payload.bottlenecks || {};
@@ -42,6 +49,7 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
   const agingDistribution = buildAgingDistributionRows(bottlenecks.openAging);
   const slowestPackages = buildSlowestPackageRows(bottlenecks);
   const openAgingRows = buildOpenAgingRows(bottlenecks);
+  const explorerFilters = buildForecastExplorerFilters(explorerRows);
 
   return (
     <div className="space-y-5">
@@ -90,6 +98,8 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
           },
         ]}
       />
+
+      <AnalyticsFindings findings={findings} isDarkMode={isDarkMode} />
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.75fr)]">
         <TrendCard
@@ -222,32 +232,43 @@ export default function ForecastPerformancePanel({ payload, isDarkMode }) {
         />
       </section>
 
-      <AnalyticsTable
-        title="Package Performance Detail"
-        description="Package-level operational evidence for drill-down and CSV reconciliation."
+      <AnalyticsDataExplorer
+        title="Forecast Package Data Explorer"
+        description="Search, filter, sort, and paginate package-level operational evidence for investigation and reconciliation."
         isDarkMode={isDarkMode}
-        headers={[
-          'Forecast date',
-          'Package',
-          'Status',
-          'Submitted',
-          'Reviewed',
-          'Review time',
-          'Revision cycles',
-          'Published',
+        rows={explorerRows}
+        searchFields={['name', 'status']}
+        filters={explorerFilters}
+        columns={[
+          {
+            key: 'forecastDate',
+            label: 'Forecast date',
+            render: (value) => formatDate(value),
+          },
+          { key: 'name', label: 'Package' },
+          { key: 'status', label: 'Status' },
+          {
+            key: 'submittedAt',
+            label: 'Submitted',
+            render: (value) => formatDateTime(value),
+          },
+          {
+            key: 'reviewedAt',
+            label: 'Reviewed',
+            render: (value) => formatDateTime(value),
+          },
+          {
+            key: 'reviewDurationHours',
+            label: 'Review time',
+            render: (value) => formatHours(value),
+          },
+          { key: 'revisionCycles', label: 'Revision cycles' },
+          {
+            key: 'publishedAt',
+            label: 'Published',
+            render: (value) => formatDateTime(value),
+          },
         ]}
-        rows={packageRows
-          .slice(0, 100)
-          .map((item) => [
-            formatDate(item.forecastDate),
-            item.name,
-            item.status,
-            formatDateTime(item.submittedAt),
-            formatDateTime(item.reviewedAt),
-            formatHours(item.reviewDurationHours),
-            item.revisionCycles,
-            formatDateTime(item.publishedAt),
-          ])}
       />
     </div>
   );
