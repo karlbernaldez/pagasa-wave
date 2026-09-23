@@ -407,3 +407,87 @@ export function buildChartTypePerformanceRows(chartTypes = []) {
     sampleSize: toCount(row.timing?.submissionToPublication?.sampleSize),
   }));
 }
+
+
+export function buildForecastFindings(payload = {}) {
+  const findings = [];
+  const comparison = payload.comparison || {};
+  const bottlenecks = payload.bottlenecks || {};
+  const efficiency = payload.efficiency || {};
+  const chartTypes = buildChartTypePerformanceRows(payload.chartTypes);
+
+  if (bottlenecks.slowestStage?.label && bottlenecks.slowestStage?.p90Hours != null) {
+    findings.push({
+      id: 'slowest-stage',
+      title: 'Primary workflow bottleneck',
+      detail: `${bottlenecks.slowestStage.label} has the highest observed P90 duration at ${bottlenecks.slowestStage.p90Hours}h across ${toCount(bottlenecks.slowestStage.sampleSize)} complete sample(s).`,
+    });
+  }
+
+  const highestRevision = [...chartTypes]
+    .filter((row) => row.submitted > 0 && row.revisionRate != null)
+    .sort((a, b) => b.revisionRate - a.revisionRate)[0];
+  if (highestRevision) {
+    findings.push({
+      id: 'highest-revision-chart',
+      title: 'Highest revision pressure',
+      detail: `${highestRevision.label} has the highest observed revision rate at ${highestRevision.revisionRate}% for the selected period.`,
+    });
+  }
+
+  const oldOpen = toCount(bottlenecks.openAging?.buckets?.['24_to_48h']) +
+    toCount(bottlenecks.openAging?.buckets?.['48h_plus']);
+  if (oldOpen > 0) {
+    findings.push({
+      id: 'aged-open-items',
+      title: 'Open items require attention',
+      detail: `${oldOpen} open package${oldOpen === 1 ? '' : 's'} have remained in their current recorded workflow state for at least 24 hours.`,
+    });
+  }
+
+  const publishedChange = comparison.published?.percentChange;
+  if (publishedChange != null && Number.isFinite(Number(publishedChange)) && Number(publishedChange) !== 0) {
+    const direction = Number(publishedChange) > 0 ? 'increased' : 'decreased';
+    findings.push({
+      id: 'publication-change',
+      title: 'Publication volume changed',
+      detail: `Published forecast events ${direction} by ${Math.abs(Number(publishedChange))}% versus the immediately preceding equal-length period.`,
+    });
+  }
+
+  if (efficiency.firstPassApprovalRate != null) {
+    findings.push({
+      id: 'first-pass',
+      title: 'First-pass workflow efficiency',
+      detail: `${efficiency.firstPassApprovalRate}% of completed forecast packages reached completion without a recorded revision request.`,
+    });
+  }
+
+  return findings.slice(0, 5);
+}
+
+export function buildForecastExplorerRows(packages = []) {
+  return buildPackagePerformanceRows(packages).map((item) => ({
+    ...item,
+    revisionClass: item.revisionCycles > 0 ? 'revised' : 'no_revision',
+  }));
+}
+
+export function buildForecastExplorerFilters(rows = []) {
+  const statuses = [...new Set(rows.map((row) => row.status).filter(Boolean))].sort();
+  return [
+    {
+      key: 'status',
+      label: 'statuses',
+      options: statuses.map((status) => ({ value: status, label: status })),
+    },
+    {
+      key: 'revisionClass',
+      label: 'revision states',
+      options: [
+        { value: 'revised', label: 'Revised' },
+        { value: 'no_revision', label: 'No revision' },
+      ],
+    },
+  ];
+}
