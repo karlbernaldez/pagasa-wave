@@ -60,19 +60,48 @@ test('forecast analytics use audit event timestamps for throughput and median wo
     },
   };
 
-  const result = await loadForecastAnalytics(range, { ForecastPackageModel });
+  const result = await loadForecastAnalytics(range, { ForecastPackageModel, includeComparison: false });
 
   assert.equal(aggregateCall, 2);
   assert.equal(result.summary.submitted, 1);
   assert.equal(result.summary.publishedEvents, 1);
   assert.equal(result.summary.completionRate, 100);
   assert.deepEqual(result.throughput, [
-    { date: '2026-09-10', submitted: 1, completed: 2, returned: 0 },
+    {
+      date: '2026-09-10',
+      submitted: 1,
+      approved: 1,
+      published: 1,
+      completed: 1,
+      returned: 0,
+    },
   ]);
-  assert.deepEqual(result.timing.preparation, { medianHours: 2, sampleSize: 1 });
-  assert.deepEqual(result.timing.reviewWait, { medianHours: 1, sampleSize: 1 });
-  assert.deepEqual(result.timing.reviewDuration, { medianHours: 1, sampleSize: 1 });
-  assert.deepEqual(result.timing.publicationDelay, { medianHours: 1, sampleSize: 1 });
+  assert.deepEqual(result.timing.preparation, {
+    medianHours: 2,
+    p75Hours: 2,
+    p90Hours: 2,
+    sampleSize: 1,
+  });
+  assert.deepEqual(result.timing.reviewWait, {
+    medianHours: 1,
+    p75Hours: 1,
+    p90Hours: 1,
+    sampleSize: 1,
+  });
+  assert.deepEqual(result.timing.reviewDuration, {
+    medianHours: 1,
+    p75Hours: 1,
+    p90Hours: 1,
+    sampleSize: 1,
+  });
+  assert.deepEqual(result.timing.publicationDelay, {
+    medianHours: 1,
+    p75Hours: 1,
+    p90Hours: 1,
+    sampleSize: 1,
+  });
+  assert.equal(result.efficiency.firstPassApprovalRate, 100);
+  assert.equal(result.efficiency.averageRevisionCycles, 0);
 });
 
 test('forecast timing excludes incomplete historical samples instead of manufacturing zero durations', async () => {
@@ -101,10 +130,20 @@ test('forecast timing excludes incomplete historical samples instead of manufact
         : [{ _id: 'Submitted', count: 1 }],
   };
 
-  const result = await loadForecastAnalytics(range, { ForecastPackageModel });
+  const result = await loadForecastAnalytics(range, { ForecastPackageModel, includeComparison: false });
 
-  assert.deepEqual(result.timing.preparation, { medianHours: null, sampleSize: 0 });
-  assert.deepEqual(result.timing.reviewDuration, { medianHours: null, sampleSize: 0 });
+  assert.deepEqual(result.timing.preparation, {
+    medianHours: null,
+    p75Hours: null,
+    p90Hours: null,
+    sampleSize: 0,
+  });
+  assert.deepEqual(result.timing.reviewDuration, {
+    medianHours: null,
+    p75Hours: null,
+    p90Hours: null,
+    sampleSize: 0,
+  });
 });
 
 test('system analytics derive readiness from dynamic pipeline models without hard-coded model names', async () => {
@@ -147,4 +186,119 @@ test('system analytics derive readiness from dynamic pipeline models without har
     result.models.map((model) => model.code),
     ['CUSTOM_A', 'CUSTOM_B']
   );
+});
+
+
+test('forecast analytics compare the selected period with the immediately preceding equal-length period', async () => {
+  const currentStart = new Date(range.startAt).getTime();
+
+  const packagesFor = (isCurrent) =>
+    isCurrent
+      ? [
+          {
+            _id: 'current-1',
+            name: 'Current Published',
+            forecastDate: new Date('2026-09-10T00:00:00.000Z'),
+            status: 'Published',
+            auditLogs: [
+              { action: 'submitted', timestamp: new Date('2026-09-10T01:00:00.000Z') },
+              { action: 'approved', timestamp: new Date('2026-09-10T03:00:00.000Z') },
+              { action: 'published', timestamp: new Date('2026-09-10T04:00:00.000Z') },
+            ],
+          },
+          {
+            _id: 'current-2',
+            name: 'Current Revised',
+            forecastDate: new Date('2026-09-11T00:00:00.000Z'),
+            status: 'Approved',
+            auditLogs: [
+              { action: 'submitted', timestamp: new Date('2026-09-11T01:00:00.000Z') },
+              { action: 'revision_requested', timestamp: new Date('2026-09-11T02:00:00.000Z') },
+              { action: 'approved', timestamp: new Date('2026-09-11T05:00:00.000Z') },
+            ],
+          },
+        ]
+      : [
+          {
+            _id: 'previous-1',
+            name: 'Previous Published',
+            forecastDate: new Date('2026-08-15T00:00:00.000Z'),
+            status: 'Published',
+            auditLogs: [
+              { action: 'submitted', timestamp: new Date('2026-08-15T01:00:00.000Z') },
+              { action: 'approved', timestamp: new Date('2026-08-15T02:00:00.000Z') },
+              { action: 'published', timestamp: new Date('2026-08-15T03:00:00.000Z') },
+            ],
+          },
+        ];
+
+  const ForecastPackageModel = {
+    find(match) {
+      const isCurrent = new Date(match.forecastDate.$gte).getTime() === currentStart;
+      const packages = packagesFor(isCurrent);
+      return {
+        select() {
+          return this;
+        },
+        sort() {
+          return this;
+        },
+        lean: async () => packages,
+      };
+    },
+    async aggregate(pipeline) {
+      const matchStage = pipeline.find((stage) => stage.$match)?.$match;
+      const dateFilter =
+        matchStage?.forecastDate || matchStage?.['auditLogs.timestamp'] || {};
+      const isCurrent = new Date(dateFilter.$gte).getTime() === currentStart;
+      const packages = packagesFor(isCurrent);
+
+      if (pipeline.some((stage) => stage.$facet)) {
+        const byAction = new Map();
+        const byDay = [];
+        for (const forecastPackage of packages) {
+          for (const log of forecastPackage.auditLogs) {
+            byAction.set(log.action, (byAction.get(log.action) || 0) + 1);
+            byDay.push({
+              _id: {
+                date: log.timestamp.toISOString().slice(0, 10),
+                action: log.action,
+              },
+              count: 1,
+            });
+          }
+        }
+        return [
+          {
+            byAction: [...byAction.entries()].map(([_id, count]) => ({ _id, count })),
+            byDay,
+          },
+        ];
+      }
+
+      const counts = new Map();
+      for (const forecastPackage of packages) {
+        counts.set(forecastPackage.status, (counts.get(forecastPackage.status) || 0) + 1);
+      }
+      return [...counts.entries()].map(([_id, count]) => ({ _id, count }));
+    },
+  };
+
+  const result = await loadForecastAnalytics(range, { ForecastPackageModel });
+
+  assert.equal(result.summary.submitted, 2);
+  assert.equal(result.summary.publishedEvents, 1);
+  assert.equal(result.summary.revisionRequests, 1);
+  assert.equal(result.efficiency.firstPassApprovalRate, 50);
+  assert.equal(result.efficiency.packagesWithRevision, 1);
+  assert.equal(result.efficiency.averageRevisionCycles, 1);
+  assert.equal(result.packages.find((item) => item.id === 'current-2').revisionCycles, 1);
+
+  assert.equal(result.comparison.submitted.previous, 1);
+  assert.equal(result.comparison.submitted.percentChange, 100);
+  assert.equal(result.comparison.published.percentChange, 0);
+  assert.equal(result.comparison.revisions.percentChange, null);
+  assert.equal(result.comparison.firstPassApprovalRate.current, 50);
+  assert.equal(result.comparison.firstPassApprovalRate.previous, 100);
+  assert.equal(result.comparison.firstPassApprovalRate.percentagePointChange, -50);
 });
