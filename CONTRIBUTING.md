@@ -29,7 +29,7 @@ Follow the [engineering quality standard](docs/operationalization/development/en
 Important repository rules:
 
 - Backend package manager: npm with `backend/package-lock.json`.
-- Frontend package manager: pinned pnpm with `frontend/pnpm-lock.yaml`.
+- Frontend package manager: npm with `frontend/package-lock.json`.
 - Do not commit secrets or local environment files.
 - Keep business and forecast/time rules in focused, testable modules.
 - Enforce protected operations and workflow rules on the server.
@@ -61,13 +61,13 @@ Frontend:
 
 ```bash
 cd frontend
-corepack enable
-pnpm install --frozen-lockfile
-pnpm test
-pnpm build
+npm ci --legacy-peer-deps
+npm audit --audit-level=high
+npm test
+npm run build
 ```
 
-Run additional targeted integration, end-to-end, security, performance, recovery, or domain-validation checks based on risk. Record commands and results in the PR.
+Pull requests also run dependency review and CodeQL JavaScript/TypeScript analysis. Run additional targeted integration, end-to-end, security, performance, recovery, or domain-validation checks based on risk. Record commands and results in the PR.
 
 Do not change an expected result simply to match incorrect current behavior. Resolve the requirement conflict first.
 
