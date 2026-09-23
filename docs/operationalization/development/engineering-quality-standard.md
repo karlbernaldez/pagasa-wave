@@ -58,7 +58,7 @@ WaveLab code shall be understandable, testable, secure, observable, maintainable
 ## Dependencies and supply chain
 
 - Backend uses npm and `backend/package-lock.json`.
-- Frontend uses the pinned pnpm version and `frontend/pnpm-lock.yaml`; remove/avoid competing generated lockfiles after a reviewed cleanup.
+- Frontend uses npm and `frontend/package-lock.json`; competing frontend lockfiles are prohibited.
 - New dependencies require a documented need, alternatives considered, maintenance status, license, security history, package integrity, size/runtime impact, and removal/rollback plan.
 - Pin/goven CI actions and runtime versions under an approved update policy.
 - Generate an inventory/SBOM for release artifacts when the release process supports it.
@@ -88,7 +88,7 @@ WaveLab code shall be understandable, testable, secure, observable, maintainable
 
 Implementation is tracked in [issue #179](https://github.com/karlbernaldez/pagasa-wave/issues/179) and introduced by [PR #181](https://github.com/karlbernaldez/pagasa-wave/pull/181).
 
-The initial quality-gate implementation checks only new and changed files so the legacy repository can improve without a repository-wide formatting/refactoring change. It provides pinned root ESLint/Prettier tooling, repository hygiene checks, selected high-confidence secret patterns, changed JSON and Markdown-link checks, Git whitespace validation, frontend/backend lockfile policy, and a dedicated pull-request workflow.
+The incremental quality baseline checks new and changed files so the legacy repository can improve without a repository-wide formatting/refactoring change. It provides pinned root ESLint/Prettier tooling, repository hygiene checks, selected high-confidence secret patterns, changed JSON and Markdown-link checks, Git whitespace validation, frontend/backend npm lockfile policy, pull-request dependency review, and CodeQL JavaScript/TypeScript analysis.
 
 The root commands are:
 
@@ -104,8 +104,8 @@ Warnings and known historical debt should be ratcheted deliberately. A passing i
 The current repository tests, build, and incremental quality workflow remain required. Add the remaining controls through separately reviewed work:
 
 1. Full YAML and GitHub issue-form/configuration validation beyond GitHub's workflow parser.
-2. Repository-wide secret scanning and dependency review.
-3. Static application security analysis appropriate to JavaScript/Node.
+2. Repository-wide secret scanning. Dependency review is enforced for pull requests.
+3. Expand static application security analysis as needed beyond the CodeQL JavaScript/TypeScript baseline.
 4. Test coverage reporting focused on critical modules.
 5. API and Socket.IO contract validation.
 6. License and dependency inventory/SBOM.
