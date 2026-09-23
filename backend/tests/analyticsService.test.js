@@ -60,7 +60,11 @@ test('forecast analytics use audit event timestamps for throughput and median wo
     },
   };
 
-  const result = await loadForecastAnalytics(range, { ForecastPackageModel, includeComparison: false });
+  const result = await loadForecastAnalytics(range, {
+    ForecastPackageModel,
+    includeComparison: false,
+    referenceNow: new Date('2026-09-11T12:00:00.000Z'),
+  });
 
   assert.equal(aggregateCall, 2);
   assert.equal(result.summary.submitted, 1);
@@ -102,6 +106,11 @@ test('forecast analytics use audit event timestamps for throughput and median wo
   });
   assert.equal(result.efficiency.firstPassApprovalRate, 100);
   assert.equal(result.efficiency.averageRevisionCycles, 0);
+  assert.equal(result.bottlenecks.slowestStage.key, 'preparation');
+  assert.equal(result.bottlenecks.turnaround.medianHours, 3);
+  assert.equal(result.bottlenecks.turnaround.p90Hours, 3);
+  assert.equal(result.bottlenecks.turnaround.slowestPackages[0].id, 'package-1');
+  assert.equal(result.bottlenecks.openAging.totalOpen, 0);
 });
 
 test('forecast timing excludes incomplete historical samples instead of manufacturing zero durations', async () => {
@@ -130,7 +139,11 @@ test('forecast timing excludes incomplete historical samples instead of manufact
         : [{ _id: 'Submitted', count: 1 }],
   };
 
-  const result = await loadForecastAnalytics(range, { ForecastPackageModel, includeComparison: false });
+  const result = await loadForecastAnalytics(range, {
+    ForecastPackageModel,
+    includeComparison: false,
+    referenceNow: new Date('2026-09-11T14:00:00.000Z'),
+  });
 
   assert.deepEqual(result.timing.preparation, {
     medianHours: null,
@@ -144,6 +157,10 @@ test('forecast timing excludes incomplete historical samples instead of manufact
     p90Hours: null,
     sampleSize: 0,
   });
+  assert.equal(result.bottlenecks.openAging.totalOpen, 1);
+  assert.equal(result.bottlenecks.openAging.buckets['6_to_12h'], 1);
+  assert.equal(result.bottlenecks.openAging.oldest[0].status, 'Submitted');
+  assert.equal(result.bottlenecks.openAging.oldest[0].ageHours, 12);
 });
 
 test('system analytics derive readiness from dynamic pipeline models without hard-coded model names', async () => {
