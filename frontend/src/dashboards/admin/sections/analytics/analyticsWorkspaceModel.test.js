@@ -455,7 +455,7 @@ describe('analytics workspace model', () => {
     ]);
     expect(findings[0].detail).toContain('4.2h');
     expect(findings[1].detail).toContain('24h Wave Forecast');
-    expect(findings[2].detail).toContain('3 open packages');
+    expect(findings[2].detail).toContain('3 open forecast packages');
   });
 
   it('builds searchable explorer rows and filter options without identity fields', () => {
