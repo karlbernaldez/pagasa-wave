@@ -81,7 +81,12 @@ export default function AnalyticsDataExplorer({
             <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
               {title}
             </h3>
-            <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+            <p
+              className={cn(
+                'mt-1 text-xs font-semibold',
+                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              )}
+            >
               {description}
             </p>
           </div>
@@ -131,17 +136,27 @@ export default function AnalyticsDataExplorer({
             ))}
           </div>
         </div>
-        <p className={cn('mt-3 text-[11px] font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>
+        <p
+          className={cn(
+            'mt-3 text-[11px] font-semibold',
+            isDarkMode ? 'text-slate-500' : 'text-slate-400'
+          )}
+        >
           {filteredRows.length} matching record{filteredRows.length === 1 ? '' : 's'}
         </p>
       </div>
 
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-xs">
-          <thead className={isDarkMode ? 'bg-white/[0.04] text-slate-400' : 'bg-slate-50 text-slate-500'}>
+          <thead
+            className={isDarkMode ? 'bg-white/[0.04] text-slate-400' : 'bg-slate-50 text-slate-500'}
+          >
             <tr>
               {columns.map((column) => (
-                <th key={column.key} className="whitespace-nowrap px-4 py-3 font-black uppercase tracking-wide">
+                <th
+                  key={column.key}
+                  className="whitespace-nowrap px-4 py-3 font-black uppercase tracking-wide"
+                >
                   {column.sortable === false ? (
                     column.label
                   ) : (
@@ -169,8 +184,13 @@ export default function AnalyticsDataExplorer({
               visibleRows.map((row, index) => (
                 <tr key={row.id || index}>
                   {columns.map((column) => (
-                    <td key={column.key} className="whitespace-nowrap px-4 py-3 font-semibold tabular-nums">
-                      {column.render ? column.render(row[column.key], row) : row[column.key] ?? '—'}
+                    <td
+                      key={column.key}
+                      className="whitespace-nowrap px-4 py-3 font-semibold tabular-nums"
+                    >
+                      {column.render
+                        ? column.render(row[column.key], row)
+                        : (row[column.key] ?? '—')}
                     </td>
                   ))}
                 </tr>

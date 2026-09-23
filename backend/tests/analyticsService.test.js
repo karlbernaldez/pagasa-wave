@@ -439,7 +439,6 @@ test('forecast analytics compare chart type and horizon performance from project
   assert.equal(forecast36.revisionRate, null);
 });
 
-
 test('server-backed chart filters recalculate forecast analytics on chart-project scope', async () => {
   const ForecastPackageModel = {
     find: () => ({

@@ -15,7 +15,12 @@ export default function AnalyticsFindings({ findings = [], isDarkMode }) {
         <h3 className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>
           Analytical findings
         </h3>
-        <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+        <p
+          className={cn(
+            'mt-1 text-xs font-semibold',
+            isDarkMode ? 'text-slate-400' : 'text-slate-500'
+          )}
+        >
           Deterministic observations derived from the selected reporting data.
         </p>
       </div>
@@ -28,10 +33,17 @@ export default function AnalyticsFindings({ findings = [], isDarkMode }) {
               isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50/70'
             )}
           >
-            <p className={cn('text-xs font-black', isDarkMode ? 'text-slate-100' : 'text-slate-900')}>
+            <p
+              className={cn('text-xs font-black', isDarkMode ? 'text-slate-100' : 'text-slate-900')}
+            >
               {finding.title}
             </p>
-            <p className={cn('mt-1 text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>
+            <p
+              className={cn(
+                'mt-1 text-xs font-semibold leading-5',
+                isDarkMode ? 'text-slate-400' : 'text-slate-600'
+              )}
+            >
               {finding.detail}
             </p>
           </article>

@@ -227,7 +227,13 @@ export default function ForecastPerformancePanel({
           title="Slowest Published Turnaround"
           description={`Submission-to-publication duration for ${analysisUnitLabel}s with complete persisted timestamps.`}
           isDarkMode={isDarkMode}
-          headers={['Forecast date', analysisUnit === 'chart' ? 'Chart project' : 'Package', 'Status', 'Turnaround', 'Revision cycles']}
+          headers={[
+            'Forecast date',
+            analysisUnit === 'chart' ? 'Chart project' : 'Package',
+            'Status',
+            'Turnaround',
+            'Revision cycles',
+          ]}
           rows={slowestPackages.map((item) => [
             formatDate(item.forecastDate),
             item.name,
@@ -240,7 +246,13 @@ export default function ForecastPerformancePanel({
           title="Oldest Current Open Items"
           description={`Age is measured from the latest persisted event that established the ${analysisUnitLabel}'s current open state.`}
           isDarkMode={isDarkMode}
-          headers={['Forecast date', analysisUnit === 'chart' ? 'Chart project' : 'Package', 'Status', 'State since', 'Age']}
+          headers={[
+            'Forecast date',
+            analysisUnit === 'chart' ? 'Chart project' : 'Package',
+            'Status',
+            'State since',
+            'Age',
+          ]}
           rows={openAgingRows.map((item) => [
             formatDate(item.forecastDate),
             item.name,
@@ -252,7 +264,11 @@ export default function ForecastPerformancePanel({
       </section>
 
       <AnalyticsDataExplorer
-        title={analysisUnit === 'chart' ? 'Forecast Chart Data Explorer' : 'Forecast Package Data Explorer'}
+        title={
+          analysisUnit === 'chart'
+            ? 'Forecast Chart Data Explorer'
+            : 'Forecast Package Data Explorer'
+        }
         description={`Search, filter, sort, and paginate ${analysisUnitLabel}-level operational evidence for investigation and reconciliation.`}
         isDarkMode={isDarkMode}
         rows={explorerRows}

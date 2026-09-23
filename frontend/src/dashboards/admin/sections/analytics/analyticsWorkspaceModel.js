@@ -408,7 +408,6 @@ export function buildChartTypePerformanceRows(chartTypes = []) {
   }));
 }
 
-
 export function buildForecastFindings(payload = {}) {
   const findings = [];
   const comparison = payload.comparison || {};
@@ -436,7 +435,8 @@ export function buildForecastFindings(payload = {}) {
     });
   }
 
-  const oldOpen = toCount(bottlenecks.openAging?.buckets?.['24_to_48h']) +
+  const oldOpen =
+    toCount(bottlenecks.openAging?.buckets?.['24_to_48h']) +
     toCount(bottlenecks.openAging?.buckets?.['48h_plus']);
   if (oldOpen > 0) {
     findings.push({
@@ -447,7 +447,11 @@ export function buildForecastFindings(payload = {}) {
   }
 
   const publishedChange = comparison.published?.percentChange;
-  if (publishedChange != null && Number.isFinite(Number(publishedChange)) && Number(publishedChange) !== 0) {
+  if (
+    publishedChange != null &&
+    Number.isFinite(Number(publishedChange)) &&
+    Number(publishedChange) !== 0
+  ) {
     const direction = Number(publishedChange) > 0 ? 'increased' : 'decreased';
     findings.push({
       id: 'publication-change',

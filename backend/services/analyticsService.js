@@ -299,7 +299,6 @@ const buildThroughput = (rows = []) => {
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 };
 
-
 const buildRecordEventAnalytics = (records = [], range) => {
   const actionCounts = {};
   const groupedRows = [];
@@ -451,10 +450,7 @@ const serializeChartTypeAccumulator = (row) => ({
   },
 });
 
-async function loadChartTypeAnalytics(
-  range,
-  { ProjectModel = Project, match = {} } = {}
-) {
+async function loadChartTypeAnalytics(range, { ProjectModel = Project, match = {} } = {}) {
   const projects = await ProjectModel.find({
     chartType: { $in: [...chartDefinitionByType.keys()] },
     ...buildDateMatch('forecastDate', range),
@@ -757,11 +753,7 @@ async function loadChartScopedForecastAnalyticsPeriod(
   };
 }
 
-async function loadForecastAnalyticsPeriod(
-  range,
-  filters,
-  dependencies = {}
-) {
+async function loadForecastAnalyticsPeriod(range, filters, dependencies = {}) {
   return filters.chartType
     ? loadChartScopedForecastAnalyticsPeriod(range, filters, dependencies)
     : loadPackageScopedForecastAnalyticsPeriod(range, filters, dependencies);
