@@ -79,7 +79,7 @@ test('forecast analytics use audit event timestamps for throughput and median wo
     referenceNow: new Date('2026-09-11T12:00:00.000Z'),
   });
 
-  assert.equal(aggregateCall, 2);
+  assert.equal(aggregateCall, 0);
   assert.equal(result.summary.submitted, 1);
   assert.equal(result.summary.publishedEvents, 1);
   assert.equal(result.summary.completionRate, 100);
@@ -437,4 +437,142 @@ test('forecast analytics compare chart type and horizon performance from project
 
   assert.equal(forecast36.projects, 0);
   assert.equal(forecast36.revisionRate, null);
+});
+
+
+test('server-backed chart filters recalculate forecast analytics on chart-project scope', async () => {
+  const ForecastPackageModel = {
+    find: () => ({
+      select() {
+        return this;
+      },
+      sort() {
+        return this;
+      },
+      lean: async () => {
+        throw new Error('package scope must not be queried for a chart filter');
+      },
+    }),
+  };
+
+  let capturedMatch = null;
+  const ProjectModel = {
+    find(match) {
+      capturedMatch = match;
+      return {
+        select() {
+          return this;
+        },
+        sort() {
+          return this;
+        },
+        lean: async () => [
+          {
+            _id: 'chart-24-1',
+            name: '24h Forecast A',
+            chartType: 'forecast_24h',
+            forecastDate: new Date('2026-09-12T00:00:00.000Z'),
+            status: 'Published',
+            auditLogs: [
+              { action: 'submitted', timestamp: new Date('2026-09-12T01:00:00.000Z') },
+              { action: 'review_started', timestamp: new Date('2026-09-12T02:00:00.000Z') },
+              { action: 'revision_requested', timestamp: new Date('2026-09-12T03:00:00.000Z') },
+              { action: 'approved', timestamp: new Date('2026-09-12T05:00:00.000Z') },
+              { action: 'published', timestamp: new Date('2026-09-12T06:00:00.000Z') },
+            ],
+          },
+        ],
+      };
+    },
+  };
+
+  const result = await loadForecastAnalytics(range, {
+    ForecastPackageModel,
+    ProjectModel,
+    includeComparison: false,
+    filters: {
+      status: 'Published',
+      chartType: 'forecast_24h',
+      horizonHours: 24,
+      unit: 'chart',
+    },
+  });
+
+  assert.equal(capturedMatch.chartType, 'forecast_24h');
+  assert.equal(capturedMatch.status, 'Published');
+  assert.equal(result.filters.unit, 'chart');
+  assert.equal(result.filters.chartType, 'forecast_24h');
+  assert.equal(result.total, 1);
+  assert.equal(result.summary.submitted, 1);
+  assert.equal(result.summary.publishedEvents, 1);
+  assert.equal(result.summary.revisionRequests, 1);
+  assert.equal(result.efficiency.firstPassApprovalRate, 0);
+  assert.equal(result.packages[0].id, 'chart-24-1');
+  assert.equal(result.packages[0].revisionCycles, 1);
+  assert.equal(result.chartTypes.find((row) => row.chartType === 'forecast_24h').projects, 1);
+});
+
+test('server-backed package status filter scopes package metrics and linked chart breakdown', async () => {
+  let packageMatch = null;
+  const ForecastPackageModel = {
+    find(match) {
+      packageMatch = match;
+      return {
+        select() {
+          return this;
+        },
+        sort() {
+          return this;
+        },
+        lean: async () => [
+          {
+            _id: 'package-published',
+            name: 'Published package',
+            forecastDate: new Date('2026-09-13T00:00:00.000Z'),
+            status: 'Published',
+            auditLogs: [
+              { action: 'submitted', timestamp: new Date('2026-09-13T01:00:00.000Z') },
+              { action: 'approved', timestamp: new Date('2026-09-13T02:00:00.000Z') },
+              { action: 'published', timestamp: new Date('2026-09-13T03:00:00.000Z') },
+            ],
+          },
+        ],
+      };
+    },
+  };
+
+  let projectMatch = null;
+  const ProjectModel = {
+    find(match) {
+      projectMatch = match;
+      return {
+        select() {
+          return this;
+        },
+        sort() {
+          return this;
+        },
+        lean: async () => [],
+      };
+    },
+  };
+
+  const result = await loadForecastAnalytics(range, {
+    ForecastPackageModel,
+    ProjectModel,
+    includeComparison: false,
+    filters: {
+      status: 'Published',
+      chartType: null,
+      horizonHours: null,
+      unit: 'package',
+    },
+  });
+
+  assert.equal(packageMatch.status, 'Published');
+  assert.deepEqual(projectMatch.forecastPackage.$in, ['package-published']);
+  assert.equal(result.filters.unit, 'package');
+  assert.equal(result.total, 1);
+  assert.equal(result.summary.published, 1);
+  assert.equal(result.summary.publishedEvents, 1);
 });
