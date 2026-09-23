@@ -276,19 +276,12 @@ export function entriesByCount(counts = {}) {
 
 export function buildWorkflowFunnel(payload = {}) {
   const summary = payload.summary || {};
-  const statusCounts = payload.statusCounts || {};
-  const submitted = toCount(summary.submitted);
-  const inReview = toCount(statusCounts['Under Review']);
-  const revisionRequested = toCount(statusCounts['Revision Requested']);
-  const approved = toCount(statusCounts.Approved) + toCount(statusCounts.Published);
-  const published = toCount(summary.publishedEvents) || toCount(statusCounts.Published);
-
   return [
-    { stage: 'Submitted', value: submitted },
-    { stage: 'Under Review', value: inReview },
-    { stage: 'Revision Requested', value: revisionRequested },
-    { stage: 'Approved', value: approved },
-    { stage: 'Published', value: published },
+    { stage: 'Submitted', value: toCount(summary.submitted) },
+    { stage: 'Review started', value: toCount(summary.reviewStarted) },
+    { stage: 'Revision requested', value: toCount(summary.revisionRequests) },
+    { stage: 'Approved', value: toCount(summary.approvedEvents) },
+    { stage: 'Published', value: toCount(summary.publishedEvents) },
   ];
 }
 
