@@ -13,7 +13,7 @@ const readCookie = (name) => {
   return match ? decodeURIComponent(match.slice(prefix.length)) : '';
 };
 
-const withCsrfHeader = (headers = {}, method = 'GET') => {
+export const withCsrfHeader = (headers = {}, method = 'GET') => {
   const normalizedMethod = String(method || 'GET').toUpperCase();
   if (['GET', 'HEAD', 'OPTIONS'].includes(normalizedMethod)) return headers;
   const token = readCookie(CSRF_COOKIE_NAME);
@@ -129,7 +129,6 @@ export const resendVerificationEmail = async (email) => {
       headers: withCsrfHeader({ 'Content-Type': 'application/json' }, 'POST'),
       body: JSON.stringify({ email }),
       credentials: 'include',
-      headers: withCsrfHeader({}, 'POST'),
     });
   } catch {
     throw new Error('Network error. Please check your connection and try again.');
@@ -305,6 +304,7 @@ export const logoutUser = async () => {
     const response = await fetch(`${AUTH_API_BASE_URL}/logout`, {
       method: 'POST',
       credentials: 'include',
+      headers: withCsrfHeader({}, 'POST'),
     });
 
     clearLegacyClientAuthStorage();
