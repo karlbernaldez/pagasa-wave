@@ -156,7 +156,6 @@ test('analytics export is additive and never widens subsection visibility', () =
   assert.equal(forecastExport.has('analytics.view'), false);
 });
 
-
 test('calendar mutation permissions imply calendar view without sibling escalation', () => {
   const creator = new Set(normalizePermissionKeys(['calendar.create']));
   assert.ok(creator.has('calendar.create'));
