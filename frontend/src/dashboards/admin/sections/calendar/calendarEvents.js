@@ -190,7 +190,7 @@ export function buildPackageEvents(packages = []) {
       events.push(
         workflowEvent(
           forecastPackage,
-          'Returned',
+          'returned',
           forecastPackage.reviewedAt,
           'Returned',
           `Revision requested · ${title}`,
@@ -275,6 +275,7 @@ export function buildPackageEvents(packages = []) {
 export function normalizeManualEvents(events = []) {
   return events.map((event) => ({
     ...event,
+    type: event.type ? event.type.charAt(0).toUpperCase() + event.type.slice(1) : 'Other',
     date: getDateKey(event.startsAt),
     source: 'manual',
     timing: 'scheduled',
