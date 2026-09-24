@@ -135,7 +135,8 @@ export function buildPackageEvents(packages = []) {
   return packages.flatMap((forecastPackage) => {
     const id = forecastPackage.id || forecastPackage._id;
     const dateKey =
-      forecastPackage.dateKey || getDateKey(forecastPackage.forecastDate || forecastPackage.createdAt);
+      forecastPackage.dateKey ||
+      getDateKey(forecastPackage.forecastDate || forecastPackage.createdAt);
     const title = packageTitle(forecastPackage);
     const packageHref = id ? `/forecasts/${id}` : '/forecasts';
     const reviewHref = '/forecasts/review';
