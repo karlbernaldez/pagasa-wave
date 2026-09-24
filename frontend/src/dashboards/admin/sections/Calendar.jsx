@@ -33,7 +33,6 @@ import {
 } from '@/features/projects/utils/forecastPackageGrouping';
 import {
   buildPackageEvents,
-  buildScheduleEvents,
   normalizeManualEvents,
   sortCalendarEvents,
 } from './calendar/calendarEvents';
@@ -46,7 +45,6 @@ const FILTERS = [
   'Review',
   'Publication',
   'Returned',
-  'Deadline',
   'Meeting',
   'Maintenance',
 ];
@@ -77,12 +75,6 @@ const TYPE_META = {
     dot: 'bg-rose-500',
     light: 'border-rose-200 bg-rose-50/80 text-rose-700',
     dark: 'border-rose-300/20 bg-rose-400/10 text-rose-200',
-  },
-  Deadline: {
-    icon: Clock3,
-    dot: 'bg-orange-500',
-    light: 'border-orange-200 bg-orange-50/80 text-orange-700',
-    dark: 'border-orange-300/20 bg-orange-400/10 text-orange-200',
   },
   Maintenance: {
     icon: RefreshCw,
@@ -342,17 +334,13 @@ export default function CalendarSection({ isDarkMode }) {
   }, [loadCalendar]);
 
   const packageEvents = useMemo(() => buildPackageEvents(state.packages), [state.packages]);
-  const scheduleEvents = useMemo(
-    () => buildScheduleEvents(monthWindow.start, monthWindow.end, state.operations),
-    [monthWindow.end, monthWindow.start, state.operations]
-  );
   const manualEvents = useMemo(
     () => normalizeManualEvents(state.manualEvents),
     [state.manualEvents]
   );
   const allEvents = useMemo(
-    () => sortCalendarEvents([...packageEvents, ...scheduleEvents, ...manualEvents]),
-    [manualEvents, packageEvents, scheduleEvents]
+    () => sortCalendarEvents([...packageEvents, ...manualEvents]),
+    [manualEvents, packageEvents]
   );
   const visibleEvents = useMemo(
     () =>
@@ -494,7 +482,7 @@ export default function CalendarSection({ isDarkMode }) {
             />
             <p className={cn('text-sm font-black', text)}>Loading operations calendar</p>
             <p className={cn('text-xs font-semibold', muted)}>
-              Loading schedule targets, Forecast Package history, and shared operational events.
+              Loading Forecast Package history, shared operational events, and Operations settings.
             </p>
           </div>
         </div>
@@ -521,9 +509,9 @@ export default function CalendarSection({ isDarkMode }) {
               Daily package schedule, decisions, and publication readiness
             </h1>
             <p className={cn('mt-2 max-w-3xl text-sm font-semibold leading-6', muted)}>
-              Scheduled milestones come from Forecast Operations settings. Actual workflow events
-              come from persisted Forecast Package timestamps, while shared operational events are
-              visible to every authorized user.
+              Calendar entries focus on actual Forecast Package workflow history and shared
+              date-specific operational events. The recurring daily operating schedule stays visible
+              as a compact reference instead of repeating on every calendar day.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -548,6 +536,25 @@ export default function CalendarSection({ isDarkMode }) {
               <RefreshCw size={15} className={state.refreshing ? 'animate-spin' : ''} /> Refresh
             </button>
           </div>
+        </div>
+
+        <div className={cn('mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border px-4 py-3', softPanel)}>
+          <span className={cn('text-xs font-black uppercase tracking-wide', muted)}>
+            Daily Operations
+          </span>
+          <span className={cn('text-xs font-semibold', text)}>
+            Open {state.operations.packageOpenTime || DEFAULT_OPERATIONS.packageOpenTime}
+          </span>
+          <span className={cn('text-xs font-semibold', text)}>
+            Submit {state.operations.packageSubmissionDeadline || DEFAULT_OPERATIONS.packageSubmissionDeadline}
+          </span>
+          <span className={cn('text-xs font-semibold', text)}>
+            Publish {state.operations.packagePublishTarget || DEFAULT_OPERATIONS.packagePublishTarget}
+          </span>
+          <span className={cn('text-xs font-semibold', text)}>
+            Cutoff {state.operations.noPublicationCutoff || DEFAULT_OPERATIONS.noPublicationCutoff}
+          </span>
+          <span className={cn('text-[11px] font-semibold', muted)}>Asia/Manila</span>
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)]">
@@ -587,8 +594,8 @@ export default function CalendarSection({ isDarkMode }) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <MiniStat label="Scheduled" value={monthStats.scheduled} isDarkMode={isDarkMode} />
-            <MiniStat label="Actual" value={monthStats.actual} isDarkMode={isDarkMode} />
+            <MiniStat label="Shared events" value={monthStats.scheduled} isDarkMode={isDarkMode} />
+            <MiniStat label="Workflow events" value={monthStats.actual} isDarkMode={isDarkMode} />
             <MiniStat label="Reviews" value={monthStats.reviews} isDarkMode={isDarkMode} />
             <MiniStat
               label="Publications"
@@ -744,7 +751,7 @@ export default function CalendarSection({ isDarkMode }) {
 
           <Panel
             title="Upcoming Operations"
-            description="Next scheduled and actual operational items."
+            description="Next shared operational events and actual Forecast Package milestones."
             isDarkMode={isDarkMode}
           >
             <div className="space-y-2">
