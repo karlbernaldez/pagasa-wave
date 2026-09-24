@@ -14,6 +14,7 @@ EXPECTED_BRANCH="${EXPECTED_BRANCH:-main}"
 BACKEND_URL="${BACKEND_URL:-http://127.0.0.1:5000/status}"
 FRONTEND_URL="${FRONTEND_URL:-http://127.0.0.1}"
 REQUIRE_PREFLIGHT="${REQUIRE_PREFLIGHT:-1}"
+PIPELINE_HISTORY_ROOT="${PIPELINE_HISTORY_ROOT:-$APP_ROOT/wavetiles/.normalized-product-stage/.history}"
 
 wavelab_require_root
 for command_name in git curl systemctl journalctl node; do
