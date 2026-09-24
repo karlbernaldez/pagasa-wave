@@ -207,10 +207,7 @@ export const exportSystemAnalytics = async (req, res, next) => {
       ['history.median_duration_seconds', historySummary.medianDurationSeconds ?? ''],
       ['history.p90_duration_seconds', historySummary.p90DurationSeconds ?? ''],
       ['history.duration_sample_size', historySummary.durationSampleSize ?? 0],
-      ...payload.models.map((model) => [
-        `current.model.${model.code}.state`,
-        model.state || '',
-      ]),
+      ...payload.models.map((model) => [`current.model.${model.code}.state`, model.state || '']),
       ...payload.models.map((model) => [
         `current.model.${model.code}.frame_coverage`,
         `${model.frameCount || 0}/${model.expectedFrameCount || 0}`,
@@ -221,10 +218,7 @@ export const exportSystemAnalytics = async (req, res, next) => {
         [`history.model.${model.model}.failed`, model.failed],
         [`history.model.${model.model}.retry_attempts`, model.retryAttempts],
         [`history.model.${model.model}.success_rate_percent`, model.successRate ?? ''],
-        [
-          `history.model.${model.model}.median_duration_seconds`,
-          model.medianDurationSeconds ?? '',
-        ],
+        [`history.model.${model.model}.median_duration_seconds`, model.medianDurationSeconds ?? ''],
         [`history.model.${model.model}.p90_duration_seconds`, model.p90DurationSeconds ?? ''],
       ]),
       ...(history.trend || []).flatMap((point) => [
