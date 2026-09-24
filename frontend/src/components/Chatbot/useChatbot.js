@@ -1,3 +1,4 @@
+import { withCsrfHeader } from '@/api/auth';
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 const API_BASE = `${import.meta.env.VITE_API_URL || ''}`;
@@ -141,7 +142,7 @@ export const useChatbot = () => {
       try {
         const response = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: withCsrfHeader({ 'Content-Type': 'application/json' }, 'POST'),
           credentials: 'include',
           signal: abortRef.current.signal,
           body: JSON.stringify({
