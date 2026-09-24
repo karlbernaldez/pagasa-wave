@@ -1,7 +1,9 @@
+import { fetchWithAuth } from './auth';
+
 const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/notifications`;
 
 const apiFetch = async (url, { signal, ...options } = {}) => {
-  const res = await fetch(url, {
+  const res = await fetchWithAuth(url, {
     credentials: 'include',
     signal,
     ...options,
