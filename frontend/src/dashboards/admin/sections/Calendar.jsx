@@ -243,7 +243,9 @@ export default function CalendarSection({ isDarkMode }) {
   );
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [activeFilter, setActiveFilter] = useState('All');
-  const [timingFilter, setTimingFilter] = useState('All');
+  const [sourceFilter, setSourceFilter] = useState('All');
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [formError, setFormError] = useState('');
   const [permissions, setPermissions] = useState([]);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({
@@ -255,6 +257,8 @@ export default function CalendarSection({ isDarkMode }) {
     time: '09:00',
     endTime: '10:00',
     allDay: false,
+    location: '',
+    description: '',
   });
   const [state, setState] = useState({
     loading: true,
@@ -346,11 +350,13 @@ export default function CalendarSection({ isDarkMode }) {
     () =>
       allEvents.filter((event) => {
         const visibleByType = isEventVisible(event, activeFilter);
-        const visibleByTiming =
-          timingFilter === 'All' || event.timing === timingFilter.toLowerCase();
-        return visibleByType && visibleByTiming;
+        const visibleBySource =
+          sourceFilter === 'All' ||
+          (sourceFilter === 'Workflow' && event.source === 'workflow') ||
+          (sourceFilter === 'Shared' && event.source === 'manual');
+        return visibleByType && visibleBySource;
       }),
-    [activeFilter, allEvents, timingFilter]
+    [activeFilter, allEvents, sourceFilter]
   );
   const calendarDays = useMemo(
     () => buildCalendarDays(monthDate, visibleEvents),
@@ -361,7 +367,7 @@ export default function CalendarSection({ isDarkMode }) {
     [selectedDate, visibleEvents]
   );
   const upcomingEvents = useMemo(
-    () => visibleEvents.filter((event) => event.date >= todayIso).slice(0, 10),
+    () => visibleEvents.filter((event) => event.date >= todayIso).slice(0, 6),
     [todayIso, visibleEvents]
   );
   const todayPackage = useMemo(() => state.packages.find(isDailyForecastPackage), [state.packages]);
@@ -378,7 +384,25 @@ export default function CalendarSection({ isDarkMode }) {
 
   const saveSharedEvent = async (event) => {
     event.preventDefault();
-    if (!draft.title.trim() || !draft.date || !draft.time) return;
+    setFormError('');
+    if (!draft.title.trim()) {
+      setFormError('Enter an event title.');
+      return;
+    }
+    if (!draft.date) {
+      setFormError('Select an event date.');
+      return;
+    }
+    if (!draft.allDay) {
+      if (!draft.time || !draft.endTime) {
+        setFormError('Select both a start and end time.');
+        return;
+      }
+      if (draft.endTime < draft.time) {
+        setFormError('End time must be after the start time.');
+        return;
+      }
+    }
     setSaving(true);
     try {
       const payload = {
@@ -392,6 +416,8 @@ export default function CalendarSection({ isDarkMode }) {
           : `${draft.date}T${draft.endTime}:00+08:00`,
         allDay: draft.allDay,
         ownerLabel: draft.owner.trim(),
+        location: draft.location.trim(),
+        description: draft.description.trim(),
       };
       if (draft.id) await updateCalendarEvent(draft.id, payload);
       else await createCalendarEvent(payload);
@@ -404,7 +430,10 @@ export default function CalendarSection({ isDarkMode }) {
         time: '09:00',
         endTime: '10:00',
         allDay: false,
+        location: '',
+        description: '',
       });
+      setIsComposerOpen(false);
       await loadCalendar({ silent: true });
     } catch (error) {
       setState((current) => ({
@@ -435,7 +464,11 @@ export default function CalendarSection({ isDarkMode }) {
       time: formatEventTime(event.startsAt, '09:00'),
       endTime: formatEventTime(event.endsAt, '10:00'),
       allDay: Boolean(event.allDay),
+      location: event.location || '',
+      description: event.description || '',
     });
+    setFormError('');
+    setIsComposerOpen(true);
   };
 
   const removeSharedEvent = async (id) => {
@@ -466,6 +499,28 @@ export default function CalendarSection({ isDarkMode }) {
 
   const openEvent = (event) => {
     if (event.href) navigate(event.href);
+  };
+
+  const openComposer = () => {
+    setDraft({
+      id: null,
+      title: '',
+      owner: 'WaveLab Team',
+      type: 'Meeting',
+      date: selectedDate || todayIso,
+      time: '09:00',
+      endTime: '10:00',
+      allDay: false,
+      location: '',
+      description: '',
+    });
+    setFormError('');
+    setIsComposerOpen(true);
+  };
+
+  const closeComposer = () => {
+    setFormError('');
+    setIsComposerOpen(false);
   };
   if (state.loading) {
     return (
