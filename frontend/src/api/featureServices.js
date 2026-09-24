@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { fetchWithAuth, withCsrfHeader } from './auth';
 import { showSessionModal } from '@/components/ui/modals/SessionModal';
 import {
   publishAnnotationHistoryCommand,
@@ -46,7 +47,7 @@ async function throwFeatureRequestError(response, fallbackMessage) {
 
 export const deleteFeature = async (sourceId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/${sourceId}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/${sourceId}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -66,7 +67,7 @@ export const deleteFeature = async (sourceId) => {
 };
 
 export const requestFeatureChange = async (sourceId, payload) => {
-  const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/request-change`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/request-change`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -81,7 +82,7 @@ export const requestFeatureChange = async (sourceId, payload) => {
 };
 
 export const approveFeatureChangeRequest = async (notificationId) => {
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/approve`,
     {
       method: 'POST',
@@ -98,7 +99,7 @@ export const approveFeatureChangeRequest = async (notificationId) => {
 };
 
 export const declineFeatureChangeRequest = async (notificationId) => {
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `${API_BASE_URL}/requests/${encodeURIComponent(notificationId)}/decline`,
     {
       method: 'POST',
@@ -119,7 +120,7 @@ export const createFeature = async (feature, options = {}) => {
     typeof options === 'object' && options !== null && options.suppressHistory === true;
 
   try {
-    const response = await fetch(`${API_BASE_URL}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -166,7 +167,7 @@ export const fetchFeatures = async (projectId) => {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/my-projects/${canonicalProjectId}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/my-projects/${canonicalProjectId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -189,7 +190,7 @@ export const fetchProjectFeatureCollection = async (projectId) => {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/project/${canonicalProjectId}/features`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/admin/project/${canonicalProjectId}/features`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -211,9 +212,12 @@ export async function updateFeatureNameAPI(layerId, newName) {
       `${API_BASE_URL}/${encodeURIComponent(layerId)}`,
       { newName },
       {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: withCsrfHeader(
+          {
+            'Content-Type': 'application/json',
+          },
+          'PATCH'
+        ),
         withCredentials: true,
       }
     );
@@ -234,7 +238,7 @@ export async function updateFeatureNameAPI(layerId, newName) {
 }
 
 export async function updateFeatureCoordinates(sourceId, coordinates) {
-  const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/coordinates`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/coordinates`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -249,7 +253,7 @@ export async function updateFeatureCoordinates(sourceId, coordinates) {
 }
 
 export async function updateFeatureStyle(sourceId, style) {
-  const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/style`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/style`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
