@@ -7,6 +7,7 @@ import {
   updateCalendarEvent,
 } from '../controllers/calendarController.js';
 import protect from '../middleware/authMiddleware.js';
+import { csrfProtection } from '../middleware/csrfMiddleware.js';
 import { requirePermission } from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
@@ -14,8 +15,8 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/', requirePermission('calendar.view'), listCalendarEvents);
-router.post('/', requirePermission('calendar.create'), createCalendarEvent);
-router.patch('/:id', requirePermission('calendar.edit'), updateCalendarEvent);
-router.delete('/:id', requirePermission('calendar.delete'), deleteCalendarEvent);
+router.post('/', csrfProtection, requirePermission('calendar.create'), createCalendarEvent);
+router.patch('/:id', csrfProtection, requirePermission('calendar.edit'), updateCalendarEvent);
+router.delete('/:id', csrfProtection, requirePermission('calendar.delete'), deleteCalendarEvent);
 
 export default router;
