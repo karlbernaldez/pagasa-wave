@@ -11,7 +11,7 @@ export const PERMISSION_CATALOG = Object.freeze({
   analytics_forecast: ['view'],
   analytics_users: ['view'],
   analytics_system: ['view'],
-  calendar: ['view'],
+  calendar: ['view', 'create', 'edit', 'delete'],
   reports: ['view', 'create', 'approve'],
   settings: ['view', 'manage'],
   settings_schedule: ['view', 'manage'],
@@ -70,7 +70,7 @@ export const PERMISSION_CATEGORIES = Object.freeze([
   {
     key: 'calendar',
     label: 'Calendar',
-    description: 'View WaveLab calendar information.',
+    description: 'View and manage shared WaveLab operational calendar information.',
     order: 70,
   },
   {
@@ -316,6 +316,9 @@ const ELEVATED_PERMISSIONS = new Set([
   'roles.edit',
   'roles.delete',
   'analytics.export',
+  'calendar.create',
+  'calendar.edit',
+  'calendar.delete',
   'reports.approve',
   'settings.manage',
   'settings_schedule.manage',
@@ -388,6 +391,9 @@ const PERMISSION_IMPLICATIONS = Object.freeze({
   'forecast.publish': ['forecast.view'],
   'forecast.archive': ['forecast.view'],
   'analytics.view': ['analytics_forecast.view', 'analytics_users.view', 'analytics_system.view'],
+  'calendar.create': ['calendar.view'],
+  'calendar.edit': ['calendar.view'],
+  'calendar.delete': ['calendar.view'],
   // Export is additive: it never widens which analytics subsections a User Type can view.
   'settings.view': [
     'settings_schedule.view',
