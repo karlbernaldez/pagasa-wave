@@ -16,12 +16,6 @@ const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
 const APPROVED_STATUSES = new Set(['Approved', 'Published']);
 
-export function manilaDateTime(dateKey, time) {
-  if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
-  if (!/^\d{2}:\d{2}$/.test(String(time || ''))) return null;
-  return `${dateKey}T${time}:00+08:00`;
-}
-
 function packageTitle(forecastPackage) {
   return (
     forecastPackage.title ||
@@ -53,9 +47,6 @@ function workflowEvent(forecastPackage, suffix, timestamp, type, title, detail, 
 export function buildPackageEvents(packages = []) {
   return packages.flatMap((forecastPackage) => {
     const id = forecastPackage.id || forecastPackage._id;
-    const dateKey =
-      forecastPackage.dateKey ||
-      getDateKey(forecastPackage.forecastDate || forecastPackage.createdAt);
     const title = packageTitle(forecastPackage);
     const packageHref = id ? `/forecasts/${id}` : '/forecasts';
     const reviewHref = '/forecasts/review';
