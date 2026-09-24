@@ -207,6 +207,15 @@ export const exportSystemAnalytics = async (req, res, next) => {
       ['history.median_duration_seconds', historySummary.medianDurationSeconds ?? ''],
       ['history.p90_duration_seconds', historySummary.p90DurationSeconds ?? ''],
       ['history.duration_sample_size', historySummary.durationSampleSize ?? 0],
+      ['alerts.active', payload.alerts?.active ?? false],
+      ['alerts.critical', payload.alerts?.critical ?? 0],
+      ['alerts.warning', payload.alerts?.warning ?? 0],
+      ...((payload.alerts?.alerts || []).flatMap((alert, index) => [
+        [`alerts.${index + 1}.severity`, alert.severity || ''],
+        [`alerts.${index + 1}.type`, alert.type || ''],
+        [`alerts.${index + 1}.model`, alert.model || ''],
+        [`alerts.${index + 1}.message`, alert.message || ''],
+      ])),
       ...payload.models.map((model) => [`current.model.${model.code}.state`, model.state || '']),
       ...payload.models.map((model) => [
         `current.model.${model.code}.frame_coverage`,
