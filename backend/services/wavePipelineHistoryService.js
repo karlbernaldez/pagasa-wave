@@ -179,21 +179,13 @@ export function summarizeWavePipelineRunHistory(history = {}) {
   }
 
   let retryAttempts = 0;
-  for (const attempts of groups.values()) {
-    retryAttempts += Math.max(0, attempts - 1);
-  }
-
-  for (const run of runs) {
-    const attemptKey = [
-      run.model,
-      run.packageDate || '',
-      run.requiredSourceCycle || run.sourceCycle || '',
-    ].join(':');
-    const attempts = groups.get(attemptKey) || 1;
-    if (attempts > 1) {
-      const model = modelMap.get(run.model);
-      if (model) model.retryAttempts = Math.max(model.retryAttempts, attempts - 1);
-    }
+  for (const [attemptKey, attempts] of groups.entries()) {
+    const retries = Math.max(0, attempts - 1);
+    retryAttempts += retries;
+    if (!retries) continue;
+    const modelCode = attemptKey.split(':', 1)[0];
+    const model = modelMap.get(modelCode);
+    if (model) model.retryAttempts += retries;
   }
 
   return {
