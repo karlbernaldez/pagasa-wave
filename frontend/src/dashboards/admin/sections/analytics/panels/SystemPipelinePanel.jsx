@@ -13,6 +13,14 @@ const formatDuration = (seconds) => {
   return `${Math.round((value / 3600) * 10) / 10}h`;
 };
 
+const formatBytes = (bytes) => {
+  const value = Number(bytes);
+  if (!Number.isFinite(value) || value < 0) return '—';
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${Math.round((value / 1024) * 10) / 10} KB`;
+  return `${Math.round((value / (1024 * 1024)) * 10) / 10} MB`;
+};
+
 export default function SystemPipelinePanel({ payload, isDarkMode }) {
   const summary = payload.summary || {};
   const models = payload.models || [];
@@ -54,6 +62,21 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
           role="status"
         >
           Live wave-pipeline status is unavailable. Persisted run history remains independent.
+        </div>
+      ) : null}
+
+      {history.invalidRecords > 0 ? (
+        <div
+          className={cn(
+            'rounded-xl border px-4 py-2.5 text-sm font-semibold',
+            isDarkMode
+              ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
+              : 'border-amber-200 bg-amber-50 text-amber-800'
+          )}
+          role="status"
+        >
+          Pipeline telemetry contains {history.invalidRecords} malformed record
+          {history.invalidRecords === 1 ? '' : 's'}. Valid records remain available.
         </div>
       ) : null}
 
@@ -178,6 +201,22 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
           ])}
         />
       </section>
+
+      <AnalyticsTable
+        title="Telemetry Storage Health"
+        description="Operational evidence that Analytics can read the append-only builder history."
+        isDarkMode={isDarkMode}
+        headers={['Collection started', 'Latest run', 'History files', 'Storage', 'Malformed records']}
+        rows={[
+          [
+            formatDateTime(history.collectingSince),
+            formatDateTime(history.latestRunAt),
+            history.files ?? 0,
+            formatBytes(history.totalBytes),
+            history.invalidRecords ?? 0,
+          ],
+        ]}
+      />
 
       <AnalyticsMetricStrip
         isDarkMode={isDarkMode}
