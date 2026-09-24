@@ -7,7 +7,6 @@ import {
 } from './calendarEvents';
 
 describe('operational calendar event derivation', () => {
-
   it('derives actual package workflow events from persisted timestamps', () => {
     const events = buildPackageEvents([
       {
