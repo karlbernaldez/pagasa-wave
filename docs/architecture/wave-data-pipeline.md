@@ -108,7 +108,6 @@ wavetiles/.normalized-product-stage/.status/
 
 The status schema exposes operational states such as `BUILDING`, `VALIDATING`, `PUBLISHING`, `READY`, and `FAILED`, together with package date, required/source cycle, input mode, retained-frame counts, timestamps, and any failure message.
 
-
 Terminal normalized-run outcomes are also appended to a per-model JSONL history under the same writable staging tree:
 
 ```text
