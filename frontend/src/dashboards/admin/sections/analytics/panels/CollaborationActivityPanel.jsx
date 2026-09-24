@@ -14,12 +14,36 @@ export default function CollaborationActivityPanel({ payload, isDarkMode }) {
       <AnalyticsMetricStrip
         isDarkMode={isDarkMode}
         items={[
-          { label: 'Accounts', value: summary.totalAccounts ?? 0, helper: 'Non-deleted accounts' },
-          { label: 'Active', value: summary.activeAccounts ?? 0, helper: 'Currently active' },
-          { label: 'Pending', value: summary.pendingAccounts ?? 0, helper: 'Awaiting activation' },
-          { label: 'Restricted', value: summary.restrictedAccounts ?? 0, helper: 'Suspended or locked' },
-          { label: 'Contributors', value: summary.activeContributors ?? 0, helper: 'Distinct operational participants' },
-          { label: 'Events', value: summary.contributionEvents ?? 0, helper: 'Aggregate workflow events' },
+          {
+            label: 'Accounts',
+            value: summary.totalAccounts ?? 0,
+            helper: 'Non-deleted accounts',
+          },
+          {
+            label: 'Active',
+            value: summary.activeAccounts ?? 0,
+            helper: 'Currently active',
+          },
+          {
+            label: 'Pending',
+            value: summary.pendingAccounts ?? 0,
+            helper: 'Awaiting activation',
+          },
+          {
+            label: 'Restricted',
+            value: summary.restrictedAccounts ?? 0,
+            helper: 'Suspended or locked',
+          },
+          {
+            label: 'Contributors',
+            value: summary.activeContributors ?? 0,
+            helper: 'Distinct operational participants',
+          },
+          {
+            label: 'Events',
+            value: summary.contributionEvents ?? 0,
+            helper: 'Aggregate workflow events',
+          },
         ]}
       />
 
