@@ -252,6 +252,8 @@ export default function CalendarSection({ isDarkMode }) {
     type: 'Meeting',
     date: todayIso,
     time: '09:00',
+    endTime: '10:00',
+    allDay: false,
   });
   const [state, setState] = useState({
     loading: true,
@@ -391,9 +393,13 @@ export default function CalendarSection({ isDarkMode }) {
       const payload = {
         title: draft.title.trim(),
         type: draft.type.toLowerCase(),
-        startsAt: `${draft.date}T${draft.time}:00+08:00`,
-        endsAt: `${draft.date}T${draft.time}:00+08:00`,
-        allDay: false,
+        startsAt: draft.allDay
+          ? `${draft.date}T00:00:00+08:00`
+          : `${draft.date}T${draft.time}:00+08:00`,
+        endsAt: draft.allDay
+          ? `${draft.date}T23:59:59+08:00`
+          : `${draft.date}T${draft.endTime}:00+08:00`,
+        allDay: draft.allDay,
         ownerLabel: draft.owner.trim(),
       };
       if (draft.id) await updateCalendarEvent(draft.id, payload);
@@ -405,6 +411,8 @@ export default function CalendarSection({ isDarkMode }) {
         type: 'Meeting',
         date: selectedDate || todayIso,
         time: '09:00',
+        endTime: '10:00',
+        allDay: false,
       });
       await loadCalendar({ silent: true });
     } catch (error) {
@@ -418,21 +426,24 @@ export default function CalendarSection({ isDarkMode }) {
   };
 
   const editSharedEvent = (event) => {
-    const time = event.startsAt
-      ? new Intl.DateTimeFormat('en-GB', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-          timeZone: 'Asia/Manila',
-        }).format(new Date(event.startsAt))
-      : '09:00';
+    const formatEventTime = (value, fallback) =>
+      value
+        ? new Intl.DateTimeFormat('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            timeZone: 'Asia/Manila',
+          }).format(new Date(value))
+        : fallback;
     setDraft({
       id: event.id,
       title: event.title || '',
       owner: event.ownerLabel || event.owner || 'WaveLab Team',
       type: event.type || 'Meeting',
       date: event.date || selectedDate,
-      time,
+      time: formatEventTime(event.startsAt, '09:00'),
+      endTime: formatEventTime(event.endsAt, '10:00'),
+      allDay: Boolean(event.allDay),
     });
   };
 
@@ -602,10 +613,17 @@ export default function CalendarSection({ isDarkMode }) {
             <Panel title={draft.id ? 'Edit Shared Event' : 'Add Shared Event'} description="Persist meetings, maintenance, training, reminders, and deployments for authorized WaveLab users." isDarkMode={isDarkMode}>
               <form onSubmit={saveSharedEvent} className="space-y-3">
                 <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Example: CWA coordination meeting" className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="date" value={draft.date} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
-                  <input type="time" value={draft.time} onChange={(event) => setDraft((current) => ({ ...current, time: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
-                </div>
+                <input type="date" value={draft.date} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+                <label className={cn('flex items-center gap-2 text-xs font-black', muted)}>
+                  <input type="checkbox" checked={draft.allDay} onChange={(event) => setDraft((current) => ({ ...current, allDay: event.target.checked }))} />
+                  All-day event
+                </label>
+                {!draft.allDay && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="time" value={draft.time} onChange={(event) => setDraft((current) => ({ ...current, time: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+                    <input type="time" value={draft.endTime} onChange={(event) => setDraft((current) => ({ ...current, endTime: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)}>
                     {EVENT_TYPES.map((type) => <option key={type}>{type}</option>)}
@@ -616,7 +634,7 @@ export default function CalendarSection({ isDarkMode }) {
                   <button type="submit" disabled={saving || !draft.title.trim()} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-500 px-3 py-2 text-sm font-black text-white shadow-lg shadow-cyan-500/25 transition-colors hover:bg-cyan-400 disabled:opacity-50">
                     {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} {draft.id ? 'Save changes' : 'Add event'}
                   </button>
-                  {draft.id && <button type="button" onClick={() => setDraft({ id: null, title: '', owner: 'WaveLab Team', type: 'Meeting', date: selectedDate || todayIso, time: '09:00' })} className={cn('rounded-xl border px-3 text-sm font-black', softPanel)}>Cancel</button>}
+                  {draft.id && <button type="button" onClick={() => setDraft({ id: null, title: '', owner: 'WaveLab Team', type: 'Meeting', date: selectedDate || todayIso, time: '09:00', endTime: '10:00', allDay: false })} className={cn('rounded-xl border px-3 text-sm font-black', softPanel)}>Cancel</button>}
                 </div>
               </form>
             </Panel>
