@@ -109,6 +109,17 @@ def validate_config(config: RunnerConfig) -> NormalizedCycleReader:
     return reader
 
 
+def record_run_history_safely(model: str, outcome: str, **kwargs) -> None:
+    try:
+        append_run_history(model, outcome, **kwargs)
+    except OSError as exc:
+        print(
+            f"WaveLab pipeline history write failed for {model}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
 def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
     reader = validate_config(config)
     tag = package_tag(config.package_date)
@@ -199,7 +210,7 @@ def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
             completed_at=completed_at,
             extra={"packageTag": tag, "runId": run_id},
         )
-        append_run_history(
+        record_run_history_safely(
             config.model,
             "READY",
             run_id=run_id,
@@ -235,7 +246,7 @@ def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
             error=str(exc),
             extra={"runId": run_id},
         )
-        append_run_history(
+        record_run_history_safely(
             config.model,
             "FAILED",
             run_id=run_id,
