@@ -7,7 +7,6 @@ export const EVENT_TYPE_META = Object.freeze({
   Review: { label: 'Review', tone: 'amber' },
   Publication: { label: 'Publication', tone: 'emerald' },
   Returned: { label: 'Returned', tone: 'rose' },
-  Deadline: { label: 'Deadline', tone: 'orange' },
   Meeting: { label: 'Meeting', tone: 'blue' },
   Maintenance: { label: 'Maintenance', tone: 'violet' },
   Training: { label: 'Training', tone: 'indigo' },
@@ -39,68 +38,6 @@ export function monthRange(monthDate) {
     startIso: start.toISOString(),
     endIso: end.toISOString(),
   };
-}
-
-export function dateKeysInRange(start, end) {
-  const keys = [];
-  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const stop = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-  while (cursor < stop) {
-    keys.push(`${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(cursor.getDate())}`);
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return keys;
-}
-
-export function buildScheduleEvents(start, end, settings = {}) {
-  const milestones = [
-    {
-      key: 'open',
-      title: 'Forecast production opens',
-      time: settings.packageOpenTime || '06:00',
-      action: 'Begin the daily Forecast Package production workflow.',
-    },
-    {
-      key: 'submit',
-      title: 'Submission deadline',
-      time: settings.packageSubmissionDeadline || '10:00',
-      action: 'Forecast Package should be complete and submitted for review.',
-    },
-    {
-      key: 'publish',
-      title: 'Publication target',
-      time: settings.packagePublishTarget || '12:00',
-      action: 'Approved daily package should be published by the operational target.',
-    },
-    {
-      key: 'cutoff',
-      title: 'No-publication cutoff',
-      time: settings.noPublicationCutoff || '18:00',
-      action: 'Resolve the daily package or record the operational exception.',
-    },
-  ];
-
-  return dateKeysInRange(start, end).flatMap((dateKey) =>
-    milestones
-      .map((milestone) => {
-        const startsAt = manilaDateTime(dateKey, milestone.time);
-        if (!startsAt) return null;
-        return {
-          id: `schedule-${dateKey}-${milestone.key}`,
-          title: milestone.title,
-          startsAt,
-          date: dateKey,
-          type: 'Deadline',
-          source: 'schedule',
-          timing: 'scheduled',
-          owner: 'Forecast Operations',
-          detail: `${milestone.time} Asia/Manila`,
-          action: milestone.action,
-          readOnly: true,
-        };
-      })
-      .filter(Boolean)
-  );
 }
 
 function packageTitle(forecastPackage) {
