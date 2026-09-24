@@ -71,6 +71,9 @@ export async function readWavePipelineRunHistory(range, { historyRoot = HISTORY_
       return {
         available: true,
         collectingSince: null,
+        latestRunAt: null,
+        files: 0,
+        totalBytes: 0,
         runs: [],
         invalidRecords: 0,
       };
