@@ -22,11 +22,31 @@ export default function PublicReachPanel({ payload, isDarkMode }) {
       <AnalyticsMetricStrip
         isDarkMode={isDarkMode}
         items={[
-          { label: 'Views today', value: summary.viewsToday ?? 0, helper: 'Asia/Manila day' },
-          { label: 'Yesterday', value: summary.viewsYesterday ?? 0, helper: 'Previous Manila day' },
-          { label: 'Period views', value: summary.periodViews ?? 0, helper: 'Selected range' },
-          { label: 'All-time views', value: summary.allTimeViews ?? 0, helper: 'Persisted total' },
-          { label: 'Charts reached', value: summary.publishedChartsViewed ?? 0, helper: 'Distinct published charts' },
+          {
+            label: 'Views today',
+            value: summary.viewsToday ?? 0,
+            helper: 'Asia/Manila day',
+          },
+          {
+            label: 'Yesterday',
+            value: summary.viewsYesterday ?? 0,
+            helper: 'Previous Manila day',
+          },
+          {
+            label: 'Period views',
+            value: summary.periodViews ?? 0,
+            helper: 'Selected range',
+          },
+          {
+            label: 'All-time views',
+            value: summary.allTimeViews ?? 0,
+            helper: 'Persisted total',
+          },
+          {
+            label: 'Charts reached',
+            value: summary.publishedChartsViewed ?? 0,
+            helper: 'Distinct published charts',
+          },
           {
             label: 'Day-over-day',
             value: summary.dayOverDay?.percent == null ? '—' : `${summary.dayOverDay.percent}%`,
@@ -87,8 +107,16 @@ export default function PublicReachPanel({ payload, isDarkMode }) {
         columns={[
           { key: 'name', label: 'Chart' },
           { key: 'chartType', label: 'Type' },
-          { key: 'forecastDate', label: 'Forecast date', render: (value) => formatDate(value) },
-          { key: 'publishedAt', label: 'Published', render: (value) => formatDateTime(value) },
+          {
+            key: 'forecastDate',
+            label: 'Forecast date',
+            render: (value) => formatDate(value),
+          },
+          {
+            key: 'publishedAt',
+            label: 'Published',
+            render: (value) => formatDateTime(value),
+          },
           { key: 'views', label: 'Views' },
         ]}
       />
