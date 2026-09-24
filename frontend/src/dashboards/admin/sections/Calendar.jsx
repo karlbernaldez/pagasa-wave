@@ -228,7 +228,8 @@ function getMonthStats(days) {
     reviews: monthEvents.filter((event) => event.type === 'Review').length,
     publications: monthEvents.filter((event) => event.type === 'Publication').length,
     returned: monthEvents.filter((event) => event.type === 'Returned').length,
-    notes: monthEvents.filter((event) => event.source === 'custom').length,
+    scheduled: monthEvents.filter((event) => event.timing === 'scheduled').length,
+    actual: monthEvents.filter((event) => event.timing === 'actual').length,
   };
 }
 
