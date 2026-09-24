@@ -148,9 +148,7 @@ describe('SystemPipelinePanel', () => {
                 severity: 'critical',
                 type: 'consecutive_failures',
                 model: 'CUSTOM_A',
-    expect(
-      screen.getByText(/CUSTOM_A has 2 consecutive failed pipeline runs/i)
-    ).toBeInTheDocument();
+                message: 'CUSTOM_A has 2 consecutive failed pipeline runs.',
                 value: 2,
                 threshold: 2,
               },
@@ -170,7 +168,9 @@ describe('SystemPipelinePanel', () => {
     );
 
     expect(screen.getByText('Active Degradation Alerts')).toBeInTheDocument();
-    expect(screen.getByText(/CUSTOM_A has 2 consecutive failed pipeline runs/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/CUSTOM_A has 2 consecutive failed pipeline runs/i)
+    ).toBeInTheDocument();
     expect(screen.getByText(/Pipeline telemetry contains 1 malformed record/i)).toBeInTheDocument();
   });
 
