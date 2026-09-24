@@ -133,7 +133,6 @@ describe('SystemPipelinePanel', () => {
     expect(screen.getAllByText('Custom A').length).toBeGreaterThan(0);
   });
 
-
   it('renders active pipeline degradation alerts from the backend evaluation', () => {
     render(
       <SystemPipelinePanel
@@ -169,8 +168,12 @@ describe('SystemPipelinePanel', () => {
     );
 
     expect(screen.getByText('Active Degradation Alerts')).toBeInTheDocument();
-    expect(screen.getByText(/CUSTOM_A has 2 consecutive failed pipeline runs/i)).toBeInTheDocument();
-    expect(screen.getByText(/Pipeline telemetry contains 1 malformed record/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/CUSTOM_A has 2 consecutive failed pipeline runs/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Pipeline telemetry contains 1 malformed record/i)
+    ).toBeInTheDocument();
   });
 
   it('surfaces malformed telemetry without hiding valid historical analytics', () => {
