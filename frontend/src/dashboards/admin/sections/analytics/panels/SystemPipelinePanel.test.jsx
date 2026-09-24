@@ -148,7 +148,9 @@ describe('SystemPipelinePanel', () => {
                 severity: 'critical',
                 type: 'consecutive_failures',
                 model: 'CUSTOM_A',
-                message: 'CUSTOM_A has 2 consecutive failed pipeline runs.',
+    expect(
+      screen.getByText(/CUSTOM_A has 2 consecutive failed pipeline runs/i)
+    ).toBeInTheDocument();
                 value: 2,
                 threshold: 2,
               },
