@@ -98,20 +98,24 @@ export function evaluatePipelineAlerts(
     });
   }
 
+  const latestRunByModel = new Map();
   for (const run of history.recentRuns || []) {
-    if (!run?.model || !Number.isFinite(Number(run.durationSeconds))) continue;
+    if (!run?.model || latestRunByModel.has(run.model)) continue;
+    latestRunByModel.set(run.model, run);
+  }
+  for (const run of latestRunByModel.values()) {
+    if (!Number.isFinite(Number(run.durationSeconds))) continue;
     if (Number(run.durationSeconds) < thresholds.maxRunDurationSeconds) continue;
     alerts.push({
       id: `slow-run:${run.runId || run.model}`,
       severity: 'warning',
       type: 'slow_run',
       model: run.model,
-      message: `${run.model} completed a pipeline run in ${Math.round(Number(run.durationSeconds) / 60)} minutes, above the configured duration threshold.`,
+      message: `${run.model} latest completed run took ${Math.round(Number(run.durationSeconds) / 60)} minutes, above the configured duration threshold.`,
       value: Number(run.durationSeconds),
       threshold: thresholds.maxRunDurationSeconds,
       latestRunAt: run.eventAt || run.completedAt || null,
     });
-    break;
   }
 
   for (const model of models || []) {
