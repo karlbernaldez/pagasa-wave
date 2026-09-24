@@ -36,8 +36,8 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
             : 'border-cyan-200 bg-cyan-50/50 text-slate-700'
         )}
       >
-        Pipeline history is append-only and begins with real runs recorded after telemetry deployment.
-        No historical build outcomes are backfilled or inferred.
+        Pipeline history is append-only and begins with real runs recorded after telemetry
+        deployment. No historical build outcomes are backfilled or inferred.
         {history.collectingSince
           ? ` Collection started ${formatDateTime(history.collectingSince)}.`
           : ''}
@@ -231,7 +231,16 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
           title="Model Reliability"
           description="Run reliability and timing from persisted terminal records."
           isDarkMode={isDarkMode}
-          headers={['Model', 'Runs', 'Success', 'Failed', 'Retries', 'Success rate', 'Median', 'P90']}
+          headers={[
+            'Model',
+            'Runs',
+            'Success',
+            'Failed',
+            'Retries',
+            'Success rate',
+            'Median',
+            'P90',
+          ]}
           rows={(history.models || []).map((model) => [
             model.model,
             model.runs,
