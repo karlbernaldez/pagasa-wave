@@ -265,9 +265,7 @@ export default function CalendarSection({ isDarkMode }) {
   const panel = isDarkMode
     ? 'border-white/10 bg-slate-950/50 shadow-black/20'
     : 'border-white/70 bg-white/70 shadow-slate-300/40';
-  const softPanel = isDarkMode
-    ? 'border-white/10 bg-white/[0.04]'
-    : 'border-white/80 bg-white/65';
+  const softPanel = isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65';
   const inputClass = isDarkMode
     ? 'border-white/10 bg-white/[0.04] text-slate-100 focus:border-cyan-300/30'
     : 'border-white/80 bg-white/70 text-slate-800 focus:border-cyan-200';
@@ -362,17 +360,12 @@ export default function CalendarSection({ isDarkMode }) {
     () => visibleEvents.filter((event) => event.date >= todayIso).slice(0, 6),
     [todayIso, visibleEvents]
   );
-  const todayPackage = useMemo(
-    () => state.packages.find(isDailyForecastPackage),
-    [state.packages]
-  );
+  const todayPackage = useMemo(() => state.packages.find(isDailyForecastPackage), [state.packages]);
   const monthStats = useMemo(() => getMonthStats(calendarDays), [calendarDays]);
   const selectedDateLabel = useMemo(() => formatDate(selectedDate), [selectedDate]);
 
   const changeMonth = (direction) =>
-    setMonthDate(
-      (current) => new Date(current.getFullYear(), current.getMonth() + direction, 1)
-    );
+    setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + direction, 1));
 
   const goToToday = () => {
     setSelectedDate(todayIso);
@@ -618,13 +611,17 @@ export default function CalendarSection({ isDarkMode }) {
                 Open {state.operations.packageOpenTime || DEFAULT_OPERATIONS.packageOpenTime}
               </span>
               <span className={cn('text-xs font-semibold', text)}>
-                Submit {state.operations.packageSubmissionDeadline || DEFAULT_OPERATIONS.packageSubmissionDeadline}
+                Submit{' '}
+                {state.operations.packageSubmissionDeadline ||
+                  DEFAULT_OPERATIONS.packageSubmissionDeadline}
               </span>
               <span className={cn('text-xs font-semibold', text)}>
-                Publish {state.operations.packagePublishTarget || DEFAULT_OPERATIONS.packagePublishTarget}
+                Publish{' '}
+                {state.operations.packagePublishTarget || DEFAULT_OPERATIONS.packagePublishTarget}
               </span>
               <span className={cn('text-xs font-semibold', text)}>
-                Cutoff {state.operations.noPublicationCutoff || DEFAULT_OPERATIONS.noPublicationCutoff}
+                Cutoff{' '}
+                {state.operations.noPublicationCutoff || DEFAULT_OPERATIONS.noPublicationCutoff}
               </span>
               <span className={cn('text-[11px] font-semibold', muted)}>Asia/Manila</span>
             </div>
@@ -833,23 +830,23 @@ export default function CalendarSection({ isDarkMode }) {
               description="Next shared operational events and actual Forecast Package milestones."
               isDarkMode={isDarkMode}
             >
-            <div className="space-y-2">
-              {upcomingEvents.length === 0 ? (
-                <EmptyState
-                  title="No upcoming visible events"
-                  description="Upcoming operational activity will appear here."
-                  isDarkMode={isDarkMode}
-                />
-              ) : (
-                upcomingEvents.map((event) => (
-                  <TimelineRow
-                    key={event.id}
-                    event={event}
+              <div className="space-y-2">
+                {upcomingEvents.length === 0 ? (
+                  <EmptyState
+                    title="No upcoming visible events"
+                    description="Upcoming operational activity will appear here."
                     isDarkMode={isDarkMode}
-                    onOpen={() => openEvent(event)}
                   />
-                ))
-              )}
+                ) : (
+                  upcomingEvents.map((event) => (
+                    <TimelineRow
+                      key={event.id}
+                      event={event}
+                      isDarkMode={isDarkMode}
+                      onOpen={() => openEvent(event)}
+                    />
+                  ))
+                )}
               </div>
             </Panel>
           )}
@@ -874,9 +871,7 @@ export default function CalendarSection({ isDarkMode }) {
                     {formError}
                   </div>
                 )}
-                <label className={cn('block text-xs font-black', muted)}>
-                  Event title
-                </label>
+                <label className={cn('block text-xs font-black', muted)}>Event title</label>
                 <input
                   value={draft.title}
                   onChange={(event) =>
@@ -930,9 +925,7 @@ export default function CalendarSection({ isDarkMode }) {
                       />
                     </div>
                     <div>
-                      <label className={cn('mb-1 block text-xs font-black', muted)}>
-                        End time
-                      </label>
+                      <label className={cn('mb-1 block text-xs font-black', muted)}>End time</label>
                       <input
                         type="time"
                         aria-label="End time"
