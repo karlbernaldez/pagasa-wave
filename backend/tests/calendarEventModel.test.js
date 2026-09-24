@@ -15,29 +15,36 @@ const validEvent = (overrides = {}) =>
     ...overrides,
   });
 
-test('calendar event accepts a valid scheduled range', () => {
+test('calendar event accepts a valid scheduled range', async () => {
   const event = validEvent();
-  const error = event.validateSync();
-  assert.equal(error, undefined);
+  await assert.doesNotReject(() => event.validate());
 });
 
-test('calendar event rejects an end before the start', () => {
+test('calendar event rejects an end before the start', async () => {
   const event = validEvent({
     endsAt: new Date('2026-09-24T07:00:00.000Z'),
   });
-  const error = event.validateSync();
-  assert.match(error?.errors?.endsAt?.message || '', /greater than or equal to startsAt/);
+
+  await assert.rejects(
+    () => event.validate(),
+    (error) => /greater than or equal to startsAt/.test(error?.errors?.endsAt?.message || '')
+  );
 });
 
-test('calendar event rejects unsupported event types', () => {
+test('calendar event rejects unsupported event types', async () => {
   const event = validEvent({ type: 'holiday' });
-  const error = event.validateSync();
-  assert.match(error?.errors?.type?.message || '', /not a valid enum value/);
+
+  await assert.rejects(
+    () => event.validate(),
+    (error) => /not a valid enum value/.test(error?.errors?.type?.message || '')
+  );
 });
 
-test('calendar event requires creator and updater identity', () => {
+test('calendar event requires creator and updater identity', async () => {
   const event = validEvent({ createdBy: undefined, updatedBy: undefined });
-  const error = event.validateSync();
-  assert.ok(error?.errors?.createdBy);
-  assert.ok(error?.errors?.updatedBy);
+
+  await assert.rejects(
+    () => event.validate(),
+    (error) => Boolean(error?.errors?.createdBy && error?.errors?.updatedBy)
+  );
 });
