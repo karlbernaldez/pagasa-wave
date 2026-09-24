@@ -206,7 +206,13 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
         title="Telemetry Storage Health"
         description="Operational evidence that Analytics can read the append-only builder history."
         isDarkMode={isDarkMode}
-        headers={['Collection started', 'Latest run', 'History files', 'Storage', 'Malformed records']}
+        headers={[
+          'Collection started',
+          'Latest run',
+          'History files',
+          'Storage',
+          'Malformed records',
+        ]}
         rows={[
           [
             formatDateTime(history.collectingSince),
