@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './auth';
+
 const PROJECT_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/projects`;
 const PUBLIC_VIEWER_TOKEN_KEY = 'wavelab:public-viewer-token';
 const PUBLIC_VIEW_MARKER_PREFIX = 'wavelab:published-view';
@@ -5,7 +7,7 @@ const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
 const pendingViewMarkers = new Set();
 
 const request = async (url, options = {}) => {
-  const response = await fetch(url, {
+  const response = await fetchWithAuth(url, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     ...options,
