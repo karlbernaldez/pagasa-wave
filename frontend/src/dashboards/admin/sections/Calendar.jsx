@@ -12,7 +12,6 @@ import {
   Plus,
   RefreshCw,
   Trash2,
-  Waves,
 } from 'lucide-react';
 
 import { checkAuthSession } from '@/api/auth';
@@ -33,7 +32,6 @@ import {
 } from '@/features/projects/utils/forecastPackageGrouping';
 import {
   buildPackageEvents,
-  buildScheduleEvents,
   normalizeManualEvents,
   sortCalendarEvents,
 } from './calendar/calendarEvents';
@@ -42,24 +40,20 @@ const cn = (...classes) => classes.filter(Boolean).join(' ');
 const EVENT_TYPES = ['Meeting', 'Maintenance', 'Training', 'Reminder', 'Deployment', 'Other'];
 const FILTERS = [
   'All',
-  'Package',
   'Review',
   'Publication',
   'Returned',
-  'Deadline',
   'Meeting',
   'Maintenance',
+  'Training',
+  'Reminder',
+  'Deployment',
+  'Other',
 ];
 const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
 
 const TYPE_META = {
-  Package: {
-    icon: Waves,
-    dot: 'bg-cyan-500',
-    light: 'border-cyan-200 bg-cyan-50/80 text-cyan-700',
-    dark: 'border-cyan-300/20 bg-cyan-400/10 text-cyan-200',
-  },
   Review: {
     icon: Clock3,
     dot: 'bg-amber-500',
@@ -77,12 +71,6 @@ const TYPE_META = {
     dot: 'bg-rose-500',
     light: 'border-rose-200 bg-rose-50/80 text-rose-700',
     dark: 'border-rose-300/20 bg-rose-400/10 text-rose-200',
-  },
-  Deadline: {
-    icon: Clock3,
-    dot: 'bg-orange-500',
-    light: 'border-orange-200 bg-orange-50/80 text-orange-700',
-    dark: 'border-orange-300/20 bg-orange-400/10 text-orange-200',
   },
   Maintenance: {
     icon: RefreshCw,
@@ -231,14 +219,8 @@ function buildCalendarDays(monthDate, events) {
 }
 
 function getMonthStats(days) {
-  const monthEvents = days.flatMap((day) => (day.isCurrentMonth ? day.events : []));
   return {
-    total: monthEvents.length,
-    reviews: monthEvents.filter((event) => event.type === 'Review').length,
-    publications: monthEvents.filter((event) => event.type === 'Publication').length,
-    returned: monthEvents.filter((event) => event.type === 'Returned').length,
-    scheduled: monthEvents.filter((event) => event.timing === 'scheduled').length,
-    actual: monthEvents.filter((event) => event.timing === 'actual').length,
+    total: days.flatMap((day) => (day.isCurrentMonth ? day.events : [])).length,
   };
 }
 
@@ -251,7 +233,9 @@ export default function CalendarSection({ isDarkMode }) {
   );
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [activeFilter, setActiveFilter] = useState('All');
-  const [timingFilter, setTimingFilter] = useState('All');
+  const [sourceFilter, setSourceFilter] = useState('All');
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [formError, setFormError] = useState('');
   const [permissions, setPermissions] = useState([]);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({
@@ -263,6 +247,8 @@ export default function CalendarSection({ isDarkMode }) {
     time: '09:00',
     endTime: '10:00',
     allDay: false,
+    location: '',
+    description: '',
   });
   const [state, setState] = useState({
     loading: true,
@@ -342,27 +328,25 @@ export default function CalendarSection({ isDarkMode }) {
   }, [loadCalendar]);
 
   const packageEvents = useMemo(() => buildPackageEvents(state.packages), [state.packages]);
-  const scheduleEvents = useMemo(
-    () => buildScheduleEvents(monthWindow.start, monthWindow.end, state.operations),
-    [monthWindow.end, monthWindow.start, state.operations]
-  );
   const manualEvents = useMemo(
     () => normalizeManualEvents(state.manualEvents),
     [state.manualEvents]
   );
   const allEvents = useMemo(
-    () => sortCalendarEvents([...packageEvents, ...scheduleEvents, ...manualEvents]),
-    [manualEvents, packageEvents, scheduleEvents]
+    () => sortCalendarEvents([...packageEvents, ...manualEvents]),
+    [manualEvents, packageEvents]
   );
   const visibleEvents = useMemo(
     () =>
       allEvents.filter((event) => {
         const visibleByType = isEventVisible(event, activeFilter);
-        const visibleByTiming =
-          timingFilter === 'All' || event.timing === timingFilter.toLowerCase();
-        return visibleByType && visibleByTiming;
+        const visibleBySource =
+          sourceFilter === 'All' ||
+          (sourceFilter === 'Workflow' && event.source === 'workflow') ||
+          (sourceFilter === 'Shared' && event.source === 'manual');
+        return visibleByType && visibleBySource;
       }),
-    [activeFilter, allEvents, timingFilter]
+    [activeFilter, allEvents, sourceFilter]
   );
   const calendarDays = useMemo(
     () => buildCalendarDays(monthDate, visibleEvents),
@@ -373,7 +357,7 @@ export default function CalendarSection({ isDarkMode }) {
     [selectedDate, visibleEvents]
   );
   const upcomingEvents = useMemo(
-    () => visibleEvents.filter((event) => event.date >= todayIso).slice(0, 10),
+    () => visibleEvents.filter((event) => event.date >= todayIso).slice(0, 6),
     [todayIso, visibleEvents]
   );
   const todayPackage = useMemo(() => state.packages.find(isDailyForecastPackage), [state.packages]);
@@ -390,7 +374,25 @@ export default function CalendarSection({ isDarkMode }) {
 
   const saveSharedEvent = async (event) => {
     event.preventDefault();
-    if (!draft.title.trim() || !draft.date || !draft.time) return;
+    setFormError('');
+    if (!draft.title.trim()) {
+      setFormError('Enter an event title.');
+      return;
+    }
+    if (!draft.date) {
+      setFormError('Select an event date.');
+      return;
+    }
+    if (!draft.allDay) {
+      if (!draft.time || !draft.endTime) {
+        setFormError('Select both a start and end time.');
+        return;
+      }
+      if (draft.endTime < draft.time) {
+        setFormError('End time must be after the start time.');
+        return;
+      }
+    }
     setSaving(true);
     try {
       const payload = {
@@ -404,6 +406,8 @@ export default function CalendarSection({ isDarkMode }) {
           : `${draft.date}T${draft.endTime}:00+08:00`,
         allDay: draft.allDay,
         ownerLabel: draft.owner.trim(),
+        location: draft.location.trim(),
+        description: draft.description.trim(),
       };
       if (draft.id) await updateCalendarEvent(draft.id, payload);
       else await createCalendarEvent(payload);
@@ -416,7 +420,10 @@ export default function CalendarSection({ isDarkMode }) {
         time: '09:00',
         endTime: '10:00',
         allDay: false,
+        location: '',
+        description: '',
       });
+      setIsComposerOpen(false);
       await loadCalendar({ silent: true });
     } catch (error) {
       setState((current) => ({
@@ -447,11 +454,21 @@ export default function CalendarSection({ isDarkMode }) {
       time: formatEventTime(event.startsAt, '09:00'),
       endTime: formatEventTime(event.endsAt, '10:00'),
       allDay: Boolean(event.allDay),
+      location: event.location || '',
+      description: event.description || '',
     });
+    setFormError('');
+    setIsComposerOpen(true);
   };
 
   const removeSharedEvent = async (id) => {
     if (!canDelete) return;
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm('Delete this shared operational event? This action cannot be undone.')
+    ) {
+      return;
+    }
     setSaving(true);
     try {
       await deleteCalendarEvent(id);
@@ -463,6 +480,10 @@ export default function CalendarSection({ isDarkMode }) {
           type: 'Meeting',
           date: selectedDate || todayIso,
           time: '09:00',
+          endTime: '10:00',
+          allDay: false,
+          location: '',
+          description: '',
         });
       }
       await loadCalendar({ silent: true });
@@ -479,6 +500,28 @@ export default function CalendarSection({ isDarkMode }) {
   const openEvent = (event) => {
     if (event.href) navigate(event.href);
   };
+
+  const openComposer = () => {
+    setDraft({
+      id: null,
+      title: '',
+      owner: 'WaveLab Team',
+      type: 'Meeting',
+      date: selectedDate || todayIso,
+      time: '09:00',
+      endTime: '10:00',
+      allDay: false,
+      location: '',
+      description: '',
+    });
+    setFormError('');
+    setIsComposerOpen(true);
+  };
+
+  const closeComposer = () => {
+    setFormError('');
+    setIsComposerOpen(false);
+  };
   if (state.loading) {
     return (
       <div className="mx-auto max-w-[1500px] p-4 sm:p-6">
@@ -494,7 +537,7 @@ export default function CalendarSection({ isDarkMode }) {
             />
             <p className={cn('text-sm font-black', text)}>Loading operations calendar</p>
             <p className={cn('text-xs font-semibold', muted)}>
-              Loading schedule targets, Forecast Package history, and shared operational events.
+              Loading Forecast Package history, shared operational events, and Operations settings.
             </p>
           </div>
         </div>
@@ -515,18 +558,26 @@ export default function CalendarSection({ isDarkMode }) {
                 isDarkMode ? 'text-cyan-200' : 'text-cyan-700'
               )}
             >
-              Forecast operations calendar
+              Operations calendar
             </p>
             <h1 className={cn('mt-2 text-2xl font-black tracking-tight sm:text-3xl', text)}>
-              Daily package schedule, decisions, and publication readiness
+              Operational events and forecast workflow
             </h1>
             <p className={cn('mt-2 max-w-3xl text-sm font-semibold leading-6', muted)}>
-              Scheduled milestones come from Forecast Operations settings. Actual workflow events
-              come from persisted Forecast Package timestamps, while shared operational events are
-              visible to every authorized user.
+              Review forecast workflow history alongside meetings, maintenance, training, and other
+              date-specific operational events.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {canCreate && (
+              <button
+                type="button"
+                onClick={openComposer}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-500/20 transition-colors hover:bg-cyan-400"
+              >
+                <Plus size={16} /> New event
+              </button>
+            )}
             <button
               type="button"
               onClick={goToToday}
@@ -550,20 +601,45 @@ export default function CalendarSection({ isDarkMode }) {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)]">
-          <div className={cn('rounded-2xl border p-4', softPanel)}>
+        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+          <div className={cn('rounded-2xl border px-4 py-3', softPanel)}>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className={cn('text-xs font-black uppercase tracking-wide', muted)}>
+                Daily operations
+              </span>
+              <span className={cn('text-xs font-semibold', text)}>
+                Open {state.operations.packageOpenTime || DEFAULT_OPERATIONS.packageOpenTime}
+              </span>
+              <span className={cn('text-xs font-semibold', text)}>
+                Submit{' '}
+                {state.operations.packageSubmissionDeadline ||
+                  DEFAULT_OPERATIONS.packageSubmissionDeadline}
+              </span>
+              <span className={cn('text-xs font-semibold', text)}>
+                Publish{' '}
+                {state.operations.packagePublishTarget || DEFAULT_OPERATIONS.packagePublishTarget}
+              </span>
+              <span className={cn('text-xs font-semibold', text)}>
+                Cutoff{' '}
+                {state.operations.noPublicationCutoff || DEFAULT_OPERATIONS.noPublicationCutoff}
+              </span>
+              <span className={cn('text-[11px] font-semibold', muted)}>Asia/Manila</span>
+            </div>
+          </div>
+
+          <div className={cn('rounded-2xl border px-4 py-3 xl:min-w-[20rem]', softPanel)}>
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className={cn('text-xs font-black uppercase tracking-wide', muted)}>
-                  Today package
+                  Today's forecast package
                 </p>
-                <p className={cn('mt-1 text-xl font-black', text)}>
-                  {todayPackage?.status || 'No submitted package today'}
+                <p className={cn('mt-1 truncate text-sm font-black', text)}>
+                  {todayPackage?.status || 'No package submitted'}
                 </p>
               </div>
               <span
                 className={cn(
-                  'rounded-full border px-3 py-1 text-xs font-black',
+                  'shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black',
                   getEventTone(
                     todayPackage?.status === 'Published' || todayPackage?.status === 'Approved'
                       ? 'Publication'
@@ -579,22 +655,11 @@ export default function CalendarSection({ isDarkMode }) {
                   : 'Missing'}
               </span>
             </div>
-            <p className={cn('mt-3 text-sm font-semibold leading-6', muted)}>
+            <p className={cn('mt-2 text-xs font-semibold leading-5', muted)}>
               {todayPackage
-                ? `${todayPackage.chartCount || 0} of 4 charts linked. ${getPackageAction(todayPackage)}.`
-                : 'No reviewable daily package is linked to today yet.'}
+                ? `${todayPackage.chartCount || 0}/4 charts · ${getPackageAction(todayPackage)}`
+                : 'No reviewable daily package is linked to today.'}
             </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <MiniStat label="Scheduled" value={monthStats.scheduled} isDarkMode={isDarkMode} />
-            <MiniStat label="Actual" value={monthStats.actual} isDarkMode={isDarkMode} />
-            <MiniStat label="Reviews" value={monthStats.reviews} isDarkMode={isDarkMode} />
-            <MiniStat
-              label="Publications"
-              value={monthStats.publications}
-              isDarkMode={isDarkMode}
-            />
           </div>
         </div>
       </section>
@@ -646,39 +711,38 @@ export default function CalendarSection({ isDarkMode }) {
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {FILTERS.map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setActiveFilter(filter)}
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-xs font-black transition-colors',
-                    activeFilter === filter
-                      ? isDarkMode
-                        ? 'border-cyan-300/40 bg-cyan-400/15 text-cyan-100'
-                        : 'border-cyan-200 bg-cyan-50 text-cyan-700'
-                      : isDarkMode
-                        ? 'border-white/10 bg-white/[0.03] text-slate-400 hover:text-white'
-                        : 'border-white/80 bg-white/60 text-slate-500 hover:text-slate-900'
-                  )}
-                >
-                  {filter}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <label className={cn('text-xs font-black uppercase tracking-wide', muted)}>
+                Event type
+              </label>
+              <select
+                value={activeFilter}
+                onChange={(event) => setActiveFilter(event.target.value)}
+                aria-label="Filter calendar by event type"
+                className={cn(
+                  'min-h-10 rounded-xl border px-3 text-sm font-bold outline-none',
+                  inputClass
+                )}
+              >
+                {FILTERS.map((filter) => (
+                  <option key={filter} value={filter}>
+                    {filter === 'All' ? 'All event types' : filter}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className={cn('text-xs font-black uppercase tracking-wide', muted)}>Timing</span>
-            {['All', 'Scheduled', 'Actual'].map((timing) => (
+            <span className={cn('text-xs font-black uppercase tracking-wide', muted)}>Source</span>
+            {['All', 'Workflow', 'Shared'].map((source) => (
               <button
-                key={timing}
+                key={source}
                 type="button"
-                onClick={() => setTimingFilter(timing)}
+                onClick={() => setSourceFilter(source)}
                 className={cn(
                   'rounded-full border px-3 py-1.5 text-xs font-black transition-colors',
-                  timingFilter === timing
+                  sourceFilter === source
                     ? isDarkMode
                       ? 'border-cyan-300/40 bg-cyan-400/15 text-cyan-100'
                       : 'border-cyan-200 bg-cyan-50 text-cyan-700'
@@ -687,7 +751,7 @@ export default function CalendarSection({ isDarkMode }) {
                       : 'border-white/80 bg-white/60 text-slate-500 hover:text-slate-900'
                 )}
               >
-                {timing}
+                {source}
               </button>
             ))}
           </div>
@@ -715,9 +779,27 @@ export default function CalendarSection({ isDarkMode }) {
         <aside className="space-y-5">
           <Panel
             title={selectedDateLabel}
-            description={`${selectedEvents.length} visible event${selectedEvents.length === 1 ? '' : 's'} on selected date.`}
+            description={
+              selectedEvents.length
+                ? `${selectedEvents.length} event${
+                    selectedEvents.length === 1 ? '' : 's'
+                  } for this date.`
+                : 'No operational events recorded for this date.'
+            }
             isDarkMode={isDarkMode}
           >
+            {canCreate && (
+              <button
+                type="button"
+                onClick={openComposer}
+                className={cn(
+                  'mb-3 inline-flex min-h-9 items-center gap-2 rounded-xl border px-3 text-xs font-black',
+                  softPanel
+                )}
+              >
+                <Plus size={14} /> Add event on this date
+              </button>
+            )}
             <div className="space-y-2">
               {selectedEvents.length === 0 ? (
                 <EmptyState
@@ -742,38 +824,54 @@ export default function CalendarSection({ isDarkMode }) {
             </div>
           </Panel>
 
-          <Panel
-            title="Upcoming Operations"
-            description="Next scheduled and actual operational items."
-            isDarkMode={isDarkMode}
-          >
-            <div className="space-y-2">
-              {upcomingEvents.length === 0 ? (
-                <EmptyState
-                  title="No upcoming visible events"
-                  description="Upcoming operational activity will appear here."
-                  isDarkMode={isDarkMode}
-                />
-              ) : (
-                upcomingEvents.map((event) => (
-                  <TimelineRow
-                    key={event.id}
-                    event={event}
+          {!isComposerOpen && (
+            <Panel
+              title="Upcoming Operations"
+              description="Next shared operational events and actual Forecast Package milestones."
+              isDarkMode={isDarkMode}
+            >
+              <div className="space-y-2">
+                {upcomingEvents.length === 0 ? (
+                  <EmptyState
+                    title="No upcoming visible events"
+                    description="Upcoming operational activity will appear here."
                     isDarkMode={isDarkMode}
-                    onOpen={() => openEvent(event)}
                   />
-                ))
-              )}
-            </div>
-          </Panel>
+                ) : (
+                  upcomingEvents.map((event) => (
+                    <TimelineRow
+                      key={event.id}
+                      event={event}
+                      isDarkMode={isDarkMode}
+                      onOpen={() => openEvent(event)}
+                    />
+                  ))
+                )}
+              </div>
+            </Panel>
+          )}
 
-          {(canCreate || (draft.id && canEdit)) && (
+          {isComposerOpen && (canCreate || (draft.id && canEdit)) && (
             <Panel
               title={draft.id ? 'Edit Shared Event' : 'Add Shared Event'}
-              description="Persist meetings, maintenance, training, reminders, and deployments for authorized WaveLab users."
+              description="Create a date-specific operational event visible to authorized WaveLab users."
               isDarkMode={isDarkMode}
             >
               <form onSubmit={saveSharedEvent} className="space-y-3">
+                {formError && (
+                  <div
+                    className={cn(
+                      'rounded-xl border px-3 py-2 text-xs font-bold',
+                      isDarkMode
+                        ? 'border-rose-300/20 bg-rose-400/10 text-rose-200'
+                        : 'border-rose-200 bg-rose-50 text-rose-700'
+                    )}
+                    role="alert"
+                  >
+                    {formError}
+                  </div>
+                )}
+                <label className={cn('block text-xs font-black', muted)}>Event title</label>
                 <input
                   value={draft.title}
                   onChange={(event) =>
@@ -785,6 +883,7 @@ export default function CalendarSection({ isDarkMode }) {
                     inputClass
                   )}
                 />
+                <label className={cn('block text-xs font-black', muted)}>Date</label>
                 <input
                   type="date"
                   value={draft.date}
@@ -808,53 +907,100 @@ export default function CalendarSection({ isDarkMode }) {
                 </label>
                 {!draft.allDay && (
                   <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="time"
-                      value={draft.time}
+                    <div>
+                      <label className={cn('mb-1 block text-xs font-black', muted)}>
+                        Start time
+                      </label>
+                      <input
+                        type="time"
+                        aria-label="Start time"
+                        value={draft.time}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, time: event.target.value }))
+                        }
+                        className={cn(
+                          'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                          inputClass
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <label className={cn('mb-1 block text-xs font-black', muted)}>End time</label>
+                      <input
+                        type="time"
+                        aria-label="End time"
+                        value={draft.endTime}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, endTime: event.target.value }))
+                        }
+                        className={cn(
+                          'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                          inputClass
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className={cn('mb-1 block text-xs font-black', muted)}>Event type</label>
+                    <select
+                      value={draft.type}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, time: event.target.value }))
+                        setDraft((current) => ({ ...current, type: event.target.value }))
                       }
                       className={cn(
-                        'rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                        'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
                         inputClass
                       )}
-                    />
+                    >
+                      {EVENT_TYPES.map((type) => (
+                        <option key={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={cn('mb-1 block text-xs font-black', muted)}>
+                      Owner / organizer
+                    </label>
                     <input
-                      type="time"
-                      value={draft.endTime}
+                      value={draft.owner}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, endTime: event.target.value }))
+                        setDraft((current) => ({ ...current, owner: event.target.value }))
                       }
+                      placeholder="Owner / organizer"
                       className={cn(
-                        'rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                        'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
                         inputClass
                       )}
                     />
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={draft.type}
+                </div>
+                <div>
+                  <label className={cn('mb-1 block text-xs font-black', muted)}>Location</label>
+                  <input
+                    value={draft.location}
                     onChange={(event) =>
-                      setDraft((current) => ({ ...current, type: event.target.value }))
+                      setDraft((current) => ({ ...current, location: event.target.value }))
                     }
+                    placeholder="Optional location or meeting channel"
                     className={cn(
-                      'rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                      'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
                       inputClass
                     )}
-                  >
-                    {EVENT_TYPES.map((type) => (
-                      <option key={type}>{type}</option>
-                    ))}
-                  </select>
-                  <input
-                    value={draft.owner}
+                  />
+                </div>
+                <div>
+                  <label className={cn('mb-1 block text-xs font-black', muted)}>Notes</label>
+                  <textarea
+                    rows={3}
+                    value={draft.description}
                     onChange={(event) =>
-                      setDraft((current) => ({ ...current, owner: event.target.value }))
+                      setDraft((current) => ({ ...current, description: event.target.value }))
                     }
-                    placeholder="Owner / organizer"
+                    placeholder="Optional context, preparation, or operational notes"
                     className={cn(
-                      'rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                      'w-full resize-none rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
                       inputClass
                     )}
                   />
@@ -868,26 +1014,13 @@ export default function CalendarSection({ isDarkMode }) {
                     {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}{' '}
                     {draft.id ? 'Save changes' : 'Add event'}
                   </button>
-                  {draft.id && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDraft({
-                          id: null,
-                          title: '',
-                          owner: 'WaveLab Team',
-                          type: 'Meeting',
-                          date: selectedDate || todayIso,
-                          time: '09:00',
-                          endTime: '10:00',
-                          allDay: false,
-                        })
-                      }
-                      className={cn('rounded-xl border px-3 text-sm font-black', softPanel)}
-                    >
-                      Cancel
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={closeComposer}
+                    className={cn('rounded-xl border px-3 text-sm font-black', softPanel)}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </form>
             </Panel>
@@ -972,40 +1105,9 @@ function EventChip({ event, isDarkMode }) {
         )}
       />
       <span className="truncate">
-        {formatTime(event.startsAt, event.allDay)} ·{' '}
-        {event.type === 'Package'
-          ? STATUS_LABELS[event.status] || event.status || 'Package'
-          : event.type}
+        {formatTime(event.startsAt, event.allDay)} · {event.type}
       </span>
     </span>
-  );
-}
-
-function MiniStat({ label, value, isDarkMode }) {
-  return (
-    <div
-      className={cn(
-        'rounded-2xl border p-3',
-        isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65'
-      )}
-    >
-      <p
-        className={cn(
-          'text-xs font-black uppercase tracking-wide',
-          isDarkMode ? 'text-slate-400' : 'text-slate-500'
-        )}
-      >
-        {label}
-      </p>
-      <p
-        className={cn(
-          'mt-1 text-2xl font-black tabular-nums',
-          isDarkMode ? 'text-white' : 'text-slate-950'
-        )}
-      >
-        {value}
-      </p>
-    </div>
   );
 }
 
@@ -1074,16 +1176,6 @@ function EventRow({ event, isDarkMode, canEdit, canDelete, onOpen, onEdit, onRem
             >
               {event.type}
             </span>
-            {event.timing && (
-              <span
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-[10px] font-black uppercase',
-                  isDarkMode ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'
-                )}
-              >
-                {event.timing}
-              </span>
-            )}
           </div>
           <p
             className={cn(
@@ -1166,7 +1258,7 @@ function TimelineRow({ event, isDarkMode, onOpen }) {
           )}
         >
           {formatShortDate(event.date)} · {formatTime(event.startsAt, event.allDay)} ·{' '}
-          {event.timing || 'actual'}
+          {event.source === 'manual' ? 'Shared event' : 'Workflow'}
         </p>
         <p
           className={cn(

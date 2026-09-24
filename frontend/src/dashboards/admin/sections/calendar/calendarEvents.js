@@ -1,13 +1,9 @@
 import { formatPackageDate, getDateKey } from '@/features/projects/utils/forecastPackageGrouping';
 
-export const CALENDAR_TIME_ZONE = 'Asia/Manila';
-
 export const EVENT_TYPE_META = Object.freeze({
-  Package: { label: 'Forecast', tone: 'cyan' },
   Review: { label: 'Review', tone: 'amber' },
   Publication: { label: 'Publication', tone: 'emerald' },
   Returned: { label: 'Returned', tone: 'rose' },
-  Deadline: { label: 'Deadline', tone: 'orange' },
   Meeting: { label: 'Meeting', tone: 'blue' },
   Maintenance: { label: 'Maintenance', tone: 'violet' },
   Training: { label: 'Training', tone: 'indigo' },
@@ -19,89 +15,6 @@ export const EVENT_TYPE_META = Object.freeze({
 const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
 const APPROVED_STATUSES = new Set(['Approved', 'Published']);
-
-const pad = (value) => String(value).padStart(2, '0');
-
-export function manilaDateTime(dateKey, time) {
-  if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
-  if (!/^\d{2}:\d{2}$/.test(String(time || ''))) return null;
-  return `${dateKey}T${time}:00+08:00`;
-}
-
-export function monthRange(monthDate) {
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const start = new Date(year, month, 1);
-  const end = new Date(year, month + 1, 1);
-  return {
-    start,
-    end,
-    startIso: start.toISOString(),
-    endIso: end.toISOString(),
-  };
-}
-
-export function dateKeysInRange(start, end) {
-  const keys = [];
-  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const stop = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-  while (cursor < stop) {
-    keys.push(`${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(cursor.getDate())}`);
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return keys;
-}
-
-export function buildScheduleEvents(start, end, settings = {}) {
-  const milestones = [
-    {
-      key: 'open',
-      title: 'Forecast production opens',
-      time: settings.packageOpenTime || '06:00',
-      action: 'Begin the daily Forecast Package production workflow.',
-    },
-    {
-      key: 'submit',
-      title: 'Submission deadline',
-      time: settings.packageSubmissionDeadline || '10:00',
-      action: 'Forecast Package should be complete and submitted for review.',
-    },
-    {
-      key: 'publish',
-      title: 'Publication target',
-      time: settings.packagePublishTarget || '12:00',
-      action: 'Approved daily package should be published by the operational target.',
-    },
-    {
-      key: 'cutoff',
-      title: 'No-publication cutoff',
-      time: settings.noPublicationCutoff || '18:00',
-      action: 'Resolve the daily package or record the operational exception.',
-    },
-  ];
-
-  return dateKeysInRange(start, end).flatMap((dateKey) =>
-    milestones
-      .map((milestone) => {
-        const startsAt = manilaDateTime(dateKey, milestone.time);
-        if (!startsAt) return null;
-        return {
-          id: `schedule-${dateKey}-${milestone.key}`,
-          title: milestone.title,
-          startsAt,
-          date: dateKey,
-          type: 'Deadline',
-          source: 'schedule',
-          timing: 'scheduled',
-          owner: 'Forecast Operations',
-          detail: `${milestone.time} Asia/Manila`,
-          action: milestone.action,
-          readOnly: true,
-        };
-      })
-      .filter(Boolean)
-  );
-}
 
 function packageTitle(forecastPackage) {
   return (
@@ -134,32 +47,10 @@ function workflowEvent(forecastPackage, suffix, timestamp, type, title, detail, 
 export function buildPackageEvents(packages = []) {
   return packages.flatMap((forecastPackage) => {
     const id = forecastPackage.id || forecastPackage._id;
-    const dateKey =
-      forecastPackage.dateKey ||
-      getDateKey(forecastPackage.forecastDate || forecastPackage.createdAt);
     const title = packageTitle(forecastPackage);
     const packageHref = id ? `/forecasts/${id}` : '/forecasts';
     const reviewHref = '/forecasts/review';
     const events = [];
-
-    if (dateKey) {
-      events.push({
-        id: `${id || dateKey}-package-day`,
-        title,
-        startsAt: manilaDateTime(dateKey, '00:00'),
-        date: dateKey,
-        type: 'Package',
-        source: 'workflow',
-        timing: 'actual',
-        owner: forecastPackage.contributorLabel || 'Forecast team',
-        detail: `${forecastPackage.chartCount || 0} of 4 charts linked · ${forecastPackage.status || 'In Production'}`,
-        action: 'Open the Forecast Package.',
-        href: packageHref,
-        packageId: id,
-        allDay: true,
-        readOnly: true,
-      });
-    }
 
     events.push(
       workflowEvent(

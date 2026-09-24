@@ -1,35 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildPackageEvents,
-  buildScheduleEvents,
-  normalizeManualEvents,
-  sortCalendarEvents,
-} from './calendarEvents';
+import { buildPackageEvents, normalizeManualEvents, sortCalendarEvents } from './calendarEvents';
 
 describe('operational calendar event derivation', () => {
-  it('builds daily scheduled milestones from operations settings in Asia/Manila', () => {
-    const start = new Date(2026, 8, 24);
-    const end = new Date(2026, 8, 26);
-
-    const events = buildScheduleEvents(start, end, {
-      packageOpenTime: '05:30',
-      packageSubmissionDeadline: '09:45',
-      packagePublishTarget: '11:30',
-      noPublicationCutoff: '17:00',
-    });
-
-    expect(events).toHaveLength(8);
-    expect(events[0]).toMatchObject({
-      id: 'schedule-2026-09-24-open',
-      type: 'Deadline',
-      timing: 'scheduled',
-      startsAt: '2026-09-24T05:30:00+08:00',
-    });
-    expect(events[3].startsAt).toBe('2026-09-24T17:00:00+08:00');
-    expect(events[4].startsAt).toBe('2026-09-25T05:30:00+08:00');
-  });
-
   it('derives actual package workflow events from persisted timestamps', () => {
     const events = buildPackageEvents([
       {
@@ -47,7 +20,6 @@ describe('operational calendar event derivation', () => {
     ]);
 
     expect(events.map((event) => event.id)).toEqual([
-      'pkg-1-package-day',
       'pkg-1-submitted',
       'pkg-1-review-started',
       'pkg-1-approved',
