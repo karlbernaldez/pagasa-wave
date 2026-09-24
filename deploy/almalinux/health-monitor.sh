@@ -6,6 +6,9 @@ FAILURE_THRESHOLD="${FAILURE_THRESHOLD:-2}"
 DISK_THRESHOLD="${DISK_THRESHOLD:-80}"
 STATUS_URL="${STATUS_URL:-http://127.0.0.1:5000/status}"
 HOST_LABEL="${HOST_LABEL:-$(hostname -f 2>/dev/null || hostname)}"
+APP_ROOT="${APP_ROOT:-/home/wavelab/app}"
+PIPELINE_ALERTS_ENABLED="${PIPELINE_ALERTS_ENABLED:-1}"
+PIPELINE_ALERT_CHECK="${PIPELINE_ALERT_CHECK:-$APP_ROOT/backend/scripts/checkPipelineAlerts.js}"
 STATE_FILE="$STATE_DIR/state"
 
 mkdir -p "$STATE_DIR"
@@ -28,6 +31,36 @@ done
 if ! curl -fsS --max-time 10 "$STATUS_URL" >/dev/null; then
   failures+=("backend status endpoint is unavailable")
 fi
+if [[ "$PIPELINE_ALERTS_ENABLED" == "1" ]]; then
+  if [[ ! -r "$PIPELINE_ALERT_CHECK" ]]; then
+    failures+=("pipeline alert checker is unavailable: $PIPELINE_ALERT_CHECK")
+  else
+    if pipeline_alert_json="$(cd "$APP_ROOT/backend" && node "$PIPELINE_ALERT_CHECK" 2>/dev/null)"; then
+      if pipeline_alert_lines="$(printf '%s' "$pipeline_alert_json" | node -e '
+        let raw = "";
+        process.stdin.on("data", (chunk) => { raw += chunk; });
+        process.stdin.on("end", () => {
+          try {
+            const payload = JSON.parse(raw);
+            for (const alert of payload.alerts || []) {
+              if (alert?.message) process.stdout.write(String(alert.message) + "\n");
+            }
+          } catch {
+            process.exitCode = 1;
+          }
+        });
+      ')"; then
+        while IFS= read -r pipeline_alert; do
+          [[ -n "$pipeline_alert" ]] && failures+=("pipeline: $pipeline_alert")
+        done <<< "$pipeline_alert_lines"
+      else
+        failures+=("pipeline alert response is invalid")
+      fi
+    else
+      failures+=("pipeline alert evaluation failed")
+    fi
+  fi
+fi
 
 disk_usage=$(df -P / | awk 'NR==2 {gsub(/%/, "", $5); print $5}')
 if [[ ! "$disk_usage" =~ ^[0-9]+$ ]]; then
@@ -45,7 +78,7 @@ fi
 if ((${#failures[@]} == 0)); then
   printf 'healthy 0\n' > "$STATE_FILE"
   if [[ "$previous_state" == "alerting" ]]; then
-    send_discord "✅ WaveLab recovered on ${HOST_LABEL}. All monitored services, the backend status endpoint, and disk usage are healthy."
+    send_discord "✅ WaveLab recovered on ${HOST_LABEL}. Services, backend status, disk usage, and pipeline telemetry checks are healthy."
   fi
   logger -t wavelab-health-monitor "healthy; disk=${disk_usage}%"
   exit 0

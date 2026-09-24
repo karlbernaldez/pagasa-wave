@@ -26,6 +26,12 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
   const models = payload.models || [];
   const history = payload.history || {};
   const historySummary = history.summary || {};
+  const alertState = payload.alerts || {
+    active: false,
+    critical: 0,
+    warning: 0,
+    alerts: [],
+  };
   const historyTrend = buildTrend(history.trend, payload.range, ['successful', 'failed']);
   const readyRate = summary.models
     ? Math.round(((summary.readyModels || 0) / summary.models) * 1000) / 10
@@ -93,6 +99,34 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
           Persisted pipeline history is temporarily unavailable. Current readiness remains usable.
         </div>
       ) : null}
+
+      {alertState.active ? (
+        <AnalyticsTable
+          title="Active Degradation Alerts"
+          description="Conditions currently meeting the configured production thresholds used by Analytics and the health monitor."
+          isDarkMode={isDarkMode}
+          headers={['Severity', 'Condition', 'Model', 'Observed', 'Threshold']}
+          rows={(alertState.alerts || []).map((alert) => [
+            String(alert.severity || 'warning').toUpperCase(),
+            alert.message || alert.type || 'Pipeline degradation',
+            alert.model || '—',
+            alert.value == null ? '—' : alert.value,
+            alert.threshold == null ? '—' : alert.threshold,
+          ])}
+        />
+      ) : (
+        <div
+          className={cn(
+            'rounded-xl border px-4 py-3 text-sm font-semibold',
+            isDarkMode
+              ? 'border-emerald-300/15 bg-emerald-400/5 text-emerald-100'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          )}
+          role="status"
+        >
+          No active pipeline degradation alerts are meeting the configured thresholds.
+        </div>
+      )}
 
       <AnalyticsMetricStrip
         isDarkMode={isDarkMode}

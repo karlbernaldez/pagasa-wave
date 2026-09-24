@@ -5,6 +5,7 @@ import {
   loadPublishedChartViewAnalytics,
   loadUserContributionAnalytics,
 } from './operationalAnalyticsService.js';
+import { evaluatePipelineAlerts } from './pipelineAlertService.js';
 import { formatManilaDateKey } from './publishedChartViewService.js';
 import { loadWavePipelineRunAnalytics } from './wavePipelineHistoryService.js';
 import { getWavePipelineStatus } from './wavePipelineStatus.js';
@@ -871,6 +872,7 @@ export async function loadSystemAnalytics(
       models: [],
       deployment: null,
       history,
+      alerts: evaluatePipelineAlerts({ history, models: [] }),
       available: false,
       sourceError: pipelineResult.reason?.message || 'Wave pipeline status is unavailable.',
       range: serializeAnalyticsRange(range),
@@ -908,6 +910,7 @@ export async function loadSystemAnalytics(
     models,
     deployment: pipeline.deployment || null,
     history,
+    alerts: evaluatePipelineAlerts({ history, models }),
     available: true,
     range: serializeAnalyticsRange(range),
     generatedAt: pipeline.generatedAt || new Date().toISOString(),

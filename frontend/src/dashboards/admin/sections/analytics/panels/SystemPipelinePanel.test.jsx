@@ -101,6 +101,12 @@ const payload = {
       },
     ],
   },
+  alerts: {
+    active: false,
+    critical: 0,
+    warning: 0,
+    alerts: [],
+  },
   range: {
     start: '2026-09-01',
     end: '2026-09-24',
@@ -115,6 +121,9 @@ describe('SystemPipelinePanel', () => {
 
     expect(screen.getByText('Model Readiness Matrix')).toBeInTheDocument();
     expect(screen.getByText('Telemetry Storage Health')).toBeInTheDocument();
+    expect(
+      screen.getByText(/No active pipeline degradation alerts are meeting/i)
+    ).toBeInTheDocument();
     expect(screen.getByText('Recorded runs')).toBeInTheDocument();
     expect(screen.getAllByText('Success rate').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Pipeline Run Outcomes')).toBeInTheDocument();
@@ -122,6 +131,47 @@ describe('SystemPipelinePanel', () => {
     expect(screen.getByText('Recent Pipeline Runs')).toBeInTheDocument();
     expect(screen.getByText('66.7%')).toBeInTheDocument();
     expect(screen.getAllByText('Custom A').length).toBeGreaterThan(0);
+  });
+
+  it('renders active pipeline degradation alerts from the backend evaluation', () => {
+    render(
+      <SystemPipelinePanel
+        payload={{
+          ...payload,
+          alerts: {
+            active: true,
+            critical: 1,
+            warning: 1,
+            alerts: [
+              {
+                id: 'consecutive-failures:CUSTOM_A',
+                severity: 'critical',
+                type: 'consecutive_failures',
+                model: 'CUSTOM_A',
+                message: 'CUSTOM_A has 2 consecutive failed pipeline runs.',
+                value: 2,
+                threshold: 2,
+              },
+              {
+                id: 'telemetry-malformed',
+                severity: 'warning',
+                type: 'telemetry_integrity',
+                message: 'Pipeline telemetry contains 1 malformed record.',
+                value: 1,
+                threshold: 1,
+              },
+            ],
+          },
+        }}
+        isDarkMode={false}
+      />
+    );
+
+    expect(screen.getByText('Active Degradation Alerts')).toBeInTheDocument();
+    expect(
+      screen.getByText(/CUSTOM_A has 2 consecutive failed pipeline runs/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Pipeline telemetry contains 1 malformed record/i)).toBeInTheDocument();
   });
 
   it('surfaces malformed telemetry without hiding valid historical analytics', () => {

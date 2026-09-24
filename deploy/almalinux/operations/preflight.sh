@@ -167,6 +167,8 @@ bash -n "$APP_ROOT/deploy/almalinux/deploy.sh"
 bash -n "$SCRIPT_DIR/deploy.sh"
 bash -n "$SCRIPT_DIR/preflight.sh"
 bash -n "$SCRIPT_DIR/validate-deployment.sh"
+bash -n "$APP_ROOT/deploy/almalinux/health-monitor.sh"
+node --check "$APP_ROOT/backend/scripts/checkPipelineAlerts.js"
 completed_stages+=(shell_syntax)
 
 current_stage="report generation"
