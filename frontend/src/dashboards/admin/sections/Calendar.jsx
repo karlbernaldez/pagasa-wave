@@ -162,6 +162,17 @@ function formatShortDate(value) {
   }).format(date);
 }
 
+function formatTime(value, allDay = false) {
+  if (allDay || !value) return 'All day';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'Asia/Manila',
+  }).format(date);
+}
+
 function formatMonth(date) {
   return new Intl.DateTimeFormat(undefined, {
     month: 'long',
@@ -461,7 +472,7 @@ export default function CalendarSection({ isDarkMode }) {
           <div className="flex flex-col items-center gap-3 text-center">
             <Loader2 className={cn('h-8 w-8 animate-spin', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')} />
             <p className={cn('text-sm font-black', text)}>Loading operations calendar</p>
-            <p className={cn('text-xs font-semibold', muted)}>Fetching package dates, review milestones, publication events, and admin notes.</p>
+            <p className={cn('text-xs font-semibold', muted)}>Loading schedule targets, Forecast Package history, and shared operational events.</p>
           </div>
         </div>
       </div>
@@ -476,7 +487,7 @@ export default function CalendarSection({ isDarkMode }) {
             <p className={cn('text-xs font-black uppercase tracking-[0.2em]', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')}>Forecast operations calendar</p>
             <h1 className={cn('mt-2 text-2xl font-black tracking-tight sm:text-3xl', text)}>Daily package schedule, decisions, and publication readiness</h1>
             <p className={cn('mt-2 max-w-3xl text-sm font-semibold leading-6', muted)}>
-              Use this to answer what happened today, what needs admin action, and which upcoming package or note needs attention next.
+              Scheduled milestones come from Forecast Operations settings. Actual workflow events come from persisted Forecast Package timestamps, while shared operational events are visible to every authorized user.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -547,6 +558,25 @@ export default function CalendarSection({ isDarkMode }) {
             </div>
           </div>
 
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className={cn('text-xs font-black uppercase tracking-wide', muted)}>Timing</span>
+            {['All', 'Scheduled', 'Actual'].map((timing) => (
+              <button
+                key={timing}
+                type="button"
+                onClick={() => setTimingFilter(timing)}
+                className={cn(
+                  'rounded-full border px-3 py-1.5 text-xs font-black transition-colors',
+                  timingFilter === timing
+                    ? isDarkMode ? 'border-cyan-300/40 bg-cyan-400/15 text-cyan-100' : 'border-cyan-200 bg-cyan-50 text-cyan-700'
+                    : isDarkMode ? 'border-white/10 bg-white/[0.03] text-slate-400 hover:text-white' : 'border-white/80 bg-white/60 text-slate-500 hover:text-slate-900',
+                )}
+              >
+                {timing}
+              </button>
+            ))}
+          </div>
+
           <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-black uppercase tracking-wide">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <div key={day} className={muted}>{day}</div>)}
           </div>
@@ -558,29 +588,39 @@ export default function CalendarSection({ isDarkMode }) {
         <aside className="space-y-5">
           <Panel title={selectedDateLabel} description={`${selectedEvents.length} visible event${selectedEvents.length === 1 ? '' : 's'} on selected date.`} isDarkMode={isDarkMode}>
             <div className="space-y-2">
-              {selectedEvents.length === 0 ? <EmptyState title="No visible events" description="Switch filters or add an admin note for this date." isDarkMode={isDarkMode} /> : selectedEvents.map((event) => <EventRow key={event.id} event={event} isDarkMode={isDarkMode} onRemove={removeCustomEvent} />)}
+              {selectedEvents.length === 0 ? <EmptyState title="No visible events" description="Switch filters or add a shared operational event for this date." isDarkMode={isDarkMode} /> : selectedEvents.map((event) => <EventRow key={event.id} event={event} isDarkMode={isDarkMode} canEdit={canEdit} canDelete={canDelete} onOpen={() => openEvent(event)} onEdit={() => editSharedEvent(event)} onRemove={() => removeSharedEvent(event.id)} />)}
             </div>
           </Panel>
 
-          <Panel title="Upcoming Operations" description="Next package, review, publication, and admin-note items." isDarkMode={isDarkMode}>
+          <Panel title="Upcoming Operations" description="Next scheduled and actual operational items." isDarkMode={isDarkMode}>
             <div className="space-y-2">
-              {upcomingEvents.length === 0 ? <EmptyState title="No upcoming visible events" description="Upcoming package events will appear after packages are available." isDarkMode={isDarkMode} /> : upcomingEvents.map((event) => <TimelineRow key={event.id} event={event} isDarkMode={isDarkMode} />)}
+              {upcomingEvents.length === 0 ? <EmptyState title="No upcoming visible events" description="Upcoming operational activity will appear here." isDarkMode={isDarkMode} /> : upcomingEvents.map((event) => <TimelineRow key={event.id} event={event} isDarkMode={isDarkMode} onOpen={() => openEvent(event)} />)}
             </div>
           </Panel>
 
-          <Panel title="Add Admin Note" description="Use notes for maintenance windows, meetings, publication reminders, or manual follow-ups." isDarkMode={isDarkMode}>
-            <form onSubmit={addCustomEvent} className="space-y-3">
-              <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Example: Coordinate publication check" className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="date" value={draft.date} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
-                <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)}>
-                  {EVENT_TYPES.filter((type) => type !== 'Package').map((type) => <option key={type}>{type}</option>)}
-                </select>
-              </div>
-              <input value={draft.owner} onChange={(event) => setDraft((current) => ({ ...current, owner: event.target.value }))} placeholder="Owner" className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
-              <button type="submit" className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-3 py-2 text-sm font-black text-white shadow-lg shadow-cyan-500/25 transition-colors hover:bg-cyan-400"><Plus size={16} /> Add note</button>
-            </form>
-          </Panel>
+          {(canCreate || (draft.id && canEdit)) && (
+            <Panel title={draft.id ? 'Edit Shared Event' : 'Add Shared Event'} description="Persist meetings, maintenance, training, reminders, and deployments for authorized WaveLab users." isDarkMode={isDarkMode}>
+              <form onSubmit={saveSharedEvent} className="space-y-3">
+                <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Example: CWA coordination meeting" className={cn('w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="date" value={draft.date} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+                  <input type="time" value={draft.time} onChange={(event) => setDraft((current) => ({ ...current, time: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value }))} className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)}>
+                    {EVENT_TYPES.map((type) => <option key={type}>{type}</option>)}
+                  </select>
+                  <input value={draft.owner} onChange={(event) => setDraft((current) => ({ ...current, owner: event.target.value }))} placeholder="Owner / organizer" className={cn('rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors', inputClass)} />
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={saving || !draft.title.trim()} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-500 px-3 py-2 text-sm font-black text-white shadow-lg shadow-cyan-500/25 transition-colors hover:bg-cyan-400 disabled:opacity-50">
+                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} {draft.id ? 'Save changes' : 'Add event'}
+                  </button>
+                  {draft.id && <button type="button" onClick={() => setDraft({ id: null, title: '', owner: 'WaveLab Team', type: 'Meeting', date: selectedDate || todayIso, time: '09:00' })} className={cn('rounded-xl border px-3 text-sm font-black', softPanel)}>Cancel</button>}
+                </div>
+              </form>
+            </Panel>
+          )}
         </aside>
       </section>
     </div>
