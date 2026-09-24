@@ -25,6 +25,7 @@ import {
 } from './routes/analyticsCompatibilityRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import calendarRoutes from './routes/calendarRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import ecwamFrameRoutes from './routes/ecwamFrameRoutes.js';
@@ -167,6 +168,7 @@ const createApp = () => {
   app.use('/api/users', userAnalyticsCompatibilityRouter);
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
+  app.use('/api/calendar', calendarRoutes);
   app.use('/api/chat', chatRoutes);
 
   app.use('/api/public', express.static(path.join(__dirname, 'public')));
