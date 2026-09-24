@@ -22,7 +22,7 @@ describe('operational calendar event derivation', () => {
     expect(events).toHaveLength(8);
     expect(events[0]).toMatchObject({
       id: 'schedule-2026-09-24-open',
-      type: 'deadline',
+      type: 'Deadline',
       timing: 'scheduled',
       startsAt: '2026-09-24T05:30:00+08:00',
     });
@@ -50,6 +50,7 @@ describe('operational calendar event derivation', () => {
       'pkg-1-package-day',
       'pkg-1-submitted',
       'pkg-1-review-started',
+      'pkg-1-approved',
       'pkg-1-published',
     ]);
 
@@ -79,7 +80,7 @@ describe('operational calendar event derivation', () => {
 
     const returned = events.find((event) => event.id === 'pkg-2-returned');
     expect(returned).toMatchObject({
-      type: 'returned',
+      type: 'Returned',
       detail: 'Update the 24h chart.',
       href: '/forecasts/pkg-2',
     });
@@ -102,6 +103,7 @@ describe('operational calendar event derivation', () => {
     expect(event).toMatchObject({
       source: 'manual',
       timing: 'scheduled',
+      type: 'Meeting',
       owner: 'WaveLab Team',
       readOnly: false,
     });
