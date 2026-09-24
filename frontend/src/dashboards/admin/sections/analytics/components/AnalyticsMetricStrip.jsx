@@ -4,14 +4,14 @@ export default function AnalyticsMetricStrip({ items, isDarkMode }) {
   return (
     <section
       className={cn(
-        'grid overflow-hidden rounded-2xl border sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6',
+        'grid overflow-hidden rounded-xl border sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6',
         isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
       )}
     >
       {items.map((item) => (
         <div
           key={item.label}
-          className="min-w-0 border-b border-inherit px-4 py-4 sm:border-b-0 sm:border-r"
+          className="min-w-0 border-b border-inherit px-3.5 py-3 sm:border-b-0 sm:border-r"
         >
           <p
             className={cn(
@@ -24,7 +24,7 @@ export default function AnalyticsMetricStrip({ items, isDarkMode }) {
           <div className="mt-1 flex items-baseline gap-2">
             <p
               className={cn(
-                'text-2xl font-black tabular-nums',
+                'text-xl font-black tabular-nums',
                 isDarkMode ? 'text-white' : 'text-slate-950'
               )}
             >

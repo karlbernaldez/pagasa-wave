@@ -1,8 +1,18 @@
-import { DistributionCard, TrendCard } from '../AnalyticsVisuals';
+import { BarChartCard, DistributionCard, TrendCard } from '../AnalyticsVisuals';
 import AnalyticsMetricStrip from '../components/AnalyticsMetricStrip';
 import AnalyticsTable from '../components/AnalyticsTable';
-import { buildTimingRows, entriesByCount, formatComparisonDelta } from '../analyticsWorkspaceModel';
+import {
+  buildBottleneckStageRows,
+  buildChartTypePerformanceRows,
+  buildTimingRows,
+  contributionMixRows,
+  entriesByCount,
+  formatComparisonDelta,
+  publishedChartRows,
+} from '../analyticsWorkspaceModel';
 import { bucketLabel, buildTrend, formatHours } from '../analyticsPresentation';
+
+const percent = (value) => (value == null ? '—' : `${value}%`);
 
 export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
   const forecast = payload.sections?.forecast;
@@ -10,10 +20,14 @@ export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
   const publicReach = payload.sections?.public;
   const system = payload.sections?.system;
   const range = payload.range;
+
   const trend = forecast
     ? buildTrend(forecast.throughput, range, ['submitted', 'completed', 'returned'])
     : [];
   const timingRows = forecast ? buildTimingRows(forecast.timing) : [];
+  const bottleneckRows = forecast ? buildBottleneckStageRows(forecast.bottlenecks) : [];
+  const chartTypeRows = forecast ? buildChartTypePerformanceRows(forecast.chartTypes) : [];
+  const efficiency = forecast?.efficiency || {};
 
   const items = [
     forecast
@@ -34,42 +48,97 @@ export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
       : null,
     forecast
       ? {
-          label: 'Return rate',
-          value: forecast.summary?.returnRate == null ? '—' : `${forecast.summary.returnRate}%`,
-          helper: 'Revision/rejection pressure',
+          label: 'Completion rate',
+          value: percent(forecast.summary?.completionRate),
+          delta: formatComparisonDelta(forecast.comparison?.completionRate, {
+            percentagePoints: true,
+          }),
+          helper: 'Completed among decided outcomes',
+        }
+      : null,
+    forecast
+      ? {
+          label: 'First-pass approval',
+          value: percent(efficiency.firstPassApprovalRate),
+          delta: formatComparisonDelta(forecast.comparison?.firstPassApprovalRate, {
+            percentagePoints: true,
+          }),
+          helper: 'Completed without revision',
         }
       : null,
     publicReach
       ? {
           label: 'Public views',
           value: publicReach.summary?.periodViews ?? 0,
-          helper: 'Selected reporting period',
+          helper: `${publicReach.summary?.publishedChartsViewed ?? 0} charts reached`,
         }
       : null,
     users
       ? {
           label: 'Contributors',
           value: users.summary?.activeContributors ?? 0,
-          helper: 'Distinct operational participants',
-        }
-      : null,
-    system
-      ? {
-          label: 'Models ready',
-          value: `${system.summary?.readyModels ?? 0} / ${system.summary?.models ?? 0}`,
-          helper: 'Current pipeline snapshot',
+          helper: `${users.summary?.contributionEvents ?? 0} workflow events`,
         }
       : null,
   ].filter(Boolean);
 
+  const operationalMatrix = [
+    forecast
+      ? [
+          'Forecast workflow',
+          forecast.summary?.submitted ?? 0,
+          forecast.summary?.publishedEvents ?? 0,
+          percent(forecast.summary?.returnRate),
+          percent(efficiency.firstPassApprovalRate),
+          formatHours(forecast.timing?.reviewDuration?.p90Hours),
+          forecast.bottlenecks?.openAging?.total ?? 0,
+        ]
+      : null,
+    publicReach
+      ? [
+          'Public reach',
+          publicReach.summary?.periodViews ?? 0,
+          publicReach.summary?.publishedChartsViewed ?? 0,
+          publicReach.summary?.viewsToday ?? 0,
+          publicReach.summary?.viewsYesterday ?? 0,
+          publicReach.summary?.dayOverDay?.percent == null
+            ? '—'
+            : `${publicReach.summary.dayOverDay.percent}%`,
+          publicReach.summary?.allTimeViews ?? 0,
+        ]
+      : null,
+    users
+      ? [
+          'Collaboration',
+          users.summary?.totalAccounts ?? 0,
+          users.summary?.activeAccounts ?? 0,
+          users.summary?.activeContributors ?? 0,
+          users.summary?.contributionEvents ?? 0,
+          users.summary?.pendingAccounts ?? 0,
+          users.summary?.restrictedAccounts ?? 0,
+        ]
+      : null,
+    system
+      ? [
+          'Pipeline',
+          system.summary?.models ?? 0,
+          system.summary?.readyModels ?? 0,
+          system.summary?.packagesAvailable ?? 0,
+          system.summary?.currentForecastCycle || '—',
+          system.summary?.pipelineHealth || '—',
+          system.packageDate || '—',
+        ]
+      : null,
+  ].filter(Boolean);
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {payload.partial ? (
         <div
           className={
             isDarkMode
-              ? 'rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100'
-              : 'rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800'
+              ? 'rounded-xl border border-amber-300/20 bg-amber-400/10 px-4 py-2.5 text-xs font-semibold text-amber-100'
+              : 'rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-800'
           }
           role="status"
         >
@@ -80,7 +149,7 @@ export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
       <AnalyticsMetricStrip items={items} isDarkMode={isDarkMode} />
 
       {forecast ? (
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.75fr)]">
+        <section className="grid gap-4 2xl:grid-cols-[minmax(0,1.7fr)_minmax(21rem,0.7fr)]">
           <TrendCard
             title="Forecast Workflow Trend"
             description="Operational throughput across the selected reporting period."
@@ -94,30 +163,114 @@ export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
             isDarkMode={isDarkMode}
           />
           <DistributionCard
-            title="Current Workflow Distribution"
-            description="Package states within the selected forecast period."
+            title="Workflow State Mix"
+            description="Current package states inside the selected analytical cohort."
             rows={entriesByCount(forecast.statusCounts)}
             isDarkMode={isDarkMode}
           />
         </section>
       ) : null}
 
-      {timingRows.length ? (
+      <AnalyticsTable
+        title="Cross-Domain Operations Matrix"
+        description="A compact comparison of the real operational evidence currently available to your permissions."
+        isDarkMode={isDarkMode}
+        headers={[
+          'Domain',
+          'Measure 1',
+          'Measure 2',
+          'Measure 3',
+          'Measure 4',
+          'Measure 5',
+          'Measure 6',
+        ]}
+        rows={operationalMatrix}
+      />
+
+      {forecast ? (
+        <section className="grid gap-4 2xl:grid-cols-2">
+          <AnalyticsTable
+            title="Workflow Timing Distribution"
+            description="Median and tail latency. Sample size excludes incomplete historical records."
+            isDarkMode={isDarkMode}
+            headers={['Stage', 'Median', 'P75', 'P90', 'Sample', 'Definition']}
+            rows={timingRows.map((row) => [
+              row.stage,
+              formatHours(row.medianHours),
+              formatHours(row.p75Hours),
+              formatHours(row.p90Hours),
+              row.sampleSize,
+              row.definition,
+            ])}
+          />
+          <AnalyticsTable
+            title="Bottleneck Ranking"
+            description="Workflow stages ranked by observed tail duration."
+            isDarkMode={isDarkMode}
+            headers={['Stage', 'Median', 'P75', 'P90', 'Sample']}
+            rows={bottleneckRows.map((row) => [
+              row.label,
+              formatHours(row.medianHours),
+              formatHours(row.p75Hours),
+              formatHours(row.p90Hours),
+              row.sampleSize,
+            ])}
+          />
+        </section>
+      ) : null}
+
+      {forecast && chartTypeRows.length ? (
         <AnalyticsTable
-          title="Timing Summary"
-          description="Compact timing evidence for the selected period. Sample size is shown explicitly."
+          title="Forecast Horizon Performance Matrix"
+          description="Per-chart operational efficiency from persisted chart-project workflow evidence."
           isDarkMode={isDarkMode}
-          headers={['Stage', 'Median', 'P75', 'P90', 'Sample', 'Definition']}
-          rows={timingRows.map((row) => [
-            row.stage,
-            formatHours(row.medianHours),
-            formatHours(row.p75Hours),
-            formatHours(row.p90Hours),
-            row.sampleSize,
-            row.definition,
+          headers={[
+            'Chart / horizon',
+            'Projects',
+            'Submitted',
+            'Published',
+            'Revision rate',
+            'First-pass',
+            'Median review',
+            'P90 review',
+            'Median turnaround',
+            'P90 turnaround',
+          ]}
+          rows={chartTypeRows.map((row) => [
+            row.horizonHours === 0
+              ? `${row.label} · Analysis`
+              : `${row.label} · T+${row.horizonHours}`,
+            row.projects,
+            row.submitted,
+            row.published,
+            percent(row.revisionRate),
+            percent(row.firstPassPublicationRate),
+            formatHours(row.reviewMedianHours),
+            formatHours(row.reviewP90Hours),
+            formatHours(row.turnaroundMedianHours),
+            formatHours(row.turnaroundP90Hours),
           ])}
         />
       ) : null}
+
+      <section className="grid gap-4 2xl:grid-cols-2">
+        {publicReach ? (
+          <BarChartCard
+            title="Highest-Reach Published Charts"
+            description="Published charts ranked by deduplicated views in the selected period."
+            rows={publishedChartRows(publicReach)}
+            isDarkMode={isDarkMode}
+          />
+        ) : null}
+        {users ? (
+          <BarChartCard
+            title="Operational Event Mix"
+            description="Aggregate collaboration events by workflow action."
+            rows={contributionMixRows(users.contributions)}
+            isDarkMode={isDarkMode}
+          />
+        ) : null}
+      </section>
     </div>
   );
 }

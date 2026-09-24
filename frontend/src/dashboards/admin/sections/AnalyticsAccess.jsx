@@ -229,7 +229,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
 
   if (!sections.length) {
     return (
-      <div className="mx-auto max-w-[1600px] p-4 sm:p-6">
+      <div className="mx-auto max-w-[1800px] p-4 sm:p-5">
         <div
           className={cn(
             'rounded-2xl border px-6 py-20 text-center',
@@ -252,7 +252,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
   const stale = isAnalyticsDataStale(loadedAt);
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-5 p-4 sm:p-6">
+    <div className="mx-auto max-w-[1800px] space-y-4 p-4 sm:p-5">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p
@@ -329,7 +329,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
 
       <nav
         className={cn(
-          'flex gap-2 overflow-x-auto rounded-2xl border p-2',
+          'sticky top-0 z-20 flex gap-1.5 overflow-x-auto rounded-xl border p-1.5 backdrop-blur-xl',
           isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
         )}
         aria-label="Analytics subsections"
@@ -349,7 +349,7 @@ export default function AnalyticsAccess({ isDarkMode }) {
                 setState((current) => ({ ...current, error: '' }));
               }}
               className={cn(
-                'inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500',
+                'inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-black transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500',
                 selected
                   ? 'bg-cyan-600 text-white'
                   : isDarkMode
