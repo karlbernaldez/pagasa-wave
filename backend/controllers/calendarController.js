@@ -36,7 +36,9 @@ function parseEventInput(body = {}, { partial = false } = {}) {
   }
 
   if (!partial || body.type !== undefined) {
-    const type = String(body.type || '').trim().toLowerCase();
+    const type = String(body.type || '')
+      .trim()
+      .toLowerCase();
     if (!CALENDAR_EVENT_TYPES.includes(type)) {
       throwError(`type must be one of: ${CALENDAR_EVENT_TYPES.join(', ')}`, 400);
     }
@@ -44,7 +46,9 @@ function parseEventInput(body = {}, { partial = false } = {}) {
   }
 
   if (body.status !== undefined) {
-    const status = String(body.status || '').trim().toLowerCase();
+    const status = String(body.status || '')
+      .trim()
+      .toLowerCase();
     if (!CALENDAR_EVENT_STATUSES.includes(status)) {
       throwError(`status must be one of: ${CALENDAR_EVENT_STATUSES.join(', ')}`, 400);
     }
