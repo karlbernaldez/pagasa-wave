@@ -108,6 +108,18 @@ wavetiles/.normalized-product-stage/.status/
 
 The status schema exposes operational states such as `BUILDING`, `VALIDATING`, `PUBLISHING`, `READY`, and `FAILED`, together with package date, required/source cycle, input mode, retained-frame counts, timestamps, and any failure message.
 
+Terminal normalized-run outcomes are also appended to a per-model JSONL history under the same writable staging tree:
+
+```text
+wavetiles/.normalized-product-stage/.history/
+  WW3.jsonl
+  ECWAM.jsonl
+```
+
+Each invocation receives a unique `runId`. A terminal record is appended for `READY` or `FAILED` with package/source-cycle identity, start/completion timestamps, measured duration, frame counts, publication state, and the failure message when applicable. Multiple attempts for the same model, package date, and source cycle remain distinct records, allowing Analytics to calculate observed repeat/retry attempts rather than overwriting the earlier failure.
+
+This history is intentionally append-only and begins when the telemetry-enabled runner is deployed. WaveLab does not synthesize or backfill historical runs that were never recorded. Telemetry-write failure is non-fatal to product generation: a successful package must not be converted into a failed build merely because analytics history storage is temporarily unavailable.
+
 The backend exposes this information through an admin-only API:
 
 ```text
@@ -201,7 +213,7 @@ The systemd services retain `ProtectSystem=strict`; only the required model inpu
 
 - observe and record unattended timer-driven normalized cycles
 - add direct native-GRIB-to-normalized numerical parity verification for ECWAM
-- add retention/status history only if operations require trend or audit views beyond the current latest-snapshot model
+- observe telemetry growth and introduce history rotation/retention only when operational volume justifies it
 - complete final merge-readiness review after unattended operation and CI are green
 
 Do not merge source-specific retry cadence into one global timer solely for architectural symmetry. A common contract and lifecycle runner do not require common source scheduling.

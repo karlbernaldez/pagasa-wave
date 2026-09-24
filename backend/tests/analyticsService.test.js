@@ -191,6 +191,25 @@ test('forecast timing excludes incomplete historical samples instead of manufact
 
 test('system analytics derive readiness from dynamic pipeline models without hard-coded model names', async () => {
   const result = await loadSystemAnalytics(range, {
+    getPipelineHistory: async () => ({
+      available: true,
+      collectingSince: '2026-09-20T01:00:00.000Z',
+      invalidRecords: 0,
+      summary: {
+        runs: 3,
+        successful: 2,
+        failed: 1,
+        retryAttempts: 1,
+        successRate: 66.7,
+        failureRate: 33.3,
+        medianDurationSeconds: 900,
+        p90DurationSeconds: 1200,
+        durationSampleSize: 3,
+      },
+      trend: [],
+      models: [],
+      recentRuns: [],
+    }),
     getPipelineStatus: async () => ({
       generatedAt: '2026-09-23T01:00:00.000Z',
       packageDate: '2026-09-23',
@@ -225,10 +244,46 @@ test('system analytics derive readiness from dynamic pipeline models without har
   assert.equal(result.summary.packagesAvailable, 1);
   assert.equal(result.summary.pipelineHealth, 'processing');
   assert.equal(result.summary.currentForecastCycle, '2026092218');
+  assert.equal(result.history.summary.runs, 3);
+  assert.equal(result.history.summary.failed, 1);
+  assert.equal(result.history.summary.retryAttempts, 1);
   assert.deepEqual(
     result.models.map((model) => model.code),
     ['CUSTOM_A', 'CUSTOM_B']
   );
+});
+
+test('system analytics preserve persisted history when the live pipeline source fails', async () => {
+  const result = await loadSystemAnalytics(range, {
+    getPipelineStatus: async () => {
+      throw new Error('live pipeline unavailable');
+    },
+    getPipelineHistory: async () => ({
+      available: true,
+      collectingSince: '2026-09-20T01:00:00.000Z',
+      invalidRecords: 0,
+      summary: {
+        runs: 2,
+        successful: 1,
+        failed: 1,
+        retryAttempts: 1,
+        successRate: 50,
+        failureRate: 50,
+        medianDurationSeconds: 600,
+        p90DurationSeconds: 900,
+        durationSampleSize: 2,
+      },
+      trend: [{ date: '2026-09-20', successful: 1, failed: 1, runs: 2 }],
+      models: [],
+      recentRuns: [],
+    }),
+  });
+
+  assert.equal(result.available, false);
+  assert.match(result.sourceError, /live pipeline unavailable/);
+  assert.equal(result.history.available, true);
+  assert.equal(result.history.summary.runs, 2);
+  assert.equal(result.history.summary.failed, 1);
 });
 
 test('forecast analytics compare the selected period with the immediately preceding equal-length period', async () => {

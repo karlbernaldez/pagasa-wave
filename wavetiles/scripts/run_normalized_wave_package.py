@@ -21,7 +21,7 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from wavetiles.pipeline.reader import NormalizedCycleReader
-from wavetiles.pipeline.status import utc_now, write_status
+from wavetiles.pipeline.status import append_run_history, utc_now, write_status
 from publish_wave_package import publish
 
 MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
@@ -109,6 +109,17 @@ def validate_config(config: RunnerConfig) -> NormalizedCycleReader:
     return reader
 
 
+def record_run_history_safely(model: str, outcome: str, **kwargs) -> None:
+    try:
+        append_run_history(model, outcome, **kwargs)
+    except OSError as exc:
+        print(
+            f"WaveLab pipeline history write failed for {model}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
 def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
     reader = validate_config(config)
     tag = package_tag(config.package_date)
@@ -118,6 +129,7 @@ def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
     )
     stage_root.mkdir(mode=0o755)
     started_at = utc_now()
+    run_id = uuid.uuid4().hex
 
     write_status(
         config.model,
@@ -182,6 +194,7 @@ def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
             expected_source_cycle=config.source_cycle,
         )
 
+        completed_at = utc_now()
         write_status(
             config.model,
             "READY",
@@ -194,7 +207,23 @@ def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
             expected_frame_count=len(reader.forecast_hours),
             published=True,
             started_at=started_at,
-            completed_at=utc_now(),
+            completed_at=completed_at,
+            extra={"packageTag": tag, "runId": run_id},
+        )
+        record_run_history_safely(
+            config.model,
+            "READY",
+            run_id=run_id,
+            root=config.stage_parent / ".history",
+            package_date=config.package_date.isoformat(),
+            required_source_cycle=config.source_cycle,
+            source_cycle=config.source_cycle,
+            input_mode="normalized",
+            frame_count=len(reader.forecast_hours),
+            expected_frame_count=len(reader.forecast_hours),
+            published=True,
+            started_at=started_at,
+            completed_at=completed_at,
             extra={"packageTag": tag},
         )
         print(
@@ -202,6 +231,7 @@ def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
             flush=True,
         )
     except Exception as exc:
+        completed_at = utc_now()
         write_status(
             config.model,
             "FAILED",
@@ -213,7 +243,23 @@ def run_pipeline(config: RunnerConfig, python_bin: Path) -> None:
             expected_frame_count=len(reader.forecast_hours),
             published=False,
             started_at=started_at,
-            completed_at=utc_now(),
+            completed_at=completed_at,
+            error=str(exc),
+            extra={"runId": run_id},
+        )
+        record_run_history_safely(
+            config.model,
+            "FAILED",
+            run_id=run_id,
+            root=config.stage_parent / ".history",
+            package_date=config.package_date.isoformat(),
+            required_source_cycle=config.source_cycle,
+            source_cycle=config.source_cycle,
+            input_mode="normalized",
+            expected_frame_count=len(reader.forecast_hours),
+            published=False,
+            started_at=started_at,
+            completed_at=completed_at,
             error=str(exc),
         )
         raise

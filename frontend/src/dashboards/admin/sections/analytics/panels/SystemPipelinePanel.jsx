@@ -1,12 +1,24 @@
+import { TrendCard } from '../AnalyticsVisuals';
 import AnalyticsMetricStrip from '../components/AnalyticsMetricStrip';
 import AnalyticsTable from '../components/AnalyticsTable';
-import { formatDateTime } from '../analyticsPresentation';
+import { bucketLabel, buildTrend, formatDateTime } from '../analyticsPresentation';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+const formatDuration = (seconds) => {
+  if (seconds == null || !Number.isFinite(Number(seconds))) return '—';
+  const value = Number(seconds);
+  if (value < 60) return `${Math.round(value)}s`;
+  if (value < 3600) return `${Math.round((value / 60) * 10) / 10}m`;
+  return `${Math.round((value / 3600) * 10) / 10}h`;
+};
 
 export default function SystemPipelinePanel({ payload, isDarkMode }) {
   const summary = payload.summary || {};
   const models = payload.models || [];
+  const history = payload.history || {};
+  const historySummary = history.summary || {};
+  const historyTrend = buildTrend(history.trend, payload.range, ['successful', 'failed']);
   const readyRate = summary.models
     ? Math.round(((summary.readyModels || 0) / summary.models) * 1000) / 10
     : null;
@@ -24,9 +36,11 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
             : 'border-cyan-200 bg-cyan-50/50 text-slate-700'
         )}
       >
-        Current operational telemetry only. Historical reliability, retry frequency, and
-        build-duration trends remain intentionally absent until persisted pipeline-run history
-        exists.
+        Pipeline history is append-only and begins with real runs recorded after telemetry
+        deployment. No historical build outcomes are backfilled or inferred.
+        {history.collectingSince
+          ? ` Collection started ${formatDateTime(history.collectingSince)}.`
+          : ''}
       </div>
 
       {!payload.available ? (
@@ -39,7 +53,21 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
           )}
           role="status"
         >
-          Live wave-pipeline status is unavailable. No historical results were fabricated.
+          Live wave-pipeline status is unavailable. Persisted run history remains independent.
+        </div>
+      ) : null}
+
+      {!history.available ? (
+        <div
+          className={cn(
+            'rounded-xl border px-4 py-2.5 text-sm font-semibold',
+            isDarkMode
+              ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
+              : 'border-amber-200 bg-amber-50 text-amber-800'
+          )}
+          role="status"
+        >
+          Persisted pipeline history is temporarily unavailable. Current readiness remains usable.
         </div>
       ) : null}
 
@@ -150,6 +178,109 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
           ])}
         />
       </section>
+
+      <AnalyticsMetricStrip
+        isDarkMode={isDarkMode}
+        items={[
+          {
+            label: 'Recorded runs',
+            value: historySummary.runs ?? 0,
+            helper: 'Terminal builder attempts in range',
+          },
+          {
+            label: 'Success rate',
+            value: historySummary.successRate == null ? '—' : `${historySummary.successRate}%`,
+            helper: `${historySummary.successful ?? 0} successful run(s)`,
+          },
+          {
+            label: 'Failed runs',
+            value: historySummary.failed ?? 0,
+            helper: 'Persisted failed terminal outcomes',
+          },
+          {
+            label: 'Retry attempts',
+            value: historySummary.retryAttempts ?? 0,
+            helper: 'Additional attempts for the same model/cycle',
+          },
+          {
+            label: 'Median duration',
+            value: formatDuration(historySummary.medianDurationSeconds),
+            helper: `${historySummary.durationSampleSize ?? 0} complete timing sample(s)`,
+          },
+          {
+            label: 'P90 duration',
+            value: formatDuration(historySummary.p90DurationSeconds),
+            helper: '90th percentile terminal run duration',
+          },
+        ]}
+      />
+
+      <section className="grid gap-4 2xl:grid-cols-[minmax(0,1.4fr)_minmax(24rem,0.8fr)]">
+        <TrendCard
+          title="Pipeline Run Outcomes"
+          description="Persisted terminal outcomes by Asia/Manila operational day."
+          rows={historyTrend}
+          series={[
+            { dataKey: 'successful', label: 'Successful', stroke: '#10b981' },
+            { dataKey: 'failed', label: 'Failed', stroke: '#ef4444' },
+          ]}
+          bucketLabel={bucketLabel(payload.range?.days)}
+          isDarkMode={isDarkMode}
+        />
+        <AnalyticsTable
+          title="Model Reliability"
+          description="Run reliability and timing from persisted terminal records."
+          isDarkMode={isDarkMode}
+          headers={[
+            'Model',
+            'Runs',
+            'Success',
+            'Failed',
+            'Retries',
+            'Success rate',
+            'Median',
+            'P90',
+          ]}
+          rows={(history.models || []).map((model) => [
+            model.model,
+            model.runs,
+            model.successful,
+            model.failed,
+            model.retryAttempts,
+            model.successRate == null ? '—' : `${model.successRate}%`,
+            formatDuration(model.medianDurationSeconds),
+            formatDuration(model.p90DurationSeconds),
+          ])}
+        />
+      </section>
+
+      <AnalyticsTable
+        title="Recent Pipeline Runs"
+        description="Append-only terminal run evidence. Failure messages are operational errors, not user data."
+        isDarkMode={isDarkMode}
+        headers={[
+          'Completed',
+          'Model',
+          'Package date',
+          'Source cycle',
+          'Outcome',
+          'Duration',
+          'Frames',
+          'Published',
+          'Error',
+        ]}
+        rows={(history.recentRuns || []).map((run) => [
+          formatDateTime(run.completedAt || run.recordedAt),
+          run.model,
+          run.packageDate || '—',
+          run.sourceCycle || run.requiredSourceCycle || '—',
+          run.outcome,
+          formatDuration(run.durationSeconds),
+          `${run.frameCount ?? 0} / ${run.expectedFrameCount ?? 0}`,
+          run.published ? 'Yes' : 'No',
+          run.error || '—',
+        ])}
+      />
     </div>
   );
 }

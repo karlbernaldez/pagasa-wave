@@ -1,4 +1,4 @@
-import { loadAnalyticsOverview } from '../services/analyticsService.js';
+import { loadAnalyticsOverview, loadSystemAnalytics } from '../services/analyticsService.js';
 import ForecastPackage from '../models/ForecastPackage.js';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
@@ -184,50 +184,47 @@ export const exportPublicReachAnalytics = async (req, res, next) => {
 export const exportSystemAnalytics = async (req, res, next) => {
   try {
     const range = parseAnalyticsDateRange(req.query);
-    const userMatch = { deletedAt: null, ...buildDateMatch('createdAt', range) };
-    const packageMatch = {
-      status: { $in: ANALYTICS_PACKAGE_STATUSES },
-      ...buildDateMatch('forecastDate', range),
-    };
-
-    const [totalUsers, activeUsers, totalPackages, packageRows, userRows, publishedChartViews] =
-      await Promise.all([
-        User.countDocuments(userMatch),
-        User.countDocuments({ ...userMatch, status: 'active' }),
-        ForecastPackage.countDocuments(packageMatch),
-        ForecastPackage.aggregate([
-          { $match: packageMatch },
-          { $group: { _id: '$status', count: { $sum: 1 } } },
-          { $sort: { _id: 1 } },
-        ]),
-        User.aggregate([
-          { $match: userMatch },
-          { $group: { _id: '$status', count: { $sum: 1 } } },
-          { $sort: { _id: 1 } },
-        ]),
-        loadPublishedChartViewAnalytics(range, {
-          currentDateKey: formatManilaDateKey(),
-        }),
-      ]);
+    const payload = await loadSystemAnalytics(range);
+    const history = payload.history || {};
+    const historySummary = history.summary || {};
 
     const rows = [
-      ['users.total', totalUsers],
-      ['users.active', activeUsers],
-      ['forecast_packages.total', totalPackages],
-      ['published_chart_views.period', publishedChartViews.totalViews],
-      ['published_chart_views.today', publishedChartViews.viewsToday],
-      ...userRows.map((row) => [`users.status.${row._id || 'unknown'}`, row.count || 0]),
-      ...packageRows.map((row) => [
-        `forecast_packages.status.${row._id || 'unknown'}`,
-        row.count || 0,
+      ['metadata.timezone', range.timezone],
+      ['metadata.generated_at', payload.generatedAt],
+      ['current.models', payload.summary?.models ?? 0],
+      ['current.models_ready', payload.summary?.readyModels ?? 0],
+      ['current.packages_available', payload.summary?.packagesAvailable ?? 0],
+      ['current.pipeline_health', payload.summary?.pipelineHealth ?? 'unavailable'],
+      ['current.forecast_cycle', payload.summary?.currentForecastCycle ?? ''],
+      ['current.package_date', payload.packageDate ?? ''],
+      ['history.collecting_since', history.collectingSince ?? ''],
+      ['history.runs', historySummary.runs ?? 0],
+      ['history.successful', historySummary.successful ?? 0],
+      ['history.failed', historySummary.failed ?? 0],
+      ['history.retry_attempts', historySummary.retryAttempts ?? 0],
+      ['history.success_rate_percent', historySummary.successRate ?? ''],
+      ['history.failure_rate_percent', historySummary.failureRate ?? ''],
+      ['history.median_duration_seconds', historySummary.medianDurationSeconds ?? ''],
+      ['history.p90_duration_seconds', historySummary.p90DurationSeconds ?? ''],
+      ['history.duration_sample_size', historySummary.durationSampleSize ?? 0],
+      ...payload.models.map((model) => [`current.model.${model.code}.state`, model.state || '']),
+      ...payload.models.map((model) => [
+        `current.model.${model.code}.frame_coverage`,
+        `${model.frameCount || 0}/${model.expectedFrameCount || 0}`,
       ]),
-      ...publishedChartViews.trend.map((row) => [
-        `published_chart_views.daily.${row.date}`,
-        row.views,
+      ...(history.models || []).flatMap((model) => [
+        [`history.model.${model.model}.runs`, model.runs],
+        [`history.model.${model.model}.successful`, model.successful],
+        [`history.model.${model.model}.failed`, model.failed],
+        [`history.model.${model.model}.retry_attempts`, model.retryAttempts],
+        [`history.model.${model.model}.success_rate_percent`, model.successRate ?? ''],
+        [`history.model.${model.model}.median_duration_seconds`, model.medianDurationSeconds ?? ''],
+        [`history.model.${model.model}.p90_duration_seconds`, model.p90DurationSeconds ?? ''],
       ]),
-      ...publishedChartViews.topCharts.map((row) => [
-        `published_chart_views.chart.${row.projectId}`,
-        row.views,
+      ...(history.trend || []).flatMap((point) => [
+        [`history.daily.${point.date}.runs`, point.runs],
+        [`history.daily.${point.date}.successful`, point.successful],
+        [`history.daily.${point.date}.failed`, point.failed],
       ]),
     ];
 
