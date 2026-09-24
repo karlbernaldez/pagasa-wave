@@ -463,6 +463,12 @@ export default function CalendarSection({ isDarkMode }) {
 
   const removeSharedEvent = async (id) => {
     if (!canDelete) return;
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm('Delete this shared operational event? This action cannot be undone.')
+    ) {
+      return;
+    }
     setSaving(true);
     try {
       await deleteCalendarEvent(id);
@@ -812,10 +818,10 @@ export default function CalendarSection({ isDarkMode }) {
 
           {!isComposerOpen && (
             <Panel
-            title="Upcoming Operations"
-            description="Next shared operational events and actual Forecast Package milestones."
-            isDarkMode={isDarkMode}
-          >
+              title="Upcoming Operations"
+              description="Next shared operational events and actual Forecast Package milestones."
+              isDarkMode={isDarkMode}
+            >
             <div className="space-y-2">
               {upcomingEvents.length === 0 ? (
                 <EmptyState
@@ -833,8 +839,8 @@ export default function CalendarSection({ isDarkMode }) {
                   />
                 ))
               )}
-            </div>
-          </Panel>
+              </div>
+            </Panel>
           )}
 
           {isComposerOpen && (canCreate || (draft.id && canEdit)) && (
@@ -900,34 +906,34 @@ export default function CalendarSection({ isDarkMode }) {
                         Start time
                       </label>
                       <input
-                      type="time"
-                      aria-label="Start time"
-                      value={draft.time}
-                      onChange={(event) =>
-                        setDraft((current) => ({ ...current, time: event.target.value }))
-                      }
-                      className={cn(
-                        'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
-                        inputClass
-                      )}
-                    />
+                        type="time"
+                        aria-label="Start time"
+                        value={draft.time}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, time: event.target.value }))
+                        }
+                        className={cn(
+                          'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                          inputClass
+                        )}
+                      />
                     </div>
                     <div>
                       <label className={cn('mb-1 block text-xs font-black', muted)}>
                         End time
                       </label>
                       <input
-                      type="time"
-                      aria-label="End time"
-                      value={draft.endTime}
-                      onChange={(event) =>
-                        setDraft((current) => ({ ...current, endTime: event.target.value }))
-                      }
-                      className={cn(
-                        'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
-                        inputClass
-                      )}
-                    />
+                        type="time"
+                        aria-label="End time"
+                        value={draft.endTime}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, endTime: event.target.value }))
+                        }
+                        className={cn(
+                          'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                          inputClass
+                        )}
+                      />
                     </div>
                   </div>
                 )}
@@ -944,9 +950,9 @@ export default function CalendarSection({ isDarkMode }) {
                         inputClass
                       )}
                     >
-                    {EVENT_TYPES.map((type) => (
-                      <option key={type}>{type}</option>
-                    ))}
+                      {EVENT_TYPES.map((type) => (
+                        <option key={type}>{type}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -959,11 +965,11 @@ export default function CalendarSection({ isDarkMode }) {
                         setDraft((current) => ({ ...current, owner: event.target.value }))
                       }
                       placeholder="Owner / organizer"
-                    className={cn(
-                      'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
-                      inputClass
-                    )}
-                  />
+                      className={cn(
+                        'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                        inputClass
+                      )}
+                    />
                   </div>
                 </div>
                 <div>
@@ -1167,7 +1173,6 @@ function EventRow({ event, isDarkMode, canEdit, canDelete, onOpen, onEdit, onRem
             >
               {event.type}
             </span>
-
           </div>
           <p
             className={cn(
