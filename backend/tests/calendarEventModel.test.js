@@ -11,7 +11,7 @@ const validEvent = (overrides = {}) =>
     startsAt: new Date('2026-09-24T08:00:00.000Z'),
     endsAt: new Date('2026-09-24T09:00:00.000Z'),
     createdBy: '64f000000000000000000001',
-    updatedBy: '64f000000000000000000000001',
+    updatedBy: '64f000000000000000000001',
     ...overrides,
   });
 
