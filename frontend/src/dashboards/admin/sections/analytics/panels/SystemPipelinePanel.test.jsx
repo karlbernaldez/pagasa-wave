@@ -111,7 +111,7 @@ describe('SystemPipelinePanel', () => {
 
     expect(screen.getByText('Model Readiness Matrix')).toBeInTheDocument();
     expect(screen.getByText('Recorded runs')).toBeInTheDocument();
-    expect(screen.getByText('Success rate')).toBeInTheDocument();
+    expect(screen.getAllByText('Success rate').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Pipeline Run Outcomes')).toBeInTheDocument();
     expect(screen.getByText('Model Reliability')).toBeInTheDocument();
     expect(screen.getByText('Recent Pipeline Runs')).toBeInTheDocument();
