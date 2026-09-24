@@ -24,7 +24,9 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
             : 'border-cyan-200 bg-cyan-50/50 text-slate-700'
         )}
       >
-        Current operational telemetry only. Historical reliability, retry frequency, and build-duration trends remain intentionally absent until persisted pipeline-run history exists.
+        Current operational telemetry only. Historical reliability, retry frequency, and
+        build-duration trends remain intentionally absent until persisted pipeline-run history
+        exists.
       </div>
 
       {!payload.available ? (
@@ -57,7 +59,8 @@ export default function SystemPipelinePanel({ payload, isDarkMode }) {
           {
             label: 'Packages available',
             value: summary.packagesAvailable ?? 0,
-            helper: packageCoverage == null ? 'No operational models' : `${packageCoverage}% coverage`,
+            helper:
+              packageCoverage == null ? 'No operational models' : `${packageCoverage}% coverage`,
           },
           {
             label: 'Pipeline health',
