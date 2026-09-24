@@ -517,10 +517,10 @@ export default function CalendarSection({ isDarkMode }) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <MiniStat label="Month events" value={monthStats.total} isDarkMode={isDarkMode} />
-            <MiniStat label="Publications" value={monthStats.publications} isDarkMode={isDarkMode} />
+            <MiniStat label="Scheduled" value={monthStats.scheduled} isDarkMode={isDarkMode} />
+            <MiniStat label="Actual" value={monthStats.actual} isDarkMode={isDarkMode} />
             <MiniStat label="Reviews" value={monthStats.reviews} isDarkMode={isDarkMode} />
-            <MiniStat label="Returned" value={monthStats.returned} isDarkMode={isDarkMode} />
+            <MiniStat label="Publications" value={monthStats.publications} isDarkMode={isDarkMode} />
           </div>
         </div>
       </section>
