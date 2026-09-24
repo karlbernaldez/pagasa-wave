@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   CalendarDays,
@@ -7,25 +8,39 @@ import {
   ChevronRight,
   Clock3,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Trash2,
   Waves,
 } from 'lucide-react';
 
+import { checkAuthSession } from '@/api/auth';
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  fetchCalendarEvents,
+  updateCalendarEvent,
+} from '@/api/calendarAPI';
 import { fetchAdminForecastPackages } from '@/api/forecastPackageAPI';
+import { getSettings } from '@/api/siteSettings';
+import { DEFAULT_OPERATIONS } from '@/dashboards/admin/sections/settings/constants/defaults';
 import {
   adaptForecastPackageModel,
   formatPackageDate,
   getDateKey,
   isDailyForecastPackage,
 } from '@/features/projects/utils/forecastPackageGrouping';
+import {
+  buildPackageEvents,
+  buildScheduleEvents,
+  normalizeManualEvents,
+  sortCalendarEvents,
+} from './calendar/calendarEvents';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
-const CUSTOM_EVENTS_STORAGE_KEY = 'adminCalendarCustomEvents';
-
-const EVENT_TYPES = ['Package', 'Review', 'Publication', 'Returned', 'Maintenance', 'Meeting'];
-const FILTERS = ['All', 'Package', 'Review', 'Publication', 'Returned', 'Notes'];
+const EVENT_TYPES = ['Meeting', 'Maintenance', 'Training', 'Reminder', 'Deployment', 'Other'];
+const FILTERS = ['All', 'Package', 'Review', 'Publication', 'Returned', 'Deadline', 'Meeting', 'Maintenance'];
 const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
 const APPROVED_STATUSES = new Set(['Approved', 'Published']);
@@ -55,6 +70,12 @@ const TYPE_META = {
     light: 'border-rose-200 bg-rose-50/80 text-rose-700',
     dark: 'border-rose-300/20 bg-rose-400/10 text-rose-200',
   },
+  Deadline: {
+    icon: Clock3,
+    dot: 'bg-orange-500',
+    light: 'border-orange-200 bg-orange-50/80 text-orange-700',
+    dark: 'border-orange-300/20 bg-orange-400/10 text-orange-200',
+  },
   Maintenance: {
     icon: RefreshCw,
     dot: 'bg-violet-500',
@@ -66,6 +87,30 @@ const TYPE_META = {
     dot: 'bg-blue-500',
     light: 'border-blue-200 bg-blue-50/80 text-blue-700',
     dark: 'border-blue-300/20 bg-blue-400/10 text-blue-200',
+  },
+  Training: {
+    icon: CalendarDays,
+    dot: 'bg-indigo-500',
+    light: 'border-indigo-200 bg-indigo-50/80 text-indigo-700',
+    dark: 'border-indigo-300/20 bg-indigo-400/10 text-indigo-200',
+  },
+  Reminder: {
+    icon: Clock3,
+    dot: 'bg-slate-500',
+    light: 'border-slate-200 bg-slate-50 text-slate-700',
+    dark: 'border-white/10 bg-white/[0.04] text-slate-300',
+  },
+  Deployment: {
+    icon: RefreshCw,
+    dot: 'bg-purple-500',
+    light: 'border-purple-200 bg-purple-50 text-purple-700',
+    dark: 'border-purple-300/20 bg-purple-400/10 text-purple-200',
+  },
+  Other: {
+    icon: CalendarDays,
+    dot: 'bg-slate-400',
+    light: 'border-slate-200 bg-slate-50 text-slate-700',
+    dark: 'border-white/10 bg-white/[0.04] text-slate-300',
   },
 };
 
@@ -138,77 +183,8 @@ function getPackageAction(forecastPackage) {
   return 'Track package progress';
 }
 
-function getPackageEvents(packages) {
-  return packages.flatMap((forecastPackage) => {
-    const id = forecastPackage.id || forecastPackage._id || forecastPackage.dateKey;
-    const date = forecastPackage.dateKey || toIsoDate(forecastPackage.forecastDate || forecastPackage.createdAt);
-    const title = forecastPackage.title || `${formatPackageDate(date)} Forecast Package`;
-    const events = [];
-
-    if (date) {
-      events.push({
-        id: `${id}-package`,
-        title,
-        date,
-        owner: forecastPackage.ownerLabel || 'Forecast team',
-        type: 'Package',
-        source: 'package',
-        status: forecastPackage.status,
-        isDaily: isDailyForecastPackage(forecastPackage),
-        detail: `${forecastPackage.chartCount || 0} of 4 charts linked`,
-        action: getPackageAction(forecastPackage),
-      });
-    }
-
-    if (REVIEW_STATUSES.has(forecastPackage.status)) {
-      events.push({
-        id: `${id}-review`,
-        title: `Review ${title}`,
-        date: toIsoDate(forecastPackage.submittedAt || forecastPackage.updatedAt || forecastPackage.createdAt || date),
-        owner: 'Admin Review',
-        type: 'Review',
-        source: 'package',
-        status: forecastPackage.status,
-        detail: `${forecastPackage.pendingCount || 0} chart${forecastPackage.pendingCount === 1 ? '' : 's'} awaiting decision`,
-        action: 'Open the package in Review and approve, reject, or request revision.',
-      });
-    }
-
-    if (RETURNED_STATUSES.has(forecastPackage.status)) {
-      events.push({
-        id: `${id}-returned`,
-        title: `Returned ${title}`,
-        date: toIsoDate(forecastPackage.reviewedAt || forecastPackage.updatedAt || date),
-        owner: 'Admin Review',
-        type: 'Returned',
-        source: 'package',
-        status: forecastPackage.status,
-        detail: `${forecastPackage.returnedCount || 0} chart${forecastPackage.returnedCount === 1 ? '' : 's'} returned`,
-        action: 'Follow up until revised package is resubmitted.',
-      });
-    }
-
-    if (APPROVED_STATUSES.has(forecastPackage.status)) {
-      events.push({
-        id: `${id}-publish`,
-        title: forecastPackage.status === 'Published' ? `Published ${title}` : `Ready to publish ${title}`,
-        date: toIsoDate(forecastPackage.publishedAt || forecastPackage.reviewedAt || forecastPackage.updatedAt || date),
-        owner: 'Publication',
-        type: 'Publication',
-        source: 'package',
-        status: forecastPackage.status,
-        detail: `${forecastPackage.approvedCount || forecastPackage.chartCount || 0} chart${(forecastPackage.approvedCount || forecastPackage.chartCount) === 1 ? '' : 's'} approved`,
-        action: forecastPackage.status === 'Published' ? 'Archive and monitor distribution.' : 'Publish the approved daily package.',
-      });
-    }
-
-    return events.filter((event) => event.date);
-  });
-}
-
 function isEventVisible(event, filter) {
   if (filter === 'All') return true;
-  if (filter === 'Notes') return event.source === 'custom';
   return event.type === filter;
 }
 
@@ -233,26 +209,6 @@ function buildCalendarDays(monthDate, events) {
       events: events.filter((event) => event.date === iso),
     };
   });
-}
-
-function sortEvents(events) {
-  return [...events].sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    const typeOrder = EVENT_TYPES.indexOf(a.type) - EVENT_TYPES.indexOf(b.type);
-    if (typeOrder !== 0) return typeOrder;
-    return a.title.localeCompare(b.title);
-  });
-}
-
-function loadCustomEvents() {
-  if (typeof window === 'undefined') return [];
-  try {
-    const saved = window.localStorage.getItem(CUSTOM_EVENTS_STORAGE_KEY);
-    const parsed = saved ? JSON.parse(saved) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 }
 
 function getMonthStats(days) {
