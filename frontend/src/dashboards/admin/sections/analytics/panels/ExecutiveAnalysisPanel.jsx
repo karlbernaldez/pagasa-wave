@@ -175,7 +175,15 @@ export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
         title="Cross-Domain Operations Matrix"
         description="A compact comparison of the real operational evidence currently available to your permissions."
         isDarkMode={isDarkMode}
-        headers={['Domain', 'Measure 1', 'Measure 2', 'Measure 3', 'Measure 4', 'Measure 5', 'Measure 6']}
+        headers={[
+          'Domain',
+          'Measure 1',
+          'Measure 2',
+          'Measure 3',
+          'Measure 4',
+          'Measure 5',
+          'Measure 6',
+        ]}
         rows={operationalMatrix}
       />
 
@@ -229,7 +237,9 @@ export default function ExecutiveAnalysisPanel({ payload, isDarkMode }) {
             'P90 turnaround',
           ]}
           rows={chartTypeRows.map((row) => [
-            row.horizonHours === 0 ? `${row.label} · Analysis` : `${row.label} · T+${row.horizonHours}`,
+            row.horizonHours === 0
+              ? `${row.label} · Analysis`
+              : `${row.label} · T+${row.horizonHours}`,
             row.projects,
             row.submitted,
             row.published,
