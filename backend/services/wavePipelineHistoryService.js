@@ -71,6 +71,9 @@ export async function readWavePipelineRunHistory(range, { historyRoot = HISTORY_
       return {
         available: true,
         collectingSince: null,
+        latestRunAt: null,
+        files: 0,
+        totalBytes: 0,
         runs: [],
         invalidRecords: 0,
       };
@@ -86,10 +89,13 @@ export async function readWavePipelineRunHistory(range, { historyRoot = HISTORY_
   const rows = [];
   let invalidRecords = 0;
   let collectingSince = null;
+  let latestRunAt = null;
+  let totalBytes = 0;
 
   for (const filename of files) {
     const target = path.join(historyRoot, filename);
-    const raw = await fs.readFile(target, 'utf8');
+    const [raw, stats] = await Promise.all([fs.readFile(target, 'utf8'), fs.stat(target)]);
+    totalBytes += Number(stats.size) || 0;
     for (const line of raw.split(/\r?\n/)) {
       const parsed = parseHistoryLine(line, filename);
       if (!parsed) continue;
@@ -103,6 +109,9 @@ export async function readWavePipelineRunHistory(range, { historyRoot = HISTORY_
       if (Number.isFinite(eventMs)) {
         if (!collectingSince || eventMs < new Date(collectingSince).getTime()) {
           collectingSince = eventAt;
+        }
+        if (!latestRunAt || eventMs > new Date(latestRunAt).getTime()) {
+          latestRunAt = eventAt;
         }
       }
       if (!inRange(eventAt, range)) continue;
@@ -133,7 +142,15 @@ export async function readWavePipelineRunHistory(range, { historyRoot = HISTORY_
   }
 
   rows.sort((a, b) => new Date(b.eventAt) - new Date(a.eventAt));
-  return { available: true, collectingSince, runs: rows, invalidRecords };
+  return {
+    available: true,
+    collectingSince,
+    latestRunAt,
+    files: files.length,
+    totalBytes,
+    runs: rows,
+    invalidRecords,
+  };
 }
 
 export function summarizeWavePipelineRunHistory(history = {}) {
@@ -190,6 +207,9 @@ export function summarizeWavePipelineRunHistory(history = {}) {
   return {
     available: history.available !== false,
     collectingSince: history.collectingSince || null,
+    latestRunAt: history.latestRunAt || null,
+    files: Number(history.files) || 0,
+    totalBytes: Number(history.totalBytes) || 0,
     invalidRecords: Number(history.invalidRecords) || 0,
     summary: {
       runs: runs.length,
