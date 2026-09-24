@@ -45,6 +45,10 @@ const FILTERS = [
   'Returned',
   'Meeting',
   'Maintenance',
+  'Training',
+  'Reminder',
+  'Deployment',
+  'Other',
 ];
 const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
@@ -695,26 +699,25 @@ export default function CalendarSection({ isDarkMode }) {
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {FILTERS.map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setActiveFilter(filter)}
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-xs font-black transition-colors',
-                    activeFilter === filter
-                      ? isDarkMode
-                        ? 'border-cyan-300/40 bg-cyan-400/15 text-cyan-100'
-                        : 'border-cyan-200 bg-cyan-50 text-cyan-700'
-                      : isDarkMode
-                        ? 'border-white/10 bg-white/[0.03] text-slate-400 hover:text-white'
-                        : 'border-white/80 bg-white/60 text-slate-500 hover:text-slate-900'
-                  )}
-                >
-                  {filter}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <label className={cn('text-xs font-black uppercase tracking-wide', muted)}>
+                Event type
+              </label>
+              <select
+                value={activeFilter}
+                onChange={(event) => setActiveFilter(event.target.value)}
+                aria-label="Filter calendar by event type"
+                className={cn(
+                  'min-h-10 rounded-xl border px-3 text-sm font-bold outline-none',
+                  inputClass
+                )}
+              >
+                {FILTERS.map((filter) => (
+                  <option key={filter} value={filter}>
+                    {filter === 'All' ? 'All event types' : filter}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -807,7 +810,8 @@ export default function CalendarSection({ isDarkMode }) {
             </div>
           </Panel>
 
-          <Panel
+          {!isComposerOpen && (
+            <Panel
             title="Upcoming Operations"
             description="Next shared operational events and actual Forecast Package milestones."
             isDarkMode={isDarkMode}
@@ -831,6 +835,7 @@ export default function CalendarSection({ isDarkMode }) {
               )}
             </div>
           </Panel>
+          )}
 
           {isComposerOpen && (canCreate || (draft.id && canEdit)) && (
             <Panel
