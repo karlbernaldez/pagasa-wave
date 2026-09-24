@@ -12,7 +12,6 @@ import {
   Plus,
   RefreshCw,
   Trash2,
-  Waves,
 } from 'lucide-react';
 
 import { checkAuthSession } from '@/api/auth';
@@ -41,7 +40,6 @@ const cn = (...classes) => classes.filter(Boolean).join(' ');
 const EVENT_TYPES = ['Meeting', 'Maintenance', 'Training', 'Reminder', 'Deployment', 'Other'];
 const FILTERS = [
   'All',
-  'Package',
   'Review',
   'Publication',
   'Returned',
@@ -52,12 +50,6 @@ const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
 
 const TYPE_META = {
-  Package: {
-    icon: Waves,
-    dot: 'bg-cyan-500',
-    light: 'border-cyan-200 bg-cyan-50/80 text-cyan-700',
-    dark: 'border-cyan-300/20 bg-cyan-400/10 text-cyan-200',
-  },
   Review: {
     icon: Clock3,
     dot: 'bg-amber-500',
@@ -223,14 +215,8 @@ function buildCalendarDays(monthDate, events) {
 }
 
 function getMonthStats(days) {
-  const monthEvents = days.flatMap((day) => (day.isCurrentMonth ? day.events : []));
   return {
-    total: monthEvents.length,
-    reviews: monthEvents.filter((event) => event.type === 'Review').length,
-    publications: monthEvents.filter((event) => event.type === 'Publication').length,
-    returned: monthEvents.filter((event) => event.type === 'Returned').length,
-    scheduled: monthEvents.filter((event) => event.timing === 'scheduled').length,
-    actual: monthEvents.filter((event) => event.timing === 'actual').length,
+    total: days.flatMap((day) => (day.isCurrentMonth ? day.events : [])).length,
   };
 }
 
@@ -484,6 +470,10 @@ export default function CalendarSection({ isDarkMode }) {
           type: 'Meeting',
           date: selectedDate || todayIso,
           time: '09:00',
+          endTime: '10:00',
+          allDay: false,
+          location: '',
+          description: '',
         });
       }
       await loadCalendar({ silent: true });
@@ -900,43 +890,55 @@ export default function CalendarSection({ isDarkMode }) {
                 </label>
                 {!draft.allDay && (
                   <div className="grid grid-cols-2 gap-2">
-                    <input
+                    <div>
+                      <label className={cn('mb-1 block text-xs font-black', muted)}>
+                        Start time
+                      </label>
+                      <input
                       type="time"
+                      aria-label="Start time"
                       value={draft.time}
                       onChange={(event) =>
                         setDraft((current) => ({ ...current, time: event.target.value }))
                       }
                       className={cn(
-                        'rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                        'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
                         inputClass
                       )}
                     />
-                    <input
+                    </div>
+                    <div>
+                      <label className={cn('mb-1 block text-xs font-black', muted)}>
+                        End time
+                      </label>
+                      <input
                       type="time"
+                      aria-label="End time"
                       value={draft.endTime}
                       onChange={(event) =>
                         setDraft((current) => ({ ...current, endTime: event.target.value }))
                       }
                       className={cn(
-                        'rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                        'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
                         inputClass
                       )}
                     />
+                    </div>
                   </div>
                 )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className={cn('mb-1 block text-xs font-black', muted)}>Event type</label>
                     <select
-                    value={draft.type}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, type: event.target.value }))
-                    }
-                    className={cn(
-                      'rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
-                      inputClass
-                    )}
-                  >
+                      value={draft.type}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, type: event.target.value }))
+                      }
+                      className={cn(
+                        'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                        inputClass
+                      )}
+                    >
                     {EVENT_TYPES.map((type) => (
                       <option key={type}>{type}</option>
                     ))}
@@ -947,11 +949,11 @@ export default function CalendarSection({ isDarkMode }) {
                       Owner / organizer
                     </label>
                     <input
-                    value={draft.owner}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, owner: event.target.value }))
-                    }
-                    placeholder="Owner / organizer"
+                      value={draft.owner}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, owner: event.target.value }))
+                      }
+                      placeholder="Owner / organizer"
                     className={cn(
                       'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
                       inputClass
@@ -1089,9 +1091,7 @@ function EventChip({ event, isDarkMode }) {
       />
       <span className="truncate">
         {formatTime(event.startsAt, event.allDay)} ·{' '}
-        {event.type === 'Package'
-          ? STATUS_LABELS[event.status] || event.status || 'Package'
-          : event.type}
+        {event.type}
       </span>
     </span>
   );
