@@ -45,6 +45,10 @@ const payload = {
   history: {
     available: true,
     collectingSince: '2026-09-22T01:00:00.000Z',
+    latestRunAt: '2026-09-24T01:00:00.000Z',
+    files: 2,
+    totalBytes: 4096,
+    invalidRecords: 0,
     summary: {
       runs: 3,
       successful: 2,
@@ -110,6 +114,7 @@ describe('SystemPipelinePanel', () => {
     render(<SystemPipelinePanel payload={payload} isDarkMode={false} />);
 
     expect(screen.getByText('Model Readiness Matrix')).toBeInTheDocument();
+    expect(screen.getByText('Telemetry Storage Health')).toBeInTheDocument();
     expect(screen.getByText('Recorded runs')).toBeInTheDocument();
     expect(screen.getAllByText('Success rate').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Pipeline Run Outcomes')).toBeInTheDocument();
@@ -117,6 +122,25 @@ describe('SystemPipelinePanel', () => {
     expect(screen.getByText('Recent Pipeline Runs')).toBeInTheDocument();
     expect(screen.getByText('66.7%')).toBeInTheDocument();
     expect(screen.getAllByText('Custom A').length).toBeGreaterThan(0);
+  });
+
+
+  it('surfaces malformed telemetry without hiding valid historical analytics', () => {
+    render(
+      <SystemPipelinePanel
+        payload={{
+          ...payload,
+          history: {
+            ...payload.history,
+            invalidRecords: 2,
+          },
+        }}
+        isDarkMode={false}
+      />
+    );
+
+    expect(screen.getByText(/contains 2 malformed records/i)).toBeInTheDocument();
+    expect(screen.getByText('Recorded runs')).toBeInTheDocument();
   });
 
   it('explains that history starts from real telemetry rather than fabricated backfill', () => {
