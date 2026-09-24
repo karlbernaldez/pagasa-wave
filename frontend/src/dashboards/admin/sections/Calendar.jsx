@@ -43,7 +43,6 @@ const EVENT_TYPES = ['Meeting', 'Maintenance', 'Training', 'Reminder', 'Deployme
 const FILTERS = ['All', 'Package', 'Review', 'Publication', 'Returned', 'Deadline', 'Meeting', 'Maintenance'];
 const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
-const APPROVED_STATUSES = new Set(['Approved', 'Published']);
 
 const TYPE_META = {
   Package: {
@@ -659,7 +658,7 @@ function EventChip({ event, isDarkMode }) {
   return (
     <span className={cn('flex max-w-full items-center gap-1 rounded-lg border px-1.5 py-1 text-[10px] font-black', getEventTone(event.type, isDarkMode))}>
       <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', TYPE_META[event.type]?.dot || TYPE_META.Meeting.dot)} />
-      <span className="truncate">{event.type === 'Package' ? STATUS_LABELS[event.status] || event.status || 'Package' : event.type}</span>
+      <span className="truncate">{formatTime(event.startsAt, event.allDay)} · {event.type === 'Package' ? STATUS_LABELS[event.status] || event.status || 'Package' : event.type}</span>
     </span>
   );
 }
@@ -668,23 +667,50 @@ function MiniStat({ label, value, isDarkMode }) {
   return <div className={cn('rounded-2xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p><p className={cn('mt-1 text-2xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p></div>;
 }
 
-function MetricCard({ icon: Icon, label, value, helper, tone, isDarkMode }) {
-  const toneClass = { blue: isDarkMode ? 'bg-blue-400/10 text-blue-200' : 'bg-blue-50/80 text-blue-700', cyan: isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-50/80 text-cyan-700', emerald: isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50/80 text-emerald-700', amber: isDarkMode ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50/80 text-amber-700' }[tone];
-  return <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={cn('truncate text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{label}</p><p className={cn('mt-2 text-3xl font-black tabular-nums', isDarkMode ? 'text-white' : 'text-slate-950')}>{value}</p></div><span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', toneClass)}><Icon size={21} /></span></div><p className={cn('mt-3 text-sm font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{helper}</p></div>;
-}
-
 function Panel({ title, description, isDarkMode, children }) {
   return <div className={cn('rounded-2xl border p-4 shadow-xl backdrop-blur-xl', isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40')}><div className="mb-4"><h2 className={cn('text-base font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{title}</h2><p className={cn('mt-1 text-sm font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{description}</p></div>{children}</div>;
 }
 
-function EventRow({ event, isDarkMode, onRemove }) {
+function EventRow({ event, isDarkMode, canEdit, canDelete, onOpen, onEdit, onRemove }) {
   const meta = TYPE_META[event.type] || TYPE_META.Meeting;
   const Icon = meta.icon;
-  return <div className={cn('flex items-start justify-between gap-3 rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}><div className="flex min-w-0 gap-3"><span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-xl border', getEventTone(event.type, isDarkMode))}><Icon size={17} /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{event.title}</p><span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide', getEventTone(event.type, isDarkMode))}>{event.type}{event.isDaily ? ' today' : ''}</span></div><p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{formatDate(event.date)} · {event.owner}</p>{event.detail && <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>{event.detail}</p>}{event.action && <p className={cn('mt-2 text-xs font-black', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')}>{event.action}</p>}</div></div>{event.source === 'custom' && <button type="button" onClick={() => onRemove(event.id)} aria-label="Remove note" className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors', isDarkMode ? 'text-slate-500 hover:bg-white/10 hover:text-rose-300' : 'text-slate-400 hover:bg-white hover:text-rose-500')}><Trash2 size={15} /></button>}</div>;
+  return (
+    <div className={cn('flex items-start justify-between gap-3 rounded-xl border p-3', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65')}>
+      <div className="flex min-w-0 gap-3">
+        <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-xl border', getEventTone(event.type, isDarkMode))}><Icon size={17} /></span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className={cn('truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{event.title}</p>
+            <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide', getEventTone(event.type, isDarkMode))}>{event.type}</span>
+            {event.timing && <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-black uppercase', isDarkMode ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600')}>{event.timing}</span>}
+          </div>
+          <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{formatDate(event.date)} · {formatTime(event.startsAt, event.allDay)} · {event.owner}</p>
+          {event.detail && <p className={cn('mt-1 text-xs font-semibold', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>{event.detail}</p>}
+          <div className="mt-2 flex flex-wrap gap-3">
+            {event.href && <button type="button" onClick={onOpen} className={cn('text-xs font-black', isDarkMode ? 'text-cyan-200' : 'text-cyan-700')}>{event.action || 'Open'}</button>}
+            {event.source === 'manual' && canEdit && <button type="button" onClick={onEdit} className={cn('inline-flex items-center gap-1 text-xs font-black', isDarkMode ? 'text-slate-300' : 'text-slate-600')}><Pencil size={12} /> Edit</button>}
+            {event.source === 'manual' && canDelete && <button type="button" onClick={onRemove} className="inline-flex items-center gap-1 text-xs font-black text-rose-500"><Trash2 size={12} /> Delete</button>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function TimelineRow({ event, isDarkMode }) {
-  return <div className="flex gap-3"><div className="flex flex-col items-center"><span className={cn('mt-1 h-2.5 w-2.5 rounded-full', TYPE_META[event.type]?.dot || TYPE_META.Meeting.dot)} /><span className={cn('mt-1 h-full w-px', isDarkMode ? 'bg-white/10' : 'bg-slate-200')} /></div><div className="min-w-0 pb-3"><p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>{formatShortDate(event.date)} · {event.type}</p><p className={cn('mt-1 truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{event.title}</p><p className={cn('mt-1 text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{event.action || event.detail || event.owner}</p></div></div>;
+function TimelineRow({ event, isDarkMode, onOpen }) {
+  return (
+    <button type="button" onClick={event.href ? onOpen : undefined} disabled={!event.href} className="flex w-full gap-3 text-left disabled:cursor-default">
+      <div className="flex flex-col items-center">
+        <span className={cn('mt-1 h-2.5 w-2.5 rounded-full', TYPE_META[event.type]?.dot || TYPE_META.Meeting.dot)} />
+        <span className={cn('mt-1 h-full w-px', isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+      </div>
+      <div className="min-w-0 pb-3">
+        <p className={cn('text-xs font-black uppercase tracking-wide', isDarkMode ? 'text-slate-500' : 'text-slate-400')}>{formatShortDate(event.date)} · {formatTime(event.startsAt, event.allDay)} · {event.timing || 'actual'}</p>
+        <p className={cn('mt-1 truncate text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{event.title}</p>
+        <p className={cn('mt-1 text-xs font-semibold leading-5', isDarkMode ? 'text-slate-400' : 'text-slate-500')}>{event.action || event.detail || event.owner}</p>
+      </div>
+    </button>
+  );
 }
 
 function EmptyState({ title, description, isDarkMode }) {
