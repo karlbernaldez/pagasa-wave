@@ -253,7 +253,6 @@ test('system analytics derive readiness from dynamic pipeline models without har
   );
 });
 
-
 test('system analytics preserve persisted history when the live pipeline source fails', async () => {
   const result = await loadSystemAnalytics(range, {
     getPipelineStatus: async () => {
