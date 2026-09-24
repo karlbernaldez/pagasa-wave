@@ -67,12 +67,15 @@ export const deleteFeature = async (sourceId) => {
 };
 
 export const requestFeatureChange = async (sourceId, payload) => {
-  const response = await fetchWithAuth(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/request-change`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(payload),
-  });
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/${encodeURIComponent(sourceId)}/request-change`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    }
+  );
 
   if (!response.ok) {
     await throwFeatureRequestError(response, 'Failed to send annotation request');
@@ -190,10 +193,13 @@ export const fetchProjectFeatureCollection = async (projectId) => {
   }
 
   try {
-    const response = await fetchWithAuth(`${API_BASE_URL}/admin/project/${canonicalProjectId}/features`, {
-      method: 'GET',
-      credentials: 'include',
-    });
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/admin/project/${canonicalProjectId}/features`,
+      {
+        method: 'GET',
+        credentials: 'include',
+      }
+    );
 
     if (!response.ok) {
       await throwFeatureRequestError(response, 'Failed to fetch project features');
@@ -238,12 +244,15 @@ export async function updateFeatureNameAPI(layerId, newName) {
 }
 
 export async function updateFeatureCoordinates(sourceId, coordinates) {
-  const response = await fetchWithAuth(`${API_BASE_URL}/${encodeURIComponent(sourceId)}/coordinates`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ coordinates }),
-  });
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/${encodeURIComponent(sourceId)}/coordinates`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ coordinates }),
+    }
+  );
 
   if (!response.ok) {
     await throwFeatureRequestError(response, 'Failed to update coordinates');

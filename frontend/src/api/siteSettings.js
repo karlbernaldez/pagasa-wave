@@ -44,7 +44,11 @@ export const getSettings = async (page) => {
       }
 
       const errorData = await response.json();
-      console.error(`[ERROR] Failed to fetch settings for page "${page}":`, response.status, errorData);
+      console.error(
+        `[ERROR] Failed to fetch settings for page "${page}":`,
+        response.status,
+        errorData
+      );
       throw new Error(buildSettingsErrorMessage(errorData, 'Failed to fetch settings'));
     }
 
