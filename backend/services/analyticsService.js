@@ -6,6 +6,7 @@ import {
   loadUserContributionAnalytics,
 } from './operationalAnalyticsService.js';
 import { formatManilaDateKey } from './publishedChartViewService.js';
+import { loadWavePipelineRunAnalytics } from './wavePipelineHistoryService.js';
 import { getWavePipelineStatus } from './wavePipelineStatus.js';
 import { buildDateMatch, parseAnalyticsDateRange } from '../utils/analyticsDateRange.js';
 import { REQUIRED_FORECAST_CHARTS } from '../utils/forecastPackage.js';
@@ -864,43 +865,41 @@ const derivePipelineHealth = (models = []) => {
 
 export async function loadSystemAnalytics(
   range,
-  { getPipelineStatus = getWavePipelineStatus } = {}
+  {
+    getPipelineStatus = getWavePipelineStatus,
+    getPipelineHistory = loadWavePipelineRunAnalytics,
+  } = {}
 ) {
-  try {
-    const pipeline = await getPipelineStatus();
-    const models = (pipeline.models || []).map((model) => ({
-      id: String(model.modelId || model.model || ''),
-      code: model.model,
-      label: model.modelLabel || model.model,
-      state: model.state,
-      packageDate: model.packageDate,
-      packageTag: model.packageTag || null,
-      requiredSourceCycle: model.requiredSourceCycle || null,
-      sourceCycle: model.sourceCycle || null,
-      frameCount: Number(model.frameCount) || 0,
-      expectedFrameCount: Number(model.expectedFrameCount) || 0,
-      published: Boolean(model.published),
-      lastCheckAt: model.lastCheckAt || null,
-      completedAt: model.completedAt || null,
-    }));
-    const cycles = [...new Set(models.map((model) => model.requiredSourceCycle).filter(Boolean))];
+  const [pipelineResult, historyResult] = await Promise.allSettled([
+    getPipelineStatus(),
+    getPipelineHistory(range),
+  ]);
 
-    return {
-      summary: {
-        models: models.length,
-        readyModels: models.filter((model) => model.state === 'READY').length,
-        packagesAvailable: models.filter((model) => model.published).length,
-        pipelineHealth: derivePipelineHealth(models),
-        currentForecastCycle: cycles.length === 1 ? cycles[0] : cycles.length > 1 ? 'Mixed' : null,
-      },
-      packageDate: pipeline.packageDate,
-      models,
-      deployment: pipeline.deployment || null,
-      available: true,
-      range: serializeAnalyticsRange(range),
-      generatedAt: pipeline.generatedAt || new Date().toISOString(),
-    };
-  } catch (error) {
+  const history =
+    historyResult.status === 'fulfilled'
+      ? historyResult.value
+      : {
+          available: false,
+          collectingSince: null,
+          invalidRecords: 0,
+          summary: {
+            runs: 0,
+            successful: 0,
+            failed: 0,
+            retryAttempts: 0,
+            successRate: null,
+            failureRate: null,
+            medianDurationSeconds: null,
+            p90DurationSeconds: null,
+            durationSampleSize: 0,
+          },
+          trend: [],
+          models: [],
+          recentRuns: [],
+          sourceError: historyResult.reason?.message || 'Pipeline history is unavailable.',
+        };
+
+  if (pipelineResult.status === 'rejected') {
     return {
       summary: {
         models: 0,
@@ -912,12 +911,48 @@ export async function loadSystemAnalytics(
       packageDate: null,
       models: [],
       deployment: null,
+      history,
       available: false,
-      sourceError: error?.message || 'Wave pipeline status is unavailable.',
+      sourceError: pipelineResult.reason?.message || 'Wave pipeline status is unavailable.',
       range: serializeAnalyticsRange(range),
       generatedAt: new Date().toISOString(),
     };
   }
+
+  const pipeline = pipelineResult.value;
+  const models = (pipeline.models || []).map((model) => ({
+    id: String(model.modelId || model.model || ''),
+    code: model.model,
+    label: model.modelLabel || model.model,
+    state: model.state,
+    packageDate: model.packageDate,
+    packageTag: model.packageTag || null,
+    requiredSourceCycle: model.requiredSourceCycle || null,
+    sourceCycle: model.sourceCycle || null,
+    frameCount: Number(model.frameCount) || 0,
+    expectedFrameCount: Number(model.expectedFrameCount) || 0,
+    published: Boolean(model.published),
+    lastCheckAt: model.lastCheckAt || null,
+    completedAt: model.completedAt || null,
+  }));
+  const cycles = [...new Set(models.map((model) => model.requiredSourceCycle).filter(Boolean))];
+
+  return {
+    summary: {
+      models: models.length,
+      readyModels: models.filter((model) => model.state === 'READY').length,
+      packagesAvailable: models.filter((model) => model.published).length,
+      pipelineHealth: derivePipelineHealth(models),
+      currentForecastCycle: cycles.length === 1 ? cycles[0] : cycles.length > 1 ? 'Mixed' : null,
+    },
+    packageDate: pipeline.packageDate,
+    models,
+    deployment: pipeline.deployment || null,
+    history,
+    available: true,
+    range: serializeAnalyticsRange(range),
+    generatedAt: pipeline.generatedAt || new Date().toISOString(),
+  };
 }
 
 export async function loadAnalyticsOverview(range, permissions = []) {
