@@ -1,11 +1,13 @@
+import { fetchWithAuth } from './auth';
+
 const PROJECT_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/projects`;
 const FORECAST_PACKAGE_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/forecast-packages`;
 
 /* =========================================================
    CORE REQUEST HELPER
-========================================================= */
+--------------------------------------------------------- */
 const request = async (url, options = {}) => {
-  const response = await fetch(url, {
+  const response = await fetchWithAuth(url, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     ...options,
@@ -48,7 +50,7 @@ const getProjectsFromPackageContext = (context) => {
 
 /* =========================================================
    USER PROJECT ROUTES
-========================================================= */
+--------------------------------------------------------- */
 
 // Create new project
 export const createProject = (projectData) =>
@@ -89,8 +91,7 @@ export const fetchLatestUserProject = async () => {
 };
 
 // Get project by ID
-export const fetchProjectById = (id) =>
-  request(`${PROJECT_API_BASE_URL}/${id}`);
+export const fetchProjectById = (id) => request(`${PROJECT_API_BASE_URL}/${id}`);
 
 // Rename project (any status — name only)
 export const renameProject = (id, name) =>
@@ -114,7 +115,7 @@ export const deleteProjectById = (id) =>
 
 /* =========================================================
    WORKFLOW ROUTES
-========================================================= */
+--------------------------------------------------------- */
 
 // Submit project (Owner)
 export const submitProject = (id) =>
@@ -176,7 +177,7 @@ export const archiveProject = (id) =>
 
 /* =========================================================
    ADMIN ROUTES
-========================================================= */
+--------------------------------------------------------- */
 
 // Fetch admin review projects with server-driven search, filtering, sorting, and pagination.
 export const fetchAdminProjects = ({
@@ -205,14 +206,19 @@ export const fetchAdminProjects = ({
 
 // Fetch the full forecast package for the selected chart.
 export const fetchAdminForecastPackage = async (id, { signal } = {}) => {
-  const adminPackage = await request(`${PROJECT_API_BASE_URL}/admin/projects/${id}/package`, { signal });
+  const adminPackage = await request(`${PROJECT_API_BASE_URL}/admin/projects/${id}/package`, {
+    signal,
+  });
 
   if ((adminPackage?.projects || []).length > 1) {
     return adminPackage;
   }
 
   try {
-    const context = await request(`${FORECAST_PACKAGE_API_BASE_URL}/charts/project/${id}/context?autoJoin=false`, { signal });
+    const context = await request(
+      `${FORECAST_PACKAGE_API_BASE_URL}/charts/project/${id}/context?autoJoin=false`,
+      { signal }
+    );
     const projects = getProjectsFromPackageContext(context);
 
     if (projects.length > 0) {

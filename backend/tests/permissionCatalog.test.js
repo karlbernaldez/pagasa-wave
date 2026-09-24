@@ -34,6 +34,9 @@ test('permission catalog exposes unique stable canonical permission keys', () =>
   assert.equal(new Set(PERMISSION_KEYS).size, PERMISSION_KEYS.length);
   assert.ok(PERMISSION_KEYS.includes('forecast.view'));
   assert.ok(PERMISSION_KEYS.includes('calendar.view'));
+  assert.ok(PERMISSION_KEYS.includes('calendar.create'));
+  assert.ok(PERMISSION_KEYS.includes('calendar.edit'));
+  assert.ok(PERMISSION_KEYS.includes('calendar.delete'));
   assert.equal(PERMISSION_KEYS.includes('projects.view'), false);
   assert.equal(PERMISSION_KEYS.includes('projects.view_own'), false);
   assert.ok(PERMISSION_KEYS.includes('roles.edit'));
@@ -151,6 +154,24 @@ test('analytics export is additive and never widens subsection visibility', () =
   assert.equal(forecastExport.has('analytics_users.view'), false);
   assert.equal(forecastExport.has('analytics_system.view'), false);
   assert.equal(forecastExport.has('analytics.view'), false);
+});
+
+test('calendar mutation permissions imply calendar view without sibling escalation', () => {
+  const creator = new Set(normalizePermissionKeys(['calendar.create']));
+  assert.ok(creator.has('calendar.create'));
+  assert.ok(creator.has('calendar.view'));
+  assert.equal(creator.has('calendar.edit'), false);
+  assert.equal(creator.has('calendar.delete'), false);
+
+  const editor = new Set(normalizePermissionKeys(['calendar.edit']));
+  assert.ok(editor.has('calendar.edit'));
+  assert.ok(editor.has('calendar.view'));
+  assert.equal(editor.has('calendar.create'), false);
+
+  const deleter = new Set(normalizePermissionKeys(['calendar.delete']));
+  assert.ok(deleter.has('calendar.delete'));
+  assert.ok(deleter.has('calendar.view'));
+  assert.equal(deleter.has('calendar.edit'), false);
 });
 
 test('administrator default role keeps canonical catalog plus legacy view-all compatibility', () => {

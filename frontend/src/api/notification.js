@@ -1,7 +1,9 @@
+import { fetchWithAuth } from './auth';
+
 const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/notifications`;
 
 const apiFetch = async (url, { signal, ...options } = {}) => {
-  const res = await fetch(url, {
+  const res = await fetchWithAuth(url, {
     credentials: 'include',
     signal,
     ...options,
@@ -9,7 +11,7 @@ const apiFetch = async (url, { signal, ...options } = {}) => {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const err  = new Error(body.message || `Request failed (${res.status})`);
+    const err = new Error(body.message || `Request failed (${res.status})`);
     err.status = res.status;
     throw err;
   }
