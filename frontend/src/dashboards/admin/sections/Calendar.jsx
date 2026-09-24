@@ -223,73 +223,237 @@ function getMonthStats(days) {
 }
 
 export default function CalendarSection({ isDarkMode }) {
+  const navigate = useNavigate();
   const today = useMemo(() => new Date(), []);
   const todayIso = useMemo(() => toIsoDate(today), [today]);
-  const [monthDate, setMonthDate] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [monthDate, setMonthDate] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1)
+  );
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [activeFilter, setActiveFilter] = useState('All');
-  const [customEvents, setCustomEvents] = useState(loadCustomEvents);
-  const [draft, setDraft] = useState({ title: '', owner: 'Admin Team', type: 'Review', date: todayIso });
-  const [state, setState] = useState({ loading: true, refreshing: false, error: '', packages: [], totalPackages: 0, loadedAt: null });
+  const [timingFilter, setTimingFilter] = useState('All');
+  const [permissions, setPermissions] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState({
+    id: null,
+    title: '',
+    owner: 'WaveLab Team',
+    type: 'Meeting',
+    date: todayIso,
+    time: '09:00',
+  });
+  const [state, setState] = useState({
+    loading: true,
+    refreshing: false,
+    error: '',
+    packages: [],
+    manualEvents: [],
+    operations: DEFAULT_OPERATIONS,
+    loadedAt: null,
+  });
 
   const text = isDarkMode ? 'text-white' : 'text-slate-950';
   const muted = isDarkMode ? 'text-slate-400' : 'text-slate-500';
-  const panel = isDarkMode ? 'border-white/10 bg-slate-950/50 shadow-black/20' : 'border-white/70 bg-white/70 shadow-slate-300/40';
-  const softPanel = isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65';
-  const inputClass = isDarkMode ? 'border-white/10 bg-white/[0.04] text-slate-100 focus:border-cyan-300/30' : 'border-white/80 bg-white/70 text-slate-800 focus:border-cyan-200';
+  const panel = isDarkMode
+    ? 'border-white/10 bg-slate-950/50 shadow-black/20'
+    : 'border-white/70 bg-white/70 shadow-slate-300/40';
+  const softPanel = isDarkMode
+    ? 'border-white/10 bg-white/[0.04]'
+    : 'border-white/80 bg-white/65';
+  const inputClass = isDarkMode
+    ? 'border-white/10 bg-white/[0.04] text-slate-100 focus:border-cyan-300/30'
+    : 'border-white/80 bg-white/70 text-slate-800 focus:border-cyan-200';
 
-  const loadCalendar = useCallback(async ({ silent = false } = {}) => {
-    setState((current) => ({ ...current, loading: !silent && !current.loadedAt, refreshing: silent, error: '' }));
+  const permissionSet = useMemo(() => new Set(permissions), [permissions]);
+  const canCreate = permissionSet.has('calendar.create');
+  const canEdit = permissionSet.has('calendar.edit');
+  const canDelete = permissionSet.has('calendar.delete');
 
-    try {
-      const packageResponse = await fetchAdminForecastPackages({ page: 1, limit: 120 });
-      const packages = (packageResponse?.packages ?? []).map(adaptForecastPackageModel);
-      setState({ loading: false, refreshing: false, error: '', packages, totalPackages: packageResponse?.total ?? packages.length, loadedAt: new Date().toISOString() });
-    } catch (error) {
-      setState((current) => ({ ...current, loading: false, refreshing: false, error: error?.message || 'Failed to load package calendar.' }));
-    }
-  }, []);
+  const monthWindow = useMemo(() => {
+    const start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const end = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+    return { start, end };
+  }, [monthDate]);
 
-  useEffect(() => { loadCalendar(); }, [loadCalendar]);
-  useEffect(() => { if (typeof window !== 'undefined') window.localStorage.setItem(CUSTOM_EVENTS_STORAGE_KEY, JSON.stringify(customEvents)); }, [customEvents]);
+  const loadCalendar = useCallback(
+    async ({ silent = false } = {}) => {
+      setState((current) => ({
+        ...current,
+        loading: !silent && !current.loadedAt,
+        refreshing: silent,
+        error: '',
+      }));
 
-  const packageEvents = useMemo(() => getPackageEvents(state.packages), [state.packages]);
-  const allEvents = useMemo(() => sortEvents([...packageEvents, ...customEvents]), [customEvents, packageEvents]);
-  const visibleEvents = useMemo(() => allEvents.filter((event) => isEventVisible(event, activeFilter)), [activeFilter, allEvents]);
-  const calendarDays = useMemo(() => buildCalendarDays(monthDate, visibleEvents), [visibleEvents, monthDate]);
-  const selectedEvents = useMemo(() => visibleEvents.filter((event) => event.date === selectedDate), [selectedDate, visibleEvents]);
-  const upcomingEvents = useMemo(() => visibleEvents.filter((event) => event.date >= todayIso).slice(0, 7), [todayIso, visibleEvents]);
-  const todayPackage = useMemo(() => state.packages.find(isDailyForecastPackage), [state.packages]);
+      try {
+        const [packageResponse, calendarResponse, operations, auth] = await Promise.all([
+          fetchAdminForecastPackages({ page: 1, limit: 120 }),
+          fetchCalendarEvents({
+            start: monthWindow.start.toISOString(),
+            end: monthWindow.end.toISOString(),
+          }),
+          getSettings('operations').catch(() => ({})),
+          checkAuthSession(),
+        ]);
+        const packages = (packageResponse?.packages ?? []).map(adaptForecastPackageModel);
+        setPermissions(auth?.user?.permissions || []);
+        setState({
+          loading: false,
+          refreshing: false,
+          error: '',
+          packages,
+          manualEvents: calendarResponse?.events || [],
+          operations: { ...DEFAULT_OPERATIONS, ...(operations || {}) },
+          loadedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        setState((current) => ({
+          ...current,
+          loading: false,
+          refreshing: false,
+          error: error?.message || 'Failed to load operational calendar.',
+        }));
+      }
+    },
+    [monthWindow.end, monthWindow.start]
+  );
+
+  useEffect(() => {
+    loadCalendar();
+  }, [loadCalendar]);
+
+  const packageEvents = useMemo(() => buildPackageEvents(state.packages), [state.packages]);
+  const scheduleEvents = useMemo(
+    () => buildScheduleEvents(monthWindow.start, monthWindow.end, state.operations),
+    [monthWindow.end, monthWindow.start, state.operations]
+  );
+  const manualEvents = useMemo(
+    () => normalizeManualEvents(state.manualEvents),
+    [state.manualEvents]
+  );
+  const allEvents = useMemo(
+    () => sortCalendarEvents([...packageEvents, ...scheduleEvents, ...manualEvents]),
+    [manualEvents, packageEvents, scheduleEvents]
+  );
+  const visibleEvents = useMemo(
+    () =>
+      allEvents.filter((event) => {
+        const visibleByType = isEventVisible(event, activeFilter);
+        const visibleByTiming = timingFilter === 'All' || event.timing === timingFilter.toLowerCase();
+        return visibleByType && visibleByTiming;
+      }),
+    [activeFilter, allEvents, timingFilter]
+  );
+  const calendarDays = useMemo(
+    () => buildCalendarDays(monthDate, visibleEvents),
+    [visibleEvents, monthDate]
+  );
+  const selectedEvents = useMemo(
+    () => visibleEvents.filter((event) => event.date === selectedDate),
+    [selectedDate, visibleEvents]
+  );
+  const upcomingEvents = useMemo(
+    () => visibleEvents.filter((event) => event.date >= todayIso).slice(0, 10),
+    [todayIso, visibleEvents]
+  );
+  const todayPackage = useMemo(
+    () => state.packages.find(isDailyForecastPackage),
+    [state.packages]
+  );
   const monthStats = useMemo(() => getMonthStats(calendarDays), [calendarDays]);
   const selectedDateLabel = useMemo(() => formatDate(selectedDate), [selectedDate]);
 
-  const changeMonth = (direction) => setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + direction, 1));
+  const changeMonth = (direction) =>
+    setMonthDate(
+      (current) => new Date(current.getFullYear(), current.getMonth() + direction, 1)
+    );
 
   const goToToday = () => {
     setSelectedDate(todayIso);
     setMonthDate(new Date(today.getFullYear(), today.getMonth(), 1));
   };
 
-  const addCustomEvent = (event) => {
+  const saveSharedEvent = async (event) => {
     event.preventDefault();
-    if (!draft.title.trim() || !draft.date) return;
-    setCustomEvents((current) => [
-      ...current,
-      {
-        ...draft,
-        id: `custom-${Date.now()}`,
+    if (!draft.title.trim() || !draft.date || !draft.time) return;
+    setSaving(true);
+    try {
+      const payload = {
         title: draft.title.trim(),
-        owner: draft.owner.trim() || 'Admin Team',
-        source: 'custom',
-        detail: 'Admin note',
-        action: 'Coordinate with the assigned owner.',
-      },
-    ]);
-    setDraft((current) => ({ ...current, title: '', date: selectedDate || todayIso }));
+        type: draft.type.toLowerCase(),
+        startsAt: `${draft.date}T${draft.time}:00+08:00`,
+        endsAt: `${draft.date}T${draft.time}:00+08:00`,
+        allDay: false,
+        ownerLabel: draft.owner.trim(),
+      };
+      if (draft.id) await updateCalendarEvent(draft.id, payload);
+      else await createCalendarEvent(payload);
+      setDraft({
+        id: null,
+        title: '',
+        owner: 'WaveLab Team',
+        type: 'Meeting',
+        date: selectedDate || todayIso,
+        time: '09:00',
+      });
+      await loadCalendar({ silent: true });
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        error: error?.message || 'Failed to save shared calendar event.',
+      }));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const removeCustomEvent = (id) => setCustomEvents((current) => current.filter((event) => event.id !== id));
+  const editSharedEvent = (event) => {
+    const time = event.startsAt
+      ? new Intl.DateTimeFormat('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: 'Asia/Manila',
+        }).format(new Date(event.startsAt))
+      : '09:00';
+    setDraft({
+      id: event.id,
+      title: event.title || '',
+      owner: event.ownerLabel || event.owner || 'WaveLab Team',
+      type: event.type || 'Meeting',
+      date: event.date || selectedDate,
+      time,
+    });
+  };
 
+  const removeSharedEvent = async (id) => {
+    if (!canDelete) return;
+    setSaving(true);
+    try {
+      await deleteCalendarEvent(id);
+      if (draft.id === id) {
+        setDraft({
+          id: null,
+          title: '',
+          owner: 'WaveLab Team',
+          type: 'Meeting',
+          date: selectedDate || todayIso,
+          time: '09:00',
+        });
+      }
+      await loadCalendar({ silent: true });
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        error: error?.message || 'Failed to delete shared calendar event.',
+      }));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEvent = (event) => {
+    if (event.href) navigate(event.href);
+  };
   if (state.loading) {
     return (
       <div className="mx-auto max-w-[1500px] p-4 sm:p-6">
