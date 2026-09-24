@@ -100,14 +100,14 @@ export async function readWavePipelineRunHistory(range, { historyRoot = HISTORY_
         continue;
       }
 
-      const recordedAt = parsed.recordedAt || parsed.completedAt;
-      const recordedMs = new Date(recordedAt).getTime();
-      if (Number.isFinite(recordedMs)) {
-        if (!collectingSince || recordedMs < new Date(collectingSince).getTime()) {
-          collectingSince = recordedAt;
+      const eventAt = parsed.completedAt || parsed.recordedAt;
+      const eventMs = new Date(eventAt).getTime();
+      if (Number.isFinite(eventMs)) {
+        if (!collectingSince || eventMs < new Date(collectingSince).getTime()) {
+          collectingSince = eventAt;
         }
       }
-      if (!inRange(recordedAt, range)) continue;
+      if (!inRange(eventAt, range)) continue;
 
       rows.push({
         runId: String(parsed.runId),
@@ -123,7 +123,8 @@ export async function readWavePipelineRunHistory(range, { historyRoot = HISTORY_
         published: Boolean(parsed.published),
         startedAt: parsed.startedAt || null,
         completedAt: parsed.completedAt || null,
-        recordedAt,
+        recordedAt: parsed.recordedAt || null,
+        eventAt,
         durationSeconds:
           parsed.durationSeconds == null || !Number.isFinite(Number(parsed.durationSeconds))
             ? null
@@ -133,7 +134,7 @@ export async function readWavePipelineRunHistory(range, { historyRoot = HISTORY_
     }
   }
 
-  rows.sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
+  rows.sort((a, b) => new Date(b.eventAt) - new Date(a.eventAt));
   return { available: true, collectingSince, runs: rows, invalidRecords };
 }
 
@@ -154,7 +155,7 @@ export function summarizeWavePipelineRunHistory(history = {}) {
     ].join(':');
     groups.set(attemptKey, (groups.get(attemptKey) || 0) + 1);
 
-    const day = manilaDateKey(run.recordedAt);
+    const day = manilaDateKey(run.eventAt);
     if (day) {
       const point = daily.get(day) || { date: day, successful: 0, failed: 0, runs: 0 };
       point.runs += 1;
