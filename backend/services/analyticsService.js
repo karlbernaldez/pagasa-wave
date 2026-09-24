@@ -604,47 +604,6 @@ const summarizeForecastStatuses = (statusCounts, total) => {
   };
 };
 
-const loadForecastEventCounts = async (range, ForecastPackageModel = ForecastPackage) => {
-  const rows = await ForecastPackageModel.aggregate([
-    { $unwind: '$auditLogs' },
-    {
-      $match: {
-        'auditLogs.action': { $in: FORECAST_EVENT_ACTIONS },
-        ...buildDateMatch('auditLogs.timestamp', range),
-      },
-    },
-    {
-      $facet: {
-        byAction: [
-          { $group: { _id: '$auditLogs.action', count: { $sum: 1 } } },
-          { $sort: { _id: 1 } },
-        ],
-        byDay: [
-          {
-            $project: {
-              action: '$auditLogs.action',
-              date: {
-                $dateToString: {
-                  format: '%Y-%m-%d',
-                  date: '$auditLogs.timestamp',
-                  timezone: 'Asia/Manila',
-                },
-              },
-            },
-          },
-          { $group: { _id: { date: '$date', action: '$action' }, count: { $sum: 1 } } },
-          { $sort: { '_id.date': 1, '_id.action': 1 } },
-        ],
-      },
-    },
-  ]);
-  const result = rows[0] || {};
-  return {
-    actionCounts: rowsToCountObject(result.byAction),
-    throughput: buildThroughput(result.byDay),
-  };
-};
-
 async function loadPackageScopedForecastAnalyticsPeriod(
   range,
   filters,
