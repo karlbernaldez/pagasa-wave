@@ -265,7 +265,9 @@ export default function CalendarSection({ isDarkMode }) {
   const panel = isDarkMode
     ? 'border-white/10 bg-slate-950/50 shadow-black/20'
     : 'border-white/70 bg-white/70 shadow-slate-300/40';
-  const softPanel = isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65';
+  const softPanel = isDarkMode
+    ? 'border-white/10 bg-white/[0.04]'
+    : 'border-white/80 bg-white/65';
   const inputClass = isDarkMode
     ? 'border-white/10 bg-white/[0.04] text-slate-100 focus:border-cyan-300/30'
     : 'border-white/80 bg-white/70 text-slate-800 focus:border-cyan-200';
@@ -360,12 +362,17 @@ export default function CalendarSection({ isDarkMode }) {
     () => visibleEvents.filter((event) => event.date >= todayIso).slice(0, 6),
     [todayIso, visibleEvents]
   );
-  const todayPackage = useMemo(() => state.packages.find(isDailyForecastPackage), [state.packages]);
+  const todayPackage = useMemo(
+    () => state.packages.find(isDailyForecastPackage),
+    [state.packages]
+  );
   const monthStats = useMemo(() => getMonthStats(calendarDays), [calendarDays]);
   const selectedDateLabel = useMemo(() => formatDate(selectedDate), [selectedDate]);
 
   const changeMonth = (direction) =>
-    setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + direction, 1));
+    setMonthDate(
+      (current) => new Date(current.getFullYear(), current.getMonth() + direction, 1)
+    );
 
   const goToToday = () => {
     setSelectedDate(todayIso);
@@ -646,7 +653,9 @@ export default function CalendarSection({ isDarkMode }) {
                   )
                 )}
               >
-                {todayPackage ? STATUS_LABELS[todayPackage.status] || todayPackage.status : 'Missing'}
+                {todayPackage
+                  ? STATUS_LABELS[todayPackage.status] || todayPackage.status
+                  : 'Missing'}
               </span>
             </div>
             <p className={cn('mt-2 text-xs font-semibold leading-5', muted)}>
@@ -775,7 +784,9 @@ export default function CalendarSection({ isDarkMode }) {
             title={selectedDateLabel}
             description={
               selectedEvents.length
-                ? `${selectedEvents.length} event${selectedEvents.length === 1 ? '' : 's'} for this date.`
+                ? `${selectedEvents.length} event${
+                    selectedEvents.length === 1 ? '' : 's'
+                  } for this date.`
                 : 'No operational events recorded for this date.'
             }
             isDarkMode={isDarkMode}
@@ -1101,8 +1112,7 @@ function EventChip({ event, isDarkMode }) {
         )}
       />
       <span className="truncate">
-        {formatTime(event.startsAt, event.allDay)} ·{' '}
-        {event.type}
+        {formatTime(event.startsAt, event.allDay)} · {event.type}
       </span>
     </span>
   );
