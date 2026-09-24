@@ -1,7 +1,6 @@
 import { formatPackageDate, getDateKey } from '@/features/projects/utils/forecastPackageGrouping';
 
 export const EVENT_TYPE_META = Object.freeze({
-  Package: { label: 'Forecast', tone: 'cyan' },
   Review: { label: 'Review', tone: 'amber' },
   Publication: { label: 'Publication', tone: 'emerald' },
   Returned: { label: 'Returned', tone: 'rose' },
@@ -61,25 +60,6 @@ export function buildPackageEvents(packages = []) {
     const packageHref = id ? `/forecasts/${id}` : '/forecasts';
     const reviewHref = '/forecasts/review';
     const events = [];
-
-    if (dateKey) {
-      events.push({
-        id: `${id || dateKey}-package-day`,
-        title,
-        startsAt: manilaDateTime(dateKey, '00:00'),
-        date: dateKey,
-        type: 'Package',
-        source: 'workflow',
-        timing: 'actual',
-        owner: forecastPackage.contributorLabel || 'Forecast team',
-        detail: `${forecastPackage.chartCount || 0} of 4 charts linked · ${forecastPackage.status || 'In Production'}`,
-        action: 'Open the Forecast Package.',
-        href: packageHref,
-        packageId: id,
-        allDay: true,
-        readOnly: true,
-      });
-    }
 
     events.push(
       workflowEvent(
