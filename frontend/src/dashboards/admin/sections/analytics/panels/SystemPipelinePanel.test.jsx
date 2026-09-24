@@ -147,9 +147,7 @@ describe('SystemPipelinePanel', () => {
       />
     );
 
-    expect(
-      screen.getByText(/Live wave-pipeline status is unavailable/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Live wave-pipeline status is unavailable/i)).toBeInTheDocument();
     expect(screen.getByText('Recorded runs')).toBeInTheDocument();
     expect(screen.getByText('Recent Pipeline Runs')).toBeInTheDocument();
   });
