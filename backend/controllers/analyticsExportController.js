@@ -210,12 +210,12 @@ export const exportSystemAnalytics = async (req, res, next) => {
       ['alerts.active', payload.alerts?.active ?? false],
       ['alerts.critical', payload.alerts?.critical ?? 0],
       ['alerts.warning', payload.alerts?.warning ?? 0],
-      ...((payload.alerts?.alerts || []).flatMap((alert, index) => [
+      ...(payload.alerts?.alerts || []).flatMap((alert, index) => [
         [`alerts.${index + 1}.severity`, alert.severity || ''],
         [`alerts.${index + 1}.type`, alert.type || ''],
         [`alerts.${index + 1}.model`, alert.model || ''],
         [`alerts.${index + 1}.message`, alert.message || ''],
-      ])),
+      ]),
       ...payload.models.map((model) => [`current.model.${model.code}.state`, model.state || '']),
       ...payload.models.map((model) => [
         `current.model.${model.code}.frame_coverage`,
