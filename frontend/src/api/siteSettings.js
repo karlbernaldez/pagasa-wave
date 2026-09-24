@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './auth';
+
 // ╔══════════════════════════════════════════════════════╗
 // ║               src/api/settings.api.js                ║
 // ║  API helpers for site settings (admin + public)      ║
@@ -29,7 +31,7 @@ export const getSettings = async (page) => {
   if (!page) throw new Error('Missing page key when fetching settings');
 
   try {
-    const response = await fetch(`${API_BASE_URL}/${page}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/${page}`, {
       method: 'GET',
       credentials: 'include', // send cookies (auth session)
     });
@@ -66,7 +68,7 @@ export const saveSettings = async (page, data) => {
   if (!data || typeof data !== 'object') throw new Error('Invalid settings data');
 
   try {
-    const response = await fetch(`${API_BASE_URL}/${page}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/${page}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
