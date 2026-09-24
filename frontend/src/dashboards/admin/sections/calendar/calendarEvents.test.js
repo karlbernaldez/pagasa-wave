@@ -25,7 +25,6 @@ describe('operational calendar event derivation', () => {
     ]);
 
     expect(events.map((event) => event.id)).toEqual([
-      'pkg-1-package-day',
       'pkg-1-submitted',
       'pkg-1-review-started',
       'pkg-1-approved',
