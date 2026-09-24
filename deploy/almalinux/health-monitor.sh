@@ -36,24 +36,26 @@ if [[ "$PIPELINE_ALERTS_ENABLED" == "1" ]]; then
     failures+=("pipeline alert checker is unavailable: $PIPELINE_ALERT_CHECK")
   else
     if pipeline_alert_json="$(cd "$APP_ROOT/backend" && node "$PIPELINE_ALERT_CHECK" 2>/dev/null)"; then
-      while IFS= read -r pipeline_alert; do
-        [[ -n "$pipeline_alert" ]] && failures+=("pipeline: $pipeline_alert")
-      done < <(
-        printf '%s' "$pipeline_alert_json" | node -e '
-          let raw = "";
-          process.stdin.on("data", (chunk) => { raw += chunk; });
-          process.stdin.on("end", () => {
-            try {
-              const payload = JSON.parse(raw);
-              for (const alert of payload.alerts || []) {
-                if (alert?.message) process.stdout.write(String(alert.message) + "\n");
-              }
-            } catch {
-              process.exitCode = 1;
+      if pipeline_alert_lines="$(printf '%s' "$pipeline_alert_json" | node -e '
+        let raw = "";
+        process.stdin.on("data", (chunk) => { raw += chunk; });
+        process.stdin.on("end", () => {
+          try {
+            const payload = JSON.parse(raw);
+            for (const alert of payload.alerts || []) {
+              if (alert?.message) process.stdout.write(String(alert.message) + "\n");
             }
-          });
-        '
-      )
+          } catch {
+            process.exitCode = 1;
+          }
+        });
+      ')"; then
+        while IFS= read -r pipeline_alert; do
+          [[ -n "$pipeline_alert" ]] && failures+=("pipeline: $pipeline_alert")
+        done <<< "$pipeline_alert_lines"
+      else
+        failures+=("pipeline alert response is invalid")
+      fi
     else
       failures+=("pipeline alert evaluation failed")
     fi
