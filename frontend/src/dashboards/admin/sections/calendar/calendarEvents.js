@@ -201,7 +201,7 @@ export function buildPackageEvents(packages = []) {
       );
     }
 
-    if (forecastPackage.status === 'Approved' && forecastPackage.reviewedAt) {
+    if (APPROVED_STATUSES.has(forecastPackage.status) && forecastPackage.reviewedAt) {
       events.push(
         workflowEvent(
           forecastPackage,
