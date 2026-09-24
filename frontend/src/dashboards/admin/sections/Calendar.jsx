@@ -558,18 +558,26 @@ export default function CalendarSection({ isDarkMode }) {
                 isDarkMode ? 'text-cyan-200' : 'text-cyan-700'
               )}
             >
-              Forecast operations calendar
+              Operations calendar
             </p>
             <h1 className={cn('mt-2 text-2xl font-black tracking-tight sm:text-3xl', text)}>
-              Daily package schedule, decisions, and publication readiness
+              Operational events and forecast workflow
             </h1>
             <p className={cn('mt-2 max-w-3xl text-sm font-semibold leading-6', muted)}>
-              Calendar entries focus on actual Forecast Package workflow history and shared
-              date-specific operational events. The recurring daily operating schedule stays visible
-              as a compact reference instead of repeating on every calendar day.
+              Review forecast workflow history alongside meetings, maintenance, training, and other
+              date-specific operational events.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {canCreate && (
+              <button
+                type="button"
+                onClick={openComposer}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-black text-white shadow-lg shadow-cyan-500/20 transition-colors hover:bg-cyan-400"
+              >
+                <Plus size={16} /> New event
+              </button>
+            )}
             <button
               type="button"
               onClick={goToToday}
@@ -593,39 +601,41 @@ export default function CalendarSection({ isDarkMode }) {
           </div>
         </div>
 
-        <div className={cn('mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border px-4 py-3', softPanel)}>
-          <span className={cn('text-xs font-black uppercase tracking-wide', muted)}>
-            Daily Operations
-          </span>
-          <span className={cn('text-xs font-semibold', text)}>
-            Open {state.operations.packageOpenTime || DEFAULT_OPERATIONS.packageOpenTime}
-          </span>
-          <span className={cn('text-xs font-semibold', text)}>
-            Submit {state.operations.packageSubmissionDeadline || DEFAULT_OPERATIONS.packageSubmissionDeadline}
-          </span>
-          <span className={cn('text-xs font-semibold', text)}>
-            Publish {state.operations.packagePublishTarget || DEFAULT_OPERATIONS.packagePublishTarget}
-          </span>
-          <span className={cn('text-xs font-semibold', text)}>
-            Cutoff {state.operations.noPublicationCutoff || DEFAULT_OPERATIONS.noPublicationCutoff}
-          </span>
-          <span className={cn('text-[11px] font-semibold', muted)}>Asia/Manila</span>
-        </div>
+        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+          <div className={cn('rounded-2xl border px-4 py-3', softPanel)}>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className={cn('text-xs font-black uppercase tracking-wide', muted)}>
+                Daily operations
+              </span>
+              <span className={cn('text-xs font-semibold', text)}>
+                Open {state.operations.packageOpenTime || DEFAULT_OPERATIONS.packageOpenTime}
+              </span>
+              <span className={cn('text-xs font-semibold', text)}>
+                Submit {state.operations.packageSubmissionDeadline || DEFAULT_OPERATIONS.packageSubmissionDeadline}
+              </span>
+              <span className={cn('text-xs font-semibold', text)}>
+                Publish {state.operations.packagePublishTarget || DEFAULT_OPERATIONS.packagePublishTarget}
+              </span>
+              <span className={cn('text-xs font-semibold', text)}>
+                Cutoff {state.operations.noPublicationCutoff || DEFAULT_OPERATIONS.noPublicationCutoff}
+              </span>
+              <span className={cn('text-[11px] font-semibold', muted)}>Asia/Manila</span>
+            </div>
+          </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)]">
-          <div className={cn('rounded-2xl border p-4', softPanel)}>
+          <div className={cn('rounded-2xl border px-4 py-3 xl:min-w-[20rem]', softPanel)}>
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className={cn('text-xs font-black uppercase tracking-wide', muted)}>
-                  Today package
+                  Today's forecast package
                 </p>
-                <p className={cn('mt-1 text-xl font-black', text)}>
-                  {todayPackage?.status || 'No submitted package today'}
+                <p className={cn('mt-1 truncate text-sm font-black', text)}>
+                  {todayPackage?.status || 'No package submitted'}
                 </p>
               </div>
               <span
                 className={cn(
-                  'rounded-full border px-3 py-1 text-xs font-black',
+                  'shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black',
                   getEventTone(
                     todayPackage?.status === 'Published' || todayPackage?.status === 'Approved'
                       ? 'Publication'
@@ -636,27 +646,14 @@ export default function CalendarSection({ isDarkMode }) {
                   )
                 )}
               >
-                {todayPackage
-                  ? STATUS_LABELS[todayPackage.status] || todayPackage.status
-                  : 'Missing'}
+                {todayPackage ? STATUS_LABELS[todayPackage.status] || todayPackage.status : 'Missing'}
               </span>
             </div>
-            <p className={cn('mt-3 text-sm font-semibold leading-6', muted)}>
+            <p className={cn('mt-2 text-xs font-semibold leading-5', muted)}>
               {todayPackage
-                ? `${todayPackage.chartCount || 0} of 4 charts linked. ${getPackageAction(todayPackage)}.`
-                : 'No reviewable daily package is linked to today yet.'}
+                ? `${todayPackage.chartCount || 0}/4 charts · ${getPackageAction(todayPackage)}`
+                : 'No reviewable daily package is linked to today.'}
             </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <MiniStat label="Shared events" value={monthStats.scheduled} isDarkMode={isDarkMode} />
-            <MiniStat label="Workflow events" value={monthStats.actual} isDarkMode={isDarkMode} />
-            <MiniStat label="Reviews" value={monthStats.reviews} isDarkMode={isDarkMode} />
-            <MiniStat
-              label="Publications"
-              value={monthStats.publications}
-              isDarkMode={isDarkMode}
-            />
           </div>
         </div>
       </section>
@@ -732,15 +729,15 @@ export default function CalendarSection({ isDarkMode }) {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className={cn('text-xs font-black uppercase tracking-wide', muted)}>Timing</span>
-            {['All', 'Scheduled', 'Actual'].map((timing) => (
+            <span className={cn('text-xs font-black uppercase tracking-wide', muted)}>Source</span>
+            {['All', 'Workflow', 'Shared'].map((source) => (
               <button
-                key={timing}
+                key={source}
                 type="button"
-                onClick={() => setTimingFilter(timing)}
+                onClick={() => setSourceFilter(source)}
                 className={cn(
                   'rounded-full border px-3 py-1.5 text-xs font-black transition-colors',
-                  timingFilter === timing
+                  sourceFilter === source
                     ? isDarkMode
                       ? 'border-cyan-300/40 bg-cyan-400/15 text-cyan-100'
                       : 'border-cyan-200 bg-cyan-50 text-cyan-700'
@@ -749,7 +746,7 @@ export default function CalendarSection({ isDarkMode }) {
                       : 'border-white/80 bg-white/60 text-slate-500 hover:text-slate-900'
                 )}
               >
-                {timing}
+                {source}
               </button>
             ))}
           </div>
@@ -777,9 +774,25 @@ export default function CalendarSection({ isDarkMode }) {
         <aside className="space-y-5">
           <Panel
             title={selectedDateLabel}
-            description={`${selectedEvents.length} visible event${selectedEvents.length === 1 ? '' : 's'} on selected date.`}
+            description={
+              selectedEvents.length
+                ? `${selectedEvents.length} event${selectedEvents.length === 1 ? '' : 's'} for this date.`
+                : 'No operational events recorded for this date.'
+            }
             isDarkMode={isDarkMode}
           >
+            {canCreate && (
+              <button
+                type="button"
+                onClick={openComposer}
+                className={cn(
+                  'mb-3 inline-flex min-h-9 items-center gap-2 rounded-xl border px-3 text-xs font-black',
+                  softPanel
+                )}
+              >
+                <Plus size={14} /> Add event on this date
+              </button>
+            )}
             <div className="space-y-2">
               {selectedEvents.length === 0 ? (
                 <EmptyState
@@ -829,13 +842,29 @@ export default function CalendarSection({ isDarkMode }) {
             </div>
           </Panel>
 
-          {(canCreate || (draft.id && canEdit)) && (
+          {isComposerOpen && (canCreate || (draft.id && canEdit)) && (
             <Panel
               title={draft.id ? 'Edit Shared Event' : 'Add Shared Event'}
-              description="Persist meetings, maintenance, training, reminders, and deployments for authorized WaveLab users."
+              description="Create a date-specific operational event visible to authorized WaveLab users."
               isDarkMode={isDarkMode}
             >
               <form onSubmit={saveSharedEvent} className="space-y-3">
+                {formError && (
+                  <div
+                    className={cn(
+                      'rounded-xl border px-3 py-2 text-xs font-bold',
+                      isDarkMode
+                        ? 'border-rose-300/20 bg-rose-400/10 text-rose-200'
+                        : 'border-rose-200 bg-rose-50 text-rose-700'
+                    )}
+                    role="alert"
+                  >
+                    {formError}
+                  </div>
+                )}
+                <label className={cn('block text-xs font-black', muted)}>
+                  Event title
+                </label>
                 <input
                   value={draft.title}
                   onChange={(event) =>
@@ -847,6 +876,7 @@ export default function CalendarSection({ isDarkMode }) {
                     inputClass
                   )}
                 />
+                <label className={cn('block text-xs font-black', muted)}>Date</label>
                 <input
                   type="date"
                   value={draft.date}
@@ -894,8 +924,10 @@ export default function CalendarSection({ isDarkMode }) {
                     />
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-2">
-                  <select
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className={cn('mb-1 block text-xs font-black', muted)}>Event type</label>
+                    <select
                     value={draft.type}
                     onChange={(event) =>
                       setDraft((current) => ({ ...current, type: event.target.value }))
@@ -908,15 +940,50 @@ export default function CalendarSection({ isDarkMode }) {
                     {EVENT_TYPES.map((type) => (
                       <option key={type}>{type}</option>
                     ))}
-                  </select>
-                  <input
+                    </select>
+                  </div>
+                  <div>
+                    <label className={cn('mb-1 block text-xs font-black', muted)}>
+                      Owner / organizer
+                    </label>
+                    <input
                     value={draft.owner}
                     onChange={(event) =>
                       setDraft((current) => ({ ...current, owner: event.target.value }))
                     }
                     placeholder="Owner / organizer"
                     className={cn(
-                      'rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                      'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                      inputClass
+                    )}
+                  />
+                  </div>
+                </div>
+                <div>
+                  <label className={cn('mb-1 block text-xs font-black', muted)}>Location</label>
+                  <input
+                    value={draft.location}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, location: event.target.value }))
+                    }
+                    placeholder="Optional location or meeting channel"
+                    className={cn(
+                      'w-full rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
+                      inputClass
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className={cn('mb-1 block text-xs font-black', muted)}>Notes</label>
+                  <textarea
+                    rows={3}
+                    value={draft.description}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, description: event.target.value }))
+                    }
+                    placeholder="Optional context, preparation, or operational notes"
+                    className={cn(
+                      'w-full resize-none rounded-xl border px-3 py-2 text-sm font-semibold outline-none transition-colors',
                       inputClass
                     )}
                   />
@@ -930,26 +997,13 @@ export default function CalendarSection({ isDarkMode }) {
                     {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}{' '}
                     {draft.id ? 'Save changes' : 'Add event'}
                   </button>
-                  {draft.id && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDraft({
-                          id: null,
-                          title: '',
-                          owner: 'WaveLab Team',
-                          type: 'Meeting',
-                          date: selectedDate || todayIso,
-                          time: '09:00',
-                          endTime: '10:00',
-                          allDay: false,
-                        })
-                      }
-                      className={cn('rounded-xl border px-3 text-sm font-black', softPanel)}
-                    >
-                      Cancel
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={closeComposer}
+                    className={cn('rounded-xl border px-3 text-sm font-black', softPanel)}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </form>
             </Panel>
@@ -1043,34 +1097,6 @@ function EventChip({ event, isDarkMode }) {
   );
 }
 
-function MiniStat({ label, value, isDarkMode }) {
-  return (
-    <div
-      className={cn(
-        'rounded-2xl border p-3',
-        isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-white/80 bg-white/65'
-      )}
-    >
-      <p
-        className={cn(
-          'text-xs font-black uppercase tracking-wide',
-          isDarkMode ? 'text-slate-400' : 'text-slate-500'
-        )}
-      >
-        {label}
-      </p>
-      <p
-        className={cn(
-          'mt-1 text-2xl font-black tabular-nums',
-          isDarkMode ? 'text-white' : 'text-slate-950'
-        )}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
 function Panel({ title, description, isDarkMode, children }) {
   return (
     <div
@@ -1136,16 +1162,7 @@ function EventRow({ event, isDarkMode, canEdit, canDelete, onOpen, onEdit, onRem
             >
               {event.type}
             </span>
-            {event.timing && (
-              <span
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-[10px] font-black uppercase',
-                  isDarkMode ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'
-                )}
-              >
-                {event.timing}
-              </span>
-            )}
+
           </div>
           <p
             className={cn(
@@ -1228,7 +1245,7 @@ function TimelineRow({ event, isDarkMode, onOpen }) {
           )}
         >
           {formatShortDate(event.date)} · {formatTime(event.startsAt, event.allDay)} ·{' '}
-          {event.timing || 'actual'}
+          {event.source === 'manual' ? 'Shared event' : 'Workflow'}
         </p>
         <p
           className={cn(
