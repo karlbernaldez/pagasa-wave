@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './auth';
+
 const PROJECT_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/projects`;
 const FORECAST_PACKAGE_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/forecast-packages`;
 
@@ -5,7 +7,7 @@ const FORECAST_PACKAGE_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/forec
    CORE REQUEST HELPER
 ========================================================= */
 const request = async (url, options = {}) => {
-  const response = await fetch(url, {
+  const response = await fetchWithAuth(url, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     ...options,
