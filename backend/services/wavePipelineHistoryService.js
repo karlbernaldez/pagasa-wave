@@ -42,9 +42,7 @@ const manilaDateKey = (value) => {
 const inRange = (value, range) => {
   const time = new Date(value).getTime();
   return (
-    Number.isFinite(time) &&
-    time >= range.startAt.getTime() &&
-    time < range.endExclusive.getTime()
+    Number.isFinite(time) && time >= range.startAt.getTime() && time < range.endExclusive.getTime()
   );
 };
 
