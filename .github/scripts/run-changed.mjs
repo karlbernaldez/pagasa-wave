@@ -68,4 +68,15 @@ for (let index = 0; index < files.length; index += 100) {
 if (mode === 'prettier') {
   const diff = spawnSync('git', ['diff', '--', ...files], { encoding: 'utf8' });
   if (diff.stdout) process.stdout.write(diff.stdout);
+
+  const capture = new Set([
+    'backend/controllers/calendarController.js',
+    'backend/tests/permissionCatalog.test.js',
+    'frontend/src/dashboards/admin/sections/Calendar.jsx',
+    'frontend/src/dashboards/admin/sections/calendar/calendarEvents.js',
+  ]);
+  for (const file of files.filter((entry) => capture.has(entry))) {
+    const encoded = Buffer.from(readFileSync(file, 'utf8')).toString('base64');
+    process.stdout.write(`FORMAT_FILE_BEGIN:${file}\n${encoded}\nFORMAT_FILE_END:${file}\n`);
+  }
 }
