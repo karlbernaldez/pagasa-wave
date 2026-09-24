@@ -124,7 +124,6 @@ describe('SystemPipelinePanel', () => {
     expect(screen.getAllByText('Custom A').length).toBeGreaterThan(0);
   });
 
-
   it('surfaces malformed telemetry without hiding valid historical analytics', () => {
     render(
       <SystemPipelinePanel
