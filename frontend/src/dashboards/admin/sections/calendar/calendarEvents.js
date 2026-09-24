@@ -1,7 +1,5 @@
 import { formatPackageDate, getDateKey } from '@/features/projects/utils/forecastPackageGrouping';
 
-export const CALENDAR_TIME_ZONE = 'Asia/Manila';
-
 export const EVENT_TYPE_META = Object.freeze({
   Package: { label: 'Forecast', tone: 'cyan' },
   Review: { label: 'Review', tone: 'amber' },
@@ -19,25 +17,10 @@ const REVIEW_STATUSES = new Set(['Submitted', 'Under Review', 'Needs Review']);
 const RETURNED_STATUSES = new Set(['Rejected', 'Revision Requested', 'Returned']);
 const APPROVED_STATUSES = new Set(['Approved', 'Published']);
 
-const pad = (value) => String(value).padStart(2, '0');
-
 export function manilaDateTime(dateKey, time) {
   if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
   if (!/^\d{2}:\d{2}$/.test(String(time || ''))) return null;
   return `${dateKey}T${time}:00+08:00`;
-}
-
-export function monthRange(monthDate) {
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const start = new Date(year, month, 1);
-  const end = new Date(year, month + 1, 1);
-  return {
-    start,
-    end,
-    startIso: start.toISOString(),
-    endIso: end.toISOString(),
-  };
 }
 
 function packageTitle(forecastPackage) {
