@@ -97,6 +97,9 @@ test('pipeline run analytics preserve retries and aggregate real terminal outcom
     assert.equal(result.summary.medianDurationSeconds, 1050);
     assert.equal(result.summary.p90DurationSeconds, 1620);
     assert.equal(result.summary.durationSampleSize, 4);
+    assert.equal(result.files, 2);
+    assert.ok(result.totalBytes > 0);
+    assert.equal(result.latestRunAt, '2026-09-09T01:20:00Z');
 
     const ww3 = result.models.find((item) => item.model === 'WW3');
     const ecwam = result.models.find((item) => item.model === 'ECWAM');
@@ -141,6 +144,9 @@ test('pipeline history ignores out-of-range runs and counts malformed records wi
     assert.equal(history.runs[0].runId, 'inside');
     assert.equal(history.invalidRecords, 1);
     assert.equal(history.collectingSince, '2026-08-01T01:00:00Z');
+    assert.equal(history.latestRunAt, '2026-09-08T01:10:00Z');
+    assert.equal(history.files, 1);
+    assert.ok(history.totalBytes > 0);
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
@@ -151,6 +157,11 @@ test('missing history directory returns an empty collecting state instead of an 
   const result = await loadWavePipelineRunAnalytics(range, { historyRoot: root });
 
   assert.equal(result.available, true);
+  assert.equal(result.collectingSince, null);
+  assert.equal(result.latestRunAt, null);
+  assert.equal(result.files, 0);
+  assert.equal(result.totalBytes, 0);
+  assert.equal(result.invalidRecords, 0);
   assert.equal(result.summary.runs, 0);
   assert.equal(result.summary.successRate, null);
   assert.deepEqual(result.trend, []);
