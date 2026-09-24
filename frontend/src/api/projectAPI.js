@@ -5,7 +5,7 @@ const FORECAST_PACKAGE_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/forec
 
 /* =========================================================
    CORE REQUEST HELPER
-========================================================= */
+--------------------------------------------------------- */
 const request = async (url, options = {}) => {
   const response = await fetchWithAuth(url, {
     credentials: 'include',
@@ -50,7 +50,7 @@ const getProjectsFromPackageContext = (context) => {
 
 /* =========================================================
    USER PROJECT ROUTES
-========================================================= */
+--------------------------------------------------------- */
 
 // Create new project
 export const createProject = (projectData) =>
@@ -116,7 +116,7 @@ export const deleteProjectById = (id) =>
 
 /* =========================================================
    WORKFLOW ROUTES
-========================================================= */
+--------------------------------------------------------- */
 
 // Submit project (Owner)
 export const submitProject = (id) =>
@@ -178,7 +178,7 @@ export const archiveProject = (id) =>
 
 /* =========================================================
    ADMIN ROUTES
-========================================================= */
+--------------------------------------------------------- */
 
 // Fetch admin review projects with server-driven search, filtering, sorting, and pagination.
 export const fetchAdminProjects = ({
