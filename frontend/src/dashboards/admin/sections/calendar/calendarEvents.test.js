@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildPackageEvents,
-  normalizeManualEvents,
-  sortCalendarEvents,
-} from './calendarEvents';
+import { buildPackageEvents, normalizeManualEvents, sortCalendarEvents } from './calendarEvents';
 
 describe('operational calendar event derivation', () => {
   it('derives actual package workflow events from persisted timestamps', () => {
