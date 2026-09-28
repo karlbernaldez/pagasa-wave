@@ -23,6 +23,18 @@ const adminSettingsLimiter = rateLimit({
   message: { message: 'Too many settings updates. Try again later.' },
 });
 
+const PUBLIC_SETTINGS_PAGES = new Set(['general', 'about', 'contact']);
+
+const SETTINGS_VIEW_PERMISSION_BY_PAGE = Object.freeze({
+  operations: 'settings_schedule.view',
+  forecasterworkspace: 'settings_workspace.view',
+  mapview: 'settings_map_view.view',
+  adminreview: 'settings_review_targets.view',
+  general: 'settings_public_general.view',
+  about: 'settings_public_about.view',
+  contact: 'settings_public_contact.view',
+});
+
 const SETTINGS_MANAGE_PERMISSION_BY_PAGE = Object.freeze({
   operations: 'settings_schedule.manage',
   forecasterworkspace: 'settings_workspace.manage',
@@ -32,6 +44,24 @@ const SETTINGS_MANAGE_PERMISSION_BY_PAGE = Object.freeze({
   about: 'settings_public_about.manage',
   contact: 'settings_public_contact.manage',
 });
+
+function requireSettingsViewPermission(req, res, next) {
+  const page = String(req.params.page || '')
+    .trim()
+    .toLowerCase();
+
+  if (PUBLIC_SETTINGS_PAGES.has(page)) return next();
+
+  const permission = SETTINGS_VIEW_PERMISSION_BY_PAGE[page];
+  if (!permission) {
+    return res.status(400).json({ message: `Unknown settings page: "${page}"` });
+  }
+
+  return authenticate(req, res, (error) => {
+    if (error) return next(error);
+    return requirePermission(permission)(req, res, next);
+  });
+}
 
 function requireSettingsManagePermission(req, res, next) {
   const page = String(req.params.page || '')
@@ -46,7 +76,7 @@ function requireSettingsManagePermission(req, res, next) {
   return requirePermission(permission)(req, res, next);
 }
 
-router.get('/:page', publicSettingsLimiter, getSettings);
+router.get('/:page', publicSettingsLimiter, requireSettingsViewPermission, getSettings);
 router.put(
   '/:page',
   adminSettingsLimiter,
