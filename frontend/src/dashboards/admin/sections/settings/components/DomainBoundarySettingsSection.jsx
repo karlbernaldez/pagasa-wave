@@ -12,6 +12,7 @@ const DEFAULT_BOUNDARY = {
   name: 'Published chart domain',
   showLine: true,
   showFill: false,
+  clipAnnotations: false,
   lineColor: '#0f172a',
   lineWidth: 2,
   lineOpacity: 0.9,
