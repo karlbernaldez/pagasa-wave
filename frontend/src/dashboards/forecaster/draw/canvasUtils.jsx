@@ -176,6 +176,59 @@ export const lightSmoothPoints = (points, factor = 0.3) => {
   return result;
 };
 
+
+const toPointPairs = (points) => {
+  const pairs = [];
+  for (let i = 0; i < points.length; i += 2) {
+    pairs.push([points[i], points[i + 1]]);
+  }
+  return pairs;
+};
+
+const flattenPointPairs = (pairs) => pairs.flatMap(([x, y]) => [x, y]);
+
+const samePoint = (a, b, epsilon = 0.001) =>
+  Math.abs(a[0] - b[0]) <= epsilon && Math.abs(a[1] - b[1]) <= epsilon;
+
+/**
+ * Chaikin corner cutting.
+ * Unlike the cardinal spline below, this does not force the final curve through
+ * every hand-drawn anchor, so higher smoothing values genuinely round corners.
+ */
+export const cornerCutPoints = (points, passes = 0, { closed = false } = {}) => {
+  if (passes <= 0 || points.length < 6) return points;
+
+  let pairs = toPointPairs(points);
+
+  if (closed && pairs.length > 2 && samePoint(pairs[0], pairs.at(-1))) {
+    pairs = pairs.slice(0, -1);
+  }
+
+  for (let pass = 0; pass < passes; pass += 1) {
+    if (pairs.length < 3) break;
+
+    const next = [];
+
+    if (!closed) next.push(pairs[0]);
+
+    const edgeCount = closed ? pairs.length : pairs.length - 1;
+    for (let i = 0; i < edgeCount; i += 1) {
+      const a = pairs[i];
+      const b = pairs[(i + 1) % pairs.length];
+
+      next.push(
+        [a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25],
+        [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]
+      );
+    }
+
+    if (!closed) next.push(pairs.at(-1));
+    pairs = next;
+  }
+
+  return flattenPointPairs(pairs);
+};
+
 /**
  * Bezier-based smoothing for final output
  * Creates smooth curves through points
@@ -257,10 +310,14 @@ export const getDrawingSmoothingProfile = (percent = 50) => {
 
   return {
     previewFactor: 0.72 - amount * 0.5,
-    previewTension: 0.18 + amount * 0.56,
-    previewTolerance: 0.35 + amount * 2.2,
-    finalTension: 0.2 + amount * 0.58,
-    finalTolerance: 0.2 + amount * 1.4,
+    previewTension: 0.18 + amount * 0.48,
+    previewTolerance: 0.35 + amount * 1.75,
+    finalTension: 0.2 + amount * 0.5,
+    finalTolerance: 0.2 + amount * 1.15,
+    previewCornerCutPasses:
+      amount >= 0.9 ? 3 : amount >= 0.75 ? 2 : amount >= 0.6 ? 1 : 0,
+    finalCornerCutPasses:
+      amount >= 0.9 ? 4 : amount >= 0.75 ? 3 : amount >= 0.6 ? 2 : amount >= 0.45 ? 1 : 0,
   };
 };
 
@@ -271,7 +328,12 @@ export const getPreviewCurvePoints = (rawPoints, smoothingPercent = 50) => {
     return lightSmoothPoints(rawPoints, profile.previewFactor);
   }
 
-  return smoothPoints(rawPoints, profile.previewTension, {
+  const roundedPoints = cornerCutPoints(
+    rawPoints,
+    profile.previewCornerCutPasses
+  );
+
+  return smoothPoints(roundedPoints, profile.previewTension, {
     simplifyTolerance: profile.previewTolerance,
     minSegments: PREVIEW_MIN_CURVE_SEGMENTS,
     maxSegments: PREVIEW_MAX_CURVE_SEGMENTS,
@@ -280,10 +342,25 @@ export const getPreviewCurvePoints = (rawPoints, smoothingPercent = 50) => {
   });
 };
 
-export const getFinalCurvePoints = (rawPoints, smoothingPercent = 50) => {
+export const getFinalCurvePoints = (
+  rawPoints,
+  smoothingPercent = 50,
+  { closed = false } = {}
+) => {
   const profile = getDrawingSmoothingProfile(smoothingPercent);
+  const roundedPoints = cornerCutPoints(
+    rawPoints,
+    profile.finalCornerCutPasses,
+    { closed }
+  );
 
-  return smoothPoints(rawPoints, profile.finalTension, {
+  if (closed && profile.finalCornerCutPasses > 0) {
+    // Chaikin already produces a dense, rounded closed path. Returning it
+    // directly avoids reintroducing a seam through an open-ended spline.
+    return roundedPoints;
+  }
+
+  return smoothPoints(roundedPoints, profile.finalTension, {
     simplifyTolerance: profile.finalTolerance,
     minSegments: FINAL_MIN_CURVE_SEGMENTS,
     maxSegments: FINAL_MAX_CURVE_SEGMENTS,
@@ -579,7 +656,9 @@ export const handlePointerUp = async (
     const lastLine = { ...lines[lastIndex] };
 
     if (lastLine.rawPoints?.length >= 4) {
-      lastLine.points = getFinalCurvePoints(lastLine.rawPoints, smoothingPercent);
+      lastLine.points = getFinalCurvePoints(lastLine.rawPoints, smoothingPercent, {
+        closed: closedMode,
+      });
     }
 
     const updatedLines = [...lines];
