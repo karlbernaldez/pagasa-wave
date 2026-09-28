@@ -59,7 +59,6 @@ const ReviewChecklistDefinitionSchema = new Schema(
     isActive: {
       type: Boolean,
       default: false,
-      index: true,
     },
     items: {
       type: [ReviewChecklistDefinitionItemSchema],
