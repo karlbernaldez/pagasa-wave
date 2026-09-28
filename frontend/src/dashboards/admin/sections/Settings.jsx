@@ -227,8 +227,8 @@ const SettingsSection = ({ isDarkMode }) => {
                 Dashboard Settings Control Center
               </h2>
               <p className={cn('mt-1 max-w-3xl text-sm font-semibold leading-6', muted)}>
-                Select a work area first, then edit only the configurable copy, schedules, and
-                public content for that area. Fixed forecast-package rules stay out of Settings.
+                Select a work area first, then manage the configuration owned by that area. Core workflow
+                invariants remain enforced by the application even when review policy is configurable.
               </p>
               {activeGroup && visibleTabs.some((tab) => tab.id === activeTab) && (
                 <div
@@ -257,7 +257,7 @@ const SettingsSection = ({ isDarkMode }) => {
             </div>
 
             {!activeConfig?.standaloneSave && (
-            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <div className="flex flex-wrap gap-2 lg:justify-end">
               <ActionButton
                 icon={Undo2}
                 onClick={history.undo}
@@ -290,7 +290,7 @@ const SettingsSection = ({ isDarkMode }) => {
               >
                 {saving ? 'Saving' : 'Save'}
               </ActionButton>
-            </div>
+              </div>
             )}
           </div>
         </header>
