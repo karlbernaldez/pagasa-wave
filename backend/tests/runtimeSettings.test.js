@@ -154,6 +154,7 @@ test('general settings accept a WGS84 published domain boundary', () => {
       name: 'Test domain',
       showLine: true,
       showFill: true,
+      clipAnnotations: true,
       lineColor: '#112233',
       lineWidth: 2,
       lineOpacity: 0.8,
@@ -184,6 +185,7 @@ test('general settings accept a WGS84 published domain boundary', () => {
   });
 
   assert.equal(parsed.publishedDomainBoundary.enabled, true);
+  assert.equal(parsed.publishedDomainBoundary.clipAnnotations, true);
   assert.equal(parsed.publishedDomainBoundary.geojson.features.length, 1);
   assert.deepEqual(parsed.publishedDomainBoundary.geojson.features[0].properties, {});
 });
