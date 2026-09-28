@@ -578,8 +578,6 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
     throwError('Only Submitted packages can be moved to Under Review', 403);
   }
 
-  await createPackageReviewChecklist(forecastPackage._id, req.user.id);
-
   const previousStatus = forecastPackage.status;
   const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.UNDER_REVIEW;
@@ -599,6 +597,29 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
     conflictMessage:
       'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
   });
+
+  try {
+    await createPackageReviewChecklist(forecastPackage._id, req.user.id);
+  } catch (error) {
+    try {
+      const transitionedUpdatedAt = forecastPackage.updatedAt;
+      forecastPackage.status = previousStatus;
+      forecastPackage.reviewStartedAt = null;
+      forecastPackage.reviewStartedBy = null;
+      forecastPackage.auditLogs.pop();
+
+      await saveForecastPackageSnapshot(forecastPackage, {
+        expectedStatus: FORECAST_PACKAGE_STATUS.UNDER_REVIEW,
+        expectedUpdatedAt: transitionedUpdatedAt,
+        conflictMessage:
+          'Review checklist initialization failed and the package changed before review rollback completed. Reload before continuing.',
+      });
+    } catch (rollbackError) {
+      console.error('[ForecastPackageReview] Failed to rollback review start:', rollbackError);
+    }
+
+    throw error;
+  }
 
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
