@@ -15,12 +15,12 @@ router.use(protect);
 
 router.get(
   '/definition',
-  requirePermission('settings_review_targets.view'),
+  requirePermission('settings_review_checklist.view'),
   getActiveReviewChecklistDefinitionController
 );
 router.post(
   '/definition',
-  requirePermission('settings_review_targets.manage'),
+  requirePermission('settings_review_checklist.manage'),
   createReviewChecklistDefinitionVersionController
 );
 router.get(
