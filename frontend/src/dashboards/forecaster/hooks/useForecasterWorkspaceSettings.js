@@ -20,6 +20,9 @@ const DEFAULT_FORECASTER_WORKSPACE_SETTINGS = {
   revisionInstructionMessage: 'Review admin comments, update affected charts, and resubmit the package for approval.',
   emptyPackageMessage: 'Create today\'s forecast package to generate the four required charts.',
   chartSequenceHelperMessage: 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Forecasters can co-edit; readiness waits until active editors release.',
+  drawingPointerOffsetX: 0,
+  drawingPointerOffsetY: 0,
+  drawingSmoothingPercent: 50,
 };
 
 const DEFAULT_OPERATIONS_SETTINGS = {
