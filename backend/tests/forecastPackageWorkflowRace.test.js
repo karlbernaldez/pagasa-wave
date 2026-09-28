@@ -4,6 +4,7 @@ import test from 'node:test';
 import mongoose from 'mongoose';
 import ForecastPackage from '../models/ForecastPackage.js';
 import Project from '../models/Project.js';
+import ForecastPackageReviewChecklist from '../models/ForecastPackageReviewChecklist.js';
 import { requestTargetedForecastPackageRevision } from '../controllers/forecastPackageRevisionController.js';
 import { submitForecastPackage } from '../controllers/forecastPackageSubmitController.js';
 import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
@@ -179,6 +180,7 @@ test('targeted revision save is guarded before chart completion state is persist
   const originalFindById = ForecastPackage.findById;
   const originalProjectFind = Project.find;
   const originalBulkWrite = Project.bulkWrite;
+  const originalChecklistFindOne = ForecastPackageReviewChecklist.findOne;
   const pkg = createPackage('Under Review');
   let findByIdCalls = 0;
 
@@ -197,6 +199,7 @@ test('targeted revision save is guarded before chart completion state is persist
     };
     Project.find = () => createQuery(projects);
     Project.bulkWrite = async () => ({ modifiedCount: 1 });
+    ForecastPackageReviewChecklist.findOne = () => createQuery(null);
 
     await createResponseRunner(requestTargetedForecastPackageRevision, {
       params: { id: PACKAGE_ID },
@@ -217,5 +220,6 @@ test('targeted revision save is guarded before chart completion state is persist
     ForecastPackage.findById = originalFindById;
     Project.find = originalProjectFind;
     Project.bulkWrite = originalBulkWrite;
+    ForecastPackageReviewChecklist.findOne = originalChecklistFindOne;
   }
 });
