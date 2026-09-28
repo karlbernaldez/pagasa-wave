@@ -186,8 +186,7 @@ const AboutUs = () => {
                 Public marine forecasting platform
               </p>
               <h1 className={cx('mt-6 max-w-3xl text-4xl font-black leading-tight tracking-tight sm:text-6xl', isDarkMode ? 'text-white' : 'text-slate-950')}>
-                {title.includes('WaveLab') ? title.replace('WaveLab', '') : title}{' '}
-                <span className={cx('bg-clip-text text-transparent', isDarkMode ? 'bg-gradient-to-r from-blue-300 to-cyan-200' : 'bg-gradient-to-r from-blue-700 to-cyan-500')}>WaveLab</span>
+{title}
               </h1>
               <p className={cx('mt-5 max-w-2xl text-base font-semibold leading-relaxed sm:text-lg', isDarkMode ? 'text-slate-300' : 'text-slate-700')}>{subtitle}</p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
