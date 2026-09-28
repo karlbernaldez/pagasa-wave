@@ -67,6 +67,7 @@ export const ADMIN_ANY_PERMISSION_BY_TAB = Object.freeze({
     'settings_workspace.view',
     'settings_map_view.view',
     'settings_review_targets.view',
+    'settings_review_checklist.view',
     'settings_public_general.view',
     'settings_public_about.view',
     'settings_public_contact.view',
