@@ -27,7 +27,7 @@ const useContactSettings = () => {
       }
     };
 
-    void fetchSettings();
+    void fetchSettings({ force: true });
 
     const handleSettingsUpdate = (event) => {
       if (['contact', 'admin.settings.contact'].includes(event.detail?.key)) {
