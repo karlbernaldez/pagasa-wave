@@ -12,6 +12,7 @@ import OperationsTab from './settings/components/tabs/OperationsTab';
 import ForecasterWorkspaceTab from './settings/components/tabs/ForecasterWorkspaceTab';
 import MapViewSettingsTab from './settings/components/tabs/MapViewSettingsTab';
 import AdminReviewTab from './settings/components/tabs/AdminReviewTab';
+import ReviewChecklistTab from './settings/components/tabs/ReviewChecklistTab';
 import GeneralTab from './settings/components/tabs/GeneralTab';
 import AboutTab from './settings/components/tabs/AboutTab';
 import ContactTab from './settings/components/tabs/ContactTab';
@@ -27,6 +28,7 @@ const COMPONENTS = {
   forecasterWorkspace: ForecasterWorkspaceTab,
   mapView: MapViewSettingsTab,
   adminReview: AdminReviewTab,
+  reviewChecklist: ReviewChecklistTab,
   general: GeneralTab,
   about: AboutTab,
   contact: ContactTab,
@@ -140,6 +142,7 @@ const SettingsSection = ({ isDarkMode }) => {
     const normalized = {};
 
     Object.keys(pagesConfig).forEach((key) => {
+      if (pagesConfig[key]?.standaloneSave) return;
       normalized[key] = ensureIdsInSettings(rawSettings[key] || {});
     });
 
@@ -181,12 +184,12 @@ const SettingsSection = ({ isDarkMode }) => {
   );
 
   const onSave = () => {
-    if (!canManageActive) return;
+    if (!canManageActive || activeConfig?.standaloneSave) return;
     handleSave(allSettings);
   };
 
   const onReset = () => {
-    if (!canManageActive) return;
+    if (!canManageActive || activeConfig?.standaloneSave) return;
     handleReset?.();
   };
 
@@ -253,6 +256,7 @@ const SettingsSection = ({ isDarkMode }) => {
               )}
             </div>
 
+            {!activeConfig?.standaloneSave && (
             <div className="flex flex-wrap gap-2 lg:justify-end">
               <ActionButton
                 icon={Undo2}
@@ -287,6 +291,7 @@ const SettingsSection = ({ isDarkMode }) => {
                 {saving ? 'Saving' : 'Save'}
               </ActionButton>
             </div>
+            )}
           </div>
         </header>
 
@@ -338,17 +343,21 @@ const SettingsSection = ({ isDarkMode }) => {
               Loading settings...
             </div>
           ) : ActiveComponent ? (
-            <ViewOnlySettingsSurface readOnly={!canManageActive}>
-              <ActiveComponent
-                settings={allSettings[activeTab]}
-                setSettings={makeSetter(activeTab)}
-                dark={dark}
-              />
-            </ViewOnlySettingsSurface>
+            activeConfig?.standaloneSave ? (
+              <ActiveComponent dark={dark} canManage={canManageActive} />
+            ) : (
+              <ViewOnlySettingsSurface readOnly={!canManageActive}>
+                <ActiveComponent
+                  settings={allSettings[activeTab]}
+                  setSettings={makeSetter(activeTab)}
+                  dark={dark}
+                />
+              </ViewOnlySettingsSurface>
+            )
           ) : null}
         </div>
 
-        {visibleTabs.length > 0 && canManageActive && (
+        {visibleTabs.length > 0 && canManageActive && !activeConfig?.standaloneSave && (
           <SaveBar onSave={onSave} onReset={onReset} saving={saving} status={status} dark={dark} />
         )}
       </section>
