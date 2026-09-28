@@ -80,11 +80,17 @@ test('workspace settings persist only runtime-backed fields', () => {
     revisionInstructionMessage: 'Resolve reviewer comments.',
     emptyPackageMessage: 'Create the package.',
     chartSequenceHelperMessage: 'Follow the chart sequence.',
+    drawingPointerOffsetX: 18,
+    drawingPointerOffsetY: -24,
+    drawingSmoothingPercent: 75,
     autosaveIntervalSeconds: 5,
     defaultMapView: 'Unused legacy value',
   });
 
   assert.equal(parsed.workspaceWelcomeTitle, 'Marine Operations');
+  assert.equal(parsed.drawingPointerOffsetX, 18);
+  assert.equal(parsed.drawingPointerOffsetY, -24);
+  assert.equal(parsed.drawingSmoothingPercent, 75);
   assert.equal(parsed.autosaveIntervalSeconds, undefined);
   assert.equal(parsed.defaultMapView, undefined);
 });
@@ -219,5 +225,45 @@ test('general settings reject out-of-range published boundary coordinates', () =
         },
       }),
     /WGS84 longitude\/latitude/
+  );
+});
+
+
+test('workspace drawing settings reject unsafe ranges', () => {
+  const base = {
+    workspaceWelcomeTitle: '',
+    workspaceWelcomeDescription: '',
+    collaborationPresenceMessage: '',
+    qaChecklistReminder: '',
+    deadlineReminderMessage: '',
+    deadlineApproachingMessage: '',
+    deadlinePassedMessage: '',
+    publishTargetMissedMessage: '',
+    noPublicationCutoffMessage: '',
+    revisionInstructionMessage: '',
+    emptyPackageMessage: '',
+    chartSequenceHelperMessage: '',
+  };
+
+  assert.throws(
+    () =>
+      parseForecasterWorkspaceSettingsPayload({
+        ...base,
+        drawingPointerOffsetX: 250,
+        drawingPointerOffsetY: 0,
+        drawingSmoothingPercent: 50,
+      }),
+    /Drawing pointer X offset/
+  );
+
+  assert.throws(
+    () =>
+      parseForecasterWorkspaceSettingsPayload({
+        ...base,
+        drawingPointerOffsetX: 0,
+        drawingPointerOffsetY: 0,
+        drawingSmoothingPercent: 101,
+      }),
+    /Drawing smoothing/
   );
 });
