@@ -28,6 +28,7 @@
     "mapbox-gl": "^3.11.1",
     "numeral": "^2.0.6",
     "perfect-freehand": "^1.2.2",
+    "polyclip-ts": "^0.16.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^5.5.0",
