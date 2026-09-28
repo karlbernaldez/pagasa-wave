@@ -41,10 +41,10 @@ test('status sync does not overwrite a concurrent package transition', async () 
         _id: 'package-1',
         status: 'Under Review',
         charts: [
-          { chartType: 'analysis', project: { status: 'Approved' } },
-          { chartType: 'forecast_24h', project: { status: 'Approved' } },
-          { chartType: 'forecast_36h', project: { status: 'Approved' } },
-          { chartType: 'forecast_48h', project: { status: 'Approved' } },
+          { chartType: 'analysis', project: { status: 'Published' } },
+          { chartType: 'forecast_24h', project: { status: 'Published' } },
+          { chartType: 'forecast_36h', project: { status: 'Published' } },
+          { chartType: 'forecast_48h', project: { status: 'Published' } },
         ],
       },
       'admin-1'
@@ -59,5 +59,37 @@ test('status sync does not overwrite a concurrent package transition', async () 
   } finally {
     ForecastPackage.findOneAndUpdate = originalFindOneAndUpdate;
     ForecastPackage.findById = originalFindById;
+  }
+});
+
+
+test('status sync never infers package approval from approved child charts', async () => {
+  const originalFindOneAndUpdate = ForecastPackage.findOneAndUpdate;
+  let writeCalls = 0;
+
+  try {
+    ForecastPackage.findOneAndUpdate = () => {
+      writeCalls += 1;
+      return createQuery(null);
+    };
+
+    const packageBeforeSync = {
+      _id: 'package-approval-guard',
+      status: 'Under Review',
+      charts: [
+        { chartType: 'analysis', project: { status: 'Approved' } },
+        { chartType: 'forecast_24h', project: { status: 'Approved' } },
+        { chartType: 'forecast_36h', project: { status: 'Approved' } },
+        { chartType: 'forecast_48h', project: { status: 'Approved' } },
+      ],
+    };
+
+    const result = await syncPackageStatusFromCharts(packageBeforeSync, 'admin-1');
+
+    assert.equal(writeCalls, 0);
+    assert.equal(result, packageBeforeSync);
+    assert.equal(result.status, 'Under Review');
+  } finally {
+    ForecastPackage.findOneAndUpdate = originalFindOneAndUpdate;
   }
 });
