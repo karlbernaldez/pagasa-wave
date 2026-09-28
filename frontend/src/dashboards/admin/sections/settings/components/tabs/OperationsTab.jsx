@@ -1,9 +1,11 @@
-import { AlertTriangle, Archive, CalendarClock, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Archive, CalendarClock, Loader2, Play, Search, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 
 import Accordion from '../ui/Accordion';
 import { inputCls, labelCls } from '../ui/FormFields';
 import TimePickerField from '../ui/TimePickerField';
 import { getOperationsScheduleValidationError } from '../../utils/operationsScheduleValidation';
+import { previewArchivePolicy, runArchivePolicy } from '@/api/siteSettings';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -94,6 +96,40 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
   const set = (field) => (value) =>
     setSettings((prev) => ({ ...prev, [field]: value }));
   const scheduleError = getOperationsScheduleValidationError(settings);
+  const [archivePreview, setArchivePreview] = useState(null);
+  const [archiveStatus, setArchiveStatus] = useState(null);
+  const [archiveBusy, setArchiveBusy] = useState('');
+
+  const previewArchive = async () => {
+    setArchiveBusy('preview');
+    setArchiveStatus(null);
+    try {
+      const result = await previewArchivePolicy();
+      setArchivePreview(result);
+    } catch (error) {
+      setArchiveStatus({ type: 'error', message: error.message });
+    } finally {
+      setArchiveBusy('');
+    }
+  };
+
+  const runArchive = async () => {
+    setArchiveBusy('run');
+    setArchiveStatus(null);
+    try {
+      const result = await runArchivePolicy();
+      setArchiveStatus({
+        type: 'success',
+        message: `Archived ${result.totalArchived || 0} eligible record group${result.totalArchived === 1 ? '' : 's'}. No retention purge was performed.`,
+      });
+      const refreshed = await previewArchivePolicy();
+      setArchivePreview(refreshed);
+    } catch (error) {
+      setArchiveStatus({ type: 'error', message: error.message });
+    } finally {
+      setArchiveBusy('');
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -185,6 +221,59 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
                 />
               </div>
             </div>
+          </div>
+
+          <div className={cn('rounded-2xl border p-4', dark ? 'border-white/10 bg-slate-950/30' : 'border-slate-200 bg-white')}>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className={cn('text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>Archive policy check</p>
+                <p className={cn('mt-1 text-xs font-semibold leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
+                  Preview uses the settings currently saved on the server. Save changes before previewing or running the policy.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={previewArchive}
+                  disabled={Boolean(archiveBusy)}
+                  className={cn('inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black disabled:opacity-50', dark ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50')}
+                >
+                  {archiveBusy === 'preview' ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                  Preview candidates
+                </button>
+                <button
+                  type="button"
+                  onClick={runArchive}
+                  disabled={Boolean(archiveBusy) || !archivePreview?.totals?.total}
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-black text-white hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {archiveBusy === 'run' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                  Run archive now
+                </button>
+              </div>
+            </div>
+
+            {archivePreview && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  ['Published packages', archivePreview.totals?.publishedPackages || 0],
+                  ['No-publication charts', archivePreview.totals?.noPublicationProjects || 0],
+                  ['Abandoned drafts', archivePreview.totals?.draftPackages || 0],
+                  ['Total eligible', archivePreview.totals?.total || 0],
+                ].map(([label, value]) => (
+                  <div key={label} className={cn('rounded-xl border px-3 py-3', dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50')}>
+                    <p className={cn('text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>{label}</p>
+                    <p className={cn('mt-1 text-2xl font-black', dark ? 'text-white' : 'text-slate-950')}>{value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {archiveStatus && (
+              <p className={cn('mt-3 rounded-xl border px-3 py-2 text-xs font-semibold', archiveStatus.type === 'error' ? dark ? 'border-rose-400/20 bg-rose-500/10 text-rose-200' : 'border-rose-200 bg-rose-50 text-rose-700' : dark ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700')}>
+                {archiveStatus.message}
+              </p>
+            )}
           </div>
 
           <div className={cn('grid gap-3 rounded-2xl border p-4 md:grid-cols-2', dark ? 'border-emerald-400/20 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50')}>
