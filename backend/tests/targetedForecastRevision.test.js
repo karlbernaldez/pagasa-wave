@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const ADMIN_ID = 'admin-1';
-const PACKAGE_ID = 'package-1';
+const PACKAGE_ID = '507f1f77bcf86cd799439011';
 const PROJECT_IDS = ['project-1', 'project-2', 'project-3', 'project-4'];
 const CHART_TYPES = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
 const REVIEW_PERMISSIONS = ['projects.review'];
