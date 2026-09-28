@@ -8,6 +8,10 @@ import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hook
 import { CHART_STYLE_MODE, getChartStyleModePaint, normalizeChartStyleMode } from '@/features/projects/utils/chartStyleModes';
 import { isFrontFeature, renderFrontFeatures } from '@/features/projects/utils/frontRendering';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
+import {
+  getPublishedDomainBoundarySignature,
+  syncPublishedDomainBoundary,
+} from '@/features/projects/utils/publishedDomainBoundary';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
@@ -325,7 +329,7 @@ function fitExportBounds(map, bounds) {
 
 const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap({ features, chartStyleMode, raster }, ref) {
   const { isDarkMode } = useTheme();
-  const { bounds: mapBounds } = usePublicMapBounds();
+  const { bounds: mapBounds, settings: publicSettings } = usePublicMapBounds();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const readySignatureRef = useRef('');
@@ -341,6 +345,10 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
   const projectId = useMemo(() => getProjectIdFromLocation(), []);
   const theme = isDarkMode ? 'dark' : 'light';
   const mapBoundsSignature = useMemo(() => JSON.stringify(mapBounds), [mapBounds]);
+  const boundarySignature = useMemo(
+    () => getPublishedDomainBoundarySignature(publicSettings),
+    [publicSettings]
+  );
   const featureSignature = useMemo(() => JSON.stringify(featureCollection), [featureCollection]);
   const renderSignature = useMemo(() => [
     projectId,
@@ -349,7 +357,8 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     shouldRenderRaster ? resolvedRaster?.tileUrl || 'raster-pending' : 'no-raster',
     featureSignature,
     mapBoundsSignature,
-  ].join('|'), [featureSignature, mapBoundsSignature, normalizedStyleMode, projectId, resolvedRaster?.tileUrl, shouldRenderRaster, theme]);
+    boundarySignature,
+  ].join('|'), [boundarySignature, featureSignature, mapBoundsSignature, normalizedStyleMode, projectId, resolvedRaster?.tileUrl, shouldRenderRaster, theme]);
 
   const clearReadyCapture = () => {
     readySignatureRef.current = '';
@@ -373,6 +382,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
     syncRaster(map, resolvedRaster, shouldRenderRaster);
     syncCountryOverlay(map, isDarkMode);
+    syncPublishedDomainBoundary(map, publicSettings, 'published-export-domain-boundary');
     fitExportBounds(map, mapBounds);
     if (hasFeatures) return syncExportLayers(map, featureCollection, normalizedStyleMode);
     restackExportLayers(map);
