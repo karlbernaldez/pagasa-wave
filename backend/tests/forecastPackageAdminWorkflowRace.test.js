@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const ADMIN_ID = 'admin-1';
-const PACKAGE_ID = 'package-1';
+const PACKAGE_ID = '507f1f77bcf86cd799439011';
 const UPDATED_AT = new Date('2026-08-12T04:00:00.000Z');
 const CHART_TYPES = ['analysis', 'forecast_24h', 'forecast_36h', 'forecast_48h'];
 const ADMIN_WORKFLOW_PERMISSIONS = ['projects.review', 'projects.approve', 'projects.publish'];
