@@ -78,6 +78,9 @@ function GalleryButton({ direction, disabled, isDarkMode, onClick }) {
 
 export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW_QUEUE, isDarkMode = false, onClose, onSelectProject, onApprove, onReject, onNoPublication, onPublish, onActionComplete }) {
   const lastProjectIdRef = useRef(getProjectId(project));
+  const packageReviewDetectedRef = useRef(
+    Array.isArray(reviewQueue) && reviewQueue.length > 1
+  );
   const [currentProject, setCurrentProject] = useState(project);
   const [currentFeatureCollection, setCurrentFeatureCollection] = useState(() => normalizeFeatureCollection(getEmbeddedCurrentFeatureSource(project)));
   const [isLoadingCurrentFeatures, setIsLoadingCurrentFeatures] = useState(false);
@@ -133,6 +136,8 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
   }, [projectId, effectiveQueue]);
 
   const canMoveGallery = effectiveQueue.length > 1;
+  if (canMoveGallery) packageReviewDetectedRef.current = true;
+
   const selectGalleryProject = async (targetProject) => {
     if (!targetProject || !canMoveGallery || isSwitchingProject) return;
     setIsSwitchingProject(true);
@@ -193,7 +198,7 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
   });
   const handlers = useProjectReviewActionHandlers({ projectId, currentProject, remarks, runAction, onApprove, onReject, onNoPublication, onPublish });
   const canUseGallery = !busyAction && !isSwitchingProject && canMoveGallery;
-  const isPackageReview = gallery.total > 1;
+  const isPackageReview = packageReviewDetectedRef.current || gallery.total > 1;
   const muted = isDarkMode ? 'text-slate-400' : 'text-slate-500';
 
   if (!currentProject) return null;
