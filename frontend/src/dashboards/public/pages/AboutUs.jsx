@@ -227,7 +227,7 @@ const AboutUs = () => {
         ) : (
           <>
             <section className="grid gap-4 md:grid-cols-3">
-              {stats.slice(0, 3).map((stat, index) => (
+              {stats.map((stat, index) => (
                 <article key={`${stat.label}-${stat.value}`} className={cx('relative h-full overflow-hidden rounded-3xl border p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl', SURFACE_TRANSITION, HOVER_LIFT, isDarkMode ? 'border-white/10 bg-slate-900/82' : 'border-white/85 bg-white/92 ring-1 ring-sky-100/80')}>
                   <div className={cx('absolute inset-x-0 top-0 h-1', index === 1 ? 'bg-gradient-to-r from-emerald-400 to-teal-400' : index === 2 ? 'bg-gradient-to-r from-violet-400 to-indigo-400' : 'bg-gradient-to-r from-blue-500 to-cyan-400')} />
                   <div className="flex h-full items-start gap-4">
@@ -303,7 +303,7 @@ const AboutUs = () => {
               <section className={glassPanel(isDarkMode, 'p-6 sm:p-8')}>
                 <SectionHeading isDark={isDarkMode} eyebrow="FAQ" title="Quick questions" description="Short answers only, so the page stays easy to scan." />
                 <div className="mt-6 grid gap-4 md:grid-cols-3">
-                  {faqs.slice(0, 3).map((faq, index) => (
+                  {faqs.map((faq, index) => (
                     <article key={`${faq.question}-${index}`} className={cx(innerCard(isDarkMode, 'h-full p-5'), HOVER_LIFT)}>
                       <h3 className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{getBriefText(faq.question, 'Question', 70)}</h3>
                       <p className={cx('mt-2 text-sm font-semibold leading-relaxed', isDarkMode ? 'text-slate-400' : 'text-slate-600')}>{getBriefText(faq.answer, 'Answer will be added soon.', 120)}</p>
@@ -337,7 +337,7 @@ const AboutUs = () => {
                 <div className="max-w-2xl lg:justify-self-end">
                   <SectionHeading isDark={isDarkMode} eyebrow="Governance" title="Responsible publication" description="WaveLab follows DOST-PAGASA review, quality, and operational procedures for public forecast products." />
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                    {(leaders.length ? leaders.slice(0, 4) : [{ name: 'Forecast operations', role: 'Chart preparation and technical review' }, { name: 'Public portal', role: 'Published chart access and communication' }]).map((leader) => (
+                    {(leaders.length ? leaders : [{ name: 'Forecast operations', role: 'Chart preparation and technical review' }, { name: 'Public portal', role: 'Published chart access and communication' }]).map((leader) => (
                       <article key={`${leader.name}-${leader.role}`} className={cx(innerCard(isDarkMode, isDarkMode ? 'p-5 bg-slate-950/58' : 'p-5 bg-white/84'), HOVER_LIFT)}>
                         <Building2 className="mb-3 h-5 w-5 text-cyan-500" />
                         <p className={cx('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-950')}>{leader.name}</p>
