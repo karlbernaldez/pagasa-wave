@@ -1,17 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import Swal from 'sweetalert2';
-import { useProjectId } from "@dashboards/forecaster/hooks/useStudio";
 import { fetchProjectById } from '@/api/projectAPI';
 
-const PREVIEW_SMOOTHING_FACTOR = 0.34;
 const MIN_DRAW_POINT_DISTANCE = 3.5;
-const PREVIEW_SIMPLIFY_TOLERANCE = 1.6;
-const PREVIEW_SPLINE_TENSION = 0.46;
 const PREVIEW_MIN_CURVE_SEGMENTS = 4;
 const PREVIEW_MAX_CURVE_SEGMENTS = 14;
 const PREVIEW_SEGMENT_LENGTH = 8;
-const FINAL_SIMPLIFY_TOLERANCE = 0.75;
-const FINAL_SPLINE_TENSION = 0.5;
 const FINAL_MIN_CURVE_SEGMENTS = 10;
 const FINAL_MAX_CURVE_SEGMENTS = 36;
 const FINAL_SEGMENT_LENGTH = 3;
