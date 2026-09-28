@@ -781,6 +781,8 @@ export const archiveForecastPackage = asyncHandler(async (req, res) => {
   const previousStatus = forecastPackage.status;
   const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.ARCHIVED;
+  forecastPackage.archivedAt = new Date();
+  forecastPackage.archivedBy = req.user.id;
   forecastPackage.auditLogs.push({
     action: 'archived',
     performedBy: req.user.id,
