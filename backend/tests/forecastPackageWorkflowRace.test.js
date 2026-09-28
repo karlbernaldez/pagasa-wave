@@ -8,7 +8,7 @@ import { requestTargetedForecastPackageRevision } from '../controllers/forecastP
 import { submitForecastPackage } from '../controllers/forecastPackageSubmitController.js';
 import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
 
-const PACKAGE_ID = 'package-1';
+const PACKAGE_ID = '507f1f77bcf86cd799439011';
 const USER_ID = 'user-1';
 const ADMIN_ID = 'admin-1';
 const UPDATED_AT = new Date('2026-08-12T03:30:00.000Z');
