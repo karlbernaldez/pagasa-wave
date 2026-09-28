@@ -233,10 +233,13 @@ export async function syncPackageStatusFromCharts(forecastPackage, userId) {
   const nextStatus = deriveForecastPackageStatusFromCharts(forecastPackage);
   if (!nextStatus || nextStatus === previousStatus) return forecastPackage;
 
-  // Package approval is an explicit review decision. Never infer it from child
-  // chart status because that would bypass review-checklist evidence and the
-  // approval permission gate.
-  if (nextStatus === FORECAST_PACKAGE_STATUS.APPROVED) {
+  // Approval and publication are explicit package decisions. Never infer either
+  // terminal state from child chart status because that would bypass checklist
+  // evidence and the package-level permission gates.
+  if (
+    nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ||
+    nextStatus === FORECAST_PACKAGE_STATUS.PUBLISHED
+  ) {
     return forecastPackage;
   }
 
