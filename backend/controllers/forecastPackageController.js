@@ -578,6 +578,8 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
     throwError('Only Submitted packages can be moved to Under Review', 403);
   }
 
+  await createPackageReviewChecklist(forecastPackage._id, req.user.id);
+
   const previousStatus = forecastPackage.status;
   const expectedUpdatedAt = forecastPackage.updatedAt;
   forecastPackage.status = FORECAST_PACKAGE_STATUS.UNDER_REVIEW;
@@ -597,8 +599,6 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
     conflictMessage:
       'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
   });
-
-  await createPackageReviewChecklist(forecastPackage._id, req.user.id);
 
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
