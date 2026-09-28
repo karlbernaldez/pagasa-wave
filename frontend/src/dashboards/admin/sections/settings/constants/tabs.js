@@ -1,4 +1,5 @@
 import {
+  ClipboardCheck,
   FileText,
   LayoutDashboard,
   Mail,
@@ -68,6 +69,16 @@ export const TABS = [
     apiPage: null,
     viewPermission: 'settings_review_targets.view',
     managePermission: 'settings_review_targets.manage',
+  },
+  {
+    id: 'reviewChecklist',
+    label: 'Review Checklist',
+    icon: ClipboardCheck,
+    group: 'adminReview',
+    apiPage: null,
+    viewPermission: 'settings_review_targets.view',
+    managePermission: 'settings_review_targets.manage',
+    standaloneSave: true,
   },
   {
     id: 'general',
