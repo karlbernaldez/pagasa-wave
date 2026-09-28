@@ -94,8 +94,8 @@ export function resolvePublicMapBounds(settings = {}) {
   return TCAD_MAP_BOUNDS;
 }
 
-async function loadGeneralSettings() {
-  if (cachedGeneralSettings) return cachedGeneralSettings;
+async function loadGeneralSettings({ force = false } = {}) {
+  if (cachedGeneralSettings && !force) return cachedGeneralSettings;
   if (!inFlightSettingsRequest) {
     inFlightSettingsRequest = getSettings('general')
       .then((settings) => {
@@ -125,7 +125,7 @@ export default function usePublicMapBounds() {
   useEffect(() => {
     let mounted = true;
 
-    loadGeneralSettings().then((data) => {
+    loadGeneralSettings({ force: true }).then((data) => {
       if (mounted) setSettings(data || {});
     });
 
