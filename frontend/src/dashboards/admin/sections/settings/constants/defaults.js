@@ -36,36 +36,16 @@ export const DEFAULT_MAP_VIEW = {
 };
 
 export const DEFAULT_OPERATIONS = {
-  packageOpenTime: '06:00',
   packageSubmissionDeadline: '10:00',
   packagePublishTarget: '12:00',
   noPublicationCutoff: '18:00',
-  packageDurationHours: 24,
   deadlineWarningMinutes: 60,
   timezone: 'Asia/Manila',
-  waveAnalysisDeadlineMinutes: 90,
-  forecast24DeadlineMinutes: 120,
-  forecast36DeadlineMinutes: 150,
-  forecast48DeadlineMinutes: 180,
-  archivePublishedAfterDays: 14,
-  archiveNoPublicationAfterDays: 30,
-  keepDraftProjectsDays: 7,
-  noPublicationReasons: [
-    'Model data unavailable',
-    'Server or system outage',
-    'No verified chart produced',
-    'No forecaster available',
-    'Force majeure / emergency operations',
-    'Cancelled by admin',
-    'Other',
-  ],
 };
 
 export const DEFAULT_FORECASTER_WORKSPACE = {
   workspaceWelcomeTitle: 'Daily Forecast Package',
   workspaceWelcomeDescription: 'Prepare the required wave charts, coordinate with active editors, and submit the package for admin review.',
-  defaultMapView: 'Philippine Area of Responsibility',
-  autosaveIntervalSeconds: 30,
   collaborationPresenceMessage: 'Another forecaster is editing this chart. Coordinate before overwriting shared work.',
   qaChecklistReminder: 'Before submitting, verify chart time labels, layer visibility, annotations, and package metadata.',
   deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
@@ -76,12 +56,6 @@ export const DEFAULT_FORECASTER_WORKSPACE = {
   revisionInstructionMessage: 'Review admin comments, update affected charts, and resubmit the package for approval.',
   emptyPackageMessage: 'Create today\'s forecast package to generate the four required charts.',
   chartSequenceHelperMessage: 'Follow the production order: Wave Analysis, 24h, 36h, then 48h. Forecasters can co-edit; readiness waits until active editors release.',
-};
-
-export const DEFAULT_ADMIN_REVIEW = {
-  reviewSlaHours: 2,
-  publishSlaHours: 1,
-  revisionGraceHours: 4,
 };
 
 export const DEFAULT_ABOUT = {
