@@ -16,11 +16,22 @@ export function timeToMinutes(value) {
 export function getOperationsScheduleValidationError(settings = {}) {
   const submissionDeadline = timeToMinutes(settings.packageSubmissionDeadline);
   const publishTarget = timeToMinutes(settings.packagePublishTarget);
+  const noPublicationCutoff = timeToMinutes(settings.noPublicationCutoff);
 
-  if (submissionDeadline === null || publishTarget === null) return null;
+  if (
+    submissionDeadline === null ||
+    publishTarget === null ||
+    noPublicationCutoff === null
+  ) {
+    return 'Schedule times must use 24-hour HH:mm format.';
+  }
 
   if (publishTarget <= submissionDeadline) {
     return 'Publish Target must be later than Submission Deadline.';
+  }
+
+  if (noPublicationCutoff <= publishTarget) {
+    return 'No-Publication Cutoff must be later than Publish Target.';
   }
 
   return null;
