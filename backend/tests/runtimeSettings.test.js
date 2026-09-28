@@ -15,7 +15,12 @@ test('operations settings accept an ordered operational schedule', () => {
       noPublicationCutoff: '18:00',
       deadlineWarningMinutes: 60,
       timezone: 'Asia/Manila',
+      autoArchivePublishedEnabled: true,
       archivePublishedAfterDays: 14,
+      autoArchiveNoPublicationEnabled: false,
+      archiveNoPublicationAfterDays: 30,
+      autoArchiveAbandonedDraftsEnabled: false,
+      archiveDraftsAfterDays: 30,
     }),
     {
       packageSubmissionDeadline: '10:00',
@@ -23,6 +28,14 @@ test('operations settings accept an ordered operational schedule', () => {
       noPublicationCutoff: '18:00',
       deadlineWarningMinutes: 60,
       timezone: 'Asia/Manila',
+      autoArchivePublishedEnabled: true,
+      archivePublishedAfterDays: 14,
+      autoArchiveNoPublicationEnabled: false,
+      archiveNoPublicationAfterDays: 30,
+      autoArchiveAbandonedDraftsEnabled: false,
+      archiveDraftsAfterDays: 30,
+      retainArchivedRecordsIndefinitely: true,
+      preserveReviewEvidence: true,
     }
   );
 });
@@ -117,5 +130,92 @@ test('general settings reject inverted custom bounds', () => {
         savedCustomMapBounds: [],
       }),
     /west longitude must be less than east longitude/
+  );
+});
+
+
+test('general settings accept a WGS84 published domain boundary', () => {
+  const parsed = parseGeneralSettingsPayload({
+    logoPreview: '/pagasa-logo.png',
+    showPublicStaffInfo: true,
+    publicChartPdfNote: '',
+    mapBoundsPreset: 'tcad',
+    mapBoundsCustomName: '',
+    mapBoundsCustom: {
+      westLng: 93,
+      southLat: 0,
+      eastLng: 153,
+      northLat: 25,
+    },
+    selectedCustomMapBoundsId: '',
+    savedCustomMapBounds: [],
+    publishedDomainBoundary: {
+      enabled: true,
+      name: 'Test domain',
+      showLine: true,
+      showFill: true,
+      lineColor: '#112233',
+      lineWidth: 2,
+      lineOpacity: 0.8,
+      fillColor: '#445566',
+      fillOpacity: 0.1,
+      geojson: {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: { ignored: 'metadata' },
+            geometry: {
+              type: 'Polygon',
+              coordinates: [
+                [
+                  [116, 4],
+                  [127, 4],
+                  [127, 22],
+                  [116, 22],
+                  [116, 4],
+                ],
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  assert.equal(parsed.publishedDomainBoundary.enabled, true);
+  assert.equal(parsed.publishedDomainBoundary.geojson.features.length, 1);
+  assert.deepEqual(parsed.publishedDomainBoundary.geojson.features[0].properties, {});
+});
+
+test('general settings reject out-of-range published boundary coordinates', () => {
+  assert.throws(
+    () =>
+      parseGeneralSettingsPayload({
+        logoPreview: '/pagasa-logo.png',
+        publicChartPdfNote: '',
+        mapBoundsPreset: 'tcad',
+        mapBoundsCustom: {
+          westLng: 93,
+          southLat: 0,
+          eastLng: 153,
+          northLat: 25,
+        },
+        savedCustomMapBounds: [],
+        publishedDomainBoundary: {
+          geojson: {
+            type: 'Polygon',
+            coordinates: [
+              [
+                [200, 4],
+                [127, 4],
+                [127, 22],
+                [200, 4],
+              ],
+            ],
+          },
+        },
+      }),
+    /WGS84 longitude\/latitude/
   );
 });
