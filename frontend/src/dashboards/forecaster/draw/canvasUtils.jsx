@@ -256,13 +256,29 @@ export const smoothPoints = (points, tension = FINAL_SPLINE_TENSION, options = {
   return removeDuplicates(result, duplicateEpsilon);
 };
 
-export const getPreviewCurvePoints = (rawPoints) => {
+const clampSmoothingPercent = (value) => Math.max(0, Math.min(100, Number(value) || 0));
+
+export const getDrawingSmoothingProfile = (percent = 50) => {
+  const amount = clampSmoothingPercent(percent) / 100;
+
+  return {
+    previewFactor: 0.72 - amount * 0.5,
+    previewTension: 0.18 + amount * 0.56,
+    previewTolerance: 0.35 + amount * 2.2,
+    finalTension: 0.2 + amount * 0.58,
+    finalTolerance: 0.2 + amount * 1.4,
+  };
+};
+
+export const getPreviewCurvePoints = (rawPoints, smoothingPercent = 50) => {
+  const profile = getDrawingSmoothingProfile(smoothingPercent);
+
   if (rawPoints.length < 8) {
-    return lightSmoothPoints(rawPoints, PREVIEW_SMOOTHING_FACTOR);
+    return lightSmoothPoints(rawPoints, profile.previewFactor);
   }
 
-  return smoothPoints(rawPoints, PREVIEW_SPLINE_TENSION, {
-    simplifyTolerance: PREVIEW_SIMPLIFY_TOLERANCE,
+  return smoothPoints(rawPoints, profile.previewTension, {
+    simplifyTolerance: profile.previewTolerance,
     minSegments: PREVIEW_MIN_CURVE_SEGMENTS,
     maxSegments: PREVIEW_MAX_CURVE_SEGMENTS,
     segmentLength: PREVIEW_SEGMENT_LENGTH,
@@ -270,9 +286,11 @@ export const getPreviewCurvePoints = (rawPoints) => {
   });
 };
 
-const getFinalCurvePoints = (rawPoints) => {
-  return smoothPoints(rawPoints, FINAL_SPLINE_TENSION, {
-    simplifyTolerance: FINAL_SIMPLIFY_TOLERANCE,
+export const getFinalCurvePoints = (rawPoints, smoothingPercent = 50) => {
+  const profile = getDrawingSmoothingProfile(smoothingPercent);
+
+  return smoothPoints(rawPoints, profile.finalTension, {
+    simplifyTolerance: profile.finalTolerance,
     minSegments: FINAL_MIN_CURVE_SEGMENTS,
     maxSegments: FINAL_MAX_CURVE_SEGMENTS,
     segmentLength: FINAL_SEGMENT_LENGTH,
@@ -536,7 +554,8 @@ export const handlePointerUp = async (
   lineCount,
   labelValue = 5,
   isDarkMode,
-  projectId          // ← passed in from the component, sourced from useProjectId()
+  projectId,         // ← passed in from the component, sourced from useProjectId()
+  smoothingPercent = 50
 ) => {
   const map = mapRef.current;
   if (!map) return;
@@ -566,7 +585,7 @@ export const handlePointerUp = async (
     const lastLine = { ...lines[lastIndex] };
 
     if (lastLine.rawPoints?.length >= 4) {
-      lastLine.points = getFinalCurvePoints(lastLine.rawPoints);
+      lastLine.points = getFinalCurvePoints(lastLine.rawPoints, smoothingPercent);
     }
 
     const updatedLines = [...lines];
