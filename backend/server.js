@@ -36,6 +36,7 @@ import pdfRoutes from './routes/pdfRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import roleRoutes from './routes/roleRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import reviewChecklistRoutes from './routes/reviewChecklistRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import waveModelCatalogRoutes from './routes/waveModelCatalogRoutes.js';
 import waveModelRoutes from './routes/waveModelRoutes.js';
@@ -152,6 +153,7 @@ const createApp = () => {
   });
 
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/review-checklists', reviewChecklistRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/features', featureRoutes);
   app.use('/api/auth', authRoutes);
