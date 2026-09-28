@@ -37,6 +37,14 @@ export const DEFAULT_OPERATIONS = {
   noPublicationCutoff: '18:00',
   deadlineWarningMinutes: 60,
   timezone: 'Asia/Manila',
+  autoArchivePublishedEnabled: false,
+  archivePublishedAfterDays: 30,
+  autoArchiveNoPublicationEnabled: false,
+  archiveNoPublicationAfterDays: 30,
+  autoArchiveAbandonedDraftsEnabled: false,
+  archiveDraftsAfterDays: 30,
+  retainArchivedRecordsIndefinitely: true,
+  preserveReviewEvidence: true,
 };
 
 export const DEFAULT_FORECASTER_WORKSPACE = {
