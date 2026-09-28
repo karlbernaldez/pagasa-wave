@@ -2,6 +2,10 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 
 import { getSettings, saveSettings } from '../controllers/settingsController.js';
+import {
+  previewArchivePolicyController,
+  runArchivePolicyController,
+} from '../controllers/archivePolicyController.js';
 import authenticate from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/permissionMiddleware.js';
 
@@ -78,6 +82,22 @@ function requireSettingsManagePermission(req, res, next) {
 
   return requirePermission(permission)(req, res, next);
 }
+
+router.get(
+  '/operations/archive-policy/preview',
+  adminSettingsLimiter,
+  authenticate,
+  requirePermission('settings_schedule.view'),
+  previewArchivePolicyController
+);
+router.post(
+  '/operations/archive-policy/run',
+  adminSettingsLimiter,
+  authenticate,
+  requirePermission('settings_schedule.manage'),
+  requirePermission('projects.publish'),
+  runArchivePolicyController
+);
 
 router.get('/:page', publicSettingsLimiter, requireSettingsViewPermission, getSettings);
 router.put(
