@@ -24,11 +24,13 @@ const adminSettingsLimiter = rateLimit({
 });
 
 const PUBLIC_SETTINGS_PAGES = new Set(['general', 'about', 'contact']);
+const AUTHENTICATED_RUNTIME_SETTINGS_PAGES = new Set([
+  'operations',
+  'forecasterworkspace',
+  'mapview',
+]);
 
 const SETTINGS_VIEW_PERMISSION_BY_PAGE = Object.freeze({
-  operations: 'settings_schedule.view',
-  forecasterworkspace: 'settings_workspace.view',
-  mapview: 'settings_map_view.view',
   adminreview: 'settings_review_targets.view',
   general: 'settings_public_general.view',
   about: 'settings_public_about.view',
@@ -52,15 +54,16 @@ function requireSettingsViewPermission(req, res, next) {
 
   if (PUBLIC_SETTINGS_PAGES.has(page)) return next();
 
+  if (AUTHENTICATED_RUNTIME_SETTINGS_PAGES.has(page)) {
+    return authenticate(req, res, next);
+  }
+
   const permission = SETTINGS_VIEW_PERMISSION_BY_PAGE[page];
   if (!permission) {
     return res.status(400).json({ message: `Unknown settings page: "${page}"` });
   }
 
-  return authenticate(req, res, (error) => {
-    if (error) return next(error);
-    return requirePermission(permission)(req, res, next);
-  });
+  return authenticate(req, res, () => requirePermission(permission)(req, res, next));
 }
 
 function requireSettingsManagePermission(req, res, next) {
