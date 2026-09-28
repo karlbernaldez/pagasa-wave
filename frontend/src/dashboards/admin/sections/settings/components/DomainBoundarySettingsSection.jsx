@@ -274,6 +274,16 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
             </div>
           )}
 
+          {featureCount > 0 && (
+            <Toggle
+              label="Clip annotations to domain boundary"
+              checked={boundary.clipAnnotations === true}
+              onChange={(clipAnnotations) => setBoundary({ clipAnnotations })}
+              dark={dark}
+              description="Hides annotation content outside the configured domain while preserving the original certified annotation geometry."
+            />
+          )}
+
           {!boundary.showLine && !boundary.showFill && (
             <p
               className={cn(
