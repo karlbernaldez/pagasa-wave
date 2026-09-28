@@ -95,6 +95,7 @@ router.post(
   adminSettingsLimiter,
   authenticate,
   requirePermission('settings_schedule.manage'),
+  requirePermission('projects.review'),
   requirePermission('projects.publish'),
   runArchivePolicyController
 );
