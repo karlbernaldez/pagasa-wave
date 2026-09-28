@@ -309,13 +309,15 @@ export async function assertReviewChecklistAllowsApproval(
 export async function supersedePackageReviewChecklist(
   forecastPackageId,
   userId,
-  { checklistModel = ForecastPackageReviewChecklist } = {}
+  { checklistModel = ForecastPackageReviewChecklist, session = null } = {}
 ) {
-  const checklist = await checklistModel.findOne({
+  let query = checklistModel.findOne({
     forecastPackage: forecastPackageId,
     status: REVIEW_CHECKLIST_INSTANCE_STATUS.ACTIVE,
   });
+  if (session && typeof query.session === 'function') query = query.session(session);
 
+  const checklist = await query;
   if (!checklist) return null;
 
   checklist.status = REVIEW_CHECKLIST_INSTANCE_STATUS.SUPERSEDED;
@@ -325,6 +327,6 @@ export async function supersedePackageReviewChecklist(
     comment: 'Checklist superseded after the Forecast Package entered revision.',
   });
 
-  await checklist.save();
+  await checklist.save(session ? { session } : undefined);
   return checklist;
 }
