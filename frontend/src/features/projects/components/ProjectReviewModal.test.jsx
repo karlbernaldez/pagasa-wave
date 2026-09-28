@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import ProjectReviewModal from './ProjectReviewModal';
+import { fetchAdminForecastPackage } from '@/api/projectAPI';
 
 vi.mock('@/features/projects/components/review/ReviewMapWorkspace', () => ({
   default: () => <section aria-label="review map workspace" />,
@@ -12,8 +13,9 @@ vi.mock('@/features/projects/components/review/ReviewSidebar', () => ({
 }));
 
 vi.mock('@/features/projects/components/review/ReviewActionsFooter', () => ({
-  default: ({ onClose }) => (
+  default: ({ onClose, onPublish }) => (
     <footer>
+      {typeof onPublish === 'function' && <button type="button">Publish chart</button>}
       <button type="button" onClick={onClose}>Close</button>
     </footer>
   ),
@@ -26,6 +28,7 @@ vi.mock('@/api/featureServices', () => ({
 vi.mock('@/api/projectAPI', () => ({
   addReviewComment: vi.fn(),
   requestProjectRevision: vi.fn(),
+  startReviewProject: vi.fn((id) => Promise.resolve({ _id: id, status: 'Under Review' })),
   fetchAdminForecastPackage: vi.fn(() => Promise.resolve(null)),
 }));
 
@@ -83,4 +86,34 @@ describe('ProjectReviewModal', () => {
 
     consoleErrorSpy.mockRestore();
   });
+
+  it('never exposes chart publishing while navigating inside a package review', async () => {
+    const approvedProject = {
+      ...baseProject,
+      _id: 'project-2',
+      name: '24h Wave Forecast',
+      chartType: 'forecast_24h',
+      status: 'Approved',
+    };
+    const queue = [baseProject, approvedProject];
+
+    fetchAdminForecastPackage.mockResolvedValue({ projects: queue });
+
+    renderModal(baseProject);
+
+    const nextButton = await screen.findByRole('button', { name: /next chart/i });
+    await waitFor(() => expect(nextButton).toBeEnabled());
+
+    expect(screen.queryByRole('button', { name: /publish chart/i })).not.toBeInTheDocument();
+
+    fireEvent.click(nextButton);
+
+    await screen.findByText((text) => text.includes('24h Wave Forecast'));
+    expect(screen.queryByRole('button', { name: /publish chart/i })).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /publish chart/i })).not.toBeInTheDocument();
+    });
+  });
+
 });
