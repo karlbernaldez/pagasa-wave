@@ -8,6 +8,7 @@ import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hook
 import { CHART_STYLE_MODE, getChartStyleModePaint, normalizeChartStyleMode } from '@/features/projects/utils/chartStyleModes';
 import { isFrontFeature, renderFrontFeatures } from '@/features/projects/utils/frontRendering';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
+import { clipPublishedAnnotations } from '@/features/projects/utils/clipPublishedAnnotations';
 import {
   getPublishedDomainBoundarySignature,
   syncPublishedDomainBoundary,
@@ -349,7 +350,10 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     () => getPublishedDomainBoundarySignature(publicSettings),
     [publicSettings]
   );
-  const featureSignature = useMemo(() => JSON.stringify(featureCollection), [featureCollection]);
+  const featureSignature = useMemo(
+    () => JSON.stringify(renderedFeatureCollection),
+    [renderedFeatureCollection]
+  );
   const renderSignature = useMemo(() => [
     projectId,
     normalizedStyleMode,
@@ -384,7 +388,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     syncCountryOverlay(map, isDarkMode);
     syncPublishedDomainBoundary(map, publicSettings, 'published-export-domain-boundary');
     fitExportBounds(map, mapBounds);
-    if (hasFeatures) return syncExportLayers(map, featureCollection, normalizedStyleMode);
+    if (hasFeatures) return syncExportLayers(map, renderedFeatureCollection, normalizedStyleMode);
     restackExportLayers(map);
     return true;
   };
