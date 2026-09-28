@@ -117,10 +117,6 @@ const CHART_METADATA = {
   },
 };
 
-function normalizeOperationsSettings(settings = {}) {
-  return { ...(settings || {}) };
-}
-
 function formatForecastDate(value) {
   if (!value) return 'Today';
   const date = new Date(value);
@@ -768,10 +764,6 @@ export default function ForecasterProjectLibraryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const operationsSettings = useMemo(
-    () => normalizeOperationsSettings(workspaceSettings.operations),
-    [workspaceSettings.operations]
-  );
   const completion = useMemo(() => getCompletion(packageData), [packageData]);
   const packageId = getPackageId(packageData);
   const orderedCharts = useMemo(
