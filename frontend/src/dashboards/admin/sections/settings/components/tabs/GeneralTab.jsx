@@ -11,7 +11,8 @@ import {
   Trash2,
   UsersRound,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import Accordion from '../ui/Accordion';
 import DomainBoundarySettingsSection from '../DomainBoundarySettingsSection';
@@ -80,13 +81,57 @@ function MapBoundsSelector({
   onCreateCustom,
 }) {
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState(null);
   const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) return undefined;
+
+    const updatePosition = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const viewportPadding = 12;
+      const gap = 8;
+      const belowSpace = window.innerHeight - rect.bottom - viewportPadding;
+      const aboveSpace = rect.top - viewportPadding;
+      const placeAbove = belowSpace < 260 && aboveSpace > belowSpace;
+      const availableHeight = Math.max(
+        180,
+        Math.min(420, (placeAbove ? aboveSpace : belowSpace) - gap)
+      );
+
+      setMenuStyle({
+        position: 'fixed',
+        left: Math.max(viewportPadding, rect.left),
+        width: Math.max(280, Math.min(rect.width, window.innerWidth - viewportPadding * 2)),
+        maxHeight: availableHeight,
+        ...(placeAbove
+          ? { bottom: window.innerHeight - rect.top + gap }
+          : { top: rect.bottom + gap }),
+        zIndex: 10000,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
 
     const handlePointerDown = (event) => {
-      if (!rootRef.current?.contains(event.target)) setOpen(false);
+      const insideTrigger = rootRef.current?.contains(event.target);
+      const insideMenu = menuRef.current?.contains(event.target);
+      if (!insideTrigger && !insideMenu) setOpen(false);
     };
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') setOpen(false);
@@ -142,6 +187,7 @@ function MapBoundsSelector({
       <label className={labelCls(dark)}>Map Bounds</label>
 
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="listbox"
@@ -177,10 +223,12 @@ function MapBoundsSelector({
         />
       </button>
 
-      {open && (
+      {open && menuStyle && createPortal(
         <div
+          ref={menuRef}
           role="listbox"
-          className={`absolute left-0 right-0 z-40 mt-2 max-h-[420px] overflow-y-auto rounded-2xl border p-2 shadow-2xl ${
+          style={menuStyle}
+          className={`overflow-y-auto overscroll-contain rounded-2xl border p-2 shadow-2xl ${
             dark
               ? 'border-slate-700 bg-slate-900'
               : 'border-slate-200 bg-white'
@@ -296,7 +344,8 @@ function MapBoundsSelector({
               </span>
             </span>
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
