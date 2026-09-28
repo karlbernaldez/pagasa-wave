@@ -24,7 +24,7 @@ export const SETTINGS_GROUPS = [
   {
     id: 'adminReview',
     label: 'Admin Review',
-    description: 'Review SLA targets and admin-facing package resolution settings.',
+    description: 'Review targets, versioned checklist configuration, and admin-facing package resolution controls.',
   },
   {
     id: 'publicSite',
