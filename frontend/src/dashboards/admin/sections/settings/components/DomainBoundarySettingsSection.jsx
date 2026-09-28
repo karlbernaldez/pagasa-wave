@@ -277,11 +277,11 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
 
           {featureCount > 0 && (
             <Toggle
-              label="Clip annotations to domain boundary"
+              label="Crop annotations outside domain boundary"
               checked={boundary.clipAnnotations === true}
               onChange={(clipAnnotations) => setBoundary({ clipAnnotations })}
               dark={dark}
-              description="Hides annotation content outside the configured domain while preserving the original certified annotation geometry."
+              description="Shows only the portion of annotations inside the configured domain. The original certified annotation geometry is preserved unchanged."
             />
           )}
 
