@@ -10,8 +10,6 @@ const DEFAULT_TIMEZONE = 'Asia/Manila';
 const DEFAULT_FORECASTER_WORKSPACE_SETTINGS = {
   workspaceWelcomeTitle: 'Daily Forecast Package',
   workspaceWelcomeDescription: 'Prepare the required wave charts, coordinate with active editors, and submit the package for admin review.',
-  defaultMapView: 'Philippine Area of Responsibility',
-  autosaveIntervalSeconds: 30,
   collaborationPresenceMessage: 'Another forecaster is editing this chart. Coordinate before overwriting shared work.',
   qaChecklistReminder: 'Before submitting, verify chart time labels, layer visibility, annotations, and package metadata.',
   deadlineReminderMessage: 'Complete and submit today\'s forecast package before the operational deadline.',
