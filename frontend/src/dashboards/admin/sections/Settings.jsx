@@ -346,6 +346,7 @@ const SettingsSection = ({ isDarkMode }) => {
                   settings={allSettings[activeTab]}
                   setSettings={makeSetter(activeTab)}
                   dark={dark}
+                  canManage={canManageActive}
                 />
               </ViewOnlySettingsSurface>
             )
