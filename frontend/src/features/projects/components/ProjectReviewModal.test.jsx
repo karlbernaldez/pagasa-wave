@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import ProjectReviewModal from './ProjectReviewModal';
@@ -12,13 +12,20 @@ vi.mock('@/features/projects/components/review/ReviewSidebar', () => ({
   default: ({ statusLabel }) => <aside aria-label="review sidebar">{statusLabel}</aside>,
 }));
 
+const publishExposureHistory = [];
+
 vi.mock('@/features/projects/components/review/ReviewActionsFooter', () => ({
-  default: ({ onClose, onPublish }) => (
-    <footer>
-      {typeof onPublish === 'function' && <button type="button">Publish chart</button>}
-      <button type="button" onClick={onClose}>Close</button>
-    </footer>
-  ),
+  default: ({ onClose, onPublish, isApproved }) => {
+    const canPublish = isApproved && typeof onPublish === 'function';
+    publishExposureHistory.push(canPublish);
+
+    return (
+      <footer>
+        {canPublish && <button type="button">Publish chart</button>}
+        <button type="button" onClick={onClose}>Close</button>
+      </footer>
+    );
+  },
 }));
 
 vi.mock('@/api/featureServices', () => ({
@@ -58,6 +65,10 @@ function renderModal(project) {
 }
 
 describe('ProjectReviewModal', () => {
+  beforeEach(() => {
+    publishExposureHistory.length = 0;
+  });
+
   it('keeps hook order stable when opening from no project to a selected project', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { rerender } = renderModal(null);
@@ -108,12 +119,14 @@ describe('ProjectReviewModal', () => {
 
     fireEvent.click(nextButton);
 
-    await screen.findByText((text) => text.includes('24h Wave Forecast'));
+    await screen.findByRole('heading', { name: /^24h Wave Forecast$/i });
     expect(screen.queryByRole('button', { name: /publish chart/i })).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /publish chart/i })).not.toBeInTheDocument();
     });
+
+    expect(publishExposureHistory).not.toContain(true);
   });
 
 });
