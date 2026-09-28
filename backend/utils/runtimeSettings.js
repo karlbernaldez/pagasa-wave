@@ -107,12 +107,31 @@ const WORKSPACE_FIELDS = Object.freeze({
 });
 
 export function parseForecasterWorkspaceSettingsPayload(input = {}) {
-  return Object.fromEntries(
+  const textSettings = Object.fromEntries(
     Object.entries(WORKSPACE_FIELDS).map(([field, max]) => [
       field,
       cleanString(input[field], { field, max }),
     ])
   );
+
+  return {
+    ...textSettings,
+    drawingPointerOffsetX: readFiniteNumber(
+      input.drawingPointerOffsetX ?? 0,
+      'Drawing pointer X offset',
+      { min: -200, max: 200 }
+    ),
+    drawingPointerOffsetY: readFiniteNumber(
+      input.drawingPointerOffsetY ?? 0,
+      'Drawing pointer Y offset',
+      { min: -200, max: 200 }
+    ),
+    drawingSmoothingPercent: readFiniteNumber(
+      input.drawingSmoothingPercent ?? 50,
+      'Drawing smoothing',
+      { min: 0, max: 100 }
+    ),
+  };
 }
 
 function validateBoundsRecord(input = {}, prefix = 'Map bounds') {
