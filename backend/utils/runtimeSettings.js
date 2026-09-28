@@ -252,6 +252,7 @@ function parsePublishedDomainBoundary(input = {}) {
     }),
     showLine: input.showLine !== false,
     showFill: input.showFill === true,
+    clipAnnotations: input.clipAnnotations === true,
     lineColor: readHexColor(input.lineColor, 'Domain boundary line color', '#0f172a'),
     lineWidth: readFiniteNumber(input.lineWidth ?? 2, 'Domain boundary line width', {
       min: 0.5,
