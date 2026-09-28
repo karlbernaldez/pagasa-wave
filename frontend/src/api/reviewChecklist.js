@@ -32,3 +32,35 @@ export async function createReviewChecklistDefinitionVersion(payload) {
   const result = await parseResponse(response, 'Failed to save the review checklist.');
   return result?.definition || null;
 }
+
+
+export async function getPackageReviewChecklist(packageId) {
+  if (!packageId) throw new Error('Forecast Package id is required.');
+
+  const response = await fetchWithAuth(`${API_BASE_URL}/packages/${packageId}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  const result = await parseResponse(response, 'Failed to load package review checklist.');
+  return result?.checklist || null;
+}
+
+export async function updatePackageReviewChecklistItem(
+  packageId,
+  itemId,
+  { status, comment = '', version }
+) {
+  if (!packageId || !itemId) throw new Error('Forecast Package and checklist item ids are required.');
+
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/packages/${packageId}/items/${itemId}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ status, comment, version }),
+    }
+  );
+
+  return parseResponse(response, 'Failed to update the review checklist item.');
+}
