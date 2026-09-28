@@ -6,15 +6,10 @@
 import { DEFAULT_STUDIO_MAP_VIEW } from '@/config/mapViewDefaults';
 
 export const DEFAULT_GENERAL = {
-  publicDashboardTitle: 'PAGASA Wave Intelligence Dashboard',
-  publicDescription: 'Near-real-time marine conditions, forecasts, and advisories.',
-  contactEmail: 'alerts@pagasa.gov.ph',
-  defaultRegion: 'Pacific Area of Responsibility',
-  maintenanceMode: false,
-  maintenanceMessage: 'System is under scheduled maintenance. Please check back shortly.',
   logoPreview: '/pagasa-logo.png',
   showPublicStaffInfo: true,
-  publicChartPdfNote: 'This chart set is supplementary guidance for marine weather awareness and should be used together with official DOST-PAGASA bulletins, warnings, and advisories.',
+  publicChartPdfNote:
+    'This chart set is supplementary guidance for marine weather awareness and should be used together with official DOST-PAGASA bulletins, warnings, and advisories.',
   mapBoundsPreset: 'tcad',
   mapBoundsCustomName: '',
   mapBoundsCustom: {
@@ -23,6 +18,7 @@ export const DEFAULT_GENERAL = {
     eastLng: 153.8595159535438,
     northLat: 25,
   },
+  selectedCustomMapBoundsId: '',
   savedCustomMapBounds: [],
 };
 
