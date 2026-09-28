@@ -4,6 +4,11 @@ import {
   buildMapViewSettingsResponse,
   parseMapViewSettingsPayload,
 } from '../utils/mapViewSettings.js';
+import {
+  parseForecasterWorkspaceSettingsPayload,
+  parseGeneralSettingsPayload,
+  parseOperationsSettingsPayload,
+} from '../utils/runtimeSettings.js';
 
 const ALLOWED_PAGES = [
   'general',
@@ -59,6 +64,15 @@ const parseSettingsPayload = (page, payload) => {
 
   if (page === MAP_VIEW_SETTINGS_PAGE) {
     return parseMapViewSettingsPayload(sanitizedData);
+  }
+  if (page === 'operations') {
+    return parseOperationsSettingsPayload(sanitizedData);
+  }
+  if (page === 'forecasterworkspace') {
+    return parseForecasterWorkspaceSettingsPayload(sanitizedData);
+  }
+  if (page === 'general') {
+    return parseGeneralSettingsPayload(sanitizedData);
   }
 
   return sanitizedData;
