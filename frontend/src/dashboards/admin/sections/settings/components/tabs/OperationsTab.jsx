@@ -92,7 +92,7 @@ function ValidationMessage({ children, dark }) {
   );
 }
 
-export default function OperationsTab({ settings = {}, setSettings, dark }) {
+export default function OperationsTab({ settings = {}, setSettings, dark, canManage = false }) {
   const set = (field) => (value) =>
     setSettings((prev) => ({ ...prev, [field]: value }));
   const scheduleError = getOperationsScheduleValidationError(settings);
@@ -244,7 +244,7 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
                 <button
                   type="button"
                   onClick={runArchive}
-                  disabled={Boolean(archiveBusy) || !archivePreview?.totals?.total}
+                  disabled={!canManage || Boolean(archiveBusy) || !archivePreview?.totals?.total}
                   className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-black text-white hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {archiveBusy === 'run' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
