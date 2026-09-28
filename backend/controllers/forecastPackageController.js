@@ -14,6 +14,10 @@ import {
 import { applyForecastPackageDisplayNames } from '../utils/forecastPackageDisplayNames.js';
 import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
+import {
+  assertReviewChecklistAllowsApproval,
+  createPackageReviewChecklist,
+} from '../services/reviewChecklistService.js';
 
 const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.DRAFT,
@@ -593,6 +597,9 @@ export const startForecastPackageReview = asyncHandler(async (req, res) => {
     conflictMessage:
       'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
   });
+
+  await createPackageReviewChecklist(forecastPackage._id, req.user.id);
+
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 });
@@ -652,6 +659,8 @@ export const approveForecastPackage = asyncHandler(async (req, res) => {
   ) {
     throwError('Only packages under review or revision requested can be approved', 403);
   }
+
+  await assertReviewChecklistAllowsApproval(forecastPackage._id);
 
   const previousStatus = forecastPackage.status;
   const expectedUpdatedAt = forecastPackage.updatedAt;
