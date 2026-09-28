@@ -5,7 +5,6 @@ import {
   Mail,
   MapPinned,
   Settings,
-  ShieldCheck,
   Workflow,
 } from 'lucide-react';
 
@@ -24,7 +23,7 @@ export const SETTINGS_GROUPS = [
   {
     id: 'adminReview',
     label: 'Admin Review',
-    description: 'Review targets, versioned checklist configuration, and admin-facing package resolution controls.',
+    description: 'Versioned operational review checklist configuration and package review controls.',
   },
   {
     id: 'publicSite',
@@ -60,15 +59,6 @@ export const TABS = [
     apiPage: 'mapview',
     viewPermission: 'settings_map_view.view',
     managePermission: 'settings_map_view.manage',
-  },
-  {
-    id: 'adminReview',
-    label: 'Review Targets',
-    icon: ShieldCheck,
-    group: 'adminReview',
-    apiPage: null,
-    viewPermission: 'settings_review_targets.view',
-    managePermission: 'settings_review_targets.manage',
   },
   {
     id: 'reviewChecklist',
