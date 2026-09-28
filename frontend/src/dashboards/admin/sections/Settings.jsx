@@ -11,7 +11,6 @@ import SaveBar from './settings/components/ui/SaveBar';
 import OperationsTab from './settings/components/tabs/OperationsTab';
 import ForecasterWorkspaceTab from './settings/components/tabs/ForecasterWorkspaceTab';
 import MapViewSettingsTab from './settings/components/tabs/MapViewSettingsTab';
-import AdminReviewTab from './settings/components/tabs/AdminReviewTab';
 import ReviewChecklistTab from './settings/components/tabs/ReviewChecklistTab';
 import GeneralTab from './settings/components/tabs/GeneralTab';
 import AboutTab from './settings/components/tabs/AboutTab';
@@ -27,7 +26,6 @@ const COMPONENTS = {
   operations: OperationsTab,
   forecasterWorkspace: ForecasterWorkspaceTab,
   mapView: MapViewSettingsTab,
-  adminReview: AdminReviewTab,
   reviewChecklist: ReviewChecklistTab,
   general: GeneralTab,
   about: AboutTab,
@@ -105,7 +103,6 @@ const SettingsSection = ({ isDarkMode }) => {
     operationsData,
     forecasterWorkspaceData,
     mapViewData,
-    adminReviewData,
     generalData,
     aboutData,
     contactData,
@@ -132,7 +129,6 @@ const SettingsSection = ({ isDarkMode }) => {
     operations: operationsData,
     forecasterWorkspace: forecasterWorkspaceData,
     mapView: mapViewData,
-    adminReview: adminReviewData,
     general: generalData,
     about: aboutData,
     contact: contactData,
@@ -152,7 +148,6 @@ const SettingsSection = ({ isDarkMode }) => {
     operationsData,
     forecasterWorkspaceData,
     mapViewData,
-    adminReviewData,
     generalData,
     aboutData,
     contactData,
