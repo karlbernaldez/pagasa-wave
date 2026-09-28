@@ -76,8 +76,8 @@ export const TABS = [
     icon: ClipboardCheck,
     group: 'adminReview',
     apiPage: null,
-    viewPermission: 'settings_review_targets.view',
-    managePermission: 'settings_review_targets.manage',
+    viewPermission: 'settings_review_checklist.view',
+    managePermission: 'settings_review_checklist.manage',
     standaloneSave: true,
   },
   {
