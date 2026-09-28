@@ -61,12 +61,38 @@ function Toggle({ label, checked, onChange, dark, description }) {
           {label}
         </span>
         {description && (
-          <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
+          <span
+            className={cn(
+              'mt-1 block text-xs leading-5',
+              dark ? 'text-slate-400' : 'text-slate-500'
+            )}
+          >
             {description}
           </span>
         )}
       </span>
     </label>
+  );
+}
+
+function StatusMessage({ status, dark }) {
+  if (!status) return null;
+
+  return (
+    <p
+      className={cn(
+        'rounded-xl border px-3 py-2 text-xs font-semibold',
+        status.type === 'error'
+          ? dark
+            ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
+            : 'border-rose-200 bg-rose-50 text-rose-700'
+          : dark
+            ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
+            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      )}
+    >
+      {status.message}
+    </p>
   );
 }
 
@@ -80,6 +106,7 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
   ]);
   const [importStatus, setImportStatus] = useState(null);
   const [sourceMode, setSourceMode] = useState('manual');
+
   const featureCount = useMemo(
     () => boundary.geojson?.features?.length || 0,
     [boundary.geojson]
@@ -274,6 +301,7 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
               ].map((option) => {
                 const Icon = option.icon;
                 const active = sourceMode === option.value;
+
                 return (
                   <button
                     key={option.value}
@@ -412,6 +440,10 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
               >
                 Use coordinate polygon
               </button>
+
+              <div className="mt-3">
+                <StatusMessage status={importStatus} dark={dark} />
+              </div>
             </div>
           )}
 
@@ -434,7 +466,9 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
                 <label
                   className={cn(
                     'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2 text-xs font-black',
-                    dark ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    dark
+                      ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   )}
                 >
                   <FileUp size={15} />
@@ -473,43 +507,13 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
                 )}
               </div>
 
-              {importStatus && (
-                <p
-                  className={cn(
-                    'mt-3 rounded-xl border px-3 py-2 text-xs font-semibold',
-                    importStatus.type === 'error'
-                      ? dark
-                        ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
-                        : 'border-rose-200 bg-rose-50 text-rose-700'
-                      : dark
-                        ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
-                        : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                  )}
-                >
-                  {importStatus.message}
-                </p>
-              )}
-          )}
-
-          {importStatus && (
-            <p
-              className={cn(
-                'rounded-xl border px-3 py-2 text-xs font-semibold',
-                importStatus.type === 'error'
-                  ? dark
-                    ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
-                    : 'border-rose-200 bg-rose-50 text-rose-700'
-                  : dark
-                    ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              )}
-            >
-              {importStatus.message}
-            </p>
+              <div className="mt-3">
+                <StatusMessage status={importStatus} dark={dark} />
+              </div>
+            </div>
           )}
         </>
       )}
-      </div>
     </div>
   );
 }
