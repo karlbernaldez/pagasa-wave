@@ -83,11 +83,13 @@ async function loadModules() {
   const controller = await import('../controllers/forecastPackageController.js');
   const packageModel = await import('../models/ForecastPackage.js');
   const projectModel = await import('../models/Project.js');
+  const checklistModel = await import('../models/ForecastPackageReviewChecklist.js');
 
   return {
     controller,
     ForecastPackage: packageModel.default,
     Project: projectModel.default,
+    ForecastPackageReviewChecklist: checklistModel.default,
   };
 }
 
@@ -128,9 +130,11 @@ const cases = [
 
 for (const scenario of cases) {
   test(scenario.name, async () => {
-    const { controller, ForecastPackage, Project } = await loadModules();
+    const { controller, ForecastPackage, Project, ForecastPackageReviewChecklist } =
+      await loadModules();
     const originalFindById = ForecastPackage.findById;
     const originalUpdateMany = Project.updateMany;
+    const originalChecklistFindOne = ForecastPackageReviewChecklist.findOne;
     const { forecastPackage, getGuardedConditions } = createPackage(scenario.sourceStatus);
     let projectUpdateCalls = 0;
 
@@ -140,6 +144,21 @@ for (const scenario of cases) {
         projectUpdateCalls += 1;
         return { modifiedCount: 4 };
       };
+
+      if (scenario.handler === 'approveForecastPackage') {
+        ForecastPackageReviewChecklist.findOne = () => ({
+          lean: async () => ({
+            _id: '507f1f77bcf86cd799439012',
+            items: [
+              {
+                requiredSnapshot: true,
+                allowNotApplicableSnapshot: false,
+                status: 'Pass',
+              },
+            ],
+          }),
+        });
+      }
 
       await assert.rejects(() => run(controller[scenario.handler], request(scenario.body)), {
         status: 409,
@@ -159,6 +178,7 @@ for (const scenario of cases) {
     } finally {
       ForecastPackage.findById = originalFindById;
       Project.updateMany = originalUpdateMany;
+      ForecastPackageReviewChecklist.findOne = originalChecklistFindOne;
     }
   });
 }
