@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarClock } from 'lucide-react';
+import { AlertTriangle, Archive, CalendarClock, ShieldCheck } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
 import { inputCls, labelCls } from '../ui/FormFields';
@@ -101,6 +101,110 @@ export default function OperationsTab({ settings = {}, setSettings, dark }) {
         These values drive the live forecaster deadline reminder states. Workflow transitions
         themselves remain explicit and are not automatically changed by a clock.
       </InfoCard>
+
+      <Accordion icon={Archive} title="Archive & Retention Preparation" dark={dark}>
+        <div className="grid gap-4">
+          <InfoCard title="Non-destructive archive policy" dark={dark}>
+            These controls prepare automatic archiving only. Archived packages, charts, review
+            checklists, and audit evidence remain stored. Automatic deletion is intentionally
+            disabled.
+          </InfoCard>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className={cn('rounded-2xl border p-4', dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50')}>
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={settings.autoArchivePublishedEnabled === true}
+                  onChange={(event) => set('autoArchivePublishedEnabled')(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span>
+                  <span className={cn('block text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>Published packages</span>
+                  <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>Eligible only after publication and the configured age.</span>
+                </span>
+              </label>
+              <div className="mt-4">
+                <NumberField
+                  label="Archive after"
+                  value={settings.archivePublishedAfterDays}
+                  onChange={set('archivePublishedAfterDays')}
+                  min={1}
+                  suffix="days"
+                  dark={dark}
+                />
+              </div>
+            </div>
+
+            <div className={cn('rounded-2xl border p-4', dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50')}>
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={settings.autoArchiveNoPublicationEnabled === true}
+                  onChange={(event) => set('autoArchiveNoPublicationEnabled')(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span>
+                  <span className={cn('block text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>No-publication chart records</span>
+                  <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>Archives chart records explicitly resolved as No Publication.</span>
+                </span>
+              </label>
+              <div className="mt-4">
+                <NumberField
+                  label="Archive after"
+                  value={settings.archiveNoPublicationAfterDays}
+                  onChange={set('archiveNoPublicationAfterDays')}
+                  min={1}
+                  suffix="days"
+                  dark={dark}
+                />
+              </div>
+            </div>
+
+            <div className={cn('rounded-2xl border p-4', dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50')}>
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={settings.autoArchiveAbandonedDraftsEnabled === true}
+                  onChange={(event) => set('autoArchiveAbandonedDraftsEnabled')(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span>
+                  <span className={cn('block text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>Abandoned draft packages</span>
+                  <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>For future policy execution; never deletes the package.</span>
+                </span>
+              </label>
+              <div className="mt-4">
+                <NumberField
+                  label="Archive after"
+                  value={settings.archiveDraftsAfterDays}
+                  onChange={set('archiveDraftsAfterDays')}
+                  min={1}
+                  suffix="days"
+                  dark={dark}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className={cn('grid gap-3 rounded-2xl border p-4 md:grid-cols-2', dark ? 'border-emerald-400/20 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50')}>
+            <div className="flex items-start gap-3">
+              <ShieldCheck className={cn('mt-0.5 shrink-0', dark ? 'text-emerald-300' : 'text-emerald-700')} size={17} />
+              <div>
+                <p className={cn('text-sm font-black', dark ? 'text-emerald-100' : 'text-emerald-900')}>Archived records retained</p>
+                <p className={cn('mt-1 text-xs leading-5', dark ? 'text-emerald-200/80' : 'text-emerald-800')}>Retention purge is disabled. Archived database records remain available for authorized history and reporting.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <ShieldCheck className={cn('mt-0.5 shrink-0', dark ? 'text-emerald-300' : 'text-emerald-700')} size={17} />
+              <div>
+                <p className={cn('text-sm font-black', dark ? 'text-emerald-100' : 'text-emerald-900')}>Review evidence preserved</p>
+                <p className={cn('mt-1 text-xs leading-5', dark ? 'text-emerald-200/80' : 'text-emerald-800')}>Checklist snapshots, audit logs, and publication evidence are not deleted by this policy.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Accordion>
 
       <Accordion
         icon={CalendarClock}
