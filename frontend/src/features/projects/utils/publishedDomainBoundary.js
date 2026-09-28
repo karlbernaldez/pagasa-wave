@@ -21,6 +21,7 @@ export function normalizePublishedDomainBoundary(settings = {}) {
     enabled: source.enabled === true && geojson.features.length > 0,
     showLine: source.showLine !== false,
     showFill: source.showFill === true,
+    clipAnnotations: source.clipAnnotations === true,
     lineColor: source.lineColor || '#0f172a',
     lineWidth: Number.isFinite(Number(source.lineWidth)) ? Number(source.lineWidth) : 2,
     lineOpacity: Number.isFinite(Number(source.lineOpacity))
