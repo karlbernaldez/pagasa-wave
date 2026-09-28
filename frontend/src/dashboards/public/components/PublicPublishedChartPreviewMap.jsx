@@ -8,7 +8,10 @@ import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hook
 import { isFrontFeature, renderFrontFeatures } from '@/features/projects/utils/frontRendering';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 import { clipPublishedAnnotations } from '@/features/projects/utils/clipPublishedAnnotations';
-import { syncPublishedDomainBoundary } from '@/features/projects/utils/publishedDomainBoundary';
+import {
+  normalizePublishedDomainBoundary,
+  syncPublishedDomainBoundary,
+} from '@/features/projects/utils/publishedDomainBoundary';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
@@ -196,9 +199,9 @@ function fitPreviewBounds(map, bounds) {
   map.fitBounds(bounds, { padding: 16, maxZoom: 6, duration: 0 });
 }
 
-function StatusOverlay({ loading, hasRenderableRaster, hasFeatures, isDarkMode }) {
+function StatusOverlay({ loading, hasRenderableRaster, hasFeatures, hasBoundary, isDarkMode }) {
   if (loading) return <div className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-slate-950/55 text-slate-300' : 'bg-white/55 text-slate-600'}`}>Loading published chart...</div>;
-  if (!hasRenderableRaster && !hasFeatures) return <div className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-slate-950/70 text-slate-400' : 'bg-slate-100/80 text-slate-500'}`}>Published preview unavailable</div>;
+  if (!hasRenderableRaster && !hasFeatures && !hasBoundary) return <div className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-slate-950/70 text-slate-400' : 'bg-slate-100/80 text-slate-500'}`}>Published preview unavailable</div>;
   return null;
 }
 
@@ -227,6 +230,12 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     [featureCollection, publicSettings]
   );
   const hasFeatures = renderedFeatureCollection.features.length > 0;
+  const boundaryConfig = useMemo(
+    () => normalizePublishedDomainBoundary(publicSettings),
+    [publicSettings]
+  );
+  const hasBoundary =
+    boundaryConfig.enabled && (boundaryConfig.showLine || boundaryConfig.showFill);
   const shouldRenderRaster = activeChartType === 'wave-wind';
   const hasRenderableRaster = shouldRenderRaster && Boolean(raster?.tileUrl);
 
@@ -269,7 +278,7 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     <div className={`relative overflow-hidden ${className}`} style={{ height: getPreviewHeight(height) }}>
       {onClick && <button type="button" className="absolute inset-0 z-10 h-full w-full cursor-pointer" onClick={onClick} aria-label="Open published chart" />}
       <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
-      <StatusOverlay loading={loading} hasRenderableRaster={hasRenderableRaster} hasFeatures={hasFeatures} isDarkMode={isDarkMode} />
+      <StatusOverlay loading={loading} hasRenderableRaster={hasRenderableRaster} hasFeatures={hasFeatures} hasBoundary={hasBoundary} isDarkMode={isDarkMode} />
       <div className={`pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t ${isDarkMode ? 'from-slate-950/80' : 'from-white/80'} to-transparent`} />
     </div>
   );
