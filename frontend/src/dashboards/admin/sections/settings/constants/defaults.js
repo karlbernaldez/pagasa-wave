@@ -20,6 +20,21 @@ export const DEFAULT_GENERAL = {
   },
   selectedCustomMapBoundsId: '',
   savedCustomMapBounds: [],
+  publishedDomainBoundary: {
+    enabled: false,
+    name: 'Published chart domain',
+    showLine: true,
+    showFill: false,
+    lineColor: '#0f172a',
+    lineWidth: 2,
+    lineOpacity: 0.9,
+    fillColor: '#38bdf8',
+    fillOpacity: 0.08,
+    geojson: {
+      type: 'FeatureCollection',
+      features: [],
+    },
+  },
 };
 
 export const DEFAULT_MAP_VIEW = {
