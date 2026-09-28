@@ -120,6 +120,7 @@ export default function AdminDailyPackageFocus({
     ? formatPackageDate(dailyPackage.dateKey)
     : new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' }).format(new Date());
   const isReadyToPublish = dailyPackage?.status === 'Approved';
+  const isPublished = dailyPackage?.status === 'Published';
   const isPublishing = publishingPackageId === dailyPackage?.id || localPublishing;
   const primaryChart = dailyPackage?.primaryChart;
   const canOpen = Boolean(primaryChart);
@@ -155,10 +156,12 @@ export default function AdminDailyPackageFocus({
       }
       return;
     }
+
     if (onOpenPackage && dailyPackage) {
       onOpenPackage(dailyPackage);
       return;
     }
+
     if (canOpen) onOpenChart?.(primaryChart, dailyPackage);
   };
 
@@ -209,17 +212,35 @@ export default function AdminDailyPackageFocus({
         <aside className={`border-t p-5 sm:p-7 lg:border-l lg:border-t-0 ${isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-white/70 bg-white/35'}`}>
           <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Today&apos;s package action</p>
           <h3 className={`mt-3 text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
-            {isReadyToPublish ? 'Publish today’s package' : dailyPackage ? 'Review today’s package' : 'Await today’s package'}
+            {isPublished
+              ? 'Today’s package is published'
+              : isReadyToPublish
+                ? 'Publish today’s package'
+                : dailyPackage
+                  ? 'Review today’s package'
+                  : 'Await today’s package'}
           </h3>
           <p className={`mt-2 text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-            {isReadyToPublish
-              ? 'All required charts are approved. Publish the package to make the outputs available.'
-              : 'Open the current review workspace and resolve the remaining chart decisions.'}
+            {isPublished
+              ? 'The approved forecast package has been published. Open it to review the released charts and package evidence.'
+              : isReadyToPublish
+                ? 'All required charts are approved. Publish the package to make the outputs available.'
+                : 'Open the current review workspace and resolve the remaining chart decisions.'}
           </p>
           {publishError && <p role="alert" className="mt-3 text-sm font-semibold text-red-400">{publishError}</p>}
           <div className="mt-5">
-            <Button icon={isReadyToPublish ? PackageOpen : Eye} disabled={!dailyPackage || (!isReadyToPublish && !canOpen) || isPublishing} onClick={runPrimaryAction}>
-              {isPublishing ? 'Publishing...' : isReadyToPublish ? 'Publish today’s package' : 'Review today’s package'}
+            <Button
+              icon={isReadyToPublish ? PackageOpen : Eye}
+              disabled={!dailyPackage || (!onOpenPackage && !isReadyToPublish && !canOpen) || isPublishing}
+              onClick={runPrimaryAction}
+            >
+              {isPublishing
+                ? 'Publishing...'
+                : isPublished
+                  ? 'View published package'
+                  : isReadyToPublish
+                    ? 'Publish today’s package'
+                    : 'Review today’s package'}
             </Button>
           </div>
         </aside>
