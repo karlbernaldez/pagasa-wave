@@ -103,21 +103,27 @@ async function loadModules() {
   const controller = await import('../controllers/forecastPackageRevisionController.js');
   const packageModel = await import('../models/ForecastPackage.js');
   const projectModel = await import('../models/Project.js');
+  const checklistModel = await import('../models/ForecastPackageReviewChecklist.js');
   return {
     mongoose: mongooseModule.default,
     controller,
     ForecastPackage: packageModel.default,
     Project: projectModel.default,
+    ForecastPackageReviewChecklist: checklistModel.default,
   };
 }
 
-async function withMocks({ mongoose, ForecastPackage, Project, pkg, projects }, fn) {
+async function withMocks(
+  { mongoose, ForecastPackage, Project, ForecastPackageReviewChecklist, pkg, projects },
+  fn
+) {
   const originals = {
     startSession: mongoose.startSession,
     findOne: ForecastPackage.findOne,
     findById: ForecastPackage.findById,
     projectFind: Project.find,
     bulkWrite: Project.bulkWrite,
+    checklistFindOne: ForecastPackageReviewChecklist.findOne,
   };
   const bulkWrites = [];
 
@@ -134,6 +140,7 @@ async function withMocks({ mongoose, ForecastPackage, Project, pkg, projects }, 
     bulkWrites.push(operations);
     return { modifiedCount: operations.length };
   };
+  ForecastPackageReviewChecklist.findOne = () => createQuery(null);
 
   try {
     await fn(bulkWrites);
@@ -143,11 +150,13 @@ async function withMocks({ mongoose, ForecastPackage, Project, pkg, projects }, 
     ForecastPackage.findById = originals.findById;
     Project.find = originals.projectFind;
     Project.bulkWrite = originals.bulkWrite;
+    ForecastPackageReviewChecklist.findOne = originals.checklistFindOne;
   }
 }
 
 test('revision by project resets only the selected chart and records the true previous project status', async () => {
-  const { mongoose, controller, ForecastPackage, Project } = await loadModules();
+  const { mongoose, controller, ForecastPackage, Project, ForecastPackageReviewChecklist } =
+    await loadModules();
   const pkg = createPackage();
   const projects = PROJECT_IDS.map((id, index) => ({
     _id: id,
@@ -156,7 +165,9 @@ test('revision by project resets only the selected chart and records the true pr
     submittedAt: new Date('2026-08-03T04:00:00.000Z'),
   }));
 
-  await withMocks({ mongoose, ForecastPackage, Project, pkg, projects }, async (bulkWrites) => {
+  await withMocks(
+    { mongoose, ForecastPackage, Project, ForecastPackageReviewChecklist, pkg, projects },
+    async (bulkWrites) => {
     const response = await run(controller.requestForecastChartRevisionByProject, {
       params: { projectId: PROJECT_IDS[0] },
       body: { comment: 'Revise the wave analysis.' },
@@ -178,7 +189,8 @@ test('revision by project resets only the selected chart and records the true pr
     assert.equal(bulkWrites.length, 1);
     assert.equal(bulkWrites[0].length, 1);
     assert.equal(bulkWrites[0][0].updateOne.update.$push.auditLogs.previousStatus, 'Under Review');
-  });
+    }
+  );
 });
 
 test('targeted revision rejects an empty chart selection before writing', async () => {
