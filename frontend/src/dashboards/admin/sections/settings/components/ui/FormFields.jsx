@@ -32,7 +32,14 @@ export const Field = ({ label, value, onChange, type = 'text', placeholder = '',
 );
 
 // ── Textarea ───────────────────────────────────────────
-export const TextareaField = ({ label, value, onChange, rows = 3, dark }) => (
+export const TextareaField = ({
+  label,
+  value,
+  onChange,
+  rows = 3,
+  dark,
+  ...textareaProps
+}) => (
   <div>
     <label className={labelCls(dark)}>{label}</label>
     <textarea
@@ -40,6 +47,7 @@ export const TextareaField = ({ label, value, onChange, rows = 3, dark }) => (
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       className={`${inputCls(dark)} resize-none`}
+      {...textareaProps}
     />
   </div>
 );
