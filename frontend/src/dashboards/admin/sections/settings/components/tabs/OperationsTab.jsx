@@ -114,6 +114,16 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
   };
 
   const runArchive = async () => {
+    const total = archivePreview?.totals?.total || 0;
+    if (!total) return;
+    if (
+      !window.confirm(
+        `Archive ${total} eligible record group${total === 1 ? '' : 's'} now? This changes their workflow status to Archived but does not delete data.`
+      )
+    ) {
+      return;
+    }
+
     setArchiveBusy('run');
     setArchiveStatus(null);
     try {
@@ -264,6 +274,32 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
                   <div key={label} className={cn('rounded-xl border px-3 py-3', dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50')}>
                     <p className={cn('text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>{label}</p>
                     <p className={cn('mt-1 text-2xl font-black', dark ? 'text-white' : 'text-slate-950')}>{value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {archivePreview?.totals?.total > 0 && (
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                {[
+                  ['Published packages', archivePreview.candidates?.publishedPackages || []],
+                  ['No-publication charts', archivePreview.candidates?.noPublicationProjects || []],
+                  ['Abandoned drafts', archivePreview.candidates?.draftPackages || []],
+                ].map(([label, rows]) => (
+                  <div key={label} className={cn('rounded-xl border p-3', dark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50')}>
+                    <p className={cn('text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>{label}</p>
+                    {rows.length ? (
+                      <ul className={cn('mt-2 space-y-1 text-xs font-semibold', dark ? 'text-slate-300' : 'text-slate-700')}>
+                        {rows.slice(0, 8).map((row) => (
+                          <li key={row.id} className="truncate" title={row.name || row.id}>
+                            {row.name || row.id}
+                          </li>
+                        ))}
+                        {rows.length > 8 && <li>+{rows.length - 8} more</li>}
+                      </ul>
+                    ) : (
+                      <p className={cn('mt-2 text-xs', dark ? 'text-slate-500' : 'text-slate-400')}>None</p>
+                    )}
                   </div>
                 ))}
               </div>
