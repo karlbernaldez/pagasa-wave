@@ -42,7 +42,7 @@ function createQuery(result) {
 
 function createPackage(workflow, status = workflow.FORECAST_PACKAGE_STATUS.DRAFT) {
   return {
-    _id: 'package-1',
+    _id: '507f1f77bcf86cd799439011',
     owner: ownerId(),
     status,
     charts: workflow.REQUIRED_FORECAST_CHART_TYPES.map((chartType, index) => ({
@@ -87,7 +87,7 @@ function createPackage(workflow, status = workflow.FORECAST_PACKAGE_STATUS.DRAFT
 
 function req(overrides = {}) {
   return {
-    params: { id: 'package-1' },
+    params: { id: '507f1f77bcf86cd799439011' },
     body: {},
     query: {},
     user: { id: OWNER_ID, role: 'forecaster' },
