@@ -47,7 +47,7 @@ function getConfiguredMessage(settings, field, fallback) {
   return String(settings?.[field] || '').trim() || fallback;
 }
 
-function getReminderState({ packageData, settings, now }) {
+export function getReminderState({ packageData, settings, now }) {
   if (packageData?.status === 'Revision Requested') {
     return {
       tone: 'revision',
