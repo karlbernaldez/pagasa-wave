@@ -113,14 +113,19 @@ export default function ProjectReviewModal({ project, reviewQueue = EMPTY_REVIEW
 
   useEffect(() => {
     let mounted = true;
-    setAutoReviewQueue([]);
     if (!projectId || providedQueue.length > 1) return undefined;
+
     fetchAdminForecastPackage(projectId)
       .then((response) => {
+        if (!mounted) return;
         const packageProjects = Array.isArray(response?.projects) ? response.projects : [];
-        if (mounted && packageProjects.length > 1) setAutoReviewQueue(packageProjects);
+        setAutoReviewQueue(packageProjects.length > 1 ? packageProjects : []);
       })
-      .catch((error) => mounted && console.error('[ProjectReviewModal] Failed to load review package queue:', error));
+      .catch((error) => {
+        if (!mounted) return;
+        console.error('[ProjectReviewModal] Failed to load review package queue:', error);
+      });
+
     return () => { mounted = false; };
   }, [projectId, providedQueueKey]);
 
