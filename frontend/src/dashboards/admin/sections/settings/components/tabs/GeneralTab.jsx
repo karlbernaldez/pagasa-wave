@@ -1,6 +1,7 @@
 import { FileText, Image, MapPinned, UsersRound } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
+import DomainBoundarySettingsSection from '../DomainBoundarySettingsSection';
 import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
 
 const MAP_BOUNDS_OPTIONS = [
@@ -200,6 +201,10 @@ export default function GeneralTab({ settings = {}, setSettings, dark }) {
             </p>
           </div>
         </label>
+      </Accordion>
+
+      <Accordion icon={MapPinned} title="Published Chart Domain Boundary" dark={dark}>
+        <DomainBoundarySettingsSection settings={settings} setSettings={setSettings} dark={dark} />
       </Accordion>
 
       <Accordion icon={MapPinned} title="Published Chart Map Bounds" dark={dark}>
