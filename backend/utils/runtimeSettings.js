@@ -68,6 +68,26 @@ export function parseOperationsSettingsPayload(input = {}) {
       { min: 0, max: 1440 }
     ),
     timezone,
+    autoArchivePublishedEnabled: input.autoArchivePublishedEnabled === true,
+    archivePublishedAfterDays: readFiniteNumber(
+      input.archivePublishedAfterDays ?? 30,
+      'Published archive age',
+      { min: 1, max: 3650 }
+    ),
+    autoArchiveNoPublicationEnabled: input.autoArchiveNoPublicationEnabled === true,
+    archiveNoPublicationAfterDays: readFiniteNumber(
+      input.archiveNoPublicationAfterDays ?? 30,
+      'No-publication archive age',
+      { min: 1, max: 3650 }
+    ),
+    autoArchiveAbandonedDraftsEnabled: input.autoArchiveAbandonedDraftsEnabled === true,
+    archiveDraftsAfterDays: readFiniteNumber(
+      input.archiveDraftsAfterDays ?? 30,
+      'Draft archive age',
+      { min: 1, max: 3650 }
+    ),
+    retainArchivedRecordsIndefinitely: true,
+    preserveReviewEvidence: true,
   };
 }
 
