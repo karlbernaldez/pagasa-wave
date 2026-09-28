@@ -162,6 +162,114 @@ function normalizeLogoSource(value) {
   throw validationError('Logo source must be an app path, http/https URL, or image data URI.');
 }
 
+
+const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+const DOMAIN_GEOMETRY_TYPES = new Set(['Polygon', 'MultiPolygon']);
+
+function countCoordinatePositions(coordinates) {
+  if (!Array.isArray(coordinates)) return 0;
+  if (
+    coordinates.length >= 2 &&
+    Number.isFinite(Number(coordinates[0])) &&
+    Number.isFinite(Number(coordinates[1]))
+  ) {
+    const lng = Number(coordinates[0]);
+    const lat = Number(coordinates[1]);
+    if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+      throw validationError('Domain boundary coordinates must use WGS84 longitude/latitude values.');
+    }
+    return 1;
+  }
+
+  return coordinates.reduce((total, child) => total + countCoordinatePositions(child), 0);
+}
+
+function normalizeBoundaryFeatureCollection(value) {
+  if (!value) return { type: 'FeatureCollection', features: [] };
+
+  let collection = value;
+  if (value.type === 'Feature') {
+    collection = { type: 'FeatureCollection', features: [value] };
+  } else if (DOMAIN_GEOMETRY_TYPES.has(value.type)) {
+    collection = {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: {}, geometry: value }],
+    };
+  }
+
+  if (collection?.type !== 'FeatureCollection' || !Array.isArray(collection.features)) {
+    throw validationError('Domain boundary must be valid GeoJSON Polygon or MultiPolygon data.');
+  }
+  if (collection.features.length > 200) {
+    throw validationError('Domain boundary may contain at most 200 features.');
+  }
+
+  let coordinateCount = 0;
+  const features = collection.features.map((feature, index) => {
+    const geometry = feature?.geometry;
+    if (!geometry || !DOMAIN_GEOMETRY_TYPES.has(geometry.type)) {
+      throw validationError(
+        `Domain boundary feature ${index + 1} must be a Polygon or MultiPolygon.`
+      );
+    }
+
+    coordinateCount += countCoordinatePositions(geometry.coordinates);
+    return {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: geometry.type,
+        coordinates: geometry.coordinates,
+      },
+    };
+  });
+
+  if (coordinateCount > 50_000) {
+    throw validationError('Domain boundary contains too many coordinate positions.');
+  }
+
+  return { type: 'FeatureCollection', features };
+}
+
+function readHexColor(value, field, fallback) {
+  const color = cleanString(value || fallback, {
+    field,
+    max: 7,
+    allowEmpty: false,
+  });
+  if (!HEX_COLOR_PATTERN.test(color)) {
+    throw validationError(`${field} must be a six-digit hex color such as #2563eb.`);
+  }
+  return color.toLowerCase();
+}
+
+function parsePublishedDomainBoundary(input = {}) {
+  return {
+    enabled: input.enabled === true,
+    name: cleanString(input.name || 'Published chart domain', {
+      field: 'Domain boundary name',
+      max: 120,
+    }),
+    showLine: input.showLine !== false,
+    showFill: input.showFill === true,
+    lineColor: readHexColor(input.lineColor, 'Domain boundary line color', '#0f172a'),
+    lineWidth: readFiniteNumber(input.lineWidth ?? 2, 'Domain boundary line width', {
+      min: 0.5,
+      max: 12,
+    }),
+    lineOpacity: readFiniteNumber(input.lineOpacity ?? 0.9, 'Domain boundary line opacity', {
+      min: 0,
+      max: 1,
+    }),
+    fillColor: readHexColor(input.fillColor, 'Domain boundary fill color', '#38bdf8'),
+    fillOpacity: readFiniteNumber(input.fillOpacity ?? 0.08, 'Domain boundary fill opacity', {
+      min: 0,
+      max: 1,
+    }),
+    geojson: normalizeBoundaryFeatureCollection(input.geojson),
+  };
+}
+
 export function parseGeneralSettingsPayload(input = {}) {
   const preset = cleanString(input.mapBoundsPreset || 'tcad', {
     field: 'Map bounds preset',
@@ -208,5 +316,6 @@ export function parseGeneralSettingsPayload(input = {}) {
       max: 120,
     }),
     savedCustomMapBounds,
+    publishedDomainBoundary: parsePublishedDomainBoundary(input.publishedDomainBoundary || {}),
   };
 }
