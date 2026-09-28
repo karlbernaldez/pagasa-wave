@@ -1,5 +1,7 @@
 import {
+  Check,
   CheckCircle2,
+  ChevronDown,
   Copy,
   FileText,
   Image,
@@ -9,10 +11,11 @@ import {
   Trash2,
   UsersRound,
 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import Accordion from '../ui/Accordion';
 import DomainBoundarySettingsSection from '../DomainBoundarySettingsSection';
-import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
+import { Field, TextareaField, labelCls } from '../ui/FormFields';
 
 const MAP_BOUNDS_OPTIONS = [
   {
@@ -64,6 +67,239 @@ function createCustomBoundsId(name) {
 
 function normalizePreset(value) {
   return value === 'philippinesRegional' ? 'tcid' : value || 'tcad';
+}
+
+
+function MapBoundsSelector({
+  dark,
+  activePreset,
+  selectedCustomId,
+  savedBounds,
+  onSelectPreset,
+  onSelectSaved,
+  onCreateCustom,
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  const selectedSaved =
+    activePreset === 'custom'
+      ? savedBounds.find((bound) => bound.id === selectedCustomId)
+      : null;
+
+  const selectedBuiltIn = MAP_BOUNDS_OPTIONS.find(
+    (option) => option.value === activePreset && option.value !== 'custom'
+  );
+
+  const currentLabel =
+    selectedSaved?.name ||
+    selectedBuiltIn?.label ||
+    (activePreset === 'custom' ? 'New custom bound' : 'Select map bounds');
+
+  const currentDescription =
+    selectedSaved
+      ? `W ${selectedSaved.westLng} · S ${selectedSaved.southLat} · E ${selectedSaved.eastLng} · N ${selectedSaved.northLat}`
+      : selectedBuiltIn?.description ||
+        'Create or select a saved custom published-chart extent.';
+
+  const choose = (callback) => {
+    callback();
+    setOpen(false);
+  };
+
+  const optionClass = (active) =>
+    `flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition ${
+      active
+        ? dark
+          ? 'bg-cyan-400/12 text-cyan-100'
+          : 'bg-cyan-50 text-cyan-900'
+        : dark
+          ? 'text-slate-200 hover:bg-white/[0.06]'
+          : 'text-slate-700 hover:bg-slate-50'
+    }`;
+
+  return (
+    <div ref={rootRef} className="relative">
+      <label className={labelCls(dark)}>Map Bounds</label>
+
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left shadow-sm transition ${
+          open
+            ? dark
+              ? 'border-cyan-400/50 bg-slate-800 ring-2 ring-cyan-400/10'
+              : 'border-cyan-400 bg-white ring-2 ring-cyan-100'
+            : dark
+              ? 'border-slate-700 bg-slate-800/90 hover:border-slate-600'
+              : 'border-slate-300 bg-white hover:border-slate-400'
+        }`}
+      >
+        <span className="min-w-0">
+          <span className={`block truncate text-sm font-black ${
+            dark ? 'text-white' : 'text-slate-900'
+          }`}>
+            {currentLabel}
+          </span>
+          <span className={`mt-1 block truncate text-xs font-semibold ${
+            dark ? 'text-slate-400' : 'text-slate-500'
+          }`}>
+            {currentDescription}
+          </span>
+        </span>
+
+        <ChevronDown
+          size={18}
+          className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''} ${
+            dark ? 'text-slate-400' : 'text-slate-500'
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className={`absolute left-0 right-0 z-40 mt-2 max-h-[420px] overflow-y-auto rounded-2xl border p-2 shadow-2xl ${
+            dark
+              ? 'border-slate-700 bg-slate-900'
+              : 'border-slate-200 bg-white'
+          }`}
+        >
+          <div className="px-3 pb-2 pt-1">
+            <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${
+              dark ? 'text-slate-500' : 'text-slate-400'
+            }`}>
+              Built-in presets
+            </p>
+          </div>
+
+          {MAP_BOUNDS_OPTIONS.filter((option) => option.value !== 'custom').map((option) => {
+            const active = activePreset === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => choose(() => onSelectPreset(option.value))}
+                className={optionClass(active)}
+              >
+                <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                  dark ? 'bg-blue-500/10 text-blue-300' : 'bg-blue-50 text-blue-700'
+                }`}>
+                  <MapPinned size={15} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-black">{option.label}</span>
+                  <span className={`mt-1 block text-xs font-semibold leading-5 ${
+                    dark ? 'text-slate-400' : 'text-slate-500'
+                  }`}>
+                    {option.description}
+                  </span>
+                </span>
+                {active && <Check size={16} className="mt-1 shrink-0 text-cyan-500" />}
+              </button>
+            );
+          })}
+
+          {savedBounds.length > 0 && (
+            <>
+              <div className={`mx-2 my-2 border-t ${
+                dark ? 'border-white/10' : 'border-slate-200'
+              }`} />
+              <div className="px-3 pb-2 pt-1">
+                <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${
+                  dark ? 'text-slate-500' : 'text-slate-400'
+                }`}>
+                  Saved custom bounds
+                </p>
+              </div>
+
+              {savedBounds.map((bound) => {
+                const active =
+                  activePreset === 'custom' && selectedCustomId === bound.id;
+
+                return (
+                  <button
+                    key={bound.id}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => choose(() => onSelectSaved(bound.id))}
+                    className={optionClass(active)}
+                  >
+                    <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      dark ? 'bg-cyan-500/10 text-cyan-300' : 'bg-cyan-50 text-cyan-700'
+                    }`}>
+                      <MapPinned size={15} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-black">
+                        {bound.name || 'Custom bounds'}
+                      </span>
+                      <span className={`mt-1 block text-xs font-semibold leading-5 ${
+                        dark ? 'text-slate-400' : 'text-slate-500'
+                      }`}>
+                        W {bound.westLng} · S {bound.southLat} · E {bound.eastLng} · N {bound.northLat}
+                      </span>
+                    </span>
+                    {active && <Check size={16} className="mt-1 shrink-0 text-cyan-500" />}
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          <div className={`mx-2 my-2 border-t ${
+            dark ? 'border-white/10' : 'border-slate-200'
+          }`} />
+
+          <button
+            type="button"
+            role="option"
+            aria-selected={activePreset === 'custom' && !selectedCustomId}
+            onClick={() => choose(onCreateCustom)}
+            className={optionClass(activePreset === 'custom' && !selectedCustomId)}
+          >
+            <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+              dark ? 'bg-emerald-500/10 text-emerald-300' : 'bg-emerald-50 text-emerald-700'
+            }`}>
+              <Plus size={15} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-black">New custom bound</span>
+              <span className={`mt-1 block text-xs font-semibold ${
+                dark ? 'text-slate-400' : 'text-slate-500'
+              }`}>
+                Create a reusable custom published-chart extent.
+              </span>
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function GeneralTab({ settings = {}, setSettings, dark }) {
@@ -183,8 +419,6 @@ export default function GeneralTab({ settings = {}, setSettings, dark }) {
   const customBounds = getCustomBounds(settings);
   const savedCustomBounds = getSavedCustomBounds(settings);
   const activePreset = normalizePreset(settings.mapBoundsPreset);
-  const selectedMapBoundsOption =
-    MAP_BOUNDS_OPTIONS.find((option) => option.value === activePreset) || MAP_BOUNDS_OPTIONS[0];
 
   return (
     <div className="flex flex-col gap-4">
@@ -271,27 +505,20 @@ export default function GeneralTab({ settings = {}, setSettings, dark }) {
 
       <Accordion icon={MapPinned} title="Published Chart Map Bounds" dark={dark}>
         <div className="grid gap-4">
-          <div>
-            <label className={labelCls(dark)}>Map Bounds Preset</label>
-            <select
-              value={activePreset}
-              onChange={(event) => set('mapBoundsPreset')(event.target.value)}
-              className={inputCls(dark)}
-            >
-              {MAP_BOUNDS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p
-              className={`mt-2 text-xs font-semibold leading-5 ${
-                dark ? 'text-slate-400' : 'text-slate-500'
-              }`}
-            >
-              {selectedMapBoundsOption.description}
-            </p>
-          </div>
+          <MapBoundsSelector
+            dark={dark}
+            activePreset={activePreset}
+            selectedCustomId={settings.selectedCustomMapBoundsId || ''}
+            savedBounds={savedCustomBounds}
+            onSelectPreset={(preset) =>
+              setSettings((prev) => ({
+                ...prev,
+                mapBoundsPreset: preset,
+              }))
+            }
+            onSelectSaved={loadSavedCustomBounds}
+            onCreateCustom={startNewCustomBounds}
+          />
 
           {activePreset === 'custom' && (
             <div
