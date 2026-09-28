@@ -338,8 +338,12 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
   const [isReady, setIsReady] = useState(false);
   const [fetchedRaster, setFetchedRaster] = useState(null);
   const featureCollection = useMemo(() => normalizeFeatureCollection(features), [features]);
+  const renderedFeatureCollection = useMemo(
+    () => clipPublishedAnnotations(featureCollection, publicSettings),
+    [featureCollection, publicSettings]
+  );
   const normalizedStyleMode = normalizeChartStyleMode(chartStyleMode);
-  const hasFeatures = featureCollection.features.length > 0;
+  const hasFeatures = renderedFeatureCollection.features.length > 0;
   const shouldRenderRaster = normalizedStyleMode === CHART_STYLE_MODE.WAVE_WIND;
   const resolvedRaster = raster || fetchedRaster;
   const hasRenderableContent = hasFeatures || Boolean(shouldRenderRaster && resolvedRaster?.tileUrl);
