@@ -12,13 +12,13 @@ export const SETTINGS_GROUPS = [
   {
     id: 'forecastOperations',
     label: 'Forecast Operations',
-    description: 'Operational timing, package windows, archive policy, and no-publication options.',
+    description: 'Operational submission, publication, cutoff timing, and forecaster deadline reminders.',
   },
   {
     id: 'forecasterWorkspace',
     label: 'Forecaster Workspace',
     description:
-      'Helper copy, workspace defaults, collaboration reminders, map defaults, and forecaster-facing guidance.',
+      'Forecaster workspace copy, collaboration guidance, QA reminders, and Studio map defaults.',
   },
   {
     id: 'adminReview',
@@ -28,7 +28,7 @@ export const SETTINGS_GROUPS = [
   {
     id: 'publicSite',
     label: 'Public Site',
-    description: 'Public dashboard branding, About page content, and Contact page content.',
+    description: 'Published chart presentation, public map bounds, About content, and Contact content.',
   },
 ];
 
