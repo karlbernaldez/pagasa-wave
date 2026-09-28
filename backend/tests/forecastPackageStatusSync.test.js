@@ -31,7 +31,7 @@ test('status sync does not overwrite a concurrent package transition', async () 
       reloadCount += 1;
       return createQuery({
         _id: 'package-1',
-        status: 'Published',
+        status: 'Revision Requested',
         charts: [],
       });
     };
@@ -39,12 +39,12 @@ test('status sync does not overwrite a concurrent package transition', async () 
     const result = await syncPackageStatusFromCharts(
       {
         _id: 'package-1',
-        status: 'Under Review',
+        status: 'Submitted',
         charts: [
-          { chartType: 'analysis', project: { status: 'Published' } },
-          { chartType: 'forecast_24h', project: { status: 'Published' } },
-          { chartType: 'forecast_36h', project: { status: 'Published' } },
-          { chartType: 'forecast_48h', project: { status: 'Published' } },
+          { chartType: 'analysis', project: { status: 'Under Review' } },
+          { chartType: 'forecast_24h', project: { status: 'Submitted' } },
+          { chartType: 'forecast_36h', project: { status: 'Submitted' } },
+          { chartType: 'forecast_48h', project: { status: 'Submitted' } },
         ],
       },
       'admin-1'
@@ -52,16 +52,15 @@ test('status sync does not overwrite a concurrent package transition', async () 
 
     assert.deepEqual(receivedFilter, {
       _id: 'package-1',
-      status: 'Under Review',
+      status: 'Submitted',
     });
     assert.equal(reloadCount, 1);
-    assert.equal(result.status, 'Published');
+    assert.equal(result.status, 'Revision Requested');
   } finally {
     ForecastPackage.findOneAndUpdate = originalFindOneAndUpdate;
     ForecastPackage.findById = originalFindById;
   }
 });
-
 
 test('status sync never infers package approval from approved child charts', async () => {
   const originalFindOneAndUpdate = ForecastPackage.findOneAndUpdate;
@@ -89,6 +88,37 @@ test('status sync never infers package approval from approved child charts', asy
     assert.equal(writeCalls, 0);
     assert.equal(result, packageBeforeSync);
     assert.equal(result.status, 'Under Review');
+  } finally {
+    ForecastPackage.findOneAndUpdate = originalFindOneAndUpdate;
+  }
+});
+
+test('status sync never infers package publication from published child charts', async () => {
+  const originalFindOneAndUpdate = ForecastPackage.findOneAndUpdate;
+  let writeCalls = 0;
+
+  try {
+    ForecastPackage.findOneAndUpdate = () => {
+      writeCalls += 1;
+      return createQuery(null);
+    };
+
+    const packageBeforeSync = {
+      _id: 'package-publication-guard',
+      status: 'Approved',
+      charts: [
+        { chartType: 'analysis', project: { status: 'Published' } },
+        { chartType: 'forecast_24h', project: { status: 'Published' } },
+        { chartType: 'forecast_36h', project: { status: 'Published' } },
+        { chartType: 'forecast_48h', project: { status: 'Published' } },
+      ],
+    };
+
+    const result = await syncPackageStatusFromCharts(packageBeforeSync, 'admin-1');
+
+    assert.equal(writeCalls, 0);
+    assert.equal(result, packageBeforeSync);
+    assert.equal(result.status, 'Approved');
   } finally {
     ForecastPackage.findOneAndUpdate = originalFindOneAndUpdate;
   }
