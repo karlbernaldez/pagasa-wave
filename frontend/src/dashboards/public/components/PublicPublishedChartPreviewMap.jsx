@@ -7,6 +7,7 @@ import { useChartType } from '@/app/providers/ChartTypeProvider';
 import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hooks/usePublicMapBounds';
 import { isFrontFeature, renderFrontFeatures } from '@/features/projects/utils/frontRendering';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
+import { clipPublishedAnnotations } from '@/features/projects/utils/clipPublishedAnnotations';
 import { syncPublishedDomainBoundary } from '@/features/projects/utils/publishedDomainBoundary';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -217,8 +218,15 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
   const [isReady, setIsReady] = useState(false);
   const theme = isDarkMode ? 'dark' : 'light';
   const raster = payload?.raster || initialRaster || null;
-  const featureCollection = useMemo(() => normalizeFeatureCollection(payload?.featureCollection), [payload]);
-  const hasFeatures = featureCollection.features.length > 0;
+  const featureCollection = useMemo(
+    () => normalizeFeatureCollection(payload?.featureCollection),
+    [payload]
+  );
+  const renderedFeatureCollection = useMemo(
+    () => clipPublishedAnnotations(featureCollection, publicSettings),
+    [featureCollection, publicSettings]
+  );
+  const hasFeatures = renderedFeatureCollection.features.length > 0;
   const shouldRenderRaster = activeChartType === 'wave-wind';
   const hasRenderableRaster = shouldRenderRaster && Boolean(raster?.tileUrl);
 
@@ -250,9 +258,12 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     syncCountryOverlay(map, isDarkMode);
     syncPublishedDomainBoundary(map, publicSettings, 'published-preview-domain-boundary');
     fitPreviewBounds(map, mapBounds);
-    if (hasFeatures) syncAnnotations(map, featureCollection);
-    else restackLayers(map);
-  }, [featureCollection, hasFeatures, isDarkMode, isReady, mapBounds, publicSettings, raster, shouldRenderRaster]);
+    if (hasFeatures) syncAnnotations(map, renderedFeatureCollection);
+    else {
+      syncAnnotations(map, { type: 'FeatureCollection', features: [] });
+      restackLayers(map);
+    }
+  }, [hasFeatures, isDarkMode, isReady, mapBounds, publicSettings, raster, renderedFeatureCollection, shouldRenderRaster]);
 
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ height: getPreviewHeight(height) }}>
