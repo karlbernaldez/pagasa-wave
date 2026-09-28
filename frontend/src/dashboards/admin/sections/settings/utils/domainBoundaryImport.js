@@ -150,13 +150,26 @@ export function shapefileArrayBufferToGeoJson(buffer) {
     if (shapeType !== 0) {
       const rings = readRecordPolygon(view, contentOffset, shapeType);
       if (rings.length) {
+        const signedArea = (ring) =>
+          ring.slice(0, -1).reduce((area, point, index) => {
+            const next = ring[index + 1] || ring[0];
+            return area + point[0] * next[1] - next[0] * point[1];
+          }, 0) / 2;
+
+        const polygons = [];
+        rings.forEach((ring) => {
+          const isExterior = signedArea(ring) < 0;
+          if (isExterior || polygons.length === 0) polygons.push([ring]);
+          else polygons[polygons.length - 1].push(ring);
+        });
+
         features.push({
           type: 'Feature',
           properties: {},
-          geometry: {
-            type: 'Polygon',
-            coordinates: rings,
-          },
+          geometry:
+            polygons.length === 1
+              ? { type: 'Polygon', coordinates: polygons[0] }
+              : { type: 'MultiPolygon', coordinates: polygons },
         });
       }
     }
