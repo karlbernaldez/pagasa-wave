@@ -11,6 +11,7 @@ import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeF
 import { clipPublishedAnnotations } from '@/features/projects/utils/clipPublishedAnnotations';
 import {
   getPublishedDomainBoundarySignature,
+  normalizePublishedDomainBoundary,
   syncPublishedDomainBoundary,
 } from '@/features/projects/utils/publishedDomainBoundary';
 
@@ -344,9 +345,16 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
   );
   const normalizedStyleMode = normalizeChartStyleMode(chartStyleMode);
   const hasFeatures = renderedFeatureCollection.features.length > 0;
+  const boundaryConfig = useMemo(
+    () => normalizePublishedDomainBoundary(publicSettings),
+    [publicSettings]
+  );
+  const hasBoundary =
+    boundaryConfig.enabled && (boundaryConfig.showLine || boundaryConfig.showFill);
   const shouldRenderRaster = normalizedStyleMode === CHART_STYLE_MODE.WAVE_WIND;
   const resolvedRaster = raster || fetchedRaster;
-  const hasRenderableContent = hasFeatures || Boolean(shouldRenderRaster && resolvedRaster?.tileUrl);
+  const hasRenderableContent =
+    hasFeatures || hasBoundary || Boolean(shouldRenderRaster && resolvedRaster?.tileUrl);
   const projectId = useMemo(() => getProjectIdFromLocation(), []);
   const theme = isDarkMode ? 'dark' : 'light';
   const mapBoundsSignature = useMemo(() => JSON.stringify(mapBounds), [mapBounds]);
@@ -392,9 +400,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     syncCountryOverlay(map, isDarkMode);
     syncPublishedDomainBoundary(map, publicSettings, 'published-export-domain-boundary');
     fitExportBounds(map, mapBounds);
-    if (hasFeatures) return syncExportLayers(map, renderedFeatureCollection, normalizedStyleMode);
-    restackExportLayers(map);
-    return true;
+    return syncExportLayers(map, renderedFeatureCollection, normalizedStyleMode);
   };
 
   useEffect(() => {
