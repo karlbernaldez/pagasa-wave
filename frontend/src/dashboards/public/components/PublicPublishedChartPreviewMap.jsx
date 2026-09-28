@@ -7,6 +7,7 @@ import { useChartType } from '@/app/providers/ChartTypeProvider';
 import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hooks/usePublicMapBounds';
 import { isFrontFeature, renderFrontFeatures } from '@/features/projects/utils/frontRendering';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
+import { syncPublishedDomainBoundary } from '@/features/projects/utils/publishedDomainBoundary';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
@@ -208,7 +209,7 @@ function getPreviewHeight(height) {
 
 function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode = false, className = '', height = 288, onClick }) {
   const { activeChartType } = useChartType();
-  const { bounds: mapBounds } = usePublicMapBounds();
+  const { bounds: mapBounds, settings: publicSettings } = usePublicMapBounds();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const [payload, setPayload] = useState(null);
@@ -247,10 +248,11 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     if (!map || !isReady) return;
     syncRaster(map, raster, shouldRenderRaster);
     syncCountryOverlay(map, isDarkMode);
+    syncPublishedDomainBoundary(map, publicSettings, 'published-preview-domain-boundary');
     fitPreviewBounds(map, mapBounds);
     if (hasFeatures) syncAnnotations(map, featureCollection);
     else restackLayers(map);
-  }, [featureCollection, hasFeatures, isDarkMode, isReady, mapBounds, raster, shouldRenderRaster]);
+  }, [featureCollection, hasFeatures, isDarkMode, isReady, mapBounds, publicSettings, raster, shouldRenderRaster]);
 
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ height: getPreviewHeight(height) }}>
