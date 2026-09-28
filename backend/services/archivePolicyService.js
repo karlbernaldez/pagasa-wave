@@ -12,7 +12,7 @@ function daysAgo(now, days) {
   return new Date(now.getTime() - Number(days) * DAY_MS);
 }
 
-function getPolicy(data = {}) {
+export function normalizeArchivePolicy(data = {}) {
   return {
     autoArchivePublishedEnabled: data.autoArchivePublishedEnabled === true,
     archivePublishedAfterDays: Number(data.archivePublishedAfterDays || 30),
@@ -27,7 +27,7 @@ function getPolicy(data = {}) {
 
 export async function loadArchivePolicy({ settingsModel = SiteSettings } = {}) {
   const settings = await settingsModel.findOne({ page: 'operations' }).lean();
-  return getPolicy(settings?.data || {});
+  return normalizeArchivePolicy(settings?.data || {});
 }
 
 async function findEligibleDraftPackages({ cutoff, forecastPackageModel, projectModel }) {
