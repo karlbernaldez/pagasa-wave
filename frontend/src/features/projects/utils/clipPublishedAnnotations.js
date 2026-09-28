@@ -3,8 +3,9 @@ import * as polyclip from 'polyclip-ts';
 const EPSILON = 1e-9;
 
 function cloneFeature(feature, geometry) {
+  const { bbox: _staleBbox, ...rest } = feature || {};
   return {
-    ...feature,
+    ...rest,
     geometry,
     properties: { ...(feature?.properties || {}) },
   };
