@@ -12,6 +12,17 @@ export function createChecklistDraftItem(index = 0) {
   };
 }
 
+export function createNextChecklistDraftItem(items = []) {
+  const keys = new Set((Array.isArray(items) ? items : []).map((item) => String(item?.key || '')));
+  let index = 0;
+
+  while (keys.has(`review_item_${index + 1}`)) {
+    index += 1;
+  }
+
+  return createChecklistDraftItem(index);
+}
+
 export function definitionToDraft(definition) {
   const items = Array.isArray(definition?.items)
     ? [...definition.items]
