@@ -160,7 +160,8 @@ export const saveSettings = async (req, res) => {
      * Optional: enforce max size (prevent abuse)
      */
     const payloadSize = JSON.stringify(sanitizedData).length;
-    if (payloadSize > 50_000) {
+    const payloadLimit = page === 'general' ? 750_000 : 50_000;
+    if (payloadSize > payloadLimit) {
       return res.status(413).json({
         message: 'Settings payload too large.',
       });
