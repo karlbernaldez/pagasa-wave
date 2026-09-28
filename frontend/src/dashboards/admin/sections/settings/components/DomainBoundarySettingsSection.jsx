@@ -1,7 +1,7 @@
-import { FileUp, MapPinned, Trash2 } from 'lucide-react';
+import { FileUp, MapPinned, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import { Field, TextareaField, inputCls, labelCls } from './ui/FormFields';
+import { Field, inputCls, labelCls } from './ui/FormFields';
 import {
   boundaryFileToGeoJson,
   coordinatesTextToGeoJson,
@@ -72,7 +72,12 @@ function Toggle({ label, checked, onChange, dark, description }) {
 
 export default function DomainBoundarySettingsSection({ settings = {}, setSettings, dark }) {
   const boundary = { ...DEFAULT_BOUNDARY, ...(settings.publishedDomainBoundary || {}) };
-  const [coordinatesText, setCoordinatesText] = useState('');
+  const [coordinateRows, setCoordinateRows] = useState([
+    { id: crypto.randomUUID(), longitude: '', latitude: '' },
+    { id: crypto.randomUUID(), longitude: '', latitude: '' },
+    { id: crypto.randomUUID(), longitude: '', latitude: '' },
+    { id: crypto.randomUUID(), longitude: '', latitude: '' },
+  ]);
   const [importStatus, setImportStatus] = useState(null);
   const featureCount = useMemo(
     () => boundary.geojson?.features?.length || 0,
@@ -89,13 +94,48 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
       },
     }));
 
+  const updateCoordinateRow = (id, field, value) =>
+    setCoordinateRows((rows) =>
+      rows.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    );
+
+  const addCoordinateRow = () =>
+    setCoordinateRows((rows) => [
+      ...rows,
+      { id: crypto.randomUUID(), longitude: '', latitude: '' },
+    ]);
+
+  const removeCoordinateRow = (id) =>
+    setCoordinateRows((rows) => (rows.length <= 3 ? rows : rows.filter((row) => row.id !== id)));
+
   const importCoordinates = () => {
     try {
-      const geojson = coordinatesTextToGeoJson(coordinatesText);
+      const completeRows = coordinateRows.filter(
+        (row) => String(row.longitude).trim() !== '' || String(row.latitude).trim() !== ''
+      );
+
+      if (completeRows.length < 3) {
+        throw new Error('Enter at least three longitude/latitude points.');
+      }
+
+      if (
+        completeRows.some(
+          (row) =>
+            String(row.longitude).trim() === '' || String(row.latitude).trim() === ''
+        )
+      ) {
+        throw new Error('Each boundary point needs both longitude and latitude.');
+      }
+
+      const coordinateText = completeRows
+        .map((row) => `${row.longitude},${row.latitude}`)
+        .join('\n');
+
+      const geojson = coordinatesTextToGeoJson(coordinateText);
       setBoundary({ geojson });
       setImportStatus({
         type: 'success',
-        message: `Loaded ${geojson.features.length} polygon from coordinate input.`,
+        message: `Loaded ${completeRows.length} boundary points as one polygon.`,
       });
     } catch (error) {
       setImportStatus({ type: 'error', message: error.message });
@@ -186,17 +226,91 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
             Manual longitude / latitude polygon
           </p>
         </div>
-        <TextareaField
-          label="Coordinates"
-          value={coordinatesText}
-          onChange={setCoordinatesText}
-          rows={6}
-          dark={dark}
-          placeholder={'116.0, 4.0\n127.0, 4.0\n127.0, 22.0\n116.0, 22.0'}
-        />
-        <p className={cn('mt-2 text-xs font-semibold leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
-          One WGS84 longitude,latitude pair per line. WaveLab closes the polygon automatically.
-        </p>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-[52px_minmax(0,1fr)_minmax(0,1fr)_40px] items-end gap-3">
+            <span className={cn('pb-3 text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>
+              Point
+            </span>
+            <span className={cn('pb-3 text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>
+              Longitude
+            </span>
+            <span className={cn('pb-3 text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>
+              Latitude
+            </span>
+            <span />
+          </div>
+
+          {coordinateRows.map((row, index) => (
+            <div
+              key={row.id}
+              className="grid grid-cols-[52px_minmax(0,1fr)_minmax(0,1fr)_40px] items-center gap-3"
+            >
+              <span className={cn('text-sm font-black', dark ? 'text-slate-300' : 'text-slate-600')}>
+                {index + 1}
+              </span>
+              <input
+                type="number"
+                step="any"
+                min="-180"
+                max="180"
+                value={row.longitude}
+                onChange={(event) =>
+                  updateCoordinateRow(row.id, 'longitude', event.target.value)
+                }
+                placeholder="e.g. 116.0"
+                className={inputCls(dark)}
+                aria-label={`Point ${index + 1} longitude`}
+              />
+              <input
+                type="number"
+                step="any"
+                min="-90"
+                max="90"
+                value={row.latitude}
+                onChange={(event) =>
+                  updateCoordinateRow(row.id, 'latitude', event.target.value)
+                }
+                placeholder="e.g. 4.0"
+                className={inputCls(dark)}
+                aria-label={`Point ${index + 1} latitude`}
+              />
+              <button
+                type="button"
+                onClick={() => removeCoordinateRow(row.id)}
+                disabled={coordinateRows.length <= 3}
+                className={cn(
+                  'inline-flex h-10 w-10 items-center justify-center rounded-xl border transition disabled:cursor-not-allowed disabled:opacity-30',
+                  dark
+                    ? 'border-white/10 text-rose-300 hover:bg-rose-500/10'
+                    : 'border-slate-200 text-rose-600 hover:bg-rose-50'
+                )}
+                aria-label={`Remove point ${index + 1}`}
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className={cn('text-xs font-semibold leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
+            Enter at least three WGS84 points. WaveLab closes the polygon automatically.
+          </p>
+          <button
+            type="button"
+            onClick={addCoordinateRow}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-black',
+              dark
+                ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            )}
+          >
+            <Plus size={14} />
+            Add point
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={importCoordinates}
