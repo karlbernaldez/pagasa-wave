@@ -109,6 +109,7 @@ export default function AdminDailyPackageFocus({
   packages = [],
   projects = [],
   onOpenChart,
+  onOpenPackage,
   onPublishPackage,
   publishingPackageId,
 }) {
@@ -152,6 +153,10 @@ export default function AdminDailyPackageFocus({
       } else {
         await publishDirectly();
       }
+      return;
+    }
+    if (onOpenPackage && dailyPackage) {
+      onOpenPackage(dailyPackage);
       return;
     }
     if (canOpen) onOpenChart?.(primaryChart, dailyPackage);
