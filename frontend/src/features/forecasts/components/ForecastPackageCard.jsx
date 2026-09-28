@@ -111,7 +111,9 @@ export function PackageSummaryModal({
     permissions,
     status: forecastPackage.status,
   });
-  const checklistEnabled = ['Under Review', 'Revision Requested'].includes(forecastPackage.status);
+  const checklistEnabled = ['Under Review', 'Revision Requested', 'Approved', 'Published'].includes(
+    forecastPackage.status
+  );
   const chartsReady =
     (forecastPackage.charts || []).length > 0 &&
     (forecastPackage.charts || []).every((row) =>
@@ -139,7 +141,7 @@ export function PackageSummaryModal({
       aria-labelledby={`package-${forecastPackage.id}-title`}
     >
       <div
-        className={`relative w-full max-w-5xl overflow-hidden rounded-2xl border shadow-2xl ring-1 backdrop-blur-3xl ${isDarkMode ? 'border-cyan-200/20 bg-[#06203a]/84 text-white shadow-black/50 ring-white/[0.06]' : 'border-white/85 bg-white/76 text-slate-950 shadow-slate-900/20 ring-slate-900/[0.04]'}`}
+        className={`relative max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-2xl border shadow-2xl ring-1 backdrop-blur-3xl ${isDarkMode ? 'border-cyan-200/20 bg-[#06203a]/84 text-white shadow-black/50 ring-white/[0.06]' : 'border-white/85 bg-white/76 text-slate-950 shadow-slate-900/20 ring-slate-900/[0.04]'}`}
       >
         <div
           className={`pointer-events-none absolute inset-x-0 top-0 h-40 ${isDarkMode ? 'bg-[radial-gradient(circle_at_70%_0%,rgba(56,189,248,.16),transparent_45%)]' : 'bg-[radial-gradient(circle_at_70%_0%,rgba(14,165,233,.12),transparent_45%)]'}`}
