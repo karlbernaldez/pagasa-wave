@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSettings, saveSettings } from '@/api/siteSettings';
 import {
-  DEFAULT_ADMIN_REVIEW,
   DEFAULT_ABOUT,
   DEFAULT_CONTACT,
   DEFAULT_FORECASTER_WORKSPACE,
@@ -17,7 +16,6 @@ const DEFAULTS = {
   operations: DEFAULT_OPERATIONS,
   forecasterWorkspace: DEFAULT_FORECASTER_WORKSPACE,
   mapView: DEFAULT_MAP_VIEW,
-  adminReview: DEFAULT_ADMIN_REVIEW,
   general: DEFAULT_GENERAL,
   about: DEFAULT_ABOUT,
   contact: DEFAULT_CONTACT,
@@ -31,7 +29,6 @@ const LEGACY_LOCAL_KEYS = {
   general: 'admin.settings.general',
   operations: 'admin.settings.operations',
   forecasterWorkspace: 'admin.settings.forecasterWorkspace',
-  adminReview: 'admin.settings.adminReview',
 };
 
 const SETTINGS_PAGES = Object.keys(DEFAULTS);
@@ -178,14 +175,12 @@ export default function useSettings() {
     operationsData: pages.operations,
     forecasterWorkspaceData: pages.forecasterWorkspace,
     mapViewData: pages.mapView,
-    adminReviewData: pages.adminReview,
     generalData: pages.general,
     aboutData: pages.about,
     contactData: pages.contact,
     setOperationsData: (value) => setPages((prev) => ({ ...prev, operations: value })),
     setForecasterWorkspaceData: (value) => setPages((prev) => ({ ...prev, forecasterWorkspace: value })),
     setMapViewData: (value) => setPages((prev) => ({ ...prev, mapView: value })),
-    setAdminReviewData: (value) => setPages((prev) => ({ ...prev, adminReview: value })),
     setGeneralData: (value) => setPages((prev) => ({ ...prev, general: value })),
     setAboutData: (value) => setPages((prev) => ({ ...prev, about: value })),
     setContactData: (value) => setPages((prev) => ({ ...prev, contact: value })),
