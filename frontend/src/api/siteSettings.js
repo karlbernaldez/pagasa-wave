@@ -101,3 +101,22 @@ export const saveSettings = async (page, data) => {
     throw error;
   }
 };
+
+
+async function requestArchivePolicy(path, options = {}) {
+  const response = await fetchWithAuth(`${API_BASE_URL}/operations/archive-policy/${path}`, {
+    credentials: 'include',
+    ...options,
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(buildSettingsErrorMessage(result, 'Archive policy request failed'));
+  }
+  return result;
+}
+
+export const previewArchivePolicy = () =>
+  requestArchivePolicy('preview', { method: 'GET' });
+
+export const runArchivePolicy = () =>
+  requestArchivePolicy('run', { method: 'POST' });
