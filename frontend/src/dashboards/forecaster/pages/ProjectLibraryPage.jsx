@@ -972,7 +972,7 @@ export default function ForecasterProjectLibraryPage() {
             {isEditable && (
               <ForecastReminderCard
                 packageData={packageData}
-                settings={operationsSettings}
+                settings={workspaceSettings}
                 isDarkMode={isDarkMode}
               />
             )}
