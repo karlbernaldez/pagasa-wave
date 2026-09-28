@@ -93,16 +93,11 @@ export default function AboutTab({ settings = {}, setSettings, dark }) {
               </ArrayRow>
             )}
           />
-          {(s.stats ?? []).length < 3 && (
-            <AddButton
-              onClick={() => addArrayItem('stats', { number: '', label: '', sublabel: '' })}
-              label="Add Stat"
-              dark={dark}
-            />
-          )}
-          <p className={`text-xs font-semibold ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
-            The public About page displays up to three stats.
-          </p>
+          <AddButton
+            onClick={() => addArrayItem('stats', { number: '', label: '', sublabel: '' })}
+            label="Add Stat"
+            dark={dark}
+          />
         </div>
       </Accordion>
 
@@ -204,12 +199,7 @@ export default function AboutTab({ settings = {}, setSettings, dark }) {
               </ArrayRow>
             )}
           />
-          {(s.faqs ?? []).length < 3 && (
-            <AddButton onClick={() => addArrayItem('faqs', { question: '', answer: '' })} label="Add FAQ Item" dark={dark} />
-          )}
-          <p className={`text-xs font-semibold ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
-            The public About page displays up to three FAQs.
-          </p>
+          <AddButton onClick={() => addArrayItem('faqs', { question: '', answer: '' })} label="Add FAQ Item" dark={dark} />
         </div>
       </Accordion>
 
