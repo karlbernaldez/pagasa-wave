@@ -18,7 +18,7 @@ import {
 import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
 import {
   buildReviewChecklistPayload,
-  createChecklistDraftItem,
+  createNextChecklistDraftItem,
   definitionToDraft,
   normalizeChecklistKey,
   validateReviewChecklistDraft,
@@ -136,7 +136,7 @@ export default function ReviewChecklistTab({ dark, canManage = false }) {
   const addItem = () => {
     setDraft((current) => ({
       ...current,
-      items: [...current.items, createChecklistDraftItem(current.items.length)],
+      items: [...current.items, createNextChecklistDraftItem(current.items)],
     }));
   };
 
