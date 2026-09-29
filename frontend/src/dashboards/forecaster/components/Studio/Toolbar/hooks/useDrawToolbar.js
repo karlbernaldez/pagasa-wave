@@ -157,9 +157,51 @@ export function useDrawToolbar({
 
       const canvas = map.getCanvas?.();
       const previousCursor = canvas?.style?.cursor || '';
-      if (canvas?.style) {
-        canvas.style.cursor = 'crosshair';
-      }
+
+      const enforcePlacementCursor = () => {
+        if (canvas?.style) {
+          canvas.style.setProperty('cursor', 'crosshair', 'important');
+        }
+      };
+
+      const restorePlacementCursor = () => {
+        if (!canvas?.style) return;
+
+        canvas.style.removeProperty('cursor');
+        if (previousCursor) {
+          canvas.style.cursor = previousCursor;
+        }
+
+        [
+          'movestart',
+          'move',
+          'moveend',
+          'zoomstart',
+          'zoom',
+          'zoomend',
+          'dragstart',
+          'drag',
+          'dragend',
+        ].forEach((eventName) => {
+          map.off(eventName, enforcePlacementCursor);
+        });
+      };
+
+      enforcePlacementCursor();
+
+      [
+        'movestart',
+        'move',
+        'moveend',
+        'zoomstart',
+        'zoom',
+        'zoomend',
+        'dragstart',
+        'drag',
+        'dragend',
+      ].forEach((eventName) => {
+        map.on(eventName, enforcePlacementCursor);
+      });
 
       map.once('click', (e) => {
         console.log('Map clicked at:', e.lngLat);
@@ -167,9 +209,7 @@ export function useDrawToolbar({
         const lat = e.lngLat.lat;
         const coords = [lng, lat];
 
-        if (canvas?.style) {
-          canvas.style.cursor = previousCursor;
-        }
+        restorePlacementCursor();
         draw.changeMode('simple_select');
 
         if (selectedType === TOOL_IDS.LESS_1) {
