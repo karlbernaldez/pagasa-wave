@@ -70,7 +70,7 @@ test('operations settings reject impossible ordering and unsupported timezones',
         packagePublishTarget: '12:00',
         noPublicationCutoff: '18:00',
         deadlineWarningMinutes: 60,
-        timezone: 'Mars\/Olympus',
+        timezone: 'Mars/Olympus',
       }),
     /Timezone must be/
   );
