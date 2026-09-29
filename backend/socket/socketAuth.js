@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { parse } from 'cookie';
 
 import User from '#models/User';
+import { resolvePermissionsForRole } from '#services/roleService';
 import { logger } from '#utils/logger';
 
 const ACCESS_TOKEN_ALGORITHMS = ['HS512'];
@@ -48,9 +49,13 @@ export const verifySocketSession = async (socket, next) => {
       return next(new Error('Unauthorized'));
     }
 
+    const permissions = await resolvePermissionsForRole(user.role);
+
     socket.data.userId = String(user._id);
     socket.data.role = user.role;
+    socket.data.permissions = permissions;
     socket.data.sessionVersion = user.sessionVersion ?? 0;
+    socket.data.tokenExpiresAt = decoded.exp ? decoded.exp * 1000 : null;
 
     return next();
   } catch (err) {
