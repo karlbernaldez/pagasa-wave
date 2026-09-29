@@ -114,7 +114,7 @@ const createApp = () => {
   const corsOptions = createCorsOptions();
 
   app.disable('x-powered-by');
-  app.set('trust proxy', 1);
+  app.set('trust proxy', 'loopback');
 
   app.use(helmet());
   app.use(cors(corsOptions));
@@ -210,7 +210,10 @@ const getPort = () => {
   return port;
 };
 
-const listen = (server, port) =>
+const getBindHost = () =>
+  String(process.env.BIND_HOST || (isProduction ? '127.0.0.1' : '0.0.0.0')).trim();
+
+const listen = (server, port, host) =>
   new Promise((resolve, reject) => {
     const onError = (error) => {
       server.off('listening', onListening);
@@ -224,7 +227,7 @@ const listen = (server, port) =>
 
     server.once('error', onError);
     server.once('listening', onListening);
-    server.listen(port);
+    server.listen(port, host);
   });
 
 const startServer = async () => {
@@ -245,11 +248,13 @@ const startServer = async () => {
   setIo(io);
 
   const port = getPort();
+  const host = getBindHost();
 
-  await listen(httpServer, port);
+  await listen(httpServer, port, host);
 
   logger.info('WaveLab API started', {
     port,
+    host,
     environment: process.env.NODE_ENV ?? 'development',
     dnsServers: isProduction ? undefined : dns.getServers(),
   });
