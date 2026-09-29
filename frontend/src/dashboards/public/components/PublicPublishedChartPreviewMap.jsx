@@ -241,8 +241,17 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
 
   useEffect(() => {
     let mounted = true;
-    if (!projectId) { setPayload(null); setLoading(false); return undefined; }
-    setLoading(true);
+    if (!projectId) {
+      queueMicrotask(() => {
+        if (!mounted) return;
+        setPayload(null);
+        setLoading(false);
+      });
+      return () => { mounted = false; };
+    }
+    queueMicrotask(() => {
+      if (mounted) setLoading(true);
+    });
     fetchPublicPublishedChartOutput(projectId, { theme })
       .then((data) => { if (mounted) setPayload(data || null); })
       .catch((error) => { if (mounted) { console.error('[PublicPublishedChartPreviewMap] Failed to load published output:', error); setPayload(null); } })
