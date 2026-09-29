@@ -69,17 +69,9 @@ const ProtectedRoute = ({
     };
   }, [retryCount, setIsLoggedIn, setRole]);
 
-  if (apiState.phase === 'loading') {
-    return <LoadingScreen message="Verifying session..." />;
-  }
+  if (apiState.phase === 'loading') return <LoadingScreen />;
 
   if (apiState.phase === 'unavailable') {
-    // Public auth-entry routes such as /login and /register must remain usable
-    // even when session verification is temporarily unavailable. Blocking these
-    // routes creates a recovery dead-end: users cannot sign in precisely when
-    // the existing session cannot be verified.
-    if (!requireAuth) return children;
-
     return (
       <div className="grid min-h-[320px] place-items-center p-6">
         <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
