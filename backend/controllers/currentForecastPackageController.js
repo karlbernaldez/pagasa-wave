@@ -5,16 +5,14 @@ import ForecastPackage from '../models/ForecastPackage.js';
 import {
   FORECAST_PACKAGE_STATUS,
   REQUIRED_FORECAST_CHARTS,
+  buildForecastChartProjectName,
+  buildForecastPackageName,
   deriveForecastPackageStatusFromCharts,
   getPackageCompletion,
   normalizeForecastDate,
 } from '../utils/forecastPackage.js';
 import { applyForecastPackageDisplayNames } from '../utils/forecastPackageDisplayNames.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
-import {
-  loadForecastNamingSettings,
-  resolveForecastNames,
-} from '../services/forecastNamingService.js';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -97,8 +95,8 @@ async function syncPackageStatusFromCharts(forecastPackage, userId) {
   );
 }
 
-async function ensureDailyChartProject({ forecastDate, requiredChart, projectName }) {
-  const name = projectName;
+async function ensureDailyChartProject({ forecastDate, requiredChart }) {
+  const name = buildForecastChartProjectName(forecastDate, requiredChart.label);
   const query = {
     chartType: requiredChart.chartType,
     forecastDate: getForecastDateQuery(forecastDate),
@@ -150,12 +148,7 @@ async function ensureDailyChartProject({ forecastDate, requiredChart, projectNam
 }
 
 async function createDailyForecastPackage({ forecastDate }) {
-  const namingSettings = await loadForecastNamingSettings();
-  const resolvedNames = resolveForecastNames({
-    forecastDate,
-    settings: namingSettings,
-  });
-  const name = resolvedNames?.packageName || '';
+  const name = buildForecastPackageName(forecastDate);
   if (!name) throwError('forecastDate must be a valid date', 400);
 
   const charts = [];
@@ -164,7 +157,6 @@ async function createDailyForecastPackage({ forecastDate }) {
     const project = await ensureDailyChartProject({
       forecastDate,
       requiredChart,
-      projectName: resolvedNames.chartNames[requiredChart.chartType],
     });
     charts.push({
       chartType: requiredChart.chartType,
