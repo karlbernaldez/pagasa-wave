@@ -1,4 +1,4 @@
-import { Stage, Layer, Line, Circle, RegularPolygon, Wedge } from 'react-konva';
+import { Stage, Layer, Line, RegularPolygon, Wedge } from 'react-konva';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Swal from 'sweetalert2';
@@ -6,6 +6,7 @@ import { CheckCircle2, CloudSun, GripHorizontal, RotateCcw, Snowflake, Waves } f
 import { createFeature } from '@/api/featureServices';
 import { useProjectId } from '@dashboards/forecaster/hooks/useStudio';
 import useForecasterWorkspaceSettings from '@dashboards/forecaster/hooks/useForecasterWorkspaceSettings';
+import DrawingPointerGuide from './DrawingPointerGuide';
 import {
   applyPostProcessSmoothing,
   getFinalCurvePoints,
@@ -270,7 +271,6 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
     : 50;
   const [lines, setLines] = useState([]);
   const [frontType, setFrontType] = useState('cold');
-  const [drawingActive, setDrawingActive] = useState(false);
   const [pointerGuide, setPointerGuide] = useState(null);
   const [stageBounds, setStageBounds] = useState(() => getStageBounds(mapRef));
   const activeLineRef = useRef(null);
@@ -291,21 +291,19 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
   const clearActiveLine = useCallback(() => {
     activeLineRef.current = null;
     setLines([]);
-    setPointerGuide(null);
-    setDrawingActive(false);
   }, []);
   const handleDown = useCallback((event) => {
     const frozenFrontType = normalizeFrontType(frontType);
     refreshStageBounds();
     isFlagDrawing.current = true;
-    setDrawingActive(true);
 
     const pos = getAdjustedPoint(event);
+    const stageRect = event.target.getStage().container().getBoundingClientRect();
     setPointerGuide({
-      rawX: pos.rawX,
-      rawY: pos.rawY,
-      adjustedX: pos.x,
-      adjustedY: pos.y,
+      rawClientX: stageRect.left + pos.rawX,
+      rawClientY: stageRect.top + pos.rawY,
+      adjustedClientX: stageRect.left + pos.x,
+      adjustedClientY: stageRect.top + pos.y,
     });
 
     const nextLine = {
@@ -317,15 +315,16 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
     setLines([nextLine]);
   }, [frontType, getAdjustedPoint, refreshStageBounds]);
   const handleMove = useCallback((event) => {
-    if (!isFlagDrawing.current) return;
-
     const pos = getAdjustedPoint(event);
+    const stageRect = event.target.getStage().container().getBoundingClientRect();
     setPointerGuide({
-      rawX: pos.rawX,
-      rawY: pos.rawY,
-      adjustedX: pos.x,
-      adjustedY: pos.y,
+      rawClientX: stageRect.left + pos.rawX,
+      rawClientY: stageRect.top + pos.rawY,
+      adjustedClientX: stageRect.left + pos.x,
+      adjustedClientY: stageRect.top + pos.y,
     });
+
+    if (!isFlagDrawing.current) return;
 
     const currentLine = activeLineRef.current;
     if (!currentLine) return;
@@ -357,9 +356,6 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
   const previewStyle = FRONT_TYPES[previewFrontType];
   const previewSymbols = previewLine ? (previewFrontType === 'stationary' ? makeStationaryPreviewSymbols(previewLine.points) : makePreviewSymbols(previewLine.points, previewFrontType)) : [];
   const stationarySegments = previewFrontType === 'stationary' && previewLine ? makeStationaryPreviewSegments(previewLine.points) : [];
-  const hasPointerOffset =
-    Math.abs(pointerOffsetX) > 0.1 || Math.abs(pointerOffsetY) > 0.1;
-
   return (
     <>
       <SurfaceFrontPanel
@@ -382,7 +378,7 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
           height: stageBounds.height,
           zIndex: 10,
           pointerEvents: 'auto',
-          cursor: drawingActive ? 'none' : 'crosshair',
+          cursor: 'none',
         }}
       >
         <Layer>
@@ -438,44 +434,10 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
             )
           )}
 
-          {drawingActive && pointerGuide && (
-            <>
-              {hasPointerOffset && (
-                <>
-                  <Line
-                    points={[
-                      pointerGuide.rawX,
-                      pointerGuide.rawY,
-                      pointerGuide.adjustedX,
-                      pointerGuide.adjustedY,
-                    ]}
-                    stroke={isDarkMode ? 'rgba(125,211,252,0.65)' : 'rgba(37,99,235,0.6)'}
-                    strokeWidth={1.5}
-                    dash={[4, 4]}
-                    listening={false}
-                  />
-                  <Circle
-                    x={pointerGuide.rawX}
-                    y={pointerGuide.rawY}
-                    radius={4}
-                    fill={isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(15,23,42,0.7)'}
-                    listening={false}
-                  />
-                </>
-              )}
-              <Circle
-                x={pointerGuide.adjustedX}
-                y={pointerGuide.adjustedY}
-                radius={6}
-                fill={isDarkMode ? '#22d3ee' : '#2563eb'}
-                stroke={isDarkMode ? '#ecfeff' : '#ffffff'}
-                strokeWidth={2}
-                listening={false}
-              />
-            </>
-          )}
+
         </Layer>
       </Stage>
+      <DrawingPointerGuide guide={pointerGuide} isDarkMode={isDarkMode} />
     </>
   );
 };
