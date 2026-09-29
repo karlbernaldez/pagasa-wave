@@ -6,10 +6,14 @@ import User from '../models/User.js';
 import { changePassword } from '../controllers/userController.js';
 
 function makeResponse() {
-  const state = { statusCode: 200, body: null };
+  const state = { statusCode: 200, body: null, clearedCookies: [] };
 
   return {
     state,
+    clearCookie(name) {
+      state.clearedCookies.push(name);
+      return this;
+    },
     status(code) {
       state.statusCode = code;
       return this;
@@ -84,6 +88,12 @@ test('password change is conditional on the exact password hash and cancels pend
   );
 
   assert.equal(res.state.statusCode, 200);
+  assert.equal(res.state.body.sessionRevoked, true);
+  assert.deepEqual(res.state.clearedCookies.sort(), [
+    'accessToken',
+    'refreshToken',
+    'wavelabTrustedDevice',
+  ]);
   assert.equal(updateFilter._id, loadedUser._id);
   assert.equal(updateFilter.password, verifiedPasswordHash);
   assert.equal(updateFilter.deletedAt, null);
