@@ -6,7 +6,7 @@ import { createAuditLog } from '#services/auditLog';
 import { logger } from '#utils/logger';
 
 import { parseCoordinates } from './utils/parseCoordinates.js';
-import { runLoginGuards } from './loginGuards.js';
+import { autoUnlockIfExpired, runLoginGuards } from './loginGuards.js';
 import { verifyCredentials, resetFailedAttempts } from './loginCredentials.js';
 import { handleSession } from './loginSession.js';
 
@@ -50,6 +50,8 @@ export const loginUser = async (req, res) => {
 
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
+
+    await autoUnlockIfExpired(user);
 
     const credError = await verifyCredentials(user, password, req, res, geoMeta);
     if (credError) return credError;
