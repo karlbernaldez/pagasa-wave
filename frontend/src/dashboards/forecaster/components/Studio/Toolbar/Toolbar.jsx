@@ -49,24 +49,24 @@ const getTheme = (isDarkMode) => ({
     ? 'studio-liquid-dark border-white/[0.18] text-white shadow-black/35'
     : 'studio-liquid-light border-white/80 text-slate-950 shadow-slate-400/20',
   button: isDarkMode
-    ? 'border-white/10 bg-white/[0.045] text-white/75 hover:border-white/15 hover:bg-white/[0.085] hover:text-white'
-    : 'border-white/75 bg-white/[0.52] text-slate-700 hover:border-blue-200 hover:bg-white/85 hover:text-slate-950',
+    ? 'border-transparent bg-transparent text-white/68 hover:border-white/10 hover:bg-white/[0.065] hover:text-white'
+    : 'border-transparent bg-transparent text-slate-600 hover:border-slate-200/70 hover:bg-white/55 hover:text-slate-950',
   disabled: isDarkMode
-    ? 'cursor-not-allowed border-white/[0.06] bg-white/[0.025] text-white/30'
-    : 'cursor-not-allowed border-white/60 bg-white/35 text-slate-400',
+    ? 'cursor-not-allowed border-transparent bg-transparent text-white/25'
+    : 'cursor-not-allowed border-transparent bg-transparent text-slate-300',
   active: isDarkMode
-    ? 'border-cyan-300/35 bg-cyan-400/[0.14] text-cyan-100 ring-1 ring-cyan-300/10'
-    : 'border-blue-300/75 bg-blue-500/[0.10] text-blue-800 ring-1 ring-blue-200/70',
+    ? 'border-cyan-300/25 bg-cyan-400/[0.11] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+    : 'border-blue-200/80 bg-blue-500/[0.09] text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]',
   iconRail: isDarkMode
-    ? 'bg-white/[0.07] ring-1 ring-white/10 text-white/80'
-    : 'bg-white/70 ring-1 ring-white/85 text-slate-700',
+    ? 'bg-transparent text-white/65'
+    : 'bg-transparent text-slate-600',
   activeIconRail: isDarkMode
-    ? 'bg-cyan-400/[0.14] ring-1 ring-cyan-300/20 text-cyan-100'
-    : 'bg-blue-500/[0.10] ring-1 ring-blue-200 text-blue-700',
-  divider: isDarkMode ? 'bg-white/10' : 'bg-slate-300/70',
-  subtle: isDarkMode ? 'text-white/45' : 'text-slate-500',
-  label: isDarkMode ? 'text-white/75' : 'text-slate-700',
-  activeLabel: isDarkMode ? 'text-cyan-100' : 'text-blue-800',
+    ? 'bg-cyan-400/[0.10] text-cyan-100'
+    : 'bg-blue-500/[0.08] text-blue-700',
+  divider: isDarkMode ? 'bg-white/[0.09]' : 'bg-slate-300/55',
+  subtle: isDarkMode ? 'text-white/40' : 'text-slate-500',
+  label: isDarkMode ? 'text-white/68' : 'text-slate-650',
+  activeLabel: isDarkMode ? 'text-cyan-100' : 'text-blue-700',
 });
 
 const getSafePosition = (position, width) => {
@@ -81,7 +81,7 @@ const getSafePosition = (position, width) => {
 };
 
 const Divider = ({ theme }) => (
-  <div className={cn('mx-0.5 h-8 w-px shrink-0', theme.divider)} aria-hidden="true" />
+  <div className={cn('mx-1 h-7 w-px shrink-0', theme.divider)} aria-hidden="true" />
 );
 
 const TrayButton = ({ active, activeClassName, disabled = false, icon, label, onClick, theme }) => (
@@ -92,14 +92,14 @@ const TrayButton = ({ active, activeClassName, disabled = false, icon, label, on
     onClick={disabled ? undefined : onClick}
     disabled={disabled}
     className={cn(
-      'studio-liquid-control flex h-11 min-w-[82px] shrink-0 items-center justify-center gap-2 rounded-xl border px-2.5 transition-all duration-150 disabled:opacity-100',
-      'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/40',
+      'studio-liquid-control flex h-10 min-w-[80px] shrink-0 items-center justify-center gap-2 rounded-xl border px-2.5 transition-all duration-150 disabled:opacity-100',
+      'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/35',
       disabled ? theme.disabled : active ? activeClassName || theme.active : theme.button
     )}
   >
     <span
       className={cn(
-        'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+        'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors',
         active ? theme.activeIconRail : theme.iconRail
       )}
     >
@@ -107,7 +107,7 @@ const TrayButton = ({ active, activeClassName, disabled = false, icon, label, on
     </span>
     <span
       className={cn(
-        'truncate text-[11px] font-black leading-tight tracking-[0.02em]',
+        'truncate text-[11px] font-bold leading-tight tracking-[0.015em]',
         active ? theme.activeLabel : theme.label
       )}
     >
@@ -125,7 +125,7 @@ const IconButton = ({ children, disabled = false, label, onClick, theme }) => (
     onClick={disabled ? undefined : onClick}
     disabled={disabled}
     className={cn(
-      'studio-liquid-control flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:opacity-100',
+      'studio-liquid-control flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:opacity-100',
       disabled ? theme.disabled : theme.button
     )}
   >
@@ -140,8 +140,7 @@ const FloatingShell = ({ children, isDragging, position, width, theme }) => (
   >
     <div
       className={cn(
-        'studio-liquid-panel relative rounded-2xl border p-2 shadow-2xl transition-shadow duration-200',
-        'before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:rounded-full before:bg-gradient-to-r before:from-transparent before:via-cyan-300/25 before:to-transparent',
+        'studio-liquid-panel relative rounded-2xl border p-1.5 shadow-2xl transition-shadow duration-200',
         isDragging && 'shadow-[0_24px_70px_rgba(34,211,238,0.2)]',
         theme.dock
       )}
@@ -348,7 +347,7 @@ const DrawToolbar = ({
       />
       <FloatingShell isDragging={isDragging} position={position} width={dockWidth} theme={theme}>
         {isCollapsed ? (
-          <div className="relative z-10 flex h-12 items-center gap-1.5">
+          <div className="relative z-10 flex h-11 items-center gap-1">
             <button
               type="button"
               aria-label="Open drawing tools"
@@ -358,7 +357,7 @@ const DrawToolbar = ({
             >
               <span
                 className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl',
+                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
                   theme.iconRail
                 )}
               >
@@ -371,13 +370,13 @@ const DrawToolbar = ({
             </button>
           </div>
         ) : (
-          <div className="relative z-10 flex h-12 min-w-0 items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+          <div className="relative z-10 flex h-11 min-w-0 items-center gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
             <button
               type="button"
               aria-label="Drag draw tools"
               title="Drag to move"
               className={cn(
-                'studio-liquid-control flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-xl border active:cursor-grabbing',
+                'studio-liquid-control flex h-10 w-10 shrink-0 cursor-grab touch-none items-center justify-center rounded-xl border active:cursor-grabbing',
                 theme.button
               )}
               {...dragHandleProps}
