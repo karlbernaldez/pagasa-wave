@@ -58,6 +58,7 @@ export const logoutAllDevices = async (req, res) => {
 
     return res.status(200).json({ message: 'Logged out from all devices.' });
   } catch {
+    await revokeTrustedDeviceFromRequest(req, res, 'logout_all').catch(() => {});
     clearAuthCookies(res);
     return res.status(500).json({ message: 'Failed to log out from all devices.' });
   }
