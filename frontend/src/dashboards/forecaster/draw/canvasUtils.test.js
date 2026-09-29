@@ -97,3 +97,16 @@ describe('optional post-process smoothing', () => {
     expect(processed.length % 2).toBe(0);
   });
 });
+
+
+it('caps dense post-processed geometry to a bounded point count', () => {
+  const dense = [];
+  for (let i = 0; i < 1200; i += 1) {
+    dense.push(i, Math.sin(i / 20) * 30);
+  }
+
+  const processed = applyPostProcessSmoothing(dense, 100);
+
+  expect(processed.length / 2).toBeLessThanOrEqual(480);
+  expect(processed.length % 2).toBe(0);
+});
