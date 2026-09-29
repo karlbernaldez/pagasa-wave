@@ -6,7 +6,11 @@ import { CheckCircle2, CloudSun, GripHorizontal, RotateCcw, Snowflake, Waves } f
 import { createFeature } from '@/api/featureServices';
 import { useProjectId } from '@dashboards/forecaster/hooks/useStudio';
 import useForecasterWorkspaceSettings from '@dashboards/forecaster/hooks/useForecasterWorkspaceSettings';
-import { getFinalCurvePoints, getPreviewCurvePoints } from './canvasUtils';
+import {
+  applyPostProcessSmoothing,
+  getFinalCurvePoints,
+  getPreviewCurvePoints,
+} from './canvasUtils';
 
 const COLORS = { cold: '#1d4ed8', warm: '#ef4444', occluded: '#7c3aed' };
 const FRONT_TYPES = {
@@ -258,6 +262,12 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
   const smoothingPercent = Number.isFinite(Number(workspaceSettings.drawingSmoothingPercent))
     ? Number(workspaceSettings.drawingSmoothingPercent)
     : 50;
+  const postProcessEnabled = workspaceSettings.drawingPostProcessEnabled === true;
+  const postProcessSmoothingPercent = Number.isFinite(
+    Number(workspaceSettings.drawingPostProcessSmoothingPercent)
+  )
+    ? Number(workspaceSettings.drawingPostProcessSmoothingPercent)
+    : 50;
   const [lines, setLines] = useState([]);
   const [frontType, setFrontType] = useState('cold');
   const [stageBounds, setStageBounds] = useState(() => getStageBounds(mapRef));
@@ -275,9 +285,16 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
   const clearActiveLine = useCallback(() => { activeLineRef.current = null; setLines([]); }, []);
   const handleDown = useCallback((event) => { const frozenFrontType = normalizeFrontType(frontType); refreshStageBounds(); isFlagDrawing.current = true; const pos = getAdjustedPoint(event); const nextLine = { points: [pos.x, pos.y], rawPoints: [pos.x, pos.y], frontType: frozenFrontType }; activeLineRef.current = nextLine; setLines([nextLine]); }, [frontType, getAdjustedPoint, refreshStageBounds]);
   const handleMove = useCallback((event) => { if (!isFlagDrawing.current) return; const pos = getAdjustedPoint(event); const currentLine = activeLineRef.current; if (!currentLine) return; const rawPoints = currentLine.rawPoints || currentLine.points || []; if (getDistanceFromLastPoint(rawPoints, pos.x, pos.y) < MIN_POINT_DISTANCE) return; const nextRawPoints = [...rawPoints, pos.x, pos.y]; const nextLine = { ...currentLine, rawPoints: nextRawPoints, points: getPreviewCurvePoints(nextRawPoints, smoothingPercent) }; activeLineRef.current = nextLine; setLines([nextLine]); }, [getAdjustedPoint, smoothingPercent]);
-  const handleUp = useCallback(async () => { const map = mapRef.current; const line = activeLineRef.current; const frozenFrontType = normalizeFrontType(line?.frontType || frontType); isFlagDrawing.current = false; if (!map || !line?.points || line.points.length < 4) { clearActiveLine(); return; } const finalPoints = getFinalCurvePoints(line.rawPoints || line.points, smoothingPercent, {
+  const handleUp = useCallback(async () => { const map = mapRef.current; const line = activeLineRef.current; const frozenFrontType = normalizeFrontType(line?.frontType || frontType); isFlagDrawing.current = false; if (!map || !line?.points || line.points.length < 4) { clearActiveLine(); return; } let finalPoints = getFinalCurvePoints(line.rawPoints || line.points, smoothingPercent, {
     closed: false,
-  }); if (!projectId) { clearActiveLine(); await Swal.fire({ icon: 'warning', title: 'No Project Selected', text: 'Please create or select a valid project before saving surface fronts.', confirmButtonColor: isDarkMode ? '#6366f1' : '#3b82f6' }); return; } const coords = []; for (let i = 0; i < finalPoints.length; i += 2) { const lngLat = map.unproject([finalPoints[i], finalPoints[i + 1]]); coords.push([lngLat.lng, lngLat.lat]); } const owner = JSON.parse(localStorage.getItem('user') || 'null'); const sourceId = `SF_${uuidv4()}`; const name = buildFrontName(frozenFrontType); const feature = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { isFront: true, frontType: frozenFrontType, owner: owner?.id, project: projectId, sourceId } }; const geojson = { type: 'FeatureCollection', features: [feature] }; try { await createFeature({ geometry: feature.geometry, properties: feature.properties, name, sourceId }); if (typeof setLayersRef?.current === 'function') setLayersRef.current((prevLayers) => [{ id: sourceId, sourceID: sourceId, name, visible: true, locked: false, type: name }, ...prevLayers.filter((layer) => layer.id !== sourceId && layer.sourceID !== sourceId)]); try { renderFrontLayers(map, sourceId, geojson, frozenFrontType); } catch (renderError) { console.warn('Surface front saved but could not be rendered locally:', renderError); } } catch (err) { console.error('Error saving surface front:', err); await Swal.fire({ icon: 'error', title: 'Save Failed', text: err?.message || 'Could not save surface front.', confirmButtonColor: isDarkMode ? '#6366f1' : '#3b82f6' }); removeFrontLayers(map, sourceId); if (map.getSource(sourceId)) map.removeSource(sourceId); } finally { clearActiveLine(); } }, [clearActiveLine, frontType, isDarkMode, mapRef, projectId, setLayersRef, smoothingPercent]);
+  });
+  if (postProcessEnabled) {
+    finalPoints = applyPostProcessSmoothing(
+      finalPoints,
+      postProcessSmoothingPercent,
+      { closed: false }
+    );
+  } if (!projectId) { clearActiveLine(); await Swal.fire({ icon: 'warning', title: 'No Project Selected', text: 'Please create or select a valid project before saving surface fronts.', confirmButtonColor: isDarkMode ? '#6366f1' : '#3b82f6' }); return; } const coords = []; for (let i = 0; i < finalPoints.length; i += 2) { const lngLat = map.unproject([finalPoints[i], finalPoints[i + 1]]); coords.push([lngLat.lng, lngLat.lat]); } const owner = JSON.parse(localStorage.getItem('user') || 'null'); const sourceId = `SF_${uuidv4()}`; const name = buildFrontName(frozenFrontType); const feature = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { isFront: true, frontType: frozenFrontType, owner: owner?.id, project: projectId, sourceId } }; const geojson = { type: 'FeatureCollection', features: [feature] }; try { await createFeature({ geometry: feature.geometry, properties: feature.properties, name, sourceId }); if (typeof setLayersRef?.current === 'function') setLayersRef.current((prevLayers) => [{ id: sourceId, sourceID: sourceId, name, visible: true, locked: false, type: name }, ...prevLayers.filter((layer) => layer.id !== sourceId && layer.sourceID !== sourceId)]); try { renderFrontLayers(map, sourceId, geojson, frozenFrontType); } catch (renderError) { console.warn('Surface front saved but could not be rendered locally:', renderError); } } catch (err) { console.error('Error saving surface front:', err); await Swal.fire({ icon: 'error', title: 'Save Failed', text: err?.message || 'Could not save surface front.', confirmButtonColor: isDarkMode ? '#6366f1' : '#3b82f6' }); removeFrontLayers(map, sourceId); if (map.getSource(sourceId)) map.removeSource(sourceId); } finally { clearActiveLine(); } }, [clearActiveLine, frontType, isDarkMode, mapRef, postProcessEnabled, postProcessSmoothingPercent, projectId, setLayersRef, smoothingPercent]);
   const previewLine = lines[lines.length - 1];
   const previewFrontType = normalizeFrontType(previewLine?.frontType || frontType);
   const previewStyle = FRONT_TYPES[previewFrontType];
