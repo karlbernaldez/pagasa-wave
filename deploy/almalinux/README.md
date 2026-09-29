@@ -51,7 +51,7 @@ deploy/almalinux/
 
 - AlmaLinux 9.x server
 - Repository checked out at `/opt/wavelab/app`
-- Backend runs on `127.0.0.1:5000`
+- Backend binds to `127.0.0.1:5000` and is reachable publicly only through Nginx
 - Frontend build output is `/opt/wavelab/app/frontend/dist`
 - Real secrets are stored in `/etc/wavelab/backend.env`
 - Frontend `.env.production` contains only browser-safe public values
@@ -110,6 +110,7 @@ Required values:
 ```text
 NODE_ENV=production
 PORT=5000
+BIND_HOST=127.0.0.1
 MONGO_URI=...
 REDIS_URL=redis://127.0.0.1:6379
 JWT_SECRET=...
@@ -210,6 +211,7 @@ Then point the systemd `WorkingDirectory` and Nginx root at `/opt/wavelab/curren
 
 - Redis is required before backend startup.
 - Nginx must proxy both `/api/` and `/socket.io/`.
+- Keep `BIND_HOST=127.0.0.1` in production. Express trusts only loopback proxy addresses when interpreting forwarded client IP/protocol headers.
 - SELinux may block Nginx proxying unless `httpd_can_network_connect` is enabled.
 - Backend logs are written under `/opt/wavelab/app/backend/logs` and should be monitored for disk usage.
 - Real env files must never be committed.
