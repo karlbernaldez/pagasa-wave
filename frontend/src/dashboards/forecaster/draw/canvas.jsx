@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { createFeature } from '@/api/featureServices';
 import { getPreviewCurvePoints, handlePointerUp } from './canvasUtils';
 import useForecasterWorkspaceSettings from '@dashboards/forecaster/hooks/useForecasterWorkspaceSettings';
+import DrawingPointerGuide from './DrawingPointerGuide';
 import { useProjectId } from '@dashboards/forecaster/hooks/useStudio';
 import { CheckCircle2, GripHorizontal, Minus, Plus, RotateCcw, Waves } from 'lucide-react';
 
@@ -159,8 +160,7 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
   const pointerIdRef = useRef(null);
   const isDrawing = useRef(false);
   const drawLock = useRef(false);
-  const pointerGuideRef = useRef(null);
-  const [drawingActive, setDrawingActive] = useState(false);
+  const [pointerGuide, setPointerGuide] = useState(null);
   const [labelValue, setLabelValue] = useState(3);
   const [localClosedMode, setLocalClosedMode] = useState(Boolean(closedMode));
   const [projectId] = useProjectId();
@@ -229,40 +229,6 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
       ctx.restore();
     }
 
-    const guide = pointerGuideRef.current;
-    if (guide) {
-      const hasOffset =
-        Math.abs(guide.adjustedX - guide.rawX) > 0.1 ||
-        Math.abs(guide.adjustedY - guide.rawY) > 0.1;
-
-      ctx.save();
-
-      if (hasOffset) {
-        ctx.beginPath();
-        ctx.moveTo(guide.rawX, guide.rawY);
-        ctx.lineTo(guide.adjustedX, guide.adjustedY);
-        ctx.strokeStyle = isDarkMode ? 'rgba(125,211,252,0.65)' : 'rgba(37,99,235,0.6)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(guide.rawX, guide.rawY, 4, 0, Math.PI * 2);
-        ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(15,23,42,0.7)';
-        ctx.fill();
-      }
-
-      ctx.beginPath();
-      ctx.arc(guide.adjustedX, guide.adjustedY, 6, 0, Math.PI * 2);
-      ctx.fillStyle = isDarkMode ? '#22d3ee' : '#2563eb';
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = isDarkMode ? '#ecfeff' : '#ffffff';
-      ctx.setLineDash([]);
-      ctx.stroke();
-
-      ctx.restore();
-    }
   }, [isDarkMode, labelValue]);
 
   const schedulePreviewDraw = useCallback(() => { if (rafRef.current) return; rafRef.current = window.requestAnimationFrame(() => { rafRef.current = null; drawPreview(); }); }, [drawPreview]);
@@ -283,16 +249,28 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
     const x = rawX + pointerOffsetX;
     const y = rawY + pointerOffsetY;
 
-    pointerGuideRef.current = { rawX, rawY, adjustedX: x, adjustedY: y };
+    setPointerGuide({
+      rawClientX: event.clientX,
+      rawClientY: event.clientY,
+      adjustedClientX: event.clientX + pointerOffsetX,
+      adjustedClientY: event.clientY + pointerOffsetY,
+    });
     pointerIdRef.current = event.pointerId;
     isDrawing.current = true;
-    setDrawingActive(true);
     lastPreviewTimeRef.current = 0;
     activeLineRef.current = { points: [x, y], rawPoints: [x, y] };
     schedulePreviewDraw();
   }, [pointerOffsetX, pointerOffsetY, resizeCanvas, schedulePreviewDraw]);
   const onPointerMove = useCallback((event) => {
     if (drawLock.current) return;
+
+    setPointerGuide({
+      rawClientX: event.clientX,
+      rawClientY: event.clientY,
+      adjustedClientX: event.clientX + pointerOffsetX,
+      adjustedClientY: event.clientY + pointerOffsetY,
+    });
+
     if (!isDrawing.current || pointerIdRef.current !== event.pointerId) return;
     event.preventDefault();
 
@@ -301,8 +279,6 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
     const rawY = event.clientY - rect.top;
     const x = rawX + pointerOffsetX;
     const y = rawY + pointerOffsetY;
-
-    pointerGuideRef.current = { rawX, rawY, adjustedX: x, adjustedY: y };
 
     const line = activeLineRef.current;
     if (!line) return;
@@ -328,8 +304,6 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
     event?.currentTarget?.releasePointerCapture?.(event.pointerId);
     const line = activeLineRef.current;
     pointerIdRef.current = null;
-    pointerGuideRef.current = null;
-    setDrawingActive(false);
     if (!line?.rawPoints || line.rawPoints.length < 4) {
       isDrawing.current = false;
       activeLineRef.current = null;
@@ -369,9 +343,13 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
         onPointerMove={onPointerMove}
         onPointerUp={finishDrawing}
         onPointerCancel={finishDrawing}
+        onPointerLeave={() => {
+          if (!isDrawing.current) setPointerGuide(null);
+        }}
         className="fixed z-10 touch-none pointer-events-auto"
-        style={{ cursor: drawingActive ? 'none' : 'crosshair' }}
+        style={{ cursor: 'none' }}
       />
+      <DrawingPointerGuide guide={pointerGuide} isDarkMode={isDarkMode} />
     </>
   );
 };
