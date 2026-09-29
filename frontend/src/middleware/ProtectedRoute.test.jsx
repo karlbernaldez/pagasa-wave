@@ -142,4 +142,27 @@ describe('ProtectedRoute session verification', () => {
     expect(await screen.findByText('Forecast workspace')).toBeInTheDocument();
     expect(screen.queryByText('Public-only page')).not.toBeInTheDocument();
   });
+
+  it('keeps the login route usable when session verification is unavailable', async () => {
+    checkAuthSession.mockResolvedValue({
+      authenticated: false,
+      user: null,
+      unavailable: true,
+    });
+
+    renderProtectedRoute({
+      requireAuth: false,
+      element: (
+        <ProtectedRoute requireAuth={false} authenticatedRedirect="/studio">
+          <div>Login page</div>
+        </ProtectedRoute>
+      ),
+    });
+
+    expect(await screen.findByText('Login page')).toBeInTheDocument();
+    expect(screen.queryByText('Unable to verify your session')).not.toBeInTheDocument();
+    expect(setIsLoggedIn).not.toHaveBeenCalledWith(false);
+    expect(setRole).not.toHaveBeenCalledWith(null);
+  });
+
 });
