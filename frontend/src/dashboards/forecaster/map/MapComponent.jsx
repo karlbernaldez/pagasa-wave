@@ -242,6 +242,11 @@ const MapComponent = ({
 }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
+  const isDarkModeRef = useRef(isDarkMode);
+
+  useEffect(() => {
+    isDarkModeRef.current = isDarkMode;
+  }, [isDarkMode]);
 
   // Initialize map (runs once)
   useEffect(() => {
@@ -343,6 +348,11 @@ const MapComponent = ({
                   window.clearTimeout(studioSetupTimeout);
                   studioSetupTimeout = null;
                 }
+
+                // Studio setup can add or rebuild basemap-related layers.
+                // Reapply the latest theme only after setup has settled so
+                // a refresh cannot leave the map in the neutral/default style.
+                applyTheme(map, isDarkModeRef.current);
                 releaseLoading();
               });
           } catch (error) {
@@ -354,8 +364,9 @@ const MapComponent = ({
             }
           }
 
-          // Apply initial theme after the custom style is fully available.
-          applyTheme(map, isDarkMode);
+          // Apply once immediately, then again after Studio setup settles.
+          // The ref avoids using a stale theme captured by this one-time effect.
+          applyTheme(map, isDarkModeRef.current);
         });
       } catch (error) {
         console.error('[MapComponent] Failed to initialize map:', error);
@@ -381,13 +392,14 @@ const MapComponent = ({
 
   // Theme updates (NO style reload)
   useEffect(() => {
-    if (!mapRef.current) return undefined;
     const map = mapRef.current;
-    if (applyTheme(map, isDarkMode)) return undefined;
+    if (!map) return undefined;
 
-    const applyWhenReady = () => applyTheme(map, isDarkMode);
-    map.once('styledata', applyWhenReady);
-    return () => map.off('styledata', applyWhenReady);
+    const applyCurrentTheme = () => applyTheme(map, isDarkModeRef.current);
+    if (applyCurrentTheme()) return undefined;
+
+    map.once('styledata', applyCurrentTheme);
+    return () => map.off('styledata', applyCurrentTheme);
   }, [isDarkMode]);
 
   return (
