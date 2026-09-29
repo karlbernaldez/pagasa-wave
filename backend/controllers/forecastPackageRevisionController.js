@@ -12,6 +12,7 @@ import {
 } from '../utils/forecastPackage.js';
 import { saveForecastPackageSnapshot } from '../utils/forecastPackageSnapshot.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
+import { supersedePackageReviewChecklist } from '../services/reviewChecklistService.js';
 
 const REVISION_SOURCE_STATUSES = new Set([
   FORECAST_PACKAGE_STATUS.UNDER_REVIEW,
@@ -287,6 +288,8 @@ async function applyTargetedRevision({
     if (projectOperations.length) {
       await Project.bulkWrite(projectOperations, session ? { session } : undefined);
     }
+
+    await supersedePackageReviewChecklist(forecastPackage._id, userId, { session });
   } catch (error) {
     if (snapshot) {
       try {

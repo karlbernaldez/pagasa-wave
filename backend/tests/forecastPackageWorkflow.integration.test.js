@@ -12,6 +12,8 @@ async function loadModules() {
   const reviewController = await import('../controllers/' + 'forecast' + 'PackageController.js');
   const packageModel = await import('../models/' + 'Forecast' + 'Package.js');
   const projectModel = await import('../models/Project.js');
+  const checklistModel = await import('../models/ForecastPackageReviewChecklist.js');
+  const checklistDefinitionModel = await import('../models/ReviewChecklistDefinition.js');
   return {
     mongoose: mongoose.default,
     workflow,
@@ -22,6 +24,8 @@ async function loadModules() {
     },
     ForecastPackage: packageModel.default,
     Project: projectModel.default,
+    ForecastPackageReviewChecklist: checklistModel.default,
+    ReviewChecklistDefinition: checklistDefinitionModel.default,
   };
 }
 
@@ -42,7 +46,7 @@ function createQuery(result) {
 
 function createPackage(workflow, status = workflow.FORECAST_PACKAGE_STATUS.DRAFT) {
   return {
-    _id: 'package-1',
+    _id: '507f1f77bcf86cd799439011',
     owner: ownerId(),
     status,
     charts: workflow.REQUIRED_FORECAST_CHART_TYPES.map((chartType, index) => ({
@@ -87,7 +91,7 @@ function createPackage(workflow, status = workflow.FORECAST_PACKAGE_STATUS.DRAFT
 
 function req(overrides = {}) {
   return {
-    params: { id: 'package-1' },
+    params: { id: '507f1f77bcf86cd799439011' },
     body: {},
     query: {},
     user: { id: OWNER_ID, role: 'forecaster' },
@@ -124,6 +128,8 @@ async function withMockedModels(
     mongoose,
     ForecastPackage,
     Project,
+    ForecastPackageReviewChecklist,
+    ReviewChecklistDefinition,
     packageFactory,
     updateMany = async () => ({ modifiedCount: 0 }),
   },
@@ -132,6 +138,9 @@ async function withMockedModels(
   const originalStartSession = mongoose.startSession;
   const originalFindById = ForecastPackage.findById;
   const originalUpdateMany = Project.updateMany;
+  const originalChecklistFindOne = ForecastPackageReviewChecklist.findOne;
+  const originalChecklistCreate = ForecastPackageReviewChecklist.create;
+  const originalDefinitionFindOne = ReviewChecklistDefinition.findOne;
   let findByIdCalls = 0;
 
   const session = {
@@ -148,6 +157,36 @@ async function withMockedModels(
     return findByIdCalls === 1 ? forecastPackage : createQuery(forecastPackage);
   };
   Project.updateMany = updateMany;
+  ForecastPackageReviewChecklist.findOne = (filter) => ({
+    sort() {
+      return this;
+    },
+    lean: async () => (filter?.status === 'Active' ? null : null),
+  });
+  ForecastPackageReviewChecklist.create = async (payload) => ({
+    _id: '507f1f77bcf86cd799439013',
+    ...payload,
+  });
+  ReviewChecklistDefinition.findOne = () => ({
+    lean: async () => ({
+      _id: '507f1f77bcf86cd799439014',
+      name: 'Operational Review',
+      version: 1,
+      isActive: true,
+      items: [
+        {
+          _id: '507f1f77bcf86cd799439015',
+          key: 'forecast_cycle',
+          label: 'Forecast cycle verified',
+          description: '',
+          isRequired: true,
+          allowNotApplicable: false,
+          sortOrder: 10,
+          isActive: true,
+        },
+      ],
+    }),
+  });
 
   try {
     return await fn();
@@ -155,11 +194,22 @@ async function withMockedModels(
     mongoose.startSession = originalStartSession;
     ForecastPackage.findById = originalFindById;
     Project.updateMany = originalUpdateMany;
+    ForecastPackageReviewChecklist.findOne = originalChecklistFindOne;
+    ForecastPackageReviewChecklist.create = originalChecklistCreate;
+    ReviewChecklistDefinition.findOne = originalDefinitionFindOne;
   }
 }
 
 test('forecast package can move from forecaster submission to reviewer review without exposing draft package state', async () => {
-  const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
+  const {
+    mongoose,
+    workflow,
+    controller,
+    ForecastPackage,
+    Project,
+    ForecastPackageReviewChecklist,
+    ReviewChecklistDefinition,
+  } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
   let updateManyPayload;
 
@@ -168,6 +218,8 @@ test('forecast package can move from forecaster submission to reviewer review wi
       mongoose,
       ForecastPackage,
       Project,
+      ForecastPackageReviewChecklist,
+      ReviewChecklistDefinition,
       packageFactory: () => pkg,
       updateMany: async (filter, update) => {
         updateManyPayload = { filter, update };
@@ -205,7 +257,15 @@ test('forecast package can move from forecaster submission to reviewer review wi
 });
 
 test('reviewer cannot start review until a package has been submitted', async () => {
-  const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
+  const {
+    mongoose,
+    workflow,
+    controller,
+    ForecastPackage,
+    Project,
+    ForecastPackageReviewChecklist,
+    ReviewChecklistDefinition,
+  } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.DRAFT);
 
   await withMockedModels(
@@ -213,6 +273,8 @@ test('reviewer cannot start review until a package has been submitted', async ()
       mongoose,
       ForecastPackage,
       Project,
+      ForecastPackageReviewChecklist,
+      ReviewChecklistDefinition,
       packageFactory: () => pkg,
     },
     async () => {
@@ -236,7 +298,15 @@ test('reviewer cannot start review until a package has been submitted', async ()
 });
 
 test('participating forecaster can resubmit a revision-requested package and relock linked chart projects', async () => {
-  const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
+  const {
+    mongoose,
+    workflow,
+    controller,
+    ForecastPackage,
+    Project,
+    ForecastPackageReviewChecklist,
+    ReviewChecklistDefinition,
+  } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.REVISION_REQUESTED);
   pkg.chartCompletion[1].completedBy = PARTICIPANT_ID;
   let updateManyPayload;
@@ -246,6 +316,8 @@ test('participating forecaster can resubmit a revision-requested package and rel
       mongoose,
       ForecastPackage,
       Project,
+      ForecastPackageReviewChecklist,
+      ReviewChecklistDefinition,
       packageFactory: () => pkg,
       updateMany: async (filter, update) => {
         updateManyPayload = { filter, update };
@@ -285,7 +357,15 @@ test('participating forecaster can resubmit a revision-requested package and rel
 });
 
 test('reviewer revision request returns package and linked submitted chart projects to revision requested', async () => {
-  const { mongoose, workflow, controller, ForecastPackage, Project } = await loadModules();
+  const {
+    mongoose,
+    workflow,
+    controller,
+    ForecastPackage,
+    Project,
+    ForecastPackageReviewChecklist,
+    ReviewChecklistDefinition,
+  } = await loadModules();
   const pkg = createPackage(workflow, workflow.FORECAST_PACKAGE_STATUS.UNDER_REVIEW);
   const comment = 'Update the 36h forecast notes before resubmission.';
   let updateManyPayload;
@@ -295,6 +375,8 @@ test('reviewer revision request returns package and linked submitted chart proje
       mongoose,
       ForecastPackage,
       Project,
+      ForecastPackageReviewChecklist,
+      ReviewChecklistDefinition,
       packageFactory: () => pkg,
       updateMany: async (filter, update) => {
         updateManyPayload = { filter, update };

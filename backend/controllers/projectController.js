@@ -768,6 +768,8 @@ export const archiveProject = asyncHandler(async (req, res) => {
   const previousStatus = project.status;
   const expectedUpdatedAt = project.updatedAt;
   project.status = PROJECT_STATUS.ARCHIVED;
+  project.archivedAt = new Date();
+  project.archivedBy = req.user.id;
   project.auditLogs.push({
     action: 'archived',
     performedBy: req.user.id,

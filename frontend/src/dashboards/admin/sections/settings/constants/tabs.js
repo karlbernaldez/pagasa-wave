@@ -1,10 +1,10 @@
 import {
+  ClipboardCheck,
   FileText,
   LayoutDashboard,
   Mail,
   MapPinned,
   Settings,
-  ShieldCheck,
   Workflow,
 } from 'lucide-react';
 
@@ -12,23 +12,26 @@ export const SETTINGS_GROUPS = [
   {
     id: 'forecastOperations',
     label: 'Forecast Operations',
-    description: 'Operational timing, package windows, archive policy, and no-publication options.',
+    description:
+      'Operational submission, publication, cutoff timing, and forecaster deadline reminders.',
   },
   {
     id: 'forecasterWorkspace',
     label: 'Forecaster Workspace',
     description:
-      'Helper copy, workspace defaults, collaboration reminders, map defaults, and forecaster-facing guidance.',
+      'Forecaster workspace copy, collaboration guidance, QA reminders, and Studio map defaults.',
   },
   {
     id: 'adminReview',
     label: 'Admin Review',
-    description: 'Review SLA targets and admin-facing package resolution settings.',
+    description:
+      'Versioned operational review checklist configuration and package review controls.',
   },
   {
     id: 'publicSite',
     label: 'Public Site',
-    description: 'Public dashboard branding, About page content, and Contact page content.',
+    description:
+      'Published chart presentation, public map bounds, About content, and Contact content.',
   },
 ];
 
@@ -61,13 +64,14 @@ export const TABS = [
     managePermission: 'settings_map_view.manage',
   },
   {
-    id: 'adminReview',
-    label: 'Review Targets',
-    icon: ShieldCheck,
+    id: 'reviewChecklist',
+    label: 'Review Checklist',
+    icon: ClipboardCheck,
     group: 'adminReview',
     apiPage: null,
-    viewPermission: 'settings_review_targets.view',
-    managePermission: 'settings_review_targets.manage',
+    viewPermission: 'settings_review_checklist.view',
+    managePermission: 'settings_review_checklist.manage',
+    standaloneSave: true,
   },
   {
     id: 'general',

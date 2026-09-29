@@ -99,6 +99,8 @@ const ProjectSchema = new Schema(
     rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     reviewComment: String,
     publishedAt: Date,
+    archivedAt: Date,
+    archivedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     publishedRaster: { type: Schema.Types.Mixed, default: null },
 
     noPublicationAt: Date,

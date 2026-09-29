@@ -42,6 +42,7 @@ test('permission catalog exposes unique stable canonical permission keys', () =>
   assert.ok(PERMISSION_KEYS.includes('roles.edit'));
   assert.ok(PERMISSION_KEYS.includes('wave_models.delete_package'));
   assert.ok(PERMISSION_KEYS.includes('settings_map_view.manage'));
+  assert.ok(PERMISSION_KEYS.includes('settings_review_checklist.manage'));
   assert.ok(PERMISSION_KEYS.includes('analytics_forecast.view'));
   assert.ok(PERMISSION_KEYS.includes('analytics.export'));
 });
@@ -115,14 +116,22 @@ test('broad settings permissions imply child capabilities without sibling escala
   assert.ok(fullSettings.has('settings.view'));
   assert.ok(fullSettings.has('settings_schedule.manage'));
   assert.ok(fullSettings.has('settings_map_view.manage'));
+  assert.ok(fullSettings.has('settings_review_checklist.manage'));
   assert.ok(fullSettings.has('settings_public_contact.manage'));
   assert.ok(fullSettings.has('settings_public_contact.view'));
 
   const mapOnly = new Set(normalizePermissionKeys(['settings_map_view.manage']));
   assert.ok(mapOnly.has('settings_map_view.view'));
   assert.equal(mapOnly.has('settings_schedule.view'), false);
+  assert.equal(mapOnly.has('settings_review_checklist.view'), false);
   assert.equal(mapOnly.has('settings_public_contact.manage'), false);
   assert.equal(mapOnly.has('settings.view'), false);
+
+  const checklistOnly = new Set(normalizePermissionKeys(['settings_review_checklist.manage']));
+  assert.ok(checklistOnly.has('settings_review_checklist.view'));
+  assert.equal(checklistOnly.has('settings_review_targets.view'), false);
+  assert.equal(checklistOnly.has('settings_map_view.manage'), false);
+  assert.equal(checklistOnly.has('settings.view'), false);
 });
 
 test('broad analytics view implies scoped analytics views without unrelated permissions', () => {

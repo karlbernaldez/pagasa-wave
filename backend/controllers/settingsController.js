@@ -4,6 +4,11 @@ import {
   buildMapViewSettingsResponse,
   parseMapViewSettingsPayload,
 } from '../utils/mapViewSettings.js';
+import {
+  parseForecasterWorkspaceSettingsPayload,
+  parseGeneralSettingsPayload,
+  parseOperationsSettingsPayload,
+} from '../utils/runtimeSettings.js';
 
 const ALLOWED_PAGES = [
   'general',
@@ -33,12 +38,8 @@ const sanitizeObject = (value) => {
   const clean = {};
 
   for (const key of Object.keys(value)) {
-    if (
-      key.startsWith('$') ||
-      key.includes('.') ||
-      key === '__proto__' ||
-      key === 'constructor'
-    ) continue;
+    if (key.startsWith('$') || key.includes('.') || key === '__proto__' || key === 'constructor')
+      continue;
 
     clean[key] = sanitizeObject(value[key]);
   }
@@ -59,6 +60,15 @@ const parseSettingsPayload = (page, payload) => {
 
   if (page === MAP_VIEW_SETTINGS_PAGE) {
     return parseMapViewSettingsPayload(sanitizedData);
+  }
+  if (page === 'operations') {
+    return parseOperationsSettingsPayload(sanitizedData);
+  }
+  if (page === 'forecasterworkspace') {
+    return parseForecasterWorkspaceSettingsPayload(sanitizedData);
+  }
+  if (page === 'general') {
+    return parseGeneralSettingsPayload(sanitizedData);
   }
 
   return sanitizedData;
@@ -146,7 +156,8 @@ export const saveSettings = async (req, res) => {
      * Optional: enforce max size (prevent abuse)
      */
     const payloadSize = JSON.stringify(sanitizedData).length;
-    if (payloadSize > 50_000) {
+    const payloadLimit = page === 'general' ? 750_000 : 50_000;
+    if (payloadSize > payloadLimit) {
       return res.status(413).json({
         message: 'Settings payload too large.',
       });
@@ -167,7 +178,6 @@ export const saveSettings = async (req, res) => {
     );
 
     return res.status(200).json(resolveSettingsResponse(page, doc.data));
-
   } catch (err) {
     console.error('[settings] PUT error:', err);
 

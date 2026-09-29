@@ -36,6 +36,7 @@ const FULL_OPERATIONAL_PERMISSIONS = [
   'settings_workspace.view',
   'settings_map_view.view',
   'settings_review_targets.view',
+  'settings_review_checklist.view',
   'settings_public_general.view',
   'settings_public_about.view',
   'settings_public_contact.view',
@@ -141,7 +142,7 @@ describe('OperationalDashboardShell permission-driven navigation', () => {
     const ids = visibleItemIds(
       buildDashboardSidebarGroups({
         role: 'scoped_observer',
-        permissions: ['analytics_forecast.view', 'settings_map_view.view'],
+        permissions: ['analytics_forecast.view', 'settings_review_checklist.view'],
       })
     );
 

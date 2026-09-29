@@ -1,20 +1,17 @@
 import { v4 as uuidv4 } from 'uuid';
 import Swal from 'sweetalert2';
-import { useProjectId } from "@dashboards/forecaster/hooks/useStudio";
 import { fetchProjectById } from '@/api/projectAPI';
 
-const PREVIEW_SMOOTHING_FACTOR = 0.34;
 const MIN_DRAW_POINT_DISTANCE = 3.5;
-const PREVIEW_SIMPLIFY_TOLERANCE = 1.6;
-const PREVIEW_SPLINE_TENSION = 0.46;
 const PREVIEW_MIN_CURVE_SEGMENTS = 4;
 const PREVIEW_MAX_CURVE_SEGMENTS = 14;
 const PREVIEW_SEGMENT_LENGTH = 8;
-const FINAL_SIMPLIFY_TOLERANCE = 0.75;
-const FINAL_SPLINE_TENSION = 0.5;
 const FINAL_MIN_CURVE_SEGMENTS = 10;
 const FINAL_MAX_CURVE_SEGMENTS = 36;
 const FINAL_SEGMENT_LENGTH = 3;
+const FINAL_SPLINE_TENSION = 0.5;
+const FINAL_SIMPLIFY_TOLERANCE = 0.75;
+const EPSILON = 1e-9;
 const PREVIEW_MOVE_THROTTLE = 24;
 
 /**
@@ -22,12 +19,7 @@ const PREVIEW_MOVE_THROTTLE = 24;
  * Creates a smooth, pressure-sensitive stroke outline
  */
 export const getStrokeOutlinePoints = (points, options = {}) => {
-  const {
-    size = 8,
-    thinning = 0.5,
-    smoothing = 0.5,
-    streamline = 0.5,
-  } = options;
+  const { size = 8, thinning = 0.5, smoothing: _smoothing = 0.5, streamline = 0.5 } = options;
 
   if (points.length < 2) return [];
 
@@ -110,7 +102,7 @@ export const reducePoints = (points, tolerance = 5) => {
   const simplified = douglasPeucker(pointObjs, tolerance);
 
   const result = [];
-  simplified.forEach(p => {
+  simplified.forEach((p) => {
     result.push(p.x, p.y);
   });
 
@@ -180,6 +172,58 @@ export const lightSmoothPoints = (points, factor = 0.3) => {
   }
 
   return result;
+};
+
+const toPointPairs = (points) => {
+  const pairs = [];
+  for (let i = 0; i < points.length; i += 2) {
+    pairs.push([points[i], points[i + 1]]);
+  }
+  return pairs;
+};
+
+const flattenPointPairs = (pairs) => pairs.flatMap(([x, y]) => [x, y]);
+
+const samePoint = (a, b, epsilon = 0.001) =>
+  Math.abs(a[0] - b[0]) <= epsilon && Math.abs(a[1] - b[1]) <= epsilon;
+
+/**
+ * Chaikin corner cutting.
+ * Unlike the cardinal spline below, this does not force the final curve through
+ * every hand-drawn anchor, so higher smoothing values genuinely round corners.
+ */
+export const cornerCutPoints = (points, passes = 0, { closed = false } = {}) => {
+  if (passes <= 0 || points.length < 6) return points;
+
+  let pairs = toPointPairs(points);
+
+  if (closed && pairs.length > 2 && samePoint(pairs[0], pairs.at(-1))) {
+    pairs = pairs.slice(0, -1);
+  }
+
+  for (let pass = 0; pass < passes; pass += 1) {
+    if (pairs.length < 3) break;
+
+    const next = [];
+
+    if (!closed) next.push(pairs[0]);
+
+    const edgeCount = closed ? pairs.length : pairs.length - 1;
+    for (let i = 0; i < edgeCount; i += 1) {
+      const a = pairs[i];
+      const b = pairs[(i + 1) % pairs.length];
+
+      next.push(
+        [a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25],
+        [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]
+      );
+    }
+
+    if (!closed) next.push(pairs.at(-1));
+    pairs = next;
+  }
+
+  return flattenPointPairs(pairs);
 };
 
 /**
@@ -256,13 +300,34 @@ export const smoothPoints = (points, tension = FINAL_SPLINE_TENSION, options = {
   return removeDuplicates(result, duplicateEpsilon);
 };
 
-export const getPreviewCurvePoints = (rawPoints) => {
+const clampSmoothingPercent = (value) => Math.max(0, Math.min(100, Number(value) || 0));
+
+export const getDrawingSmoothingProfile = (percent = 50) => {
+  const amount = clampSmoothingPercent(percent) / 100;
+
+  return {
+    previewFactor: 0.72 - amount * 0.5,
+    previewTension: 0.18 + amount * 0.48,
+    previewTolerance: 0.35 + amount * 1.75,
+    finalTension: 0.2 + amount * 0.5,
+    finalTolerance: 0.2 + amount * 1.15,
+    previewCornerCutPasses: amount >= 0.9 ? 3 : amount >= 0.75 ? 2 : amount >= 0.6 ? 1 : 0,
+    finalCornerCutPasses:
+      amount >= 0.9 ? 4 : amount >= 0.75 ? 3 : amount >= 0.6 ? 2 : amount >= 0.45 ? 1 : 0,
+  };
+};
+
+export const getPreviewCurvePoints = (rawPoints, smoothingPercent = 50) => {
+  const profile = getDrawingSmoothingProfile(smoothingPercent);
+
   if (rawPoints.length < 8) {
-    return lightSmoothPoints(rawPoints, PREVIEW_SMOOTHING_FACTOR);
+    return lightSmoothPoints(rawPoints, profile.previewFactor);
   }
 
-  return smoothPoints(rawPoints, PREVIEW_SPLINE_TENSION, {
-    simplifyTolerance: PREVIEW_SIMPLIFY_TOLERANCE,
+  const roundedPoints = cornerCutPoints(rawPoints, profile.previewCornerCutPasses);
+
+  return smoothPoints(roundedPoints, profile.previewTension, {
+    simplifyTolerance: profile.previewTolerance,
     minSegments: PREVIEW_MIN_CURVE_SEGMENTS,
     maxSegments: PREVIEW_MAX_CURVE_SEGMENTS,
     segmentLength: PREVIEW_SEGMENT_LENGTH,
@@ -270,13 +335,137 @@ export const getPreviewCurvePoints = (rawPoints) => {
   });
 };
 
-const getFinalCurvePoints = (rawPoints) => {
-  return smoothPoints(rawPoints, FINAL_SPLINE_TENSION, {
-    simplifyTolerance: FINAL_SIMPLIFY_TOLERANCE,
+export const getFinalCurvePoints = (rawPoints, smoothingPercent = 50, { closed = false } = {}) => {
+  const profile = getDrawingSmoothingProfile(smoothingPercent);
+  const roundedPoints = cornerCutPoints(rawPoints, profile.finalCornerCutPasses, { closed });
+
+  if (closed && profile.finalCornerCutPasses > 0) {
+    // Chaikin already produces a dense, rounded closed path. Returning it
+    // directly avoids reintroducing a seam through an open-ended spline.
+    return roundedPoints;
+  }
+
+  return smoothPoints(roundedPoints, profile.finalTension, {
+    simplifyTolerance: profile.finalTolerance,
     minSegments: FINAL_MIN_CURVE_SEGMENTS,
     maxSegments: FINAL_MAX_CURVE_SEGMENTS,
     segmentLength: FINAL_SEGMENT_LENGTH,
     duplicateEpsilon: 0.35,
+  });
+};
+
+export const getPostProcessSmoothingPasses = (percent = 50) => {
+  const amount = clampSmoothingPercent(percent);
+  if (amount <= 0) return 0;
+  if (amount <= 20) return 1;
+  if (amount <= 40) return 2;
+  if (amount <= 60) return 3;
+  if (amount <= 80) return 4;
+  return 5;
+};
+
+const MAX_POST_PROCESS_POINTS = 480;
+
+function interpolatePoint(a, b, t) {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+
+/**
+ * Resample a dense smoothed path at even arc-length intervals.
+ * This preserves the visual curve while preventing smoothing passes from
+ * producing thousands of nearly redundant coordinates.
+ */
+export const resamplePointsByArcLength = (
+  points,
+  maxPoints = MAX_POST_PROCESS_POINTS,
+  { closed = false } = {}
+) => {
+  if (!Array.isArray(points) || points.length < 4) return points;
+
+  let pairs = toPointPairs(points);
+  if (pairs.length <= maxPoints) return points;
+
+  if (closed && pairs.length > 2 && samePoint(pairs[0], pairs.at(-1))) {
+    pairs = pairs.slice(0, -1);
+  }
+
+  const segments = [];
+  let totalLength = 0;
+  const segmentCount = closed ? pairs.length : pairs.length - 1;
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const start = pairs[index];
+    const end = pairs[(index + 1) % pairs.length];
+    const length = Math.hypot(end[0] - start[0], end[1] - start[1]);
+    if (length <= EPSILON) continue;
+
+    segments.push({
+      start,
+      end,
+      length,
+      startDistance: totalLength,
+    });
+    totalLength += length;
+  }
+
+  if (!segments.length || totalLength <= EPSILON) return points;
+
+  const sampleCount = Math.max(2, Math.min(maxPoints, closed ? maxPoints : maxPoints - 1));
+  const result = [];
+
+  const pointAtDistance = (distance) => {
+    const normalizedDistance = closed
+      ? ((distance % totalLength) + totalLength) % totalLength
+      : Math.max(0, Math.min(totalLength, distance));
+
+    const segment =
+      segments.find((item) => normalizedDistance <= item.startDistance + item.length + EPSILON) ||
+      segments.at(-1);
+
+    const localDistance = Math.max(
+      0,
+      Math.min(segment.length, normalizedDistance - segment.startDistance)
+    );
+    const t = segment.length > EPSILON ? localDistance / segment.length : 0;
+
+    return interpolatePoint(segment.start, segment.end, t);
+  };
+
+  if (closed) {
+    const step = totalLength / sampleCount;
+    for (let index = 0; index < sampleCount; index += 1) {
+      result.push(pointAtDistance(index * step));
+    }
+  } else {
+    const step = totalLength / sampleCount;
+    result.push(pairs[0]);
+
+    for (let index = 1; index < sampleCount; index += 1) {
+      result.push(pointAtDistance(index * step));
+    }
+
+    result.push(pairs.at(-1));
+  }
+
+  return flattenPointPairs(result);
+};
+
+/**
+ * Optional second-stage smoothing applied only after the pointer is released.
+ * This deliberately operates on the already-finalized curve so live pen
+ * responsiveness is unaffected. Open paths preserve their endpoints; closed
+ * paths are processed as loops and are closed later by the save pipeline.
+ */
+export const applyPostProcessSmoothing = (points, percent = 50, { closed = false } = {}) => {
+  if (!Array.isArray(points) || points.length < 6) return points;
+
+  const passes = getPostProcessSmoothingPasses(percent);
+  if (passes === 0) return points;
+
+  const smoothed = cornerCutPoints(points, passes, { closed });
+
+  return resamplePointsByArcLength(smoothed, MAX_POST_PROCESS_POINTS, {
+    closed,
   });
 };
 
@@ -536,7 +725,10 @@ export const handlePointerUp = async (
   lineCount,
   labelValue = 5,
   isDarkMode,
-  projectId          // ← passed in from the component, sourced from useProjectId()
+  projectId, // ← passed in from the component, sourced from useProjectId()
+  smoothingPercent = 50,
+  postProcessEnabled = false,
+  postProcessSmoothingPercent = 50
 ) => {
   const map = mapRef.current;
   if (!map) return;
@@ -566,7 +758,15 @@ export const handlePointerUp = async (
     const lastLine = { ...lines[lastIndex] };
 
     if (lastLine.rawPoints?.length >= 4) {
-      lastLine.points = getFinalCurvePoints(lastLine.rawPoints);
+      lastLine.points = getFinalCurvePoints(lastLine.rawPoints, smoothingPercent, {
+        closed: closedMode,
+      });
+
+      if (postProcessEnabled) {
+        lastLine.points = applyPostProcessSmoothing(lastLine.points, postProcessSmoothingPercent, {
+          closed: closedMode,
+        });
+      }
     }
 
     const updatedLines = [...lines];
@@ -735,7 +935,7 @@ export const handlePointerUp = async (
             closedMode,
             isFront: false,
             owner: owner?.id,
-            project: projectId,   // ← guaranteed to be the currently active project
+            project: projectId, // ← guaranteed to be the currently active project
           },
           name: computedName,
           sourceId,
@@ -770,7 +970,6 @@ export const handlePointerUp = async (
           ];
         });
       }
-
     } catch (err) {
       console.error('Error saving feature:', err);
 

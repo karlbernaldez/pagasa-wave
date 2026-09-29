@@ -37,13 +37,20 @@ export const getSettings = async (page) => {
     });
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        alert('Session expired. Please log in again./');
-        window.location.href = '/login';
-        return;
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(errorData?.message || 'Authentication required.');
       }
 
-      const errorData = await response.json();
+      if (response.status === 403) {
+        const error = new Error(
+          errorData?.message || 'You do not have permission to view these settings.'
+        );
+        error.status = 403;
+        throw error;
+      }
+
       console.error(
         `[ERROR] Failed to fetch settings for page "${page}":`,
         response.status,
@@ -93,3 +100,19 @@ export const saveSettings = async (page, data) => {
     throw error;
   }
 };
+
+async function requestArchivePolicy(path, options = {}) {
+  const response = await fetchWithAuth(`${API_BASE_URL}/operations/archive-policy/${path}`, {
+    credentials: 'include',
+    ...options,
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(buildSettingsErrorMessage(result, 'Archive policy request failed'));
+  }
+  return result;
+}
+
+export const previewArchivePolicy = () => requestArchivePolicy('preview', { method: 'GET' });
+
+export const runArchivePolicy = () => requestArchivePolicy('run', { method: 'POST' });

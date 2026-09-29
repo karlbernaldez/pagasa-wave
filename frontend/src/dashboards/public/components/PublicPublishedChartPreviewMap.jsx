@@ -4,9 +4,16 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fetchPublicPublishedChartOutput } from '@/api/publishedForecastAPI';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
-import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hooks/usePublicMapBounds';
+import usePublicMapBounds, {
+  getMapBoundsCenter,
+} from '@/features/projects/hooks/usePublicMapBounds';
 import { isFrontFeature, renderFrontFeatures } from '@/features/projects/utils/frontRendering';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
+import { clipPublishedAnnotations } from '@/features/projects/utils/clipPublishedAnnotations';
+import {
+  normalizePublishedDomainBoundary,
+  syncPublishedDomainBoundary,
+} from '@/features/projects/utils/publishedDomainBoundary';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
@@ -49,7 +56,19 @@ function getLineParts(geometry) {
 
 function getLineLabel(feature) {
   const props = feature?.properties || {};
-  return String(props.labelValue ?? props.waveHeight ?? props.heightValue ?? props.height ?? props.value ?? props.text ?? props.label ?? props.name ?? props.title ?? feature?.name ?? '').trim();
+  return String(
+    props.labelValue ??
+      props.waveHeight ??
+      props.heightValue ??
+      props.height ??
+      props.value ??
+      props.text ??
+      props.label ??
+      props.name ??
+      props.title ??
+      feature?.name ??
+      ''
+  ).trim();
 }
 
 function buildCollections(featureCollection) {
@@ -71,9 +90,21 @@ function buildCollections(featureCollection) {
       if (!Array.isArray(line) || line.length < 2) return;
       const first = line[0];
       const last = line[line.length - 1];
-      const closed = feature?.properties?.closedMode || (Array.isArray(first) && Array.isArray(last) && first[0] === last[0] && first[1] === last[1]);
+      const closed =
+        feature?.properties?.closedMode ||
+        (Array.isArray(first) &&
+          Array.isArray(last) &&
+          first[0] === last[0] &&
+          first[1] === last[1]);
       const points = closed ? [first] : [first, last];
-      points.forEach((coordinates, pointIndex) => labels.push({ type: 'Feature', id: `${feature.id || featureIndex}-${lineIndex}-${pointIndex}`, geometry: { type: 'Point', coordinates }, properties: { text } }));
+      points.forEach((coordinates, pointIndex) =>
+        labels.push({
+          type: 'Feature',
+          id: `${feature.id || featureIndex}-${lineIndex}-${pointIndex}`,
+          geometry: { type: 'Point', coordinates },
+          properties: { text },
+        })
+      );
     });
   });
 
@@ -114,7 +145,8 @@ function syncRaster(map, raster, enabled) {
     return;
   }
 
-  if (map.getSource(RASTER_SOURCE_ID) && map.__publishedCogTileUrl !== raster.tileUrl) removeRaster(map);
+  if (map.getSource(RASTER_SOURCE_ID) && map.__publishedCogTileUrl !== raster.tileUrl)
+    removeRaster(map);
 
   if (!map.getSource(RASTER_SOURCE_ID)) {
     map.addSource(RASTER_SOURCE_ID, {
@@ -144,16 +176,36 @@ function syncRaster(map, raster, enabled) {
 
 function syncCountryOverlay(map, isDarkMode) {
   try {
-    if (!map.getSource(COUNTRY_SOURCE_ID)) map.addSource(COUNTRY_SOURCE_ID, { type: 'vector', url: 'mapbox://mapbox.country-boundaries-v1' });
+    if (!map.getSource(COUNTRY_SOURCE_ID))
+      map.addSource(COUNTRY_SOURCE_ID, {
+        type: 'vector',
+        url: 'mapbox://mapbox.country-boundaries-v1',
+      });
 
     if (!map.getLayer(COUNTRY_LAND_LAYER_ID)) {
-      map.addLayer({ id: COUNTRY_LAND_LAYER_ID, type: 'fill', source: COUNTRY_SOURCE_ID, 'source-layer': 'country_boundaries', paint: { 'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd', 'fill-opacity': 0.82 } });
+      map.addLayer({
+        id: COUNTRY_LAND_LAYER_ID,
+        type: 'fill',
+        source: COUNTRY_SOURCE_ID,
+        'source-layer': 'country_boundaries',
+        paint: { 'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd', 'fill-opacity': 0.82 },
+      });
     } else {
       map.setPaintProperty(COUNTRY_LAND_LAYER_ID, 'fill-color', isDarkMode ? '#1e293b' : '#d6d3cd');
     }
 
     if (!map.getLayer(COUNTRY_LINE_LAYER_ID)) {
-      map.addLayer({ id: COUNTRY_LINE_LAYER_ID, type: 'line', source: COUNTRY_SOURCE_ID, 'source-layer': 'country_boundaries', paint: { 'line-color': isDarkMode ? '#94a3b8' : '#4b5563', 'line-opacity': 0.5, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2] } });
+      map.addLayer({
+        id: COUNTRY_LINE_LAYER_ID,
+        type: 'line',
+        source: COUNTRY_SOURCE_ID,
+        'source-layer': 'country_boundaries',
+        paint: {
+          'line-color': isDarkMode ? '#94a3b8' : '#4b5563',
+          'line-opacity': 0.5,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2],
+        },
+      });
     } else {
       map.setPaintProperty(COUNTRY_LINE_LAYER_ID, 'line-color', isDarkMode ? '#94a3b8' : '#4b5563');
     }
@@ -176,13 +228,91 @@ function syncAnnotations(map, featureCollection) {
   setGeoJson(map, LABEL_SOURCE_ID, labels);
 
   if (!map.getLayer('published-chart-lines')) {
-    map.addLayer({ id: 'published-chart-polygons', type: 'fill', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'fill-color': '#0ea5e9', 'fill-opacity': 0.2 } });
-    map.addLayer({ id: 'published-chart-polygon-outline', type: 'line', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'line-color': '#0284c7', 'line-width': 2, 'line-opacity': 0.9 } });
-    map.addLayer({ id: 'published-chart-lines', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': '#0f172a', 'line-width': 3, 'line-opacity': 0.9 } });
-    map.addLayer({ id: 'published-chart-points', type: 'circle', source: FEATURE_SOURCE_ID, filter: POINT_SYMBOL_FILTER, paint: { 'circle-color': '#2563eb', 'circle-radius': 7, 'circle-opacity': 0.95, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } });
-    map.addLayer({ id: 'published-chart-less-one', type: 'symbol', source: FEATURE_SOURCE_ID, filter: LESS_ONE_FILTER, layout: { 'icon-image': LESS_ONE_IMAGE_ID, 'icon-size': 0.28, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
-    map.addLayer({ id: 'published-chart-line-labels', type: 'symbol', source: LABEL_SOURCE_ID, layout: { 'text-field': ['get', 'text'], 'text-size': 16, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } });
-    map.addLayer({ id: 'published-chart-point-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': 14, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } });
+    map.addLayer({
+      id: 'published-chart-polygons',
+      type: 'fill',
+      source: FEATURE_SOURCE_ID,
+      filter: POLYGON_FILTER,
+      paint: { 'fill-color': '#0ea5e9', 'fill-opacity': 0.2 },
+    });
+    map.addLayer({
+      id: 'published-chart-polygon-outline',
+      type: 'line',
+      source: FEATURE_SOURCE_ID,
+      filter: POLYGON_FILTER,
+      paint: { 'line-color': '#0284c7', 'line-width': 2, 'line-opacity': 0.9 },
+    });
+    map.addLayer({
+      id: 'published-chart-lines',
+      type: 'line',
+      source: FEATURE_SOURCE_ID,
+      filter: LINE_FILTER,
+      paint: { 'line-color': '#0f172a', 'line-width': 3, 'line-opacity': 0.9 },
+    });
+    map.addLayer({
+      id: 'published-chart-points',
+      type: 'circle',
+      source: FEATURE_SOURCE_ID,
+      filter: POINT_SYMBOL_FILTER,
+      paint: {
+        'circle-color': '#2563eb',
+        'circle-radius': 7,
+        'circle-opacity': 0.95,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2,
+      },
+    });
+    map.addLayer({
+      id: 'published-chart-less-one',
+      type: 'symbol',
+      source: FEATURE_SOURCE_ID,
+      filter: LESS_ONE_FILTER,
+      layout: {
+        'icon-image': LESS_ONE_IMAGE_ID,
+        'icon-size': 0.28,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    });
+    map.addLayer({
+      id: 'published-chart-line-labels',
+      type: 'symbol',
+      source: LABEL_SOURCE_ID,
+      layout: {
+        'text-field': ['get', 'text'],
+        'text-size': 16,
+        'text-anchor': 'bottom',
+        'text-offset': [0, 0.5],
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
+    });
+    map.addLayer({
+      id: 'published-chart-point-labels',
+      type: 'symbol',
+      source: FEATURE_SOURCE_ID,
+      filter: POINT_LABEL_FILTER,
+      layout: {
+        'text-field': [
+          'to-string',
+          [
+            'coalesce',
+            ['get', 'name'],
+            ['get', 'title'],
+            ['get', 'label'],
+            ['get', 'labelValue'],
+            '',
+          ],
+        ],
+        'text-size': 14,
+        'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]],
+        'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'],
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
+    });
   }
 
   restackLayers(map);
@@ -194,9 +324,23 @@ function fitPreviewBounds(map, bounds) {
   map.fitBounds(bounds, { padding: 16, maxZoom: 6, duration: 0 });
 }
 
-function StatusOverlay({ loading, hasRenderableRaster, hasFeatures, isDarkMode }) {
-  if (loading) return <div className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-slate-950/55 text-slate-300' : 'bg-white/55 text-slate-600'}`}>Loading published chart...</div>;
-  if (!hasRenderableRaster && !hasFeatures) return <div className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-slate-950/70 text-slate-400' : 'bg-slate-100/80 text-slate-500'}`}>Published preview unavailable</div>;
+function StatusOverlay({ loading, hasRenderableRaster, hasFeatures, hasBoundary, isDarkMode }) {
+  if (loading)
+    return (
+      <div
+        className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-slate-950/55 text-slate-300' : 'bg-white/55 text-slate-600'}`}
+      >
+        Loading published chart...
+      </div>
+    );
+  if (!hasRenderableRaster && !hasFeatures && !hasBoundary)
+    return (
+      <div
+        className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-slate-950/70 text-slate-400' : 'bg-slate-100/80 text-slate-500'}`}
+      >
+        Published preview unavailable
+      </div>
+    );
   return null;
 }
 
@@ -206,9 +350,16 @@ function getPreviewHeight(height) {
   return height;
 }
 
-function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode = false, className = '', height = 288, onClick }) {
+function PublicPublishedChartPreviewMap({
+  projectId,
+  initialRaster,
+  isDarkMode = false,
+  className = '',
+  height = 288,
+  onClick,
+}) {
   const { activeChartType } = useChartType();
-  const { bounds: mapBounds } = usePublicMapBounds();
+  const { bounds: mapBounds, settings: publicSettings } = usePublicMapBounds();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const [payload, setPayload] = useState(null);
@@ -216,28 +367,79 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
   const [isReady, setIsReady] = useState(false);
   const theme = isDarkMode ? 'dark' : 'light';
   const raster = payload?.raster || initialRaster || null;
-  const featureCollection = useMemo(() => normalizeFeatureCollection(payload?.featureCollection), [payload]);
-  const hasFeatures = featureCollection.features.length > 0;
+  const featureCollection = useMemo(
+    () => normalizeFeatureCollection(payload?.featureCollection),
+    [payload]
+  );
+  const renderedFeatureCollection = useMemo(
+    () => clipPublishedAnnotations(featureCollection, publicSettings),
+    [featureCollection, publicSettings]
+  );
+  const hasFeatures = renderedFeatureCollection.features.length > 0;
+  const boundaryConfig = useMemo(
+    () => normalizePublishedDomainBoundary(publicSettings),
+    [publicSettings]
+  );
+  const hasBoundary =
+    boundaryConfig.enabled && (boundaryConfig.showLine || boundaryConfig.showFill);
   const shouldRenderRaster = activeChartType === 'wave-wind';
   const hasRenderableRaster = shouldRenderRaster && Boolean(raster?.tileUrl);
 
   useEffect(() => {
     let mounted = true;
-    if (!projectId) { setPayload(null); setLoading(false); return undefined; }
-    setLoading(true);
+    if (!projectId) {
+      queueMicrotask(() => {
+        if (!mounted) return;
+        setPayload(null);
+        setLoading(false);
+      });
+      return () => {
+        mounted = false;
+      };
+    }
+    queueMicrotask(() => {
+      if (mounted) setLoading(true);
+    });
     fetchPublicPublishedChartOutput(projectId, { theme })
-      .then((data) => { if (mounted) setPayload(data || null); })
-      .catch((error) => { if (mounted) { console.error('[PublicPublishedChartPreviewMap] Failed to load published output:', error); setPayload(null); } })
-      .finally(() => { if (mounted) setLoading(false); });
-    return () => { mounted = false; };
+      .then((data) => {
+        if (mounted) setPayload(data || null);
+      })
+      .catch((error) => {
+        if (mounted) {
+          console.error('[PublicPublishedChartPreviewMap] Failed to load published output:', error);
+          setPayload(null);
+        }
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, [projectId, theme]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return undefined;
-    const map = new mapboxgl.Map({ container: containerRef.current, style: STYLE_URL, projection: 'mercator', center: getMapBoundsCenter(mapBounds), zoom: 4.8, interactive: false, attributionControl: false, fadeDuration: 0 });
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: STYLE_URL,
+      projection: 'mercator',
+      center: getMapBoundsCenter(mapBounds),
+      zoom: 4.8,
+      interactive: false,
+      attributionControl: false,
+      fadeDuration: 0,
+    });
     mapRef.current = map;
-    map.on('load', () => { setIsReady(true); fitPreviewBounds(map, mapBounds); });
-    return () => { map.remove(); mapRef.current = null; setIsReady(false); };
+    map.on('load', () => {
+      setIsReady(true);
+      fitPreviewBounds(map, mapBounds);
+    });
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      setIsReady(false);
+    };
     // Initialize once; later bounds changes are handled by the render effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -247,17 +449,48 @@ function PublicPublishedChartPreviewMap({ projectId, initialRaster, isDarkMode =
     if (!map || !isReady) return;
     syncRaster(map, raster, shouldRenderRaster);
     syncCountryOverlay(map, isDarkMode);
+    syncPublishedDomainBoundary(map, publicSettings, 'published-preview-domain-boundary');
     fitPreviewBounds(map, mapBounds);
-    if (hasFeatures) syncAnnotations(map, featureCollection);
-    else restackLayers(map);
-  }, [featureCollection, hasFeatures, isDarkMode, isReady, mapBounds, raster, shouldRenderRaster]);
+    if (hasFeatures) syncAnnotations(map, renderedFeatureCollection);
+    else {
+      syncAnnotations(map, { type: 'FeatureCollection', features: [] });
+      restackLayers(map);
+    }
+  }, [
+    hasFeatures,
+    isDarkMode,
+    isReady,
+    mapBounds,
+    publicSettings,
+    raster,
+    renderedFeatureCollection,
+    shouldRenderRaster,
+  ]);
 
   return (
-    <div className={`relative overflow-hidden ${className}`} style={{ height: getPreviewHeight(height) }}>
-      {onClick && <button type="button" className="absolute inset-0 z-10 h-full w-full cursor-pointer" onClick={onClick} aria-label="Open published chart" />}
+    <div
+      className={`relative overflow-hidden ${className}`}
+      style={{ height: getPreviewHeight(height) }}
+    >
+      {onClick && (
+        <button
+          type="button"
+          className="absolute inset-0 z-10 h-full w-full cursor-pointer"
+          onClick={onClick}
+          aria-label="Open published chart"
+        />
+      )}
       <div ref={containerRef} className="h-full w-full" aria-hidden="true" />
-      <StatusOverlay loading={loading} hasRenderableRaster={hasRenderableRaster} hasFeatures={hasFeatures} isDarkMode={isDarkMode} />
-      <div className={`pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t ${isDarkMode ? 'from-slate-950/80' : 'from-white/80'} to-transparent`} />
+      <StatusOverlay
+        loading={loading}
+        hasRenderableRaster={hasRenderableRaster}
+        hasFeatures={hasFeatures}
+        hasBoundary={hasBoundary}
+        isDarkMode={isDarkMode}
+      />
+      <div
+        className={`pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t ${isDarkMode ? 'from-slate-950/80' : 'from-white/80'} to-transparent`}
+      />
     </div>
   );
 }
