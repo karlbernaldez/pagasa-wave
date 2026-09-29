@@ -1,4 +1,8 @@
-import { isTrustedDevice, markCredentialsVerified, generateAndStoreOtp } from '../otp.js';
+import { markCredentialsVerified, generateAndStoreOtp } from '../otp.js';
+import {
+  consumeTrustedDevice,
+  issueTrustedDevice,
+} from '#controllers/auth/utils/trustedDevice';
 import { issueTokens } from '../_helpers.js';
 import { sendOtpEmail } from '#services/email/sendOtpEmail';
 import { createAuditLog } from '#services/auditLog';
@@ -59,6 +63,11 @@ export const handleTrustedDevice = async (user, coordinates, req, res, geoMeta) 
     },
   }).catch((e) => logger.error('Audit log failed', { error: e.message }));
   await issueTokens(loginUser, req, res);
+
+  if (isOtpRequired()) {
+    await issueTrustedDevice(loginUser, req, res);
+  }
+
   return res.status(200).json({
     user: {
       id: loginUser._id,
@@ -104,15 +113,14 @@ export const handleOtpChallenge = async (user, emailNorm, req, res, geoMeta) => 
   });
 };
 
-export const handleSession = (user, emailNorm, coordinates, req, res, geoMeta) => {
-  const ip = req.ip;
-  const ua = req.headers['user-agent'] ?? '';
-
+export const handleSession = async (user, emailNorm, coordinates, req, res, geoMeta) => {
   if (!isOtpRequired()) {
     return handleTrustedDevice(user, coordinates, req, res, geoMeta);
   }
 
-  return isTrustedDevice(ip, ua, user.lastLoginIP, user.lastLoginUserAgent)
+  const trustedDevice = await consumeTrustedDevice(user, req, res);
+
+  return trustedDevice
     ? handleTrustedDevice(user, coordinates, req, res, geoMeta)
     : handleOtpChallenge(user, emailNorm, req, res, geoMeta);
 };
