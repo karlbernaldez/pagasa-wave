@@ -340,7 +340,7 @@ export const saveMarker =
         : await findPersistedMarker({ projectId, markerType, displayName, coordinates }));
     const persistedProperties = persistedFeature?.properties || {};
     const persistedId = getPersistedMarkerId(persistedFeature);
-    const fallbackId = `${markerType}_${title}`;
+    const fallbackId = `${markerType}_${displayName}`;
     const sourceId = String(options.sourceId || persistedId || fallbackId);
     const layerId = String(options.layerId || persistedProperties.mapLayerId || sourceId);
     const persistedStyle = getPersistedMarkerStyle(persistedFeature);
