@@ -22,6 +22,30 @@ const requireStrongSecret = (name, value) => {
   }
 };
 
+const validateCorsOrigin = (origin) => {
+  let parsed;
+
+  try {
+    parsed = new URL(origin);
+  } catch {
+    throw new Error(`Invalid CORS origin: ${origin}`);
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error(`CORS origin must use http or https: ${origin}`);
+  }
+
+  if (
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname !== '/' ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(`CORS origin must contain only scheme, host, and optional port: ${origin}`);
+  }
+};
+
 export const validateSecurityConfig = (env = process.env) => {
   requireStrongSecret('JWT_SECRET', env.JWT_SECRET);
   requireStrongSecret('JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET);
@@ -31,6 +55,12 @@ export const validateSecurityConfig = (env = process.env) => {
   }
 
   if (env.NODE_ENV === 'production') {
+    requireStrongSecret('CSRF_SECRET', env.CSRF_SECRET);
+
+    if (env.CSRF_SECRET === env.JWT_SECRET || env.CSRF_SECRET === env.JWT_REFRESH_SECRET) {
+      throw new Error('CSRF_SECRET must be different from JWT secrets.');
+    }
+
     if (env.COOKIE_SECURE !== 'true') {
       throw new Error('COOKIE_SECURE must be true in production.');
     }
@@ -47,6 +77,8 @@ export const validateSecurityConfig = (env = process.env) => {
     if (allowedOrigins.some((origin) => origin === '*')) {
       throw new Error('CORS_ALLOWED_ORIGINS must not contain * in production.');
     }
+
+    allowedOrigins.forEach(validateCorsOrigin);
   }
 };
 
