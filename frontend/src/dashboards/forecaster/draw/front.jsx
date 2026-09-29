@@ -1,4 +1,4 @@
-import { Stage, Layer, Line, RegularPolygon, Wedge } from 'react-konva';
+import { Stage, Layer, Line, Circle, RegularPolygon, Wedge } from 'react-konva';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Swal from 'sweetalert2';
@@ -270,21 +270,78 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
     : 50;
   const [lines, setLines] = useState([]);
   const [frontType, setFrontType] = useState('cold');
+  const [drawingActive, setDrawingActive] = useState(false);
+  const [pointerGuide, setPointerGuide] = useState(null);
   const [stageBounds, setStageBounds] = useState(() => getStageBounds(mapRef));
   const activeLineRef = useRef(null);
   const isFlagDrawing = useRef(false);
   const getAdjustedPoint = useCallback((event) => {
     const pos = getPointerPosition(event);
+    const rawX = pos?.x || 0;
+    const rawY = pos?.y || 0;
     return {
-      x: (pos?.x || 0) + pointerOffsetX,
-      y: (pos?.y || 0) + pointerOffsetY,
+      rawX,
+      rawY,
+      x: rawX + pointerOffsetX,
+      y: rawY + pointerOffsetY,
     };
   }, [pointerOffsetX, pointerOffsetY]);
   const refreshStageBounds = useCallback(() => { const next = getStageBounds(mapRef); setStageBounds(next); return next; }, [mapRef]);
   useEffect(() => { const preventScroll = (event) => { if (isFlagDrawing.current) event.preventDefault(); }; const handleResize = () => refreshStageBounds(); refreshStageBounds(); document.body.addEventListener('touchmove', preventScroll, { passive: false }); window.addEventListener('resize', handleResize); return () => { document.body.removeEventListener('touchmove', preventScroll); window.removeEventListener('resize', handleResize); }; }, [refreshStageBounds]);
-  const clearActiveLine = useCallback(() => { activeLineRef.current = null; setLines([]); }, []);
-  const handleDown = useCallback((event) => { const frozenFrontType = normalizeFrontType(frontType); refreshStageBounds(); isFlagDrawing.current = true; const pos = getAdjustedPoint(event); const nextLine = { points: [pos.x, pos.y], rawPoints: [pos.x, pos.y], frontType: frozenFrontType }; activeLineRef.current = nextLine; setLines([nextLine]); }, [frontType, getAdjustedPoint, refreshStageBounds]);
-  const handleMove = useCallback((event) => { if (!isFlagDrawing.current) return; const pos = getAdjustedPoint(event); const currentLine = activeLineRef.current; if (!currentLine) return; const rawPoints = currentLine.rawPoints || currentLine.points || []; if (getDistanceFromLastPoint(rawPoints, pos.x, pos.y) < MIN_POINT_DISTANCE) return; const nextRawPoints = [...rawPoints, pos.x, pos.y]; const nextLine = { ...currentLine, rawPoints: nextRawPoints, points: getPreviewCurvePoints(nextRawPoints, smoothingPercent) }; activeLineRef.current = nextLine; setLines([nextLine]); }, [getAdjustedPoint, smoothingPercent]);
+  const clearActiveLine = useCallback(() => {
+    activeLineRef.current = null;
+    setLines([]);
+    setPointerGuide(null);
+    setDrawingActive(false);
+  }, []);
+  const handleDown = useCallback((event) => {
+    const frozenFrontType = normalizeFrontType(frontType);
+    refreshStageBounds();
+    isFlagDrawing.current = true;
+    setDrawingActive(true);
+
+    const pos = getAdjustedPoint(event);
+    setPointerGuide({
+      rawX: pos.rawX,
+      rawY: pos.rawY,
+      adjustedX: pos.x,
+      adjustedY: pos.y,
+    });
+
+    const nextLine = {
+      points: [pos.x, pos.y],
+      rawPoints: [pos.x, pos.y],
+      frontType: frozenFrontType,
+    };
+    activeLineRef.current = nextLine;
+    setLines([nextLine]);
+  }, [frontType, getAdjustedPoint, refreshStageBounds]);
+  const handleMove = useCallback((event) => {
+    if (!isFlagDrawing.current) return;
+
+    const pos = getAdjustedPoint(event);
+    setPointerGuide({
+      rawX: pos.rawX,
+      rawY: pos.rawY,
+      adjustedX: pos.x,
+      adjustedY: pos.y,
+    });
+
+    const currentLine = activeLineRef.current;
+    if (!currentLine) return;
+
+    const rawPoints = currentLine.rawPoints || currentLine.points || [];
+    if (getDistanceFromLastPoint(rawPoints, pos.x, pos.y) < MIN_POINT_DISTANCE) return;
+
+    const nextRawPoints = [...rawPoints, pos.x, pos.y];
+    const nextLine = {
+      ...currentLine,
+      rawPoints: nextRawPoints,
+      points: getPreviewCurvePoints(nextRawPoints, smoothingPercent),
+    };
+    activeLineRef.current = nextLine;
+    setLines([nextLine]);
+  }, [getAdjustedPoint, smoothingPercent]);
   const handleUp = useCallback(async () => { const map = mapRef.current; const line = activeLineRef.current; const frozenFrontType = normalizeFrontType(line?.frontType || frontType); isFlagDrawing.current = false; if (!map || !line?.points || line.points.length < 4) { clearActiveLine(); return; } let finalPoints = getFinalCurvePoints(line.rawPoints || line.points, smoothingPercent, {
     closed: false,
   });
@@ -300,7 +357,127 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
   const previewStyle = FRONT_TYPES[previewFrontType];
   const previewSymbols = previewLine ? (previewFrontType === 'stationary' ? makeStationaryPreviewSymbols(previewLine.points) : makePreviewSymbols(previewLine.points, previewFrontType)) : [];
   const stationarySegments = previewFrontType === 'stationary' && previewLine ? makeStationaryPreviewSegments(previewLine.points) : [];
-  return <><SurfaceFrontPanel frontType={frontType} setFrontType={setFrontType} isDarkMode={isDarkMode} /><Stage width={stageBounds.width} height={stageBounds.height} onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} style={{ position: 'fixed', top: stageBounds.top, left: stageBounds.left, width: stageBounds.width, height: stageBounds.height, zIndex: 10, pointerEvents: 'auto' }}><Layer>{previewFrontType === 'stationary' ? stationarySegments.map((segment) => <Line key={segment.id} points={segment.points} stroke={segment.color} strokeWidth={previewStyle.lineWidth} tension={0.45} lineCap="butt" lineJoin="round" />) : lines.map((line, i) => { const style = FRONT_TYPES[normalizeFrontType(line.frontType)]; return <Line key={i} points={line.points} stroke={style.color} strokeWidth={style.lineWidth} dash={style.dash || []} tension={0.45} lineCap="round" lineJoin="round" />; })}{previewSymbols.map((symbol) => symbol.kind === 'triangle' ? <RegularPolygon key={symbol.id} x={symbol.x} y={symbol.y} sides={3} radius={7} fill={symbol.color} rotation={symbol.rotation} /> : <Wedge key={symbol.id} x={symbol.x} y={symbol.y} radius={6} angle={180} fill={symbol.color} rotation={symbol.rotation + (symbol.side < 0 ? 180 : 0)} />)}</Layer></Stage></>;
+  const hasPointerOffset =
+    Math.abs(pointerOffsetX) > 0.1 || Math.abs(pointerOffsetY) > 0.1;
+
+  return (
+    <>
+      <SurfaceFrontPanel
+        frontType={frontType}
+        setFrontType={setFrontType}
+        isDarkMode={isDarkMode}
+      />
+      <Stage
+        width={stageBounds.width}
+        height={stageBounds.height}
+        onPointerDown={handleDown}
+        onPointerMove={handleMove}
+        onPointerUp={handleUp}
+        onPointerCancel={handleUp}
+        style={{
+          position: 'fixed',
+          top: stageBounds.top,
+          left: stageBounds.left,
+          width: stageBounds.width,
+          height: stageBounds.height,
+          zIndex: 10,
+          pointerEvents: 'auto',
+          cursor: drawingActive ? 'none' : 'crosshair',
+        }}
+      >
+        <Layer>
+          {previewFrontType === 'stationary'
+            ? stationarySegments.map((segment) => (
+                <Line
+                  key={segment.id}
+                  points={segment.points}
+                  stroke={segment.color}
+                  strokeWidth={previewStyle.lineWidth}
+                  tension={0.45}
+                  lineCap="butt"
+                  lineJoin="round"
+                />
+              ))
+            : lines.map((line, i) => {
+                const style = FRONT_TYPES[normalizeFrontType(line.frontType)];
+                return (
+                  <Line
+                    key={i}
+                    points={line.points}
+                    stroke={style.color}
+                    strokeWidth={style.lineWidth}
+                    dash={style.dash || []}
+                    tension={0.45}
+                    lineCap="round"
+                    lineJoin="round"
+                  />
+                );
+              })}
+
+          {previewSymbols.map((symbol) =>
+            symbol.kind === 'triangle' ? (
+              <RegularPolygon
+                key={symbol.id}
+                x={symbol.x}
+                y={symbol.y}
+                sides={3}
+                radius={7}
+                fill={symbol.color}
+                rotation={symbol.rotation}
+              />
+            ) : (
+              <Wedge
+                key={symbol.id}
+                x={symbol.x}
+                y={symbol.y}
+                radius={6}
+                angle={180}
+                fill={symbol.color}
+                rotation={symbol.rotation + (symbol.side < 0 ? 180 : 0)}
+              />
+            )
+          )}
+
+          {drawingActive && pointerGuide && (
+            <>
+              {hasPointerOffset && (
+                <>
+                  <Line
+                    points={[
+                      pointerGuide.rawX,
+                      pointerGuide.rawY,
+                      pointerGuide.adjustedX,
+                      pointerGuide.adjustedY,
+                    ]}
+                    stroke={isDarkMode ? 'rgba(125,211,252,0.65)' : 'rgba(37,99,235,0.6)'}
+                    strokeWidth={1.5}
+                    dash={[4, 4]}
+                    listening={false}
+                  />
+                  <Circle
+                    x={pointerGuide.rawX}
+                    y={pointerGuide.rawY}
+                    radius={4}
+                    fill={isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(15,23,42,0.7)'}
+                    listening={false}
+                  />
+                </>
+              )}
+              <Circle
+                x={pointerGuide.adjustedX}
+                y={pointerGuide.adjustedY}
+                radius={6}
+                fill={isDarkMode ? '#22d3ee' : '#2563eb'}
+                stroke={isDarkMode ? '#ecfeff' : '#ffffff'}
+                strokeWidth={2}
+                listening={false}
+              />
+            </>
+          )}
+        </Layer>
+      </Stage>
+    </>
+  );
 };
 
 const FlagCanvas = ({ isCanvasActive = false, ...props }) => {
