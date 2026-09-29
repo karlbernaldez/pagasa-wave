@@ -4,9 +4,9 @@ import AccountLayout from '@/dashboards/forecaster/layout/AccountLayout';
 import ForecasterRouteLayout from '@/dashboards/forecaster/layout/ForecasterRouteLayout';
 import ProtectedRoute from '@/middleware/ProtectedRoute';
 import StudioLayout from '@/app/layout/StudioLayout';
+import Studio from '@/dashboards/forecaster/pages/Studio';
 
 const AccountSettings = lazy(() => import('@/dashboards/forecaster/pages/AccountSettings'));
-const Studio = lazy(() => import('@/dashboards/forecaster/pages/Studio'));
 const Profile = lazy(() => import('@/dashboards/forecaster/pages/Profile'));
 const PdfGenerator = lazy(() => import('@/pages/PdfGenerator'));
 
