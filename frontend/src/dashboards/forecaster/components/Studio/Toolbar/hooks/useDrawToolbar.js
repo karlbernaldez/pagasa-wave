@@ -159,14 +159,16 @@ export function useDrawToolbar({
       const previousCursor = canvas?.style?.cursor || '';
 
       const enforcePlacementCursor = () => {
-        if (canvas?.style) {
-          canvas.style.setProperty('cursor', 'crosshair', 'important');
-        }
+        if (!canvas?.style) return;
+
+        canvas.dataset.wavelabPlacementCursor = 'crosshair';
+        canvas.style.setProperty('cursor', 'crosshair', 'important');
       };
 
       const restorePlacementCursor = () => {
         if (!canvas?.style) return;
 
+        delete canvas.dataset.wavelabPlacementCursor;
         canvas.style.removeProperty('cursor');
         if (previousCursor) {
           canvas.style.cursor = previousCursor;
