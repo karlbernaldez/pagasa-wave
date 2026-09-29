@@ -351,30 +351,25 @@ export function savePointFeature({
     return persistFeature({ state, refreshOnSuccess: true });
   }
 
-  let pendingSave = Promise.resolve(null);
+  const state = buildFeatureState([]);
 
-  updateLayers((prevLayers) => {
-    const existingSourceIds = prevLayers.map((layer) => layer.sourceID || layer.sourceId || layer.source || layer.id);
-    const state = buildFeatureState(prevLayers);
+  return persistFeature({ state }).then((savedState) => {
+    if (!savedState) return null;
 
-    if (existingSourceIds.includes(sourceId)) {
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'error',
-        title: `The marker "${state.displayName}" already exists.`,
-        showConfirmButton: false,
-        timer: 3000,
-      });
-      pendingSave = Promise.resolve(null);
-      return prevLayers;
-    }
+    updateLayers((prevLayers) => {
+      const existingSourceIds = prevLayers.map(
+        (layer) => layer.sourceID || layer.sourceId || layer.source || layer.id
+      );
 
-    pendingSave = persistFeature({ state });
-    return [...prevLayers, state.panelLayer];
+      if (existingSourceIds.includes(sourceId)) {
+        return prevLayers;
+      }
+
+      return [...prevLayers, savedState.panelLayer];
+    });
+
+    return savedState;
   });
-
-  return pendingSave;
 }
 
 
