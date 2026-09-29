@@ -168,6 +168,12 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
   const smoothingPercent = Number.isFinite(Number(workspaceSettings.drawingSmoothingPercent))
     ? Number(workspaceSettings.drawingSmoothingPercent)
     : 50;
+  const postProcessEnabled = workspaceSettings.drawingPostProcessEnabled === true;
+  const postProcessSmoothingPercent = Number.isFinite(
+    Number(workspaceSettings.drawingPostProcessSmoothingPercent)
+  )
+    ? Number(workspaceSettings.drawingPostProcessSmoothingPercent)
+    : 50;
   const activeClosedMode = setClosedMode ? closedMode : localClosedMode;
 
   useEffect(() => { setLocalClosedMode(Boolean(closedMode)); }, [closedMode]);
@@ -228,11 +234,28 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
     pointerIdRef.current = null;
     if (!line?.rawPoints || line.rawPoints.length < 4) { isDrawing.current = false; activeLineRef.current = null; clearPreview(); return; }
     drawLock.current = true;
-    await handlePointerUp(mapRef, [line], setSaveLines, isDrawing, drawCounter, setDrawCounter, setLayersRef, createFeature, activeClosedMode, lineCount, labelValue, isDarkMode, projectId, smoothingPercent);
+    await handlePointerUp(
+      mapRef,
+      [line],
+      setSaveLines,
+      isDrawing,
+      drawCounter,
+      setDrawCounter,
+      setLayersRef,
+      createFeature,
+      activeClosedMode,
+      lineCount,
+      labelValue,
+      isDarkMode,
+      projectId,
+      smoothingPercent,
+      postProcessEnabled,
+      postProcessSmoothingPercent
+    );
     activeLineRef.current = null;
     clearPreview();
     setTimeout(() => { drawLock.current = false; }, 50);
-  }, [activeClosedMode, clearPreview, drawCounter, isDarkMode, labelValue, lineCount, mapRef, projectId, setDrawCounter, setLayersRef, setSaveLines, smoothingPercent]);
+  }, [activeClosedMode, clearPreview, drawCounter, isDarkMode, labelValue, lineCount, mapRef, postProcessEnabled, postProcessSmoothingPercent, projectId, setDrawCounter, setLayersRef, setSaveLines, smoothingPercent]);
 
   return (
     <>
