@@ -83,6 +83,8 @@ test('workspace settings persist only runtime-backed fields', () => {
     drawingPointerOffsetX: 18,
     drawingPointerOffsetY: -24,
     drawingSmoothingPercent: 75,
+    drawingPostProcessEnabled: true,
+    drawingPostProcessSmoothingPercent: 85,
     autosaveIntervalSeconds: 5,
     defaultMapView: 'Unused legacy value',
   });
@@ -91,6 +93,8 @@ test('workspace settings persist only runtime-backed fields', () => {
   assert.equal(parsed.drawingPointerOffsetX, 18);
   assert.equal(parsed.drawingPointerOffsetY, -24);
   assert.equal(parsed.drawingSmoothingPercent, 75);
+  assert.equal(parsed.drawingPostProcessEnabled, true);
+  assert.equal(parsed.drawingPostProcessSmoothingPercent, 85);
   assert.equal(parsed.autosaveIntervalSeconds, undefined);
   assert.equal(parsed.defaultMapView, undefined);
 });
@@ -265,5 +269,18 @@ test('workspace drawing settings reject unsafe ranges', () => {
         drawingSmoothingPercent: 101,
       }),
     /Drawing smoothing/
+  );
+
+  assert.throws(
+    () =>
+      parseForecasterWorkspaceSettingsPayload({
+        ...base,
+        drawingPointerOffsetX: 0,
+        drawingPointerOffsetY: 0,
+        drawingSmoothingPercent: 50,
+        drawingPostProcessEnabled: true,
+        drawingPostProcessSmoothingPercent: 120,
+      }),
+    /Drawing post-process smoothing/
   );
 });
