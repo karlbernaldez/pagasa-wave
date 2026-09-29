@@ -121,13 +121,21 @@ export function useDrawToolbar({
     });
     if (!savedFeature?.sourceId) return;
 
-    saveMarker({ lat, lng }, map, setShowTitleModal, selectedType)(savedFeature.labelValue || title, {
-      sourceId: savedFeature.sourceId,
-      layerId: savedFeature.sourceId,
-      displayName: savedFeature.displayName,
-      labelValue: savedFeature.labelValue || title,
-    });
-  }, [setLayersRef, projectId]);
+    await saveMarker({ lat, lng }, map, setShowTitleModal, selectedType)(
+      savedFeature.labelValue || title,
+      {
+        sourceId: savedFeature.sourceId,
+        layerId: savedFeature.sourceId,
+        displayName: savedFeature.displayName,
+        labelValue: savedFeature.labelValue || title,
+      }
+    );
+
+    selectedToolRef.current = null;
+    setSelectedToolType(null);
+    setType?.(null);
+    setPendingPointInputMethod(null);
+  }, [setLayersRef, projectId, selectedToolRef, setType]);
 
   // ── Map click flow ───────────────────────────────────────
   const startPointInput = useCallback((method, selectedType, labelValue) => {
