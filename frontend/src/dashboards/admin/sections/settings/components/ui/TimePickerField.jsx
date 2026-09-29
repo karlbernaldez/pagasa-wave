@@ -1,6 +1,6 @@
 import { Clock3, Minus, Plus } from 'lucide-react';
 
-import { labelCls } from './FormFields';
+import { labelCls } from './formFieldStyles';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
