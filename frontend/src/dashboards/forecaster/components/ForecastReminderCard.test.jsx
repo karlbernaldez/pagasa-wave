@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getReminderState } from './ForecastReminderCard';
+import { getReminderState } from './forecastReminderState';
 
 describe('ForecastReminderCard settings', () => {
   it('uses configured operations timing and workspace warning copy', () => {
