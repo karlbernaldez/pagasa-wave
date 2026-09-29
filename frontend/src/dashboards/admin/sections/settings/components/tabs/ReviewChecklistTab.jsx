@@ -15,7 +15,8 @@ import {
   getReviewChecklistDefinition,
 } from '@/api/reviewChecklist';
 
-import { Field, TextareaField, inputCls, labelCls } from '../ui/FormFields';
+import { Field, TextareaField } from '../ui/FormFields';
+import { inputCls, labelCls } from '../ui/formFieldStyles';
 import {
   buildReviewChecklistPayload,
   createNextChecklistDraftItem,
