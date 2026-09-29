@@ -90,14 +90,14 @@ function getActiveProjectId(projectId) {
 }
 
 function getLowWaveNumberFromName(value) {
-  const match = String(value || '').match(/Low Wave\s*\(<1\s*m\)\s*#(\d+)/i);
+  const match = String(value || '').match(/Low Wave\\s*\\(<\\s*(?:1|2)\\s*m\\)\\s*#(\\d+)/i);
   return match ? Number.parseInt(match[1], 10) : 0;
 }
 
 function isLowWaveLayer(layer = {}) {
   return layer.type === 'less_1'
     || layer.markerType === 'less_1'
-    || /^Low Wave \(<1 m\)(\s+#\d+)?$/i.test(String(layer.name || '').trim());
+    || /^Low Wave \(<\s*(?:1|2)\s*m\)(\s+#\d+)?$/i.test(String(layer.name || '').trim());
 }
 
 function getLowWaveCounterKey(projectId) {
@@ -109,7 +109,7 @@ function getVisibleLowWaveMaxNumber() {
 
   try {
     const text = document.body?.innerText || '';
-    const matches = [...text.matchAll(/Low Wave\s*\(<1\s*m\)\s*#(\d+)/gi)];
+    const matches = [...text.matchAll(/Low Wave\\s*\\(<\\s*(?:1|2)\\s*m\\)\\s*#(\\d+)/gi)];
     return matches.reduce((max, match) => Math.max(max, Number.parseInt(match[1], 10) || 0), 0);
   } catch {
     return 0;
@@ -145,11 +145,11 @@ function syncFallbackLowWaveCounter(projectId, nextNumber) {
   }
 }
 
-function formatLowWaveDisplayName(number) {
-  return `${MARKER_DISPLAY_NAMES.less_1} #${Math.max(1, Number(number) || 1)}`;
+function formatLowWaveDisplayName(number, labelValue = '<1') {
+  return `Low Wave (${labelValue} m) #${Math.max(1, Number(number) || 1)}`;
 }
 
-function getNextLowWaveDisplayName(layers = [], projectId = '') {
+function getNextLowWaveDisplayName(layers = [], projectId = '', labelValue = '<1') {
   const lowWaveLayers = layers.filter(isLowWaveLayer);
   const maxExistingNumber = lowWaveLayers.reduce(
     (max, layer) => Math.max(max, getLowWaveNumberFromName(layer.name)),
@@ -157,18 +157,25 @@ function getNextLowWaveDisplayName(layers = [], projectId = '') {
   );
   const nextNumber = maxExistingNumber > 0 ? maxExistingNumber + 1 : lowWaveLayers.length + 1;
   syncFallbackLowWaveCounter(projectId, nextNumber);
-  return formatLowWaveDisplayName(nextNumber);
+  return formatLowWaveDisplayName(nextNumber, labelValue);
 }
 
-function getMarkerLabelValue(markerType, rawTitle) {
-  return MARKER_LABEL_VALUES[markerType] || rawTitle?.trim() || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
+function getMarkerLabelValue(markerType, rawTitle, requestedLabelValue) {
+  if (markerType === 'less_1') {
+    const requested = String(requestedLabelValue || rawTitle || '').trim();
+    return ['<1', '<2'].includes(requested) ? requested : MARKER_LABEL_VALUES.less_1;
+  }
+
+  return rawTitle?.trim() || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
 }
 
-function getMarkerDisplayName(markerType, rawTitle, layers = [], projectId = '') {
+function getMarkerDisplayName(markerType, rawTitle, layers = [], projectId = '', labelValue = '<1') {
   const trimmedTitle = rawTitle?.trim();
 
   if (markerType === 'less_1') {
-    return layers.length ? getNextLowWaveDisplayName(layers, projectId) : formatLowWaveDisplayName(reserveFallbackLowWaveNumber(projectId));
+    return layers.length
+      ? getNextLowWaveDisplayName(layers, projectId, labelValue)
+      : formatLowWaveDisplayName(reserveFallbackLowWaveNumber(projectId), labelValue);
   }
 
   if (markerType === 'text_note') {
@@ -228,7 +235,14 @@ function refreshWorkspaceAfterFallbackSave() {
   }, 750);
 }
 
-export function savePointFeature({ coords, title, selectedType, setLayersRef, projectId }) {
+export function savePointFeature({
+  coords,
+  title,
+  selectedType,
+  setLayersRef,
+  projectId,
+  labelValue: requestedLabelValue,
+}) {
   const normalizedCoords = getCoordinatePair(coords);
   if (!normalizedCoords) {
     console.error('❌ Invalid coords passed to savePointFeature:', coords);
@@ -260,13 +274,19 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
   const markerType = normalizeMarkerType(selectedType);
   const rawTitle = title?.trim() || '';
   const sourceId = makeSafeSourceId(markerType, rawTitle || MARKER_DISPLAY_NAMES[markerType] || 'marker');
-  const labelValue = getMarkerLabelValue(markerType, rawTitle);
+  const labelValue = getMarkerLabelValue(markerType, rawTitle, requestedLabelValue);
   const closedMode = false;
 
   const updateLayers = typeof setLayersRef?.current === 'function' ? setLayersRef.current : null;
 
   const buildFeatureState = (layers = []) => {
-    const displayName = getMarkerDisplayName(markerType, rawTitle, layers, activeProjectId);
+    const displayName = getMarkerDisplayName(
+      markerType,
+      rawTitle,
+      layers,
+      activeProjectId,
+      labelValue
+    );
     const feature = {
       type: 'Feature',
       geometry: {
