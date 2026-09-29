@@ -116,12 +116,12 @@ export const verifyCredentials = async (user, password, req, res, geoMeta) => {
   }
 
   if (failedUser.status !== 'active') {
-    logger.warn('Failed login raced with account status change', {
+    logger.warn('Failed login on non-active account', {
       userId: user._id,
       status: failedUser.status,
       ip: req.ip,
     });
-    return res.status(403).json({ message: 'Account is not available for login.' });
+    return res.status(401).json({ message: 'Invalid email or password.' });
   }
 
   logger.warn('Failed login attempt', { userId: user._id, attemptsLeft, ip: req.ip });
