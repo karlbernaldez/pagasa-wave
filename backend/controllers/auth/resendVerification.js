@@ -1,28 +1,34 @@
 import crypto from "crypto";
 import User from "../../models/User.js";
+import redis from "#lib/redis";
 import { sendVerificationEmail } from "#services/email/sendVerificationEmail";
 import { createAuditLog } from "#services/auditLog";
 import { logger } from "#utils/logger";
 
-// ── In-process rate limit: max 3 resends per email per 10 minutes ──────────
-// Replace with Redis/upstash in production for multi-instance safety.
-const resendMap = new Map(); // email → { count, windowStart }
+// ── Redis-backed per-email rate limit ───────────────────────────────────────
 const MAX_RESENDS = 3;
-const WINDOW_MS   = 10 * 60 * 1_000;
+const WINDOW_MS = 10 * 60 * 1_000;
 
-const checkResendRateLimit = (email) => {
-  const now    = Date.now();
-  const record = resendMap.get(email);
+const getResendRateLimitKey = (email) => {
+  const digest = crypto.createHash("sha256").update(email).digest("hex");
+  return `auth:resend-verification:${digest}`;
+};
 
-  if (!record || now - record.windowStart > WINDOW_MS) {
-    resendMap.set(email, { count: 1, windowStart: now });
-    return false;
+const checkResendRateLimit = async (email) => {
+  const key = getResendRateLimitKey(email);
+  const created = await redis.set(key, "1", "PX", WINDOW_MS, "NX");
+
+  if (created === "OK") return false;
+
+  const count = await redis.incr(key);
+
+  // Recover safely if a manually-created or legacy key has no expiry.
+  const ttl = await redis.pttl(key);
+  if (ttl < 0) {
+    await redis.pexpire(key, WINDOW_MS);
   }
 
-  if (record.count >= MAX_RESENDS) return true;
-
-  record.count += 1;
-  return false;
+  return count > MAX_RESENDS;
 };
 
 // ── Generic success message — prevents email enumeration ──────────────────
@@ -36,7 +42,7 @@ export const resendVerification = async (req, res) => {
   }
 
   // ── Rate limit ───────────────────────────────────────────────────────────
-  if (checkResendRateLimit(email)) {
+  if (await checkResendRateLimit(email)) {
     logger.warn("Resend verification rate limited", { email, ip: req.ip });
     return res.status(429).json({
       message: "Too many resend requests. Please wait a few minutes before trying again.",
