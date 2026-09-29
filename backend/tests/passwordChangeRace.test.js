@@ -3,6 +3,8 @@ import test from 'node:test';
 import bcrypt from 'bcryptjs';
 
 import User from '../models/User.js';
+import Session from '../models/Session.js';
+import TrustedDevice from '../models/TrustedDevice.js';
 import { changePassword } from '../controllers/userController.js';
 
 function makeResponse() {
@@ -37,16 +39,23 @@ async function withUserMocks(mocks, work) {
   const originals = {
     findById: User.findById,
     findOneAndUpdate: User.findOneAndUpdate,
+    sessionUpdateMany: Session.updateMany,
+    trustedDeviceUpdateMany: TrustedDevice.updateMany,
   };
 
   User.findById = mocks.findById ?? originals.findById;
   User.findOneAndUpdate = mocks.findOneAndUpdate ?? originals.findOneAndUpdate;
+  Session.updateMany = mocks.sessionUpdateMany ?? (async () => ({ modifiedCount: 1 }));
+  TrustedDevice.updateMany =
+    mocks.trustedDeviceUpdateMany ?? (async () => ({ modifiedCount: 1 }));
 
   try {
     await work();
   } finally {
     User.findById = originals.findById;
     User.findOneAndUpdate = originals.findOneAndUpdate;
+    Session.updateMany = originals.sessionUpdateMany;
+    TrustedDevice.updateMany = originals.trustedDeviceUpdateMany;
   }
 }
 
@@ -70,6 +79,8 @@ test('password change is conditional on the exact password hash and cancels pend
 
   let updateFilter;
   let updateDocument;
+  let revokedSessions;
+  let revokedTrustedDevices;
 
   const res = makeResponse();
 
@@ -80,6 +91,14 @@ test('password change is conditional on the exact password hash and cancels pend
         updateFilter = filter;
         updateDocument = update;
         return selectedQuery({ _id: loadedUser._id, sessionVersion: 8 });
+      },
+      sessionUpdateMany: async (filter, update) => {
+        revokedSessions = { filter, update };
+        return { modifiedCount: 2 };
+      },
+      trustedDeviceUpdateMany: async (filter, update) => {
+        revokedTrustedDevices = { filter, update };
+        return { modifiedCount: 2 };
       },
     },
     async () => {
@@ -105,6 +124,10 @@ test('password change is conditional on the exact password hash and cancels pend
     pendingEmailVerificationExpires: '',
     pendingEmailRequestedAt: '',
   });
+  assert.deepEqual(revokedSessions.filter, { user: loadedUser._id, revokedAt: null });
+  assert.equal(revokedSessions.update.$set.revokedReason, 'password_changed');
+  assert.deepEqual(revokedTrustedDevices.filter, { user: loadedUser._id, revokedAt: null });
+  assert.equal(revokedTrustedDevices.update.$set.revokedReason, 'password_changed');
 });
 
 test('stale concurrent password change is rejected after the verified password hash changes', async () => {
