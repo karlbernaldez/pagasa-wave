@@ -53,10 +53,8 @@ async function withUserMocks(mocks, work) {
 
   User.findOne = mocks.findOne ?? originals.findOne;
   User.findOneAndUpdate = mocks.findOneAndUpdate ?? originals.findOneAndUpdate;
-  Session.updateMany =
-    mocks.sessionUpdateMany ?? (async () => ({ modifiedCount: 1 }));
-  TrustedDevice.updateMany =
-    mocks.trustedDeviceUpdateMany ?? (async () => ({ modifiedCount: 1 }));
+  Session.updateMany = mocks.sessionUpdateMany ?? (async () => ({ modifiedCount: 1 }));
+  TrustedDevice.updateMany = mocks.trustedDeviceUpdateMany ?? (async () => ({ modifiedCount: 1 }));
   AuditLog.create = mocks.auditLogCreate ?? (async (entry) => entry);
 
   try {
@@ -193,10 +191,7 @@ test('pending email verification promotes only the exact active pending identity
   assert.deepEqual(promotion.options, { new: true, runValidators: true });
   assert.deepEqual(revokedSessions.filter, { user: userId, revokedAt: null });
   assert.equal(revokedSessions.update.$set.revokedReason, 'email_changed');
-  assert.deepEqual(revokedTrustedDevices.filter, {
-    user: userId,
-    revokedAt: null,
-  });
+  assert.deepEqual(revokedTrustedDevices.filter, { user: userId, revokedAt: null });
   assert.equal(revokedTrustedDevices.update.$set.revokedReason, 'email_changed');
 });
 
