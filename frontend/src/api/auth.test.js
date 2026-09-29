@@ -80,6 +80,37 @@ describe('authenticated API retries', () => {
     expect(refreshCalls).toBe(1);
   });
 
+  it('bounds session verification so a stalled auth request cannot hang indefinitely', async () => {
+    vi.useFakeTimers();
+
+    const fetchMock = vi.fn((_url, options = {}) =>
+      new Promise((_resolve, reject) => {
+        options.signal?.addEventListener(
+          'abort',
+          () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+          { once: true }
+        );
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const { checkAuthSession } = await loadAuthApi();
+      const resultPromise = checkAuthSession({ force: true });
+
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      await expect(resultPromise).resolves.toEqual({
+        authenticated: false,
+        user: null,
+        unavailable: true,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('reports auth verification as unavailable instead of logged out on a network failure', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
 
