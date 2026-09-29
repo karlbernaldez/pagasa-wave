@@ -48,6 +48,8 @@ export const registerUser = async (req, res) => {
     const emailNorm = normalizeEmail(email);
     const usernameNorm = normalizeUsername(username);
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const [existingUsername, existingEmail] = await Promise.all([
       User.findOne({ username: usernameNorm }).select('_id').lean(),
       User.findOne({ $or: [{ email: emailNorm }, { pendingEmail: emailNorm }] })
@@ -73,7 +75,6 @@ export const registerUser = async (req, res) => {
       return res.status(202).json({ message: 'If the registration details are available, check your email for verification instructions.' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
 
@@ -139,6 +140,13 @@ export const registerUser = async (req, res) => {
       message: 'If the registration details are available, check your email for verification instructions.',
     });
   } catch (err) {
+    if (err?.code === 11000) {
+      logger.warn('Registration conflict detected during account creation', { ip: req.ip });
+      return res.status(202).json({
+        message: 'If the registration details are available, check your email for verification instructions.',
+      });
+    }
+
     logger.error('Registration controller error', {
       error: err.message,
       stack: err.stack,
