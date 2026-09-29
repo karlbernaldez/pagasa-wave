@@ -5,13 +5,6 @@ import User from '#models/User';
 import { createAuditLog } from '#services/auditLog';
 import { logger } from '#utils/logger';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const buildAttemptsMessage = (attemptsLeft) => {
-  if (attemptsLeft > 3) return 'Invalid email or password.';
-  return `${attemptsLeft} ${attemptsLeft === 1 ? 'try' : 'tries'} remaining before account lock.`;
-};
-
 export const recordFailedLogin = async (userId) => {
   const lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
 
@@ -109,10 +102,7 @@ export const verifyCredentials = async (user, password, req, res, geoMeta) => {
       meta: { reason: 'Max failed attempts', failedLoginAttempts, ...geoMeta },
     }).catch((e) => logger.error('Audit log failed', { error: e.message }));
 
-    return res.status(403).json({
-      message: 'Account locked due to multiple failed login attempts.',
-      lockUntil: failedUser.lockUntil,
-    });
+    return res.status(401).json({ message: 'Invalid email or password.' });
   }
 
   if (failedUser.status !== 'active') {
@@ -136,7 +126,7 @@ export const verifyCredentials = async (user, password, req, res, geoMeta) => {
     meta: { reason: 'Wrong password', failedLoginAttempts, attemptsLeft, ...geoMeta },
   }).catch((e) => logger.error('Audit log failed', { error: e.message }));
 
-  return res.status(401).json({ message: buildAttemptsMessage(attemptsLeft), attemptsLeft });
+  return res.status(401).json({ message: 'Invalid email or password.' });
 };
 
 /**
