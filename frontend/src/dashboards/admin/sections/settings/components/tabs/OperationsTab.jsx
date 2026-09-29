@@ -11,7 +11,7 @@ import {
 import { useState } from 'react';
 
 import Accordion from '../ui/Accordion';
-import { inputCls, labelCls } from '../ui/FormFields';
+import { inputCls, labelCls } from '../ui/formFieldStyles';
 import TimePickerField from '../ui/TimePickerField';
 import { getOperationsScheduleValidationError } from '../../utils/operationsScheduleValidation';
 import { previewArchivePolicy, runArchivePolicy } from '@/api/siteSettings';
