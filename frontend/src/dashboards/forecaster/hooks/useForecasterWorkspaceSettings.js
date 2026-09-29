@@ -111,7 +111,9 @@ export default function useForecasterWorkspaceSettings() {
       if (!document.hidden) refreshSettings();
     };
 
-    refreshSettings();
+    readDatabaseSettings()
+      .then(setSettings)
+      .catch(() => setSettings(readLocalSettings()));
     window.addEventListener('storage', handleStorage);
     window.addEventListener(SETTINGS_UPDATED_EVENT, handleCustomUpdate);
     window.addEventListener('focus', refreshSettings);
