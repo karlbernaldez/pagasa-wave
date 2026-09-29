@@ -14,6 +14,7 @@ import {
 import l1 from '@/assets/draw_icons/L1.png';
 import FeatureNotAvailableModal from '@/components/ui/modals/FeatureNotAvailable';
 import PointInputChoiceModal from '@/components/ui/modals/MarkerChoice';
+import LowWaveMarkerChoice from '@/components/ui/modals/LowWaveMarkerChoice';
 import MarkerTitleModal from '@/components/ui/modals/MarkerTitleModal';
 import ManualInputModal from '@/components/ui/modals/ManualInputModal';
 
@@ -181,6 +182,7 @@ const DrawToolbar = ({
     openModals,
     toggleModal,
     handlePointInputChoice,
+    handleLowWaveMarkerChoice,
     handleMarkerTitleSubmit,
     handleManualInputSubmit,
     handleToggleDrawing,
@@ -315,6 +317,12 @@ const DrawToolbar = ({
         onSelect={handlePointInputChoice}
         isDarkMode={isDarkMode}
       />
+      <LowWaveMarkerChoice
+        isOpen={openModals.lowWaveMarkerChoice}
+        onClose={() => toggleModal('lowWaveMarkerChoice', false)}
+        onSelect={handleLowWaveMarkerChoice}
+        isDarkMode={isDarkMode}
+      />
       <MarkerTitleModal
         isOpen={openModals.markerTitle}
         onClose={() => {
@@ -330,6 +338,7 @@ const DrawToolbar = ({
         onClose={() => toggleModal('manualInput', false)}
         onSubmit={handleManualInputSubmit}
         isDarkMode={isDarkMode}
+        markerType={selectedToolType}
       />
       <FeatureNotAvailableModal
         isOpen={openModals.featureNotAvailable}
