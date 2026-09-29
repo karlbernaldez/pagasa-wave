@@ -4,6 +4,7 @@ import { clearAuthCookies } from '#controllers/auth/utils/cookies';
 import { clearTrustedDeviceCookie } from '#controllers/auth/utils/trustedDevice';
 import User from '../models/User.js';
 import { sendUserUpdateEmail } from '#services/email/sendUserUpdateEmail';
+import { revokeUserSecurityState } from '#services/securitySessionRevocation';
 
 const SALT_ROUNDS = 10;
 const PAGE_OPTIONS = [5, 10, 25, 50];
@@ -250,6 +251,7 @@ export const changePassword = async (req, res) => {
       });
     }
 
+    await revokeUserSecurityState(userId, 'password_changed');
     clearTrustedDeviceCookie(res);
     clearAuthCookies(res);
     return res.status(200).json({
@@ -389,6 +391,15 @@ export const updateUserDetails = async (req, res) => {
         });
       }
 
+      await revokeUserSecurityState(
+        userId,
+        roleChanged && emailChanged
+          ? 'authorization_and_email_changed'
+          : roleChanged
+            ? 'role_changed'
+            : 'email_changed'
+      );
+
       const safeUser = user.toObject();
       delete safeUser.password;
       delete safeUser.sessionVersion;
@@ -451,6 +462,10 @@ export const updateUserStatus = async (req, res) => {
       return res.status(409).json({
         message: 'Status changed concurrently. Reload the account and try again.',
       });
+    }
+
+    if (status !== previousStatus) {
+      await revokeUserSecurityState(userId, 'account_status_changed');
     }
 
     sendUserUpdateEmail(user.email, user.firstName, [
