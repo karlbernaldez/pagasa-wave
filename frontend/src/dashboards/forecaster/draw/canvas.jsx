@@ -47,14 +47,6 @@ const getMapContainerRect = (mapRef) => {
   return container?.getBoundingClientRect?.() || null;
 };
 
-const getPointerPoint = (event, canvas, offsetX = 0, offsetY = 0) => {
-  const rect = canvas.getBoundingClientRect();
-  return [
-    event.clientX - rect.left + offsetX,
-    event.clientY - rect.top + offsetY,
-  ];
-};
-
 const distanceFromLastPoint = (points, x, y) => {
   if (points.length < 2) return Infinity;
   const lastX = points[points.length - 2];
@@ -178,7 +170,6 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
     : 50;
   const activeClosedMode = setClosedMode ? closedMode : localClosedMode;
 
-  useEffect(() => { setLocalClosedMode(Boolean(closedMode)); }, [closedMode]);
   const updateClosedMode = useCallback((nextValue) => { setLocalClosedMode(nextValue); setClosedMode?.(nextValue); }, [setClosedMode]);
 
   const resizeCanvas = useCallback(() => {
