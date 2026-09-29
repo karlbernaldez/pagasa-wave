@@ -1,4 +1,7 @@
 import bcrypt from 'bcryptjs';
+
+import { clearAuthCookies } from '#controllers/auth/utils/cookies';
+import { clearTrustedDeviceCookie } from '#controllers/auth/utils/trustedDevice';
 import User from '../models/User.js';
 import { sendUserUpdateEmail } from '#services/email/sendUserUpdateEmail';
 
@@ -247,7 +250,12 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    return res.status(200).json({ message: 'Password updated successfully.' });
+    clearTrustedDeviceCookie(res);
+    clearAuthCookies(res);
+    return res.status(200).json({
+      message: 'Password updated successfully. Please sign in again.',
+      sessionRevoked: true,
+    });
   } catch (err) {
     console.error('[changePassword]', err);
     return res.status(500).json({ message: 'Error changing password', error: err.message });
