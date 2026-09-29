@@ -155,12 +155,21 @@ export function useDrawToolbar({
 
       handleDrawModeChange('draw_point', draw, setLayersRef);
 
+      const canvas = map.getCanvas?.();
+      const previousCursor = canvas?.style?.cursor || '';
+      if (canvas?.style) {
+        canvas.style.cursor = 'crosshair';
+      }
+
       map.once('click', (e) => {
         console.log('Map clicked at:', e.lngLat);
         const lng = e.lngLat.lng;
         const lat = e.lngLat.lat;
         const coords = [lng, lat];
 
+        if (canvas?.style) {
+          canvas.style.cursor = previousCursor;
+        }
         draw.changeMode('simple_select');
 
         if (selectedType === TOOL_IDS.LESS_1) {
