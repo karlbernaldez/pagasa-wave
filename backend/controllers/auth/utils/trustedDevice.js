@@ -9,6 +9,14 @@ const secure =
   process.env.NODE_ENV === 'production' ? true : process.env.COOKIE_SECURE === 'true';
 const sameSite = String(process.env.COOKIE_SAME_SITE || 'strict').toLowerCase();
 
+if (!['strict', 'lax', 'none'].includes(sameSite)) {
+  throw new Error('COOKIE_SAME_SITE must be strict, lax, or none.');
+}
+
+if (sameSite === 'none' && !secure) {
+  throw new Error('COOKIE_SAME_SITE=none requires secure cookies.');
+}
+
 const cookieOptions = {
   httpOnly: true,
   secure,
@@ -81,6 +89,31 @@ export const consumeTrustedDevice = async (user, req, res) => {
   }
 
   return true;
+};
+
+export const revokeTrustedDeviceFromRequest = async (
+  req,
+  res,
+  reason = 'logout'
+) => {
+  const token = req.cookies?.[TRUSTED_DEVICE_COOKIE];
+
+  if (token) {
+    await TrustedDevice.updateOne(
+      {
+        tokenHash: hashTrustedDeviceToken(token),
+        revokedAt: null,
+      },
+      {
+        $set: {
+          revokedAt: new Date(),
+          revokedReason: reason,
+        },
+      }
+    );
+  }
+
+  clearTrustedDeviceCookie(res);
 };
 
 export const revokeAllTrustedDevices = (userId, reason = 'logout_all') =>
