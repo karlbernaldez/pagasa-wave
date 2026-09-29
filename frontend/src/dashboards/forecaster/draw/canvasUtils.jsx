@@ -22,7 +22,7 @@ export const getStrokeOutlinePoints = (points, options = {}) => {
   const {
     size = 8,
     thinning = 0.5,
-    smoothing = 0.5,
+    smoothing: _smoothing = 0.5,
     streamline = 0.5,
   } = options;
 
