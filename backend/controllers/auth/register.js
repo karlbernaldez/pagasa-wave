@@ -61,7 +61,7 @@ export const registerUser = async (req, res) => {
         ip: req.ip,
       });
 
-      return res.status(409).json({ message: 'Username already exists.' });
+      return res.status(409).json({ message: 'Unable to create account with the provided details.' });
     }
 
     if (existingEmail) {
@@ -70,7 +70,7 @@ export const registerUser = async (req, res) => {
         ip: req.ip,
       });
 
-      return res.status(409).json({ message: 'Email already registered or pending verification.' });
+      return res.status(409).json({ message: 'Unable to create account with the provided details.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
