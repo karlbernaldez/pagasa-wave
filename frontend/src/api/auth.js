@@ -1,6 +1,5 @@
 const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 const AUTH_CACHE_TTL_MS = 1500;
-const AUTH_REQUEST_TIMEOUT_MS = 10_000;
 const CSRF_COOKIE_NAME = 'wavelabCsrfToken';
 const CSRF_HEADER_NAME = 'X-CSRF-Token';
 
@@ -57,23 +56,8 @@ const unavailableAuthState = () => ({
   unavailable: true,
 });
 
-
-const fetchAuthRequest = async (url, options = {}) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS);
-
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-};
-
 const fetchAuthCheck = async () => {
-  const res = await fetchAuthRequest(`${AUTH_API_BASE_URL}/check`, {
+  const res = await fetch(`${AUTH_API_BASE_URL}/check`, {
     method: 'GET',
     credentials: 'include',
   });
@@ -202,7 +186,7 @@ export const refreshAccessToken = async () => {
 
   refreshInFlight = (async () => {
     try {
-      const response = await fetchAuthRequest(`${AUTH_API_BASE_URL}/refresh-token`, {
+      const response = await fetch(`${AUTH_API_BASE_URL}/refresh-token`, {
         method: 'POST',
         headers: withCsrfHeader(
           {
