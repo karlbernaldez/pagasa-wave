@@ -1,5 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { TRUSTED_DEVICE_COOKIE } from '#controllers/auth/utils/trustedDevice';
+
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const CSRF_COOKIE_NAME = 'wavelabCsrfToken';
 const CSRF_HEADER_NAME = 'x-csrf-token';
@@ -90,7 +92,11 @@ export const csrfProtection = (req, res, next) => {
     return res.status(403).json({ message: 'CSRF protection blocked request' });
   }
 
-  const usesAuthenticatedCookies = Boolean(req.cookies?.accessToken || req.cookies?.refreshToken);
+  const usesAuthenticatedCookies = Boolean(
+    req.cookies?.accessToken ||
+      req.cookies?.refreshToken ||
+      req.cookies?.[TRUSTED_DEVICE_COOKIE]
+  );
   if (!usesAuthenticatedCookies) {
     ensureCsrfCookie(req, res);
     return next();
