@@ -5,15 +5,12 @@ import ForecastPackage from '../models/ForecastPackage.js';
 import {
   FORECAST_PACKAGE_STATUS,
   REQUIRED_FORECAST_CHARTS,
+  buildForecastPackageName,
   getPackageCompletion,
   normalizeForecastDate,
 } from '../utils/forecastPackage.js';
 import { applyForecastPackageDisplayNames } from '../utils/forecastPackageDisplayNames.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
-import {
-  loadForecastNamingSettings,
-  resolveForecastNames,
-} from '../services/forecastNamingService.js';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -61,13 +58,8 @@ export const createForecastPackage = asyncHandler(async (req, res) => {
   const forecastDate = normalizeForecastDate(req.body?.forecastDate || new Date());
   if (!forecastDate) throwError('forecastDate must be a valid date', 400);
 
-  const namingSettings = await loadForecastNamingSettings();
-  const resolvedNames = resolveForecastNames({
-    forecastDate,
-    settings: namingSettings,
-    packageNameOverride: req.body?.name,
-  });
-  const name = resolvedNames?.packageName || '';
+  const defaultName = buildForecastPackageName(forecastDate);
+  const name = String(req.body?.name || defaultName || '').trim();
   if (!name) throwError('name is required', 400);
 
   const existingPackage = await ForecastPackage.findOne({
@@ -83,7 +75,7 @@ export const createForecastPackage = asyncHandler(async (req, res) => {
     const charts = [];
     for (const requiredChart of REQUIRED_FORECAST_CHARTS) {
       const project = await Project.create({
-        name: resolvedNames.chartNames[requiredChart.chartType],
+        name: `${name} - ${requiredChart.label}`,
         description: String(req.body?.description || '').trim(),
         chartType: requiredChart.chartType,
         forecastDate,
