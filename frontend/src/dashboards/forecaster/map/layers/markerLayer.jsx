@@ -413,20 +413,27 @@ export const saveMarker =
             'text-letter-spacing': initialStyle.textLetterSpacing,
             'text-transform': initialStyle.textTransform,
           }
-        : {
-            'icon-image': ['get', 'icon'],
-            'icon-size': [
-              'case',
-              ['==', ['get', 'markerType'], 'low_pressure'],
-              0.015,
-              ['==', ['get', 'markerType'], 'high_pressure'],
-              0.015,
-              ['==', ['get', 'markerType'], 'less_1'],
-              0.28,
-              0.03,
-            ],
-            'icon-allow-overlap': true,
-          };
+        : markerType === 'less_1'
+          ? {
+              'text-field': ['get', 'labelValue'],
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+              'text-anchor': 'center',
+              'text-allow-overlap': true,
+              'text-ignore-placement': true,
+              'text-size': 18,
+            }
+          : {
+              'icon-image': ['get', 'icon'],
+              'icon-size': [
+                'case',
+                ['==', ['get', 'markerType'], 'low_pressure'],
+                0.015,
+                ['==', ['get', 'markerType'], 'high_pressure'],
+                0.015,
+                0.03,
+              ],
+              'icon-allow-overlap': true,
+            };
 
     if (markerType !== 'less_1' && markerType !== 'text_note') {
       layout['text-field'] = ['get', 'title'];
@@ -447,7 +454,11 @@ export const saveMarker =
       paint['text-color'] = initialStyle.textColor;
       paint['text-halo-color'] = initialStyle.textHaloColor;
       paint['text-halo-width'] = initialStyle.textHaloWidth;
-    } else if (markerType !== 'less_1') {
+    } else if (markerType === 'less_1') {
+      paint['text-color'] = '#15803d';
+      paint['text-halo-color'] = '#ffffff';
+      paint['text-halo-width'] = 2;
+    } else {
       paint['text-color'] = [
         'case',
         ['==', ['get', 'markerType'], 'low_pressure'],
