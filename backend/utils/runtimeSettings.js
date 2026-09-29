@@ -131,6 +131,12 @@ export function parseForecasterWorkspaceSettingsPayload(input = {}) {
       'Drawing smoothing',
       { min: 0, max: 100 }
     ),
+    drawingPostProcessEnabled: input.drawingPostProcessEnabled === true,
+    drawingPostProcessSmoothingPercent: readFiniteNumber(
+      input.drawingPostProcessSmoothingPercent ?? 50,
+      'Drawing post-process smoothing',
+      { min: 0, max: 100 }
+    ),
   };
 }
 
