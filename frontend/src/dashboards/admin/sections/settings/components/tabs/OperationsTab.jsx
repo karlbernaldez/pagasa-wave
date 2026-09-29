@@ -1,4 +1,13 @@
-import { AlertTriangle, Archive, CalendarClock, Loader2, Play, Search, ShieldCheck } from 'lucide-react';
+import {
+  AlertTriangle,
+  Archive,
+  CalendarClock,
+  Loader2,
+  Play,
+  Search,
+  ShieldCheck,
+  Tags,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import Accordion from '../ui/Accordion';
@@ -76,6 +85,30 @@ function InfoCard({ title, children, dark }) {
   );
 }
 
+
+function renderNamingTemplate(template, values) {
+  return String(template || '').replace(/\{([a-zA-Z0-9_]+)\}/g, (match, token) =>
+    Object.prototype.hasOwnProperty.call(values, token) ? String(values[token]) : match
+  );
+}
+
+function NamingTemplateField({ label, value, onChange, dark, helperText }) {
+  return (
+    <div>
+      <label className={labelCls(dark)}>{label}</label>
+      <input
+        type="text"
+        value={value ?? ''}
+        onChange={(event) => onChange(event.target.value)}
+        className={inputCls(dark)}
+      />
+      <p className={cn('mt-1 text-xs font-semibold', dark ? 'text-slate-500' : 'text-slate-500')}>
+        {helperText}
+      </p>
+    </div>
+  );
+}
+
 function ValidationMessage({ children, dark }) {
   return (
     <div
@@ -99,6 +132,43 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
   const [archivePreview, setArchivePreview] = useState(null);
   const [archiveStatus, setArchiveStatus] = useState(null);
   const [archiveBusy, setArchiveBusy] = useState('');
+
+  const previewDate = '2026-09-29';
+  const previewPackageName = renderNamingTemplate(
+    settings.forecastPackageNameTemplate || 'Marine Forecast {date}',
+    { date: previewDate }
+  );
+  const namingPreview = [
+    ['Package', previewPackageName],
+    [
+      'Wave Analysis',
+      renderNamingTemplate(settings.waveAnalysisNameTemplate || '{package} - Wave Analysis', {
+        package: previewPackageName,
+        date: previewDate,
+      }),
+    ],
+    [
+      '24h Forecast',
+      renderNamingTemplate(settings.forecast24hNameTemplate || '{package} - 24h Wave Forecast', {
+        package: previewPackageName,
+        date: previewDate,
+      }),
+    ],
+    [
+      '36h Forecast',
+      renderNamingTemplate(settings.forecast36hNameTemplate || '{package} - 36h Wave Forecast', {
+        package: previewPackageName,
+        date: previewDate,
+      }),
+    ],
+    [
+      '48h Forecast',
+      renderNamingTemplate(settings.forecast48hNameTemplate || '{package} - 48h Wave Forecast', {
+        package: previewPackageName,
+        date: previewDate,
+      }),
+    ],
+  ];
 
   const previewArchive = async () => {
     setArchiveBusy('preview');
@@ -147,6 +217,83 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
         These values drive the live forecaster deadline reminder states. Workflow transitions
         themselves remain explicit and are not automatically changed by a clock.
       </InfoCard>
+
+      <Accordion icon={Tags} title="Generated Package & Chart Names" dark={dark}>
+        <div className="grid gap-4">
+          <InfoCard title="Naming rules" dark={dark}>
+            These templates are used only when WaveLab creates a new Forecast Package and its
+            chart projects. Existing records keep their original names.
+          </InfoCard>
+
+          <NamingTemplateField
+            label="Forecast Package Name"
+            value={settings.forecastPackageNameTemplate ?? 'Marine Forecast {date}'}
+            onChange={set('forecastPackageNameTemplate')}
+            dark={dark}
+            helperText="Available placeholder: {date}"
+          />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <NamingTemplateField
+              label="Wave Analysis Name"
+              value={settings.waveAnalysisNameTemplate ?? '{package} - Wave Analysis'}
+              onChange={set('waveAnalysisNameTemplate')}
+              dark={dark}
+              helperText="Available placeholders: {package}, {date}"
+            />
+            <NamingTemplateField
+              label="24h Forecast Name"
+              value={settings.forecast24hNameTemplate ?? '{package} - 24h Wave Forecast'}
+              onChange={set('forecast24hNameTemplate')}
+              dark={dark}
+              helperText="Available placeholders: {package}, {date}"
+            />
+            <NamingTemplateField
+              label="36h Forecast Name"
+              value={settings.forecast36hNameTemplate ?? '{package} - 36h Wave Forecast'}
+              onChange={set('forecast36hNameTemplate')}
+              dark={dark}
+              helperText="Available placeholders: {package}, {date}"
+            />
+            <NamingTemplateField
+              label="48h Forecast Name"
+              value={settings.forecast48hNameTemplate ?? '{package} - 48h Wave Forecast'}
+              onChange={set('forecast48hNameTemplate')}
+              dark={dark}
+              helperText="Available placeholders: {package}, {date}"
+            />
+          </div>
+
+          <div
+            className={cn(
+              'rounded-2xl border p-4',
+              dark ? 'border-white/10 bg-slate-950/30' : 'border-slate-200 bg-slate-50'
+            )}
+          >
+            <p className={cn('text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>
+              Example output
+            </p>
+            <div className="mt-3 grid gap-2">
+              {namingPreview.map(([label, value]) => (
+                <div
+                  key={label}
+                  className={cn(
+                    'grid gap-1 rounded-xl border px-3 py-2 sm:grid-cols-[120px_minmax(0,1fr)]',
+                    dark ? 'border-white/10 bg-white/[0.025]' : 'border-slate-200 bg-white'
+                  )}
+                >
+                  <span className={cn('text-xs font-black', dark ? 'text-slate-400' : 'text-slate-500')}>
+                    {label}
+                  </span>
+                  <span className={cn('break-words text-sm font-bold', dark ? 'text-white' : 'text-slate-900')}>
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Accordion>
 
       <Accordion icon={Archive} title="Archive & Retention Preparation" dark={dark}>
         <div className="grid gap-4">
