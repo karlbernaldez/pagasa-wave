@@ -380,6 +380,101 @@ export const getPostProcessSmoothingPasses = (percent = 50) => {
   return 5;
 };
 
+
+const MAX_POST_PROCESS_POINTS = 480;
+
+function interpolatePoint(a, b, t) {
+  return [
+    a[0] + (b[0] - a[0]) * t,
+    a[1] + (b[1] - a[1]) * t,
+  ];
+}
+
+/**
+ * Resample a dense smoothed path at even arc-length intervals.
+ * This preserves the visual curve while preventing smoothing passes from
+ * producing thousands of nearly redundant coordinates.
+ */
+export const resamplePointsByArcLength = (
+  points,
+  maxPoints = MAX_POST_PROCESS_POINTS,
+  { closed = false } = {}
+) => {
+  if (!Array.isArray(points) || points.length < 4) return points;
+
+  let pairs = toPointPairs(points);
+  if (pairs.length <= maxPoints) return points;
+
+  if (closed && pairs.length > 2 && samePoint(pairs[0], pairs.at(-1))) {
+    pairs = pairs.slice(0, -1);
+  }
+
+  const segments = [];
+  let totalLength = 0;
+  const segmentCount = closed ? pairs.length : pairs.length - 1;
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const start = pairs[index];
+    const end = pairs[(index + 1) % pairs.length];
+    const length = Math.hypot(end[0] - start[0], end[1] - start[1]);
+    if (length <= EPSILON) continue;
+
+    segments.push({
+      start,
+      end,
+      length,
+      startDistance: totalLength,
+    });
+    totalLength += length;
+  }
+
+  if (!segments.length || totalLength <= EPSILON) return points;
+
+  const sampleCount = Math.max(
+    2,
+    Math.min(maxPoints, closed ? maxPoints : maxPoints - 1)
+  );
+  const result = [];
+
+  const pointAtDistance = (distance) => {
+    const normalizedDistance = closed
+      ? ((distance % totalLength) + totalLength) % totalLength
+      : Math.max(0, Math.min(totalLength, distance));
+
+    const segment =
+      segments.find(
+        (item) =>
+          normalizedDistance <= item.startDistance + item.length + EPSILON
+      ) || segments.at(-1);
+
+    const localDistance = Math.max(
+      0,
+      Math.min(segment.length, normalizedDistance - segment.startDistance)
+    );
+    const t = segment.length > EPSILON ? localDistance / segment.length : 0;
+
+    return interpolatePoint(segment.start, segment.end, t);
+  };
+
+  if (closed) {
+    const step = totalLength / sampleCount;
+    for (let index = 0; index < sampleCount; index += 1) {
+      result.push(pointAtDistance(index * step));
+    }
+  } else {
+    const step = totalLength / sampleCount;
+    result.push(pairs[0]);
+
+    for (let index = 1; index < sampleCount; index += 1) {
+      result.push(pointAtDistance(index * step));
+    }
+
+    result.push(pairs.at(-1));
+  }
+
+  return flattenPointPairs(result);
+};
+
 /**
  * Optional second-stage smoothing applied only after the pointer is released.
  * This deliberately operates on the already-finalized curve so live pen
@@ -396,7 +491,11 @@ export const applyPostProcessSmoothing = (
   const passes = getPostProcessSmoothingPasses(percent);
   if (passes === 0) return points;
 
-  return cornerCutPoints(points, passes, { closed });
+  const smoothed = cornerCutPoints(points, passes, { closed });
+
+  return resamplePointsByArcLength(smoothed, MAX_POST_PROCESS_POINTS, {
+    closed,
+  });
 };
 
 /**
