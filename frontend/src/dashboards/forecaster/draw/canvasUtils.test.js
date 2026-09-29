@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyPostProcessSmoothing,
   cornerCutPoints,
   getDrawingSmoothingProfile,
   getFinalCurvePoints,
+  getPostProcessSmoothingPasses,
   getPreviewCurvePoints,
 } from './canvasUtils';
 
@@ -60,5 +62,38 @@ describe('high smoothing corner rounding', () => {
 
     expect(final.length).toBeGreaterThan(raw.length);
     expect(final.length % 2).toBe(0);
+  });
+});
+
+
+describe('optional post-process smoothing', () => {
+  it('maps post-process strength to progressively more smoothing passes', () => {
+    expect(getPostProcessSmoothingPasses(0)).toBe(0);
+    expect(getPostProcessSmoothingPasses(20)).toBe(1);
+    expect(getPostProcessSmoothingPasses(50)).toBe(3);
+    expect(getPostProcessSmoothingPasses(80)).toBe(4);
+    expect(getPostProcessSmoothingPasses(100)).toBe(5);
+  });
+
+  it('leaves geometry unchanged at zero strength', () => {
+    const points = [0, 0, 20, 0, 20, 20, 40, 20];
+    expect(applyPostProcessSmoothing(points, 0)).toBe(points);
+  });
+
+  it('rounds finalized open geometry while preserving endpoints', () => {
+    const points = [0, 0, 20, 0, 20, 20, 40, 20];
+    const processed = applyPostProcessSmoothing(points, 80);
+
+    expect(processed.length).toBeGreaterThan(points.length);
+    expect(processed.slice(0, 2)).toEqual(points.slice(0, 2));
+    expect(processed.slice(-2)).toEqual(points.slice(-2));
+  });
+
+  it('supports closed contour post-processing without requiring duplicated end points', () => {
+    const points = [0, 0, 20, 0, 20, 20, 0, 20];
+    const processed = applyPostProcessSmoothing(points, 100, { closed: true });
+
+    expect(processed.length).toBeGreaterThan(points.length);
+    expect(processed.length % 2).toBe(0);
   });
 });
