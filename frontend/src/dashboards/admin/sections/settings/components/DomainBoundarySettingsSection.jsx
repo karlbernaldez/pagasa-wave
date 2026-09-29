@@ -1,7 +1,8 @@
 import { FileUp, MapPinned, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import { Field, inputCls, labelCls } from './ui/FormFields';
+import { Field } from './ui/FormFields';
+import { inputCls, labelCls } from './ui/formFieldStyles';
 import {
   boundaryFileToGeoJson,
   coordinatesTextToGeoJson,
