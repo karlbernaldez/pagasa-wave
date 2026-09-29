@@ -1,4 +1,4 @@
-import { Pencil } from 'lucide-react';
+import { PenTool } from 'lucide-react';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -41,19 +41,17 @@ export default function DrawingPointerGuide({
 
       <div
         className={cn(
-          'absolute flex h-7 w-7 items-center justify-center rounded-lg border shadow-lg',
-          isDarkMode
-            ? 'border-cyan-200/40 bg-slate-950/90 text-cyan-200 shadow-cyan-950/40'
-            : 'border-blue-200 bg-white/95 text-blue-700 shadow-slate-900/15'
+          'absolute drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]',
+          isDarkMode ? 'text-cyan-100' : 'text-blue-700'
         )}
         style={{
           left: rawClientX,
           top: rawClientY,
-          transform: 'translate(-4px, -24px) rotate(-28deg)',
+          transform: 'translate(-3px, -19px) rotate(-18deg)',
           transformOrigin: '50% 100%',
         }}
       >
-        <Pencil size={16} strokeWidth={2.5} />
+        <PenTool size={20} strokeWidth={2.4} />
       </div>
 
       {hasOffset && (
