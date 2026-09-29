@@ -9,9 +9,9 @@ import { SortableDnD } from '../ui/Sortable';
 const FALLBACK_AVATAR = 'https://i.pravatar.cc/100?img=3';
 
 function clean(value) {
-  return typeof value === 'string'
-    ? value.replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim()
-    : value;
+  // Contact copy is rendered through React text nodes, which escape markup.
+  // Do not attempt HTML sanitization with regex here; normalize only whitespace.
+  return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : value;
 }
 
 function safeText(value, max = 500) {
