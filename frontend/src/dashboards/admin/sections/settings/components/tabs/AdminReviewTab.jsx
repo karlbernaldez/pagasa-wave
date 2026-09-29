@@ -1,7 +1,7 @@
 import { PackageCheck } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
-import { inputCls, labelCls } from '../ui/FormFields';
+import { inputCls, labelCls } from '../ui/formFieldStyles';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
