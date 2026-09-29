@@ -3,6 +3,7 @@ import test from 'node:test';
 import crypto from 'crypto';
 
 import User from '../models/User.js';
+import AuditLog from '../models/AuditLog.js';
 import Session from '../models/Session.js';
 import TrustedDevice from '../models/TrustedDevice.js';
 import { verifyEmail } from '../controllers/auth/verifyEmail.js';
@@ -47,6 +48,7 @@ async function withUserMocks(mocks, work) {
     findOneAndUpdate: User.findOneAndUpdate,
     sessionUpdateMany: Session.updateMany,
     trustedDeviceUpdateMany: TrustedDevice.updateMany,
+    auditLogCreate: AuditLog.create,
   };
 
   User.findOne = mocks.findOne ?? originals.findOne;
@@ -61,6 +63,7 @@ async function withUserMocks(mocks, work) {
     User.findOneAndUpdate = originals.findOneAndUpdate;
     Session.updateMany = originals.sessionUpdateMany;
     TrustedDevice.updateMany = originals.trustedDeviceUpdateMany;
+    AuditLog.create = originals.auditLogCreate;
   }
 }
 
