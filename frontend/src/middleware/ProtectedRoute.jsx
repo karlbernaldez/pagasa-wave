@@ -69,7 +69,9 @@ const ProtectedRoute = ({
     };
   }, [retryCount, setIsLoggedIn, setRole]);
 
-  if (apiState.phase === 'loading') return <LoadingScreen />;
+  if (apiState.phase === 'loading') {
+    return <LoadingScreen message="Verifying session..." />;
+  }
 
   if (apiState.phase === 'unavailable') {
     // Public auth-entry routes such as /login and /register must remain usable
