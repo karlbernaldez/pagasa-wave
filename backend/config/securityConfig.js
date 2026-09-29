@@ -22,7 +22,7 @@ const requireStrongSecret = (name, value) => {
   }
 };
 
-const validateCorsOrigin = (origin) => {
+const validateCorsOrigin = (origin, { requireHttps = false } = {}) => {
   let parsed;
 
   try {
@@ -33,6 +33,10 @@ const validateCorsOrigin = (origin) => {
 
   if (!['http:', 'https:'].includes(parsed.protocol)) {
     throw new Error(`CORS origin must use http or https: ${origin}`);
+  }
+
+  if (requireHttps && parsed.protocol !== 'https:') {
+    throw new Error(`Production CORS origins must use https: ${origin}`);
   }
 
   if (
@@ -78,7 +82,7 @@ export const validateSecurityConfig = (env = process.env) => {
       throw new Error('CORS_ALLOWED_ORIGINS must not contain * in production.');
     }
 
-    allowedOrigins.forEach(validateCorsOrigin);
+    allowedOrigins.forEach((origin) => validateCorsOrigin(origin, { requireHttps: true }));
   }
 };
 
