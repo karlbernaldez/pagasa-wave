@@ -88,7 +88,9 @@ export const listRoles = async () => {
 };
 
 export const getRoleByKey = async (rawKey, { requireEnabled = false } = {}) => {
-  await ensureDefaultRoles();
+  // Default roles are synchronized once during server startup. Runtime
+  // authorization must remain a read path so every /auth/check does not depend
+  // on MongoDB writes completing successfully.
   const key = assertRoleKey(rawKey);
   const role = await Role.findOne({ key }).lean();
   if (!role) {
