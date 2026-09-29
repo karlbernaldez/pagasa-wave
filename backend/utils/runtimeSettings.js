@@ -37,65 +37,6 @@ function timeToMinutes(value, field) {
   return { time, minutes: hours * 60 + minutes };
 }
 
-
-const FORECAST_NAME_TEMPLATE_FIELDS = Object.freeze({
-  packageNameTemplate: {
-    label: 'Package name template',
-    fallback: 'Marine Forecast {date}',
-    allowedTokens: new Set(['date']),
-  },
-  analysisChartNameTemplate: {
-    label: 'Wave Analysis chart name template',
-    fallback: '{package} - Wave Analysis',
-    allowedTokens: new Set(['date', 'package']),
-  },
-  forecast24ChartNameTemplate: {
-    label: '24h chart name template',
-    fallback: '{package} - 24h Wave Forecast',
-    allowedTokens: new Set(['date', 'package']),
-  },
-  forecast36ChartNameTemplate: {
-    label: '36h chart name template',
-    fallback: '{package} - 36h Wave Forecast',
-    allowedTokens: new Set(['date', 'package']),
-  },
-  forecast48ChartNameTemplate: {
-    label: '48h chart name template',
-    fallback: '{package} - 48h Wave Forecast',
-    allowedTokens: new Set(['date', 'package']),
-  },
-});
-
-function readForecastNameTemplate(value, config) {
-  const template = cleanString(value || config.fallback, {
-    field: config.label,
-    max: 180,
-    allowEmpty: false,
-  });
-
-  const tokens = [...template.matchAll(/\{([a-zA-Z0-9_]+)\}/g)].map((match) => match[1]);
-  const invalidTokens = [...new Set(tokens.filter((token) => !config.allowedTokens.has(token)))];
-
-  if (invalidTokens.length) {
-    throw validationError(
-      `${config.label} contains unsupported placeholder${invalidTokens.length === 1 ? '' : 's'}: ${invalidTokens
-        .map((token) => `{${token}}`)
-        .join(', ')}.`
-    );
-  }
-
-  return template;
-}
-
-function parseForecastNamingSettings(input = {}) {
-  return Object.fromEntries(
-    Object.entries(FORECAST_NAME_TEMPLATE_FIELDS).map(([field, config]) => [
-      field,
-      readForecastNameTemplate(input[field], config),
-    ])
-  );
-}
-
 export function parseOperationsSettingsPayload(input = {}) {
   const submission = timeToMinutes(input.packageSubmissionDeadline, 'Submission deadline');
   const publish = timeToMinutes(input.packagePublishTarget, 'Publish target');
@@ -127,7 +68,6 @@ export function parseOperationsSettingsPayload(input = {}) {
       { min: 0, max: 1440 }
     ),
     timezone,
-    ...parseForecastNamingSettings(input),
     autoArchivePublishedEnabled: input.autoArchivePublishedEnabled === true,
     archivePublishedAfterDays: readFiniteNumber(
       input.archivePublishedAfterDays ?? 30,
