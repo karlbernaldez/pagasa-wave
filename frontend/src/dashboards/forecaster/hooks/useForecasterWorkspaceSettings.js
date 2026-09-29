@@ -23,6 +23,8 @@ const DEFAULT_FORECASTER_WORKSPACE_SETTINGS = {
   drawingPointerOffsetX: 0,
   drawingPointerOffsetY: 0,
   drawingSmoothingPercent: 50,
+  drawingPostProcessEnabled: false,
+  drawingPostProcessSmoothingPercent: 50,
 };
 
 const DEFAULT_OPERATIONS_SETTINGS = {
