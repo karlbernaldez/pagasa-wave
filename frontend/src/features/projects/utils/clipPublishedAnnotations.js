@@ -39,10 +39,8 @@ function pointInRing(point, ring) {
     if (pointOnSegment(point, a, b)) return true;
 
     const intersects =
-      (b[1] > point[1]) !== (a[1] > point[1]) &&
-      point[0] <
-        ((a[0] - b[0]) * (point[1] - b[1])) / ((a[1] - b[1]) || Number.EPSILON) +
-          b[0];
+      b[1] > point[1] !== a[1] > point[1] &&
+      point[0] < ((a[0] - b[0]) * (point[1] - b[1])) / (a[1] - b[1] || Number.EPSILON) + b[0];
 
     if (intersects) inside = !inside;
   }
@@ -95,10 +93,7 @@ function segmentIntersectionT(a, b, c, d) {
 }
 
 function interpolate(a, b, t) {
-  return [
-    a[0] + (b[0] - a[0]) * t,
-    a[1] + (b[1] - a[1]) * t,
-  ];
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 
 function getDomainEdges(domainPolygons) {
@@ -111,8 +106,7 @@ function getDomainEdges(domainPolygons) {
       }
       if (
         ring.length > 2 &&
-        (ring[0][0] !== ring[ring.length - 1][0] ||
-          ring[0][1] !== ring[ring.length - 1][1])
+        (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1])
       ) {
         edges.push([ring[ring.length - 1], ring[0]]);
       }
@@ -148,9 +142,7 @@ function clipLineCoordinates(coordinates, domainPolygons, domainEdges) {
       segmentIntersectionT(a, b, c, d).forEach((t) => tValues.push(t));
     });
 
-    const sorted = [...new Set(tValues.map((t) => Number(t.toFixed(12))))].sort(
-      (x, y) => x - y
-    );
+    const sorted = [...new Set(tValues.map((t) => Number(t.toFixed(12))))].sort((x, y) => x - y);
 
     for (let j = 1; j < sorted.length; j += 1) {
       const t0 = sorted[j - 1];
@@ -182,9 +174,7 @@ function clipPointFeature(feature, domainPolygons) {
     return pointInDomain(geometry.coordinates, domainPolygons) ? [feature] : [];
   }
 
-  const coordinates = geometry.coordinates.filter((point) =>
-    pointInDomain(point, domainPolygons)
-  );
+  const coordinates = geometry.coordinates.filter((point) => pointInDomain(point, domainPolygons));
 
   if (!coordinates.length) return [];
   if (coordinates.length === 1) {
@@ -196,12 +186,9 @@ function clipPointFeature(feature, domainPolygons) {
 
 function clipLineFeature(feature, domainPolygons, domainEdges) {
   const geometry = feature.geometry;
-  const lines =
-    geometry.type === 'LineString' ? [geometry.coordinates] : geometry.coordinates;
+  const lines = geometry.type === 'LineString' ? [geometry.coordinates] : geometry.coordinates;
 
-  const clipped = lines.flatMap((line) =>
-    clipLineCoordinates(line, domainPolygons, domainEdges)
-  );
+  const clipped = lines.flatMap((line) => clipLineCoordinates(line, domainPolygons, domainEdges));
 
   if (!clipped.length) return [];
   if (clipped.length === 1) {
@@ -245,9 +232,7 @@ function normalizeDomain(settings = {}) {
     return null;
   }
 
-  const polygons = collection.features.flatMap((feature) =>
-    asPolygons(feature?.geometry)
-  );
+  const polygons = collection.features.flatMap((feature) => asPolygons(feature?.geometry));
 
   if (!polygons.length) return null;
 

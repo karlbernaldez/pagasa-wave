@@ -161,10 +161,7 @@ async function withMockedModels(
     sort() {
       return this;
     },
-    lean: async () =>
-      filter?.status === 'Active'
-        ? null
-        : null,
+    lean: async () => (filter?.status === 'Active' ? null : null),
   });
   ForecastPackageReviewChecklist.create = async (payload) => ({
     _id: '507f1f77bcf86cd799439013',

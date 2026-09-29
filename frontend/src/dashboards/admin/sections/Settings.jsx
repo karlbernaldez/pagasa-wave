@@ -144,14 +144,7 @@ const SettingsSection = ({ isDarkMode }) => {
 
     return normalized;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    operationsData,
-    forecasterWorkspaceData,
-    mapViewData,
-    generalData,
-    aboutData,
-    contactData,
-  ]);
+  }, [operationsData, forecasterWorkspaceData, mapViewData, generalData, aboutData, contactData]);
 
   const history = useUndoRedoState(combinedInitial, {
     maxHistory: 100,
@@ -222,8 +215,9 @@ const SettingsSection = ({ isDarkMode }) => {
                 Dashboard Settings Control Center
               </h2>
               <p className={cn('mt-1 max-w-3xl text-sm font-semibold leading-6', muted)}>
-                Select a work area first, then manage the configuration owned by that area. Core workflow
-                invariants remain enforced by the application even when review policy is configurable.
+                Select a work area first, then manage the configuration owned by that area. Core
+                workflow invariants remain enforced by the application even when review policy is
+                configurable.
               </p>
               {activeGroup && visibleTabs.some((tab) => tab.id === activeTab) && (
                 <div
@@ -253,38 +247,38 @@ const SettingsSection = ({ isDarkMode }) => {
 
             {!activeConfig?.standaloneSave && (
               <div className="flex flex-wrap gap-2 lg:justify-end">
-              <ActionButton
-                icon={Undo2}
-                onClick={history.undo}
-                disabled={!canManageActive || !history.canUndo}
-                isDarkMode={dark}
-              >
-                Undo
-              </ActionButton>
-              <ActionButton
-                icon={Redo2}
-                onClick={history.redo}
-                disabled={!canManageActive || !history.canRedo}
-                isDarkMode={dark}
-              >
-                Redo
-              </ActionButton>
-              <ActionButton
-                icon={RotateCcw}
-                onClick={onReset}
-                disabled={!canManageActive || !dataLoaded || saving}
-                isDarkMode={dark}
-              >
-                Reset
-              </ActionButton>
-              <ActionButton
-                icon={Save}
-                onClick={onSave}
-                disabled={!canManageActive || !dataLoaded || saving}
-                isDarkMode={dark}
-              >
-                {saving ? 'Saving' : 'Save'}
-              </ActionButton>
+                <ActionButton
+                  icon={Undo2}
+                  onClick={history.undo}
+                  disabled={!canManageActive || !history.canUndo}
+                  isDarkMode={dark}
+                >
+                  Undo
+                </ActionButton>
+                <ActionButton
+                  icon={Redo2}
+                  onClick={history.redo}
+                  disabled={!canManageActive || !history.canRedo}
+                  isDarkMode={dark}
+                >
+                  Redo
+                </ActionButton>
+                <ActionButton
+                  icon={RotateCcw}
+                  onClick={onReset}
+                  disabled={!canManageActive || !dataLoaded || saving}
+                  isDarkMode={dark}
+                >
+                  Reset
+                </ActionButton>
+                <ActionButton
+                  icon={Save}
+                  onClick={onSave}
+                  disabled={!canManageActive || !dataLoaded || saving}
+                  isDarkMode={dark}
+                >
+                  {saving ? 'Saving' : 'Save'}
+                </ActionButton>
               </div>
             )}
           </div>

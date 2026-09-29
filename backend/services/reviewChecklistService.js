@@ -158,14 +158,7 @@ export async function getPackageReviewChecklist(
 }
 
 export async function updatePackageReviewChecklistItem(
-  {
-    forecastPackageId,
-    itemId,
-    status,
-    comment,
-    expectedVersion,
-    userId,
-  },
+  { forecastPackageId, itemId, status, comment, expectedVersion, userId },
   { checklistModel = ForecastPackageReviewChecklist } = {}
 ) {
   if (!forecastPackageId || !itemId) {

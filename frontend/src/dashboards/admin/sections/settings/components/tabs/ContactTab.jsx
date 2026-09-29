@@ -31,8 +31,10 @@ function isURL(value) {
 export default function ContactTab({ settings = {}, setSettings, dark }) {
   const s = settings || {};
 
-  const setField = (key, max = 1000) => (value) =>
-    setSettings((prev) => ({ ...prev, [key]: safeText(value, max) }));
+  const setField =
+    (key, max = 1000) =>
+    (value) =>
+      setSettings((prev) => ({ ...prev, [key]: safeText(value, max) }));
 
   const updateArrayItem = (key, id, patch) =>
     setSettings((prev) => ({
@@ -61,8 +63,7 @@ export default function ContactTab({ settings = {}, setSettings, dark }) {
       [key]: [...(prev[key] ?? []), { id: crypto.randomUUID(), ...item }],
     }));
 
-  const reorderArray = (key, next) =>
-    setSettings((prev) => ({ ...prev, [key]: next }));
+  const reorderArray = (key, next) => setSettings((prev) => ({ ...prev, [key]: next }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -101,21 +102,45 @@ export default function ContactTab({ settings = {}, setSettings, dark }) {
                 dragHandleProps={sortableProps.dragHandleProps}
               >
                 <div className="grid gap-3 md:grid-cols-2">
-                  <Field label="Title" value={card.title ?? ''} onChange={(value) => updateArrayItem('contactCards', card.id, { title: value })} dark={dark} />
-                  <Field label="Value" value={card.value ?? ''} onChange={(value) => updateArrayItem('contactCards', card.id, { value })} dark={dark} />
-                  <IconPicker value={card.icon ?? 'mail'} onChange={(value) => updateArrayItem('contactCards', card.id, { icon: value })} dark={dark} />
+                  <Field
+                    label="Title"
+                    value={card.title ?? ''}
+                    onChange={(value) => updateArrayItem('contactCards', card.id, { title: value })}
+                    dark={dark}
+                  />
+                  <Field
+                    label="Value"
+                    value={card.value ?? ''}
+                    onChange={(value) => updateArrayItem('contactCards', card.id, { value })}
+                    dark={dark}
+                  />
+                  <IconPicker
+                    value={card.icon ?? 'mail'}
+                    onChange={(value) => updateArrayItem('contactCards', card.id, { icon: value })}
+                    dark={dark}
+                  />
                 </div>
-                <TextareaField label="Description" value={card.description ?? ''} onChange={(value) => updateArrayItem('contactCards', card.id, { description: value })} rows={2} dark={dark} />
+                <TextareaField
+                  label="Description"
+                  value={card.description ?? ''}
+                  onChange={(value) =>
+                    updateArrayItem('contactCards', card.id, { description: value })
+                  }
+                  rows={2}
+                  dark={dark}
+                />
               </ArrayRow>
             )}
           />
           <AddButton
-            onClick={() => addArrayItem('contactCards', {
-              title: '',
-              description: '',
-              value: '',
-              icon: 'mail',
-            })}
+            onClick={() =>
+              addArrayItem('contactCards', {
+                title: '',
+                description: '',
+                value: '',
+                icon: 'mail',
+              })
+            }
             label="Add Contact Card"
             dark={dark}
           />
@@ -137,10 +162,34 @@ export default function ContactTab({ settings = {}, setSettings, dark }) {
                 dragHandleProps={sortableProps.dragHandleProps}
               >
                 <div className="grid gap-3 md:grid-cols-2">
-                  <Field label="Full Name" value={member.name ?? ''} onChange={(value) => updateArrayItem('teamMembers', member.id, { name: value })} dark={dark} />
-                  <Field label="Role" value={member.role ?? ''} onChange={(value) => updateArrayItem('teamMembers', member.id, { role: value })} dark={dark} />
-                  <Field label="Email" value={member.email ?? ''} onChange={(value) => updateArrayItem('teamMembers', member.id, { email: value })} dark={dark} />
-                  <Field label="Avatar URL" value={member.avatar ?? ''} onChange={(value) => updateArrayItem('teamMembers', member.id, { avatar: value })} dark={dark} />
+                  <Field
+                    label="Full Name"
+                    value={member.name ?? ''}
+                    onChange={(value) => updateArrayItem('teamMembers', member.id, { name: value })}
+                    dark={dark}
+                  />
+                  <Field
+                    label="Role"
+                    value={member.role ?? ''}
+                    onChange={(value) => updateArrayItem('teamMembers', member.id, { role: value })}
+                    dark={dark}
+                  />
+                  <Field
+                    label="Email"
+                    value={member.email ?? ''}
+                    onChange={(value) =>
+                      updateArrayItem('teamMembers', member.id, { email: value })
+                    }
+                    dark={dark}
+                  />
+                  <Field
+                    label="Avatar URL"
+                    value={member.avatar ?? ''}
+                    onChange={(value) =>
+                      updateArrayItem('teamMembers', member.id, { avatar: value })
+                    }
+                    dark={dark}
+                  />
                 </div>
                 {member.avatar && (
                   <div className="mt-2 flex items-center gap-3">
@@ -163,12 +212,14 @@ export default function ContactTab({ settings = {}, setSettings, dark }) {
             )}
           />
           <AddButton
-            onClick={() => addArrayItem('teamMembers', {
-              name: '',
-              role: '',
-              email: '',
-              avatar: '',
-            })}
+            onClick={() =>
+              addArrayItem('teamMembers', {
+                name: '',
+                role: '',
+                email: '',
+                avatar: '',
+              })
+            }
             label="Add Team Member"
             dark={dark}
           />

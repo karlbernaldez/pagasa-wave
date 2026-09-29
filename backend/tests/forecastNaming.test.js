@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  DEFAULT_FORECAST_NAMING,
-  resolveForecastNames,
-} from '../utils/forecastNaming.js';
+import { DEFAULT_FORECAST_NAMING, resolveForecastNames } from '../utils/forecastNaming.js';
 
 const forecastDate = new Date('2026-09-28T16:00:00.000Z');
 

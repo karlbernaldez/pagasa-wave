@@ -37,7 +37,6 @@ function timeToMinutes(value, field) {
   return { time, minutes: hours * 60 + minutes };
 }
 
-
 const FORECAST_NAME_TEMPLATE_CONFIG = Object.freeze({
   forecastPackageNameTemplate: {
     label: 'Forecast Package name template',
@@ -75,9 +74,7 @@ function parseForecastNameTemplates(input = {}) {
         allowEmpty: false,
       });
 
-      const tokens = [...template.matchAll(/\{([a-zA-Z0-9_]+)\}/g)].map(
-        (match) => match[1]
-      );
+      const tokens = [...template.matchAll(/\{([a-zA-Z0-9_]+)\}/g)].map((match) => match[1]);
       const invalid = [...new Set(tokens.filter((token) => !config.allowedTokens.has(token)))];
 
       if (invalid.length) {
@@ -244,7 +241,6 @@ function normalizeLogoSource(value) {
   throw validationError('Logo source must be an app path, http/https URL, or image data URI.');
 }
 
-
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 const DOMAIN_GEOMETRY_TYPES = new Set(['Polygon', 'MultiPolygon']);
 
@@ -258,7 +254,9 @@ function countCoordinatePositions(coordinates) {
     const lng = Number(coordinates[0]);
     const lat = Number(coordinates[1]);
     if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
-      throw validationError('Domain boundary coordinates must use WGS84 longitude/latitude values.');
+      throw validationError(
+        'Domain boundary coordinates must use WGS84 longitude/latitude values.'
+      );
     }
     return 1;
   }

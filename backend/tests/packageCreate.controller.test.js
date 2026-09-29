@@ -75,7 +75,8 @@ async function run(handler, req) {
 
 test('package creation produces exactly Wave Analysis, 24h, 36h, and 48h without owners', async () => {
   const modules = await loadModules();
-  const { workflow, createController, PackageModel, Project, SiteSettings, PROJECT_STATUS } = modules;
+  const { workflow, createController, PackageModel, Project, SiteSettings, PROJECT_STATUS } =
+    modules;
   const originalFindOne = PackageModel.findOne;
   const originalSettingsFindOne = SiteSettings.findOne;
   const originalPackageCreate = PackageModel.create;

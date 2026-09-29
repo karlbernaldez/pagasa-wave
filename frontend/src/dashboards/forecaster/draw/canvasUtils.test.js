@@ -40,7 +40,6 @@ describe('Studio drawing smoothing settings', () => {
   });
 });
 
-
 describe('high smoothing corner rounding', () => {
   it('adds rounded intermediate points at high smoothing', () => {
     const raw = [0, 0, 20, 0, 20, 20, 40, 20];
@@ -64,7 +63,6 @@ describe('high smoothing corner rounding', () => {
     expect(final.length % 2).toBe(0);
   });
 });
-
 
 describe('optional post-process smoothing', () => {
   it('maps post-process strength to progressively more smoothing passes', () => {
@@ -97,7 +95,6 @@ describe('optional post-process smoothing', () => {
     expect(processed.length % 2).toBe(0);
   });
 });
-
 
 it('caps dense post-processed geometry to a bounded point count', () => {
   const dense = [];

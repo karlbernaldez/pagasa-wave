@@ -1,4 +1,11 @@
-import { ClipboardList, LayoutDashboard, PencilRuler, RotateCcw, ShieldCheck, Users } from 'lucide-react';
+import {
+  ClipboardList,
+  LayoutDashboard,
+  PencilRuler,
+  RotateCcw,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
 import { Field, TextareaField } from '../ui/FormFields';
@@ -22,14 +29,7 @@ function InfoCard({ title, children, dark }) {
 }
 
 function TextField({ label, field, settings, set, dark }) {
-  return (
-    <Field
-      label={label}
-      value={settings[field] ?? ''}
-      onChange={set(field)}
-      dark={dark}
-    />
-  );
+  return <Field label={label} value={settings[field] ?? ''} onChange={set(field)} dark={dark} />;
 }
 
 function MessageField({ label, field, settings, set, dark, rows = 3 }) {
@@ -45,14 +45,13 @@ function MessageField({ label, field, settings, set, dark, rows = 3 }) {
 }
 
 export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dark }) {
-  const set = (field) => (value) =>
-    setSettings((prev) => ({ ...prev, [field]: value }));
+  const set = (field) => (value) => setSettings((prev) => ({ ...prev, [field]: value }));
 
   return (
     <div className="flex flex-col gap-4">
       <InfoCard title="Forecaster workspace settings" dark={dark}>
-        Every setting on this page is consumed by the current Forecast Package workspace.
-        Studio map defaults are configured separately under Map View.
+        Every setting on this page is consumed by the current Forecast Package workspace. Studio map
+        defaults are configured separately under Map View.
       </InfoCard>
 
       <Accordion icon={LayoutDashboard} title="Workspace Header" dark={dark} defaultOpen>
@@ -84,7 +83,9 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className={`mb-1 block text-xs font-black uppercase tracking-wide ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+              <label
+                className={`mb-1 block text-xs font-black uppercase tracking-wide ${dark ? 'text-slate-300' : 'text-slate-600'}`}
+              >
                 Pointer X Offset (px)
               </label>
               <input
@@ -100,13 +101,17 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
                     : 'border-slate-300 bg-white text-slate-900 focus:border-blue-500'
                 }`}
               />
-              <p className={`mt-1 text-xs font-semibold ${dark ? 'text-slate-500' : 'text-slate-500'}`}>
+              <p
+                className={`mt-1 text-xs font-semibold ${dark ? 'text-slate-500' : 'text-slate-500'}`}
+              >
                 Negative moves the draw point left; positive moves it right.
               </p>
             </div>
 
             <div>
-              <label className={`mb-1 block text-xs font-black uppercase tracking-wide ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+              <label
+                className={`mb-1 block text-xs font-black uppercase tracking-wide ${dark ? 'text-slate-300' : 'text-slate-600'}`}
+              >
                 Pointer Y Offset (px)
               </label>
               <input
@@ -122,7 +127,9 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
                     : 'border-slate-300 bg-white text-slate-900 focus:border-blue-500'
                 }`}
               />
-              <p className={`mt-1 text-xs font-semibold ${dark ? 'text-slate-500' : 'text-slate-500'}`}>
+              <p
+                className={`mt-1 text-xs font-semibold ${dark ? 'text-slate-500' : 'text-slate-500'}`}
+              >
                 Negative moves the draw point upward; positive moves it downward.
               </p>
             </div>
@@ -131,16 +138,22 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
           <div>
             <div className="mb-2 flex items-center justify-between gap-3">
               <div>
-                <label className={`block text-xs font-black uppercase tracking-wide ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+                <label
+                  className={`block text-xs font-black uppercase tracking-wide ${dark ? 'text-slate-300' : 'text-slate-600'}`}
+                >
                   Curve Smoothing
                 </label>
-                <p className={`mt-1 text-xs font-semibold ${dark ? 'text-slate-500' : 'text-slate-500'}`}>
+                <p
+                  className={`mt-1 text-xs font-semibold ${dark ? 'text-slate-500' : 'text-slate-500'}`}
+                >
                   0% follows the pointer closely; 100% produces the smoothest operational curve.
                 </p>
               </div>
-              <span className={`rounded-lg px-3 py-1.5 text-sm font-black tabular-nums ${
-                dark ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'
-              }`}>
+              <span
+                className={`rounded-lg px-3 py-1.5 text-sm font-black tabular-nums ${
+                  dark ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'
+                }`}
+              >
                 {settings.drawingSmoothingPercent ?? 50}%
               </span>
             </div>
@@ -153,15 +166,16 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
               onChange={(event) => set('drawingSmoothingPercent')(Number(event.target.value))}
               className="w-full cursor-pointer"
             />
-            <div className={`mt-1 flex justify-between text-[10px] font-black uppercase tracking-wide ${
-              dark ? 'text-slate-600' : 'text-slate-400'
-            }`}>
+            <div
+              className={`mt-1 flex justify-between text-[10px] font-black uppercase tracking-wide ${
+                dark ? 'text-slate-600' : 'text-slate-400'
+              }`}
+            >
               <span>Precise</span>
               <span>Balanced</span>
               <span>Smooth</span>
             </div>
           </div>
-
 
           <div
             className={cn(
@@ -173,16 +187,21 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
               <input
                 type="checkbox"
                 checked={settings.drawingPostProcessEnabled === true}
-                onChange={(event) =>
-                  set('drawingPostProcessEnabled')(event.target.checked)
-                }
+                onChange={(event) => set('drawingPostProcessEnabled')(event.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
               />
               <span>
-                <span className={cn('block text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>
+                <span
+                  className={cn('block text-sm font-black', dark ? 'text-white' : 'text-slate-900')}
+                >
                   Post-process smoothing
                 </span>
-                <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
+                <span
+                  className={cn(
+                    'mt-1 block text-xs leading-5',
+                    dark ? 'text-slate-400' : 'text-slate-500'
+                  )}
+                >
                   Apply an additional smoothing pass after the pointer is released, immediately
                   before the final geometry is saved. Live drawing responsiveness is unchanged.
                 </span>
@@ -193,10 +212,20 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
               <div className="mt-4">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <div>
-                    <label className={cn('block text-xs font-black uppercase tracking-wide', dark ? 'text-slate-300' : 'text-slate-600')}>
+                    <label
+                      className={cn(
+                        'block text-xs font-black uppercase tracking-wide',
+                        dark ? 'text-slate-300' : 'text-slate-600'
+                      )}
+                    >
                       Post-process strength
                     </label>
-                    <p className={cn('mt-1 text-xs font-semibold', dark ? 'text-slate-500' : 'text-slate-500')}>
+                    <p
+                      className={cn(
+                        'mt-1 text-xs font-semibold',
+                        dark ? 'text-slate-500' : 'text-slate-500'
+                      )}
+                    >
                       Higher values perform stronger final corner rounding after drawing.
                     </p>
                   </div>
@@ -283,19 +312,68 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
 
       <Accordion icon={ShieldCheck} title="Package Reminder Messages" dark={dark}>
         <div className="grid gap-4">
-          <MessageField label="Deadline Reminder Message" field="deadlineReminderMessage" settings={settings} set={set} dark={dark} />
-          <MessageField label="Deadline Approaching Message" field="deadlineApproachingMessage" settings={settings} set={set} dark={dark} />
-          <MessageField label="Deadline Passed Message" field="deadlinePassedMessage" settings={settings} set={set} dark={dark} />
-          <MessageField label="Publish Target Missed Message" field="publishTargetMissedMessage" settings={settings} set={set} dark={dark} />
-          <MessageField label="No-Publication Cutoff Message" field="noPublicationCutoffMessage" settings={settings} set={set} dark={dark} />
-          <MessageField label="Revision Instruction Message" field="revisionInstructionMessage" settings={settings} set={set} dark={dark} />
+          <MessageField
+            label="Deadline Reminder Message"
+            field="deadlineReminderMessage"
+            settings={settings}
+            set={set}
+            dark={dark}
+          />
+          <MessageField
+            label="Deadline Approaching Message"
+            field="deadlineApproachingMessage"
+            settings={settings}
+            set={set}
+            dark={dark}
+          />
+          <MessageField
+            label="Deadline Passed Message"
+            field="deadlinePassedMessage"
+            settings={settings}
+            set={set}
+            dark={dark}
+          />
+          <MessageField
+            label="Publish Target Missed Message"
+            field="publishTargetMissedMessage"
+            settings={settings}
+            set={set}
+            dark={dark}
+          />
+          <MessageField
+            label="No-Publication Cutoff Message"
+            field="noPublicationCutoffMessage"
+            settings={settings}
+            set={set}
+            dark={dark}
+          />
+          <MessageField
+            label="Revision Instruction Message"
+            field="revisionInstructionMessage"
+            settings={settings}
+            set={set}
+            dark={dark}
+          />
         </div>
       </Accordion>
 
       <Accordion icon={ClipboardList} title="Workspace Helper Copy" dark={dark}>
         <div className="grid gap-4">
-          <MessageField label="Empty Package Message" field="emptyPackageMessage" settings={settings} set={set} dark={dark} />
-          <MessageField label="Chart Sequence Helper Message" field="chartSequenceHelperMessage" settings={settings} set={set} dark={dark} rows={4} />
+          <MessageField
+            label="Empty Package Message"
+            field="emptyPackageMessage"
+            settings={settings}
+            set={set}
+            dark={dark}
+          />
+          <MessageField
+            label="Chart Sequence Helper Message"
+            field="chartSequenceHelperMessage"
+            settings={settings}
+            set={set}
+            dark={dark}
+            rows={4}
+          />
         </div>
       </Accordion>
     </div>

@@ -58,7 +58,8 @@ export function getReminderState({ packageData, settings, now }) {
     };
   }
 
-  const editable = !packageData || ['Draft', 'Revision Requested'].includes(packageData.status || 'Draft');
+  const editable =
+    !packageData || ['Draft', 'Revision Requested'].includes(packageData.status || 'Draft');
   if (!editable) return null;
 
   const operations = settings.operations || {};
@@ -71,7 +72,7 @@ export function getReminderState({ packageData, settings, now }) {
   const reminderMessage = getConfiguredMessage(
     settings,
     'deadlineReminderMessage',
-    'Complete and submit today\'s forecast package before the operational deadline.'
+    "Complete and submit today's forecast package before the operational deadline."
   );
 
   if (nowMinutes === null || deadlineMinutes === null) {

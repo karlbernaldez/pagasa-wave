@@ -110,10 +110,7 @@ describe('review checklist settings draft helpers', () => {
   });
 
   it('creates a new default key that does not collide after reordering or deletion', () => {
-    const item = createNextChecklistDraftItem([
-      { key: 'review_item_1' },
-      { key: 'review_item_3' },
-    ]);
+    const item = createNextChecklistDraftItem([{ key: 'review_item_1' }, { key: 'review_item_3' }]);
 
     expect(item.key).toBe('review_item_2');
   });

@@ -19,12 +19,7 @@ const PREVIEW_MOVE_THROTTLE = 24;
  * Creates a smooth, pressure-sensitive stroke outline
  */
 export const getStrokeOutlinePoints = (points, options = {}) => {
-  const {
-    size = 8,
-    thinning = 0.5,
-    smoothing: _smoothing = 0.5,
-    streamline = 0.5,
-  } = options;
+  const { size = 8, thinning = 0.5, smoothing: _smoothing = 0.5, streamline = 0.5 } = options;
 
   if (points.length < 2) return [];
 
@@ -107,7 +102,7 @@ export const reducePoints = (points, tolerance = 5) => {
   const simplified = douglasPeucker(pointObjs, tolerance);
 
   const result = [];
-  simplified.forEach(p => {
+  simplified.forEach((p) => {
     result.push(p.x, p.y);
   });
 
@@ -178,7 +173,6 @@ export const lightSmoothPoints = (points, factor = 0.3) => {
 
   return result;
 };
-
 
 const toPointPairs = (points) => {
   const pairs = [];
@@ -317,8 +311,7 @@ export const getDrawingSmoothingProfile = (percent = 50) => {
     previewTolerance: 0.35 + amount * 1.75,
     finalTension: 0.2 + amount * 0.5,
     finalTolerance: 0.2 + amount * 1.15,
-    previewCornerCutPasses:
-      amount >= 0.9 ? 3 : amount >= 0.75 ? 2 : amount >= 0.6 ? 1 : 0,
+    previewCornerCutPasses: amount >= 0.9 ? 3 : amount >= 0.75 ? 2 : amount >= 0.6 ? 1 : 0,
     finalCornerCutPasses:
       amount >= 0.9 ? 4 : amount >= 0.75 ? 3 : amount >= 0.6 ? 2 : amount >= 0.45 ? 1 : 0,
   };
@@ -331,10 +324,7 @@ export const getPreviewCurvePoints = (rawPoints, smoothingPercent = 50) => {
     return lightSmoothPoints(rawPoints, profile.previewFactor);
   }
 
-  const roundedPoints = cornerCutPoints(
-    rawPoints,
-    profile.previewCornerCutPasses
-  );
+  const roundedPoints = cornerCutPoints(rawPoints, profile.previewCornerCutPasses);
 
   return smoothPoints(roundedPoints, profile.previewTension, {
     simplifyTolerance: profile.previewTolerance,
@@ -345,17 +335,9 @@ export const getPreviewCurvePoints = (rawPoints, smoothingPercent = 50) => {
   });
 };
 
-export const getFinalCurvePoints = (
-  rawPoints,
-  smoothingPercent = 50,
-  { closed = false } = {}
-) => {
+export const getFinalCurvePoints = (rawPoints, smoothingPercent = 50, { closed = false } = {}) => {
   const profile = getDrawingSmoothingProfile(smoothingPercent);
-  const roundedPoints = cornerCutPoints(
-    rawPoints,
-    profile.finalCornerCutPasses,
-    { closed }
-  );
+  const roundedPoints = cornerCutPoints(rawPoints, profile.finalCornerCutPasses, { closed });
 
   if (closed && profile.finalCornerCutPasses > 0) {
     // Chaikin already produces a dense, rounded closed path. Returning it
@@ -372,7 +354,6 @@ export const getFinalCurvePoints = (
   });
 };
 
-
 export const getPostProcessSmoothingPasses = (percent = 50) => {
   const amount = clampSmoothingPercent(percent);
   if (amount <= 0) return 0;
@@ -383,14 +364,10 @@ export const getPostProcessSmoothingPasses = (percent = 50) => {
   return 5;
 };
 
-
 const MAX_POST_PROCESS_POINTS = 480;
 
 function interpolatePoint(a, b, t) {
-  return [
-    a[0] + (b[0] - a[0]) * t,
-    a[1] + (b[1] - a[1]) * t,
-  ];
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 
 /**
@@ -433,10 +410,7 @@ export const resamplePointsByArcLength = (
 
   if (!segments.length || totalLength <= EPSILON) return points;
 
-  const sampleCount = Math.max(
-    2,
-    Math.min(maxPoints, closed ? maxPoints : maxPoints - 1)
-  );
+  const sampleCount = Math.max(2, Math.min(maxPoints, closed ? maxPoints : maxPoints - 1));
   const result = [];
 
   const pointAtDistance = (distance) => {
@@ -445,10 +419,8 @@ export const resamplePointsByArcLength = (
       : Math.max(0, Math.min(totalLength, distance));
 
     const segment =
-      segments.find(
-        (item) =>
-          normalizedDistance <= item.startDistance + item.length + EPSILON
-      ) || segments.at(-1);
+      segments.find((item) => normalizedDistance <= item.startDistance + item.length + EPSILON) ||
+      segments.at(-1);
 
     const localDistance = Math.max(
       0,
@@ -484,11 +456,7 @@ export const resamplePointsByArcLength = (
  * responsiveness is unaffected. Open paths preserve their endpoints; closed
  * paths are processed as loops and are closed later by the save pipeline.
  */
-export const applyPostProcessSmoothing = (
-  points,
-  percent = 50,
-  { closed = false } = {}
-) => {
+export const applyPostProcessSmoothing = (points, percent = 50, { closed = false } = {}) => {
   if (!Array.isArray(points) || points.length < 6) return points;
 
   const passes = getPostProcessSmoothingPasses(percent);
@@ -757,7 +725,7 @@ export const handlePointerUp = async (
   lineCount,
   labelValue = 5,
   isDarkMode,
-  projectId,         // ← passed in from the component, sourced from useProjectId()
+  projectId, // ← passed in from the component, sourced from useProjectId()
   smoothingPercent = 50,
   postProcessEnabled = false,
   postProcessSmoothingPercent = 50
@@ -795,11 +763,9 @@ export const handlePointerUp = async (
       });
 
       if (postProcessEnabled) {
-        lastLine.points = applyPostProcessSmoothing(
-          lastLine.points,
-          postProcessSmoothingPercent,
-          { closed: closedMode }
-        );
+        lastLine.points = applyPostProcessSmoothing(lastLine.points, postProcessSmoothingPercent, {
+          closed: closedMode,
+        });
       }
     }
 
@@ -969,7 +935,7 @@ export const handlePointerUp = async (
             closedMode,
             isFront: false,
             owner: owner?.id,
-            project: projectId,   // ← guaranteed to be the currently active project
+            project: projectId, // ← guaranteed to be the currently active project
           },
           name: computedName,
           sourceId,
@@ -1004,7 +970,6 @@ export const handlePointerUp = async (
           ];
         });
       }
-
     } catch (err) {
       console.error('Error saving feature:', err);
 

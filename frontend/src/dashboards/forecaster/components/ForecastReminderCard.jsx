@@ -34,16 +34,29 @@ function getToneClasses(tone, isDarkMode) {
 }
 
 function getIconClasses(tone, isDarkMode) {
-  if (tone === 'critical') return isDarkMode ? 'bg-red-300 text-slate-950 shadow-red-950/40' : 'bg-red-600 text-white shadow-red-200';
-  if (tone === 'overdue') return isDarkMode ? 'bg-orange-300 text-slate-950 shadow-orange-950/40' : 'bg-orange-600 text-white shadow-orange-200';
-  if (tone === 'revision') return isDarkMode ? 'bg-cyan-300 text-slate-950 shadow-cyan-950/40' : 'bg-cyan-600 text-white shadow-cyan-200';
-  return isDarkMode ? 'bg-amber-300 text-slate-950 shadow-amber-950/40' : 'bg-amber-500 text-white shadow-amber-200';
+  if (tone === 'critical')
+    return isDarkMode
+      ? 'bg-red-300 text-slate-950 shadow-red-950/40'
+      : 'bg-red-600 text-white shadow-red-200';
+  if (tone === 'overdue')
+    return isDarkMode
+      ? 'bg-orange-300 text-slate-950 shadow-orange-950/40'
+      : 'bg-orange-600 text-white shadow-orange-200';
+  if (tone === 'revision')
+    return isDarkMode
+      ? 'bg-cyan-300 text-slate-950 shadow-cyan-950/40'
+      : 'bg-cyan-600 text-white shadow-cyan-200';
+  return isDarkMode
+    ? 'bg-amber-300 text-slate-950 shadow-amber-950/40'
+    : 'bg-amber-500 text-white shadow-amber-200';
 }
 
 function getBadgeClasses(tone, isDarkMode) {
   if (tone === 'critical') return isDarkMode ? 'bg-red-100 text-red-950' : 'bg-red-700 text-white';
-  if (tone === 'overdue') return isDarkMode ? 'bg-orange-100 text-orange-950' : 'bg-orange-700 text-white';
-  if (tone === 'revision') return isDarkMode ? 'bg-cyan-100 text-cyan-950' : 'bg-cyan-700 text-white';
+  if (tone === 'overdue')
+    return isDarkMode ? 'bg-orange-100 text-orange-950' : 'bg-orange-700 text-white';
+  if (tone === 'revision')
+    return isDarkMode ? 'bg-cyan-100 text-cyan-950' : 'bg-cyan-700 text-white';
   return isDarkMode ? 'bg-amber-100 text-slate-950' : 'bg-amber-600 text-white';
 }
 
@@ -55,23 +68,46 @@ export default function ForecastReminderCard({ packageData, settings, isDarkMode
     return () => window.clearInterval(timer);
   }, []);
 
-  const state = useMemo(() => getReminderState({ packageData, settings, now }), [packageData, settings, now]);
+  const state = useMemo(
+    () => getReminderState({ packageData, settings, now }),
+    [packageData, settings, now]
+  );
   if (!state?.message) return null;
 
-  const Icon = ['critical', 'overdue'].includes(state.tone) ? AlertTriangle : state.tone === 'warning' ? Clock3 : BellRing;
+  const Icon = ['critical', 'overdue'].includes(state.tone)
+    ? AlertTriangle
+    : state.tone === 'warning'
+      ? Clock3
+      : BellRing;
 
   return (
-    <section className={`relative overflow-hidden rounded-2xl border px-4 py-4 shadow-sm ${getToneClasses(state.tone, isDarkMode)}`}>
+    <section
+      className={`relative overflow-hidden rounded-2xl border px-4 py-4 shadow-sm ${getToneClasses(state.tone, isDarkMode)}`}
+    >
       <div className="relative flex items-start gap-3">
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${getIconClasses(state.tone, isDarkMode)}`}>
+        <span
+          className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${getIconClasses(state.tone, isDarkMode)}`}
+        >
           <Icon size={19} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className={`text-[11px] font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{state.label}</p>
-            <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${getBadgeClasses(state.tone, isDarkMode)}`}>{state.badge}</span>
+            <p
+              className={`text-[11px] font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+            >
+              {state.label}
+            </p>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${getBadgeClasses(state.tone, isDarkMode)}`}
+            >
+              {state.badge}
+            </span>
           </div>
-          <p className={`mt-1 text-sm font-semibold leading-6 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{state.message}</p>
+          <p
+            className={`mt-1 text-sm font-semibold leading-6 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
+          >
+            {state.message}
+          </p>
         </div>
       </div>
     </section>

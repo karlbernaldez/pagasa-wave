@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  coordinatesTextToGeoJson,
-  normalizeBoundaryGeoJson,
-} from './domainBoundaryImport';
+import { coordinatesTextToGeoJson, normalizeBoundaryGeoJson } from './domainBoundaryImport';
 
 describe('domain boundary imports', () => {
   it('builds and closes a polygon from longitude latitude input', () => {
-    const geojson = coordinatesTextToGeoJson(
-      '116,4\n127,4\n127,22\n116,22'
-    );
+    const geojson = coordinatesTextToGeoJson('116,4\n127,4\n127,22\n116,22');
 
     const ring = geojson.features[0].geometry.coordinates[0];
     expect(ring).toHaveLength(5);

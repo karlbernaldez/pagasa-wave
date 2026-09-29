@@ -12,7 +12,8 @@ export const SETTINGS_GROUPS = [
   {
     id: 'forecastOperations',
     label: 'Forecast Operations',
-    description: 'Operational submission, publication, cutoff timing, and forecaster deadline reminders.',
+    description:
+      'Operational submission, publication, cutoff timing, and forecaster deadline reminders.',
   },
   {
     id: 'forecasterWorkspace',
@@ -23,12 +24,14 @@ export const SETTINGS_GROUPS = [
   {
     id: 'adminReview',
     label: 'Admin Review',
-    description: 'Versioned operational review checklist configuration and package review controls.',
+    description:
+      'Versioned operational review checklist configuration and package review controls.',
   },
   {
     id: 'publicSite',
     label: 'Public Site',
-    description: 'Published chart presentation, public map bounds, About content, and Contact content.',
+    description:
+      'Published chart presentation, public map bounds, About content, and Contact content.',
   },
 ];
 

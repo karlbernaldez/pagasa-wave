@@ -33,7 +33,6 @@ export async function createReviewChecklistDefinitionVersion(payload) {
   return result?.definition || null;
 }
 
-
 export async function getPackageReviewChecklist(packageId) {
   if (!packageId) throw new Error('Forecast Package id is required.');
 
@@ -50,17 +49,15 @@ export async function updatePackageReviewChecklistItem(
   itemId,
   { status, comment = '', version }
 ) {
-  if (!packageId || !itemId) throw new Error('Forecast Package and checklist item ids are required.');
+  if (!packageId || !itemId)
+    throw new Error('Forecast Package and checklist item ids are required.');
 
-  const response = await fetchWithAuth(
-    `${API_BASE_URL}/packages/${packageId}/items/${itemId}`,
-    {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ status, comment, version }),
-    }
-  );
+  const response = await fetchWithAuth(`${API_BASE_URL}/packages/${packageId}/items/${itemId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ status, comment, version }),
+  });
 
   return parseResponse(response, 'Failed to update the review checklist item.');
 }

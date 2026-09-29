@@ -24,13 +24,9 @@ export function normalizePublishedDomainBoundary(settings = {}) {
     clipAnnotations: source.clipAnnotations === true,
     lineColor: source.lineColor || '#0f172a',
     lineWidth: Number.isFinite(Number(source.lineWidth)) ? Number(source.lineWidth) : 2,
-    lineOpacity: Number.isFinite(Number(source.lineOpacity))
-      ? Number(source.lineOpacity)
-      : 0.9,
+    lineOpacity: Number.isFinite(Number(source.lineOpacity)) ? Number(source.lineOpacity) : 0.9,
     fillColor: source.fillColor || '#38bdf8',
-    fillOpacity: Number.isFinite(Number(source.fillOpacity))
-      ? Number(source.fillOpacity)
-      : 0.08,
+    fillOpacity: Number.isFinite(Number(source.fillOpacity)) ? Number(source.fillOpacity) : 0.08,
     geojson,
   };
 }

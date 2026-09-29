@@ -85,7 +85,6 @@ function InfoCard({ title, children, dark }) {
   );
 }
 
-
 function renderNamingTemplate(template, values) {
   return String(template || '').replace(/\{([a-zA-Z0-9_]+)\}/g, (match, token) =>
     Object.prototype.hasOwnProperty.call(values, token) ? String(values[token]) : match
@@ -126,8 +125,7 @@ function ValidationMessage({ children, dark }) {
 }
 
 export default function OperationsTab({ settings = {}, setSettings, dark, canManage = false }) {
-  const set = (field) => (value) =>
-    setSettings((prev) => ({ ...prev, [field]: value }));
+  const set = (field) => (value) => setSettings((prev) => ({ ...prev, [field]: value }));
   const scheduleError = getOperationsScheduleValidationError(settings);
   const [archivePreview, setArchivePreview] = useState(null);
   const [archiveStatus, setArchiveStatus] = useState(null);
@@ -221,8 +219,8 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
       <Accordion icon={Tags} title="Generated Package & Chart Names" dark={dark}>
         <div className="grid gap-4">
           <InfoCard title="Naming rules" dark={dark}>
-            These templates are used only when WaveLab creates a new Forecast Package and its
-            chart projects. Existing records keep their original names.
+            These templates are used only when WaveLab creates a new Forecast Package and its chart
+            projects. Existing records keep their original names.
           </InfoCard>
 
           <NamingTemplateField
@@ -270,7 +268,12 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
               dark ? 'border-white/10 bg-slate-950/30' : 'border-slate-200 bg-slate-50'
             )}
           >
-            <p className={cn('text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>
+            <p
+              className={cn(
+                'text-[10px] font-black uppercase tracking-wide',
+                dark ? 'text-slate-500' : 'text-slate-400'
+              )}
+            >
               Example output
             </p>
             <div className="mt-3 grid gap-2">
@@ -282,10 +285,17 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
                     dark ? 'border-white/10 bg-white/[0.025]' : 'border-slate-200 bg-white'
                   )}
                 >
-                  <span className={cn('text-xs font-black', dark ? 'text-slate-400' : 'text-slate-500')}>
+                  <span
+                    className={cn('text-xs font-black', dark ? 'text-slate-400' : 'text-slate-500')}
+                  >
                     {label}
                   </span>
-                  <span className={cn('break-words text-sm font-bold', dark ? 'text-white' : 'text-slate-900')}>
+                  <span
+                    className={cn(
+                      'break-words text-sm font-bold',
+                      dark ? 'text-white' : 'text-slate-900'
+                    )}
+                  >
                     {value}
                   </span>
                 </div>
@@ -304,7 +314,12 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
           </InfoCard>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <div className={cn('rounded-2xl border p-4', dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50')}>
+            <div
+              className={cn(
+                'rounded-2xl border p-4',
+                dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50'
+              )}
+            >
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
@@ -313,8 +328,22 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
                   className="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                 />
                 <span>
-                  <span className={cn('block text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>Published packages</span>
-                  <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>Eligible only after publication and the configured age.</span>
+                  <span
+                    className={cn(
+                      'block text-sm font-black',
+                      dark ? 'text-white' : 'text-slate-900'
+                    )}
+                  >
+                    Published packages
+                  </span>
+                  <span
+                    className={cn(
+                      'mt-1 block text-xs leading-5',
+                      dark ? 'text-slate-400' : 'text-slate-500'
+                    )}
+                  >
+                    Eligible only after publication and the configured age.
+                  </span>
                 </span>
               </label>
               <div className="mt-4">
@@ -329,7 +358,12 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
               </div>
             </div>
 
-            <div className={cn('rounded-2xl border p-4', dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50')}>
+            <div
+              className={cn(
+                'rounded-2xl border p-4',
+                dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50'
+              )}
+            >
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
@@ -338,8 +372,22 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
                   className="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                 />
                 <span>
-                  <span className={cn('block text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>No-publication chart records</span>
-                  <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>Archives chart records explicitly resolved as No Publication.</span>
+                  <span
+                    className={cn(
+                      'block text-sm font-black',
+                      dark ? 'text-white' : 'text-slate-900'
+                    )}
+                  >
+                    No-publication chart records
+                  </span>
+                  <span
+                    className={cn(
+                      'mt-1 block text-xs leading-5',
+                      dark ? 'text-slate-400' : 'text-slate-500'
+                    )}
+                  >
+                    Archives chart records explicitly resolved as No Publication.
+                  </span>
                 </span>
               </label>
               <div className="mt-4">
@@ -354,17 +402,38 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
               </div>
             </div>
 
-            <div className={cn('rounded-2xl border p-4', dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50')}>
+            <div
+              className={cn(
+                'rounded-2xl border p-4',
+                dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50'
+              )}
+            >
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
                   checked={settings.autoArchiveAbandonedDraftsEnabled === true}
-                  onChange={(event) => set('autoArchiveAbandonedDraftsEnabled')(event.target.checked)}
+                  onChange={(event) =>
+                    set('autoArchiveAbandonedDraftsEnabled')(event.target.checked)
+                  }
                   className="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                 />
                 <span>
-                  <span className={cn('block text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>Abandoned draft packages</span>
-                  <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>For future policy execution; never deletes the package.</span>
+                  <span
+                    className={cn(
+                      'block text-sm font-black',
+                      dark ? 'text-white' : 'text-slate-900'
+                    )}
+                  >
+                    Abandoned draft packages
+                  </span>
+                  <span
+                    className={cn(
+                      'mt-1 block text-xs leading-5',
+                      dark ? 'text-slate-400' : 'text-slate-500'
+                    )}
+                  >
+                    For future policy execution; never deletes the package.
+                  </span>
                 </span>
               </label>
               <div className="mt-4">
@@ -380,12 +449,25 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
             </div>
           </div>
 
-          <div className={cn('rounded-2xl border p-4', dark ? 'border-white/10 bg-slate-950/30' : 'border-slate-200 bg-white')}>
+          <div
+            className={cn(
+              'rounded-2xl border p-4',
+              dark ? 'border-white/10 bg-slate-950/30' : 'border-slate-200 bg-white'
+            )}
+          >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className={cn('text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>Archive policy check</p>
-                <p className={cn('mt-1 text-xs font-semibold leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
-                  Preview uses the settings currently saved on the server. Save changes before previewing or running the policy.
+                <p className={cn('text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>
+                  Archive policy check
+                </p>
+                <p
+                  className={cn(
+                    'mt-1 text-xs font-semibold leading-5',
+                    dark ? 'text-slate-400' : 'text-slate-500'
+                  )}
+                >
+                  Preview uses the settings currently saved on the server. Save changes before
+                  previewing or running the policy.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -393,9 +475,18 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
                   type="button"
                   onClick={previewArchive}
                   disabled={Boolean(archiveBusy)}
-                  className={cn('inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black disabled:opacity-50', dark ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50')}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black disabled:opacity-50',
+                    dark
+                      ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  )}
                 >
-                  {archiveBusy === 'preview' ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                  {archiveBusy === 'preview' ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Search size={14} />
+                  )}
                   Preview candidates
                 </button>
                 <button
@@ -404,7 +495,11 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
                   disabled={!canManage || Boolean(archiveBusy) || !archivePreview?.totals?.total}
                   className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-black text-white hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {archiveBusy === 'run' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                  {archiveBusy === 'run' ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Play size={14} />
+                  )}
                   Run archive now
                 </button>
               </div>
@@ -418,9 +513,29 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
                   ['Abandoned drafts', archivePreview.totals?.draftPackages || 0],
                   ['Total eligible', archivePreview.totals?.total || 0],
                 ].map(([label, value]) => (
-                  <div key={label} className={cn('rounded-xl border px-3 py-3', dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50')}>
-                    <p className={cn('text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>{label}</p>
-                    <p className={cn('mt-1 text-2xl font-black', dark ? 'text-white' : 'text-slate-950')}>{value}</p>
+                  <div
+                    key={label}
+                    className={cn(
+                      'rounded-xl border px-3 py-3',
+                      dark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50'
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        'text-[10px] font-black uppercase tracking-wide',
+                        dark ? 'text-slate-500' : 'text-slate-400'
+                      )}
+                    >
+                      {label}
+                    </p>
+                    <p
+                      className={cn(
+                        'mt-1 text-2xl font-black',
+                        dark ? 'text-white' : 'text-slate-950'
+                      )}
+                    >
+                      {value}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -433,10 +548,28 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
                   ['No-publication charts', archivePreview.candidates?.noPublicationProjects || []],
                   ['Abandoned drafts', archivePreview.candidates?.draftPackages || []],
                 ].map(([label, rows]) => (
-                  <div key={label} className={cn('rounded-xl border p-3', dark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50')}>
-                    <p className={cn('text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>{label}</p>
+                  <div
+                    key={label}
+                    className={cn(
+                      'rounded-xl border p-3',
+                      dark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        'text-[10px] font-black uppercase tracking-wide',
+                        dark ? 'text-slate-500' : 'text-slate-400'
+                      )}
+                    >
+                      {label}
+                    </p>
                     {rows.length ? (
-                      <ul className={cn('mt-2 space-y-1 text-xs font-semibold', dark ? 'text-slate-300' : 'text-slate-700')}>
+                      <ul
+                        className={cn(
+                          'mt-2 space-y-1 text-xs font-semibold',
+                          dark ? 'text-slate-300' : 'text-slate-700'
+                        )}
+                      >
                         {rows.slice(0, 8).map((row) => (
                           <li key={row.id} className="truncate" title={row.name || row.id}>
                             {row.name || row.id}
@@ -445,7 +578,9 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
                         {rows.length > 8 && <li>+{rows.length - 8} more</li>}
                       </ul>
                     ) : (
-                      <p className={cn('mt-2 text-xs', dark ? 'text-slate-500' : 'text-slate-400')}>None</p>
+                      <p className={cn('mt-2 text-xs', dark ? 'text-slate-500' : 'text-slate-400')}>
+                        None
+                      </p>
                     )}
                   </div>
                 ))}
@@ -453,25 +588,77 @@ export default function OperationsTab({ settings = {}, setSettings, dark, canMan
             )}
 
             {archiveStatus && (
-              <p className={cn('mt-3 rounded-xl border px-3 py-2 text-xs font-semibold', archiveStatus.type === 'error' ? dark ? 'border-rose-400/20 bg-rose-500/10 text-rose-200' : 'border-rose-200 bg-rose-50 text-rose-700' : dark ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700')}>
+              <p
+                className={cn(
+                  'mt-3 rounded-xl border px-3 py-2 text-xs font-semibold',
+                  archiveStatus.type === 'error'
+                    ? dark
+                      ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
+                      : 'border-rose-200 bg-rose-50 text-rose-700'
+                    : dark
+                      ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                )}
+              >
                 {archiveStatus.message}
               </p>
             )}
           </div>
 
-          <div className={cn('grid gap-3 rounded-2xl border p-4 md:grid-cols-2', dark ? 'border-emerald-400/20 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50')}>
+          <div
+            className={cn(
+              'grid gap-3 rounded-2xl border p-4 md:grid-cols-2',
+              dark ? 'border-emerald-400/20 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'
+            )}
+          >
             <div className="flex items-start gap-3">
-              <ShieldCheck className={cn('mt-0.5 shrink-0', dark ? 'text-emerald-300' : 'text-emerald-700')} size={17} />
+              <ShieldCheck
+                className={cn('mt-0.5 shrink-0', dark ? 'text-emerald-300' : 'text-emerald-700')}
+                size={17}
+              />
               <div>
-                <p className={cn('text-sm font-black', dark ? 'text-emerald-100' : 'text-emerald-900')}>Archived records retained</p>
-                <p className={cn('mt-1 text-xs leading-5', dark ? 'text-emerald-200/80' : 'text-emerald-800')}>Retention purge is disabled. Archived database records remain available for authorized history and reporting.</p>
+                <p
+                  className={cn(
+                    'text-sm font-black',
+                    dark ? 'text-emerald-100' : 'text-emerald-900'
+                  )}
+                >
+                  Archived records retained
+                </p>
+                <p
+                  className={cn(
+                    'mt-1 text-xs leading-5',
+                    dark ? 'text-emerald-200/80' : 'text-emerald-800'
+                  )}
+                >
+                  Retention purge is disabled. Archived database records remain available for
+                  authorized history and reporting.
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <ShieldCheck className={cn('mt-0.5 shrink-0', dark ? 'text-emerald-300' : 'text-emerald-700')} size={17} />
+              <ShieldCheck
+                className={cn('mt-0.5 shrink-0', dark ? 'text-emerald-300' : 'text-emerald-700')}
+                size={17}
+              />
               <div>
-                <p className={cn('text-sm font-black', dark ? 'text-emerald-100' : 'text-emerald-900')}>Review evidence preserved</p>
-                <p className={cn('mt-1 text-xs leading-5', dark ? 'text-emerald-200/80' : 'text-emerald-800')}>Checklist snapshots, audit logs, and publication evidence are not deleted by this policy.</p>
+                <p
+                  className={cn(
+                    'text-sm font-black',
+                    dark ? 'text-emerald-100' : 'text-emerald-900'
+                  )}
+                >
+                  Review evidence preserved
+                </p>
+                <p
+                  className={cn(
+                    'mt-1 text-xs leading-5',
+                    dark ? 'text-emerald-200/80' : 'text-emerald-800'
+                  )}
+                >
+                  Checklist snapshots, audit logs, and publication evidence are not deleted by this
+                  policy.
+                </p>
               </div>
             </div>
           </div>

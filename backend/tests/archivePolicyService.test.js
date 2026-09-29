@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  loadArchivePolicy,
-  normalizeArchivePolicy,
-} from '../services/archivePolicyService.js';
+import { loadArchivePolicy, normalizeArchivePolicy } from '../services/archivePolicyService.js';
 
 test('archive policy defaults are non-destructive and disabled', () => {
   const policy = normalizeArchivePolicy({});

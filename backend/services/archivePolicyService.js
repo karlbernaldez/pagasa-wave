@@ -124,8 +124,7 @@ export async function previewArchivePolicy({
       publishedPackages: publishedPackages.length,
       noPublicationProjects: noPublicationProjects.length,
       draftPackages: draftPackages.length,
-      total:
-        publishedPackages.length + noPublicationProjects.length + draftPackages.length,
+      total: publishedPackages.length + noPublicationProjects.length + draftPackages.length,
     },
   };
 }
@@ -149,11 +148,13 @@ async function archivePublishedPackage({
   projectModel,
   session,
 }) {
-  const forecastPackage = await forecastPackageModel.findOne({
-    _id: forecastPackageId,
-    status: FORECAST_PACKAGE_STATUS.PUBLISHED,
-    publishedAt: { $lte: cutoff },
-  }).session(session);
+  const forecastPackage = await forecastPackageModel
+    .findOne({
+      _id: forecastPackageId,
+      status: FORECAST_PACKAGE_STATUS.PUBLISHED,
+      publishedAt: { $lte: cutoff },
+    })
+    .session(session);
 
   if (!forecastPackage) return false;
 
@@ -203,20 +204,24 @@ async function archiveDraftPackage({
   projectModel,
   session,
 }) {
-  const forecastPackage = await forecastPackageModel.findOne({
-    _id: forecastPackageId,
-    status: FORECAST_PACKAGE_STATUS.DRAFT,
-    updatedAt: { $lte: cutoff },
-    'charts.activeEditors.0': { $exists: false },
-  }).session(session);
+  const forecastPackage = await forecastPackageModel
+    .findOne({
+      _id: forecastPackageId,
+      status: FORECAST_PACKAGE_STATUS.DRAFT,
+      updatedAt: { $lte: cutoff },
+      'charts.activeEditors.0': { $exists: false },
+    })
+    .session(session);
 
   if (!forecastPackage) return false;
 
   const projectIds = (forecastPackage.charts || []).map((chart) => chart?.project).filter(Boolean);
-  const nonDraftCount = await projectModel.countDocuments({
-    _id: { $in: projectIds },
-    status: { $ne: PROJECT_STATUS.DRAFT },
-  }).session(session);
+  const nonDraftCount = await projectModel
+    .countDocuments({
+      _id: { $in: projectIds },
+      status: { $ne: PROJECT_STATUS.DRAFT },
+    })
+    .session(session);
 
   if (nonDraftCount > 0) return false;
 

@@ -38,12 +38,8 @@ const sanitizeObject = (value) => {
   const clean = {};
 
   for (const key of Object.keys(value)) {
-    if (
-      key.startsWith('$') ||
-      key.includes('.') ||
-      key === '__proto__' ||
-      key === 'constructor'
-    ) continue;
+    if (key.startsWith('$') || key.includes('.') || key === '__proto__' || key === 'constructor')
+      continue;
 
     clean[key] = sanitizeObject(value[key]);
   }
@@ -182,7 +178,6 @@ export const saveSettings = async (req, res) => {
     );
 
     return res.status(200).json(resolveSettingsResponse(page, doc.data));
-
   } catch (err) {
     console.error('[settings] PUT error:', err);
 

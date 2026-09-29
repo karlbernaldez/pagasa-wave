@@ -47,7 +47,12 @@ function Toggle({ checked, onChange, disabled, label, description, dark }) {
           {label}
         </span>
         {description && (
-          <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
+          <span
+            className={cn(
+              'mt-1 block text-xs leading-5',
+              dark ? 'text-slate-400' : 'text-slate-500'
+            )}
+          >
             {description}
           </span>
         )}
@@ -208,19 +213,40 @@ export default function ReviewChecklistTab({ dark, canManage = false }) {
                 Forecast Package Review Checklist
               </h3>
             </div>
-            <p className={cn('mt-2 max-w-3xl text-sm font-semibold leading-6', dark ? 'text-cyan-100' : 'text-cyan-800')}>
-              This checklist is snapshotted when a Forecast Package enters review. Saving changes creates a new version; existing review evidence keeps the version it started with.
+            <p
+              className={cn(
+                'mt-2 max-w-3xl text-sm font-semibold leading-6',
+                dark ? 'text-cyan-100' : 'text-cyan-800'
+              )}
+            >
+              This checklist is snapshotted when a Forecast Package enters review. Saving changes
+              creates a new version; existing review evidence keeps the version it started with.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2 text-xs font-black">
-            <span className={cn('rounded-full px-3 py-1.5', dark ? 'bg-white/10 text-cyan-100' : 'bg-white text-cyan-800')}>
+            <span
+              className={cn(
+                'rounded-full px-3 py-1.5',
+                dark ? 'bg-white/10 text-cyan-100' : 'bg-white text-cyan-800'
+              )}
+            >
               Version {draft.version || 'New'}
             </span>
-            <span className={cn('rounded-full px-3 py-1.5', dark ? 'bg-white/10 text-slate-200' : 'bg-white text-slate-700')}>
+            <span
+              className={cn(
+                'rounded-full px-3 py-1.5',
+                dark ? 'bg-white/10 text-slate-200' : 'bg-white text-slate-700'
+              )}
+            >
               {requiredCount} required
             </span>
-            <span className={cn('rounded-full px-3 py-1.5', dark ? 'bg-white/10 text-slate-200' : 'bg-white text-slate-700')}>
+            <span
+              className={cn(
+                'rounded-full px-3 py-1.5',
+                dark ? 'bg-white/10 text-slate-200' : 'bg-white text-slate-700'
+              )}
+            >
               {optionalCount} optional
             </span>
           </div>
@@ -255,10 +281,17 @@ export default function ReviewChecklistTab({ dark, canManage = false }) {
           >
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className={cn('text-xs font-black uppercase tracking-[0.14em]', dark ? 'text-slate-500' : 'text-slate-400')}>
+                <p
+                  className={cn(
+                    'text-xs font-black uppercase tracking-[0.14em]',
+                    dark ? 'text-slate-500' : 'text-slate-400'
+                  )}
+                >
                   Checklist item {index + 1}
                 </p>
-                <p className={cn('mt-1 text-sm font-black', dark ? 'text-white' : 'text-slate-950')}>
+                <p
+                  className={cn('mt-1 text-sm font-black', dark ? 'text-white' : 'text-slate-950')}
+                >
                   {item.label || 'Untitled review item'}
                 </p>
               </div>
@@ -272,7 +305,9 @@ export default function ReviewChecklistTab({ dark, canManage = false }) {
                     aria-label="Move checklist item up"
                     className={cn(
                       'rounded-lg border p-2 disabled:cursor-not-allowed disabled:opacity-30',
-                      dark ? 'border-white/10 text-slate-300 hover:bg-white/[0.06]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      dark
+                        ? 'border-white/10 text-slate-300 hover:bg-white/[0.06]'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                     )}
                   >
                     <ArrowUp size={15} />
@@ -284,7 +319,9 @@ export default function ReviewChecklistTab({ dark, canManage = false }) {
                     aria-label="Move checklist item down"
                     className={cn(
                       'rounded-lg border p-2 disabled:cursor-not-allowed disabled:opacity-30',
-                      dark ? 'border-white/10 text-slate-300 hover:bg-white/[0.06]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      dark
+                        ? 'border-white/10 text-slate-300 hover:bg-white/[0.06]'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                     )}
                   >
                     <ArrowDown size={15} />
@@ -296,7 +333,9 @@ export default function ReviewChecklistTab({ dark, canManage = false }) {
                     aria-label="Remove checklist item"
                     className={cn(
                       'rounded-lg border p-2 disabled:cursor-not-allowed disabled:opacity-30',
-                      dark ? 'border-rose-400/20 text-rose-300 hover:bg-rose-500/10' : 'border-rose-200 text-rose-600 hover:bg-rose-50'
+                      dark
+                        ? 'border-rose-400/20 text-rose-300 hover:bg-rose-500/10'
+                        : 'border-rose-200 text-rose-600 hover:bg-rose-50'
                     )}
                   >
                     <Trash2 size={15} />
@@ -406,7 +445,9 @@ export default function ReviewChecklistTab({ dark, canManage = false }) {
       <div
         className={cn(
           'flex items-start gap-3 rounded-xl border px-4 py-3 text-xs font-semibold leading-5',
-          dark ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          dark
+            ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100'
+            : 'border-emerald-200 bg-emerald-50 text-emerald-800'
         )}
       >
         <CheckCircle2 size={16} className="mt-0.5 shrink-0" />

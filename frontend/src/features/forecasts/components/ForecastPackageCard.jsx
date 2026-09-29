@@ -124,7 +124,6 @@ export function PackageSummaryModal({
     setChecklistProgress(progress);
   }, []);
 
-
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -301,7 +300,9 @@ export function PackageSummaryModal({
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className={`text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+                  <p
+                    className={`text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+                  >
                     Package approval
                   </p>
                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">

@@ -1,8 +1,5 @@
 import asyncHandler from '../utils/asyncHandler.js';
-import {
-  executeArchivePolicy,
-  previewArchivePolicy,
-} from '../services/archivePolicyService.js';
+import { executeArchivePolicy, previewArchivePolicy } from '../services/archivePolicyService.js';
 
 export const previewArchivePolicyController = asyncHandler(async (_req, res) => {
   const preview = await previewArchivePolicy();

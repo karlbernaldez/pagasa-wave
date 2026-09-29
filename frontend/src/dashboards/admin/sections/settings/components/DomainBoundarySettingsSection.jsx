@@ -3,10 +3,7 @@ import { useMemo, useState } from 'react';
 
 import { Field } from './ui/FormFields';
 import { inputCls, labelCls } from './ui/formFieldStyles';
-import {
-  boundaryFileToGeoJson,
-  coordinatesTextToGeoJson,
-} from '../utils/domainBoundaryImport';
+import { boundaryFileToGeoJson, coordinatesTextToGeoJson } from '../utils/domainBoundaryImport';
 
 const DEFAULT_BOUNDARY = {
   enabled: false,
@@ -109,10 +106,7 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
   const [importStatus, setImportStatus] = useState(null);
   const [sourceMode, setSourceMode] = useState('manual');
 
-  const featureCount = useMemo(
-    () => boundary.geojson?.features?.length || 0,
-    [boundary.geojson]
-  );
+  const featureCount = useMemo(() => boundary.geojson?.features?.length || 0, [boundary.geojson]);
 
   const setBoundary = (patch) =>
     setSettings((current) => ({
@@ -150,8 +144,7 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
 
       if (
         completeRows.some(
-          (row) =>
-            String(row.longitude).trim() === '' || String(row.latitude).trim() === ''
+          (row) => String(row.longitude).trim() === '' || String(row.latitude).trim() === ''
         )
       ) {
         throw new Error('Each boundary point needs both longitude and latitude.');
@@ -357,13 +350,28 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
 
               <div className="grid gap-3">
                 <div className="grid grid-cols-[52px_minmax(0,1fr)_minmax(0,1fr)_40px] items-end gap-3">
-                  <span className={cn('pb-3 text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>
+                  <span
+                    className={cn(
+                      'pb-3 text-[10px] font-black uppercase tracking-wide',
+                      dark ? 'text-slate-500' : 'text-slate-400'
+                    )}
+                  >
                     Point
                   </span>
-                  <span className={cn('pb-3 text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>
+                  <span
+                    className={cn(
+                      'pb-3 text-[10px] font-black uppercase tracking-wide',
+                      dark ? 'text-slate-500' : 'text-slate-400'
+                    )}
+                  >
                     Longitude
                   </span>
-                  <span className={cn('pb-3 text-[10px] font-black uppercase tracking-wide', dark ? 'text-slate-500' : 'text-slate-400')}>
+                  <span
+                    className={cn(
+                      'pb-3 text-[10px] font-black uppercase tracking-wide',
+                      dark ? 'text-slate-500' : 'text-slate-400'
+                    )}
+                  >
                     Latitude
                   </span>
                   <span />
@@ -374,7 +382,12 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
                     key={row.id}
                     className="grid grid-cols-[52px_minmax(0,1fr)_minmax(0,1fr)_40px] items-center gap-3"
                   >
-                    <span className={cn('text-sm font-black', dark ? 'text-slate-300' : 'text-slate-600')}>
+                    <span
+                      className={cn(
+                        'text-sm font-black',
+                        dark ? 'text-slate-300' : 'text-slate-600'
+                      )}
+                    >
                       {index + 1}
                     </span>
                     <input
@@ -422,7 +435,12 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
               </div>
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <p className={cn('text-xs font-semibold leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
+                <p
+                  className={cn(
+                    'text-xs font-semibold leading-5',
+                    dark ? 'text-slate-400' : 'text-slate-500'
+                  )}
+                >
                   Enter at least three WGS84 points. WaveLab closes the polygon automatically.
                 </p>
                 <button
@@ -471,8 +489,15 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
                   <p className={cn('text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>
                     Import boundary file
                   </p>
-                  <p className={cn('mt-1 text-xs font-semibold leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
-                    Accepts Polygon GeoJSON/JSON and Polygon .shp files. Shapefiles must already use WGS84 longitude/latitude coordinates; .prj reprojection is not performed in the browser.
+                  <p
+                    className={cn(
+                      'mt-1 text-xs font-semibold leading-5',
+                      dark ? 'text-slate-400' : 'text-slate-500'
+                    )}
+                  >
+                    Accepts Polygon GeoJSON/JSON and Polygon .shp files. Shapefiles must already use
+                    WGS84 longitude/latitude coordinates; .prj reprojection is not performed in the
+                    browser.
                   </p>
                 </div>
                 <label
@@ -499,7 +524,9 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                <span className={cn('text-xs font-black', dark ? 'text-cyan-200' : 'text-cyan-800')}>
+                <span
+                  className={cn('text-xs font-black', dark ? 'text-cyan-200' : 'text-cyan-800')}
+                >
                   {featureCount} polygon feature{featureCount === 1 ? '' : 's'} loaded
                 </span>
                 {featureCount > 0 && (

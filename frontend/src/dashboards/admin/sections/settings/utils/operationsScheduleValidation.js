@@ -18,11 +18,7 @@ export function getOperationsScheduleValidationError(settings = {}) {
   const publishTarget = timeToMinutes(settings.packagePublishTarget);
   const noPublicationCutoff = timeToMinutes(settings.noPublicationCutoff);
 
-  if (
-    submissionDeadline === null ||
-    publishTarget === null ||
-    noPublicationCutoff === null
-  ) {
+  if (submissionDeadline === null || publishTarget === null || noPublicationCutoff === null) {
     return 'Schedule times must use 24-hour HH:mm format.';
   }
 

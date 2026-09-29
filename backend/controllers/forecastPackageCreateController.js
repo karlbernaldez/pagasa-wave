@@ -10,10 +10,7 @@ import {
 } from '../utils/forecastPackage.js';
 import { applyForecastPackageDisplayNames } from '../utils/forecastPackageDisplayNames.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
-import {
-  loadForecastNamingSettings,
-  resolveForecastNames,
-} from '../utils/forecastNaming.js';
+import { loadForecastNamingSettings, resolveForecastNames } from '../utils/forecastNaming.js';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 

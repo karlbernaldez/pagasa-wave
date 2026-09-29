@@ -51,7 +51,6 @@ export const getSettings = async (page) => {
         throw error;
       }
 
-
       console.error(
         `[ERROR] Failed to fetch settings for page "${page}":`,
         response.status,
@@ -102,7 +101,6 @@ export const saveSettings = async (page, data) => {
   }
 };
 
-
 async function requestArchivePolicy(path, options = {}) {
   const response = await fetchWithAuth(`${API_BASE_URL}/operations/archive-policy/${path}`, {
     credentials: 'include',
@@ -115,8 +113,6 @@ async function requestArchivePolicy(path, options = {}) {
   return result;
 }
 
-export const previewArchivePolicy = () =>
-  requestArchivePolicy('preview', { method: 'GET' });
+export const previewArchivePolicy = () => requestArchivePolicy('preview', { method: 'GET' });
 
-export const runArchivePolicy = () =>
-  requestArchivePolicy('run', { method: 'POST' });
+export const runArchivePolicy = () => requestArchivePolicy('run', { method: 'POST' });

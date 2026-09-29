@@ -168,27 +168,30 @@ test('revision by project resets only the selected chart and records the true pr
   await withMocks(
     { mongoose, ForecastPackage, Project, ForecastPackageReviewChecklist, pkg, projects },
     async (bulkWrites) => {
-    const response = await run(controller.requestForecastChartRevisionByProject, {
-      params: { projectId: PROJECT_IDS[0] },
-      body: { comment: 'Revise the wave analysis.' },
-      user: { id: ADMIN_ID, role: 'admin' },
-      permissions: REVIEW_PERMISSIONS,
-    });
+      const response = await run(controller.requestForecastChartRevisionByProject, {
+        params: { projectId: PROJECT_IDS[0] },
+        body: { comment: 'Revise the wave analysis.' },
+        user: { id: ADMIN_ID, role: 'admin' },
+        permissions: REVIEW_PERMISSIONS,
+      });
 
-    assert.equal(response.statusCode, 200);
-    assert.equal(response.body.status, 'Revision Requested');
-    assert.deepEqual(response.body.affectedChartTypes, ['analysis']);
-    assert.equal(pkg.chartCompletion[0].isComplete, false);
-    assert.equal(pkg.charts[0].readyAt, null);
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.body.status, 'Revision Requested');
+      assert.deepEqual(response.body.affectedChartTypes, ['analysis']);
+      assert.equal(pkg.chartCompletion[0].isComplete, false);
+      assert.equal(pkg.charts[0].readyAt, null);
 
-    for (let index = 1; index < pkg.chartCompletion.length; index += 1) {
-      assert.equal(pkg.chartCompletion[index].isComplete, true);
-      assert.ok(pkg.charts[index].readyAt);
-    }
+      for (let index = 1; index < pkg.chartCompletion.length; index += 1) {
+        assert.equal(pkg.chartCompletion[index].isComplete, true);
+        assert.ok(pkg.charts[index].readyAt);
+      }
 
-    assert.equal(bulkWrites.length, 1);
-    assert.equal(bulkWrites[0].length, 1);
-    assert.equal(bulkWrites[0][0].updateOne.update.$push.auditLogs.previousStatus, 'Under Review');
+      assert.equal(bulkWrites.length, 1);
+      assert.equal(bulkWrites[0].length, 1);
+      assert.equal(
+        bulkWrites[0][0].updateOne.update.$push.auditLogs.previousStatus,
+        'Under Review'
+      );
     }
   );
 });

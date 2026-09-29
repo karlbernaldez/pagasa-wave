@@ -2,18 +2,10 @@ import { PenTool } from 'lucide-react';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-export default function DrawingPointerGuide({
-  guide,
-  isDarkMode,
-}) {
+export default function DrawingPointerGuide({ guide, isDarkMode }) {
   if (!guide) return null;
 
-  const {
-    rawClientX,
-    rawClientY,
-    adjustedClientX,
-    adjustedClientY,
-  } = guide;
+  const { rawClientX, rawClientY, adjustedClientX, adjustedClientY } = guide;
 
   const dx = adjustedClientX - rawClientX;
   const dy = adjustedClientY - rawClientY;

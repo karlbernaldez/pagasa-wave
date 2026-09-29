@@ -47,9 +47,11 @@ function hasValues(value) {
 }
 
 function broadcastSettingsUpdate(key, value = null) {
-  window.dispatchEvent(new CustomEvent(SETTINGS_UPDATED_EVENT, {
-    detail: { key, value, updatedAt: Date.now() },
-  }));
+  window.dispatchEvent(
+    new CustomEvent(SETTINGS_UPDATED_EVENT, {
+      detail: { key, value, updatedAt: Date.now() },
+    })
+  );
 }
 
 function getApiPage(tab) {
@@ -61,7 +63,7 @@ async function loadPersistedSettings() {
     SETTINGS_PAGES.map(async (page) => {
       const data = await getSettings(getApiPage(page)).catch(() => null);
       return [page, data];
-    }),
+    })
   );
 
   return entries.reduce((acc, [page, data]) => {
@@ -69,9 +71,7 @@ async function loadPersistedSettings() {
       ? readLocal(LEGACY_LOCAL_KEYS[page], DEFAULTS[page])
       : DEFAULTS[page];
 
-    acc[page] = hasValues(data)
-      ? { ...DEFAULTS[page], ...data }
-      : legacyLocal;
+    acc[page] = hasValues(data) ? { ...DEFAULTS[page], ...data } : legacyLocal;
 
     return acc;
   }, {});
@@ -101,7 +101,9 @@ export default function useSettings() {
       setDataLoaded(true);
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -110,38 +112,45 @@ export default function useSettings() {
     return () => clearTimeout(timer);
   }, [status]);
 
-  const handleSave = useCallback(async (settings) => {
-    const payload = settings?.[activeTab] ?? {};
-    const validationError = getValidationError(activeTab, payload);
+  const handleSave = useCallback(
+    async (settings) => {
+      const payload = settings?.[activeTab] ?? {};
+      const validationError = getValidationError(activeTab, payload);
 
-    if (validationError) {
-      setStatus({ type: 'error', message: validationError });
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      const saved = await saveSettings(getApiPage(activeTab), payload);
-      const nextData = { ...DEFAULTS[activeTab], ...saved };
-
-      setPages((prev) => ({ ...prev, [activeTab]: nextData }));
-
-      if (LEGACY_LOCAL_KEYS[activeTab]) {
-        localStorage.setItem(LEGACY_LOCAL_KEYS[activeTab], JSON.stringify(nextData));
+      if (validationError) {
+        setStatus({ type: 'error', message: validationError });
+        return;
       }
 
-      broadcastSettingsUpdate(activeTab, nextData);
-      broadcastSettingsUpdate(getApiPage(activeTab), nextData);
-      if (LEGACY_LOCAL_KEYS[activeTab]) broadcastSettingsUpdate(LEGACY_LOCAL_KEYS[activeTab], nextData);
+      setSaving(true);
 
-      setStatus({ type: 'success', message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} settings saved to database.` });
-    } catch (err) {
-      setStatus({ type: 'error', message: `Save failed: ${err.message}` });
-    } finally {
-      setSaving(false);
-    }
-  }, [activeTab]);
+      try {
+        const saved = await saveSettings(getApiPage(activeTab), payload);
+        const nextData = { ...DEFAULTS[activeTab], ...saved };
+
+        setPages((prev) => ({ ...prev, [activeTab]: nextData }));
+
+        if (LEGACY_LOCAL_KEYS[activeTab]) {
+          localStorage.setItem(LEGACY_LOCAL_KEYS[activeTab], JSON.stringify(nextData));
+        }
+
+        broadcastSettingsUpdate(activeTab, nextData);
+        broadcastSettingsUpdate(getApiPage(activeTab), nextData);
+        if (LEGACY_LOCAL_KEYS[activeTab])
+          broadcastSettingsUpdate(LEGACY_LOCAL_KEYS[activeTab], nextData);
+
+        setStatus({
+          type: 'success',
+          message: `${activeTab[0].toUpperCase() + activeTab.slice(1)} settings saved to database.`,
+        });
+      } catch (err) {
+        setStatus({ type: 'error', message: `Save failed: ${err.message}` });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [activeTab]
+  );
 
   const handleReset = useCallback(async () => {
     const defaults = DEFAULTS[activeTab];
@@ -159,7 +168,8 @@ export default function useSettings() {
 
       broadcastSettingsUpdate(activeTab, nextData);
       broadcastSettingsUpdate(getApiPage(activeTab), nextData);
-      if (LEGACY_LOCAL_KEYS[activeTab]) broadcastSettingsUpdate(LEGACY_LOCAL_KEYS[activeTab], nextData);
+      if (LEGACY_LOCAL_KEYS[activeTab])
+        broadcastSettingsUpdate(LEGACY_LOCAL_KEYS[activeTab], nextData);
 
       setStatus({ type: 'success', message: 'Reset to default values and saved to database.' });
     } catch (err) {
@@ -179,7 +189,8 @@ export default function useSettings() {
     aboutData: pages.about,
     contactData: pages.contact,
     setOperationsData: (value) => setPages((prev) => ({ ...prev, operations: value })),
-    setForecasterWorkspaceData: (value) => setPages((prev) => ({ ...prev, forecasterWorkspace: value })),
+    setForecasterWorkspaceData: (value) =>
+      setPages((prev) => ({ ...prev, forecasterWorkspace: value })),
     setMapViewData: (value) => setPages((prev) => ({ ...prev, mapView: value })),
     setGeneralData: (value) => setPages((prev) => ({ ...prev, general: value })),
     setAboutData: (value) => setPages((prev) => ({ ...prev, about: value })),

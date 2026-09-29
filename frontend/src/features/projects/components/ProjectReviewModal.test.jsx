@@ -22,14 +22,18 @@ vi.mock('@/features/projects/components/review/ReviewActionsFooter', () => ({
     return (
       <footer>
         {canPublish && <button type="button">Publish chart</button>}
-        <button type="button" onClick={onClose}>Close</button>
+        <button type="button" onClick={onClose}>
+          Close
+        </button>
       </footer>
     );
   },
 }));
 
 vi.mock('@/api/featureServices', () => ({
-  fetchProjectFeatureCollection: vi.fn(() => Promise.resolve({ type: 'FeatureCollection', features: [] })),
+  fetchProjectFeatureCollection: vi.fn(() =>
+    Promise.resolve({ type: 'FeatureCollection', features: [] })
+  ),
 }));
 
 vi.mock('@/api/projectAPI', () => ({
@@ -60,7 +64,7 @@ function renderModal(project) {
       onReject={vi.fn()}
       onPublish={vi.fn()}
       onActionComplete={vi.fn()}
-    />,
+    />
   );
 }
 
@@ -84,15 +88,17 @@ describe('ProjectReviewModal', () => {
           onReject={vi.fn()}
           onPublish={vi.fn()}
           onActionComplete={vi.fn()}
-        />,
+        />
       );
     }).not.toThrow();
 
-    expect(await screen.findByText((text) => text.includes('Coastal Wave Forecast'))).toBeInTheDocument();
+    expect(
+      await screen.findByText((text) => text.includes('Coastal Wave Forecast'))
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/review map workspace/i)).toBeInTheDocument();
 
     expect(consoleErrorSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining('Rendered more hooks than during the previous render'),
+      expect.stringContaining('Rendered more hooks than during the previous render')
     );
 
     consoleErrorSpy.mockRestore();
@@ -128,5 +134,4 @@ describe('ProjectReviewModal', () => {
 
     expect(publishExposureHistory).not.toContain(true);
   });
-
 });

@@ -65,7 +65,7 @@ function StepButton({ icon: Icon, label, onClick, dark }) {
         'grid h-9 w-9 place-items-center rounded-xl border transition active:scale-95',
         dark
           ? 'border-slate-700 bg-slate-950/70 text-slate-300 hover:border-cyan-300/35 hover:text-cyan-100'
-          : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-700',
+          : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-700'
       )}
     >
       <Icon size={15} />
@@ -77,10 +77,14 @@ function ValueStepper({ label, value, onDecrease, onIncrease, dark }) {
   return (
     <div className="flex items-center gap-2">
       <StepButton icon={Minus} label={`Decrease ${label}`} onClick={onDecrease} dark={dark} />
-      <div className={cn(
-        'flex h-9 min-w-12 items-center justify-center rounded-xl border px-3 text-sm font-black',
-        dark ? 'border-slate-700 bg-slate-950/70 text-white' : 'border-slate-200 bg-white text-slate-950',
-      )}>
+      <div
+        className={cn(
+          'flex h-9 min-w-12 items-center justify-center rounded-xl border px-3 text-sm font-black',
+          dark
+            ? 'border-slate-700 bg-slate-950/70 text-white'
+            : 'border-slate-200 bg-white text-slate-950'
+        )}
+      >
         {value}
       </div>
       <StepButton icon={Plus} label={`Increase ${label}`} onClick={onIncrease} dark={dark} />
@@ -90,10 +94,12 @@ function ValueStepper({ label, value, onDecrease, onIncrease, dark }) {
 
 function PeriodToggle({ value, onChange, dark }) {
   return (
-    <div className={cn(
-      'grid h-9 grid-cols-2 rounded-xl border p-1',
-      dark ? 'border-slate-700 bg-slate-950/70' : 'border-slate-200 bg-slate-100',
-    )}>
+    <div
+      className={cn(
+        'grid h-9 grid-cols-2 rounded-xl border p-1',
+        dark ? 'border-slate-700 bg-slate-950/70' : 'border-slate-200 bg-slate-100'
+      )}
+    >
       {PERIOD_OPTIONS.map((period) => {
         const active = value === period;
         return (
@@ -104,8 +110,12 @@ function PeriodToggle({ value, onChange, dark }) {
             className={cn(
               'rounded-lg px-3 text-xs font-black transition active:scale-95',
               active
-                ? dark ? 'bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-950/30' : 'bg-blue-600 text-white shadow-sm'
-                : dark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900',
+                ? dark
+                  ? 'bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-950/30'
+                  : 'bg-blue-600 text-white shadow-sm'
+                : dark
+                  ? 'text-slate-400 hover:text-white'
+                  : 'text-slate-500 hover:text-slate-900'
             )}
             aria-pressed={active}
           >
@@ -128,20 +138,41 @@ export default function TimePickerField({ label, value, onChange, dark, helper }
   return (
     <div>
       <label className={labelCls(dark)}>{label}</label>
-      <div className={cn(
-        'rounded-2xl border p-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-cyan-400/35',
-        dark
-          ? 'border-slate-700 bg-slate-900/80 hover:border-cyan-300/25'
-          : 'border-slate-200 bg-white shadow-sm hover:border-blue-200',
-      )}>
+      <div
+        className={cn(
+          'rounded-2xl border p-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-cyan-400/35',
+          dark
+            ? 'border-slate-700 bg-slate-900/80 hover:border-cyan-300/25'
+            : 'border-slate-200 bg-white shadow-sm hover:border-blue-200'
+        )}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-[10rem] items-center gap-2">
-            <span className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-xl', dark ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700')}>
+            <span
+              className={cn(
+                'grid h-9 w-9 shrink-0 place-items-center rounded-xl',
+                dark ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'
+              )}
+            >
               <Clock3 size={17} />
             </span>
             <div className="min-w-0">
-              <p className={cn('truncate text-[10px] font-black uppercase tracking-[0.18em]', dark ? 'text-slate-500' : 'text-slate-500')}>Selected time</p>
-              <p className={cn('text-xl font-black leading-tight', dark ? 'text-white' : 'text-slate-950')}>{formatTimeLabel(value)}</p>
+              <p
+                className={cn(
+                  'truncate text-[10px] font-black uppercase tracking-[0.18em]',
+                  dark ? 'text-slate-500' : 'text-slate-500'
+                )}
+              >
+                Selected time
+              </p>
+              <p
+                className={cn(
+                  'text-xl font-black leading-tight',
+                  dark ? 'text-white' : 'text-slate-950'
+                )}
+              >
+                {formatTimeLabel(value)}
+              </p>
             </div>
           </div>
 
@@ -153,7 +184,9 @@ export default function TimePickerField({ label, value, onChange, dark, helper }
               onIncrease={() => update({ hour: stepHour(parsed.hour, 1) })}
               dark={dark}
             />
-            <span className={cn('text-lg font-black', dark ? 'text-slate-500' : 'text-slate-400')}>:</span>
+            <span className={cn('text-lg font-black', dark ? 'text-slate-500' : 'text-slate-400')}>
+              :
+            </span>
             <ValueStepper
               label={`${label} minute`}
               value={String(parsed.minute).padStart(2, '0')}
@@ -162,13 +195,19 @@ export default function TimePickerField({ label, value, onChange, dark, helper }
               dark={dark}
             />
             <div className="w-24 shrink-0">
-              <PeriodToggle value={parsed.period} onChange={(period) => update({ period })} dark={dark} />
+              <PeriodToggle
+                value={parsed.period}
+                onChange={(period) => update({ period })}
+                dark={dark}
+              />
             </div>
           </div>
         </div>
       </div>
       {helper && (
-        <p className={cn('mt-1.5 text-xs font-semibold', dark ? 'text-slate-500' : 'text-slate-500')}>
+        <p
+          className={cn('mt-1.5 text-xs font-semibold', dark ? 'text-slate-500' : 'text-slate-500')}
+        >
           {helper}
         </p>
       )}

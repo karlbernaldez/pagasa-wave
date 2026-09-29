@@ -1,6 +1,4 @@
-import {
-  REVIEW_CHECKLIST_ITEM_STATUS,
-} from '../models/ForecastPackageReviewChecklist.js';
+import { REVIEW_CHECKLIST_ITEM_STATUS } from '../models/ForecastPackageReviewChecklist.js';
 
 const KEY_PATTERN = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
 
@@ -31,9 +29,7 @@ export function normalizeChecklistItems(items) {
     }
 
     if (!label) {
-      throw createValidationError('Checklist item label is required.', [
-        { index, field: 'label' },
-      ]);
+      throw createValidationError('Checklist item label is required.', [{ index, field: 'label' }]);
     }
 
     if (label.length > 200) {
@@ -43,10 +39,9 @@ export function normalizeChecklistItems(items) {
     }
 
     if (description.length > 1000) {
-      throw createValidationError(
-        'Checklist item description must be 1000 characters or less.',
-        [{ index, field: 'description' }]
-      );
+      throw createValidationError('Checklist item description must be 1000 characters or less.', [
+        { index, field: 'description' },
+      ]);
     }
 
     return {
@@ -126,13 +121,8 @@ export function getReviewChecklistProgress(items = []) {
     optional: normalized.length - requiredItems.length,
     needsAttention,
     pending,
-    isComplete:
-      requiredCompleted === requiredItems.length &&
-      needsAttention === 0 &&
-      pending === 0,
-    canApprove:
-      requiredCompleted === requiredItems.length &&
-      needsAttention === 0,
+    isComplete: requiredCompleted === requiredItems.length && needsAttention === 0 && pending === 0,
+    canApprove: requiredCompleted === requiredItems.length && needsAttention === 0,
   };
 }
 
@@ -153,10 +143,7 @@ export function validateChecklistItemUpdate(item, nextStatus, comment = '') {
     throw createValidationError('Checklist item comment must be 2000 characters or less.');
   }
 
-  if (
-    nextStatus === REVIEW_CHECKLIST_ITEM_STATUS.NEEDS_ATTENTION &&
-    !normalizedComment
-  ) {
+  if (nextStatus === REVIEW_CHECKLIST_ITEM_STATUS.NEEDS_ATTENTION && !normalizedComment) {
     throw createValidationError('A comment is required when an item needs attention.');
   }
 

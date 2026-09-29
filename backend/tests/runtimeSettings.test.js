@@ -153,7 +153,6 @@ test('general settings reject inverted custom bounds', () => {
   );
 });
 
-
 test('general settings accept a WGS84 published domain boundary', () => {
   const parsed = parseGeneralSettingsPayload({
     logoPreview: '/pagasa-logo.png',
@@ -242,7 +241,6 @@ test('general settings reject out-of-range published boundary coordinates', () =
   );
 });
 
-
 test('workspace drawing settings reject unsafe ranges', () => {
   const base = {
     workspaceWelcomeTitle: '',
@@ -294,7 +292,6 @@ test('workspace drawing settings reject unsafe ranges', () => {
     /Drawing post-process smoothing/
   );
 });
-
 
 test('operations settings reject unsupported forecast naming placeholders', () => {
   assert.throws(

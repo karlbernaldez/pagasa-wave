@@ -8,10 +8,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 
-import {
-  getPackageReviewChecklist,
-  updatePackageReviewChecklistItem,
-} from '@/api/reviewChecklist';
+import { getPackageReviewChecklist, updatePackageReviewChecklistItem } from '@/api/reviewChecklist';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -193,7 +190,8 @@ export default function PackageReviewChecklistPanel({
             </h3>
           </div>
           <p className="mt-1 text-xs font-semibold text-slate-500">
-            {checklist.definitionNameSnapshot} · Version {checklist.definitionVersion} · Review attempt {checklist.reviewAttempt}
+            {checklist.definitionNameSnapshot} · Version {checklist.definitionVersion} · Review
+            attempt {checklist.reviewAttempt}
           </p>
         </div>
         <span
@@ -244,7 +242,12 @@ export default function PackageReviewChecklistPanel({
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className={cn('text-sm font-black', isDarkMode ? 'text-white' : 'text-slate-900')}>
+                    <p
+                      className={cn(
+                        'text-sm font-black',
+                        isDarkMode ? 'text-white' : 'text-slate-900'
+                      )}
+                    >
                       {item.labelSnapshot}
                     </p>
                     {item.requiredSnapshot && (
@@ -323,7 +326,8 @@ export default function PackageReviewChecklistPanel({
 
       {!canReview && (
         <p className="mt-4 text-xs font-semibold text-slate-500">
-          View-only checklist access. Review evidence can only be changed by users with forecast review permission.
+          View-only checklist access. Review evidence can only be changed by users with forecast
+          review permission.
         </p>
       )}
     </section>

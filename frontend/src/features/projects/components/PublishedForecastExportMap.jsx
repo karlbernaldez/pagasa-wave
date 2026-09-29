@@ -4,8 +4,14 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 
 import { fetchPublicPublishedChartOutput } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import usePublicMapBounds, { getMapBoundsCenter } from '@/features/projects/hooks/usePublicMapBounds';
-import { CHART_STYLE_MODE, getChartStyleModePaint, normalizeChartStyleMode } from '@/features/projects/utils/chartStyleModes';
+import usePublicMapBounds, {
+  getMapBoundsCenter,
+} from '@/features/projects/hooks/usePublicMapBounds';
+import {
+  CHART_STYLE_MODE,
+  getChartStyleModePaint,
+  normalizeChartStyleMode,
+} from '@/features/projects/utils/chartStyleModes';
 import { isFrontFeature, renderFrontFeatures } from '@/features/projects/utils/frontRendering';
 import { normalizeFeatureCollection } from '@/features/projects/utils/normalizeFeatureCollection';
 import { clipPublishedAnnotations } from '@/features/projects/utils/clipPublishedAnnotations';
@@ -41,8 +47,17 @@ const POINT_TYPE = ['coalesce', ['get', 'markerType'], ['get', 'symbolType'], ['
 const POINT_FILTER = ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false];
 const LINE_FILTER = ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false];
 const POLYGON_FILTER = ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false];
-const MARKER_ICON_FILTER = ['all', POINT_FILTER, ['in', POINT_TYPE, ['literal', MARKER_ICON_NAMES]]];
-const POINT_SYMBOL_FILTER = ['all', POINT_FILTER, ['!', ['in', POINT_TYPE, ['literal', MARKER_ICON_NAMES]]], ['!=', POINT_TYPE, 'text_note']];
+const MARKER_ICON_FILTER = [
+  'all',
+  POINT_FILTER,
+  ['in', POINT_TYPE, ['literal', MARKER_ICON_NAMES]],
+];
+const POINT_SYMBOL_FILTER = [
+  'all',
+  POINT_FILTER,
+  ['!', ['in', POINT_TYPE, ['literal', MARKER_ICON_NAMES]]],
+  ['!=', POINT_TYPE, 'text_note'],
+];
 const POINT_LABEL_FILTER = ['all', POINT_FILTER, ['!=', POINT_TYPE, 'less_1']];
 const MARKER_ICON_IMAGE_EXPRESSION = [
   'match',
@@ -82,7 +97,8 @@ function isMapStyleReady(map) {
 }
 
 function setLayerVisibility(map, layerId, isVisible) {
-  if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', isVisible ? 'visible' : 'none');
+  if (map.getLayer(layerId))
+    map.setLayoutProperty(layerId, 'visibility', isVisible ? 'visible' : 'none');
 }
 
 function getLineParts(geometry) {
@@ -94,7 +110,19 @@ function getLineParts(geometry) {
 
 function getLineLabel(feature) {
   const props = feature?.properties || {};
-  return String(props.labelValue ?? props.waveHeight ?? props.heightValue ?? props.height ?? props.value ?? props.text ?? props.label ?? props.name ?? props.title ?? feature?.name ?? '').trim();
+  return String(
+    props.labelValue ??
+      props.waveHeight ??
+      props.heightValue ??
+      props.height ??
+      props.value ??
+      props.text ??
+      props.label ??
+      props.name ??
+      props.title ??
+      feature?.name ??
+      ''
+  ).trim();
 }
 
 function getPointMarkerType(feature) {
@@ -103,7 +131,9 @@ function getPointMarkerType(feature) {
 }
 
 function collectionNeedsMarkerImages(featureCollection) {
-  return featureCollection.features.some((feature) => MARKER_ICON_NAME_SET.has(getPointMarkerType(feature)));
+  return featureCollection.features.some((feature) =>
+    MARKER_ICON_NAME_SET.has(getPointMarkerType(feature))
+  );
 }
 
 function ensureExportMarkerImages(map) {
@@ -158,15 +188,22 @@ function buildCollections(featureCollection) {
       if (!Array.isArray(line) || line.length < 2) return;
       const first = line[0];
       const last = line[line.length - 1];
-      const closed = feature?.properties?.closedMode || (Array.isArray(first) && Array.isArray(last) && first[0] === last[0] && first[1] === last[1]);
+      const closed =
+        feature?.properties?.closedMode ||
+        (Array.isArray(first) &&
+          Array.isArray(last) &&
+          first[0] === last[0] &&
+          first[1] === last[1]);
       const points = closed ? [first] : [first, last];
 
-      points.forEach((coordinates, pointIndex) => labels.push({
-        type: 'Feature',
-        id: `${feature.id || featureIndex}-${lineIndex}-${pointIndex}`,
-        geometry: { type: 'Point', coordinates },
-        properties: { text },
-      }));
+      points.forEach((coordinates, pointIndex) =>
+        labels.push({
+          type: 'Feature',
+          id: `${feature.id || featureIndex}-${lineIndex}-${pointIndex}`,
+          geometry: { type: 'Point', coordinates },
+          properties: { text },
+        })
+      );
     });
   });
 
@@ -207,7 +244,8 @@ function syncRaster(map, raster, enabled) {
     return;
   }
 
-  if (map.getSource(RASTER_SOURCE_ID) && map.__publishedExportTileUrl !== raster.tileUrl) removeRaster(map);
+  if (map.getSource(RASTER_SOURCE_ID) && map.__publishedExportTileUrl !== raster.tileUrl)
+    removeRaster(map);
 
   if (!map.getSource(RASTER_SOURCE_ID)) {
     map.addSource(RASTER_SOURCE_ID, {
@@ -237,16 +275,36 @@ function syncRaster(map, raster, enabled) {
 
 function syncCountryOverlay(map, isDarkMode) {
   try {
-    if (!map.getSource(COUNTRY_SOURCE_ID)) map.addSource(COUNTRY_SOURCE_ID, { type: 'vector', url: 'mapbox://mapbox.country-boundaries-v1' });
+    if (!map.getSource(COUNTRY_SOURCE_ID))
+      map.addSource(COUNTRY_SOURCE_ID, {
+        type: 'vector',
+        url: 'mapbox://mapbox.country-boundaries-v1',
+      });
 
     if (!map.getLayer(COUNTRY_LAND_LAYER_ID)) {
-      map.addLayer({ id: COUNTRY_LAND_LAYER_ID, type: 'fill', source: COUNTRY_SOURCE_ID, 'source-layer': 'country_boundaries', paint: { 'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd', 'fill-opacity': 0.82 } });
+      map.addLayer({
+        id: COUNTRY_LAND_LAYER_ID,
+        type: 'fill',
+        source: COUNTRY_SOURCE_ID,
+        'source-layer': 'country_boundaries',
+        paint: { 'fill-color': isDarkMode ? '#1e293b' : '#d6d3cd', 'fill-opacity': 0.82 },
+      });
     } else {
       map.setPaintProperty(COUNTRY_LAND_LAYER_ID, 'fill-color', isDarkMode ? '#1e293b' : '#d6d3cd');
     }
 
     if (!map.getLayer(COUNTRY_LINE_LAYER_ID)) {
-      map.addLayer({ id: COUNTRY_LINE_LAYER_ID, type: 'line', source: COUNTRY_SOURCE_ID, 'source-layer': 'country_boundaries', paint: { 'line-color': isDarkMode ? '#94a3b8' : '#4b5563', 'line-opacity': 0.5, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2] } });
+      map.addLayer({
+        id: COUNTRY_LINE_LAYER_ID,
+        type: 'line',
+        source: COUNTRY_SOURCE_ID,
+        'source-layer': 'country_boundaries',
+        paint: {
+          'line-color': isDarkMode ? '#94a3b8' : '#4b5563',
+          'line-opacity': 0.5,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2],
+        },
+      });
     } else {
       map.setPaintProperty(COUNTRY_LINE_LAYER_ID, 'line-color', isDarkMode ? '#94a3b8' : '#4b5563');
     }
@@ -264,30 +322,148 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
   setGeoJson(map, FEATURE_SOURCE_ID, collections.regular);
   setGeoJson(map, LABEL_SOURCE_ID, collections.labels);
 
-  if (collectionNeedsMarkerImages(collections.regular) && !ensureExportMarkerImages(map)) return false;
+  if (collectionNeedsMarkerImages(collections.regular) && !ensureExportMarkerImages(map))
+    return false;
 
   if (!map.getLayer('published-forecast-export-polygons')) {
-    map.addLayer({ id: 'published-forecast-export-polygons', type: 'fill', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'fill-color': paint.polygonFill, 'fill-opacity': paint.polygonOpacity } });
-    map.addLayer({ id: 'published-forecast-export-polygons-outline', type: 'line', source: FEATURE_SOURCE_ID, filter: POLYGON_FILTER, paint: { 'line-color': paint.polygonOutline, 'line-width': paint.polygonOutlineWidth, 'line-opacity': 0.9 } });
-    map.addLayer({ id: 'published-forecast-export-lines-casing', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': paint.lineCasing, 'line-width': paint.lineCasingWidth, 'line-opacity': 0.95 } });
-    map.addLayer({ id: 'published-forecast-export-lines', type: 'line', source: FEATURE_SOURCE_ID, filter: LINE_FILTER, paint: { 'line-color': paint.lineColor, 'line-width': paint.lineWidth, 'line-opacity': 1 } });
-    map.addLayer({ id: 'published-forecast-export-points', type: 'circle', source: FEATURE_SOURCE_ID, filter: POINT_SYMBOL_FILTER, paint: { 'circle-color': paint.pointColor, 'circle-radius': paint.pointRadius, 'circle-opacity': paint.showPoints ? 1 : 0, 'circle-stroke-color': paint.pointStroke, 'circle-stroke-width': paint.pointStrokeWidth } });
-    map.addLayer({ id: 'published-forecast-export-marker-icons', type: 'symbol', source: FEATURE_SOURCE_ID, filter: MARKER_ICON_FILTER, layout: { 'icon-image': MARKER_ICON_IMAGE_EXPRESSION, 'icon-size': MARKER_ICON_SIZE_EXPRESSION, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
-    map.addLayer({ id: 'published-forecast-export-line-labels', type: 'symbol', source: LABEL_SOURCE_ID, layout: { 'text-field': ['get', 'text'], 'text-size': paint.lineLabelSize, 'text-anchor': 'bottom', 'text-offset': [0, 0.5], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
-    map.addLayer({ id: 'published-forecast-export-labels', type: 'symbol', source: FEATURE_SOURCE_ID, filter: POINT_LABEL_FILTER, layout: { 'text-field': ['to-string', ['coalesce', ['get', 'name'], ['get', 'title'], ['get', 'displayName'], ['get', 'label'], ['get', 'labelValue'], '']], 'text-size': paint.pointLabelSize, 'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]], 'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': paint.labelColor, 'text-halo-color': paint.labelHaloColor, 'text-halo-width': paint.labelHaloWidth } });
+    map.addLayer({
+      id: 'published-forecast-export-polygons',
+      type: 'fill',
+      source: FEATURE_SOURCE_ID,
+      filter: POLYGON_FILTER,
+      paint: { 'fill-color': paint.polygonFill, 'fill-opacity': paint.polygonOpacity },
+    });
+    map.addLayer({
+      id: 'published-forecast-export-polygons-outline',
+      type: 'line',
+      source: FEATURE_SOURCE_ID,
+      filter: POLYGON_FILTER,
+      paint: {
+        'line-color': paint.polygonOutline,
+        'line-width': paint.polygonOutlineWidth,
+        'line-opacity': 0.9,
+      },
+    });
+    map.addLayer({
+      id: 'published-forecast-export-lines-casing',
+      type: 'line',
+      source: FEATURE_SOURCE_ID,
+      filter: LINE_FILTER,
+      paint: {
+        'line-color': paint.lineCasing,
+        'line-width': paint.lineCasingWidth,
+        'line-opacity': 0.95,
+      },
+    });
+    map.addLayer({
+      id: 'published-forecast-export-lines',
+      type: 'line',
+      source: FEATURE_SOURCE_ID,
+      filter: LINE_FILTER,
+      paint: { 'line-color': paint.lineColor, 'line-width': paint.lineWidth, 'line-opacity': 1 },
+    });
+    map.addLayer({
+      id: 'published-forecast-export-points',
+      type: 'circle',
+      source: FEATURE_SOURCE_ID,
+      filter: POINT_SYMBOL_FILTER,
+      paint: {
+        'circle-color': paint.pointColor,
+        'circle-radius': paint.pointRadius,
+        'circle-opacity': paint.showPoints ? 1 : 0,
+        'circle-stroke-color': paint.pointStroke,
+        'circle-stroke-width': paint.pointStrokeWidth,
+      },
+    });
+    map.addLayer({
+      id: 'published-forecast-export-marker-icons',
+      type: 'symbol',
+      source: FEATURE_SOURCE_ID,
+      filter: MARKER_ICON_FILTER,
+      layout: {
+        'icon-image': MARKER_ICON_IMAGE_EXPRESSION,
+        'icon-size': MARKER_ICON_SIZE_EXPRESSION,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    });
+    map.addLayer({
+      id: 'published-forecast-export-line-labels',
+      type: 'symbol',
+      source: LABEL_SOURCE_ID,
+      layout: {
+        'text-field': ['get', 'text'],
+        'text-size': paint.lineLabelSize,
+        'text-anchor': 'bottom',
+        'text-offset': [0, 0.5],
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': paint.labelColor,
+        'text-halo-color': paint.labelHaloColor,
+        'text-halo-width': paint.labelHaloWidth,
+      },
+    });
+    map.addLayer({
+      id: 'published-forecast-export-labels',
+      type: 'symbol',
+      source: FEATURE_SOURCE_ID,
+      filter: POINT_LABEL_FILTER,
+      layout: {
+        'text-field': [
+          'to-string',
+          [
+            'coalesce',
+            ['get', 'name'],
+            ['get', 'title'],
+            ['get', 'displayName'],
+            ['get', 'label'],
+            ['get', 'labelValue'],
+            '',
+          ],
+        ],
+        'text-size': paint.pointLabelSize,
+        'text-offset': ['case', ['==', POINT_TYPE, 'text_note'], [0, 0], [0, 1.6]],
+        'text-anchor': ['case', ['==', POINT_TYPE, 'text_note'], 'center', 'top'],
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': paint.labelColor,
+        'text-halo-color': paint.labelHaloColor,
+        'text-halo-width': paint.labelHaloWidth,
+      },
+    });
   }
 
   if (map.getLayer('published-forecast-export-polygons')) {
     map.setPaintProperty('published-forecast-export-polygons', 'fill-color', paint.polygonFill);
-    map.setPaintProperty('published-forecast-export-polygons', 'fill-opacity', paint.polygonOpacity);
+    map.setPaintProperty(
+      'published-forecast-export-polygons',
+      'fill-opacity',
+      paint.polygonOpacity
+    );
   }
   if (map.getLayer('published-forecast-export-polygons-outline')) {
-    map.setPaintProperty('published-forecast-export-polygons-outline', 'line-color', paint.polygonOutline);
-    map.setPaintProperty('published-forecast-export-polygons-outline', 'line-width', paint.polygonOutlineWidth);
+    map.setPaintProperty(
+      'published-forecast-export-polygons-outline',
+      'line-color',
+      paint.polygonOutline
+    );
+    map.setPaintProperty(
+      'published-forecast-export-polygons-outline',
+      'line-width',
+      paint.polygonOutlineWidth
+    );
   }
   if (map.getLayer('published-forecast-export-lines-casing')) {
     map.setPaintProperty('published-forecast-export-lines-casing', 'line-color', paint.lineCasing);
-    map.setPaintProperty('published-forecast-export-lines-casing', 'line-width', paint.lineCasingWidth);
+    map.setPaintProperty(
+      'published-forecast-export-lines-casing',
+      'line-width',
+      paint.lineCasingWidth
+    );
   }
   if (map.getLayer('published-forecast-export-lines')) {
     map.setPaintProperty('published-forecast-export-lines', 'line-color', paint.lineColor);
@@ -296,26 +472,66 @@ function syncExportLayers(map, featureCollection, chartStyleMode) {
   if (map.getLayer('published-forecast-export-points')) {
     map.setPaintProperty('published-forecast-export-points', 'circle-color', paint.pointColor);
     map.setPaintProperty('published-forecast-export-points', 'circle-radius', paint.pointRadius);
-    map.setPaintProperty('published-forecast-export-points', 'circle-stroke-color', paint.pointStroke);
-    map.setPaintProperty('published-forecast-export-points', 'circle-stroke-width', paint.pointStrokeWidth);
-    map.setPaintProperty('published-forecast-export-points', 'circle-opacity', paint.showPoints ? 1 : 0);
+    map.setPaintProperty(
+      'published-forecast-export-points',
+      'circle-stroke-color',
+      paint.pointStroke
+    );
+    map.setPaintProperty(
+      'published-forecast-export-points',
+      'circle-stroke-width',
+      paint.pointStrokeWidth
+    );
+    map.setPaintProperty(
+      'published-forecast-export-points',
+      'circle-opacity',
+      paint.showPoints ? 1 : 0
+    );
   }
   if (map.getLayer('published-forecast-export-marker-icons')) {
-    map.setLayoutProperty('published-forecast-export-marker-icons', 'icon-image', MARKER_ICON_IMAGE_EXPRESSION);
-    map.setLayoutProperty('published-forecast-export-marker-icons', 'icon-size', MARKER_ICON_SIZE_EXPRESSION);
+    map.setLayoutProperty(
+      'published-forecast-export-marker-icons',
+      'icon-image',
+      MARKER_ICON_IMAGE_EXPRESSION
+    );
+    map.setLayoutProperty(
+      'published-forecast-export-marker-icons',
+      'icon-size',
+      MARKER_ICON_SIZE_EXPRESSION
+    );
     setLayerVisibility(map, 'published-forecast-export-marker-icons', paint.showPoints);
   }
   if (map.getLayer('published-forecast-export-line-labels')) {
-    map.setLayoutProperty('published-forecast-export-line-labels', 'text-size', paint.lineLabelSize);
+    map.setLayoutProperty(
+      'published-forecast-export-line-labels',
+      'text-size',
+      paint.lineLabelSize
+    );
     map.setPaintProperty('published-forecast-export-line-labels', 'text-color', paint.labelColor);
-    map.setPaintProperty('published-forecast-export-line-labels', 'text-halo-color', paint.labelHaloColor);
-    map.setPaintProperty('published-forecast-export-line-labels', 'text-halo-width', paint.labelHaloWidth);
+    map.setPaintProperty(
+      'published-forecast-export-line-labels',
+      'text-halo-color',
+      paint.labelHaloColor
+    );
+    map.setPaintProperty(
+      'published-forecast-export-line-labels',
+      'text-halo-width',
+      paint.labelHaloWidth
+    );
   }
   if (map.getLayer('published-forecast-export-labels')) {
     map.setLayoutProperty('published-forecast-export-labels', 'text-size', paint.pointLabelSize);
     map.setPaintProperty('published-forecast-export-labels', 'text-color', paint.labelColor);
-    map.setPaintProperty('published-forecast-export-labels', 'text-halo-color', paint.labelHaloColor);
-    map.setPaintProperty('published-forecast-export-labels', 'text-halo-width', paint.labelHaloWidth);
+    map.setPaintProperty(
+      'published-forecast-export-labels',
+      'text-halo-color',
+      paint.labelHaloColor
+    );
+    map.setPaintProperty(
+      'published-forecast-export-labels',
+      'text-halo-width',
+      paint.labelHaloWidth
+    );
     setLayerVisibility(map, 'published-forecast-export-labels', paint.showPointLabels);
   }
 
@@ -329,7 +545,10 @@ function fitExportBounds(map, bounds) {
   map.fitBounds(bounds, { padding: 16, maxZoom: 6, duration: 0 });
 }
 
-const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap({ features, chartStyleMode, raster }, ref) {
+const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap(
+  { features, chartStyleMode, raster },
+  ref
+) {
   const { isDarkMode } = useTheme();
   const { bounds: mapBounds, settings: publicSettings } = usePublicMapBounds();
   const containerRef = useRef(null);
@@ -366,15 +585,28 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     () => JSON.stringify(renderedFeatureCollection),
     [renderedFeatureCollection]
   );
-  const renderSignature = useMemo(() => [
-    projectId,
-    normalizedStyleMode,
-    theme,
-    shouldRenderRaster ? resolvedRaster?.tileUrl || 'raster-pending' : 'no-raster',
-    featureSignature,
-    mapBoundsSignature,
-    boundarySignature,
-  ].join('|'), [boundarySignature, featureSignature, mapBoundsSignature, normalizedStyleMode, projectId, resolvedRaster?.tileUrl, shouldRenderRaster, theme]);
+  const renderSignature = useMemo(
+    () =>
+      [
+        projectId,
+        normalizedStyleMode,
+        theme,
+        shouldRenderRaster ? resolvedRaster?.tileUrl || 'raster-pending' : 'no-raster',
+        featureSignature,
+        mapBoundsSignature,
+        boundarySignature,
+      ].join('|'),
+    [
+      boundarySignature,
+      featureSignature,
+      mapBoundsSignature,
+      normalizedStyleMode,
+      projectId,
+      resolvedRaster?.tileUrl,
+      shouldRenderRaster,
+      theme,
+    ]
+  );
 
   const clearReadyCapture = () => {
     readySignatureRef.current = '';
@@ -408,22 +640,40 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     if (raster || !projectId) return undefined;
 
     fetchPublicPublishedChartOutput(projectId, { theme })
-      .then((data) => { if (mounted) setFetchedRaster(data?.raster || null); })
-      .catch((error) => console.warn('[PublishedForecastExportMap] Failed to load export raster:', error));
+      .then((data) => {
+        if (mounted) setFetchedRaster(data?.raster || null);
+      })
+      .catch((error) =>
+        console.warn('[PublishedForecastExportMap] Failed to load export raster:', error)
+      );
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [projectId, raster, theme]);
 
   useImperativeHandle(ref, () => ({
     getDataUrl() {
-      if (!mapRef.current || !hasRenderableContent || readySignatureRef.current !== renderSignature || !readyDataUrlRef.current || !isMapStyleReady(mapRef.current)) {
+      if (
+        !mapRef.current ||
+        !hasRenderableContent ||
+        readySignatureRef.current !== renderSignature ||
+        !readyDataUrlRef.current ||
+        !isMapStyleReady(mapRef.current)
+      ) {
         throw new Error('Map is still preparing for export. Please try again in a moment.');
       }
 
       return readyDataUrlRef.current;
     },
     get isReady() {
-      return Boolean(mapRef.current && hasRenderableContent && readySignatureRef.current === renderSignature && readyDataUrlRef.current && isMapStyleReady(mapRef.current));
+      return Boolean(
+        mapRef.current &&
+        hasRenderableContent &&
+        readySignatureRef.current === renderSignature &&
+        readyDataUrlRef.current &&
+        isMapStyleReady(mapRef.current)
+      );
     },
   }));
 

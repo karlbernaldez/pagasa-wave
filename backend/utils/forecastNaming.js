@@ -1,8 +1,5 @@
 import SiteSettings from '../models/SiteSettings.js';
-import {
-  FORECAST_CHART_TYPES,
-  formatLocalDateKey,
-} from './forecastPackage.js';
+import { FORECAST_CHART_TYPES, formatLocalDateKey } from './forecastPackage.js';
 
 export const DEFAULT_FORECAST_NAMING = Object.freeze({
   forecastPackageNameTemplate: 'Marine Forecast {date}',

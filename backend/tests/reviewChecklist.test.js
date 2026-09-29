@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  REVIEW_CHECKLIST_ITEM_STATUS,
-} from '../models/ForecastPackageReviewChecklist.js';
+import { REVIEW_CHECKLIST_ITEM_STATUS } from '../models/ForecastPackageReviewChecklist.js';
 import {
   buildChecklistSnapshotItems,
   getReviewChecklistProgress,

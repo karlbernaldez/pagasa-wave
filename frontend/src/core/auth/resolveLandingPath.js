@@ -23,7 +23,7 @@ const PERMISSION_LANDING_RULES = Object.freeze([
       'settings_schedule.view',
       'settings_workspace.view',
       'settings_map_view.view',
-        'settings_review_checklist.view',
+      'settings_review_checklist.view',
       'settings_public_general.view',
       'settings_public_about.view',
       'settings_public_contact.view',

@@ -2,10 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import PackageReviewChecklistPanel from './PackageReviewChecklistPanel';
-import {
-  getPackageReviewChecklist,
-  updatePackageReviewChecklistItem,
-} from '@/api/reviewChecklist';
+import { getPackageReviewChecklist, updatePackageReviewChecklistItem } from '@/api/reviewChecklist';
 
 vi.mock('@/api/reviewChecklist', () => ({
   getPackageReviewChecklist: vi.fn(),
@@ -49,12 +46,7 @@ describe('PackageReviewChecklistPanel', () => {
 
   it('loads package checklist evidence and exposes required progress', async () => {
     render(
-      <PackageReviewChecklistPanel
-        packageId="package-1"
-        isDarkMode={false}
-        canReview
-        enabled
-      />
+      <PackageReviewChecklistPanel packageId="package-1" isDarkMode={false} canReview enabled />
     );
 
     expect(await screen.findByText('Forecast cycle verified')).toBeInTheDocument();
@@ -82,27 +74,18 @@ describe('PackageReviewChecklistPanel', () => {
     });
 
     render(
-      <PackageReviewChecklistPanel
-        packageId="package-1"
-        isDarkMode={false}
-        canReview
-        enabled
-      />
+      <PackageReviewChecklistPanel packageId="package-1" isDarkMode={false} canReview enabled />
     );
 
     await screen.findByText('Forecast cycle verified');
     fireEvent.click(screen.getByRole('button', { name: /^pass$/i }));
 
     await waitFor(() =>
-      expect(updatePackageReviewChecklistItem).toHaveBeenCalledWith(
-        'package-1',
-        'item-1',
-        {
-          status: 'Pass',
-          comment: '',
-          version: 1,
-        }
-      )
+      expect(updatePackageReviewChecklistItem).toHaveBeenCalledWith('package-1', 'item-1', {
+        status: 'Pass',
+        comment: '',
+        version: 1,
+      })
     );
 
     expect(await screen.findByText('1/1 required')).toBeInTheDocument();

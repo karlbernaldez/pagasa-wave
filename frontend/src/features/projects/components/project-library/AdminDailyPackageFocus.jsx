@@ -34,7 +34,9 @@ function getDailyFocus({ packages = [], projects = [] }) {
   const todayKey = getDateKey(new Date());
   const dailyPackage = rows.find(isDailyForecastPackage) || null;
   const chartRows = dailyPackage?.charts || [];
-  const chartByType = new Map(chartRows.map((chart) => [chart.chartType || chart.project?.chartType, chart]));
+  const chartByType = new Map(
+    chartRows.map((chart) => [chart.chartType || chart.project?.chartType, chart])
+  );
 
   const charts = DAILY_CHART_TYPES.map((chartType) => {
     const row = chartByType.get(chartType);
@@ -52,7 +54,9 @@ function getDailyFocus({ packages = [], projects = [] }) {
     dailyPackage,
     charts,
     completeCount: charts.filter((chart) => COMPLETE_STATUSES.has(chart.status)).length,
-    historyCount: rows.filter((forecastPackage) => forecastPackage.dateKey && forecastPackage.dateKey !== todayKey).length,
+    historyCount: rows.filter(
+      (forecastPackage) => forecastPackage.dateKey && forecastPackage.dateKey !== todayKey
+    ).length,
   };
 }
 
@@ -63,22 +67,44 @@ function ChartTile({ chart, dailyPackage, isDarkMode, onOpenChart }) {
   const Icon = chart.chartType === 'analysis' ? Waves : Clock3;
 
   return (
-    <article className={`rounded-xl border p-4 backdrop-blur-xl ${
-      isDarkMode ? 'border-white/10 bg-white/[0.045]' : 'border-white/75 bg-white/62'
-    }`}>
+    <article
+      className={`rounded-xl border p-4 backdrop-blur-xl ${
+        isDarkMode ? 'border-white/10 bg-white/[0.045]' : 'border-white/75 bg-white/62'
+      }`}
+    >
       <div className="flex items-start gap-3">
-        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${
-          isDarkMode ? 'border-cyan-300/15 bg-cyan-300/10 text-cyan-200' : 'border-cyan-100 bg-cyan-50 text-cyan-700'
-        }`}>
+        <span
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${
+            isDarkMode
+              ? 'border-cyan-300/15 bg-cyan-300/10 text-cyan-200'
+              : 'border-cyan-100 bg-cyan-50 text-cyan-700'
+          }`}
+        >
           <Icon size={20} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className={`truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{chart.label}</h3>
+          <h3
+            className={`truncate text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+          >
+            {chart.label}
+          </h3>
           <div className="mt-1 flex items-center gap-1.5">
-            {complete ? <CheckCircle2 size={13} className="text-emerald-400" /> : <Clock3 size={13} className={reviewable ? 'text-amber-400' : 'text-slate-500'} />}
-            <span className={`text-xs font-bold ${
-              complete ? 'text-emerald-400' : reviewable ? 'text-amber-400' : isDarkMode ? 'text-slate-500' : 'text-slate-500'
-            }`}>
+            {complete ? (
+              <CheckCircle2 size={13} className="text-emerald-400" />
+            ) : (
+              <Clock3 size={13} className={reviewable ? 'text-amber-400' : 'text-slate-500'} />
+            )}
+            <span
+              className={`text-xs font-bold ${
+                complete
+                  ? 'text-emerald-400'
+                  : reviewable
+                    ? 'text-amber-400'
+                    : isDarkMode
+                      ? 'text-slate-500'
+                      : 'text-slate-500'
+              }`}
+            >
               {chart.status}
             </span>
           </div>
@@ -118,7 +144,12 @@ export default function AdminDailyPackageFocus({
   const [publishError, setPublishError] = useState('');
   const dateLabel = dailyPackage?.dateKey
     ? formatPackageDate(dailyPackage.dateKey)
-    : new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' }).format(new Date());
+    : new Intl.DateTimeFormat(undefined, {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'Asia/Manila',
+      }).format(new Date());
   const isReadyToPublish = dailyPackage?.status === 'Approved';
   const isPublished = dailyPackage?.status === 'Published';
   const isPublishing = publishingPackageId === dailyPackage?.id || localPublishing;
@@ -136,12 +167,14 @@ export default function AdminDailyPackageFocus({
         .map((chart) => chart.project)
         .filter((project) => (project?._id || project?.id) && project?.status === 'Approved');
 
-      await Promise.all(approvedProjects.map((project) => publishProject(project._id || project.id)));
+      await Promise.all(
+        approvedProjects.map((project) => publishProject(project._id || project.id))
+      );
       await publishForecastPackage(packageId);
       window.location.reload();
     } catch (error) {
-      console.error('Failed to publish today\'s forecast package:', error);
-      setPublishError(error?.message || 'Failed to publish today\'s forecast package.');
+      console.error("Failed to publish today's forecast package:", error);
+      setPublishError(error?.message || "Failed to publish today's forecast package.");
     } finally {
       setLocalPublishing(false);
     }
@@ -166,51 +199,104 @@ export default function AdminDailyPackageFocus({
   };
 
   return (
-    <section className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-2xl ${
-      isDarkMode ? 'border-cyan-300/15 bg-slate-950/48 shadow-black/25' : 'border-white/80 bg-white/68 shadow-slate-300/35'
-    }`}>
+    <section
+      className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-2xl ${
+        isDarkMode
+          ? 'border-cyan-300/15 bg-slate-950/48 shadow-black/25'
+          : 'border-white/80 bg-white/68 shadow-slate-300/35'
+      }`}
+    >
       <div className="grid lg:grid-cols-[1.35fr_0.65fr]">
         <div className="relative overflow-hidden p-5 sm:p-7">
-          <div className={`pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full blur-3xl ${isDarkMode ? 'bg-cyan-400/10' : 'bg-cyan-200/35'}`} />
+          <div
+            className={`pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full blur-3xl ${isDarkMode ? 'bg-cyan-400/10' : 'bg-cyan-200/35'}`}
+          />
           <div className="relative grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-200/80' : 'text-cyan-700'}`}>Today&apos;s forecast package</p>
+              <p
+                className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-200/80' : 'text-cyan-700'}`}
+              >
+                Today&apos;s forecast package
+              </p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                <h2 className={`text-3xl font-black tracking-tight sm:text-4xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{dateLabel}</h2>
-                <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black ${
-                  isReadyToPublish
-                    ? isDarkMode ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : isDarkMode ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-200' : 'border-cyan-200 bg-cyan-50 text-cyan-700'
-                }`}>
+                <h2
+                  className={`text-3xl font-black tracking-tight sm:text-4xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+                >
+                  {dateLabel}
+                </h2>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black ${
+                    isReadyToPublish
+                      ? isDarkMode
+                        ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-300'
+                        : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : isDarkMode
+                        ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-200'
+                        : 'border-cyan-200 bg-cyan-50 text-cyan-700'
+                  }`}
+                >
                   {isReadyToPublish && <Check size={13} />}
                   {dailyPackage?.status || 'Not submitted'}
                 </span>
               </div>
-              <p className={`mt-3 max-w-xl text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+              <p
+                className={`mt-3 max-w-xl text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}
+              >
                 {dailyPackage
                   ? 'Review today’s required charts and complete the package before publication.'
                   : 'Today’s package has not been submitted yet. Required chart slots will update as forecasts arrive.'}
               </p>
               <div className="mt-5 flex flex-wrap gap-5 text-xs font-bold">
-                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Owner <strong className={isDarkMode ? 'text-slate-100' : 'text-slate-800'}>{dailyPackage?.ownerLabel || 'Forecast team'}</strong></span>
-                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Package <strong className={isDarkMode ? 'text-slate-100' : 'text-slate-800'}>{dailyPackage?.title || 'Awaiting submission'}</strong></span>
+                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>
+                  Owner{' '}
+                  <strong className={isDarkMode ? 'text-slate-100' : 'text-slate-800'}>
+                    {dailyPackage?.ownerLabel || 'Forecast team'}
+                  </strong>
+                </span>
+                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>
+                  Package{' '}
+                  <strong className={isDarkMode ? 'text-slate-100' : 'text-slate-800'}>
+                    {dailyPackage?.title || 'Awaiting submission'}
+                  </strong>
+                </span>
               </div>
             </div>
 
-            <div className={`grid h-40 w-40 place-items-center rounded-full border-[3px] text-center shadow-[0_0_38px_rgba(34,211,238,0.18)] ${
-              isDarkMode ? 'border-cyan-300/70 bg-cyan-400/[0.06]' : 'border-cyan-400 bg-cyan-50/70'
-            }`}>
+            <div
+              className={`grid h-40 w-40 place-items-center rounded-full border-[3px] text-center shadow-[0_0_38px_rgba(34,211,238,0.18)] ${
+                isDarkMode
+                  ? 'border-cyan-300/70 bg-cyan-400/[0.06]'
+                  : 'border-cyan-400 bg-cyan-50/70'
+              }`}
+            >
               <div>
-                <CheckCircle2 className={`mx-auto ${completeCount === 4 ? 'text-emerald-400' : 'text-cyan-400'}`} size={28} />
-                <p className={`mt-2 text-3xl font-black tabular-nums ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{completeCount} / 4</p>
-                <p className={`text-xs font-black ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Charts complete</p>
+                <CheckCircle2
+                  className={`mx-auto ${completeCount === 4 ? 'text-emerald-400' : 'text-cyan-400'}`}
+                  size={28}
+                />
+                <p
+                  className={`mt-2 text-3xl font-black tabular-nums ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+                >
+                  {completeCount} / 4
+                </p>
+                <p
+                  className={`text-xs font-black ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}
+                >
+                  Charts complete
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        <aside className={`border-t p-5 sm:p-7 lg:border-l lg:border-t-0 ${isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-white/70 bg-white/35'}`}>
-          <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Today&apos;s package action</p>
+        <aside
+          className={`border-t p-5 sm:p-7 lg:border-l lg:border-t-0 ${isDarkMode ? 'border-white/10 bg-white/[0.025]' : 'border-white/70 bg-white/35'}`}
+        >
+          <p
+            className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}
+          >
+            Today&apos;s package action
+          </p>
           <h3 className={`mt-3 text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
             {isPublished
               ? 'Today’s package is published'
@@ -220,18 +306,26 @@ export default function AdminDailyPackageFocus({
                   ? 'Review today’s package'
                   : 'Await today’s package'}
           </h3>
-          <p className={`mt-2 text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+          <p
+            className={`mt-2 text-sm font-semibold leading-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+          >
             {isPublished
               ? 'The approved forecast package has been published. Open it to review the released charts and package evidence.'
               : isReadyToPublish
                 ? 'All required charts are approved. Publish the package to make the outputs available.'
                 : 'Open the current review workspace and resolve the remaining chart decisions.'}
           </p>
-          {publishError && <p role="alert" className="mt-3 text-sm font-semibold text-red-400">{publishError}</p>}
+          {publishError && (
+            <p role="alert" className="mt-3 text-sm font-semibold text-red-400">
+              {publishError}
+            </p>
+          )}
           <div className="mt-5">
             <Button
               icon={isReadyToPublish ? PackageOpen : Eye}
-              disabled={!dailyPackage || (!onOpenPackage && !isReadyToPublish && !canOpen) || isPublishing}
+              disabled={
+                !dailyPackage || (!onOpenPackage && !isReadyToPublish && !canOpen) || isPublishing
+              }
               onClick={runPrimaryAction}
             >
               {isPublishing
@@ -246,15 +340,27 @@ export default function AdminDailyPackageFocus({
         </aside>
       </div>
 
-      <div className={`border-t px-5 pt-4 sm:px-7 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}>
+      <div
+        className={`border-t px-5 pt-4 sm:px-7 ${isDarkMode ? 'border-white/10' : 'border-white/70'}`}
+      >
         <div className="flex items-center gap-2">
           <BarChart3 size={15} className={isDarkMode ? 'text-cyan-300' : 'text-cyan-700'} />
-          <p className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Required daily charts</p>
+          <p
+            className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
+          >
+            Required daily charts
+          </p>
         </div>
       </div>
       <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-7 lg:grid-cols-4">
         {charts.map((chart) => (
-          <ChartTile key={chart.chartType} chart={chart} dailyPackage={dailyPackage} isDarkMode={isDarkMode} onOpenChart={onOpenChart} />
+          <ChartTile
+            key={chart.chartType}
+            chart={chart}
+            dailyPackage={dailyPackage}
+            isDarkMode={isDarkMode}
+            onOpenChart={onOpenChart}
+          />
         ))}
       </div>
     </section>
