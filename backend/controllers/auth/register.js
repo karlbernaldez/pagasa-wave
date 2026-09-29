@@ -63,7 +63,10 @@ export const registerUser = async (req, res) => {
         ip: req.ip,
       });
 
-      return res.status(202).json({ message: 'If the registration details are available, check your email for verification instructions.' });
+      return res.status(202).json({
+        message:
+          'If the registration details are available, check your email for verification instructions.',
+      });
     }
 
     if (existingEmail) {
@@ -72,7 +75,10 @@ export const registerUser = async (req, res) => {
         ip: req.ip,
       });
 
-      return res.status(202).json({ message: 'If the registration details are available, check your email for verification instructions.' });
+      return res.status(202).json({
+        message:
+          'If the registration details are available, check your email for verification instructions.',
+      });
     }
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
@@ -137,13 +143,15 @@ export const registerUser = async (req, res) => {
     }
 
     return res.status(202).json({
-      message: 'If the registration details are available, check your email for verification instructions.',
+      message:
+        'If the registration details are available, check your email for verification instructions.',
     });
   } catch (err) {
     if (err?.code === 11000) {
       logger.warn('Registration conflict detected during account creation', { ip: req.ip });
       return res.status(202).json({
-        message: 'If the registration details are available, check your email for verification instructions.',
+        message:
+          'If the registration details are available, check your email for verification instructions.',
       });
     }
 

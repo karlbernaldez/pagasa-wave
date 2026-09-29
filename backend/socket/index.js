@@ -34,7 +34,7 @@ export const initSocket = async (httpServer) => {
   const { pub, sub } = await createRedisClients();
 
   const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
-    ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((o) => o.trim())
     : [];
 
   const io = new Server(httpServer, {
@@ -52,11 +52,7 @@ export const initSocket = async (httpServer) => {
   io.on('connection', (socket) => {
     const { userId, role, permissions = [], tokenExpiresAt } = socket.data;
 
-    socket.join([
-      roomFor.user(userId),
-      roomFor.role(role),
-      roomFor.broadcast(),
-    ]);
+    socket.join([roomFor.user(userId), roomFor.role(role), roomFor.broadcast()]);
 
     let expiryTimer = null;
     if (tokenExpiresAt) {
@@ -80,11 +76,7 @@ export const initSocket = async (httpServer) => {
 
       try {
         const project = await Project.findById(id).select('_id owner forecastPackage').lean();
-        const allowed = await canAccessProject(
-          { id: userId, role },
-          project,
-          permissions
-        );
+        const allowed = await canAccessProject({ id: userId, role }, project, permissions);
 
         if (!allowed) {
           logger.warn('[Socket.io] project room access denied', {

@@ -83,14 +83,15 @@ describe('authenticated API retries', () => {
   it('bounds session verification so a stalled auth request cannot hang indefinitely', async () => {
     vi.useFakeTimers();
 
-    const fetchMock = vi.fn((_url, options = {}) =>
-      new Promise((_resolve, reject) => {
-        options.signal?.addEventListener(
-          'abort',
-          () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
-          { once: true }
-        );
-      })
+    const fetchMock = vi.fn(
+      (_url, options = {}) =>
+        new Promise((_resolve, reject) => {
+          options.signal?.addEventListener(
+            'abort',
+            () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+            { once: true }
+          );
+        })
     );
     vi.stubGlobal('fetch', fetchMock);
 

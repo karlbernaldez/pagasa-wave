@@ -93,9 +93,7 @@ export const csrfProtection = (req, res, next) => {
   }
 
   const usesAuthenticatedCookies = Boolean(
-    req.cookies?.accessToken ||
-      req.cookies?.refreshToken ||
-      req.cookies?.[TRUSTED_DEVICE_COOKIE]
+    req.cookies?.accessToken || req.cookies?.refreshToken || req.cookies?.[TRUSTED_DEVICE_COOKIE]
   );
   if (!usesAuthenticatedCookies) {
     ensureCsrfCookie(req, res);

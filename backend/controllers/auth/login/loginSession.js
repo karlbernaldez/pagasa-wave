@@ -1,8 +1,5 @@
 import { markCredentialsVerified, generateAndStoreOtp } from '../otp.js';
-import {
-  consumeTrustedDevice,
-  issueTrustedDevice,
-} from '#controllers/auth/utils/trustedDevice';
+import { consumeTrustedDevice, issueTrustedDevice } from '#controllers/auth/utils/trustedDevice';
 import { issueTokens } from '../_helpers.js';
 import { sendOtpEmail } from '#services/email/sendOtpEmail';
 import { createAuditLog } from '#services/auditLog';

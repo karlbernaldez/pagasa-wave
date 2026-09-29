@@ -5,8 +5,7 @@ import TrustedDevice from '#models/TrustedDevice';
 const TRUSTED_DEVICE_COOKIE = 'wavelabTrustedDevice';
 const TRUSTED_DEVICE_TTL_MS = 30 * 24 * 60 * 60 * 1_000;
 
-const secure =
-  process.env.NODE_ENV === 'production' ? true : process.env.COOKIE_SECURE === 'true';
+const secure = process.env.NODE_ENV === 'production' ? true : process.env.COOKIE_SECURE === 'true';
 const sameSite = String(process.env.COOKIE_SAME_SITE || 'strict').toLowerCase();
 
 if (!['strict', 'lax', 'none'].includes(sameSite)) {
@@ -25,10 +24,16 @@ const cookieOptions = {
 };
 
 export const hashTrustedDeviceToken = (token) =>
-  crypto.createHash('sha256').update(String(token || '')).digest('hex');
+  crypto
+    .createHash('sha256')
+    .update(String(token || ''))
+    .digest('hex');
 
 export const hashTrustedDeviceUserAgent = (userAgent) =>
-  crypto.createHash('sha256').update(String(userAgent || '')).digest('hex');
+  crypto
+    .createHash('sha256')
+    .update(String(userAgent || ''))
+    .digest('hex');
 
 const createRawToken = () => crypto.randomBytes(32).toString('base64url');
 
@@ -91,11 +96,7 @@ export const consumeTrustedDevice = async (user, req, res) => {
   return true;
 };
 
-export const revokeTrustedDeviceFromRequest = async (
-  req,
-  res,
-  reason = 'logout'
-) => {
+export const revokeTrustedDeviceFromRequest = async (req, res, reason = 'logout') => {
   const token = req.cookies?.[TRUSTED_DEVICE_COOKIE];
 
   if (token) {

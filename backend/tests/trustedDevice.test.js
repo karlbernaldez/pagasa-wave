@@ -99,11 +99,7 @@ test('consumeTrustedDevice clears an invalid trusted-device cookie', async () =>
     };
     const res = createResponse();
 
-    const trusted = await consumeTrustedDevice(
-      { _id: 'user-1', sessionVersion: 0 },
-      req,
-      res
-    );
+    const trusted = await consumeTrustedDevice({ _id: 'user-1', sessionVersion: 0 }, req, res);
 
     assert.equal(trusted, false);
     const cleared = res.cookies.find(
