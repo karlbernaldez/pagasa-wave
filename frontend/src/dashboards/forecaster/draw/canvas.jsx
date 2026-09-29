@@ -159,6 +159,8 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
   const pointerIdRef = useRef(null);
   const isDrawing = useRef(false);
   const drawLock = useRef(false);
+  const pointerGuideRef = useRef(null);
+  const [drawingActive, setDrawingActive] = useState(false);
   const [labelValue, setLabelValue] = useState(3);
   const [localClosedMode, setLocalClosedMode] = useState(Boolean(closedMode));
   const [projectId] = useProjectId();
@@ -194,7 +196,17 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }, [mapRef]);
 
-  const clearPreview = useCallback(() => { const canvas = canvasRef.current; const ctx = canvas?.getContext('2d'); if (!canvas || !ctx) return; ctx.clearRect(0, 0, canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight); }, []);
+  const clearPreview = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    ctx.clearRect(
+      0,
+      0,
+      canvas.clientWidth || window.innerWidth,
+      canvas.clientHeight || window.innerHeight
+    );
+  }, []);
 
   const drawPreview = useCallback(() => {
     const canvas = canvasRef.current;
@@ -202,8 +214,8 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
     const line = activeLineRef.current;
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight);
-    if (!line?.points || line.points.length < 4) return;
-    ctx.save();
+    if (line?.points?.length >= 4) {
+      ctx.save();
     ctx.beginPath();
     ctx.moveTo(line.points[0], line.points[1]);
     for (let i = 2; i < line.points.length; i += 2) ctx.lineTo(line.points[i], line.points[i + 1]);
@@ -213,8 +225,44 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.setLineDash(Number(labelValue) < 2 ? [3, 3] : []);
-    ctx.stroke();
-    ctx.restore();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const guide = pointerGuideRef.current;
+    if (guide) {
+      const hasOffset =
+        Math.abs(guide.adjustedX - guide.rawX) > 0.1 ||
+        Math.abs(guide.adjustedY - guide.rawY) > 0.1;
+
+      ctx.save();
+
+      if (hasOffset) {
+        ctx.beginPath();
+        ctx.moveTo(guide.rawX, guide.rawY);
+        ctx.lineTo(guide.adjustedX, guide.adjustedY);
+        ctx.strokeStyle = isDarkMode ? 'rgba(125,211,252,0.65)' : 'rgba(37,99,235,0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(guide.rawX, guide.rawY, 4, 0, Math.PI * 2);
+        ctx.fillStyle = isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(15,23,42,0.7)';
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(guide.adjustedX, guide.adjustedY, 6, 0, Math.PI * 2);
+      ctx.fillStyle = isDarkMode ? '#22d3ee' : '#2563eb';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = isDarkMode ? '#ecfeff' : '#ffffff';
+      ctx.setLineDash([]);
+      ctx.stroke();
+
+      ctx.restore();
+    }
   }, [isDarkMode, labelValue]);
 
   const schedulePreviewDraw = useCallback(() => { if (rafRef.current) return; rafRef.current = window.requestAnimationFrame(() => { rafRef.current = null; drawPreview(); }); }, [drawPreview]);
@@ -223,8 +271,56 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
   useEffect(() => { const preventScroll = (event) => { if (isDrawing.current) event.preventDefault(); }; document.body.addEventListener('touchmove', preventScroll, { passive: false }); return () => document.body.removeEventListener('touchmove', preventScroll); }, []);
   useEffect(() => { resizeCanvas(); window.addEventListener('resize', resizeCanvas); const map = mapRef?.current; map?.on?.('resize', resizeCanvas); map?.on?.('move', resizeCanvas); map?.on?.('zoom', resizeCanvas); return () => { window.removeEventListener('resize', resizeCanvas); map?.off?.('resize', resizeCanvas); map?.off?.('move', resizeCanvas); map?.off?.('zoom', resizeCanvas); if (rafRef.current) window.cancelAnimationFrame(rafRef.current); clearPreview(); }; }, [mapRef, resizeCanvas, clearPreview]);
 
-  const onPointerDown = useCallback((event) => { if (drawLock.current) return; resizeCanvas(); event.preventDefault(); event.currentTarget.setPointerCapture?.(event.pointerId); const [x, y] = getPointerPoint(event, event.currentTarget, pointerOffsetX, pointerOffsetY); pointerIdRef.current = event.pointerId; isDrawing.current = true; lastPreviewTimeRef.current = 0; activeLineRef.current = { points: [x, y], rawPoints: [x, y] }; clearPreview(); }, [clearPreview, pointerOffsetX, pointerOffsetY, resizeCanvas]);
-  const onPointerMove = useCallback((event) => { if (drawLock.current) return; if (!isDrawing.current || pointerIdRef.current !== event.pointerId) return; event.preventDefault(); const line = activeLineRef.current; if (!line) return; const now = performance.now(); if (now - lastPreviewTimeRef.current < PREVIEW_FRAME_MS) return; const [x, y] = getPointerPoint(event, event.currentTarget, pointerOffsetX, pointerOffsetY); if (distanceFromLastPoint(line.rawPoints, x, y) < MIN_POINT_DISTANCE) return; line.rawPoints = line.rawPoints.concat([x, y]); line.points = getPreviewCurvePoints(line.rawPoints, smoothingPercent); lastPreviewTimeRef.current = now; schedulePreviewDraw(); }, [pointerOffsetX, pointerOffsetY, schedulePreviewDraw, smoothingPercent]);
+  const onPointerDown = useCallback((event) => {
+    if (drawLock.current) return;
+    resizeCanvas();
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const rawX = event.clientX - rect.left;
+    const rawY = event.clientY - rect.top;
+    const x = rawX + pointerOffsetX;
+    const y = rawY + pointerOffsetY;
+
+    pointerGuideRef.current = { rawX, rawY, adjustedX: x, adjustedY: y };
+    pointerIdRef.current = event.pointerId;
+    isDrawing.current = true;
+    setDrawingActive(true);
+    lastPreviewTimeRef.current = 0;
+    activeLineRef.current = { points: [x, y], rawPoints: [x, y] };
+    schedulePreviewDraw();
+  }, [pointerOffsetX, pointerOffsetY, resizeCanvas, schedulePreviewDraw]);
+  const onPointerMove = useCallback((event) => {
+    if (drawLock.current) return;
+    if (!isDrawing.current || pointerIdRef.current !== event.pointerId) return;
+    event.preventDefault();
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const rawX = event.clientX - rect.left;
+    const rawY = event.clientY - rect.top;
+    const x = rawX + pointerOffsetX;
+    const y = rawY + pointerOffsetY;
+
+    pointerGuideRef.current = { rawX, rawY, adjustedX: x, adjustedY: y };
+
+    const line = activeLineRef.current;
+    if (!line) return;
+
+    const now = performance.now();
+    if (now - lastPreviewTimeRef.current < PREVIEW_FRAME_MS) {
+      schedulePreviewDraw();
+      return;
+    }
+
+    if (distanceFromLastPoint(line.rawPoints, x, y) >= MIN_POINT_DISTANCE) {
+      line.rawPoints = line.rawPoints.concat([x, y]);
+      line.points = getPreviewCurvePoints(line.rawPoints, smoothingPercent);
+    }
+
+    lastPreviewTimeRef.current = now;
+    schedulePreviewDraw();
+  }, [pointerOffsetX, pointerOffsetY, schedulePreviewDraw, smoothingPercent]);
 
   const finishDrawing = useCallback(async (event) => {
     if (drawLock.current) return;
@@ -232,7 +328,14 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
     event?.currentTarget?.releasePointerCapture?.(event.pointerId);
     const line = activeLineRef.current;
     pointerIdRef.current = null;
-    if (!line?.rawPoints || line.rawPoints.length < 4) { isDrawing.current = false; activeLineRef.current = null; clearPreview(); return; }
+    pointerGuideRef.current = null;
+    setDrawingActive(false);
+    if (!line?.rawPoints || line.rawPoints.length < 4) {
+      isDrawing.current = false;
+      activeLineRef.current = null;
+      clearPreview();
+      return;
+    }
     drawLock.current = true;
     await handlePointerUp(
       mapRef,
@@ -260,7 +363,15 @@ const ActiveDrawingCanvas = ({ mapRef, drawCounter = 0, setDrawCounter, isDarkMo
   return (
     <>
       <WaveHeightSlider value={labelValue} onChange={setLabelValue} isDarkMode={isDarkMode} closedMode={activeClosedMode} onClosedModeChange={updateClosedMode} />
-      <canvas ref={canvasRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={finishDrawing} onPointerCancel={finishDrawing} className="fixed z-10 touch-none pointer-events-auto" />
+      <canvas
+        ref={canvasRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={finishDrawing}
+        onPointerCancel={finishDrawing}
+        className="fixed z-10 touch-none pointer-events-auto"
+        style={{ cursor: drawingActive ? 'none' : 'crosshair' }}
+      />
     </>
   );
 };
