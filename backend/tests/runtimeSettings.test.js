@@ -15,11 +15,6 @@ test('operations settings accept an ordered operational schedule', () => {
       noPublicationCutoff: '18:00',
       deadlineWarningMinutes: 60,
       timezone: 'Asia/Manila',
-      packageNameTemplate: 'Marine Forecast {date}',
-      analysisChartNameTemplate: '{package} - Wave Analysis',
-      forecast24ChartNameTemplate: '{package} - 24h Wave Forecast',
-      forecast36ChartNameTemplate: '{package} - 36h Wave Forecast',
-      forecast48ChartNameTemplate: '{package} - 48h Wave Forecast',
       autoArchivePublishedEnabled: true,
       archivePublishedAfterDays: 14,
       autoArchiveNoPublicationEnabled: false,
@@ -33,11 +28,6 @@ test('operations settings accept an ordered operational schedule', () => {
       noPublicationCutoff: '18:00',
       deadlineWarningMinutes: 60,
       timezone: 'Asia/Manila',
-      packageNameTemplate: 'Marine Forecast {date}',
-      analysisChartNameTemplate: '{package} - Wave Analysis',
-      forecast24ChartNameTemplate: '{package} - 24h Wave Forecast',
-      forecast36ChartNameTemplate: '{package} - 36h Wave Forecast',
-      forecast48ChartNameTemplate: '{package} - 48h Wave Forecast',
       autoArchivePublishedEnabled: true,
       archivePublishedAfterDays: 14,
       autoArchiveNoPublicationEnabled: false,
@@ -292,34 +282,5 @@ test('workspace drawing settings reject unsafe ranges', () => {
         drawingPostProcessSmoothingPercent: 120,
       }),
     /Drawing post-process smoothing/
-  );
-});
-
-
-test('operations settings reject unsupported naming placeholders', () => {
-  assert.throws(
-    () =>
-      parseOperationsSettingsPayload({
-        packageSubmissionDeadline: '10:00',
-        packagePublishTarget: '12:00',
-        noPublicationCutoff: '18:00',
-        deadlineWarningMinutes: 60,
-        timezone: 'Asia/Manila',
-        packageNameTemplate: 'Marine Forecast {date} {unknown}',
-      }),
-    /unsupported placeholder/
-  );
-
-  assert.throws(
-    () =>
-      parseOperationsSettingsPayload({
-        packageSubmissionDeadline: '10:00',
-        packagePublishTarget: '12:00',
-        noPublicationCutoff: '18:00',
-        deadlineWarningMinutes: 60,
-        timezone: 'Asia/Manila',
-        forecast24ChartNameTemplate: '{package} - {lead}',
-      }),
-    /unsupported placeholder/
   );
 });
