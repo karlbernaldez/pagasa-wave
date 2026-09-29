@@ -46,7 +46,8 @@ async function withUserMocks(mocks, work) {
 
   User.findById = mocks.findById ?? originals.findById;
   User.findOneAndUpdate = mocks.findOneAndUpdate ?? originals.findOneAndUpdate;
-  Session.updateMany = mocks.sessionUpdateMany ?? (async () => ({ modifiedCount: 1 }));
+  Session.updateMany =
+    mocks.sessionUpdateMany ?? (async () => ({ modifiedCount: 1 }));
   TrustedDevice.updateMany =
     mocks.trustedDeviceUpdateMany ?? (async () => ({ modifiedCount: 1 }));
 
