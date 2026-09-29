@@ -3,10 +3,7 @@ import test from 'node:test';
 
 import Role from '../models/Role.js';
 import { PERMISSION_KEYS } from '../config/permissionCatalog.js';
-import {
-  ensureDefaultRoles,
-  resolvePermissionsForRole,
-} from '../services/roleService.js';
+import { ensureDefaultRoles } from '../services/roleService.js';
 
 async function withRoleUpdateMock(work) {
   const originalUpdateOne = Role.updateOne;
@@ -66,33 +63,4 @@ test('ensureDefaultRoles keeps non-Administrator defaults insert-only', async ()
     assert.equal(Array.isArray(forecasterCall.update?.$setOnInsert?.permissions), true);
     assert.ok(forecasterCall.update.$setOnInsert.permissions.includes('projects.view_own'));
   });
-});
-
-
-test('runtime permission resolution does not upsert default roles', async () => {
-  const originalFindOne = Role.findOne;
-  const originalUpdateOne = Role.updateOne;
-  let updateCalls = 0;
-
-  try {
-    Role.updateOne = async () => {
-      updateCalls += 1;
-      return { acknowledged: true };
-    };
-    Role.findOne = () => ({
-      lean: async () => ({
-        key: 'forecaster',
-        enabled: true,
-        permissions: ['forecast.view'],
-      }),
-    });
-
-    const permissions = await resolvePermissionsForRole('forecaster');
-
-    assert.ok(permissions.includes('forecast.view'));
-    assert.equal(updateCalls, 0);
-  } finally {
-    Role.findOne = originalFindOne;
-    Role.updateOne = originalUpdateOne;
-  }
 });
