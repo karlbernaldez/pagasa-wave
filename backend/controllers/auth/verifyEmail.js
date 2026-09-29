@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import User from '../../models/User.js';
 import { clearAuthCookies } from '#controllers/auth/utils/cookies';
+import { clearTrustedDeviceCookie } from '#controllers/auth/utils/trustedDevice';
 import { createAuditLog } from '#services/auditLog';
 import { logger } from '#utils/logger';
 
@@ -112,6 +113,7 @@ export const verifyEmail = async (req, res) => {
             userAgent: req.headers['user-agent'],
           });
 
+          clearTrustedDeviceCookie(res);
           clearAuthCookies(res);
           return res.json({
             kind: 'email_change',
