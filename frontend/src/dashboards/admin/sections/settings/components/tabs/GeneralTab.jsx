@@ -16,7 +16,8 @@ import { createPortal } from 'react-dom';
 
 import Accordion from '../ui/Accordion';
 import DomainBoundarySettingsSection from '../DomainBoundarySettingsSection';
-import { Field, TextareaField, labelCls } from '../ui/FormFields';
+import { Field, TextareaField } from '../ui/FormFields';
+import { labelCls } from '../ui/formFieldStyles';
 
 const MAP_BOUNDS_OPTIONS = [
   {
