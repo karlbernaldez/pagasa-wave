@@ -133,7 +133,7 @@ test('pending email verification promotes only the exact active pending identity
   assert.equal(res.state.body.kind, 'email_change');
   assert.equal(res.state.body.email, 'new@example.com');
   assert.equal(res.state.body.sessionRevoked, true);
-  assert.deepEqual(res.state.clearedCookies.sort(), ['accessToken', 'refreshToken']);
+  assert.deepEqual(res.state.clearedCookies.sort(), ['accessToken', 'refreshToken', 'wavelabTrustedDevice']);
   assert.equal(pendingLookup.status, 'active');
   assert.equal(pendingLookup.pendingEmailVerificationToken, hashedToken);
 
