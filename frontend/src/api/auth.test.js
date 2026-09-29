@@ -143,3 +143,36 @@ describe('authenticated API retries', () => {
     expect(result).toEqual({ authenticated: false, user: null, unavailable: false });
   });
 });
+
+
+it('aborts a hung auth check instead of leaving the route loading forever', async () => {
+  vi.useFakeTimers();
+
+  try {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url, options = {}) =>
+        new Promise((_resolve, reject) => {
+          options.signal?.addEventListener('abort', () => {
+            const error = new Error('aborted');
+            error.name = 'AbortError';
+            reject(error);
+          });
+        })
+      )
+    );
+
+    const { checkAuthSession } = await loadAuthApi();
+    const pending = checkAuthSession({ force: true });
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    await expect(pending).resolves.toEqual({
+      authenticated: false,
+      user: null,
+      unavailable: true,
+    });
+  } finally {
+    vi.useRealTimers();
+  }
+});
