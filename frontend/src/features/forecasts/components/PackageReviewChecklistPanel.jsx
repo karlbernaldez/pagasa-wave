@@ -42,16 +42,25 @@ export default function PackageReviewChecklistPanel({
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!enabled || !packageId) {
-      setChecklist(null);
-      setLoading(false);
-      setError('');
-      return;
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setChecklist(null);
+        setLoading(false);
+        setError('');
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
-    setLoading(true);
-    setError('');
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError('');
+    });
 
     getPackageReviewChecklist(packageId)
       .then((data) => {
