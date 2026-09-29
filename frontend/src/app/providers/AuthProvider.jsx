@@ -5,7 +5,8 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [role, setRole]             = useState(null);
+  const [role, setRole] = useState(null);
+  const [user, setUser] = useState(null);
   const connectCalledRef            = useRef(false);
 
   useEffect(() => {
@@ -21,7 +22,9 @@ export const AuthProvider = ({ children }) => {
   }, [isLoggedIn]);
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, setIsLoggedIn, role, setRole }}>
+    <AuthContext.Provider
+      value={{ isLoggedIn, setIsLoggedIn, role, setRole, user, setUser }}
+    >
       {children}
     </AuthContext.Provider>
   );
