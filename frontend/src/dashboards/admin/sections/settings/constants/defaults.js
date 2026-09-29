@@ -79,6 +79,8 @@ export const DEFAULT_FORECASTER_WORKSPACE = {
   drawingPointerOffsetX: 0,
   drawingPointerOffsetY: 0,
   drawingSmoothingPercent: 50,
+  drawingPostProcessEnabled: false,
+  drawingPostProcessSmoothingPercent: 50,
 };
 
 export const DEFAULT_ABOUT = {
