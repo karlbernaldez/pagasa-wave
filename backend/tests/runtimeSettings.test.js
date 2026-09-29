@@ -15,6 +15,11 @@ test('operations settings accept an ordered operational schedule', () => {
       noPublicationCutoff: '18:00',
       deadlineWarningMinutes: 60,
       timezone: 'Asia/Manila',
+      forecastPackageNameTemplate: 'Marine Forecast {date}',
+      waveAnalysisNameTemplate: '{package} - Wave Analysis',
+      forecast24hNameTemplate: '{package} - 24h Wave Forecast',
+      forecast36hNameTemplate: '{package} - 36h Wave Forecast',
+      forecast48hNameTemplate: '{package} - 48h Wave Forecast',
       autoArchivePublishedEnabled: true,
       archivePublishedAfterDays: 14,
       autoArchiveNoPublicationEnabled: false,
@@ -28,6 +33,11 @@ test('operations settings accept an ordered operational schedule', () => {
       noPublicationCutoff: '18:00',
       deadlineWarningMinutes: 60,
       timezone: 'Asia/Manila',
+      forecastPackageNameTemplate: 'Marine Forecast {date}',
+      waveAnalysisNameTemplate: '{package} - Wave Analysis',
+      forecast24hNameTemplate: '{package} - 24h Wave Forecast',
+      forecast36hNameTemplate: '{package} - 36h Wave Forecast',
+      forecast48hNameTemplate: '{package} - 48h Wave Forecast',
       autoArchivePublishedEnabled: true,
       archivePublishedAfterDays: 14,
       autoArchiveNoPublicationEnabled: false,
@@ -282,5 +292,34 @@ test('workspace drawing settings reject unsafe ranges', () => {
         drawingPostProcessSmoothingPercent: 120,
       }),
     /Drawing post-process smoothing/
+  );
+});
+
+
+test('operations settings reject unsupported forecast naming placeholders', () => {
+  assert.throws(
+    () =>
+      parseOperationsSettingsPayload({
+        packageSubmissionDeadline: '10:00',
+        packagePublishTarget: '12:00',
+        noPublicationCutoff: '18:00',
+        deadlineWarningMinutes: 60,
+        timezone: 'Asia/Manila',
+        forecastPackageNameTemplate: 'Marine Forecast {date} {cycle}',
+      }),
+    /unsupported placeholder/
+  );
+
+  assert.throws(
+    () =>
+      parseOperationsSettingsPayload({
+        packageSubmissionDeadline: '10:00',
+        packagePublishTarget: '12:00',
+        noPublicationCutoff: '18:00',
+        deadlineWarningMinutes: 60,
+        timezone: 'Asia/Manila',
+        forecast24hNameTemplate: '{package} - {lead}',
+      }),
+    /unsupported placeholder/
   );
 });
