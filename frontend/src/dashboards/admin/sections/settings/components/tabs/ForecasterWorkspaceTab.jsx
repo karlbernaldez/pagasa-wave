@@ -162,6 +162,80 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
             </div>
           </div>
 
+
+          <div
+            className={cn(
+              'rounded-2xl border p-4',
+              dark ? 'border-white/10 bg-white/[0.025]' : 'border-slate-200 bg-slate-50'
+            )}
+          >
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={settings.drawingPostProcessEnabled === true}
+                onChange={(event) =>
+                  set('drawingPostProcessEnabled')(event.target.checked)
+                }
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+              />
+              <span>
+                <span className={cn('block text-sm font-black', dark ? 'text-white' : 'text-slate-900')}>
+                  Post-process smoothing
+                </span>
+                <span className={cn('mt-1 block text-xs leading-5', dark ? 'text-slate-400' : 'text-slate-500')}>
+                  Apply an additional smoothing pass after the pointer is released, immediately
+                  before the final geometry is saved. Live drawing responsiveness is unchanged.
+                </span>
+              </span>
+            </label>
+
+            {settings.drawingPostProcessEnabled === true && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <label className={cn('block text-xs font-black uppercase tracking-wide', dark ? 'text-slate-300' : 'text-slate-600')}>
+                      Post-process strength
+                    </label>
+                    <p className={cn('mt-1 text-xs font-semibold', dark ? 'text-slate-500' : 'text-slate-500')}>
+                      Higher values perform stronger final corner rounding after drawing.
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      'rounded-lg px-3 py-1.5 text-sm font-black tabular-nums',
+                      dark ? 'bg-cyan-400/10 text-cyan-200' : 'bg-blue-50 text-blue-700'
+                    )}
+                  >
+                    {settings.drawingPostProcessSmoothingPercent ?? 50}%
+                  </span>
+                </div>
+
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={settings.drawingPostProcessSmoothingPercent ?? 50}
+                  onChange={(event) =>
+                    set('drawingPostProcessSmoothingPercent')(Number(event.target.value))
+                  }
+                  className="w-full cursor-pointer"
+                />
+
+                <div
+                  className={cn(
+                    'mt-1 flex justify-between text-[10px] font-black uppercase tracking-wide',
+                    dark ? 'text-slate-600' : 'text-slate-400'
+                  )}
+                >
+                  <span>Light</span>
+                  <span>Balanced</span>
+                  <span>Strong</span>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <button
               type="button"
@@ -171,6 +245,8 @@ export default function ForecasterWorkspaceTab({ settings = {}, setSettings, dar
                   drawingPointerOffsetX: 0,
                   drawingPointerOffsetY: 0,
                   drawingSmoothingPercent: 50,
+                  drawingPostProcessEnabled: false,
+                  drawingPostProcessSmoothingPercent: 50,
                 }))
               }
               className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black transition ${
