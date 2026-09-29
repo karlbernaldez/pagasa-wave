@@ -3,6 +3,8 @@ import test from 'node:test';
 import crypto from 'crypto';
 
 import User from '../models/User.js';
+import Session from '../models/Session.js';
+import TrustedDevice from '../models/TrustedDevice.js';
 import { verifyEmail } from '../controllers/auth/verifyEmail.js';
 
 function makeResponse() {
@@ -43,16 +45,23 @@ async function withUserMocks(mocks, work) {
   const originals = {
     findOne: User.findOne,
     findOneAndUpdate: User.findOneAndUpdate,
+    sessionUpdateMany: Session.updateMany,
+    trustedDeviceUpdateMany: TrustedDevice.updateMany,
   };
 
   User.findOne = mocks.findOne ?? originals.findOne;
   User.findOneAndUpdate = mocks.findOneAndUpdate ?? originals.findOneAndUpdate;
+  Session.updateMany = mocks.sessionUpdateMany ?? (async () => ({ modifiedCount: 1 }));
+  TrustedDevice.updateMany =
+    mocks.trustedDeviceUpdateMany ?? (async () => ({ modifiedCount: 1 }));
 
   try {
     await work();
   } finally {
     User.findOne = originals.findOne;
     User.findOneAndUpdate = originals.findOneAndUpdate;
+    Session.updateMany = originals.sessionUpdateMany;
+    TrustedDevice.updateMany = originals.trustedDeviceUpdateMany;
   }
 }
 
@@ -107,6 +116,8 @@ test('pending email verification promotes only the exact active pending identity
   const res = makeResponse();
   const updateCalls = [];
   let pendingLookup;
+  let revokedSessions;
+  let revokedTrustedDevices;
 
   await withUserMocks(
     {
@@ -122,6 +133,14 @@ test('pending email verification promotes only the exact active pending identity
         updateCalls.push({ filter, update, options });
         if (updateCalls.length === 1) return selectedQuery(null);
         return selectedQuery({ _id: userId, email: 'new@example.com' });
+      },
+      sessionUpdateMany: async (filter, update) => {
+        revokedSessions = { filter, update };
+        return { modifiedCount: 2 };
+      },
+      trustedDeviceUpdateMany: async (filter, update) => {
+        revokedTrustedDevices = { filter, update };
+        return { modifiedCount: 2 };
       },
     },
     async () => {
@@ -163,6 +182,10 @@ test('pending email verification promotes only the exact active pending identity
   assert.equal(promotion.update.$unset.pendingEmailVerificationToken, '');
   assert.equal(promotion.update.$unset.passwordResetToken, '');
   assert.deepEqual(promotion.options, { new: true, runValidators: true });
+  assert.deepEqual(revokedSessions.filter, { user: userId, revokedAt: null });
+  assert.equal(revokedSessions.update.$set.revokedReason, 'email_changed');
+  assert.deepEqual(revokedTrustedDevices.filter, { user: userId, revokedAt: null });
+  assert.equal(revokedTrustedDevices.update.$set.revokedReason, 'email_changed');
 });
 
 test('pending email verification does not promote an unavailable account', async () => {
