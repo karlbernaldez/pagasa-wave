@@ -247,7 +247,7 @@ const SurfaceFrontPanel = ({ frontType, setFrontType, isDarkMode }) => {
   const [isDragging, setIsDragging] = useState(false);
   const positionRef = useRef(position);
   useEffect(() => { const handleResize = () => { const safe = getSafePosition(positionRef.current); positionRef.current = safe; setPosition(safe); }; window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
-  const persistPosition = useCallback((next) => { try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { } }, []);
+  const persistPosition = useCallback((next) => { try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* Ignore storage failures. */ } }, []);
   const handleDragStart = useCallback((event) => { if (event.button !== undefined && event.button !== 0) return; event.preventDefault(); event.stopPropagation(); dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: positionRef.current.x, originY: positionRef.current.y }; setIsDragging(true); event.currentTarget.setPointerCapture?.(event.pointerId); }, []);
   const handleDragMove = useCallback((event) => { const drag = dragRef.current; if (!drag || drag.pointerId !== event.pointerId) return; event.preventDefault(); const next = getSafePosition({ x: drag.originX + event.clientX - drag.startX, y: drag.originY + event.clientY - drag.startY }); positionRef.current = next; setPosition(next); }, []);
   const handleDragEnd = useCallback((event) => { if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return; event.currentTarget.releasePointerCapture?.(event.pointerId); dragRef.current = null; setIsDragging(false); persistPosition(positionRef.current); }, [persistPosition]);
@@ -272,7 +272,7 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
   const [lines, setLines] = useState([]);
   const [frontType, setFrontType] = useState('cold');
   const [pointerGuide, setPointerGuide] = useState(null);
-  const [stageBounds, setStageBounds] = useState(() => getStageBounds(mapRef));
+  const [stageBounds, setStageBounds] = useState(() => ({ left: 0, top: 0, width: getViewportWidth(), height: getViewportHeight() }));
   const activeLineRef = useRef(null);
   const isFlagDrawing = useRef(false);
   const getAdjustedPoint = useCallback((event) => {
@@ -287,7 +287,7 @@ const ActiveFlagCanvas = ({ mapRef, isDarkMode, setLayersRef }) => {
     };
   }, [pointerOffsetX, pointerOffsetY]);
   const refreshStageBounds = useCallback(() => { const next = getStageBounds(mapRef); setStageBounds(next); return next; }, [mapRef]);
-  useEffect(() => { const preventScroll = (event) => { if (isFlagDrawing.current) event.preventDefault(); }; const handleResize = () => refreshStageBounds(); refreshStageBounds(); document.body.addEventListener('touchmove', preventScroll, { passive: false }); window.addEventListener('resize', handleResize); return () => { document.body.removeEventListener('touchmove', preventScroll); window.removeEventListener('resize', handleResize); }; }, [refreshStageBounds]);
+  useEffect(() => { const preventScroll = (event) => { if (isFlagDrawing.current) event.preventDefault(); }; const handleResize = () => refreshStageBounds(); const frame = window.requestAnimationFrame(refreshStageBounds); document.body.addEventListener('touchmove', preventScroll, { passive: false }); window.addEventListener('resize', handleResize); return () => { window.cancelAnimationFrame(frame); document.body.removeEventListener('touchmove', preventScroll); window.removeEventListener('resize', handleResize); }; }, [refreshStageBounds]);
   const clearActiveLine = useCallback(() => {
     activeLineRef.current = null;
     setLines([]);
