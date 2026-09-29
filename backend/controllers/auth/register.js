@@ -61,7 +61,7 @@ export const registerUser = async (req, res) => {
         ip: req.ip,
       });
 
-      return res.status(409).json({ message: 'Unable to create account with the provided details.' });
+      return res.status(202).json({ message: 'If the registration details are available, check your email for verification instructions.' });
     }
 
     if (existingEmail) {
@@ -70,7 +70,7 @@ export const registerUser = async (req, res) => {
         ip: req.ip,
       });
 
-      return res.status(409).json({ message: 'Unable to create account with the provided details.' });
+      return res.status(202).json({ message: 'If the registration details are available, check your email for verification instructions.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -135,8 +135,8 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    return res.status(201).json({
-      message: 'Account created. Please verify your email.',
+    return res.status(202).json({
+      message: 'If the registration details are available, check your email for verification instructions.',
     });
   } catch (err) {
     logger.error('Registration controller error', {
