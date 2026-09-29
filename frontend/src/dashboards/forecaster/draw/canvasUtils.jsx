@@ -369,6 +369,36 @@ export const getFinalCurvePoints = (
   });
 };
 
+
+export const getPostProcessSmoothingPasses = (percent = 50) => {
+  const amount = clampSmoothingPercent(percent);
+  if (amount <= 0) return 0;
+  if (amount <= 20) return 1;
+  if (amount <= 40) return 2;
+  if (amount <= 60) return 3;
+  if (amount <= 80) return 4;
+  return 5;
+};
+
+/**
+ * Optional second-stage smoothing applied only after the pointer is released.
+ * This deliberately operates on the already-finalized curve so live pen
+ * responsiveness is unaffected. Open paths preserve their endpoints; closed
+ * paths are processed as loops and are closed later by the save pipeline.
+ */
+export const applyPostProcessSmoothing = (
+  points,
+  percent = 50,
+  { closed = false } = {}
+) => {
+  if (!Array.isArray(points) || points.length < 6) return points;
+
+  const passes = getPostProcessSmoothingPasses(percent);
+  if (passes === 0) return points;
+
+  return cornerCutPoints(points, passes, { closed });
+};
+
 /**
  * Remove duplicate consecutive points
  */
@@ -626,7 +656,9 @@ export const handlePointerUp = async (
   labelValue = 5,
   isDarkMode,
   projectId,         // ← passed in from the component, sourced from useProjectId()
-  smoothingPercent = 50
+  smoothingPercent = 50,
+  postProcessEnabled = false,
+  postProcessSmoothingPercent = 50
 ) => {
   const map = mapRef.current;
   if (!map) return;
@@ -659,6 +691,14 @@ export const handlePointerUp = async (
       lastLine.points = getFinalCurvePoints(lastLine.rawPoints, smoothingPercent, {
         closed: closedMode,
       });
+
+      if (postProcessEnabled) {
+        lastLine.points = applyPostProcessSmoothing(
+          lastLine.points,
+          postProcessSmoothingPercent,
+          { closed: closedMode }
+        );
+      }
     }
 
     const updatedLines = [...lines];
