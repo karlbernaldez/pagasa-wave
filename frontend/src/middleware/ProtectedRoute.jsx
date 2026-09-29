@@ -71,6 +71,10 @@ const ProtectedRoute = ({
 
   if (apiState.phase === 'loading') return <LoadingScreen />;
 
+  if (apiState.phase === 'unavailable' && !requireAuth) {
+    return children;
+  }
+
   if (apiState.phase === 'unavailable') {
     return (
       <div className="grid min-h-[320px] place-items-center p-6">
