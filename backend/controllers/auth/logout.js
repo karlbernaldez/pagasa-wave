@@ -3,6 +3,10 @@ import jwt from 'jsonwebtoken';
 import User from '#models/User';
 import { clearAuthCookies } from '#controllers/auth/utils/cookies';
 import { revokeAllUserSessions, revokeSessionByJti } from '#controllers/auth/utils/session';
+import {
+  revokeAllTrustedDevices,
+  revokeTrustedDeviceFromRequest,
+} from '#controllers/auth/utils/trustedDevice';
 
 export const logoutUser = async (req, res) => {
   try {
@@ -20,9 +24,11 @@ export const logoutUser = async (req, res) => {
       }
     }
 
+    await revokeTrustedDeviceFromRequest(req, res, 'logout');
     clearAuthCookies(res);
     return res.status(200).json({ message: 'Logged out successfully.' });
   } catch {
+    await revokeTrustedDeviceFromRequest(req, res, 'logout').catch(() => {});
     clearAuthCookies(res);
     return res.status(500).json({ message: 'Failed to log out.' });
   }
@@ -43,11 +49,16 @@ export const logoutAllDevices = async (req, res) => {
       return res.status(401).json({ message: 'Authentication session is no longer valid.' });
     }
 
-    await revokeAllUserSessions(userId, 'logout_all');
+    await Promise.all([
+      revokeAllUserSessions(userId, 'logout_all'),
+      revokeAllTrustedDevices(userId, 'logout_all'),
+    ]);
+    await revokeTrustedDeviceFromRequest(req, res, 'logout_all');
     clearAuthCookies(res);
 
     return res.status(200).json({ message: 'Logged out from all devices.' });
   } catch {
+    await revokeTrustedDeviceFromRequest(req, res, 'logout_all').catch(() => {});
     clearAuthCookies(res);
     return res.status(500).json({ message: 'Failed to log out from all devices.' });
   }

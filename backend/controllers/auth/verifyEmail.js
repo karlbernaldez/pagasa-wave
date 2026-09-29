@@ -1,8 +1,10 @@
 import crypto from 'crypto';
 import User from '../../models/User.js';
 import { clearAuthCookies } from '#controllers/auth/utils/cookies';
+import { clearTrustedDeviceCookie } from '#controllers/auth/utils/trustedDevice';
 import { createAuditLog } from '#services/auditLog';
 import { logger } from '#utils/logger';
+import { revokeUserSecurityState } from '#services/securitySessionRevocation';
 
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
@@ -112,6 +114,8 @@ export const verifyEmail = async (req, res) => {
             userAgent: req.headers['user-agent'],
           });
 
+          await revokeUserSecurityState(promoted._id, 'email_changed');
+          clearTrustedDeviceCookie(res);
           clearAuthCookies(res);
           return res.json({
             kind: 'email_change',

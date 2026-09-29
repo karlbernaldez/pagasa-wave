@@ -9,6 +9,7 @@ import {
   expandEffectivePermissions,
   normalizePermissionKeys,
 } from '../config/permissionCatalog.js';
+import { revokeUserSecurityState } from './securitySessionRevocation.js';
 
 const ROLE_KEY_RE = /^[a-z][a-z0-9_-]{1,31}$/;
 
@@ -214,7 +215,13 @@ export const updateRole = async (rawKey, updates = {}) => {
   await role.save();
 
   if (permissionsChanged) {
+    const members = await User.find({ role: key, deletedAt: null }).select('_id').lean();
+
     await User.updateMany({ role: key, deletedAt: null }, { $inc: { sessionVersion: 1 } });
+
+    await Promise.all(
+      members.map(({ _id }) => revokeUserSecurityState(_id, 'role_permissions_changed'))
+    );
   }
 
   return serializeRole(role.toObject());
