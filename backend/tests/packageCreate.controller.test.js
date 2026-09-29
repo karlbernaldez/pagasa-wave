@@ -7,6 +7,7 @@ async function loadModules() {
   const currentController = await import('../controllers/currentForecastPackageController.js');
   const packageModel = await import('../models/' + 'Forecast' + 'Package.js');
   const projectModel = await import('../models/Project.js');
+  const settingsModel = await import('../models/SiteSettings.js');
   const projectWorkflow = await import('../utils/projectWorkflow.js');
   return {
     workflow,
@@ -14,6 +15,7 @@ async function loadModules() {
     currentController,
     PackageModel: packageModel.default,
     Project: projectModel.default,
+    SiteSettings: settingsModel.default,
     PROJECT_STATUS: projectWorkflow.PROJECT_STATUS,
   };
 }
@@ -73,8 +75,9 @@ async function run(handler, req) {
 
 test('package creation produces exactly Wave Analysis, 24h, 36h, and 48h without owners', async () => {
   const modules = await loadModules();
-  const { workflow, createController, PackageModel, Project, PROJECT_STATUS } = modules;
+  const { workflow, createController, PackageModel, Project, SiteSettings, PROJECT_STATUS } = modules;
   const originalFindOne = PackageModel.findOne;
+  const originalSettingsFindOne = SiteSettings.findOne;
   const originalPackageCreate = PackageModel.create;
   const originalFindById = PackageModel.findById;
   const originalProjectCreate = Project.create;
@@ -84,6 +87,17 @@ test('package creation produces exactly Wave Analysis, 24h, 36h, and 48h without
   let linkedProjectUpdate;
 
   try {
+    SiteSettings.findOne = () =>
+      createQuery({
+        page: 'operations',
+        data: {
+          packageNameTemplate: 'Marine Forecast {date}',
+          analysisChartNameTemplate: '{package} - Wave Analysis',
+          forecast24ChartNameTemplate: '{package} - 24h Wave Forecast',
+          forecast36ChartNameTemplate: '{package} - 36h Wave Forecast',
+          forecast48ChartNameTemplate: '{package} - 48h Wave Forecast',
+        },
+      });
     PackageModel.findOne = () => createQuery(null);
     Project.create = async (payload) => {
       const project = { _id: `project-${createdProjects.length + 1}`, ...payload };
@@ -145,6 +159,7 @@ test('package creation produces exactly Wave Analysis, 24h, 36h, and 48h without
     );
     assert.equal(linkedProjectUpdate.update.$set.forecastPackage, 'package-1');
   } finally {
+    SiteSettings.findOne = originalSettingsFindOne;
     PackageModel.findOne = originalFindOne;
     PackageModel.create = originalPackageCreate;
     PackageModel.findById = originalFindById;
