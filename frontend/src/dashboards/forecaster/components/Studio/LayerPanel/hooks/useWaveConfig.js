@@ -128,10 +128,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   }, [packageKey]);
 
   useEffect(() => {
-    if (!forecastDate) {
-      setPackageMetadata({ key: metadataKey, WW3: null, ECWAM: null });
-      return undefined;
-    }
+    if (!forecastDate) return undefined;
 
     let cancelled = false;
 
