@@ -4,6 +4,7 @@ import Accordion from '../ui/Accordion';
 import { Field, TextareaField } from '../ui/FormFields';
 import { ArrayRow, AddButton } from '../ui/ArrayEditorRow';
 import { SortableDnD } from '../ui/Sortable';
+import { createSettingsId } from '../../utils/ensureIds';
 
 export default function AboutTab({ settings = {}, setSettings, dark }) {
   const set = (field) => (value) => setSettings((prev) => ({ ...prev, [field]: value }));
@@ -23,7 +24,7 @@ export default function AboutTab({ settings = {}, setSettings, dark }) {
   const addArrayItem = (key, template) =>
     setSettings((prev) => ({
       ...prev,
-      [key]: [...(prev[key] ?? []), { id: crypto.randomUUID(), ...template }],
+      [key]: [...(prev[key] ?? []), { id: createSettingsId(), ...template }],
     }));
 
   const reorderArray = (key, next) => setSettings((prev) => ({ ...prev, [key]: next }));
