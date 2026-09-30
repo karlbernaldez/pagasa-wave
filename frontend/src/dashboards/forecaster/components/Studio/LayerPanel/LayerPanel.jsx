@@ -129,6 +129,7 @@ const StudioPanel = ({
   onView,
   readOnly = false,
   projectId,
+  mapLoaded = false,
 }) => {
 
   // ── Panel & menu state ───────────────────────────────────────────────────────
@@ -178,7 +179,7 @@ const StudioPanel = ({
     domainLayers, utilitiesLayers, satelliteLayer, graticuleSpacing, graticuleOpacity,
     activeCount: systemActiveCount,
     toggleDomainLayer, toggleUtilityLayer, setGraticuleSpacing, setGraticuleOpacity, toggleSatelliteLayer,
-  } = useSystemLayers({ mapRef, isDarkMode, forecastDate, projectId });
+  } = useSystemLayers({ mapRef, mapLoaded, isDarkMode, forecastDate, projectId });
 
   const { windConfig, toggleWindLayer, setWindElement, toggleWindModel, setWindBarbStyle } = useWindConfig({ mapRef, isDarkMode });
   const { waveConfig, toggleWaveLayer, setWaveElement, toggleWaveModel, setDirectionStyle } = useWaveConfig({ mapRef, isDarkMode });
