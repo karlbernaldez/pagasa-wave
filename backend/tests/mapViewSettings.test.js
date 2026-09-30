@@ -34,6 +34,12 @@ test('map view settings normalize partial payloads with Studio defaults', () => 
       ...DEFAULT_MAP_VIEW_SETTINGS.padding,
       left: 120,
     },
+    mapStyle: {
+      lightStyleId: DEFAULT_MAP_VIEW_SETTINGS.mapStyle.lightStyleId,
+      darkStyleId: DEFAULT_MAP_VIEW_SETTINGS.mapStyle.darkStyleId,
+      customStyles: [],
+      themeMode: DEFAULT_MAP_VIEW_SETTINGS.mapStyle.themeMode,
+    },
   });
 });
 
@@ -45,11 +51,16 @@ test('map view settings accept a valid admin payload', () => {
     fitBounds: { west: 100, south: 4, east: 140, north: 22 },
     padding: { top: 40, right: 180, bottom: 60, left: 180 },
     fitBoundsMaxZoom: 9,
+    mapStyle: {
+      lightStyleId: 'preset:light',
+      darkStyleId: 'preset:dark',
+      customStyles: [],
+      themeMode: 'native',
+    },
   };
 
   assert.deepEqual(parseMapViewSettingsPayload(payload), payload);
 });
-
 test('map view settings reject invalid zoom ordering', () => {
   assert.throws(
     () => parseMapViewSettingsPayload({
@@ -105,4 +116,82 @@ test('saved invalid map view settings fall back to Studio defaults on read', () 
   };
 
   assert.deepEqual(buildMapViewSettingsResponse(savedBadData), DEFAULT_MAP_VIEW_SETTINGS);
+});
+
+test('map view settings accept multiple reusable custom Mapbox styles', () => {
+  const parsed = parseMapViewSettingsPayload({
+    mapStyle: {
+      lightStyleId: 'custom:day',
+      darkStyleId: 'custom:night',
+      customStyles: [
+        {
+          id: 'day',
+          name: 'Operational Day',
+          url: 'mapbox://styles/example-user/day-style',
+        },
+        {
+          id: 'night',
+          name: 'Operational Night',
+          url: 'mapbox://styles/example-user/night-style',
+        },
+      ],
+      themeMode: 'native',
+    },
+  });
+
+  assert.equal(parsed.mapStyle.customStyles.length, 2);
+  assert.equal(parsed.mapStyle.lightStyleId, 'custom:day');
+  assert.equal(parsed.mapStyle.darkStyleId, 'custom:night');
+});
+
+test('map view settings reject malformed custom Mapbox style URLs', () => {
+  assert.throws(
+    () =>
+      parseMapViewSettingsPayload({
+        mapStyle: {
+          lightStyleId: 'custom:bad',
+          darkStyleId: 'preset:dark',
+          customStyles: [
+            {
+              id: 'bad',
+              name: 'Bad style',
+              url: 'https://example.com/not-a-mapbox-style',
+            },
+          ],
+          themeMode: 'adaptive',
+        },
+      }),
+    (error) => {
+      assert.equal(error.statusCode, 400);
+      assert.ok(
+        error.details.includes(
+          'mapStyle.customStyles[0].url must be a valid mapbox://styles/<username>/<style-id> URL.'
+        )
+      );
+      return true;
+    }
+  );
+});
+
+test('map view settings reject selection of a missing custom style', () => {
+  assert.throws(
+    () =>
+      parseMapViewSettingsPayload({
+        mapStyle: {
+          lightStyleId: 'custom:missing',
+          darkStyleId: 'preset:wavelab',
+          customStyles: [],
+          themeMode: 'adaptive',
+        },
+      }),
+    (error) => {
+      assert.equal(error.statusCode, 400);
+      assert.ok(
+        error.details.includes(
+          'mapStyle.lightStyleId references a custom style that does not exist.'
+        )
+      );
+      return true;
+    }
+  );
 });

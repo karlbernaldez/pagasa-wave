@@ -78,13 +78,6 @@ export function useAnnotationHistory({ projectId, limit = DEFAULT_LIMIT, onError
     publishState(history, history.generation, false);
   }, [projectId, projectKey, publishState]);
 
-  useEffect(
-    () => () => {
-      resetHistory(historyRef.current);
-    },
-    []
-  );
-
   const clear = useCallback(() => {
     const history = resetHistory(historyRef.current);
     publishState(history, history.generation, false);

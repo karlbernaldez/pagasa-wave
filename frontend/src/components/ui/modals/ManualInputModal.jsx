@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MapPin, X, Navigation, Globe, Tag, Send } from 'lucide-react';
+import { X, Navigation, Globe, Tag, Send } from 'lucide-react';
 
 const isValidFloat = (value) => {
   if (typeof value !== 'string') return false;
@@ -8,7 +8,8 @@ const isValidFloat = (value) => {
   return !isNaN(value) && !isNaN(parseFloat(value));
 };
 
-const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false }) => {
+const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, markerType = null }) => {
+  const isLowWave = markerType === 'less_1';
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [title, setTitle] = useState('');
@@ -16,7 +17,7 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false }) => 
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!isValidFloat(lat)) {
       newErrors.lat = 'Valid latitude required';
     } else {
@@ -25,7 +26,7 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false }) => 
         newErrors.lat = 'Must be between -90 and 90';
       }
     }
-    
+
     if (!isValidFloat(lng)) {
       newErrors.lng = 'Valid longitude required';
     } else {
@@ -34,11 +35,11 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false }) => 
         newErrors.lng = 'Must be between -180 and 180';
       }
     }
-    
-    if (!title.trim()) {
+
+    if (!isLowWave && !title.trim()) {
       newErrors.title = 'Storm title is required';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -53,7 +54,7 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false }) => 
     onSubmit({
       lat: parseFloat(lat),
       lng: parseFloat(lng),
-      title: title.trim(),
+      title: isLowWave ? '' : title.trim(),
     });
 
     // Clear inputs after submit
@@ -73,7 +74,7 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false }) => 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={onClose}
         >
@@ -109,8 +110,8 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false }) => 
                   ? 'bg-cyan-500/20 ring-1 ring-cyan-400/40'
                   : 'bg-blue-500/20 ring-1 ring-blue-500/50'
               }`}>
-                <Navigation 
-                  size={28} 
+                <Navigation
+                  size={28}
                   className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
                   strokeWidth={2}
                 />
@@ -120,14 +121,16 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false }) => 
               <h3 className={`text-xl font-bold text-center mb-2 ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
               }`}>
-                Enter Storm Marker
+                {isLowWave ? 'Enter Low Wave Coordinates' : 'Enter Storm Marker'}
               </h3>
 
               {/* Subtitle */}
               <p className={`text-sm text-center mb-6 ${
                 isDarkMode ? 'text-white/60' : 'text-slate-600'
               }`}>
-                Manually input coordinates and storm details
+                {isLowWave
+                  ? 'Manually input coordinates for the selected low-wave marker'
+                  : 'Manually input coordinates and storm details'}
               </p>
 
               {/* Form */}
@@ -214,45 +217,50 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false }) => 
                   </div>
                 </div>
 
-                {/* Storm Title Input */}
-                <div>
-                  <label className={`block text-xs font-semibold mb-2 ${
-                    isDarkMode ? 'text-white/80' : 'text-slate-700'
-                  }`}>
-                    <div className="flex items-center gap-2">
-                      <Tag size={14} />
-                      Storm Title
-                    </div>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="e.g. Kristine"
-                      value={title}
-                      onChange={(e) => {
-                        setTitle(e.target.value);
-                        if (errors.title) setErrors({ ...errors, title: null });
-                      }}
-                      onKeyDown={handleKeyDown}
-                      className={`w-full px-4 py-3 rounded-xl outline-none transition-all duration-200 ${
-                        errors.title
-                          ? isDarkMode
-                            ? 'bg-red-500/10 border-2 border-red-400/50 text-white placeholder:text-red-300/40'
-                            : 'bg-red-50/50 border-2 border-red-400/50 text-slate-900 placeholder:text-red-500/40'
-                          : isDarkMode
-                          ? 'bg-white/10 border border-white/20 focus:border-cyan-400/50 focus:bg-white/15 text-white placeholder:text-white/40'
-                          : 'bg-white/50 border border-white/30 focus:border-blue-500/50 focus:bg-white/70 text-slate-900 placeholder:text-slate-500'
-                      } backdrop-blur-sm`}
-                    />
-                    {errors.title && (
-                      <p className={`text-xs mt-1.5 ${
-                        isDarkMode ? 'text-red-400' : 'text-red-600'
-                      }`}>
-                        {errors.title}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                {!isLowWave && (
+                  <>
+                    {/* Storm Title Input */}
+                                    <div>
+                                      <label className={`block text-xs font-semibold mb-2 ${
+                                        isDarkMode ? 'text-white/80' : 'text-slate-700'
+                                      }`}>
+                                        <div className="flex items-center gap-2">
+                                          <Tag size={14} />
+                                          Storm Title
+                                        </div>
+                                      </label>
+                                      <div className="relative">
+                                        <input
+                                          type="text"
+                                          placeholder="e.g. Kristine"
+                                          value={title}
+                                          onChange={(e) => {
+                                            setTitle(e.target.value);
+                                            if (errors.title) setErrors({ ...errors, title: null });
+                                          }}
+                                          onKeyDown={handleKeyDown}
+                                          className={`w-full px-4 py-3 rounded-xl outline-none transition-all duration-200 ${
+                                            errors.title
+                                              ? isDarkMode
+                                                ? 'bg-red-500/10 border-2 border-red-400/50 text-white placeholder:text-red-300/40'
+                                                : 'bg-red-50/50 border-2 border-red-400/50 text-slate-900 placeholder:text-red-500/40'
+                                              : isDarkMode
+                                              ? 'bg-white/10 border border-white/20 focus:border-cyan-400/50 focus:bg-white/15 text-white placeholder:text-white/40'
+                                              : 'bg-white/50 border border-white/30 focus:border-blue-500/50 focus:bg-white/70 text-slate-900 placeholder:text-slate-500'
+                                          } backdrop-blur-sm`}
+                                        />
+                                        {errors.title && (
+                                          <p className={`text-xs mt-1.5 ${
+                                            isDarkMode ? 'text-red-400' : 'text-red-600'
+                                          }`}>
+                                            {errors.title}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                                      </>
+                )}
 
                 {/* Button Group */}
                 <div className="flex gap-3 pt-2">

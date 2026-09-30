@@ -45,6 +45,12 @@ export const DEFAULT_MAP_VIEW = {
   fitBounds: { ...DEFAULT_STUDIO_MAP_VIEW.fitBounds },
   padding: { ...DEFAULT_STUDIO_MAP_VIEW.padding },
   fitBoundsMaxZoom: DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom,
+  mapStyle: {
+    lightStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.lightStyleId,
+    darkStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.darkStyleId,
+    customStyles: [],
+    themeMode: DEFAULT_STUDIO_MAP_VIEW.mapStyle.themeMode,
+  },
 };
 
 export const DEFAULT_OPERATIONS = {

@@ -16,6 +16,20 @@ import {
   ensureHimawariSatelliteLayer,
   setHimawariSatelliteVisibility,
 } from '@dashboards/forecaster/map/layers/satelliteLayer';
+import {
+  DEFAULT_GRATICULE_OPACITY,
+  DEFAULT_GRATICULE_SPACING,
+  GRATICULE_OPACITY_STORAGE_KEY,
+  GRATICULE_STORAGE_KEY,
+  ensureGraticuleLayer,
+  normalizeGraticuleOpacity,
+  normalizeGraticuleSpacing,
+  readStoredGraticuleOpacity,
+  readStoredGraticulePreferences,
+  readStoredGraticuleSpacing,
+  updateGraticuleOpacity,
+  updateGraticuleSpacing,
+} from '@dashboards/forecaster/utils/layers/graticuleLayer';
 
 const isUsableMap = (map) => {
   if (!map || typeof map.getContainer !== 'function') return false;
@@ -41,7 +55,13 @@ const safeSetLayoutVisibility = (map, layerId, visible) => {
  * Manages domain, utility, and satellite layer state.
  * Reads initial values from localStorage, then applies them to the map once loaded.
  */
-export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId }) => {
+export const useSystemLayers = ({
+  mapRef,
+  mapLoaded = false,
+  isDarkMode,
+  forecastDate,
+  projectId,
+}) => {
   const [domainLayers, setDomainLayers] = useState({
     PAR: false, TCID: false, TCAD: false,
   });
@@ -54,6 +74,12 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
   });
 
   const [satelliteLayer, setSatelliteLayer] = useState(false);
+  const [graticuleSpacing, setGraticuleSpacingState] = useState(() =>
+    readStoredGraticuleSpacing(DEFAULT_GRATICULE_SPACING)
+  );
+  const [graticuleOpacity, setGraticuleOpacityState] = useState(() =>
+    readStoredGraticuleOpacity(DEFAULT_GRATICULE_OPACITY)
+  );
 
   // ── Project guard ───────────────────────────────────────────────────────────
   const checkProjectId = () => {
@@ -114,25 +140,39 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
   useEffect(() => {
     const saved = {
       domains: {
-        PAR:  readBoolStorage('PAR'),
+        PAR: readBoolStorage('PAR'),
         TCID: readBoolStorage('TCID'),
         TCAD: readBoolStorage('TCAD'),
       },
       utilities: {
-        GRATICULES:         readBoolStorage('GRATICULES'),
-        SHIPPING_ZONE:      readBoolStorage('SHIPPING_ZONE'),
-        PAGASA_NWP_RASTER:  readBoolStorage(PAGASA_NWP_RASTER_STORAGE_KEY),
-        CYCLONE_TRACK:      readBoolStorage(CYCLONE_TRACK_STORAGE_KEY),
+        GRATICULES: readBoolStorage('GRATICULES'),
+        SHIPPING_ZONE: readBoolStorage('SHIPPING_ZONE'),
+        PAGASA_NWP_RASTER: readBoolStorage(PAGASA_NWP_RASTER_STORAGE_KEY),
+        CYCLONE_TRACK: readBoolStorage(CYCLONE_TRACK_STORAGE_KEY),
       },
       satellite: readBoolStorage('SATELLITE'),
     };
 
-    setDomainLayers(saved.domains);
-    setUtilitiesLayers(saved.utilities);
-    setSatelliteLayer(saved.satellite);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setDomainLayers(saved.domains);
+      setUtilitiesLayers(saved.utilities);
+      setSatelliteLayer(saved.satellite);
+    });
+
+    if (!mapLoaded) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const map = mapRef.current;
-    if (!isUsableMap(map)) return undefined;
+    if (!isUsableMap(map)) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const apply = () => {
       // Domains
@@ -142,8 +182,12 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
       safeSetLayoutVisibility(map, 'TCAD', saved.domains.TCAD);
 
       // Utilities
-      safeSetLayoutVisibility(map, 'graticules', saved.utilities.GRATICULES);
-      safeSetLayoutVisibility(map, 'graticules_blur', saved.utilities.GRATICULES);
+      ensureGraticuleLayer(map, {
+        spacing: graticuleSpacing,
+        opacity: graticuleOpacity,
+        visible: saved.utilities.GRATICULES,
+        isDarkMode,
+      });
       safeSetLayoutVisibility(map, 'SHIPPING_ZONE_LABELS', saved.utilities.SHIPPING_ZONE);
       safeSetLayoutVisibility(map, 'SHIPPING_ZONE_OUTLINE', saved.utilities.SHIPPING_ZONE);
 
@@ -184,12 +228,52 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
 
     if (map.isStyleLoaded()) {
       apply();
-      return undefined;
+      return () => {
+        cancelled = true;
+      };
     }
 
     map.once('load', apply);
-    return () => map.off('load', apply);
-  }, [mapRef, projectId]);
+    return () => {
+      cancelled = true;
+      map.off('load', apply);
+    };
+  }, [
+    forecastDate,
+    graticuleOpacity,
+    graticuleSpacing,
+    isDarkMode,
+    mapLoaded,
+    mapRef,
+    projectId,
+  ]);
+
+  useEffect(() => {
+    if (!mapLoaded) return undefined;
+
+    const map = mapRef.current;
+    if (!map) return undefined;
+
+    const restoreGraticules = () => {
+      const stored = readStoredGraticulePreferences();
+      ensureGraticuleLayer(map, {
+        spacing: stored.spacing,
+        opacity: stored.opacity,
+        visible: utilitiesLayers.GRATICULES,
+        isDarkMode,
+      });
+    };
+
+    map.on('style.load', restoreGraticules);
+    return () => map.off('style.load', restoreGraticules);
+  }, [
+    graticuleOpacity,
+    graticuleSpacing,
+    isDarkMode,
+    mapLoaded,
+    mapRef,
+    utilitiesLayers.GRATICULES,
+  ]);
 
   useEffect(() => {
     if (!utilitiesLayers.PAGASA_NWP_RASTER) return;
@@ -202,7 +286,12 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
       console.error('[pagasa-nwp-raster-update-error]', error);
       showPagasaNwpRasterError(error?.message || 'Unable to update PAGASA NWP raster.');
     }
-  }, [forecastDate, mapRef, utilitiesLayers.PAGASA_NWP_RASTER]);
+  }, [
+    forecastDate,
+    mapRef,
+    showPagasaNwpRasterError,
+    utilitiesLayers.PAGASA_NWP_RASTER,
+  ]);
 
   // ── Toggle handlers ─────────────────────────────────────────────────────────
   const toggleDomainLayer = (layerId) => {
@@ -287,14 +376,54 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
       const map = mapRef.current;
       if (!map) return next;
       if (layerId === 'GRATICULES') {
-        safeSetLayoutVisibility(map, 'graticules', next[layerId]);
-        safeSetLayoutVisibility(map, 'graticules_blur', next[layerId]);
+        ensureGraticuleLayer(map, {
+          spacing: graticuleSpacing,
+          opacity: graticuleOpacity,
+          visible: next[layerId],
+          isDarkMode,
+        });
       } else if (layerId === 'SHIPPING_ZONE') {
         safeSetLayoutVisibility(map, 'SHIPPING_ZONE_LABELS', next[layerId]);
         safeSetLayoutVisibility(map, 'SHIPPING_ZONE_OUTLINE', next[layerId]);
       }
       return next;
     });
+  };
+
+  const setGraticuleSpacing = (value) => {
+    const spacing = normalizeGraticuleSpacing(value, graticuleSpacing);
+
+    setGraticuleSpacingState(spacing);
+    localStorage.setItem(GRATICULE_STORAGE_KEY, String(spacing));
+
+    const map = mapRef.current;
+    if (!map) return;
+
+    ensureGraticuleLayer(map, {
+      spacing,
+      opacity: graticuleOpacity,
+      visible: utilitiesLayers.GRATICULES,
+      isDarkMode,
+    });
+    updateGraticuleSpacing(map, spacing);
+  };
+
+  const setGraticuleOpacity = (value) => {
+    const opacity = normalizeGraticuleOpacity(value, graticuleOpacity);
+
+    setGraticuleOpacityState(opacity);
+    localStorage.setItem(GRATICULE_OPACITY_STORAGE_KEY, String(opacity));
+
+    const map = mapRef.current;
+    if (!map) return;
+
+    ensureGraticuleLayer(map, {
+      spacing: graticuleSpacing,
+      opacity,
+      visible: utilitiesLayers.GRATICULES,
+      isDarkMode,
+    });
+    updateGraticuleOpacity(map, opacity);
   };
 
   const toggleSatelliteLayer = () => {
@@ -331,9 +460,13 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     domainLayers,
     utilitiesLayers,
     satelliteLayer,
+    graticuleSpacing,
+    graticuleOpacity,
     activeCount,
     toggleDomainLayer,
     toggleUtilityLayer,
+    setGraticuleSpacing,
+    setGraticuleOpacity,
     toggleSatelliteLayer,
   };
 };

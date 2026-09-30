@@ -3,11 +3,11 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 import { getSettings } from '@/api/siteSettings';
 import {
-  DEFAULT_MAP_STYLE_URL,
   DEFAULT_STUDIO_MAP_VIEW,
   boundsPair,
   lngLatPair,
   normalizeStudioMapViewSettings,
+  resolveStudioMapStyleUrl,
 } from '@/config/mapViewDefaults';
 import { registerMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
 
@@ -71,6 +71,8 @@ const NON_BASEMAP_LAYER_IDS = new Set([
   'TCAD',
   'graticules',
   'graticules_blur',
+  'wavelab-graticules',
+  'wavelab-graticules-blur',
   'SHIPPING_ZONE_LABELS',
   'SHIPPING_ZONE_OUTLINE',
 ]);
@@ -242,6 +244,13 @@ const MapComponent = ({
 }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
+  const isDarkModeRef = useRef(isDarkMode);
+  const mapViewSettingsRef = useRef(DEFAULT_STUDIO_MAP_VIEW);
+  const themeIdleHandlerRef = useRef(null);
+
+  useEffect(() => {
+    isDarkModeRef.current = isDarkMode;
+  }, [isDarkMode]);
 
   // Initialize map (runs once)
   useEffect(() => {
@@ -277,6 +286,7 @@ const MapComponent = ({
         }, MAP_LOAD_TIMEOUT_MS);
 
         const mapViewSettings = await loadStudioMapViewSettings();
+        mapViewSettingsRef.current = mapViewSettings;
         if (cancelled || !mapContainerRef.current) return;
 
         // Clean container (important for hot reloads)
@@ -284,10 +294,15 @@ const MapComponent = ({
           mapContainerRef.current.removeChild(mapContainerRef.current.firstChild);
         }
 
+        const initialStyleUrl = resolveStudioMapStyleUrl(
+          mapViewSettings,
+          isDarkModeRef.current
+        );
+
         map = new mapboxgl.Map({
           container: mapContainerRef.current,
           projection: 'mercator',
-          style: DEFAULT_MAP_STYLE_URL,
+          style: initialStyleUrl,
           center: lngLatPair(mapViewSettings.center),
           zoom: mapViewSettings.zoom.default,
           minZoom: mapViewSettings.zoom.min,
@@ -295,6 +310,8 @@ const MapComponent = ({
           preserveDrawingBuffer: true,
           maxBounds: boundsPair(mapViewSettings.maxBounds),
         });
+
+        map.__wavelabStyleUrl = initialStyleUrl;
 
         const resizeMap = () => map.resize();
         resizeObserver =
@@ -343,6 +360,14 @@ const MapComponent = ({
                   window.clearTimeout(studioSetupTimeout);
                   studioSetupTimeout = null;
                 }
+
+                // Studio setup can add or rebuild basemap-related layers.
+                // Reapply now and once more after Mapbox finishes all pending
+                // source/style work so refreshes cannot settle on the neutral style.
+                if (mapViewSettings.mapStyle?.themeMode !== 'native') {
+                  applyTheme(map, isDarkModeRef.current);
+                  map.once('idle', () => applyTheme(map, isDarkModeRef.current));
+                }
                 releaseLoading();
               });
           } catch (error) {
@@ -354,8 +379,10 @@ const MapComponent = ({
             }
           }
 
-          // Apply initial theme after the custom style is fully available.
-          applyTheme(map, isDarkMode);
+          // Apply WaveLab's adaptive theme only when the selected style allows it.
+          if (mapViewSettings.mapStyle?.themeMode !== 'native') {
+            applyTheme(map, isDarkModeRef.current);
+          }
         });
       } catch (error) {
         console.error('[MapComponent] Failed to initialize map:', error);
@@ -379,15 +406,58 @@ const MapComponent = ({
     };
   }, []);
 
-  // Theme updates (NO style reload)
+  // Theme updates can select a different configured Mapbox style.
   useEffect(() => {
-    if (!mapRef.current) return undefined;
     const map = mapRef.current;
-    if (applyTheme(map, isDarkMode)) return undefined;
+    if (!map) return undefined;
 
-    const applyWhenReady = () => applyTheme(map, isDarkMode);
-    map.once('styledata', applyWhenReady);
-    return () => map.off('styledata', applyWhenReady);
+    const settings = mapViewSettingsRef.current;
+    const nextStyleUrl = resolveStudioMapStyleUrl(settings, isDarkModeRef.current);
+    const currentStyleUrl = map.getStyle()?.metadata?.['mapbox:origin'] || null;
+    const shouldSwitchStyle =
+      Boolean(nextStyleUrl) &&
+      currentStyleUrl !== nextStyleUrl &&
+      map.__wavelabStyleUrl !== nextStyleUrl;
+
+    if (shouldSwitchStyle) {
+      map.__wavelabStyleUrl = nextStyleUrl;
+      map.setStyle(nextStyleUrl);
+      return undefined;
+    }
+
+    if (settings.mapStyle?.themeMode === 'native') {
+      return undefined;
+    }
+
+    const applyCurrentTheme = () => applyTheme(map, isDarkModeRef.current);
+
+    applyCurrentTheme();
+
+    if (themeIdleHandlerRef.current) {
+      map.off('idle', themeIdleHandlerRef.current);
+    }
+
+    const applyWhenIdle = () => {
+      applyCurrentTheme();
+      if (themeIdleHandlerRef.current === applyWhenIdle) {
+        themeIdleHandlerRef.current = null;
+      }
+    };
+
+    themeIdleHandlerRef.current = applyWhenIdle;
+    map.once('idle', applyWhenIdle);
+
+    if (!map.isStyleLoaded()) {
+      map.once('styledata', applyCurrentTheme);
+    }
+
+    return () => {
+      map.off('idle', applyWhenIdle);
+      map.off('styledata', applyCurrentTheme);
+      if (themeIdleHandlerRef.current === applyWhenIdle) {
+        themeIdleHandlerRef.current = null;
+      }
+    };
   }, [isDarkMode]);
 
   return (

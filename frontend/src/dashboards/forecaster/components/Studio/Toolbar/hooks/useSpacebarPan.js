@@ -44,7 +44,15 @@ export function useSpacebarPan({
 
     const canvas = pausedInteraction.map?.getCanvas?.();
     if (canvas) {
-      canvas.style.cursor = pausedInteraction.previousCursor;
+      const placementCursor = canvas.dataset.wavelabPlacementCursor;
+      if (placementCursor) {
+        canvas.style.setProperty('cursor', placementCursor, 'important');
+      } else {
+        canvas.style.removeProperty('cursor');
+        if (pausedInteraction.previousCursor) {
+          canvas.style.cursor = pausedInteraction.previousCursor;
+        }
+      }
     }
   }, [onToggleCanvas, onToggleFlagCanvas]);
 
@@ -75,7 +83,7 @@ export function useSpacebarPan({
     }
 
     map.dragPan?.enable?.();
-    if (canvas) canvas.style.cursor = 'grab';
+    if (canvas) canvas.style.setProperty('cursor', 'grab', 'important');
 
     return true;
   }, [onToggleCanvas, onToggleFlagCanvas]);
