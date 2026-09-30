@@ -91,17 +91,12 @@ jobs:
           npm test
           npm run test:workflow
 
-      - name: Enable pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.17.1 --activate
-
       - name: Install, test, and build frontend
         working-directory: frontend
         run: |
-          pnpm install --frozen-lockfile
-          pnpm test
-          pnpm build
+          npm ci --legacy-peer-deps
+          npm test
+          npm run build
 
   deploy:
     name: Deploy to production AlmaLinux server
