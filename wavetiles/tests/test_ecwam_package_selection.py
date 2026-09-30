@@ -74,6 +74,42 @@ class ECWAMPackageSelectionTests(unittest.TestCase):
                 else:
                     os.environ["WAVE_SOURCE_CYCLE_POLICY_PATH"] = previous
 
+    def test_automatic_00z_cycle_uses_package_date(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "source-cycle-policy.json"
+            policy_path.write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "models": {
+                            "ECWAM": {
+                                "preferredHourUtc": 0,
+                                "cycleDateMode": "automatic",
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = os.environ.get("WAVE_SOURCE_CYCLE_POLICY_PATH")
+            os.environ["WAVE_SOURCE_CYCLE_POLICY_PATH"] = str(policy_path)
+            try:
+                self.assertEqual(
+                    selection.target_source_cycle(self.package_date).strftime("%Y%m%d%H"),
+                    "2026082400",
+                )
+                values = tuple(
+                    value.strftime("%Y%m%d%H")
+                    for value in selection.required_valid_times(self.package_date)
+                )
+                self.assertEqual(values[0], "2026082400")
+                self.assertEqual(values[-1], "2026082612")
+            finally:
+                if previous is None:
+                    os.environ.pop("WAVE_SOURCE_CYCLE_POLICY_PATH", None)
+                else:
+                    os.environ["WAVE_SOURCE_CYCLE_POLICY_PATH"] = previous
+
     def test_selects_only_complete_target_18z_cycle(self) -> None:
         required = selection.required_valid_times(self.package_date)
         with tempfile.TemporaryDirectory() as tmp:
