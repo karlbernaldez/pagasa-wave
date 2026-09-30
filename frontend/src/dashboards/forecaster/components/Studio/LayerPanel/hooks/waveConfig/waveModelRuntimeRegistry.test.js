@@ -53,6 +53,29 @@ describe('waveModelRuntimeRegistry', () => {
     });
   });
 
+  it('uses published sourceCycle instead of the configured legacy cycle anchor', () => {
+    setWaveModelRuntimeCatalog([
+      {
+        ...managedModel,
+        code: 'WW3',
+      },
+    ]);
+
+    expect(
+      resolveManagedWaveRun({
+        model: 'WW3',
+        forecastDate: '2026-09-30',
+        chartType: '24h forecast',
+        sourceCycle: '2026093000',
+      })
+    ).toMatchObject({
+      packageDate: '2026SEP30',
+      runDateTime: '2026100100',
+      runTag: '2026SEP30/2026100100',
+      forecastHour: 24,
+    });
+  });
+
   it('snaps non-cadence explicit hours to the configured cadence and maximum', () => {
     setWaveModelRuntimeCatalog([managedModel]);
 
