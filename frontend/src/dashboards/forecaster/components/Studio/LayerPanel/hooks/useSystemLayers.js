@@ -25,6 +25,7 @@ import {
   normalizeGraticuleOpacity,
   normalizeGraticuleSpacing,
   readStoredGraticuleOpacity,
+  readStoredGraticulePreferences,
   readStoredGraticuleSpacing,
   updateGraticuleOpacity,
   updateGraticuleSpacing,
@@ -219,9 +220,10 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     if (!map) return undefined;
 
     const restoreGraticules = () => {
+      const stored = readStoredGraticulePreferences();
       ensureGraticuleLayer(map, {
-        spacing: graticuleSpacing,
-        opacity: graticuleOpacity,
+        spacing: stored.spacing,
+        opacity: stored.opacity,
         visible: utilitiesLayers.GRATICULES,
         isDarkMode,
       });
@@ -335,6 +337,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
       if (layerId === 'GRATICULES') {
         ensureGraticuleLayer(map, {
           spacing: graticuleSpacing,
+          opacity: graticuleOpacity,
           visible: next[layerId],
           isDarkMode,
         });
