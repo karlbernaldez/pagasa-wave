@@ -14,7 +14,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from source_cycle_policy import preferred_cycle_hour
+from source_cycle_policy import preferred_cycle_hour, source_cycle_date
 
 CYCLE_RE = re.compile(r"\d{10}")
 PACKAGE_DATE_RE = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})")
@@ -37,7 +37,8 @@ def source_cycle_hour() -> int:
 
 def target_source_cycle(package_date: date, cycle_hour: int | None = None) -> datetime:
     hour = source_cycle_hour() if cycle_hour is None else cycle_hour
-    return datetime.combine(package_date - timedelta(days=1), time(hour=hour))
+    cycle_date = source_cycle_date(package_date, "ECWAM", hour)
+    return datetime.combine(cycle_date, time(hour=hour))
 
 
 def required_valid_times(package_date: date, cycle_hour: int | None = None) -> tuple[datetime, ...]:
