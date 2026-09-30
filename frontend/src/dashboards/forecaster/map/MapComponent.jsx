@@ -71,6 +71,8 @@ const NON_BASEMAP_LAYER_IDS = new Set([
   'TCAD',
   'graticules',
   'graticules_blur',
+  'wavelab-graticules',
+  'wavelab-graticules-blur',
   'SHIPPING_ZONE_LABELS',
   'SHIPPING_ZONE_OUTLINE',
 ]);
