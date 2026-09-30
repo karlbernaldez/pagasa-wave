@@ -3,11 +3,11 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 import { getSettings } from '@/api/siteSettings';
 import {
-  DEFAULT_MAP_STYLE_URL,
   DEFAULT_STUDIO_MAP_VIEW,
   boundsPair,
   lngLatPair,
   normalizeStudioMapViewSettings,
+  resolveStudioMapStyleUrl,
 } from '@/config/mapViewDefaults';
 import { registerMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
 
@@ -243,6 +243,7 @@ const MapComponent = ({
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const isDarkModeRef = useRef(isDarkMode);
+  const mapViewSettingsRef = useRef(DEFAULT_STUDIO_MAP_VIEW);
   const themeIdleHandlerRef = useRef(null);
 
   useEffect(() => {
@@ -283,6 +284,7 @@ const MapComponent = ({
         }, MAP_LOAD_TIMEOUT_MS);
 
         const mapViewSettings = await loadStudioMapViewSettings();
+        mapViewSettingsRef.current = mapViewSettings;
         if (cancelled || !mapContainerRef.current) return;
 
         // Clean container (important for hot reloads)
@@ -293,7 +295,7 @@ const MapComponent = ({
         map = new mapboxgl.Map({
           container: mapContainerRef.current,
           projection: 'mercator',
-          style: DEFAULT_MAP_STYLE_URL,
+          style: resolveStudioMapStyleUrl(mapViewSettings),
           center: lngLatPair(mapViewSettings.center),
           zoom: mapViewSettings.zoom.default,
           minZoom: mapViewSettings.zoom.min,
@@ -353,8 +355,10 @@ const MapComponent = ({
                 // Studio setup can add or rebuild basemap-related layers.
                 // Reapply now and once more after Mapbox finishes all pending
                 // source/style work so refreshes cannot settle on the neutral style.
-                applyTheme(map, isDarkModeRef.current);
-                map.once('idle', () => applyTheme(map, isDarkModeRef.current));
+                if (mapViewSettings.mapStyle?.themeMode !== 'native') {
+                  applyTheme(map, isDarkModeRef.current);
+                  map.once('idle', () => applyTheme(map, isDarkModeRef.current));
+                }
                 releaseLoading();
               });
           } catch (error) {
@@ -366,9 +370,10 @@ const MapComponent = ({
             }
           }
 
-          // Apply once immediately, then again after Studio setup settles.
-          // The ref avoids using a stale theme captured by this one-time effect.
-          applyTheme(map, isDarkModeRef.current);
+          // Apply WaveLab's adaptive theme only when the selected style allows it.
+          if (mapViewSettings.mapStyle?.themeMode !== 'native') {
+            applyTheme(map, isDarkModeRef.current);
+          }
         });
       } catch (error) {
         console.error('[MapComponent] Failed to initialize map:', error);
@@ -396,6 +401,10 @@ const MapComponent = ({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return undefined;
+
+    if (mapViewSettingsRef.current.mapStyle?.themeMode === 'native') {
+      return undefined;
+    }
 
     const applyCurrentTheme = () => applyTheme(map, isDarkModeRef.current);
 
