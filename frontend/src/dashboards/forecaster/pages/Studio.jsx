@@ -179,7 +179,8 @@ const Studio = ({ logger }) => {
   const suppressAutoJoinRef = useRef(false);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const { latestProject, isLoadingProject, showNoProjectsModal, setShowNoProjectsModal, message } = useProjectLoader(projectId);
-  const [currentProject, setCurrentProject] = useState(null);
+  const [currentProjectOverride, setCurrentProjectOverride] = useState(null);
+  const currentProject = currentProjectOverride || latestProject || null;
   const [chartContext, setChartContext] = useState(null);
   const [isLoadingChartContext, setIsLoadingChartContext] = useState(false);
   const [isClaimingChart, setIsClaimingChart] = useState(false);
@@ -189,8 +190,9 @@ const Studio = ({ logger }) => {
   const [workflowError, setWorkflowError] = useState(null);
   const [showReadyConfirm, setShowReadyConfirm] = useState(false);
 
-  useEffect(() => { suppressAutoJoinRef.current = false; }, [projectId]);
-  useEffect(() => { setCurrentProject(latestProject || null); }, [latestProject]);
+  useEffect(() => {
+    suppressAutoJoinRef.current = false;
+  }, [projectId]);
 
   const handleOpenCreateProject = () => { setStudioError(""); setWorkflowError(null); setShowNoProjectsModal(false); setShowCreateProjectModal(true); };
   const handleMaybeLater = () => setShowNoProjectsModal(false);
@@ -223,7 +225,7 @@ const Studio = ({ logger }) => {
   const applyChartContext = useCallback((context) => {
     setChartContext(context);
     const contextProject = getContextProject(context);
-    if (contextProject) setCurrentProject(contextProject);
+    if (contextProject) setCurrentProjectOverride(contextProject);
   }, []);
 
   const loadChartContext = useCallback(async ({ signal, silent = false, autoJoin } = {}) => {
@@ -255,13 +257,73 @@ const Studio = ({ logger }) => {
     return () => { socket.off("connect", joinRoom); socket.emit("forecast:leave_project", projectId); };
   }, [projectId]);
   useEffect(() => {
-    setIsLoading(true); setMapLoaded(false); setShowToolbar(false); setCapturedImages({ light: null, dark: null });
-    setDrawInstance(null); setLineCount(0); setDrawCounter(0); setClosedMode(false); setSelectedPoint(null); setShowTitleModal(false);
-    markerTitleRef.current = ""; selectedToolRef.current = null; setStudioError(""); setWorkflowError(null); setShowReadyConfirm(false);
-  }, [projectId, setClosedMode, setDrawCounter, setDrawInstance, setLineCount, setSelectedPoint, setShowTitleModal, markerTitleRef, setCapturedImages]);
-  useEffect(() => { const controller = new AbortController(); loadChartContext({ signal: controller.signal, autoJoin: true }); return () => controller.abort(); }, [loadChartContext]);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setIsLoading(true);
+      setMapLoaded(false);
+      setShowToolbar(false);
+      setCapturedImages({ light: null, dark: null });
+      setDrawInstance(null);
+      setLineCount(0);
+      setDrawCounter(0);
+      setClosedMode(false);
+      setSelectedPoint(null);
+      setShowTitleModal(false);
+      markerTitleRef.current = "";
+      selectedToolRef.current = null;
+      setStudioError("");
+      setWorkflowError(null);
+      setShowReadyConfirm(false);
+      setCurrentProjectOverride(null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    markerTitleRef,
+    projectId,
+    setCapturedImages,
+    setClosedMode,
+    setDrawCounter,
+    setDrawInstance,
+    setLineCount,
+    setSelectedPoint,
+    setShowTitleModal,
+  ]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      loadChartContext({ signal: controller.signal, autoJoin: true });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [loadChartContext]);
   useEffect(() => { const handler = (event) => { if (String(event.detail?.projectId || "") === String(projectId)) loadChartContext({ silent: true, autoJoin: false }); }; window.addEventListener(FORECAST_CHART_BROWSER_EVENT, handler); return () => window.removeEventListener(FORECAST_CHART_BROWSER_EVENT, handler); }, [loadChartContext, projectId]);
-  useEffect(() => { if (canUseEditingTools && !isPublishedView) return; if (isCanvasActive) toggleCanvas(); if (isFlagCanvasActive) toggleFlagCanvas(); setShowTitleModal(false); selectedToolRef.current = null; }, [canUseEditingTools, isPublishedView, isCanvasActive, isFlagCanvasActive, toggleCanvas, toggleFlagCanvas, setShowTitleModal]);
+  useEffect(() => {
+    if (canUseEditingTools && !isPublishedView) return undefined;
+
+    const timer = window.setTimeout(() => {
+      if (isCanvasActive) toggleCanvas();
+      if (isFlagCanvasActive) toggleFlagCanvas();
+      setShowTitleModal(false);
+      selectedToolRef.current = null;
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    canUseEditingTools,
+    isPublishedView,
+    isCanvasActive,
+    isFlagCanvasActive,
+    setShowTitleModal,
+    toggleCanvas,
+    toggleFlagCanvas,
+  ]);
   useEffect(() => { const timer = setTimeout(() => setShowToolbar(true), TOOLBAR_DELAY); return () => clearTimeout(timer); }, [projectId]);
   useEffect(() => {
     const map = mapRef.current;
