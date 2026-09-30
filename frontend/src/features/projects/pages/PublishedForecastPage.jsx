@@ -237,20 +237,6 @@ export default function PublishedForecastPage() {
   const activeStyleMode = normalizeChartStyleMode(activeChartType);
   const activeStyle = getChartStyleMode(activeStyleMode);
   const showStaffInfo = publicSettings.showPublicStaffInfo !== false;
-  const exportReadinessKey = useMemo(
-    () =>
-      [
-        project?._id || '',
-        activeStyleMode,
-        isDarkMode ? 'dark' : 'light',
-        mapBoundsLabel,
-        JSON.stringify(featureCollection || null),
-        JSON.stringify(raster || null),
-      ].join('|'),
-    [activeStyleMode, featureCollection, isDarkMode, mapBoundsLabel, project?._id, raster]
-  );
-  const isExportReady = Boolean(exportReadinessKey && exportReadyKey === exportReadinessKey);
-
   useEffect(() => {
     const controller = new AbortController();
 
@@ -273,6 +259,19 @@ export default function PublishedForecastPage() {
   const featureCollection = state.data?.featureCollection;
   const raster = state.data?.raster;
   const canArchive = Boolean(state.data?.canArchive);
+  const exportReadinessKey = useMemo(
+    () =>
+      [
+        project?._id || '',
+        activeStyleMode,
+        isDarkMode ? 'dark' : 'light',
+        mapBoundsLabel,
+        JSON.stringify(featureCollection || null),
+        JSON.stringify(raster || null),
+      ].join('|'),
+    [activeStyleMode, featureCollection, isDarkMode, mapBoundsLabel, project?._id, raster]
+  );
+  const isExportReady = Boolean(exportReadinessKey && exportReadyKey === exportReadinessKey);
   const latestReviewSummary = useMemo(() => getLatestReviewSummary(project), [project]);
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const pageClass = isDarkMode ? 'relative min-h-screen overflow-hidden bg-slate-950 text-slate-100' : 'relative min-h-screen overflow-hidden bg-slate-50 text-slate-950';
