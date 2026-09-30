@@ -45,7 +45,6 @@ export const DEFAULT_MAP_VIEW = {
   fitBounds: { ...DEFAULT_STUDIO_MAP_VIEW.fitBounds },
   padding: { ...DEFAULT_STUDIO_MAP_VIEW.padding },
   fitBoundsMaxZoom: DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom,
-  graticuleSpacing: DEFAULT_STUDIO_MAP_VIEW.graticuleSpacing,
   mapStyle: {
     lightStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.lightStyleId,
     darkStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.darkStyleId,
