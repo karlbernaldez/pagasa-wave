@@ -52,7 +52,8 @@ const MAP_STYLE_PRESETS = new Set([
 const MAP_STYLE_THEME_MODES = new Set(['adaptive', 'native']);
 const MAPBOX_STYLE_URL_PATTERN = /^mapbox:\/\/styles\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
-const isPlainObject = (value) => Boolean(value && typeof value === 'object' && !Array.isArray(value));
+const isPlainObject = (value) =>
+  Boolean(value && typeof value === 'object' && !Array.isArray(value));
 
 const toFiniteNumber = (value, fallback = null) => {
   const number = Number(value);
@@ -92,7 +93,12 @@ function migrateLegacyMapStyle(source = {}, customStyles = []) {
     const id = `legacy-custom-${suffix}`;
     customStyles.push({
       id,
-      name: suffix === 'light' ? 'Legacy Light Style' : suffix === 'dark' ? 'Legacy Dark Style' : 'Legacy Custom Style',
+      name:
+        suffix === 'light'
+          ? 'Legacy Light Style'
+          : suffix === 'dark'
+            ? 'Legacy Dark Style'
+            : 'Legacy Custom Style',
       url: normalizedUrl,
     });
     return `custom:${id}`;
@@ -186,28 +192,60 @@ export function normalizeMapViewSettings(input = {}) {
 export function validateMapViewSettings(settings = {}) {
   const errors = [];
 
-  if (!isLongitude(settings.center.longitude)) errors.push('center.longitude must be between -180 and 180.');
-  if (!isLatitude(settings.center.latitude)) errors.push('center.latitude must be between -90 and 90.');
+  if (!isLongitude(settings.center.longitude)) {
+    errors.push('center.longitude must be between -180 and 180.');
+  }
+  if (!isLatitude(settings.center.latitude)) {
+    errors.push('center.latitude must be between -90 and 90.');
+  }
 
   if (!isZoom(settings.zoom.min)) errors.push('zoom.min must be between 0 and 24.');
   if (!isZoom(settings.zoom.default)) errors.push('zoom.default must be between 0 and 24.');
   if (!isZoom(settings.zoom.max)) errors.push('zoom.max must be between 0 and 24.');
-  if (settings.zoom.min > settings.zoom.default) errors.push('zoom.min must be less than or equal to zoom.default.');
-  if (settings.zoom.default > settings.zoom.max) errors.push('zoom.default must be less than or equal to zoom.max.');
+  if (settings.zoom.min > settings.zoom.default) {
+    errors.push('zoom.min must be less than or equal to zoom.default.');
+  }
+  if (settings.zoom.default > settings.zoom.max) {
+    errors.push('zoom.default must be less than or equal to zoom.max.');
+  }
 
-  if (!isLongitude(settings.maxBounds.west)) errors.push('maxBounds.west must be between -180 and 180.');
-  if (!isLongitude(settings.maxBounds.east)) errors.push('maxBounds.east must be between -180 and 180.');
-  if (!isLatitude(settings.maxBounds.south)) errors.push('maxBounds.south must be between -90 and 90.');
-  if (!isLatitude(settings.maxBounds.north)) errors.push('maxBounds.north must be between -90 and 90.');
-  if (settings.maxBounds.west >= settings.maxBounds.east) errors.push('maxBounds.west must be less than maxBounds.east.');
-  if (settings.maxBounds.south >= settings.maxBounds.north) errors.push('maxBounds.south must be less than maxBounds.north.');
+  if (!isLongitude(settings.maxBounds.west)) {
+    errors.push('maxBounds.west must be between -180 and 180.');
+  }
+  if (!isLongitude(settings.maxBounds.east)) {
+    errors.push('maxBounds.east must be between -180 and 180.');
+  }
+  if (!isLatitude(settings.maxBounds.south)) {
+    errors.push('maxBounds.south must be between -90 and 90.');
+  }
+  if (!isLatitude(settings.maxBounds.north)) {
+    errors.push('maxBounds.north must be between -90 and 90.');
+  }
+  if (settings.maxBounds.west >= settings.maxBounds.east) {
+    errors.push('maxBounds.west must be less than maxBounds.east.');
+  }
+  if (settings.maxBounds.south >= settings.maxBounds.north) {
+    errors.push('maxBounds.south must be less than maxBounds.north.');
+  }
 
-  if (!isLongitude(settings.fitBounds.west)) errors.push('fitBounds.west must be between -180 and 180.');
-  if (!isLongitude(settings.fitBounds.east)) errors.push('fitBounds.east must be between -180 and 180.');
-  if (!isLatitude(settings.fitBounds.south)) errors.push('fitBounds.south must be between -90 and 90.');
-  if (!isLatitude(settings.fitBounds.north)) errors.push('fitBounds.north must be between -90 and 90.');
-  if (settings.fitBounds.west >= settings.fitBounds.east) errors.push('fitBounds.west must be less than fitBounds.east.');
-  if (settings.fitBounds.south >= settings.fitBounds.north) errors.push('fitBounds.south must be less than fitBounds.north.');
+  if (!isLongitude(settings.fitBounds.west)) {
+    errors.push('fitBounds.west must be between -180 and 180.');
+  }
+  if (!isLongitude(settings.fitBounds.east)) {
+    errors.push('fitBounds.east must be between -180 and 180.');
+  }
+  if (!isLatitude(settings.fitBounds.south)) {
+    errors.push('fitBounds.south must be between -90 and 90.');
+  }
+  if (!isLatitude(settings.fitBounds.north)) {
+    errors.push('fitBounds.north must be between -90 and 90.');
+  }
+  if (settings.fitBounds.west >= settings.fitBounds.east) {
+    errors.push('fitBounds.west must be less than fitBounds.east.');
+  }
+  if (settings.fitBounds.south >= settings.fitBounds.north) {
+    errors.push('fitBounds.south must be less than fitBounds.north.');
+  }
 
   for (const key of ['top', 'bottom', 'left', 'right']) {
     if (!isPadding(settings.padding[key])) {
@@ -215,7 +253,9 @@ export function validateMapViewSettings(settings = {}) {
     }
   }
 
-  if (!isZoom(settings.fitBoundsMaxZoom)) errors.push('fitBoundsMaxZoom must be between 0 and 24.');
+  if (!isZoom(settings.fitBoundsMaxZoom)) {
+    errors.push('fitBoundsMaxZoom must be between 0 and 24.');
+  }
   if (settings.fitBoundsMaxZoom > settings.zoom.max) {
     errors.push('fitBoundsMaxZoom must be less than or equal to zoom.max.');
   }
