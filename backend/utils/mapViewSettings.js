@@ -207,7 +207,7 @@ export function validateMapViewSettings(settings = {}) {
   if (!isLatitude(settings.fitBounds.south)) errors.push('fitBounds.south must be between -90 and 90.');
   if (!isLatitude(settings.fitBounds.north)) errors.push('fitBounds.north must be between -90 and 90.');
   if (settings.fitBounds.west >= settings.fitBounds.east) errors.push('fitBounds.west must be less than fitBounds.east.');
-  if (settings.fitBounds.south >= settings.fitBounds.north) errors.push('fitBounds.south must be less than settings.fitBounds.north.');
+  if (settings.fitBounds.south >= settings.fitBounds.north) errors.push('fitBounds.south must be less than fitBounds.north.');
 
   for (const key of ['top', 'bottom', 'left', 'right']) {
     if (!isPadding(settings.padding[key])) {
