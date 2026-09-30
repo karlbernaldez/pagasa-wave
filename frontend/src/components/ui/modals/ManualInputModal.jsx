@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MapPin, X, Navigation, Globe, Tag, Send } from 'lucide-react';
+import { X, Navigation, Globe, Tag, Send } from 'lucide-react';
 
 const isValidFloat = (value) => {
   if (typeof value !== 'string') return false;
@@ -36,7 +36,7 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
       }
     }
 
-    if (!title.trim()) {
+    if (!isLowWave && !title.trim()) {
       newErrors.title = 'Storm title is required';
     }
 
