@@ -6,17 +6,19 @@ function manualChunks(id) {
   if (!id.includes('node_modules')) return undefined;
 
   if (
-    id.includes('react') ||
-    id.includes('react-dom') ||
-    id.includes('react-router-dom') ||
-    id.includes('styled-components') ||
-    id.includes('@mui') ||
-    id.includes('@emotion') ||
-    id.includes('konva') ||
-    id.includes('react-konva') ||
-    id.includes('perfect-freehand') ||
-    id.includes('lucide-react') ||
-    id.includes('react-icons')
+    id.includes('/react/') ||
+    id.includes('/react-dom/') ||
+    id.includes('/react-router/') ||
+    id.includes('/react-router-dom/') ||
+    id.includes('/recharts/') ||
+    id.includes('/styled-components/') ||
+    id.includes('/@mui/') ||
+    id.includes('/@emotion/') ||
+    id.includes('/konva/') ||
+    id.includes('/react-konva/') ||
+    id.includes('/perfect-freehand/') ||
+    id.includes('/lucide-react/') ||
+    id.includes('/react-icons/')
   ) {
     return 'vendor-ui';
   }
@@ -35,10 +37,6 @@ function manualChunks(id) {
 
   if (id.includes('@turf')) {
     return 'vendor-geo';
-  }
-
-  if (id.includes('recharts')) {
-    return 'vendor-charts';
   }
 
   if (id.includes('sweetalert2')) {
