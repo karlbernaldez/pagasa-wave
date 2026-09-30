@@ -29,10 +29,6 @@ export const MAP_STYLE_PRESETS = Object.freeze({
     label: 'Mapbox Satellite Streets',
     url: 'mapbox://styles/mapbox/satellite-streets-v12',
   }),
-  custom: Object.freeze({
-    label: 'Custom Mapbox Style',
-    url: '',
-  }),
 });
 
 export const DEFAULT_STUDIO_MAP_VIEW = Object.freeze({
@@ -65,14 +61,9 @@ export const DEFAULT_STUDIO_MAP_VIEW = Object.freeze({
   }),
   fitBoundsMaxZoom: 8,
   mapStyle: Object.freeze({
-    light: Object.freeze({
-      preset: 'wavelab',
-      customStyleUrl: '',
-    }),
-    dark: Object.freeze({
-      preset: 'wavelab',
-      customStyleUrl: '',
-    }),
+    lightStyleId: 'preset:wavelab',
+    darkStyleId: 'preset:wavelab',
+    customStyles: Object.freeze([]),
     themeMode: 'adaptive',
   }),
 });
@@ -145,49 +136,100 @@ const normalizePadding = (padding = {}, fallback = {}) => ({
   right: Math.max(0, toFiniteNumber(padding.right, fallback.right)),
 });
 
-const normalizeThemeStyle = (themeStyle = {}, fallback = {}) => {
-  const preset = Object.prototype.hasOwnProperty.call(MAP_STYLE_PRESETS, themeStyle?.preset)
-    ? themeStyle.preset
-    : fallback.preset || 'wavelab';
-  const customStyleUrl =
-    typeof themeStyle?.customStyleUrl === 'string'
-      ? themeStyle.customStyleUrl.trim()
-      : fallback.customStyleUrl || '';
+const normalizeCustomStyles = (styles = []) => {
+  if (!Array.isArray(styles)) return [];
 
-  return { preset, customStyleUrl };
+  const seen = new Set();
+  return styles
+    .map((style) => ({
+      id: String(style?.id || '').trim(),
+      name: String(style?.name || '').trim(),
+      url: String(style?.url || '').trim(),
+    }))
+    .filter((style) => style.id && style.name && style.url && !seen.has(style.id))
+    .map((style) => {
+      seen.add(style.id);
+      return style;
+    });
+};
+
+const normalizeStyleId = (styleId, customStyles, fallback = 'preset:wavelab') => {
+  const value = String(styleId || '').trim();
+
+  if (value.startsWith('preset:')) {
+    const preset = value.slice('preset:'.length);
+    if (Object.prototype.hasOwnProperty.call(MAP_STYLE_PRESETS, preset)) {
+      return value;
+    }
+  }
+
+  if (value.startsWith('custom:')) {
+    const customId = value.slice('custom:'.length);
+    if (customStyles.some((style) => style.id === customId)) {
+      return value;
+    }
+  }
+
+  return fallback;
 };
 
 const normalizeMapStyle = (mapStyle = {}, fallback = DEFAULT_STUDIO_MAP_VIEW.mapStyle) => {
-  // Backward compatibility with the first single-style settings shape.
-  const legacyThemeStyle =
-    mapStyle?.preset || mapStyle?.customStyleUrl
-      ? { preset: mapStyle.preset, customStyleUrl: mapStyle.customStyleUrl }
+  const customStyles = normalizeCustomStyles(mapStyle?.customStyles);
+
+  // Backward compatibility with the temporary single/custom style shapes.
+  let legacyStyleId = null;
+  if (mapStyle?.preset && mapStyle.preset !== 'custom') {
+    legacyStyleId = `preset:${mapStyle.preset}`;
+  } else if (mapStyle?.customStyleUrl) {
+    const legacy = {
+      id: 'legacy-custom',
+      name: 'Custom Mapbox Style',
+      url: String(mapStyle.customStyleUrl).trim(),
+    };
+    if (legacy.url) customStyles.push(legacy);
+    legacyStyleId = legacy.url ? 'custom:legacy-custom' : null;
+  }
+
+  const legacyLight =
+    mapStyle?.light?.preset && mapStyle.light.preset !== 'custom'
+      ? `preset:${mapStyle.light.preset}`
+      : null;
+  const legacyDark =
+    mapStyle?.dark?.preset && mapStyle.dark.preset !== 'custom'
+      ? `preset:${mapStyle.dark.preset}`
       : null;
 
-  const light = normalizeThemeStyle(
-    mapStyle?.light || legacyThemeStyle || {},
-    fallback.light
+  const lightStyleId = normalizeStyleId(
+    mapStyle?.lightStyleId || legacyLight || legacyStyleId,
+    customStyles,
+    fallback.lightStyleId
   );
-  const dark = normalizeThemeStyle(
-    mapStyle?.dark || legacyThemeStyle || {},
-    fallback.dark
+  const darkStyleId = normalizeStyleId(
+    mapStyle?.darkStyleId || legacyDark || legacyStyleId,
+    customStyles,
+    fallback.darkStyleId
   );
   const themeMode = ['adaptive', 'native'].includes(mapStyle?.themeMode)
     ? mapStyle.themeMode
     : fallback.themeMode;
 
-  return { light, dark, themeMode };
+  return { lightStyleId, darkStyleId, customStyles, themeMode };
 };
 
 export function resolveStudioMapStyleUrl(settings = {}, isDarkMode = false) {
   const mapStyle = normalizeMapStyle(settings.mapStyle);
-  const themeStyle = isDarkMode ? mapStyle.dark : mapStyle.light;
+  const styleId = isDarkMode ? mapStyle.darkStyleId : mapStyle.lightStyleId;
 
-  if (themeStyle.preset === 'custom' && themeStyle.customStyleUrl) {
-    return themeStyle.customStyleUrl;
+  if (styleId.startsWith('custom:')) {
+    const customId = styleId.slice('custom:'.length);
+    return (
+      mapStyle.customStyles.find((style) => style.id === customId)?.url ||
+      DEFAULT_MAP_STYLE_URL
+    );
   }
 
-  return MAP_STYLE_PRESETS[themeStyle.preset]?.url || DEFAULT_MAP_STYLE_URL;
+  const preset = styleId.replace(/^preset:/, '');
+  return MAP_STYLE_PRESETS[preset]?.url || DEFAULT_MAP_STYLE_URL;
 }
 
 export function normalizeStudioMapViewSettings(settings = {}) {
