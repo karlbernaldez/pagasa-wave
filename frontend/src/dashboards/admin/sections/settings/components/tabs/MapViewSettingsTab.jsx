@@ -1,7 +1,9 @@
-import { MapPinned, MoveHorizontal, Scan, SquareStack, ZoomIn } from 'lucide-react';
+import { Layers3, MapPinned, MoveHorizontal, Scan, SquareStack, ZoomIn } from 'lucide-react';
 
+import { MAP_STYLE_PRESETS } from '@/config/mapViewDefaults';
 import Accordion from '../ui/Accordion';
 import { Field } from '../ui/FormFields';
+import { inputCls, labelCls } from '../ui/formFieldStyles';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -47,9 +49,73 @@ const MapViewSettingsTab = ({ settings = {}, setSettings, dark }) => {
     });
   };
 
+  const mapStyle = settings.mapStyle || {};
+  const preset = mapStyle.preset || 'wavelab';
+  const themeMode = mapStyle.themeMode || 'adaptive';
+
   return (
     <div className="flex flex-col gap-4">
-      <Accordion icon={MapPinned} title="Studio Initial View" dark={dark} defaultOpen>
+      <Accordion icon={Layers3} title="Basemap Style" dark={dark} defaultOpen>
+        <div className="grid gap-4">
+          <SectionNote dark={dark}>
+            Select the Mapbox basemap used in Studio. Choose Adaptive to let WaveLab recolor the selected style for light and dark mode, or Native to preserve the Mapbox style exactly as authored.
+          </SectionNote>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <label className={labelCls(dark)}>Map style</label>
+              <select
+                value={preset}
+                onChange={(event) => setNested(['mapStyle', 'preset'], event.target.value)}
+                className={inputCls(dark)}
+              >
+                {Object.entries(MAP_STYLE_PRESETS).map(([key, config]) => (
+                  <option key={key} value={key}>
+                    {config.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelCls(dark)}>Theme treatment</label>
+              <select
+                value={themeMode}
+                onChange={(event) => setNested(['mapStyle', 'themeMode'], event.target.value)}
+                className={inputCls(dark)}
+              >
+                <option value="adaptive">Adaptive — follow WaveLab light/dark mode</option>
+                <option value="native">Native — preserve Mapbox style colors</option>
+              </select>
+            </div>
+          </div>
+
+          {preset === 'custom' && (
+            <Field
+              label="Custom Mapbox style URL"
+              value={mapStyle.customStyleUrl || ''}
+              onChange={(value) => setNested(['mapStyle', 'customStyleUrl'], value)}
+              placeholder="mapbox://styles/username/style-id"
+              dark={dark}
+            />
+          )}
+
+          <div
+            className={cn(
+              'rounded-xl border px-4 py-3 text-xs font-semibold leading-5',
+              dark
+                ? 'border-white/10 bg-white/[0.04] text-slate-400'
+                : 'border-slate-200 bg-slate-50 text-slate-600'
+            )}
+          >
+            Custom styles must use the Mapbox style URL format
+            <span className="mx-1 font-mono">mapbox://styles/&lt;username&gt;/&lt;style-id&gt;</span>.
+            The configured WaveLab Mapbox access token must also be authorized to load that style.
+          </div>
+        </div>
+      </Accordion>
+
+      <Accordion icon={MapPinned} title="Studio Initial View" dark={dark}>
         <div className="grid gap-4">
           <SectionNote dark={dark}>
             Controls the editor map startup center and initial zoom. These values are the current Studio defaults unless changed by an admin.
