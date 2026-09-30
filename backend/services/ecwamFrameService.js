@@ -61,11 +61,11 @@ function parsePackageDate(packageDate) {
   return date;
 }
 
-export async function requiredEcwamSourceCycle(packageDate) {
+export async function requiredEcwamSourceCycle(packageDate, policyOverride = null) {
   const date = packageDate instanceof Date ? packageDate : parsePackageDate(packageDate);
   if (!date) return null;
 
-  const policy = await getWaveSourceCyclePolicy('ECWAM');
+  const policy = policyOverride || (await getWaveSourceCyclePolicy('ECWAM'));
   const normalizedPackageDate = [
     date.getUTCFullYear(),
     String(date.getUTCMonth() + 1).padStart(2, '0'),
