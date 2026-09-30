@@ -1,6 +1,7 @@
 export const GRATICULE_STORAGE_KEY = 'GRATICULE_SPACING';
-export const GRATICULE_SPACING_OPTIONS = Object.freeze([1, 2, 5, 10]);
+export const GRATICULE_OPACITY_STORAGE_KEY = 'GRATICULE_OPACITY';
 export const DEFAULT_GRATICULE_SPACING = 5;
+export const DEFAULT_GRATICULE_OPACITY = 0.5;
 
 const SOURCE_ID = 'wavelab-graticules-source';
 const MAIN_LAYER_ID = 'graticules';
@@ -10,12 +11,27 @@ const MAX_LATITUDE = 80;
 
 export function normalizeGraticuleSpacing(value, fallback = DEFAULT_GRATICULE_SPACING) {
   const spacing = Number(value);
-  return GRATICULE_SPACING_OPTIONS.includes(spacing) ? spacing : fallback;
+  if (!Number.isFinite(spacing)) return fallback;
+  return Math.min(10, Math.max(1, Math.round(spacing)));
+}
+
+export function normalizeGraticuleOpacity(value, fallback = DEFAULT_GRATICULE_OPACITY) {
+  const opacity = Number(value);
+  if (!Number.isFinite(opacity)) return fallback;
+  return Math.min(1, Math.max(0.1, opacity));
 }
 
 export function readStoredGraticuleSpacing(fallback = DEFAULT_GRATICULE_SPACING) {
   if (typeof window === 'undefined') return fallback;
   return normalizeGraticuleSpacing(window.localStorage.getItem(GRATICULE_STORAGE_KEY), fallback);
+}
+
+export function readStoredGraticuleOpacity(fallback = DEFAULT_GRATICULE_OPACITY) {
+  if (typeof window === 'undefined') return fallback;
+  return normalizeGraticuleOpacity(
+    window.localStorage.getItem(GRATICULE_OPACITY_STORAGE_KEY),
+    fallback
+  );
 }
 
 export function buildGraticuleFeatureCollection(spacing = DEFAULT_GRATICULE_SPACING) {
@@ -83,6 +99,7 @@ export function ensureGraticuleLayer(
   map,
   {
     spacing = DEFAULT_GRATICULE_SPACING,
+    opacity = DEFAULT_GRATICULE_OPACITY,
     visible = false,
     isDarkMode = false,
   } = {}
@@ -90,6 +107,7 @@ export function ensureGraticuleLayer(
   if (!map?.isStyleLoaded?.()) return;
 
   const normalizedSpacing = normalizeGraticuleSpacing(spacing);
+  const normalizedOpacity = normalizeGraticuleOpacity(opacity);
   ensureOwnedSource(map, normalizedSpacing);
 
   const visibility = visible ? 'visible' : 'none';
@@ -106,7 +124,7 @@ export function ensureGraticuleLayer(
       paint: {
         'line-color': blurColor,
         'line-width': 2.5,
-        'line-opacity': isDarkMode ? 0.42 : 0.5,
+        'line-opacity': Math.min(1, normalizedOpacity * 0.75),
         'line-blur': 1.2,
       },
     });
@@ -122,7 +140,7 @@ export function ensureGraticuleLayer(
       paint: {
         'line-color': lineColor,
         'line-width': 0.8,
-        'line-opacity': isDarkMode ? 0.52 : 0.42,
+        'line-opacity': normalizedOpacity,
       },
     });
   }
@@ -131,8 +149,15 @@ export function ensureGraticuleLayer(
   map.setLayoutProperty(MAIN_LAYER_ID, 'visibility', visibility);
   map.setPaintProperty(BLUR_LAYER_ID, 'line-color', blurColor);
   map.setPaintProperty(MAIN_LAYER_ID, 'line-color', lineColor);
+  map.setPaintProperty(
+    BLUR_LAYER_ID,
+    'line-opacity',
+    Math.min(1, normalizedOpacity * 0.75)
+  );
+  map.setPaintProperty(MAIN_LAYER_ID, 'line-opacity', normalizedOpacity);
 
   map.__wavelabGraticuleSpacing = normalizedSpacing;
+  map.__wavelabGraticuleOpacity = normalizedOpacity;
 }
 
 export function updateGraticuleSpacing(map, spacing) {
@@ -141,4 +166,21 @@ export function updateGraticuleSpacing(map, spacing) {
   source?.setData?.(buildGraticuleFeatureCollection(normalizedSpacing));
   if (map) map.__wavelabGraticuleSpacing = normalizedSpacing;
   return normalizedSpacing;
+}
+
+
+export function updateGraticuleOpacity(map, opacity) {
+  const normalizedOpacity = normalizeGraticuleOpacity(opacity);
+  if (map?.getLayer?.(BLUR_LAYER_ID)) {
+    map.setPaintProperty(
+      BLUR_LAYER_ID,
+      'line-opacity',
+      Math.min(1, normalizedOpacity * 0.75)
+    );
+  }
+  if (map?.getLayer?.(MAIN_LAYER_ID)) {
+    map.setPaintProperty(MAIN_LAYER_ID, 'line-opacity', normalizedOpacity);
+  }
+  if (map) map.__wavelabGraticuleOpacity = normalizedOpacity;
+  return normalizedOpacity;
 }
