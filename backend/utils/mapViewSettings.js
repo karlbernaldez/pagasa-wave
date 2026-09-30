@@ -29,11 +29,28 @@ export const DEFAULT_MAP_VIEW_SETTINGS = Object.freeze({
     right: 200,
   }),
   fitBoundsMaxZoom: 8,
+  mapStyle: Object.freeze({
+    preset: 'wavelab',
+    customStyleUrl: '',
+    themeMode: 'adaptive',
+  }),
 });
 
 const MAX_PADDING = 1000;
 const MIN_ZOOM = 0;
 const MAX_ZOOM = 24;
+const MAP_STYLE_PRESETS = new Set([
+  'wavelab',
+  'streets',
+  'outdoors',
+  'light',
+  'dark',
+  'satellite',
+  'satellite-streets',
+  'custom',
+]);
+const MAP_STYLE_THEME_MODES = new Set(['adaptive', 'native']);
+const MAPBOX_STYLE_URL_PATTERN = /^mapbox:\/\/styles\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
 const isPlainObject = (value) => Boolean(value && typeof value === 'object' && !Array.isArray(value));
 
@@ -58,6 +75,18 @@ export function normalizeMapViewSettings(input = {}) {
   const maxBoundsSource = isPlainObject(source.maxBounds) ? source.maxBounds : {};
   const fitBoundsSource = isPlainObject(source.fitBounds) ? source.fitBounds : {};
   const paddingSource = isPlainObject(source.padding) ? source.padding : {};
+  const mapStyleSource = isPlainObject(source.mapStyle) ? source.mapStyle : {};
+
+  const preset = MAP_STYLE_PRESETS.has(mapStyleSource.preset)
+    ? mapStyleSource.preset
+    : defaults.mapStyle.preset;
+  const themeMode = MAP_STYLE_THEME_MODES.has(mapStyleSource.themeMode)
+    ? mapStyleSource.themeMode
+    : defaults.mapStyle.themeMode;
+  const customStyleUrl =
+    typeof mapStyleSource.customStyleUrl === 'string'
+      ? mapStyleSource.customStyleUrl.trim()
+      : defaults.mapStyle.customStyleUrl;
 
   return {
     center: {
@@ -88,6 +117,11 @@ export function normalizeMapViewSettings(input = {}) {
       right: readNumber(paddingSource, 'right', defaults.padding.right),
     },
     fitBoundsMaxZoom: readNumber(source, 'fitBoundsMaxZoom', defaults.fitBoundsMaxZoom),
+    mapStyle: {
+      preset,
+      customStyleUrl,
+      themeMode,
+    },
   };
 }
 
@@ -126,6 +160,23 @@ export function validateMapViewSettings(settings = {}) {
   if (!isZoom(settings.fitBoundsMaxZoom)) errors.push('fitBoundsMaxZoom must be between 0 and 24.');
   if (settings.fitBoundsMaxZoom > settings.zoom.max) {
     errors.push('fitBoundsMaxZoom must be less than or equal to zoom.max.');
+  }
+
+  if (!MAP_STYLE_PRESETS.has(settings.mapStyle?.preset)) {
+    errors.push('mapStyle.preset is not supported.');
+  }
+
+  if (!MAP_STYLE_THEME_MODES.has(settings.mapStyle?.themeMode)) {
+    errors.push('mapStyle.themeMode must be either adaptive or native.');
+  }
+
+  const customStyleUrl = String(settings.mapStyle?.customStyleUrl || '').trim();
+  if (customStyleUrl && !MAPBOX_STYLE_URL_PATTERN.test(customStyleUrl)) {
+    errors.push('mapStyle.customStyleUrl must be a valid mapbox://styles/<username>/<style-id> URL.');
+  }
+
+  if (settings.mapStyle?.preset === 'custom' && !customStyleUrl) {
+    errors.push('mapStyle.customStyleUrl is required when the custom style preset is selected.');
   }
 
   return errors;
