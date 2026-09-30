@@ -36,6 +36,7 @@ import {
   getChartStyleMode,
   normalizeChartStyleMode,
 } from '@/features/projects/utils/chartStyleModes';
+import { printWindowWhenReady } from '@/features/projects/utils/printWindowWhenReady';
 
 const RECENT_FETCH_LIMIT = 80;
 const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
@@ -365,7 +366,7 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
   );
 }
 
-function writeChartSetPdfWindow({
+async function writeChartSetPdfWindow({
   printWindow,
   activeDate,
   activeStyleLabel,
@@ -454,11 +455,11 @@ function writeChartSetPdfWindow({
             <div class="generated">Generated ${escapeHtml(new Date().toLocaleString('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE }))}</div>
           </footer>
         </main>
-        <script>window.onload = () => { window.focus(); window.print(); };</script>
       </body>
     </html>
   `);
   printWindow.document.close();
+  await printWindowWhenReady(printWindow);
 }
 
 export default function Charts() {
@@ -680,7 +681,7 @@ export default function Charts() {
     }
 
     setExportState((prev) => ({ ...prev, error: '' }));
-    writeChartSetPdfWindow({
+    void writeChartSetPdfWindow({
       printWindow,
       activeDate,
       activeStyleLabel,
