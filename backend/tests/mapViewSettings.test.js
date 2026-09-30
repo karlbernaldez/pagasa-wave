@@ -51,6 +51,7 @@ test('map view settings accept a valid admin payload', () => {
     fitBounds: { west: 100, south: 4, east: 140, north: 22 },
     padding: { top: 40, right: 180, bottom: 60, left: 180 },
     fitBoundsMaxZoom: 9,
+    graticuleSpacing: 5,
     mapStyle: {
       lightStyleId: 'preset:light',
       darkStyleId: 'preset:dark',
@@ -61,6 +62,26 @@ test('map view settings accept a valid admin payload', () => {
 
   assert.deepEqual(parseMapViewSettingsPayload(payload), payload);
 });
+test('map view settings accept supported graticule spacing values', () => {
+  for (const spacing of [1, 2, 5, 10]) {
+    const parsed = parseMapViewSettingsPayload({ graticuleSpacing: spacing });
+    assert.equal(parsed.graticuleSpacing, spacing);
+  }
+});
+
+test('map view settings reject unsupported graticule spacing', () => {
+  assert.throws(
+    () => parseMapViewSettingsPayload({ graticuleSpacing: 3 }),
+    (error) => {
+      assert.equal(error.statusCode, 400);
+      assert.ok(
+        error.details.includes('graticuleSpacing must be one of 1, 2, 5, or 10 degrees.')
+      );
+      return true;
+    }
+  );
+});
+
 test('map view settings reject invalid zoom ordering', () => {
   assert.throws(
     () => parseMapViewSettingsPayload({
