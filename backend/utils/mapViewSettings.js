@@ -177,12 +177,8 @@ export function normalizeMapViewSettings(input = {}) {
     },
     fitBoundsMaxZoom: readNumber(source, 'fitBoundsMaxZoom', defaults.fitBoundsMaxZoom),
     mapStyle: {
-      lightStyleId: String(
-        migratedMapStyle.lightStyleId || defaults.mapStyle.lightStyleId
-      ).trim(),
-      darkStyleId: String(
-        migratedMapStyle.darkStyleId || defaults.mapStyle.darkStyleId
-      ).trim(),
+      lightStyleId: String(migratedMapStyle.lightStyleId || defaults.mapStyle.lightStyleId).trim(),
+      darkStyleId: String(migratedMapStyle.darkStyleId || defaults.mapStyle.darkStyleId).trim(),
       customStyles: migratedMapStyle.customStyles,
       themeMode,
     },
