@@ -14,6 +14,7 @@ import {
   buildWaveContourUrl,
   buildIconSize,
 } from './waveHelpers';
+import { findGraticuleInsertionLayer } from '@dashboards/forecaster/utils/layers/graticuleLayer';
 import { removeEcwamRasterCrossfade, syncEcwamRasterCrossfade } from './ecwamRasterCrossfade';
 import { removeWw3RasterCrossfade, syncWw3RasterCrossfade } from './ww3RasterCrossfade';
 
@@ -42,6 +43,14 @@ const SYMBOL_LAYER_MAP = [
 
 const rasterTileUrlBySource = new Map();
 const contourUrlBySource = new Map();
+
+const resolveWaveOverlayBeforeId = (map) =>
+  findGraticuleInsertionLayer(map?.getStyle?.()) || undefined;
+
+const positionLayer = (map, layerId, beforeId) => {
+  if (!beforeId || !map?.getLayer?.(layerId) || typeof map?.moveLayer !== 'function') return;
+  map.moveLayer(layerId, beforeId);
+};
 
 const removeLegacyLayers = (map) => {
   if (map.getLayer('wave-raster')) map.removeLayer('wave-raster');
@@ -77,7 +86,17 @@ const updateRasterTilesInPlace = (map, sourceId, tileUrl) => {
 
 const upsertRasterLayer = (
   map,
-  { model, theme, opacity, showRaster, themeChanged, forecastDate, chartType, forecastHour }
+  {
+    model,
+    theme,
+    opacity,
+    showRaster,
+    themeChanged,
+    forecastDate,
+    chartType,
+    forecastHour,
+    beforeId,
+  }
 ) => {
   const sourceId = `${WAVE_RASTER_SOURCE_PREFIX}${model}`;
   const layerId = `${WAVE_RASTER_LAYER_PREFIX}${model}`;
@@ -125,15 +144,20 @@ const upsertRasterLayer = (
         },
         layout: { visibility: showRaster ? 'visible' : 'none' },
       },
-      'graticules'
+      beforeId
     );
   } else {
     map.setPaintProperty(layerId, 'raster-opacity', opacity);
     map.setLayoutProperty(layerId, 'visibility', showRaster ? 'visible' : 'none');
   }
+
+  positionLayer(map, layerId, beforeId);
 };
 
-const syncWw3Raster = (map, { selectedModels, theme, opacity, showRaster, forecastPackage }) => {
+const syncWw3Raster = (
+  map,
+  { selectedModels, theme, opacity, showRaster, forecastPackage, beforeId }
+) => {
   const ww3Selected = selectedModels.includes('WW3');
 
   // Remove the pre-crossfade WW3 source if a deployment already created it.
@@ -161,10 +185,14 @@ const syncWw3Raster = (map, { selectedModels, theme, opacity, showRaster, foreca
     showRaster,
     scheme,
     bounds,
+    beforeId,
   });
 };
 
-const syncEcwamRaster = (map, { selectedModels, theme, opacity, showRaster, forecastPackage }) => {
+const syncEcwamRaster = (
+  map,
+  { selectedModels, theme, opacity, showRaster, forecastPackage, beforeId }
+) => {
   const ecwamSelected = selectedModels.includes('ECWAM');
   const frameReady = forecastPackage.ecwamFrameReady !== false;
 
@@ -206,6 +234,7 @@ export const syncWaveRasterLayers = (
 ) => {
   if (!map) return;
   const theme = isDarkMode ? 'dark' : 'light';
+  const beforeId = resolveWaveOverlayBeforeId(map);
   const selectedModels = getSelectedModels(models);
   const opacity = selectedModels.length > 0 ? Math.max(0.25, 1 / selectedModels.length) : 0;
   const regularModels = selectedModels.filter((model) => model !== 'ECWAM' && model !== 'WW3');
@@ -225,6 +254,7 @@ export const syncWaveRasterLayers = (
       themeChanged,
       forecastDate: forecastPackage.forecastDate,
       chartType: forecastPackage.chartType,
+      beforeId,
     });
   });
 
@@ -234,6 +264,7 @@ export const syncWaveRasterLayers = (
     opacity,
     showRaster,
     forecastPackage,
+    beforeId,
   });
 
   syncEcwamRaster(map, {
@@ -288,7 +319,7 @@ const updateContourDataInPlace = (map, sourceId, dataUrl) => {
   return true;
 };
 
-const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
+const upsertContourModel = (map, model, isDarkMode, forecastPackage, beforeId) => {
   const { sourceId, lineLayerId, labelLayerId } = contourIds(model);
   const dataUrl = buildWaveContourUrl({
     model,
@@ -339,7 +370,7 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
           'line-opacity-transition': { duration: ECWAM_CONTOUR_FADE_MS, delay: 0 },
         },
       },
-      'graticules'
+      beforeId
     );
   } else {
     map.setPaintProperty(lineLayerId, 'line-color', ['get', colorProperty]);
@@ -370,7 +401,7 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
           'text-opacity-transition': { duration: ECWAM_CONTOUR_FADE_MS, delay: 0 },
         },
       },
-      'graticules'
+      beforeId
     );
   } else {
     map.setPaintProperty(lineLayerId, 'line-color', ['get', colorProperty]);
@@ -385,6 +416,9 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
       delay: 0,
     });
   }
+
+  positionLayer(map, lineLayerId, beforeId);
+  positionLayer(map, labelLayerId, beforeId);
 };
 
 export const syncWaveContourLayers = (
@@ -395,6 +429,7 @@ export const syncWaveContourLayers = (
   forecastPackage = {}
 ) => {
   if (!map) return;
+  const beforeId = resolveWaveOverlayBeforeId(map);
   const selectedModels = getSelectedModels(models);
   const targetModels = new Set(
     showContours ? selectedModels.filter((model) => CONTOUR_MODELS.has(model)) : []
@@ -409,7 +444,7 @@ export const syncWaveContourLayers = (
     ) {
       return;
     }
-    upsertContourModel(map, model, isDarkMode, forecastPackage);
+    upsertContourModel(map, model, isDarkMode, forecastPackage, beforeId);
   });
 };
 
