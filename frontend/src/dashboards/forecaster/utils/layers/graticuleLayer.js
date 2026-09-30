@@ -172,8 +172,23 @@ function positionGraticuleLayers(map, beforeId) {
   }
 }
 
+function removeForeignGraticuleLayers(map) {
+  [BLUR_LAYER_ID, MAIN_LAYER_ID].forEach((layerId) => {
+    const layer = map.getLayer?.(layerId);
+    if (layer && layer.source !== SOURCE_ID) {
+      map.removeLayer(layerId);
+    }
+  });
+}
+
 function ensureOwnedSource(map, spacing) {
   const data = buildGraticuleFeatureCollection(spacing);
+
+  // A Mapbox style may define its own layers using the same public IDs.
+  // Always evict those foreign layers before checking our source so the
+  // WaveLab grid remains authoritative after refresh/style reload.
+  removeForeignGraticuleLayers(map);
+
   const source = map.getSource?.(SOURCE_ID);
 
   if (source?.setData) {
@@ -181,7 +196,7 @@ function ensureOwnedSource(map, spacing) {
     return;
   }
 
-  // Replace style-provided graticule layers with the WaveLab-owned dynamic grid.
+  // Remove stale WaveLab layers before recreating the source.
   safeRemoveLayer(map, MAIN_LAYER_ID);
   safeRemoveLayer(map, BLUR_LAYER_ID);
 
