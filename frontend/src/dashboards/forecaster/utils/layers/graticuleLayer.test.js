@@ -26,7 +26,7 @@ describe('graticuleLayer', () => {
     expect(normalizeGraticuleOpacity(2)).toBe(1);
   });
 
-  it('inserts below land when a vector land layer is available', () => {
+  it('inserts above water and below land when vector layers allow it', () => {
     const style = {
       layers: [
         { id: 'water', type: 'fill', 'source-layer': 'water' },
@@ -38,7 +38,19 @@ describe('graticuleLayer', () => {
     expect(findGraticuleInsertionLayer(style)).toBe('landcover');
   });
 
-  it('falls back to coastline, then labels, for styles without land fills', () => {
+  it('ignores land anchors below the final water layer', () => {
+    const style = {
+      layers: [
+        { id: 'landcover-low', type: 'fill', 'source-layer': 'landcover' },
+        { id: 'water', type: 'fill', 'source-layer': 'water' },
+        { id: 'labels', type: 'symbol' },
+      ],
+    };
+
+    expect(findGraticuleInsertionLayer(style)).toBe('labels');
+  });
+
+  it('falls back to coastline, then labels, for styles without usable land fills', () => {
     expect(
       findGraticuleInsertionLayer({
         layers: [
