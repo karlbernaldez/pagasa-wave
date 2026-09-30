@@ -221,6 +221,7 @@ const syncEcwamRaster = (
     showRaster,
     scheme,
     bounds,
+    beforeId,
   });
 };
 
