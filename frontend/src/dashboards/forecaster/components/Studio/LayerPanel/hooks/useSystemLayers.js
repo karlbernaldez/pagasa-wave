@@ -233,6 +233,22 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
   }, [graticuleSpacing, isDarkMode, mapRef, projectId]);
 
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+
+    const restoreGraticules = () => {
+      ensureGraticuleLayer(map, {
+        spacing: graticuleSpacing,
+        visible: utilitiesLayers.GRATICULES,
+        isDarkMode,
+      });
+    };
+
+    map.on('style.load', restoreGraticules);
+    return () => map.off('style.load', restoreGraticules);
+  }, [graticuleSpacing, isDarkMode, mapRef, utilitiesLayers.GRATICULES]);
+
+  useEffect(() => {
     if (!utilitiesLayers.PAGASA_NWP_RASTER) return;
     const map = mapRef.current;
     if (!map) return;
