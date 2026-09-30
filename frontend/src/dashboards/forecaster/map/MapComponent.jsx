@@ -292,10 +292,15 @@ const MapComponent = ({
           mapContainerRef.current.removeChild(mapContainerRef.current.firstChild);
         }
 
+        const initialStyleUrl = resolveStudioMapStyleUrl(
+          mapViewSettings,
+          isDarkModeRef.current
+        );
+
         map = new mapboxgl.Map({
           container: mapContainerRef.current,
           projection: 'mercator',
-          style: resolveStudioMapStyleUrl(mapViewSettings),
+          style: initialStyleUrl,
           center: lngLatPair(mapViewSettings.center),
           zoom: mapViewSettings.zoom.default,
           minZoom: mapViewSettings.zoom.min,
@@ -303,6 +308,8 @@ const MapComponent = ({
           preserveDrawingBuffer: true,
           maxBounds: boundsPair(mapViewSettings.maxBounds),
         });
+
+        map.__wavelabStyleUrl = initialStyleUrl;
 
         const resizeMap = () => map.resize();
         resizeObserver =
@@ -397,20 +404,31 @@ const MapComponent = ({
     };
   }, []);
 
-  // Theme updates (NO style reload)
+  // Theme updates can select a different configured Mapbox style.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return undefined;
 
-    if (mapViewSettingsRef.current.mapStyle?.themeMode === 'native') {
+    const settings = mapViewSettingsRef.current;
+    const nextStyleUrl = resolveStudioMapStyleUrl(settings, isDarkModeRef.current);
+    const currentStyleUrl = map.getStyle()?.metadata?.['mapbox:origin'] || null;
+    const shouldSwitchStyle =
+      Boolean(nextStyleUrl) &&
+      currentStyleUrl !== nextStyleUrl &&
+      map.__wavelabStyleUrl !== nextStyleUrl;
+
+    if (shouldSwitchStyle) {
+      map.__wavelabStyleUrl = nextStyleUrl;
+      map.setStyle(nextStyleUrl);
+      return undefined;
+    }
+
+    if (settings.mapStyle?.themeMode === 'native') {
       return undefined;
     }
 
     const applyCurrentTheme = () => applyTheme(map, isDarkModeRef.current);
 
-    // Apply immediately when possible, then once more when Mapbox becomes idle.
-    // The idle pass is important on refresh because style/source work can finish
-    // after the initial load and overwrite earlier paint changes.
     applyCurrentTheme();
 
     if (themeIdleHandlerRef.current) {
