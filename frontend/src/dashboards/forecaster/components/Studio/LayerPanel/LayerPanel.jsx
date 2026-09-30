@@ -1,7 +1,6 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Layers, ChevronDown, Plus, Menu, Info, X, ChevronRight } from 'lucide-react';
 import Swal from 'sweetalert2';
-import dayjs from 'dayjs';
 
 import { addGeoJsonLayer, removeLayer, removeFeature, setActiveLayerOnMap, toggleLayerVisibility } from '@dashboards/forecaster/utils/layers/index';
 import { handleCreateProject as createProjectHandler } from '@dashboards/forecaster/utils/ProjectUtils';
@@ -22,6 +21,7 @@ import SharedModals, { createDeleteHandler } from '../Menu/SharedModals';
 import ShareProjectModal from '@/components/ui/modals/ShareProjectModal';
 import { buildMenuSections } from '../Menu/constants/menuConfig';
 import { LayerStylePanel } from '@dashboards/forecaster/components/Studio/LayerStylePanel/LayerStylePanel';
+import { getLatestMapInstance } from '@dashboards/forecaster/map/helpers/mapInstance';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -39,21 +39,16 @@ const DOCK_WIDTH = 'w-[min(23rem,calc(100vw-1rem))]';
 const FLOATING_PANEL_WIDTH = 'min(23rem, calc(100vw - 1rem))';
 const STYLE_PANEL_MAX_HEIGHT = 'clamp(16rem, calc(56vh - 3rem), 25rem)';
 const ANNOTATION_LAYERS_MAX_HEIGHT = 'calc(100vh - 5.75rem)';
-const STYLE_PANEL_RESET_KEY = 'annotation-style-right-default-v2';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-function useFloatingPanelDrag(resetKey) {
+function useFloatingPanelDrag() {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const dragStateRef = useRef(null);
 
   const resetPosition = useCallback(() => {
     setOffset({ x: 0, y: 0 });
   }, []);
-
-  useEffect(() => {
-    resetPosition();
-  }, [resetKey, resetPosition]);
 
   const startDrag = useCallback((event) => {
     if (event.button !== 0 && event.pointerType === 'mouse') return;
@@ -149,7 +144,6 @@ const StudioPanel = ({
   const [mapNotReady, setMapNotReady] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, layer: null });
   const fileInputRef = useRef();
-  const map = mapRef?.current ?? null;
 
   // ── Project / modal state ────────────────────────────────────────────────────
   const [activeMenu, setActiveMenu] = useState(null);
@@ -200,13 +194,18 @@ const StudioPanel = ({
   // ── GeoJSON upload ───────────────────────────────────────────────────────────
   const handleGeoJSONUpload = (e) => {
     const file = e.target.files[0];
+    const map = getLatestMapInstance();
     if (!file || !map) return;
     addGeoJsonLayer(map, file, layers, setLayers);
   };
 
   const addLayer = () => {
     if (readOnly) return;
-    if (!map) { setMapNotReady(true); return; }
+    const map = getLatestMapInstance();
+    if (!map) {
+      setMapNotReady(true);
+      return;
+    }
     fileInputRef.current.value = null;
     fileInputRef.current.click();
   };
@@ -226,10 +225,8 @@ const StudioPanel = ({
     () => Boolean(activeLayerId && layers.some((layer) => layer.id === activeLayerId)),
     [activeLayerId, layers]
   );
-  const annotationStyleDrag = useFloatingPanelDrag(
-    hasSelectedAnnotationLayer ? `${STYLE_PANEL_RESET_KEY}-${activeLayerId}` : STYLE_PANEL_RESET_KEY
-  );
-  const annotationLayersDrag = useFloatingPanelDrag('annotation-layers-right-default-v1');
+  const annotationStyleDrag = useFloatingPanelDrag();
+  const annotationLayersDrag = useFloatingPanelDrag();
   const annotationStylePanelStyle = useMemo(
     () => ({
       ...annotationStyleDrag.panelStyle,
@@ -270,7 +267,7 @@ const StudioPanel = ({
     if (!layer) return;
     try {
       await removeFeature(layer);
-      removeLayer(map, layer, setLayers, draw);
+      removeLayer(getLatestMapInstance(), layer, setLayers, draw);
     } catch (error) {
       console.error('Failed to delete layer:', error);
       Swal.fire('Error', 'Could not delete layer from server.', 'error');
@@ -571,7 +568,9 @@ const StudioPanel = ({
           activeLayerId={activeLayerId}
           activeMapboxLayerIds={activeMapboxLayerIds}
           isDarkMode={isDarkMode}
-          onToggleVisibility={(layer) => toggleLayerVisibility(map, layer, setLayers)}
+          onToggleVisibility={(layer) =>
+            toggleLayerVisibility(getLatestMapInstance(), layer, setLayers)
+          }
           panelClassName="min-h-0"
           controlsClassName="max-h-none"
           panelStyle={annotationStylePanelStyle}
