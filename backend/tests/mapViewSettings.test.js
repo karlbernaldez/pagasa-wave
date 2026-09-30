@@ -34,7 +34,12 @@ test('map view settings normalize partial payloads with Studio defaults', () => 
       ...DEFAULT_MAP_VIEW_SETTINGS.padding,
       left: 120,
     },
-    mapStyle: { ...DEFAULT_MAP_VIEW_SETTINGS.mapStyle },
+    mapStyle: {
+      lightStyleId: DEFAULT_MAP_VIEW_SETTINGS.mapStyle.lightStyleId,
+      darkStyleId: DEFAULT_MAP_VIEW_SETTINGS.mapStyle.darkStyleId,
+      customStyles: [],
+      themeMode: DEFAULT_MAP_VIEW_SETTINGS.mapStyle.themeMode,
+    },
   });
 });
 
@@ -47,15 +52,15 @@ test('map view settings accept a valid admin payload', () => {
     padding: { top: 40, right: 180, bottom: 60, left: 180 },
     fitBoundsMaxZoom: 9,
     mapStyle: {
-      preset: 'dark',
-      customStyleUrl: '',
+      lightStyleId: 'preset:light',
+      darkStyleId: 'preset:dark',
+      customStyles: [],
       themeMode: 'native',
     },
   };
 
   assert.deepEqual(parseMapViewSettingsPayload(payload), payload);
 });
-
 test('map view settings reject invalid zoom ordering', () => {
   assert.throws(
     () => parseMapViewSettingsPayload({
@@ -113,19 +118,30 @@ test('saved invalid map view settings fall back to Studio defaults on read', () 
   assert.deepEqual(buildMapViewSettingsResponse(savedBadData), DEFAULT_MAP_VIEW_SETTINGS);
 });
 
-
-test('map view settings accept a valid custom Mapbox style URL', () => {
+test('map view settings accept multiple reusable custom Mapbox styles', () => {
   const parsed = parseMapViewSettingsPayload({
     mapStyle: {
-      preset: 'custom',
-      customStyleUrl: 'mapbox://styles/example-user/example-style',
+      lightStyleId: 'custom:day',
+      darkStyleId: 'custom:night',
+      customStyles: [
+        {
+          id: 'day',
+          name: 'Operational Day',
+          url: 'mapbox://styles/example-user/day-style',
+        },
+        {
+          id: 'night',
+          name: 'Operational Night',
+          url: 'mapbox://styles/example-user/night-style',
+        },
+      ],
       themeMode: 'native',
     },
   });
 
-  assert.equal(parsed.mapStyle.preset, 'custom');
-  assert.equal(parsed.mapStyle.customStyleUrl, 'mapbox://styles/example-user/example-style');
-  assert.equal(parsed.mapStyle.themeMode, 'native');
+  assert.equal(parsed.mapStyle.customStyles.length, 2);
+  assert.equal(parsed.mapStyle.lightStyleId, 'custom:day');
+  assert.equal(parsed.mapStyle.darkStyleId, 'custom:night');
 });
 
 test('map view settings reject malformed custom Mapbox style URLs', () => {
@@ -133,8 +149,15 @@ test('map view settings reject malformed custom Mapbox style URLs', () => {
     () =>
       parseMapViewSettingsPayload({
         mapStyle: {
-          preset: 'custom',
-          customStyleUrl: 'https://example.com/not-a-mapbox-style',
+          lightStyleId: 'custom:bad',
+          darkStyleId: 'preset:dark',
+          customStyles: [
+            {
+              id: 'bad',
+              name: 'Bad style',
+              url: 'https://example.com/not-a-mapbox-style',
+            },
+          ],
           themeMode: 'adaptive',
         },
       }),
@@ -142,7 +165,30 @@ test('map view settings reject malformed custom Mapbox style URLs', () => {
       assert.equal(error.statusCode, 400);
       assert.ok(
         error.details.includes(
-          'mapStyle.customStyleUrl must be a valid mapbox://styles/<username>/<style-id> URL.'
+          'mapStyle.customStyles[0].url must be a valid mapbox://styles/<username>/<style-id> URL.'
+        )
+      );
+      return true;
+    }
+  );
+});
+
+test('map view settings reject selection of a missing custom style', () => {
+  assert.throws(
+    () =>
+      parseMapViewSettingsPayload({
+        mapStyle: {
+          lightStyleId: 'custom:missing',
+          darkStyleId: 'preset:wavelab',
+          customStyles: [],
+          themeMode: 'adaptive',
+        },
+      }),
+    (error) => {
+      assert.equal(error.statusCode, 400);
+      assert.ok(
+        error.details.includes(
+          'mapStyle.lightStyleId references a custom style that does not exist.'
         )
       );
       return true;
