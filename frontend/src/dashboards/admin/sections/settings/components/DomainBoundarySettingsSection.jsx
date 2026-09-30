@@ -125,10 +125,7 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
     );
 
   const addCoordinateRow = () =>
-    setCoordinateRows((rows) => [
-      ...rows,
-      { id: createSettingsId(), longitude: '', latitude: '' },
-    ]);
+    setCoordinateRows((rows) => [...rows, { id: createSettingsId(), longitude: '', latitude: '' }]);
 
   const removeCoordinateRow = (id) =>
     setCoordinateRows((rows) => (rows.length <= 3 ? rows : rows.filter((row) => row.id !== id)));

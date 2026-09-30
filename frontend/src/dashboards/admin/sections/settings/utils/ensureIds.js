@@ -1,8 +1,7 @@
 // utils/ensureIds.js
 
 export const createSettingsId = () =>
-  globalThis.crypto?.randomUUID?.() ??
-  `id_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+  globalThis.crypto?.randomUUID?.() ?? `id_${Math.random().toString(16).slice(2)}_${Date.now()}`;
 
 const withId = (item) => {
   if (!item) return { id: createSettingsId() };
