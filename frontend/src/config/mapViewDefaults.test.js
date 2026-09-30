@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_MAP_STYLE_URL,
   DEFAULT_STUDIO_MAP_VIEW,
   normalizeStudioMapViewSettings,
+  resolveStudioMapStyleUrl,
 } from './mapViewDefaults';
 
 describe('normalizeStudioMapViewSettings', () => {
@@ -14,6 +16,7 @@ describe('normalizeStudioMapViewSettings', () => {
       fitBounds: { ...DEFAULT_STUDIO_MAP_VIEW.fitBounds },
       padding: { ...DEFAULT_STUDIO_MAP_VIEW.padding },
       fitBoundsMaxZoom: DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom,
+      mapStyle: { ...DEFAULT_STUDIO_MAP_VIEW.mapStyle },
     });
   });
 
@@ -84,5 +87,24 @@ describe('normalizeStudioMapViewSettings', () => {
       left: 50,
     });
     expect(settings.fitBoundsMaxZoom).toBe(DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom);
+    expect(settings.mapStyle).toEqual({ ...DEFAULT_STUDIO_MAP_VIEW.mapStyle });
+  });
+
+  it('resolves preset and custom Mapbox styles', () => {
+    expect(resolveStudioMapStyleUrl()).toBe(DEFAULT_MAP_STYLE_URL);
+    expect(
+      resolveStudioMapStyleUrl({
+        mapStyle: { preset: 'dark', customStyleUrl: '', themeMode: 'native' },
+      })
+    ).toBe('mapbox://styles/mapbox/dark-v11');
+    expect(
+      resolveStudioMapStyleUrl({
+        mapStyle: {
+          preset: 'custom',
+          customStyleUrl: 'mapbox://styles/example/custom-style',
+          themeMode: 'native',
+        },
+      })
+    ).toBe('mapbox://styles/example/custom-style');
   });
 });
