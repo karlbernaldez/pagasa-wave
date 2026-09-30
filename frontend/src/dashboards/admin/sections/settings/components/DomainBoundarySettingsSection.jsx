@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Field } from './ui/FormFields';
 import { inputCls, labelCls } from './ui/formFieldStyles';
 import { boundaryFileToGeoJson, coordinatesTextToGeoJson } from '../utils/domainBoundaryImport';
+import { createSettingsId } from '../utils/ensureIds';
 
 const DEFAULT_BOUNDARY = {
   enabled: false,
@@ -98,10 +99,10 @@ function StatusMessage({ status, dark }) {
 export default function DomainBoundarySettingsSection({ settings = {}, setSettings, dark }) {
   const boundary = { ...DEFAULT_BOUNDARY, ...(settings.publishedDomainBoundary || {}) };
   const [coordinateRows, setCoordinateRows] = useState([
-    { id: crypto.randomUUID(), longitude: '', latitude: '' },
-    { id: crypto.randomUUID(), longitude: '', latitude: '' },
-    { id: crypto.randomUUID(), longitude: '', latitude: '' },
-    { id: crypto.randomUUID(), longitude: '', latitude: '' },
+    { id: createSettingsId(), longitude: '', latitude: '' },
+    { id: createSettingsId(), longitude: '', latitude: '' },
+    { id: createSettingsId(), longitude: '', latitude: '' },
+    { id: createSettingsId(), longitude: '', latitude: '' },
   ]);
   const [importStatus, setImportStatus] = useState(null);
   const [sourceMode, setSourceMode] = useState('manual');
@@ -126,7 +127,7 @@ export default function DomainBoundarySettingsSection({ settings = {}, setSettin
   const addCoordinateRow = () =>
     setCoordinateRows((rows) => [
       ...rows,
-      { id: crypto.randomUUID(), longitude: '', latitude: '' },
+      { id: createSettingsId(), longitude: '', latitude: '' },
     ]);
 
   const removeCoordinateRow = (id) =>
