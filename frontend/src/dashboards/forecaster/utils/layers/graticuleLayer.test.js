@@ -46,7 +46,7 @@ describe('graticuleLayer', () => {
 
     expect(
       isForeignGraticuleLayer({
-        id: 'graticules',
+        id: 'wavelab-graticules',
         type: 'line',
         source: 'wavelab-graticules-source',
       })
