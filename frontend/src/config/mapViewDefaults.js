@@ -60,7 +60,6 @@ export const DEFAULT_STUDIO_MAP_VIEW = Object.freeze({
     right: 200,
   }),
   fitBoundsMaxZoom: 8,
-  graticuleSpacing: 5,
   mapStyle: Object.freeze({
     lightStyleId: 'preset:wavelab',
     darkStyleId: 'preset:wavelab',
@@ -255,9 +254,6 @@ export function normalizeStudioMapViewSettings(settings = {}) {
     fitBounds,
     padding: normalizePadding(settings.padding, defaults.padding),
     fitBoundsMaxZoom: fitBoundsMaxZoom <= zoom.max ? fitBoundsMaxZoom : defaults.fitBoundsMaxZoom,
-    graticuleSpacing: [1, 2, 5, 10].includes(Number(settings.graticuleSpacing))
-      ? Number(settings.graticuleSpacing)
-      : defaults.graticuleSpacing,
     mapStyle: normalizeMapStyle(settings.mapStyle, defaults.mapStyle),
   };
 }
