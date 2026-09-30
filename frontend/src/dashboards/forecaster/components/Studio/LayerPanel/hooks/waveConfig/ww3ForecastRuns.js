@@ -72,6 +72,14 @@ export const getWW3ForecastHours = (chartType) => WW3_CHART_WINDOWS[chartWindowK
 
 export const getECWAMForecastHours = (chartType) => ECWAM_CHART_WINDOWS[chartWindowKey(chartType)];
 
+const chartDefaultHour = (chartType) => {
+  const key = chartWindowKey(chartType);
+  if (key === '48h') return 48;
+  if (key === '36h') return 36;
+  if (key === '24h') return 24;
+  return 0;
+};
+
 const resolveOffset = (chartType) => {
   const normalized = normalizeChartType(chartType);
   const directOffset = WW3_FORECAST_OFFSETS[normalized];
@@ -127,16 +135,33 @@ const shiftDate = (date, days) => {
 const formatCompactDate = (date) =>
   [date.getUTCFullYear(), pad2(date.getUTCMonth() + 1), pad2(date.getUTCDate())].join('');
 
+const parseSourceCycle = (sourceCycle) => {
+  const match = String(sourceCycle || '').match(/^(\d{4})(\d{2})(\d{2})(\d{2})$/);
+  if (!match) return null;
+
+  const parsed = new Date(
+    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]))
+  );
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 export const formatWW3PackageDate = (forecastDate) => {
   const date = parseForecastDate(forecastDate);
   return `${date.getUTCFullYear()}${MONTH_TOKENS[date.getUTCMonth()]}${pad2(date.getUTCDate())}`;
 };
 
-export const resolveWW3ForecastRun = ({ forecastDate, chartType, forecastHour } = {}) => {
+export const resolveWW3ForecastRun = ({
+  forecastDate,
+  chartType,
+  forecastHour,
+  sourceCycle,
+} = {}) => {
   const packageBaseDate = parseForecastDate(forecastDate);
   const packageDate = formatWW3PackageDate(forecastDate);
-  const analysisTime = shiftDate(packageBaseDate, -1);
-  analysisTime.setUTCHours(18, 0, 0, 0);
+  const publishedAnalysisTime = parseSourceCycle(sourceCycle);
+  const legacyAnalysisTime = shiftDate(packageBaseDate, -1);
+  legacyAnalysisTime.setUTCHours(18, 0, 0, 0);
+  const analysisTime = publishedAnalysisTime || legacyAnalysisTime;
   const explicitHour = normalizeForecastHour(forecastHour);
 
   let validTime;
@@ -145,6 +170,9 @@ export const resolveWW3ForecastRun = ({ forecastDate, chartType, forecastHour } 
   if (explicitHour !== null) {
     validTime = new Date(analysisTime.getTime() + explicitHour * 60 * 60 * 1000);
     resolvedForecastHour = explicitHour;
+  } else if (publishedAnalysisTime) {
+    resolvedForecastHour = chartDefaultHour(chartType);
+    validTime = new Date(analysisTime.getTime() + resolvedForecastHour * 60 * 60 * 1000);
   } else {
     const offset = resolveOffset(chartType);
     validTime = shiftDate(packageBaseDate, offset.days);
@@ -165,8 +193,13 @@ export const resolveWW3ForecastRun = ({ forecastDate, chartType, forecastHour } 
   };
 };
 
-export const resolveECWAMForecastRun = ({ forecastDate, chartType, forecastHour } = {}) => {
-  const resolved = resolveWW3ForecastRun({ forecastDate, chartType, forecastHour });
+export const resolveECWAMForecastRun = ({
+  forecastDate,
+  chartType,
+  forecastHour,
+  sourceCycle,
+} = {}) => {
+  const resolved = resolveWW3ForecastRun({ forecastDate, chartType, forecastHour, sourceCycle });
   return {
     runTag: resolved.runTag,
     runDateTime: resolved.runDateTime,

@@ -139,7 +139,7 @@ const syncWw3Raster = (map, { selectedModels, theme, opacity, showRaster, foreca
   // Remove the pre-crossfade WW3 source if a deployment already created it.
   removeRasterSource(map, `${WAVE_RASTER_SOURCE_PREFIX}WW3`);
 
-  if (!ww3Selected) {
+  if (!ww3Selected || !forecastPackage.ww3SourceCycle) {
     removeWw3RasterCrossfade(map);
     return;
   }
@@ -151,6 +151,7 @@ const syncWw3Raster = (map, { selectedModels, theme, opacity, showRaster, foreca
     forecastDate: forecastPackage.forecastDate,
     chartType: forecastPackage.chartType,
     forecastHour: forecastPackage.ww3ForecastHour,
+    sourceCycle: forecastPackage.ww3SourceCycle,
   });
   const { scheme, bounds } = getRasterConfig('WW3');
 
@@ -170,7 +171,7 @@ const syncEcwamRaster = (map, { selectedModels, theme, opacity, showRaster, fore
   // Remove the pre-crossfade ECWAM source if a deployment already created it.
   removeRasterSource(map, `${WAVE_RASTER_SOURCE_PREFIX}ECWAM`);
 
-  if (!ecwamSelected || !frameReady) {
+  if (!ecwamSelected || !frameReady || !forecastPackage.ecwamSourceCycle) {
     removeEcwamRasterCrossfade(map);
     return;
   }
@@ -182,6 +183,7 @@ const syncEcwamRaster = (map, { selectedModels, theme, opacity, showRaster, fore
     forecastDate: forecastPackage.forecastDate,
     chartType: forecastPackage.chartType,
     forecastHour: forecastPackage.ecwamForecastHour,
+    sourceCycle: forecastPackage.ecwamSourceCycle,
   });
   const { scheme, bounds } = getRasterConfig('ECWAM');
 
@@ -298,6 +300,12 @@ const upsertContourModel = (map, model, isDarkMode, forecastPackage) => {
         : model === 'WW3'
           ? forecastPackage.ww3ForecastHour
           : undefined,
+    sourceCycle:
+      model === 'ECWAM'
+        ? forecastPackage.ecwamSourceCycle
+        : model === 'WW3'
+          ? forecastPackage.ww3SourceCycle
+          : undefined,
   });
   if (!dataUrl) {
     removeContourModel(map, model);
@@ -394,7 +402,13 @@ export const syncWaveContourLayers = (
 
   removeStaleContourSources(map, targetModels);
   targetModels.forEach((model) => {
-    if (model === 'ECWAM' && forecastPackage.ecwamFrameReady === false) return;
+    if (model === 'WW3' && !forecastPackage.ww3SourceCycle) return;
+    if (
+      model === 'ECWAM' &&
+      (forecastPackage.ecwamFrameReady === false || !forecastPackage.ecwamSourceCycle)
+    ) {
+      return;
+    }
     upsertContourModel(map, model, isDarkMode, forecastPackage);
   });
 };
