@@ -6,6 +6,8 @@ import { addHimawariLayer } from '@dashboards/forecaster/map/layers/satelliteLay
 import { addWindSource, addWindLayer } from '@dashboards/forecaster/map/layers/windLayer';
 import { setGlobalMapLoaded, setGlobalSourceIds } from '@dashboards/forecaster/map/helpers/mapGlobalState';
 import {
+  WAVELAB_GRATICULE_BLUR_LAYER_ID,
+  WAVELAB_GRATICULE_LAYER_ID,
   ensureGraticuleLayer,
   readStoredGraticulePreferences,
 } from '@dashboards/forecaster/utils/layers/graticuleLayer';
@@ -21,7 +23,7 @@ const STATIONARY_SEGMENT_LENGTH = 26;
 const STATIONARY_SEGMENT_COLORS = [COLORS.warm, COLORS.cold];
 const STATIONARY_SEGMENT_SYMBOLS = [{ kind: 'semicircle', color: COLORS.warm, side: -1 }, { kind: 'triangle', color: COLORS.cold, side: 1 }];
 const renderedAnnotationIds = new Set();
-const LAYER_VISIBILITY_CONFIG = [{ key: 'PAR', ids: ['PAR', 'PAR_dash'] }, { key: 'SATELLITE', ids: ['Satellite'] }, { key: 'TCID', ids: ['TCID'] }, { key: 'TCAD', ids: ['TCAD'] }, { key: 'SHIPPING_ZONE', ids: ['SHIPPING_ZONE_OUTLINE', 'SHIPPING_ZONE_LABELS'] }, { key: 'GRATICULES', ids: ['graticules', 'graticules_blur'] }];
+const LAYER_VISIBILITY_CONFIG = [{ key: 'PAR', ids: ['PAR', 'PAR_dash'] }, { key: 'SATELLITE', ids: ['Satellite'] }, { key: 'TCID', ids: ['TCID'] }, { key: 'TCAD', ids: ['TCAD'] }, { key: 'SHIPPING_ZONE', ids: ['SHIPPING_ZONE_OUTLINE', 'SHIPPING_ZONE_LABELS'] }, { key: 'GRATICULES', ids: [WAVELAB_GRATICULE_LAYER_ID, WAVELAB_GRATICULE_BLUR_LAYER_ID] }];
 const FRONT_STYLES = {
   cold: { color: COLORS.cold, lineWidth: 2.5, spacing: 40, symbols: [{ kind: 'triangle', color: COLORS.cold, side: -1 }] },
   warm: { color: COLORS.warm, lineWidth: 2.5, spacing: 40, symbols: [{ kind: 'semicircle', color: COLORS.warm, side: -1 }] },
