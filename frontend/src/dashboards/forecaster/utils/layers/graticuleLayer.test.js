@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildGraticuleFeatureCollection,
+  findGraticuleInsertionLayer,
   normalizeGraticuleOpacity,
   normalizeGraticuleSpacing,
 } from './graticuleLayer';
@@ -23,6 +24,47 @@ describe('graticuleLayer', () => {
     expect(normalizeGraticuleOpacity(1)).toBe(1);
     expect(normalizeGraticuleOpacity(0)).toBe(0.1);
     expect(normalizeGraticuleOpacity(2)).toBe(1);
+  });
+
+  it('inserts below land when a vector land layer is available', () => {
+    const style = {
+      layers: [
+        { id: 'water', type: 'fill', 'source-layer': 'water' },
+        { id: 'landcover', type: 'fill', 'source-layer': 'landcover' },
+        { id: 'place-labels', type: 'symbol' },
+      ],
+    };
+
+    expect(findGraticuleInsertionLayer(style)).toBe('landcover');
+  });
+
+  it('falls back to coastline, then labels, for styles without land fills', () => {
+    expect(
+      findGraticuleInsertionLayer({
+        layers: [
+          { id: 'base-raster', type: 'raster' },
+          { id: 'coastline', type: 'line' },
+          { id: 'labels', type: 'symbol' },
+        ],
+      })
+    ).toBe('coastline');
+
+    expect(
+      findGraticuleInsertionLayer({
+        layers: [
+          { id: 'base-raster', type: 'raster' },
+          { id: 'labels', type: 'symbol' },
+        ],
+      })
+    ).toBe('labels');
+  });
+
+  it('returns no insertion anchor when a style exposes no suitable layer', () => {
+    expect(
+      findGraticuleInsertionLayer({
+        layers: [{ id: 'base-raster', type: 'raster' }],
+      })
+    ).toBeNull();
   });
 
   it('builds a denser grid for smaller spacing', () => {
