@@ -232,18 +232,30 @@ export default function PublishedForecastPage() {
   const [copied, setCopied] = useState(false);
   const [archiveState, setArchiveState] = useState({ loading: false, error: '' });
   const [exportState, setExportState] = useState({ loading: '', error: '' });
-  const [isExportReady, setIsExportReady] = useState(false);
+  const [exportReadyKey, setExportReadyKey] = useState('');
 
   const activeStyleMode = normalizeChartStyleMode(activeChartType);
   const activeStyle = getChartStyleMode(activeStyleMode);
   const showStaffInfo = publicSettings.showPublicStaffInfo !== false;
+  const exportReadinessKey = useMemo(
+    () =>
+      [
+        project?._id || '',
+        activeStyleMode,
+        isDarkMode ? 'dark' : 'light',
+        mapBoundsLabel,
+        JSON.stringify(featureCollection || null),
+        JSON.stringify(raster || null),
+      ].join('|'),
+    [activeStyleMode, featureCollection, isDarkMode, mapBoundsLabel, project?._id, raster]
+  );
+  const isExportReady = Boolean(exportReadinessKey && exportReadyKey === exportReadinessKey);
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadChart() {
       setState({ loading: true, error: '', data: null });
-      setIsExportReady(false);
       try {
         const data = await fetchPublicPublishedChartOutput(projectId, { signal: controller.signal, theme: isDarkMode ? 'dark' : 'light' });
         setState({ loading: false, error: '', data });
@@ -270,7 +282,6 @@ export default function PublishedForecastPage() {
     : `Preparing PDF and image exports using ${mapBoundsLabel}…`;
 
   useEffect(() => {
-    setIsExportReady(false);
     if (!project?._id) return undefined;
 
     let cancelled = false;
@@ -281,7 +292,7 @@ export default function PublishedForecastPage() {
       if (!exportMap?.isReady || !exportMap?.getDataUrl) return false;
       try {
         if (!exportMap.getDataUrl()) return false;
-        setIsExportReady(true);
+        setExportReadyKey(exportReadinessKey);
         return true;
       } catch {
         return false;
@@ -298,7 +309,7 @@ export default function PublishedForecastPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [activeStyleMode, featureCollection, isDarkMode, mapBoundsLabel, project?._id, raster]);
+  }, [exportReadinessKey, project?._id]);
 
   const getExportMapDataUrl = () => {
     if (!isExportReady) throw new Error('The export map is still preparing the configured public chart bounds. Please wait until exports are ready.');
