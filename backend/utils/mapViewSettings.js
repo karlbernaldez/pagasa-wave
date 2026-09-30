@@ -30,8 +30,9 @@ export const DEFAULT_MAP_VIEW_SETTINGS = Object.freeze({
   }),
   fitBoundsMaxZoom: 8,
   mapStyle: Object.freeze({
-    preset: 'wavelab',
-    customStyleUrl: '',
+    lightStyleId: 'preset:wavelab',
+    darkStyleId: 'preset:wavelab',
+    customStyles: Object.freeze([]),
     themeMode: 'adaptive',
   }),
 });
@@ -47,7 +48,6 @@ const MAP_STYLE_PRESETS = new Set([
   'dark',
   'satellite',
   'satellite-streets',
-  'custom',
 ]);
 const MAP_STYLE_THEME_MODES = new Set(['adaptive', 'native']);
 const MAPBOX_STYLE_URL_PATTERN = /^mapbox:\/\/styles\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
@@ -76,17 +76,58 @@ export function normalizeMapViewSettings(input = {}) {
   const fitBoundsSource = isPlainObject(source.fitBounds) ? source.fitBounds : {};
   const paddingSource = isPlainObject(source.padding) ? source.padding : {};
   const mapStyleSource = isPlainObject(source.mapStyle) ? source.mapStyle : {};
+  const rawCustomStyles = Array.isArray(mapStyleSource.customStyles)
+    ? mapStyleSource.customStyles
+    : [];
+  const customStyles = rawCustomStyles.map((style) => ({
+    id: String(style?.id || '').trim(),
+    name: String(style?.name || '').trim(),
+    url: String(style?.url || '').trim(),
+  }));
 
-  const preset = MAP_STYLE_PRESETS.has(mapStyleSource.preset)
-    ? mapStyleSource.preset
-    : defaults.mapStyle.preset;
+  // Backward compatibility with the temporary single/custom style shapes.
+  let legacyStyleId = null;
+  if (MAP_STYLE_PRESETS.has(mapStyleSource.preset)) {
+    legacyStyleId = `preset:${mapStyleSource.preset}`;
+  } else if (typeof mapStyleSource.customStyleUrl === 'string' && mapStyleSource.customStyleUrl.trim()) {
+    customStyles.push({
+      id: 'legacy-custom',
+      name: 'Custom Mapbox Style',
+      url: mapStyleSource.customStyleUrl.trim(),
+    });
+    legacyStyleId = 'custom:legacy-custom';
+  }
+
+  const resolveLegacyThemeStyleId = (value) => {
+    if (!isPlainObject(value)) return null;
+    if (MAP_STYLE_PRESETS.has(value.preset)) return `preset:${value.preset}`;
+    if (value.preset === 'custom' && typeof value.customStyleUrl === 'string' && value.customStyleUrl.trim()) {
+      const id = `legacy-${customStyles.length + 1}`;
+      customStyles.push({
+        id,
+        name: 'Custom Mapbox Style',
+        url: value.customStyleUrl.trim(),
+      });
+      return `custom:${id}`;
+    }
+    return null;
+  };
+
+  const lightStyleId = String(
+    mapStyleSource.lightStyleId ||
+      resolveLegacyThemeStyleId(mapStyleSource.light) ||
+      legacyStyleId ||
+      defaults.mapStyle.lightStyleId
+  ).trim();
+  const darkStyleId = String(
+    mapStyleSource.darkStyleId ||
+      resolveLegacyThemeStyleId(mapStyleSource.dark) ||
+      legacyStyleId ||
+      defaults.mapStyle.darkStyleId
+  ).trim();
   const themeMode = MAP_STYLE_THEME_MODES.has(mapStyleSource.themeMode)
     ? mapStyleSource.themeMode
     : defaults.mapStyle.themeMode;
-  const customStyleUrl =
-    typeof mapStyleSource.customStyleUrl === 'string'
-      ? mapStyleSource.customStyleUrl.trim()
-      : defaults.mapStyle.customStyleUrl;
 
   return {
     center: {
@@ -118,8 +159,9 @@ export function normalizeMapViewSettings(input = {}) {
     },
     fitBoundsMaxZoom: readNumber(source, 'fitBoundsMaxZoom', defaults.fitBoundsMaxZoom),
     mapStyle: {
-      preset,
-      customStyleUrl,
+      lightStyleId,
+      darkStyleId,
+      customStyles,
       themeMode,
     },
   };
@@ -162,22 +204,58 @@ export function validateMapViewSettings(settings = {}) {
     errors.push('fitBoundsMaxZoom must be less than or equal to zoom.max.');
   }
 
-  if (!MAP_STYLE_PRESETS.has(settings.mapStyle?.preset)) {
-    errors.push('mapStyle.preset is not supported.');
-  }
-
   if (!MAP_STYLE_THEME_MODES.has(settings.mapStyle?.themeMode)) {
     errors.push('mapStyle.themeMode must be either adaptive or native.');
   }
 
-  const customStyleUrl = String(settings.mapStyle?.customStyleUrl || '').trim();
-  if (customStyleUrl && !MAPBOX_STYLE_URL_PATTERN.test(customStyleUrl)) {
-    errors.push('mapStyle.customStyleUrl must be a valid mapbox://styles/<username>/<style-id> URL.');
+  const customStyles = Array.isArray(settings.mapStyle?.customStyles)
+    ? settings.mapStyle.customStyles
+    : [];
+  const customIds = new Set();
+
+  for (const [index, style] of customStyles.entries()) {
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(style?.id || '')) {
+      errors.push(`mapStyle.customStyles[${index}].id must contain only letters, numbers, underscores, or hyphens.`);
+    } else if (customIds.has(style.id)) {
+      errors.push(`mapStyle.customStyles contains duplicate id "${style.id}".`);
+    } else {
+      customIds.add(style.id);
+    }
+
+    if (!String(style?.name || '').trim()) {
+      errors.push(`mapStyle.customStyles[${index}].name is required.`);
+    }
+
+    if (!MAPBOX_STYLE_URL_PATTERN.test(String(style?.url || '').trim())) {
+      errors.push(
+        `mapStyle.customStyles[${index}].url must be a valid mapbox://styles/<username>/<style-id> URL.`
+      );
+    }
   }
 
-  if (settings.mapStyle?.preset === 'custom' && !customStyleUrl) {
-    errors.push('mapStyle.customStyleUrl is required when the custom style preset is selected.');
-  }
+  const validateSelectedStyleId = (field, value) => {
+    const styleId = String(value || '').trim();
+    if (styleId.startsWith('preset:')) {
+      const preset = styleId.slice('preset:'.length);
+      if (!MAP_STYLE_PRESETS.has(preset)) {
+        errors.push(`${field} references an unsupported preset.`);
+      }
+      return;
+    }
+
+    if (styleId.startsWith('custom:')) {
+      const customId = styleId.slice('custom:'.length);
+      if (!customIds.has(customId)) {
+        errors.push(`${field} references a custom style that does not exist.`);
+      }
+      return;
+    }
+
+    errors.push(`${field} must reference a preset or custom map style.`);
+  };
+
+  validateSelectedStyleId('mapStyle.lightStyleId', settings.mapStyle?.lightStyleId);
+  validateSelectedStyleId('mapStyle.darkStyleId', settings.mapStyle?.darkStyleId);
 
   return errors;
 }
